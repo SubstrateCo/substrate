@@ -69,14 +69,36 @@ export const organizations = [
 ];
 
 export const invitations: InvitationListItem[] = [
-  { id: "pending", email: "alex@example.com", role: "member", status: "pending", expired: false },
-  { id: "accepted", email: "sam@example.com", role: "admin", status: "accepted", expired: false },
+  {
+    id: "pending",
+    email: "alex@example.com",
+    role: "member",
+    status: "pending",
+    expired: false,
+    expiresAt: "2026-11-12T10:30:00Z",
+  },
+  {
+    id: "accepted",
+    email: "sam@example.com",
+    role: "admin",
+    status: "accepted",
+    expired: false,
+    expiresAt: "2026-11-14T14:00:00Z",
+  },
   {
     id: "canceled",
     email: "jordan@example.com",
     role: "member",
     status: "canceled",
     expired: false,
+    expiresAt: "2026-11-10T09:00:00Z",
   },
-  { id: "expired", email: "lee@example.com", role: "owner", status: "pending", expired: true },
+  {
+    id: "expired",
+    email: "lee@example.com",
+    role: "owner",
+    status: "pending",
+    expired: true,
+    expiresAt: "2026-11-01T09:00:00Z",
+  },
 ];

@@ -66,6 +66,7 @@ function SettingsScene({
                     role,
                     status: "pending",
                     expired: false,
+                    expiresAt: "2026-11-12T10:30:00Z",
                   } satisfies InvitationListItem,
                 ]);
               setMessage("Invitation email sent.");

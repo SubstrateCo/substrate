@@ -11,6 +11,7 @@ import {
 } from "../primitives/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../primitives/card";
 import { FormMessage } from "../auth/form-message";
+import { InvitationTable } from "./invitation-table";
 
 export type InvitationRole = "owner" | "admin" | "member";
 export type InvitationListItem = {
@@ -19,6 +20,7 @@ export type InvitationListItem = {
   role: InvitationRole;
   status: string;
   expired: boolean;
+  expiresAt: Date | string;
 };
 
 export function InvitationManager({
@@ -100,67 +102,15 @@ export function InvitationManager({
           <FormMessage error={failed ? null : error} message={message} floating />
           <section className="min-h-48 space-y-3">
             <h3 className="text-sm font-medium">Invitations</h3>
-            {loading && (
-              <div role="status" className="space-y-3">
-                <span className="sr-only">Loading invitations…</span>
-                {[0, 1].map((item) => (
-                  <div
-                    key={item}
-                    aria-hidden="true"
-                    className="h-16 rounded-lg border bg-muted/60 motion-safe:animate-pulse"
-                  />
-                ))}
-              </div>
-            )}
-            {failed && <FormMessage error={error} />}
-            {failed && (
-              <Button variant="outline" onClick={onRetry}>
-                Try again
-              </Button>
-            )}
-            {invitations?.length === 0 && (
-              <p className="text-sm text-muted-foreground">No invitations yet.</p>
-            )}
-            <ul className="space-y-3">
-              {!failed &&
-                !loading &&
-                invitations?.map((invitation) => (
-                  <li
-                    key={invitation.id}
-                    className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-lg border bg-surface p-4 shadow-surface"
-                  >
-                    <div className="min-w-0">
-                      <p className="break-all text-sm font-medium">{invitation.email}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {invitation.role} · {invitation.status}
-                        {invitation.expired ? " · expired" : ""}
-                      </p>
-                    </div>
-                    {invitation.status === "pending" && (
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={busy}
-                          onClick={() => {
-                            onInvite(invitation.email, invitation.role, true);
-                          }}
-                        >
-                          Resend
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          disabled={busy}
-                          onClick={() => onCancel(invitation.id)}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    )}
-                  </li>
-                ))}
-            </ul>
+            <InvitationTable
+              invitations={invitations}
+              loading={loading}
+              error={failed ? error : null}
+              busy={busy}
+              onRetry={onRetry}
+              onInvite={onInvite}
+              onCancel={onCancel}
+            />
           </section>
         </div>
       </CardContent>

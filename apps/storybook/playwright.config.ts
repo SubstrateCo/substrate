@@ -16,8 +16,7 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command:
-      "bun run build && bunx vite preview --outDir storybook-static --host 127.0.0.1 --port 6007 --strictPort",
+    command: "bunx storybook dev --host 127.0.0.1 --port 6007 --ci --no-open --disable-telemetry",
     url: "http://127.0.0.1:6007/index.json",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

@@ -87,7 +87,7 @@ test("verified accounts can build a team, switch workspaces, and recover access"
     await page.getByRole("button", { name: "Send invitation", exact: true }).click();
     await expect(page.getByText("Invitation email sent.", { exact: true })).toBeVisible();
     await expect(
-      page.getByRole("listitem").filter({ hasText: member.email }).filter({ hasText: "pending" }),
+      page.getByRole("row").filter({ hasText: member.email }).filter({ hasText: "pending" }),
     ).toContainText("pending");
     invitationLink = await mailpit.link(
       member.email,
@@ -97,7 +97,7 @@ test("verified accounts can build a team, switch workspaces, and recover access"
   });
 
   await test.step("an owner can resend and cancel an invitation before issuing a replacement", async () => {
-    const invitation = page.getByRole("listitem").filter({ hasText: member.email });
+    const invitation = page.getByRole("row").filter({ hasText: member.email });
     const previousIds = await mailpit.messageIds(member.email);
     await invitation.getByRole("button", { name: "Resend", exact: true }).click();
     canceledInvitationLink = await mailpit.link(
@@ -112,7 +112,7 @@ test("verified accounts can build a team, switch workspaces, and recover access"
     const canceledIds = await mailpit.messageIds(member.email);
     await page.getByRole("button", { name: "Send invitation", exact: true }).click();
     await expect(
-      page.getByRole("listitem").filter({ hasText: member.email }).filter({ hasText: "pending" }),
+      page.getByRole("row").filter({ hasText: member.email }).filter({ hasText: "pending" }),
     ).toBeVisible();
     invitationLink = await mailpit.link(
       member.email,
@@ -134,13 +134,13 @@ test("verified accounts can build a team, switch workspaces, and recover access"
     await page.getByRole("button", { name: /^Signed in as / }).click();
     await page.getByRole("button", { name: "Organization settings", exact: true }).click();
     await expect(page.getByText("No invitations yet.", { exact: true })).toBeVisible();
-    await expect(page.getByRole("listitem").filter({ hasText: member.email })).toHaveCount(0);
+    await expect(page.getByRole("row").filter({ hasText: member.email })).toHaveCount(0);
     await switchWorkspace(page, secondWorkspace, firstWorkspace);
     await expectWorkspace(page, firstWorkspace, owner.name, "owner");
     await page.getByRole("button", { name: /^Signed in as / }).click();
     await page.getByRole("button", { name: "Organization settings", exact: true }).click();
     await expect(
-      page.getByRole("listitem").filter({ hasText: member.email }).filter({ hasText: "pending" }),
+      page.getByRole("row").filter({ hasText: member.email }).filter({ hasText: "pending" }),
     ).toContainText("pending");
     await signout(page);
     await login(page, owner);
@@ -230,9 +230,9 @@ test("verified accounts can build a team, switch workspaces, and recover access"
     await page.getByRole("button", { name: /^Signed in as / }).click();
     await page.getByRole("button", { name: "Organization settings", exact: true }).click();
     await expect(
-      page.getByRole("listitem").filter({ hasText: member.email }).filter({ hasText: "accepted" }),
+      page.getByRole("row").filter({ hasText: member.email }).filter({ hasText: "accepted" }),
     ).toContainText("accepted");
-    await expect(page.getByRole("listitem").filter({ hasText: deniedEmail })).toHaveCount(0);
+    await expect(page.getByRole("row").filter({ hasText: deniedEmail })).toHaveCount(0);
     await signout(page);
   });
 });

@@ -352,8 +352,8 @@ test("invitation fields and labels align on desktop and fit on mobile", async ({
     expect(box!.y).toBeCloseTo(controls[0]!.y, 0);
     expect(box!.height).toBe(controls[0]!.height);
   }
-  const emailLabel = await page.getByText("Email", { exact: true }).boundingBox();
-  const roleLabel = await page.getByText("Role", { exact: true }).boundingBox();
+  const emailLabel = await page.locator('label[for="invite-email"]').boundingBox();
+  const roleLabel = await page.locator('label[for="invite-role"]').boundingBox();
   expect(emailLabel!.y).toBeCloseTo(roleLabel!.y, 0);
   await page.setViewportSize({ width: 390, height: 844 });
   for (const control of [email, role, send]) await expect(control).toBeInViewport({ ratio: 1 });
@@ -517,7 +517,7 @@ test("owner invitation previews can send, resend, and cancel", async ({ page }) 
   await openStory(page, "scenes-settings--owner");
   await page.getByLabel("Email", { exact: true }).fill("new@example.com");
   await page.getByRole("button", { name: "Send invitation", exact: true }).click();
-  const invitation = page.getByRole("listitem").filter({ hasText: "new@example.com" });
+  const invitation = page.getByRole("row").filter({ hasText: "new@example.com" });
   await expect(invitation).toContainText("pending");
   await invitation.getByRole("button", { name: "Resend", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("Invitation email sent.");

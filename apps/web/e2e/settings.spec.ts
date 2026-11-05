@@ -50,14 +50,15 @@ test("personal invitations show loading, recover from errors, and disable expire
   await expect(page.getByRole("alert")).toContainText("Could not load your invitations.");
   failed = false;
   await page.getByRole("button", { name: "Try again", exact: true }).click();
-  const available = page.getByRole("listitem").filter({ hasText: "Available team" });
-  const expired = page.getByRole("listitem").filter({ hasText: "Expired team" });
+  const available = page.getByRole("row").filter({ hasText: "Available team" });
+  const expired = page.getByRole("row").filter({ hasText: "Expired team" });
   await expect(
     available.getByRole("link", { name: "Review invitation", exact: true }),
   ).toBeVisible();
   await expect(expired).toContainText("expired");
   await expect(expired.getByRole("link")).toHaveCount(0);
   await page.setViewportSize({ width: 320, height: 740 });
+  await available.getByRole("link").scrollIntoViewIfNeeded();
   await expect(available.getByRole("link")).toBeInViewport({ ratio: 1 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
@@ -98,9 +99,7 @@ test("personal invitations work without a workspace and organization settings en
   await expect(
     page.getByRole("heading", { name: "Organization settings", exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("listitem").filter({ hasText: recipient.email })).toContainText(
-    "pending",
-  );
+  await expect(page.getByRole("row").filter({ hasText: recipient.email })).toContainText("pending");
   await page.goto("/settings/user/invitations");
   await expect(page.getByText("You have no pending invitations.", { exact: true })).toBeVisible();
 
@@ -112,9 +111,10 @@ test("personal invitations work without a workspace and organization settings en
     await expect(
       memberPage.getByRole("heading", { name: "User settings", exact: true }),
     ).toBeVisible();
-    await expect(memberPage.getByRole("listitem")).toHaveCount(1);
-    await expect(memberPage.getByRole("listitem")).toContainText(organizationName);
-    await expect(memberPage.getByRole("listitem")).not.toContainText("unrelated-");
+    const invitations = memberPage.getByRole("table", { name: "Your invitations" });
+    await expect(invitations.getByRole("row")).toHaveCount(2);
+    await expect(invitations).toContainText(organizationName);
+    await expect(invitations).not.toContainText("unrelated-");
     await memberPage.getByRole("link", { name: "Appearance", exact: true }).click();
     const theme = memberPage.getByRole("switch", { name: "Dark mode", exact: true });
     await theme.check();
