@@ -7,6 +7,10 @@
   ],
   "type": "module",
   "scripts": {
+    "dev": "bun run --filter @startup-os/web dev",
+    "build": "bun run --filter @startup-os/web build",
+    "test:e2e": "bun run --filter @startup-os/web test:e2e",
+    "services:up": "docker compose up -d postgres mailpit",
     "lint": "oxlint --type-aware --fix",
     "format": "oxfmt --write .",
     "typecheck": "bun check && turbo run typecheck",

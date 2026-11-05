@@ -2,6 +2,9 @@ node_modules/
 .turbo/
 dist/
 coverage/
+.tanstack/
+playwright-report/
+test-results/
 *.tsbuildinfo
 .env
 .env.*

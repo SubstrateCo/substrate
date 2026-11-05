@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import type { Database } from "../../client";
+import type { DatabaseExecutor } from "../../client";
 import { ValidationError } from "../../errors";
 import { actors } from "./schema";
 import { entities } from "../entities/schema";
@@ -12,7 +12,7 @@ type ActorInput = { organizationId: string; name: string } & (
 );
 
 // Trusted provisioning only: call from authenticated onboarding or organization-admin workflows.
-export function createActor(db: Database, input: ActorInput) {
+export function createActor(db: DatabaseExecutor, input: ActorInput) {
   return db.transaction(async (tx) => {
     if (input.type === "human") {
       const [membership] = await tx
@@ -45,5 +45,25 @@ export function createActor(db: Database, input: ActorInput) {
       level: "owner",
     });
     return actor!;
+  });
+}
+
+// Trusted auth hooks can run more than once. Lock membership to serialize provisioning.
+export function ensureHumanActor(
+  db: DatabaseExecutor,
+  input: { organizationId: string; userId: string; name: string },
+) {
+  return db.transaction(async (tx) => {
+    const [membership] = await tx
+      .select()
+      .from(member)
+      .where(and(eq(member.organizationId, input.organizationId), eq(member.userId, input.userId)))
+      .for("update");
+    if (!membership) throw new ValidationError("Human actors require organization membership.");
+    const [existing] = await tx
+      .select()
+      .from(actors)
+      .where(and(eq(actors.organizationId, input.organizationId), eq(actors.userId, input.userId)));
+    return existing ?? createActor(tx, { ...input, type: "human" });
   });
 }
