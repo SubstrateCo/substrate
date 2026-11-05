@@ -1,0 +1,27 @@
+{
+  "name": "startup-os",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "lint": "oxlint --type-aware --fix",
+    "format": "oxfmt --write .",
+    "typecheck": "bun check && turbo run typecheck",
+    "test": "turbo run test"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.4",
+    "ai-deslop": "^0.5.0",
+    "oxfmt": "^0.76.0",
+    "oxlint": "^1.91.0",
+    "oxlint-tsgolint": "^7.0.2005",
+    "turbo": "^2.11.10"
+  },
+  "engines": {
+    "bun": ">=1.4.4"
+  },
+  "packageManager": "bun@1.4.4"
+}
