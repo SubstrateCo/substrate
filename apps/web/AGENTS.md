@@ -1,6 +1,7 @@
 # Web application
 
 - Use TanStack Start with file-based routes. Keep route files thin.
+- Limit UI route files to route configuration, data loading, access checks, redirects, and general page layout. Route components may read route context, params, search, and loader data and pass them to domain components. Keep component internals, including local interaction state, effects, event handlers, form logic, and detailed UI, in `src/components/<domain>/`, not in route files.
 - Organize routes in directories that mirror their layout hierarchy. Use directory-based route files, not flattened dot-separated route filenames.
 - Load shared session and application data at the highest common route layout. Return it through route context and reuse it in child routes. Do not repeat authentication checks or reload data already provided by a parent layout.
 - Use TanStack server functions for backend calls from the web UI. Reserve API routes for external consumers, callbacks, and integrations such as Better Auth.
