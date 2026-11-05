@@ -1,4 +1,4 @@
-import { Check, ChevronsUpDown, LoaderCircle, Settings2 } from "lucide-react";
+import { Check, ChevronsUpDown, Settings2 } from "lucide-react";
 import { Button } from "../primitives/button";
 import {
   DropdownMenu,
@@ -9,6 +9,9 @@ import {
   DropdownMenuTrigger,
 } from "../primitives/dropdown-menu";
 import { FormMessage } from "../auth/form-message";
+import { ErrorState } from "../feedback/error-state";
+import { LoadingState } from "../feedback/loading-state";
+import { Spinner } from "../primitives/spinner";
 
 export function OrganizationSwitcher({
   organizationId,
@@ -18,6 +21,8 @@ export function OrganizationSwitcher({
   pending = false,
   loading = false,
   error,
+  loadError,
+  onRetry,
   onSelect,
   manageHref,
 }: {
@@ -28,6 +33,8 @@ export function OrganizationSwitcher({
   pending?: boolean;
   loading?: boolean;
   error?: Error | null;
+  loadError?: Error | null;
+  onRetry?: () => void;
   onSelect: (id: string) => void;
   manageHref: string;
 }) {
@@ -41,23 +48,30 @@ export function OrganizationSwitcher({
             aria-label={`${name} ▾`}
             title={compact ? `Switch workspace: ${name}` : undefined}
             disabled={pending}
+            aria-busy={pending}
           >
             {compact ? (
               <span aria-hidden="true" className="text-xs font-semibold">
-                {pending
-                  ? "…"
-                  : name
-                      .split(/\s+/)
-                      .filter(Boolean)
-                      .slice(0, 2)
-                      .map((word) => word[0])
-                      .join("")
-                      .toUpperCase()}
+                {pending ? (
+                  <Spinner aria-hidden="true" role="presentation" />
+                ) : (
+                  name
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map((word) => word[0])
+                    .join("")
+                    .toUpperCase()
+                )}
               </span>
             ) : (
               <>
                 <span className="max-w-48 truncate">{pending ? "Switching…" : name}</span>
-                <ChevronsUpDown className="size-4 text-muted-foreground" />
+                {pending ? (
+                  <Spinner aria-hidden="true" role="presentation" />
+                ) : (
+                  <ChevronsUpDown className="size-4 text-muted-foreground" />
+                )}
               </>
             )}
           </Button>
@@ -69,14 +83,14 @@ export function OrganizationSwitcher({
           className="w-64"
         >
           <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
-          {loading && (
-            <div
-              role="status"
-              className="flex items-center gap-2 px-2 py-3 text-sm text-muted-foreground"
-            >
-              <LoaderCircle className="size-4 motion-safe:animate-spin" />
-              Loading workspaces…
-            </div>
+          {loading && <LoadingState label="Loading workspaces…" variant="compact" />}
+          {loadError && (
+            <ErrorState
+              compact
+              title="Couldn’t load workspaces"
+              description="Try again to update your workspace list."
+              onRetry={onRetry}
+            />
           )}
           {!loading &&
             organizations.map((organization) => (
@@ -112,7 +126,10 @@ export function OrganizationSwitcher({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <FormMessage error={error} floating />
+      <FormMessage
+        error={error}
+        errorDescription="We couldn’t switch workspaces. Your current workspace is still open. Try again."
+      />
     </div>
   );
 }

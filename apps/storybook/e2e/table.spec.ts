@@ -46,7 +46,7 @@ test("data removal on the last page recovers to a populated page", async ({ page
 for (const [story, message] of [
   ["empty", "No invitations yet."],
   ["loading", "Loading invitations…"],
-  ["load-error", "Could not load invitations."],
+  ["load-error", "Couldn’t load invitations"],
 ]) {
   test(`${story} state does not expose stale rows or pagination`, async ({ page }) => {
     await page.goto(`/iframe.html?id=components-table--${story}&viewMode=story`);

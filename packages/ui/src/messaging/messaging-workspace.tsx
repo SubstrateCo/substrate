@@ -4,6 +4,8 @@ import type { Conversation } from "./types";
 import { Button } from "../primitives/button";
 import { PaneState } from "../feedback/pane-state";
 import { ConversationSidebar } from "./conversation-sidebar";
+import { isAccessFailure } from "../feedback/request-failure";
+import { ErrorState } from "../feedback/error-state";
 
 export function MessagingWorkspace({
   conversations,
@@ -46,6 +48,8 @@ export function MessagingWorkspace({
         <ConversationSidebar
           mobileOpen={sidebarOpen}
           loading={loading}
+          error={error}
+          onRetry={onRetry}
           conversations={conversations}
           selectedId={selectedId}
           onSelect={onSelect}
@@ -54,10 +58,22 @@ export function MessagingWorkspace({
         <div
           className={`${sidebarOpen ? "hidden" : "flex"} min-h-0 min-w-0 flex-1 flex-col md:flex`}
         >
-          {error ? (
+          {error && (!children || isAccessFailure(error)) ? (
             <PaneState label="Workspace unavailable" error={error} onRetry={onRetry} />
           ) : children ? (
-            children
+            <>
+              {error && (
+                <div className="p-3">
+                  <ErrorState
+                    compact
+                    title="Couldn’t refresh conversations"
+                    description="You can still read your loaded messages. Try again to update the conversation list."
+                    onRetry={onRetry}
+                  />
+                </div>
+              )}
+              {children}
+            </>
           ) : loading ? (
             <PaneState label="Loading your conversations…" />
           ) : (

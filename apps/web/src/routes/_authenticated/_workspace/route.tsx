@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { WorkspaceFrame } from "@/components/workspace/workspace-frame";
 import { organizationQueryOptions } from "@/queries/organizations/options";
+import { isAccessFailure } from "@startup-os/ui/feedback/request-failure";
 
 export const Route = createFileRoute("/_authenticated/_workspace")({
   component: WorkspaceLayout,
@@ -12,8 +13,10 @@ export const Route = createFileRoute("/_authenticated/_workspace")({
         organizationQueryOptions(organizationId),
       );
       return { organizationId, organization, userName: context.session.user.name };
-    } catch {
-      throw redirect({ to: "/organizations" });
+    } catch (error) {
+      if (error instanceof Error && isAccessFailure(error))
+        throw redirect({ to: "/organizations" });
+      throw error;
     }
   },
 });

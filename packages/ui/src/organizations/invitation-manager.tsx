@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Button } from "../primitives/button";
 import { Input } from "../primitives/input";
 import { Label } from "../primitives/label";
 import {
@@ -12,6 +11,8 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../primitives/card";
 import { FormMessage } from "../auth/form-message";
 import { InvitationTable } from "./invitation-table";
+import { PendingButton } from "../feedback/pending-button";
+import { Spinner } from "../primitives/spinner";
 
 export type InvitationRole = "owner" | "admin" | "member";
 export type InvitationListItem = {
@@ -30,7 +31,7 @@ export function InvitationManager({
   canceling = false,
   error,
   message,
-  failed = false,
+  loadError,
   onRetry,
   onInvite,
   onCancel,
@@ -41,7 +42,7 @@ export function InvitationManager({
   canceling?: boolean;
   error?: Error | null;
   message?: string;
-  failed?: boolean;
+  loadError?: Error | null;
   onRetry: () => void;
   onInvite: (email: string, role: InvitationRole, resend?: boolean) => void;
   onCancel: (id: string) => void;
@@ -61,6 +62,7 @@ export function InvitationManager({
             className="grid gap-4 sm:grid-cols-12 sm:items-end"
             onSubmit={(event) => {
               event.preventDefault();
+              if (busy) return;
               onInvite(email, role);
             }}
           >
@@ -95,17 +97,32 @@ export function InvitationManager({
                 </SelectContent>
               </Select>
             </div>
-            <Button className="sm:col-span-3" disabled={busy}>
-              {sending ? "Sending…" : "Send invitation"}
-            </Button>
+            <PendingButton
+              className="sm:col-span-3"
+              disabled={busy}
+              pending={sending}
+              pendingLabel="Sending…"
+            >
+              Send invitation
+            </PendingButton>
           </form>
-          <FormMessage error={failed ? null : error} message={message} floating />
+          <FormMessage
+            error={error}
+            errorDescription="We couldn’t update this invitation. Check the email and try again."
+            message={message}
+          />
           <section className="min-h-48 space-y-3">
             <h3 className="text-sm font-medium">Invitations</h3>
+            {canceling && (
+              <div role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Spinner aria-hidden="true" role="presentation" />
+                Canceling invitation…
+              </div>
+            )}
             <InvitationTable
               invitations={invitations}
               loading={loading}
-              error={failed ? error : null}
+              error={loadError}
               busy={busy}
               onRetry={onRetry}
               onInvite={onInvite}

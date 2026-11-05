@@ -2,9 +2,15 @@ import { queryOptions } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
 import { queryKeys } from "@/queries/keys";
 
-export function unwrap<T>(result: { data: T; error: { message?: string } | null }): NonNullable<T> {
+export function unwrap<T>(result: {
+  data: T;
+  error: { message?: string; code?: string; status?: number } | null;
+}): NonNullable<T> {
   if (result.error)
-    throw new Error(result.error.message || "The request failed. Please try again.");
+    throw Object.assign(
+      new Error(result.error.message || "The request failed. Please try again."),
+      { code: result.error.code, status: result.error.status },
+    );
   if (result.data == null) throw new Error("No data was returned. Please try again.");
   return result.data;
 }

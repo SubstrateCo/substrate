@@ -5,13 +5,14 @@ import type { Conversation } from "@/lib/messaging";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
 import { ConversationPane } from "./conversation-pane";
 import { CreateConversationForm } from "./create-conversation-form";
+import { isAccessFailure } from "@startup-os/ui/feedback/request-failure";
 
 export function MessagingWorkspace({ organizationId }: { organizationId: string }) {
   const conversations = useQuery(conversationsQueryOptions(organizationId));
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState<Conversation["kind"] | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const visibleConversations = conversations.isError ? [] : conversations.data || [];
+  const visibleConversations = isAccessFailure(conversations.error) ? [] : conversations.data || [];
   const selected =
     visibleConversations.find((conversation) => conversation.id === selectedId) ??
     (selectedId === null ? visibleConversations[0] : undefined);

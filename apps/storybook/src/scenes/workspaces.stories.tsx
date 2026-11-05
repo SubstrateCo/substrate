@@ -18,6 +18,7 @@ const selection = {
   createForm: <CreateOrganizationForm onSubmit={fn()} />,
 };
 const acceptance = {
+  onRetry: fn(),
   invitation: { organizationName: "Launch Studio", role: "member", email: "taylor@example.com" },
   available: true,
   onAccept: fn(),
@@ -60,8 +61,7 @@ export const LoadError: Story = {
   render: () => (
     <OrganizationSelection
       {...selection}
-      failed
-      error={new Error("Could not load your workspaces.")}
+      loadError={new Error("Could not load your workspaces.")}
     />
   ),
 };
@@ -116,6 +116,7 @@ export const WrongInvitedEmail: Story = {
       invitation={undefined}
       available={false}
       failed
+      unavailable
       error={new Error("Invitation not found.")}
     />
   ),

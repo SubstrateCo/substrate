@@ -23,6 +23,7 @@ export function ConversationPane({
       conversation={conversation}
       loading={messages.isPending}
       error={messages.error}
+      hasLoaded={messages.data !== undefined}
       onRetry={() => void messages.refetch()}
       addingMembers={addingMembers}
       onToggleMembers={() => setAddingMembers(!addingMembers)}

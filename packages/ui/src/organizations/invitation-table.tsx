@@ -77,6 +77,8 @@ export function InvitationTable({
       loading={loading}
       loadingMessage="Loading invitations…"
       error={error}
+      errorTitle="Couldn’t load invitations"
+      errorDescription="Your team’s invitations are unavailable. Please try again."
       onRetry={onRetry}
       emptyMessage="No invitations yet."
     />

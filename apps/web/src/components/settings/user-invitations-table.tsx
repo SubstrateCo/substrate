@@ -68,6 +68,8 @@ export function UserInvitationsTable({
       loading={loading}
       loadingMessage="Loading your invitations…"
       error={error}
+      errorTitle="Couldn’t load your invitations"
+      errorDescription="Your invitations are unavailable. Please try again."
       onRetry={onRetry}
       emptyMessage="You have no pending invitations."
     />

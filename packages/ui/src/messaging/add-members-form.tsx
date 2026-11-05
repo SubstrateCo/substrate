@@ -3,6 +3,7 @@ import { Button } from "../primitives/button";
 import { Input } from "../primitives/input";
 import { Label } from "../primitives/label";
 import { FormMessage } from "../auth/form-message";
+import { PendingButton } from "../feedback/pending-button";
 
 export function AddMembersForm({
   onSubmit,
@@ -21,6 +22,7 @@ export function AddMembersForm({
       className="space-y-3 border-b bg-muted/30 p-4"
       onSubmit={(event) => {
         event.preventDefault();
+        if (pending) return;
         onSubmit(emails);
       }}
     >
@@ -36,11 +38,14 @@ export function AddMembersForm({
       <p className="text-xs text-muted-foreground">
         Include people from any workspace who already have an account.
       </p>
-      <FormMessage error={error} />
+      <FormMessage
+        error={error}
+        errorDescription="We couldn’t add these people. Check their email addresses and try again."
+      />
       <div className="flex gap-2">
-        <Button type="submit" disabled={pending}>
-          {pending ? "Adding…" : "Add people"}
-        </Button>
+        <PendingButton type="submit" pending={pending} pendingLabel="Adding…">
+          Add people
+        </PendingButton>
         <Button type="button" variant="ghost" onClick={onClose}>
           Cancel
         </Button>

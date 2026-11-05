@@ -1,6 +1,7 @@
 import { AuthFrame } from "./auth-frame";
 import { FormMessage } from "./form-message";
-import { Button } from "../primitives/button";
+import { PendingButton } from "../feedback/pending-button";
+import { ContentNotice } from "../feedback/content-notice";
 import { Input } from "../primitives/input";
 import { Label } from "../primitives/label";
 
@@ -27,12 +28,16 @@ export function VerifyEmailScreen({
       description="Open the link in your email before entering a workspace. Then return to sign in."
     >
       {invalid && (
-        <FormMessage message="This verification link is invalid or expired. Request a new link below." />
+        <ContentNotice
+          title="Verification link unavailable"
+          description="This verification link is invalid or expired. Request a new link below."
+        />
       )}
       <form
         className="space-y-4"
         onSubmit={(event) => {
           event.preventDefault();
+          if (pending) return;
           onSubmit(new FormData(event.currentTarget));
         }}
       >
@@ -49,14 +54,15 @@ export function VerifyEmailScreen({
         </div>
         <FormMessage
           error={error}
+          errorDescription="We couldn’t send a verification email. Please try again."
           reserve
           message={
             success ? "Verification email requested. Check your inbox and spam folder." : undefined
           }
         />
-        <Button className="w-full" disabled={pending}>
-          {pending ? "Sending…" : "Resend verification email"}
-        </Button>
+        <PendingButton className="w-full" pending={pending} pendingLabel="Sending…">
+          Resend verification email
+        </PendingButton>
       </form>
       <a className="block text-sm underline" href={loginHref}>
         Back to sign in

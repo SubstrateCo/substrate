@@ -2,6 +2,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 import { routeTree } from "./routeTree.gen";
+import { PageLoading } from "@startup-os/ui/feedback/page-loading";
 
 export function getRouter() {
   const queryClient = new QueryClient({
@@ -12,6 +13,7 @@ export function getRouter() {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreload: "intent",
+    defaultPendingComponent: PageLoading,
   });
   setupRouterSsrQueryIntegration({ router, queryClient });
   return router;

@@ -72,7 +72,10 @@ export function MessageItem({
             )}
           </div>
         </div>
-        <FormMessage error={error} floating />
+        <FormMessage
+          error={error}
+          errorDescription="Your reaction couldn’t be saved. Try selecting it again."
+        />
       </div>
     </article>
   );

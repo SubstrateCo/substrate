@@ -13,6 +13,7 @@
     "./organizations/*": "./src/organizations/*.tsx",
     "./workspace/*": "./src/workspace/*.tsx",
     "./theme/*": "./src/theme/*.tsx",
+    "./feedback/request-failure": "./src/feedback/request-failure.ts",
     "./feedback/*": "./src/feedback/*.tsx"
   },
   "scripts": {

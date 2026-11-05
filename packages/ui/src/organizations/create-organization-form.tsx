@@ -1,4 +1,4 @@
-import { Button } from "../primitives/button";
+import { PendingButton } from "../feedback/pending-button";
 import { Input } from "../primitives/input";
 import { Label } from "../primitives/label";
 import { FormMessage } from "../auth/form-message";
@@ -17,6 +17,7 @@ export function CreateOrganizationForm({
       className="space-y-4"
       onSubmit={(event) => {
         event.preventDefault();
+        if (pending) return;
         onSubmit(new FormData(event.currentTarget));
       }}
     >
@@ -36,8 +37,13 @@ export function CreateOrganizationForm({
         />
         <p className="text-xs text-muted-foreground">Lowercase letters, numbers, and hyphens.</p>
       </div>
-      <FormMessage error={error} />
-      <Button disabled={pending}>{pending ? "Creating…" : "Create workspace"}</Button>
+      <FormMessage
+        error={error}
+        errorDescription="We couldn’t create your workspace. Check the name and slug, then try again."
+      />
+      <PendingButton pending={pending} pendingLabel="Creating…">
+        Create workspace
+      </PendingButton>
     </form>
   );
 }

@@ -69,6 +69,11 @@ export function WorkspaceFrame({
       }
       signOut={<SignOutButton />}
       error={organization.error || member.error}
+      loading={!!organizationId && (organization.isPending || member.isPending)}
+      onRetry={() => {
+        void organization.refetch();
+        void member.refetch();
+      }}
     >
       {children}
     </WorkspaceShell>

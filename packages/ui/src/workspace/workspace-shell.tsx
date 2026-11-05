@@ -3,6 +3,9 @@ import { MessageSquare } from "lucide-react";
 import { FormMessage } from "../auth/form-message";
 import { Button } from "../primitives/button";
 import { UserMenu } from "./user-menu";
+import { ErrorState } from "../feedback/error-state";
+import { LoadingState } from "../feedback/loading-state";
+import { isAccessFailure } from "../feedback/request-failure";
 
 export function WorkspaceShell({
   name,
@@ -13,6 +16,9 @@ export function WorkspaceShell({
   switcher,
   signOut,
   error,
+  loading = false,
+  onRetry,
+  notice,
   children,
 }: {
   name: string;
@@ -23,6 +29,9 @@ export function WorkspaceShell({
   switcher: ReactNode;
   signOut: ReactNode;
   error?: Error | null;
+  loading?: boolean;
+  onRetry?: () => void;
+  notice?: string;
   children: ReactNode;
 }) {
   return (
@@ -54,8 +63,23 @@ export function WorkspaceShell({
         </div>
       </nav>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface md:m-2 md:rounded-xl md:border md:shadow-raised">
-        <FormMessage error={error} floating />
-        {children}
+        <FormMessage message={notice} floating />
+        {loading && (
+          <div className="border-b p-3">
+            <LoadingState label="Loading workspace details…" variant="compact" rows={1} />
+          </div>
+        )}
+        {error && (
+          <div className="shrink-0 p-3">
+            <ErrorState
+              compact
+              title="Couldn’t load workspace details"
+              description="Some workspace controls may be unavailable. Try again to update your workspace details."
+              onRetry={onRetry}
+            />
+          </div>
+        )}
+        {!isAccessFailure(error) && children}
       </div>
     </main>
   );

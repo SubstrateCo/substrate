@@ -47,7 +47,7 @@ test("personal invitations show loading, recover from errors, and disable expire
   await page.goto("/settings/user/invitations");
   await expect(page.getByRole("status")).toHaveText("Loading your invitations…");
   loading.resolve();
-  await expect(page.getByRole("alert")).toContainText("Could not load your invitations.");
+  await expect(page.getByRole("heading", { name: "Couldn’t load your invitations" })).toBeVisible();
   failed = false;
   await page.getByRole("button", { name: "Try again", exact: true }).click();
   const available = page.getByRole("row").filter({ hasText: "Available team" });

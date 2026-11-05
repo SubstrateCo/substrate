@@ -4,6 +4,7 @@ import { Button } from "../primitives/button";
 import { Textarea } from "../primitives/textarea";
 import { FormMessage } from "../auth/form-message";
 import { EmojiPicker } from "./emoji-picker";
+import { PendingButton } from "../feedback/pending-button";
 
 export function Composer({
   onSend,
@@ -41,7 +42,10 @@ export function Composer({
         submit();
       }}
     >
-      <FormMessage error={error} floating />
+      <FormMessage
+        error={error}
+        errorDescription="Your message couldn’t be sent. Your draft is still here. Try sending it again."
+      />
       <div className="overflow-hidden rounded-xl border bg-card shadow-raised transition-shadow focus-within:border-ring/50 focus-within:ring-2 focus-within:ring-ring/15">
         <div className="flex items-center gap-1 border-b border-border/60 bg-muted/30 px-2 py-1">
           <Button
@@ -94,10 +98,17 @@ export function Composer({
         />
         <div className="flex items-center justify-between px-2 pb-2">
           <EmojiPicker onSelect={(emoji) => insert(emoji)} disabled={pending} />
-          <Button type="submit" size="sm" className="min-w-16" disabled={!draft.trim() || pending}>
+          <PendingButton
+            type="submit"
+            size="sm"
+            className="min-w-16"
+            disabled={!draft.trim()}
+            pending={pending}
+            pendingLabel="Sending…"
+          >
             <Send className="size-3.5" />
-            {pending ? "Sending…" : "Send"}
-          </Button>
+            Send
+          </PendingButton>
         </div>
       </div>
     </form>

@@ -1,6 +1,6 @@
 import { AuthFrame } from "./auth-frame";
 import { FormMessage } from "./form-message";
-import { Button } from "../primitives/button";
+import { PendingButton } from "../feedback/pending-button";
 import { Input } from "../primitives/input";
 import { Label } from "../primitives/label";
 
@@ -26,6 +26,7 @@ export function ForgotPasswordForm({
         className="space-y-4"
         onSubmit={(event) => {
           event.preventDefault();
+          if (pending) return;
           onSubmit(new FormData(event.currentTarget));
         }}
       >
@@ -36,11 +37,12 @@ export function ForgotPasswordForm({
         <FormMessage
           reserve
           error={error}
+          errorDescription="We couldn’t send a reset link. Please try again."
           message={success ? "Check your inbox for a password reset link." : undefined}
         />
-        <Button className="w-full" disabled={pending}>
-          {pending ? "Sending…" : "Send reset link"}
-        </Button>
+        <PendingButton className="w-full" pending={pending} pendingLabel="Sending…">
+          Send reset link
+        </PendingButton>
       </form>
       <a className="block text-sm underline" href={loginHref}>
         Back to sign in

@@ -1,6 +1,8 @@
 import { Hash, LockKeyhole, MessageCircle, Plus, Users } from "lucide-react";
 import { conversationName, type Conversation } from "./types";
 import { Button } from "../primitives/button";
+import { ErrorState } from "../feedback/error-state";
+import { LoadingState } from "../feedback/loading-state";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +17,8 @@ export function ConversationSidebar({
   onCreate,
   mobileOpen,
   loading = false,
+  error,
+  onRetry,
 }: {
   conversations: Conversation[];
   selectedId?: string;
@@ -22,6 +26,8 @@ export function ConversationSidebar({
   onCreate: (kind: Conversation["kind"]) => void;
   mobileOpen: boolean;
   loading?: boolean;
+  error?: Error | null;
+  onRetry?: () => void;
 }) {
   return (
     <aside
@@ -37,100 +43,101 @@ export function ConversationSidebar({
           </p>
           <p className="mt-1 text-lg font-semibold tracking-tight">Messages</p>
         </div>
-        {(["channel", "dm"] as const).map((section) => (
-          <section key={section}>
-            <div className="mb-1 flex items-center justify-between px-2">
-              <h2 className="text-xs font-semibold text-muted-foreground">
-                {section === "channel" ? "Channels" : "Direct messages"}
-              </h2>
-              {section === "channel" ? (
-                <Button
-                  size="icon-xs"
-                  variant="ghost"
-                  aria-label="Create channel"
-                  title="Create channel"
-                  onClick={() => onCreate("channel")}
-                >
-                  <Plus />
-                </Button>
-              ) : (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      size="icon-xs"
-                      variant="ghost"
-                      aria-label="New message"
-                      title="New message"
-                    >
-                      <Plus />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={() => onCreate("dm")}>
-                      New direct message
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => onCreate("group")}>
-                      New group message
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
-            {loading && (
-              <div role="status" className="space-y-2 px-2 py-2">
-                <span className="sr-only">
-                  {section === "channel" ? "Loading channels…" : "Loading direct messages…"}
-                </span>
-                {[0, 1, 2].map((item) => (
-                  <div
-                    key={item}
-                    aria-hidden="true"
-                    className="h-7 rounded-md bg-muted motion-safe:animate-pulse"
-                  />
-                ))}
+        {error && (
+          <ErrorState
+            compact
+            title="Couldn’t load conversations"
+            description="Try again to update your channels and messages."
+            onRetry={onRetry}
+          />
+        )}
+        {(!error || conversations.length > 0) &&
+          (["channel", "dm"] as const).map((section) => (
+            <section key={section}>
+              <div className="mb-1 flex items-center justify-between px-2">
+                <h2 className="text-xs font-semibold text-muted-foreground">
+                  {section === "channel" ? "Channels" : "Direct messages"}
+                </h2>
+                {section === "channel" ? (
+                  <Button
+                    size="icon-xs"
+                    variant="ghost"
+                    aria-label="Create channel"
+                    title="Create channel"
+                    onClick={() => onCreate("channel")}
+                  >
+                    <Plus />
+                  </Button>
+                ) : (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="icon-xs"
+                        variant="ghost"
+                        aria-label="New message"
+                        title="New message"
+                      >
+                        <Plus />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onSelect={() => onCreate("dm")}>
+                        New direct message
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => onCreate("group")}>
+                        New group message
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
-            )}
-            {!loading &&
-              conversations
-                .filter((conversation) =>
+              {loading && (
+                <LoadingState
+                  label={section === "channel" ? "Loading channels…" : "Loading direct messages…"}
+                  variant="compact"
+                />
+              )}
+              {!loading &&
+                conversations
+                  .filter((conversation) =>
+                    section === "channel"
+                      ? conversation.kind === "channel"
+                      : conversation.kind !== "channel",
+                  )
+                  .map((conversation) => {
+                    const Icon =
+                      conversation.kind === "channel"
+                        ? conversation.private
+                          ? LockKeyhole
+                          : Hash
+                        : conversation.kind === "group"
+                          ? Users
+                          : MessageCircle;
+                    return (
+                      <Button
+                        key={conversation.id}
+                        variant="sidebar"
+                        className="mb-1 w-full justify-start"
+                        aria-current={selectedId === conversation.id ? "page" : undefined}
+                        onClick={() => onSelect(conversation.id)}
+                      >
+                        <Icon className="size-4 shrink-0" />
+                        <span className="truncate">{conversationName(conversation)}</span>
+                      </Button>
+                    );
+                  })}
+              {!loading &&
+                !conversations.some((conversation) =>
                   section === "channel"
                     ? conversation.kind === "channel"
                     : conversation.kind !== "channel",
-                )
-                .map((conversation) => {
-                  const Icon =
-                    conversation.kind === "channel"
-                      ? conversation.private
-                        ? LockKeyhole
-                        : Hash
-                      : conversation.kind === "group"
-                        ? Users
-                        : MessageCircle;
-                  return (
-                    <Button
-                      key={conversation.id}
-                      variant="sidebar"
-                      className="mb-1 w-full justify-start"
-                      aria-current={selectedId === conversation.id ? "page" : undefined}
-                      onClick={() => onSelect(conversation.id)}
-                    >
-                      <Icon className="size-4 shrink-0" />
-                      <span className="truncate">{conversationName(conversation)}</span>
-                    </Button>
-                  );
-                })}
-            {!loading &&
-              !conversations.some((conversation) =>
-                section === "channel"
-                  ? conversation.kind === "channel"
-                  : conversation.kind !== "channel",
-              ) && (
-                <p className="px-2 py-2 text-xs text-muted-foreground">
-                  {section === "channel" ? "No channels yet" : "No conversations yet"}
-                </p>
-              )}
-          </section>
-        ))}
+                ) && (
+                  <p className="px-2 py-2 text-xs text-muted-foreground">
+                    {section === "channel" ? "No channels yet" : "No conversations yet"}
+                  </p>
+                )}
+            </section>
+          ))}
       </div>
     </aside>
   );

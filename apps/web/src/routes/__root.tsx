@@ -8,7 +8,7 @@ import {
 } from "@tanstack/react-router";
 import stylesheet from "../styles.css?url";
 import { NotFound } from "@startup-os/ui/feedback/not-found";
-import { ErrorScreen } from "@startup-os/ui/feedback/error-screen";
+import { RouteErrorScreen } from "@/components/feedback/route-error-screen";
 import { ThemeProvider } from "@startup-os/ui/theme/theme-provider";
 import { ThemeSwitcher } from "@startup-os/ui/theme/theme-switcher";
 
@@ -23,7 +23,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   }),
   component: Root,
   notFoundComponent: () => <NotFound homeLink={<Link to="/">Return home</Link>} />,
-  errorComponent: ({ reset }) => <ErrorScreen onRetry={reset} />,
+  errorComponent: RouteErrorScreen,
 });
 
 function Root() {

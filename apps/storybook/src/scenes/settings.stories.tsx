@@ -52,8 +52,7 @@ function SettingsScene({
             loading={state === "loading"}
             sending={state === "sending"}
             canceling={state === "canceling"}
-            error={state === "error" ? new Error("Could not load invitations.") : null}
-            failed={state === "error"}
+            loadError={state === "error" ? new Error("Could not load invitations.") : null}
             message={message}
             onRetry={fn()}
             onInvite={(email, role, resend) => {

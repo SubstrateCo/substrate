@@ -22,8 +22,8 @@ export function OrganizationSelection() {
       organizations={organizations.data}
       loading={organizations.isPending}
       pending={select.isPending}
-      error={organizations.error || select.error}
-      failed={organizations.isError}
+      error={select.error}
+      loadError={organizations.error}
       onRetry={() => void organizations.refetch()}
       onSelect={(id) => select.mutate(id)}
       signOut={

@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { X } from "lucide-react";
 import { Button } from "../primitives/button";
 import { PaneState } from "../feedback/pane-state";
+import { ErrorState } from "../feedback/error-state";
+import { isAccessFailure } from "../feedback/request-failure";
 
 export function ThreadPane({
   root,
@@ -20,6 +22,7 @@ export function ThreadPane({
   replies?: ReactNode;
   composer: ReactNode;
 }) {
+  const blocked = !!error && (!replies || isAccessFailure(error));
   return (
     <aside
       aria-label="Thread"
@@ -31,15 +34,25 @@ export function ThreadPane({
           <X />
         </Button>
       </header>
-      {error ? (
+      {blocked ? (
         <PaneState label="Thread unavailable" error={error} onRetry={onRetry} />
       ) : (
         <>
+          {error && (
+            <div className="p-3">
+              <ErrorState
+                compact
+                title="Couldn’t refresh replies"
+                description="Your loaded replies are still available. Try again to update this thread."
+                onRetry={onRetry}
+              />
+            </div>
+          )}
           {root && <div className="max-h-7/20 shrink-0 overflow-y-auto border-b">{root}</div>}
           {loading ? <PaneState label="Loading replies…" /> : replies}
         </>
       )}
-      {!error && <div className="mt-auto shrink-0">{composer}</div>}
+      {!blocked && <div className="mt-auto shrink-0">{composer}</div>}
     </aside>
   );
 }

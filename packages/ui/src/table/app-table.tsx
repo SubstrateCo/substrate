@@ -1,6 +1,9 @@
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import type { RowData } from "@tanstack/react-table";
-import { FormMessage } from "../auth/form-message";
+import { ErrorState } from "../feedback/error-state";
+import { LoadingState } from "../feedback/loading-state";
+import { ContentNotice } from "../feedback/content-notice";
+import { isAccessFailure } from "../feedback/request-failure";
 import { Button } from "../primitives/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../primitives/table";
 import { TablePagination } from "./table-pagination";
@@ -14,6 +17,8 @@ export function AppTable<TData extends RowData>({
   error,
   onRetry,
   emptyMessage = "No results.",
+  errorTitle = "Couldn’t load results",
+  errorDescription = "Your results are unavailable. Please try again.",
 }: {
   table: AppTableInstance<TData>;
   name: string;
@@ -22,11 +27,17 @@ export function AppTable<TData extends RowData>({
   error?: Error | null;
   onRetry?: () => void;
   emptyMessage?: string;
+  errorTitle?: string;
+  errorDescription?: string;
 }) {
   const rows = table.getRowModel().rows;
+  const blocked = isAccessFailure(error);
   return (
     <table.AppTable>
       <div className="min-w-0 space-y-3">
+        {error && rows.length > 0 && !blocked && (
+          <ErrorState compact title={errorTitle} description={errorDescription} onRetry={onRetry} />
+        )}
         <div className="min-w-0 rounded-lg border">
           <Table aria-label={name} aria-busy={loading}>
             <TableHeader>
@@ -70,22 +81,22 @@ export function AppTable<TData extends RowData>({
               ))}
             </TableHeader>
             <TableBody>
-              {loading || error || rows.length === 0 ? (
+              {loading || blocked || rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={table.getAllLeafColumns().length}>
                     {loading ? (
-                      <p role="status">{loadingMessage}</p>
+                      <LoadingState label={loadingMessage} variant="table" />
                     ) : error ? (
-                      <div className="space-y-3">
-                        <FormMessage error={error} />
-                        {onRetry && (
-                          <Button variant="outline" onClick={onRetry}>
-                            Try again
-                          </Button>
-                        )}
-                      </div>
+                      <ErrorState
+                        title={errorTitle}
+                        description={errorDescription}
+                        onRetry={onRetry}
+                      />
                     ) : (
-                      <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+                      <ContentNotice
+                        title={emptyMessage}
+                        description="New items will appear here."
+                      />
                     )}
                   </TableCell>
                 </TableRow>
@@ -105,7 +116,7 @@ export function AppTable<TData extends RowData>({
             </TableBody>
           </Table>
         </div>
-        {!loading && !error && table.getPageCount() > 1 && (
+        {!loading && !blocked && rows.length > 0 && table.getPageCount() > 1 && (
           <TablePagination table={table} name={name} />
         )}
       </div>

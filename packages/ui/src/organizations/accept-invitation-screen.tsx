@@ -1,7 +1,10 @@
 import type { ReactNode } from "react";
 import { AuthFrame } from "../auth/auth-frame";
 import { FormMessage } from "../auth/form-message";
-import { Button } from "../primitives/button";
+import { LoadingState } from "../feedback/loading-state";
+import { ErrorState } from "../feedback/error-state";
+import { ContentNotice } from "../feedback/content-notice";
+import { PendingButton } from "../feedback/pending-button";
 
 export function AcceptInvitationScreen({
   invitation,
@@ -9,6 +12,8 @@ export function AcceptInvitationScreen({
   pending = false,
   error,
   failed = false,
+  unavailable = false,
+  onRetry,
   available,
   onAccept,
   signOut,
@@ -19,6 +24,8 @@ export function AcceptInvitationScreen({
   pending?: boolean;
   error?: Error | null;
   failed?: boolean;
+  unavailable?: boolean;
+  onRetry?: () => void;
   available: boolean;
   onAccept: () => void;
   signOut: ReactNode;
@@ -27,28 +34,27 @@ export function AcceptInvitationScreen({
   return (
     <AuthFrame title="Join your team" description="Accept your invitation to enter the workspace.">
       <div className="min-h-44 space-y-4">
-        {loading && (
-          <div role="status" className="space-y-4">
-            <span className="sr-only">Loading invitation…</span>
-            <div
-              aria-hidden="true"
-              className="h-6 w-3/4 rounded-lg bg-muted motion-safe:animate-pulse"
-            />
-            <div
-              aria-hidden="true"
-              className="h-4 w-full rounded-lg bg-muted motion-safe:animate-pulse"
-            />
-            <div aria-hidden="true" className="h-8 rounded-lg bg-muted motion-safe:animate-pulse" />
-          </div>
+        {loading && <LoadingState label="Loading invitation…" rows={2} />}
+        {!loading && failed && !unavailable && (
+          <ErrorState
+            title="Couldn’t load invitation"
+            description="We couldn’t check this invitation. Please try again."
+            onRetry={onRetry}
+          />
         )}
-        <FormMessage error={error} />
-        {failed && (
-          <p className="text-sm text-muted-foreground">
-            The invitation may have expired, been canceled, or belong to another email address. Sign
-            in with the invited email or ask the owner for a new invitation.
-          </p>
+        {!loading && unavailable && (
+          <ContentNotice
+            title="Invitation unavailable"
+            description="This invitation may have expired, been canceled, or belong to another email. Sign in with the invited email or ask the owner for a new invitation."
+          />
         )}
-        {!loading && !failed && invitation && (
+        {!failed && (
+          <FormMessage
+            error={error}
+            errorDescription="We couldn’t accept this invitation. Please try again."
+          />
+        )}
+        {!loading && !failed && !unavailable && invitation && (
           <div className="space-y-4">
             <p>
               Join <strong>{invitation.organizationName}</strong> as{" "}
@@ -56,11 +62,19 @@ export function AcceptInvitationScreen({
             </p>
             <p className="text-sm text-muted-foreground">Invited email: {invitation.email}</p>
             {!available ? (
-              <FormMessage message="This invitation is no longer available. Ask the owner for a new invitation." />
+              <ContentNotice
+                title="Invitation unavailable"
+                description="This invitation is no longer available. Ask the owner for a new invitation."
+              />
             ) : (
-              <Button className="w-full" disabled={pending} onClick={onAccept}>
-                {pending ? "Joining…" : "Accept invitation"}
-              </Button>
+              <PendingButton
+                className="w-full"
+                pending={pending}
+                pendingLabel="Joining…"
+                onClick={onAccept}
+              >
+                Accept invitation
+              </PendingButton>
             )}
           </div>
         )}

@@ -18,9 +18,13 @@ const columns = column.columns([
   }),
 ]);
 
-function TablePreview({ state = "ready" }: { state?: "ready" | "empty" | "loading" | "error" }) {
-  const [data, setData] = useState(state === "empty" ? [] : invitations);
-  const [failed, setFailed] = useState(state === "error");
+function TablePreview({
+  state = "ready",
+}: {
+  state?: "ready" | "empty" | "loading" | "error" | "refresh-error" | "access-error";
+}) {
+  const [data, setData] = useState(state === "empty" || state === "error" ? [] : invitations);
+  const [failed, setFailed] = useState(["error", "refresh-error", "access-error"].includes(state));
   const table = useAppTable({ columns, data, getRowId: (row) => row.id });
   return (
     <div className="w-full min-w-0 space-y-4 p-4">
@@ -29,8 +33,18 @@ function TablePreview({ state = "ready" }: { state?: "ready" | "empty" | "loadin
         name="Invitations"
         loading={state === "loading"}
         loadingMessage="Loading invitations…"
-        error={failed ? new Error("Could not load invitations.") : null}
-        onRetry={() => setFailed(false)}
+        error={
+          failed
+            ? Object.assign(new Error("Could not load invitations."), {
+                status: state === "access-error" ? 403 : 503,
+              })
+            : null
+        }
+        errorTitle="Couldn’t load invitations"
+        onRetry={() => {
+          setFailed(false);
+          setData(invitations);
+        }}
         emptyMessage="No invitations yet."
       />
       {state === "ready" && (
@@ -51,4 +65,6 @@ export const Invitations: Story = {};
 export const Empty: Story = { args: { state: "empty" } };
 export const Loading: Story = { args: { state: "loading" } };
 export const LoadError: Story = { args: { state: "error" } };
+export const RefreshError: Story = { args: { state: "refresh-error" } };
+export const AccessError: Story = { args: { state: "access-error" } };
 export const Dark: Story = { globals: { theme: "dark" } };

@@ -30,7 +30,9 @@ export function OrganizationSwitcher({
       organizations={organizations.data || []}
       pending={switchOrganization.isPending}
       loading={organizations.isPending}
-      error={switchOrganization.error || organizations.error}
+      error={switchOrganization.error}
+      loadError={organizations.error}
+      onRetry={() => void organizations.refetch()}
       onSelect={(id) => switchOrganization.mutate(id)}
       manageHref="/organizations"
     />

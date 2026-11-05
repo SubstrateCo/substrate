@@ -3,6 +3,7 @@ import { AcceptInvitationScreen as AcceptInvitationScreenView } from "@startup-o
 import { authClient } from "@/lib/auth-client";
 import { invitationQueryOptions, unwrap } from "@/queries/organizations/options";
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { isInvitationUnavailable } from "@startup-os/ui/feedback/request-failure";
 
 export function AcceptInvitationScreen({ invitationId }: { invitationId: string }) {
   const invitation = useQuery(invitationQueryOptions(invitationId));
@@ -29,6 +30,8 @@ export function AcceptInvitationScreen({ invitationId }: { invitationId: string 
       pending={accept.isPending}
       error={invitation.error || accept.error}
       failed={invitation.isError}
+      unavailable={isInvitationUnavailable(invitation.error)}
+      onRetry={() => void invitation.refetch()}
       available={available}
       onAccept={() => accept.mutate()}
       signOut={<SignOutButton />}

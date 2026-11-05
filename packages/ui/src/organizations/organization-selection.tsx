@@ -3,13 +3,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../pr
 import { Button } from "../primitives/button";
 import { Separator } from "../primitives/separator";
 import { FormMessage } from "../auth/form-message";
+import { ErrorState } from "../feedback/error-state";
+import { LoadingState } from "../feedback/loading-state";
+import { ContentNotice } from "../feedback/content-notice";
+import { Spinner } from "../primitives/spinner";
 
 export function OrganizationSelection({
   organizations,
   loading = false,
   pending = false,
   error,
-  failed = false,
+  loadError,
   onRetry,
   onSelect,
   signOut,
@@ -19,7 +23,7 @@ export function OrganizationSelection({
   loading?: boolean;
   pending?: boolean;
   error?: Error | null;
-  failed?: boolean;
+  loadError?: Error | null;
   onRetry: () => void;
   onSelect: (id: string) => void;
   signOut: ReactNode;
@@ -38,35 +42,28 @@ export function OrganizationSelection({
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <FormMessage error={failed ? null : error} floating />
+            <FormMessage
+              error={error}
+              errorDescription="We couldn’t open this workspace. Try selecting it again."
+            />
             <div className="min-h-36 space-y-3">
-              {loading && (
-                <div role="status" className="space-y-3">
-                  <span className="sr-only">Loading workspaces…</span>
-                  {[0, 1].map((item) => (
-                    <div
-                      key={item}
-                      aria-hidden="true"
-                      className="h-14 rounded-lg border bg-muted motion-safe:animate-pulse"
-                    />
-                  ))}
-                </div>
+              {loading && <LoadingState label="Loading workspaces…" rows={2} />}
+              {loadError && (
+                <ErrorState
+                  title="Couldn’t load workspaces"
+                  description="Your workspace list is unavailable. Try again, or create a workspace below."
+                  onRetry={onRetry}
+                />
               )}
-              {failed && <FormMessage error={error} />}
-              {failed && (
-                <Button variant="outline" onClick={onRetry}>
-                  Try again
-                </Button>
-              )}
-              {!loading && !failed && organizations?.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  You have no workspaces yet. Create one below, or open an invitation link from your
-                  email.
-                </p>
+              {!loading && !loadError && organizations?.length === 0 && (
+                <ContentNotice
+                  title="No workspaces yet"
+                  description="Create one below, or open an invitation link from your email."
+                />
               )}
               <div className="grid gap-2">
                 {!loading &&
-                  !failed &&
+                  (!loadError || organizations !== undefined) &&
                   organizations?.map((organization) => (
                     <Button
                       key={organization.id}
@@ -74,13 +71,18 @@ export function OrganizationSelection({
                       size="selection"
                       className="justify-start whitespace-normal text-left"
                       disabled={pending}
+                      aria-busy={pending}
                       onClick={() => onSelect(organization.id)}
                     >
                       <span
                         aria-hidden="true"
                         className="mr-2 flex size-8 shrink-0 items-center justify-center rounded-md bg-accent text-xs font-semibold text-accent-foreground"
                       >
-                        {organization.name.slice(0, 2).toUpperCase()}
+                        {pending ? (
+                          <Spinner aria-hidden="true" role="presentation" />
+                        ) : (
+                          organization.name.slice(0, 2).toUpperCase()
+                        )}
                       </span>
                       <span className="min-w-0 wrap-break-word">{organization.name}</span>
                     </Button>

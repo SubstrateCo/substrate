@@ -1,6 +1,6 @@
 import { AuthFrame } from "./auth-frame";
 import { FormMessage } from "./form-message";
-import { Button } from "../primitives/button";
+import { PendingButton } from "../feedback/pending-button";
 import { Input } from "../primitives/input";
 import { Label } from "../primitives/label";
 
@@ -25,6 +25,7 @@ export function LoginForm({
         className="space-y-4"
         onSubmit={(event) => {
           event.preventDefault();
+          if (pending) return;
           onSubmit(new FormData(event.currentTarget));
         }}
       >
@@ -49,10 +50,14 @@ export function LoginForm({
             required
           />
         </div>
-        <FormMessage error={error} reserve />
-        <Button className="w-full" disabled={pending}>
-          {pending ? "Signing in…" : "Sign in"}
-        </Button>
+        <FormMessage
+          error={error}
+          errorDescription="We couldn’t sign you in. Check your details and try again."
+          reserve
+        />
+        <PendingButton className="w-full" pending={pending} pendingLabel="Signing in…">
+          Sign in
+        </PendingButton>
       </form>
       <div className="flex justify-between gap-4 text-sm">
         <a className="underline" href={forgotPasswordHref}>

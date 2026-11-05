@@ -172,7 +172,7 @@ export function MessagingScene({
       }
       showOrganizationSettings={!member}
       organizationName="Launch Studio"
-      error={notice}
+      notice={notice?.message}
       switcher={
         <OrganizationSwitcher
           organizationId="studio"
@@ -270,7 +270,7 @@ export function MessagingScene({
                     true,
                   )}
                   replies={
-                    threadState !== "loading" ? (
+                    threadState !== "loading" && threadState !== "error" ? (
                       <MessageList lastId={threadReplies.at(-1)?.id}>
                         {threadReplies.map((message) => renderMessage(message, true))}
                       </MessageList>

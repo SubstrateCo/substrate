@@ -3,6 +3,8 @@ import { Hash, LockKeyhole, UserPlus } from "lucide-react";
 import { conversationName, type Conversation } from "./types";
 import { Button } from "../primitives/button";
 import { PaneState } from "../feedback/pane-state";
+import { ErrorState } from "../feedback/error-state";
+import { isAccessFailure } from "../feedback/request-failure";
 
 export function ConversationPane({
   conversation,
@@ -13,6 +15,7 @@ export function ConversationPane({
   onToggleMembers,
   membersForm,
   messages,
+  hasLoaded = !!messages,
   composer,
   thread,
 }: {
@@ -24,10 +27,12 @@ export function ConversationPane({
   onToggleMembers: () => void;
   membersForm?: ReactNode;
   messages?: ReactNode;
+  hasLoaded?: boolean;
   composer: ReactNode;
   thread?: ReactNode;
 }) {
   const title = conversationName(conversation);
+  const blocked = !!error && (!hasLoaded || isAccessFailure(error));
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1">
       <section aria-label={title} className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface">
@@ -41,7 +46,7 @@ export function ConversationPane({
               ))}
             <span className="truncate">{title}</span>
           </h1>
-          {!error && conversation.kind !== "dm" && (
+          {!blocked && conversation.kind !== "dm" && (
             <Button
               variant="ghost"
               size="sm"
@@ -53,8 +58,18 @@ export function ConversationPane({
             </Button>
           )}
         </header>
-        {!error && addingMembers && membersForm}
-        {error ? (
+        {!blocked && addingMembers && membersForm}
+        {error && !blocked && (
+          <div className="px-4 pt-3">
+            <ErrorState
+              compact
+              title="Couldn’t refresh messages"
+              description="Your loaded messages are still available. Try again for the latest messages."
+              onRetry={onRetry}
+            />
+          </div>
+        )}
+        {blocked ? (
           <PaneState label="Conversation unavailable" error={error} onRetry={onRetry} />
         ) : loading ? (
           <PaneState label="Loading messages…" />
@@ -71,9 +86,9 @@ export function ConversationPane({
             </p>
           </div>
         )}
-        {!error && <div className="mt-auto shrink-0">{composer}</div>}
+        {!blocked && <div className="mt-auto shrink-0">{composer}</div>}
       </section>
-      {!error && !loading && thread}
+      {!blocked && !loading && thread}
     </div>
   );
 }

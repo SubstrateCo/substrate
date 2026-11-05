@@ -1,6 +1,7 @@
 import { AuthFrame } from "./auth-frame";
 import { FormMessage } from "./form-message";
-import { Button } from "../primitives/button";
+import { PendingButton } from "../feedback/pending-button";
+import { ContentNotice } from "../feedback/content-notice";
 import { Input } from "../primitives/input";
 import { Label } from "../primitives/label";
 
@@ -24,7 +25,10 @@ export function ResetPasswordForm({
   return (
     <AuthFrame title="Choose a new password" description="Use at least 8 characters.">
       {invalid ? (
-        <FormMessage message="This reset link is missing, invalid, or expired. Request a new link." />
+        <ContentNotice
+          title="Reset link unavailable"
+          description="This reset link is missing, invalid, or expired. Request a new link."
+        />
       ) : success ? (
         <>
           <FormMessage message="Your password was changed. You can now sign in." />
@@ -37,6 +41,7 @@ export function ResetPasswordForm({
           className="space-y-4"
           onSubmit={(event) => {
             event.preventDefault();
+            if (pending) return;
             onSubmit(new FormData(event.currentTarget));
           }}
         >
@@ -62,10 +67,14 @@ export function ResetPasswordForm({
               required
             />
           </div>
-          <FormMessage error={error} reserve />
-          <Button className="w-full" disabled={pending}>
-            {pending ? "Saving…" : "Save new password"}
-          </Button>
+          <FormMessage
+            error={error}
+            errorDescription="We couldn’t reset your password. Try again, or request a new reset link."
+            reserve
+          />
+          <PendingButton className="w-full" pending={pending} pendingLabel="Saving…">
+            Save new password
+          </PendingButton>
         </form>
       )}
       <a className="block text-sm underline" href={requestResetHref}>

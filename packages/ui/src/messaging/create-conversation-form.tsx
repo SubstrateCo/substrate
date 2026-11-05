@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Conversation } from "./types";
-import { Button } from "../primitives/button";
+import { PendingButton } from "../feedback/pending-button";
 import { Input } from "../primitives/input";
 import { Label } from "../primitives/label";
 import { FormMessage } from "../auth/form-message";
@@ -34,6 +34,7 @@ export function CreateConversationForm({
         className="space-y-5"
         onSubmit={(event) => {
           event.preventDefault();
+          if (pending) return;
           onSubmit({ name, emails, isPrivate });
         }}
       >
@@ -82,10 +83,13 @@ export function CreateConversationForm({
             Make this channel private
           </Label>
         )}
-        <FormMessage error={error} />
-        <Button type="submit" disabled={pending}>
-          {pending ? "Creating…" : kind === "channel" ? "Create channel" : "Start conversation"}
-        </Button>
+        <FormMessage
+          error={error}
+          errorDescription="We couldn’t create this conversation. Check the recipients and try again."
+        />
+        <PendingButton type="submit" pending={pending} pendingLabel="Creating…">
+          {kind === "channel" ? "Create channel" : "Start conversation"}
+        </PendingButton>
       </form>
     </section>
   );

@@ -271,7 +271,7 @@ test("user icon reveals account actions on hover and supports keyboard access", 
     actions.getByRole("button", { name: "Organization settings", exact: true }),
   ).toBeVisible();
   await actions.getByRole("button", { name: "Sign out", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("Sign out is a preview only.");
+  await expect(page.getByRole("status")).toContainText("Sign out is a preview only.");
   await page.keyboard.press("Escape");
   await expect(actions).toBeHidden();
   await user.focus();
@@ -279,7 +279,7 @@ test("user icon reveals account actions on hover and supports keyboard access", 
   await expect(actions).toBeVisible();
   await actions.getByRole("button", { name: "User settings", exact: true }).click();
   await expect(actions).toBeHidden();
-  await expect(page.getByRole("alert")).toContainText("Open Scenes / Settings");
+  await expect(page.getByRole("status")).toContainText("Open Scenes / Settings");
 });
 
 test("permission and access-loss scenes hide restricted controls and content", async ({ page }) => {
@@ -379,7 +379,7 @@ test("workspace menu marks the current workspace and selects another workspace",
   await expect(current).toBeDisabled();
   await expect(current).toBeVisible();
   await page.getByRole("menuitem", { name: "Partner Workspace", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("Workspace switching is a preview only.");
+  await expect(page.getByRole("status")).toContainText("Workspace switching is a preview only.");
 });
 
 test("compact rail controls keep their names and expose usable menus", async ({ page }) => {
@@ -486,8 +486,7 @@ for (const width of [320, 390, 1440]) {
           expect(notice).not.toBeNull();
           expect(send).not.toBeNull();
           expect(notice!.y + notice!.height).toBeLessThan(send!.y);
-          await page.getByRole("button", { name: "Dismiss notification" }).click();
-          await expect(page.getByRole("alert")).toHaveCount(0);
+          await expect(page.getByRole("alert")).toContainText("Your draft is still here.");
           await expect(
             page.getByRole("textbox", { name: "Message #general", exact: true }),
           ).toHaveValue("Please review the launch plan.");

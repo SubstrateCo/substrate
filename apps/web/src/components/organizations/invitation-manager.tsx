@@ -48,8 +48,8 @@ export function InvitationManager({ organizationId }: { organizationId: string }
       loading={invitations.isPending}
       sending={invite.isPending}
       canceling={cancel.isPending}
-      error={invite.error || cancel.error || invitations.error}
-      failed={invitations.isError}
+      error={invite.error || cancel.error}
+      loadError={invitations.error}
       message={
         invite.isSuccess
           ? "Invitation email sent."

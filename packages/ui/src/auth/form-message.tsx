@@ -2,17 +2,20 @@ import { Alert, AlertDescription } from "../primitives/alert";
 import { useState } from "react";
 import { CircleAlert, CircleCheck, X } from "lucide-react";
 import { Button } from "../primitives/button";
+import { actionErrorMessage } from "../feedback/action-error-message";
 
 export function FormMessage({
   error,
   message,
   floating = false,
   reserve = false,
+  errorDescription,
 }: {
   error?: Error | null;
   message?: string;
   floating?: boolean;
   reserve?: boolean;
+  errorDescription?: string;
 }) {
   const [dismissed, setDismissed] = useState<Error | string | null>(null);
   if (!error && !message) return reserve ? <div aria-hidden="true" className="min-h-20" /> : null;
@@ -32,7 +35,7 @@ export function FormMessage({
     >
       <Icon className={error ? "text-destructive" : "text-success"} />
       <AlertDescription className="min-w-0 wrap-break-word">
-        {error?.message || message}
+        {error ? actionErrorMessage(error, errorDescription) : message}
       </AlertDescription>
       {floating && (
         <Button

@@ -1,6 +1,6 @@
 import { AuthFrame } from "./auth-frame";
 import { FormMessage } from "./form-message";
-import { Button } from "../primitives/button";
+import { PendingButton } from "../feedback/pending-button";
 import { Input } from "../primitives/input";
 import { Label } from "../primitives/label";
 
@@ -21,6 +21,7 @@ export function SignupForm({
         className="space-y-4"
         onSubmit={(event) => {
           event.preventDefault();
+          if (pending) return;
           onSubmit(new FormData(event.currentTarget));
         }}
       >
@@ -43,10 +44,14 @@ export function SignupForm({
             required
           />
         </div>
-        <FormMessage error={error} reserve />
-        <Button className="w-full" disabled={pending}>
-          {pending ? "Creating account…" : "Create account"}
-        </Button>
+        <FormMessage
+          error={error}
+          errorDescription="We couldn’t create your account. Please try again."
+          reserve
+        />
+        <PendingButton className="w-full" pending={pending} pendingLabel="Creating account…">
+          Create account
+        </PendingButton>
       </form>
       <p className="text-sm">
         Already have an account?{" "}
