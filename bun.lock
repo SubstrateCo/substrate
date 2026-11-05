@@ -6,7 +6,7 @@
       "name": "startup-os",
       "devDependencies": {
         "@types/bun": "^1.4.4",
-        "ai-deslop": "^0.5.0",
+        "ai-deslop": "^0.5.1",
         "oxfmt": "^0.76.0",
         "oxlint": "^1.91.0",
         "oxlint-tsgolint": "^7.0.2005",
@@ -246,7 +246,7 @@
 
     "@typescript/typescript-win32-x64": ["@typescript/typescript-win32-x64@7.0.2", "", { "os": "win32", "cpu": "x64" }, "sha512-0BQ3HkAHHlKLSp1qRvf3SUhGpGsDuhB/jgFw75guyqbxJqEaS0Cw/VFO8i2nHglJUzQCRtMMR/IBAKE3ETMC4g=="],
 
-    "ai-deslop": ["ai-deslop@0.5.0", "", { "dependencies": { "@oxlint/plugins": "1.82.0", "@tailwindcss/node": "^4.3.3", "synckit": "^0.11.13" }, "peerDependencies": { "tailwindcss": "^4.0.0" }, "optionalPeers": ["tailwindcss"] }, "sha512-IypERaB3FP5zymaXxOixuX6vF09XBieAkxIdcU9ta/XVMgvnoYCamEgcUzogR+Gb6Q8N+wdJNjwMxn7AF7TKJg=="],
+    "ai-deslop": ["ai-deslop@0.5.1", "", { "dependencies": { "@oxlint/plugins": "1.82.0", "@tailwindcss/node": "^4.3.3", "synckit": "^0.11.13" }, "peerDependencies": { "tailwindcss": "^4.0.0" }, "optionalPeers": ["tailwindcss"] }, "sha512-PyY5FaW9dzGLRGcsTnZqHPhZFWGi07RlpUgHWenS+XXEsg6yKPHDNj5bOMSn+nwctf8NqiFecGgs4JYwrqImxQ=="],
 
     "buffer-from": ["buffer-from@1.1.2", "", {}, "sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ=="],
 
