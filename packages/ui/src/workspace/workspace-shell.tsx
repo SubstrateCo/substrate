@@ -8,16 +8,18 @@ export function WorkspaceShell({
   name,
   view,
   onViewChange,
-  showSettings,
+  showOrganizationSettings,
+  organizationName,
   switcher,
   signOut,
   error,
   children,
 }: {
   name: string;
-  view: "messages" | "settings";
-  onViewChange: (view: "messages" | "settings") => void;
-  showSettings: boolean;
+  view: "messages" | "user-settings" | "organization-settings";
+  onViewChange: (view: "messages" | "user-settings" | "organization-settings") => void;
+  showOrganizationSettings: boolean;
+  organizationName?: string;
   switcher: ReactNode;
   signOut: ReactNode;
   error?: Error | null;
@@ -43,8 +45,10 @@ export function WorkspaceShell({
         <div className="mt-auto">
           <UserMenu
             name={name}
-            showSettings={showSettings}
-            onSettings={() => onViewChange("settings")}
+            showOrganizationSettings={showOrganizationSettings}
+            organizationName={organizationName}
+            onUserSettings={() => onViewChange("user-settings")}
+            onOrganizationSettings={() => onViewChange("organization-settings")}
             signOut={signOut}
           />
         </div>

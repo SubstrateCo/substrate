@@ -20,9 +20,14 @@ import { Route as PublicResetPasswordRouteImport } from './routes/_public/reset-
 import { Route as PublicVerifyEmailRouteImport } from './routes/_public/verify-email'
 import { Route as AuthenticatedWorkspaceDashboardRouteImport } from './routes/_authenticated/_workspace/dashboard'
 import { Route as AuthenticatedAcceptInvitationInvitationIdRouteImport } from './routes/_authenticated/accept-invitation/$invitationId'
+import { Route as AuthenticatedSettingsUserRouteRouteImport } from './routes/_authenticated/settings/user/route'
 import { Route as PublicGuestLoginRouteImport } from './routes/_public/_guest/login'
 import { Route as PublicGuestSignupRouteImport } from './routes/_public/_guest/signup'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AuthenticatedWorkspaceSettingsOrganizationRouteRouteImport } from './routes/_authenticated/_workspace/settings/organization/route'
+import { Route as AuthenticatedSettingsUserIndexRouteImport } from './routes/_authenticated/settings/user/index'
+import { Route as AuthenticatedSettingsUserInvitationsRouteImport } from './routes/_authenticated/settings/user/invitations'
+import { Route as AuthenticatedWorkspaceSettingsOrganizationIndexRouteImport } from './routes/_authenticated/_workspace/settings/organization/index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -79,6 +84,12 @@ const AuthenticatedAcceptInvitationInvitationIdRoute =
     path: '/accept-invitation/$invitationId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSettingsUserRouteRoute =
+  AuthenticatedSettingsUserRouteRouteImport.update({
+    id: '/settings/user',
+    path: '/settings/user',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const PublicGuestLoginRoute = PublicGuestLoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -94,6 +105,30 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedWorkspaceSettingsOrganizationRouteRoute =
+  AuthenticatedWorkspaceSettingsOrganizationRouteRouteImport.update({
+    id: '/settings/organization',
+    path: '/settings/organization',
+    getParentRoute: () => AuthenticatedWorkspaceRouteRoute,
+  } as any)
+const AuthenticatedSettingsUserIndexRoute =
+  AuthenticatedSettingsUserIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedSettingsUserRouteRoute,
+  } as any)
+const AuthenticatedSettingsUserInvitationsRoute =
+  AuthenticatedSettingsUserInvitationsRouteImport.update({
+    id: '/invitations',
+    path: '/invitations',
+    getParentRoute: () => AuthenticatedSettingsUserRouteRoute,
+  } as any)
+const AuthenticatedWorkspaceSettingsOrganizationIndexRoute =
+  AuthenticatedWorkspaceSettingsOrganizationIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedWorkspaceSettingsOrganizationRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -101,11 +136,16 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof PublicForgotPasswordRoute
   '/reset-password': typeof PublicResetPasswordRoute
   '/verify-email': typeof PublicVerifyEmailRoute
+  '/settings/user': typeof AuthenticatedSettingsUserRouteRouteWithChildren
   '/dashboard': typeof AuthenticatedWorkspaceDashboardRoute
   '/accept-invitation/$invitationId': typeof AuthenticatedAcceptInvitationInvitationIdRoute
   '/login': typeof PublicGuestLoginRoute
   '/signup': typeof PublicGuestSignupRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/settings/organization': typeof AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren
+  '/settings/user/invitations': typeof AuthenticatedSettingsUserInvitationsRoute
+  '/settings/user/': typeof AuthenticatedSettingsUserIndexRoute
+  '/settings/organization/': typeof AuthenticatedWorkspaceSettingsOrganizationIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -118,6 +158,9 @@ export interface FileRoutesByTo {
   '/login': typeof PublicGuestLoginRoute
   '/signup': typeof PublicGuestSignupRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/settings/user/invitations': typeof AuthenticatedSettingsUserInvitationsRoute
+  '/settings/user': typeof AuthenticatedSettingsUserIndexRoute
+  '/settings/organization': typeof AuthenticatedWorkspaceSettingsOrganizationIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -130,11 +173,16 @@ export interface FileRoutesById {
   '/_public/forgot-password': typeof PublicForgotPasswordRoute
   '/_public/reset-password': typeof PublicResetPasswordRoute
   '/_public/verify-email': typeof PublicVerifyEmailRoute
+  '/_authenticated/settings/user': typeof AuthenticatedSettingsUserRouteRouteWithChildren
   '/_authenticated/_workspace/dashboard': typeof AuthenticatedWorkspaceDashboardRoute
   '/_authenticated/accept-invitation/$invitationId': typeof AuthenticatedAcceptInvitationInvitationIdRoute
   '/_public/_guest/login': typeof PublicGuestLoginRoute
   '/_public/_guest/signup': typeof PublicGuestSignupRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/_authenticated/_workspace/settings/organization': typeof AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren
+  '/_authenticated/settings/user/invitations': typeof AuthenticatedSettingsUserInvitationsRoute
+  '/_authenticated/settings/user/': typeof AuthenticatedSettingsUserIndexRoute
+  '/_authenticated/_workspace/settings/organization/': typeof AuthenticatedWorkspaceSettingsOrganizationIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -144,11 +192,16 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/reset-password'
     | '/verify-email'
+    | '/settings/user'
     | '/dashboard'
     | '/accept-invitation/$invitationId'
     | '/login'
     | '/signup'
     | '/api/auth/$'
+    | '/settings/organization'
+    | '/settings/user/invitations'
+    | '/settings/user/'
+    | '/settings/organization/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -161,6 +214,9 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/api/auth/$'
+    | '/settings/user/invitations'
+    | '/settings/user'
+    | '/settings/organization'
   id:
     | '__root__'
     | '/'
@@ -172,11 +228,16 @@ export interface FileRouteTypes {
     | '/_public/forgot-password'
     | '/_public/reset-password'
     | '/_public/verify-email'
+    | '/_authenticated/settings/user'
     | '/_authenticated/_workspace/dashboard'
     | '/_authenticated/accept-invitation/$invitationId'
     | '/_public/_guest/login'
     | '/_public/_guest/signup'
     | '/api/auth/$'
+    | '/_authenticated/_workspace/settings/organization'
+    | '/_authenticated/settings/user/invitations'
+    | '/_authenticated/settings/user/'
+    | '/_authenticated/_workspace/settings/organization/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -265,6 +326,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAcceptInvitationInvitationIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/settings/user': {
+      id: '/_authenticated/settings/user'
+      path: '/settings/user'
+      fullPath: '/settings/user'
+      preLoaderRoute: typeof AuthenticatedSettingsUserRouteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_public/_guest/login': {
       id: '/_public/_guest/login'
       path: '/login'
@@ -286,16 +354,62 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/_workspace/settings/organization': {
+      id: '/_authenticated/_workspace/settings/organization'
+      path: '/settings/organization'
+      fullPath: '/settings/organization'
+      preLoaderRoute: typeof AuthenticatedWorkspaceSettingsOrganizationRouteRouteImport
+      parentRoute: typeof AuthenticatedWorkspaceRouteRoute
+    }
+    '/_authenticated/settings/user/': {
+      id: '/_authenticated/settings/user/'
+      path: '/'
+      fullPath: '/settings/user/'
+      preLoaderRoute: typeof AuthenticatedSettingsUserIndexRouteImport
+      parentRoute: typeof AuthenticatedSettingsUserRouteRoute
+    }
+    '/_authenticated/settings/user/invitations': {
+      id: '/_authenticated/settings/user/invitations'
+      path: '/invitations'
+      fullPath: '/settings/user/invitations'
+      preLoaderRoute: typeof AuthenticatedSettingsUserInvitationsRouteImport
+      parentRoute: typeof AuthenticatedSettingsUserRouteRoute
+    }
+    '/_authenticated/_workspace/settings/organization/': {
+      id: '/_authenticated/_workspace/settings/organization/'
+      path: '/'
+      fullPath: '/settings/organization/'
+      preLoaderRoute: typeof AuthenticatedWorkspaceSettingsOrganizationIndexRouteImport
+      parentRoute: typeof AuthenticatedWorkspaceSettingsOrganizationRouteRoute
+    }
   }
 }
 
+interface AuthenticatedWorkspaceSettingsOrganizationRouteRouteChildren {
+  AuthenticatedWorkspaceSettingsOrganizationIndexRoute: typeof AuthenticatedWorkspaceSettingsOrganizationIndexRoute
+}
+
+const AuthenticatedWorkspaceSettingsOrganizationRouteRouteChildren: AuthenticatedWorkspaceSettingsOrganizationRouteRouteChildren =
+  {
+    AuthenticatedWorkspaceSettingsOrganizationIndexRoute:
+      AuthenticatedWorkspaceSettingsOrganizationIndexRoute,
+  }
+
+const AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren =
+  AuthenticatedWorkspaceSettingsOrganizationRouteRoute._addFileChildren(
+    AuthenticatedWorkspaceSettingsOrganizationRouteRouteChildren,
+  )
+
 interface AuthenticatedWorkspaceRouteRouteChildren {
   AuthenticatedWorkspaceDashboardRoute: typeof AuthenticatedWorkspaceDashboardRoute
+  AuthenticatedWorkspaceSettingsOrganizationRouteRoute: typeof AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren
 }
 
 const AuthenticatedWorkspaceRouteRouteChildren: AuthenticatedWorkspaceRouteRouteChildren =
   {
     AuthenticatedWorkspaceDashboardRoute: AuthenticatedWorkspaceDashboardRoute,
+    AuthenticatedWorkspaceSettingsOrganizationRouteRoute:
+      AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren,
   }
 
 const AuthenticatedWorkspaceRouteRouteWithChildren =
@@ -303,9 +417,27 @@ const AuthenticatedWorkspaceRouteRouteWithChildren =
     AuthenticatedWorkspaceRouteRouteChildren,
   )
 
+interface AuthenticatedSettingsUserRouteRouteChildren {
+  AuthenticatedSettingsUserInvitationsRoute: typeof AuthenticatedSettingsUserInvitationsRoute
+  AuthenticatedSettingsUserIndexRoute: typeof AuthenticatedSettingsUserIndexRoute
+}
+
+const AuthenticatedSettingsUserRouteRouteChildren: AuthenticatedSettingsUserRouteRouteChildren =
+  {
+    AuthenticatedSettingsUserInvitationsRoute:
+      AuthenticatedSettingsUserInvitationsRoute,
+    AuthenticatedSettingsUserIndexRoute: AuthenticatedSettingsUserIndexRoute,
+  }
+
+const AuthenticatedSettingsUserRouteRouteWithChildren =
+  AuthenticatedSettingsUserRouteRoute._addFileChildren(
+    AuthenticatedSettingsUserRouteRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedWorkspaceRouteRoute: typeof AuthenticatedWorkspaceRouteRouteWithChildren
   AuthenticatedOrganizationsRoute: typeof AuthenticatedOrganizationsRoute
+  AuthenticatedSettingsUserRouteRoute: typeof AuthenticatedSettingsUserRouteRouteWithChildren
   AuthenticatedAcceptInvitationInvitationIdRoute: typeof AuthenticatedAcceptInvitationInvitationIdRoute
 }
 
@@ -313,6 +445,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedWorkspaceRouteRoute:
     AuthenticatedWorkspaceRouteRouteWithChildren,
   AuthenticatedOrganizationsRoute: AuthenticatedOrganizationsRoute,
+  AuthenticatedSettingsUserRouteRoute:
+    AuthenticatedSettingsUserRouteRouteWithChildren,
   AuthenticatedAcceptInvitationInvitationIdRoute:
     AuthenticatedAcceptInvitationInvitationIdRoute,
 }

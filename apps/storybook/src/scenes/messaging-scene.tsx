@@ -170,7 +170,8 @@ export function MessagingScene({
       onViewChange={() =>
         setNotice(new Error("Open Scenes / Settings to inspect workspace settings."))
       }
-      showSettings={!member}
+      showOrganizationSettings={!member}
+      organizationName="Launch Studio"
       error={notice}
       switcher={
         <OrganizationSwitcher

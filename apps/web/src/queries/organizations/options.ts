@@ -41,6 +41,12 @@ export const invitationsQueryOptions = (organizationId: string) =>
       unwrap(await authClient.organization.listInvitations({ query: { organizationId } })),
   });
 
+export const userInvitationsQueryOptions = () =>
+  queryOptions({
+    queryKey: queryKeys.userInvitations,
+    queryFn: async () => unwrap(await authClient.organization.listUserInvitations()),
+  });
+
 export const invitationQueryOptions = (invitationId: string) =>
   queryOptions({
     queryKey: queryKeys.invitation(invitationId),

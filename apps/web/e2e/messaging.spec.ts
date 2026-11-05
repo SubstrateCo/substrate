@@ -184,7 +184,7 @@ test("messaging keeps conversations, threads, and organizations isolated", async
 
     await test.step("invite a teammate without sharing organization access with external users", async () => {
       await senderPage.getByRole("button", { name: /^Signed in as / }).click();
-      await senderPage.getByRole("button", { name: "Settings", exact: true }).click();
+      await senderPage.getByRole("button", { name: "Organization settings", exact: true }).click();
       await senderPage.getByLabel("Email", { exact: true }).fill(member.email);
       await senderPage.getByRole("button", { name: "Send invitation", exact: true }).click();
       const link = await mailpit.link(

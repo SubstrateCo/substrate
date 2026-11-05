@@ -11,6 +11,11 @@ export function WorkspaceSettings({
   return (
     <WorkspaceSettingsView>
       {isOwner && <InvitationManager organizationId={organizationId} />}
+      {!isOwner && (
+        <p className="text-sm text-muted-foreground">
+          Only organization owners can send and manage invitations.
+        </p>
+      )}
     </WorkspaceSettingsView>
   );
 }

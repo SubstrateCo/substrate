@@ -11,6 +11,8 @@ StartupOs is the all-in-one workspace for you and your team. It unifies email + 
 
 ## Scripts
 
+- Do not run `bun run build` or build any part of the app for regular validation. Run build commands only when the user explicitly asks for a build.
+
 Run these commands from the repository root:
 
 ```sh

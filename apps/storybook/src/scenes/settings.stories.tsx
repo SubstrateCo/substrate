@@ -29,8 +29,9 @@ function SettingsScene({
   return (
     <WorkspaceShell
       name="Taylor Kim"
-      view="settings"
-      showSettings
+      view="organization-settings"
+      showOrganizationSettings
+      organizationName="Launch Studio"
       onViewChange={fn()}
       switcher={
         <OrganizationSwitcher
@@ -76,6 +77,11 @@ function SettingsScene({
               setMessage("Invitation canceled.");
             }}
           />
+        )}
+        {!owner && (
+          <p className="text-sm text-muted-foreground">
+            Only organization owners can send and manage invitations.
+          </p>
         )}
       </WorkspaceSettings>
     </WorkspaceShell>

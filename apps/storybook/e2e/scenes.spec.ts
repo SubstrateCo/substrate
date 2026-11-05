@@ -240,7 +240,7 @@ test("dark selections and hovered account actions have distinct backgrounds", as
     .getByRole("button", { name: "general", exact: true });
   expect(await backgroundContrast(selected, "aside")).toBeGreaterThanOrEqual(2);
   await page.getByRole("button", { name: "Signed in as Taylor Kim", exact: true }).hover();
-  const settings = page.getByRole("button", { name: "Settings", exact: true });
+  const settings = page.getByRole("button", { name: "User settings", exact: true });
   await settings.hover();
   await expect
     .poll(() => backgroundContrast(settings, '[role="dialog"]'))
@@ -254,17 +254,22 @@ test("user icon reveals account actions on hover and supports keyboard access", 
   const user = page.getByRole("button", { name: "Signed in as Taylor Kim", exact: true });
   await expect(page.getByRole("switch", { name: "Dark mode", exact: true })).toBeHidden();
   await expect(page.getByRole("button", { name: "Sign out", exact: true })).toBeHidden();
-  await expect(page.getByRole("button", { name: "Settings", exact: true })).toBeHidden();
+  await expect(page.getByRole("button", { name: "User settings", exact: true })).toBeHidden();
   await user.hover();
   const actions = page.getByRole("dialog", { name: "User actions" });
   await expect(actions).toBeVisible();
   await expect(actions.getByText("Taylor Kim", { exact: true })).toHaveCount(0);
   await expect(actions.getByRole("switch", { name: "Dark mode", exact: true })).toBeVisible();
-  const actionRows = await actions.getByRole("button", { name: /^(Settings|Sign out)$/ }).all();
+  const actionRows = await actions
+    .getByRole("button", { name: /^(User settings|Organization settings|Sign out)$/ })
+    .all();
   const positions = await Promise.all(actionRows.map((row) => row.boundingBox()));
   expect(positions.map((box) => box?.x)).toEqual(positions.map(() => positions[0]?.x));
   expect(positions.map((box) => box?.width)).toEqual(positions.map(() => positions[0]?.width));
-  await expect(actions.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
+  await expect(actions.getByRole("button", { name: "User settings", exact: true })).toBeVisible();
+  await expect(
+    actions.getByRole("button", { name: "Organization settings", exact: true }),
+  ).toBeVisible();
   await actions.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("Sign out is a preview only.");
   await page.keyboard.press("Escape");
@@ -272,7 +277,7 @@ test("user icon reveals account actions on hover and supports keyboard access", 
   await user.focus();
   await page.keyboard.press("Enter");
   await expect(actions).toBeVisible();
-  await actions.getByRole("button", { name: "Settings", exact: true }).click();
+  await actions.getByRole("button", { name: "User settings", exact: true }).click();
   await expect(actions).toBeHidden();
   await expect(page.getByRole("alert")).toContainText("Open Scenes / Settings");
 });
@@ -280,10 +285,15 @@ test("user icon reveals account actions on hover and supports keyboard access", 
 test("permission and access-loss scenes hide restricted controls and content", async ({ page }) => {
   await openStory(page, "scenes-messaging--member-workspace");
   await page.getByRole("button", { name: "Signed in as Taylor Kim", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Settings", exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Organization settings", exact: true }),
+  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "User settings", exact: true })).toBeVisible();
   await openStory(page, "scenes-messaging--public-channel");
   await page.getByRole("button", { name: "Signed in as Taylor Kim", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Organization settings", exact: true }),
+  ).toBeVisible();
   await expect(page.getByLabel("Signed in as Taylor Kim")).toBeVisible();
   await openStory(page, "scenes-settings--admin");
   await expect(page.getByRole("button", { name: "Send invitation", exact: true })).toHaveCount(0);

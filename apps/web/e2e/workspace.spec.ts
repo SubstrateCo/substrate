@@ -13,7 +13,13 @@ import {
 test.describe.configure({ mode: "serial" });
 
 test("workspace routes redirect anonymous visitors to sign in", async ({ page }) => {
-  for (const path of ["/dashboard", "/organizations"]) {
+  for (const path of [
+    "/dashboard",
+    "/organizations",
+    "/settings/user",
+    "/settings/user/invitations",
+    "/settings/organization",
+  ]) {
     await page.goto(path);
     await expect(page.getByText("Welcome back", { exact: true })).toBeVisible();
     await expect(page).toHaveURL(/\/login\?/);
@@ -75,7 +81,7 @@ test("verified accounts can build a team, switch workspaces, and recover access"
     await createWorkspace(page, firstWorkspace, `alpha-${suffix}`);
     await expectWorkspace(page, firstWorkspace, owner.name, "owner");
     await page.getByRole("button", { name: /^Signed in as / }).click();
-    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByRole("button", { name: "Organization settings", exact: true }).click();
     await page.getByLabel("Email", { exact: true }).fill(member.email);
     await expect(page.getByRole("combobox", { name: "Role", exact: true })).toContainText("Member");
     await page.getByRole("button", { name: "Send invitation", exact: true }).click();
@@ -126,13 +132,13 @@ test("verified accounts can build a team, switch workspaces, and recover access"
     await createWorkspace(page, secondWorkspace, `beta-${suffix}`);
     await expectWorkspace(page, secondWorkspace, owner.name, "owner");
     await page.getByRole("button", { name: /^Signed in as / }).click();
-    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByRole("button", { name: "Organization settings", exact: true }).click();
     await expect(page.getByText("No invitations yet.", { exact: true })).toBeVisible();
     await expect(page.getByRole("listitem").filter({ hasText: member.email })).toHaveCount(0);
     await switchWorkspace(page, secondWorkspace, firstWorkspace);
     await expectWorkspace(page, firstWorkspace, owner.name, "owner");
     await page.getByRole("button", { name: /^Signed in as / }).click();
-    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByRole("button", { name: "Organization settings", exact: true }).click();
     await expect(
       page.getByRole("listitem").filter({ hasText: member.email }).filter({ hasText: "pending" }),
     ).toContainText("pending");
@@ -187,6 +193,7 @@ test("verified accounts can build a team, switch workspaces, and recover access"
       throw new Error("Could not read the member's active workspace.");
     const organization: { id: string } = await organizationResponse.json();
     const denied = await page.request.post("/api/auth/organization/invite-member", {
+      headers: { Origin: new URL(page.url()).origin },
       data: { organizationId: organization.id, email: deniedEmail, role: "member" },
     });
     expect(denied.status(), "A member cannot invite another user through the server API").toBe(403);
@@ -221,7 +228,7 @@ test("verified accounts can build a team, switch workspaces, and recover access"
     await login(page, owner);
     await expectWorkspace(page, firstWorkspace, owner.name, "owner");
     await page.getByRole("button", { name: /^Signed in as / }).click();
-    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByRole("button", { name: "Organization settings", exact: true }).click();
     await expect(
       page.getByRole("listitem").filter({ hasText: member.email }).filter({ hasText: "accepted" }),
     ).toContainText("accepted");

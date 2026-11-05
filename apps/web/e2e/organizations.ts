@@ -43,9 +43,10 @@ export async function expectWorkspace(
     "aria-current",
     "page",
   );
-  await expect(page.getByRole("button", { name: "Settings", exact: true })).toHaveCount(
-    role === "owner" ? 1 : 0,
-  );
+  await expect(page.getByRole("button", { name: "User settings", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Organization settings", exact: true }),
+  ).toHaveCount(role === "owner" ? 1 : 0);
   await page.keyboard.press("Escape");
 }
 

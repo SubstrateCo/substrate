@@ -1,18 +1,22 @@
 import { useState, type ReactNode } from "react";
-import { Settings } from "lucide-react";
+import { Building2, Settings } from "lucide-react";
 import { Button } from "../primitives/button";
 import { Popover, PopoverContent, PopoverTrigger } from "../primitives/popover";
 import { AppearanceControl } from "../theme/appearance-control";
 
 export function UserMenu({
   name,
-  showSettings,
-  onSettings,
+  showOrganizationSettings,
+  organizationName,
+  onUserSettings,
+  onOrganizationSettings,
   signOut,
 }: {
   name: string;
-  showSettings: boolean;
-  onSettings: () => void;
+  showOrganizationSettings: boolean;
+  organizationName?: string;
+  onUserSettings: () => void;
+  onOrganizationSettings: () => void;
   signOut: ReactNode;
 }) {
   const [openedBy, setOpenedBy] = useState<"hover" | "click" | null>(null);
@@ -45,21 +49,40 @@ export function UserMenu({
           if (openedBy === "hover") event.preventDefault();
         }}
       >
+        <p className="px-2 py-1 text-xs font-medium text-muted-foreground">User</p>
         <AppearanceControl />
-        {showSettings && (
-          <Button
-            variant="ghost"
-            className="w-full justify-start"
-            onClick={() => {
-              setOpenedBy(null);
-              onSettings();
-            }}
-          >
-            <Settings />
-            Settings
-          </Button>
+        <Button
+          variant="ghost"
+          className="w-full justify-start"
+          onClick={() => {
+            setOpenedBy(null);
+            onUserSettings();
+          }}
+        >
+          <Settings />
+          User settings
+        </Button>
+        {showOrganizationSettings && (
+          <div className="mt-2 border-t pt-2">
+            <p className="px-2 py-1 text-xs font-medium text-muted-foreground">
+              Organization{organizationName ? ` · ${organizationName}` : ""}
+            </p>
+            <Button
+              variant="ghost"
+              className="w-full justify-start"
+              onClick={() => {
+                setOpenedBy(null);
+                onOrganizationSettings();
+              }}
+            >
+              <Building2 />
+              Organization settings
+            </Button>
+          </div>
         )}
-        <div className="[&_button]:w-full [&_button]:justify-start">{signOut}</div>
+        <div className="mt-2 border-t pt-2 [&_button]:w-full [&_button]:justify-start">
+          {signOut}
+        </div>
       </PopoverContent>
     </Popover>
   );
