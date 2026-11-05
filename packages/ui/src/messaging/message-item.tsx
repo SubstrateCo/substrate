@@ -32,7 +32,7 @@ export function MessageItem({
           <time
             dateTime={new Date(message.createdAt).toISOString()}
             title={new Date(message.createdAt).toLocaleString()}
-            className="text-[11px] text-muted-foreground"
+            className="text-xs text-muted-foreground"
             suppressHydrationWarning
           >
             {new Date(message.createdAt).toLocaleTimeString([], {
@@ -47,14 +47,9 @@ export function MessageItem({
             <Button
               key={emoji}
               size="xs"
-              variant="outline"
+              variant="reaction"
               aria-label={`${emoji}, ${count} reactions`}
               aria-pressed={reacted}
-              className={
-                reacted
-                  ? "border-primary/25 bg-accent text-accent-foreground"
-                  : "text-muted-foreground"
-              }
               disabled={pending}
               onClick={() => onReact(emoji)}
             >
@@ -63,12 +58,7 @@ export function MessageItem({
           ))}
           <EmojiPicker label="React to message" onSelect={onReact} disabled={pending} />
           {onThread && (
-            <Button
-              size="xs"
-              variant="ghost"
-              onClick={() => onThread(message.id)}
-              className="text-muted-foreground"
-            >
+            <Button size="xs" variant="ghost" onClick={() => onThread(message.id)}>
               <MessageSquare className="size-3" />
               {message.replyCount
                 ? `${message.replyCount} ${message.replyCount === 1 ? "reply" : "replies"}`

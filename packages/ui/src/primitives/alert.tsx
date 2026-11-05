@@ -10,8 +10,21 @@ const alertVariants = cva(
         default: "bg-card text-card-foreground",
         destructive:
           "bg-card text-destructive *:data-[slot=alert-description]:text-destructive/90 *:[svg]:text-current",
+        success: "border-success/20 bg-success/5 text-success",
+      },
+      presentation: {
+        default: "",
+        inline: "p-3",
+        floating: "bg-popover p-4 pr-12 shadow-floating",
       },
     },
+    compoundVariants: [
+      {
+        variant: "destructive",
+        presentation: "inline",
+        className: "border-destructive/20 bg-destructive/5",
+      },
+    ],
     defaultVariants: {
       variant: "default",
     },
@@ -21,13 +34,14 @@ const alertVariants = cva(
 function Alert({
   className,
   variant,
+  presentation,
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof alertVariants>) {
   return (
     <div
       data-slot="alert"
       role="alert"
-      className={cn(alertVariants({ variant }), className)}
+      className={cn(alertVariants({ variant, presentation }), className)}
       {...props}
     />
   );

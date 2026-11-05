@@ -24,6 +24,7 @@
     "db:migrate": "bun run --filter @startup-os/database db:migrate"
   },
   "devDependencies": {
+    "@shadcn/lint": "^0.2.5",
     "@types/bun": "^1.4.4",
     "ai-deslop": "^0.5.1",
     "oxfmt": "^0.76.0",

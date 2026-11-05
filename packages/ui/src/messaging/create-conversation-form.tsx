@@ -80,7 +80,7 @@ export function CreateConversationForm({
           </p>
         </div>
         {kind === "channel" && (
-          <Label className="flex items-center gap-2">
+          <Label>
             <input
               type="checkbox"
               checked={isPrivate}

@@ -20,15 +20,14 @@ export function FormMessage({
   const Icon = error ? CircleAlert : CircleCheck;
   const feedback = (
     <Alert
-      variant={error ? "destructive" : "default"}
+      variant={error ? "destructive" : "success"}
+      presentation={floating ? "floating" : "inline"}
       role={error ? "alert" : "status"}
       data-action-notice={floating || undefined}
       className={
         floating
-          ? "fixed right-4 top-4 z-50 max-h-[50dvh] w-[min(24rem,calc(100vw-2rem))] overflow-y-auto border bg-popover p-4 pr-12 shadow-floating"
-          : error
-            ? "border-destructive/20 bg-destructive/5 p-3"
-            : "border-success/20 bg-success/5 p-3"
+          ? "fixed inset-x-4 top-4 z-50 ml-auto max-h-[50dvh] w-auto max-w-sm overflow-y-auto"
+          : undefined
       }
     >
       <Icon className={error ? "text-destructive" : "text-success"} />

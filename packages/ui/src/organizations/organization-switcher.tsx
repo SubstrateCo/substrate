@@ -31,13 +31,8 @@ export function OrganizationSwitcher({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            variant={compact ? "ghost" : "outline"}
+            variant={compact ? "workspace" : "outline"}
             size={compact ? "icon-lg" : "default"}
-            className={
-              compact
-                ? "rounded-xl bg-rail-foreground text-rail shadow-raised hover:bg-rail-foreground/90 hover:text-rail"
-                : undefined
-            }
             aria-label={compact ? `${name} ▾` : undefined}
             title={compact ? `Switch workspace: ${name}` : undefined}
             disabled={pending}

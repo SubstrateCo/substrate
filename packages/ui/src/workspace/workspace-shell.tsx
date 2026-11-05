@@ -31,16 +31,11 @@ export function WorkspaceShell({
       >
         {switcher}
         <Button
-          variant="ghost"
+          variant="rail"
           size="icon-lg"
           aria-label="Messages"
           title="Messages"
           aria-current={view === "messages" ? "page" : undefined}
-          className={
-            view === "messages"
-              ? "bg-rail-foreground/15 text-rail-foreground shadow-surface hover:bg-rail-foreground/20 hover:text-rail-foreground"
-              : "text-rail-foreground/60 hover:bg-rail-foreground/10 hover:text-rail-foreground"
-          }
           onClick={() => onViewChange("messages")}
         >
           <MessageSquare className="size-5" />
@@ -49,12 +44,11 @@ export function WorkspaceShell({
           <ThemeSwitcher compact />
           {showSettings && (
             <Button
-              variant="ghost"
+              variant="rail"
               size="icon-lg"
               aria-label="Settings"
               title="Settings"
               aria-current={view === "settings" ? "page" : undefined}
-              className="text-rail-foreground/60 hover:bg-rail-foreground/10 hover:text-rail-foreground"
               onClick={() => onViewChange("settings")}
             >
               <Settings className="size-5" />

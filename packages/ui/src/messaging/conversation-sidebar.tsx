@@ -86,8 +86,8 @@ export function ConversationSidebar({
                   return (
                     <Button
                       key={conversation.id}
-                      variant="ghost"
-                      className={`mb-1 w-full justify-start gap-2 px-3 font-normal ${selectedId === conversation.id ? "bg-card text-sidebar-accent-foreground shadow-surface hover:bg-card" : "text-muted-foreground"}`}
+                      variant="sidebar"
+                      className="mb-1 w-full justify-start"
                       aria-current={selectedId === conversation.id ? "page" : undefined}
                       onClick={() => onSelect(conversation.id)}
                     >
@@ -108,8 +108,8 @@ export function ConversationSidebar({
               )}
             <Button
               variant="ghost"
-              size="sm"
-              className="mt-1 w-full justify-start text-xs text-muted-foreground"
+              size="xs"
+              className="mt-1 w-full justify-start"
               onClick={() => onCreate(section === "channel" ? "channel" : "group")}
             >
               <Plus />
@@ -118,7 +118,7 @@ export function ConversationSidebar({
           </section>
         ))}
       </div>
-      <div className="border-t p-4 text-[11px] text-muted-foreground">
+      <div className="border-t p-4 text-xs text-muted-foreground">
         A little less switching. A lot more doing.
       </div>
     </aside>

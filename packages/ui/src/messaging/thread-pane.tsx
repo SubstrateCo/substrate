@@ -37,7 +37,7 @@ export function ThreadPane({
         <PaneState label="Thread unavailable" error={error} onRetry={onRetry} />
       ) : (
         <>
-          {root && <div className="max-h-[35%] shrink-0 overflow-y-auto border-b">{root}</div>}
+          {root && <div className="max-h-7/20 shrink-0 overflow-y-auto border-b">{root}</div>}
           {loading ? <PaneState label="Loading replies…" /> : replies}
           {!loading && empty && (
             <p className="p-5 text-sm text-muted-foreground">No replies yet. Start the thread.</p>

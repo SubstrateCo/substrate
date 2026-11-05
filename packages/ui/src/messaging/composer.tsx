@@ -76,6 +76,7 @@ export function Composer({
           </Button>
         </div>
         <Textarea
+          variant="composer"
           ref={textarea}
           aria-label={label}
           placeholder={label}
@@ -83,7 +84,7 @@ export function Composer({
           maxLength={20000}
           disabled={pending}
           onChange={(event) => setDraft(event.target.value)}
-          className="h-24 min-h-16 max-h-[25dvh] resize-y rounded-none border-0 bg-transparent px-3 shadow-none focus-visible:ring-0 dark:bg-transparent"
+          className="h-24 min-h-16 max-h-[25dvh] resize-y"
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
               event.preventDefault();
@@ -99,7 +100,7 @@ export function Composer({
           </Button>
         </div>
       </div>
-      <p className="text-right text-[11px] text-muted-foreground">
+      <p className="text-right text-xs text-muted-foreground">
         Markdown supported · Shift + Enter for a new line
       </p>
     </form>

@@ -62,11 +62,13 @@ export const Surfaces: Story = {
       <Card>
         <CardHeader>
           <CardDescription>YOUR WORKSPACE, IN SYNC</CardDescription>
-          <CardTitle className="text-xl tracking-tight">Make space for your best work.</CardTitle>
+          <CardTitle size="lg">Make space for your best work.</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-3">
-          <Button>Start a conversation</Button>
-          <Button variant="outline">Explore workspace</Button>
+        <CardContent>
+          <div className="flex flex-wrap gap-3">
+            <Button>Start a conversation</Button>
+            <Button variant="outline">Explore workspace</Button>
+          </div>
         </CardContent>
       </Card>
     </div>

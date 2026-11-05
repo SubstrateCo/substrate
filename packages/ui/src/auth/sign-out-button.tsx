@@ -16,13 +16,8 @@ export function SignOutButton({
   return (
     <div className={compact ? "relative" : "space-y-2"}>
       <Button
-        variant="ghost"
+        variant={compact ? "rail" : "ghost"}
         size={compact ? "icon-lg" : "default"}
-        className={
-          compact
-            ? "text-rail-foreground/60 hover:bg-rail-foreground/10 hover:text-rail-foreground"
-            : undefined
-        }
         aria-label={compact ? "Sign out" : undefined}
         title={compact ? (pending ? "Signing out…" : "Sign out") : undefined}
         disabled={pending}

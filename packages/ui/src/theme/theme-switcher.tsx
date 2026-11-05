@@ -15,15 +15,10 @@ export function ThemeSwitcher({ compact = false }: { compact?: boolean }) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="ghost"
+          variant={compact ? "rail" : "ghost"}
           size={compact ? "icon" : "default"}
           aria-label="Color theme"
           title="Color theme"
-          className={
-            compact
-              ? "text-rail-foreground/65 hover:bg-rail-foreground/10 hover:text-rail-foreground"
-              : undefined
-          }
         >
           <Sun className="size-4 dark:hidden" />
           <Moon className="hidden size-4 dark:block" />
