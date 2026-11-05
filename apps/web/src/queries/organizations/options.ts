@@ -18,6 +18,7 @@ export const organizationsQueryOptions = () =>
 export const organizationQueryOptions = (organizationId: string) =>
   queryOptions({
     queryKey: queryKeys.organizationDetail(organizationId),
+    staleTime: 30_000,
     queryFn: async () =>
       unwrap(await authClient.organization.getFullOrganization({ query: { organizationId } })),
     retry: false,

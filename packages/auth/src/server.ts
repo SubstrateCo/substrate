@@ -1,5 +1,4 @@
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
-import { createDatabase } from "@startup-os/database";
 import {
   getRememberedOrganization,
   rememberOrganization,
@@ -18,9 +17,9 @@ import {
 } from "./organization-policy";
 import { ac, roles } from "./permissions";
 import { normalizeUserName } from "./user-name";
+import { db } from "./database";
 
 const env = authEnvironment();
-const { db } = createDatabase({ connectionString: env.databaseURL });
 const sendMail = createMailer(env);
 
 const provisionMember = async (input: {

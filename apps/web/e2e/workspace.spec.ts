@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import { login, signup, signout, verifyEmail, type TestAccount } from "./auth";
 import { Mailpit, openEmailLink } from "./mailpit";
+import { callMessaging } from "./server-functions";
 import {
   createWorkspace,
   expectScopedMembershipAfter,
@@ -10,6 +11,18 @@ import {
 } from "./organizations";
 
 test.describe.configure({ mode: "serial" });
+
+test("workspace routes redirect anonymous visitors to sign in", async ({ page }) => {
+  for (const path of ["/dashboard", "/organizations"]) {
+    await page.goto(path);
+    await expect(page.getByText("Welcome back", { exact: true })).toBeVisible();
+    await expect(page).toHaveURL(/\/login\?/);
+    const destination = new URL(page.url()).searchParams.get("redirect");
+    expect(destination, "Sign in preserves the requested workspace route").toBe(path);
+  }
+  const result = await callMessaging(page, "listConversations");
+  expect(result.error, "Anonymous visitors cannot list conversations").toBe("Sign in to continue.");
+});
 
 test("verified accounts can build a team, switch workspaces, and recover access", async ({
   page,
@@ -61,6 +74,7 @@ test("verified accounts can build a team, switch workspaces, and recover access"
   await test.step("an owner creates a workspace and invites a member from the UI", async () => {
     await createWorkspace(page, firstWorkspace, `alpha-${suffix}`);
     await expectWorkspace(page, firstWorkspace, owner.name, "owner");
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
     await page.getByLabel("Email", { exact: true }).fill(member.email);
     await expect(page.getByRole("combobox", { name: "Role", exact: true })).toContainText("Member");
     await page.getByRole("button", { name: "Send invitation", exact: true }).click();
@@ -110,10 +124,12 @@ test("verified accounts can build a team, switch workspaces, and recover access"
     await page.getByRole("menuitem", { name: "Manage workspaces", exact: true }).click();
     await createWorkspace(page, secondWorkspace, `beta-${suffix}`);
     await expectWorkspace(page, secondWorkspace, owner.name, "owner");
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
     await expect(page.getByText("No invitations yet.", { exact: true })).toBeVisible();
     await expect(page.getByRole("listitem").filter({ hasText: member.email })).toHaveCount(0);
     await switchWorkspace(page, secondWorkspace, firstWorkspace);
     await expectWorkspace(page, firstWorkspace, owner.name, "owner");
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
     await expect(
       page.getByRole("listitem").filter({ hasText: member.email }).filter({ hasText: "pending" }),
     ).toContainText("pending");
@@ -201,6 +217,7 @@ test("verified accounts can build a team, switch workspaces, and recover access"
     owner.password = password;
     await login(page, owner);
     await expectWorkspace(page, firstWorkspace, owner.name, "owner");
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
     await expect(
       page.getByRole("listitem").filter({ hasText: member.email }).filter({ hasText: "accepted" }),
     ).toContainText("accepted");

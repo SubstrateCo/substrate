@@ -9,4 +9,10 @@ export const queryKeys = {
   activeMember: (organizationId: string) =>
     [...queryKeys.organization(organizationId), "active-member"] as const,
   invitation: (invitationId: string) => ["invitations", invitationId] as const,
+  messaging: (organizationId: string) =>
+    [...queryKeys.organization(organizationId), "messaging"] as const,
+  conversations: (organizationId: string) =>
+    [...queryKeys.messaging(organizationId), "conversations"] as const,
+  messages: (organizationId: string, conversationId: string, threadId?: string) =>
+    [...queryKeys.messaging(organizationId), "messages", conversationId, threadId ?? null] as const,
 };

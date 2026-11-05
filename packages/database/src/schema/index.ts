@@ -16,3 +16,4 @@ export * from "../features/calendar/events.schema";
 export * from "../features/calendar/attendees.schema";
 export * from "../features/calendar/exceptions.schema";
 export * from "../features/calendar/integrations.schema";
+export * from "../features/messaging/schema";

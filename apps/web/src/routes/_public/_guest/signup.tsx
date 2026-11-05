@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { authSearch } from "@/lib/auth-navigation";
 import { SignupForm } from "@/components/auth/signup-form";
 
-export const Route = createFileRoute("/signup")({ validateSearch: authSearch, component: Signup });
+export const Route = createFileRoute("/_public/_guest/signup")({ component: Signup });
 function Signup() {
   return <SignupForm {...Route.useSearch()} />;
 }

@@ -7,7 +7,11 @@
       "browser": null,
       "default": "./src/server.ts"
     },
-    "./permissions": "./src/permissions.ts"
+    "./permissions": "./src/permissions.ts",
+    "./messaging": {
+      "browser": null,
+      "default": "./src/messaging.ts"
+    }
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

@@ -39,6 +39,14 @@ export async function login(page: Page, account: TestAccount) {
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
 }
 
+export async function createVerifiedAccount(page: Page, mailpit: Mailpit, account: TestAccount) {
+  await page.goto("/signup");
+  await signup(page, account);
+  await verifyEmail(page, mailpit, account.email);
+  await login(page, account);
+  await expect(page.getByRole("heading", { name: "Your workspaces", exact: true })).toBeVisible();
+}
+
 export async function signout(page: Page) {
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page.getByText("Welcome back", { exact: true })).toBeVisible();

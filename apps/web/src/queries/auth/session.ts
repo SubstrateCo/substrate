@@ -2,7 +2,7 @@ import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { redirect } from "@tanstack/react-router";
 import { getSession } from "@/server/session";
 import { queryKeys } from "@/queries/keys";
-import { authHref } from "@/lib/auth-navigation";
+import { guestSessionRedirect, verifiedSessionAccess } from "./session-policy";
 
 export const sessionQueryOptions = () =>
   queryOptions({
@@ -14,9 +14,14 @@ export const sessionQueryOptions = () =>
 
 export async function requireVerifiedSession(queryClient: QueryClient, destination: string) {
   const session = await queryClient.query(sessionQueryOptions());
-  if (!session) throw redirect({ href: authHref("/login", destination) });
-  if (!session.user.emailVerified) {
-    throw redirect({ href: authHref("/verify-email", destination, session.user.email) });
-  }
-  return session;
+  const access = verifiedSessionAccess(session, destination);
+  if ("redirect" in access) throw redirect({ href: access.redirect });
+  return access.session;
+}
+
+export async function redirectAuthenticatedSession(queryClient: QueryClient, destination: string) {
+  const session = await queryClient.query(sessionQueryOptions());
+  const href = guestSessionRedirect(session, destination);
+  if (href) throw redirect({ href });
+  return null;
 }

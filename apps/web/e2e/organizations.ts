@@ -29,11 +29,18 @@ export async function expectWorkspace(
   userName: string,
   role: "owner" | "member",
 ) {
-  await expect(
-    page.getByRole("heading", { name: `Welcome, ${userName}`, exact: true }),
-  ).toBeVisible();
-  await expect(page.getByRole("button", { name: `${name} ▾`, exact: true })).toBeVisible();
-  await expect(page.getByText(`Your role: ${role}.`, { exact: true })).toBeVisible();
+  await expect(page.getByLabel(`Signed in as ${userName}`, { exact: true })).toBeVisible();
+  const apps = page.getByRole("navigation", { name: "Apps", exact: true });
+  await expect(apps.getByRole("button", { name: `${name} ▾`, exact: true })).toBeVisible();
+  await expect(apps.getByRole("button", { name: "Sign out", exact: true })).toBeVisible();
+  await expect(page.locator("main > header, main > div > header")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Messages", exact: true })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(page.getByRole("button", { name: "Settings", exact: true })).toHaveCount(
+    role === "owner" ? 1 : 0,
+  );
 }
 
 export async function createWorkspace(page: Page, name: string, slug: string) {

@@ -6,7 +6,8 @@
     ".": "./src/index.ts",
     "./schema": "./src/schema/index.ts",
     "./provisioning": "./src/core/actors/provisioning.ts",
-    "./authentication": "./src/core/authentication/organization-preference.ts"
+    "./authentication": "./src/core/authentication/organization-preference.ts",
+    "./messaging": "./src/features/messaging/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
