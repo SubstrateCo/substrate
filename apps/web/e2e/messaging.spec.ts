@@ -97,6 +97,18 @@ async function openConversation(page: Page, name: string) {
   await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
 }
 
+async function openThread(page: Page, conversation: string, body: string) {
+  await page
+    .getByRole("region", { name: conversation, exact: true })
+    .getByRole("article")
+    .filter({ hasText: body })
+    .getByRole("button", { name: /^(Reply in thread|\d+ replies?)$/ })
+    .click();
+  await expect(page.getByRole("complementary", { name: "Thread", exact: true })).toContainText(
+    body,
+  );
+}
+
 async function messageId(page: Page, id: string, body: string) {
   const result = await callMessaging<{ id: string; body: string }[]>(page, "listMessages", {
     conversationId: id,
@@ -423,6 +435,71 @@ test("messaging keeps conversations, threads, and organizations isolated", async
       await expect(
         recipientPage.getByRole("button", { name: publicChannel, exact: true }),
       ).toHaveCount(0);
+    });
+
+    await test.step("teammates exchange replies in the same private-channel thread", async () => {
+      for (const page of [senderPage, memberPage]) {
+        await openThread(page, privateChannel, "Private channel only");
+      }
+      await sendMessage(senderPage, "Reply in thread…", "Owner shared-thread reply");
+      await expect(
+        memberPage.getByRole("complementary", { name: "Thread" }).getByRole("log"),
+      ).toContainText("Owner shared-thread reply");
+      await sendMessage(memberPage, "Reply in thread…", "Teammate shared-thread reply");
+      await expect(
+        senderPage.getByRole("complementary", { name: "Thread" }).getByRole("log"),
+      ).toContainText("Teammate shared-thread reply");
+    });
+
+    await test.step("shared-thread replies cross workspace boundaries, persist, and remain private", async () => {
+      await openThread(recipientPage, privateChannel, "Private channel only");
+      const replies = [
+        [owner, "Owner shared-thread reply"],
+        [member, "Teammate shared-thread reply"],
+        [external, "External shared-thread reply"],
+      ] as const;
+      for (const [, body] of replies.slice(0, 2)) {
+        await expect(
+          recipientPage.getByRole("complementary", { name: "Thread" }).getByRole("log"),
+        ).toContainText(body);
+      }
+      await sendMessage(recipientPage, "Reply in thread…", "External shared-thread reply");
+      for (const page of [senderPage, memberPage, recipientPage]) {
+        const thread = page.getByRole("complementary", { name: "Thread" });
+        for (const [author, body] of replies) {
+          const reply = thread.getByRole("log").getByRole("article").filter({ hasText: body });
+          await expect(reply).toHaveCount(1);
+          await expect(reply).toContainText(author.name);
+        }
+        await page.reload();
+        await openConversation(page, privateChannel);
+        await openThread(page, privateChannel, "Private channel only");
+        for (const [, body] of replies) {
+          await expect(thread.getByRole("log")).toContainText(body);
+          await expect(
+            page.getByRole("region", { name: privateChannel, exact: true }).getByRole("log"),
+          ).not.toContainText(body);
+        }
+        await page.getByRole("button", { name: "Close thread", exact: true }).click();
+        await openThread(page, privateChannel, "External shared-channel reply");
+        for (const [, body] of replies) {
+          await expect(thread.getByRole("log")).not.toContainText(body);
+        }
+        await page.getByRole("button", { name: "Close thread", exact: true }).click();
+      }
+      const id = await conversationId(senderPage, privateChannel);
+      const rootId = await messageId(senderPage, id, "Private channel only");
+      await expectDeniedAccess(outsiderPage, id, rootId, outsider.email);
+      await outsiderPage.reload();
+      await expect(
+        outsiderPage.getByRole("button", { name: privateChannel, exact: true }),
+      ).toHaveCount(0);
+      for (const [, body] of replies) {
+        await expect(outsiderPage.getByText(body, { exact: true })).toHaveCount(0);
+      }
+      await expect(
+        recipientPage.getByRole("button", { name: `External ${suffix} ▾`, exact: true }),
+      ).toBeVisible();
     });
 
     await test.step("mobile composers and conversation navigation remain usable at narrow widths", async () => {
