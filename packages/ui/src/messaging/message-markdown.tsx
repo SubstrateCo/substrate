@@ -10,12 +10,7 @@ export function MessageMarkdown({ body }: { body: string }) {
         skipHtml
         components={{
           a: ({ children, href }) => (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-700 underline"
-            >
+            <a href={href} target="_blank" rel="noopener noreferrer">
               {children}
             </a>
           ),

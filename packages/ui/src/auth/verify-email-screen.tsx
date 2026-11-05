@@ -49,6 +49,7 @@ export function VerifyEmailScreen({
         </div>
         <FormMessage
           error={error}
+          reserve
           message={
             success ? "Verification email requested. Check your inbox and spam folder." : undefined
           }

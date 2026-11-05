@@ -22,7 +22,7 @@ export function MessageItem({
     <article className="group flex gap-3 px-5 py-3 hover:bg-muted/40">
       <div
         aria-hidden="true"
-        className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-sm font-semibold text-indigo-800"
+        className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-primary/10 bg-accent text-sm font-semibold text-accent-foreground shadow-surface"
       >
         {(message.authorName || "?").slice(0, 2).toUpperCase()}
       </div>
@@ -51,7 +51,9 @@ export function MessageItem({
               aria-label={`${emoji}, ${count} reactions`}
               aria-pressed={reacted}
               className={
-                reacted ? "border-indigo-300 bg-indigo-50 text-indigo-800" : "text-muted-foreground"
+                reacted
+                  ? "border-primary/25 bg-accent text-accent-foreground"
+                  : "text-muted-foreground"
               }
               disabled={pending}
               onClick={() => onReact(emoji)}
@@ -74,7 +76,7 @@ export function MessageItem({
             </Button>
           )}
         </div>
-        <FormMessage error={error} />
+        <FormMessage error={error} floating />
       </div>
     </article>
   );

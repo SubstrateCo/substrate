@@ -68,3 +68,6 @@ export const MobileSignIn: Story = {
   render: () => <LoginForm {...login} />,
   globals: { viewport: { value: "narrow" } },
 };
+export const DarkSignIn: Story = { ...SignIn, globals: { theme: "dark" } };
+export const DarkSignUp: Story = { ...SignUp, globals: { theme: "dark" } };
+export const DarkValidation: Story = { ...InvalidCredentials, globals: { theme: "dark" } };

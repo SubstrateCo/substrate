@@ -98,3 +98,5 @@ export const Canceling: Story = { args: { state: "canceling" } };
 export const InvitationSent: Story = { args: { state: "sent" } };
 export const InvitationCanceled: Story = { args: { state: "canceled" } };
 export const Mobile: Story = { globals: { viewport: { value: "mobile" } } };
+export const DarkSettings: Story = { globals: { theme: "dark" } };
+export const DarkLoading: Story = { args: { state: "loading" }, globals: { theme: "dark" } };

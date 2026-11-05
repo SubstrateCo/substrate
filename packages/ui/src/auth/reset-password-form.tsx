@@ -62,7 +62,7 @@ export function ResetPasswordForm({
               required
             />
           </div>
-          <FormMessage error={error} />
+          <FormMessage error={error} reserve />
           <Button className="w-full" disabled={pending}>
             {pending ? "Saving…" : "Save new password"}
           </Button>

@@ -14,7 +14,7 @@ const meta = {
   decorators: [
     (Story) => (
       <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="max-w-3xl">
+        <div className="min-w-0 max-w-3xl">
           <Story />
         </div>
       </div>
@@ -43,8 +43,17 @@ export const ReactionError: Story = {
   ),
 };
 export const Markdown: Story = {
-  render: () => <MessageMarkdown body={messages.map((message) => message.body).join("\n\n")} />,
+  render: () => (
+    <div className="min-w-0 rounded-xl border bg-card p-6 shadow-raised">
+      <MessageMarkdown
+        body={
+          "# A calmer place to work\n\nThe **launch plan** is ready. Keep everything _connected_ with [your workspace](https://example.com).\n\n## What’s next\n\n- Review the design\n  - Check light and dark surfaces\n- Share feedback with the team\n\n1. Build something useful\n2. Ship it together\n\n> Good work starts with a little clarity.\n\nUse `workspace.send()` to share an update.\n\n```ts\nconst launch = { status: 'ready', team: 'everyone' };\nawait workspace.send(launch);\n```\n\n| Area | Status |\n| --- | --- |\n| Design | Ready for review |\n| Engineering | In progress |\n\n- [x] Gather feedback\n- [ ] Ship the update\n\n---\n\n### A small detail\n\n~~More switching.~~ More doing."
+        }
+      />
+    </div>
+  ),
 };
+export const DarkMarkdown: Story = { ...Markdown, globals: { theme: "dark" } };
 export const SafeMarkdown: Story = {
   render: () => (
     <MessageMarkdown

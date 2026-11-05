@@ -92,6 +92,8 @@ export const CreateWorkspaceError: Story = {
   ),
 };
 export const AcceptInvitation: Story = { render: () => <AcceptInvitationScreen {...acceptance} /> };
+export const DarkWorkspaces: Story = { ...Populated, globals: { theme: "dark" } };
+export const DarkInvitation: Story = { ...AcceptInvitation, globals: { theme: "dark" } };
 export const LoadingInvitation: Story = {
   render: () => <AcceptInvitationScreen {...acceptance} invitation={undefined} loading />,
 };

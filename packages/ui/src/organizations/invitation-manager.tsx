@@ -94,10 +94,22 @@ export function InvitationManager({
           </div>
           <Button disabled={busy}>{sending ? "Sending…" : "Send invitation"}</Button>
         </form>
-        <FormMessage error={error} message={message} />
-        <section className="space-y-3">
+        <FormMessage error={failed ? null : error} message={message} floating />
+        <section className="min-h-48 space-y-3">
           <h3 className="text-sm font-medium">Invitations</h3>
-          {loading && <p role="status">Loading invitations…</p>}
+          {loading && (
+            <div role="status" className="space-y-3">
+              <span className="sr-only">Loading invitations…</span>
+              {[0, 1].map((item) => (
+                <div
+                  key={item}
+                  aria-hidden="true"
+                  className="h-16 rounded-lg border bg-muted/60 motion-safe:animate-pulse"
+                />
+              ))}
+            </div>
+          )}
+          {failed && <FormMessage error={error} />}
           {failed && (
             <Button variant="outline" onClick={onRetry}>
               Try again
@@ -107,42 +119,44 @@ export function InvitationManager({
             <p className="text-sm text-muted-foreground">No invitations yet.</p>
           )}
           <ul className="space-y-3">
-            {invitations?.map((invitation) => (
-              <li
-                key={invitation.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3"
-              >
-                <div>
-                  <p className="text-sm font-medium">{invitation.email}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {invitation.role} · {invitation.status}
-                    {invitation.expired ? " · expired" : ""}
-                  </p>
-                </div>
-                {invitation.status === "pending" && (
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={busy}
-                      onClick={() => {
-                        onInvite(invitation.email, invitation.role, true);
-                      }}
-                    >
-                      Resend
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={busy}
-                      onClick={() => onCancel(invitation.id)}
-                    >
-                      Cancel
-                    </Button>
+            {!failed &&
+              !loading &&
+              invitations?.map((invitation) => (
+                <li
+                  key={invitation.id}
+                  className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-lg border bg-surface p-4 shadow-surface"
+                >
+                  <div className="min-w-0">
+                    <p className="break-all text-sm font-medium">{invitation.email}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {invitation.role} · {invitation.status}
+                      {invitation.expired ? " · expired" : ""}
+                    </p>
                   </div>
-                )}
-              </li>
-            ))}
+                  {invitation.status === "pending" && (
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busy}
+                        onClick={() => {
+                          onInvite(invitation.email, invitation.role, true);
+                        }}
+                      >
+                        Resend
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={() => onCancel(invitation.id)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+                </li>
+              ))}
           </ul>
         </section>
       </CardContent>

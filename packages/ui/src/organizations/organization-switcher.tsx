@@ -35,7 +35,7 @@ export function OrganizationSwitcher({
             size={compact ? "icon-lg" : "default"}
             className={
               compact
-                ? "rounded-xl bg-white text-[#191b24] hover:bg-white/90 hover:text-[#191b24]"
+                ? "rounded-xl bg-rail-foreground text-rail shadow-raised hover:bg-rail-foreground/90 hover:text-rail"
                 : undefined
             }
             aria-label={compact ? `${name} ▾` : undefined}
@@ -75,15 +75,7 @@ export function OrganizationSwitcher({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      {error && (
-        <div
-          className={
-            compact ? "absolute top-0 left-full z-50 ml-2 w-56 text-foreground" : undefined
-          }
-        >
-          <FormMessage error={error} />
-        </div>
-      )}
+      <FormMessage error={error} floating />
     </div>
   );
 }

@@ -15,3 +15,4 @@
 - Derive identity and actor scope on the server. Organization roles do not bypass entity grants.
 - Require verified email for workspace access and invitation acceptance. Only organization owners may invite members.
 - Test application policies and complete workflows. Do not test Better Auth internals or third-party guarantees.
+- Use Playwright for UI behavior, accessibility, and layout tests. Do not assert against rendered HTML strings or HTML snapshots, including markup substring checks.

@@ -3,6 +3,32 @@ import { randomUUID } from "node:crypto";
 import { createVerifiedAccount } from "./auth";
 import { Mailpit } from "./mailpit";
 
+test("appearance persists across reload and navigation and follows the system when selected", async ({
+  page,
+}) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/login");
+  await expect(page.getByText("Welcome back", { exact: true })).toBeVisible();
+  const background = () =>
+    page.locator("body").evaluate((node) => getComputedStyle(node).backgroundColor);
+  const light = await background();
+  const switcher = page.getByRole("button", { name: "Color theme", exact: true });
+  await switcher.click();
+  await page.getByRole("menuitemradio", { name: "Dark", exact: true }).click();
+  await expect.poll(background).not.toBe(light);
+  const dark = await background();
+  await page.reload();
+  await expect.poll(background).toBe(dark);
+  await page.goto("/signup");
+  await expect.poll(background).toBe(dark);
+  await switcher.click();
+  await expect(page.getByRole("menuitemradio", { name: "Dark", exact: true })).toBeChecked();
+  await page.getByRole("menuitemradio", { name: "System", exact: true }).click();
+  await expect.poll(background).toBe(light);
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect.poll(background).toBe(dark);
+});
+
 test("signed-out users can open password recovery directly", async ({ page }) => {
   await page.goto("/forgot-password?redirect=%2Faccept-invitation%2Finvite-123");
   await expect(page.getByText("Reset your password", { exact: true })).toBeVisible();

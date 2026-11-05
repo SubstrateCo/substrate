@@ -43,7 +43,7 @@ export function SignupForm({
             required
           />
         </div>
-        <FormMessage error={error} />
+        <FormMessage error={error} reserve />
         <Button className="w-full" disabled={pending}>
           {pending ? "Creating account…" : "Create account"}
         </Button>

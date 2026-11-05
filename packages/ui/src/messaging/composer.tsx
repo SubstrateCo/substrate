@@ -35,15 +35,15 @@ export function Composer({
   };
   return (
     <form
-      className="space-y-2 p-4 pt-2"
+      className="relative space-y-2 p-3 pt-2 sm:p-4 sm:pt-2"
       onSubmit={(event) => {
         event.preventDefault();
         submit();
       }}
     >
-      <FormMessage error={error} />
-      <div className="overflow-hidden rounded-xl border bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring/30">
-        <div className="flex items-center gap-1 border-b bg-muted/35 px-2 py-1">
+      <FormMessage error={error} floating />
+      <div className="overflow-hidden rounded-xl border bg-card shadow-raised transition-shadow focus-within:border-ring/50 focus-within:ring-2 focus-within:ring-ring/15">
+        <div className="flex items-center gap-1 border-b border-border/60 bg-muted/30 px-2 py-1">
           <Button
             type="button"
             size="icon-sm"
@@ -83,7 +83,7 @@ export function Composer({
           maxLength={20000}
           disabled={pending}
           onChange={(event) => setDraft(event.target.value)}
-          className="min-h-24 resize-y rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0"
+          className="h-24 min-h-16 max-h-[25dvh] resize-y rounded-none border-0 bg-transparent px-3 shadow-none focus-visible:ring-0 dark:bg-transparent"
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
               event.preventDefault();
@@ -93,12 +93,7 @@ export function Composer({
         />
         <div className="flex items-center justify-between px-2 pb-2">
           <EmojiPicker onSelect={(emoji) => insert(emoji)} disabled={pending} />
-          <Button
-            type="submit"
-            size="sm"
-            className="bg-emerald-700 text-white hover:bg-emerald-800"
-            disabled={!draft.trim() || pending}
-          >
+          <Button type="submit" size="sm" className="min-w-16" disabled={!draft.trim() || pending}>
             <Send className="size-3.5" />
             {pending ? "Sending…" : "Send"}
           </Button>

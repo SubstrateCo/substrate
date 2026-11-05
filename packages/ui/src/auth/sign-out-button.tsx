@@ -18,7 +18,11 @@ export function SignOutButton({
       <Button
         variant="ghost"
         size={compact ? "icon-lg" : "default"}
-        className={compact ? "text-white/60 hover:bg-white/10 hover:text-white" : undefined}
+        className={
+          compact
+            ? "text-rail-foreground/60 hover:bg-rail-foreground/10 hover:text-rail-foreground"
+            : undefined
+        }
         aria-label={compact ? "Sign out" : undefined}
         title={compact ? (pending ? "Signing out…" : "Sign out") : undefined}
         disabled={pending}
@@ -26,15 +30,7 @@ export function SignOutButton({
       >
         {compact ? <LogOut className="size-5" /> : pending ? "Signing out…" : "Sign out"}
       </Button>
-      {error && (
-        <div
-          className={
-            compact ? "absolute bottom-0 left-full z-50 ml-2 w-56 text-foreground" : undefined
-          }
-        >
-          <FormMessage error={error} />
-        </div>
-      )}
+      <FormMessage error={error} floating />
     </div>
   );
 }

@@ -24,7 +24,7 @@ const switcher = {
   manageHref: "#workspaces",
 };
 const rail = (children: React.ReactNode) => (
-  <div className="flex w-16 flex-col items-center gap-5 bg-[#191b24] py-5 text-white">
+  <div className="flex w-16 flex-col items-center gap-5 rounded-xl bg-rail py-5 text-rail-foreground shadow-raised">
     {children}
   </div>
 );

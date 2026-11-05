@@ -10,3 +10,8 @@ export const PageNotFound: Story = {
   render: () => <NotFound homeLink={<a href="#home">Return home</a>} />,
 };
 export const UnexpectedError: Story = { render: () => <ErrorScreen onRetry={fn()} /> };
+export const DarkError: Story = { ...UnexpectedError, globals: { theme: "dark" } };
+export const MobileError: Story = {
+  ...UnexpectedError,
+  globals: { viewport: { value: "narrow" } },
+};

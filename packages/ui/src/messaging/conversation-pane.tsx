@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Hash, LockKeyhole, UserPlus } from "lucide-react";
 import { conversationName, type Conversation } from "./types";
 import { Button } from "../primitives/button";
-import { FormMessage } from "../auth/form-message";
+import { PaneState } from "../feedback/pane-state";
 
 export function ConversationPane({
   conversation,
@@ -28,19 +28,10 @@ export function ConversationPane({
   thread?: ReactNode;
 }) {
   const title = conversationName(conversation);
-  if (error)
-    return (
-      <section className="min-w-0 flex-1 space-y-3 p-5">
-        <FormMessage error={error} />
-        <Button variant="outline" onClick={onRetry}>
-          Retry
-        </Button>
-      </section>
-    );
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1">
-      <section aria-label={title} className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b px-5">
+      <section aria-label={title} className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface">
+        <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b bg-card/60 px-4 sm:px-5">
           <h1 className="flex min-w-0 items-center gap-2 font-semibold">
             {conversation.kind === "channel" &&
               (conversation.private ? (
@@ -50,7 +41,7 @@ export function ConversationPane({
               ))}
             <span className="truncate">{title}</span>
           </h1>
-          {conversation.kind !== "dm" && (
+          {!error && conversation.kind !== "dm" && (
             <Button
               variant="ghost"
               size="sm"
@@ -62,16 +53,15 @@ export function ConversationPane({
             </Button>
           )}
         </header>
-        {addingMembers && membersForm}
-        {loading && (
-          <p role="status" className="p-6 text-sm text-muted-foreground">
-            Loading messages…
-          </p>
-        )}
-        {messages ? (
+        {!error && addingMembers && membersForm}
+        {error ? (
+          <PaneState label="Conversation unavailable" error={error} onRetry={onRetry} />
+        ) : loading ? (
+          <PaneState label="Loading messages…" />
+        ) : messages ? (
           messages
-        ) : !loading ? (
-          <div className="flex flex-1 flex-col justify-end px-6 py-8">
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col justify-end overflow-y-auto px-6 py-8">
             <h2 className="mb-2 text-2xl font-semibold tracking-tight">
               {conversation.kind === "channel" ? "Welcome to " : "Your conversation with "}
               {title}
@@ -80,10 +70,10 @@ export function ConversationPane({
               This is the start of something. Send the first message.
             </p>
           </div>
-        ) : null}
-        <div className="mt-auto">{composer}</div>
+        )}
+        {!error && <div className="mt-auto shrink-0">{composer}</div>}
       </section>
-      {thread}
+      {!error && !loading && thread}
     </div>
   );
 }

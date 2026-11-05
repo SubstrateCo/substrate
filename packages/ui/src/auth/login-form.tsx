@@ -49,7 +49,7 @@ export function LoginForm({
             required
           />
         </div>
-        <FormMessage error={error} />
+        <FormMessage error={error} reserve />
         <Button className="w-full" disabled={pending}>
           {pending ? "Signing in…" : "Sign in"}
         </Button>

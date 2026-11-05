@@ -46,3 +46,9 @@ export const MobileThread: Story = {
   globals: { viewport: { value: "mobile" } },
 };
 export const DarkWorkspace: Story = { globals: { theme: "dark" } };
+export const DarkLoading: Story = { args: { messageState: "loading" }, globals: { theme: "dark" } };
+export const DarkError: Story = { args: { messageState: "error" }, globals: { theme: "dark" } };
+export const MobileSendError: Story = {
+  args: { composerState: "error" },
+  globals: { viewport: { value: "narrow" } },
+};

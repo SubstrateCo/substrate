@@ -34,6 +34,7 @@ export function ForgotPasswordForm({
           <Input id="email" name="email" type="email" autoComplete="email" required />
         </div>
         <FormMessage
+          reserve
           error={error}
           message={success ? "Check your inbox for a password reset link." : undefined}
         />

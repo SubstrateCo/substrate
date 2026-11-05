@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { ArrowLeft, MessageSquare, PanelLeft } from "lucide-react";
 import type { Conversation } from "./types";
 import { Button } from "../primitives/button";
-import { FormMessage } from "../auth/form-message";
+import { PaneState } from "../feedback/pane-state";
 import { ConversationSidebar } from "./conversation-sidebar";
 
 export function MessagingWorkspace({
@@ -47,6 +47,7 @@ export function MessagingWorkspace({
       <div className="flex min-h-0 min-w-0 flex-1">
         <ConversationSidebar
           mobileOpen={sidebarOpen}
+          loading={loading}
           workspaceName={workspaceName}
           conversations={conversations}
           selectedId={selectedId}
@@ -56,25 +57,15 @@ export function MessagingWorkspace({
         <div
           className={`${sidebarOpen ? "hidden" : "flex"} min-h-0 min-w-0 flex-1 flex-col md:flex`}
         >
-          {error && (
-            <div className="flex items-start gap-2 border-b p-3">
-              <div className="min-w-0 flex-1">
-                <FormMessage error={error} />
-              </div>
-              <Button variant="outline" onClick={onRetry}>
-                Retry
-              </Button>
-            </div>
-          )}
-          {children ? (
+          {error ? (
+            <PaneState label="Workspace unavailable" error={error} onRetry={onRetry} />
+          ) : children ? (
             children
           ) : loading ? (
-            <p role="status" className="p-8 text-sm text-muted-foreground">
-              Loading your conversations…
-            </p>
+            <PaneState label="Loading your conversations…" />
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
-              <div className="rounded-2xl bg-indigo-50 p-4 text-indigo-600">
+              <div className="rounded-2xl border border-primary/10 bg-accent p-4 text-accent-foreground shadow-raised">
                 <MessageSquare className="size-8" />
               </div>
               <h1 className="text-2xl font-semibold tracking-tight">
