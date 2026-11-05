@@ -16,7 +16,7 @@ export function PaneState({
         <div className="w-full max-w-sm rounded-xl border bg-card p-6 text-center shadow-raised">
           <CircleAlert aria-hidden="true" className="mx-auto mb-4 size-7 text-destructive" />
           <h2 className="mb-2 font-semibold">{label}</h2>
-          <p role="alert" className="break-words text-sm leading-relaxed text-muted-foreground">
+          <p role="alert" className="wrap-break-word text-sm leading-relaxed text-muted-foreground">
             {error.message}
           </p>
           {onRetry && (

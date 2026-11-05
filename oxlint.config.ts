@@ -6,6 +6,7 @@ export default defineConfig({
   options: deslopConfigs.recommended.options,
   rules: {
     ...deslopConfigs.recommended.rules,
+    "deslop/canonical-class-names": ["error", { cssPath: "./packages/ui/src/styles.css" }],
     "deslop/no-duplicate-types": "error",
   },
 });

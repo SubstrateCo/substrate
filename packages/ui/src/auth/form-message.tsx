@@ -32,7 +32,7 @@ export function FormMessage({
       }
     >
       <Icon className={error ? "text-destructive" : "text-success"} />
-      <AlertDescription className="min-w-0 break-words">
+      <AlertDescription className="min-w-0 wrap-break-word">
         {error?.message || message}
       </AlertDescription>
       {floating && (

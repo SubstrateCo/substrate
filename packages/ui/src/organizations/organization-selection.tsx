@@ -80,7 +80,7 @@ export function OrganizationSelection({
                     >
                       {organization.name.slice(0, 2).toUpperCase()}
                     </span>
-                    <span className="min-w-0 break-words">{organization.name}</span>
+                    <span className="min-w-0 wrap-break-word">{organization.name}</span>
                   </Button>
                 ))}
             </div>

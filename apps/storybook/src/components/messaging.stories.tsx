@@ -90,7 +90,7 @@ export const Emoji: Story = { render: () => <EmojiPicker onSelect={fn()} /> };
 export const DisabledEmoji: Story = { render: () => <EmojiPicker onSelect={fn()} disabled /> };
 export const Sidebar: Story = {
   render: () => (
-    <div className="flex h-[700px]">
+    <div className="flex h-175">
       <ConversationSidebar
         workspaceName="Launch Studio"
         conversations={conversations}
