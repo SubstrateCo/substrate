@@ -41,10 +41,13 @@ async function createConversation(
       : kind === "group"
         ? "New group message"
         : "Create channel";
-  await page
-    .getByRole("complementary", { name: "Conversations" })
-    .getByRole("button", { name: button, exact: true })
-    .click();
+  const sidebar = page.getByRole("complementary", { name: "Conversations" });
+  if (kind === "channel") {
+    await sidebar.getByRole("button", { name: button, exact: true }).click();
+  } else {
+    await sidebar.getByRole("button", { name: "New message", exact: true }).click();
+    await page.getByRole("menuitem", { name: button, exact: true }).click();
+  }
   if (kind !== "dm") {
     await page
       .getByLabel(kind === "channel" ? "Channel name" : "Group name (optional)", { exact: true })
@@ -180,6 +183,7 @@ test("messaging keeps conversations, threads, and organizations isolated", async
     });
 
     await test.step("invite a teammate without sharing organization access with external users", async () => {
+      await senderPage.getByRole("button", { name: /^Signed in as / }).click();
       await senderPage.getByRole("button", { name: "Settings", exact: true }).click();
       await senderPage.getByLabel("Email", { exact: true }).fill(member.email);
       await senderPage.getByRole("button", { name: "Send invitation", exact: true }).click();

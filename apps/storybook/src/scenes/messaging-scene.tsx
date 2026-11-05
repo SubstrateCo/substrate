@@ -184,7 +184,6 @@ export function MessagingScene({
       }
       signOut={
         <SignOutButton
-          compact
           onSignOut={() =>
             setNotice(new Error("Sign out is a preview only. No account is connected."))
           }
@@ -192,7 +191,6 @@ export function MessagingScene({
       }
     >
       <MessagingWorkspace
-        workspaceName="Launch Studio"
         conversations={visible}
         selectedId={creating ? undefined : selected?.id}
         sidebarOpen={sidebarOpen}
@@ -216,7 +214,6 @@ export function MessagingScene({
           <CreateConversationForm
             key={creating}
             kind={creating}
-            onClose={() => setCreating(undefined)}
             onSubmit={(draft) => {
               const id = `new-${items.length}`;
               setItems([
@@ -271,7 +268,6 @@ export function MessagingScene({
                     false,
                     true,
                   )}
-                  empty={!threadReplies.length}
                   replies={
                     threadState !== "loading" ? (
                       <MessageList lastId={threadReplies.at(-1)?.id}>

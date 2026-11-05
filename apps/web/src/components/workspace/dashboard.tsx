@@ -37,16 +37,13 @@ function WorkspaceDashboard({ organizationId, name }: { organizationId: string; 
           compact
         />
       }
-      signOut={<SignOutButton compact />}
+      signOut={<SignOutButton />}
       error={organization.error || member.error}
     >
       {view === "settings" && isAdmin ? (
         <WorkspaceSettings organizationId={organizationId} isOwner={!!isOwner} />
       ) : (
-        <MessagingWorkspace
-          organizationId={organizationId}
-          workspaceName={organization.data?.name || "Workspace"}
-        />
+        <MessagingWorkspace organizationId={organizationId} />
       )}
     </WorkspaceShell>
   );

@@ -74,6 +74,7 @@ test("verified accounts can build a team, switch workspaces, and recover access"
   await test.step("an owner creates a workspace and invites a member from the UI", async () => {
     await createWorkspace(page, firstWorkspace, `alpha-${suffix}`);
     await expectWorkspace(page, firstWorkspace, owner.name, "owner");
+    await page.getByRole("button", { name: /^Signed in as / }).click();
     await page.getByRole("button", { name: "Settings", exact: true }).click();
     await page.getByLabel("Email", { exact: true }).fill(member.email);
     await expect(page.getByRole("combobox", { name: "Role", exact: true })).toContainText("Member");
@@ -124,11 +125,13 @@ test("verified accounts can build a team, switch workspaces, and recover access"
     await page.getByRole("menuitem", { name: "Manage workspaces", exact: true }).click();
     await createWorkspace(page, secondWorkspace, `beta-${suffix}`);
     await expectWorkspace(page, secondWorkspace, owner.name, "owner");
+    await page.getByRole("button", { name: /^Signed in as / }).click();
     await page.getByRole("button", { name: "Settings", exact: true }).click();
     await expect(page.getByText("No invitations yet.", { exact: true })).toBeVisible();
     await expect(page.getByRole("listitem").filter({ hasText: member.email })).toHaveCount(0);
     await switchWorkspace(page, secondWorkspace, firstWorkspace);
     await expectWorkspace(page, firstWorkspace, owner.name, "owner");
+    await page.getByRole("button", { name: /^Signed in as / }).click();
     await page.getByRole("button", { name: "Settings", exact: true }).click();
     await expect(
       page.getByRole("listitem").filter({ hasText: member.email }).filter({ hasText: "pending" }),
@@ -217,6 +220,7 @@ test("verified accounts can build a team, switch workspaces, and recover access"
     owner.password = password;
     await login(page, owner);
     await expectWorkspace(page, firstWorkspace, owner.name, "owner");
+    await page.getByRole("button", { name: /^Signed in as / }).click();
     await page.getByRole("button", { name: "Settings", exact: true }).click();
     await expect(
       page.getByRole("listitem").filter({ hasText: member.email }).filter({ hasText: "accepted" }),

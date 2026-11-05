@@ -48,6 +48,8 @@ export async function createVerifiedAccount(page: Page, mailpit: Mailpit, accoun
 }
 
 export async function signout(page: Page) {
+  const user = page.getByRole("button", { name: /^Signed in as / });
+  if (await user.isVisible()) await user.click();
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page.getByText("Welcome back", { exact: true })).toBeVisible();
 }

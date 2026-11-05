@@ -6,13 +6,7 @@ import { conversationsQueryOptions } from "@/queries/messaging/options";
 import { ConversationPane } from "./conversation-pane";
 import { CreateConversationForm } from "./create-conversation-form";
 
-export function MessagingWorkspace({
-  organizationId,
-  workspaceName,
-}: {
-  organizationId: string;
-  workspaceName: string;
-}) {
+export function MessagingWorkspace({ organizationId }: { organizationId: string }) {
   const conversations = useQuery(conversationsQueryOptions(organizationId));
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState<Conversation["kind"] | null>(null);
@@ -23,7 +17,6 @@ export function MessagingWorkspace({
     (selectedId === null ? visibleConversations[0] : undefined);
   return (
     <MessagingWorkspaceView
-      workspaceName={workspaceName}
       conversations={visibleConversations}
       selectedId={creating ? undefined : selected?.id}
       sidebarOpen={sidebarOpen}
@@ -46,7 +39,6 @@ export function MessagingWorkspace({
           key={creating}
           organizationId={organizationId}
           kind={creating}
-          onClose={() => setCreating(null)}
           onCreated={(id) => {
             setSelectedId(id);
             setCreating(null);

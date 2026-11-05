@@ -1,8 +1,11 @@
+import { Check, ChevronsUpDown, LoaderCircle, Settings2 } from "lucide-react";
 import { Button } from "../primitives/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../primitives/dropdown-menu";
 import { FormMessage } from "../auth/form-message";
@@ -13,6 +16,7 @@ export function OrganizationSwitcher({
   compact = false,
   organizations,
   pending = false,
+  loading = false,
   error,
   onSelect,
   manageHref,
@@ -22,6 +26,7 @@ export function OrganizationSwitcher({
   compact?: boolean;
   organizations: { id: string; name: string }[];
   pending?: boolean;
+  loading?: boolean;
   error?: Error | null;
   onSelect: (id: string) => void;
   manageHref: string;
@@ -33,7 +38,7 @@ export function OrganizationSwitcher({
           <Button
             variant={compact ? "workspace" : "outline"}
             size={compact ? "icon-lg" : "default"}
-            aria-label={compact ? `${name} ▾` : undefined}
+            aria-label={`${name} ▾`}
             title={compact ? `Switch workspace: ${name}` : undefined}
             disabled={pending}
           >
@@ -50,23 +55,60 @@ export function OrganizationSwitcher({
                       .toUpperCase()}
               </span>
             ) : (
-              <>{pending ? "Switching…" : name} ▾</>
+              <>
+                <span className="max-w-48 truncate">{pending ? "Switching…" : name}</span>
+                <ChevronsUpDown className="size-4 text-muted-foreground" />
+              </>
             )}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" side={compact ? "right" : "bottom"}>
-          {organizations.map((organization) => (
-            <DropdownMenuItem
-              key={organization.id}
-              disabled={organization.id === organizationId}
-              onSelect={() => onSelect(organization.id)}
+        <DropdownMenuContent
+          align="start"
+          side={compact ? "right" : "bottom"}
+          sideOffset={12}
+          className="w-64"
+        >
+          <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
+          {loading && (
+            <div
+              role="status"
+              className="flex items-center gap-2 px-2 py-3 text-sm text-muted-foreground"
             >
-              {organization.name}
-              {organization.id === organizationId ? " (current)" : ""}
-            </DropdownMenuItem>
-          ))}
+              <LoaderCircle className="size-4 motion-safe:animate-spin" />
+              Loading workspaces…
+            </div>
+          )}
+          {!loading &&
+            organizations.map((organization) => (
+              <DropdownMenuItem
+                key={organization.id}
+                disabled={organization.id === organizationId}
+                aria-label={`${organization.name}${organization.id === organizationId ? " (current)" : ""}`}
+                variant="workspace"
+                onSelect={() => onSelect(organization.id)}
+              >
+                <span
+                  aria-hidden="true"
+                  className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-surface text-xs font-semibold text-foreground shadow-surface"
+                >
+                  {organization.name
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map((word) => word[0])
+                    .join("")
+                    .toUpperCase()}
+                </span>
+                <span className="min-w-0 flex-1 truncate">{organization.name}</span>
+                {organization.id === organizationId && <Check className="size-4 shrink-0" />}
+              </DropdownMenuItem>
+            ))}
+          <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
-            <a href={manageHref}>Manage workspaces</a>
+            <a href={manageHref} className="gap-3 px-2 py-2">
+              <Settings2 />
+              Manage workspaces
+            </a>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import { MessageSquare, Settings } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { FormMessage } from "../auth/form-message";
 import { Button } from "../primitives/button";
-import { ThemeSwitcher } from "../theme/theme-switcher";
+import { UserMenu } from "./user-menu";
 
 export function WorkspaceShell({
   name,
@@ -40,31 +40,16 @@ export function WorkspaceShell({
         >
           <MessageSquare className="size-5" />
         </Button>
-        <div className="mt-auto flex flex-col items-center gap-4">
-          <ThemeSwitcher compact />
-          {showSettings && (
-            <Button
-              variant="rail"
-              size="icon-lg"
-              aria-label="Settings"
-              title="Settings"
-              aria-current={view === "settings" ? "page" : undefined}
-              onClick={() => onViewChange("settings")}
-            >
-              <Settings className="size-5" />
-            </Button>
-          )}
-          <div
-            title={name}
-            aria-label={`Signed in as ${name}`}
-            className="flex size-8 items-center justify-center rounded-lg bg-accent text-xs font-semibold text-accent-foreground shadow-surface"
-          >
-            {name.slice(0, 2).toUpperCase()}
-          </div>
-          {signOut}
+        <div className="mt-auto">
+          <UserMenu
+            name={name}
+            showSettings={showSettings}
+            onSettings={() => onViewChange("settings")}
+            signOut={signOut}
+          />
         </div>
       </nav>
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface md:my-2 md:mr-2 md:rounded-xl md:border md:shadow-raised">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface md:m-2 md:rounded-xl md:border md:shadow-raised">
         <FormMessage error={error} floating />
         {children}
       </div>

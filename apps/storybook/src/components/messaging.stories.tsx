@@ -92,7 +92,6 @@ export const Sidebar: Story = {
   render: () => (
     <div className="flex h-175">
       <ConversationSidebar
-        workspaceName="Launch Studio"
         conversations={conversations}
         selectedId="general"
         mobileOpen
@@ -116,13 +115,13 @@ export const AddPeopleError: Story = {
   ),
 };
 export const NewChannel: Story = {
-  render: () => <CreateConversationForm kind="channel" onSubmit={fn()} onClose={fn()} />,
+  render: () => <CreateConversationForm kind="channel" onSubmit={fn()} />,
 };
 export const CreatingChannel: Story = {
-  render: () => <CreateConversationForm kind="channel" pending onSubmit={fn()} onClose={fn()} />,
+  render: () => <CreateConversationForm kind="channel" pending onSubmit={fn()} />,
 };
 export const NewDirectMessage: Story = {
-  render: () => <CreateConversationForm kind="dm" onSubmit={fn()} onClose={fn()} />,
+  render: () => <CreateConversationForm kind="dm" onSubmit={fn()} />,
 };
 export const DirectMessageValidation: Story = {
   render: () => (
@@ -130,12 +129,11 @@ export const DirectMessageValidation: Story = {
       kind="dm"
       error={new Error("Use a group message for more than one recipient.")}
       onSubmit={fn()}
-      onClose={fn()}
     />
   ),
 };
 export const NewGroup: Story = {
-  render: () => <CreateConversationForm kind="group" onSubmit={fn()} onClose={fn()} />,
+  render: () => <CreateConversationForm kind="group" onSubmit={fn()} />,
 };
 export const GroupValidation: Story = {
   render: () => (
@@ -143,7 +141,6 @@ export const GroupValidation: Story = {
       kind="group"
       error={new Error("Enter at least two recipients for a group message.")}
       onSubmit={fn()}
-      onClose={fn()}
     />
   ),
 };
@@ -153,7 +150,6 @@ export const CreationError: Story = {
       kind="channel"
       error={new Error("Your active workspace changed. Reload this page to continue.")}
       onSubmit={fn()}
-      onClose={fn()}
     />
   ),
 };

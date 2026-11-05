@@ -23,7 +23,8 @@ export function SignOutButton({
         disabled={pending}
         onClick={onSignOut}
       >
-        {compact ? <LogOut className="size-5" /> : pending ? "Signing out…" : "Sign out"}
+        <LogOut className={compact ? "size-5" : "size-4"} />
+        {!compact && (pending ? "Signing out…" : "Sign out")}
       </Button>
       <FormMessage error={error} floating />
     </div>

@@ -42,7 +42,7 @@ function SettingsScene({
           manageHref="#workspaces"
         />
       }
-      signOut={<SignOutButton compact onSignOut={fn()} />}
+      signOut={<SignOutButton onSignOut={fn()} />}
     >
       <WorkspaceSettings>
         {owner && (

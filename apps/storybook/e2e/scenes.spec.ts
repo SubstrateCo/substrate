@@ -1,4 +1,25 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
+
+async function backgroundContrast(control: Locator, parentSelector: string) {
+  return control.evaluate((node, selector) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 1;
+    const context = canvas.getContext("2d")!;
+    const luminance = (element: Element) => {
+      context.clearRect(0, 0, 1, 1);
+      context.fillStyle = getComputedStyle(element).backgroundColor;
+      context.fillRect(0, 0, 1, 1);
+      const [r, g, b] = Array.from(context.getImageData(0, 0, 1, 1).data).map((value) => {
+        const channel = value / 255;
+        return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const a = luminance(node);
+    const b = luminance(node.closest(selector)!);
+    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  }, parentSelector);
+}
 
 async function openStory(page: Page, id: string) {
   await page.goto(`/iframe.html?id=${id}&viewMode=story`);
@@ -60,6 +81,86 @@ test("isolated button and picker previews are centered, while scenes keep their 
   expect(rail?.height).toBe(900);
 });
 
+test("desktop sidebar is inset from the app rail", async ({ page }) => {
+  await openStory(page, "scenes-messaging--public-channel");
+  const rail = page.getByRole("navigation", { name: "Apps" });
+  const sidebar = page.getByRole("complementary", { name: "Conversations" });
+  await expect(sidebar).toBeVisible();
+  const railBox = (await rail.boundingBox())!;
+  const sidebarBox = (await sidebar.boundingBox())!;
+  const gap = sidebarBox.x - (railBox.x + railBox.width);
+  expect(gap).toBeGreaterThanOrEqual(8);
+  expect(gap).toBeCloseTo(sidebarBox.y - railBox.y, 0);
+});
+
+for (const [story, title] of [
+  ["create-channel", "Create a channel"],
+  ["create-direct-message", "New direct message"],
+  ["create-group", "New group message"],
+]) {
+  test(`${title} form is centered without a close button`, async ({ page }) => {
+    await openStory(page, `scenes-messaging--${story}`);
+    const form = page.locator("section").filter({
+      has: page.getByRole("heading", { name: title, exact: true }),
+    });
+    await expect(form).toBeVisible();
+    const box = (await form.boundingBox())!;
+    const pane = (await form.locator("..").boundingBox())!;
+    expect(box.x + box.width / 2).toBeCloseTo(pane.x + pane.width / 2, 0);
+    expect(box.y + box.height / 2).toBeCloseTo(pane.y + pane.height / 2, 0);
+    await expect(page.getByRole("button", { name: "Cancel new conversation" })).toHaveCount(0);
+  });
+}
+
+test("message actions appear only for the hovered or focused message without layout shifts", async ({
+  page,
+}) => {
+  await openStory(page, "scenes-messaging--public-channel");
+  const messages = page.getByRole("article");
+  const first = messages.nth(0);
+  const second = messages.nth(1);
+  const actions = first.getByRole("group", { name: "Message actions" });
+  await first.scrollIntoViewIfNeeded();
+  const before = await first.boundingBox();
+  const nextBefore = await second.boundingBox();
+  await expect(actions).toHaveCSS("opacity", "0");
+  await first.hover();
+  await expect(actions).toHaveCSS("opacity", "1");
+  await expect(second.getByRole("group", { name: "Message actions" })).toHaveCSS("opacity", "0");
+  expect(await first.boundingBox()).toEqual(before);
+  expect(await second.boundingBox()).toEqual(nextBefore);
+  await page.getByRole("navigation", { name: "Apps" }).hover();
+  await expect(actions).toHaveCSS("opacity", "0");
+  await first.getByRole("button", { name: "React to message", exact: true }).focus();
+  await expect(actions).toHaveCSS("opacity", "1");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("button", { name: "🔥", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "🔥", exact: true }).click();
+  await expect(first.getByRole("button", { name: "🔥, 1 reactions", exact: true })).toBeVisible();
+});
+
+test("touch devices keep message actions available without hover", async ({ browser }) => {
+  const context = await browser.newContext({
+    hasTouch: true,
+    isMobile: true,
+    viewport: { width: 390, height: 844 },
+  });
+  try {
+    const page = await context.newPage();
+    await page.goto(
+      "http://127.0.0.1:6007/iframe.html?id=scenes-messaging--public-channel&viewMode=story",
+    );
+    await expect(page.getByRole("group", { name: "Message actions" }).first()).toHaveCSS(
+      "opacity",
+      "1",
+    );
+    await page.getByRole("button", { name: "Signed in as Taylor Kim", exact: true }).tap();
+    await expect(page.getByRole("dialog", { name: "User actions" })).toBeVisible();
+  } finally {
+    await context.close();
+  }
+});
+
 test("message drafts, emoji, reactions, and threads work without a backend", async ({ page }) => {
   await openStory(page, "scenes-messaging--public-channel");
   const input = page.getByRole("textbox", { name: "Message #general", exact: true });
@@ -113,10 +214,75 @@ for (const width of [320, 390]) {
   });
 }
 
+test("sidebar plus icons create channels and direct or group messages without duplicate actions", async ({
+  page,
+}) => {
+  await openStory(page, "scenes-messaging--public-channel");
+  const sidebar = page.getByRole("complementary", { name: "Conversations" });
+  await expect(sidebar.getByText("Launch Studio", { exact: true })).toHaveCount(0);
+  await expect(sidebar.getByRole("button", { name: "Add a channel", exact: true })).toHaveCount(0);
+  await expect(sidebar.getByRole("button", { name: "New group message", exact: true })).toHaveCount(
+    0,
+  );
+  await sidebar.getByRole("button", { name: "Create channel", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Create a channel", exact: true })).toBeVisible();
+  for (const title of ["New direct message", "New group message"]) {
+    await sidebar.getByRole("button", { name: "New message", exact: true }).click();
+    await page.getByRole("menuitem", { name: title, exact: true }).click();
+    await expect(page.getByRole("heading", { name: title, exact: true })).toBeVisible();
+  }
+});
+
+test("dark selections and hovered account actions have distinct backgrounds", async ({ page }) => {
+  await openStory(page, "scenes-messaging--dark-workspace");
+  const selected = page
+    .getByRole("complementary", { name: "Conversations" })
+    .getByRole("button", { name: "general", exact: true });
+  expect(await backgroundContrast(selected, "aside")).toBeGreaterThanOrEqual(2);
+  await page.getByRole("button", { name: "Signed in as Taylor Kim", exact: true }).hover();
+  const settings = page.getByRole("button", { name: "Settings", exact: true });
+  await settings.hover();
+  await expect
+    .poll(() => backgroundContrast(settings, '[role="dialog"]'))
+    .toBeGreaterThanOrEqual(1.5);
+});
+
+test("user icon reveals account actions on hover and supports keyboard access", async ({
+  page,
+}) => {
+  await openStory(page, "scenes-messaging--public-channel");
+  const user = page.getByRole("button", { name: "Signed in as Taylor Kim", exact: true });
+  await expect(page.getByRole("switch", { name: "Dark mode", exact: true })).toBeHidden();
+  await expect(page.getByRole("button", { name: "Sign out", exact: true })).toBeHidden();
+  await expect(page.getByRole("button", { name: "Settings", exact: true })).toBeHidden();
+  await user.hover();
+  const actions = page.getByRole("dialog", { name: "User actions" });
+  await expect(actions).toBeVisible();
+  await expect(actions.getByText("Taylor Kim", { exact: true })).toHaveCount(0);
+  await expect(actions.getByRole("switch", { name: "Dark mode", exact: true })).toBeVisible();
+  const actionRows = await actions.getByRole("button", { name: /^(Settings|Sign out)$/ }).all();
+  const positions = await Promise.all(actionRows.map((row) => row.boundingBox()));
+  expect(positions.map((box) => box?.x)).toEqual(positions.map(() => positions[0]?.x));
+  expect(positions.map((box) => box?.width)).toEqual(positions.map(() => positions[0]?.width));
+  await expect(actions.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
+  await actions.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("Sign out is a preview only.");
+  await page.keyboard.press("Escape");
+  await expect(actions).toBeHidden();
+  await user.focus();
+  await page.keyboard.press("Enter");
+  await expect(actions).toBeVisible();
+  await actions.getByRole("button", { name: "Settings", exact: true }).click();
+  await expect(actions).toBeHidden();
+  await expect(page.getByRole("alert")).toContainText("Open Scenes / Settings");
+});
+
 test("permission and access-loss scenes hide restricted controls and content", async ({ page }) => {
   await openStory(page, "scenes-messaging--member-workspace");
+  await page.getByRole("button", { name: "Signed in as Taylor Kim", exact: true }).click();
   await expect(page.getByRole("button", { name: "Settings", exact: true })).toHaveCount(0);
   await openStory(page, "scenes-messaging--public-channel");
+  await page.getByRole("button", { name: "Signed in as Taylor Kim", exact: true }).click();
   await expect(page.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
   await expect(page.getByLabel("Signed in as Taylor Kim")).toBeVisible();
   await openStory(page, "scenes-settings--admin");
@@ -166,6 +332,46 @@ test("markdown is safe and uses the active theme", async ({ page }) => {
   }
 });
 
+test("invitation fields and labels align on desktop and fit on mobile", async ({ page }) => {
+  await openStory(page, "scenes-settings--no-invitations");
+  const email = page.getByRole("textbox", { name: "Email", exact: true });
+  const role = page.getByRole("combobox", { name: "Role", exact: true });
+  const send = page.getByRole("button", { name: "Send invitation", exact: true });
+  const controls = await Promise.all([email.boundingBox(), role.boundingBox(), send.boundingBox()]);
+  for (const box of controls) {
+    expect(box!.y).toBeCloseTo(controls[0]!.y, 0);
+    expect(box!.height).toBe(controls[0]!.height);
+  }
+  const emailLabel = await page.getByText("Email", { exact: true }).boundingBox();
+  const roleLabel = await page.getByText("Role", { exact: true }).boundingBox();
+  expect(emailLabel!.y).toBeCloseTo(roleLabel!.y, 0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const control of [email, role, send]) await expect(control).toBeInViewport({ ratio: 1 });
+});
+
+test("empty threads show the composer without instructional copy", async ({ page }) => {
+  await openStory(page, "scenes-messaging--empty-thread");
+  const thread = page.getByRole("complementary", { name: "Thread", exact: true });
+  await expect(
+    thread.getByRole("textbox", { name: "Reply in thread…", exact: true }),
+  ).toBeVisible();
+  await expect(thread.getByText("No replies yet. Start the thread.", { exact: true })).toHaveCount(
+    0,
+  );
+});
+
+test("workspace menu marks the current workspace and selects another workspace", async ({
+  page,
+}) => {
+  await openStory(page, "scenes-messaging--public-channel");
+  await page.getByRole("button", { name: "Launch Studio ▾", exact: true }).click();
+  const current = page.getByRole("menuitem", { name: "Launch Studio (current)", exact: true });
+  await expect(current).toBeDisabled();
+  await expect(current).toBeVisible();
+  await page.getByRole("menuitem", { name: "Partner Workspace", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("Workspace switching is a preview only.");
+});
+
 test("compact rail controls keep their names and expose usable menus", async ({ page }) => {
   await openStory(page, "components-rail-controls--compact-switcher");
   const compact = page.getByRole("button", { name: "Launch Studio ▾", exact: true });
@@ -189,27 +395,31 @@ test("compact rail controls keep their names and expose usable menus", async ({ 
 test("theme switcher supports light, dark, and live system preference", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await openStory(page, "scenes-messaging--public-channel");
-  const theme = page.getByRole("button", { name: "Color theme", exact: true });
+  await page.getByRole("button", { name: "Signed in as Taylor Kim", exact: true }).click();
+  const theme = page.getByRole("switch", { name: "Dark mode", exact: true });
+  const system = page.getByRole("button", { name: "Use system theme", exact: true });
   const background = () =>
     page
       .getByRole("region", { name: "general", exact: true })
       .evaluate((node) => getComputedStyle(node).backgroundColor);
   const light = await background();
-  await theme.click();
-  await page.getByRole("menuitemradio", { name: "Dark", exact: true }).click();
+  await theme.check();
   await expect.poll(background).not.toBe(light);
   expect(await page.evaluate(() => localStorage.getItem("startup-os-storybook-theme"))).toBe(
     "dark",
   );
-  await theme.click();
-  await expect(page.getByRole("menuitemradio", { name: "Dark", exact: true })).toBeChecked();
-  await page.getByRole("menuitemradio", { name: "System", exact: true }).click();
+  await expect(theme).toBeChecked();
+  await expect(system).toHaveAttribute("aria-pressed", "false");
+  await system.click();
+  await expect(system).toHaveAttribute("aria-pressed", "true");
   await expect.poll(background).toBe(light);
   await page.emulateMedia({ colorScheme: "dark" });
   await expect.poll(background).not.toBe(light);
-  await theme.click();
-  await page.getByRole("menuitemradio", { name: "Light", exact: true }).click();
+  await expect(theme).toBeChecked();
+  await theme.uncheck();
   await expect.poll(background).toBe(light);
+  await expect(system).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("menu")).toHaveCount(0);
 });
 
 for (const width of [320, 390, 1440]) {

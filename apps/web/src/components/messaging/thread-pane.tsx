@@ -35,7 +35,6 @@ export function ThreadPane({
           />
         )
       }
-      empty={!replies.isPending && !replies.data?.length}
       composer={
         <Composer
           organizationId={organizationId}

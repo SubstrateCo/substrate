@@ -29,6 +29,7 @@ export function OrganizationSwitcher({
       compact={compact}
       organizations={organizations.data || []}
       pending={switchOrganization.isPending}
+      loading={organizations.isPending}
       error={switchOrganization.error || organizations.error}
       onSelect={(id) => switchOrganization.mutate(id)}
       manageHref="/organizations"

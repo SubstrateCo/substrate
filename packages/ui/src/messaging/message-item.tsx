@@ -56,15 +56,21 @@ export function MessageItem({
               {emoji} {count}
             </Button>
           ))}
-          <EmojiPicker label="React to message" onSelect={onReact} disabled={pending} />
-          {onThread && (
-            <Button size="xs" variant="ghost" onClick={() => onThread(message.id)}>
-              <MessageSquare className="size-3" />
-              {message.replyCount
-                ? `${message.replyCount} ${message.replyCount === 1 ? "reply" : "replies"}`
-                : "Reply in thread"}
-            </Button>
-          )}
+          <div
+            role="group"
+            aria-label="Message actions"
+            className="flex items-center gap-1 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 has-data-[state=open]:opacity-100"
+          >
+            <EmojiPicker label="React to message" onSelect={onReact} disabled={pending} />
+            {onThread && (
+              <Button size="xs" variant="ghost" onClick={() => onThread(message.id)}>
+                <MessageSquare className="size-3" />
+                {message.replyCount
+                  ? `${message.replyCount} ${message.replyCount === 1 ? "reply" : "replies"}`
+                  : "Reply in thread"}
+              </Button>
+            )}
+          </div>
         </div>
         <FormMessage error={error} floating />
       </div>

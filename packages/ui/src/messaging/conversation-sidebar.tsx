@@ -1,9 +1,14 @@
 import { Hash, LockKeyhole, MessageCircle, Plus, Users } from "lucide-react";
 import { conversationName, type Conversation } from "./types";
 import { Button } from "../primitives/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../primitives/dropdown-menu";
 
 export function ConversationSidebar({
-  workspaceName,
   conversations,
   selectedId,
   onSelect,
@@ -11,7 +16,6 @@ export function ConversationSidebar({
   mobileOpen,
   loading = false,
 }: {
-  workspaceName: string;
   conversations: Conversation[];
   selectedId?: string;
   onSelect: (id: string) => void;
@@ -26,11 +30,6 @@ export function ConversationSidebar({
       aria-busy={loading}
       className={`${mobileOpen ? "flex" : "hidden"} min-w-0 w-full shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground md:flex md:w-60 lg:w-64`}
     >
-      <div className="flex h-16 shrink-0 items-center border-b px-3">
-        <p className="truncate font-semibold" title={workspaceName}>
-          {workspaceName}
-        </p>
-      </div>
       <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-2 py-5">
         <div className="px-2">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -44,14 +43,38 @@ export function ConversationSidebar({
               <h2 className="text-xs font-semibold text-muted-foreground">
                 {section === "channel" ? "Channels" : "Direct messages"}
               </h2>
-              <Button
-                size="icon-xs"
-                variant="ghost"
-                aria-label={section === "channel" ? "Create channel" : "New direct message"}
-                onClick={() => onCreate(section)}
-              >
-                <Plus />
-              </Button>
+              {section === "channel" ? (
+                <Button
+                  size="icon-xs"
+                  variant="ghost"
+                  aria-label="Create channel"
+                  title="Create channel"
+                  onClick={() => onCreate("channel")}
+                >
+                  <Plus />
+                </Button>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="icon-xs"
+                      variant="ghost"
+                      aria-label="New message"
+                      title="New message"
+                    >
+                      <Plus />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => onCreate("dm")}>
+                      New direct message
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => onCreate("group")}>
+                      New group message
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
             {loading && (
               <div role="status" className="space-y-2 px-2 py-2">
@@ -106,20 +129,8 @@ export function ConversationSidebar({
                   {section === "channel" ? "No channels yet" : "No conversations yet"}
                 </p>
               )}
-            <Button
-              variant="ghost"
-              size="xs"
-              className="mt-1 w-full justify-start"
-              onClick={() => onCreate(section === "channel" ? "channel" : "group")}
-            >
-              <Plus />
-              {section === "channel" ? "Add a channel" : "New group message"}
-            </Button>
           </section>
         ))}
-      </div>
-      <div className="border-t p-4 text-xs text-muted-foreground">
-        A little less switching. A lot more doing.
       </div>
     </aside>
   );

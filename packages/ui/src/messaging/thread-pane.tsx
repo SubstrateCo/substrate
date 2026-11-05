@@ -10,7 +10,6 @@ export function ThreadPane({
   error,
   onRetry,
   replies,
-  empty = false,
   composer,
 }: {
   root?: ReactNode;
@@ -19,7 +18,6 @@ export function ThreadPane({
   error?: Error | null;
   onRetry: () => void;
   replies?: ReactNode;
-  empty?: boolean;
   composer: ReactNode;
 }) {
   return (
@@ -39,9 +37,6 @@ export function ThreadPane({
         <>
           {root && <div className="max-h-7/20 shrink-0 overflow-y-auto border-b">{root}</div>}
           {loading ? <PaneState label="Loading replies…" /> : replies}
-          {!loading && empty && (
-            <p className="p-5 text-sm text-muted-foreground">No replies yet. Start the thread.</p>
-          )}
         </>
       )}
       {!error && <div className="mt-auto shrink-0">{composer}</div>}

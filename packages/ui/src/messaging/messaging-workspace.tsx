@@ -6,7 +6,6 @@ import { PaneState } from "../feedback/pane-state";
 import { ConversationSidebar } from "./conversation-sidebar";
 
 export function MessagingWorkspace({
-  workspaceName,
   conversations,
   selectedId,
   sidebarOpen,
@@ -18,7 +17,6 @@ export function MessagingWorkspace({
   onRetry,
   children,
 }: {
-  workspaceName: string;
   conversations: Conversation[];
   selectedId?: string;
   sidebarOpen: boolean;
@@ -48,7 +46,6 @@ export function MessagingWorkspace({
         <ConversationSidebar
           mobileOpen={sidebarOpen}
           loading={loading}
-          workspaceName={workspaceName}
           conversations={conversations}
           selectedId={selectedId}
           onSelect={onSelect}

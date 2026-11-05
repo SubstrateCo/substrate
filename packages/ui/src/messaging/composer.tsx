@@ -100,9 +100,6 @@ export function Composer({
           </Button>
         </div>
       </div>
-      <p className="text-right text-xs text-muted-foreground">
-        Markdown supported · Shift + Enter for a new line
-      </p>
     </form>
   );
 }

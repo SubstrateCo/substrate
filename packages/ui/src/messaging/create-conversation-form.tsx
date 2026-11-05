@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { X } from "lucide-react";
 import type { Conversation } from "./types";
 import { Button } from "../primitives/button";
 import { Input } from "../primitives/input";
@@ -13,13 +12,11 @@ export function CreateConversationForm({
   onSubmit,
   pending = false,
   error,
-  onClose,
 }: {
   kind: Conversation["kind"];
   onSubmit: (draft: ConversationDraft) => void;
   pending?: boolean;
   error?: Error | null;
-  onClose: () => void;
 }) {
   const [name, setName] = useState("");
   const [emails, setEmails] = useState("");
@@ -31,13 +28,8 @@ export function CreateConversationForm({
         ? "New direct message"
         : "New group message";
   return (
-    <section className="mx-auto w-full max-w-xl p-6 sm:p-10">
-      <div className="mb-7 flex items-center justify-between">
-        <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
-        <Button variant="ghost" size="icon" aria-label="Cancel new conversation" onClick={onClose}>
-          <X />
-        </Button>
-      </div>
+    <section className="m-auto w-full max-w-xl shrink-0 p-6 sm:p-10">
+      <h2 className="mb-7 text-xl font-semibold tracking-tight">{title}</h2>
       <form
         className="space-y-5"
         onSubmit={(event) => {

@@ -56,13 +56,13 @@ export function InvitationManager({
       <CardContent>
         <div className="space-y-6">
           <form
-            className="flex flex-col gap-4 sm:flex-row sm:items-end"
+            className="grid gap-4 sm:grid-cols-12 sm:items-end"
             onSubmit={(event) => {
               event.preventDefault();
               onInvite(email, role);
             }}
           >
-            <div className="min-w-0 flex-1 space-y-2">
+            <div className="grid min-w-0 gap-2 sm:col-span-6">
               <Label htmlFor="invite-email">Email</Label>
               <Input
                 id="invite-email"
@@ -75,7 +75,7 @@ export function InvitationManager({
                 required
               />
             </div>
-            <div className="space-y-2 sm:w-35 sm:shrink-0">
+            <div className="grid min-w-0 gap-2 sm:col-span-3">
               <Label htmlFor="invite-role">Role</Label>
               <Select
                 value={role}
@@ -83,7 +83,7 @@ export function InvitationManager({
                   if (value === "owner" || value === "admin" || value === "member") setRole(value);
                 }}
               >
-                <SelectTrigger id="invite-role">
+                <SelectTrigger id="invite-role" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -93,7 +93,9 @@ export function InvitationManager({
                 </SelectContent>
               </Select>
             </div>
-            <Button disabled={busy}>{sending ? "Sending…" : "Send invitation"}</Button>
+            <Button className="sm:col-span-3" disabled={busy}>
+              {sending ? "Sending…" : "Send invitation"}
+            </Button>
           </form>
           <FormMessage error={failed ? null : error} message={message} floating />
           <section className="min-h-48 space-y-3">

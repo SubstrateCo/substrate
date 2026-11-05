@@ -14,15 +14,17 @@ const buttonVariants = cva(
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         ghost:
-          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-accent dark:aria-expanded:bg-accent aria-pressed:bg-accent aria-pressed:text-accent-foreground",
+        avatar:
+          "bg-accent text-xs font-semibold text-accent-foreground shadow-surface hover:bg-accent/80",
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",
-        rail: "text-rail-foreground/60 hover:bg-rail-foreground/10 hover:text-rail-foreground aria-[current=page]:bg-rail-foreground/15 aria-[current=page]:text-rail-foreground aria-[current=page]:shadow-surface aria-[current=page]:hover:bg-rail-foreground/20",
+        rail: "text-rail-foreground/60 hover:bg-rail-foreground/10 hover:text-rail-foreground aria-[current=page]:bg-rail-foreground/15 aria-[current=page]:text-rail-foreground aria-[current=page]:shadow-surface aria-[current=page]:hover:bg-rail-foreground/20 dark:aria-[current=page]:border-primary/40 dark:aria-[current=page]:bg-accent dark:aria-[current=page]:hover:bg-accent",
         workspace:
           "rounded-xl bg-rail-foreground text-rail shadow-raised hover:bg-rail-foreground/90 hover:text-rail",
         sidebar:
-          "font-normal text-muted-foreground hover:bg-muted hover:text-foreground aria-[current=page]:bg-card aria-[current=page]:text-sidebar-accent-foreground aria-[current=page]:shadow-surface aria-[current=page]:hover:bg-card",
+          "font-normal text-muted-foreground hover:bg-muted hover:text-foreground aria-[current=page]:bg-card aria-[current=page]:text-sidebar-accent-foreground aria-[current=page]:shadow-surface aria-[current=page]:hover:bg-card dark:hover:bg-accent dark:aria-[current=page]:border-primary/40 dark:aria-[current=page]:bg-sidebar-accent dark:aria-[current=page]:font-medium dark:aria-[current=page]:hover:bg-sidebar-accent",
         reaction:
           "border-border bg-card text-muted-foreground shadow-surface hover:bg-muted hover:text-foreground aria-pressed:border-primary/25 aria-pressed:bg-accent aria-pressed:text-accent-foreground",
       },

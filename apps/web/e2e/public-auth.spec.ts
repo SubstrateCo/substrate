@@ -99,13 +99,11 @@ test("cookie-only sessions skip login and signup and survive dashboard reload", 
     for (const path of ["/login", "/signup"]) {
       await restoredPage.goto(path);
       await expect(restoredPage).toHaveURL(/\/dashboard$/);
-      await expect(
-        restoredPage.getByRole("button", { name: "Sign out", exact: true }),
-      ).toBeVisible();
+      await expect(restoredPage.getByRole("button", { name: /^Signed in as / })).toBeVisible();
     }
     await restoredPage.reload();
     await expect(restoredPage).toHaveURL(/\/dashboard$/);
-    await expect(restoredPage.getByRole("button", { name: "Sign out", exact: true })).toBeVisible();
+    await expect(restoredPage.getByRole("button", { name: /^Signed in as / })).toBeVisible();
 
     await restoredPage.goto("/login?redirect=%2Forganizations");
     await expect(restoredPage).toHaveURL(/\/organizations$/);
