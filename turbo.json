@@ -7,6 +7,8 @@
     },
     "test": {
       "dependsOn": ["^typecheck"],
+      "env": ["TEST_DATABASE_URL", "DATABASE_URL"],
+      "cache": false,
       "outputs": []
     }
   }

@@ -1,0 +1,34 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: startup_os
+      POSTGRES_PASSWORD: startup_os
+      POSTGRES_DB: startup_os
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U startup_os -d startup_os"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  postgres-test:
+    image: postgres:17-alpine
+    profiles: [test]
+    environment:
+      POSTGRES_USER: startup_os_test
+      POSTGRES_PASSWORD: startup_os_test
+      POSTGRES_DB: startup_os_test
+    ports:
+      - "127.0.0.1:5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U startup_os_test -d startup_os_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+volumes:
+  postgres_data:
