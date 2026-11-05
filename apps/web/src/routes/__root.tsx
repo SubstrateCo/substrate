@@ -7,7 +7,8 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import stylesheet from "../styles.css?url";
-import { Button } from "@/components/ui/button";
+import { NotFound } from "@startup-os/ui/feedback/not-found";
+import { ErrorScreen } from "@startup-os/ui/feedback/error-screen";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
@@ -19,21 +20,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     links: [{ rel: "stylesheet", href: stylesheet }],
   }),
   component: Root,
-  notFoundComponent: () => (
-    <main className="mx-auto max-w-lg space-y-4 p-8">
-      <h1 className="text-2xl font-semibold">Page not found</h1>
-      <Link to="/">Return home</Link>
-    </main>
-  ),
-  errorComponent: ({ reset }) => (
-    <main className="mx-auto max-w-lg space-y-4 p-8">
-      <h1 className="text-2xl font-semibold">Something went wrong</h1>
-      <p>Please try again.</p>
-      <Button type="button" onClick={reset}>
-        Try again
-      </Button>
-    </main>
-  ),
+  notFoundComponent: () => <NotFound homeLink={<Link to="/">Return home</Link>} />,
+  errorComponent: ({ reset }) => <ErrorScreen onRetry={reset} />,
 });
 
 function Root() {

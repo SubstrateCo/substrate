@@ -1,11 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { LoginForm as LoginFormView } from "@startup-os/ui/auth/login-form";
 import { authClient } from "@/lib/auth-client";
 import { authHref, safeRedirect } from "@/lib/auth-navigation";
-import { AuthFrame } from "./auth-frame";
-import { FormMessage } from "./form-message";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { formText } from "./form-values";
 
 export function LoginForm({ redirect, email = "" }: { redirect: string; email?: string }) {
@@ -30,48 +26,13 @@ export function LoginForm({ redirect, email = "" }: { redirect: string; email?: 
     },
   });
   return (
-    <AuthFrame title="Welcome back" description="Sign in to your workspace.">
-      <form
-        className="space-y-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-          login.mutate(new FormData(event.currentTarget));
-        }}
-      >
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            defaultValue={email}
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-          />
-        </div>
-        <FormMessage error={login.error} />
-        <Button className="w-full" disabled={login.isPending}>
-          {login.isPending ? "Signing in…" : "Sign in"}
-        </Button>
-      </form>
-      <div className="flex justify-between gap-4 text-sm">
-        <a className="underline" href={authHref("/forgot-password", redirect)}>
-          Forgot password?
-        </a>
-        <a className="underline" href={authHref("/signup", redirect)}>
-          Create account
-        </a>
-      </div>
-    </AuthFrame>
+    <LoginFormView
+      email={email}
+      pending={login.isPending}
+      error={login.error}
+      onSubmit={(form) => login.mutate(form)}
+      forgotPasswordHref={authHref("/forgot-password", redirect)}
+      signupHref={authHref("/signup", redirect)}
+    />
   );
 }

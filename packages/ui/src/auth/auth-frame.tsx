@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../primitives/card";
 
 export function AuthFrame({
   title,

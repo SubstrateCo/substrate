@@ -1,0 +1,3 @@
+@import "@startup-os/ui/styles.css";
+
+@source "./**/*.{ts,tsx}";

@@ -1,11 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ResetPasswordForm as ResetPasswordFormView } from "@startup-os/ui/auth/reset-password-form";
 import { authClient } from "@/lib/auth-client";
 import { authHref } from "@/lib/auth-navigation";
-import { AuthFrame } from "./auth-frame";
-import { FormMessage } from "./form-message";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { formText } from "./form-values";
 
 export function ResetPasswordForm({
@@ -33,57 +29,15 @@ export function ResetPasswordForm({
       queryClient.clear();
     },
   });
-  const invalid = !token || Boolean(error);
   return (
-    <AuthFrame title="Choose a new password" description="Use at least 8 characters.">
-      {invalid ? (
-        <FormMessage message="This reset link is missing, invalid, or expired. Request a new link." />
-      ) : reset.isSuccess ? (
-        <>
-          <FormMessage message="Your password was changed. You can now sign in." />
-          <a className="block underline" href={authHref("/login", redirect)}>
-            Sign in
-          </a>
-        </>
-      ) : (
-        <form
-          className="space-y-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            reset.mutate(new FormData(event.currentTarget));
-          }}
-        >
-          <div className="space-y-2">
-            <Label htmlFor="password">New password</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              minLength={8}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="confirm">Confirm password</Label>
-            <Input
-              id="confirm"
-              name="confirm"
-              type="password"
-              autoComplete="new-password"
-              minLength={8}
-              required
-            />
-          </div>
-          <FormMessage error={reset.error} />
-          <Button className="w-full" disabled={reset.isPending}>
-            {reset.isPending ? "Saving…" : "Save new password"}
-          </Button>
-        </form>
-      )}
-      <a className="block text-sm underline" href={authHref("/forgot-password", redirect)}>
-        Request a new reset link
-      </a>
-    </AuthFrame>
+    <ResetPasswordFormView
+      invalid={!token || Boolean(error)}
+      pending={reset.isPending}
+      success={reset.isSuccess}
+      error={reset.error}
+      onSubmit={(form) => reset.mutate(form)}
+      loginHref={authHref("/login", redirect)}
+      requestResetHref={authHref("/forgot-password", redirect)}
+    />
   );
 }

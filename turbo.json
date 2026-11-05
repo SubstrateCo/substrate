@@ -3,10 +3,12 @@
   "tasks": {
     "typecheck": {
       "dependsOn": ["^typecheck"],
+      "outputLogs": "errors-only",
       "outputs": []
     },
     "test": {
       "dependsOn": ["^typecheck"],
+      "outputLogs": "errors-only",
       "env": ["TEST_DATABASE_URL", "DATABASE_URL"],
       "cache": false,
       "outputs": []

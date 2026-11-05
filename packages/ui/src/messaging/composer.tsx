@@ -1,0 +1,112 @@
+import { useRef, useState } from "react";
+import { Bold, Code, Italic, Send } from "lucide-react";
+import { Button } from "../primitives/button";
+import { Textarea } from "../primitives/textarea";
+import { FormMessage } from "../auth/form-message";
+import { EmojiPicker } from "./emoji-picker";
+
+export function Composer({
+  onSend,
+  pending = false,
+  error,
+  label,
+  defaultValue = "",
+}: {
+  onSend: (body: string, onSuccess: () => void) => void;
+  pending?: boolean;
+  error?: Error | null;
+  label: string;
+  defaultValue?: string;
+}) {
+  const [draft, setDraft] = useState(defaultValue);
+  const textarea = useRef<HTMLTextAreaElement>(null);
+  const submit = () => {
+    if (!draft.trim() || pending) return;
+    onSend(draft.trim(), () => {
+      setDraft("");
+      textarea.current?.focus();
+    });
+  };
+  const insert = (prefix: string, suffix = "") => {
+    const start = textarea.current?.selectionStart ?? draft.length;
+    const end = textarea.current?.selectionEnd ?? draft.length;
+    setDraft(draft.slice(0, start) + prefix + draft.slice(start, end) + suffix + draft.slice(end));
+    textarea.current?.focus();
+  };
+  return (
+    <form
+      className="space-y-2 p-4 pt-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        submit();
+      }}
+    >
+      <FormMessage error={error} />
+      <div className="overflow-hidden rounded-xl border bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring/30">
+        <div className="flex items-center gap-1 border-b bg-muted/35 px-2 py-1">
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            aria-label="Bold text"
+            disabled={pending}
+            onClick={() => insert("**", "**")}
+          >
+            <Bold />
+          </Button>
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            aria-label="Italic text"
+            disabled={pending}
+            onClick={() => insert("_", "_")}
+          >
+            <Italic />
+          </Button>
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            aria-label="Code text"
+            disabled={pending}
+            onClick={() => insert("`", "`")}
+          >
+            <Code />
+          </Button>
+        </div>
+        <Textarea
+          ref={textarea}
+          aria-label={label}
+          placeholder={label}
+          value={draft}
+          maxLength={20000}
+          disabled={pending}
+          onChange={(event) => setDraft(event.target.value)}
+          className="min-h-24 resize-y rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0"
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+              event.preventDefault();
+              submit();
+            }
+          }}
+        />
+        <div className="flex items-center justify-between px-2 pb-2">
+          <EmojiPicker onSelect={(emoji) => insert(emoji)} disabled={pending} />
+          <Button
+            type="submit"
+            size="sm"
+            className="bg-emerald-700 text-white hover:bg-emerald-800"
+            disabled={!draft.trim() || pending}
+          >
+            <Send className="size-3.5" />
+            {pending ? "Sending…" : "Send"}
+          </Button>
+        </div>
+      </div>
+      <p className="text-right text-[11px] text-muted-foreground">
+        Markdown supported · Shift + Enter for a new line
+      </p>
+    </form>
+  );
+}
