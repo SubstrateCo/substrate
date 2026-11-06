@@ -11,10 +11,12 @@ export function CreateConversationForm({
   organizationId,
   kind,
   onCreated,
+  onCancel,
 }: {
   organizationId: string;
   kind: Conversation["kind"];
   onCreated: (id: string) => void;
+  onCancel: () => void;
 }) {
   const queryClient = useQueryClient();
   const create = useMutation({
@@ -44,6 +46,7 @@ export function CreateConversationForm({
   return (
     <CreateConversationFormView
       kind={kind}
+      onCancel={onCancel}
       pending={create.isPending}
       error={create.error}
       onSubmit={(draft) =>

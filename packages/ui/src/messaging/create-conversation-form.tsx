@@ -1,26 +1,35 @@
-import { useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Conversation } from "./types";
 import { PendingButton } from "../feedback/pending-button";
 import { Input } from "../primitives/input";
 import { Label } from "../primitives/label";
 import { FormMessage } from "../auth/form-message";
+import { Button } from "../primitives/button";
 
 export type ConversationDraft = { name: string; emails: string; isPrivate: boolean };
 
 export function CreateConversationForm({
   kind,
   onSubmit,
+  onCancel,
   pending = false,
   error,
+  children,
 }: {
   kind: Conversation["kind"];
   onSubmit: (draft: ConversationDraft) => void;
+  onCancel: () => void;
   pending?: boolean;
   error?: Error | null;
+  children?: ReactNode;
 }) {
   const [name, setName] = useState("");
   const [emails, setEmails] = useState("");
   const [isPrivate, setPrivate] = useState(false);
+  const form = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    form.current?.querySelector("input")?.focus();
+  }, []);
   const title = {
     channel: "Create a channel",
     dm: "New direct message",
@@ -30,7 +39,19 @@ export function CreateConversationForm({
     <section className="m-auto w-full max-w-xl shrink-0 p-6 sm:p-10">
       <h2 className="mb-7 text-xl font-semibold tracking-tight">{title}</h2>
       <form
+        ref={form}
         className="space-y-5"
+        onKeyDown={(event) => {
+          if (
+            event.key === "Escape" &&
+            !event.defaultPrevented &&
+            !event.nativeEvent.isComposing &&
+            !pending
+          ) {
+            event.preventDefault();
+            onCancel();
+          }
+        }}
         onSubmit={(event) => {
           event.preventDefault();
           if (pending) return;
@@ -71,6 +92,7 @@ export function CreateConversationForm({
             included. They must already have an account.
           </p>
         </div>
+        {children}
         {kind === "channel" && (
           <Label>
             <input
@@ -86,9 +108,19 @@ export function CreateConversationForm({
           error={error}
           errorDescription="We couldn’t create this conversation. Check the recipients and try again."
         />
-        <PendingButton type="submit" pending={pending} pendingLabel="Creating…">
-          {kind === "channel" ? "Create channel" : "Start conversation"}
-        </PendingButton>
+        <div className="flex flex-wrap gap-2">
+          <PendingButton
+            type="submit"
+            className="min-w-36"
+            pending={pending}
+            pendingLabel="Creating…"
+          >
+            {kind === "channel" ? "Create channel" : "Start conversation"}
+          </PendingButton>
+          <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
+            Cancel
+          </Button>
+        </div>
       </form>
     </section>
   );

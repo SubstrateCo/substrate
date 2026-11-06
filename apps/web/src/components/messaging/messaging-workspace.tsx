@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { MessagingWorkspace as MessagingWorkspaceView } from "@startup-os/ui/messaging/messaging-workspace";
-import type { Conversation } from "@/lib/messaging";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
 import { ConversationPane } from "./conversation-pane";
 import { CreateConversationForm } from "./create-conversation-form";
@@ -14,7 +13,6 @@ export function MessagingWorkspace({ organizationId }: { organizationId: string 
   const search = useSearch({ strict: false });
   const navigate = useNavigate();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [creating, setCreating] = useState<Conversation["kind"] | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const visibleConversations = isAccessFailure(conversations.error) ? [] : conversations.data || [];
   const selected =
@@ -24,7 +22,7 @@ export function MessagingWorkspace({ organizationId }: { organizationId: string 
   return (
     <MessagingWorkspaceView
       conversations={visibleConversations}
-      selectedId={creating ? undefined : selected?.id}
+      selectedId={selected?.id}
       sidebarOpen={sidebarOpen}
       onSidebarOpenChange={setSidebarOpen}
       onSelect={(id) => {
@@ -33,40 +31,36 @@ export function MessagingWorkspace({ organizationId }: { organizationId: string 
           to: "/dashboard",
           search: { workspaceId: organizationId, conversationId: id },
         });
-        setCreating(null);
-        setSidebarOpen(false);
-      }}
-      onCreate={(kind) => {
-        setCreating(kind);
         setSidebarOpen(false);
       }}
       loading={conversations.isPending}
       error={conversations.error}
       onRetry={() => void conversations.refetch()}
-    >
-      {creating && (
+      renderCreate={(kind, { onCancel, onComplete }) => (
         <CreateConversationForm
-          key={creating}
+          key={kind}
           organizationId={organizationId}
-          kind={creating}
+          kind={kind}
+          onCancel={onCancel}
           onCreated={(id) => {
             setSelectedId(id);
             void navigate({
               to: "/dashboard",
               search: { workspaceId: organizationId, conversationId: id },
             });
-            setCreating(null);
+            onComplete();
           }}
         />
       )}
-      {!creating && selected && (
+    >
+      {selected && (
         <ConversationPane
           key={selected.id}
           organizationId={organizationId}
           conversation={selected}
         />
       )}
-      {!creating && search.conversationId && !selected && !conversations.isPending && (
+      {search.conversationId && !selected && !conversations.isPending && (
         <ConversationUnavailable />
       )}
     </MessagingWorkspaceView>

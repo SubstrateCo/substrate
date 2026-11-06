@@ -1,4 +1,5 @@
 import { Plus } from "lucide-react";
+import { useRef } from "react";
 import type { Conversation } from "./types";
 import { ConversationSidebarItem } from "./conversation-sidebar-item";
 import { Button } from "../primitives/button";
@@ -42,6 +43,7 @@ export function ConversationSidebar({
   error?: Error | null;
   onRetry?: () => void;
 }) {
+  const creatingFromMenu = useRef<Conversation["kind"] | null>(null);
   return (
     <aside
       id="conversation-sidebar"
@@ -71,6 +73,7 @@ export function ConversationSidebar({
                     size="icon-xs"
                     variant="ghost"
                     aria-label="Create channel"
+                    data-create-conversation="sidebar-channel"
                     title="Create channel"
                     onClick={() => onCreate("channel")}
                   >
@@ -84,16 +87,35 @@ export function ConversationSidebar({
                         size="icon-xs"
                         variant="ghost"
                         aria-label="New message"
+                        data-create-conversation="sidebar-message"
                         title="New message"
                       >
                         <Plus />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onSelect={() => onCreate("dm")}>
+                    <DropdownMenuContent
+                      align="end"
+                      onCloseAutoFocus={(event) => {
+                        const kind = creatingFromMenu.current;
+                        if (kind) {
+                          event.preventDefault();
+                          creatingFromMenu.current = null;
+                          onCreate(kind);
+                        }
+                      }}
+                    >
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          creatingFromMenu.current = "dm";
+                        }}
+                      >
                         New direct message
                       </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => onCreate("group")}>
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          creatingFromMenu.current = "group";
+                        }}
+                      >
                         New group message
                       </DropdownMenuItem>
                     </DropdownMenuContent>

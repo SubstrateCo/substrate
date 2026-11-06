@@ -37,6 +37,7 @@ export type MessagingSceneProps = {
   linkedTask?: "channel" | "thread";
   referencesDemo?: boolean;
   sendLifecycle?: boolean;
+  readingMeasure?: boolean;
 };
 
 export function MessagingScene({
@@ -53,9 +54,9 @@ export function MessagingScene({
   linkedTask,
   referencesDemo = false,
   sendLifecycle = false,
+  readingMeasure = false,
 }: MessagingSceneProps) {
   const [selectedId, setSelectedId] = useState(conversationId);
-  const [creating, setCreating] = useState(creatingKind);
   const [sidebarOpen, setSidebarOpen] = useState(mobileSidebarOpen);
   const [addingMembers, setAddingMembers] = useState(membersOpen);
   const [threadId, setThreadId] = useState<string | null>(threadState === "closed" ? null : "plan");
@@ -78,19 +79,39 @@ export function MessagingScene({
   const selected = visible.find((item) => item.id === selectedId);
   const baseMessages =
     messageState === "empty" || messageState === "loading" ? [] : messageFixtures;
-  const timeline =
-    messagesByConversation[selectedId] ??
-    (longContent
-      ? [
-          {
-            ...messageFixtures[0],
-            id: "long-message",
-            authorName: "Alexandria Morgan With A Very Long Display Name",
-            body: "AnUnbrokenMessageThatMustWrap".repeat(20),
-          },
-          ...baseMessages,
-        ]
-      : baseMessages);
+  const timeline = readingMeasure
+    ? [
+        {
+          ...messageFixtures[0],
+          id: "reading-measure",
+          body: [
+            "Launch planning is easier when the discussion stays readable. ".repeat(16),
+            "- " + "Readable list context keeps each decision beside its source. ".repeat(8),
+            "> " +
+              "A useful quote keeps the original context close to the next decision. ".repeat(8),
+            "```ts\nconst report = " + "launch_".repeat(240) + ";\n```",
+            "| " +
+              Array.from({ length: 12 }, (_, i) => `Release area ${i + 1}`).join(" | ") +
+              " |\n| " +
+              Array.from({ length: 12 }, () => "---").join(" | ") +
+              " |\n| " +
+              Array.from({ length: 12 }, () => "Ready for review").join(" | ") +
+              " |",
+          ].join("\n\n"),
+        },
+      ]
+    : (messagesByConversation[selectedId] ??
+      (longContent
+        ? [
+            {
+              ...messageFixtures[0],
+              id: "long-message",
+              authorName: "Alexandria Morgan With A Very Long Display Name",
+              body: "AnUnbrokenMessageThatMustWrap".repeat(20),
+            },
+            ...baseMessages,
+          ]
+        : baseMessages));
   let error: Error | null = null;
   if (state === "stale") {
     error = new Error("Your active workspace changed. Reload this page to continue.");
@@ -256,7 +277,8 @@ export function MessagingScene({
     >
       <MessagingWorkspace
         conversations={visible}
-        selectedId={creating ? undefined : selected?.id}
+        selectedId={selected?.id}
+        initialCreating={creatingKind}
         sidebarOpen={sidebarOpen}
         onSidebarOpenChange={setSidebarOpen}
         loading={state === "loading"}
@@ -264,38 +286,34 @@ export function MessagingScene({
         onRetry={() => setNotice(new Error("Retry is a preview only. No backend is connected."))}
         onSelect={(id) => {
           setSelectedId(id);
-          setCreating(undefined);
           setSidebarOpen(false);
           setThreadId(null);
           setAddingMembers(false);
         }}
-        onCreate={(kind) => {
-          setCreating(kind);
-          setSidebarOpen(false);
-        }}
-      >
-        {creating && (
+        renderCreate={(kind, { onCancel, onComplete }) => (
           <CreateConversationForm
-            key={creating}
-            kind={creating}
+            key={kind}
+            kind={kind}
+            onCancel={onCancel}
             onSubmit={(draft) => {
               const id = `new-${items.length}`;
               setItems([
                 ...items,
                 {
                   id,
-                  kind: creating,
+                  kind,
                   name: draft.name || draft.emails,
-                  private: creating !== "channel" || draft.isPrivate,
+                  private: kind !== "channel" || draft.isPrivate,
                 },
               ]);
               setMessages({ ...messagesByConversation, [id]: [] });
               setSelectedId(id);
-              setCreating(undefined);
+              onComplete();
             }}
           />
         )}
-        {!creating && selected && (
+      >
+        {selected && (
           <ConversationPane
             conversation={selected}
             loading={messageState === "loading"}

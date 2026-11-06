@@ -9,6 +9,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const PublicChannel: Story = {};
+export const ReadingMeasure: Story = { args: { readingMeasure: true } };
 export const ReferencesInChannel: Story = { args: { referencesDemo: true } };
 export const ReferencesInThread: Story = { args: { referencesDemo: true, threadState: "ready" } };
 export const ReferencePickerOpen: Story = {
