@@ -1,0 +1,6 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "references": {
+    "t3code": "https://github.com/pingdotgg/t3code"
+  }
+}
