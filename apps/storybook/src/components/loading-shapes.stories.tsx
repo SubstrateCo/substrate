@@ -7,7 +7,7 @@ import { EntityReference } from "@startup-os/ui/messaging/entity-reference";
 import { Button } from "@startup-os/ui/primitives/button";
 import { taskProject } from "../scenes/tasks-fixtures";
 
-function LoadingShapes({
+function WorkspaceLoading({
   scene = "project",
   hasSourceText = true,
 }: {
@@ -31,10 +31,7 @@ function LoadingShapes({
         Resolve loading
       </Button>
       {scene === "project" && (
-        <section
-          aria-label="Project fixture"
-          className="flex h-screen max-w-3xl"
-        >
+        <section aria-label="Project fixture" className="flex h-screen max-w-3xl">
           <ProjectPane
             data={ready ? taskProject : undefined}
             loading={!ready}
@@ -74,8 +71,8 @@ function LoadingShapes({
 
 const meta = {
   title: "Workspace/Loading shapes",
-  component: LoadingShapes,
-} satisfies Meta<typeof LoadingShapes>;
+  component: WorkspaceLoading,
+} satisfies Meta<typeof WorkspaceLoading>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const Project: Story = {};

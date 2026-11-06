@@ -21,20 +21,11 @@ export function EntityReference({
   const content = (
     <>
       {loading && !reference ? (
-        <Spinner
-          aria-hidden="true"
-          className="inline size-3.5 align-text-bottom motion-reduce:animate-none"
-        />
+        <Spinner aria-hidden="true" className="inline size-3.5 align-text-bottom" />
       ) : (
-        <Icon
-          aria-hidden="true"
-          className="inline size-3.5 align-text-bottom"
-        />
+        <Icon aria-hidden="true" className="inline size-3.5 align-text-bottom" />
       )}{" "}
-      <span>
-        {reference?.label ??
-          (loading ? "Loading reference…" : "Unavailable reference")}
-      </span>
+      <span>{reference?.label ?? (loading ? "Loading reference…" : "Unavailable reference")}</span>
     </>
   );
   const className =
