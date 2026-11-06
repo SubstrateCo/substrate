@@ -1,18 +1,29 @@
 import type { ReactNode } from "react";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "../primitives/empty";
 
 export function NotFound({ homeLink }: { homeLink: ReactNode }) {
   return (
     <main className="flex min-h-dvh items-center justify-center p-6">
-      <div className="w-full max-w-md space-y-4 rounded-2xl border bg-card p-8 shadow-raised">
-        <p className="text-xs font-semibold tracking-widest text-primary">404 / NOT FOUND</p>
-        <h1 className="text-2xl font-semibold tracking-tight">Page not found</h1>
-        <p className="text-sm text-muted-foreground">
-          This page may have moved, or you may have the wrong link.
-        </p>
-        <div className="text-sm font-medium text-primary underline underline-offset-4">
-          {homeLink}
-        </div>
-      </div>
+      <Empty className="max-w-md">
+        <EmptyHeader>
+          <p className="text-xs font-medium text-muted-foreground">404</p>
+          <EmptyTitle>
+            <h1 className="text-2xl">Page not found</h1>
+          </EmptyTitle>
+          <EmptyDescription>
+            This page may have moved, or you may have the wrong link.
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <div className="text-primary underline underline-offset-4">{homeLink}</div>
+        </EmptyContent>
+      </Empty>
     </main>
   );
 }

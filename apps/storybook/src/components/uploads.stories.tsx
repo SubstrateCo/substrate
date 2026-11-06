@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { PictureSettings } from "@startup-os/ui/settings/picture-settings";
 import {
   FileUpload,
   PictureUpload,
@@ -146,3 +147,38 @@ export const UploadStates: Story = {
   ),
 };
 export const ItemRetry: Story = { render: () => <ItemRecovery /> };
+
+function RefreshingPictureSettings() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [saved, setSaved] = useState(false);
+  const attempts = useRef(0);
+  return (
+    <div className="mx-auto max-w-lg">
+      <PictureSettings
+        title="Profile picture"
+        kind="avatar"
+        value={null}
+        loading={loading}
+        error={error}
+        onRetry={() => setError(null)}
+        onRemove={async () => {}}
+        onUpload={async () => {
+          attempts.current += 1;
+          if (attempts.current === 1) {
+            setLoading(true);
+            await new Promise((resolve) => setTimeout(resolve, 600));
+            setLoading(false);
+            setError(new Error("Refresh failed"));
+            throw new Error("Upload failed");
+          }
+          setError(null);
+          setSaved(true);
+        }}
+      />
+      {saved && <p role="status">Picture saved.</p>}
+    </div>
+  );
+}
+
+export const SettingsRefreshRetry: Story = { render: () => <RefreshingPictureSettings /> };

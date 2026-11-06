@@ -50,14 +50,13 @@ export function LoginForm({
             required
           />
         </div>
-        <FormMessage
-          error={error}
-          errorDescription="We couldn’t sign you in. Check your details and try again."
-          reserve
-        />
         <PendingButton className="w-full" pending={pending} pendingLabel="Signing in…">
           Sign in
         </PendingButton>
+        <FormMessage
+          error={error}
+          errorDescription="We couldn’t sign you in. Check your details and try again."
+        />
       </form>
       <div className="flex justify-between gap-4 text-sm">
         <a className="underline" href={forgotPasswordHref}>

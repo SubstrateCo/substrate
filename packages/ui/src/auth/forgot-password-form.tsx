@@ -34,15 +34,14 @@ export function ForgotPasswordForm({
           <Label htmlFor="email">Email</Label>
           <Input id="email" name="email" type="email" autoComplete="email" required />
         </div>
+        <PendingButton className="w-full" pending={pending} pendingLabel="Sending…">
+          Send reset link
+        </PendingButton>
         <FormMessage
-          reserve
           error={error}
           errorDescription="We couldn’t send a reset link. Please try again."
           message={success ? "Check your inbox for a password reset link." : undefined}
         />
-        <PendingButton className="w-full" pending={pending} pendingLabel="Sending…">
-          Send reset link
-        </PendingButton>
       </form>
       <a className="block text-sm underline" href={loginHref}>
         Back to sign in

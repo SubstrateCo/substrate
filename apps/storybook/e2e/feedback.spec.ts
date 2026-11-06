@@ -139,3 +139,23 @@ test("loading placeholders honor reduced motion", async ({ page }) => {
   expect(durations.length).toBeGreaterThan(0);
   expect(durations.every((duration) => duration <= 0.01)).toBe(true);
 });
+
+for (const theme of ["light", "dark"]) {
+  test(`page errors stay centered and retry remains visible in ${theme}`, async ({ page }) => {
+    for (const viewport of [
+      { width: 1440, height: 900 },
+      { width: 390, height: 700 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto(
+        `/iframe.html?id=scenes-system-feedback--unexpected-error&viewMode=story&globals=theme:${theme}`,
+      );
+      const alert = page.getByRole("alert");
+      await expect(alert).toBeVisible();
+      const bounds = (await alert.boundingBox())!;
+      expect(Math.abs(bounds.x + bounds.width / 2 - viewport.width / 2)).toBeLessThanOrEqual(1);
+      expect(Math.abs(bounds.y + bounds.height / 2 - viewport.height / 2)).toBeLessThanOrEqual(1);
+      await expect(alert.getByRole("button", { name: "Try again" })).toBeInViewport({ ratio: 1 });
+    }
+  });
+}

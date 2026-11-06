@@ -209,10 +209,27 @@ test("final attachment cannot be cancelled and successful attachment closes the 
   await page.getByRole("button", { name: "Save picture" }).click();
   await expect(page.getByRole("status")).toHaveText("Finishing picture…");
   await expect(page.getByRole("button", { name: "Cancel upload", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Close", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Cancel", exact: true })).toBeDisabled();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toBeVisible();
   await expect(page.getByRole("status")).toHaveText("Picture saved.");
   await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+test("settings refresh and refresh failure preserve the open crop for retry", async ({ page }) => {
+  await page.goto("/iframe.html?id=components-uploads--settings-refresh-retry&viewMode=story");
+  await picture(page);
+  await page.getByRole("slider", { name: "Zoom" }).fill("1.5");
+  await page.getByRole("button", { name: "Save picture" }).click();
+  await expect(page.getByRole("progressbar", { name: "Uploading picture" })).toBeVisible();
+  await expect(page.getByRole("dialog").getByRole("alert")).toHaveText(
+    "We couldn’t save this picture. Your crop is still here. Please try again.",
+  );
+  await expect(page.getByRole("slider", { name: "Zoom" })).toHaveValue("1.5");
+  await page.getByRole("button", { name: "Save picture" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("status")).toHaveText("Picture saved.");
 });
 
 test("invalid picture bytes report safe errors without opening the crop dialog", async ({
@@ -243,6 +260,45 @@ test("upload items expose retry and cancellation", async ({ page }) => {
 });
 
 for (const theme of ["light", "dark"]) {
+  for (const dismissal of ["cancel", "escape", "save"]) {
+    test(`picture chooser regains focus after ${dismissal} in ${theme} mode`, async ({ page }) => {
+      await page.goto(
+        `/iframe.html?id=components-uploads--${dismissal === "save" ? "committing-picture" : "avatar"}&viewMode=story&globals=theme:${theme}`,
+      );
+      await page.getByRole("button", { name: "Choose picture", exact: true }).focus();
+      await picture(page);
+      if (dismissal === "escape") await page.keyboard.press("Escape");
+      else
+        await page
+          .getByRole("button", {
+            name: dismissal === "save" ? "Save picture" : "Cancel",
+            exact: true,
+          })
+          .click();
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+      await expect(
+        page.getByRole("button", {
+          name: dismissal === "save" ? "Replace picture" : "Choose picture",
+          exact: true,
+        }),
+      ).toBeFocused();
+    });
+  }
+
+  test(`crop actions fit a short desktop window in ${theme} mode`, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 500 });
+    await page.goto(
+      `/iframe.html?id=components-uploads--organization-logo&viewMode=story&globals=theme:${theme}`,
+    );
+    await picture(page);
+    await expect(page.getByRole("button", { name: "Save picture", exact: true })).toBeInViewport({
+      ratio: 1,
+    });
+    await expect(page.getByRole("button", { name: "Cancel", exact: true })).toBeInViewport({
+      ratio: 1,
+    });
+  });
+
   test(`crop dialog fits a narrow desktop window in ${theme} mode`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 700 });
     await page.goto(

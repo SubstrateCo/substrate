@@ -13,13 +13,13 @@ export function LoadingState({
   return (
     <div role="status" aria-label={label} className="min-w-0">
       <span className="sr-only">{label}</span>
-      <div aria-hidden="true" className={cn("space-y-3", variant === "messages" && "space-y-7")}>
+      <div aria-hidden="true" className={cn("space-y-2", variant === "messages" && "space-y-5")}>
         {Array.from({ length: rows }, (_, index) => (
           <div
             key={index}
             className={cn(
               "flex items-center gap-3",
-              variant === "list" && "rounded-lg border p-4",
+              variant === "list" && "px-3 py-3",
               variant === "compact" && "p-2",
               variant === "table" && "border-b px-3 py-4",
               variant === "messages" && "items-start",

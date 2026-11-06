@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from "react";
+import { useId, useRef, useState, type Ref } from "react";
 import { Upload } from "lucide-react";
 import { Button } from "../primitives/button";
 import { validateFiles } from "./file-validation";
@@ -10,6 +10,8 @@ export interface FileUploadProps {
   disabled?: boolean;
   label?: string;
   description?: string;
+  compact?: boolean;
+  chooseButtonRef?: Ref<HTMLButtonElement>;
   onFiles: (files: File[]) => void | Promise<void>;
 }
 
@@ -20,6 +22,8 @@ export function FileUpload({
   disabled = false,
   label = "Choose files",
   description = "Drop files here, or choose files.",
+  compact = false,
+  chooseButtonRef,
   onFiles,
 }: FileUploadProps) {
   const input = useRef<HTMLInputElement>(null);
@@ -28,6 +32,9 @@ export function FileUpload({
   const [pending, setPending] = useState(false);
   const [dragging, setDragging] = useState(false);
   const busy = useRef(false);
+  let dropzoneState = "";
+  if (dragging) dropzoneState = "bg-accent outline-2 outline-primary";
+  else if (!compact) dropzoneState = "border-border bg-muted/30";
   async function select(files: File[]) {
     if (disabled || busy.current || !files.length) return;
     const invalid = validateFiles(files, { accept, maxSize, multiple });
@@ -47,7 +54,7 @@ export function FileUpload({
   return (
     <div className="space-y-2">
       <div
-        className={`flex flex-col items-center gap-3 rounded-xl border border-dashed p-6 ${dragging ? "border-primary bg-accent" : "border-border bg-muted/30"}`}
+        className={`${compact ? "flex flex-col items-start gap-2 rounded-md p-1" : "flex flex-col items-center gap-3 rounded-xl border border-dashed p-6"} ${dropzoneState}`}
         onDragOver={(event) => {
           event.preventDefault();
           if (!disabled && !pending) setDragging(true);
@@ -59,10 +66,7 @@ export function FileUpload({
           void select(Array.from(event.dataTransfer.files));
         }}
       >
-        <Upload className="size-5 text-muted-foreground" aria-hidden="true" />
-        <p id={id} className="text-center text-sm text-muted-foreground">
-          {description}
-        </p>
+        {!compact && <Upload className="size-5 text-muted-foreground" aria-hidden="true" />}
         <input
           ref={input}
           type="file"
@@ -80,6 +84,7 @@ export function FileUpload({
           }}
         />
         <Button
+          ref={chooseButtonRef}
           type="button"
           variant="outline"
           disabled={disabled || pending}
@@ -88,6 +93,14 @@ export function FileUpload({
         >
           {pending ? "Selecting…" : label}
         </Button>
+        <p
+          id={id}
+          className={
+            compact ? "text-xs text-muted-foreground" : "text-center text-sm text-muted-foreground"
+          }
+        >
+          {description}
+        </p>
       </div>
       {error && (
         <p role="alert" className="text-sm text-destructive">

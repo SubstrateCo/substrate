@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ImageIcon } from "lucide-react";
 import { FileUpload } from "./file-upload";
 import { ImageCropDialog, type PictureUploadContext } from "./image-crop-dialog";
@@ -23,6 +23,7 @@ export function PictureUpload({
   disabled = false,
 }: PictureUploadProps) {
   const [source, setSource] = useState<File | null>(null);
+  const chooseButton = useRef<HTMLButtonElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
   const [unavailable, setUnavailable] = useState<string | null>(null);
@@ -40,9 +41,9 @@ export function PictureUpload({
     }
   }
   return (
-    <section aria-label={name} className="space-y-3">
+    <section aria-label={name} className="flex flex-wrap items-center gap-x-4 gap-y-2">
       <div
-        className={`flex size-20 items-center justify-center overflow-hidden border border-border bg-muted ${kind === "avatar" ? "rounded-full" : "rounded-xl"}`}
+        className={`flex size-12 shrink-0 items-center justify-center overflow-hidden border border-border bg-muted ${kind === "avatar" ? "rounded-full" : "rounded-lg"}`}
       >
         {value && unavailable !== value ? (
           <img
@@ -59,11 +60,15 @@ export function PictureUpload({
         )}
       </div>
       <FileUpload
+        chooseButtonRef={(button) => {
+          chooseButton.current = button;
+        }}
+        compact
         accept={pictureAccept}
         maxSize={pictureMaxSize}
         disabled={disabled || removing || !!source}
         label={value ? "Replace picture" : "Choose picture"}
-        description="JPEG, PNG, or WebP. Up to 5 MB."
+        description="JPEG, PNG, or WebP. Up to 5 MB. Drop an image here."
         onFiles={async ([file]) => {
           setError(null);
           try {
@@ -80,7 +85,7 @@ export function PictureUpload({
       {value && (
         <PendingButton
           type="button"
-          variant="ghost"
+          variant="outline"
           disabled={disabled || !!source}
           pending={removing}
           pendingLabel="Removing picture…"
@@ -90,7 +95,7 @@ export function PictureUpload({
         </PendingButton>
       )}
       {error && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="w-full text-sm text-destructive">
           {error}
         </p>
       )}
@@ -98,6 +103,7 @@ export function PictureUpload({
         <ImageCropDialog
           file={source}
           kind={kind}
+          onRestoreFocus={() => chooseButton.current?.focus()}
           onCancel={() => setSource(null)}
           onConfirm={async (blob, context) => {
             await onUpload(

@@ -1,18 +1,15 @@
 import { AppearanceControl } from "../theme/appearance-control";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../primitives/card";
 
 export function UserAppearance() {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Appearance</CardTitle>
-        <CardDescription>
+    <section className="space-y-3 py-4">
+      <div className="space-y-1">
+        <h2 className="text-sm font-medium">Display preferences</h2>
+        <p className="text-sm text-muted-foreground">
           Choose a theme for this device. This does not change your organization's settings.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <AppearanceControl />
-      </CardContent>
-    </Card>
+        </p>
+      </div>
+      <AppearanceControl />
+    </section>
   );
 }

@@ -22,9 +22,9 @@ export function UserMenu({
   onOrganizationSettings: () => void;
   signOut: ReactNode;
 }) {
-  const [openedBy, setOpenedBy] = useState<"hover" | "click" | null>(null);
+  const [open, setOpen] = useState(false);
   return (
-    <Popover open={openedBy !== null} onOpenChange={(open) => setOpenedBy(open ? "click" : null)}>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="avatar"
@@ -32,13 +32,6 @@ export function UserMenu({
           className="overflow-hidden"
           aria-label={`Signed in as ${name}`}
           title={name}
-          onPointerEnter={(event) => {
-            if (event.pointerType === "mouse") setOpenedBy((current) => current ?? "hover");
-          }}
-          onClick={(event) => {
-            event.preventDefault();
-            setOpenedBy("click");
-          }}
         >
           <PicturePreview
             src={image}
@@ -53,9 +46,6 @@ export function UserMenu({
         align="end"
         sideOffset={12}
         className="w-64"
-        onOpenAutoFocus={(event) => {
-          if (openedBy === "hover") event.preventDefault();
-        }}
       >
         <p className="px-2 py-1 text-xs font-medium text-muted-foreground">User</p>
         <AppearanceControl />
@@ -63,7 +53,7 @@ export function UserMenu({
           variant="ghost"
           className="w-full justify-start"
           onClick={() => {
-            setOpenedBy(null);
+            setOpen(false);
             onUserSettings();
           }}
         >
@@ -79,7 +69,7 @@ export function UserMenu({
               variant="ghost"
               className="w-full justify-start"
               onClick={() => {
-                setOpenedBy(null);
+                setOpen(false);
                 onOrganizationSettings();
               }}
             >

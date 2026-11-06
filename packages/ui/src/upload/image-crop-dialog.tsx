@@ -11,6 +11,7 @@ export interface ImageCropDialogProps {
   kind: "avatar" | "organization-logo";
   onConfirm: (blob: Blob, context: PictureUploadContext) => Promise<void>;
   onCancel: () => void;
+  onRestoreFocus?: () => void;
 }
 
 export interface PictureUploadContext {
@@ -22,7 +23,13 @@ export interface PictureUploadContext {
 }
 
 /** Mount for one source file; unmount on cancel or successful confirmation. */
-export function ImageCropDialog({ file, kind, onConfirm, onCancel }: ImageCropDialogProps) {
+export function ImageCropDialog({
+  file,
+  kind,
+  onConfirm,
+  onCancel,
+  onRestoreFocus,
+}: ImageCropDialogProps) {
   const [src, setSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -100,6 +107,13 @@ export function ImageCropDialog({ file, kind, onConfirm, onCancel }: ImageCropDi
       }}
     >
       <DialogContent
+        showCloseButton={false}
+        onCloseAutoFocus={(event) => {
+          if (onRestoreFocus) {
+            event.preventDefault();
+            onRestoreFocus();
+          }
+        }}
         onEscapeKeyDown={(event) => {
           if (busy.current) event.preventDefault();
         }}
@@ -170,7 +184,7 @@ export function ImageCropDialog({ file, kind, onConfirm, onCancel }: ImageCropDi
             />
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               disabled={committing}
               onClick={() => {
                 if (!committed.current) controller.current?.abort();

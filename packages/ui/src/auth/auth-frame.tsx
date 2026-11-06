@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useHydrated } from "../hooks/use-hydrated";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../primitives/card";
+import { Card, CardContent, CardDescription, CardHeader } from "../primitives/card";
 
 export function AuthFrame({
   title,
@@ -13,14 +13,14 @@ export function AuthFrame({
 }) {
   const hydrated = useHydrated();
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-radial from-accent to-transparent px-4 py-20 sm:px-6">
+    <main className="flex min-h-dvh items-start justify-center bg-radial from-accent to-transparent px-4 py-auth-block sm:px-6">
       <Card className="w-full max-w-md">
         <CardHeader>
           <p className="mb-5 flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground">
             <span aria-hidden="true" className="size-3 rounded-sm bg-primary shadow-surface" />
             Startup OS
           </p>
-          <CardTitle size="xl">{title}</CardTitle>
+          <h1 className="font-heading text-2xl font-medium leading-snug tracking-tight">{title}</h1>
           <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent>

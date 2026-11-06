@@ -69,14 +69,13 @@ export function ResetPasswordForm({
               required
             />
           </div>
-          <FormMessage
-            error={error}
-            errorDescription="We couldn’t reset your password. Try again, or request a new reset link."
-            reserve
-          />
           <PendingButton className="w-full" pending={pending} pendingLabel="Saving…">
             Save new password
           </PendingButton>
+          <FormMessage
+            error={error}
+            errorDescription="We couldn’t reset your password. Try again, or request a new reset link."
+          />
         </form>
       )}
       <a className="block text-sm underline" href={requestResetHref}>

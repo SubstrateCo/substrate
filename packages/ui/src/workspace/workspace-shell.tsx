@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Bell, ListTodo, MessageSquare } from "lucide-react";
 import { FormMessage } from "../auth/form-message";
 import { Button } from "../primitives/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../primitives/tooltip";
 import { UserMenu } from "./user-menu";
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
@@ -42,63 +43,77 @@ export function WorkspaceShell({
 }) {
   return (
     <main data-workspace-shell className="flex h-dvh min-h-0 overflow-hidden bg-background">
-      <nav
-        aria-label="Apps"
-        className="z-20 flex w-14 shrink-0 flex-col items-center gap-5 border-r border-rail-foreground/10 bg-rail py-5 text-rail-foreground sm:w-16"
-      >
-        {switcher}
-        <Button
-          variant="rail"
-          size="icon-lg"
-          aria-label="Messages"
-          title="Messages"
-          aria-current={view === "messages" ? "page" : undefined}
-          onClick={() => onViewChange("messages")}
+      <TooltipProvider delayDuration={350}>
+        <nav
+          aria-label="Apps"
+          className="z-20 flex w-14 shrink-0 flex-col items-center gap-3 border-r border-rail-foreground/10 bg-rail py-3 text-rail-foreground"
         >
-          <MessageSquare className="size-5" />
-        </Button>
-        <Button
-          variant="rail"
-          size="icon-lg"
-          aria-label="Tasks"
-          title="Tasks"
-          aria-current={view === "tasks" ? "page" : undefined}
-          onClick={() => onViewChange("tasks")}
-        >
-          <ListTodo className="size-5" />
-        </Button>
-        <div className="mt-auto flex flex-col items-center gap-5">
-          <Button
-            variant="rail"
-            size="icon-lg"
-            className="relative"
-            aria-label={
-              hasUnreadNotifications ? "Notifications, unread notifications" : "Notifications"
-            }
-            title="Notifications"
-            aria-current={view === "notifications" ? "page" : undefined}
-            onClick={() => onViewChange("notifications")}
-          >
-            <Bell className="size-5" />
-            {hasUnreadNotifications && (
-              <span
-                aria-hidden="true"
-                className="absolute right-2 top-2 size-2 rounded-full bg-destructive ring-2 ring-rail"
-              />
-            )}
-          </Button>
-          <UserMenu
-            name={name}
-            image={image}
-            showOrganizationSettings={showOrganizationSettings}
-            organizationName={organizationName}
-            onUserSettings={() => onViewChange("user-settings")}
-            onOrganizationSettings={() => onViewChange("organization-settings")}
-            signOut={signOut}
-          />
-        </div>
-      </nav>
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface md:m-2 md:rounded-xl md:border md:shadow-raised">
+          {switcher}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="rail"
+                size="icon-lg"
+                aria-label="Messages"
+                aria-current={view === "messages" ? "page" : undefined}
+                onClick={() => onViewChange("messages")}
+              >
+                <MessageSquare className="size-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Messages</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="rail"
+                size="icon-lg"
+                aria-label="Tasks"
+                aria-current={view === "tasks" ? "page" : undefined}
+                onClick={() => onViewChange("tasks")}
+              >
+                <ListTodo className="size-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Tasks</TooltipContent>
+          </Tooltip>
+          <div className="mt-auto flex flex-col items-center gap-3">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="rail"
+                  size="icon-lg"
+                  className="relative"
+                  aria-label={
+                    hasUnreadNotifications ? "Notifications, unread notifications" : "Notifications"
+                  }
+                  aria-current={view === "notifications" ? "page" : undefined}
+                  onClick={() => onViewChange("notifications")}
+                >
+                  <Bell className="size-5" />
+                  {hasUnreadNotifications && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute right-2 top-2 size-2 rounded-full bg-destructive ring-2 ring-rail"
+                    />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Notifications</TooltipContent>
+            </Tooltip>
+            <UserMenu
+              name={name}
+              image={image}
+              showOrganizationSettings={showOrganizationSettings}
+              organizationName={organizationName}
+              onUserSettings={() => onViewChange("user-settings")}
+              onOrganizationSettings={() => onViewChange("organization-settings")}
+              signOut={signOut}
+            />
+          </div>
+        </nav>
+      </TooltipProvider>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface">
         <FormMessage message={notice} floating />
         {loading && (
           <div className="border-b p-3">

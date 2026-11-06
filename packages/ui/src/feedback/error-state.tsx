@@ -1,6 +1,13 @@
 import { CircleAlert, RefreshCw } from "lucide-react";
 import { Button } from "../primitives/button";
-import { cn } from "../lib/utils";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "../primitives/empty";
 
 export function ErrorState({
   title,
@@ -13,34 +20,45 @@ export function ErrorState({
   onRetry?: () => void;
   compact?: boolean;
 }) {
+  if (compact) {
+    return (
+      <div role="alert" className="flex flex-wrap items-start gap-3 py-2 text-foreground">
+        <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-destructive" />
+        <div className="min-w-0 flex-1 basis-40">
+          <h2 className="text-sm font-medium">{title}</h2>
+          <p className="mt-1 text-sm/relaxed wrap-break-word text-muted-foreground">
+            {description}
+          </p>
+        </div>
+        {onRetry && (
+          <Button type="button" variant="outline" size="sm" className="ml-auto" onClick={onRetry}>
+            <RefreshCw aria-hidden="true" />
+            Try again
+          </Button>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div
-      role="alert"
-      className={cn(
-        "rounded-xl border bg-card text-foreground",
-        compact ? "p-3" : "p-6 text-center shadow-surface",
-      )}
-    >
-      <CircleAlert
-        aria-hidden="true"
-        className={cn("text-destructive", compact ? "mb-2 size-5" : "mx-auto mb-3 size-7")}
-      />
-      <h2 className="text-sm font-semibold">{title}</h2>
-      <p className="mt-1 wrap-break-word text-sm leading-relaxed text-muted-foreground">
-        {description}
-      </p>
+    <Empty role="alert" variant="pane" className="min-h-48">
+      <EmptyHeader>
+        <EmptyMedia variant="error">
+          <CircleAlert aria-hidden="true" />
+        </EmptyMedia>
+        <EmptyTitle>
+          <h2>{title}</h2>
+        </EmptyTitle>
+        <EmptyDescription className="wrap-break-word">{description}</EmptyDescription>
+      </EmptyHeader>
       {onRetry && (
-        <Button
-          type="button"
-          variant="outline"
-          size={compact ? "sm" : "default"}
-          className="mt-4"
-          onClick={onRetry}
-        >
-          <RefreshCw aria-hidden="true" />
-          Try again
-        </Button>
+        <EmptyContent>
+          <Button type="button" variant="outline" size="default" onClick={onRetry}>
+            <RefreshCw aria-hidden="true" />
+            Try again
+          </Button>
+        </EmptyContent>
       )}
-    </div>
+    </Empty>
   );
 }

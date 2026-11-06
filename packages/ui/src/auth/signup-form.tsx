@@ -44,14 +44,13 @@ export function SignupForm({
             required
           />
         </div>
-        <FormMessage
-          error={error}
-          errorDescription="We couldn’t create your account. Please try again."
-          reserve
-        />
         <PendingButton className="w-full" pending={pending} pendingLabel="Creating account…">
           Create account
         </PendingButton>
+        <FormMessage
+          error={error}
+          errorDescription="We couldn’t create your account. Please try again."
+        />
       </form>
       <p className="text-sm">
         Already have an account?{" "}

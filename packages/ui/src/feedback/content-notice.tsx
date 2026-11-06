@@ -1,11 +1,18 @@
 import { Inbox } from "lucide-react";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../primitives/empty";
 
 export function ContentNotice({ title, description }: { title: string; description: string }) {
   return (
-    <div role="status" className="rounded-xl border border-dashed bg-muted/30 p-6 text-center">
-      <Inbox aria-hidden="true" className="mx-auto mb-3 size-6 text-muted-foreground" />
-      <h2 className="text-sm font-semibold">{title}</h2>
-      <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{description}</p>
-    </div>
+    <Empty role="status" variant="pane" className="min-h-40">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <Inbox aria-hidden="true" />
+        </EmptyMedia>
+        <EmptyTitle>
+          <h2>{title}</h2>
+        </EmptyTitle>
+        <EmptyDescription>{description}</EmptyDescription>
+      </EmptyHeader>
+    </Empty>
   );
 }
