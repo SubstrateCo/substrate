@@ -13,33 +13,32 @@
 
 - Entity-backed tables use `entity_id`; organization-owned records require `organization_id`.
 - Enforce organization and entity-type alignment with composite foreign keys.
-- Establish access inheritance when creating a new child entity. Reparenting requires explicit cycle checks and updates to the feature's structural references; do not expose raw parent-table edits.
+- Establish access inheritance when creating child entities. Reparenting must check cycles and update structural references; do not expose raw parent-table edits.
 - Repositories take `RepositoryContext`, whitelist writable fields, check actor access, and participate in caller transactions.
 - Derive actor scope from authenticated server context, not request-supplied identity fields.
 - Raw database access and actor provisioning are trusted server-only APIs. Do not expose them as agent tools.
 - Keep integration tables feature-specific. Store connection and sync state together per mailbox or calendar; do not introduce generic integration or separate sync-state tables without a concrete need.
 - Store credential references, not secrets, in feature integration records. Restrict management reads and writes to resource owners.
 - Keep provider network calls outside database transactions. Commit imported records and their sync cursor together in one repository transaction, using the current sync lease.
-- Cross-organization channels require a dedicated sharing boundary. Never relax ordinary organization-scoped grants, links, or foreign keys to implement shared channels.
+- Cross-organization channels and messaging references require a dedicated sharing boundary that checks conversation and target-entity access. Never weaken organization-scoped grants, links, or foreign keys.
 
 ## Relationships and context
 
 - Use domain foreign keys for structural relationships and shared entity links for contextual references. Do not duplicate structural relationships into entity links without a concrete query or lifecycle need.
 - Represent source/provenance relationships explicitly when a workflow creates one record from another.
 - Do not assume entity links contain every relationship. Cross-domain context queries must include relevant structural relationships and apply each domain's access rules.
-- Persist content changes and their derived references in one transaction. Distinguish content-derived references from manually attached relationships so removing one does not remove the other.
+- Save content and derived references atomically. Track derived and manual references separately so removing one does not remove the other.
 - Validate organization, entity type, lifecycle state, and required access when establishing a relationship.
 - Linking does not grant access or send notifications unless an explicit application policy requires it.
-- Cross-organization messaging references require a dedicated bridge that checks conversation access and target-entity access. Do not weaken organization-scoped foreign keys or grants.
 - Define relationship behavior for deletion, restoration, membership changes, and reparenting when implementing those operations.
 - An entity-type enum value alone does not constitute an implemented domain. Do not create placeholder entities for unsupported feature types.
 
 ## Tests and migrations
 
-- Test repositories and constraints against real PostgreSQL with `TEST_DATABASE_URL` pointing to a dedicated database whose name ends in `_test`.
-- Use Bun's test preload to migrate once and share one connection pool for the entire run. Per-test fixtures reset and insert data only; do not recreate schemas, tables, or indexes.
-- Run workspace tests with `bun run test` from the repository root so the package's Bun test configuration and preload are used.
-- Keep database tests serial because they share a database. Concurrency tests may use multiple connections within one test. Parallel test files require separate databases.
+- Test repositories and constraints against real PostgreSQL. `TEST_DATABASE_URL` must name a dedicated database ending in `_test`.
+- Run `bun run test` from the repository root to use the package's Bun configuration and preload.
+- Use the preload to migrate once and share one pool. Fixtures may reset and insert data, but must not recreate schemas, tables, or indexes.
+- Run database tests serially. Concurrency tests may use multiple connections; parallel test files require separate databases.
 - Cover invalid references, organization isolation, permission levels, safe links, and transaction rollback for each new domain.
 - Generate incremental migrations. Do not rewrite migrations that have already been applied.
 - Use Drizzle's PostgreSQL migrator. Do not implement a custom migration runner or migration-history table.

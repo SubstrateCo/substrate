@@ -1,30 +1,27 @@
 # Web application
 
-- This app is purely the rendering layer for the Startup OS Electron desktop app, not a standalone browser-first product. Design its UI, navigation, and workflows for the desktop experience.
-- Use a Vite SPA with TanStack Router file-based routes. Keep route files thin.
-- Limit UI route files to route configuration, data loading, access checks, redirects, and general page layout. Route components may read route context, params, search, and loader data and pass them to domain components. Keep component internals, including local interaction state, effects, event handlers, form logic, and detailed UI, in `src/components/<domain>/`, not in route files.
-- Organize routes in directories that mirror their layout hierarchy. Use directory-based route files, not flattened dot-separated route filenames.
-- Load shared session and application data at the highest common route layout. Return it through route context and reuse it in child routes. Do not repeat authentication checks or reload data already provided by a parent layout.
+- Use Vite and TanStack Router file-based routes. Mirror layout hierarchy with route directories, not flattened dot-separated filenames.
+- Keep routes limited to configuration, loading, access checks, redirects, and page layout. Routes may pass context, params, search, and loader data to components in `src/components/<domain>/`.
+- Keep detailed UI, local state, effects, handlers, and forms in domain components.
+- Load shared session and application data in the highest common layout and reuse its route context. Do not repeat those loads or session checks; keep resource-specific access checks.
 - Use the Hono `hc` RPC client in `src/api/` for same-origin backend calls. Import the server's `AppType` as a type only. Better Auth uses its native client protocol under `/api/auth`.
-- Keep runtime server code and secrets out of this app. Share browser-safe contracts from `@startup-os/contracts`; validate untrusted input on the server.
-- Use static imports. Do not use dynamic imports to work around dependency injection, server-only boundaries, or import configuration; fix the underlying boundary or configuration instead.
+- Keep runtime server code, secrets, database access, setup, and actor provisioning out of the renderer. Share browser-safe contracts through `@startup-os/contracts`.
+- The server validates untrusted input and derives identity and actor scope. Organization roles do not bypass entity grants.
+- Do not use dynamic imports to bypass dependency injection, server-only boundaries, or import configuration. Fix the underlying issue.
 - Group components in `src/components/<domain>/`. Use one file per component. A component's loading and error states may share its file.
 - Install UI primitives with the shadcn CLI. Do not hand-write replacements for shadcn components.
 - Put reusable TanStack Query option factories in `src/queries/<domain>/`. Use the shared query-key factory. Include the organization ID in organization-scoped keys.
 - Use TanStack Query for fetched application state. Invalidate affected queries after mutations and clear private state on sign-out.
 - Use Better Auth client APIs for authentication and organization actions. The server owns session and membership checks.
-- Never query the database in this app. Database setup and trusted actor provisioning belong in server-only packages and Better Auth hooks.
-- Derive identity and actor scope on the server. Organization roles do not bypass entity grants.
 - Require verified email for workspace access and invitation acceptance. Only organization owners may invite members.
 - Test application policies and complete workflows. Do not test Better Auth internals or third-party guarantees.
 - Use Playwright for UI behavior, accessibility, and layout tests. Do not assert against rendered HTML strings or HTML snapshots, including markup substring checks.
 
 ## Connected workflows
 
-- Give shareable records stable, organization-aware navigation targets. Opening a reference must resolve the intended record and enforce access.
-- Use structured entity references for supported internal mentions, not display names or copied URLs alone.
-- When implementing a relationship, expose useful forward navigation and backlinks through existing domain surfaces.
-- Keep reference creation, access changes, and notifications explicit. Show confirmation when an action expands access, especially across organizations.
-- Do not expose inaccessible target metadata through labels, previews, autocomplete, backlinks, or counts.
-- Preserve source context in creation workflows, such as creating a task from a message or email.
-- Invalidate affected relationship and detail queries after mutations, not only the originating feature's list.
+- Give shareable records stable, organization-aware navigation targets that resolve the intended record and enforce access.
+- Use structured entity references for supported internal mentions.
+- Expose useful forward links and backlinks through existing domain UI.
+- Confirm actions that expand access, especially across organizations.
+- Do not leak inaccessible metadata through labels, previews, autocomplete, backlinks, or counts.
+- After mutations, invalidate affected relationship and detail queries, not just the originating feature's list.
