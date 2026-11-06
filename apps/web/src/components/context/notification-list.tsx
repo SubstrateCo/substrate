@@ -5,7 +5,7 @@ import { ErrorState } from "@startup-os/ui/feedback/error-state";
 import { FormMessage } from "@startup-os/ui/auth/form-message";
 import { notificationsOptions } from "@/queries/context/options";
 import { queryKeys } from "@/queries/keys";
-import { markRead } from "@/server/context";
+import { markRead } from "@/api/context";
 import { messageHref, workHref } from "@/lib/context-links";
 
 export function NotificationList({

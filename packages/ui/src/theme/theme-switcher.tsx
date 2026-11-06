@@ -1,6 +1,6 @@
 import { Monitor, Moon, Sun } from "lucide-react";
 import { useHydrated } from "../hooks/use-hydrated";
-import { useTheme } from "next-themes";
+import { useTheme } from "./theme-provider";
 import { Button } from "../primitives/button";
 import {
   DropdownMenu,

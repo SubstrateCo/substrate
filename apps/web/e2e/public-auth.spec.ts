@@ -3,19 +3,20 @@ import { randomUUID } from "node:crypto";
 import { createVerifiedAccount } from "./auth";
 import { Mailpit } from "./mailpit";
 
-test("the theme menu is disabled until its click handler is hydrated", async ({ page }) => {
+test("the SPA renders its theme menu only after scripts load", async ({ page }) => {
   const scripts = Promise.withResolvers<void>();
   await page.route("**/*", async (route) => {
     if (route.request().resourceType() === "script") await scripts.promise;
     await route.continue();
   });
-  const navigation = page.goto("/signup");
+  const navigation = page.goto("/signup", { waitUntil: "commit" });
   try {
     const switcher = page.getByRole("button", { name: "Color theme", exact: true });
-    await expect(switcher).toBeVisible();
-    await expect(switcher).toBeDisabled();
+    await navigation;
+    await expect(switcher).toHaveCount(0);
     scripts.resolve();
     await navigation;
+    await expect(switcher).toBeEnabled();
     await switcher.click();
     await expect(page.getByRole("menuitemradio", { name: "Dark", exact: true })).toBeVisible();
   } finally {
@@ -27,6 +28,12 @@ test("the theme menu is disabled until its click handler is hydrated", async ({ 
 test("appearance persists across reload and navigation and follows the system when selected", async ({
   page,
 }) => {
+  const scriptWarnings: string[] = [];
+  page.on("console", (message) => {
+    if (["warning", "error"].includes(message.type()) && /script/i.test(message.text())) {
+      scriptWarnings.push(message.text());
+    }
+  });
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/login");
   await expect(page.getByText("Welcome back", { exact: true })).toBeVisible();
@@ -48,6 +55,7 @@ test("appearance persists across reload and navigation and follows the system wh
   await expect.poll(background).toBe(light);
   await page.emulateMedia({ colorScheme: "dark" });
   await expect.poll(background).toBe(dark);
+  expect(scriptWarnings).toEqual([]);
 });
 
 test("signed-out users can open password recovery directly", async ({ page }) => {

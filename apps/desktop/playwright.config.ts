@@ -1,4 +1,5 @@
 import { defineConfig } from "@playwright/test";
+import { applicationURL } from "./src/navigation.js";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -8,11 +9,13 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   reporter: "list",
   use: { trace: "off", screenshot: "off", video: "off" },
-  webServer: {
-    command: "bun run dev",
-    cwd: "../..",
-    url: "http://localhost:3000/login",
-    reuseExistingServer: true,
-    timeout: 60_000,
-  },
+  webServer: process.env.DESKTOP_EXECUTABLE_PATH
+    ? undefined
+    : {
+        command: "bun run dev",
+        cwd: "../..",
+        url: `${applicationURL}/login`,
+        reuseExistingServer: true,
+        timeout: 60_000,
+      },
 });

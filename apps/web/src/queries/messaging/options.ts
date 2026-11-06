@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { queryKeys } from "@/queries/keys";
-import { listConversations, listMessages } from "@/server/messaging";
+import { listConversations, listMessages } from "@/api/messaging";
 
 export const conversationsQueryOptions = (organizationId: string) =>
   queryOptions({

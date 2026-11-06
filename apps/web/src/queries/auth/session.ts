@@ -1,13 +1,13 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { redirect } from "@tanstack/react-router";
-import { getSession } from "@/server/session";
+import { getSession } from "@/api/session";
 import { queryKeys } from "@/queries/keys";
 import { guestSessionRedirect, verifiedSessionAccess } from "./session-policy";
 
 export const sessionQueryOptions = () =>
   queryOptions({
     queryKey: queryKeys.session,
-    queryFn: () => getSession(),
+    queryFn: ({ signal }) => getSession(signal),
     staleTime: 0,
     retry: false,
   });

@@ -2,10 +2,12 @@ import { _electron as electron, expect, test } from "@playwright/test";
 import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { applicationURL } from "../src/navigation.js";
 
 const execFileAsync = promisify(execFile);
 
 test("loads the existing app in an isolated desktop window", async () => {
+  test.skip(Boolean(process.env.DESKTOP_EXECUTABLE_PATH), "Source development smoke test.");
   const env: Record<string, string> = {};
   for (const [key, value] of Object.entries(process.env)) {
     if (value !== undefined && key !== "ELECTRON_RUN_AS_NODE") env[key] = value;
@@ -16,7 +18,9 @@ test("loads the existing app in an isolated desktop window", async () => {
   });
   try {
     const page = await desktop.firstWindow();
-    await expect(page).toHaveURL(/http:\/\/localhost:3000\/login/);
+    await expect(page).toHaveURL(
+      (url) => url.origin === applicationURL && url.pathname === "/login",
+    );
     await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
     await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
     await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.minimize());
@@ -28,7 +32,7 @@ test("loads the existing app in an isolated desktop window", async () => {
     const executable = await desktop.evaluate(() => process.execPath);
     const second = await execFileAsync(
       executable,
-      [fileURLToPath(new URL("../", import.meta.url))],
+      [fileURLToPath(new URL("../src/main.js", import.meta.url))],
       {
         env,
         timeout: 10_000,
@@ -51,6 +55,19 @@ test("loads the existing app in an isolated desktop window", async () => {
     });
     await expect(page).toHaveURL(/\/signup/);
     await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
+    await desktop.evaluate(
+      async ({ BrowserWindow }, path) => {
+        await BrowserWindow.getAllWindows()[0]!.loadFile(path);
+      },
+      fileURLToPath(new URL("../src/offline.html", import.meta.url)),
+    );
+    await expect(
+      page.getByRole("heading", { name: "Cannot connect to Startup OS", exact: true }),
+    ).toBeVisible();
+    await page.getByRole("link", { name: "Try again", exact: true }).click();
+    await expect(page).toHaveURL(
+      (url) => url.origin === applicationURL && url.pathname === "/login",
+    );
   } finally {
     await desktop.close();
   }

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { guestSessionRedirect, verifiedSessionAccess } from "./session-policy";
-import type { getSession } from "@/server/session";
+import type { getSession } from "@/api/session";
 
 const session: NonNullable<Awaited<ReturnType<typeof getSession>>> = {
   user: {
@@ -9,16 +9,16 @@ const session: NonNullable<Awaited<ReturnType<typeof getSession>>> = {
     email: "team@example.com",
     emailVerified: true,
     image: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   },
   session: {
     id: "session-1",
     token: "session-token",
     userId: "user-1",
-    expiresAt: new Date(),
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    expiresAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     ipAddress: null,
     userAgent: null,
     activeOrganizationId: null,

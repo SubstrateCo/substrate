@@ -5,7 +5,7 @@ import {
 } from "@startup-os/ui/messaging/create-conversation-form";
 import { parseRecipientEmails, type Conversation } from "@/lib/messaging";
 import { queryKeys } from "@/queries/keys";
-import { createConversation } from "@/server/messaging";
+import { createConversation } from "@/api/messaging";
 
 export function CreateConversationForm({
   organizationId,

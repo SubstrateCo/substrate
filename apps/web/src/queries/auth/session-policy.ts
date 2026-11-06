@@ -1,4 +1,4 @@
-import type { getSession } from "@/server/session";
+import type { getSession } from "@/api/session";
 import { authHref, safeRedirect } from "@/lib/auth-navigation";
 
 type Session = Awaited<ReturnType<typeof getSession>>;

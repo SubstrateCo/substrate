@@ -8,7 +8,7 @@ import {
   getActivity,
   getNotifications,
   searchContext,
-} from "@/server/context";
+} from "@/api/context";
 
 export const messageLinksOptions = (organizationId: string, messageId: string) =>
   queryOptions({

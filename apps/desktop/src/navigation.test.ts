@@ -1,7 +1,23 @@
 import { describe, expect, test } from "bun:test";
-import { navigationTarget } from "./navigation.js";
+import { bundledApplicationURL, navigationTarget } from "./navigation.js";
 
 describe("desktop navigation", () => {
+  test("bundled navigation trusts only the bundled origin, including auth callbacks", () => {
+    expect(
+      navigationTarget(`${bundledApplicationURL}/api/auth/callback`, bundledApplicationURL),
+    ).toBe("internal");
+    for (const url of [
+      "http://localhost:3000/tasks",
+      "https://desktop.startup-os.local.evil.test/tasks",
+      "https://desktop.startup-os.local:444/tasks",
+      "http://desktop.startup-os.local/tasks",
+    ]) {
+      expect(navigationTarget(url, bundledApplicationURL)).toBe("external");
+    }
+    expect(navigationTarget("https://user@desktop.startup-os.local/", bundledApplicationURL)).toBe(
+      "blocked",
+    );
+  });
   test("keeps workspace routes and auth callbacks in the app", () => {
     expect(navigationTarget("http://localhost:3000/tasks?workspaceId=org&taskId=task")).toBe(
       "internal",

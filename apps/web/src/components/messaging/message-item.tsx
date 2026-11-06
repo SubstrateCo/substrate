@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MessageItem as MessageItemView } from "@startup-os/ui/messaging/message-item";
 import type { Message } from "@/lib/messaging";
 import { queryKeys } from "@/queries/keys";
-import { toggleReaction } from "@/server/messaging";
+import { toggleReaction } from "@/api/messaging";
 import { useEffect, useRef, useState } from "react";
 import { useSearch } from "@tanstack/react-router";
 import { Button } from "@startup-os/ui/primitives/button";

@@ -9,7 +9,7 @@ import {
   type TestAccount,
 } from "./auth";
 import { Mailpit, openEmailLink } from "./mailpit";
-import { callMessaging } from "./server-functions";
+import { callMessaging } from "./api";
 import {
   createWorkspace,
   expectScopedMembershipAfter,

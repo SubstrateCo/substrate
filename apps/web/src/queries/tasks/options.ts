@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { queryKeys } from "../keys";
-import { getProject, listProjects, listTaskComments } from "@/server/tasks";
+import { getProject, listProjects, listTaskComments } from "@/api/tasks";
 
 export const projectsQueryOptions = (organizationId: string) =>
   queryOptions({

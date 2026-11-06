@@ -1,18 +1,28 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig, loadEnv } from "vite";
-import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, "../..", "");
-  for (const [key, value] of Object.entries(env)) {
-    process.env[key] ??= value;
-  }
+  const env: { WEB_PORT?: string; SERVER_URL?: string } = loadEnv(mode, "../..", "");
+  const port = Number(process.env.WEB_PORT ?? env.WEB_PORT ?? "3000");
+  if (!Number.isInteger(port) || port < 1 || port > 65535)
+    throw new Error("WEB_PORT must be a valid port.");
   return {
-    server: { port: 3000, strictPort: true },
+    server: {
+      port,
+      strictPort: true,
+      proxy: {
+        "/api": { target: process.env.SERVER_URL ?? env.SERVER_URL ?? "http://localhost:3001" },
+      },
+    },
     envDir: "../..",
     resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
-    plugins: [tailwindcss(), tanstackStart(), react({ compiler: true })],
+    plugins: [
+      tailwindcss(),
+      tanstackRouter({ target: "react", autoCodeSplitting: true }),
+      react({ compiler: true }),
+    ],
   };
 });

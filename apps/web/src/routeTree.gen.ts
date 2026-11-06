@@ -23,7 +23,6 @@ import { Route as AuthenticatedAcceptInvitationInvitationIdRouteImport } from '.
 import { Route as AuthenticatedSettingsUserRouteRouteImport } from './routes/_authenticated/settings/user/route'
 import { Route as PublicGuestLoginRouteImport } from './routes/_public/_guest/login'
 import { Route as PublicGuestSignupRouteImport } from './routes/_public/_guest/signup'
-import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthenticatedWorkspaceSettingsOrganizationRouteRouteImport } from './routes/_authenticated/_workspace/settings/organization/route'
 import { Route as AuthenticatedWorkspaceTasksIndexRouteImport } from './routes/_authenticated/_workspace/tasks/index'
 import { Route as AuthenticatedSettingsUserIndexRouteImport } from './routes/_authenticated/settings/user/index'
@@ -101,11 +100,6 @@ const PublicGuestSignupRoute = PublicGuestSignupRouteImport.update({
   path: '/signup',
   getParentRoute: () => PublicGuestRouteRoute,
 } as any)
-const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: '/api/auth/$',
-  path: '/api/auth/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthenticatedWorkspaceSettingsOrganizationRouteRoute =
   AuthenticatedWorkspaceSettingsOrganizationRouteRouteImport.update({
     id: '/settings/organization',
@@ -148,7 +142,6 @@ export interface FileRoutesByFullPath {
   '/accept-invitation/$invitationId': typeof AuthenticatedAcceptInvitationInvitationIdRoute
   '/login': typeof PublicGuestLoginRoute
   '/signup': typeof PublicGuestSignupRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
   '/settings/organization': typeof AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren
   '/settings/user/invitations': typeof AuthenticatedSettingsUserInvitationsRoute
   '/tasks/': typeof AuthenticatedWorkspaceTasksIndexRoute
@@ -165,7 +158,6 @@ export interface FileRoutesByTo {
   '/accept-invitation/$invitationId': typeof AuthenticatedAcceptInvitationInvitationIdRoute
   '/login': typeof PublicGuestLoginRoute
   '/signup': typeof PublicGuestSignupRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
   '/settings/user/invitations': typeof AuthenticatedSettingsUserInvitationsRoute
   '/tasks': typeof AuthenticatedWorkspaceTasksIndexRoute
   '/settings/user': typeof AuthenticatedSettingsUserIndexRoute
@@ -187,7 +179,6 @@ export interface FileRoutesById {
   '/_authenticated/accept-invitation/$invitationId': typeof AuthenticatedAcceptInvitationInvitationIdRoute
   '/_public/_guest/login': typeof PublicGuestLoginRoute
   '/_public/_guest/signup': typeof PublicGuestSignupRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
   '/_authenticated/_workspace/settings/organization': typeof AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren
   '/_authenticated/settings/user/invitations': typeof AuthenticatedSettingsUserInvitationsRoute
   '/_authenticated/_workspace/tasks/': typeof AuthenticatedWorkspaceTasksIndexRoute
@@ -207,7 +198,6 @@ export interface FileRouteTypes {
     | '/accept-invitation/$invitationId'
     | '/login'
     | '/signup'
-    | '/api/auth/$'
     | '/settings/organization'
     | '/settings/user/invitations'
     | '/tasks/'
@@ -224,7 +214,6 @@ export interface FileRouteTypes {
     | '/accept-invitation/$invitationId'
     | '/login'
     | '/signup'
-    | '/api/auth/$'
     | '/settings/user/invitations'
     | '/tasks'
     | '/settings/user'
@@ -245,7 +234,6 @@ export interface FileRouteTypes {
     | '/_authenticated/accept-invitation/$invitationId'
     | '/_public/_guest/login'
     | '/_public/_guest/signup'
-    | '/api/auth/$'
     | '/_authenticated/_workspace/settings/organization'
     | '/_authenticated/settings/user/invitations'
     | '/_authenticated/_workspace/tasks/'
@@ -257,7 +245,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   PublicRouteRoute: typeof PublicRouteRouteWithChildren
-  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -359,13 +346,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/signup'
       preLoaderRoute: typeof PublicGuestSignupRouteImport
       parentRoute: typeof PublicGuestRouteRoute
-    }
-    '/api/auth/$': {
-      id: '/api/auth/$'
-      path: '/api/auth/$'
-      fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/_workspace/settings/organization': {
       id: '/_authenticated/_workspace/settings/organization'
@@ -512,17 +492,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   PublicRouteRoute: PublicRouteRouteWithChildren,
-  ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

@@ -1,7 +1,11 @@
-export const applicationURL = "http://localhost:3000";
+import { desktopOrigin } from "@startup-os/contracts/desktop/links";
 
-/** @param {string} value */
-export function navigationTarget(value) {
+export const applicationURL = new URL(process.env.STARTUP_OS_WEB_URL ?? "http://localhost:3000")
+  .origin;
+export const bundledApplicationURL = desktopOrigin;
+
+/** @param {string} value @param {string} [appURL] */
+export function navigationTarget(value, appURL = applicationURL) {
   let url;
   try {
     url = new URL(value);
@@ -11,5 +15,5 @@ export function navigationTarget(value) {
   if (url.username || url.password || !["http:", "https:"].includes(url.protocol)) {
     return "blocked";
   }
-  return url.origin === applicationURL ? "internal" : "external";
+  return url.origin === appURL ? "internal" : "external";
 }

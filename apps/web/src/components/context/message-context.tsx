@@ -3,7 +3,7 @@ import { MessageWork } from "@startup-os/ui/messaging/message-work";
 import { isAccessFailure } from "@startup-os/ui/feedback/request-failure";
 import { messageLinksOptions } from "@/queries/context/options";
 import { workHref } from "@/lib/context-links";
-import { detachWork } from "@/server/context";
+import { detachWork } from "@/api/context";
 import { queryKeys } from "@/queries/keys";
 
 export function MessageContext({

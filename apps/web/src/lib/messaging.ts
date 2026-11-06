@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export { conversationName, type Conversation } from "@startup-os/ui/messaging/types";
-import type { listMessages } from "@/server/messaging";
+import type { listMessages } from "@/api/messaging";
 export type Message = Awaited<ReturnType<typeof listMessages>>[number];
 
 const recipientEmailSchema = z.array(z.email().max(320));

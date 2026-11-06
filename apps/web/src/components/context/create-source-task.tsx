@@ -9,7 +9,7 @@ import { LoadingState } from "@startup-os/ui/feedback/loading-state";
 import { searchOptions } from "@/queries/context/options";
 import { projectQueryOptions } from "@/queries/tasks/options";
 import { queryKeys } from "@/queries/keys";
-import { createTaskFromMessage } from "@/server/context";
+import { createTaskFromMessage } from "@/api/context";
 import { workHref } from "@/lib/context-links";
 
 export function CreateSourceTask({

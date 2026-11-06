@@ -6,7 +6,7 @@ import { FormMessage } from "@startup-os/ui/auth/form-message";
 import { LoadingState } from "@startup-os/ui/feedback/loading-state";
 import { ErrorState } from "@startup-os/ui/feedback/error-state";
 import { searchOptions } from "@/queries/context/options";
-import { attachWork } from "@/server/context";
+import { attachWork } from "@/api/context";
 import { queryKeys } from "@/queries/keys";
 
 export function LinkMessageWork({

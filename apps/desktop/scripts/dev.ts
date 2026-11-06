@@ -1,53 +1,38 @@
 import electron from "electron";
 import { fileURLToPath } from "node:url";
 import { applicationURL } from "../src/navigation.js";
+import { developmentServices, ensureDevelopmentServices } from "../src/dev-services.js";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
 const desktop = fileURLToPath(new URL("../", import.meta.url));
-let web: ReturnType<typeof Bun.spawn> | undefined;
+const services: ReturnType<typeof Bun.spawn>[] = [];
 let windowProcess: ReturnType<typeof Bun.spawn> | undefined;
 const state = { stopping: false };
 
 function stop() {
   state.stopping = true;
   windowProcess?.kill();
-  web?.kill();
+  for (const service of services) service.kill();
 }
 
 process.on("SIGINT", stop);
 process.on("SIGTERM", stop);
 
-async function webIsReady() {
-  try {
-    const response = await fetch(`${applicationURL}/login`, {
-      signal: AbortSignal.timeout(2_000),
-      redirect: "manual",
-    });
-    await response.text();
-    return response.ok || response.status === 302 || response.status === 307;
-  } catch {
-    return false;
-  }
-}
-
 try {
-  if (await webIsReady()) {
-    console.log(`Using the existing web server at ${applicationURL}.`);
-  } else {
-    web = Bun.spawn([process.execPath, "run", "dev"], {
-      cwd: root,
-      stdout: "inherit",
-      stderr: "inherit",
-    });
-    const deadline = Date.now() + 60_000;
-    while (!(await webIsReady())) {
-      if (state.stopping) break;
-      if (web.exitCode !== null) throw new Error("The web server exited before it was ready.");
-      if (Date.now() > deadline)
-        throw new Error("The web server did not become ready within 60 seconds.");
-      await Bun.sleep(500);
-    }
-  }
+  await ensureDevelopmentServices(
+    developmentServices(applicationURL, process.env.SERVER_URL ?? "http://localhost:3001"),
+    (service) => {
+      console.log(`Starting the ${service.name} server at ${service.url}.`);
+      const child = Bun.spawn([process.execPath, "run", "--no-orphans", service.script], {
+        cwd: root,
+        stdout: "inherit",
+        stderr: "inherit",
+      });
+      services.push(child);
+      return child;
+    },
+    () => state.stopping,
+  );
   if (!state.stopping) {
     const env = { ...process.env };
     delete env.ELECTRON_RUN_AS_NODE;
@@ -72,4 +57,5 @@ try {
   process.exitCode = 1;
 } finally {
   stop();
+  await Promise.all(services.map((service) => service.exited));
 }

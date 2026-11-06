@@ -6,7 +6,7 @@ import {
   activeMemberQueryOptions,
   organizationQueryOptions,
 } from "@/queries/organizations/options";
-import { organizationSettingsAccess } from "@/lib/settings-access";
+import { organizationSettingsAccess } from "@startup-os/contracts/auth/settings-access";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { OrganizationSwitcher } from "@/components/organizations/organization-switcher";
 

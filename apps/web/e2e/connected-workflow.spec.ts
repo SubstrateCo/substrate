@@ -138,9 +138,24 @@ test("connected work preserves source, links, references, and stable navigation"
     await message.getByRole("button", { name: "Link existing work", exact: true }).click();
     const linking = page.getByRole("region", { name: "Link existing work", exact: true });
     await linking.getByLabel("Search work to link", { exact: true }).fill(task);
+    const attached = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/api/v1/context/links" &&
+        response.request().method() === "POST",
+    );
     await linking.getByRole("button", { name: task, exact: true }).click();
+    expect(
+      await (await attached).json(),
+      "Commands without a payload return explicit null data",
+    ).toEqual({ success: true, data: null });
     await expect(message.getByText("Linked work", { exact: true })).toBeVisible();
+    const detached = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/api/v1/context/links" &&
+        response.request().method() === "DELETE",
+    );
     await message.getByRole("button", { name: `Unlink ${task}`, exact: true }).click();
+    expect(await (await detached).json()).toEqual({ success: true, data: null });
     await expect(message.getByText("Linked work", { exact: true })).toBeHidden();
     await expect(message.getByText("Created here", { exact: true })).toBeVisible();
     await expect(message.getByRole("link", { name: `Open ${task}`, exact: true })).toBeVisible();

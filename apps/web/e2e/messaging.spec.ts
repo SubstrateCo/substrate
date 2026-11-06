@@ -3,7 +3,7 @@ import { expect, test, type Page, type Request } from "@playwright/test";
 import { createVerifiedAccount, provisionVerifiedAccount, type TestAccount } from "./auth";
 import { Mailpit, openEmailLink } from "./mailpit";
 import { createWorkspace, provisionWorkspace } from "./organizations";
-import { callMessaging } from "./server-functions";
+import { callMessaging } from "./api";
 
 function account(label: string, suffix: string): TestAccount {
   return {
@@ -19,7 +19,8 @@ async function sendMessage(page: Page, label: string, body: string) {
   const [transport] = await Promise.all([
     page.waitForRequest(
       (request) =>
-        request.method() === "POST" && !new URL(request.url()).pathname.startsWith("/api/auth/"),
+        request.method() === "POST" &&
+        new URL(request.url()).pathname === "/api/v1/messaging/messages",
       { timeout: 15_000 },
     ),
     input.press("Enter"),
@@ -60,7 +61,8 @@ async function createConversation(
   const [transport] = await Promise.all([
     page.waitForRequest(
       (request) =>
-        request.method() === "POST" && !new URL(request.url()).pathname.startsWith("/api/auth/"),
+        request.method() === "POST" &&
+        new URL(request.url()).pathname === "/api/v1/messaging/conversations",
       { timeout: 15_000 },
     ),
     page
@@ -87,10 +89,8 @@ async function expectRejectedOrigins(page: Page, transport: Request) {
       headers: replayHeaders,
       data: transport.postDataBuffer()!,
     });
-    expect(
-      await response.text(),
-      `A server-function write rejects ${origin ?? "missing"} Origin`,
-    ).toContain("Invalid request origin.");
+    expect(response.status(), `An API write rejects ${origin ?? "missing"} Origin`).toBe(403);
+    expect(await response.json()).toMatchObject({ success: false, error: { code: "FORBIDDEN" } });
   }
 }
 
@@ -139,9 +139,11 @@ async function expectDeniedAccess(page: Page, id: string, messageId: string, ema
     ["addMembers", { conversationId: id, emails: [email] }],
   ] as const) {
     const result = await callMessaging(page, name, data);
-    expect(result.error, `A nonparticipant cannot call ${name} for a private conversation`).toBe(
-      "Conversation not found or access denied.",
-    );
+    expect(
+      result.errorCode,
+      `A nonparticipant cannot call ${name} for a private conversation`,
+    ).toBe("NOT_FOUND");
+    expect(result.data, "Denied operations do not expose conversation data").toBeNull();
   }
 }
 

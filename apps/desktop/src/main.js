@@ -1,9 +1,19 @@
-import { app, BrowserWindow, Menu, session, shell } from "electron";
+import { app, BrowserWindow, Menu, net, session, shell } from "electron";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
-import { applicationURL, navigationTarget } from "./navigation.js";
+import { readFileSync } from "node:fs";
+import { desktopScheme, resolveDesktopLink } from "@startup-os/contracts/desktop/links";
+import { applicationURL, bundledApplicationURL, navigationTarget } from "./navigation.js";
+import { backendURL, bundledRenderer } from "./bundled-renderer.js";
+import { cookieBridge } from "./cookie-bridge.js";
 
-const errorPage = fileURLToPath(new URL("./offline.html", import.meta.url));
+const bundled = app.isPackaged || app.commandLine.hasSwitch("bundled-renderer");
+const rendererURL = bundled ? bundledApplicationURL : applicationURL;
+/** @param {string} url */
+const target = (url) => navigationTarget(url, rendererURL);
+
+const errorPageURL = new URL("./offline.html", import.meta.url).href;
+const errorPage = fileURLToPath(errorPageURL);
 app.setName("Startup OS");
 // Keep the lock identity stable for package, source-file, and smoke-test launches.
 app.setPath("userData", join(app.getPath("appData"), "Startup OS"));
@@ -12,10 +22,38 @@ const sessionPartition = app.commandLine.hasSwitch("desktop-smoke-test")
   : "persist:startup-os";
 /** @type {BrowserWindow | undefined} */
 let mainWindow;
+/** @type {string[]} */
+const pendingDestinations = [];
+
+/** @param {string[]} values */
+function acceptLinks(values) {
+  for (const value of values) {
+    const destination = resolveDesktopLink(value, rendererURL);
+    if (destination) pendingDestinations.push(destination);
+  }
+  navigatePending();
+}
+
+function navigatePending() {
+  if (!mainWindow || !pendingDestinations.length) return;
+  // A full navigation refreshes the session cache after verify/reset callbacks.
+  const destination = pendingDestinations.pop();
+  pendingDestinations.length = 0;
+  if (destination) void mainWindow.loadURL(destination).catch(() => {});
+}
+
+acceptLinks(process.argv);
+app.on("open-url", (event, url) => {
+  event.preventDefault();
+  acceptLinks([url]);
+  if (mainWindow?.isMinimized()) mainWindow.restore();
+  mainWindow?.show();
+  mainWindow?.focus();
+});
 
 /** @param {string} url */
 function openExternal(url) {
-  if (navigationTarget(url) === "external") {
+  if (target(url) === "external") {
     void shell.openExternal(url).catch(console.error);
   }
 }
@@ -42,16 +80,21 @@ function createWindow() {
     mainWindow = undefined;
   });
   window.webContents.on("will-navigate", (event, url) => {
-    if (navigationTarget(url) !== "internal") {
+    if (url === `${bundledApplicationURL}/` && window.webContents.getURL() === errorPageURL) {
+      event.preventDefault();
+      void window.loadURL(rendererURL).catch(() => {});
+      return;
+    }
+    if (target(url) !== "internal") {
       event.preventDefault();
       openExternal(url);
     }
   });
   window.webContents.on("will-redirect", (event, url) => {
-    if (navigationTarget(url) !== "internal") event.preventDefault();
+    if (target(url) !== "internal") event.preventDefault();
   });
   window.webContents.setWindowOpenHandler(({ url }) => {
-    if (navigationTarget(url) === "internal") {
+    if (target(url) === "internal") {
       void window.loadURL(url).catch(console.error);
     } else {
       openExternal(url);
@@ -60,18 +103,20 @@ function createWindow() {
   });
   window.webContents.on("will-attach-webview", (event) => event.preventDefault());
   window.webContents.on("did-fail-load", (_event, code, _description, url, isMainFrame) => {
-    if (isMainFrame && code !== -3 && navigationTarget(url) === "internal") {
+    if (isMainFrame && code !== -3 && target(url) === "internal") {
       void window.loadFile(errorPage).catch(console.error);
     }
   });
-  void window.loadURL(applicationURL).catch(console.error);
+  if (pendingDestinations.length) navigatePending();
+  else void window.loadURL(rendererURL).catch(console.error);
 }
 
 if (!app.requestSingleInstanceLock()) {
   console.log("Startup OS is already running. Focusing the existing window.");
   app.quit();
 } else {
-  app.on("second-instance", () => {
+  app.on("second-instance", (_event, argv) => {
+    acceptLinks(argv);
     if (mainWindow?.isMinimized()) mainWindow.restore();
     mainWindow?.show();
     mainWindow?.focus();
@@ -82,20 +127,43 @@ if (!app.requestSingleInstanceLock()) {
   void app
     .whenReady()
     .then(() => {
+      if (app.isPackaged && !app.commandLine.hasSwitch("desktop-smoke-test")) {
+        app.setAsDefaultProtocolClient(desktopScheme);
+      }
       const desktopSession = session.fromPartition(sessionPartition);
+      if (bundled) {
+        const publicConfig = app.isPackaged
+          ? JSON.parse(readFileSync(new URL("./desktop-config.json", import.meta.url), "utf8"))
+          : {};
+        const backend = backendURL(
+          process.env.STARTUP_OS_API_URL ?? publicConfig.apiURL,
+          app.isPackaged,
+        );
+        desktopSession.protocol.handle(
+          "https",
+          bundledRenderer({
+            directory: fileURLToPath(
+              new URL(app.isPackaged ? "./renderer/" : "../../web/dist/", import.meta.url),
+            ),
+            backend,
+            cookies: cookieBridge(desktopSession.cookies, backend),
+            fetchFile: (url) => net.fetch(url),
+          }),
+        );
+      }
       desktopSession.setPermissionRequestHandler((contents, permission, callback, details) => {
         callback(
           permission === "clipboard-sanitized-write" &&
             details.isMainFrame &&
             contents === mainWindow?.webContents &&
-            navigationTarget(details.requestingUrl) === "internal",
+            target(details.requestingUrl) === "internal",
         );
       });
       desktopSession.setPermissionCheckHandler((contents, permission, origin) => {
         return (
           permission === "clipboard-sanitized-write" &&
           contents === mainWindow?.webContents &&
-          navigationTarget(origin) === "internal"
+          target(origin) === "internal"
         );
       });
       Menu.setApplicationMenu(
