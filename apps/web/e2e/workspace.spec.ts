@@ -70,11 +70,11 @@ test("verified accounts can build a team, switch workspaces, and recover access"
     await login(page, owner);
     await expect(page.getByRole("heading", { name: "Your workspaces", exact: true })).toBeVisible();
     await expect(
-      page.getByText(
-        "You have no workspaces yet. Create one below, or open an invitation link from your email.",
-        { exact: true },
-      ),
+      page.getByRole("status").getByRole("heading", { name: "No workspaces yet", exact: true }),
     ).toBeVisible();
+    await expect(page.getByRole("status")).toContainText(
+      "Create one below, or open an invitation link from your email.",
+    );
   });
 
   await test.step("an owner creates a workspace and invites a member from the UI", async () => {

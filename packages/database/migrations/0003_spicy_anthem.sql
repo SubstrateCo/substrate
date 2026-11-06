@@ -1,4 +1,0 @@
-ALTER TABLE "messaging_participants" DROP CONSTRAINT "messaging_participants_organization_id_user_id_member_organization_id_user_id_fk";
---> statement-breakpoint
-ALTER TABLE "messaging_participants" ADD CONSTRAINT "messaging_participants_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "messaging_participants" ADD CONSTRAINT "messaging_participants_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE no action ON UPDATE no action;

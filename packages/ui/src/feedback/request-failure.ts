@@ -19,6 +19,7 @@ export function isAccessFailure(error: Error | null | undefined): boolean {
       "Conversation not found or access denied.",
       "Project or task not found or access denied.",
       "Workspace access denied.",
+      "You are not a member of this organization",
       "Your active workspace changed. Reload this page to continue.",
       "Sign in to continue.",
       "Verify your email to continue.",

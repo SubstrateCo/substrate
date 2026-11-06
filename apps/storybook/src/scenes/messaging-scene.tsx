@@ -77,7 +77,7 @@ export function MessagingScene({
     state === "stale"
       ? new Error("Your active workspace changed. Reload this page to continue.")
       : state === "revoked"
-        ? new Error("Workspace access denied.")
+        ? new Error("You are not a member of this organization")
         : state === "error"
           ? new Error("Could not load conversations. Please try again.")
           : null;

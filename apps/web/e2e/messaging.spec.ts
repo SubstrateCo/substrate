@@ -617,7 +617,13 @@ test("a stale workspace tab cannot read or mutate the newly active workspace", a
   await sendMessage(otherTab, `Message #${secondChannel}`, "Workspace B private contents");
 
   await page.bringToFront();
-  await expect(page.getByRole("alert").filter({ hasText: changed }).first()).toBeVisible();
+  const unavailable = page
+    .getByRole("alert")
+    .filter({ has: page.getByRole("heading", { name: "Workspace unavailable", exact: true }) });
+  await expect(unavailable).toBeVisible();
+  await expect(unavailable).toContainText(
+    "Check that you’re signed in to the right workspace and still have access, then try again.",
+  );
   await expect(
     page.getByRole("button", { name: `${firstWorkspace} ▾`, exact: true }),
   ).toBeVisible();
@@ -636,14 +642,16 @@ test("a stale workspace tab cannot read or mutate the newly active workspace", a
     .getByRole("complementary", { name: "Conversations" })
     .getByRole("button", { name: "Create channel", exact: true })
     .click();
-  await page.getByLabel("Channel name", { exact: true }).fill(`stale-${suffix}`);
-  await page.getByRole("button", { name: "Create channel", exact: true }).last().click();
-  await expect(
-    page
-      .getByLabel("Channel name", { exact: true })
-      .locator("xpath=ancestor::form")
-      .getByRole("alert"),
-  ).toContainText(changed);
+  await expect(unavailable).toBeVisible();
+  await expect(page.getByLabel("Channel name", { exact: true })).toHaveCount(0);
+  const staleCreate = await callMessaging(page, "createConversation", {
+    organizationId: firstOrganization.id,
+    kind: "channel",
+    name: `stale-${suffix}`,
+    private: true,
+    emails: [],
+  });
+  expect(staleCreate.error).toBe(changed);
 
   await otherTab.reload();
   await openConversation(otherTab, secondChannel);
