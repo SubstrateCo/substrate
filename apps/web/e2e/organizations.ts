@@ -59,6 +59,23 @@ export async function createWorkspace(page: Page, name: string, slug: string) {
   await expect(page.getByRole("button", { name: `${name} ▾`, exact: true })).toBeVisible();
 }
 
+export async function provisionWorkspace(page: Page, name: string, slug: string) {
+  const origin = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000").origin;
+  const created = await page.request.post("/api/auth/organization/create", {
+    headers: { origin },
+    data: { name, slug },
+  });
+  expect(created.ok(), "The fixture workspace is created").toBe(true);
+  const organization: { id: string } = await created.json();
+  const activated = await page.request.post("/api/auth/organization/set-active", {
+    headers: { origin },
+    data: { organizationId: organization.id },
+  });
+  expect(activated.ok(), "The fixture workspace is active").toBe(true);
+  await page.goto("/dashboard");
+  await expect(page.getByRole("button", { name: `${name} ▾`, exact: true })).toBeVisible();
+}
+
 export async function switchWorkspace(page: Page, current: string, next: string) {
   await page.getByRole("button", { name: `${current} ▾`, exact: true }).click();
   await expectScopedMembershipAfter(page, () =>

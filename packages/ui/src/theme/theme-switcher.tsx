@@ -1,4 +1,5 @@
 import { Monitor, Moon, Sun } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { Button } from "../primitives/button";
 import {
@@ -11,6 +12,8 @@ import {
 
 export function ThemeSwitcher({ compact = false }: { compact?: boolean }) {
   const { theme, setTheme } = useTheme();
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -19,6 +22,7 @@ export function ThemeSwitcher({ compact = false }: { compact?: boolean }) {
           size={compact ? "icon" : "default"}
           aria-label="Color theme"
           title="Color theme"
+          disabled={!hydrated}
         >
           <Sun className="size-4 dark:hidden" />
           <Moon className="hidden size-4 dark:block" />

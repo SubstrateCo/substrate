@@ -7,9 +7,14 @@
       "outputs": []
     },
     "test": {
-      "dependsOn": ["^typecheck"],
       "outputLogs": "errors-only",
       "env": ["TEST_DATABASE_URL", "DATABASE_URL"],
+      "cache": false,
+      "outputs": []
+    },
+    "test:e2e": {
+      "outputLogs": "errors-only",
+      "env": ["PLAYWRIGHT_BASE_URL", "MAILPIT_BASE_URL", "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"],
       "cache": false,
       "outputs": []
     }

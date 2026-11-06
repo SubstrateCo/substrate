@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
-import { createVerifiedAccount, type TestAccount } from "./auth";
+import { provisionVerifiedAccount, type TestAccount } from "./auth";
 import { Mailpit, openEmailLink } from "./mailpit";
-import { createWorkspace } from "./organizations";
+import { provisionWorkspace } from "./organizations";
 
 async function select(page: Page, label: string, option: string) {
   await page.getByRole("combobox", { name: label, exact: true }).click();
@@ -50,9 +50,12 @@ test("explicit project grants control inherited task, subtask, and comment acces
   const sibling = `Sibling ${suffix}`;
   try {
     await test.step("create fresh verified users and invite the second user as organization admin", async () => {
-      await createVerifiedAccount(ownerPage, mailpit, owner);
-      await createVerifiedAccount(memberPage, mailpit, member);
-      await createWorkspace(ownerPage, workspace, `sharing-${suffix}`);
+      await memberPage.clock.install();
+      await Promise.all([
+        provisionVerifiedAccount(ownerPage, mailpit, owner),
+        provisionVerifiedAccount(memberPage, mailpit, member),
+      ]);
+      await provisionWorkspace(ownerPage, workspace, `sharing-${suffix}`);
       await ownerPage.getByRole("button", { name: /^Signed in as / }).click();
       await ownerPage.getByRole("button", { name: "Organization settings", exact: true }).click();
       await ownerPage.getByLabel("Email", { exact: true }).fill(member.email);
@@ -115,6 +118,7 @@ test("explicit project grants control inherited task, subtask, and comment acces
         await expect(
           sharing.getByText(`${member.name} · ${permission.toLowerCase()}`, { exact: true }),
         ).toBeVisible();
+        await memberPage.clock.fastForward(5000);
         await expect(
           memberPage
             .getByRole("complementary", { name: "Projects", exact: true })
@@ -176,6 +180,7 @@ test("explicit project grants control inherited task, subtask, and comment acces
     await test.step("revocation removes an open task and its comments through polling without reload", async () => {
       await sharing.getByRole("button", { name: `Remove ${member.name}`, exact: true }).click();
       await expect(sharing.getByText(`${member.name} · view`, { exact: true })).toHaveCount(0);
+      await memberPage.clock.fastForward(5000);
       await expect(
         memberPage
           .getByRole("complementary", { name: "Projects", exact: true })

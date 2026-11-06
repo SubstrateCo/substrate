@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
-import { createVerifiedAccount } from "./auth";
+import { provisionVerifiedAccount } from "./auth";
 import { Mailpit } from "./mailpit";
-import { createWorkspace } from "./organizations";
+import { provisionWorkspace } from "./organizations";
 
 async function choose(page: Page, label: string, option: string) {
   await page.getByRole("combobox", { name: label, exact: true }).click();
@@ -19,8 +19,8 @@ test("tasks application creates projects, custom statuses, assigned tasks, subta
     email: `planner-${suffix}@example.test`,
     password: `Tasks-${randomUUID()}!`,
   };
-  await createVerifiedAccount(page, new Mailpit(request), account);
-  await createWorkspace(page, `Tasks ${suffix}`, `tasks-${suffix}`);
+  await provisionVerifiedAccount(page, new Mailpit(request), account);
+  await provisionWorkspace(page, `Tasks ${suffix}`, `tasks-${suffix}`);
   await page
     .getByRole("navigation", { name: "Apps" })
     .getByRole("button", { name: "Tasks", exact: true })

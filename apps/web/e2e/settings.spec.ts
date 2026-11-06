@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
-import { createVerifiedAccount, type TestAccount } from "./auth";
-import { createWorkspace } from "./organizations";
+import { provisionVerifiedAccount, type TestAccount } from "./auth";
+import { provisionWorkspace } from "./organizations";
 import { Mailpit } from "./mailpit";
 
 test("personal invitations show loading, recover from errors, and disable expired invitations", async ({
@@ -9,7 +9,7 @@ test("personal invitations show loading, recover from errors, and disable expire
   request,
 }) => {
   const suffix = randomUUID();
-  await createVerifiedAccount(page, new Mailpit(request), {
+  await provisionVerifiedAccount(page, new Mailpit(request), {
     name: `Invitations ${suffix}`,
     email: `invitations-${suffix}@example.test`,
     password: `Password-${randomUUID()}!`,
@@ -80,8 +80,8 @@ test("personal invitations work without a workspace and organization settings en
   const recipient = account("recipient");
   const mailpit = new Mailpit(request);
   const organizationName = `Settings ${suffix}`;
-  await createVerifiedAccount(page, mailpit, owner);
-  await createWorkspace(page, organizationName, `settings-${suffix}`);
+  await provisionVerifiedAccount(page, mailpit, owner);
+  await provisionWorkspace(page, organizationName, `settings-${suffix}`);
   const organizationResponse = await page.request.get(
     "/api/auth/organization/get-full-organization",
   );
@@ -106,7 +106,8 @@ test("personal invitations work without a workspace and organization settings en
   const context = await browser.newContext();
   try {
     const memberPage = await context.newPage();
-    await createVerifiedAccount(memberPage, mailpit, recipient);
+    await provisionVerifiedAccount(memberPage, mailpit, recipient);
+    await memberPage.goto("/organizations");
     await memberPage.getByRole("link", { name: "Your invitations", exact: true }).click();
     await expect(
       memberPage.getByRole("heading", { name: "User settings", exact: true }),

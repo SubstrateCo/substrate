@@ -1,4 +1,5 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
+import { openStory } from "./stories";
 
 async function backgroundContrast(control: Locator, parentSelector: string) {
   return control.evaluate((node, selector) => {
@@ -20,45 +21,6 @@ async function backgroundContrast(control: Locator, parentSelector: string) {
     return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
   }, parentSelector);
 }
-
-async function openStory(page: Page, id: string) {
-  await page.goto(`/iframe.html?id=${id}&viewMode=story`);
-  await expect(page.locator("#storybook-root > div")).toBeVisible();
-  await page.evaluate(() => document.fonts.ready);
-}
-
-test("every story renders without app services or runtime errors", async ({ page, request }) => {
-  const response = await request.get("/index.json");
-  const index: { entries: Record<string, { id: string; type: string }> } = await response.json();
-  const stories = Object.values(index.entries).filter((entry) => entry.type === "story");
-  // This test visits the entire catalog, which grows as feature previews are added.
-  test.setTimeout(Math.max(test.info().timeout, stories.length * 3000));
-  const errors: string[] = [];
-  const serviceRequests: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
-  page.on("request", (request) => {
-    const url = new URL(request.url());
-    if (
-      url.pathname.startsWith("/api/") ||
-      request.method() === "POST" ||
-      url.origin !== "http://127.0.0.1:6007"
-    )
-      serviceRequests.push(request.url());
-  });
-  expect(stories.length).toBeGreaterThan(0);
-  for (const story of stories) {
-    await test.step(
-      story.id,
-      async () => {
-        await openStory(page, story.id);
-        await expect(page.locator(".sb-errordisplay")).not.toBeVisible();
-        expect(errors, story.id).toEqual([]);
-      },
-      { timeout: 15000 },
-    );
-  }
-  expect(serviceRequests).toEqual([]);
-});
 
 test("isolated button and picker previews are centered, while scenes keep their app layout", async ({
   page,
@@ -266,12 +228,16 @@ test("user icon reveals account actions on hover and supports keyboard access", 
   await expect(actions).toBeVisible();
   await expect(actions.getByText("Taylor Kim", { exact: true })).toHaveCount(0);
   await expect(actions.getByRole("switch", { name: "Dark mode", exact: true })).toBeVisible();
-  const actionRows = await actions
+  const positions = await actions
     .getByRole("button", { name: /^(User settings|Organization settings|Sign out)$/ })
-    .all();
-  const positions = await Promise.all(actionRows.map((row) => row.boundingBox()));
-  expect(positions.map((box) => box?.x)).toEqual(positions.map(() => positions[0]?.x));
-  expect(positions.map((box) => box?.width)).toEqual(positions.map(() => positions[0]?.width));
+    .evaluateAll((rows) =>
+      rows.map((row) => {
+        const { x, width } = row.getBoundingClientRect();
+        return { x, width };
+      }),
+    );
+  expect(positions.map((box) => box.x)).toEqual(positions.map(() => positions[0]?.x));
+  expect(positions.map((box) => box.width)).toEqual(positions.map(() => positions[0]?.width));
   await expect(actions.getByRole("button", { name: "User settings", exact: true })).toBeVisible();
   await expect(
     actions.getByRole("button", { name: "Organization settings", exact: true }),

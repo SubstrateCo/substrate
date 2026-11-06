@@ -3,6 +3,27 @@ import { randomUUID } from "node:crypto";
 import { createVerifiedAccount } from "./auth";
 import { Mailpit } from "./mailpit";
 
+test("the theme menu is disabled until its click handler is hydrated", async ({ page }) => {
+  const scripts = Promise.withResolvers<void>();
+  await page.route("**/*", async (route) => {
+    if (route.request().resourceType() === "script") await scripts.promise;
+    await route.continue();
+  });
+  const navigation = page.goto("/signup");
+  try {
+    const switcher = page.getByRole("button", { name: "Color theme", exact: true });
+    await expect(switcher).toBeVisible();
+    await expect(switcher).toBeDisabled();
+    scripts.resolve();
+    await navigation;
+    await switcher.click();
+    await expect(page.getByRole("menuitemradio", { name: "Dark", exact: true })).toBeVisible();
+  } finally {
+    scripts.resolve();
+    await navigation;
+  }
+});
+
 test("appearance persists across reload and navigation and follows the system when selected", async ({
   page,
 }) => {

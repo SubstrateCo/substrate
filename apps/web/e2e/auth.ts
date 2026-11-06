@@ -47,6 +47,27 @@ export async function createVerifiedAccount(page: Page, mailpit: Mailpit, accoun
   await expect(page.getByRole("heading", { name: "Your workspaces", exact: true })).toBeVisible();
 }
 
+export async function provisionVerifiedAccount(page: Page, mailpit: Mailpit, account: TestAccount) {
+  const origin = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000").origin;
+  const created = await page.request.post("/api/auth/sign-up/email", {
+    headers: { origin },
+    data: { ...account, callbackURL: "/login" },
+  });
+  expect(created.ok(), "The test account can sign up").toBe(true);
+  const link = await mailpit.link(
+    account.email,
+    "Verify your Startup OS email",
+    "/api/auth/verify-email",
+  );
+  const verified = await page.request.get(link);
+  expect(verified.ok(), "The test account verifies its email").toBe(true);
+  const signedIn = await page.request.post("/api/auth/sign-in/email", {
+    headers: { origin },
+    data: { email: account.email, password: account.password },
+  });
+  expect(signedIn.ok(), "The verified test account can sign in").toBe(true);
+}
+
 export async function signout(page: Page) {
   const user = page.getByRole("button", { name: /^Signed in as / });
   await expect(user).toBeVisible();
