@@ -6,6 +6,10 @@ import { TaskDetail } from "./task-detail";
 import { ProjectForm } from "./project-form";
 import { ProjectSharing } from "./project-sharing";
 import { ProjectStatuses } from "./project-statuses";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { CopyLink } from "../context/copy-link";
+import { workHref } from "@/lib/context-links";
+import { WorkDiscussions } from "../context/work-discussions";
 
 export function ProjectPane({
   organizationId,
@@ -15,9 +19,38 @@ export function ProjectPane({
   projectEntityId: string;
 }) {
   const project = useQuery(projectQueryOptions(organizationId, projectEntityId));
+  const search = useSearch({ strict: false });
+  const navigate = useNavigate();
   return (
     <ProjectPaneView
       data={project.data}
+      selectedTaskId={search.taskId ?? null}
+      onSelectTask={(taskId) =>
+        void navigate({
+          to: "/tasks",
+          search: {
+            workspaceId: organizationId,
+            projectId: projectEntityId,
+            taskId: taskId ?? undefined,
+          },
+        })
+      }
+      headerActions={
+        <CopyLink label="Copy project link" href={workHref(organizationId, projectEntityId)} />
+      }
+      context={
+        project.data &&
+        !project.error && (
+          <details>
+            <summary className="cursor-pointer text-sm">Project discussions</summary>
+            <WorkDiscussions
+              organizationId={organizationId}
+              entityId={projectEntityId}
+              label="Project discussions"
+            />
+          </details>
+        )
+      }
       loading={project.isPending}
       error={project.error}
       onRetry={() => void project.refetch()}

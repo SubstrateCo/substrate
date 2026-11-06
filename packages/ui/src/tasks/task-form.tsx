@@ -18,6 +18,7 @@ export function TaskForm({
   onCancel,
   pending = false,
   error,
+  sourceText,
 }: {
   detail: ProjectDetail;
   task?: Task;
@@ -26,6 +27,7 @@ export function TaskForm({
   onCancel: () => void;
   pending?: boolean;
   error?: Error | null;
+  sourceText?: string;
 }) {
   const id = useId();
   const [title, setTitle] = useState(task?.title ?? "");
@@ -81,6 +83,11 @@ export function TaskForm({
           maxLength={20000}
         />
       </div>
+      {sourceText && (
+        <Button type="button" variant="outline" onClick={() => setDescription(sourceText)}>
+          Copy source text into description
+        </Button>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <TaskSelect
           label="Status"

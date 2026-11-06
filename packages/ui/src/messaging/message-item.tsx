@@ -4,6 +4,7 @@ import { Button } from "../primitives/button";
 import { FormMessage } from "../auth/form-message";
 import { EmojiPicker } from "./emoji-picker";
 import { MessageMarkdown } from "./message-markdown";
+import type { ReactNode } from "react";
 
 export function MessageItem({
   message,
@@ -11,12 +12,18 @@ export function MessageItem({
   pending = false,
   error,
   onThread,
+  body,
+  actions,
+  children,
 }: {
   message: Message;
   onReact: (emoji: string) => void;
   pending?: boolean;
   error?: Error | null;
   onThread?: (id: string) => void;
+  body?: ReactNode;
+  actions?: ReactNode;
+  children?: ReactNode;
 }) {
   return (
     <article className="group flex gap-3 px-5 py-3 hover:bg-muted/40">
@@ -41,7 +48,7 @@ export function MessageItem({
             })}
           </time>
         </div>
-        <MessageMarkdown body={message.body} />
+        {body ?? <MessageMarkdown body={message.body} />}
         <div className="mt-1 flex flex-wrap items-center gap-1">
           {message.reactions.map(({ emoji, count, reacted }) => (
             <Button
@@ -62,6 +69,7 @@ export function MessageItem({
             className="flex items-center gap-1 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 has-data-[state=open]:opacity-100"
           >
             <EmojiPicker label="React to message" onSelect={onReact} disabled={pending} />
+            {actions}
             {onThread && (
               <Button size="xs" variant="ghost" onClick={() => onThread(message.id)}>
                 <MessageSquare className="size-3" />
@@ -76,6 +84,7 @@ export function MessageItem({
           error={error}
           errorDescription="Your reaction couldn’t be saved. Try selecting it again."
         />
+        {children}
       </div>
     </article>
   );

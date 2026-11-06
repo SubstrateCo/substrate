@@ -7,6 +7,8 @@ export const workspaceInput = z.object({ organizationId: z.string().min(1).max(2
 export const messageListInput = workspaceInput.extend({
   conversationId: id,
   threadId: id.optional(),
+  beforeMessageId: id.optional(),
+  aroundMessageId: id.optional(),
 });
 export const conversationInput = workspaceInput.extend({
   kind: z.enum(["dm", "group", "channel"]),
@@ -14,7 +16,10 @@ export const conversationInput = workspaceInput.extend({
   private: z.boolean().optional(),
   emails: emails.optional(),
 });
-export const messageInput = messageListInput.extend({ body: z.string().trim().min(1).max(20_000) });
+export const messageInput = messageListInput.extend({
+  body: z.string().trim().min(1).max(20_000),
+  requestId: z.uuid().optional(),
+});
 export const reactionInput = workspaceInput.extend({
   messageId: id,
   emoji: z.string().min(1).max(32),

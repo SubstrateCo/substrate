@@ -12,6 +12,8 @@ export function TasksWorkspace({
   onRetry,
   renderCreate,
   renderProject,
+  selectedProjectId,
+  onSelectProject,
 }: {
   projects: Project[];
   loading?: boolean;
@@ -19,13 +21,15 @@ export function TasksWorkspace({
   onRetry: () => void;
   renderCreate: (onSaved: (id: string) => void, onCancel: () => void) => ReactNode;
   renderProject: (project: Project) => ReactNode;
+  selectedProjectId?: string;
+  onSelectProject?: (id: string) => void;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const visible = isAccessFailure(error) ? [] : projects;
   const selected =
-    visible.find((project) => project.entityId === selectedId) ??
-    (selectedId === null ? visible[0] : undefined);
+    visible.find((project) => project.entityId === (selectedProjectId ?? selectedId)) ??
+    (selectedProjectId === undefined && selectedId === null ? visible[0] : undefined);
   return (
     <section
       aria-label="Tasks application"
@@ -65,6 +69,7 @@ export function TasksWorkspace({
               }
               onClick={() => {
                 setSelectedId(project.entityId);
+                onSelectProject?.(project.entityId);
                 setCreating(false);
               }}
             >
@@ -78,6 +83,7 @@ export function TasksWorkspace({
           renderCreate(
             (id) => {
               setSelectedId(id);
+              onSelectProject?.(id);
               setCreating(false);
             },
             () => setCreating(false),
@@ -85,7 +91,9 @@ export function TasksWorkspace({
         {!creating && selected && renderProject(selected)}
         {!creating && !selected && !loading && !error && (
           <div className="p-8">
-            <h2 className="text-lg font-semibold">Your team's work, in one place</h2>
+            <h2 className="text-lg font-semibold">
+              {selectedProjectId ? "Project unavailable" : "Your team's work, in one place"}
+            </h2>
             <p className="mt-2 text-muted-foreground">
               Choose a project or create one to add tasks, subtasks, and comments.
             </p>

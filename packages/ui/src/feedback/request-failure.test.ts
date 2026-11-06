@@ -25,3 +25,11 @@ describe("request failure recovery", () => {
     expect(isInvitationUnavailable(new Error("Invitation not found!"))).toBe(true);
   });
 });
+
+test("workspace context access errors block cached private content but transient failures do not", () => {
+  expect(isAccessFailure(new Error("Item not found or access denied."))).toBe(true);
+  expect(isAccessFailure(new Error("Sign in with a verified account to continue."))).toBe(true);
+  expect(isAccessFailure(new Error("Workspace context is unavailable. Please try again."))).toBe(
+    false,
+  );
+});

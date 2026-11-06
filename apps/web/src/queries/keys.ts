@@ -1,5 +1,7 @@
 export const queryKeys = {
   session: ["auth", "session"] as const,
+  context: (organizationId: string) =>
+    [...queryKeys.organization(organizationId), "context"] as const,
   organizations: ["organizations", "list"] as const,
   userInvitations: ["invitations", "user"] as const,
   organization: (organizationId: string) => ["organizations", organizationId] as const,

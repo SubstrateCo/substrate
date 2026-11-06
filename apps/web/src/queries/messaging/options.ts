@@ -16,11 +16,15 @@ export const messagesQueryOptions = (
   organizationId: string,
   conversationId: string,
   threadId?: string,
+  options: { beforeMessageId?: string; aroundMessageId?: string } = {},
 ) =>
   queryOptions({
-    queryKey: queryKeys.messages(organizationId, conversationId, threadId),
+    queryKey: [...queryKeys.messages(organizationId, conversationId, threadId), options],
     queryFn: async ({ signal }) => {
-      return listMessages({ data: { organizationId, conversationId, threadId }, signal });
+      return listMessages({
+        data: { organizationId, conversationId, threadId, ...options },
+        signal,
+      });
     },
     refetchInterval: 3000,
     retry: false,

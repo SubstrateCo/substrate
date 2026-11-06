@@ -15,6 +15,10 @@ export function ProjectPane({
   renderTaskForm,
   renderTaskDetail,
   renderSettings,
+  selectedTaskId,
+  onSelectTask,
+  headerActions,
+  context,
 }: {
   data?: ProjectDetail;
   loading?: boolean;
@@ -34,6 +38,10 @@ export function ProjectPane({
     onSubtask: () => void,
   ) => ReactNode;
   renderSettings: (detail: ProjectDetail) => ReactNode;
+  selectedTaskId?: string | null;
+  onSelectTask?: (id: string | null) => void;
+  headerActions?: ReactNode;
+  context?: ReactNode;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState<{ parentTaskEntityId?: string } | null>(null);
@@ -59,7 +67,8 @@ export function ProjectPane({
       </div>
     );
   const canEdit = detail.level === "edit" || detail.level === "owner";
-  const selected = detail.tasks.find((task) => task.entityId === selectedId);
+  const effectiveId = selectedTaskId === undefined ? selectedId : selectedTaskId;
+  const selected = detail.tasks.find((task) => task.entityId === effectiveId);
   if (editing && canEdit) return renderProjectEditor(detail, () => setEditing(false));
   return (
     <div className="space-y-6 p-4 sm:p-6">
@@ -71,6 +80,7 @@ export function ProjectPane({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {headerActions}
           <Button variant="outline" aria-pressed={settings} onClick={() => setSettings(!settings)}>
             {settings ? "Back to tasks" : "Project settings"}
           </Button>
@@ -86,6 +96,7 @@ export function ProjectPane({
           )}
         </div>
       </header>
+      {context}
       {error && <ErrorState compact title="Couldn’t refresh project" onRetry={onRetry} />}
       {settings ? (
         <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
@@ -100,9 +111,10 @@ export function ProjectPane({
         <div className="grid min-w-0 grid-cols-1 items-start gap-6 xl:grid-cols-2">
           <TaskList
             detail={detail}
-            selectedId={selectedId}
+            selectedId={effectiveId}
             onSelect={(id) => {
               setSelectedId(id);
+              onSelectTask?.(id);
               setCreating(null);
             }}
           />
@@ -116,6 +128,7 @@ export function ProjectPane({
                 creating.parentTaskEntityId,
                 (id) => {
                   setSelectedId(id);
+                  onSelectTask?.(id);
                   setCreating(null);
                 },
                 () => setCreating(null),
@@ -127,9 +140,13 @@ export function ProjectPane({
             renderTaskDetail(
               detail,
               selected,
-              () => setSelectedId(null),
+              () => {
+                setSelectedId(null);
+                onSelectTask?.(null);
+              },
               () => setCreating({ parentTaskEntityId: selected.entityId }),
             )}
+          {selectedTaskId && !selected && <p role="status">Task unavailable or access denied.</p>}
         </div>
       )}
     </div>

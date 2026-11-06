@@ -7,6 +7,6 @@ export function useTasksMutation(organizationId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (data: TasksWrite) => mutateTasks({ data: { ...data, organizationId } }),
-    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.tasks(organizationId) }),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.organization(organizationId) }),
   });
 }

@@ -3,12 +3,19 @@ import { TasksWorkspace as TasksWorkspaceView } from "@startup-os/ui/tasks/tasks
 import { projectsQueryOptions } from "@/queries/tasks/options";
 import { ProjectForm } from "./project-form";
 import { ProjectPane } from "./project-pane";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 
 export function TasksWorkspace({ organizationId }: { organizationId: string }) {
   const projects = useQuery(projectsQueryOptions(organizationId));
+  const search = useSearch({ strict: false });
+  const navigate = useNavigate();
   return (
     <TasksWorkspaceView
       projects={projects.data ?? []}
+      selectedProjectId={search.projectId}
+      onSelectProject={(projectId) =>
+        void navigate({ to: "/tasks", search: { workspaceId: organizationId, projectId } })
+      }
       loading={projects.isPending}
       error={projects.error}
       onRetry={() => void projects.refetch()}
