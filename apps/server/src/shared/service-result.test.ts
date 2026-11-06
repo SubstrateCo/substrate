@@ -1,6 +1,7 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import { AccessDeniedError, ConflictError, ValidationError } from "@startup-os/database";
 import { serviceResult, ServiceError } from "./service-result";
+import { APIError } from "better-auth/api";
 
 describe("service results", () => {
   test("keeps successful domain data in the result", async () => {
@@ -20,6 +21,11 @@ describe("service results", () => {
     [new AccessDeniedError(), "NOT_FOUND", "Item not found or access denied."],
     [new ValidationError("Invalid task status."), "INVALID_INPUT", "Invalid task status."],
     [new ConflictError("Task already exists."), "CONFLICT", "Task already exists."],
+    [
+      new APIError("BAD_REQUEST", { message: "Private implementation details" }),
+      "INVALID_INPUT",
+      "Invalid request input.",
+    ],
   ] as const)("maps expected failure %s to %s", async (error, code, message) => {
     const result = await serviceResult(async () => {
       throw error;

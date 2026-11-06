@@ -9,6 +9,7 @@ import {
 import { organizationSettingsAccess } from "@startup-os/contracts/auth/settings-access";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { OrganizationSwitcher } from "@/components/organizations/organization-switcher";
+import { sessionQueryOptions } from "@/queries/auth/session";
 
 export function WorkspaceFrame({
   organizationId,
@@ -20,6 +21,7 @@ export function WorkspaceFrame({
   children: ReactNode;
 }) {
   const navigate = useNavigate();
+  const session = useQuery({ ...sessionQueryOptions(), staleTime: Infinity });
   const pathname = useLocation({ select: (location) => location.pathname });
   const organization = useQuery({
     ...organizationQueryOptions(organizationId ?? ""),
@@ -39,6 +41,7 @@ export function WorkspaceFrame({
   return (
     <WorkspaceShell
       name={name}
+      image={session.data?.user.image}
       view={view}
       onViewChange={(nextView) => {
         const to = {
@@ -56,6 +59,7 @@ export function WorkspaceFrame({
           <OrganizationSwitcher
             organizationId={organizationId}
             name={organization.data?.name || "Workspace"}
+            logo={organization.data?.logo}
             compact
           />
         ) : (

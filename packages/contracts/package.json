@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./files/input": "./src/files/input.ts",
+    "./files/pictures": "./src/files/pictures.ts",
     "./tasks": "./src/tasks/status.ts",
     "./tasks/input": "./src/tasks/input.ts",
     "./context/input": "./src/context/input.ts",

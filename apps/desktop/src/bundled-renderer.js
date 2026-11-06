@@ -2,6 +2,7 @@ import { realpath, stat } from "node:fs/promises";
 import { extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { bundledApplicationURL } from "./navigation.js";
+import { storageOrigins as validateStorageOrigins } from "./storage.js";
 
 /** @param {string | undefined} value @param {boolean} packaged */
 export function backendURL(value, packaged) {
@@ -99,7 +100,7 @@ function forwardingHeaders(source) {
 }
 
 /**
- * @param {{ directory: string, backend: string, fetchFile: (url: string) => Promise<Response>, fetchUpstream?: (url: string, init: RequestInit) => Promise<Response>, origin?: string }} options
+ * @param {{ directory: string, backend: string, fetchFile: (url: string) => Promise<Response>, fetchUpstream?: (url: string, init: RequestInit) => Promise<Response>, origin?: string, storageOrigins?: string[] }} options
  */
 export function bundledRenderer({
   directory,
@@ -107,8 +108,12 @@ export function bundledRenderer({
   fetchFile,
   fetchUpstream = fetch,
   origin = bundledApplicationURL,
+  storageOrigins = [],
 }) {
   const upstream = backendURL(backend, false);
+  const storageSources = validateStorageOrigins(storageOrigins, false)
+    .map((value) => ` ${value}`)
+    .join("");
   /** @param {Request} request */
   return async (request) => {
     const url = new URL(request.url);
@@ -162,7 +167,7 @@ export function bundledRenderer({
       headers.set("Cache-Control", "no-cache");
       headers.set(
         "Content-Security-Policy",
-        "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'self'",
+        `default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:${storageSources}; connect-src 'self'${storageSources}; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'self'`,
       );
       return new Response(request.method === "HEAD" ? null : response.body, {
         status: response.status,

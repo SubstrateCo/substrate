@@ -7,7 +7,7 @@ import { ensureHumanActor } from "@startup-os/database/provisioning";
 import * as schema from "@startup-os/database/schema";
 import { betterAuth } from "better-auth";
 import { electron } from "@better-auth/electron";
-import { createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { organization } from "better-auth/plugins";
 import { authEnvironment } from "./environment";
 import { createMailer } from "./mail";
@@ -20,6 +20,13 @@ import { ac, roles } from "@startup-os/contracts/auth/permissions";
 import { normalizeUserName } from "./user-name";
 import { db } from "./database";
 import { frontendAuthLink, invitationLink } from "./email-link";
+import {
+  authorizePictureMutation,
+  readPictureMutation,
+  protectUserPicture,
+} from "./picture-policy";
+import { createStorageRepository } from "@startup-os/database/storage";
+import { managedPicture } from "@startup-os/contracts/files/pictures";
 
 const env = authEnvironment();
 const sendMail = createMailer(env);
@@ -73,10 +80,10 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
-        before: async (user) => ({ data: normalizeUserName(user) }),
+        before: async (user) => ({ data: protectUserPicture(normalizeUserName(user), true) }),
       },
       update: {
-        before: async (user) => ({ data: normalizeUserName(user) }),
+        before: async (user) => ({ data: protectUserPicture(normalizeUserName(user)) }),
       },
     },
     session: {
@@ -90,6 +97,15 @@ export const auth = betterAuth({
     },
   },
   hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      const mutation = readPictureMutation(ctx.path, ctx.body ?? {});
+      if (!mutation) return;
+      const origin = ctx.headers?.get("origin");
+      if (!origin || !env.trustedOrigins.includes(origin))
+        throw new APIError("FORBIDDEN", { message: "Invalid request origin." });
+      const session = await getSessionFromCtx(ctx);
+      await authorizePictureMutation(mutation, session, createStorageRepository(db));
+    }),
     after: createAuthMiddleware(async (ctx) => {
       const body = organizationBody.safeParse(ctx.body ?? {});
       const result = organizationResult.safeParse(ctx.context.returned);
@@ -110,6 +126,21 @@ export const auth = betterAuth({
       allowUserToCreateOrganization: (user) => user.emailVerified,
       requireEmailVerificationOnInvitation: true,
       organizationHooks: {
+        beforeCreateOrganization: async ({ organization }) => {
+          if (organization.logo != null)
+            throw new APIError("BAD_REQUEST", {
+              message: "Upload a picture after creating your organization.",
+            });
+        },
+        beforeUpdateOrganization: async ({ organization }) => {
+          if (
+            organization.logo !== undefined &&
+            !managedPicture.safeParse(organization.logo).success
+          )
+            throw new APIError("BAD_REQUEST", {
+              message: "Use a completed managed picture URL or null.",
+            });
+        },
         afterCreateOrganization: provisionMember,
         afterAddMember: provisionMember,
         afterAcceptInvitation: provisionMember,

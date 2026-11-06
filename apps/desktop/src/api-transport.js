@@ -29,7 +29,8 @@ export function desktopAPITransport({ getCookie, authFetch, fetchUpstream = fetc
     headers.set("origin", desktopOrigin);
     if (url.pathname.startsWith("/api/auth/")) {
       const path = url.pathname.slice("/api/auth".length);
-      if (path !== "/get-session" && !path.startsWith("/organization/")) {
+      const profileUpdate = path === "/update-user" && init.method === "POST";
+      if (path !== "/get-session" && !path.startsWith("/organization/") && !profileUpdate) {
         return new Response("Use the desktop auth bridge.", { status: 403 });
       }
       let result = new Response("Auth unavailable", { status: 502 });

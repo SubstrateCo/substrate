@@ -3,9 +3,11 @@ import { Building2, Settings } from "lucide-react";
 import { Button } from "../primitives/button";
 import { Popover, PopoverContent, PopoverTrigger } from "../primitives/popover";
 import { AppearanceControl } from "../theme/appearance-control";
+import { PicturePreview } from "../upload/picture-preview";
 
 export function UserMenu({
   name,
+  image,
   showOrganizationSettings,
   organizationName,
   onUserSettings,
@@ -13,6 +15,7 @@ export function UserMenu({
   signOut,
 }: {
   name: string;
+  image?: string | null;
   showOrganizationSettings: boolean;
   organizationName?: string;
   onUserSettings: () => void;
@@ -26,6 +29,7 @@ export function UserMenu({
         <Button
           variant="avatar"
           size="icon"
+          className="overflow-hidden"
           aria-label={`Signed in as ${name}`}
           title={name}
           onPointerEnter={(event) => {
@@ -36,7 +40,11 @@ export function UserMenu({
             setOpenedBy("click");
           }}
         >
-          {name.slice(0, 2).toUpperCase()}
+          <PicturePreview
+            src={image}
+            fallback={name.slice(0, 2).toUpperCase()}
+            className="size-full object-cover"
+          />
         </Button>
       </PopoverTrigger>
       <PopoverContent

@@ -9,6 +9,7 @@ import { isAccessFailure } from "../feedback/request-failure";
 
 export function WorkspaceShell({
   name,
+  image,
   view,
   onViewChange,
   showOrganizationSettings,
@@ -22,6 +23,7 @@ export function WorkspaceShell({
   children,
 }: {
   name: string;
+  image?: string | null;
   view: "messages" | "tasks" | "user-settings" | "organization-settings";
   onViewChange: (view: "messages" | "tasks" | "user-settings" | "organization-settings") => void;
   showOrganizationSettings: boolean;
@@ -64,6 +66,7 @@ export function WorkspaceShell({
         <div className="mt-auto">
           <UserMenu
             name={name}
+            image={image}
             showOrganizationSettings={showOrganizationSettings}
             organizationName={organizationName}
             onUserSettings={() => onViewChange("user-settings")}

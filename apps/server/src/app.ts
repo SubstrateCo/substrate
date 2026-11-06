@@ -13,6 +13,7 @@ import { createContextRoutes } from "./v1/context/routes";
 import { createSessionRoutes } from "./v1/session/routes";
 import { createOrganizationRoutes } from "./v1/organizations/routes";
 import { createDesktopRoutes } from "./desktop/routes";
+import { createFilesRoutes } from "./v1/files/routes";
 
 export function createApp() {
   const { trustedOrigins } = authEnvironment();
@@ -41,6 +42,7 @@ export function createApp() {
     .route("/desktop", createDesktopRoutes())
     .route("/api/v1/session", createSessionRoutes())
     .route("/api/v1/organizations", createOrganizationRoutes())
+    .route("/api/v1/files", createFilesRoutes())
     .route("/api/v1/tasks", createTasksRoutes())
     .route("/api/v1/messaging", createMessagingRoutes())
     .route("/api/v1/context", createContextRoutes())

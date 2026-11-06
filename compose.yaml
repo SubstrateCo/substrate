@@ -1,4 +1,33 @@
 services:
+  s3:
+    image: rustfs/rustfs:1.0.0
+    ports:
+      - "127.0.0.1:4566:9000"
+    environment:
+      RUSTFS_ACCESS_KEY: startup_os
+      RUSTFS_SECRET_KEY: startup_os_storage
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: 0.0.0.0:9000
+      RUSTFS_CONSOLE_ENABLE: "false"
+    volumes:
+      - s3_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+  s3-init:
+    image: amazon/aws-cli:2.31.13
+    environment:
+      AWS_ACCESS_KEY_ID: startup_os
+      AWS_SECRET_ACCESS_KEY: startup_os_storage
+      AWS_DEFAULT_REGION: us-east-1
+    depends_on:
+      s3:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "/init/storage.sh"]
+    volumes:
+      - ./scripts/s3-storage.sh:/init/storage.sh:ro
   mailpit:
     image: axllent/mailpit:v1.27.4
     ports:
@@ -36,4 +65,5 @@ services:
       timeout: 3s
       retries: 30
 volumes:
+  s3_data:
   postgres_data:

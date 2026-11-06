@@ -17,10 +17,12 @@
     "@hono/zod-validator": "^0.7.6",
     "@startup-os/contracts": "workspace:*",
     "@startup-os/database": "workspace:*",
+    "@startup-os/storage": "workspace:*",
     "better-auth": "^1.7.18",
     "drizzle-orm": "^0.45.4",
     "hono": "^4.10.0",
     "nodemailer": "^10.3.1",
+    "sharp": "^0.34.5",
     "zod": "^4.6.7"
   },
   "devDependencies": {

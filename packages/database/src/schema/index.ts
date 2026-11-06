@@ -6,6 +6,7 @@ export * from "../core/contacts/schema";
 export * from "../core/permissions/schema";
 export * from "../core/permissions/access-parents";
 export * from "../core/links/schema";
+export * from "../core/storage/schema";
 export * from "../features/messaging/schema";
 export * from "../features/projects/schema";
 export * from "../features/tasks/tasks.schema";

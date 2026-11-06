@@ -6,10 +6,12 @@ import { organizationsQueryOptions, unwrap } from "@/queries/organizations/optio
 export function OrganizationSwitcher({
   organizationId,
   name,
+  logo,
   compact = false,
 }: {
   organizationId: string;
   name: string;
+  logo?: string | null;
   compact?: boolean;
 }) {
   const organizations = useQuery(organizationsQueryOptions());
@@ -26,6 +28,7 @@ export function OrganizationSwitcher({
     <OrganizationSwitcherView
       organizationId={organizationId}
       name={name}
+      logo={logo}
       compact={compact}
       organizations={organizations.data || []}
       pending={switchOrganization.isPending}

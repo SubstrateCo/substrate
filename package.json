@@ -20,7 +20,7 @@
     "storybook": "bun run --filter @startup-os/storybook dev",
     "storybook:build": "bun run --filter @startup-os/storybook build",
     "storybook:test": "bun run --filter @startup-os/storybook test",
-    "services:up": "docker compose up -d postgres mailpit",
+    "services:up": "docker compose up -d postgres mailpit s3 s3-init",
     "lint": "oxlint --type-aware --fix",
     "format": "oxfmt --write .",
     "typecheck": "bun check && turbo run typecheck",

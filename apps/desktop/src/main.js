@@ -7,6 +7,7 @@ import { applicationURL, bundledApplicationURL, navigationTarget } from "./navig
 import { backendURL, bundledRenderer } from "./bundled-renderer.js";
 import { createDesktopAuthClient } from "./auth-client.js";
 import { desktopAPITransport } from "./api-transport.js";
+import { storageOrigins, storageRequest } from "./storage.js";
 
 const bundled = app.isPackaged || app.commandLine.hasSwitch("bundled-renderer");
 const rendererURL = bundled ? bundledApplicationURL : applicationURL;
@@ -32,6 +33,10 @@ const publicConfig = app.isPackaged
   ? JSON.parse(readFileSync(new URL("./desktop-config.json", import.meta.url), "utf8"))
   : {};
 const backend = backendURL(process.env.STARTUP_OS_API_URL ?? publicConfig.apiURL, app.isPackaged);
+const allowedStorageOrigins = storageOrigins(
+  process.env.STARTUP_OS_STORAGE_ORIGINS ?? publicConfig.storageOrigins,
+  app.isPackaged,
+);
 const { authClient, handleAuthLink } = createDesktopAuthClient(
   backend,
   process.env.STARTUP_OS_WEB_URL ?? publicConfig.webURL ?? applicationURL,
@@ -168,18 +173,27 @@ if (!app.requestSingleInstanceLock()) {
         getCookie: () => authClient.getCookie(),
         authFetch: (path, options) => authClient.$fetch(path, options),
       });
+      const fetchStorage = storageRequest(allowedStorageOrigins, (request, options) =>
+        desktopSession.fetch(request, { ...options, bypassCustomProtocolHandlers: true }),
+      );
       if (bundled) {
-        desktopSession.protocol.handle(
-          "https",
-          bundledRenderer({
-            directory: fileURLToPath(
-              new URL(app.isPackaged ? "./renderer/" : "../../web/dist/", import.meta.url),
-            ),
-            backend,
-            fetchUpstream: fetchAPI,
-            fetchFile: (url) => net.fetch(url),
-          }),
-        );
+        const serveRenderer = bundledRenderer({
+          directory: fileURLToPath(
+            new URL(app.isPackaged ? "./renderer/" : "../../web/dist/", import.meta.url),
+          ),
+          backend,
+          fetchUpstream: fetchAPI,
+          fetchFile: (url) => net.fetch(url),
+          storageOrigins: allowedStorageOrigins,
+        });
+        // Direct storage traffic must never enter the authenticated API proxy.
+        for (const scheme of ["https", "http"]) {
+          desktopSession.protocol.handle(scheme, (request) =>
+            new URL(request.url).origin === rendererURL
+              ? serveRenderer(request)
+              : fetchStorage(request),
+          );
+        }
       } else {
         const serveAPI = bundledRenderer({
           directory: ".",
@@ -188,15 +202,22 @@ if (!app.requestSingleInstanceLock()) {
           fetchUpstream: fetchAPI,
           origin: rendererURL,
         });
-        desktopSession.protocol.handle(new URL(rendererURL).protocol.slice(0, -1), (request) => {
+        /** @param {Request} request */
+        const serveDevelopment = (request) => {
           const url = new URL(request.url);
           if (
             url.origin === rendererURL &&
             (url.pathname === "/api" || url.pathname.startsWith("/api/"))
           )
             return serveAPI(request);
+          if (allowedStorageOrigins.includes(url.origin)) return fetchStorage(request);
           return net.fetch(request, { bypassCustomProtocolHandlers: true });
-        });
+        };
+        for (const scheme of new Set([
+          new URL(rendererURL).protocol.slice(0, -1),
+          ...allowedStorageOrigins.map((value) => new URL(value).protocol.slice(0, -1)),
+        ]))
+          desktopSession.protocol.handle(scheme, serveDevelopment);
       }
       desktopSession.setPermissionRequestHandler((contents, permission, callback, details) => {
         callback(

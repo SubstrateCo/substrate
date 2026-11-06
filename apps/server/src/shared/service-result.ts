@@ -24,6 +24,7 @@ export async function serviceResult<T>(work: () => Promise<T>): Promise<ServiceR
     if (error instanceof ServiceError) return failure(error.code, error.message);
     if (error instanceof ZodError) return failure("INVALID_INPUT", "Invalid request input.");
     if (error instanceof APIError) {
+      if (error.statusCode === 400) return failure("INVALID_INPUT", "Invalid request input.");
       if (error.statusCode === 401) return failure("UNAUTHENTICATED", "Sign in to continue.");
       if (error.statusCode === 403) return failure("FORBIDDEN", "Access denied.");
     }

@@ -12,10 +12,12 @@ import { FormMessage } from "../auth/form-message";
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
 import { Spinner } from "../primitives/spinner";
+import { PicturePreview } from "../upload/picture-preview";
 
 export function OrganizationSwitcher({
   organizationId,
   name,
+  logo,
   compact = false,
   organizations,
   pending = false,
@@ -28,8 +30,9 @@ export function OrganizationSwitcher({
 }: {
   organizationId: string;
   name: string;
+  logo?: string | null;
   compact?: boolean;
-  organizations: { id: string; name: string }[];
+  organizations: { id: string; name: string; logo?: string | null }[];
   pending?: boolean;
   loading?: boolean;
   error?: Error | null;
@@ -51,21 +54,37 @@ export function OrganizationSwitcher({
             aria-busy={pending}
           >
             {compact ? (
-              <span aria-hidden="true" className="text-xs font-semibold">
+              <span
+                aria-hidden="true"
+                className="flex size-6 items-center justify-center overflow-hidden rounded-md text-xs font-semibold"
+              >
                 {pending ? (
                   <Spinner aria-hidden="true" role="presentation" />
                 ) : (
-                  name
-                    .split(/\s+/)
-                    .filter(Boolean)
-                    .slice(0, 2)
-                    .map((word) => word[0])
-                    .join("")
-                    .toUpperCase()
+                  <PicturePreview
+                    src={logo}
+                    className="size-full object-contain"
+                    fallback={name
+                      .split(/\s+/)
+                      .filter(Boolean)
+                      .slice(0, 2)
+                      .map((word) => word[0])
+                      .join("")
+                      .toUpperCase()}
+                  />
                 )}
               </span>
             ) : (
               <>
+                {logo && (
+                  <span aria-hidden="true" className="size-5 overflow-hidden rounded-md">
+                    <PicturePreview
+                      src={logo}
+                      className="size-full object-contain"
+                      fallback={null}
+                    />
+                  </span>
+                )}
                 <span className="max-w-48 truncate">{pending ? "Switching…" : name}</span>
                 {pending ? (
                   <Spinner aria-hidden="true" role="presentation" />
@@ -105,13 +124,17 @@ export function OrganizationSwitcher({
                   aria-hidden="true"
                   className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-surface text-xs font-semibold text-foreground shadow-surface"
                 >
-                  {organization.name
-                    .split(/\s+/)
-                    .filter(Boolean)
-                    .slice(0, 2)
-                    .map((word) => word[0])
-                    .join("")
-                    .toUpperCase()}
+                  <PicturePreview
+                    src={organization.logo}
+                    className="size-full rounded-lg object-contain"
+                    fallback={organization.name
+                      .split(/\s+/)
+                      .filter(Boolean)
+                      .slice(0, 2)
+                      .map((word) => word[0])
+                      .join("")
+                      .toUpperCase()}
+                  />
                 </span>
                 <span className="min-w-0 flex-1 truncate">{organization.name}</span>
                 {organization.id === organizationId && <Check className="size-4 shrink-0" />}

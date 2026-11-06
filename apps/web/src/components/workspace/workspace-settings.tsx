@@ -1,5 +1,6 @@
 import { WorkspaceSettings as WorkspaceSettingsView } from "@startup-os/ui/workspace/workspace-settings";
 import { InvitationManager } from "@/components/organizations/invitation-manager";
+import { OrganizationPicture } from "@/components/organizations/organization-picture";
 
 export function WorkspaceSettings({
   organizationId,
@@ -10,6 +11,7 @@ export function WorkspaceSettings({
 }) {
   return (
     <WorkspaceSettingsView>
+      <OrganizationPicture organizationId={organizationId} />
       {isOwner && <InvitationManager organizationId={organizationId} />}
       {!isOwner && (
         <p className="text-sm text-muted-foreground">

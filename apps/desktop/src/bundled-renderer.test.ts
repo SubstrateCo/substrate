@@ -101,6 +101,22 @@ describe("bundled assets and responses", () => {
     expect(await response.text()).toBe("");
   });
 
+  test("allows blob image previews and only configured storage connections and images", async () => {
+    const serve = bundledRenderer({
+      directory: join(directory, "dist"),
+      backend: "https://api.example.com",
+      storageOrigins: ["https://storage.example.test"],
+      fetchFile: async () => new Response("workspace"),
+    });
+    const response = await serve(new Request(`${origin}/`));
+    const csp = response.headers.get("content-security-policy");
+    expect(csp).toContain("img-src 'self' data: blob: https://storage.example.test;");
+    expect(csp).toContain("connect-src 'self' https://storage.example.test;");
+    expect(csp).not.toContain("https:*");
+    expect(csp).not.toContain("script-src blob:");
+    expect((await serve(new Request("https://storage.example.test/image"))).status).toBe(403);
+  });
+
   test("forwards cookies and request bodies, strips Host, and preserves independent response cookies", async () => {
     let forwarded: { url: string; init: RequestInit } | undefined;
     let forwardedBody: string | undefined;
