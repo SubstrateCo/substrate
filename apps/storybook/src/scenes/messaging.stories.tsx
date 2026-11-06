@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { MessagingScene } from "./messaging-scene";
+import { userEvent, within } from "storybook/test";
 
 const meta = { title: "Messaging/Scenes/Workspace", component: MessagingScene } satisfies Meta<
   typeof MessagingScene
@@ -8,6 +9,27 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const PublicChannel: Story = {};
+export const ReferencesInChannel: Story = { args: { referencesDemo: true } };
+export const ReferencesInThread: Story = { args: { referencesDemo: true, threadState: "ready" } };
+export const ReferencePickerOpen: Story = {
+  args: { referencesDemo: true },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      within(canvasElement).getByRole("button", { name: /^Insert reference$/ }),
+    );
+  },
+};
+export const DarkReferences: Story = { args: { referencesDemo: true }, globals: { theme: "dark" } };
+export const TaskInChannel: Story = { args: { linkedTask: "channel" } };
+export const TaskInThread: Story = { args: { linkedTask: "thread", threadState: "ready" } };
+export const DarkTaskInChannel: Story = {
+  args: { linkedTask: "channel" },
+  globals: { theme: "dark" },
+};
+export const MobileTaskInThread: Story = {
+  args: { linkedTask: "thread", threadState: "ready" },
+  globals: { viewport: { value: "mobile" } },
+};
 export const PrivateChannel: Story = { args: { conversationId: "launch" } };
 export const DirectMessage: Story = { args: { conversationId: "alex" } };
 export const GroupMessage: Story = { args: { conversationId: "group" } };

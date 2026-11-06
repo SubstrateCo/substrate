@@ -6,6 +6,10 @@ import { MessagingWorkspace } from "@startup-os/ui/messaging/messaging-workspace
 import { ConversationPane } from "@startup-os/ui/messaging/conversation-pane";
 import { ThreadPane } from "@startup-os/ui/messaging/thread-pane";
 import { MessageItem } from "@startup-os/ui/messaging/message-item";
+import { MessageWork } from "@startup-os/ui/messaging/message-work";
+import { MessageMarkdown } from "@startup-os/ui/messaging/message-markdown";
+import { ReferencePickerPreview } from "./reference-picker-preview";
+import { referenceFixtures, referencedBody } from "./reference-fixtures";
 import { MessageList } from "@startup-os/ui/messaging/message-list";
 import { Composer } from "@startup-os/ui/messaging/composer";
 import { CreateConversationForm } from "@startup-os/ui/messaging/create-conversation-form";
@@ -29,6 +33,8 @@ export type MessagingSceneProps = {
   mobileSidebarOpen?: boolean;
   member?: boolean;
   longContent?: boolean;
+  linkedTask?: "channel" | "thread";
+  referencesDemo?: boolean;
 };
 
 export function MessagingScene({
@@ -42,6 +48,8 @@ export function MessagingScene({
   mobileSidebarOpen = false,
   member = false,
   longContent = false,
+  linkedTask,
+  referencesDemo = false,
 }: MessagingSceneProps) {
   const [selectedId, setSelectedId] = useState(conversationId);
   const [creating, setCreating] = useState(creatingKind);
@@ -56,6 +64,7 @@ export function MessagingScene({
   const threadReplies = repliesByThread[threadKey] ?? [];
   const [items, setItems] = useState(state === "ready" ? fixtures : []);
   const [notice, setNotice] = useState<Error | null>(null);
+  const [taskLinked, setTaskLinked] = useState(true);
   const visible = state === "ready" || state === "empty" ? items : [];
   const selected = visible.find((item) => item.id === selectedId);
   const baseMessages =
@@ -106,6 +115,16 @@ export function MessagingScene({
     <MessageItem
       key={message.id}
       message={message}
+      body={
+        referencesDemo ? (
+          <MessageMarkdown
+            body={
+              message.id === "plan" || message.id === "reply-one" ? referencedBody : message.body
+            }
+            references={referenceFixtures}
+          />
+        ) : undefined
+      }
       onThread={inThread || root ? undefined : setThreadId}
       onReact={(emoji) => {
         const existing = message.reactions.find((reaction) => reaction.emoji === emoji);
@@ -137,7 +156,26 @@ export function MessagingScene({
             ),
           });
       }}
-    />
+    >
+      {taskLinked &&
+        ((linkedTask === "channel" && !inThread && message.id === "plan") ||
+          (linkedTask === "thread" && inThread && message.id === "reply-one")) && (
+          <MessageWork
+            links={[
+              {
+                entityId: "onboarding-task",
+                entityType: "task",
+                title: "Review the onboarding flow",
+                statusName: "In progress",
+                purpose: "source",
+                canRemove: true,
+                href: "?path=/story/projects-scenes-tasks--project",
+              },
+            ]}
+            onRemove={() => setTaskLinked(false)}
+          />
+        )}
+    </MessageItem>
   );
   const composer = (thread = false) => (
     <Composer
@@ -154,6 +192,18 @@ export function MessagingScene({
           : null
       }
       defaultValue={composerState === "ready" ? "" : "Please review the launch plan."}
+      renderReferences={
+        referencesDemo
+          ? (query, onInsert, onClose) => (
+              <ReferencePickerPreview
+                key={query}
+                initialQuery={query}
+                onInsert={onInsert}
+                onClose={onClose}
+              />
+            )
+          : undefined
+      }
       onSend={(body, onSuccess) => {
         addMessage(body, thread);
         onSuccess();

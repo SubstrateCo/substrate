@@ -17,37 +17,27 @@ export function ReferencedMessageBody({
     ...messagePeopleOptions(organizationId, messageId),
     enabled: body.includes("@[person:"),
   });
-  const parts = body.split(/(@\[(?:task|project|person):[0-9a-f-]{36}\])/gi);
   return (
-    <div className="flex flex-wrap items-baseline gap-x-1 text-sm">
-      {parts.map((part, index) => {
-        const match = /^@\[(task|project|person):([0-9a-f-]{36})\]$/i.exec(part);
-        if (!match) return <MessageMarkdown key={index} body={part} />;
-        const link = links.error
-          ? undefined
-          : links.data?.find((item) => item.entityId === match[2]);
-        if (link)
-          return (
-            <a
-              key={index}
-              className="rounded bg-accent px-1 underline"
-              href={workHref(
-                organizationId,
-                link.projectEntityId,
-                link.entityType === "task" ? link.entityId : undefined,
-              )}
-            >
-              {link.title}
-              {link.statusName ? ` · ${link.statusName}` : ""}
-            </a>
-          );
-        const person = people.error ? undefined : people.data?.find((item) => item.id === match[2]);
-        return (
-          <span key={index} className="text-muted-foreground">
-            {person ? `@${person.name}` : "[Unavailable reference]"}
-          </span>
-        );
-      })}
-    </div>
+    <MessageMarkdown
+      body={body}
+      referencesLoading={links.isPending || (body.includes("@[person:") && people.isPending)}
+      references={[
+        ...(links.error ? [] : (links.data ?? [])).map((link) => ({
+          id: link.entityId,
+          kind: link.entityType,
+          label: link.title,
+          href: workHref(
+            organizationId,
+            link.projectEntityId,
+            link.entityType === "task" ? link.entityId : undefined,
+          ),
+        })),
+        ...(people.error ? [] : (people.data ?? [])).map((person) => ({
+          id: person.id,
+          kind: "person" as const,
+          label: person.name,
+        })),
+      ]}
+    />
   );
 }
