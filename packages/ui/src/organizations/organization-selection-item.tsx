@@ -5,13 +5,16 @@ export function OrganizationSelectionItem({
   name,
   pending,
   onSelect,
+  buttonRef,
 }: {
   name: string;
   pending: boolean;
   onSelect: () => void;
+  buttonRef?: Ref<HTMLButtonElement>;
 }) {
   return (
     <Button
+      ref={buttonRef}
       variant="outline"
       size="selection"
       className="justify-start whitespace-normal text-left"
@@ -33,3 +36,4 @@ export function OrganizationSelectionItem({
     </Button>
   );
 }
+import type { Ref } from "react";

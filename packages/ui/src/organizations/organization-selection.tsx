@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../primitives/card";
 import { OrganizationSelectionItem } from "./organization-selection-item";
 import { Separator } from "../primitives/separator";
@@ -29,6 +29,18 @@ export function OrganizationSelection({
   signOut: ReactNode;
   createForm: ReactNode;
 }) {
+  const retryOrigin = useRef<Element | null>(null);
+  const firstChoice = useRef<HTMLButtonElement | null>(null);
+  const actionOrigin = useRef<HTMLButtonElement | null>(null);
+  const creationHeading = useRef<HTMLHeadingElement | null>(null);
+  useEffect(() => {
+    const origin = retryOrigin.current;
+    if (!origin || loading || loadError) return;
+    if (!origin.isConnected && document.activeElement === document.body) {
+      (firstChoice.current ?? creationHeading.current)?.focus();
+    }
+    retryOrigin.current = null;
+  }, [loading, loadError, organizations]);
   return (
     <main className="fixed inset-0 mx-auto flex max-w-2xl flex-col gap-6 px-4 py-6 sm:px-6">
       <header className="flex shrink-0 items-center justify-between gap-4">
@@ -43,18 +55,30 @@ export function OrganizationSelection({
         <CardContent>
           <div className="space-y-4">
             <FormMessage
+              floating
+              floatingPlacement="below-header"
+              onDismiss={() => {
+                const target = actionOrigin.current?.isConnected
+                  ? actionOrigin.current
+                  : firstChoice.current;
+                target?.focus();
+              }}
               error={error}
               errorDescription="We couldn’t open this workspace. Try selecting it again."
             />
-            <div className="min-h-36 space-y-3">
+            <div className="h-44 space-y-3 overflow-y-auto">
               {loading && !organizations?.length && !isAccessFailure(loadError) && (
                 <LoadingState label="Loading workspaces…" rows={2} />
               )}
               {loadError && (
                 <ErrorState
+                  compact
                   title="Couldn’t load workspaces"
                   description="Your workspace list is unavailable. Try again, or create a workspace below."
-                  onRetry={onRetry}
+                  onRetry={() => {
+                    retryOrigin.current = document.activeElement;
+                    onRetry();
+                  }}
                 />
               )}
               {!loading && !loadError && organizations?.length === 0 && (
@@ -66,18 +90,25 @@ export function OrganizationSelection({
               <div className="grid gap-2">
                 {!isAccessFailure(loadError) &&
                   (!loadError || organizations !== undefined) &&
-                  organizations?.map((organization) => (
+                  organizations?.map((organization, index) => (
                     <OrganizationSelectionItem
                       key={organization.id}
+                      buttonRef={index === 0 ? firstChoice : undefined}
                       name={organization.name}
                       pending={pending}
-                      onSelect={() => onSelect(organization.id)}
+                      onSelect={() => {
+                        const active = document.activeElement;
+                        actionOrigin.current = active instanceof HTMLButtonElement ? active : null;
+                        onSelect(organization.id);
+                      }}
                     />
                   ))}
               </div>
             </div>
             <Separator />
-            <h2 className="font-medium">Create a workspace</h2>
+            <h2 ref={creationHeading} tabIndex={-1} className="font-medium">
+              Create a workspace
+            </h2>
             {createForm}
           </div>
         </CardContent>
