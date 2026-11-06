@@ -13,6 +13,10 @@ const validationMessages = [
   "Your active workspace changed. Reload this page to continue.",
   "Sign in to continue.",
   "Verify your email to continue.",
+  "A status with that name already exists.",
+  "Cannot remove or downgrade the last owner.",
+  "Select a status from this project.",
+  "Enter a valid due date.",
 ];
 
 const normalize = (message: string) => message.trim().replace(/\.$/, "").toLowerCase();

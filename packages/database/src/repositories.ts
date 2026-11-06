@@ -11,6 +11,8 @@ import { calendarRepository } from "./features/calendar/calendars.repository";
 import { calendarEventRepository } from "./features/calendar/events.repository";
 import { emailIntegrationRepository } from "./features/email/integrations.repository";
 import { calendarIntegrationRepository } from "./features/calendar/integrations.repository";
+import { projectRepository } from "./features/projects/repository";
+import { taskRepository } from "./features/tasks/repository";
 
 class ActorRepositories {
   readonly contacts;
@@ -24,6 +26,8 @@ class ActorRepositories {
   readonly calendarEvents;
   readonly emailIntegrations;
   readonly calendarIntegrations;
+  readonly projects;
+  readonly tasks;
   private readonly context;
 
   constructor(
@@ -42,6 +46,8 @@ class ActorRepositories {
     this.calendarEvents = calendarEventRepository(this.context);
     this.emailIntegrations = emailIntegrationRepository(this.context);
     this.calendarIntegrations = calendarIntegrationRepository(this.context);
+    this.projects = projectRepository(this.context);
+    this.tasks = taskRepository(this.context);
   }
 
   transaction<T>(work: (repositories: ActorRepositories) => Promise<T>): Promise<T> {

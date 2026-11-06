@@ -40,16 +40,20 @@ export function WorkspaceFrame({
           ? "user-settings"
           : pathname.startsWith("/settings/organization")
             ? "organization-settings"
-            : "messages"
+            : pathname.startsWith("/tasks")
+              ? "tasks"
+              : "messages"
       }
       onViewChange={(view) =>
         void navigate({
           to:
             view === "messages"
               ? "/dashboard"
-              : view === "user-settings"
-                ? "/settings/user"
-                : "/settings/organization",
+              : view === "tasks"
+                ? "/tasks"
+                : view === "user-settings"
+                  ? "/settings/user"
+                  : "/settings/organization",
         })
       }
       showOrganizationSettings={access.allowed}

@@ -29,6 +29,13 @@
       "when": 1793909492227,
       "tag": "0003_spicy_anthem",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793921485064,
+      "tag": "0004_abandoned_newton_destine",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { MessageSquare } from "lucide-react";
+import { ListTodo, MessageSquare } from "lucide-react";
 import { FormMessage } from "../auth/form-message";
 import { Button } from "../primitives/button";
 import { UserMenu } from "./user-menu";
@@ -22,8 +22,8 @@ export function WorkspaceShell({
   children,
 }: {
   name: string;
-  view: "messages" | "user-settings" | "organization-settings";
-  onViewChange: (view: "messages" | "user-settings" | "organization-settings") => void;
+  view: "messages" | "tasks" | "user-settings" | "organization-settings";
+  onViewChange: (view: "messages" | "tasks" | "user-settings" | "organization-settings") => void;
   showOrganizationSettings: boolean;
   organizationName?: string;
   switcher: ReactNode;
@@ -50,6 +50,16 @@ export function WorkspaceShell({
           onClick={() => onViewChange("messages")}
         >
           <MessageSquare className="size-5" />
+        </Button>
+        <Button
+          variant="rail"
+          size="icon-lg"
+          aria-label="Tasks"
+          title="Tasks"
+          aria-current={view === "tasks" ? "page" : undefined}
+          onClick={() => onViewChange("tasks")}
+        >
+          <ListTodo className="size-5" />
         </Button>
         <div className="mt-auto">
           <UserMenu

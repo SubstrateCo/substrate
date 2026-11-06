@@ -10,6 +10,12 @@ export const queryKeys = {
   activeMember: (organizationId: string) =>
     [...queryKeys.organization(organizationId), "active-member"] as const,
   invitation: (invitationId: string) => ["invitations", invitationId] as const,
+  tasks: (organizationId: string) => [...queryKeys.organization(organizationId), "tasks"] as const,
+  projects: (organizationId: string) => [...queryKeys.tasks(organizationId), "projects"] as const,
+  project: (organizationId: string, projectEntityId: string) =>
+    [...queryKeys.tasks(organizationId), "project", projectEntityId] as const,
+  taskComments: (organizationId: string, projectEntityId: string, taskEntityId: string) =>
+    [...queryKeys.tasks(organizationId), "comments", projectEntityId, taskEntityId] as const,
   messaging: (organizationId: string) =>
     [...queryKeys.organization(organizationId), "messaging"] as const,
   conversations: (organizationId: string) =>

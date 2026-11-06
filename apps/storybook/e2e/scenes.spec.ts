@@ -31,6 +31,8 @@ test("every story renders without app services or runtime errors", async ({ page
   const response = await request.get("/index.json");
   const index: { entries: Record<string, { id: string; type: string }> } = await response.json();
   const stories = Object.values(index.entries).filter((entry) => entry.type === "story");
+  // This test visits the entire catalog, which grows as feature previews are added.
+  test.setTimeout(Math.max(test.info().timeout, stories.length * 3000));
   const errors: string[] = [];
   const serviceRequests: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -45,11 +47,15 @@ test("every story renders without app services or runtime errors", async ({ page
   });
   expect(stories.length).toBeGreaterThan(0);
   for (const story of stories) {
-    await test.step(story.id, async () => {
-      await openStory(page, story.id);
-      await expect(page.locator(".sb-errordisplay")).not.toBeVisible();
-      expect(errors, story.id).toEqual([]);
-    });
+    await test.step(
+      story.id,
+      async () => {
+        await openStory(page, story.id);
+        await expect(page.locator(".sb-errordisplay")).not.toBeVisible();
+        expect(errors, story.id).toEqual([]);
+      },
+      { timeout: 15000 },
+    );
   }
   expect(serviceRequests).toEqual([]);
 });

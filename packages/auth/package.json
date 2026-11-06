@@ -8,6 +8,11 @@
       "default": "./src/server.ts"
     },
     "./permissions": "./src/permissions.ts",
+    "./tasks-contract": "./src/tasks-contract.ts",
+    "./tasks": {
+      "browser": null,
+      "default": "./src/tasks.ts"
+    },
     "./messaging": {
       "browser": null,
       "default": "./src/messaging.ts"

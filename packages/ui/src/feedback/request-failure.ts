@@ -17,6 +17,7 @@ export function isAccessFailure(error: Error | null | undefined): boolean {
     ].includes(String(code)) ||
     [
       "Conversation not found or access denied.",
+      "Project or task not found or access denied.",
       "Workspace access denied.",
       "Your active workspace changed. Reload this page to continue.",
       "Sign in to continue.",

@@ -25,6 +25,7 @@ import { Route as PublicGuestLoginRouteImport } from './routes/_public/_guest/lo
 import { Route as PublicGuestSignupRouteImport } from './routes/_public/_guest/signup'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthenticatedWorkspaceSettingsOrganizationRouteRouteImport } from './routes/_authenticated/_workspace/settings/organization/route'
+import { Route as AuthenticatedWorkspaceTasksIndexRouteImport } from './routes/_authenticated/_workspace/tasks/index'
 import { Route as AuthenticatedSettingsUserIndexRouteImport } from './routes/_authenticated/settings/user/index'
 import { Route as AuthenticatedSettingsUserInvitationsRouteImport } from './routes/_authenticated/settings/user/invitations'
 import { Route as AuthenticatedWorkspaceSettingsOrganizationIndexRouteImport } from './routes/_authenticated/_workspace/settings/organization/index'
@@ -111,6 +112,12 @@ const AuthenticatedWorkspaceSettingsOrganizationRouteRoute =
     path: '/settings/organization',
     getParentRoute: () => AuthenticatedWorkspaceRouteRoute,
   } as any)
+const AuthenticatedWorkspaceTasksIndexRoute =
+  AuthenticatedWorkspaceTasksIndexRouteImport.update({
+    id: '/tasks/',
+    path: '/tasks/',
+    getParentRoute: () => AuthenticatedWorkspaceRouteRoute,
+  } as any)
 const AuthenticatedSettingsUserIndexRoute =
   AuthenticatedSettingsUserIndexRouteImport.update({
     id: '/',
@@ -144,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/settings/organization': typeof AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren
   '/settings/user/invitations': typeof AuthenticatedSettingsUserInvitationsRoute
+  '/tasks/': typeof AuthenticatedWorkspaceTasksIndexRoute
   '/settings/user/': typeof AuthenticatedSettingsUserIndexRoute
   '/settings/organization/': typeof AuthenticatedWorkspaceSettingsOrganizationIndexRoute
 }
@@ -159,6 +167,7 @@ export interface FileRoutesByTo {
   '/signup': typeof PublicGuestSignupRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/settings/user/invitations': typeof AuthenticatedSettingsUserInvitationsRoute
+  '/tasks': typeof AuthenticatedWorkspaceTasksIndexRoute
   '/settings/user': typeof AuthenticatedSettingsUserIndexRoute
   '/settings/organization': typeof AuthenticatedWorkspaceSettingsOrganizationIndexRoute
 }
@@ -181,6 +190,7 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_authenticated/_workspace/settings/organization': typeof AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren
   '/_authenticated/settings/user/invitations': typeof AuthenticatedSettingsUserInvitationsRoute
+  '/_authenticated/_workspace/tasks/': typeof AuthenticatedWorkspaceTasksIndexRoute
   '/_authenticated/settings/user/': typeof AuthenticatedSettingsUserIndexRoute
   '/_authenticated/_workspace/settings/organization/': typeof AuthenticatedWorkspaceSettingsOrganizationIndexRoute
 }
@@ -200,6 +210,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/settings/organization'
     | '/settings/user/invitations'
+    | '/tasks/'
     | '/settings/user/'
     | '/settings/organization/'
   fileRoutesByTo: FileRoutesByTo
@@ -215,6 +226,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/api/auth/$'
     | '/settings/user/invitations'
+    | '/tasks'
     | '/settings/user'
     | '/settings/organization'
   id:
@@ -236,6 +248,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/_authenticated/_workspace/settings/organization'
     | '/_authenticated/settings/user/invitations'
+    | '/_authenticated/_workspace/tasks/'
     | '/_authenticated/settings/user/'
     | '/_authenticated/_workspace/settings/organization/'
   fileRoutesById: FileRoutesById
@@ -361,6 +374,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWorkspaceSettingsOrganizationRouteRouteImport
       parentRoute: typeof AuthenticatedWorkspaceRouteRoute
     }
+    '/_authenticated/_workspace/tasks/': {
+      id: '/_authenticated/_workspace/tasks/'
+      path: '/tasks'
+      fullPath: '/tasks/'
+      preLoaderRoute: typeof AuthenticatedWorkspaceTasksIndexRouteImport
+      parentRoute: typeof AuthenticatedWorkspaceRouteRoute
+    }
     '/_authenticated/settings/user/': {
       id: '/_authenticated/settings/user/'
       path: '/'
@@ -403,6 +423,7 @@ const AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren =
 interface AuthenticatedWorkspaceRouteRouteChildren {
   AuthenticatedWorkspaceDashboardRoute: typeof AuthenticatedWorkspaceDashboardRoute
   AuthenticatedWorkspaceSettingsOrganizationRouteRoute: typeof AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren
+  AuthenticatedWorkspaceTasksIndexRoute: typeof AuthenticatedWorkspaceTasksIndexRoute
 }
 
 const AuthenticatedWorkspaceRouteRouteChildren: AuthenticatedWorkspaceRouteRouteChildren =
@@ -410,6 +431,8 @@ const AuthenticatedWorkspaceRouteRouteChildren: AuthenticatedWorkspaceRouteRoute
     AuthenticatedWorkspaceDashboardRoute: AuthenticatedWorkspaceDashboardRoute,
     AuthenticatedWorkspaceSettingsOrganizationRouteRoute:
       AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren,
+    AuthenticatedWorkspaceTasksIndexRoute:
+      AuthenticatedWorkspaceTasksIndexRoute,
   }
 
 const AuthenticatedWorkspaceRouteRouteWithChildren =

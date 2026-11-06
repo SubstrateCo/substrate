@@ -9,6 +9,8 @@
     "./primitives/*": "./src/primitives/*.tsx",
     "./auth/*": "./src/auth/*.tsx",
     "./messaging/types": "./src/messaging/types.ts",
+    "./tasks/types": "./src/tasks/types.ts",
+    "./tasks/*": "./src/tasks/*.tsx",
     "./messaging/*": "./src/messaging/*.tsx",
     "./organizations/*": "./src/organizations/*.tsx",
     "./workspace/*": "./src/workspace/*.tsx",
