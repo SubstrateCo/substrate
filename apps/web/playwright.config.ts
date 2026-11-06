@@ -12,19 +12,21 @@ export default defineConfig({
   reporter: "list",
   projects: [
     {
+      name: "workflows",
+      testMatch: /(?:connected-access|connected-workflow|messaging|tasks-sharing)\.spec\.ts$/,
+    },
+    {
       name: "accounts",
       testMatch: /workspace\.spec\.ts$/,
     },
     {
-      name: "workflows",
-      testMatch: /(?:messaging|tasks-sharing)\.spec\.ts$/,
-    },
-    {
       name: "screens",
-      testIgnore: /(?:messaging|tasks-sharing|workspace)\.spec\.ts$/,
+      testIgnore:
+        /(?:connected-access|connected-workflow|messaging|tasks-sharing|workspace)\.spec\.ts$/,
     },
   ],
   use: {
+    actionTimeout: 10_000,
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
     browserName: "chromium",
     reducedMotion: "reduce",

@@ -242,7 +242,7 @@ test("connected work preserves source, links, references, and stable navigation"
     await search
       .getByRole("listitem")
       .filter({ has: page.getByRole("link", { name: `task · ${task}`, exact: true }) })
-      .getByRole("button", { name: "Find related records", exact: true })
+      .getByRole("button", { name: `Find related records for ${task}`, exact: true })
       .click();
     await expect(
       search.getByRole("link", { name: `message · ${source}`, exact: true }),
@@ -250,7 +250,7 @@ test("connected work preserves source, links, references, and stable navigation"
     await search
       .getByRole("listitem")
       .filter({ has: page.getByRole("link", { name: `message · ${source}`, exact: true }) })
-      .getByRole("button", { name: "Find related records", exact: true })
+      .getByRole("button", { name: `Find related records for ${source}`, exact: true })
       .click();
     await expect(search.getByRole("link", { name: `task · ${task}`, exact: true })).toBeVisible();
     await search.getByRole("button", { name: "Search all records", exact: true }).click();

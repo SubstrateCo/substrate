@@ -126,17 +126,16 @@ test("message actions appear only for the hovered or focused message without lay
   await expect(first.getByRole("button", { name: "🔥, 1 reactions", exact: true })).toBeVisible();
 });
 
-test("touch devices keep message actions available without hover", async ({ browser }) => {
+test("touch devices keep message actions available without hover", async ({ browser, baseURL }) => {
   const context = await browser.newContext({
+    baseURL,
     hasTouch: true,
     isMobile: true,
     viewport: { width: 390, height: 844 },
   });
   try {
     const page = await context.newPage();
-    await page.goto(
-      "http://127.0.0.1:6007/iframe.html?id=messaging-scenes-workspace--public-channel&viewMode=story",
-    );
+    await page.goto("/iframe.html?id=messaging-scenes-workspace--public-channel&viewMode=story");
     await expect(page.getByRole("group", { name: "Message actions" }).first()).toHaveCSS(
       "opacity",
       "1",

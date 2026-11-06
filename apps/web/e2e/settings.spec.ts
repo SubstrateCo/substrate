@@ -116,7 +116,7 @@ test("personal invitations work without a workspace and organization settings en
     await expect(invitations.getByRole("row")).toHaveCount(2);
     await expect(invitations).toContainText(organizationName);
     await expect(invitations).not.toContainText("unrelated-");
-    await memberPage.getByRole("link", { name: "Appearance", exact: true }).click();
+    await memberPage.getByRole("link", { name: "Profile and appearance", exact: true }).click();
     const theme = memberPage.getByRole("switch", { name: "Dark mode", exact: true });
     await theme.check();
     await memberPage.reload();

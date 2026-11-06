@@ -5,13 +5,12 @@ import {
   test as base,
   type APIRequestContext,
   type APIResponse,
-  type Page,
 } from "@playwright/test";
 import type { ServiceResult } from "@startup-os/contracts/result";
 import type { CompletedUpload, FilePurpose, UploadTicket } from "@startup-os/contracts/files/input";
 import { provisionVerifiedAccount } from "./auth";
 import { Mailpit } from "./mailpit";
-import { provisionWorkspace } from "./organizations";
+import { provisionWorkspaceSession } from "./organizations";
 
 const origin = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000").origin;
 const root = "/api/v1/files";
@@ -20,14 +19,19 @@ const png = Buffer.from(
   "base64",
 );
 
-const test = base.extend<{ accounts: { a: Page; b: Page }; anonymous: APIRequestContext }>({
-  accounts: async ({ browser, request }, use) => {
+type APIClient = { request: APIRequestContext };
+
+const test = base.extend<{
+  accounts: { a: APIClient; b: APIClient };
+  anonymous: APIRequestContext;
+}>({
+  accounts: async ({ request }, use) => {
     const contexts = await Promise.all([
-      browser.newContext({ baseURL: origin }),
-      browser.newContext({ baseURL: origin }),
+      playwrightRequest.newContext({ baseURL: origin }),
+      playwrightRequest.newContext({ baseURL: origin }),
     ]);
     try {
-      const [a, b] = await Promise.all(contexts.map((context) => context.newPage()));
+      const [a, b] = contexts.map((request) => ({ request }));
       const mailpit = new Mailpit(request);
       await Promise.all(
         [a!, b!].map((page, index) => {
@@ -41,7 +45,7 @@ const test = base.extend<{ accounts: { a: Page; b: Page }; anonymous: APIRequest
       );
       await use({ a: a!, b: b! });
     } finally {
-      await Promise.all(contexts.map((context) => context.close()));
+      await Promise.all(contexts.map((context) => context.dispose()));
     }
   },
   anonymous: async ({ baseURL }, use) => {
@@ -79,7 +83,7 @@ async function rejected(response: APIResponse, privateValues: readonly string[] 
 }
 
 async function createUpload(
-  page: Page,
+  page: APIClient,
   purpose: FilePurpose,
   filename: string,
   contentType: string,
@@ -105,11 +109,11 @@ async function putBytes(anonymous: APIRequestContext, ticket: UploadTicket, byte
   expect(response.ok(), "The signed upload accepts the supplied bytes").toBe(true);
 }
 
-async function complete(page: Page, ticket: UploadTicket) {
+async function complete(page: APIClient, ticket: UploadTicket) {
   return page.request.post(`${root}/uploads/${ticket.uploadId}/complete`, { headers: { origin } });
 }
 
-async function image(page: Page) {
+async function image(page: APIClient) {
   const session = await result<{ user: { image?: string | null } }>(
     await page.request.get("/api/v1/session"),
   );
@@ -243,7 +247,7 @@ test("arbitrary files download as attachments and remain private to their upload
 }) => {
   const { a, b } = accounts;
   const suffix = randomUUID();
-  await provisionWorkspace(b, `File security ${suffix}`, `file-security-${suffix}`);
+  await provisionWorkspaceSession(b.request, `File security ${suffix}`, `file-security-${suffix}`);
   const filename = `private-document-${randomUUID()}.txt`;
   const secret = `Uploader-only content ${randomUUID()}`;
   const bytes = Buffer.from(secret);
@@ -276,9 +280,19 @@ test("workspace pictures are readable by members but cannot be managed by member
 }) => {
   const { a: member, b: owner } = accounts;
   const suffix = randomUUID();
-  await provisionWorkspace(owner, `Picture owners ${suffix}`, `picture-owners-${suffix}`);
-  await provisionWorkspace(member, `Other workspace ${suffix}`, `other-pictures-${suffix}`);
-  const getOrganization = async (page: Page): Promise<{ id: string; logo?: string | null }> => {
+  await provisionWorkspaceSession(
+    owner.request,
+    `Picture owners ${suffix}`,
+    `picture-owners-${suffix}`,
+  );
+  await provisionWorkspaceSession(
+    member.request,
+    `Other workspace ${suffix}`,
+    `other-pictures-${suffix}`,
+  );
+  const getOrganization = async (
+    page: APIClient,
+  ): Promise<{ id: string; logo?: string | null }> => {
     const response = await page.request.get("/api/auth/organization/get-full-organization");
     expect(response.ok()).toBe(true);
     return response.json();

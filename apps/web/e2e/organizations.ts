@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type APIRequestContext, type Page } from "@playwright/test";
 
 export async function expectScopedMembershipAfter(page: Page, action: () => Promise<void>) {
   const [organizationResponse, membershipRequest] = await Promise.all([
@@ -59,21 +59,59 @@ export async function createWorkspace(page: Page, name: string, slug: string) {
   await expect(page.getByRole("button", { name: `${name} ▾`, exact: true })).toBeVisible();
 }
 
-export async function provisionWorkspace(page: Page, name: string, slug: string) {
+export async function provisionWorkspaceSession(
+  request: APIRequestContext,
+  name: string,
+  slug: string,
+) {
   const origin = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000").origin;
-  const created = await page.request.post("/api/auth/organization/create", {
+  const created = await request.post("/api/auth/organization/create", {
     headers: { origin },
     data: { name, slug },
   });
   expect(created.ok(), "The fixture workspace is created").toBe(true);
   const organization: { id: string } = await created.json();
-  const activated = await page.request.post("/api/auth/organization/set-active", {
+  const activated = await request.post("/api/auth/organization/set-active", {
     headers: { origin },
     data: { organizationId: organization.id },
   });
   expect(activated.ok(), "The fixture workspace is active").toBe(true);
+  return organization;
+}
+
+export async function provisionWorkspace(page: Page, name: string, slug: string) {
+  await provisionWorkspaceSession(page.request, name, slug);
   await page.goto("/dashboard");
   await expect(page.getByRole("button", { name: `${name} ▾`, exact: true })).toBeVisible();
+}
+
+export async function provisionMember(
+  owner: Page,
+  member: Page,
+  email: string,
+  role: "member" | "admin" = "member",
+) {
+  const origin = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000").origin;
+  const current = await owner.request.get("/api/auth/organization/get-full-organization");
+  expect(current.ok(), "The fixture owner has an active workspace").toBe(true);
+  const organization: { id: string } = await current.json();
+  const invited = await owner.request.post("/api/auth/organization/invite-member", {
+    headers: { origin },
+    data: { organizationId: organization.id, email, role },
+  });
+  expect(invited.ok(), "The fixture member is invited").toBe(true);
+  const invitation: { id: string } = await invited.json();
+  const accepted = await member.request.post("/api/auth/organization/accept-invitation", {
+    headers: { origin },
+    data: { invitationId: invitation.id },
+  });
+  expect(accepted.ok(), "The verified fixture member accepts the invitation").toBe(true);
+  const active = await member.request.post("/api/auth/organization/set-active", {
+    headers: { origin },
+    data: { organizationId: organization.id },
+  });
+  expect(active.ok(), "The fixture member's workspace is active").toBe(true);
+  await member.goto("/dashboard");
 }
 
 export async function switchWorkspace(page: Page, current: string, next: string) {

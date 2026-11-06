@@ -7,6 +7,7 @@ for (let shard = 0; shard < shards; shard++) {
   test(`every story renders without app services or runtime errors (shard ${shard + 1}/${shards})`, async ({
     page,
     request,
+    baseURL,
   }) => {
     const response = await request.get("/index.json");
     const index: { entries: Record<string, { id: string; type: string }> } = await response.json();
@@ -22,7 +23,7 @@ for (let shard = 0; shard < shards; shard++) {
       if (
         url.pathname.startsWith("/api/") ||
         request.method() === "POST" ||
-        url.origin !== "http://127.0.0.1:6007"
+        url.origin !== new URL(baseURL!).origin
       )
         serviceRequests.push(request.url());
     });

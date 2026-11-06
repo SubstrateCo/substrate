@@ -158,10 +158,14 @@ test("composition does not select or send a reference", async ({ page }) => {
   await page.goto(story("start-typing"));
   const draft = page.getByRole("textbox");
   await draft.fill("Ask @user:alex");
+  await expect(page.getByRole("dialog")).toBeVisible();
+  const before = await draft.innerText();
+  await draft.dispatchEvent("compositionstart", { data: "alex" });
   await draft.dispatchEvent("keydown", { key: "Enter", isComposing: true });
-  await expect(draft).toHaveText("Ask @user:alex");
+  await expect(draft).toHaveJSProperty("innerText", before);
   await expect(page.getByRole("dialog")).toBeVisible();
   await expect(page.getByRole("article", { name: "Sent message" })).toHaveCount(0);
+  await draft.dispatchEvent("compositionend", { data: "alex" });
 });
 
 test("empty results do not submit, and Shift+Enter still adds a new line", async ({ page }) => {

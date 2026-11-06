@@ -3,12 +3,13 @@ import { applicationURL } from "./src/navigation.js";
 
 export default defineConfig({
   testDir: "./e2e",
-  fullyParallel: false,
-  workers: 1,
+  fullyParallel: true,
+  workers: 5,
   timeout: 60_000,
   expect: { timeout: 15_000 },
   reporter: "list",
   use: {
+    baseURL: applicationURL,
     trace: "off",
     screenshot: "off",
     video: "off",

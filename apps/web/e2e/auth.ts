@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type APIRequestContext, type Page } from "@playwright/test";
 import { Mailpit, openEmailLink } from "./mailpit.js";
 
 export interface TestAccount {
@@ -47,7 +47,11 @@ export async function createVerifiedAccount(page: Page, mailpit: Mailpit, accoun
   await expect(page.getByRole("heading", { name: "Your workspaces", exact: true })).toBeVisible();
 }
 
-export async function provisionVerifiedAccount(page: Page, mailpit: Mailpit, account: TestAccount) {
+export async function provisionVerifiedAccount(
+  page: { request: APIRequestContext },
+  mailpit: Mailpit,
+  account: TestAccount,
+) {
   const origin = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000").origin;
   const created = await page.request.post("/api/auth/sign-up/email", {
     headers: { origin },

@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
 import { provisionVerifiedAccount, type TestAccount } from "./auth";
-import { Mailpit, openEmailLink } from "./mailpit";
-import { provisionWorkspace } from "./organizations";
+import { Mailpit } from "./mailpit";
+import { provisionMember, provisionWorkspace } from "./organizations";
 
 async function select(page: Page, label: string, option: string) {
   await page.getByRole("combobox", { name: label, exact: true }).click();
@@ -25,7 +25,9 @@ async function searchAbsent(page: Page, query: string) {
   await page.getByRole("button", { name: "Search workspace", exact: true }).click();
   const panel = page.getByRole("region", { name: "Workspace search", exact: true });
   await panel.getByRole("searchbox", { name: "Search workspace", exact: true }).fill(query);
-  await expect(panel.getByText("No accessible results found.", { exact: true })).toBeVisible();
+  await expect(
+    panel.getByRole("heading", { name: "No accessible results found", exact: true }),
+  ).toBeVisible();
   await expect(panel.getByRole("link")).toHaveCount(0);
   await panel.getByRole("button", { name: "Close search", exact: true }).click();
 }
@@ -69,15 +71,7 @@ test("connected work preserves private boundaries and assignment notifications",
       ]);
       await provisionWorkspace(ownerPage, workspace, `connected-${suffix}`);
       await provisionWorkspace(externalPage, `External ${suffix}`, `external-connected-${suffix}`);
-      await ownerPage.getByRole("button", { name: /^Signed in as / }).click();
-      await ownerPage.getByRole("button", { name: "Organization settings", exact: true }).click();
-      await ownerPage.getByLabel("Email", { exact: true }).fill(member.email);
-      await ownerPage.getByRole("button", { name: "Send invitation", exact: true }).click();
-      await openEmailLink(
-        memberPage,
-        await mailpit.link(member.email, `Join ${workspace} on Startup OS`, "/accept-invitation/"),
-      );
-      await memberPage.getByRole("button", { name: "Accept invitation", exact: true }).click();
+      await provisionMember(ownerPage, memberPage, member.email);
       await expect(
         memberPage.getByRole("button", { name: `${workspace} ▾`, exact: true }),
       ).toBeVisible();
@@ -162,6 +156,11 @@ test("connected work preserves private boundaries and assignment notifications",
       await ownerPage.getByRole("button", { name: "New task", exact: true }).click();
       await ownerPage.getByLabel("Task title", { exact: true }).fill(editedTitle);
       await ownerPage.getByRole("button", { name: "Create task", exact: true }).click();
+      await expect(
+        ownerPage
+          .getByRole("region", { name: "Task details", exact: true })
+          .getByRole("heading", { name: editedTitle, exact: true }),
+      ).toBeVisible();
       await ownerPage.getByRole("button", { name: "Edit task", exact: true }).click();
       await select(ownerPage, "Assignee", member.name);
       await ownerPage.getByRole("button", { name: "Save task", exact: true }).click();
@@ -186,7 +185,9 @@ test("connected work preserves private boundaries and assignment notifications",
         memberPage.getByRole("region", { name: "Task details", exact: true }),
       ).toHaveCount(0);
       const panel = await notifications(memberPage);
-      await expect(panel.getByText("No accessible notifications.", { exact: true })).toBeVisible();
+      await expect(
+        panel.getByRole("heading", { name: "No accessible notifications", exact: true }),
+      ).toBeVisible();
       await expect(panel.getByRole("link")).toHaveCount(0);
       await panel.getByRole("button", { name: "Close notifications", exact: true }).click();
       await searchAbsent(memberPage, title);

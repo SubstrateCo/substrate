@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page, type Request } from "@playwright/test";
-import { createVerifiedAccount, provisionVerifiedAccount, type TestAccount } from "./auth";
-import { Mailpit, openEmailLink } from "./mailpit";
-import { createWorkspace, provisionWorkspace } from "./organizations";
+import { provisionVerifiedAccount, type TestAccount } from "./auth";
+import { Mailpit } from "./mailpit";
+import { provisionMember, provisionWorkspace } from "./organizations";
 import { callMessaging } from "./api";
 
 function account(label: string, suffix: string): TestAccount {
@@ -182,36 +182,17 @@ for (const scenario of ["channels", "direct messages", "shared access"] as const
               [recipientPage, external],
               [outsiderPage, outsider],
             ] as const
-          ).map(([page, user]) =>
-            (scenario === "channels" ? createVerifiedAccount : provisionVerifiedAccount)(
-              page,
-              mailpit,
-              user,
-            ),
-          ),
+          ).map(([page, user]) => provisionVerifiedAccount(page, mailpit, user)),
         );
-        const workspace = scenario === "channels" ? createWorkspace : provisionWorkspace;
         await Promise.all([
-          workspace(senderPage, `Messaging ${suffix}`, `messaging-${suffix}`),
-          workspace(recipientPage, `External ${suffix}`, `external-${suffix}`),
-          workspace(outsiderPage, `Unrelated ${suffix}`, `unrelated-${suffix}`),
+          provisionWorkspace(senderPage, `Messaging ${suffix}`, `messaging-${suffix}`),
+          provisionWorkspace(recipientPage, `External ${suffix}`, `external-${suffix}`),
+          provisionWorkspace(outsiderPage, `Unrelated ${suffix}`, `unrelated-${suffix}`),
         ]);
       });
 
       await test.step("invite a teammate without sharing organization access with external users", async () => {
-        await senderPage.getByRole("button", { name: /^Signed in as / }).click();
-        await senderPage
-          .getByRole("button", { name: "Organization settings", exact: true })
-          .click();
-        await senderPage.getByLabel("Email", { exact: true }).fill(member.email);
-        await senderPage.getByRole("button", { name: "Send invitation", exact: true }).click();
-        const link = await mailpit.link(
-          member.email,
-          `Join Messaging ${suffix} on Startup OS`,
-          "/accept-invitation/",
-        );
-        await openEmailLink(memberPage, link);
-        await memberPage.getByRole("button", { name: "Accept invitation", exact: true }).click();
+        await provisionMember(senderPage, memberPage, member.email);
         await expect(
           memberPage.getByRole("button", { name: `Messaging ${suffix} ▾`, exact: true }),
         ).toBeVisible();

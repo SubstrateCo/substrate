@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
 import { provisionVerifiedAccount, type TestAccount } from "./auth";
-import { Mailpit, openEmailLink } from "./mailpit";
-import { provisionWorkspace } from "./organizations";
+import { Mailpit } from "./mailpit";
+import { provisionMember, provisionWorkspace } from "./organizations";
 
 async function select(page: Page, label: string, option: string) {
   await page.getByRole("combobox", { name: label, exact: true }).click();
@@ -56,18 +56,7 @@ test("explicit project grants control inherited task, subtask, and comment acces
         provisionVerifiedAccount(memberPage, mailpit, member),
       ]);
       await provisionWorkspace(ownerPage, workspace, `sharing-${suffix}`);
-      await ownerPage.getByRole("button", { name: /^Signed in as / }).click();
-      await ownerPage.getByRole("button", { name: "Organization settings", exact: true }).click();
-      await ownerPage.getByLabel("Email", { exact: true }).fill(member.email);
-      await select(ownerPage, "Role", "Admin");
-      await ownerPage.getByRole("button", { name: "Send invitation", exact: true }).click();
-      const link = await mailpit.link(
-        member.email,
-        `Join ${workspace} on Startup OS`,
-        "/accept-invitation/",
-      );
-      await openEmailLink(memberPage, link);
-      await memberPage.getByRole("button", { name: "Accept invitation", exact: true }).click();
+      await provisionMember(ownerPage, memberPage, member.email, "admin");
       await expect(
         memberPage.getByRole("button", { name: `${workspace} ▾`, exact: true }),
       ).toBeVisible();
