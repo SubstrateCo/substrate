@@ -83,6 +83,7 @@ export function ReferencePopover({
         sideOffset={8}
         collisionPadding={12}
         aria-label="Insert workspace reference"
+        className="flex max-h-(--radix-popover-content-available-height) flex-col overflow-hidden"
         onKeyDownCapture={switchType}
         onOpenAutoFocus={(event) => event.preventDefault()}
         onCloseAutoFocus={(event) => event.preventDefault()}
@@ -114,7 +115,7 @@ export function ReferencePopover({
             </Button>
           ))}
         </div>
-        <div className="min-h-40 p-1">
+        <div className="min-h-0 overflow-y-auto p-1">
           {loading && <LoadingState label="Searching references" variant="compact" rows={3} />}
           {error && <ErrorState compact title="Couldn’t search references" onRetry={onRetry} />}
           {!loading && !error && results.length === 0 && (

@@ -110,18 +110,18 @@ export function ReferenceComposerScene({
   };
 
   return (
-    <main className="flex min-h-dvh items-end justify-center bg-muted/30 p-3 sm:items-center sm:p-8">
+    <main className="flex h-dvh items-end justify-center bg-muted/30 p-3 sm:items-center sm:p-8">
       <section
         aria-label="Reference composer preview"
-        className={`flex min-h-160 w-full min-w-0 flex-col overflow-hidden rounded-xl border bg-background shadow-raised ${narrow ? "max-w-sm" : "max-w-3xl"}`}
+        className={`flex h-full max-h-160 w-full min-w-0 flex-col overflow-hidden rounded-xl border bg-background shadow-raised ${narrow ? "max-w-sm" : "max-w-3xl"}`}
       >
-        <header className="border-b px-5 py-4">
+        <header className="shrink-0 border-b px-5 py-4">
           <h1 className="text-sm font-semibold"># general</h1>
           <p className="mt-1 text-xs text-muted-foreground">
             Reference picker · interactive design preview
           </p>
         </header>
-        <div className="flex-1 space-y-6 px-5 py-6">
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-6">
           <article aria-label="Message from Alex Morgan" className="flex gap-3">
             <div
               aria-hidden="true"
@@ -151,7 +151,7 @@ export function ReferenceComposerScene({
             </article>
           ))}
         </div>
-        <div className="p-3 sm:p-4">
+        <div className="shrink-0 p-3 sm:p-4">
           <ReferencePopover
             open={open}
             onOpenChange={(value) => setDismissed(!value)}

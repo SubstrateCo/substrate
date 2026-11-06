@@ -7,9 +7,15 @@ async function backgroundContrast(control: Locator, parentSelector: string) {
     canvas.width = canvas.height = 1;
     const context = canvas.getContext("2d")!;
     const luminance = (element: Element) => {
-      context.clearRect(0, 0, 1, 1);
-      context.fillStyle = getComputedStyle(element).backgroundColor;
+      context.fillStyle = "white";
       context.fillRect(0, 0, 1, 1);
+      const layers: Element[] = [];
+      for (let layer: Element | null = element; layer; layer = layer.parentElement)
+        layers.push(layer);
+      for (const layer of layers.reverse()) {
+        context.fillStyle = getComputedStyle(layer).backgroundColor;
+        context.fillRect(0, 0, 1, 1);
+      }
       const [r, g, b] = Array.from(context.getImageData(0, 0, 1, 1).data).map((value) => {
         const channel = value / 255;
         return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
@@ -49,7 +55,7 @@ test("isolated button and picker previews are centered, while scenes keep their 
   expect(rail?.height).toBe(900);
 });
 
-test("desktop sidebar is inset from the app rail", async ({ page }) => {
+test("desktop sidebar meets the rail without an unused outer frame", async ({ page }) => {
   await openStory(page, "messaging-scenes-workspace--public-channel");
   const rail = page.getByRole("navigation", { name: "Apps" });
   const sidebar = page.getByRole("complementary", { name: "Conversations" });
@@ -57,8 +63,8 @@ test("desktop sidebar is inset from the app rail", async ({ page }) => {
   const railBox = (await rail.boundingBox())!;
   const sidebarBox = (await sidebar.boundingBox())!;
   const gap = sidebarBox.x - (railBox.x + railBox.width);
-  expect(gap).toBeGreaterThanOrEqual(8);
-  expect(gap).toBeCloseTo(sidebarBox.y - railBox.y, 0);
+  expect(gap).toBeCloseTo(0, 0);
+  expect(sidebarBox.y).toBeCloseTo(railBox.y, 0);
 });
 
 for (const [story, title] of [
@@ -238,7 +244,7 @@ test("dark selections and hovered account actions have distinct backgrounds", as
     .getByRole("complementary", { name: "Conversations" })
     .getByRole("button", { name: "general", exact: true });
   expect(await backgroundContrast(selected, "aside")).toBeGreaterThanOrEqual(2);
-  await page.getByRole("button", { name: "Signed in as Taylor Kim", exact: true }).hover();
+  await page.getByRole("button", { name: "Signed in as Taylor Kim", exact: true }).click();
   const settings = page.getByRole("button", { name: "User settings", exact: true });
   await settings.hover();
   await expect
@@ -246,7 +252,17 @@ test("dark selections and hovered account actions have distinct backgrounds", as
     .toBeGreaterThanOrEqual(1.5);
 });
 
-test("user icon reveals account actions on hover and supports keyboard access", async ({
+test("dark rail controls avoid bright white tiles and inset highlight seams", async ({ page }) => {
+  await openStory(page, "messaging-scenes-workspace--dark-workspace");
+  const rail = page.getByRole("navigation", { name: "Apps", exact: true });
+  const workspace = rail.getByRole("button", { name: "Launch Studio ▾", exact: true });
+  expect(await backgroundContrast(workspace, "nav")).toBeLessThan(3);
+  const active = rail.getByRole("button", { name: "Messages", exact: true });
+  await expect(active).toHaveCSS("box-shadow", "none");
+  await expect(workspace).toHaveCSS("box-shadow", "none");
+});
+
+test("user icon reveals account actions on click and supports keyboard access", async ({
   page,
 }) => {
   await openStory(page, "messaging-scenes-workspace--public-channel");
@@ -256,6 +272,8 @@ test("user icon reveals account actions on hover and supports keyboard access", 
   await expect(page.getByRole("button", { name: "User settings", exact: true })).toBeHidden();
   await user.hover();
   const actions = page.getByRole("dialog", { name: "User actions" });
+  await expect(actions).toBeHidden();
+  await user.click();
   await expect(actions).toBeVisible();
   await expect(actions.getByText("Taylor Kim", { exact: true })).toHaveCount(0);
   await expect(actions.getByRole("switch", { name: "Dark mode", exact: true })).toBeVisible();
@@ -490,9 +508,13 @@ for (const width of [320, 390, 1440]) {
           page.getByRole("textbox", { name: "Message #general", exact: true }),
         ).toHaveCount(0);
       } else {
-        expect(
-          await page.getByRole("textbox", { name: "Message #general", exact: true }).boundingBox(),
-        ).toEqual(composer);
+        const currentComposer = await page
+          .getByRole("textbox", { name: "Message #general", exact: true })
+          .boundingBox();
+        expect(currentComposer!.x).toBe(composer!.x);
+        expect(currentComposer!.width).toBe(composer!.width);
+        expect(currentComposer!.y + currentComposer!.height).toBe(composer!.y + composer!.height);
+        if (state === "loading-messages") expect(currentComposer).toEqual(composer);
         if (state === "loading-messages")
           await expect(region.getByRole("status")).toHaveText("Loading messages…");
         else {

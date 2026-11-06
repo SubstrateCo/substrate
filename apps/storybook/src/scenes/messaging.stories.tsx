@@ -48,11 +48,20 @@ export const EmptyDirectMessage: Story = {
 export const LoadingMessages: Story = { args: { messageState: "loading" } };
 export const MessageAccessError: Story = { args: { messageState: "error" } };
 export const ThreadOpen: Story = { args: { threadState: "ready" } };
+export const DarkThreadOpen: Story = {
+  args: { threadState: "ready" },
+  globals: { theme: "dark" },
+};
+export const DarkEmptyWorkspace: Story = {
+  args: { state: "empty" },
+  globals: { theme: "dark" },
+};
 export const EmptyThread: Story = { args: { threadState: "empty" } };
 export const LoadingThread: Story = { args: { threadState: "loading" } };
 export const ThreadError: Story = { args: { threadState: "error" } };
 export const SendingMessage: Story = { args: { composerState: "pending" } };
 export const SendError: Story = { args: { composerState: "error" } };
+export const SendLifecycle: Story = { args: { sendLifecycle: true, longContent: true } };
 export const AddPeople: Story = { args: { membersOpen: true } };
 export const CreateChannel: Story = { args: { creatingKind: "channel" } };
 export const CreateDirectMessage: Story = { args: { creatingKind: "dm" } };

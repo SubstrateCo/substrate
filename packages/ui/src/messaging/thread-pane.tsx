@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { Button } from "../primitives/button";
 import { PaneState } from "../feedback/pane-state";
@@ -23,14 +23,34 @@ export function ThreadPane({
   composer: ReactNode;
 }) {
   const blocked = !!error && (!replies || isAccessFailure(error));
+  const close = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const previous = document.activeElement;
+    const media = window.matchMedia("(min-width: 1024px)");
+    const focusOverlay = () => {
+      if (!media.matches) close.current?.focus();
+    };
+    focusOverlay();
+    media.addEventListener("change", focusOverlay);
+    return () => {
+      media.removeEventListener("change", focusOverlay);
+      if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
+    };
+  }, []);
   return (
     <aside
       aria-label="Thread"
-      className="absolute inset-0 z-10 flex min-h-0 min-w-0 flex-col border-l bg-surface shadow-raised lg:static lg:w-95 lg:shrink-0 xl:w-105"
+      className="absolute inset-0 z-10 flex min-h-0 min-w-0 flex-col bg-surface shadow-raised lg:static lg:flex-1 lg:shadow-none"
     >
-      <header className="flex h-16 shrink-0 items-center justify-between border-b bg-card/60 px-5">
+      <header className="flex h-12 shrink-0 items-center justify-between border-b bg-card/60 px-4">
         <h2 className="font-semibold">Thread</h2>
-        <Button size="icon" variant="ghost" aria-label="Close thread" onClick={onClose}>
+        <Button
+          ref={close}
+          size="icon-sm"
+          variant="ghost"
+          aria-label="Close thread"
+          onClick={onClose}
+        >
           <X />
         </Button>
       </header>

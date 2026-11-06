@@ -14,6 +14,7 @@ import { MessageList } from "@startup-os/ui/messaging/message-list";
 import { Composer } from "@startup-os/ui/messaging/composer";
 import { CreateConversationForm } from "@startup-os/ui/messaging/create-conversation-form";
 import { AddMembersForm } from "@startup-os/ui/messaging/add-members-form";
+import { Button } from "@startup-os/ui/primitives/button";
 import { conversationName, type Conversation, type Message } from "@startup-os/ui/messaging/types";
 import {
   conversations as fixtures,
@@ -35,6 +36,7 @@ export type MessagingSceneProps = {
   longContent?: boolean;
   linkedTask?: "channel" | "thread";
   referencesDemo?: boolean;
+  sendLifecycle?: boolean;
 };
 
 export function MessagingScene({
@@ -50,6 +52,7 @@ export function MessagingScene({
   longContent = false,
   linkedTask,
   referencesDemo = false,
+  sendLifecycle = false,
 }: MessagingSceneProps) {
   const [selectedId, setSelectedId] = useState(conversationId);
   const [creating, setCreating] = useState(creatingKind);
@@ -65,6 +68,12 @@ export function MessagingScene({
   const [items, setItems] = useState(state === "ready" ? fixtures : []);
   const [notice, setNotice] = useState<Error | null>(null);
   const [taskLinked, setTaskLinked] = useState(true);
+  const [sendPhase, setSendPhase] = useState<"ready" | "pending" | "error">("ready");
+  const [sendRequest, setSendRequest] = useState<{
+    body: string;
+    thread: boolean;
+    onSuccess: () => void;
+  } | null>(null);
   const visible = state === "ready" || state === "empty" ? items : [];
   const selected = visible.find((item) => item.id === selectedId);
   const baseMessages =
@@ -180,14 +189,15 @@ export function MessagingScene({
   const composer = (thread = false) => (
     <Composer
       key={`${selectedId}-${thread ? threadId : "channel"}`}
+      draftKey={`studio:${selectedId}:${thread ? threadId : "channel"}`}
       label={
         thread
           ? "Reply in thread…"
           : `Message ${selected?.kind === "channel" ? "#" : ""}${selected ? conversationName(selected) : ""}`
       }
-      pending={composerState === "pending"}
+      pending={sendLifecycle ? sendPhase === "pending" : composerState === "pending"}
       error={
-        composerState === "error"
+        (sendLifecycle ? sendPhase === "error" : composerState === "error")
           ? new Error("Message could not be sent. Your draft is still here.")
           : null
       }
@@ -205,6 +215,11 @@ export function MessagingScene({
           : undefined
       }
       onSend={(body, onSuccess) => {
+        if (sendLifecycle) {
+          setSendRequest({ body, thread, onSuccess });
+          setSendPhase("pending");
+          return;
+        }
         addMessage(body, thread);
         onSuccess();
       }}
@@ -305,7 +320,35 @@ export function MessagingScene({
                 </MessageList>
               ) : undefined
             }
-            composer={composer()}
+            composer={
+              <>
+                {sendLifecycle && (
+                  <div className="flex shrink-0 gap-2 px-3">
+                    <Button
+                      size="xs"
+                      disabled={sendPhase !== "pending"}
+                      onClick={() => setSendPhase("error")}
+                    >
+                      Fail send
+                    </Button>
+                    <Button
+                      size="xs"
+                      disabled={sendPhase !== "pending"}
+                      onClick={() => {
+                        if (!sendRequest) return;
+                        addMessage(sendRequest.body, sendRequest.thread);
+                        sendRequest.onSuccess();
+                        setSendPhase("ready");
+                        setSendRequest(null);
+                      }}
+                    >
+                      Complete send
+                    </Button>
+                  </div>
+                )}
+                {composer()}
+              </>
+            }
             thread={
               threadId && (
                 <ThreadPane

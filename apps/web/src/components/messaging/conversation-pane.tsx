@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ConversationPane as ConversationPaneView } from "@startup-os/ui/messaging/conversation-pane";
 import { conversationName, type Conversation } from "@/lib/messaging";
@@ -11,6 +11,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { messageTargetOptions } from "@/queries/context/options";
 import { MessageUnavailable } from "@startup-os/ui/messaging/message-unavailable";
 import { MessageHistory } from "@startup-os/ui/messaging/message-history";
+import { queryKeys } from "@/queries/keys";
 
 export function ConversationPane({
   organizationId,
@@ -31,13 +32,25 @@ export function ConversationPane({
   });
   const activeThreadId = search.messageId && !target.error ? target.data?.root.id : undefined;
   const [beforeMessageId, setBeforeMessageId] = useState<string>();
+  const [historyRequest, setHistoryRequest] = useState<"older" | "latest">();
   const [addingMembers, setAddingMembers] = useState(false);
-  const messages = useQuery(
-    messagesQueryOptions(organizationId, conversation.id, undefined, {
+  const messages = useQuery({
+    ...messagesQueryOptions(organizationId, conversation.id, undefined, {
       beforeMessageId,
       aroundMessageId: target.data?.root.id,
     }),
-  );
+    placeholderData: (previous, query) =>
+      queryKeys
+        .messages(organizationId, conversation.id)
+        .every((part, index) => query?.queryKey[index] === part)
+        ? previous
+        : undefined,
+  });
+  let historyPending: "older" | "latest" | "refresh" | undefined;
+  if (messages.isFetching) historyPending = historyRequest ?? "refresh";
+  useEffect(() => {
+    if (messages.isFetching) return () => setHistoryRequest(undefined);
+  }, [messages.isFetching]);
   const timeline = [...(messages.data ?? [])];
   if (target.data && !timeline.some((message) => message.id === target.data.root.id))
     timeline.push(target.data.root);
@@ -46,10 +59,17 @@ export function ConversationPane({
   else if (timeline.length > 0)
     messageContent = (
       <MessageHistory
+        pending={historyPending}
         hasOlder={messages.data?.length === 50}
-        hasPrevious={!!beforeMessageId}
-        onOlder={() => setBeforeMessageId(messages.data?.[0]?.id)}
-        onLatest={() => setBeforeMessageId(undefined)}
+        hasPrevious={!!beforeMessageId || historyPending === "latest"}
+        onOlder={() => {
+          setHistoryRequest("older");
+          setBeforeMessageId(messages.data?.[0]?.id);
+        }}
+        onLatest={() => {
+          setHistoryRequest("latest");
+          setBeforeMessageId(undefined);
+        }}
       >
         <MessageList
           messages={timeline}

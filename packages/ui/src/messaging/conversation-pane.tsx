@@ -5,6 +5,9 @@ import { Button } from "../primitives/button";
 import { PaneState } from "../feedback/pane-state";
 import { ErrorState } from "../feedback/error-state";
 import { isAccessFailure } from "../feedback/request-failure";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "../primitives/resizable";
+import { ContentNotice } from "../feedback/content-notice";
+import { useDesktopThread } from "./use-desktop-thread";
 
 export function ConversationPane({
   conversation,
@@ -36,60 +39,94 @@ export function ConversationPane({
     : conversationName(conversation);
   const blocked = !!error && (!hasLoaded || isAccessFailure(error));
   const initialLoading = loading && !hasLoaded;
+  const desktop = useDesktopThread();
+  const showThread = !blocked && !initialLoading && !!thread;
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1">
-      <section aria-label={title} className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface">
-        <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b bg-card/60 px-4 sm:px-5">
-          <h1 className="flex min-w-0 items-center gap-2 font-semibold">
-            {!isAccessFailure(error) &&
-              conversation.kind === "channel" &&
-              (conversation.private ? (
-                <LockKeyhole className="size-4 shrink-0" />
-              ) : (
-                <Hash className="size-5 shrink-0" />
-              ))}
-            <span className="truncate">{title}</span>
-          </h1>
-          {!blocked && conversation.kind !== "dm" && (
-            <Button
-              variant="outline"
-              size="icon-sm"
-              onClick={onToggleMembers}
-              aria-label="Add people"
-              aria-expanded={addingMembers}
+      <ResizablePanelGroup
+        orientation="horizontal"
+        className="min-h-0 min-w-0 flex-1 max-lg:contents! max-lg:*:data-panel:contents!"
+      >
+        <ResizablePanel
+          id="channel"
+          minSize={300}
+          className="flex min-h-0 min-w-0 flex-col max-lg:contents!"
+        >
+          <section
+            inert={showThread && !desktop}
+            aria-hidden={showThread && !desktop ? true : undefined}
+            aria-label={title}
+            className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface"
+          >
+            <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b bg-card/60 px-4">
+              <h1 className="flex min-w-0 items-center gap-2 font-semibold">
+                {!isAccessFailure(error) &&
+                  conversation.kind === "channel" &&
+                  (conversation.private ? (
+                    <LockKeyhole className="size-4 shrink-0" />
+                  ) : (
+                    <Hash className="size-5 shrink-0" />
+                  ))}
+                <span className="truncate">{title}</span>
+              </h1>
+              {!blocked && conversation.kind !== "dm" && (
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  onClick={onToggleMembers}
+                  aria-label="Add people"
+                  aria-expanded={addingMembers}
+                >
+                  <UserPlus />
+                </Button>
+              )}
+            </header>
+            {!blocked && addingMembers && membersForm}
+            {error && !blocked && (
+              <div className="px-4 pt-3">
+                <ErrorState
+                  compact
+                  title="Couldn’t refresh messages"
+                  description="Your loaded messages are still available. Try again for the latest messages."
+                  onRetry={onRetry}
+                />
+              </div>
+            )}
+            {blocked && (
+              <PaneState label="Conversation unavailable" error={error} onRetry={onRetry} />
+            )}
+            {!blocked && initialLoading && <PaneState label="Loading messages…" />}
+            {!blocked && !initialLoading && messages}
+            {!blocked && !initialLoading && !messages && (
+              <div className="flex min-h-0 flex-1 flex-col justify-center overflow-y-auto p-4">
+                <ContentNotice
+                  title={
+                    conversation.kind === "channel"
+                      ? `Welcome to #${title}`
+                      : `Your conversation with ${title}`
+                  }
+                  description="No messages yet. Send the first message below."
+                />
+              </div>
+            )}
+            {!blocked && <div className="mt-auto shrink-0">{composer}</div>}
+          </section>
+        </ResizablePanel>
+        {showThread && (
+          <>
+            <ResizableHandle aria-label="Resize thread" className="max-lg:hidden" />
+            <ResizablePanel
+              id="thread"
+              defaultSize="40%"
+              minSize={300}
+              maxSize="65%"
+              className="flex min-h-0 min-w-0 flex-col max-lg:contents!"
             >
-              <UserPlus />
-            </Button>
-          )}
-        </header>
-        {!blocked && addingMembers && membersForm}
-        {error && !blocked && (
-          <div className="px-4 pt-3">
-            <ErrorState
-              compact
-              title="Couldn’t refresh messages"
-              description="Your loaded messages are still available. Try again for the latest messages."
-              onRetry={onRetry}
-            />
-          </div>
+              {thread}
+            </ResizablePanel>
+          </>
         )}
-        {blocked && <PaneState label="Conversation unavailable" error={error} onRetry={onRetry} />}
-        {!blocked && initialLoading && <PaneState label="Loading messages…" />}
-        {!blocked && !initialLoading && messages}
-        {!blocked && !initialLoading && !messages && (
-          <div className="flex min-h-0 flex-1 flex-col justify-end overflow-y-auto px-6 py-8">
-            <h2 className="mb-2 text-2xl font-semibold tracking-tight">
-              {conversation.kind === "channel" ? "Welcome to " : "Your conversation with "}
-              {title}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              This is the start of something. Send the first message.
-            </p>
-          </div>
-        )}
-        {!blocked && <div className="mt-auto shrink-0">{composer}</div>}
-      </section>
-      {!blocked && !initialLoading && thread}
+      </ResizablePanelGroup>
     </div>
   );
 }

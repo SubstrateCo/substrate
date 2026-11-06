@@ -1,4 +1,5 @@
 import { Button } from "../primitives/button";
+import { Link2, ListPlus } from "lucide-react";
 
 export function MessageWorkActions({
   onCreate,
@@ -9,11 +10,25 @@ export function MessageWorkActions({
 }) {
   return (
     <>
-      <Button size="xs" variant="ghost" onClick={onCreate}>
-        Create task
+      <Button
+        type="button"
+        size="icon-xs"
+        variant="ghost"
+        aria-label="Create task"
+        title="Create task"
+        onClick={onCreate}
+      >
+        <ListPlus aria-hidden="true" />
       </Button>
-      <Button size="xs" variant="ghost" onClick={onLink}>
-        Link existing work
+      <Button
+        type="button"
+        size="icon-xs"
+        variant="ghost"
+        aria-label="Link existing work"
+        title="Link existing work"
+        onClick={onLink}
+      >
+        <Link2 aria-hidden="true" />
       </Button>
     </>
   );

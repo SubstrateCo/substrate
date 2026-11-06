@@ -47,9 +47,9 @@ export function ConversationSidebar({
       id="conversation-sidebar"
       aria-label="Conversations"
       aria-busy={loading}
-      className={`${mobileOpen ? "flex" : "hidden"} min-w-0 w-full shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground md:flex md:w-60 lg:w-64`}
+      className={`${mobileOpen ? "flex" : "hidden"} h-full min-w-0 w-full shrink-0 flex-col bg-sidebar text-sidebar-foreground md:flex`}
     >
-      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-2 py-5">
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-2 py-4">
         {error && (
           <ErrorState
             compact
@@ -66,7 +66,7 @@ export function ConversationSidebar({
                 <h2 className="text-xs font-semibold text-muted-foreground">
                   {sectionLabels[section]}
                 </h2>
-                {section !== "dm" ? (
+                {section === "channel" && (
                   <Button
                     size="icon-xs"
                     variant="ghost"
@@ -76,7 +76,8 @@ export function ConversationSidebar({
                   >
                     <Plus />
                   </Button>
-                ) : (
+                )}
+                {section === "dm" && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -101,7 +102,7 @@ export function ConversationSidebar({
               </div>
               {loading && conversations.length === 0 && (
                 <LoadingState
-                  label={section === "channel" ? "Loading channels…" : "Loading direct messages…"}
+                  label={section === "dm" ? "Loading direct messages…" : "Loading channels…"}
                   variant="compact"
                 />
               )}

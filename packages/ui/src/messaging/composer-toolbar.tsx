@@ -9,10 +9,10 @@ export function ComposerToolbar({
   onInsert: (prefix: string, suffix: string) => void;
 }) {
   return (
-    <div className="flex items-center gap-1 border-b border-border/60 bg-muted/30 px-2 py-1">
+    <div className="flex items-center gap-0.5 border-b border-border/60 bg-muted/30 px-2 py-0.5">
       <Button
         type="button"
-        size="icon-sm"
+        size="icon-xs"
         variant="ghost"
         aria-label="Bold text"
         disabled={pending}
@@ -22,7 +22,7 @@ export function ComposerToolbar({
       </Button>
       <Button
         type="button"
-        size="icon-sm"
+        size="icon-xs"
         variant="ghost"
         aria-label="Italic text"
         disabled={pending}
@@ -32,7 +32,7 @@ export function ComposerToolbar({
       </Button>
       <Button
         type="button"
-        size="icon-sm"
+        size="icon-xs"
         variant="ghost"
         aria-label="Code text"
         disabled={pending}

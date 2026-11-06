@@ -1,4 +1,5 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { X } from "lucide-react";
 import { ReferencePickerOption } from "./reference-picker-option";
 import { Button } from "../primitives/button";
 import { Input } from "../primitives/input";
@@ -32,12 +33,23 @@ export function ReferencePicker({
 }) {
   const [index, setIndex] = useState(0);
   const listId = useId();
+  const search = useRef<HTMLInputElement>(null);
+  const list = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    search.current?.focus();
+  }, []);
   const available = loading || error ? [] : results;
   const selectedIndex = Math.min(index, Math.max(0, available.length - 1));
   const insert = (id: string) => onInsert(`@[${kind}:${id}]`);
+  useEffect(() => {
+    list.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" });
+  }, [selectedIndex]);
   return (
-    <section aria-label="Insert workspace reference" className="space-y-3 border-t bg-card p-3">
-      <div className="flex gap-2">
+    <section
+      aria-label="Insert workspace reference"
+      className="flex max-h-36 flex-col gap-0.5 overflow-hidden border-t bg-card p-2"
+    >
+      <div className="flex shrink-0 items-center gap-1">
         {(["task", "project", "person"] as const).map((type) => (
           <Button
             key={type}
@@ -53,8 +65,21 @@ export function ReferencePicker({
             {type === "person" ? "People" : `${type[0]!.toUpperCase()}${type.slice(1)}s`}
           </Button>
         ))}
+        <Button
+          type="button"
+          size="icon-xs"
+          variant="ghost"
+          className="ml-auto"
+          aria-label="Close references"
+          title="Close references"
+          onClick={onClose}
+        >
+          <X aria-hidden="true" />
+        </Button>
       </div>
       <Input
+        ref={search}
+        className="shrink-0"
         aria-label="Search references"
         value={query}
         onChange={(e) => {
@@ -65,6 +90,7 @@ export function ReferencePicker({
         aria-expanded={true}
         aria-controls={listId}
         aria-autocomplete="list"
+        aria-describedby={`${listId}-help`}
         aria-activedescendant={
           available[selectedIndex] ? `${listId}-${available[selectedIndex]!.id}` : undefined
         }
@@ -91,29 +117,28 @@ export function ReferencePicker({
           }
         }}
       />
-      <p className="text-xs text-muted-foreground">
-        References do not grant access. People mentions notify conversation members.
+      <p id={`${listId}-help`} className="shrink-0 text-xs text-muted-foreground">
+        References don’t grant access; mentions notify members.
       </p>
-      {loading && <LoadingState label="Searching references" variant="compact" />}
-      {error && <ErrorState compact title="Couldn’t search references" onRetry={onRetry} />}
-      {!loading && !error && results.length === 0 && (
-        <p className="text-sm text-muted-foreground">No accessible references found.</p>
-      )}
-      <div id={listId} role="listbox" aria-label="References" className="max-h-48 overflow-auto">
-        {available.map((item, itemIndex) => (
-          <ReferencePickerOption
-            id={`${listId}-${item.id}`}
-            key={item.id}
-            kind={kind}
-            title={item.title}
-            selected={selectedIndex === itemIndex}
-            onSelect={() => insert(item.id)}
-          />
-        ))}
+      <div ref={list} className="min-h-8 flex-1 overflow-y-auto">
+        {loading && <LoadingState label="Searching references" variant="compact" />}
+        {error && <ErrorState compact title="Couldn’t search references" onRetry={onRetry} />}
+        {!loading && !error && results.length === 0 && (
+          <p className="text-sm text-muted-foreground">No accessible references found.</p>
+        )}
+        <div id={listId} role="listbox" aria-label="References">
+          {available.map((item, itemIndex) => (
+            <ReferencePickerOption
+              id={`${listId}-${item.id}`}
+              key={item.id}
+              kind={kind}
+              title={item.title}
+              selected={selectedIndex === itemIndex}
+              onSelect={() => insert(item.id)}
+            />
+          ))}
+        </div>
       </div>
-      <Button type="button" size="xs" variant="ghost" onClick={onClose}>
-        Close references
-      </Button>
     </section>
   );
 }

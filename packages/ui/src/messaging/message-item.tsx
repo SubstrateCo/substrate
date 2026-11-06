@@ -25,8 +25,22 @@ export function MessageItem({
   actions?: ReactNode;
   children?: ReactNode;
 }) {
+  const threadAction = onThread && (
+    <Button
+      size={message.replyCount ? "xs" : "icon-xs"}
+      variant="ghost"
+      aria-label={message.replyCount ? undefined : "Reply in thread"}
+      title="Reply in thread"
+      onClick={() => onThread(message.id)}
+    >
+      <MessageSquare className="size-3" aria-hidden="true" />
+      {message.replyCount
+        ? `${message.replyCount} ${message.replyCount === 1 ? "reply" : "replies"}`
+        : null}
+    </Button>
+  );
   return (
-    <article className="group flex gap-3 px-5 py-3 hover:bg-muted/40">
+    <article className="group flex gap-2.5 px-4 py-2 hover:bg-muted/40">
       <div
         aria-hidden="true"
         className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-primary/10 bg-accent text-sm font-semibold text-accent-foreground shadow-surface"
@@ -63,21 +77,15 @@ export function MessageItem({
               {emoji} {count}
             </Button>
           ))}
+          {!!message.replyCount && threadAction}
           <div
             role="group"
             aria-label="Message actions"
-            className="flex items-center gap-1 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 has-data-[state=open]:opacity-100"
+            className="flex min-w-0 flex-wrap items-center gap-1 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 has-data-[state=open]:opacity-100"
           >
             <EmojiPicker label="React to message" onSelect={onReact} disabled={pending} />
             {actions}
-            {onThread && (
-              <Button size="xs" variant="ghost" onClick={() => onThread(message.id)}>
-                <MessageSquare className="size-3" />
-                {message.replyCount
-                  ? `${message.replyCount} ${message.replyCount === 1 ? "reply" : "replies"}`
-                  : "Reply in thread"}
-              </Button>
-            )}
+            {!message.replyCount && threadAction}
           </div>
         </div>
         <FormMessage

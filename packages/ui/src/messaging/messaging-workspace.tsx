@@ -1,5 +1,8 @@
-import type { ReactNode } from "react";
-import { ArrowLeft, MessageSquare, PanelLeft } from "lucide-react";
+import { Children, type ReactNode } from "react";
+import { ArrowLeft, PanelLeft } from "lucide-react";
+import { ContentNotice } from "../feedback/content-notice";
+import { ComposerDraftProvider } from "./composer-drafts";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "../primitives/resizable";
 import type { Conversation } from "./types";
 import { Button } from "../primitives/button";
 import { PaneState } from "../feedback/pane-state";
@@ -30,73 +33,87 @@ export function MessagingWorkspace({
   onRetry: () => void;
   children?: ReactNode;
 }) {
-  const blocked = !!error && (!children || isAccessFailure(error));
+  const hasContent = Children.toArray(children).length > 0;
+  const blocked = !!error && (!hasContent || isAccessFailure(error));
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="shrink-0 border-b px-2 py-1 md:hidden">
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-controls="conversation-sidebar"
-          aria-expanded={sidebarOpen}
-          onClick={() => onSidebarOpenChange(!sidebarOpen)}
-        >
-          {sidebarOpen ? <ArrowLeft /> : <PanelLeft />}
-          {sidebarOpen ? "Back to messages" : "Show conversations"}
-        </Button>
-      </div>
-      <div className="flex min-h-0 min-w-0 flex-1">
-        <ConversationSidebar
-          mobileOpen={sidebarOpen}
-          loading={loading}
-          error={error}
-          onRetry={onRetry}
-          conversations={conversations}
-          selectedId={selectedId}
-          onSelect={onSelect}
-          onCreate={onCreate}
-        />
-        <div
-          className={`${sidebarOpen ? "hidden" : "flex"} min-h-0 min-w-0 flex-1 flex-col md:flex`}
-        >
-          {blocked && <PaneState label="Workspace unavailable" error={error} onRetry={onRetry} />}
-          {!blocked && !!children && (
-            <>
-              {error && (
-                <div className="p-3">
-                  <ErrorState
-                    compact
-                    title="Couldn’t refresh conversations"
-                    description="You can still read your loaded messages. Try again to update the conversation list."
-                    onRetry={onRetry}
-                  />
-                </div>
-              )}
-              {children}
-            </>
-          )}
-          {!blocked && !children && loading && <PaneState label="Loading your conversations…" />}
-          {!blocked && !children && !loading && (
-            <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
-              <div className="rounded-2xl border border-primary/10 bg-accent p-4 text-accent-foreground shadow-raised">
-                <MessageSquare className="size-8" />
-              </div>
-              <h1 className="text-2xl font-semibold tracking-tight">
-                Make room for a conversation
-              </h1>
-              <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
-                Bring your team together in a channel, or start a direct message with someone.
-              </p>
-              <div className="flex flex-wrap justify-center gap-2">
-                <Button onClick={() => onCreate("channel")}>Create channel</Button>
-                <Button variant="outline" onClick={() => onCreate("dm")}>
-                  New direct message
-                </Button>
-              </div>
-            </div>
-          )}
+    <ComposerDraftProvider>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="shrink-0 border-b px-2 py-1 md:hidden">
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-controls="conversation-sidebar"
+            aria-expanded={sidebarOpen}
+            onClick={() => onSidebarOpenChange(!sidebarOpen)}
+          >
+            {sidebarOpen ? <ArrowLeft /> : <PanelLeft />}
+            {sidebarOpen ? "Back to messages" : "Show conversations"}
+          </Button>
         </div>
+        <ResizablePanelGroup
+          orientation="horizontal"
+          className="min-h-0 min-w-0 flex-1 max-md:contents! max-md:*:data-panel:contents!"
+        >
+          <ResizablePanel
+            id="conversations"
+            defaultSize={240}
+            minSize={180}
+            maxSize={360}
+            className="max-md:contents!"
+          >
+            <ConversationSidebar
+              mobileOpen={sidebarOpen}
+              loading={loading}
+              error={error}
+              onRetry={onRetry}
+              conversations={conversations}
+              selectedId={selectedId}
+              onSelect={onSelect}
+              onCreate={onCreate}
+            />
+          </ResizablePanel>
+          <ResizableHandle aria-label="Resize conversations sidebar" className="max-md:hidden" />
+          <ResizablePanel
+            id="conversation"
+            minSize={320}
+            className={`${sidebarOpen ? "max-md:hidden!" : "flex"} min-h-0 min-w-0 flex-1 flex-col md:flex`}
+          >
+            {blocked && <PaneState label="Workspace unavailable" error={error} onRetry={onRetry} />}
+            {!blocked && hasContent && (
+              <>
+                {error && (
+                  <div className="p-3">
+                    <ErrorState
+                      compact
+                      title="Couldn’t refresh conversations"
+                      description="You can still read your loaded messages. Try again to update the conversation list."
+                      onRetry={onRetry}
+                    />
+                  </div>
+                )}
+                {children}
+              </>
+            )}
+            {!blocked && !hasContent && loading && (
+              <PaneState label="Loading your conversations…" />
+            )}
+            {!blocked && !hasContent && !loading && (
+              <div className="m-auto flex max-w-md flex-col items-center p-6 text-center">
+                <ContentNotice
+                  title="Your conversations start here"
+                  description="Create a channel for your team, or send someone a direct message."
+                />
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button onClick={() => onCreate("channel")}>Create channel</Button>
+                  <Button variant="outline" onClick={() => onCreate("dm")}>
+                    New direct message
+                  </Button>
+                </div>
+              </div>
+            )}
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
-    </div>
+    </ComposerDraftProvider>
   );
 }
