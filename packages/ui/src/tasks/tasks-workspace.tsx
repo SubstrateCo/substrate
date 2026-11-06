@@ -74,24 +74,23 @@ export function TasksWorkspace({
         </div>
       </aside>
       <div className="min-h-0 min-w-0 flex-1 md:overflow-y-auto">
-        {creating ? (
+        {creating &&
           renderCreate(
             (id) => {
               setSelectedId(id);
               setCreating(false);
             },
             () => setCreating(false),
-          )
-        ) : selected ? (
-          renderProject(selected)
-        ) : !loading && !error ? (
+          )}
+        {!creating && selected && renderProject(selected)}
+        {!creating && !selected && !loading && !error && (
           <div className="p-8">
             <h2 className="text-lg font-semibold">Your team's work, in one place</h2>
             <p className="mt-2 text-muted-foreground">
               Choose a project or create one to add tasks, subtasks, and comments.
             </p>
           </div>
-        ) : null}
+        )}
       </div>
     </section>
   );

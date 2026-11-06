@@ -19,13 +19,11 @@ function SettingsScene({
   state?: "ready" | "empty" | "loading" | "error" | "sending" | "canceling" | "sent" | "canceled";
 }) {
   const [items, setItems] = useState(state === "empty" ? [] : invitations);
-  const [message, setMessage] = useState<string | undefined>(
-    state === "sent"
-      ? "Invitation email sent."
-      : state === "canceled"
-        ? "Invitation canceled."
-        : undefined,
-  );
+  const [message, setMessage] = useState<string | undefined>(() => {
+    if (state === "sent") return "Invitation email sent.";
+    if (state === "canceled") return "Invitation canceled.";
+    return undefined;
+  });
   return (
     <WorkspaceShell
       name="Taylor Kim"

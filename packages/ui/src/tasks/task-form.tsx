@@ -37,9 +37,16 @@ export function TaskForm({
   const assignees = detail.actors.filter((actor) =>
     detail.members.some((member) => member.actorEntityId === actor.entityId),
   );
+  let titleLabel = parentTaskEntityId ? "New subtask" : "New task";
+  let submitLabel = parentTaskEntityId ? "Create subtask" : "Create task";
+  if (task) {
+    titleLabel = "Edit task";
+    submitLabel = "Save task";
+  }
+  if (pending) submitLabel = "Saving task…";
   return (
     <form
-      aria-label={task ? "Edit task" : parentTaskEntityId ? "New subtask" : "New task"}
+      aria-label={titleLabel}
       className="space-y-4"
       onSubmit={(event) => {
         event.preventDefault();
@@ -54,9 +61,7 @@ export function TaskForm({
         });
       }}
     >
-      <h3 className="font-semibold">
-        {task ? "Edit task" : parentTaskEntityId ? "New subtask" : "New task"}
-      </h3>
+      <h3 className="font-semibold">{titleLabel}</h3>
       <div className="space-y-2">
         <Label htmlFor={`${id}-title`}>Task title</Label>
         <Input
@@ -124,13 +129,7 @@ export function TaskForm({
       <div className="flex gap-2">
         <Button disabled={pending || !title.trim()}>
           {pending && <Spinner />}
-          {pending
-            ? "Saving task…"
-            : task
-              ? "Save task"
-              : parentTaskEntityId
-                ? "Create subtask"
-                : "Create task"}
+          {submitLabel}
         </Button>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel

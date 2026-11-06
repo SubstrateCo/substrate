@@ -69,13 +69,10 @@ export function ConversationPane({
             />
           </div>
         )}
-        {blocked ? (
-          <PaneState label="Conversation unavailable" error={error} onRetry={onRetry} />
-        ) : loading ? (
-          <PaneState label="Loading messages…" />
-        ) : messages ? (
-          messages
-        ) : (
+        {blocked && <PaneState label="Conversation unavailable" error={error} onRetry={onRetry} />}
+        {!blocked && loading && <PaneState label="Loading messages…" />}
+        {!blocked && !loading && messages}
+        {!blocked && !loading && !messages && (
           <div className="flex min-h-0 flex-1 flex-col justify-end overflow-y-auto px-6 py-8">
             <h2 className="mb-2 text-2xl font-semibold tracking-tight">
               {conversation.kind === "channel" ? "Welcome to " : "Your conversation with "}

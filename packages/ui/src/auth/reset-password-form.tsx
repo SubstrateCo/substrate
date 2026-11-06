@@ -24,19 +24,21 @@ export function ResetPasswordForm({
 }) {
   return (
     <AuthFrame title="Choose a new password" description="Use at least 8 characters.">
-      {invalid ? (
+      {invalid && (
         <ContentNotice
           title="Reset link unavailable"
           description="This reset link is missing, invalid, or expired. Request a new link."
         />
-      ) : success ? (
+      )}
+      {!invalid && success && (
         <>
           <FormMessage message="Your password was changed. You can now sign in." />
           <a className="block underline" href={loginHref}>
             Sign in
           </a>
         </>
-      ) : (
+      )}
+      {!invalid && !success && (
         <form
           className="space-y-4"
           onSubmit={(event) => {

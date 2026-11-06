@@ -35,7 +35,7 @@ export function MessagingWorkspace({ organizationId }: { organizationId: string 
       error={conversations.error}
       onRetry={() => void conversations.refetch()}
     >
-      {creating ? (
+      {creating && (
         <CreateConversationForm
           key={creating}
           organizationId={organizationId}
@@ -45,13 +45,14 @@ export function MessagingWorkspace({ organizationId }: { organizationId: string 
             setCreating(null);
           }}
         />
-      ) : selected ? (
+      )}
+      {!creating && selected && (
         <ConversationPane
           key={selected.id}
           organizationId={organizationId}
           conversation={selected}
         />
-      ) : undefined}
+      )}
     </MessagingWorkspaceView>
   );
 }

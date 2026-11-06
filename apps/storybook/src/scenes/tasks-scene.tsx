@@ -33,12 +33,11 @@ export function TasksScene({
   const [comments, setComments] = useState<Record<string, TaskComment[]>>({});
   const [commentErrors, setCommentErrors] = useState<Record<string, Error | null>>({});
   const [shouldFail, setShouldFail] = useState(failComment);
-  const requestError = (value: string) =>
-    value === "error"
-      ? new Error("Offline")
-      : value === "unavailable"
-        ? new Error("Project or task not found or access denied.")
-        : null;
+  const requestError = (value: string) => {
+    if (value === "error") return new Error("Offline");
+    if (value === "unavailable") return new Error("Project or task not found or access denied.");
+    return null;
+  };
   return (
     <WorkspaceShell
       name="Alex Morgan"

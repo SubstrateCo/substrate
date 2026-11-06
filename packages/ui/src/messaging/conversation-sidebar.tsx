@@ -105,14 +105,10 @@ export function ConversationSidebar({
                       : conversation.kind !== "channel",
                   )
                   .map((conversation) => {
-                    const Icon =
-                      conversation.kind === "channel"
-                        ? conversation.private
-                          ? LockKeyhole
-                          : Hash
-                        : conversation.kind === "group"
-                          ? Users
-                          : MessageCircle;
+                    let Icon = conversation.kind === "group" ? Users : MessageCircle;
+                    if (conversation.kind === "channel") {
+                      Icon = conversation.private ? LockKeyhole : Hash;
+                    }
                     return (
                       <Button
                         key={conversation.id}

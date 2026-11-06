@@ -73,14 +73,14 @@ export function MessagingScene({
           ...baseMessages,
         ]
       : baseMessages);
-  const error =
-    state === "stale"
-      ? new Error("Your active workspace changed. Reload this page to continue.")
-      : state === "revoked"
-        ? new Error("You are not a member of this organization")
-        : state === "error"
-          ? new Error("Could not load conversations. Please try again.")
-          : null;
+  let error: Error | null = null;
+  if (state === "stale") {
+    error = new Error("Your active workspace changed. Reload this page to continue.");
+  } else if (state === "revoked") {
+    error = new Error("You are not a member of this organization");
+  } else if (state === "error") {
+    error = new Error("Could not load conversations. Please try again.");
+  }
   const addMessage = (body: string, thread: boolean) => {
     const message: Message = {
       ...messageFixtures[0],
@@ -110,19 +110,17 @@ export function MessagingScene({
       onReact={(emoji) => {
         const existing = message.reactions.find((reaction) => reaction.emoji === emoji);
         const reactions = existing
-          ? message.reactions.flatMap((reaction) =>
-              reaction.emoji !== emoji
-                ? [reaction]
-                : reaction.reacted && reaction.count === 1
-                  ? []
-                  : [
-                      {
-                        ...reaction,
-                        count: reaction.count + (reaction.reacted ? -1 : 1),
-                        reacted: !reaction.reacted,
-                      },
-                    ],
-            )
+          ? message.reactions.flatMap((reaction) => {
+              if (reaction.emoji !== emoji) return [reaction];
+              if (reaction.reacted && reaction.count === 1) return [];
+              return [
+                {
+                  ...reaction,
+                  count: reaction.count + (reaction.reacted ? -1 : 1),
+                  reacted: !reaction.reacted,
+                },
+              ];
+            })
           : [...message.reactions, { emoji, count: 1, reacted: true }];
         if (inThread)
           setReplies({
@@ -211,7 +209,7 @@ export function MessagingScene({
           setSidebarOpen(false);
         }}
       >
-        {creating ? (
+        {creating && (
           <CreateConversationForm
             key={creating}
             kind={creating}
@@ -231,7 +229,8 @@ export function MessagingScene({
               setCreating(undefined);
             }}
           />
-        ) : selected ? (
+        )}
+        {!creating && selected && (
           <ConversationPane
             conversation={selected}
             loading={messageState === "loading"}
@@ -281,7 +280,7 @@ export function MessagingScene({
               )
             }
           />
-        ) : undefined}
+        )}
       </MessagingWorkspace>
     </WorkspaceShell>
   );

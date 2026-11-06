@@ -32,30 +32,23 @@ export function WorkspaceFrame({
   const access = organizationSettingsAccess(
     member.data?.organizationId === organizationId ? member.data?.role : undefined,
   );
+  let view: "user-settings" | "organization-settings" | "tasks" | "messages" = "messages";
+  if (pathname.startsWith("/settings/user")) view = "user-settings";
+  else if (pathname.startsWith("/settings/organization")) view = "organization-settings";
+  else if (pathname.startsWith("/tasks")) view = "tasks";
   return (
     <WorkspaceShell
       name={name}
-      view={
-        pathname.startsWith("/settings/user")
-          ? "user-settings"
-          : pathname.startsWith("/settings/organization")
-            ? "organization-settings"
-            : pathname.startsWith("/tasks")
-              ? "tasks"
-              : "messages"
-      }
-      onViewChange={(view) =>
-        void navigate({
-          to:
-            view === "messages"
-              ? "/dashboard"
-              : view === "tasks"
-                ? "/tasks"
-                : view === "user-settings"
-                  ? "/settings/user"
-                  : "/settings/organization",
-        })
-      }
+      view={view}
+      onViewChange={(nextView) => {
+        const to = {
+          messages: "/dashboard",
+          tasks: "/tasks",
+          "user-settings": "/settings/user",
+          "organization-settings": "/settings/organization",
+        } as const;
+        void navigate({ to: to[nextView] });
+      }}
       showOrganizationSettings={access.allowed}
       organizationName={organization.data?.name}
       switcher={

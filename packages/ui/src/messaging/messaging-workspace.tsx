@@ -30,6 +30,7 @@ export function MessagingWorkspace({
   onRetry: () => void;
   children?: ReactNode;
 }) {
+  const blocked = !!error && (!children || isAccessFailure(error));
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="shrink-0 border-b px-2 py-1 md:hidden">
@@ -58,9 +59,8 @@ export function MessagingWorkspace({
         <div
           className={`${sidebarOpen ? "hidden" : "flex"} min-h-0 min-w-0 flex-1 flex-col md:flex`}
         >
-          {error && (!children || isAccessFailure(error)) ? (
-            <PaneState label="Workspace unavailable" error={error} onRetry={onRetry} />
-          ) : children ? (
+          {blocked && <PaneState label="Workspace unavailable" error={error} onRetry={onRetry} />}
+          {!blocked && !!children && (
             <>
               {error && (
                 <div className="p-3">
@@ -74,9 +74,9 @@ export function MessagingWorkspace({
               )}
               {children}
             </>
-          ) : loading ? (
-            <PaneState label="Loading your conversations…" />
-          ) : (
+          )}
+          {!blocked && !children && loading && <PaneState label="Loading your conversations…" />}
+          {!blocked && !children && !loading && (
             <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
               <div className="rounded-2xl border border-primary/10 bg-accent p-4 text-accent-foreground shadow-raised">
                 <MessageSquare className="size-8" />

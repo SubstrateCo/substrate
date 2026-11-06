@@ -32,6 +32,16 @@ export function AppTable<TData extends RowData>({
 }) {
   const rows = table.getRowModel().rows;
   const blocked = isAccessFailure(error);
+  let emptyContent = (
+    <ContentNotice title={emptyMessage} description="New items will appear here." />
+  );
+  if (loading) {
+    emptyContent = <LoadingState label={loadingMessage} variant="table" />;
+  } else if (error) {
+    emptyContent = (
+      <ErrorState title={errorTitle} description={errorDescription} onRetry={onRetry} />
+    );
+  }
   return (
     <table.AppTable>
       <div className="min-w-0 space-y-3">
@@ -45,21 +55,20 @@ export function AppTable<TData extends RowData>({
                 <TableRow key={group.id}>
                   {group.headers.map((header) => {
                     const sorting = header.column.getIsSorted();
-                    const Icon =
-                      sorting === "asc" ? ArrowUp : sorting === "desc" ? ArrowDown : ArrowUpDown;
+                    let Icon = ArrowUpDown;
+                    let sortDirection: "ascending" | "descending" | "none" = "none";
+                    if (sorting === "asc") {
+                      Icon = ArrowUp;
+                      sortDirection = "ascending";
+                    } else if (sorting === "desc") {
+                      Icon = ArrowDown;
+                      sortDirection = "descending";
+                    }
                     return (
                       <TableHead
                         key={header.id}
                         colSpan={header.colSpan}
-                        aria-sort={
-                          header.column.getCanSort()
-                            ? sorting === "asc"
-                              ? "ascending"
-                              : sorting === "desc"
-                                ? "descending"
-                                : "none"
-                            : undefined
-                        }
+                        aria-sort={header.column.getCanSort() ? sortDirection : undefined}
                       >
                         {!header.isPlaceholder &&
                           (header.column.getCanSort() ? (
@@ -83,22 +92,7 @@ export function AppTable<TData extends RowData>({
             <TableBody>
               {loading || blocked || rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={table.getAllLeafColumns().length}>
-                    {loading ? (
-                      <LoadingState label={loadingMessage} variant="table" />
-                    ) : error ? (
-                      <ErrorState
-                        title={errorTitle}
-                        description={errorDescription}
-                        onRetry={onRetry}
-                      />
-                    ) : (
-                      <ContentNotice
-                        title={emptyMessage}
-                        description="New items will appear here."
-                      />
-                    )}
-                  </TableCell>
+                  <TableCell colSpan={table.getAllLeafColumns().length}>{emptyContent}</TableCell>
                 </TableRow>
               ) : (
                 rows.map((row) => (

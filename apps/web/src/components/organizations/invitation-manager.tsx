@@ -39,6 +39,9 @@ export function InvitationManager({ organizationId }: { organizationId: string }
     },
     onSuccess: refresh,
   });
+  let message: string | undefined;
+  if (invite.isSuccess) message = "Invitation email sent.";
+  else if (cancel.isSuccess) message = "Invitation canceled.";
   return (
     <InvitationManagerView
       invitations={invitations.data?.map((invitation) => ({
@@ -50,13 +53,7 @@ export function InvitationManager({ organizationId }: { organizationId: string }
       canceling={cancel.isPending}
       error={invite.error || cancel.error}
       loadError={invitations.error}
-      message={
-        invite.isSuccess
-          ? "Invitation email sent."
-          : cancel.isSuccess
-            ? "Invitation canceled."
-            : undefined
-      }
+      message={message}
       onRetry={() => void invitations.refetch()}
       onInvite={(email, role, resend) => invite.mutate({ email, role, resend })}
       onCancel={(id) => cancel.mutate(id)}

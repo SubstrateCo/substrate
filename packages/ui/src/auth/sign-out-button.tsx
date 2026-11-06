@@ -14,13 +14,14 @@ export function SignOutButton({
   error?: Error | null;
   onSignOut: () => void;
 }) {
+  const label = pending ? "Signing out…" : "Sign out";
   return (
     <div className={compact ? "relative" : "space-y-2"}>
       <Button
         variant={compact ? "rail" : "ghost"}
         size={compact ? "icon-lg" : "default"}
         aria-label={compact ? "Sign out" : undefined}
-        title={compact ? (pending ? "Signing out…" : "Sign out") : undefined}
+        title={compact ? label : undefined}
         disabled={pending}
         aria-busy={pending}
         onClick={onSignOut}
@@ -30,7 +31,7 @@ export function SignOutButton({
         ) : (
           <LogOut aria-hidden="true" className={compact ? "size-5" : "size-4"} />
         )}
-        {!compact && (pending ? "Signing out…" : "Sign out")}
+        {!compact && label}
       </Button>
       <FormMessage error={error} errorDescription="We couldn’t sign you out. Please try again." />
     </div>

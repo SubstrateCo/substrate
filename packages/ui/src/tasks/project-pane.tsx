@@ -106,7 +106,7 @@ export function ProjectPane({
               setCreating(null);
             }}
           />
-          {creating && canEdit ? (
+          {creating && canEdit && (
             <div
               key={creating.parentTaskEntityId ?? "root"}
               className="min-w-0 rounded-xl border bg-card p-4 sm:p-6"
@@ -121,14 +121,15 @@ export function ProjectPane({
                 () => setCreating(null),
               )}
             </div>
-          ) : selected ? (
+          )}
+          {!(creating && canEdit) &&
+            selected &&
             renderTaskDetail(
               detail,
               selected,
               () => setSelectedId(null),
               () => setCreating({ parentTaskEntityId: selected.entityId }),
-            )
-          ) : null}
+            )}
         </div>
       )}
     </div>

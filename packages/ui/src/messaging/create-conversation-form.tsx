@@ -21,12 +21,11 @@ export function CreateConversationForm({
   const [name, setName] = useState("");
   const [emails, setEmails] = useState("");
   const [isPrivate, setPrivate] = useState(false);
-  const title =
-    kind === "channel"
-      ? "Create a channel"
-      : kind === "dm"
-        ? "New direct message"
-        : "New group message";
+  const title = {
+    channel: "Create a channel",
+    dm: "New direct message",
+    group: "New group message",
+  }[kind];
   return (
     <section className="m-auto w-full max-w-xl shrink-0 p-6 sm:p-10">
       <h2 className="mb-7 text-xl font-semibold tracking-tight">{title}</h2>

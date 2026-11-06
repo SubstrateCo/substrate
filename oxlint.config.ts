@@ -11,6 +11,7 @@ export default defineConfig({
   },
   rules: {
     ...deslopConfigs.recommended.rules,
+    "no-nested-ternary": "error",
     "deslop/canonical-class-names": ["error", { cssPath: "./packages/ui/src/styles.css" }],
     "deslop/no-duplicate-types": "error",
     "shadcn/no-restyle": ["error", { allow: ["layout"] }],

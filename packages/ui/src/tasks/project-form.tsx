@@ -23,6 +23,8 @@ export function ProjectForm({
   const id = useId();
   const [name, setName] = useState(project?.name ?? "");
   const [description, setDescription] = useState(project?.description ?? "");
+  let submitLabel = project ? "Save project" : "Create project";
+  if (pending) submitLabel = "Saving project…";
   return (
     <form
       className="mx-auto w-full max-w-xl space-y-5 p-6"
@@ -58,7 +60,7 @@ export function ProjectForm({
       <div className="flex gap-2">
         <Button disabled={pending || !name.trim()}>
           {pending && <Spinner />}
-          {pending ? "Saving project…" : project ? "Save project" : "Create project"}
+          {submitLabel}
         </Button>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel

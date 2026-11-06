@@ -35,12 +35,11 @@ async function createConversation(
   emails: string[] = [],
   isPrivate = false,
 ) {
-  const button =
-    kind === "dm"
-      ? "New direct message"
-      : kind === "group"
-        ? "New group message"
-        : "Create channel";
+  const button = {
+    dm: "New direct message",
+    group: "New group message",
+    channel: "Create channel",
+  }[kind];
   const sidebar = page.getByRole("complementary", { name: "Conversations" });
   if (kind === "channel") {
     await sidebar.getByRole("button", { name: button, exact: true }).click();
