@@ -53,6 +53,9 @@ export function ProjectPane({
   const [settings, setSettings] = useState(false);
   const [editing, setEditing] = useState(false);
   const [restore, setRestore] = useState(0);
+  const [projectRestore, setProjectRestore] = useState(0);
+  const projectEditButton = useRef<HTMLButtonElement>(null);
+  const restoredProjectEdit = useRef(0);
   const inspector = useRef<HTMLDivElement>(null);
   const taskViewport = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLElement | null>(null);
@@ -73,6 +76,11 @@ export function ProjectPane({
   useEffect(() => {
     if (restore) (trigger.current?.isConnected ? trigger.current : newTaskButton.current)?.focus();
   }, [restore]);
+  useEffect(() => {
+    if (projectRestore === restoredProjectEdit.current) return;
+    restoredProjectEdit.current = projectRestore;
+    if (settings) projectEditButton.current?.focus();
+  }, [projectRestore, settings]);
   const detail = isAccessFailure(error) ? undefined : data;
   if (!detail) {
     if (loading) return <ProjectLoading />;
@@ -92,12 +100,6 @@ export function ProjectPane({
   }
   const canEdit = detail.level === "edit" || detail.level === "owner";
   const selected = detail.tasks.find((task) => task.entityId === effectiveId);
-  if (editing && canEdit)
-    return (
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        {renderProjectEditor(detail, () => setEditing(false))}
-      </div>
-    );
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-4 sm:p-6">
       <Tabs
@@ -105,22 +107,16 @@ export function ProjectPane({
         onValueChange={(value) => setSettings(value === "settings")}
         className="min-h-0 min-w-0 flex-1"
       >
-        <header className="mb-3 flex shrink-0 flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
+        <header className="mb-3 flex shrink-0 flex-wrap items-start gap-x-3 gap-y-1">
+          <div className="min-w-0 flex-1">
             <h1
               className="line-clamp-2 text-xl font-semibold wrap-break-word"
               title={detail.project.name}
             >
               {detail.project.name}
             </h1>
-            <p
-              className="mt-1 line-clamp-2 max-w-3xl text-sm whitespace-pre-wrap text-muted-foreground wrap-break-word"
-              title={detail.project.description}
-            >
-              {detail.project.description}
-            </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex max-w-full shrink-0 flex-wrap gap-2">
             {headerActions}
             {canEdit && (
               <Button
@@ -135,6 +131,12 @@ export function ProjectPane({
               </Button>
             )}
           </div>
+          <p
+            className="line-clamp-2 w-full text-sm whitespace-pre-wrap text-muted-foreground wrap-break-word"
+            title={detail.project.description}
+          >
+            {detail.project.description}
+          </p>
         </header>
         <div className="shrink-0 border-b pb-2">
           <TabsList variant="line" className="w-full justify-start">
@@ -154,13 +156,21 @@ export function ProjectPane({
           hidden={!settings}
           className="mt-3 min-h-0 overflow-y-auto"
         >
-          <div className="flex max-w-2xl min-w-0 flex-col items-start gap-4">
-            {renderSettings(detail)}
-            {canEdit && (
-              <Button variant="outline" onClick={() => setEditing(true)}>
-                Edit project
-              </Button>
-            )}
+          {editing &&
+            canEdit &&
+            renderProjectEditor(detail, () => {
+              setEditing(false);
+              setProjectRestore((count) => count + 1);
+            })}
+          <div hidden={editing && canEdit}>
+            <div className="flex max-w-2xl min-w-0 flex-col items-start gap-4">
+              {renderSettings(detail)}
+              {canEdit && (
+                <Button ref={projectEditButton} variant="outline" onClick={() => setEditing(true)}>
+                  Edit project
+                </Button>
+              )}
+            </div>
           </div>
         </TabsContent>
         <TabsContent

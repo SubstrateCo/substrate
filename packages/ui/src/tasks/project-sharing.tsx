@@ -56,10 +56,10 @@ export function ProjectSharing({
       <p className="text-sm text-muted-foreground">
         Shared access applies to every task, subtask, and comment in this project.
       </p>
-      <ul className="space-y-2">
+      <ul className="divide-y divide-border/60">
         {detail.members.map((member) => (
           <li key={member.actorEntityId}>
-            <Item size="xs" variant="muted">
+            <Item size="xs">
               <ItemMedia variant="icon">
                 {member.type === "agent" ? (
                   <Bot aria-hidden="true" />
