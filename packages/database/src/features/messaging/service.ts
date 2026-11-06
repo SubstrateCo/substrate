@@ -119,6 +119,7 @@ export function createMessagingService(
                 conversationId: participants.conversationId,
                 userId: user.id,
                 name: user.name,
+                organizationId: participants.organizationId,
               })
               .from(participants)
               .innerJoin(user, eq(user.id, participants.userId))
@@ -132,6 +133,11 @@ export function createMessagingService(
           : [];
         return rows.map((row) => ({
           ...row,
+          partner: names.some(
+            (participant) =>
+              participant.conversationId === row.id &&
+              participant.organizationId !== scope.organizationId,
+          ),
           name:
             row.name ??
             (names

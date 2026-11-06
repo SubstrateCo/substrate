@@ -3,20 +3,13 @@ import { Button } from "../primitives/button";
 
 export function ComposerToolbar({
   pending,
-  onReferences,
   onInsert,
 }: {
   pending: boolean;
-  onReferences?: () => void;
   onInsert: (prefix: string, suffix: string) => void;
 }) {
   return (
     <div className="flex items-center gap-1 border-b border-border/60 bg-muted/30 px-2 py-1">
-      {onReferences && (
-        <Button type="button" size="xs" variant="ghost" disabled={pending} onClick={onReferences}>
-          Insert reference
-        </Button>
-      )}
       <Button
         type="button"
         size="icon-sm"

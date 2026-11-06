@@ -19,6 +19,7 @@ import { Route as PublicForgotPasswordRouteImport } from './routes/_public/forgo
 import { Route as PublicResetPasswordRouteImport } from './routes/_public/reset-password'
 import { Route as PublicVerifyEmailRouteImport } from './routes/_public/verify-email'
 import { Route as AuthenticatedWorkspaceDashboardRouteImport } from './routes/_authenticated/_workspace/dashboard'
+import { Route as AuthenticatedWorkspaceNotificationsRouteImport } from './routes/_authenticated/_workspace/notifications'
 import { Route as AuthenticatedAcceptInvitationInvitationIdRouteImport } from './routes/_authenticated/accept-invitation/$invitationId'
 import { Route as AuthenticatedSettingsUserRouteRouteImport } from './routes/_authenticated/settings/user/route'
 import { Route as PublicGuestLoginRouteImport } from './routes/_public/_guest/login'
@@ -76,6 +77,12 @@ const AuthenticatedWorkspaceDashboardRoute =
   AuthenticatedWorkspaceDashboardRouteImport.update({
     id: '/dashboard',
     path: '/dashboard',
+    getParentRoute: () => AuthenticatedWorkspaceRouteRoute,
+  } as any)
+const AuthenticatedWorkspaceNotificationsRoute =
+  AuthenticatedWorkspaceNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
     getParentRoute: () => AuthenticatedWorkspaceRouteRoute,
   } as any)
 const AuthenticatedAcceptInvitationInvitationIdRoute =
@@ -139,6 +146,7 @@ export interface FileRoutesByFullPath {
   '/verify-email': typeof PublicVerifyEmailRoute
   '/settings/user': typeof AuthenticatedSettingsUserRouteRouteWithChildren
   '/dashboard': typeof AuthenticatedWorkspaceDashboardRoute
+  '/notifications': typeof AuthenticatedWorkspaceNotificationsRoute
   '/accept-invitation/$invitationId': typeof AuthenticatedAcceptInvitationInvitationIdRoute
   '/login': typeof PublicGuestLoginRoute
   '/signup': typeof PublicGuestSignupRoute
@@ -155,6 +163,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof PublicResetPasswordRoute
   '/verify-email': typeof PublicVerifyEmailRoute
   '/dashboard': typeof AuthenticatedWorkspaceDashboardRoute
+  '/notifications': typeof AuthenticatedWorkspaceNotificationsRoute
   '/accept-invitation/$invitationId': typeof AuthenticatedAcceptInvitationInvitationIdRoute
   '/login': typeof PublicGuestLoginRoute
   '/signup': typeof PublicGuestSignupRoute
@@ -176,6 +185,7 @@ export interface FileRoutesById {
   '/_public/verify-email': typeof PublicVerifyEmailRoute
   '/_authenticated/settings/user': typeof AuthenticatedSettingsUserRouteRouteWithChildren
   '/_authenticated/_workspace/dashboard': typeof AuthenticatedWorkspaceDashboardRoute
+  '/_authenticated/_workspace/notifications': typeof AuthenticatedWorkspaceNotificationsRoute
   '/_authenticated/accept-invitation/$invitationId': typeof AuthenticatedAcceptInvitationInvitationIdRoute
   '/_public/_guest/login': typeof PublicGuestLoginRoute
   '/_public/_guest/signup': typeof PublicGuestSignupRoute
@@ -195,6 +205,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/settings/user'
     | '/dashboard'
+    | '/notifications'
     | '/accept-invitation/$invitationId'
     | '/login'
     | '/signup'
@@ -211,6 +222,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/verify-email'
     | '/dashboard'
+    | '/notifications'
     | '/accept-invitation/$invitationId'
     | '/login'
     | '/signup'
@@ -231,6 +243,7 @@ export interface FileRouteTypes {
     | '/_public/verify-email'
     | '/_authenticated/settings/user'
     | '/_authenticated/_workspace/dashboard'
+    | '/_authenticated/_workspace/notifications'
     | '/_authenticated/accept-invitation/$invitationId'
     | '/_public/_guest/login'
     | '/_public/_guest/signup'
@@ -319,6 +332,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWorkspaceDashboardRouteImport
       parentRoute: typeof AuthenticatedWorkspaceRouteRoute
     }
+    '/_authenticated/_workspace/notifications': {
+      id: '/_authenticated/_workspace/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AuthenticatedWorkspaceNotificationsRouteImport
+      parentRoute: typeof AuthenticatedWorkspaceRouteRoute
+    }
     '/_authenticated/accept-invitation/$invitationId': {
       id: '/_authenticated/accept-invitation/$invitationId'
       path: '/accept-invitation/$invitationId'
@@ -402,6 +422,7 @@ const AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren =
 
 interface AuthenticatedWorkspaceRouteRouteChildren {
   AuthenticatedWorkspaceDashboardRoute: typeof AuthenticatedWorkspaceDashboardRoute
+  AuthenticatedWorkspaceNotificationsRoute: typeof AuthenticatedWorkspaceNotificationsRoute
   AuthenticatedWorkspaceSettingsOrganizationRouteRoute: typeof AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren
   AuthenticatedWorkspaceTasksIndexRoute: typeof AuthenticatedWorkspaceTasksIndexRoute
 }
@@ -409,6 +430,8 @@ interface AuthenticatedWorkspaceRouteRouteChildren {
 const AuthenticatedWorkspaceRouteRouteChildren: AuthenticatedWorkspaceRouteRouteChildren =
   {
     AuthenticatedWorkspaceDashboardRoute: AuthenticatedWorkspaceDashboardRoute,
+    AuthenticatedWorkspaceNotificationsRoute:
+      AuthenticatedWorkspaceNotificationsRoute,
     AuthenticatedWorkspaceSettingsOrganizationRouteRoute:
       AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren,
     AuthenticatedWorkspaceTasksIndexRoute:

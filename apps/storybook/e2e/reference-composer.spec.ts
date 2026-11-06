@@ -122,11 +122,12 @@ test("Escape and outside clicks dismiss without losing the draft", async ({ page
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(draft).toHaveText("Keep this @task:review");
   await expect(draft).toBeFocused();
-  await page.getByRole("button", { name: "Insert reference", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Insert reference", exact: true })).toHaveCount(0);
+  await draft.pressSequentially("w");
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.getByRole("main").click({ position: { x: 8, y: 8 } });
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(draft).toHaveText("Keep this @task:review");
+  await expect(draft).toHaveText("Keep this @task:revieww");
 });
 
 test("retry preserves the typed prefix and search", async ({ page }) => {

@@ -10,7 +10,7 @@ export function NotificationList({
   onClose,
 }: {
   organizationId: string;
-  onClose: () => void;
+  onClose?: () => void;
 }) {
   const items = useQuery(notificationsOptions(organizationId));
   const client = useQueryClient();

@@ -7,9 +7,6 @@ import { ConversationPane } from "./conversation-pane";
 import { CreateConversationForm } from "./create-conversation-form";
 import { isAccessFailure } from "@startup-os/ui/feedback/request-failure";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { CopyLink } from "../context/copy-link";
-import { messageHref } from "@/lib/context-links";
-import { ConversationContent } from "@startup-os/ui/messaging/conversation-content";
 import { ConversationUnavailable } from "@startup-os/ui/messaging/conversation-unavailable";
 
 export function MessagingWorkspace({ organizationId }: { organizationId: string }) {
@@ -63,20 +60,11 @@ export function MessagingWorkspace({ organizationId }: { organizationId: string 
         />
       )}
       {!creating && selected && (
-        <ConversationContent
-          link={
-            <CopyLink
-              label="Copy conversation link"
-              href={messageHref(organizationId, selected.id)}
-            />
-          }
-        >
-          <ConversationPane
-            key={selected.id}
-            organizationId={organizationId}
-            conversation={selected}
-          />
-        </ConversationContent>
+        <ConversationPane
+          key={selected.id}
+          organizationId={organizationId}
+          conversation={selected}
+        />
       )}
       {!creating && search.conversationId && !selected && !conversations.isPending && (
         <ConversationUnavailable />

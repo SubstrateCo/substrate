@@ -9,7 +9,8 @@
     "./authentication": "./src/core/authentication/organization-preference.ts",
     "./storage": "./src/core/storage/index.ts",
     "./messaging": "./src/features/messaging/index.ts",
-    "./context": "./src/features/context/index.ts"
+    "./context": "./src/features/context/index.ts",
+    "./development": "./src/development/seed.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

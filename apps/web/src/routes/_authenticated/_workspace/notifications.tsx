@@ -1,0 +1,11 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { NotificationList } from "@/components/context/notification-list";
+
+export const Route = createFileRoute("/_authenticated/_workspace/notifications")({
+  component: NotificationsRoute,
+});
+
+function NotificationsRoute() {
+  const { organizationId } = Route.useRouteContext();
+  return <NotificationList organizationId={organizationId} />;
+}

@@ -171,24 +171,6 @@ export function ReferenceComposerScene({
             }}
           >
             <div className="rounded-xl border bg-card shadow-raised focus-within:border-ring/50 focus-within:ring-2 focus-within:ring-ring/15">
-              <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-2 py-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  aria-label="Insert reference"
-                  onClick={() =>
-                    replaceQuery(
-                      active
-                        ? referencePrefix(active.kind) + active.query
-                        : `${caret > 0 && !/\s/.test(draft[caret - 1]!) ? " " : ""}@`,
-                    )
-                  }
-                >
-                  @ Reference
-                </Button>
-                <span className="text-xs text-muted-foreground">Link a user, task, or project</span>
-              </div>
               <ReferenceEditor
                 ref={editor}
                 label="Message #general"

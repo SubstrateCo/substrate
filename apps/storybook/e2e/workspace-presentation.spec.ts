@@ -5,7 +5,7 @@ test("workspace search filters records, opens related context, and pages results
   page,
 }) => {
   await openStory(page, "workspace-search--ready");
-  const search = page.getByRole("searchbox", { name: "Search workspace" });
+  const search = page.getByRole("combobox", { name: "Search workspace" });
   await expect(search).toBeFocused();
   await search.fill("Ship");
   await expect(page.getByRole("link", { name: "task · Ship the launch" })).toBeVisible();
@@ -24,9 +24,9 @@ test("workspace search filters records, opens related context, and pages results
 
 test("search retry preserves input and cached refresh results remain usable", async ({ page }) => {
   await openStory(page, "workspace-search--load-error");
-  await page.getByRole("searchbox").fill("launch");
+  await page.getByRole("combobox").fill("launch");
   await page.getByRole("button", { name: "Try again" }).click();
-  await expect(page.getByRole("searchbox")).toHaveValue("launch");
+  await expect(page.getByRole("combobox")).toHaveValue("launch");
   await expect(page.getByRole("link", { name: "task · Ship the launch" })).toBeVisible();
   await openStory(page, "workspace-search--refresh-error");
   await expect(page.getByRole("alert")).toBeVisible();
@@ -40,7 +40,9 @@ test("access errors hide cached search and notification metadata", async ({ page
   await expect(page.getByRole("button", { name: "More results" })).not.toBeVisible();
   await openStory(page, "workspace-notifications--unavailable");
   await expect(page.getByRole("alert")).toBeVisible();
-  await expect(page.getByText("Assigned to you: Ship the launch")).not.toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Assigned to you Ship the launch" }),
+  ).not.toBeVisible();
 });
 
 test("notifications mark one item read and recover from a load failure", async ({ page }) => {
@@ -114,15 +116,29 @@ test("related context keeps cached records for refresh failures but hides access
 test("workspace tools open from the keyboard and close with Escape", async ({ page }) => {
   await openStory(page, "scenes-workspace-connected-tools--ready");
   await page.keyboard.press("Control+k");
-  await expect(page.getByRole("searchbox", { name: "Search workspace" })).toBeFocused();
+  await expect(page.getByRole("combobox", { name: "Search workspace" })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("region", { name: "Workspace search" })).not.toBeVisible();
-  await expect(page.getByRole("button", { name: "Search workspace", exact: true })).toBeFocused();
-  await page.getByRole("button", { name: "Notifications", exact: true }).click();
+  const search = page.getByRole("combobox", { name: "Search workspace", exact: true });
+  await expect(search).toBeFocused();
+  await search.fill("Ship");
+  await expect(page.getByRole("link", { name: "task · Ship the launch" })).toBeVisible();
+  await search.press("Escape");
+  await expect(search).toHaveValue("Ship");
+  await expect(page.getByRole("region", { name: "Workspace search" })).not.toBeVisible();
+  await page
+    .getByRole("button", { name: "Notifications, unread notifications", exact: true })
+    .click();
   await expect(page.getByRole("region", { name: "Notifications", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Close notifications" }).click();
-  await expect(page.getByRole("region", { name: "Notifications", exact: true })).not.toBeVisible();
-  await expect(page.getByRole("button", { name: "Notifications", exact: true })).toBeFocused();
+  await expect(page.getByRole("heading", { name: "Notifications", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Unread 1", exact: true }).click();
+  await expect(page.getByRole("listitem")).toHaveCount(1);
+  await page.getByRole("button", { name: "Mark as read", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Notifications", exact: true })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(page.getByText("You’re all caught up").first()).toBeVisible();
 });
 
 test("user invitations expose only current review links", async ({ page }) => {
@@ -139,6 +155,46 @@ test("user invitations expose only current review links", async ({ page }) => {
   await expect(page.getByRole("row").filter({ hasText: "Previous workspace" })).toContainText(
     "expired",
   );
+});
+
+test("partner channels are separate from internal channels", async ({ page }) => {
+  await openStory(page, "messaging-components-conversation-sidebar--partner-channels");
+  const partners = page.getByRole("region", { name: "Partner channels", exact: true });
+  await expect(partners.getByRole("button", { name: "Partner launch", exact: true })).toBeVisible();
+  await expect(partners.getByRole("button", { name: "general", exact: true })).toHaveCount(0);
+  const channels = page.getByRole("region", { name: "Channels", exact: true });
+  await expect(channels.getByRole("button", { name: "general", exact: true })).toBeVisible();
+  await expect(channels.getByRole("button", { name: "Partner launch", exact: true })).toHaveCount(
+    0,
+  );
+  await expect(page.getByText("Workspace", { exact: true })).toHaveCount(0);
+});
+
+test("command search supports keyboard selection and keeps server-filtered results", async ({
+  page,
+}) => {
+  await openStory(page, "scenes-workspace-connected-tools--ready");
+  await page.keyboard.press("Control+k");
+  const input = page.getByRole("combobox", { name: "Search workspace" });
+  await input.fill("review");
+  const options = page.getByRole("option");
+  await expect(options).toHaveCount(2);
+  await expect(options.first()).toContainText("Review the onboarding flow");
+  await expect(options.last()).toContainText("The updated assets are ready for review");
+  const tasks = page.getByRole("button", { name: "Tasks", exact: true }).last();
+  await tasks.focus();
+  await tasks.press("Enter");
+  await expect(options).toHaveCount(1);
+  await expect(options).toContainText("Review the onboarding flow");
+  await page.getByRole("button", { name: "All", exact: true }).click();
+  await expect(options).toHaveCount(2);
+  await input.focus();
+  await input.press("ArrowDown");
+  await expect(page.getByRole("option", { selected: true })).toContainText(
+    "The updated assets are ready for review",
+  );
+  await input.press("Enter");
+  await expect(page).toHaveURL(/#message$/);
 });
 
 test("desktop sign-in recovers without needing Electron services", async ({ page }) => {
@@ -173,13 +229,15 @@ for (const theme of ["light", "dark"]) {
     await page.goto(
       `/iframe.html?id=scenes-workspace-connected-tools--ready&viewMode=story&globals=theme:${theme}`,
     );
-    const search = page.getByRole("button", { name: "Search workspace", exact: true });
+    const search = page.getByRole("combobox", { name: "Search workspace", exact: true });
     await expect(search).toBeInViewport({ ratio: 1 });
-    await expect(page.getByRole("button", { name: "Notifications", exact: true })).toBeInViewport({
+    await expect(
+      page.getByRole("button", { name: "Notifications, unread notifications", exact: true }),
+    ).toBeInViewport({
       ratio: 1,
     });
     await search.click();
-    await expect(page.getByRole("searchbox", { name: "Search workspace" })).toBeInViewport({
+    await expect(page.getByRole("combobox", { name: "Search workspace" })).toBeInViewport({
       ratio: 1,
     });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(

@@ -10,11 +10,17 @@ import { messageHref, workHref } from "@/lib/context-links";
 export function WorkspaceSearch({
   organizationId,
   onClose,
+  query: externalQuery,
+  onQueryChange,
 }: {
   organizationId: string;
   onClose: () => void;
+  query?: string;
+  onQueryChange?: (query: string) => void;
 }) {
-  const [query, setQuery] = useState("");
+  const [localQuery, setLocalQuery] = useState("");
+  const query = externalQuery ?? localQuery;
+  const setQuery = onQueryChange ?? setLocalQuery;
   const [kind, setKind] = useState<SearchKind>("all");
   const [after, setAfter] = useState<string>();
   const [relatedToEntityId, setRelatedToEntityId] = useState<string>();
@@ -24,6 +30,7 @@ export function WorkspaceSearch({
   return (
     <WorkspaceSearchView
       query={query}
+      hideInput={externalQuery !== undefined}
       kind={kind}
       related={!!relatedToEntityId}
       results={(results.data ?? []).map((item) => ({

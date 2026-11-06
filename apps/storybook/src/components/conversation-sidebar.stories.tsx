@@ -18,3 +18,17 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const Default: Story = {};
+export const PartnerChannels: Story = {
+  args: {
+    conversations: [
+      ...conversations,
+      {
+        id: "partner-launch",
+        kind: "channel",
+        name: "Partner launch",
+        private: true,
+        partner: true,
+      },
+    ],
+  },
+};

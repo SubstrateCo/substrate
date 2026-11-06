@@ -71,11 +71,7 @@ export function Composer({
         errorDescription="Your message couldn’t be sent. Your draft is still here. Try sending it again."
       />
       <div className="overflow-hidden rounded-xl border bg-card shadow-raised transition-shadow focus-within:border-ring/50 focus-within:ring-2 focus-within:ring-ring/15">
-        <ComposerToolbar
-          pending={pending}
-          onReferences={renderReferences ? () => setReferences(!references) : undefined}
-          onInsert={insert}
-        />
+        <ComposerToolbar pending={pending} onInsert={insert} />
         <Textarea
           variant="composer"
           ref={textarea}

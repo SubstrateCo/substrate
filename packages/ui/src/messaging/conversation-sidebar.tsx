@@ -12,6 +12,17 @@ import {
   DropdownMenuTrigger,
 } from "../primitives/dropdown-menu";
 
+const sectionLabels = { channel: "Channels", partner: "Partner channels", dm: "Direct messages" };
+const emptyLabels = {
+  channel: "No channels yet",
+  partner: "No partner channels yet",
+  dm: "No conversations yet",
+};
+function inSection(conversation: Conversation, section: keyof typeof sectionLabels) {
+  if (section === "dm") return conversation.kind !== "channel";
+  return conversation.kind === "channel" && !!conversation.partner === (section === "partner");
+}
+
 export function ConversationSidebar({
   conversations,
   selectedId,
@@ -39,12 +50,6 @@ export function ConversationSidebar({
       className={`${mobileOpen ? "flex" : "hidden"} min-w-0 w-full shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground md:flex md:w-60 lg:w-64`}
     >
       <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-2 py-5">
-        <div className="px-2">
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Workspace
-          </p>
-          <p className="mt-1 text-lg font-semibold tracking-tight">Messages</p>
-        </div>
         {error && (
           <ErrorState
             compact
@@ -55,13 +60,13 @@ export function ConversationSidebar({
         )}
         {!isAccessFailure(error) &&
           (!error || conversations.length > 0) &&
-          (["channel", "dm"] as const).map((section) => (
-            <section key={section}>
+          (["channel", "partner", "dm"] as const).map((section) => (
+            <section key={section} aria-label={sectionLabels[section]}>
               <div className="mb-1 flex items-center justify-between px-2">
                 <h2 className="text-xs font-semibold text-muted-foreground">
-                  {section === "channel" ? "Channels" : "Direct messages"}
+                  {sectionLabels[section]}
                 </h2>
-                {section === "channel" ? (
+                {section !== "dm" ? (
                   <Button
                     size="icon-xs"
                     variant="ghost"
@@ -101,11 +106,7 @@ export function ConversationSidebar({
                 />
               )}
               {conversations
-                .filter((conversation) =>
-                  section === "channel"
-                    ? conversation.kind === "channel"
-                    : conversation.kind !== "channel",
-                )
+                .filter((conversation) => inSection(conversation, section))
                 .map((conversation) => (
                   <ConversationSidebarItem
                     key={conversation.id}
@@ -115,14 +116,8 @@ export function ConversationSidebar({
                   />
                 ))}
               {!loading &&
-                !conversations.some((conversation) =>
-                  section === "channel"
-                    ? conversation.kind === "channel"
-                    : conversation.kind !== "channel",
-                ) && (
-                  <p className="px-2 py-2 text-xs text-muted-foreground">
-                    {section === "channel" ? "No channels yet" : "No conversations yet"}
-                  </p>
+                !conversations.some((conversation) => inSection(conversation, section)) && (
+                  <p className="px-2 py-2 text-xs text-muted-foreground">{emptyLabels[section]}</p>
                 )}
             </section>
           ))}

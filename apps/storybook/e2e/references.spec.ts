@@ -16,9 +16,9 @@ test("typing @ opens the picker; people, tasks, and projects render after sendin
   await search.press("Enter");
   await expect(draft).toHaveValue("Please review @[person:44444444-4444-4444-8444-444444444444] ");
   await expect(draft).toBeFocused();
-  await page.getByRole("button", { name: "Insert reference", exact: true }).click();
+  await draft.pressSequentially("@");
   await picker.getByRole("option", { name: "Review the onboarding flow", exact: true }).click();
-  await page.getByRole("button", { name: "Insert reference", exact: true }).click();
+  await draft.pressSequentially("@");
   await picker.getByRole("button", { name: "Projects", exact: true }).click();
   await picker.getByRole("option", { name: "Workspace launch", exact: true }).click();
   await page.getByRole("button", { name: "Send", exact: true }).click();

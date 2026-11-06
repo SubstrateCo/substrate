@@ -14,8 +14,9 @@ export const ReferencesInThread: Story = { args: { referencesDemo: true, threadS
 export const ReferencePickerOpen: Story = {
   args: { referencesDemo: true },
   play: async ({ canvasElement }) => {
-    await userEvent.click(
-      within(canvasElement).getByRole("button", { name: /^Insert reference$/ }),
+    await userEvent.type(
+      within(canvasElement).getByRole("textbox", { name: "Message #general" }),
+      "@",
     );
   },
 };

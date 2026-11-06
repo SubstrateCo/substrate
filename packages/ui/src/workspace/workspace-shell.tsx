@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ListTodo, MessageSquare } from "lucide-react";
+import { Bell, ListTodo, MessageSquare } from "lucide-react";
 import { FormMessage } from "../auth/form-message";
 import { Button } from "../primitives/button";
 import { UserMenu } from "./user-menu";
@@ -21,11 +21,15 @@ export function WorkspaceShell({
   onRetry,
   notice,
   children,
+  hasUnreadNotifications = false,
 }: {
   name: string;
   image?: string | null;
-  view: "messages" | "tasks" | "user-settings" | "organization-settings";
-  onViewChange: (view: "messages" | "tasks" | "user-settings" | "organization-settings") => void;
+  view: "messages" | "tasks" | "notifications" | "user-settings" | "organization-settings";
+  onViewChange: (
+    view: "messages" | "tasks" | "notifications" | "user-settings" | "organization-settings",
+  ) => void;
+  hasUnreadNotifications?: boolean;
   showOrganizationSettings: boolean;
   organizationName?: string;
   switcher: ReactNode;
@@ -63,7 +67,26 @@ export function WorkspaceShell({
         >
           <ListTodo className="size-5" />
         </Button>
-        <div className="mt-auto">
+        <div className="mt-auto flex flex-col items-center gap-5">
+          <Button
+            variant="rail"
+            size="icon-lg"
+            className="relative"
+            aria-label={
+              hasUnreadNotifications ? "Notifications, unread notifications" : "Notifications"
+            }
+            title="Notifications"
+            aria-current={view === "notifications" ? "page" : undefined}
+            onClick={() => onViewChange("notifications")}
+          >
+            <Bell className="size-5" />
+            {hasUnreadNotifications && (
+              <span
+                aria-hidden="true"
+                className="absolute right-2 top-2 size-2 rounded-full bg-destructive ring-2 ring-rail"
+              />
+            )}
+          </Button>
           <UserMenu
             name={name}
             image={image}

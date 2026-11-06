@@ -52,14 +52,13 @@ export function ConversationPane({
           </h1>
           {!blocked && conversation.kind !== "dm" && (
             <Button
-              variant="ghost"
-              size="sm"
+              variant="outline"
+              size="icon-sm"
               onClick={onToggleMembers}
               aria-label="Add people"
               aria-expanded={addingMembers}
             >
               <UserPlus />
-              <span className="hidden sm:inline">Add people</span>
             </Button>
           )}
         </header>

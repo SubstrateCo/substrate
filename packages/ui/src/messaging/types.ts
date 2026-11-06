@@ -3,6 +3,7 @@ export type Conversation = {
   kind: "dm" | "group" | "channel";
   name: string | null;
   private: boolean;
+  partner?: boolean;
 };
 
 export type Message = {

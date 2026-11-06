@@ -11,6 +11,7 @@ import { organizationSettingsAccess } from "@startup-os/contracts/auth/settings-
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { OrganizationSwitcher } from "@/components/organizations/organization-switcher";
 import { sessionQueryOptions } from "@/queries/auth/session";
+import { notificationsOptions } from "@/queries/context/options";
 
 export function WorkspaceFrame({
   organizationId,
@@ -32,22 +33,32 @@ export function WorkspaceFrame({
     ...activeMemberQueryOptions(organizationId ?? ""),
     enabled: !!organizationId,
   });
+  const notifications = useQuery({
+    ...notificationsOptions(organizationId ?? ""),
+    enabled: !!organizationId,
+  });
   const access = organizationSettingsAccess(
     member.data?.organizationId === organizationId ? member.data?.role : undefined,
   );
-  let view: "user-settings" | "organization-settings" | "tasks" | "messages" = "messages";
+  let view: "user-settings" | "organization-settings" | "tasks" | "messages" | "notifications" =
+    "messages";
   if (pathname.startsWith("/settings/user")) view = "user-settings";
   else if (pathname.startsWith("/settings/organization")) view = "organization-settings";
   else if (pathname.startsWith("/tasks")) view = "tasks";
+  else if (pathname.startsWith("/notifications")) view = "notifications";
   return (
     <WorkspaceShell
       name={name}
       image={session.data?.user.image}
       view={view}
+      hasUnreadNotifications={
+        !notifications.error && notifications.data?.some((item) => !item.readAt)
+      }
       onViewChange={(nextView) => {
         const to = {
           messages: "/dashboard",
           tasks: "/tasks",
+          notifications: "/notifications",
           "user-settings": "/settings/user",
           "organization-settings": "/settings/organization",
         } as const;

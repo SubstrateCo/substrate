@@ -1,64 +1,80 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { Button } from "../primitives/button";
+import { Command, CommandInput } from "../primitives/command";
+import { Kbd, KbdGroup } from "../primitives/kbd";
 
 export function WorkspaceTools({
   renderSearch,
-  renderNotifications,
 }: {
-  renderSearch: (onClose: () => void) => ReactNode;
-  renderNotifications: (onClose: () => void) => ReactNode;
+  renderSearch: (
+    onClose: () => void,
+    query: string,
+    onQueryChange: (query: string) => void,
+  ) => ReactNode;
 }) {
-  const [panel, setPanel] = useState<"search" | "notifications" | null>(null);
-  const searchTrigger = useRef<HTMLButtonElement>(null);
-  const notificationsTrigger = useRef<HTMLButtonElement>(null);
-  const [closedPanel, setClosedPanel] = useState<{ name: typeof panel }>();
-  const closePanel = useCallback(() => {
-    setPanel(null);
-    if (panel) setClosedPanel({ name: panel });
-  }, [panel]);
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [focusRequest, setFocusRequest] = useState(0);
+  const input = useRef<HTMLInputElement>(null);
+  const container = useRef<HTMLDivElement>(null);
+  const close = useCallback(() => {
+    setOpen(false);
+    setFocusRequest((value) => value + 1);
+  }, []);
   useEffect(() => {
-    if (closedPanel?.name === "search") searchTrigger.current?.focus();
-    if (closedPanel?.name === "notifications") notificationsTrigger.current?.focus();
-  }, [closedPanel]);
+    if (focusRequest) input.current?.focus();
+  }, [focusRequest]);
+  useEffect(() => {
+    const dismiss = (event: PointerEvent) => {
+      if (event.target instanceof Node && !container.current?.contains(event.target))
+        setOpen(false);
+    };
+    document.addEventListener("pointerdown", dismiss);
+    return () => document.removeEventListener("pointerdown", dismiss);
+  }, []);
   useEffect(() => {
     const handle = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        setPanel("search");
+        input.current?.focus();
+        setOpen(true);
       }
-      if (event.key === "Escape") closePanel();
+      if (event.key === "Escape") close();
     };
     window.addEventListener("keydown", handle);
     return () => window.removeEventListener("keydown", handle);
-  }, [closePanel]);
+  }, [close]);
   return (
-    <>
-      <div
-        aria-label="Workspace tools"
-        role="toolbar"
-        className="flex shrink-0 flex-wrap gap-2 border-b p-2"
-      >
-        <Button
-          ref={searchTrigger}
-          size="sm"
-          variant="outline"
-          aria-expanded={panel === "search"}
-          onClick={() => setPanel(panel === "search" ? null : "search")}
-        >
-          Search workspace
-        </Button>
-        <Button
-          ref={notificationsTrigger}
-          size="sm"
-          variant="outline"
-          aria-expanded={panel === "notifications"}
-          onClick={() => setPanel(panel === "notifications" ? null : "notifications")}
-        >
-          Notifications
-        </Button>
+    <div ref={container} className="relative z-10 shrink-0 border-b bg-sidebar px-4 py-2">
+      <div className="relative mx-auto max-w-2xl">
+        <Command shouldFilter={false} label="Search workspace">
+          <CommandInput
+            ref={input}
+            aria-label="Search workspace"
+            placeholder="Search messages, tasks, and projects"
+            value={query}
+            aria-expanded={open}
+            onClick={() => setOpen(true)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") event.preventDefault();
+              if (event.key === "ArrowDown" || event.key === "Enter") setOpen(true);
+            }}
+            onValueChange={(value) => {
+              setQuery(value);
+              setOpen(true);
+            }}
+          >
+            <KbdGroup aria-label="Control K">
+              <Kbd>Ctrl</Kbd>
+              <Kbd>K</Kbd>
+            </KbdGroup>
+          </CommandInput>
+          {open && (
+            <div className="absolute inset-x-0 top-full mt-2 overflow-hidden rounded-xl border bg-popover shadow-xl">
+              {renderSearch(close, query, setQuery)}
+            </div>
+          )}
+        </Command>
       </div>
-      {panel === "search" && renderSearch(closePanel)}
-      {panel === "notifications" && renderNotifications(closePanel)}
-    </>
+    </div>
   );
 }
