@@ -1,3 +1,5 @@
+import { desktopScheme } from "@startup-os/contracts/desktop/links";
+
 type Environment = Record<string, string | undefined>;
 
 function required(env: Environment, name: string) {
@@ -31,6 +33,7 @@ export function authEnvironment(env: Environment = process.env) {
   const baseURL = env.BETTER_AUTH_URL ?? "http://localhost:3001";
   const frontendURL = explicitOrigin(env.APP_URL ?? "http://localhost:3000");
   const trustedOrigins = [
+    `${desktopScheme}:/`,
     ...new Set(
       (env.FRONTEND_ORIGINS === undefined
         ? [frontendURL, "https://desktop.startup-os.local"]

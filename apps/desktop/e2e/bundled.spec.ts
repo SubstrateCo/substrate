@@ -5,32 +5,40 @@ import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { desktopLink, desktopOrigin } from "@startup-os/contracts/desktop/links";
 import { Mailpit } from "../../web/e2e/mailpit.js";
+import { signup as browserSignup, verifyEmail } from "../../web/e2e/auth.js";
+import { authorizationCallback, requestBrowserSignIn } from "./auth.js";
+import { applicationURL } from "../src/navigation.js";
 
 const execFileAsync = promisify(execFile);
 
 test("bundled app preserves connected work and auth through OS links, invitations, and recovery", async ({
   request,
+  page: browser,
 }) => {
-  test.skip(
-    !process.env.DESKTOP_EXECUTABLE_PATH && !process.env.DESKTOP_BUNDLED_RENDERER,
-    "Set DESKTOP_EXECUTABLE_PATH to the unpacked app, or DESKTOP_BUNDLED_RENDERER=1 after building Vite.",
-  );
   test.setTimeout(180_000);
   const env: Record<string, string> = {};
   for (const [key, value] of Object.entries(process.env)) {
     if (value !== undefined && key !== "ELECTRON_RUN_AS_NODE") env[key] = value;
   }
+  env.STARTUP_OS_TEST_ID = randomUUID();
   const source = fileURLToPath(new URL("../src/main.js", import.meta.url));
   const packaged = Boolean(process.env.DESKTOP_EXECUTABLE_PATH);
-  const desktop = await electron.launch({
+  if (packaged) {
+    delete env.STARTUP_OS_API_URL;
+    delete env.STARTUP_OS_WEB_URL;
+  }
+  const bundled = packaged || Boolean(process.env.DESKTOP_BUNDLED_RENDERER);
+  const rendererOrigin = bundled ? desktopOrigin : applicationURL;
+  const launchOptions = {
     executablePath: process.env.DESKTOP_EXECUTABLE_PATH,
     args: [
-      ...(packaged ? [] : [source, "--bundled-renderer"]),
+      ...(packaged ? [] : [source, ...(bundled ? ["--bundled-renderer"] : [])]),
       "--desktop-smoke-test",
       desktopLink("/signup"),
     ],
     env,
-  });
+  };
+  let desktop = await electron.launch(launchOptions);
   const mailpit = new Mailpit(request);
   const suffix = randomUUID();
   const owner = {
@@ -45,15 +53,15 @@ test("bundled app preserves connected work and auth through OS links, invitation
   };
   const workspace = `Desktop ${suffix.slice(0, 8)}`;
 
-  async function openPath(path: string) {
+  async function openLink(link: string) {
     const executable = await desktop.evaluate(() => process.execPath);
     try {
       await execFileAsync(
         executable,
         [
-          ...(packaged ? [] : [source, "--bundled-renderer"]),
+          ...(packaged ? [] : [source, ...(bundled ? ["--bundled-renderer"] : [])]),
           "--desktop-smoke-test",
-          desktopLink(path),
+          link,
         ],
         { env, timeout: 15_000 },
       );
@@ -62,6 +70,8 @@ test("bundled app preserves connected work and auth through OS links, invitation
       throw new Error("The desktop deep-link process failed.");
     }
   }
+
+  const openPath = (path: string) => openLink(desktopLink(path));
 
   async function openMail(email: string, subject: string) {
     const landing = new URL(await mailpit.link(email, subject, "/desktop/open"));
@@ -75,45 +85,38 @@ test("bundled app preserves connected work and auth through OS links, invitation
   }
 
   async function signup(page: Page, account: typeof owner) {
-    await page.getByLabel("Name", { exact: true }).fill(account.name);
-    await page.getByLabel("Email", { exact: true }).fill(account.email);
-    await page.getByLabel("Password", { exact: true }).fill(account.password);
-    const created = page.waitForResponse(
-      (response) => new URL(response.url()).pathname === "/api/auth/sign-up/email",
-    );
-    await page.getByRole("button", { name: "Create account", exact: true }).click();
-    const response = await created;
-    if (!response.ok()) {
-      const result: { code?: string; message?: string } = await response.json();
-      throw new Error(
-        `Desktop signup failed (${response.status()}): ${result.code ?? "UNKNOWN"}: ${result.message ?? "Unknown error"}`,
-      );
-    }
-    await expect(page.getByText("Verify your email", { exact: true })).toBeVisible();
-    await openMail(account.email, "Verify your Startup OS email");
-    await expect(page.getByText("Welcome back", { exact: true })).toBeVisible();
+    await requestBrowserSignIn(desktop, page, browser);
+    await browser.getByRole("link", { name: "Create account", exact: true }).click();
+    expect(new URL(browser.url()).searchParams.get("code_challenge")).toBeTruthy();
+    await browserSignup(browser, account);
+    await verifyEmail(browser, mailpit, account.email);
   }
 
   async function login(page: Page, account: typeof owner) {
-    await page.getByLabel("Email", { exact: true }).fill(account.email);
-    await page.getByLabel("Password", { exact: true }).fill(account.password);
-    const signedIn = page.waitForResponse(
-      (response) => new URL(response.url()).pathname === "/api/auth/sign-in/email",
+    const callback = await authorizationCallback(browser, async () => {
+      await browser.getByLabel("Email", { exact: true }).fill(account.email);
+      await browser.getByLabel("Password", { exact: true }).fill(account.password);
+      await browser.getByRole("button", { name: "Sign in", exact: true }).click();
+    });
+    await openLink(callback);
+    await expect(
+      page.getByRole("button", { name: "Sign in with browser", exact: true }),
+    ).toBeHidden();
+    const session = await page.evaluate(async () => (await fetch("/api/v1/session")).json());
+    expect(session.data.user.email).toBe(account.email);
+    expect(session.data.session.token).toBeUndefined();
+    const authSession = await page.evaluate(async () =>
+      (await fetch("/api/auth/get-session")).json(),
     );
-    await page.getByRole("button", { name: "Sign in", exact: true }).click();
-    expect(
-      (await signedIn).ok(),
-      "The packaged renderer can sign in through its native API proxy",
-    ).toBe(true);
-    expect(
-      await desktop.evaluate(async ({ session }) => {
-        const cookies = await session
-          .fromPartition("startup-os-smoke-test")
-          .cookies.get({ url: "https://desktop.startup-os.local" });
-        return cookies.some((cookie) => cookie.httpOnly && cookie.name.includes("session_token"));
-      }),
-      "Sign-in stores its HttpOnly cookie in the native app session",
-    ).toBe(true);
+    expect(authSession.session.id).toBe(session.data.session.id);
+    expect(authSession.session.token).toBeUndefined();
+    const cookies = await desktop.evaluate(
+      async ({ session }, origin) =>
+        session.fromPartition("startup-os-smoke-test").cookies.get({ url: origin }),
+      rendererOrigin,
+    );
+    expect(cookies.some((cookie) => cookie.name.includes("session_token"))).toBe(false);
+    expect(await page.evaluate(() => document.cookie)).not.toContain("session_token");
   }
 
   async function signout(page: Page) {
@@ -124,13 +127,13 @@ test("bundled app preserves connected work and auth through OS links, invitation
   }
 
   try {
-    const page = await desktop.firstWindow();
+    let page = await desktop.firstWindow();
     let pageErrors = 0;
     page.on("pageerror", () => {
       pageErrors++;
     });
     await expect(page).toHaveURL(
-      (url) => url.origin === desktopOrigin && url.pathname === "/signup",
+      (url) => url.origin === rendererOrigin && url.pathname === "/signup",
     );
     await signup(page, owner);
     await login(page, owner);
@@ -139,27 +142,41 @@ test("bundled app preserves connected work and auth through OS links, invitation
     await page.getByLabel("Workspace slug", { exact: true }).fill(`desktop-${suffix}`);
     await page.getByRole("button", { name: "Create workspace", exact: true }).click();
     await expect(page.getByRole("button", { name: /^Signed in as / })).toBeVisible();
-    const cookiesBefore = await desktop.evaluate(({ session }) =>
-      session
-        .fromPartition("startup-os-smoke-test")
-        .cookies.get({ url: "https://desktop.startup-os.local" }),
+    const sessionBefore = await page.evaluate(
+      async () => (await (await fetch("/api/v1/session")).json()).data.session.id,
     );
-    expect(
-      cookiesBefore.some((cookie) => cookie.httpOnly && cookie.name.includes("session_token")),
-      "Real Electron stores the backend session cookie",
-    ).toBe(true);
     await openPath("/dashboard");
     await expect(page.getByRole("button", { name: `${workspace} ▾`, exact: true })).toBeVisible();
-    const cookiesAfter = await desktop.evaluate(({ session }) =>
-      session
-        .fromPartition("startup-os-smoke-test")
-        .cookies.get({ url: "https://desktop.startup-os.local" }),
-    );
     expect(
-      cookiesAfter.find((cookie) => cookie.name.includes("session_token"))?.value ===
-        cookiesBefore.find((cookie) => cookie.name.includes("session_token"))?.value,
-      "OS navigation preserves the existing session token",
-    ).toBe(true);
+      await page.evaluate(
+        async () => (await (await fetch("/api/v1/session")).json()).data.session.id,
+      ),
+      "OS navigation preserves the main-owned session",
+    ).toBe(sessionBefore);
+    await test.step("existing browser sessions transfer without another password and replay errors stay recoverable", async () => {
+      await signout(page);
+      expect(
+        await page.evaluate(async () => (await (await fetch("/api/v1/session")).json()).data),
+      ).toBeNull();
+      await requestBrowserSignIn(desktop, page, browser);
+      await expect(browser.getByText("Return to Startup OS", { exact: true })).toBeVisible();
+      const callback = await authorizationCallback(browser, () =>
+        browser.getByRole("button", { name: "Continue to Startup OS", exact: true }).click(),
+      );
+      await openLink(callback);
+      await expect(page.getByRole("button", { name: `${workspace} ▾`, exact: true })).toBeVisible();
+      await signout(page);
+      await openLink(callback);
+      await expect(
+        page.getByText("Could not complete sign-in. Please try again.", { exact: true }),
+      ).toBeVisible();
+      await requestBrowserSignIn(desktop, page, browser);
+      const retry = await authorizationCallback(browser, () =>
+        browser.getByRole("button", { name: "Continue to Startup OS", exact: true }).click(),
+      );
+      await openLink(retry);
+      await expect(page.getByRole("button", { name: `${workspace} ▾`, exact: true })).toBeVisible();
+    });
     await test.step("messages create linked tasks with navigable source context in the packaged app", async () => {
       const project = `Desktop project ${suffix.slice(0, 8)}`;
       const channel = `desktop-${suffix.slice(0, 8)}`;
@@ -221,10 +238,12 @@ test("bundled app preserves connected work and auth through OS links, invitation
     await signout(page);
     await openMail(member.email, `Join ${workspace} on Startup OS`);
     await expect(page.getByText("Welcome back", { exact: true })).toBeVisible();
-    expect(
-      new URL(page.url()).searchParams.get("redirect")?.startsWith("/accept-invitation/"),
-    ).toBe(true);
-    await page.getByRole("link", { name: /create.*account/i }).click();
+    await expect
+      .poll(() =>
+        new URL(page.url()).searchParams.get("redirect")?.startsWith("/accept-invitation/"),
+      )
+      .toBe(true);
+    await browser.context().clearCookies();
     await signup(page, member);
     await login(page, member);
     await openMail(member.email, `Join ${workspace} on Startup OS`);
@@ -232,27 +251,58 @@ test("bundled app preserves connected work and auth through OS links, invitation
     await page.getByRole("button", { name: "Accept invitation", exact: true }).click();
     await expect(page.getByRole("button", { name: `${workspace} ▾`, exact: true })).toBeVisible();
     await signout(page);
-    await page.getByRole("link", { name: "Forgot password?", exact: true }).click();
-    await page.getByLabel("Email", { exact: true }).fill(member.email);
-    await page.getByRole("button", { name: "Send reset link", exact: true }).click();
+    await browser.context().clearCookies();
+    await requestBrowserSignIn(desktop, page, browser);
+    await browser.getByRole("link", { name: "Forgot password?", exact: true }).click();
+    await browser.getByLabel("Email", { exact: true }).fill(member.email);
+    await browser.getByRole("button", { name: "Send reset link", exact: true }).click();
     await expect(
-      page.getByText("Check your inbox for a password reset link.", { exact: true }),
+      browser.getByText("Check your inbox for a password reset link.", { exact: true }),
     ).toBeVisible();
-    await openMail(member.email, "Reset your Startup OS password");
-    await expect(page.getByText("Choose a new password", { exact: true })).toBeVisible();
+    await browser.goto(
+      await mailpit.link(
+        member.email,
+        "Reset your Startup OS password",
+        "/api/auth/reset-password",
+      ),
+    );
+    await expect(browser.getByText("Choose a new password", { exact: true })).toBeVisible();
     member.password = `Recovered-${randomUUID()}!`;
-    await page.getByLabel("New password", { exact: true }).fill(member.password);
-    await page.getByLabel("Confirm password", { exact: true }).fill(member.password);
-    await page.getByRole("button", { name: "Save new password", exact: true }).click();
+    await browser.getByLabel("New password", { exact: true }).fill(member.password);
+    await browser.getByLabel("Confirm password", { exact: true }).fill(member.password);
+    await browser.getByRole("button", { name: "Save new password", exact: true }).click();
     await expect(
-      page.getByText("Your password was changed. You can now sign in.", { exact: true }),
+      browser.getByText("Your password was changed. You can now sign in.", { exact: true }),
     ).toBeVisible();
-    await page.getByRole("link", { name: "Sign in", exact: true }).click();
+    await browser.getByRole("link", { name: "Sign in", exact: true }).click();
     await login(page, member);
     await expect(page.getByRole("button", { name: `${workspace} ▾`, exact: true })).toBeVisible();
-    await desktop.evaluate(async ({ app, BrowserWindow }) => {
-      await BrowserWindow.getAllWindows()[0]!.loadFile(`${app.getAppPath()}/offline.html`);
+    await test.step("encrypted main-owned sessions survive a full app restart", async () => {
+      const id = await page.evaluate(
+        async () => (await (await fetch("/api/v1/session")).json()).data.session.id,
+      );
+      await desktop.close();
+      desktop = await electron.launch({
+        ...launchOptions,
+        args: [...launchOptions.args.slice(0, -1), desktopLink("/dashboard")],
+      });
+      page = await desktop.firstWindow();
+      page.on("pageerror", () => {
+        pageErrors++;
+      });
+      await expect(page.getByRole("button", { name: `${workspace} ▾`, exact: true })).toBeVisible();
+      expect(
+        await page.evaluate(
+          async () => (await (await fetch("/api/v1/session")).json()).data.session.id,
+        ),
+      ).toBe(id);
     });
+    await desktop.evaluate(
+      async ({ BrowserWindow }, path) => {
+        await BrowserWindow.getAllWindows()[0]!.loadFile(path);
+      },
+      fileURLToPath(new URL("../src/offline.html", import.meta.url)),
+    );
     await expect(
       page.getByRole("heading", { name: "Cannot connect to Startup OS", exact: true }),
     ).toBeVisible();

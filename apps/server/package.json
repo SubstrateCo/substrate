@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.7.18",
+    "@better-auth/electron": "^1.7.18",
     "@hono/zod-validator": "^0.7.6",
     "@startup-os/contracts": "workspace:*",
     "@startup-os/database": "workspace:*",

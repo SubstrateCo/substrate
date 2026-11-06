@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ResetPasswordForm as ResetPasswordFormView } from "@startup-os/ui/auth/reset-password-form";
 import { authClient } from "@/lib/auth-client";
-import { authHref } from "@/lib/auth-navigation";
+import { authHref } from "@/lib/browser-auth-links";
 import { formText } from "./form-values";
 
 export function ResetPasswordForm({

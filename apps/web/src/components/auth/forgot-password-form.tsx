@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { ForgotPasswordForm as ForgotPasswordFormView } from "@startup-os/ui/auth/forgot-password-form";
 import { authClient } from "@/lib/auth-client";
-import { authHref } from "@/lib/auth-navigation";
+import { authHref } from "@/lib/browser-auth-links";
 import { formText } from "./form-values";
 
 export function ForgotPasswordForm({ redirect }: { redirect: string }) {

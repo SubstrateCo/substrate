@@ -2,6 +2,7 @@ import electron from "electron";
 import { fileURLToPath } from "node:url";
 import { applicationURL } from "../src/navigation.js";
 import { developmentServices, ensureDevelopmentServices } from "../src/dev-services.js";
+import { bundlePreload } from "./preload.js";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
 const desktop = fileURLToPath(new URL("../", import.meta.url));
@@ -19,6 +20,7 @@ process.on("SIGINT", stop);
 process.on("SIGTERM", stop);
 
 try {
+  await bundlePreload();
   await ensureDevelopmentServices(
     developmentServices(applicationURL, process.env.SERVER_URL ?? "http://localhost:3001"),
     (service) => {

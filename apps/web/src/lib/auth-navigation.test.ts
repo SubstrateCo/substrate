@@ -2,6 +2,36 @@ import { describe, expect, test } from "bun:test";
 import { authHref, authSearch, safeRedirect } from "./auth-navigation";
 
 describe("auth redirect policy", () => {
+  test("preserves only complete Electron authorization parameters across auth navigation", () => {
+    const search = "?client_id=electron&state=state-1&code_challenge=challenge-1&cookie=secret";
+    const link = new URL(
+      authHref("/signup", "/accept-invitation/invite-1", undefined, search),
+      "https://app.test",
+    );
+    expect(Object.fromEntries(link.searchParams)).toEqual({
+      redirect: "/accept-invitation/invite-1",
+      client_id: "electron",
+      state: "state-1",
+      code_challenge: "challenge-1",
+    });
+    expect(
+      new URL(
+        authHref(
+          "/login",
+          "/dashboard",
+          undefined,
+          "?client_id=other&state=state&code_challenge=challenge",
+        ),
+        "https://app.test",
+      ).searchParams.has("state"),
+    ).toBe(false);
+    expect(
+      new URL(
+        authHref("/login", "/dashboard", undefined, "?client_id=electron&state=state"),
+        "https://app.test",
+      ).searchParams.has("state"),
+    ).toBe(false);
+  });
   test("keeps an invitation through every auth link", () => {
     const invitation = "/accept-invitation/invite-123";
     const signup = new URL(authHref("/signup", invitation), "https://app.test");

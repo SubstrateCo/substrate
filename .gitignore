@@ -4,6 +4,7 @@ dist/
 storybook-static/
 coverage/
 .tanstack/
+.runtime/
 playwright-report/
 test-results/
 *.tsbuildinfo

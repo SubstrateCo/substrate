@@ -6,6 +6,7 @@ import {
 import { ensureHumanActor } from "@startup-os/database/provisioning";
 import * as schema from "@startup-os/database/schema";
 import { betterAuth } from "better-auth";
+import { electron } from "@better-auth/electron";
 import { createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { organization } from "better-auth/plugins";
 import { authEnvironment } from "./environment";
@@ -45,22 +46,22 @@ export const auth = betterAuth({
     disableSignUp: false,
     requireEmailVerification: true,
     revokeSessionsOnPasswordReset: true,
-    sendResetPassword: async ({ user, url }, request) => {
+    sendResetPassword: async ({ user, url }) => {
       await sendMail(
         user.email,
         "Reset your Startup OS password",
-        `Reset your password: ${frontendAuthLink(url, env.frontendURL, { baseURL: env.baseURL, request })}`,
+        `Reset your password: ${frontendAuthLink(url, env.frontendURL)}`,
       );
     },
   },
   emailVerification: {
     sendOnSignUp: true,
     sendOnSignIn: true,
-    sendVerificationEmail: async ({ user, url }, request) => {
+    sendVerificationEmail: async ({ user, url }) => {
       await sendMail(
         user.email,
         "Verify your Startup OS email",
-        `Verify your email address: ${frontendAuthLink(url, env.frontendURL, { baseURL: env.baseURL, request })}`,
+        `Verify your email address: ${frontendAuthLink(url, env.frontendURL)}`,
       );
     },
   },
@@ -101,6 +102,7 @@ export const auth = betterAuth({
     }),
   },
   plugins: [
+    electron(),
     organization({
       ac,
       roles,

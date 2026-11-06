@@ -17,9 +17,7 @@ export const desktopPath = z
       if (url.origin !== desktopOrigin) return false;
       const path = decodeURIComponent(url.pathname);
       if (path === "/api" || path.startsWith("/api/")) {
-        return (
-          path === "/api/auth/verify-email" || /^\/api\/auth\/reset-password\/[^/]+$/.test(path)
-        );
+        return false;
       }
       return true;
     } catch {

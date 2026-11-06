@@ -14,7 +14,11 @@ describe("session service", () => {
         return session;
       },
     });
-    expect(await service.read(headers)).toEqual({ success: true, data: session });
+    const { token: _token, ...publicSession } = session.session;
+    expect(await service.read(headers)).toEqual({
+      success: true,
+      data: { ...session, session: publicSession },
+    });
     expect(received).toBe(headers);
   });
 

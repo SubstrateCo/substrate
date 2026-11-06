@@ -1,10 +1,18 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SignupForm as SignupFormView } from "@startup-os/ui/auth/signup-form";
 import { authClient } from "@/lib/auth-client";
-import { authHref } from "@/lib/auth-navigation";
+import { authHref } from "@/lib/browser-auth-links";
 import { formText } from "./form-values";
+import { electronQuery } from "@/lib/electron-query";
+import { isDesktop } from "@/lib/desktop-auth";
+import { DesktopSignIn } from "./desktop-sign-in";
 
 export function SignupForm({ redirect }: { redirect: string }) {
+  if (isDesktop()) return <DesktopSignIn redirect={redirect} />;
+  return <BrowserSignupForm redirect={redirect} />;
+}
+
+function BrowserSignupForm({ redirect }: { redirect: string }) {
   const queryClient = useQueryClient();
   const signup = useMutation({
     mutationFn: async (form: FormData) => {
@@ -14,6 +22,7 @@ export function SignupForm({ redirect }: { redirect: string }) {
         email,
         password: formText(form, "password"),
         callbackURL: authHref("/login", redirect, email),
+        fetchOptions: { query: electronQuery(window.location.search) },
       });
       if (result.error) throw new Error(result.error.message || "Could not create your account.");
       queryClient.clear();

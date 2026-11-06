@@ -10,6 +10,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@better-auth/electron": "^1.7.18",
     "@startup-os/contracts": "workspace:*",
     "@startup-os/server": "workspace:*",
     "@startup-os/ui": "workspace:*",

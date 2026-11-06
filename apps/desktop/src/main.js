@@ -5,7 +5,8 @@ import { readFileSync } from "node:fs";
 import { desktopScheme, resolveDesktopLink } from "@startup-os/contracts/desktop/links";
 import { applicationURL, bundledApplicationURL, navigationTarget } from "./navigation.js";
 import { backendURL, bundledRenderer } from "./bundled-renderer.js";
-import { cookieBridge } from "./cookie-bridge.js";
+import { createDesktopAuthClient } from "./auth-client.js";
+import { desktopAPITransport } from "./api-transport.js";
 
 const bundled = app.isPackaged || app.commandLine.hasSwitch("bundled-renderer");
 const rendererURL = bundled ? bundledApplicationURL : applicationURL;
@@ -16,10 +17,27 @@ const errorPageURL = new URL("./offline.html", import.meta.url).href;
 const errorPage = fileURLToPath(errorPageURL);
 app.setName("Startup OS");
 // Keep the lock identity stable for package, source-file, and smoke-test launches.
-app.setPath("userData", join(app.getPath("appData"), "Startup OS"));
+const testID = app.commandLine.hasSwitch("desktop-smoke-test")
+  ? process.env.STARTUP_OS_TEST_ID
+  : undefined;
+if (testID && !/^[a-zA-Z0-9-]+$/.test(testID)) throw new Error("Invalid desktop test ID.");
+app.setPath(
+  "userData",
+  join(app.getPath("appData"), "Startup OS", ...(testID ? ["tests", testID] : [])),
+);
 const sessionPartition = app.commandLine.hasSwitch("desktop-smoke-test")
   ? "startup-os-smoke-test"
   : "persist:startup-os";
+const publicConfig = app.isPackaged
+  ? JSON.parse(readFileSync(new URL("./desktop-config.json", import.meta.url), "utf8"))
+  : {};
+const backend = backendURL(process.env.STARTUP_OS_API_URL ?? publicConfig.apiURL, app.isPackaged);
+const { authClient, handleAuthLink } = createDesktopAuthClient(
+  backend,
+  process.env.STARTUP_OS_WEB_URL ?? publicConfig.webURL ?? applicationURL,
+  app.commandLine.hasSwitch("desktop-smoke-test"),
+  () => mainWindow,
+);
 /** @type {BrowserWindow | undefined} */
 let mainWindow;
 /** @type {string[]} */
@@ -30,13 +48,20 @@ function acceptLinks(values) {
   for (const value of values) {
     const destination = resolveDesktopLink(value, rendererURL);
     if (destination) pendingDestinations.push(destination);
+    else
+      void handleAuthLink(value).catch(() => {
+        mainWindow?.webContents.send("better-auth:error", {
+          message: "Could not complete sign-in. Please try again.",
+          path: "/auth/callback",
+        });
+      });
   }
   navigatePending();
 }
 
 function navigatePending() {
   if (!mainWindow || !pendingDestinations.length) return;
-  // A full navigation refreshes the session cache after verify/reset callbacks.
+  // A full navigation refreshes session and workspace context for the destination.
   const destination = pendingDestinations.pop();
   pendingDestinations.length = 0;
   if (destination) void mainWindow.loadURL(destination).catch(() => {});
@@ -72,6 +97,10 @@ function createWindow() {
       sandbox: true,
       webSecurity: true,
       partition: sessionPartition,
+      preload: fileURLToPath(
+        new URL(app.isPackaged ? "./preload.cjs" : "../.runtime/preload.cjs", import.meta.url),
+      ),
+      additionalArguments: [`--startup-os-origin=${rendererURL}`],
     },
   });
   mainWindow = window;
@@ -115,6 +144,13 @@ if (!app.requestSingleInstanceLock()) {
   console.log("Startup OS is already running. Focusing the existing window.");
   app.quit();
 } else {
+  // One dispatcher owns workspace links and auth callbacks. Better Auth owns PKCE and exchange.
+  authClient.setupMain({ getWindow: () => mainWindow, scheme: false, bridges: true, csp: false });
+  if (!app.commandLine.hasSwitch("desktop-smoke-test")) {
+    if (process.defaultApp && process.argv[1])
+      app.setAsDefaultProtocolClient(desktopScheme, process.execPath, [process.argv[1]]);
+    else app.setAsDefaultProtocolClient(desktopScheme);
+  }
   app.on("second-instance", (_event, argv) => {
     acceptLinks(argv);
     if (mainWindow?.isMinimized()) mainWindow.restore();
@@ -127,18 +163,12 @@ if (!app.requestSingleInstanceLock()) {
   void app
     .whenReady()
     .then(() => {
-      if (app.isPackaged && !app.commandLine.hasSwitch("desktop-smoke-test")) {
-        app.setAsDefaultProtocolClient(desktopScheme);
-      }
       const desktopSession = session.fromPartition(sessionPartition);
+      const fetchAPI = desktopAPITransport({
+        getCookie: () => authClient.getCookie(),
+        authFetch: (path, options) => authClient.$fetch(path, options),
+      });
       if (bundled) {
-        const publicConfig = app.isPackaged
-          ? JSON.parse(readFileSync(new URL("./desktop-config.json", import.meta.url), "utf8"))
-          : {};
-        const backend = backendURL(
-          process.env.STARTUP_OS_API_URL ?? publicConfig.apiURL,
-          app.isPackaged,
-        );
         desktopSession.protocol.handle(
           "https",
           bundledRenderer({
@@ -146,10 +176,27 @@ if (!app.requestSingleInstanceLock()) {
               new URL(app.isPackaged ? "./renderer/" : "../../web/dist/", import.meta.url),
             ),
             backend,
-            cookies: cookieBridge(desktopSession.cookies, backend),
+            fetchUpstream: fetchAPI,
             fetchFile: (url) => net.fetch(url),
           }),
         );
+      } else {
+        const serveAPI = bundledRenderer({
+          directory: ".",
+          backend,
+          fetchFile: (url) => net.fetch(url),
+          fetchUpstream: fetchAPI,
+          origin: rendererURL,
+        });
+        desktopSession.protocol.handle(new URL(rendererURL).protocol.slice(0, -1), (request) => {
+          const url = new URL(request.url);
+          if (
+            url.origin === rendererURL &&
+            (url.pathname === "/api" || url.pathname.startsWith("/api/"))
+          )
+            return serveAPI(request);
+          return net.fetch(request, { bypassCustomProtocolHandlers: true });
+        });
       }
       desktopSession.setPermissionRequestHandler((contents, permission, callback, details) => {
         callback(

@@ -4,9 +4,8 @@ import { createDesktopRoutes } from "./routes";
 describe("desktop open landing", () => {
   const app = createDesktopRoutes();
 
-  test("provides a visible desktop link and prevents token caching and referrer leaks", async () => {
-    const path =
-      "/api/auth/verify-email?token=secret&callbackURL=https%3A%2F%2Fdesktop.startup-os.local%2Forganizations";
+  test("provides a desktop invitation link and prevents caching and referrer leaks", async () => {
+    const path = "/accept-invitation/invite-1";
     const response = await app.request(`/open?path=${encodeURIComponent(path)}`);
     expect(response.status).toBe(200);
     expect(response.headers.get("Cache-Control")).toBe("no-store");
@@ -24,6 +23,7 @@ describe("desktop open landing", () => {
     "https://evil.example",
     "//evil.example",
     "/api/auth/sign-out",
+    "/api/auth/verify-email?token=secret",
     "/api/v1/tasks",
     "/\\evil.example",
     "/%2f%2fevil.example",

@@ -14,6 +14,7 @@ describe("auth environment", () => {
     expect(env.baseURL).toBe("http://localhost:3001");
     expect(env.frontendURL).toBe("http://localhost:3000");
     expect(env.trustedOrigins).toEqual([
+      "startupos:/",
       "http://localhost:3000",
       "https://desktop.startup-os.local",
     ]);
@@ -30,6 +31,7 @@ describe("auth environment", () => {
     expect(env.baseURL).toBe("https://api.example.com");
     expect(env.frontendURL).toBe("https://app.example.com");
     expect(env.trustedOrigins).toEqual([
+      "startupos:/",
       "https://app.example.com",
       "https://desktop.startup-os.local",
     ]);
@@ -38,7 +40,7 @@ describe("auth environment", () => {
   test("defaults trusted origins to the configured frontend, not the API", () => {
     expect(
       authEnvironment({ ...environment, APP_URL: "https://app.example.com" }).trustedOrigins,
-    ).toEqual(["https://app.example.com", "https://desktop.startup-os.local"]);
+    ).toEqual(["startupos:/", "https://app.example.com", "https://desktop.startup-os.local"]);
   });
 
   test("rejects non-explicit origins", () => {

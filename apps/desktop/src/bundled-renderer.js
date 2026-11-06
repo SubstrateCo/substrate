@@ -23,15 +23,15 @@ export function backendURL(value, packaged) {
   return url.origin;
 }
 
-/** @param {URL} url */
-function isAppURL(url) {
-  return url.origin === bundledApplicationURL && !url.username && !url.password;
+/** @param {URL} url @param {string} [origin] */
+function isAppURL(url, origin = bundledApplicationURL) {
+  return url.origin === origin && !url.username && !url.password;
 }
 
-/** @param {string} value @param {string} backend */
-export function proxyURL(value, backend) {
+/** @param {string} value @param {string} backend @param {string} [origin] */
+export function proxyURL(value, backend, origin = bundledApplicationURL) {
   const url = new URL(value);
-  if (!isAppURL(url) || !(url.pathname === "/api" || url.pathname.startsWith("/api/"))) {
+  if (!isAppURL(url, origin) || !(url.pathname === "/api" || url.pathname.startsWith("/api/"))) {
     throw new Error("Only app API requests can be proxied.");
   }
   const path = decodeURIComponent(url.pathname);
@@ -99,34 +99,35 @@ function forwardingHeaders(source) {
 }
 
 /**
- * @param {{ directory: string, backend: string, fetchFile: (url: string) => Promise<Response>, fetchUpstream?: (url: string, init: RequestInit) => Promise<Response>, cookies?: import("./cookie-bridge.js").CookieBridge }} options
+ * @param {{ directory: string, backend: string, fetchFile: (url: string) => Promise<Response>, fetchUpstream?: (url: string, init: RequestInit) => Promise<Response>, origin?: string }} options
  */
-export function bundledRenderer({ directory, backend, fetchFile, fetchUpstream = fetch, cookies }) {
+export function bundledRenderer({
+  directory,
+  backend,
+  fetchFile,
+  fetchUpstream = fetch,
+  origin = bundledApplicationURL,
+}) {
   const upstream = backendURL(backend, false);
   /** @param {Request} request */
   return async (request) => {
     const url = new URL(request.url);
-    if (!isAppURL(url)) return new Response("Forbidden", { status: 403 });
+    if (!isAppURL(url, origin)) return new Response("Forbidden", { status: 403 });
     if (url.pathname === "/api" || url.pathname.startsWith("/api/")) {
       try {
         const headers = forwardingHeaders(request.headers);
         if (!["GET", "HEAD", "OPTIONS"].includes(request.method)) {
-          const origin = headers.get("origin");
-          if (origin && origin !== bundledApplicationURL)
+          const requestOrigin = headers.get("origin");
+          if (requestOrigin && requestOrigin !== origin)
             return new Response("Forbidden", { status: 403 });
           // This handler belongs to the isolated app session. Electron can intercept
           // same-origin requests before Chromium adds Origin; keep server CSRF checks enabled.
-          headers.set("origin", bundledApplicationURL);
+          headers.set("origin", origin);
         }
         headers.delete("host");
         headers.delete("content-length");
         headers.delete("accept-encoding");
-        if (cookies) {
-          headers.delete("cookie");
-          const cookie = await cookies.header(request.url);
-          if (cookie) headers.set("cookie", cookie);
-        }
-        const response = await fetchUpstream(proxyURL(request.url, upstream), {
+        const response = await fetchUpstream(proxyURL(request.url, upstream, origin), {
           method: request.method,
           headers,
           body: ["GET", "HEAD"].includes(request.method) ? undefined : await request.arrayBuffer(),
@@ -134,8 +135,7 @@ export function bundledRenderer({ directory, backend, fetchFile, fetchUpstream =
           signal: AbortSignal.any([request.signal, AbortSignal.timeout(30_000)]),
         });
         const resultHeaders = forwardingHeaders(response.headers);
-        let responseCookies = response.headers.getSetCookie();
-        if (cookies) responseCookies = await cookies.store(request.url, responseCookies);
+        const responseCookies = response.headers.getSetCookie();
         // Node fetch decompresses upstream bodies. Do not retain wire encoding/length.
         resultHeaders.delete("content-encoding");
         resultHeaders.delete("content-length");

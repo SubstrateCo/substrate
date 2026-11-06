@@ -2,13 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { desktopLink, desktopOrigin, desktopPath, resolveDesktopLink } from "./links.js";
 
 describe("external desktop links", () => {
-  test("preserves organization-aware record navigation and email credentials", () => {
+  test("preserves organization-aware record navigation and invitation destinations", () => {
     for (const path of [
       "/tasks?workspaceId=org&projectId=project&taskId=task",
       "/accept-invitation/invite-1",
-      "/reset-password?token=reset-token&redirect=%2Forganizations",
-      `/api/auth/verify-email?token=verification-token&callbackURL=${encodeURIComponent(`${desktopOrigin}/organizations`)}`,
-      `/api/auth/reset-password/reset-token?callbackURL=${encodeURIComponent(`${desktopOrigin}/reset-password`)}`,
     ]) {
       expect(resolveDesktopLink(desktopLink(path), desktopOrigin)).toBe(
         new URL(path, desktopOrigin).href,
@@ -30,6 +27,8 @@ describe("external desktop links", () => {
       "/%5Cevil.test",
       "/api",
       "/api/auth/sign-out",
+      "/api/auth/verify-email?token=verification-token",
+      "/api/auth/reset-password/reset-token",
       "/api/v1/tasks/mutations",
       "/api/auth/reset-password/a/b",
       "/tasks%0Aignored",

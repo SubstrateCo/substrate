@@ -14,16 +14,17 @@
     "package": "bun run build && electron-builder --win nsis",
     "typecheck": "tsc --noEmit",
     "test": "bun test src",
-    "test:e2e": "bun run setup && playwright test"
+    "test:e2e": "bun run setup && bun scripts/preload.ts && playwright test"
   },
   "dependencies": {
+    "@better-auth/electron": "^1.7.18",
     "@startup-os/contracts": "workspace:*",
-    "set-cookie-parser": "^2.7.2"
+    "better-auth": "^1.7.18",
+    "conf": "^16.0.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
     "@types/bun": "^1.4.4",
-    "@types/set-cookie-parser": "^2.4.10",
     "electron": "^43.0.0",
     "electron-builder": "^26.0.12",
     "typescript": "^7.0.2"

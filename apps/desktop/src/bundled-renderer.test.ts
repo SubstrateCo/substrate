@@ -48,55 +48,6 @@ describe("bundled backend configuration", () => {
 });
 
 describe("bundled assets and responses", () => {
-  test("uses the native cookie jar rather than a supplied Cookie header and awaits response storage", async () => {
-    const forwarded = new Headers();
-    let storedURL = "";
-    let storedCookies: string[] = [];
-    const waiting = Promise.withResolvers<void>();
-    const started = Promise.withResolvers<void>();
-    let completed = false;
-    const serve = bundledRenderer({
-      directory: ".",
-      backend: "https://api.example.com",
-      fetchFile: async () => new Response(),
-      cookies: {
-        header: async () => "session=native",
-        store: async (url, cookies) => {
-          storedURL = url;
-          storedCookies = cookies;
-          started.resolve();
-          await waiting.promise;
-          return cookies;
-        },
-      },
-      fetchUpstream: async (_url, init) => {
-        forwarded.set("cookie", new Headers(init.headers).get("cookie") ?? "");
-        const headers = new Headers();
-        headers.append("set-cookie", "session=renewed; Path=/; Secure; HttpOnly");
-        headers.append("set-cookie", "account=second; Path=/; Secure");
-        return new Response(null, { status: 302, headers });
-      },
-    });
-    const result = serve(
-      new Request(`${origin}/api/auth/get-session`, { headers: { Cookie: "session=forged" } }),
-    ).then((response) => {
-      completed = true;
-      return response;
-    });
-    await started.promise;
-    expect(completed).toBe(false);
-    expect(forwarded.get("cookie")).toBe("session=native");
-    expect(storedURL).toBe(`${origin}/api/auth/get-session`);
-    expect(storedCookies).toEqual([
-      "session=renewed; Path=/; Secure; HttpOnly",
-      "account=second; Path=/; Secure",
-    ]);
-    waiting.resolve();
-    const response = await result;
-    expect(response.status).toBe(302);
-    expect(response.headers.getSetCookie()).toEqual(storedCookies);
-  });
-
   let directory: string;
   beforeAll(async () => {
     directory = await mkdtemp(join(process.env.TEMP || tmpdir(), "startup-os-renderer-"));

@@ -10,7 +10,12 @@ export interface SessionAPI {
 export function createSessionService(api: SessionAPI) {
   return {
     read(headers: Headers) {
-      return serviceResult(() => api.getSession({ headers }));
+      return serviceResult(async () => {
+        const result = await api.getSession({ headers });
+        if (!result) return null;
+        const { token: _token, ...session } = result.session;
+        return { ...result, session };
+      });
     },
   };
 }

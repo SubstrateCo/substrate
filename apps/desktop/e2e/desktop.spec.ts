@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { applicationURL } from "../src/navigation.js";
+import { randomUUID } from "node:crypto";
 
 const execFileAsync = promisify(execFile);
 
@@ -12,6 +13,7 @@ test("loads the existing app in an isolated desktop window", async () => {
   for (const [key, value] of Object.entries(process.env)) {
     if (value !== undefined && key !== "ELECTRON_RUN_AS_NODE") env[key] = value;
   }
+  env.STARTUP_OS_TEST_ID = randomUUID();
   const desktop = await electron.launch({
     args: [fileURLToPath(new URL("../src/main.js", import.meta.url)), "--desktop-smoke-test"],
     env,
@@ -21,8 +23,10 @@ test("loads the existing app in an isolated desktop window", async () => {
     await expect(page).toHaveURL(
       (url) => url.origin === applicationURL && url.pathname === "/login",
     );
-    await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
-    await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Sign in with browser", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByLabel("Email", { exact: true })).toHaveCount(0);
     await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.minimize());
     await expect
       .poll(() =>
@@ -32,7 +36,7 @@ test("loads the existing app in an isolated desktop window", async () => {
     const executable = await desktop.evaluate(() => process.execPath);
     const second = await execFileAsync(
       executable,
-      [fileURLToPath(new URL("../src/main.js", import.meta.url))],
+      [fileURLToPath(new URL("../src/main.js", import.meta.url)), "--desktop-smoke-test"],
       {
         env,
         timeout: 10_000,
@@ -47,14 +51,15 @@ test("loads the existing app in an isolated desktop window", async () => {
     expect(desktop.windows()).toHaveLength(1);
     expect(await page.evaluate("typeof require")).toBe("undefined");
     expect(await page.evaluate("globalThis.process?.versions?.node")).toBeUndefined();
-    await page.getByRole("link", { name: /create.*account/i }).click();
-    await expect(page).toHaveURL(/\/signup/);
+    await expect(page).toHaveURL(/\/login/);
     expect(desktop.windows()).toHaveLength(1);
     await page.evaluate(() => {
       window.location.href = "data:text/html,unsafe";
     });
-    await expect(page).toHaveURL(/\/signup/);
-    await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
+    await expect(page).toHaveURL(/\/login/);
+    await expect(
+      page.getByRole("button", { name: "Sign in with browser", exact: true }),
+    ).toBeVisible();
     await desktop.evaluate(
       async ({ BrowserWindow }, path) => {
         await BrowserWindow.getAllWindows()[0]!.loadFile(path);

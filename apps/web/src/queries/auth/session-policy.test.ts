@@ -14,7 +14,6 @@ const session: NonNullable<Awaited<ReturnType<typeof getSession>>> = {
   },
   session: {
     id: "session-1",
-    token: "session-token",
     userId: "user-1",
     expiresAt: new Date().toISOString(),
     createdAt: new Date().toISOString(),

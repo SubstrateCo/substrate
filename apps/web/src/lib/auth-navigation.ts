@@ -1,5 +1,6 @@
 /* Search parameters are untrusted router input. This module is their parsing boundary. */
 /* oxlint-disable deslop/no-unknown-parameters, deslop/no-runtime-typeof, deslop/no-unsafe-dictionary-type */
+import { electronQuery } from "./electron-query";
 export function safeRedirect(value: unknown, fallback = "/dashboard"): string {
   if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//"))
     return fallback;
@@ -22,11 +23,16 @@ export function authSearch(search: Record<string, unknown>) {
     email: typeof search.email === "string" ? search.email : "",
     token: typeof search.token === "string" ? search.token : "",
     error: typeof search.error === "string" ? search.error : "",
+    client_id: typeof search.client_id === "string" ? search.client_id : "",
+    state: typeof search.state === "string" ? search.state : "",
+    code_challenge: typeof search.code_challenge === "string" ? search.code_challenge : "",
   };
 }
 
-export function authHref(path: string, redirect: string, email?: string) {
+export function authHref(path: string, redirect: string, email?: string, authorizationSearch = "") {
   const search = new URLSearchParams({ redirect: safeRedirect(redirect) });
   if (email) search.set("email", email);
+  const query = electronQuery(authorizationSearch);
+  if (query) for (const [key, value] of Object.entries(query)) search.set(key, value);
   return `${path}?${search}`;
 }

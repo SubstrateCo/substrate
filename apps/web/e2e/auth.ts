@@ -1,5 +1,5 @@
 import { expect, type Page } from "@playwright/test";
-import { Mailpit, openEmailLink } from "./mailpit";
+import { Mailpit, openEmailLink } from "./mailpit.js";
 
 export interface TestAccount {
   name: string;
