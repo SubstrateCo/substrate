@@ -6,8 +6,10 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { invitationsQueryOptions } from "@/queries/organizations/options";
 import { queryKeys } from "@/queries/keys";
+import { useCurrentTime } from "@/hooks/use-current-time";
 
 export function InvitationManager({ organizationId }: { organizationId: string }) {
+  const now = useCurrentTime();
   const invitations = useQuery(invitationsQueryOptions(organizationId));
   const queryClient = useQueryClient();
   const refresh = () =>
@@ -46,7 +48,7 @@ export function InvitationManager({ organizationId }: { organizationId: string }
     <InvitationManagerView
       invitations={invitations.data?.map((invitation) => ({
         ...invitation,
-        expired: new Date(invitation.expiresAt).getTime() < Date.now(),
+        expired: new Date(invitation.expiresAt).getTime() < now,
       }))}
       loading={invitations.isPending}
       sending={invite.isPending}

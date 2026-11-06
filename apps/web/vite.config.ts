@@ -13,6 +13,6 @@ export default defineConfig(({ mode }) => {
     server: { port: 3000, strictPort: true },
     envDir: "../..",
     resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
-    plugins: [tailwindcss(), tanstackStart(), react()],
+    plugins: [tailwindcss(), tanstackStart(), react({ compiler: true })],
   };
 });

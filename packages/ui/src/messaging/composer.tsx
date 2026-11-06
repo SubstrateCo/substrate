@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bold, Code, Italic, Send } from "lucide-react";
 import { Button } from "../primitives/button";
 import { Textarea } from "../primitives/textarea";
@@ -28,7 +28,11 @@ export function Composer({
 }) {
   const [draft, setDraft] = useState(defaultValue);
   const [references, setReferences] = useState(false);
+  const [focusRequest, setFocusRequest] = useState(0);
   const textarea = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (focusRequest > 0) textarea.current?.focus();
+  }, [focusRequest]);
   const submit = () => {
     if (!draft.trim() || pending) return;
     onSend(draft.trim(), () => {
@@ -41,6 +45,18 @@ export function Composer({
     const end = textarea.current?.selectionEnd ?? draft.length;
     setDraft(draft.slice(0, start) + prefix + draft.slice(start, end) + suffix + draft.slice(end));
     textarea.current?.focus();
+  };
+  const closeReferences = () => {
+    setReferences(false);
+    setFocusRequest((previous) => previous + 1);
+  };
+  const insertReference = (token: string) => {
+    setDraft((previous) =>
+      /(?:^|\s)@[^\s[\]]*$/.test(previous)
+        ? previous.replace(/@[^\s[\]]*$/, `${token} `)
+        : `${previous}${previous.endsWith(" ") || !previous ? "" : " "}${token} `,
+    );
+    closeReferences();
   };
   return (
     <form
@@ -121,19 +137,8 @@ export function Composer({
         {references &&
           renderReferences?.(
             /(?:^|\s)@([^\s[\]]*)$/.exec(draft)?.[1] ?? "",
-            (token) => {
-              setDraft((previous) =>
-                /(?:^|\s)@[^\s[\]]*$/.test(previous)
-                  ? previous.replace(/@[^\s[\]]*$/, `${token} `)
-                  : `${previous}${previous.endsWith(" ") || !previous ? "" : " "}${token} `,
-              );
-              setReferences(false);
-              textarea.current?.focus();
-            },
-            () => {
-              setReferences(false);
-              textarea.current?.focus();
-            },
+            insertReference,
+            closeReferences,
           )}
         <div className="flex items-center justify-between px-2 pb-2">
           <EmojiPicker onSelect={(emoji) => insert(emoji)} disabled={pending} />

@@ -1,5 +1,5 @@
 import { Monitor, Moon, Sun } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useHydrated } from "../hooks/use-hydrated";
 import { useTheme } from "next-themes";
 import { Button } from "../primitives/button";
 import {
@@ -12,8 +12,7 @@ import {
 
 export function ThemeSwitcher({ compact = false }: { compact?: boolean }) {
   const { theme, setTheme } = useTheme();
-  const [hydrated, setHydrated] = useState(false);
-  useEffect(() => setHydrated(true), []);
+  const hydrated = useHydrated();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

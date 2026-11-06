@@ -1,4 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
+import { useHydrated } from "../hooks/use-hydrated";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../primitives/card";
 
 export function AuthFrame({
@@ -10,8 +11,7 @@ export function AuthFrame({
   description: string;
   children: ReactNode;
 }) {
-  const [hydrated, setHydrated] = useState(false);
-  useEffect(() => setHydrated(true), []);
+  const hydrated = useHydrated();
   return (
     <main className="flex min-h-dvh items-center justify-center bg-radial from-accent to-transparent px-4 py-20 sm:px-6">
       <Card className="w-full max-w-md">

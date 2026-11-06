@@ -4,8 +4,10 @@ import { authClient } from "@/lib/auth-client";
 import { invitationQueryOptions, unwrap } from "@/queries/organizations/options";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { isInvitationUnavailable } from "@startup-os/ui/feedback/request-failure";
+import { useCurrentTime } from "@/hooks/use-current-time";
 
 export function AcceptInvitationScreen({ invitationId }: { invitationId: string }) {
+  const now = useCurrentTime();
   const invitation = useQuery(invitationQueryOptions(invitationId));
   const queryClient = useQueryClient();
   const accept = useMutation({
@@ -21,7 +23,7 @@ export function AcceptInvitationScreen({ invitationId }: { invitationId: string 
   });
   const available =
     !!invitation.data &&
-    new Date(invitation.data.expiresAt).getTime() >= Date.now() &&
+    new Date(invitation.data.expiresAt).getTime() >= now &&
     invitation.data.status === "pending";
   return (
     <AcceptInvitationScreenView

@@ -2,6 +2,7 @@ import { configs as deslopConfigs } from "ai-deslop";
 import { defineConfig } from "oxlint";
 
 export default defineConfig({
+  plugins: ["unicorn", "typescript", "oxc", "react"],
   jsPlugins: ["ai-deslop", "@shadcn/lint"],
   options: deslopConfigs.recommended.options,
   settings: {
@@ -11,6 +12,19 @@ export default defineConfig({
   },
   rules: {
     ...deslopConfigs.recommended.rules,
+    "react/error-boundaries": "error",
+    "react/globals": "error",
+    "react/immutability": "error",
+    "react/incompatible-library": "error",
+    "react/preserve-manual-memoization": "error",
+    "react/purity": "error",
+    "react/refs": "error",
+    "react/set-state-in-effect": "error",
+    "react/set-state-in-render": "error",
+    "react/static-components": "error",
+    "react/unsupported-syntax": "error",
+    "react/use-memo": "error",
+    "react/void-use-memo": "error",
     "no-nested-ternary": "error",
     "deslop/canonical-class-names": ["error", { cssPath: "./packages/ui/src/styles.css" }],
     "deslop/no-duplicate-types": "error",

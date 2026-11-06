@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { AppTable, createAppColumnHelper, dateTimeColumn, useAppTable } from "@startup-os/ui/table";
 import { Button } from "@startup-os/ui/primitives/button";
+import { useCurrentTime } from "@/hooks/use-current-time";
 
 type UserInvitation = {
   id: string;
@@ -52,13 +53,14 @@ export function UserInvitationsTable({
   error: Error | null;
   onRetry: () => void;
 }) {
+  const now = useCurrentTime();
   const data = useMemo(
     () =>
       invitations.map((invitation) => ({
         ...invitation,
-        expired: new Date(invitation.expiresAt).getTime() <= Date.now(),
+        expired: new Date(invitation.expiresAt).getTime() <= now,
       })),
-    [invitations],
+    [invitations, now],
   );
   const table = useAppTable({ columns, data, getRowId: (row) => row.id });
   return (
