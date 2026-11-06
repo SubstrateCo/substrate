@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { SignOutButton as SignOutButtonView } from "@startup-os/ui/auth/sign-out-button";
+import { SignOutButton as SignOutButtonView } from "@/ui/auth/sign-out-button";
 import { authClient } from "@/lib/auth-client";
 import { isDesktop } from "@/lib/desktop-auth";
 

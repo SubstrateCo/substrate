@@ -1,4 +1,4 @@
-import { CopyLink as CopyLinkView } from "@startup-os/ui/context/copy-link";
+import { CopyLink as CopyLinkView } from "@/ui/context/copy-link";
 
 export function CopyLink({ href, label = "Copy link" }: { href: string; label?: string }) {
   return (

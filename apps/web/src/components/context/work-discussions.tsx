@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { WorkDiscussions as WorkDiscussionsView } from "@startup-os/ui/context/work-discussions";
+import { WorkDiscussions as WorkDiscussionsView } from "@/ui/context/work-discussions";
 import { relatedContextOptions } from "@/queries/context/options";
 import { messageHref } from "@/lib/context-links";
 

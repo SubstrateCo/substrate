@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CreateConversationForm as CreateConversationFormView,
   type ConversationDraft,
-} from "@startup-os/ui/messaging/create-conversation-form";
+} from "@/ui/messaging/create-conversation-form";
 import { parseRecipientEmails, type Conversation } from "@/lib/messaging";
 import { queryKeys } from "@/queries/keys";
 import { createConversation } from "@/api/messaging";

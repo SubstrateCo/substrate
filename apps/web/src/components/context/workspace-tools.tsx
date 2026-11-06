@@ -1,4 +1,4 @@
-import { WorkspaceTools as WorkspaceToolsView } from "@startup-os/ui/context/workspace-tools";
+import { WorkspaceTools as WorkspaceToolsView } from "@/ui/context/workspace-tools";
 import { WorkspaceSearch } from "./workspace-search";
 
 export function WorkspaceTools({ organizationId }: { organizationId: string }) {

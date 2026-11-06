@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { WorkspaceFrame } from "@/components/workspace/workspace-frame";
 import { organizationQueryOptions } from "@/queries/organizations/options";
-import { isAccessFailure } from "@startup-os/ui/feedback/request-failure";
+import { isAccessFailure } from "@/ui/feedback/request-failure";
 import { z } from "zod";
 import { WorkspaceLinkBoundary } from "@/components/workspace/workspace-link-boundary";
 import { WorkspaceTools } from "@/components/context/workspace-tools";

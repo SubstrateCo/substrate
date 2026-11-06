@@ -1,5 +1,5 @@
-import { ProjectSharing as ProjectSharingView } from "@startup-os/ui/tasks/project-sharing";
-import type { ProjectDetail } from "@startup-os/ui/tasks/types";
+import { ProjectSharing as ProjectSharingView } from "@/ui/tasks/project-sharing";
+import type { ProjectDetail } from "@/ui/tasks/types";
 import { useTasksMutation } from "./use-tasks-mutation";
 
 export function ProjectSharing({

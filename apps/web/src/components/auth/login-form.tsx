@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { LoginForm as LoginFormView } from "@startup-os/ui/auth/login-form";
+import { LoginForm as LoginFormView } from "@/ui/auth/login-form";
 import { authClient } from "@/lib/auth-client";
 import { safeRedirect } from "@/lib/auth-navigation";
 import { authHref } from "@/lib/browser-auth-links";

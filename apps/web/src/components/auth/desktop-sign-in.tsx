@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { DesktopSignIn as DesktopSignInView } from "@startup-os/ui/auth/desktop-sign-in";
+import { DesktopSignIn as DesktopSignInView } from "@/ui/auth/desktop-sign-in";
 import { safeRedirect } from "@/lib/auth-navigation";
 import "@/lib/desktop-auth";
 

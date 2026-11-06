@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CreateOrganizationForm as CreateOrganizationFormView } from "@startup-os/ui/organizations/create-organization-form";
+import { CreateOrganizationForm as CreateOrganizationFormView } from "@/ui/organizations/create-organization-form";
 import { authClient } from "@/lib/auth-client";
 import { unwrap } from "@/queries/organizations/options";
 import { formText } from "@/components/auth/form-values";

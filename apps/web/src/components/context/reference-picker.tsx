@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   ReferencePicker as ReferencePickerView,
   type ReferenceKind,
-} from "@startup-os/ui/messaging/reference-picker";
+} from "@/ui/messaging/reference-picker";
 import { searchOptions } from "@/queries/context/options";
 
 export function ReferencePicker({

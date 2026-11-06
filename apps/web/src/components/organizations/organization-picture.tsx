@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { PictureSettings } from "@startup-os/ui/settings/picture-settings";
+import { PictureSettings } from "@/ui/settings/picture-settings";
 import { organizationQueryOptions } from "@/queries/organizations/options";
 import { usePictureMutations } from "@/queries/files/mutations";
 

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { SignupForm as SignupFormView } from "@startup-os/ui/auth/signup-form";
+import { SignupForm as SignupFormView } from "@/ui/auth/signup-form";
 import { authClient } from "@/lib/auth-client";
 import { authHref } from "@/lib/browser-auth-links";
 import { formText } from "./form-values";

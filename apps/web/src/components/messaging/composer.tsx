@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Composer as ComposerView } from "@startup-os/ui/messaging/composer";
+import { Composer as ComposerView } from "@/ui/messaging/composer";
 import { queryKeys } from "@/queries/keys";
 import { sendMessage } from "@/api/messaging";
 import { useRef } from "react";

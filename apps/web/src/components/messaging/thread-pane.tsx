@@ -1,13 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
-import { ThreadPane as ThreadPaneView } from "@startup-os/ui/messaging/thread-pane";
+import { ThreadPane as ThreadPaneView } from "@/ui/messaging/thread-pane";
 import type { Message } from "@/lib/messaging";
-import { messagesQueryOptions } from "@/queries/messaging/options";
 import { Composer } from "./composer";
 import { MessageItem } from "./message-item";
 import { MessageList } from "./message-list";
-import { useEffect, useState } from "react";
-import { MessageHistory } from "@startup-os/ui/messaging/message-history";
-import { queryKeys } from "@/queries/keys";
+import { MessageHistory } from "@/ui/messaging/message-history";
+import { useMessageHistory } from "./use-message-history";
 
 export function ThreadPane({
   organizationId,
@@ -24,25 +21,16 @@ export function ThreadPane({
   targetMessage?: Message;
   onClose: () => void;
 }) {
-  const [beforeMessageId, setBeforeMessageId] = useState<string>();
-  const [historyRequest, setHistoryRequest] = useState<"older" | "latest">();
-  const replies = useQuery({
-    ...messagesQueryOptions(organizationId, conversationId, threadId, {
-      beforeMessageId,
-      aroundMessageId: targetMessage?.threadId ? targetMessage.id : undefined,
-    }),
-    placeholderData: (previous, query) =>
-      queryKeys
-        .messages(organizationId, conversationId, threadId)
-        .every((part, index) => query?.queryKey[index] === part)
-        ? previous
-        : undefined,
+  const {
+    messages: replies,
+    history,
+    loadOlder,
+  } = useMessageHistory({
+    organizationId,
+    conversationId,
+    threadId,
+    aroundMessageId: targetMessage?.threadId ? targetMessage.id : undefined,
   });
-  let historyPending: "older" | "latest" | "refresh" | undefined;
-  if (replies.isFetching) historyPending = historyRequest ?? "refresh";
-  useEffect(() => {
-    if (replies.isFetching) return () => setHistoryRequest(undefined);
-  }, [replies.isFetching]);
   const rows = [...(replies.data ?? [])];
   if (targetMessage?.threadId === threadId && !rows.some((row) => row.id === targetMessage.id))
     rows.push(targetMessage);
@@ -55,20 +43,7 @@ export function ThreadPane({
       onClose={onClose}
       replies={
         replies.data && (
-          <MessageHistory
-            replies
-            pending={historyPending}
-            hasOlder={replies.data.length === 50}
-            hasPrevious={!!beforeMessageId || historyPending === "latest"}
-            onOlder={() => {
-              setHistoryRequest("older");
-              setBeforeMessageId(rows[0]!.id);
-            }}
-            onLatest={() => {
-              setHistoryRequest("latest");
-              setBeforeMessageId(undefined);
-            }}
-          >
+          <MessageHistory replies {...history} onOlder={() => loadOlder(rows[0]!.id)}>
             <MessageList
               messages={rows.filter((message) => message.id !== threadId)}
               organizationId={organizationId}

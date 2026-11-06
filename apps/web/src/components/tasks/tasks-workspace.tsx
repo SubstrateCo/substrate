@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { TasksWorkspace as TasksWorkspaceView } from "@startup-os/ui/tasks/tasks-workspace";
+import { TasksWorkspace as TasksWorkspaceView } from "@/ui/tasks/tasks-workspace";
 import { projectsQueryOptions } from "@/queries/tasks/options";
 import { ProjectForm } from "./project-form";
 import { ProjectPane } from "./project-pane";

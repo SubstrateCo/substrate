@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { ProjectPane as ProjectPaneView } from "@startup-os/ui/tasks/project-pane";
+import { ProjectPane as ProjectPaneView } from "@/ui/tasks/project-pane";
 import { projectQueryOptions } from "@/queries/tasks/options";
 import { TaskForm } from "./task-form";
 import { TaskDetail } from "./task-detail";
@@ -9,7 +9,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { CopyLink } from "../context/copy-link";
 import { workHref } from "@/lib/context-links";
 import { WorkDiscussions } from "../context/work-discussions";
-import { ProjectDiscussions } from "@startup-os/ui/context/project-discussions";
+import { ProjectDiscussions } from "@/ui/context/project-discussions";
 
 export function ProjectPane({
   organizationId,

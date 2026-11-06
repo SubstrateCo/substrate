@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   InvitationManager as InvitationManagerView,
   type InvitationRole,
-} from "@startup-os/ui/organizations/invitation-manager";
+} from "@/ui/organizations/invitation-manager";
 import { authClient } from "@/lib/auth-client";
 import { invitationsQueryOptions } from "@/queries/organizations/options";
 import { queryKeys } from "@/queries/keys";

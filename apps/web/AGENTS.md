@@ -2,8 +2,8 @@
 
 - Use Vite and TanStack Router file-based routes. Mirror layout hierarchy with route directories, not flattened dot-separated filenames.
 - Keep routes limited to configuration, loading, access checks, redirects, and composition of imported layouts. Routes may pass context, params, search, and loader data to connected containers in `src/components/<domain>/`.
-- Web owns application integration, not presentation. Never define presentation components, HTML/SVG markup, styles, table cell renderers, visual layouts, forms, tiles, or UI feedback copy in this package. Import them from `@startup-os/ui`, even when only one web screen uses them.
-- Connected containers may use JSX only to compose imported UI components and other connected containers. Pass data, navigation targets, callbacks, and connected content through props, slots, or render callbacks. Do not pass styled markup or use `className`, inline styles, or UI primitives to construct a view in web.
+- Web owns both renderer presentation and application integration. Group presentation in `src/ui/<domain>/` and import it through `@/ui` paths.
+- Keep large views split into focused components with meaningful responsibilities. Connected containers can compose these views and pass data, navigation targets, callbacks, and connected content through props, slots, or render callbacks.
 - Keep data fetching, query options, mutations, invalidation, session/auth clients, resource access decisions, routing, and Electron integration in web. Keep purely visual state, focus/scroll effects, form drafts, and interaction behavior in UI. State that controls a query or application action may remain in a connected container.
 - Load shared session and application data in the highest common layout and reuse its route context. Do not repeat those loads or session checks; keep resource-specific access checks.
 - Use the Hono `hc` RPC client in `src/api/` for same-origin backend calls. Import the server's `AppType` as a type only. Better Auth uses its native client protocol under `/api/auth`.
@@ -11,8 +11,8 @@
 - The server validates untrusted input and derives identity and actor scope. Organization roles do not bypass entity grants.
 - Do not use dynamic imports to bypass dependency injection, server-only boundaries, or import configuration. Fix the underlying issue.
 - Group connected containers in `src/components/<domain>/`. Use one file per container. Loading, error, empty, pending, and unavailable views belong in UI and receive their state from the container.
-- Add or change UI primitives only in `packages/ui`, using the shadcn CLI. Do not hand-write replacements or import primitives here to build presentation.
-- Preserve the presentation boundary test in `src/boundaries.test.ts`. Do not add exceptions to keep presentation in web. Move the view to UI and add Storybook coverage instead.
+- Add or change UI primitives in `src/ui/primitives`, using the shadcn CLI. Do not hand-write replacements.
+- Do not add Storybook or presentation package boundary tests. Validate UI workflows through the Electron app.
 - Put reusable TanStack Query option factories in `src/queries/<domain>/`. Use the shared query-key factory. Include the organization ID in organization-scoped keys.
 - Use TanStack Query for fetched application state. Invalidate affected queries after mutations and clear private state on sign-out.
 - Use Better Auth client APIs for authentication and organization actions. The server owns session and membership checks.

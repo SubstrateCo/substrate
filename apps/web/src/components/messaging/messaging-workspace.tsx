@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MessagingWorkspace as MessagingWorkspaceView } from "@startup-os/ui/messaging/messaging-workspace";
+import { MessagingWorkspace as MessagingWorkspaceView } from "@/ui/messaging/messaging-workspace";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
 import { ConversationPane } from "./conversation-pane";
 import { CreateConversationForm } from "./create-conversation-form";
-import { isAccessFailure } from "@startup-os/ui/feedback/request-failure";
+import { isAccessFailure } from "@/ui/feedback/request-failure";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { ConversationUnavailable } from "@startup-os/ui/messaging/conversation-unavailable";
+import { ConversationUnavailable } from "@/ui/messaging/conversation-unavailable";
 
 export function MessagingWorkspace({ organizationId }: { organizationId: string }) {
   const conversations = useQuery(conversationsQueryOptions(organizationId));

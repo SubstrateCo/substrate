@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { TaskComments as TaskCommentsView } from "@startup-os/ui/tasks/task-comments";
+import { TaskComments as TaskCommentsView } from "@/ui/tasks/task-comments";
 import { taskCommentsQueryOptions } from "@/queries/tasks/options";
 import { useTasksMutation } from "./use-tasks-mutation";
 

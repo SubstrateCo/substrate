@@ -1,4 +1,4 @@
-import { MessageList as MessageListView } from "@startup-os/ui/messaging/message-list";
+import { MessageList as MessageListView } from "@/ui/messaging/message-list";
 import type { Message } from "@/lib/messaging";
 import { MessageItem } from "./message-item";
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { SourceTaskFields as SourceTaskFieldsView } from "@startup-os/ui/context/source-task-fields";
-import type { TaskDraft } from "@startup-os/ui/tasks/types";
+import { SourceTaskFields as SourceTaskFieldsView } from "@/ui/context/source-task-fields";
+import type { TaskDraft } from "@/ui/tasks/types";
 import { projectQueryOptions } from "@/queries/tasks/options";
 import { queryKeys } from "@/queries/keys";
 import { createTaskFromMessage } from "@/api/context";

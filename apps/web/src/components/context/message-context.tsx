@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MessageWork } from "@startup-os/ui/messaging/message-work";
-import { isAccessFailure } from "@startup-os/ui/feedback/request-failure";
+import { MessageWork } from "@/ui/messaging/message-work";
+import { isAccessFailure } from "@/ui/feedback/request-failure";
 import { messageLinksOptions } from "@/queries/context/options";
 import { workHref } from "@/lib/context-links";
 import { detachWork } from "@/api/context";

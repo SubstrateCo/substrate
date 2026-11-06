@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CreateSourceTask as CreateSourceTaskView } from "@startup-os/ui/context/create-source-task";
+import { CreateSourceTask as CreateSourceTaskView } from "@/ui/context/create-source-task";
 import { searchOptions } from "@/queries/context/options";
 import { workHref } from "@/lib/context-links";
 import { SourceTaskFields } from "./source-task-fields";

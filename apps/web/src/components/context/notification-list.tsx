@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { NotificationList as NotificationListView } from "@startup-os/ui/context/notification-list";
+import { NotificationList as NotificationListView } from "@/ui/context/notification-list";
 import { notificationsOptions } from "@/queries/context/options";
 import { queryKeys } from "@/queries/keys";
 import { markRead } from "@/api/context";

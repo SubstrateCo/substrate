@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { ForgotPasswordForm as ForgotPasswordFormView } from "@startup-os/ui/auth/forgot-password-form";
+import { ForgotPasswordForm as ForgotPasswordFormView } from "@/ui/auth/forgot-password-form";
 import { authClient } from "@/lib/auth-client";
 import { authHref } from "@/lib/browser-auth-links";
 import { formText } from "./form-values";

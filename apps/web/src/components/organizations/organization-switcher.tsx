@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { OrganizationSwitcher as OrganizationSwitcherView } from "@startup-os/ui/organizations/organization-switcher";
+import { OrganizationSwitcher as OrganizationSwitcherView } from "@/ui/organizations/organization-switcher";
 import { authClient } from "@/lib/auth-client";
 import { organizationsQueryOptions, unwrap } from "@/queries/organizations/options";
 

@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   WorkspaceSearch as WorkspaceSearchView,
   type SearchKind,
-} from "@startup-os/ui/context/workspace-search";
+} from "@/ui/context/workspace-search";
 import { searchOptions } from "@/queries/context/options";
 import { messageHref, workHref } from "@/lib/context-links";
 

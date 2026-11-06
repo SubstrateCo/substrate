@@ -1,4 +1,4 @@
-import { OrganizationSettings } from "@startup-os/ui/workspace/organization-settings";
+import { OrganizationSettings } from "@/ui/workspace/organization-settings";
 import { InvitationManager } from "@/components/organizations/invitation-manager";
 import { OrganizationPicture } from "@/components/organizations/organization-picture";
 

@@ -1,17 +1,16 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ConversationPane as ConversationPaneView } from "@startup-os/ui/messaging/conversation-pane";
+import { ConversationPane as ConversationPaneView } from "@/ui/messaging/conversation-pane";
 import { conversationName, type Conversation } from "@/lib/messaging";
-import { messagesQueryOptions } from "@/queries/messaging/options";
 import { Composer } from "./composer";
 import { MessageList } from "./message-list";
 import { ThreadPane } from "./thread-pane";
 import { AddMembersForm } from "./add-members-form";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { messageTargetOptions } from "@/queries/context/options";
-import { MessageUnavailable } from "@startup-os/ui/messaging/message-unavailable";
-import { MessageHistory } from "@startup-os/ui/messaging/message-history";
-import { queryKeys } from "@/queries/keys";
+import { MessageUnavailable } from "@/ui/messaging/message-unavailable";
+import { MessageHistory } from "@/ui/messaging/message-history";
+import { useMessageHistory } from "./use-message-history";
 
 export function ConversationPane({
   organizationId,
@@ -31,26 +30,12 @@ export function ConversationPane({
     enabled: !!search.messageId,
   });
   const activeThreadId = search.messageId && !target.error ? target.data?.root.id : undefined;
-  const [beforeMessageId, setBeforeMessageId] = useState<string>();
-  const [historyRequest, setHistoryRequest] = useState<"older" | "latest">();
   const [addingMembers, setAddingMembers] = useState(false);
-  const messages = useQuery({
-    ...messagesQueryOptions(organizationId, conversation.id, undefined, {
-      beforeMessageId,
-      aroundMessageId: target.data?.root.id,
-    }),
-    placeholderData: (previous, query) =>
-      queryKeys
-        .messages(organizationId, conversation.id)
-        .every((part, index) => query?.queryKey[index] === part)
-        ? previous
-        : undefined,
+  const { messages, history, loadOlder } = useMessageHistory({
+    organizationId,
+    conversationId: conversation.id,
+    aroundMessageId: target.data?.root.id,
   });
-  let historyPending: "older" | "latest" | "refresh" | undefined;
-  if (messages.isFetching) historyPending = historyRequest ?? "refresh";
-  useEffect(() => {
-    if (messages.isFetching) return () => setHistoryRequest(undefined);
-  }, [messages.isFetching]);
   const timeline = [...(messages.data ?? [])];
   if (target.data && !timeline.some((message) => message.id === target.data.root.id))
     timeline.push(target.data.root);
@@ -58,19 +43,7 @@ export function ConversationPane({
   if (target.error) messageContent = <MessageUnavailable onRetry={() => void target.refetch()} />;
   else if (timeline.length > 0)
     messageContent = (
-      <MessageHistory
-        pending={historyPending}
-        hasOlder={messages.data?.length === 50}
-        hasPrevious={!!beforeMessageId || historyPending === "latest"}
-        onOlder={() => {
-          setHistoryRequest("older");
-          setBeforeMessageId(messages.data?.[0]?.id);
-        }}
-        onLatest={() => {
-          setHistoryRequest("latest");
-          setBeforeMessageId(undefined);
-        }}
-      >
+      <MessageHistory {...history} onOlder={() => loadOlder(messages.data?.[0]?.id)}>
         <MessageList
           messages={timeline}
           organizationId={organizationId}

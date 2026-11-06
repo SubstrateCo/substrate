@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { LinkMessageWork as LinkMessageWorkView } from "@startup-os/ui/context/link-message-work";
+import { LinkMessageWork as LinkMessageWorkView } from "@/ui/context/link-message-work";
 import { searchOptions } from "@/queries/context/options";
 import { attachWork } from "@/api/context";
 import { queryKeys } from "@/queries/keys";

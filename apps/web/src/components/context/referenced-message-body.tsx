@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { MessageMarkdown } from "@startup-os/ui/messaging/message-markdown";
+import { MessageMarkdown } from "@/ui/messaging/message-markdown";
 import { messageLinksOptions, messagePeopleOptions } from "@/queries/context/options";
 import { workHref } from "@/lib/context-links";
 

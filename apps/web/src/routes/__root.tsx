@@ -1,9 +1,9 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext, Link, Outlet } from "@tanstack/react-router";
-import { NotFound } from "@startup-os/ui/feedback/not-found";
+import { NotFound } from "@/ui/feedback/not-found";
 import { RouteErrorScreen } from "@/components/feedback/route-error-screen";
-import { ThemeProvider } from "@startup-os/ui/theme/theme-provider";
-import { ThemeControl } from "@startup-os/ui/theme/theme-control";
+import { ThemeProvider } from "@/ui/theme/theme-provider";
+import { ThemeControl } from "@/ui/theme/theme-control";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: Root,

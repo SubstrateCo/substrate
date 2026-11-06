@@ -1,5 +1,5 @@
-import { ProjectForm as ProjectFormView } from "@startup-os/ui/tasks/project-form";
-import type { Project } from "@startup-os/ui/tasks/types";
+import { ProjectForm as ProjectFormView } from "@/ui/tasks/project-form";
+import type { Project } from "@/ui/tasks/types";
 import { useTasksMutation } from "./use-tasks-mutation";
 
 export function ProjectForm({

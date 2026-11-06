@@ -1,12 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { MessageItem as MessageItemView } from "@startup-os/ui/messaging/message-item";
+import { MessageItem as MessageItemView } from "@/ui/messaging/message-item";
 import type { Message } from "@/lib/messaging";
 import { queryKeys } from "@/queries/keys";
 import { toggleReaction } from "@/api/messaging";
 import { useState } from "react";
 import { useSearch } from "@tanstack/react-router";
-import { LinkedMessage } from "@startup-os/ui/messaging/linked-message";
-import { MessageWorkActions } from "@startup-os/ui/messaging/message-work-actions";
+import { LinkedMessage } from "@/ui/messaging/linked-message";
+import { MessageWorkActions } from "@/ui/messaging/message-work-actions";
 import { CopyLink } from "../context/copy-link";
 import { CreateSourceTask } from "../context/create-source-task";
 import { LinkMessageWork } from "../context/link-message-work";

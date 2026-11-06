@@ -24,10 +24,7 @@ async function run(command: string[], env: Record<string, string | undefined>) {
 async function main() {
   const preparation = await Promise.all([
     run(["test:unit"], { ...process.env, TEST_DATABASE_SHARDS: "3" }),
-    run(["turbo", "run", "@startup-os/web#build", "@startup-os/storybook#build"], {
-      ...process.env,
-      STORYBOOK_HEADLESS: "true",
-    }),
+    run(["turbo", "run", "@startup-os/web#build"], { ...process.env }),
   ]);
   const failure = preparation.find((code) => code !== 0);
   if (failure !== undefined) return failure;
@@ -59,7 +56,6 @@ async function main() {
         STARTUP_OS_WEB_URL: webURL,
         STARTUP_OS_API_URL: apiURL,
         DESKTOP_BUNDLED_RENDERER: "true",
-        STORYBOOK_TEST_STATIC: "true",
         S3_BUCKET: storage.bucket,
       };
       const directory = new URL("../../apps/web/dist/", import.meta.url);
@@ -98,7 +94,7 @@ async function main() {
               throw new Error("The test API did not start.");
             await Bun.sleep(50);
           }
-          return await run(["turbo", "run", "test:e2e", "@startup-os/storybook#test"], env);
+          return await run(["turbo", "run", "test:e2e"], env);
         } finally {
           await web.stop(true);
         }

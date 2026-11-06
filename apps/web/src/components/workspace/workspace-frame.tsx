@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { WorkspaceHomeLink } from "@startup-os/ui/workspace/workspace-home-link";
-import { WorkspaceShell } from "@startup-os/ui/workspace/workspace-shell";
+import { WorkspaceHomeLink } from "@/ui/workspace/workspace-home-link";
+import { WorkspaceShell } from "@/ui/workspace/workspace-shell";
 import {
   activeMemberQueryOptions,
   organizationQueryOptions,

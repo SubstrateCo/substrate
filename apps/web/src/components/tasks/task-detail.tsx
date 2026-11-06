@@ -1,5 +1,5 @@
-import { TaskDetail as TaskDetailView } from "@startup-os/ui/tasks/task-detail";
-import type { ProjectDetail, Task } from "@startup-os/ui/tasks/types";
+import { TaskDetail as TaskDetailView } from "@/ui/tasks/task-detail";
+import type { ProjectDetail, Task } from "@/ui/tasks/types";
 import { TaskComments } from "./task-comments";
 import { TaskForm } from "./task-form";
 import { TaskContext } from "../context/task-context";
