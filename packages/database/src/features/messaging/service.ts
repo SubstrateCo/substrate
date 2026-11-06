@@ -1,10 +1,14 @@
-import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import type { DatabaseExecutor } from "../../client";
 import { ensureHumanActor } from "../../core/actors/provisioning";
+import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
 import { member } from "../../core/organizations/schema";
 import { RepositoryContext } from "../../core/repository-context";
-import { AccessDeniedError, ValidationError } from "../../errors";
+import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
+import { applyMessageEffects } from "../context/message-effects";
+import type { MessagingIdentity } from "./access";
+export type { MessagingIdentity as MessagingScope } from "./access";
 import {
   messagingConversations as conversations,
   messagingMessages as messages,
@@ -12,10 +16,6 @@ import {
   messagingReactions as reactions,
 } from "./schema";
 
-export interface MessagingScope {
-  userId: string;
-  organizationId: string;
-}
 export interface CreateConversationInput {
   kind: "dm" | "group" | "channel";
   name?: string;
@@ -24,7 +24,10 @@ export interface CreateConversationInput {
 }
 
 // Trusted server facade: identity and active organization must come from the session.
-export function createMessagingService(db: DatabaseExecutor, authenticatedScope: MessagingScope) {
+export function createMessagingService(
+  db: DatabaseExecutor,
+  authenticatedScope: MessagingIdentity,
+) {
   const scope = Object.freeze({
     userId: authenticatedScope.userId,
     organizationId: authenticatedScope.organizationId,
@@ -243,7 +246,11 @@ export function createMessagingService(db: DatabaseExecutor, authenticatedScope:
         return { added: added.length };
       });
     },
-    async listMessages(conversationId: string, threadId?: string) {
+    async listMessages(
+      conversationId: string,
+      threadId?: string,
+      options: { beforeMessageId?: string; aroundMessageId?: string } = {},
+    ) {
       return db.transaction(async (tx) => {
         await authenticate(tx);
         await requireConversation(tx, conversationId);
@@ -261,6 +268,24 @@ export function createMessagingService(db: DatabaseExecutor, authenticatedScope:
           if (!root)
             throw new ValidationError("Thread must be a root message in this conversation.");
         }
+        let boundary;
+        const anchorId = options.beforeMessageId ?? options.aroundMessageId;
+        if (anchorId) {
+          const [anchor] = await tx
+            .select()
+            .from(messages)
+            .where(
+              and(
+                eq(messages.id, anchorId),
+                eq(messages.conversationId, conversationId),
+                threadId ? eq(messages.threadId, threadId) : isNull(messages.threadId),
+              ),
+            );
+          if (!anchor) throw new AccessDeniedError();
+          boundary = options.beforeMessageId
+            ? sql`(${messages.createdAt}, ${messages.id}) < (select anchor.created_at, anchor.id from ${messages} anchor where anchor.id = ${anchor.id}::uuid)`
+            : sql`(${messages.createdAt}, ${messages.id}) <= (select anchor.created_at, anchor.id from ${messages} anchor where anchor.id = ${anchor.id}::uuid)`;
+        }
         const rows = await tx
           .select({ message: messages, authorName: user.name })
           .from(messages)
@@ -269,9 +294,12 @@ export function createMessagingService(db: DatabaseExecutor, authenticatedScope:
             and(
               eq(messages.conversationId, conversationId),
               threadId ? eq(messages.threadId, threadId) : isNull(messages.threadId),
+              boundary,
             ),
           )
-          .orderBy(asc(messages.createdAt), asc(messages.id));
+          .orderBy(desc(messages.createdAt), desc(messages.id))
+          .limit(50);
+        rows.reverse();
         const allReactions = rows.length
           ? await tx
               .select()
@@ -311,12 +339,32 @@ export function createMessagingService(db: DatabaseExecutor, authenticatedScope:
         });
       });
     },
-    async sendMessage(conversationId: string, body: string, threadId?: string) {
+    async sendMessage(conversationId: string, body: string, threadId?: string, requestId?: string) {
       return db.transaction(async (tx) => {
         await authenticate(tx);
         await requireConversation(tx, conversationId);
         if (!body.trim() || body.length > 20000)
           throw new ValidationError("Message must contain 1 to 20000 characters.");
+        if (requestId) {
+          const [existing] = await tx
+            .select()
+            .from(messages)
+            .where(and(eq(messages.authorId, scope.userId), eq(messages.requestId, requestId)));
+          if (existing) {
+            if (
+              existing.conversationId !== conversationId ||
+              existing.body !== body ||
+              existing.threadId !== (threadId ?? null)
+            )
+              throw new ConflictError("This request was already used for another message.");
+            const [author] = await tx
+              .select({ name: user.name })
+              .from(user)
+              .where(eq(user.id, scope.userId));
+            const reactions: { emoji: string; count: number; reacted: boolean }[] = [];
+            return { ...existing, authorName: author!.name, reactions, replyCount: 0 };
+          }
+        }
         if (threadId) {
           const [root] = await tx
             .select()
@@ -334,8 +382,22 @@ export function createMessagingService(db: DatabaseExecutor, authenticatedScope:
         await join(tx, conversationId);
         const [message] = await tx
           .insert(messages)
-          .values({ conversationId, authorId: scope.userId, body, threadId })
+          .values({ conversationId, authorId: scope.userId, body, threadId, requestId })
           .returning();
+        const [actor] = await tx
+          .select()
+          .from(actors)
+          .where(
+            and(eq(actors.organizationId, scope.organizationId), eq(actors.userId, scope.userId)),
+          );
+        await applyMessageEffects(
+          new RepositoryContext(tx, {
+            organizationId: scope.organizationId,
+            actorEntityId: actor!.entityId,
+          }),
+          scope,
+          message!,
+        );
         const [author] = await tx
           .select({ name: user.name })
           .from(user)

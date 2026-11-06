@@ -20,3 +20,6 @@ export * from "../features/messaging/schema";
 export * from "../features/projects/schema";
 export * from "../features/tasks/tasks.schema";
 export * from "../features/tasks/comments.schema";
+export * from "../features/context/schema";
+export * from "../features/activity/schema";
+export * from "../features/notifications/schema";

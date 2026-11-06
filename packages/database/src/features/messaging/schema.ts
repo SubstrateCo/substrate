@@ -31,6 +31,7 @@ export const messagingConversations = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
+    unique("messaging_conversation_organization_unique").on(table.organizationId, table.id),
     check("messaging_kind_check", sql`${table.kind} IN ('dm', 'group', 'channel')`),
     check("messaging_visibility_check", sql`${table.kind} = 'channel' OR ${table.private}`),
     check(
@@ -69,6 +70,7 @@ export const messagingMessages = pgTable(
       .references(() => messagingConversations.id, { onDelete: "cascade" }),
     authorId: text("author_id").notNull(),
     body: text("body").notNull(),
+    requestId: uuid("request_id"),
     threadId: uuid("thread_id"),
     isRoot: boolean("is_root").generatedAlwaysAs(sql`thread_id IS NULL`),
     threadRoot: boolean("thread_root").default(true).notNull(),
@@ -76,6 +78,7 @@ export const messagingMessages = pgTable(
   },
   (table) => [
     unique("messaging_message_conversation_unique").on(table.conversationId, table.id),
+    unique("messaging_message_request_unique").on(table.authorId, table.requestId),
     unique("messaging_message_root_unique").on(table.conversationId, table.id, table.isRoot),
     foreignKey({
       columns: [table.conversationId, table.authorId],

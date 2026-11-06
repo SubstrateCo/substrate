@@ -59,7 +59,7 @@ export async function readMessaging(headers: Headers, raw: ReadRequest) {
   const service = await serviceForSession(headers, workspace.data.organizationId);
   const data = input.data;
   if (data.action === "conversations") return execute(() => service.listConversations());
-  return execute(() => service.listMessages(data.conversationId, data.threadId));
+  return execute(() => service.listMessages(data.conversationId, data.threadId, data));
 }
 
 export function writeMessaging(
@@ -89,7 +89,9 @@ export async function writeMessaging(headers: Headers, raw: WriteRequest) {
     case "create":
       return execute(() => service.createConversation(data));
     case "send":
-      return execute(() => service.sendMessage(data.conversationId, data.body, data.threadId));
+      return execute(() =>
+        service.sendMessage(data.conversationId, data.body, data.threadId, data.requestId),
+      );
     case "react":
       return execute(() => service.toggleReaction(data.messageId, data.emoji));
     case "addMembers":

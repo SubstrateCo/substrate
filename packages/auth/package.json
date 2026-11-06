@@ -3,6 +3,11 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./context-contract": "./src/context-contract.ts",
+    "./context": {
+      "browser": null,
+      "default": "./src/context.ts"
+    },
     "./server": {
       "browser": null,
       "default": "./src/server.ts"

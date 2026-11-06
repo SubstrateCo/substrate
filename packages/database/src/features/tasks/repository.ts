@@ -7,6 +7,7 @@ import { projectStatuses } from "../projects/schema";
 import { taskComments } from "./comments.schema";
 import type { CreateTaskInput, TaskFields } from "./contracts";
 import { tasks } from "./tasks.schema";
+import { notifyAssignment, recordTaskActivity } from "../activity/events";
 
 export function taskRepository(context: RepositoryContext) {
   const { db, scope } = context;
@@ -91,6 +92,8 @@ export function taskRepository(context: RepositoryContext) {
             dueDate: input.dueDate,
           })
           .returning();
+        const event = await recordTaskActivity(ctx, task!.entityId, "Task created");
+        await notifyAssignment(ctx, task!.entityId, task!.assigneeActorEntityId, event.id);
         return task!;
       });
     },
@@ -113,6 +116,22 @@ export function taskRepository(context: RepositoryContext) {
         const ctx = new RepositoryContext(tx, scope);
         const task = await taskRepository(ctx).get(entityId, "edit", true);
         await validate(ctx, task.projectEntityId, input);
+        const changes: string[] = [];
+        if (input.statusId !== undefined && input.statusId !== task.statusId)
+          changes.push("Status changed");
+        if (
+          input.assigneeActorEntityId !== undefined &&
+          input.assigneeActorEntityId !== task.assigneeActorEntityId
+        )
+          changes.push("Assignee changed");
+        if (input.title !== undefined && input.title.trim() !== task.title)
+          changes.push("Title changed");
+        if (input.description !== undefined && input.description !== task.description)
+          changes.push("Description changed");
+        if (input.priority !== undefined && input.priority !== task.priority)
+          changes.push("Priority changed");
+        if (input.dueDate !== undefined && input.dueDate !== task.dueDate)
+          changes.push("Due date changed");
         const [updated] = await tx
           .update(tasks)
           .set({
@@ -126,6 +145,11 @@ export function taskRepository(context: RepositoryContext) {
           .where(taskWhere(entityId))
           .returning();
         await ctx.touch(entityId);
+        for (const action of changes) {
+          const event = await recordTaskActivity(ctx, entityId, action);
+          if (action === "Assignee changed")
+            await notifyAssignment(ctx, entityId, input.assigneeActorEntityId, event.id);
+        }
         return updated!;
       });
     },

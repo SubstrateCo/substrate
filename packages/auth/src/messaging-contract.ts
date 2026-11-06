@@ -11,6 +11,8 @@ export const messagingRead = z.discriminatedUnion("action", [
     action: z.literal("messages"),
     conversationId: id,
     threadId: id.optional(),
+    beforeMessageId: z.uuid().optional(),
+    aroundMessageId: z.uuid().optional(),
   }),
 ]);
 
@@ -27,6 +29,7 @@ export const messagingWrite = z.discriminatedUnion("action", [
     conversationId: id,
     body: z.string().trim().min(1).max(20_000),
     threadId: id.optional(),
+    requestId: z.uuid().optional(),
   }),
   z.object({ action: z.literal("react"), messageId: id, emoji: z.string().min(1).max(32) }),
   z.object({ action: z.literal("addMembers"), conversationId: id, emails }),
