@@ -1,5 +1,6 @@
 # Web application
 
+- This app is purely the rendering layer for the Startup OS Electron desktop app, not a standalone browser-first product. Design its UI, navigation, and workflows for the desktop experience.
 - Use TanStack Start with file-based routes. Keep route files thin.
 - Limit UI route files to route configuration, data loading, access checks, redirects, and general page layout. Route components may read route context, params, search, and loader data and pass them to domain components. Keep component internals, including local interaction state, effects, event handlers, form logic, and detailed UI, in `src/components/<domain>/`, not in route files.
 - Organize routes in directories that mirror their layout hierarchy. Use directory-based route files, not flattened dot-separated route filenames.
