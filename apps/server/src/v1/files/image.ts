@@ -1,5 +1,5 @@
-import sharp from "sharp";
 import { ServiceError } from "../../shared/service-result";
+import sharp from "sharp";
 
 const MAX_PIXELS = 16_000_000;
 const formats = new Map([

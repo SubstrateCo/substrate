@@ -1,5 +1,6 @@
-import type { Page } from "@playwright/test";
 import type { ServiceResult } from "@startup-os/contracts/result";
+
+import type { Page } from "@playwright/test";
 
 interface MessagingInput {
   organizationId?: string;

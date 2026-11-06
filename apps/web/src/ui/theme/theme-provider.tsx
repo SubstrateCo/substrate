@@ -6,6 +6,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
+
 import { applyTheme, createThemeStore } from "./theme-store";
 
 type ThemeContextValue = ReturnType<ReturnType<typeof createThemeStore>["getSnapshot"]> & {

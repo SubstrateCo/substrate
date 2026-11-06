@@ -1,3 +1,5 @@
+import { user } from "../../core/authentication/schema";
+import { organization } from "../../core/organizations/schema";
 import { sql } from "drizzle-orm";
 import {
   boolean,
@@ -11,8 +13,6 @@ import {
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
-import { user } from "../../core/authentication/schema";
-import { organization } from "../../core/organizations/schema";
 
 // Dedicated sharing boundary. These records never grant access to ordinary entities.
 export const messagingConversations = pgTable(

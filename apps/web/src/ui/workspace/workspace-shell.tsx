@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
-import { Bell, ListTodo, MessageSquare } from "lucide-react";
+
 import { FormMessage } from "../auth/form-message";
-import { TooltipProvider } from "../primitives/tooltip";
-import { WorkspaceAppButton } from "@/ui/workspace/workspace-shell/workspace-app-button";
-import { UserMenu } from "./user-menu";
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
 import { isAccessFailure } from "../feedback/request-failure";
+import { TooltipProvider } from "../primitives/tooltip";
+import { UserMenu } from "./user-menu";
+import { WorkspaceAppButton } from "@/ui/workspace/workspace-shell/workspace-app-button";
+import { Bell, ListTodo, MessageSquare } from "lucide-react";
 
 export function WorkspaceShell({
   name,

@@ -1,9 +1,9 @@
-import { _electron as electron, expect, test } from "@playwright/test";
-import { fileURLToPath } from "node:url";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { applicationURL } from "../src/navigation.js";
+import { _electron as electron, expect, test } from "@playwright/test";
+import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 

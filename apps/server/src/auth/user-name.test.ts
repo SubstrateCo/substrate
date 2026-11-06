@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
 import { normalizeUserName } from "./user-name";
+import { describe, expect, test } from "bun:test";
 
 describe("user name policy", () => {
   test("rejects non-string names from native user updates", () => {

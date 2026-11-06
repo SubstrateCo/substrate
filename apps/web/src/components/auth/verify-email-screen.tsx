@@ -1,8 +1,9 @@
 import { useMutation } from "@tanstack/react-query";
-import { VerifyEmailScreen as VerifyEmailScreenView } from "@/ui/auth/verify-email-screen";
+
+import { formText } from "./form-values";
 import { authClient } from "@/lib/auth-client";
 import { authHref } from "@/lib/browser-auth-links";
-import { formText } from "./form-values";
+import { VerifyEmailScreen as VerifyEmailScreenView } from "@/ui/auth/verify-email-screen";
 
 export function VerifyEmailScreen({
   redirect,

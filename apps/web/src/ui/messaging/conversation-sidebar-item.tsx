@@ -1,6 +1,6 @@
-import { Hash, LockKeyhole, MessageCircle, Users } from "lucide-react";
 import { Button } from "../primitives/button";
 import { conversationName, type Conversation } from "./types";
+import { Hash, LockKeyhole, MessageCircle, Users } from "lucide-react";
 
 export function ConversationSidebarItem({
   conversation,

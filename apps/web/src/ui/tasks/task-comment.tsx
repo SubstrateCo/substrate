@@ -9,7 +9,7 @@ export function TaskComment({ comment }: { comment: Comment }) {
           {new Date(comment.createdAt).toLocaleString()}
         </time>
       </div>
-      <p className="mt-2 text-sm whitespace-pre-wrap wrap-break-word">{comment.body}</p>
+      <p className="mt-2 text-sm wrap-break-word whitespace-pre-wrap">{comment.body}</p>
     </article>
   );
 }

@@ -1,15 +1,16 @@
 import { Children, type ReactNode } from "react";
+
+import { ContentNotice } from "../feedback/content-notice";
+import { ErrorState } from "../feedback/error-state";
+import { PaneState } from "../feedback/pane-state";
+import { isAccessFailure } from "../feedback/request-failure";
+import { Button } from "../primitives/button";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "../primitives/resizable";
+import { ComposerDraftProvider } from "./composer-drafts";
+import { ConversationSidebar } from "./conversation-sidebar";
+import type { Conversation } from "./types";
 import { useConversationCreation } from "@/ui/messaging/messaging-workspace/use-conversation-creation";
 import { ArrowLeft, PanelLeft } from "lucide-react";
-import { ContentNotice } from "../feedback/content-notice";
-import { ComposerDraftProvider } from "./composer-drafts";
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "../primitives/resizable";
-import type { Conversation } from "./types";
-import { Button } from "../primitives/button";
-import { PaneState } from "../feedback/pane-state";
-import { ConversationSidebar } from "./conversation-sidebar";
-import { isAccessFailure } from "../feedback/request-failure";
-import { ErrorState } from "../feedback/error-state";
 
 export function MessagingWorkspace({
   conversations,

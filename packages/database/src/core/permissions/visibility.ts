@@ -1,8 +1,8 @@
-import { sql } from "drizzle-orm";
-import type { ActorScope } from "../repository-context";
 import { entities } from "../entities/schema";
-import { entityGrants } from "./schema";
+import type { ActorScope } from "../repository-context";
 import { entityAccessParents } from "./access-parents";
+import { entityGrants } from "./schema";
+import { sql } from "drizzle-orm";
 
 export function visibilityCte(scope: ActorScope) {
   return sql`WITH RECURSIVE visible_entities(entity_id, level) AS (

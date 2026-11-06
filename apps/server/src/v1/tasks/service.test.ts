@@ -1,6 +1,7 @@
-import { expect, test } from "bun:test";
 import { failure } from "@startup-os/contracts/result";
+
 import { listProjects, getProject, listTaskComments, mutateTasks } from "./service";
+import { expect, test } from "bun:test";
 
 test("task services return invalid-input results before authentication", async () => {
   const headers = new Headers();

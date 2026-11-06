@@ -1,7 +1,9 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { TasksWrite } from "@startup-os/contracts/tasks/input";
-import { queryKeys } from "@/queries/keys";
+
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+
 import { mutateTasks } from "@/api/tasks";
+import { queryKeys } from "@/queries/keys";
 
 export function useTasksMutation(organizationId: string) {
   const client = useQueryClient();

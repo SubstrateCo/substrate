@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { PictureSettings } from "@/ui/settings/picture-settings";
+
 import { sessionQueryOptions } from "@/queries/auth/session";
 import { usePictureMutations } from "@/queries/files/mutations";
+import { PictureSettings } from "@/ui/settings/picture-settings";
 
 export function UserProfile() {
   const session = useQuery({ ...sessionQueryOptions(), staleTime: Infinity });

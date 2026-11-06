@@ -1,5 +1,7 @@
-import { Fragment } from "react";
 import type { RowData } from "@tanstack/react-table";
+
+import { Fragment } from "react";
+
 import {
   Pagination,
   PaginationContent,

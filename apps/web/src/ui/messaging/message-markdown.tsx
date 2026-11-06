@@ -1,7 +1,7 @@
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { EntityReference, type WorkspaceReference } from "./entity-reference";
 import { remarkWorkspaceReferences } from "./remark-workspace-references";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import "./message-markdown.css";
 
 export function MessageMarkdown({

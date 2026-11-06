@@ -1,8 +1,8 @@
-import { randomUUID } from "node:crypto";
-import { expect, test } from "@playwright/test";
 import { provisionVerifiedAccount } from "./auth";
-import { provisionWorkspace } from "./organizations";
 import { Mailpit } from "./mailpit";
+import { provisionWorkspace } from "./organizations";
+import { expect, test } from "@playwright/test";
+import { randomUUID } from "node:crypto";
 
 test("failed source-task submission keeps the draft and retry creates one linked task", async ({
   page,

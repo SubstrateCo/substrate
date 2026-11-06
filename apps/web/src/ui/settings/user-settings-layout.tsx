@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+
 import { WorkspaceSettings } from "../workspace/workspace-settings";
 
 export function UserSettingsLayout({

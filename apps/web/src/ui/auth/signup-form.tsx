@@ -1,8 +1,8 @@
-import { AuthFrame } from "./auth-frame";
-import { FormMessage } from "./form-message";
 import { PendingButton } from "../feedback/pending-button";
 import { Input } from "../primitives/input";
 import { Label } from "../primitives/label";
+import { AuthFrame } from "./auth-frame";
+import { FormMessage } from "./form-message";
 
 export function SignupForm({
   pending = false,

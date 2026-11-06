@@ -1,10 +1,10 @@
+import { AccessDeniedError, type PermissionLevel } from "../../index";
+import { actors, entityGrants, member } from "../../schema";
+import { setupDatabase } from "../../testing/database";
+import { createActor } from "../actors/provisioning";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
-import { AccessDeniedError, type PermissionLevel } from "../../index";
-import { createActor } from "../actors/provisioning";
-import { actors, entityGrants, member } from "../../schema";
-import { setupDatabase } from "../../testing/database";
 
 const f = setupDatabase();
 

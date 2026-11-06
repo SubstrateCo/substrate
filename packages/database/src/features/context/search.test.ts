@@ -1,13 +1,13 @@
+import { user } from "../../core/authentication/schema";
+import { entityLinks } from "../../core/links/schema";
+import { AccessDeniedError } from "../../errors";
+import { setupDatabase } from "../../testing/database";
+import { messagingParticipants } from "../messaging/schema";
+import { createMessagingService } from "../messaging/service";
+import { createContextService } from "./service";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
-import { setupDatabase } from "../../testing/database";
-import { user } from "../../core/authentication/schema";
-import { createContextService } from "./service";
-import { createMessagingService } from "../messaging/service";
-import { AccessDeniedError } from "../../errors";
 import { eq } from "drizzle-orm";
-import { entityLinks } from "../../core/links/schema";
-import { messagingParticipants } from "../messaging/schema";
 const f = setupDatabase();
 
 test("person search filters conversation access before paging and keeps organization boundaries", async () => {

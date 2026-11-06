@@ -1,8 +1,8 @@
-import { InvitationForm } from "./invitation-form";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../primitives/card";
 import { FormMessage } from "../auth/form-message";
-import { InvitationTable } from "./invitation-table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../primitives/card";
 import { Spinner } from "../primitives/spinner";
+import { InvitationForm } from "./invitation-form";
+import { InvitationTable } from "./invitation-table";
 
 export type InvitationRole = "owner" | "admin" | "member";
 export type InvitationListItem = {

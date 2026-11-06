@@ -1,13 +1,14 @@
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import type { RowData } from "@tanstack/react-table";
+
+import { ContentNotice } from "../feedback/content-notice";
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
-import { ContentNotice } from "../feedback/content-notice";
 import { isAccessFailure } from "../feedback/request-failure";
 import { Button } from "../primitives/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../primitives/table";
-import { TablePagination } from "./table-pagination";
 import type { AppTableInstance } from "./table";
+import { TablePagination } from "./table-pagination";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
 export function AppTable<TData extends RowData>({
   table,

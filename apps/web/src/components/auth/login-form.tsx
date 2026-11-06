@@ -1,13 +1,14 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { LoginForm as LoginFormView } from "@/ui/auth/login-form";
+
+import { BrowserElectronReturn } from "./browser-electron-return";
+import { DesktopSignIn } from "./desktop-sign-in";
+import { formText } from "./form-values";
 import { authClient } from "@/lib/auth-client";
 import { safeRedirect } from "@/lib/auth-navigation";
 import { authHref } from "@/lib/browser-auth-links";
-import { formText } from "./form-values";
 import { isDesktop } from "@/lib/desktop-auth";
-import { DesktopSignIn } from "./desktop-sign-in";
-import { BrowserElectronReturn } from "./browser-electron-return";
 import { electronQuery } from "@/lib/electron-query";
+import { LoginForm as LoginFormView } from "@/ui/auth/login-form";
 
 export function LoginForm({ redirect, email = "" }: { redirect: string; email?: string }) {
   if (isDesktop()) return <DesktopSignIn redirect={redirect} />;

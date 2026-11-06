@@ -1,11 +1,12 @@
+import { managedPicturePath } from "@startup-os/contracts/files/pictures";
 import { createStorageRepository } from "@startup-os/database/storage";
 import { createS3Storage } from "@startup-os/storage";
+
 import { db } from "../../auth/database";
 import { auth } from "../../auth/server";
-import { requireOrigin } from "../../shared/workspace";
 import { ServiceError } from "../../shared/service-result";
+import { requireOrigin } from "../../shared/workspace";
 import { createFileService } from "./service";
-import { managedPicturePath } from "@startup-os/contracts/files/pictures";
 
 export const defaultFileService = createFileService({
   repository: createStorageRepository(db),

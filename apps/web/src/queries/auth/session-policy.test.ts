@@ -1,6 +1,6 @@
-import { describe, expect, test } from "bun:test";
 import { guestSessionRedirect, verifiedSessionAccess } from "./session-policy";
 import type { getSession } from "@/api/session";
+import { describe, expect, test } from "bun:test";
 
 const session: NonNullable<Awaited<ReturnType<typeof getSession>>> = {
   user: {

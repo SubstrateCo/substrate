@@ -1,7 +1,8 @@
 import { useId, useRef, useState, type Ref } from "react";
-import { Upload } from "lucide-react";
+
 import { Button } from "../primitives/button";
 import { validateFiles } from "./file-validation";
+import { Upload } from "lucide-react";
 
 export interface FileUploadProps {
   accept?: string;

@@ -1,9 +1,9 @@
-import { ConversationCreateMenu } from "@/ui/messaging/conversation-sidebar/conversation-create-menu";
-import type { Conversation } from "./types";
-import { ConversationSidebarItem } from "./conversation-sidebar-item";
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
 import { isAccessFailure } from "../feedback/request-failure";
+import { ConversationSidebarItem } from "./conversation-sidebar-item";
+import type { Conversation } from "./types";
+import { ConversationCreateMenu } from "@/ui/messaging/conversation-sidebar/conversation-create-menu";
 
 const sectionLabels = { channel: "Channels", partner: "Partner channels", dm: "Direct messages" };
 const emptyLabels = {
@@ -40,7 +40,7 @@ export function ConversationSidebar({
       id="conversation-sidebar"
       aria-label="Conversations"
       aria-busy={loading}
-      className={`${mobileOpen ? "flex" : "hidden"} h-full min-w-0 w-full shrink-0 flex-col bg-sidebar text-sidebar-foreground md:flex`}
+      className={`${mobileOpen ? "flex" : "hidden"} h-full w-full min-w-0 shrink-0 flex-col bg-sidebar text-sidebar-foreground md:flex`}
     >
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-2 py-4">
         {error && (

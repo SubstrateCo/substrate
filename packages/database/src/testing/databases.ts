@@ -1,5 +1,5 @@
-import postgres from "postgres";
 import { testDatabaseURL } from "./environment";
+import postgres from "postgres";
 
 export async function createTestDatabases(count: number) {
   const base = testDatabaseURL();

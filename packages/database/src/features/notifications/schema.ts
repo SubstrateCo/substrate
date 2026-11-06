@@ -1,3 +1,6 @@
+import { actors } from "../../core/actors/schema";
+import { entities } from "../../core/entities/schema";
+import { messagingMessages } from "../messaging/schema";
 import { sql } from "drizzle-orm";
 import {
   check,
@@ -9,9 +12,6 @@ import {
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
-import { actors } from "../../core/actors/schema";
-import { entities } from "../../core/entities/schema";
-import { messagingMessages } from "../messaging/schema";
 
 export const notifications = pgTable(
   "notifications",

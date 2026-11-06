@@ -1,5 +1,5 @@
-import { LoadingState } from "./loading-state";
 import { Skeleton } from "../primitives/skeleton";
+import { LoadingState } from "./loading-state";
 
 export function PageLoading() {
   return (

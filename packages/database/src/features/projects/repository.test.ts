@@ -1,10 +1,10 @@
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
-import { expect, test } from "bun:test";
-import { eq } from "drizzle-orm";
 import { entities } from "../../core/entities/schema";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
 import { projects } from "./schema";
+/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
+import { expect, test } from "bun:test";
+import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
 

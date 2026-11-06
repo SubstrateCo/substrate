@@ -1,6 +1,6 @@
+import * as schema from "./schema";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import * as schema from "./schema";
 
 export function createDatabase(options: { connectionString: string; maxConnections?: number }) {
   const client = postgres(options.connectionString, { max: options.maxConnections ?? 10 });

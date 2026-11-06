@@ -1,10 +1,11 @@
-import { MessageSquare } from "lucide-react";
-import type { Message } from "./types";
-import { Button } from "../primitives/button";
+import type { ReactNode } from "react";
+
 import { FormMessage } from "../auth/form-message";
+import { Button } from "../primitives/button";
 import { EmojiPicker } from "./emoji-picker";
 import { MessageMarkdown } from "./message-markdown";
-import type { ReactNode } from "react";
+import type { Message } from "./types";
+import { MessageSquare } from "lucide-react";
 
 export function MessageItem({
   message,
@@ -81,7 +82,7 @@ export function MessageItem({
           <div
             role="group"
             aria-label="Message actions"
-            className="flex min-w-0 flex-wrap items-center gap-1 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 has-data-[state=open]:opacity-100"
+            className="flex min-w-0 flex-wrap items-center gap-1 group-focus-within:opacity-100 group-hover:opacity-100 has-data-[state=open]:opacity-100 [@media(hover:hover)]:opacity-0"
           >
             <EmojiPicker label="React to message" onSelect={onReact} disabled={pending} />
             {actions}

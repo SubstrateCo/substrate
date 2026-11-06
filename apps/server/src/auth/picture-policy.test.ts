@@ -1,11 +1,12 @@
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
-import { expect, test } from "bun:test";
 import { AccessDeniedError } from "@startup-os/database";
+
 import {
   authorizePictureMutation,
   protectUserPicture,
   readPictureMutation,
 } from "./picture-policy";
+/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
+import { expect, test } from "bun:test";
 
 const id = crypto.randomUUID();
 const image = `/api/v1/files/${id}/content`;

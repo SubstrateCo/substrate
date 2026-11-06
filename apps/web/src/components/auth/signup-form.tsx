@@ -1,11 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { SignupForm as SignupFormView } from "@/ui/auth/signup-form";
+
+import { DesktopSignIn } from "./desktop-sign-in";
+import { formText } from "./form-values";
 import { authClient } from "@/lib/auth-client";
 import { authHref } from "@/lib/browser-auth-links";
-import { formText } from "./form-values";
-import { electronQuery } from "@/lib/electron-query";
 import { isDesktop } from "@/lib/desktop-auth";
-import { DesktopSignIn } from "./desktop-sign-in";
+import { electronQuery } from "@/lib/electron-query";
+import { SignupForm as SignupFormView } from "@/ui/auth/signup-form";
 
 export function SignupForm({ redirect }: { redirect: string }) {
   if (isDesktop()) return <DesktopSignIn redirect={redirect} />;

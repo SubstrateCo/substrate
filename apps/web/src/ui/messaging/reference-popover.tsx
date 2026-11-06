@@ -1,12 +1,13 @@
 import { useRef, type KeyboardEvent, type ReactNode } from "react";
-import { AtSign } from "lucide-react";
+
+import { Button } from "../primitives/button";
+import { Popover, PopoverAnchor, PopoverContent } from "../primitives/popover";
+import type { ReferenceKind } from "./reference-picker";
 import {
   ReferenceResults,
   type ReferenceSuggestion,
 } from "@/ui/messaging/reference-popover/reference-results";
-import { Button } from "../primitives/button";
-import { Popover, PopoverAnchor, PopoverContent } from "../primitives/popover";
-import type { ReferenceKind } from "./reference-picker";
+import { AtSign } from "lucide-react";
 
 export {
   referenceOptionId,

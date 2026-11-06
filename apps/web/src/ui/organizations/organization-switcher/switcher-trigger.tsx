@@ -1,8 +1,8 @@
-import { ChevronsUpDown } from "lucide-react";
 import { Button } from "@/ui/primitives/button";
 import { DropdownMenuTrigger } from "@/ui/primitives/dropdown-menu";
 import { Spinner } from "@/ui/primitives/spinner";
 import { PicturePreview } from "@/ui/upload/picture-preview";
+import { ChevronsUpDown } from "lucide-react";
 
 export function SwitcherTrigger({
   name,

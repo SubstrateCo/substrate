@@ -1,9 +1,9 @@
-import { randomUUID } from "node:crypto";
-import { expect, test, type Page, type Request } from "@playwright/test";
+import { callMessaging } from "./api";
 import { provisionVerifiedAccount, type TestAccount } from "./auth";
 import { Mailpit } from "./mailpit";
 import { provisionMember, provisionWorkspace } from "./organizations";
-import { callMessaging } from "./api";
+import { expect, test, type Page, type Request } from "@playwright/test";
+import { randomUUID } from "node:crypto";
 
 function account(label: string, suffix: string): TestAccount {
   return {

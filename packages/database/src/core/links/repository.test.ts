@@ -1,7 +1,7 @@
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
-import { describe, expect, test } from "bun:test";
 import { AccessDeniedError } from "../../index";
 import { setupDatabase } from "../../testing/database";
+/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
+import { describe, expect, test } from "bun:test";
 
 const f = setupDatabase();
 

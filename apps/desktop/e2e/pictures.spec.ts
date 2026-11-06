@@ -1,12 +1,12 @@
+import { provisionVerifiedAccount } from "../../web/e2e/auth.js";
+import { Mailpit } from "../../web/e2e/mailpit.js";
+import { applicationURL } from "../src/navigation.js";
+import { authorizationCallback, requestBrowserSignIn } from "./auth.js";
 import { _electron as electron, expect, test } from "@playwright/test";
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { provisionVerifiedAccount } from "../../web/e2e/auth.js";
-import { Mailpit } from "../../web/e2e/mailpit.js";
-import { authorizationCallback, requestBrowserSignIn } from "./auth.js";
-import { applicationURL } from "../src/navigation.js";
 
 test("source desktop saves rotated avatars and logos, reloads them, and removes them", async ({
   browser,

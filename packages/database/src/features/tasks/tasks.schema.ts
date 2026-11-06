@@ -1,11 +1,12 @@
-import { sql } from "drizzle-orm";
-import { check, date, foreignKey, index, pgTable, text, unique, uuid } from "drizzle-orm/pg-core";
+import { taskStatusValues } from "@startup-os/contracts/tasks";
+
 import { actors } from "../../core/actors/schema";
 import { entityIdentity } from "../../core/entities/identity";
 import { entities } from "../../core/entities/schema";
 import { entityAccessParents } from "../../core/permissions/access-parents";
 import { projects } from "../projects/schema";
-import { taskStatusValues } from "@startup-os/contracts/tasks";
+import { sql } from "drizzle-orm";
+import { check, date, foreignKey, index, pgTable, text, unique, uuid } from "drizzle-orm/pg-core";
 
 export const tasks = pgTable(
   "tasks",

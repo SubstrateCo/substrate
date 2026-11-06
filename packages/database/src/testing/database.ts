@@ -1,7 +1,7 @@
-import { beforeEach } from "bun:test";
 import { createRepositories } from "../repositories";
 import * as schema from "../schema";
 import { resetTestData, testDatabase as db } from "./connection";
+import { beforeEach } from "bun:test";
 
 export function setupDatabase() {
   const fixture = { db, orgA: "org-a", orgB: "org-b", alice: "", bob: "", outsider: "" };

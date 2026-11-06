@@ -1,3 +1,15 @@
+import { desktopLink, desktopOrigin } from "@startup-os/contracts/desktop/links";
+
+import {
+  provisionVerifiedAccount,
+  signup as browserSignup,
+  verifyEmail,
+  type TestAccount,
+} from "../../web/e2e/auth.js";
+import { Mailpit } from "../../web/e2e/mailpit.js";
+import { provisionWorkspaceSession } from "../../web/e2e/organizations.js";
+import { applicationURL } from "../src/navigation.js";
+import { authorizationCallback, requestBrowserSignIn } from "./auth.js";
 import {
   _electron as electron,
   expect,
@@ -7,19 +19,8 @@ import {
 } from "@playwright/test";
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
-import { desktopLink, desktopOrigin } from "@startup-os/contracts/desktop/links";
-import { Mailpit } from "../../web/e2e/mailpit.js";
-import {
-  provisionVerifiedAccount,
-  signup as browserSignup,
-  verifyEmail,
-  type TestAccount,
-} from "../../web/e2e/auth.js";
-import { provisionWorkspaceSession } from "../../web/e2e/organizations.js";
-import { authorizationCallback, requestBrowserSignIn } from "./auth.js";
-import { applicationURL } from "../src/navigation.js";
+import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 

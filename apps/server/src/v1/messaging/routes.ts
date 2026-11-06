@@ -1,5 +1,3 @@
-import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
 import {
   workspaceInput,
   conversationInput,
@@ -8,8 +6,11 @@ import {
   reactionInput,
   membersInput,
 } from "@startup-os/contracts/messaging/input";
+
 import { respond, validationHook } from "../../shared/http";
 import * as defaultServices from "./service";
+import { zValidator } from "@hono/zod-validator";
+import { Hono } from "hono";
 
 export function createMessagingRoutes(services = defaultServices) {
   return new Hono()

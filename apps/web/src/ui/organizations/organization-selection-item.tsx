@@ -17,7 +17,7 @@ export function OrganizationSelectionItem({
       ref={buttonRef}
       variant="outline"
       size="selection"
-      className="justify-start whitespace-normal text-left"
+      className="justify-start text-left whitespace-normal"
       disabled={pending}
       aria-busy={pending}
       onClick={onSelect}

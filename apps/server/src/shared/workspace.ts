@@ -1,5 +1,5 @@
-import { auth } from "../auth/server";
 import { authEnvironment } from "../auth/environment";
+import { auth } from "../auth/server";
 import { ServiceError } from "./service-result";
 
 export function requireWorkspace(expected: string, active: string | null | undefined) {

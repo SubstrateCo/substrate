@@ -1,8 +1,8 @@
-import { and, asc, eq, gt, inArray } from "drizzle-orm";
-import { contacts } from "./schema";
-import { entities } from "../entities/schema";
 import { AccessDeniedError } from "../../errors";
+import { entities } from "../entities/schema";
 import { RepositoryContext, pageSize } from "../repository-context";
+import { contacts } from "./schema";
+import { and, asc, eq, gt, inArray } from "drizzle-orm";
 
 export function contactRepository(context: RepositoryContext) {
   const { db, scope } = context;

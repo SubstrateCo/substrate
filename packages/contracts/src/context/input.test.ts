@@ -1,6 +1,6 @@
-import { expect, test } from "bun:test";
-import { contextSourceTask, contextSearch, contextLink } from "./input";
 import { tasksWrite } from "../tasks/input";
+import { contextSourceTask, contextSearch, contextLink } from "./input";
+import { expect, test } from "bun:test";
 
 test("message-sourced and direct tasks require valid calendar due dates", () => {
   const input = {

@@ -1,14 +1,15 @@
-import { drizzleAdapter } from "@better-auth/drizzle-adapter";
+import { ac, roles } from "@startup-os/contracts/auth/permissions";
+import { managedPicture } from "@startup-os/contracts/files/pictures";
 import {
   getRememberedOrganization,
   rememberOrganization,
 } from "@startup-os/database/authentication";
 import { ensureHumanActor } from "@startup-os/database/provisioning";
 import * as schema from "@startup-os/database/schema";
-import { betterAuth } from "better-auth";
-import { electron } from "@better-auth/electron";
-import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
-import { organization } from "better-auth/plugins";
+import { createStorageRepository } from "@startup-os/database/storage";
+
+import { db } from "./database";
+import { frontendAuthLink, invitationLink } from "./email-link";
 import { authEnvironment } from "./environment";
 import { createMailer } from "./mail";
 import {
@@ -16,17 +17,17 @@ import {
   organizationResult,
   rememberedOrganization,
 } from "./organization-policy";
-import { ac, roles } from "@startup-os/contracts/auth/permissions";
-import { normalizeUserName } from "./user-name";
-import { db } from "./database";
-import { frontendAuthLink, invitationLink } from "./email-link";
 import {
   authorizePictureMutation,
   readPictureMutation,
   protectUserPicture,
 } from "./picture-policy";
-import { createStorageRepository } from "@startup-os/database/storage";
-import { managedPicture } from "@startup-os/contracts/files/pictures";
+import { normalizeUserName } from "./user-name";
+import { drizzleAdapter } from "@better-auth/drizzle-adapter";
+import { electron } from "@better-auth/electron";
+import { betterAuth } from "better-auth";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
+import { organization } from "better-auth/plugins";
 
 const env = authEnvironment();
 const sendMail = createMailer(env);

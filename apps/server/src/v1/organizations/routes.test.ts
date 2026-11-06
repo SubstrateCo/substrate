@@ -1,7 +1,8 @@
+import { failure, success } from "@startup-os/contracts/result";
+
+import { createOrganizationRoutes } from "./routes";
 import { describe, expect, test } from "bun:test";
 import { Hono } from "hono";
-import { failure, success } from "@startup-os/contracts/result";
-import { createOrganizationRoutes } from "./routes";
 
 describe("organization routes", () => {
   test("serves settings access at the public mount without caching", async () => {

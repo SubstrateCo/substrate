@@ -1,8 +1,8 @@
+import { bundledApplicationURL } from "./navigation.js";
+import { storageOrigins as validateStorageOrigins } from "./storage.js";
 import { realpath, stat } from "node:fs/promises";
 import { extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
-import { bundledApplicationURL } from "./navigation.js";
-import { storageOrigins as validateStorageOrigins } from "./storage.js";
 
 /** @param {string | undefined} value @param {boolean} packaged */
 export function backendURL(value, packaged) {

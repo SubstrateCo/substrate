@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test";
 import { readResult, ApiError } from "./result";
+import { expect, test } from "bun:test";
 
 test("returns success data, including nullable session data", async () => {
   expect(

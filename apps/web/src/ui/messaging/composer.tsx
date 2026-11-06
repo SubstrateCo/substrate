@@ -1,12 +1,13 @@
 import { useRef, useState } from "react";
+import type { ReactNode } from "react";
+
+import { FormMessage } from "../auth/form-message";
+import { PendingButton } from "../feedback/pending-button";
+import { Textarea } from "../primitives/textarea";
+import { ComposerToolbar } from "./composer-toolbar";
+import { EmojiPicker } from "./emoji-picker";
 import { useComposerDraft } from "@/ui/messaging/composer/use-composer-draft";
 import { Send } from "lucide-react";
-import { ComposerToolbar } from "./composer-toolbar";
-import { Textarea } from "../primitives/textarea";
-import { FormMessage } from "../auth/form-message";
-import { EmojiPicker } from "./emoji-picker";
-import { PendingButton } from "../feedback/pending-button";
-import type { ReactNode } from "react";
 
 export function Composer({
   onSend,
@@ -84,7 +85,7 @@ export function Composer({
             if (!isComposing()) setReferences(/(?:^|\s)@[^\s[\]]*$/.test(event.target.value));
           }}
           rows={1}
-          className="min-h-10 max-h-[25dvh] resize-none"
+          className="max-h-[25dvh] min-h-10 resize-none"
           onKeyDown={(event) => {
             if (event.nativeEvent.isComposing || isComposing()) return;
             if (references && renderReferences && !event.shiftKey) {

@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
 import { organizationSettingsAccess } from "./settings-access";
+import { describe, expect, test } from "bun:test";
 
 describe("organization settings access", () => {
   test("owners can open settings and manage invitations", () => {

@@ -1,6 +1,7 @@
-import { expect, test } from "bun:test";
 import { failure } from "@startup-os/contracts/result";
+
 import { listConversations, listMessages, sendMessage } from "./service";
+import { expect, test } from "bun:test";
 
 test("messaging reads validate input inside the result boundary", async () => {
   const headers = new Headers();

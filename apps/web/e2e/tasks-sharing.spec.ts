@@ -1,8 +1,8 @@
-import { randomUUID } from "node:crypto";
-import { expect, test, type Page } from "@playwright/test";
 import { provisionVerifiedAccount, type TestAccount } from "./auth";
 import { Mailpit } from "./mailpit";
 import { provisionMember, provisionWorkspace } from "./organizations";
+import { expect, test, type Page } from "@playwright/test";
+import { randomUUID } from "node:crypto";
 
 async function select(page: Page, label: string, option: string) {
   await page.getByRole("combobox", { name: label, exact: true }).click();

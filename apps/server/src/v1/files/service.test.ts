@@ -1,9 +1,10 @@
+import type { StorageRepository } from "@startup-os/database/storage";
+import type { ObjectStorage } from "@startup-os/storage";
+
+import { ServiceError } from "../../shared/service-result";
+import { createFileService } from "./service";
 import { describe, expect, test } from "bun:test";
 import sharp from "sharp";
-import type { ObjectStorage } from "@startup-os/storage";
-import type { StorageRepository } from "@startup-os/database/storage";
-import { createFileService } from "./service";
-import { ServiceError } from "../../shared/service-result";
 
 function fixture() {
   const id = crypto.randomUUID();

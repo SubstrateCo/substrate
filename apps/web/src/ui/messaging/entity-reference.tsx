@@ -1,6 +1,6 @@
-import { AtSign, CircleCheck, FolderKanban, LockKeyhole } from "lucide-react";
 import { Spinner } from "../primitives/spinner";
 import type { ReferenceKind } from "./reference-picker";
+import { AtSign, CircleCheck, FolderKanban, LockKeyhole } from "lucide-react";
 
 export type WorkspaceReference = {
   id: string;

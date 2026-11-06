@@ -1,11 +1,11 @@
+import { setupDatabase } from "../../testing/database";
+import { user } from "../authentication/schema";
+import { member, organization } from "../organizations/schema";
+import { createStorageRepository, type StorageScope } from "./repository";
+import { storedFiles, storageCandidates, userPictures, organizationPictures } from "./schema";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
-import { setupDatabase } from "../../testing/database";
-import { user } from "../authentication/schema";
-import { storedFiles, storageCandidates, userPictures, organizationPictures } from "./schema";
-import { member, organization } from "../organizations/schema";
-import { createStorageRepository, type StorageScope } from "./repository";
 
 const f = setupDatabase();
 function repositoryWithAuthWrites() {

@@ -1,13 +1,14 @@
-import { app, BrowserWindow, Menu, net, session, shell } from "electron";
-import { fileURLToPath } from "node:url";
-import { join } from "node:path";
-import { readFileSync } from "node:fs";
 import { desktopScheme, resolveDesktopLink } from "@startup-os/contracts/desktop/links";
-import { applicationURL, bundledApplicationURL, navigationTarget } from "./navigation.js";
-import { backendURL, bundledRenderer } from "./bundled-renderer.js";
-import { createDesktopAuthClient } from "./auth-client.js";
+
 import { desktopAPITransport } from "./api-transport.js";
+import { createDesktopAuthClient } from "./auth-client.js";
+import { backendURL, bundledRenderer } from "./bundled-renderer.js";
+import { applicationURL, bundledApplicationURL, navigationTarget } from "./navigation.js";
 import { storageOrigins, storageRequest } from "./storage.js";
+import { app, BrowserWindow, Menu, net, session, shell } from "electron";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const bundled = app.isPackaged || app.commandLine.hasSwitch("bundled-renderer");
 const rendererURL = bundled ? bundledApplicationURL : applicationURL;

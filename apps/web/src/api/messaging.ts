@@ -1,4 +1,3 @@
-import type { z } from "zod";
 import type {
   conversationInput,
   membersInput,
@@ -7,8 +6,10 @@ import type {
   reactionInput,
   workspaceInput,
 } from "@startup-os/contracts/messaging/input";
+
 import { api, type ApiInput } from "./client";
 import { readResult } from "./result";
+import type { z } from "zod";
 
 export const listConversations = ({ data, signal }: ApiInput<z.input<typeof workspaceInput>>) =>
   readResult(api.messaging.conversations.$get({ query: data }, { init: { signal } }));

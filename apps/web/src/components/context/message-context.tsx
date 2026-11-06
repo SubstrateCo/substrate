@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MessageWork } from "@/ui/messaging/message-work";
-import { isAccessFailure } from "@/ui/feedback/request-failure";
-import { messageLinksOptions } from "@/queries/context/options";
-import { workHref } from "@/lib/context-links";
+
 import { detachWork } from "@/api/context";
+import { workHref } from "@/lib/context-links";
+import { messageLinksOptions } from "@/queries/context/options";
 import { queryKeys } from "@/queries/keys";
+import { isAccessFailure } from "@/ui/feedback/request-failure";
+import { MessageWork } from "@/ui/messaging/message-work";
 
 export function MessageContext({
   organizationId,

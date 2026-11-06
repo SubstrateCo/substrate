@@ -1,5 +1,6 @@
-import { hc } from "hono/client";
 import type { AppType } from "@startup-os/server/api";
+
+import { hc } from "hono/client";
 
 export const api = hc<AppType>("/", { init: { credentials: "same-origin" } }).api.v1;
 

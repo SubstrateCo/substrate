@@ -1,9 +1,10 @@
-import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
 import { createUploadInput, fileIdInput, uploadIdParam } from "@startup-os/contracts/files/input";
+
 import { respond, validationHook } from "../../shared/http";
 import { defaultFileService } from "./default-service";
 import type { FileService } from "./service";
+import { zValidator } from "@hono/zod-validator";
+import { Hono } from "hono";
 
 export function createFilesRoutes(service: FileService = defaultFileService) {
   return new Hono()

@@ -1,10 +1,10 @@
-import { TaskDetail as TaskDetailView } from "@/ui/tasks/task-detail";
-import type { ProjectDetail, Task } from "@/ui/tasks/types";
+import { CopyLink } from "../context/copy-link";
+import { TaskContext } from "../context/task-context";
 import { TaskComments } from "./task-comments";
 import { TaskForm } from "./task-form";
-import { TaskContext } from "../context/task-context";
-import { CopyLink } from "../context/copy-link";
 import { workHref } from "@/lib/context-links";
+import { TaskDetail as TaskDetailView } from "@/ui/tasks/task-detail";
+import type { ProjectDetail, Task } from "@/ui/tasks/types";
 
 export function TaskDetail({
   organizationId,

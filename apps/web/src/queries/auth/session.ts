@@ -1,8 +1,9 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { redirect } from "@tanstack/react-router";
+
+import { guestSessionRedirect, verifiedSessionAccess } from "./session-policy";
 import { getSession } from "@/api/session";
 import { queryKeys } from "@/queries/keys";
-import { guestSessionRedirect, verifiedSessionAccess } from "./session-policy";
 
 export const sessionQueryOptions = () =>
   queryOptions({

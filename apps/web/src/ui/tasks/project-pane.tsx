@@ -1,15 +1,16 @@
 import { useState, type ReactNode } from "react";
-import { Plus } from "lucide-react";
-import { Button } from "@/ui/primitives/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/primitives/tabs";
+
+import { ProjectSettings } from "./project-pane/project-settings";
+import { ProjectTaskPanel, type TaskPanelRenderers } from "./project-pane/project-task-panel";
+import { useProjectEditor } from "./project-pane/use-project-editor";
+import { useTaskPanel } from "./project-pane/use-task-panel";
+import type { ProjectDetail } from "./types";
 import { ErrorState } from "@/ui/feedback/error-state";
 import { isAccessFailure } from "@/ui/feedback/request-failure";
+import { Button } from "@/ui/primitives/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/primitives/tabs";
 import { ProjectLoading } from "@/ui/tasks/project-loading";
-import type { ProjectDetail } from "./types";
-import { ProjectSettings } from "./project-pane/project-settings";
-import { useProjectEditor } from "./project-pane/use-project-editor";
-import { ProjectTaskPanel, type TaskPanelRenderers } from "./project-pane/project-task-panel";
-import { useTaskPanel } from "./project-pane/use-task-panel";
+import { Plus } from "lucide-react";
 
 export function ProjectPane({
   data,
@@ -93,7 +94,7 @@ export function ProjectPane({
             )}
           </div>
           <p
-            className="line-clamp-2 w-full text-sm whitespace-pre-wrap text-muted-foreground wrap-break-word"
+            className="line-clamp-2 w-full text-sm wrap-break-word whitespace-pre-wrap text-muted-foreground"
             title={detail.project.description}
           >
             {detail.project.description}

@@ -1,9 +1,9 @@
+import { backendURL } from "../src/bundled-renderer.js";
+import { developmentServices, ensureDevelopmentServices } from "../src/dev-services.js";
+import { applicationURL } from "../src/navigation.js";
+import { bundlePreload } from "./preload.js";
 import electron from "electron";
 import { fileURLToPath } from "node:url";
-import { applicationURL } from "../src/navigation.js";
-import { developmentServices, ensureDevelopmentServices } from "../src/dev-services.js";
-import { backendURL } from "../src/bundled-renderer.js";
-import { bundlePreload } from "./preload.js";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
 const desktop = fileURLToPath(new URL("../", import.meta.url));

@@ -1,6 +1,7 @@
-import { hashPassword } from "better-auth/crypto";
 import { createDatabase, migrateDatabase } from "@startup-os/database";
 import { developmentTeams, seedDevelopmentDatabase } from "@startup-os/database/development";
+
+import { hashPassword } from "better-auth/crypto";
 
 if (process.env.NODE_ENV === "production")
   throw new Error("Development seeding is disabled in production.");

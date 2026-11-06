@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test";
 import { createUploadInput, MAX_FILE_BYTES } from "./input";
+import { expect, test } from "bun:test";
 
 test("uploads accept generic files but bound image MIME and declared size", () => {
   expect(

@@ -1,7 +1,8 @@
+import { organizationSettingsAccess } from "@startup-os/contracts/auth/settings-access";
+
 import { auth } from "../../auth/server";
 import { serviceResult } from "../../shared/service-result";
 import type { SessionAPI } from "../session/service";
-import { organizationSettingsAccess } from "@startup-os/contracts/auth/settings-access";
 
 export interface OrganizationAPI extends SessionAPI {
   getActiveMemberRole(input: {

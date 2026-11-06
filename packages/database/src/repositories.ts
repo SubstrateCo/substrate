@@ -1,9 +1,9 @@
 import type { Database, DatabaseExecutor } from "./client";
-import { RepositoryContext, type ActorScope } from "./core/repository-context";
 import { contactRepository } from "./core/contacts/repository";
 import { entityRepository } from "./core/entities/repository";
 import { linkRepository } from "./core/links/repository";
 import { permissionRepository } from "./core/permissions/repository";
+import { RepositoryContext, type ActorScope } from "./core/repository-context";
 import { projectRepository } from "./features/projects/repository";
 import { taskRepository } from "./features/tasks/repository";
 

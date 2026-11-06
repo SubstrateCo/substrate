@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test";
 import { finalObjectKey, temporaryObjectKey } from "./object-keys";
+import { expect, test } from "bun:test";
 
 const avatar = { id: "upload-1", purpose: "avatar", ownerUserId: "user-1", organizationId: null };
 const logo = {

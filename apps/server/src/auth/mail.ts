@@ -1,5 +1,5 @@
-import nodemailer from "nodemailer";
 import type { authEnvironment } from "./environment";
+import nodemailer from "nodemailer";
 
 export function createMailer(env: ReturnType<typeof authEnvironment>) {
   const transport = nodemailer.createTransport(env.smtp);

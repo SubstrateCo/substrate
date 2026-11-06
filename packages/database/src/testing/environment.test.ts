@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test";
 import { testDatabaseURL } from "./environment";
+import { expect, test } from "bun:test";
 
 test("test database setup requires a dedicated test URL", () => {
   expect(() => testDatabaseURL({})).toThrow("TEST_DATABASE_URL is required");

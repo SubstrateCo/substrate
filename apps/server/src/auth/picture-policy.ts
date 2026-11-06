@@ -1,8 +1,9 @@
-import { APIError } from "better-auth/api";
-import { z } from "zod";
 import { managedPicture, managedPictureFileId } from "@startup-os/contracts/files/pictures";
 import { AccessDeniedError } from "@startup-os/database";
 import type { StorageRepository } from "@startup-os/database/storage";
+
+import { APIError } from "better-auth/api";
+import { z } from "zod";
 
 const pictureInput = z.looseObject({
   image: z.unknown().optional(),

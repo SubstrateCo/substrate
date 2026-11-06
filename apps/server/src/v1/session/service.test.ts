@@ -1,7 +1,7 @@
-import { describe, expect, test } from "bun:test";
-import { APIError } from "better-auth/api";
 import { createSessionService } from "./service";
 import { sessionFixture } from "./test-support";
+import { APIError } from "better-auth/api";
+import { describe, expect, test } from "bun:test";
 
 describe("session service", () => {
   test("returns the authenticated session using the incoming headers", async () => {

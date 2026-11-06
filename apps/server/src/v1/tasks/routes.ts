@@ -1,13 +1,14 @@
-import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
 import {
   tasksWorkspace,
   projectRequest,
   taskRequest,
   tasksWrite,
 } from "@startup-os/contracts/tasks/input";
+
 import { respond, validationHook } from "../../shared/http";
 import * as defaultServices from "./service";
+import { zValidator } from "@hono/zod-validator";
+import { Hono } from "hono";
 
 export function createTasksRoutes(services = defaultServices) {
   return new Hono()

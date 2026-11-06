@@ -1,6 +1,6 @@
+import { useTasksMutation } from "./use-tasks-mutation";
 import { ProjectSharing as ProjectSharingView } from "@/ui/tasks/project-sharing";
 import type { ProjectDetail } from "@/ui/tasks/types";
-import { useTasksMutation } from "./use-tasks-mutation";
 
 export function ProjectSharing({
   organizationId,

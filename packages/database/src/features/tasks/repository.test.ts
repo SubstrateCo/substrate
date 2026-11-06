@@ -1,13 +1,13 @@
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
-import { describe, expect, test } from "bun:test";
-import { eq } from "drizzle-orm";
-import { AccessDeniedError, ValidationError } from "../../errors";
-import { setupDatabase } from "../../testing/database";
 import { entities } from "../../core/entities/schema";
 import { entityLinks } from "../../core/links/schema";
 import { entityAccessParents } from "../../core/permissions/access-parents";
+import { AccessDeniedError, ValidationError } from "../../errors";
+import { setupDatabase } from "../../testing/database";
 import { taskComments } from "./comments.schema";
 import { tasks } from "./tasks.schema";
+/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
+import { describe, expect, test } from "bun:test";
+import { eq } from "drizzle-orm";
 
 const fixture = setupDatabase();
 

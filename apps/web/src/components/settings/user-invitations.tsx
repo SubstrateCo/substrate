@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { UserInvitations as UserInvitationsView } from "@/ui/settings/user-invitations";
-import { userInvitationsQueryOptions } from "@/queries/organizations/options";
+
 import { useCurrentTime } from "@/hooks/use-current-time";
+import { userInvitationsQueryOptions } from "@/queries/organizations/options";
+import { UserInvitations as UserInvitationsView } from "@/ui/settings/user-invitations";
 
 export function UserInvitations() {
   const invitations = useQuery(userInvitationsQueryOptions());

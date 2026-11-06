@@ -1,9 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Composer as ComposerView } from "@/ui/messaging/composer";
-import { queryKeys } from "@/queries/keys";
-import { sendMessage } from "@/api/messaging";
+
 import { useRef } from "react";
+
 import { ReferencePicker } from "../context/reference-picker";
+import { sendMessage } from "@/api/messaging";
+import { queryKeys } from "@/queries/keys";
+import { Composer as ComposerView } from "@/ui/messaging/composer";
 
 export function Composer({
   organizationId,

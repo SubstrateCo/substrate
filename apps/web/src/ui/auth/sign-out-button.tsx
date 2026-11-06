@@ -1,7 +1,7 @@
-import { LogOut } from "lucide-react";
 import { Button } from "../primitives/button";
-import { FormMessage } from "./form-message";
 import { Spinner } from "../primitives/spinner";
+import { FormMessage } from "./form-message";
+import { LogOut } from "lucide-react";
 
 export function SignOutButton({
   compact = false,

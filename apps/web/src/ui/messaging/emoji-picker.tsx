@@ -1,7 +1,8 @@
-import { SmilePlus } from "lucide-react";
 import { useState } from "react";
+
 import { Button } from "../primitives/button";
 import { Popover, PopoverContent, PopoverTrigger } from "../primitives/popover";
+import { SmilePlus } from "lucide-react";
 
 const emojis = [
   "😀",

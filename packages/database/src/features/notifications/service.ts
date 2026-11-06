@@ -1,11 +1,11 @@
-import { and, desc, eq, sql } from "drizzle-orm";
 import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { AccessDeniedError } from "../../errors";
+import { taskActivity } from "../activity/schema";
 import { workspaceContext, requireWork } from "../context/access";
 import { requireMessage, type MessagingIdentity } from "../messaging/access";
-import { taskActivity } from "../activity/schema";
 import { notifications } from "./schema";
+import { and, desc, eq, sql } from "drizzle-orm";
 
 export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity) {
   return {

@@ -1,12 +1,13 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../primitives/card";
-import { OrganizationSelectionItem } from "./organization-selection-item";
-import { Separator } from "../primitives/separator";
+
 import { FormMessage } from "../auth/form-message";
+import { ContentNotice } from "../feedback/content-notice";
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
-import { ContentNotice } from "../feedback/content-notice";
 import { isAccessFailure } from "../feedback/request-failure";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../primitives/card";
+import { Separator } from "../primitives/separator";
+import { OrganizationSelectionItem } from "./organization-selection-item";
 
 export function OrganizationSelection({
   organizations,

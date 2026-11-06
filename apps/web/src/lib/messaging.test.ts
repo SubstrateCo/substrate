@@ -1,6 +1,6 @@
-import { expect, test } from "bun:test";
-import { parseRecipientEmails } from "./messaging";
 import { queryKeys } from "../queries/keys";
+import { parseRecipientEmails } from "./messaging";
+import { expect, test } from "bun:test";
 
 test("recipient entry accepts exact addresses across domains and removes duplicates", () => {
   expect(

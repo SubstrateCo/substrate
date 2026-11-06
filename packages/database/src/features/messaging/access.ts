@@ -1,4 +1,3 @@
-import { and, eq, inArray, or, type SQLWrapper } from "drizzle-orm";
 import type { DatabaseExecutor } from "../../client";
 import { AccessDeniedError } from "../../errors";
 import {
@@ -6,6 +5,7 @@ import {
   messagingMessages as messages,
   messagingParticipants as participants,
 } from "./schema";
+import { and, eq, inArray, or, type SQLWrapper } from "drizzle-orm";
 
 export interface MessagingIdentity {
   userId: string;

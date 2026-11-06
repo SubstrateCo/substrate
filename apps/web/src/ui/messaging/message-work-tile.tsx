@@ -1,6 +1,6 @@
-import { ArrowUpRight, CircleCheck, FolderKanban, Unlink } from "lucide-react";
 import { Button } from "../primitives/button";
 import type { MessageWorkLink } from "./message-work";
+import { ArrowUpRight, CircleCheck, FolderKanban, Unlink } from "lucide-react";
 
 export function MessageWorkTile({
   link,

@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
 import { frontendAuthLink, invitationLink } from "./email-link";
+import { describe, expect, test } from "bun:test";
 
 describe("browser auth email links", () => {
   test("keeps verification credentials in the browser flow and preserves the desktop authorization query", () => {

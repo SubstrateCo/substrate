@@ -1,5 +1,5 @@
-import { expect, type APIRequestContext, type Page } from "@playwright/test";
 import { Mailpit, openEmailLink } from "./mailpit.js";
+import { expect, type APIRequestContext, type Page } from "@playwright/test";
 
 export interface TestAccount {
   name: string;

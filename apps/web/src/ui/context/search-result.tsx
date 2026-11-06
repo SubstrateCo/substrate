@@ -1,7 +1,8 @@
-import { Button } from "../primitives/button";
 import { useRef } from "react";
-import { ArrowUpLeft, CircleCheck, FolderKanban, Hash, MessageSquare } from "lucide-react";
+
+import { Button } from "../primitives/button";
 import { CommandItem, CommandShortcut } from "../primitives/command";
+import { ArrowUpLeft, CircleCheck, FolderKanban, Hash, MessageSquare } from "lucide-react";
 
 export type SearchResultItem = { id: string; kind: string; title: string; href: string };
 

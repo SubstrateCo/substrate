@@ -1,7 +1,8 @@
-import { createAuthClient } from "better-auth/client";
+import { desktopScheme } from "@startup-os/contracts/desktop/links";
+
 import { electronClient, handleDeepLink } from "@better-auth/electron/client";
 import { storage } from "@better-auth/electron/storage";
-import { desktopScheme } from "@startup-os/contracts/desktop/links";
+import { createAuthClient } from "better-auth/client";
 
 /** @param {string} backend @param {string} frontend @param {boolean} smokeTest @param {() => import("electron").BrowserWindow | undefined} getWindow */
 export function createDesktopAuthClient(backend, frontend, smokeTest, getWindow) {

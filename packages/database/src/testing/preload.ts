@@ -1,7 +1,7 @@
-import { afterAll, beforeAll } from "bun:test";
-import { sql } from "drizzle-orm";
 import { migrateDatabase } from "../migrations";
 import { closeTestDatabase, testDatabase } from "./connection";
+import { afterAll, beforeAll } from "bun:test";
+import { sql } from "drizzle-orm";
 
 beforeAll(async () => {
   await testDatabase.execute(sql`SET client_min_messages TO WARNING`);

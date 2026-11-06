@@ -1,10 +1,11 @@
-import { Button } from "../primitives/button";
+import type { Ref } from "react";
+
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
 import { isAccessFailure } from "../feedback/request-failure";
+import { Button } from "../primitives/button";
 import type { Project } from "./types";
 import { FolderKanban, Plus } from "lucide-react";
-import type { Ref } from "react";
 
 export function ProjectSidebar({
   projects,

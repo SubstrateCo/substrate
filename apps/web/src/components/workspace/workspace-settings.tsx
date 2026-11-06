@@ -1,6 +1,6 @@
-import { OrganizationSettings } from "@/ui/workspace/organization-settings";
 import { InvitationManager } from "@/components/organizations/invitation-manager";
 import { OrganizationPicture } from "@/components/organizations/organization-picture";
+import { OrganizationSettings } from "@/ui/workspace/organization-settings";
 
 export function WorkspaceSettings({
   organizationId,

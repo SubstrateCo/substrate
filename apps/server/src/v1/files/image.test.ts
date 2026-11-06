@@ -1,7 +1,7 @@
+import { normalizePicture } from "./image";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 import sharp from "sharp";
-import { normalizePicture } from "./image";
 
 test("pictures are decoded and reencoded, stripping metadata and bounding dimensions", async () => {
   const input = await sharp({

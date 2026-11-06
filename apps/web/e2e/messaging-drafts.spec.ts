@@ -1,9 +1,9 @@
-import { randomUUID } from "node:crypto";
-import { expect, test } from "@playwright/test";
+import { callMessaging } from "./api";
 import { provisionVerifiedAccount } from "./auth";
 import { Mailpit } from "./mailpit";
 import { provisionWorkspace } from "./organizations";
-import { callMessaging } from "./api";
+import { expect, test } from "@playwright/test";
+import { randomUUID } from "node:crypto";
 
 test("production composers preserve separate channel and thread drafts", async ({
   page,

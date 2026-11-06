@@ -1,8 +1,9 @@
-import { Alert, AlertDescription } from "../primitives/alert";
 import { useState } from "react";
-import { CircleAlert, CircleCheck, X } from "lucide-react";
-import { Button } from "../primitives/button";
+
 import { actionErrorMessage } from "../feedback/action-error-message";
+import { Alert, AlertDescription } from "../primitives/alert";
+import { Button } from "../primitives/button";
+import { CircleAlert, CircleCheck, X } from "lucide-react";
 
 export function FormMessage({
   error,
@@ -59,7 +60,7 @@ export function FormMessage({
           variant="ghost"
           size="icon-xs"
           aria-label="Dismiss notification"
-          className="absolute right-3 top-3"
+          className="absolute top-3 right-3"
           onClick={dismiss}
         >
           <X />

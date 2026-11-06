@@ -1,6 +1,4 @@
-import { Monitor, Moon, Sun } from "lucide-react";
 import { useHydrated } from "../hooks/use-hydrated";
-import { useTheme } from "./theme-provider";
 import { Button } from "../primitives/button";
 import {
   DropdownMenu,
@@ -9,6 +7,8 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "../primitives/dropdown-menu";
+import { useTheme } from "./theme-provider";
+import { Monitor, Moon, Sun } from "lucide-react";
 
 export function ThemeSwitcher({ compact = false }: { compact?: boolean }) {
   const { theme, setTheme } = useTheme();

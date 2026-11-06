@@ -1,7 +1,7 @@
+import { FormMessage } from "../auth/form-message";
 import { PendingButton } from "../feedback/pending-button";
 import { Input } from "../primitives/input";
 import { Label } from "../primitives/label";
-import { FormMessage } from "../auth/form-message";
 
 export function CreateOrganizationForm({
   pending = false,

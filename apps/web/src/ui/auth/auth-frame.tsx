@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+
 import { useHydrated } from "../hooks/use-hydrated";
 import { Card, CardContent, CardDescription, CardHeader } from "../primitives/card";
 
@@ -20,7 +21,7 @@ export function AuthFrame({
             <span aria-hidden="true" className="size-3 rounded-sm bg-primary shadow-surface" />
             Startup OS
           </p>
-          <h1 className="font-heading text-2xl font-medium leading-snug tracking-tight">{title}</h1>
+          <h1 className="font-heading text-2xl leading-snug font-medium tracking-tight">{title}</h1>
           <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent>

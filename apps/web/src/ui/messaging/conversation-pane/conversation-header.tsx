@@ -1,5 +1,5 @@
-import { Hash, LockKeyhole, UserPlus } from "lucide-react";
 import { Button } from "@/ui/primitives/button";
+import { Hash, LockKeyhole, UserPlus } from "lucide-react";
 
 export function ConversationHeader({
   title,

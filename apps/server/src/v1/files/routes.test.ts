@@ -1,7 +1,8 @@
-import { expect, test } from "bun:test";
 import { failure, success } from "@startup-os/contracts/result";
-import type { FileService } from "./service";
+
 import { createFilesRoutes } from "./routes";
+import type { FileService } from "./service";
+import { expect, test } from "bun:test";
 
 function service(): FileService {
   return {

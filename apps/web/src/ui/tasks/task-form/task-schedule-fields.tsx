@@ -1,9 +1,11 @@
-import { useId } from "react";
 import { taskStatusLabels, taskStatusValues } from "@startup-os/contracts/tasks";
-import { Input } from "@/ui/primitives/input";
-import { Label } from "@/ui/primitives/label";
+
+import { useId } from "react";
+
 import { TaskSelect } from "../task-select";
 import type { ProjectDetail, Task } from "../types";
+import { Input } from "@/ui/primitives/input";
+import { Label } from "@/ui/primitives/label";
 
 const priorities: Task["priority"][] = ["none", "low", "medium", "high", "urgent"];
 

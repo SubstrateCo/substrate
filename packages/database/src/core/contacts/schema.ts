@@ -1,3 +1,5 @@
+import { entityIdentity } from "../entities/identity";
+import { entities } from "../entities/schema";
 import { sql } from "drizzle-orm";
 import {
   check,
@@ -10,8 +12,6 @@ import {
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
-import { entities } from "../entities/schema";
-import { entityIdentity } from "../entities/identity";
 
 export const contacts = pgTable(
   "contacts",

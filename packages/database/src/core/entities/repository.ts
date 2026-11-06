@@ -1,7 +1,7 @@
-import { and, eq } from "drizzle-orm";
 import { ValidationError } from "../../errors";
-import { entities } from "./schema";
 import { RepositoryContext } from "../repository-context";
+import { entities } from "./schema";
+import { and, eq } from "drizzle-orm";
 
 export function entityRepository(context: RepositoryContext) {
   return {

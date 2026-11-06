@@ -1,3 +1,5 @@
+import { actors } from "../actors/schema";
+import { entities } from "../entities/schema";
 import { sql } from "drizzle-orm";
 import {
   check,
@@ -10,8 +12,6 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
-import { actors } from "../actors/schema";
-import { entities } from "../entities/schema";
 
 export const relationType = pgEnum("relation_type", ["related_to", "mentions"]);
 

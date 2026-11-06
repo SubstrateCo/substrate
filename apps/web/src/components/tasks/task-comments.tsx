@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { TaskComments as TaskCommentsView } from "@/ui/tasks/task-comments";
-import { taskCommentsQueryOptions } from "@/queries/tasks/options";
+
 import { useTasksMutation } from "./use-tasks-mutation";
+import { taskCommentsQueryOptions } from "@/queries/tasks/options";
+import { TaskComments as TaskCommentsView } from "@/ui/tasks/task-comments";
 
 export function TaskComments({
   organizationId,

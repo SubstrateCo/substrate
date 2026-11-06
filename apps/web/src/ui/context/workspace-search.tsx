@@ -1,11 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
-import { Command, CommandInput } from "../primitives/command";
-import { Button } from "../primitives/button";
+
 import { isAccessFailure } from "../feedback/request-failure";
+import { Button } from "../primitives/button";
+import { Command, CommandInput } from "../primitives/command";
 import type { SearchResultItem } from "./search-result";
 import { SearchResults } from "@/ui/context/workspace-search/search-results";
 import { SearchShortcuts } from "@/ui/context/workspace-search/search-shortcuts";
+import { X } from "lucide-react";
 
 export type SearchKind = "all" | "task" | "project" | "message" | "conversation";
 

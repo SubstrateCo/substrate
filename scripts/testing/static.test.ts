@@ -1,6 +1,6 @@
+import { staticFilePath } from "./static";
 import { expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { staticFilePath } from "./static";
 
 test("static test servers resolve assets inside their bundle", () => {
   const root = resolve("bundle");

@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { DesktopSignIn as DesktopSignInView } from "@/ui/auth/desktop-sign-in";
+
+import { useEffect, useState } from "react";
+
 import { safeRedirect } from "@/lib/auth-navigation";
+import { DesktopSignIn as DesktopSignInView } from "@/ui/auth/desktop-sign-in";
 import "@/lib/desktop-auth";
 
 export function DesktopSignIn({ redirect }: { redirect: string }) {

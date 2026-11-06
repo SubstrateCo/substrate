@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
+
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
 import { isAccessFailure } from "../feedback/request-failure";
-import { DiscussionItem, type Discussion } from "./discussion-item";
 import { Empty, EmptyDescription } from "../primitives/empty";
+import { DiscussionItem, type Discussion } from "./discussion-item";
 
 export function WorkDiscussions({
   items,

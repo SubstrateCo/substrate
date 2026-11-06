@@ -1,9 +1,9 @@
+import { AccessDeniedError } from "../../errors";
+import { actors, entities, member } from "../../schema";
+import { setupDatabase } from "../../testing/database";
+import { createActor, ensureHumanActor } from "./provisioning";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { describe, expect, test } from "bun:test";
-import { createActor, ensureHumanActor } from "./provisioning";
-import { actors, entities, member } from "../../schema";
-import { AccessDeniedError } from "../../errors";
-import { setupDatabase } from "../../testing/database";
 
 const f = setupDatabase();
 

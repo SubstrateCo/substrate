@@ -1,5 +1,5 @@
-import { Skeleton } from "../primitives/skeleton";
 import { cn } from "../lib/utils";
+import { Skeleton } from "../primitives/skeleton";
 
 export function LoadingState({
   label,

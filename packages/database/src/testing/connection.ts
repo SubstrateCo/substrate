@@ -1,8 +1,8 @@
-import { is, sql } from "drizzle-orm";
-import { PgTable } from "drizzle-orm/pg-core";
 import { createDatabase } from "../client";
 import * as schema from "../schema";
 import { testDatabaseURL } from "./environment";
+import { is, sql } from "drizzle-orm";
+import { PgTable } from "drizzle-orm/pg-core";
 
 const connection = createDatabase({ connectionString: testDatabaseURL().href, maxConnections: 4 });
 export const testDatabase = connection.db;

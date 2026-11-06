@@ -1,7 +1,7 @@
-import { sql } from "drizzle-orm";
-import { check, foreignKey, pgTable, text, unique } from "drizzle-orm/pg-core";
 import { entityIdentity } from "../../core/entities/identity";
 import { entities } from "../../core/entities/schema";
+import { sql } from "drizzle-orm";
+import { check, foreignKey, pgTable, text, unique } from "drizzle-orm/pg-core";
 
 export const projects = pgTable(
   "projects",

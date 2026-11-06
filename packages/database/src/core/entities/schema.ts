@@ -1,5 +1,5 @@
-import { pgEnum, pgTable, text, timestamp, unique, uuid, index } from "drizzle-orm/pg-core";
 import { organization } from "../organizations/schema";
+import { pgEnum, pgTable, text, timestamp, unique, uuid, index } from "drizzle-orm/pg-core";
 
 export const entityType = pgEnum("entity_type", [
   "actor",

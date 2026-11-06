@@ -1,6 +1,6 @@
-import Cropper from "react-easy-crop";
-import "react-easy-crop/react-easy-crop.css";
 import type { CropArea } from "./crop-image";
+import "react-easy-crop/react-easy-crop.css";
+import Cropper from "react-easy-crop";
 
 export interface ImageCropperProps {
   src: string;

@@ -1,12 +1,13 @@
 import { useId, useState } from "react";
+
+import { FormMessage } from "../auth/form-message";
+import { PendingButton } from "../feedback/pending-button";
 import { Button } from "../primitives/button";
 import { Input } from "../primitives/input";
 import { Label } from "../primitives/label";
 import { Textarea } from "../primitives/textarea";
-import { PendingButton } from "../feedback/pending-button";
-import { FormMessage } from "../auth/form-message";
-import type { ProjectDetail, Task, TaskDraft } from "./types";
 import { TaskScheduleFields, type TaskScheduleDraft } from "./task-form/task-schedule-fields";
+import type { ProjectDetail, Task, TaskDraft } from "./types";
 
 export function TaskForm({
   detail,

@@ -1,5 +1,5 @@
-import { Plus } from "lucide-react";
 import { useRef } from "react";
+
 import type { Conversation } from "@/ui/messaging/types";
 import { Button } from "@/ui/primitives/button";
 import {
@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/ui/primitives/dropdown-menu";
+import { Plus } from "lucide-react";
 
 export function ConversationCreateMenu({
   section,

@@ -1,5 +1,6 @@
-import { expect, type ElectronApplication, type Page } from "@playwright/test";
 import { desktopScheme } from "@startup-os/contracts/desktop/links";
+
+import { expect, type ElectronApplication, type Page } from "@playwright/test";
 
 export async function requestBrowserSignIn(
   desktop: ElectronApplication,

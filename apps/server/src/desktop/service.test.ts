@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test";
 import { openDesktop } from "./service";
+import { expect, test } from "bun:test";
 
 test("desktop handoff services return expected failures without throwing", () => {
   expect(openDesktop("https://evil.test")).toEqual({

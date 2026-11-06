@@ -1,4 +1,55 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
-  "ignorePatterns": ["**/node_modules/**", "**/.turbo/**", "**/dist/**", "**/coverage/**"]
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/.opencode/**",
+    "**/.turbo/**",
+    "**/dist/**",
+    "**/coverage/**",
+    "apps/web/src/routeTree.gen.ts"
+  ],
+  "sortImports": {
+    "customGroups": [
+      {
+        "groupName": "startup-os",
+        "elementNamePattern": ["@startup-os/**"]
+      },
+      {
+        "groupName": "tanstack",
+        "elementNamePattern": ["@tanstack/**"]
+      },
+      {
+        "groupName": "react-packages",
+        "elementNamePattern": ["react", "react-dom", "react/**", "react-dom/**"]
+      }
+    ],
+    "groups": [
+      "startup-os",
+      "tanstack",
+      "react-packages",
+      [
+        "builtin",
+        "external",
+        "internal",
+        "subpath",
+        "parent",
+        "sibling",
+        "index",
+        "style",
+        "unknown"
+      ]
+    ],
+    "sortSideEffects": false
+  },
+  "overrides": [
+    {
+      "files": ["apps/web/**/*.{ts,tsx,html,css}"],
+      "options": {
+        "sortTailwindcss": {
+          "stylesheet": "./apps/web/src/styles.css",
+          "functions": ["cn", "cva"]
+        }
+      }
+    }
+  ]
 }

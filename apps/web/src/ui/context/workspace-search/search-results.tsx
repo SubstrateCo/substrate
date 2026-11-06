@@ -1,8 +1,8 @@
-import { CommandEmpty, CommandGroup, CommandList } from "@/ui/primitives/command";
-import { LoadingState } from "@/ui/feedback/loading-state";
-import { ErrorState } from "@/ui/feedback/error-state";
-import { isAccessFailure } from "@/ui/feedback/request-failure";
 import { SearchResult, type SearchResultItem } from "@/ui/context/search-result";
+import { ErrorState } from "@/ui/feedback/error-state";
+import { LoadingState } from "@/ui/feedback/loading-state";
+import { isAccessFailure } from "@/ui/feedback/request-failure";
+import { CommandEmpty, CommandGroup, CommandList } from "@/ui/primitives/command";
 
 export function SearchResults({
   query,

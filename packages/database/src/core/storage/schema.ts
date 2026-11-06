@@ -1,3 +1,5 @@
+import { user } from "../authentication/schema";
+import { organization } from "../organizations/schema";
 import { sql } from "drizzle-orm";
 import {
   check,
@@ -10,8 +12,6 @@ import {
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
-import { user } from "../authentication/schema";
-import { organization } from "../organizations/schema";
 
 const ownership = () => ({
   ownerUserId: text("owner_user_id").references(() => user.id, { onDelete: "cascade" }),

@@ -1,5 +1,5 @@
-import { testDatabaseURL } from "./environment";
 import { createTestDatabases } from "./databases";
+import { testDatabaseURL } from "./environment";
 
 const count = Number(process.env.TEST_DATABASE_SHARDS ?? "1");
 if (!Number.isInteger(count) || count < 1 || count > 8)

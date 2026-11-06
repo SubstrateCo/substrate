@@ -1,5 +1,5 @@
-import { PendingButton } from "../feedback/pending-button";
 import { FormMessage } from "../auth/form-message";
+import { PendingButton } from "../feedback/pending-button";
 
 export function WorkspaceLinkPrompt({
   pending,

@@ -1,5 +1,4 @@
 import { Button } from "../primitives/button";
-import { CircleAlert } from "lucide-react";
 import {
   Empty,
   EmptyContent,
@@ -8,6 +7,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "../primitives/empty";
+import { CircleAlert } from "lucide-react";
 
 export function ErrorScreen({ onRetry }: { onRetry: () => void }) {
   return (

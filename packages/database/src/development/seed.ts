@@ -1,13 +1,14 @@
 import { taskStatusValues } from "@startup-os/contracts/tasks";
-import { inArray, sql } from "drizzle-orm";
+
 import type { DatabaseExecutor } from "../client";
 import { ensureHumanActor } from "../core/actors/provisioning";
-import { RepositoryContext } from "../core/repository-context";
 import { permissionRepository } from "../core/permissions/repository";
+import { RepositoryContext } from "../core/repository-context";
+import { createMessagingService } from "../features/messaging/service";
 import { projectRepository } from "../features/projects/repository";
 import { taskRepository } from "../features/tasks/repository";
-import { createMessagingService } from "../features/messaging/service";
 import { account, member, organization, user } from "../schema";
+import { inArray, sql } from "drizzle-orm";
 
 export const developmentTeams = [
   {

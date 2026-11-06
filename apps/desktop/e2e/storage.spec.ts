@@ -1,3 +1,4 @@
+import { bundledApplicationURL } from "../src/navigation.js";
 import { _electron as electron, expect, test } from "@playwright/test";
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -5,7 +6,6 @@ import { createServer } from "node:https";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { bundledApplicationURL } from "../src/navigation.js";
 
 test("isolated bundled renderer crops a blob and uploads directly to allowed HTTPS storage", async () => {
   const temporaryRoot = join(tmpdir(), "opencode");

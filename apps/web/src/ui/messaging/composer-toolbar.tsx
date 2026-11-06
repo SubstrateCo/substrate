@@ -1,5 +1,5 @@
-import { Bold, Code, Italic } from "lucide-react";
 import { Button } from "../primitives/button";
+import { Bold, Code, Italic } from "lucide-react";
 
 export function ComposerToolbar({
   pending,

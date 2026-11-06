@@ -1,8 +1,8 @@
-import { eq } from "drizzle-orm";
-import type { RepositoryContext } from "../../core/repository-context";
 import { actors } from "../../core/actors/schema";
+import type { RepositoryContext } from "../../core/repository-context";
 import { notifications } from "../notifications/schema";
 import { taskActivity } from "./schema";
+import { eq } from "drizzle-orm";
 
 export async function recordTaskActivity(
   context: RepositoryContext,

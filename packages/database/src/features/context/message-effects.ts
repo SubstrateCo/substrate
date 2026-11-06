@@ -1,9 +1,8 @@
-import { and, eq } from "drizzle-orm";
 import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
 import { member } from "../../core/organizations/schema";
-import { AccessDeniedError } from "../../errors";
 import type { RepositoryContext } from "../../core/repository-context";
+import { AccessDeniedError } from "../../errors";
 import { visibleConversations, type MessagingIdentity } from "../messaging/access";
 import {
   messagingConversations,
@@ -14,6 +13,7 @@ import { notifications } from "../notifications/schema";
 import { requireWork } from "./access";
 import { messageReferences } from "./references";
 import { messageEntityReferences } from "./schema";
+import { and, eq } from "drizzle-orm";
 
 export async function applyMessageEffects(
   ctx: RepositoryContext,

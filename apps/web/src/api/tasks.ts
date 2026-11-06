@@ -1,12 +1,13 @@
-import type { z } from "zod";
 import type {
   projectRequest,
   taskRequest,
   tasksWorkspace,
   TasksWrite,
 } from "@startup-os/contracts/tasks/input";
+
 import { api, type ApiInput } from "./client";
 import { readResult } from "./result";
+import type { z } from "zod";
 
 export const listProjects = ({ data, signal }: ApiInput<z.input<typeof tasksWorkspace>>) =>
   readResult(api.tasks.projects.$get({ query: data }, { init: { signal } }));

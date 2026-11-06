@@ -1,9 +1,9 @@
+import { FormMessage } from "../auth/form-message";
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
 import { isAccessFailure } from "../feedback/request-failure";
-import { PictureUpload, type PictureUploadProps } from "../upload/picture-upload";
-import { FormMessage } from "../auth/form-message";
 import { Button } from "../primitives/button";
+import { PictureUpload, type PictureUploadProps } from "../upload/picture-upload";
 
 export function PictureSettings({
   title,

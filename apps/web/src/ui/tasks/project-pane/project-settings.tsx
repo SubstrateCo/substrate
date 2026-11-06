@@ -1,7 +1,8 @@
 import type { ReactNode, Ref } from "react";
-import { Button } from "@/ui/primitives/button";
+
 import type { ProjectDetail } from "../types";
 import type { useProjectEditor } from "./use-project-editor";
+import { Button } from "@/ui/primitives/button";
 
 export function ProjectSettings({
   detail,

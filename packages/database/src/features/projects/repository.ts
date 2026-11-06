@@ -1,4 +1,3 @@
-import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { actors } from "../../core/actors/schema";
 import { entities } from "../../core/entities/schema";
 import { member } from "../../core/organizations/schema";
@@ -6,6 +5,7 @@ import { entityGrants } from "../../core/permissions/schema";
 import { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { projects } from "./schema";
+import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
 export function requiredText(value: string, maximum: number) {
   if (!value.trim() || value.trim().length > maximum)

@@ -1,7 +1,8 @@
-import { describe, expect, spyOn, test } from "bun:test";
 import { AccessDeniedError, ConflictError, ValidationError } from "@startup-os/database";
+
 import { serviceResult, ServiceError } from "./service-result";
 import { APIError } from "better-auth/api";
+import { describe, expect, spyOn, test } from "bun:test";
 
 describe("service results", () => {
   test("keeps successful domain data in the result", async () => {

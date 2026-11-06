@@ -1,7 +1,7 @@
-import { describe, expect, test } from "bun:test";
-import { APIError } from "better-auth/api";
 import { sessionFixture } from "../session/test-support";
 import { createOrganizationService } from "./service";
+import { APIError } from "better-auth/api";
+import { describe, expect, test } from "bun:test";
 
 describe("organization settings access service", () => {
   test("requires a verified session and active workspace before membership lookup", async () => {

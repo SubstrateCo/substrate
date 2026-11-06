@@ -1,9 +1,9 @@
-import { LoadingState } from "../feedback/loading-state";
 import { ErrorState } from "../feedback/error-state";
+import { LoadingState } from "../feedback/loading-state";
 import { isAccessFailure } from "../feedback/request-failure";
-import type { TaskComment as Comment } from "./types";
 import { TaskComment } from "./task-comment";
 import { TaskCommentForm } from "./task-comment-form";
+import type { TaskComment as Comment } from "./types";
 
 export function TaskComments({
   canComment,

@@ -1,5 +1,5 @@
-import { Inbox } from "lucide-react";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../primitives/empty";
+import { Inbox } from "lucide-react";
 
 export function ContentNotice({ title, description }: { title: string; description: string }) {
   return (

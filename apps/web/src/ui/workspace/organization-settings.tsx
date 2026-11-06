@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+
 import { WorkspaceSettings } from "./workspace-settings";
 
 export function OrganizationSettings({

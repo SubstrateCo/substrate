@@ -1,19 +1,20 @@
+import { failure } from "@startup-os/contracts/result";
+
+import { authEnvironment } from "./auth/environment";
+import { auth } from "./auth/server";
+import { createDesktopRoutes } from "./desktop/routes";
+import { respond } from "./shared/http";
+import { createContextRoutes } from "./v1/context/routes";
+import { createFilesRoutes } from "./v1/files/routes";
+import { createMessagingRoutes } from "./v1/messaging/routes";
+import { createOrganizationRoutes } from "./v1/organizations/routes";
+import { createSessionRoutes } from "./v1/session/routes";
+import { createTasksRoutes } from "./v1/tasks/routes";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
-import { secureHeaders } from "hono/secure-headers";
 import { HTTPException } from "hono/http-exception";
-import { failure } from "@startup-os/contracts/result";
-import { auth } from "./auth/server";
-import { authEnvironment } from "./auth/environment";
-import { respond } from "./shared/http";
-import { createTasksRoutes } from "./v1/tasks/routes";
-import { createMessagingRoutes } from "./v1/messaging/routes";
-import { createContextRoutes } from "./v1/context/routes";
-import { createSessionRoutes } from "./v1/session/routes";
-import { createOrganizationRoutes } from "./v1/organizations/routes";
-import { createDesktopRoutes } from "./desktop/routes";
-import { createFilesRoutes } from "./v1/files/routes";
+import { secureHeaders } from "hono/secure-headers";
 
 export function createApp() {
   const { trustedOrigins } = authEnvironment();

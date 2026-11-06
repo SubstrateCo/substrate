@@ -1,7 +1,7 @@
-import { Monitor, Moon, Sun } from "lucide-react";
-import { useTheme } from "./theme-provider";
 import { Button } from "../primitives/button";
 import { Switch } from "../primitives/switch";
+import { useTheme } from "./theme-provider";
+import { Monitor, Moon, Sun } from "lucide-react";
 
 export function AppearanceControl() {
   const { theme, resolvedTheme, setTheme } = useTheme();

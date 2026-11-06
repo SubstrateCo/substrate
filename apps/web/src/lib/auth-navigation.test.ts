@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
 import { authHref, authSearch, safeRedirect } from "./auth-navigation";
+import { describe, expect, test } from "bun:test";
 
 describe("auth redirect policy", () => {
   test("preserves only complete Electron authorization parameters across auth navigation", () => {

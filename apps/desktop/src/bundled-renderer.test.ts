@@ -1,10 +1,10 @@
+import { assetPath, backendURL, bundledRenderer, proxyURL } from "./bundled-renderer.js";
+import { bundledApplicationURL as origin } from "./navigation.js";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { assetPath, backendURL, bundledRenderer, proxyURL } from "./bundled-renderer.js";
-import { bundledApplicationURL as origin } from "./navigation.js";
 
 describe("bundled backend configuration", () => {
   test("requires an explicit backend in packaged launches", () => {

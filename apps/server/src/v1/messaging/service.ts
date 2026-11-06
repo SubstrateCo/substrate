@@ -1,4 +1,3 @@
-import { createMessagingService } from "@startup-os/database/messaging";
 import {
   workspaceInput,
   messageListInput,
@@ -7,10 +6,12 @@ import {
   reactionInput,
   membersInput,
 } from "@startup-os/contracts/messaging/input";
-import type { z } from "zod";
+import { createMessagingService } from "@startup-os/database/messaging";
+
 import { db } from "../../auth/database";
 import { serviceResult } from "../../shared/service-result";
 import { requireOrigin, workspaceSession } from "../../shared/workspace";
+import type { z } from "zod";
 
 async function serviceForSession(headers: Headers, organizationId: string) {
   const { session } = await workspaceSession(headers, organizationId);

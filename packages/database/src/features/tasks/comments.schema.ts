@@ -1,7 +1,7 @@
-import { sql } from "drizzle-orm";
-import { check, foreignKey, index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { actors } from "../../core/actors/schema";
 import { tasks } from "./tasks.schema";
+import { sql } from "drizzle-orm";
+import { check, foreignKey, index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const taskComments = pgTable(
   "task_comments",

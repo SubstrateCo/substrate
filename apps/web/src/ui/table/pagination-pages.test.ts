@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test";
 import { paginationPages } from "./pagination-pages";
+import { expect, test } from "bun:test";
 
 test("small tables show all available page links", () => {
   expect(paginationPages(0, 0)).toEqual([]);

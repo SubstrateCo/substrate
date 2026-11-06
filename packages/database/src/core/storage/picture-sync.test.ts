@@ -1,10 +1,10 @@
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
-import { expect, test } from "bun:test";
-import { eq } from "drizzle-orm";
 import { setupDatabase } from "../../testing/database";
 import { user } from "../authentication/schema";
 import { organization } from "../organizations/schema";
 import { storedFiles, userPictures, organizationPictures } from "./schema";
+/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
+import { expect, test } from "bun:test";
+import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
 const file = (purpose: string, organizationId: string | null = null) => ({

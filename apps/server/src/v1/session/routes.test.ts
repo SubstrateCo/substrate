@@ -1,7 +1,8 @@
+import { failure, success } from "@startup-os/contracts/result";
+
+import { createSessionRoutes } from "./routes";
 import { describe, expect, test } from "bun:test";
 import { Hono } from "hono";
-import { failure, success } from "@startup-os/contracts/result";
-import { createSessionRoutes } from "./routes";
 
 describe("session routes", () => {
   test("serves the public session mount without caching and forwards request headers", async () => {

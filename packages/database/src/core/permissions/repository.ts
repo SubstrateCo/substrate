@@ -1,8 +1,8 @@
-import { and, eq } from "drizzle-orm";
 import { ValidationError } from "../../errors";
-import { entityGrants, permissionLevel } from "./schema";
 import { RepositoryContext, type PermissionLevel } from "../repository-context";
+import { entityGrants, permissionLevel } from "./schema";
 import { inheritedOwnerQuery } from "./visibility";
+import { and, eq } from "drizzle-orm";
 
 export function permissionRepository(context: RepositoryContext) {
   const { scope, db } = context;

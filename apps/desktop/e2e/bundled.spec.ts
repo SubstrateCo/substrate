@@ -1,8 +1,8 @@
+import { authorizationCallback, requestBrowserSignIn } from "./auth.js";
+import { test } from "./fixture.js";
 import { expect } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { authorizationCallback, requestBrowserSignIn } from "./auth.js";
-import { test } from "./fixture.js";
 
 test("desktop signup creates a workspace and OS navigation preserves the session", async ({
   desktop,

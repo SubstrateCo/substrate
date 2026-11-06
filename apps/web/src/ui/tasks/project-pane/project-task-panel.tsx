@@ -1,8 +1,9 @@
 import type { ReactNode, Ref } from "react";
-import { ContentNotice } from "@/ui/feedback/content-notice";
+
 import { TaskList } from "../task-list";
 import type { ProjectDetail, Task } from "../types";
 import type { useTaskPanel } from "./use-task-panel";
+import { ContentNotice } from "@/ui/feedback/content-notice";
 
 export interface TaskPanelRenderers {
   form: (

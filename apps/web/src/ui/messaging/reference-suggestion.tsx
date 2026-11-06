@@ -1,6 +1,6 @@
-import { CircleCheck, FolderKanban, UserRound } from "lucide-react";
-import { cva } from "class-variance-authority";
 import type { ReferenceSuggestion as Suggestion } from "@/ui/messaging/reference-popover/reference-results";
+import { cva } from "class-variance-authority";
+import { CircleCheck, FolderKanban, UserRound } from "lucide-react";
 
 const optionVariants = cva("flex cursor-pointer items-center gap-3 rounded-md px-2 py-2", {
   variants: { selected: { true: "bg-accent text-accent-foreground", false: "" } },

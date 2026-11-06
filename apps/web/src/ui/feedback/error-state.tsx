@@ -1,4 +1,3 @@
-import { CircleAlert, RefreshCw } from "lucide-react";
 import { Button } from "../primitives/button";
 import {
   Empty,
@@ -8,6 +7,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "../primitives/empty";
+import { CircleAlert, RefreshCw } from "lucide-react";
 
 export function ErrorState({
   title,

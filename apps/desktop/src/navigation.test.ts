@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
 import { bundledApplicationURL, navigationTarget } from "./navigation.js";
+import { describe, expect, test } from "bun:test";
 
 describe("desktop navigation", () => {
   test("bundled navigation trusts only the bundled origin, including auth callbacks", () => {

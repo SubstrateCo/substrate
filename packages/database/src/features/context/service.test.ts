@@ -1,13 +1,13 @@
+import { AccessDeniedError, ConflictError } from "../../errors";
+import { entityGrants, user, tasks, taskActivity, notifications } from "../../schema";
+import { setupDatabase } from "../../testing/database";
+import { messagingParticipants } from "../messaging/schema";
+import { createMessagingService } from "../messaging/service";
+import { messageEntityReferences, sourceTaskRequests } from "./schema";
+import { createContextService } from "./service";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
-import { setupDatabase } from "../../testing/database";
-import { AccessDeniedError, ConflictError } from "../../errors";
-import { entityGrants, user, tasks, taskActivity, notifications } from "../../schema";
-import { createMessagingService } from "../messaging/service";
-import { messagingParticipants } from "../messaging/schema";
-import { createContextService } from "./service";
-import { messageEntityReferences, sourceTaskRequests } from "./schema";
 
 const f = setupDatabase();
 const context = (userId = "alice", organizationId = f.orgA) =>

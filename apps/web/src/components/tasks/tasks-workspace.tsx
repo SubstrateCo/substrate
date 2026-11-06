@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { TasksWorkspace as TasksWorkspaceView } from "@/ui/tasks/tasks-workspace";
-import { projectsQueryOptions } from "@/queries/tasks/options";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+
 import { ProjectForm } from "./project-form";
 import { ProjectPane } from "./project-pane";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { projectsQueryOptions } from "@/queries/tasks/options";
+import { TasksWorkspace as TasksWorkspaceView } from "@/ui/tasks/tasks-workspace";
 
 export function TasksWorkspace({ organizationId }: { organizationId: string }) {
   const projects = useQuery(projectsQueryOptions(organizationId));

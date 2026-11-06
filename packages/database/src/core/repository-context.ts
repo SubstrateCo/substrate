@@ -1,12 +1,12 @@
-import { and, eq, isNull, or, sql } from "drizzle-orm";
 import type { DatabaseExecutor } from "../client";
 import { AccessDeniedError, ValidationError } from "../errors";
 import { actors } from "./actors/schema";
 import { entities } from "./entities/schema";
-import { entityGrants, permissionLevel } from "./permissions/schema";
 import { member } from "./organizations/schema";
 import { entityAccessParents } from "./permissions/access-parents";
+import { entityGrants, permissionLevel } from "./permissions/schema";
 import { visibilityCte, lockAccessPath } from "./permissions/visibility";
+import { and, eq, isNull, or, sql } from "drizzle-orm";
 
 export interface ActorScope {
   organizationId: string;
@@ -91,13 +91,11 @@ export class RepositoryContext {
       .values({ organizationId: this.scope.organizationId, entityType })
       .returning();
     if (parentEntityId) {
-      await this.db
-        .insert(entityAccessParents)
-        .values({
-          organizationId: this.scope.organizationId,
-          entityId: entity!.entityId,
-          parentEntityId,
-        });
+      await this.db.insert(entityAccessParents).values({
+        organizationId: this.scope.organizationId,
+        entityId: entity!.entityId,
+        parentEntityId,
+      });
     } else {
       await this.db.insert(entityGrants).values({
         organizationId: this.scope.organizationId,

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
-import { AppTable, createAppColumnHelper, dateTimeColumn, useAppTable } from "../table";
+
 import { Button } from "../primitives/button";
+import { AppTable, createAppColumnHelper, dateTimeColumn, useAppTable } from "../table";
 import type { InvitationListItem } from "./invitation-manager";
 
 const column = createAppColumnHelper<InvitationListItem>();

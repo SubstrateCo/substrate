@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
 import { createDesktopRoutes } from "./routes";
+import { describe, expect, test } from "bun:test";
 
 describe("desktop open landing", () => {
   const app = createDesktopRoutes();

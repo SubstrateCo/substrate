@@ -20,7 +20,7 @@ export function DiscussionItem({ item }: { item: Discussion }) {
           <Tooltip>
             <TooltipTrigger asChild>
               <a
-                className="line-clamp-3 text-sm font-medium underline underline-offset-4 wrap-anywhere"
+                className="line-clamp-3 text-sm font-medium wrap-anywhere underline underline-offset-4"
                 href={item.href}
               >
                 {title}
@@ -33,7 +33,7 @@ export function DiscussionItem({ item }: { item: Discussion }) {
           {item.authorName} ·{" "}
           <time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString()}</time>
         </ItemDescription>
-        <p className="line-clamp-3 whitespace-pre-wrap wrap-anywhere">
+        <p className="line-clamp-3 wrap-anywhere whitespace-pre-wrap">
           {item.body.replace(/@\[[^\]]+\]/g, "[Reference]")}
         </p>
       </ItemContent>

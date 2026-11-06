@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test";
 import { dateTimeValue } from "./date-time";
+import { expect, test } from "bun:test";
 
 test("date-time columns normalize supported values to timestamps", () => {
   const timestamp = Date.UTC(2026, 10, 12, 10, 30);

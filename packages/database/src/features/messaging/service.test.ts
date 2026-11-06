@@ -1,16 +1,16 @@
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
-import { expect, test } from "bun:test";
-import { eq } from "drizzle-orm";
 import { AccessDeniedError, ValidationError } from "../../errors";
-import { setupDatabase } from "../../testing/database";
 import { user, member, entityGrants, actors } from "../../schema";
-import { createMessagingService } from "./service";
+import { setupDatabase } from "../../testing/database";
 import {
   messagingConversations,
   messagingMessages,
   messagingParticipants,
   messagingReactions,
 } from "./schema";
+import { createMessagingService } from "./service";
+/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
+import { expect, test } from "bun:test";
+import { eq } from "drizzle-orm";
 
 const fixture = setupDatabase();
 const service = (userId: string, organizationId = fixture.orgA) =>

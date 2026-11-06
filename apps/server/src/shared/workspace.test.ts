@@ -1,7 +1,7 @@
-import { expect, test } from "bun:test";
 import { authEnvironment } from "../auth/environment";
 import { ServiceError } from "./service-result";
 import { requireOrigin, requireWorkspace } from "./workspace";
+import { expect, test } from "bun:test";
 
 test("workspace scope rejects stale or absent active workspaces", () => {
   expect(requireWorkspace("one", "one")).toBe("one");

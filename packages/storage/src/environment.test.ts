@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test";
 import { storageEnvironment } from "./environment";
+import { expect, test } from "bun:test";
 
 test("development has usable local S3 defaults; production must be explicit", () => {
   expect(storageEnvironment({}).endpoint).toBe("http://localhost:4566");

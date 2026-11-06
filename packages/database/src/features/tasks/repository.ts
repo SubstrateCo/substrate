@@ -1,13 +1,14 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { taskStatusValues } from "@startup-os/contracts/tasks";
+
 import { actors } from "../../core/actors/schema";
 import { RepositoryContext, type PermissionLevel } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
+import { notifyAssignment, recordTaskActivity } from "../activity/events";
 import { projectRepository, requiredText } from "../projects/repository";
-import { taskStatusValues } from "@startup-os/contracts/tasks";
 import { taskComments } from "./comments.schema";
 import type { CreateTaskInput, TaskFields } from "./contracts";
 import { tasks } from "./tasks.schema";
-import { notifyAssignment, recordTaskActivity } from "../activity/events";
+import { and, asc, eq, inArray } from "drizzle-orm";
 
 export function taskRepository(context: RepositoryContext) {
   const { db, scope } = context;

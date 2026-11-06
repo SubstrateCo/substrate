@@ -1,7 +1,7 @@
+import { setupDatabase } from "../../testing/database";
+import { contactIdentifiers } from "./schema";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { describe, expect, test } from "bun:test";
-import { contactIdentifiers } from "./schema";
-import { setupDatabase } from "../../testing/database";
 
 const f = setupDatabase();
 

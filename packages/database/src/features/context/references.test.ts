@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test";
 import { messageReferences } from "./references";
+import { expect, test } from "bun:test";
 
 const id = "12345678-1234-1234-1234-123456789abc";
 test("structured references deduplicate by kind and identity, without interpreting plain names", () => {

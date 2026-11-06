@@ -1,5 +1,7 @@
-import { Settings2 } from "lucide-react";
-import { OrganizationSwitcherItem } from "./organization-switcher-item";
+import { FormMessage } from "../auth/form-message";
+import { ErrorState } from "../feedback/error-state";
+import { LoadingState } from "../feedback/loading-state";
+import { isAccessFailure } from "../feedback/request-failure";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,11 +9,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "../primitives/dropdown-menu";
-import { FormMessage } from "../auth/form-message";
-import { ErrorState } from "../feedback/error-state";
-import { LoadingState } from "../feedback/loading-state";
-import { isAccessFailure } from "../feedback/request-failure";
+import { OrganizationSwitcherItem } from "./organization-switcher-item";
 import { SwitcherTrigger } from "@/ui/organizations/organization-switcher/switcher-trigger";
+import { Settings2 } from "lucide-react";
 
 export function OrganizationSwitcher({
   organizationId,

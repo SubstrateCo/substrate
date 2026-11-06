@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { Conversation } from "./types";
+
+import { FormMessage } from "../auth/form-message";
 import { PendingButton } from "../feedback/pending-button";
+import { Button } from "../primitives/button";
 import { Input } from "../primitives/input";
 import { Label } from "../primitives/label";
-import { FormMessage } from "../auth/form-message";
-import { Button } from "../primitives/button";
+import type { Conversation } from "./types";
 
 export type ConversationDraft = { name: string; emails: string; isPrivate: boolean };
 

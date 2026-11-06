@@ -1,5 +1,6 @@
-import { expect, test } from "@playwright/test";
 import { desktopLink } from "@startup-os/contracts/desktop/links";
+
+import { expect, test } from "@playwright/test";
 
 test("external email links offer the validated desktop destination without a renderer server", async ({
   page,

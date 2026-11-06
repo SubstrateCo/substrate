@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
 import { desktopLink, desktopOrigin, desktopPath, resolveDesktopLink } from "./links.js";
+import { describe, expect, test } from "bun:test";
 
 describe("external desktop links", () => {
   test("preserves organization-aware record navigation and invitation destinations", () => {

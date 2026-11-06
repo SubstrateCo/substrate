@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ProjectSidebar } from "./project-sidebar";
+
 import { isAccessFailure } from "../feedback/request-failure";
-import type { Project } from "./types";
-import { FolderKanban } from "lucide-react";
 import { Button } from "../primitives/button";
 import {
   Empty,
@@ -12,6 +10,9 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "../primitives/empty";
+import { ProjectSidebar } from "./project-sidebar";
+import type { Project } from "./types";
+import { FolderKanban } from "lucide-react";
 
 export function TasksWorkspace({
   projects,

@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test";
 import { desktopAPITransport } from "./api-transport.js";
+import { expect, test } from "bun:test";
 
 test("desktop auth requests stop when the API proxy aborts them", async () => {
   const controller = new AbortController();

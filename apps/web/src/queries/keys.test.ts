@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test";
 import { queryKeys } from "./keys";
+import { expect, test } from "bun:test";
 
 test("organization caches are scoped and share an invalidation prefix", () => {
   expect(queryKeys.invitations("alpha")).not.toEqual(queryKeys.invitations("beta"));

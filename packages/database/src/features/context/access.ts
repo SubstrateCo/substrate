@@ -1,4 +1,5 @@
-import { and, eq } from "drizzle-orm";
+import { taskStatusLabels } from "@startup-os/contracts/tasks";
+
 import type { DatabaseExecutor } from "../../client";
 import { ensureHumanActor } from "../../core/actors/provisioning";
 import { user } from "../../core/authentication/schema";
@@ -8,7 +9,7 @@ import { AccessDeniedError } from "../../errors";
 import type { MessagingIdentity } from "../messaging/access";
 import { projectRepository } from "../projects/repository";
 import { taskRepository } from "../tasks/repository";
-import { taskStatusLabels } from "@startup-os/contracts/tasks";
+import { and, eq } from "drizzle-orm";
 
 export async function workspaceContext(db: DatabaseExecutor, scope: MessagingIdentity) {
   const [identity] = await db

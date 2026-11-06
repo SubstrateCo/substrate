@@ -1,7 +1,7 @@
-import { expect, test } from "@playwright/test";
-import { randomUUID } from "node:crypto";
 import { createVerifiedAccount } from "./auth";
 import { Mailpit } from "./mailpit";
+import { expect, test } from "@playwright/test";
+import { randomUUID } from "node:crypto";
 
 test("the SPA renders its theme menu only after scripts load", async ({ page }) => {
   const scripts = Promise.withResolvers<void>();

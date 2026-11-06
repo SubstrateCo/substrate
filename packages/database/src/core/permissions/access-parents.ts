@@ -1,3 +1,4 @@
+import { entities } from "../entities/schema";
 import { sql } from "drizzle-orm";
 import {
   check,
@@ -9,7 +10,6 @@ import {
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
-import { entities } from "../entities/schema";
 
 export const entityAccessParents = pgTable(
   "entity_access_parents",

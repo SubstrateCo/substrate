@@ -1,10 +1,11 @@
-import { zValidator } from "@hono/zod-validator";
 import { desktopPath } from "@startup-os/contracts/desktop/links";
+
+import { respond, validationHook } from "../shared/http";
+import { openDesktop } from "./service";
+import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { html } from "hono/html";
 import { z } from "zod";
-import { respond, validationHook } from "../shared/http";
-import { openDesktop } from "./service";
 
 export function createDesktopRoutes() {
   return new Hono()

@@ -1,4 +1,3 @@
-import { and, asc, eq, sql } from "drizzle-orm";
 import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
@@ -6,12 +5,13 @@ import { ConflictError, AccessDeniedError } from "../../errors";
 import { recordTaskActivity } from "../activity/events";
 import { requireMessage, visibleConversations, type MessagingIdentity } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
-import { taskRepository } from "../tasks/repository";
 import type { CreateTaskInput } from "../tasks/contracts";
+import { taskRepository } from "../tasks/repository";
 import { workspaceContext, requireWork } from "./access";
+import { messageReferences } from "./references";
 import { messageEntityReferences, sourceTaskRequests } from "./schema";
 import { contextSearch } from "./search";
-import { messageReferences } from "./references";
+import { and, asc, eq, sql } from "drizzle-orm";
 
 export function createContextService(db: DatabaseExecutor, scope: MessagingIdentity) {
   return {
@@ -49,26 +49,22 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
           return taskRepository(ctx).get(existing.taskEntityId);
         }
         const task = await taskRepository(ctx).create(input);
-        await tx
-          .insert(messageEntityReferences)
-          .values({
-            organizationId: scope.organizationId,
-            conversationId: conversation.id,
-            messageId: input.messageId,
-            entityId: task.entityId,
-            entityType: "task",
-            purpose: "source",
-            createdByActorEntityId: ctx.scope.actorEntityId,
-          });
-        await tx
-          .insert(sourceTaskRequests)
-          .values({
-            organizationId: scope.organizationId,
-            actorEntityId: ctx.scope.actorEntityId,
-            requestId: input.requestId,
-            fingerprint,
-            taskEntityId: task.entityId,
-          });
+        await tx.insert(messageEntityReferences).values({
+          organizationId: scope.organizationId,
+          conversationId: conversation.id,
+          messageId: input.messageId,
+          entityId: task.entityId,
+          entityType: "task",
+          purpose: "source",
+          createdByActorEntityId: ctx.scope.actorEntityId,
+        });
+        await tx.insert(sourceTaskRequests).values({
+          organizationId: scope.organizationId,
+          actorEntityId: ctx.scope.actorEntityId,
+          requestId: input.requestId,
+          fingerprint,
+          taskEntityId: task.entityId,
+        });
         await recordTaskActivity(ctx, task.entityId, "Created from a discussion", input.messageId);
         return task;
       });

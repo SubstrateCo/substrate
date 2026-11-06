@@ -1,5 +1,5 @@
-import { index, pgTable, text, timestamp, unique } from "drizzle-orm/pg-core";
 import { user } from "../authentication/schema";
+import { index, pgTable, text, timestamp, unique } from "drizzle-orm/pg-core";
 
 export const organization = pgTable("organization", {
   id: text("id").primaryKey(),

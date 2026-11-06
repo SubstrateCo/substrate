@@ -1,10 +1,10 @@
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
-import { expect, test } from "bun:test";
-import { setupDatabase } from "../../testing/database";
 import { user } from "../../core/authentication/schema";
 import { AccessDeniedError } from "../../errors";
-import { createMessagingService } from "./service";
+import { setupDatabase } from "../../testing/database";
 import { messagingMessages } from "./schema";
+import { createMessagingService } from "./service";
+/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
+import { expect, test } from "bun:test";
 
 const f = setupDatabase();
 test("message windows paginate equal timestamps without gaps and reject anchors from another conversation", async () => {

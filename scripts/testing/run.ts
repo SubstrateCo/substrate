@@ -1,10 +1,10 @@
-import { availablePort } from "./server";
-import { createTestBucket } from "../../packages/storage/src/testing/bucket";
-import { createTestDatabases } from "../../packages/database/src/testing/databases";
 import { createDatabase } from "../../packages/database/src/client";
 import { migrateDatabase } from "../../packages/database/src/migrations";
-import { fileURLToPath } from "node:url";
+import { createTestDatabases } from "../../packages/database/src/testing/databases";
+import { createTestBucket } from "../../packages/storage/src/testing/bucket";
+import { availablePort } from "./server";
 import { staticFilePath } from "./static";
+import { fileURLToPath } from "node:url";
 
 async function run(command: string[], env: Record<string, string | undefined>) {
   const child = Bun.spawn([process.execPath, "run", ...command], {

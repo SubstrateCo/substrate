@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
 import { isAccessFailure, isInvitationUnavailable } from "./request-failure";
+import { describe, expect, test } from "bun:test";
 
 describe("request failure recovery", () => {
   test("access loss must not leave cached private content visible", () => {

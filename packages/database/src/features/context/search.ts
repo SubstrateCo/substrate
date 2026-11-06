@@ -1,19 +1,19 @@
-import { and, asc, eq, gt, inArray, isNull, sql, type SQL, type SQLWrapper } from "drizzle-orm";
 import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
+import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import { entityLinks } from "../../core/links/schema";
 import { member } from "../../core/organizations/schema";
-import { user } from "../../core/authentication/schema";
-import { pageSize } from "../../core/repository-context";
 import { visibilityCte } from "../../core/permissions/visibility";
+import { pageSize } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
-import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { visibleConversations, type MessagingIdentity } from "../messaging/access";
+import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { projects } from "../projects/schema";
 import { tasks } from "../tasks/tasks.schema";
 import { workspaceContext, requireWork } from "./access";
 import { messageEntityReferences } from "./schema";
+import { and, asc, eq, gt, inArray, isNull, sql, type SQL, type SQLWrapper } from "drizzle-orm";
 
 export type SearchKind = "all" | "task" | "project" | "message" | "conversation" | "person";
 export interface SearchResult {

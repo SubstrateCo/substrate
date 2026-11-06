@@ -1,9 +1,9 @@
-import { describe, expect, test } from "bun:test";
-import { and, eq } from "drizzle-orm";
 import { setupDatabase } from "../../testing/database";
 import { member } from "../organizations/schema";
-import { user } from "./schema";
 import { getRememberedOrganization, rememberOrganization } from "./organization-preference";
+import { user } from "./schema";
+import { describe, expect, test } from "bun:test";
+import { and, eq } from "drizzle-orm";
 
 const f = setupDatabase();
 

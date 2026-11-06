@@ -1,6 +1,6 @@
-import { CircleCheck, FolderKanban, UserRound } from "lucide-react";
 import { Button } from "../primitives/button";
 import type { ReferenceKind } from "./reference-picker";
+import { CircleCheck, FolderKanban, UserRound } from "lucide-react";
 
 export function ReferencePickerOption({
   id,

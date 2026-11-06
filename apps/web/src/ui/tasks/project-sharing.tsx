@@ -1,7 +1,7 @@
-import { FormMessage } from "@/ui/auth/form-message";
-import type { ProjectDetail, ProjectPermission } from "./types";
 import { ProjectAccessForm } from "./project-sharing/project-access-form";
 import { ProjectMembers } from "./project-sharing/project-members";
+import type { ProjectDetail, ProjectPermission } from "./types";
+import { FormMessage } from "@/ui/auth/form-message";
 
 export function ProjectSharing({
   detail,

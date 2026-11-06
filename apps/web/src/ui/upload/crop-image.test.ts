@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test";
 import { checkImageDimensions } from "./crop-image";
+import { expect, test } from "bun:test";
 
 test("image dimensions bound raster memory independently of compressed file size", () => {
   expect(() => checkImageDimensions(8192, 3906)).not.toThrow();

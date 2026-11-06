@@ -1,3 +1,4 @@
+import { storageEnvironment } from "../environment";
 import {
   CreateBucketCommand,
   DeleteBucketCommand,
@@ -7,7 +8,6 @@ import {
   PutPublicAccessBlockCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
-import { storageEnvironment } from "../environment";
 
 export async function createTestBucket(origins: string[]) {
   const config = storageEnvironment();

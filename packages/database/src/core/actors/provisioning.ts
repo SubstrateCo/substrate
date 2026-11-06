@@ -1,10 +1,10 @@
-import { and, eq } from "drizzle-orm";
 import type { DatabaseExecutor } from "../../client";
 import { ValidationError } from "../../errors";
-import { actors } from "./schema";
 import { entities } from "../entities/schema";
-import { entityGrants } from "../permissions/schema";
 import { member } from "../organizations/schema";
+import { entityGrants } from "../permissions/schema";
+import { actors } from "./schema";
+import { and, eq } from "drizzle-orm";
 
 type ActorInput = { organizationId: string; name: string } & (
   | { type: "human"; userId: string }

@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test";
 import { workHref, messageHref } from "./context-links";
+import { expect, test } from "bun:test";
 test("links preserve workspace and exact task or message targets", () => {
   const work = new URL(workHref("team & one", "project", "task"), "https://example.test");
   expect(Object.fromEntries(work.searchParams)).toEqual({

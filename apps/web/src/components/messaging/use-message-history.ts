@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { messagesQueryOptions } from "@/queries/messaging/options";
+
+import { useEffect, useState } from "react";
+
 import { queryKeys } from "@/queries/keys";
+import { messagesQueryOptions } from "@/queries/messaging/options";
 
 export function useMessageHistory({
   organizationId,

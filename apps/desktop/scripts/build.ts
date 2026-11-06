@@ -1,8 +1,8 @@
+import { backendURL } from "../src/bundled-renderer.js";
+import { storageOrigins } from "../src/storage.js";
+import { bundlePreload } from "./preload.js";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { backendURL } from "../src/bundled-renderer.js";
-import { bundlePreload } from "./preload.js";
-import { storageOrigins } from "../src/storage.js";
 
 const desktop = fileURLToPath(new URL("../", import.meta.url));
 const web = fileURLToPath(new URL("../../web/", import.meta.url));

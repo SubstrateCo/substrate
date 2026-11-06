@@ -1,6 +1,7 @@
-import { expect, test } from "bun:test";
 import { failure } from "@startup-os/contracts/result";
+
 import { getMessageLinks, searchContext, createTaskFromMessage } from "./service";
+import { expect, test } from "bun:test";
 
 test("context services validate reads and searches inside the result boundary", async () => {
   const headers = new Headers();

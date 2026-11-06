@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AcceptInvitationScreen as AcceptInvitationScreenView } from "@/ui/organizations/accept-invitation-screen";
+
+import { SignOutButton } from "@/components/auth/sign-out-button";
+import { useCurrentTime } from "@/hooks/use-current-time";
 import { authClient } from "@/lib/auth-client";
 import { invitationQueryOptions, unwrap } from "@/queries/organizations/options";
-import { SignOutButton } from "@/components/auth/sign-out-button";
 import { isInvitationUnavailable } from "@/ui/feedback/request-failure";
-import { useCurrentTime } from "@/hooks/use-current-time";
+import { AcceptInvitationScreen as AcceptInvitationScreenView } from "@/ui/organizations/accept-invitation-screen";
 
 export function AcceptInvitationScreen({ invitationId }: { invitationId: string }) {
   const now = useCurrentTime();

@@ -1,4 +1,5 @@
 import type { ComponentProps } from "react";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../primitives/card";
 import { UserInvitationsTable } from "./user-invitations-table";
 

@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test";
 import { pictureAccept, pictureMaxSize, validateFiles, validatePicture } from "./file-validation";
+import { expect, test } from "bun:test";
 
 test("picture validation accepts the size boundary and rejects oversized or unsupported sources", () => {
   const options = { accept: pictureAccept, maxSize: pictureMaxSize };

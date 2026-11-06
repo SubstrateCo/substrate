@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { MAX_FILE_BYTES, type CreateUploadInput } from "@startup-os/contracts/files/input";
 import {
   finalObjectKey,
@@ -6,8 +5,10 @@ import {
   type StorageScope,
 } from "@startup-os/database/storage";
 import type { ObjectStorage } from "@startup-os/storage";
+
 import { ServiceError, serviceResult } from "../../shared/service-result";
 import { normalizePicture } from "./image";
+import { createHash } from "node:crypto";
 
 export interface FileServiceDependencies {
   repository: StorageRepository;

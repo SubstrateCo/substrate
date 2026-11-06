@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { NotificationList as NotificationListView } from "@/ui/context/notification-list";
-import { notificationsOptions } from "@/queries/context/options";
-import { queryKeys } from "@/queries/keys";
+
 import { markRead } from "@/api/context";
 import { messageHref, workHref } from "@/lib/context-links";
+import { notificationsOptions } from "@/queries/context/options";
+import { queryKeys } from "@/queries/keys";
+import { NotificationList as NotificationListView } from "@/ui/context/notification-list";
 
 export function NotificationList({
   organizationId,

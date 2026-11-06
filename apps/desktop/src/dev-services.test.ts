@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test";
 import { developmentServices, ensureDevelopmentServices } from "./dev-services.js";
+import { expect, test } from "bun:test";
 
 for (const [webReady, apiReady, expected] of [
   [true, false, ["dev:server"]],

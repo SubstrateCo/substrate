@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
 import { taskStatusLabels } from "@startup-os/contracts/tasks";
+
+import { useEffect, useRef, useState, type ReactNode } from "react";
+
 import { Button } from "../primitives/button";
-import type { ProjectDetail, Task } from "./types";
 import { TaskPriorityIcon, TaskStatusIcon } from "./task-cues";
+import type { ProjectDetail, Task } from "./types";
 import { X, Pencil, ListPlus } from "lucide-react";
 
 export function TaskDetail({
@@ -71,7 +73,7 @@ export function TaskDetail({
           </dl>
           <div className="space-y-2">
             <h3 className="text-xs font-medium text-muted-foreground">Description</h3>
-            <p className="text-sm leading-relaxed whitespace-pre-wrap wrap-break-word">
+            <p className="text-sm leading-relaxed wrap-break-word whitespace-pre-wrap">
               {task.description || "No description."}
             </p>
           </div>

@@ -1,5 +1,5 @@
-import { z } from "zod";
 import { taskStatusValues } from "./status";
+import { z } from "zod";
 
 export const tasksWorkspace = z.object({ organizationId: z.string().min(1) });
 export const projectRequest = tasksWorkspace.extend({ projectEntityId: z.uuid() });

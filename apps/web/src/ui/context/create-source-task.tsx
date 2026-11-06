@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+
 import { Button } from "../primitives/button";
 import { SourceTaskDestination } from "./source-task-destination";
 
@@ -28,7 +29,7 @@ export function CreateSourceTask({
         The source stays private to people who can access this discussion. Creating a task does not
         share it.
       </p>
-      <blockquote className="line-clamp-4 border-l-2 pl-3 text-sm whitespace-pre-wrap wrap-anywhere">
+      <blockquote className="line-clamp-4 border-l-2 pl-3 text-sm wrap-anywhere whitespace-pre-wrap">
         {body.replace(/@\[[^\]]+\]/g, "[Reference]")}
       </blockquote>
       {createdHref ? (

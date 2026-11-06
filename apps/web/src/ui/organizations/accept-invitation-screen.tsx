@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
+
 import { AuthFrame } from "../auth/auth-frame";
 import { FormMessage } from "../auth/form-message";
-import { LoadingState } from "../feedback/loading-state";
-import { ErrorState } from "../feedback/error-state";
 import { ContentNotice } from "../feedback/content-notice";
+import { ErrorState } from "../feedback/error-state";
+import { LoadingState } from "../feedback/loading-state";
 import { PendingButton } from "../feedback/pending-button";
 
 export function AcceptInvitationScreen({

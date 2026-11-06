@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from "react";
-import { Building2, Settings } from "lucide-react";
+
 import { Button } from "../primitives/button";
 import { Popover, PopoverContent, PopoverTrigger } from "../primitives/popover";
 import { AppearanceControl } from "../theme/appearance-control";
 import { PicturePreview } from "../upload/picture-preview";
+import { Building2, Settings } from "lucide-react";
 
 export function UserMenu({
   name,

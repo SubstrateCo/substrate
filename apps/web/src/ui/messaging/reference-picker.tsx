@@ -1,10 +1,11 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { X } from "lucide-react";
-import { ReferencePickerOption } from "./reference-picker-option";
-import { Button } from "../primitives/button";
-import { Input } from "../primitives/input";
+
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
+import { Button } from "../primitives/button";
+import { Input } from "../primitives/input";
+import { ReferencePickerOption } from "./reference-picker-option";
+import { X } from "lucide-react";
 
 export type ReferenceKind = "task" | "project" | "person";
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+
 import type { Conversation } from "@/ui/messaging/types";
 
 export function useConversationCreation(

@@ -1,16 +1,18 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ConversationPane as ConversationPaneView } from "@/ui/messaging/conversation-pane";
-import { conversationName, type Conversation } from "@/lib/messaging";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+
+import { useState } from "react";
+
+import { AddMembersForm } from "./add-members-form";
 import { Composer } from "./composer";
 import { MessageList } from "./message-list";
 import { ThreadPane } from "./thread-pane";
-import { AddMembersForm } from "./add-members-form";
-import { useNavigate, useSearch } from "@tanstack/react-router";
-import { messageTargetOptions } from "@/queries/context/options";
-import { MessageUnavailable } from "@/ui/messaging/message-unavailable";
-import { MessageHistory } from "@/ui/messaging/message-history";
 import { useMessageHistory } from "./use-message-history";
+import { conversationName, type Conversation } from "@/lib/messaging";
+import { messageTargetOptions } from "@/queries/context/options";
+import { ConversationPane as ConversationPaneView } from "@/ui/messaging/conversation-pane";
+import { MessageHistory } from "@/ui/messaging/message-history";
+import { MessageUnavailable } from "@/ui/messaging/message-unavailable";
 
 export function ConversationPane({
   organizationId,

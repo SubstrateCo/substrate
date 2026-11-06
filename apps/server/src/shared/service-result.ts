@@ -1,11 +1,12 @@
-import { APIError } from "better-auth/api";
-import { ZodError } from "zod";
 import {
   failure,
   success,
   type ServiceErrorCode,
   type ServiceResult,
 } from "@startup-os/contracts/result";
+
+import { APIError } from "better-auth/api";
+import { ZodError } from "zod";
 
 export class ServiceError extends Error {
   constructor(

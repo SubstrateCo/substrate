@@ -1,7 +1,8 @@
 import type { MouseEvent } from "react";
+
 import { PendingButton } from "../feedback/pending-button";
-import { AtSign, ListTodo, MessageSquare } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../primitives/tooltip";
+import { AtSign, ListTodo, MessageSquare } from "lucide-react";
 
 export type Notification = { id: string; title: string; href: string; kind: string; read: boolean };
 

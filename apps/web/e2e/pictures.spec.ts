@@ -1,8 +1,8 @@
-import { randomUUID } from "node:crypto";
-import { expect, test, type Page } from "@playwright/test";
 import { provisionVerifiedAccount } from "./auth";
 import { Mailpit } from "./mailpit";
 import { provisionWorkspace } from "./organizations";
+import { expect, test, type Page } from "@playwright/test";
+import { randomUUID } from "node:crypto";
 
 async function picture(page: Page, color: string) {
   const data = await page.evaluate((fill) => {

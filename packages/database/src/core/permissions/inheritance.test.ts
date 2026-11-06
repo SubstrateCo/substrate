@@ -1,12 +1,12 @@
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
-import { expect, test } from "bun:test";
-import { eq } from "drizzle-orm";
 import { AccessDeniedError } from "../../errors";
+import { setupDatabase } from "../../testing/database";
 import { contacts } from "../contacts/schema";
 import { entities } from "../entities/schema";
 import { entityAccessParents } from "./access-parents";
 import { entityGrants } from "./schema";
-import { setupDatabase } from "../../testing/database";
+/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
+import { expect, test } from "bun:test";
+import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
 

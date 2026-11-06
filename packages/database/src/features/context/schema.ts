@@ -1,3 +1,7 @@
+import { actors } from "../../core/actors/schema";
+import { entities, entityType } from "../../core/entities/schema";
+import { messagingConversations, messagingMessages } from "../messaging/schema";
+import { tasks } from "../tasks/tasks.schema";
 import { sql } from "drizzle-orm";
 import {
   check,
@@ -9,10 +13,6 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
-import { actors } from "../../core/actors/schema";
-import { entities, entityType } from "../../core/entities/schema";
-import { messagingConversations, messagingMessages } from "../messaging/schema";
-import { tasks } from "../tasks/tasks.schema";
 
 export const messageEntityReferences = pgTable(
   "message_entity_references",

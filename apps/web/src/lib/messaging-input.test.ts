@@ -1,9 +1,10 @@
-import { expect, test } from "bun:test";
 import {
   conversationInput,
   messageInput,
   messageListInput,
 } from "@startup-os/contracts/messaging/input";
+
+import { expect, test } from "bun:test";
 
 const conversationId = "be350e0e-468b-4147-bd81-1d5af50ad394";
 

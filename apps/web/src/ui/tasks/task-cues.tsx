@@ -1,3 +1,4 @@
+import type { Task } from "./types";
 import {
   Eye,
   CircleCheck,
@@ -10,7 +11,6 @@ import {
   Minus,
   AlertCircle,
 } from "lucide-react";
-import type { Task } from "./types";
 
 export function TaskStatusIcon({ status }: { status: Task["status"] }) {
   const Icon = {

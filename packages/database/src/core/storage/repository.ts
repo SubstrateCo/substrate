@@ -1,9 +1,11 @@
-import { and, eq, inArray } from "drizzle-orm";
-import type { Database, DatabaseExecutor } from "../../client";
-import { AccessDeniedError, ConflictError } from "../../errors";
 import { organizationSettingsAccess } from "@startup-os/contracts/auth/settings-access";
 import type { CreateUploadInput } from "@startup-os/contracts/files/input";
+
+import type { Database, DatabaseExecutor } from "../../client";
+import { AccessDeniedError, ConflictError } from "../../errors";
 import { member } from "../organizations/schema";
+import { createStorageCleanup } from "./cleanup";
+import { temporaryObjectKey } from "./object-keys";
 import {
   fileUploads,
   storedFiles,
@@ -11,8 +13,7 @@ import {
   userPictures,
   organizationPictures,
 } from "./schema";
-import { createStorageCleanup } from "./cleanup";
-import { temporaryObjectKey } from "./object-keys";
+import { and, eq, inArray } from "drizzle-orm";
 
 // Trusted server-only identity scope. Personal files deliberately do not require an actor.
 export interface StorageScope {

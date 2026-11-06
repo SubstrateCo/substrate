@@ -1,13 +1,13 @@
+import { user } from "../../core/authentication/schema";
+import { AccessDeniedError } from "../../errors";
+import { setupDatabase } from "../../testing/database";
+import { createContextService } from "../context/service";
+import { createMessagingService } from "../messaging/service";
+import { notifications } from "./schema";
+import { createFeedService } from "./service";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
-import { setupDatabase } from "../../testing/database";
-import { user } from "../../core/authentication/schema";
-import { AccessDeniedError } from "../../errors";
-import { createMessagingService } from "../messaging/service";
-import { createContextService } from "../context/service";
-import { createFeedService } from "./service";
-import { notifications } from "./schema";
 
 const f = setupDatabase();
 const feed = (userId: string) => createFeedService(f.db, { userId, organizationId: f.orgA });

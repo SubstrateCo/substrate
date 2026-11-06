@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
 import { referencePrefix, referenceQuery } from "./reference-query";
+import { describe, expect, test } from "bun:test";
 
 describe("reference query", () => {
   test("finds an unscoped query at the caret, not just the end of the message", () => {

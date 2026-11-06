@@ -1,5 +1,5 @@
-import { ArrowDown, ArrowUp, CornerDownLeft } from "lucide-react";
 import { Kbd, KbdGroup } from "@/ui/primitives/kbd";
+import { ArrowDown, ArrowUp, CornerDownLeft } from "lucide-react";
 
 export function SearchShortcuts() {
   return (

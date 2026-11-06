@@ -1,9 +1,10 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { X } from "lucide-react";
-import { Button } from "../primitives/button";
-import { PaneState } from "../feedback/pane-state";
+
 import { ErrorState } from "../feedback/error-state";
+import { PaneState } from "../feedback/pane-state";
 import { isAccessFailure } from "../feedback/request-failure";
+import { Button } from "../primitives/button";
+import { X } from "lucide-react";
 
 export function ThreadPane({
   root,

@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { SignOutButton as SignOutButtonView } from "@/ui/auth/sign-out-button";
+
 import { authClient } from "@/lib/auth-client";
 import { isDesktop } from "@/lib/desktop-auth";
+import { SignOutButton as SignOutButtonView } from "@/ui/auth/sign-out-button";
 
 export function SignOutButton({ compact = false }: { compact?: boolean } = {}) {
   const queryClient = useQueryClient();

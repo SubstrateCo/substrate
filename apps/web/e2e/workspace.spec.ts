@@ -1,5 +1,4 @@
-import { randomUUID } from "node:crypto";
-import { expect, test } from "@playwright/test";
+import { callMessaging } from "./api";
 import {
   login,
   provisionVerifiedAccount,
@@ -9,7 +8,6 @@ import {
   type TestAccount,
 } from "./auth";
 import { Mailpit, openEmailLink } from "./mailpit";
-import { callMessaging } from "./api";
 import {
   createWorkspace,
   expectScopedMembershipAfter,
@@ -17,6 +15,8 @@ import {
   provisionWorkspace,
   switchWorkspace,
 } from "./organizations";
+import { expect, test } from "@playwright/test";
+import { randomUUID } from "node:crypto";
 
 test("workspace routes redirect anonymous visitors to sign in", async ({ page }) => {
   for (const path of [

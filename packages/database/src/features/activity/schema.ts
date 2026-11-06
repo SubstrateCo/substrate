@@ -1,7 +1,7 @@
-import { foreignKey, index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { actors } from "../../core/actors/schema";
-import { tasks } from "../tasks/tasks.schema";
 import { messagingMessages } from "../messaging/schema";
+import { tasks } from "../tasks/tasks.schema";
+import { foreignKey, index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const taskActivity = pgTable(
   "task_activity",

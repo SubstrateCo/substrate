@@ -1,6 +1,6 @@
-import { foreignKey, index, pgEnum, pgTable, primaryKey, text, uuid } from "drizzle-orm/pg-core";
 import { actors } from "../actors/schema";
 import { entities } from "../entities/schema";
+import { foreignKey, index, pgEnum, pgTable, primaryKey, text, uuid } from "drizzle-orm/pg-core";
 
 export const permissionLevel = pgEnum("permission_level", ["view", "comment", "edit", "owner"]);
 

@@ -1,8 +1,9 @@
 import { taskStatusLabels, taskStatusValues } from "@startup-os/contracts/tasks";
-import type { ProjectDetail } from "./types";
-import { TaskListItem } from "./task-list-item";
+
 import { ContentNotice } from "../feedback/content-notice";
 import { TaskStatusIcon } from "./task-cues";
+import { TaskListItem } from "./task-list-item";
+import type { ProjectDetail } from "./types";
 
 export function TaskList({
   detail,

@@ -1,4 +1,3 @@
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { DatabaseExecutor } from "../../client";
 import { ensureHumanActor } from "../../core/actors/provisioning";
 import { actors } from "../../core/actors/schema";
@@ -8,6 +7,7 @@ import { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { applyMessageEffects } from "../context/message-effects";
 import { visibleConversations, type MessagingIdentity } from "./access";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 export type { MessagingIdentity as MessagingScope } from "./access";
 import {
   messagingConversations as conversations,

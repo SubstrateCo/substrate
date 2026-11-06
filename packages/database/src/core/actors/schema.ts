@@ -1,3 +1,6 @@
+import { user } from "../authentication/schema";
+import { entityIdentity } from "../entities/identity";
+import { entities } from "../entities/schema";
 import { sql } from "drizzle-orm";
 import {
   check,
@@ -10,9 +13,6 @@ import {
   timestamp,
   unique,
 } from "drizzle-orm/pg-core";
-import { user } from "../authentication/schema";
-import { entityIdentity } from "../entities/identity";
-import { entities } from "../entities/schema";
 
 export interface AgentConfiguration {
   model?: string;

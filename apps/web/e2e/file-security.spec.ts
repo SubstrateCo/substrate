@@ -1,4 +1,9 @@
-import { randomUUID } from "node:crypto";
+import type { CompletedUpload, FilePurpose, UploadTicket } from "@startup-os/contracts/files/input";
+import type { ServiceResult } from "@startup-os/contracts/result";
+
+import { provisionVerifiedAccount } from "./auth";
+import { Mailpit } from "./mailpit";
+import { provisionWorkspaceSession } from "./organizations";
 import {
   expect,
   request as playwrightRequest,
@@ -6,11 +11,7 @@ import {
   type APIRequestContext,
   type APIResponse,
 } from "@playwright/test";
-import type { ServiceResult } from "@startup-os/contracts/result";
-import type { CompletedUpload, FilePurpose, UploadTicket } from "@startup-os/contracts/files/input";
-import { provisionVerifiedAccount } from "./auth";
-import { Mailpit } from "./mailpit";
-import { provisionWorkspaceSession } from "./organizations";
+import { randomUUID } from "node:crypto";
 
 const origin = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000").origin;
 const root = "/api/v1/files";

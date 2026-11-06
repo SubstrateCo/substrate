@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test";
 import { createApp } from "./app";
+import { expect, test } from "bun:test";
 
 test("unknown API versions fail with the standard response", async () => {
   const response = await createApp().request("/api/v99/tasks/projects");

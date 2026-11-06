@@ -1,8 +1,9 @@
 import { useEffect, useRef } from "react";
-import { ReferenceSuggestion as ReferenceSuggestionOption } from "@/ui/messaging/reference-suggestion";
-import { LoadingState } from "@/ui/feedback/loading-state";
+
 import { ErrorState } from "@/ui/feedback/error-state";
+import { LoadingState } from "@/ui/feedback/loading-state";
 import type { ReferenceKind } from "@/ui/messaging/reference-picker";
+import { ReferenceSuggestion as ReferenceSuggestionOption } from "@/ui/messaging/reference-suggestion";
 
 export type ReferenceSuggestion = {
   id: string;

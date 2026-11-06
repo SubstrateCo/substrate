@@ -1,6 +1,6 @@
-import { Check } from "lucide-react";
 import { DropdownMenuItem } from "../primitives/dropdown-menu";
 import { PicturePreview } from "../upload/picture-preview";
+import { Check } from "lucide-react";
 
 export function OrganizationSwitcherItem({
   organization,

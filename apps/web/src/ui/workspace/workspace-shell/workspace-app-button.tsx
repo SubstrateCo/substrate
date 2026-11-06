@@ -1,6 +1,6 @@
-import type { LucideIcon } from "lucide-react";
 import { Button } from "@/ui/primitives/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/primitives/tooltip";
+import type { LucideIcon } from "lucide-react";
 
 export function WorkspaceAppButton({
   label,
@@ -30,7 +30,7 @@ export function WorkspaceAppButton({
           {unread && (
             <span
               aria-hidden="true"
-              className="absolute right-2 top-2 size-2 rounded-full bg-destructive ring-2 ring-rail"
+              className="absolute top-2 right-2 size-2 rounded-full bg-destructive ring-2 ring-rail"
             />
           )}
         </Button>

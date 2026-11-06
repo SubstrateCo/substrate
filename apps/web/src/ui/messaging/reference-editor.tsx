@@ -1,17 +1,18 @@
 import { useImperativeHandle, useLayoutEffect, type Ref } from "react";
-import {
-  ReferencesContext,
-  WorkspaceReferenceNode,
-} from "@/ui/messaging/reference-editor/workspace-reference-node";
-import { EditorContent, useEditor } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import { closeHistory } from "@tiptap/pm/history";
-import type { WorkspaceReference } from "@/ui/messaging/entity-reference";
+
 import {
   referenceDocument,
   referenceDraftText,
   referenceEditorPosition,
 } from "./reference-editor-document";
+import type { WorkspaceReference } from "@/ui/messaging/entity-reference";
+import {
+  ReferencesContext,
+  WorkspaceReferenceNode,
+} from "@/ui/messaging/reference-editor/workspace-reference-node";
+import { closeHistory } from "@tiptap/pm/history";
+import { EditorContent, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
 
 const extensions = [
   StarterKit.configure({

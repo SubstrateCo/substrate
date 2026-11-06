@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
 import { authEnvironment } from "./environment";
+import { describe, expect, test } from "bun:test";
 
 const environment = {
   BETTER_AUTH_SECRET: "test-secret-with-at-least-32-characters",

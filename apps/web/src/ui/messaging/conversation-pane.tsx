@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
-import { ConversationHeader } from "@/ui/messaging/conversation-pane/conversation-header";
-import { conversationName, type Conversation } from "./types";
-import { PaneState } from "../feedback/pane-state";
+
+import { ContentNotice } from "../feedback/content-notice";
 import { ErrorState } from "../feedback/error-state";
+import { PaneState } from "../feedback/pane-state";
 import { isAccessFailure } from "../feedback/request-failure";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "../primitives/resizable";
-import { ContentNotice } from "../feedback/content-notice";
+import { conversationName, type Conversation } from "./types";
 import { useDesktopThread } from "./use-desktop-thread";
+import { ConversationHeader } from "@/ui/messaging/conversation-pane/conversation-header";
 
 export function ConversationPane({
   conversation,

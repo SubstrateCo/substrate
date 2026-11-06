@@ -1,8 +1,8 @@
+import { contacts, entities, entityGrants, entityLinks } from "../../schema";
+import { setupDatabase } from "../../testing/database";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { describe, expect, test } from "bun:test";
 import { sql } from "drizzle-orm";
-import { contacts, entities, entityGrants, entityLinks } from "../../schema";
-import { setupDatabase } from "../../testing/database";
 
 const f = setupDatabase();
 

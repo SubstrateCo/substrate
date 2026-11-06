@@ -1,9 +1,11 @@
-import { type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "@tanstack/react-router";
-import { WorkspaceLinkPrompt } from "@/ui/workspace/workspace-link-prompt";
+
+import { type ReactNode } from "react";
+
 import { authClient } from "@/lib/auth-client";
 import { unwrap } from "@/queries/organizations/options";
+import { WorkspaceLinkPrompt } from "@/ui/workspace/workspace-link-prompt";
 
 export function WorkspaceLinkBoundary({
   organizationId,

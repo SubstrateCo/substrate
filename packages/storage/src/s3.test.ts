@@ -1,6 +1,6 @@
+import { createS3Storage } from "./s3";
 import { expect, test } from "bun:test";
 import { rejects } from "node:assert/strict";
-import { createS3Storage } from "./s3";
 
 test("read validates byte limits and enforces them", async () => {
   let requests = 0;

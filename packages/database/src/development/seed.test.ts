@@ -1,11 +1,12 @@
-import { describe, expect, test } from "bun:test";
 import { taskStatusValues } from "@startup-os/contracts/tasks";
-import { eq } from "drizzle-orm";
-import { setupDatabase } from "../testing/database";
-import * as schema from "../schema";
-import { createMessagingService } from "../features/messaging/service";
+
 import { AccessDeniedError } from "../errors";
+import { createMessagingService } from "../features/messaging/service";
+import * as schema from "../schema";
+import { setupDatabase } from "../testing/database";
 import { seedDevelopmentDatabase } from "./seed";
+import { describe, expect, test } from "bun:test";
+import { eq } from "drizzle-orm";
 
 describe("development seed", () => {
   const fixture = setupDatabase();

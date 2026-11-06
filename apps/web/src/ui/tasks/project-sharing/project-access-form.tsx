@@ -1,8 +1,9 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { Button } from "@/ui/primitives/button";
-import { PendingButton } from "@/ui/feedback/pending-button";
-import type { ProjectDetail, ProjectPermission } from "../types";
+
 import { TaskSelect } from "../task-select";
+import type { ProjectDetail, ProjectPermission } from "../types";
+import { PendingButton } from "@/ui/feedback/pending-button";
+import { Button } from "@/ui/primitives/button";
 
 const permissionRank = { view: 0, comment: 1, edit: 2, owner: 3 };
 

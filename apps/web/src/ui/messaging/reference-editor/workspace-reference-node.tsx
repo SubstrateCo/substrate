@@ -1,8 +1,9 @@
 import { createContext, useContext } from "react";
-import { Node } from "@tiptap/core";
-import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from "@tiptap/react";
+
 import { EntityReference, type WorkspaceReference } from "@/ui/messaging/entity-reference";
 import { referenceToken } from "@/ui/messaging/reference-editor-document";
+import { Node } from "@tiptap/core";
+import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from "@tiptap/react";
 
 export const ReferencesContext = createContext<WorkspaceReference[]>([]);
 

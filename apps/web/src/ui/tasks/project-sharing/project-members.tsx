@@ -1,4 +1,4 @@
-import { Bot, UserRound } from "lucide-react";
+import type { ProjectDetail } from "../types";
 import { Button } from "@/ui/primitives/button";
 import {
   Item,
@@ -8,7 +8,7 @@ import {
   ItemMedia,
   ItemTitle,
 } from "@/ui/primitives/item";
-import type { ProjectDetail } from "../types";
+import { Bot, UserRound } from "lucide-react";
 
 export function ProjectMembers({
   members,

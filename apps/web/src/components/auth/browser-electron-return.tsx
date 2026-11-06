@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { BrowserElectronReturn as BrowserElectronReturnView } from "@/ui/auth/browser-electron-return";
+
+import { useEffect, useState } from "react";
+
 import { authClient } from "@/lib/auth-client";
 import { electronQuery } from "@/lib/electron-query";
+import { BrowserElectronReturn as BrowserElectronReturnView } from "@/ui/auth/browser-electron-return";
 
 export function BrowserElectronReturn() {
   const [attempt, setAttempt] = useState(0);

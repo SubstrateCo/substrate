@@ -1,4 +1,6 @@
 import { useId, useState } from "react";
+
+import { PendingButton } from "../feedback/pending-button";
 import { Input } from "../primitives/input";
 import { Label } from "../primitives/label";
 import {
@@ -8,7 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../primitives/select";
-import { PendingButton } from "../feedback/pending-button";
 import type { InvitationRole } from "./invitation-manager";
 
 export function InvitationForm({

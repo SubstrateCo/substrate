@@ -1,12 +1,13 @@
 import { useState, type MouseEvent } from "react";
-import { Bell, CheckCheck, X } from "lucide-react";
-import { Button } from "../primitives/button";
-import { LoadingState } from "../feedback/loading-state";
-import { ErrorState } from "../feedback/error-state";
-import { ContentNotice } from "../feedback/content-notice";
+
 import { FormMessage } from "../auth/form-message";
+import { ContentNotice } from "../feedback/content-notice";
+import { ErrorState } from "../feedback/error-state";
+import { LoadingState } from "../feedback/loading-state";
 import { isAccessFailure } from "../feedback/request-failure";
+import { Button } from "../primitives/button";
 import { NotificationItem, type Notification } from "./notification-item";
+import { Bell, CheckCheck, X } from "lucide-react";
 
 export function NotificationList({
   items,
@@ -38,7 +39,7 @@ export function NotificationList({
       <div className="border-b bg-card py-6">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-6">
           <div>
-            <p className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <p className="mb-2 flex items-center gap-2 text-xs font-medium tracking-wider text-muted-foreground uppercase">
               <Bell className="size-4" /> Your inbox
             </p>
             <h1 className="text-2xl font-semibold tracking-tight">Notifications</h1>
