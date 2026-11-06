@@ -21,4 +21,7 @@ describe("request failure recovery", () => {
     ).toBe(true);
     expect(isInvitationUnavailable(new Error("Network request failed"))).toBe(false);
   });
+  test("code-less invitation lookup failures are unavailable rather than retryable", () => {
+    expect(isInvitationUnavailable(new Error("Invitation not found!"))).toBe(true);
+  });
 });

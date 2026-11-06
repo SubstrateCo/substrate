@@ -158,9 +158,9 @@ test("verified accounts can build a team, switch workspaces, and recover access"
     await expect(page.getByText("Join your team", { exact: true })).toBeVisible();
     await openEmailLink(page, canceledInvitationLink);
     await expect(
-      page.getByText(
-        /This invitation is no longer available|The invitation may have expired, been canceled/,
-      ),
+      page
+        .getByRole("status")
+        .getByRole("heading", { name: "Invitation unavailable", exact: true }),
     ).toBeVisible();
     await expect(page.getByRole("button", { name: "Accept invitation", exact: true })).toHaveCount(
       0,

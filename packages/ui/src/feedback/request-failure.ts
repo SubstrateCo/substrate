@@ -30,7 +30,9 @@ export function isAccessFailure(error: Error | null | undefined): boolean {
 export function isInvitationUnavailable(error: Error | null | undefined): boolean {
   if (!error) return false;
   const code = "code" in error ? error.code : undefined;
-  return ["INVITATION_NOT_FOUND", "YOU_ARE_NOT_THE_RECIPIENT_OF_THE_INVITATION"].includes(
-    String(code),
+  return (
+    ["INVITATION_NOT_FOUND", "YOU_ARE_NOT_THE_RECIPIENT_OF_THE_INVITATION"].includes(
+      String(code),
+    ) || error.message === "Invitation not found!"
   );
 }

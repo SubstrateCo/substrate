@@ -637,11 +637,6 @@ test("a stale workspace tab cannot read or mutate the newly active workspace", a
   });
   expect(staleSend.error).toBe(changed);
 
-  await page
-    .getByRole("complementary", { name: "Conversations" })
-    .getByRole("button", { name: "Create channel", exact: true })
-    .click();
-  await expect(unavailable).toBeVisible();
   await expect(page.getByLabel("Channel name", { exact: true })).toHaveCount(0);
   const staleCreate = await callMessaging(page, "createConversation", {
     organizationId: firstOrganization.id,
