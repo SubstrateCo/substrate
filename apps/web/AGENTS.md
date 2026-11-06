@@ -17,3 +17,13 @@
 - Require verified email for workspace access and invitation acceptance. Only organization owners may invite members.
 - Test application policies and complete workflows. Do not test Better Auth internals or third-party guarantees.
 - Use Playwright for UI behavior, accessibility, and layout tests. Do not assert against rendered HTML strings or HTML snapshots, including markup substring checks.
+
+## Connected workflows
+
+- Give shareable records stable, organization-aware navigation targets. Opening a reference must resolve the intended record and enforce access.
+- Use structured entity references for supported internal mentions, not display names or copied URLs alone.
+- When implementing a relationship, expose useful forward navigation and backlinks through existing domain surfaces.
+- Keep reference creation, access changes, and notifications explicit. Show confirmation when an action expands access, especially across organizations.
+- Do not expose inaccessible target metadata through labels, previews, autocomplete, backlinks, or counts.
+- Preserve source context in creation workflows, such as creating a task from a message or email.
+- Invalidate affected relationship and detail queries after mutations, not only the originating feature's list.

@@ -22,6 +22,18 @@
 - Keep provider network calls outside database transactions. Commit imported records and their sync cursor together in one repository transaction, using the current sync lease.
 - Cross-organization channels require a dedicated sharing boundary. Never relax ordinary organization-scoped grants, links, or foreign keys to implement shared channels.
 
+## Relationships and context
+
+- Use domain foreign keys for structural relationships and shared entity links for contextual references. Do not duplicate structural relationships into entity links without a concrete query or lifecycle need.
+- Represent source/provenance relationships explicitly when a workflow creates one record from another.
+- Do not assume entity links contain every relationship. Cross-domain context queries must include relevant structural relationships and apply each domain's access rules.
+- Persist content changes and their derived references in one transaction. Distinguish content-derived references from manually attached relationships so removing one does not remove the other.
+- Validate organization, entity type, lifecycle state, and required access when establishing a relationship.
+- Linking does not grant access or send notifications unless an explicit application policy requires it.
+- Cross-organization messaging references require a dedicated bridge that checks conversation access and target-entity access. Do not weaken organization-scoped foreign keys or grants.
+- Define relationship behavior for deletion, restoration, membership changes, and reparenting when implementing those operations.
+- An entity-type enum value alone does not constitute an implemented domain. Do not create placeholder entities for unsupported feature types.
+
 ## Tests and migrations
 
 - Test repositories and constraints against real PostgreSQL with `TEST_DATABASE_URL` pointing to a dedicated database whose name ends in `_test`.

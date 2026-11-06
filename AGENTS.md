@@ -2,6 +2,17 @@
 
 StartupOs is the all-in-one workspace for you and your team. It unifies email + messages + docs + tasks + agents + CRM into a single fast interface with shared team-level memory. Everything in your workspace is @linked and searchable so your team (and your agents) never have to switch tools.
 
+## Connected workspace
+
+- Build features as parts of one workspace, not as isolated tools.
+- For each feature, identify its relationships to existing actors, entities, conversations, projects, tasks, contacts, and other relevant records. Implement the relationships needed for the requested workflow.
+- Distinguish structural relationships, contextual references, source/provenance links, permissions, and notifications. One must not implicitly substitute for another.
+- When work is created from existing context, preserve a structured reference to its source where supported. Do not rely only on copied text.
+- Make relationships navigable from both sides where useful, subject to access checks on each side.
+- Reuse shared entity identity, permissions, and linking mechanisms where applicable. Keep explicit boundaries for cross-organization resources.
+- Treat users, actors, and contacts as distinct concepts. Matching an identifier must not grant identity or access.
+- If a required connection cannot be implemented within the task scope, report the gap and the decision needed. Do not silently introduce a disconnected alternative or build unrelated features.
+
 ## Code organization
 
 - Group code by domain and responsibility. Keep files focused and avoid long, catch-all files.

@@ -5,6 +5,13 @@
 - Keep unit tests for non-UI logic and application policies.
 - Use shared theme tokens for colors, radii, and elevation. Support light and dark themes and reduced motion.
 
+## Entity references
+
+- Reuse consistent reference, preview, and related-context components across domains when those components exist.
+- Keep domain data fetching and authorization outside presentation components.
+- Support deleted, unavailable, and inaccessible reference states without exposing private metadata.
+- Make references keyboard-accessible and usable as navigation links where navigation is supported.
+
 ## Loading, error, and action states
 
 - Reuse shared feedback components. Do not use bare “Loading…” text or a raw error message as the complete state for fetched content.
