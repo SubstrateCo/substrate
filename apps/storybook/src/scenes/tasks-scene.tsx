@@ -10,26 +10,43 @@ import { ProjectSharing } from "@startup-os/ui/tasks/project-sharing";
 import { ProjectStatuses } from "@startup-os/ui/tasks/project-statuses";
 import type { ProjectDetail, TaskComment } from "@startup-os/ui/tasks/types";
 import { taskProject } from "./tasks-fixtures";
+import { populatedProjects, largeProjects } from "./tasks-dense-fixtures";
 
 export function TasksScene({
   state = "ready",
   projectState = "ready",
   level = "owner",
   failComment = false,
+  dataset = "simple",
 }: {
   state?: "ready" | "empty" | "loading" | "error" | "unavailable";
   projectState?: "ready" | "empty" | "loading" | "error" | "unavailable";
   level?: ProjectDetail["level"];
   failComment?: boolean;
+  dataset?: "simple" | "populated" | "large";
 }) {
   const [currentState, setState] = useState(state);
   const [currentProjectState, setProjectState] = useState(projectState);
-  const [detail, setDetail] = useState<ProjectDetail>({
-    ...taskProject,
-    level,
-    tasks: projectState === "empty" ? [] : taskProject.tasks,
-  });
-  const [projects, setProjects] = useState(state === "empty" ? [] : [taskProject.project]);
+  const initialProjects = {
+    simple: [taskProject],
+    populated: populatedProjects,
+    large: largeProjects,
+  }[dataset];
+  const [details, setDetails] = useState<Record<string, ProjectDetail>>(() =>
+    Object.fromEntries(
+      initialProjects.map((detail) => [
+        detail.project.entityId,
+        { ...detail, level, tasks: projectState === "empty" ? [] : detail.tasks },
+      ]),
+    ),
+  );
+  const [selectedProjectId, setSelectedProjectId] = useState(initialProjects[0]!.project.entityId);
+  const detail = details[selectedProjectId]!;
+  const setDetail = (value: ProjectDetail) =>
+    setDetails((previous) => ({ ...previous, [value.project.entityId]: value }));
+  const [projects, setProjects] = useState(
+    state === "empty" ? [] : initialProjects.map((detail) => detail.project),
+  );
   const [comments, setComments] = useState<Record<string, TaskComment[]>>({});
   const [commentErrors, setCommentErrors] = useState<Record<string, Error | null>>({});
   const [shouldFail, setShouldFail] = useState(failComment);
@@ -50,6 +67,8 @@ export function TasksScene({
     >
       <TasksWorkspace
         projects={projects}
+        selectedProjectId={selectedProjectId}
+        onSelectProject={setSelectedProjectId}
         loading={currentState === "loading"}
         error={requestError(currentState)}
         onRetry={() => setState("ready")}
@@ -66,6 +85,7 @@ export function TasksScene({
         )}
         renderProject={() => (
           <ProjectPane
+            key={detail.project.entityId}
             data={
               currentProjectState === "loading" || currentProjectState === "error"
                 ? undefined

@@ -8,6 +8,16 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Project: Story = {};
+export const PopulatedWorkspace: Story = { args: { dataset: "populated" } };
+export const LargeProject: Story = { args: { dataset: "large" } };
+export const DarkPopulatedWorkspace: Story = {
+  args: { dataset: "populated" },
+  globals: { theme: "dark" },
+};
+export const MobilePopulatedWorkspace: Story = {
+  args: { dataset: "populated" },
+  globals: { viewport: { value: "mobile" } },
+};
 export const EmptyWorkspace: Story = { args: { state: "empty" } };
 export const LoadingProjects: Story = { args: { state: "loading" } };
 export const ProjectsError: Story = { args: { state: "error" } };
