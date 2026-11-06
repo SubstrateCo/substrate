@@ -60,7 +60,6 @@ export async function readProject(
     repositories.transaction(async (repos) => ({
       project: await repos.projects.get(input.projectEntityId),
       level: await repos.permissions.getEffectiveLevel(input.projectEntityId),
-      statuses: await repos.projects.listStatuses(input.projectEntityId),
       members: await repos.projects.listMembers(input.projectEntityId),
       actors: await repos.projects.availableActors(input.projectEntityId),
       tasks: await repos.tasks.list(input.projectEntityId),
@@ -104,9 +103,6 @@ export async function writeTasks(headers: Headers, raw: TasksWrite): Promise<{ i
           else await repos.tasks.addComment(input.taskEntityId, input.body);
           return { id: task.entityId };
         }
-        case "addStatus":
-          await repos.projects.addStatus(input.projectEntityId, input);
-          break;
         case "share":
           await repos.permissions.grant({
             entityId: input.projectEntityId,

@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { entities } from "../../core/entities/schema";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
-import { projects, projectStatuses } from "./schema";
+import { projects } from "./schema";
 
 const f = setupDatabase();
 
@@ -36,13 +36,11 @@ test("projects whitelist fields and reject blank names without orphan entities",
   });
 });
 
-test("project editors manage statuses but viewers and organization admins have no implicit edit access", async () => {
+test("project editors can update projects but viewers and organization admins have no implicit edit access", async () => {
   const alice = f.forActor(f.alice);
   const bob = f.forActor(f.bob);
   const project = await alice.projects.create({ name: "Private" });
-  await expect(bob.projects.listStatuses(project.entityId)).rejects.toBeInstanceOf(
-    AccessDeniedError,
-  );
+  await expect(bob.projects.get(project.entityId)).rejects.toBeInstanceOf(AccessDeniedError);
   await alice.permissions.grant({
     entityId: project.entityId,
     actorEntityId: f.bob,
@@ -51,26 +49,20 @@ test("project editors manage statuses but viewers and organization admins have n
   await expect(
     bob.projects.update(project.entityId, { name: "Not allowed", description: "" }),
   ).rejects.toBeInstanceOf(AccessDeniedError);
-  await expect(
-    bob.projects.addStatus(project.entityId, { name: "Review", category: "active" }),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
   await alice.permissions.grant({
     entityId: project.entityId,
     actorEntityId: f.bob,
     level: "edit",
   });
   expect(
-    (await bob.projects.addStatus(project.entityId, { name: "Review", category: "active" })).name,
-  ).toBe("Review");
-  await expect(
-    bob.projects.addStatus(project.entityId, { name: "Review", category: "active" }),
-  ).rejects.toBeInstanceOf(ValidationError);
+    await bob.projects.update(project.entityId, { name: "Renamed", description: "Review" }),
+  ).toMatchObject({ name: "Renamed", description: "Review" });
   expect(
     (await bob.projects.availableActors(project.entityId)).map((actor) => actor.entityId).sort(),
   ).toEqual([f.alice, f.bob].sort());
 });
 
-test("project and status references enforce entity type and organization alignment", async () => {
+test("project references enforce entity type and organization alignment", async () => {
   await expect(
     f.db
       .insert(projects)
@@ -80,14 +72,9 @@ test("project and status references enforce entity type and organization alignme
   const project = await f.forActor(f.alice).projects.create({ name: "Private" });
   await expect(
     f.db
-      .insert(projectStatuses)
-      .values({
-        organizationId: f.orgB,
-        projectEntityId: project.entityId,
-        name: "Wrong org",
-        category: "todo",
-        position: 0,
-      })
+      .update(projects)
+      .set({ organizationId: f.orgB })
+      .where(eq(projects.entityId, project.entityId))
       .execute(),
   ).rejects.toMatchObject({ cause: { code: "23503" } });
   await f

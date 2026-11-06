@@ -26,6 +26,7 @@ test("search and links reject unsupported domains and unbounded inputs", () => {
     { limit: 101 },
     { query: "x".repeat(201) },
     { after: "bad" },
+    { relatedToEntityId: "bad" },
   ])
     expect(
       contextSearch.safeParse({ organizationId: "workspace", query: "work", ...input }).success,

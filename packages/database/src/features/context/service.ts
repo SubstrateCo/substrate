@@ -27,7 +27,7 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
           projectEntityId: input.projectEntityId,
           title: input.title.trim(),
           description: input.description ?? "",
-          statusId: input.statusId ?? null,
+          status: input.status ?? null,
           priority: input.priority ?? "none",
           assigneeActorEntityId: input.assigneeActorEntityId ?? null,
           dueDate: input.dueDate ?? null,

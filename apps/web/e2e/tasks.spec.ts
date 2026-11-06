@@ -9,7 +9,7 @@ async function choose(page: Page, label: string, option: string) {
   await page.getByRole("option", { name: option, exact: true }).click();
 }
 
-test("tasks application creates projects, custom statuses, assigned tasks, subtasks, and comments", async ({
+test("tasks application creates projects, standard-status assigned tasks, subtasks, and comments", async ({
   page,
   request,
 }) => {
@@ -35,19 +35,11 @@ test("tasks application creates projects, custom statuses, assigned tasks, subta
   await page.getByRole("button", { name: "Create project", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Product launch", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Project settings", exact: true }).click();
-  await page.getByLabel("New status name", { exact: true }).fill("In review");
-  await page.getByRole("button", { name: "Add status", exact: true }).click();
-  await expect(page.getByLabel("New status name", { exact: true })).toHaveValue("");
-  await expect(page.getByRole("region", { name: "Project statuses" })).toContainText("In review");
-  // Duplicate validation must preserve the draft so the user can correct it.
-  await page.getByLabel("New status name", { exact: true }).fill("In review");
-  await page.getByRole("button", { name: "Add status", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("A status with that name already exists.");
-  await expect(page.getByLabel("New status name", { exact: true })).toHaveValue("In review");
+  await expect(page.getByRole("button", { name: "Add status", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "New task", exact: true }).click();
   await page.getByLabel("Task title", { exact: true }).fill("Ship the launch");
   await page.getByLabel("Task description", { exact: true }).fill("Final checks and release.");
-  await choose(page, "Status", "In review");
+  await choose(page, "Status", "In Review");
   await choose(page, "Priority", "High");
   await choose(page, "Assignee", account.name);
   await page.getByLabel("Due date", { exact: true }).fill("2026-12-01");
@@ -56,7 +48,7 @@ test("tasks application creates projects, custom statuses, assigned tasks, subta
   await expect(
     details.getByRole("heading", { name: "Ship the launch", exact: true }),
   ).toBeVisible();
-  await expect(details).toContainText("In review");
+  await expect(details).toContainText("In Review");
   await expect(details).toContainText("2026-12-01");
   await expect(details).toContainText(account.name);
   await details.getByLabel("Add a comment", { exact: true }).fill("Ready for final review.");
@@ -67,9 +59,9 @@ test("tasks application creates projects, custom statuses, assigned tasks, subta
   await page.getByRole("button", { name: "Create subtask", exact: true }).click();
   await expect(page.getByText("Subtask of Ship the launch", { exact: true })).toBeVisible();
   await details.getByRole("button", { name: "Edit task", exact: true }).click();
-  await choose(page, "Status", "Done");
+  await choose(page, "Status", "Completed");
   await page.getByRole("button", { name: "Save task", exact: true }).click();
-  await expect(details.getByRole("definition").filter({ hasText: /^Done$/ })).toBeVisible();
+  await expect(details.getByRole("definition").filter({ hasText: /^Completed$/ })).toBeVisible();
   await page.reload();
   await page.getByRole("button", { name: /Check release notes/ }).click();
   await expect(

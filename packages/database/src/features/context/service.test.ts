@@ -35,6 +35,7 @@ test("source creation is atomic, concurrent-idempotent, and preserves the exact 
     messageId: reply.id,
     projectEntityId: project.entityId,
     title: "Ship request",
+    status: "in_review" as const,
   };
   const [a, b] = await Promise.all([
     context().createTaskFromMessage(input),
@@ -42,16 +43,20 @@ test("source creation is atomic, concurrent-idempotent, and preserves the exact 
   ]);
   expect(a.entityId).toBe(b.entityId);
   expect(a.description).toBe("");
+  expect(a.status).toBe("in_review");
   expect(await context().related(a.entityId)).toMatchObject([
     { messageId: reply.id, threadId: root.id, purpose: "source" },
   ]);
   expect(await context().messageLinks(reply.id)).toMatchObject([
-    { entityId: a.entityId, title: "Ship request" },
+    { entityId: a.entityId, title: "Ship request", status: "in_review", statusName: "In Review" },
   ]);
   expect(await f.db.select().from(entityGrants)).toEqual(before);
   expect(await f.db.select().from(sourceTaskRequests)).toHaveLength(1);
   await expect(
     context().createTaskFromMessage({ ...input, title: "Different" }),
+  ).rejects.toBeInstanceOf(ConflictError);
+  await expect(
+    context().createTaskFromMessage({ ...input, status: "completed" }),
   ).rejects.toBeInstanceOf(ConflictError);
 });
 

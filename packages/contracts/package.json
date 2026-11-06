@@ -1,0 +1,14 @@
+{
+  "name": "@startup-os/contracts",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./tasks": "./src/tasks/status.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}

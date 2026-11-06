@@ -53,7 +53,9 @@ test("view-only project settings expose no mutation controls", async ({ page }) 
   await page.goto("/iframe.html?id=projects-scenes-tasks--view-only&viewMode=story");
   await page.getByRole("button", { name: "Project settings", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Project access", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Workflow statuses", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Workflow statuses", exact: true })).toHaveCount(
+    0,
+  );
   for (const name of ["Edit project", "Update access", "Remove Alex Morgan", "Add status"]) {
     await expect(page.getByRole("button", { name, exact: true })).toHaveCount(0);
   }

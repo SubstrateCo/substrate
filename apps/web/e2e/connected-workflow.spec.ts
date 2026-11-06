@@ -80,7 +80,7 @@ test("connected work preserves source, links, references, and stable navigation"
       .getByRole("button", { name: "Copy source text into description", exact: true })
       .click();
     await expect(form.getByLabel("Task description", { exact: true })).toHaveValue(source);
-    await choose(page, "Status", "In progress");
+    await choose(page, "Status", "In Progress");
     await choose(page, "Priority", "High");
     await choose(page, "Assignee", account.name);
     await form.getByLabel("Due date", { exact: true }).fill("2026-12-15");
@@ -95,7 +95,7 @@ test("connected work preserves source, links, references, and stable navigation"
     const details = page.getByRole("region", { name: "Task details", exact: true });
     await expect(details.getByRole("heading", { name: task, exact: true })).toBeVisible();
     await expect(details.getByText(source, { exact: true }).first()).toBeVisible();
-    for (const value of ["In progress", "high", account.name, "2026-12-15"]) {
+    for (const value of ["In Progress", "high", account.name, "2026-12-15"]) {
       await expect(details.getByRole("definition").filter({ hasText: value })).toBeVisible();
     }
     const related = page.getByRole("region", { name: "Related context", exact: true });
@@ -143,9 +143,8 @@ test("connected work preserves source, links, references, and stable navigation"
     await message.getByRole("button", { name: `Unlink ${task}`, exact: true }).click();
     await expect(message.getByText("Linked work", { exact: true })).toBeHidden();
     await expect(message.getByText("Created here", { exact: true })).toBeVisible();
-    await expect(
-      message.getByRole("link", { name: `${task} · In progress`, exact: true }),
-    ).toBeVisible();
+    await expect(message.getByRole("link", { name: `Open ${task}`, exact: true })).toBeVisible();
+    await expect(message.getByText("In Progress", { exact: true })).toBeVisible();
     await page.reload();
     await expect(message.getByText("Created here", { exact: true })).toBeVisible();
     await expect(message.getByText("Linked work", { exact: true })).toBeHidden();
@@ -204,9 +203,7 @@ test("connected work preserves source, links, references, and stable navigation"
     await composer.press("Enter");
     await expect(composer).toHaveValue("");
     const message = page.getByRole("article").filter({ hasText: `References ${suffix}` });
-    await expect(
-      message.getByRole("link", { name: `${task} · In progress`, exact: true }).first(),
-    ).toBeVisible();
+    await expect(message.getByRole("link", { name: task, exact: true }).first()).toBeVisible();
     await expect(message.getByRole("link", { name: project, exact: true }).first()).toBeVisible();
     await page.reload();
     await message.getByRole("link", { name: project, exact: true }).first().click();
@@ -225,6 +222,23 @@ test("connected work preserves source, links, references, and stable navigation"
   await test.step("workspace search resolves the task and narrow layouts keep context usable", async () => {
     await page.keyboard.press("Control+k");
     const search = page.getByRole("region", { name: "Workspace search", exact: true });
+    await search.getByRole("searchbox", { name: "Search workspace", exact: true }).fill(task);
+    await search.getByRole("button", { name: "task", exact: true }).click();
+    await search
+      .getByRole("listitem")
+      .filter({ has: page.getByRole("link", { name: `task · ${task}`, exact: true }) })
+      .getByRole("button", { name: "Find related records", exact: true })
+      .click();
+    await expect(
+      search.getByRole("link", { name: `message · ${source}`, exact: true }),
+    ).toBeVisible();
+    await search
+      .getByRole("listitem")
+      .filter({ has: page.getByRole("link", { name: `message · ${source}`, exact: true }) })
+      .getByRole("button", { name: "Find related records", exact: true })
+      .click();
+    await expect(search.getByRole("link", { name: `task · ${task}`, exact: true })).toBeVisible();
+    await search.getByRole("button", { name: "Search all records", exact: true }).click();
     await search.getByRole("searchbox", { name: "Search workspace", exact: true }).fill(task);
     await search.getByRole("button", { name: "task", exact: true }).click();
     await search.getByRole("link", { name: `task · ${task}`, exact: true }).click();

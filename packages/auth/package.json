@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.7.18",
+    "@startup-os/contracts": "workspace:*",
     "@startup-os/database": "workspace:*",
     "better-auth": "^1.7.18",
     "drizzle-orm": "^0.45.4",

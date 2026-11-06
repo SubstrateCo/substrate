@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { taskStatusValues } from "@startup-os/contracts/tasks";
 
 export const contextWorkspace = z.object({ organizationId: z.string().min(1).max(200) });
 export const contextEntity = contextWorkspace.extend({ entityId: z.uuid() });
@@ -12,13 +13,14 @@ export const contextSearch = contextWorkspace.extend({
   limit: z.number().int().min(1).max(100).optional(),
   conversationId: z.uuid().optional(),
   editable: z.boolean().optional(),
+  relatedToEntityId: z.uuid().optional(),
 });
 export const contextSourceTask = contextMessage.extend({
   requestId: z.uuid(),
   projectEntityId: z.uuid(),
   title: z.string().trim().min(1).max(300),
   description: z.string().max(20000).optional(),
-  statusId: z.uuid().optional(),
+  status: z.enum(taskStatusValues).optional(),
   priority: z.enum(["none", "low", "medium", "high", "urgent"]).optional(),
   assigneeActorEntityId: z.uuid().nullable().optional(),
   dueDate: z

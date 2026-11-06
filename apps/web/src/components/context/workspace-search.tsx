@@ -17,11 +17,14 @@ export function WorkspaceSearch({
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<"all" | "task" | "project" | "message" | "conversation">("all");
   const [after, setAfter] = useState<string>();
+  const [relatedToEntityId, setRelatedToEntityId] = useState<string>();
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => {
     input.current?.focus();
   }, []);
-  const results = useQuery(searchOptions({ organizationId, query, kind, after, limit: 30 }));
+  const results = useQuery(
+    searchOptions({ organizationId, query, kind, after, relatedToEntityId, limit: 30 }),
+  );
   return (
     <section
       aria-label="Workspace search"
@@ -43,6 +46,21 @@ export function WorkspaceSearch({
           Close search
         </Button>
       </div>
+      {relatedToEntityId && (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Related records</span>
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={() => {
+              setRelatedToEntityId(undefined);
+              setAfter(undefined);
+            }}
+          >
+            Search all records
+          </Button>
+        </div>
+      )}
       <div role="group" aria-label="Search type" className="flex flex-wrap gap-2">
         {(["all", "task", "project", "message", "conversation"] as const).map((type) => (
           <Button
@@ -83,11 +101,28 @@ export function WorkspaceSearch({
                   item.kind === "task" ? item.id : undefined,
                 );
             return (
-              <li key={item.id}>
-                <a className="block rounded border p-2 text-sm hover:bg-accent" href={href}>
+              <li key={item.id} className="flex items-center gap-2">
+                <a
+                  className="min-w-0 flex-1 rounded border p-2 text-sm wrap-anywhere hover:bg-accent"
+                  href={href}
+                >
                   <span className="text-xs text-muted-foreground">{item.kind} · </span>
                   {item.title.replace(/@\[[^\]]+\]/g, "[Reference]")}
                 </a>
+                <Button
+                  variant="outline"
+                  size="xs"
+                  aria-label="Find related records"
+                  onClick={() => {
+                    setRelatedToEntityId(item.id);
+                    setQuery("");
+                    setKind("all");
+                    setAfter(undefined);
+                    input.current?.focus();
+                  }}
+                >
+                  Related
+                </Button>
               </li>
             );
           })}

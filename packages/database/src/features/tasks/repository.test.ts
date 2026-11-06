@@ -12,6 +12,42 @@ import { tasks } from "./tasks.schema";
 const fixture = setupDatabase();
 
 describe("projects and tasks", () => {
+  test("tasks default to not started and use the same five statuses across projects", async () => {
+    const alice = fixture.forActor(fixture.alice);
+    const first = await alice.projects.create({ name: "One" });
+    const second = await alice.projects.create({ name: "Two" });
+    const task = await alice.tasks.create({ projectEntityId: first.entityId, title: "Default" });
+    expect(task).toMatchObject({ status: "not_started" });
+    for (const status of [
+      "not_started",
+      "in_progress",
+      "in_review",
+      "completed",
+      "canceled",
+    ] as const) {
+      const created = await alice.tasks.create({
+        projectEntityId: second.entityId,
+        title: status,
+        status,
+      });
+      expect(created).toMatchObject({ status });
+      expect(await alice.tasks.update(task.entityId, { status })).toMatchObject({ status });
+    }
+    // SAFETY: Deliberately bypass the input type to verify runtime rejection of an invalid status.
+    await expect(
+      alice.tasks.update(task.entityId, { status: "blocked" as never }),
+    ).rejects.toBeInstanceOf(ValidationError);
+    expect((await alice.tasks.get(task.entityId)).status).toBe("canceled");
+    // SAFETY: Deliberately bypass the column type to verify PostgreSQL rejects an invalid status.
+    await expect(
+      fixture.db
+        .update(tasks)
+        .set({ status: "blocked" as never })
+        .where(eq(tasks.entityId, task.entityId))
+        .execute(),
+    ).rejects.toMatchObject({ cause: { code: "23514" } });
+  });
+
   test("project sharing grants tasks and subtasks the same access, and revocation removes it", async () => {
     const alice = fixture.forActor(fixture.alice);
     const bob = fixture.forActor(fixture.bob);
@@ -54,38 +90,24 @@ describe("projects and tasks", () => {
     await expect(bob.tasks.listComments(child.entityId)).rejects.toBeInstanceOf(AccessDeniedError);
   });
 
-  test("defaults and custom statuses belong to one project, as do subtasks and assignees", async () => {
+  test("subtasks belong to one project and assignees require project access", async () => {
     const alice = fixture.forActor(fixture.alice);
     const first = await alice.projects.create({ name: "One" });
     const second = await alice.projects.create({ name: "Two" });
-    expect(
-      (await alice.projects.listStatuses(first.entityId)).map((status) => status.name),
-    ).toEqual(["Todo", "In progress", "Done", "Canceled"]);
-    const custom = await alice.projects.addStatus(first.entityId, {
-      name: "In review",
-      category: "active",
-    });
     const task = await alice.tasks.create({
       projectEntityId: first.entityId,
       title: "Review",
-      statusId: custom.id,
+      status: "in_review",
       assigneeActorEntityId: fixture.alice,
       priority: "high",
       dueDate: "2026-12-01",
     });
     expect(task).toMatchObject({
-      statusId: custom.id,
+      status: "in_review",
       assigneeActorEntityId: fixture.alice,
       priority: "high",
       dueDate: "2026-12-01",
     });
-    await expect(
-      alice.tasks.create({
-        projectEntityId: second.entityId,
-        title: "Bad status",
-        statusId: custom.id,
-      }),
-    ).rejects.toBeInstanceOf(ValidationError);
     await expect(
       alice.tasks.create({
         projectEntityId: second.entityId,

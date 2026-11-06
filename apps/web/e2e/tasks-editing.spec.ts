@@ -43,13 +43,13 @@ test("project and task edits, cleared fields, nested subtasks, and comments surv
   await page.getByRole("button", { name: "New task", exact: true }).click();
   await page.getByLabel("Task title", { exact: true }).fill("Original task");
   await page.getByLabel("Task description", { exact: true }).fill("Original task description");
-  await choose(page, "Status", "In progress");
+  await choose(page, "Status", "In Progress");
   await choose(page, "Priority", "Urgent");
   await choose(page, "Assignee", account.name);
   await page.getByLabel("Due date", { exact: true }).fill("2026-12-15");
   await page.getByRole("button", { name: "Create task", exact: true }).click();
   const details = page.getByRole("region", { name: "Task details", exact: true });
-  for (const value of ["In progress", "urgent", account.name, "2026-12-15"]) {
+  for (const value of ["In Progress", "urgent", account.name, "2026-12-15"]) {
     await expect(details.getByRole("definition").filter({ hasText: value })).toBeVisible();
   }
   await details.getByRole("button", { name: "Edit task", exact: true }).click();
@@ -63,7 +63,7 @@ test("project and task edits, cleared fields, nested subtasks, and comments surv
   );
   await page.getByLabel("Task title", { exact: true }).fill("Edited parent task");
   await page.getByLabel("Task description", { exact: true }).fill("Edited task description");
-  await choose(page, "Status", "Done");
+  await choose(page, "Status", "Completed");
   await choose(page, "Priority", "Low");
   await choose(page, "Assignee", "Unassigned");
   await page.getByLabel("Due date", { exact: true }).fill("");
@@ -72,7 +72,7 @@ test("project and task edits, cleared fields, nested subtasks, and comments surv
     details.getByRole("heading", { name: "Edited parent task", exact: true }),
   ).toBeVisible();
   await expect(details.getByText("Edited task description", { exact: true })).toBeVisible();
-  for (const value of ["Done", "low", "Unassigned", "No due date"]) {
+  for (const value of ["Completed", "low", "Unassigned", "No due date"]) {
     await expect(
       details.getByRole("definition").filter({ hasText: new RegExp(`^${value}$`) }),
     ).toBeVisible();
@@ -109,7 +109,7 @@ test("project and task edits, cleared fields, nested subtasks, and comments surv
   await expect(details.getByText("Edited task description", { exact: true })).toBeVisible();
   await expect(details.getByText("Parent comment persists.", { exact: true })).toBeVisible();
   await expect(details.getByText("Grandchild comment persists.", { exact: true })).toBeHidden();
-  for (const value of ["Done", "low", "Unassigned", "No due date"]) {
+  for (const value of ["Completed", "low", "Unassigned", "No due date"]) {
     await expect(
       details.getByRole("definition").filter({ hasText: new RegExp(`^${value}$`) }),
     ).toBeVisible();

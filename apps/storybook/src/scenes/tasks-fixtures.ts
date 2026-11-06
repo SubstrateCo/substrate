@@ -7,12 +7,6 @@ export const taskProject: ProjectDetail = {
     description: "Bring the new workspace to our customers.",
   },
   level: "owner",
-  statuses: [
-    { id: "todo", name: "Todo", category: "todo" },
-    { id: "active", name: "In progress", category: "active" },
-    { id: "done", name: "Done", category: "done" },
-    { id: "canceled", name: "Canceled", category: "canceled" },
-  ],
   actors: [
     { entityId: "alex", name: "Alex Morgan", type: "human" },
     { entityId: "agent", name: "Release assistant", type: "agent" },
@@ -25,7 +19,7 @@ export const taskProject: ProjectDetail = {
       parentTaskEntityId: null,
       title: "Ship the launch",
       description: "Final checks and release.",
-      statusId: "active",
+      status: "in_progress",
       priority: "high",
       assigneeActorEntityId: "alex",
       dueDate: "2026-12-01",

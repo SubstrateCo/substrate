@@ -8,7 +8,7 @@ import { AccessDeniedError } from "../../errors";
 import type { MessagingIdentity } from "../messaging/access";
 import { projectRepository } from "../projects/repository";
 import { taskRepository } from "../tasks/repository";
-import { projectStatuses } from "../projects/schema";
+import { taskStatusLabels } from "@startup-os/contracts/tasks";
 
 export async function workspaceContext(db: DatabaseExecutor, scope: MessagingIdentity) {
   const [identity] = await db
@@ -40,17 +40,13 @@ export async function requireWork(
   const { entity } = await context.requireAccess(entityId, level);
   if (entity.entityType === "task") {
     const task = await taskRepository(context).get(entityId, level);
-    const [status] = await context.db
-      .select({ name: projectStatuses.name })
-      .from(projectStatuses)
-      .where(eq(projectStatuses.id, task.statusId));
     return {
       entityId,
       entityType: "task" as const,
       title: task.title,
       projectEntityId: task.projectEntityId,
-      statusId: task.statusId,
-      statusName: status!.name,
+      status: task.status,
+      statusName: taskStatusLabels[task.status],
     };
   }
   if (entity.entityType === "project") {
@@ -60,7 +56,7 @@ export async function requireWork(
       entityType: "project" as const,
       title: project.name,
       projectEntityId: entityId,
-      statusId: null,
+      status: null,
       statusName: null,
     };
   }

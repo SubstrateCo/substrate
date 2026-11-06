@@ -1,5 +1,42 @@
 import { expect, test } from "@playwright/test";
 
+test("tasks use five standard statuses for creation, grouping, and editing", async ({ page }) => {
+  await page.goto("/iframe.html?id=projects-scenes-tasks--project&viewMode=story");
+  await page.getByRole("button", { name: "New task", exact: true }).click();
+  const form = page.getByRole("form", { name: "New task", exact: true });
+  await expect(form.getByRole("combobox", { name: "Status", exact: true })).toHaveText(
+    "Not Started",
+  );
+  await form.getByRole("combobox", { name: "Status", exact: true }).click();
+  await expect(page.getByRole("option")).toHaveText([
+    "Not Started",
+    "In Progress",
+    "In Review",
+    "Completed",
+    "Canceled",
+  ]);
+  await page.getByRole("option", { name: "In Review", exact: true }).click();
+  await form.getByLabel("Task title", { exact: true }).fill("Review the release");
+  await form.getByRole("button", { name: "Create task", exact: true }).click();
+  const details = page.getByRole("region", { name: "Task details", exact: true });
+  await expect(details.getByText("In Review", { exact: true })).toBeVisible();
+  await expect(
+    page
+      .getByRole("region", { name: "Project tasks", exact: true })
+      .getByRole("heading", { name: "In Review 1", exact: true }),
+  ).toBeVisible();
+  await details.getByRole("button", { name: "Edit task", exact: true }).click();
+  await details.getByRole("combobox", { name: "Status", exact: true }).click();
+  await page.getByRole("option", { name: "Completed", exact: true }).click();
+  await details.getByRole("button", { name: "Save task", exact: true }).click();
+  await expect(details.getByText("Completed", { exact: true })).toBeVisible();
+  await expect(
+    page
+      .getByRole("region", { name: "Project tasks", exact: true })
+      .getByRole("heading", { name: "Completed 1", exact: true }),
+  ).toBeVisible();
+});
+
 test("task UI runs without app services and keeps comment drafts after failure", async ({
   page,
 }) => {

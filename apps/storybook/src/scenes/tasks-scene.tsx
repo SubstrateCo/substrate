@@ -7,7 +7,6 @@ import { TaskForm } from "@startup-os/ui/tasks/task-form";
 import { TaskDetail } from "@startup-os/ui/tasks/task-detail";
 import { TaskComments } from "@startup-os/ui/tasks/task-comments";
 import { ProjectSharing } from "@startup-os/ui/tasks/project-sharing";
-import { ProjectStatuses } from "@startup-os/ui/tasks/project-statuses";
 import type { ProjectDetail, TaskComment } from "@startup-os/ui/tasks/types";
 import { taskProject } from "./tasks-fixtures";
 import { populatedProjects, largeProjects } from "./tasks-dense-fixtures";
@@ -200,16 +199,6 @@ export function TasksScene({
                       ),
                     })
                   }
-                />
-                <ProjectStatuses
-                  detail={value}
-                  onAdd={(draft, onSuccess) => {
-                    setDetail({
-                      ...detail,
-                      statuses: [...detail.statuses, { ...draft, id: crypto.randomUUID() }],
-                    });
-                    onSuccess();
-                  }}
                 />
               </>
             )}

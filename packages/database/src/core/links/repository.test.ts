@@ -34,6 +34,9 @@ describe("links", () => {
       level: "view",
     });
     expect(await f.forActor(f.bob).links.list(shared.entityId)).toHaveLength(1);
+    expect(await f.forActor(f.bob).links.list(privateContact.entityId)).toHaveLength(1);
+    await repo.permissions.revoke({ entityId: shared.entityId, actorEntityId: f.bob });
+    expect(await f.forActor(f.bob).links.list(privateContact.entityId)).toEqual([]);
   });
 
   test("rejects duplicate, self, and cross-organization links", async () => {
@@ -47,6 +50,7 @@ describe("links", () => {
       relationType: "related_to" as const,
     };
     await repo.links.create(link);
+    expect(await repo.links.list(b.entityId)).toEqual(await repo.links.list(a.entityId));
     await expect(repo.links.create(link)).rejects.toThrow();
     await expect(repo.links.create({ ...link, targetEntityId: a.entityId })).rejects.toThrow();
     await expect(

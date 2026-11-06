@@ -3,7 +3,7 @@ import { actors } from "../../core/actors/schema";
 import { RepositoryContext, type PermissionLevel } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { projectRepository, requiredText } from "../projects/repository";
-import { projectStatuses } from "../projects/schema";
+import { taskStatusValues } from "@startup-os/contracts/tasks";
 import { taskComments } from "./comments.schema";
 import type { CreateTaskInput, TaskFields } from "./contracts";
 import { tasks } from "./tasks.schema";
@@ -47,19 +47,8 @@ export function taskRepository(context: RepositoryContext) {
         actorEntityId: input.assigneeActorEntityId,
       }).requireAccess(projectEntityId, "view");
     }
-    if (input.statusId !== undefined) {
-      const [status] = await ctx.db
-        .select()
-        .from(projectStatuses)
-        .where(
-          and(
-            eq(projectStatuses.organizationId, scope.organizationId),
-            eq(projectStatuses.projectEntityId, projectEntityId),
-            eq(projectStatuses.id, input.statusId),
-          ),
-        );
-      if (!status) throw new ValidationError("Select a status from this project.");
-    }
+    if (input.status !== undefined && !taskStatusValues.includes(input.status))
+      throw new ValidationError("Select a standard task status.");
   }
 
   return {
@@ -68,9 +57,7 @@ export function taskRepository(context: RepositoryContext) {
       return db.transaction(async (tx) => {
         const ctx = new RepositoryContext(tx, scope);
         await ctx.requireAccess(input.projectEntityId, "edit", true);
-        const statuses = await projectRepository(ctx).listStatuses(input.projectEntityId);
-        const statusId = input.statusId ?? statuses[0]!.id;
-        await validate(ctx, input.projectEntityId, { ...input, statusId });
+        await validate(ctx, input.projectEntityId, input);
         if (input.parentTaskEntityId) {
           const parent = await taskRepository(ctx).get(input.parentTaskEntityId);
           if (parent.projectEntityId !== input.projectEntityId)
@@ -86,7 +73,7 @@ export function taskRepository(context: RepositoryContext) {
             parentTaskEntityId: input.parentTaskEntityId,
             title: requiredText(input.title, 300),
             description: input.description ?? "",
-            statusId,
+            status: input.status ?? "not_started",
             priority: input.priority ?? "none",
             assigneeActorEntityId: input.assigneeActorEntityId,
             dueDate: input.dueDate,
@@ -117,7 +104,7 @@ export function taskRepository(context: RepositoryContext) {
         const task = await taskRepository(ctx).get(entityId, "edit", true);
         await validate(ctx, task.projectEntityId, input);
         const changes: string[] = [];
-        if (input.statusId !== undefined && input.statusId !== task.statusId)
+        if (input.status !== undefined && input.status !== task.status)
           changes.push("Status changed");
         if (
           input.assigneeActorEntityId !== undefined &&
@@ -137,7 +124,7 @@ export function taskRepository(context: RepositoryContext) {
           .set({
             title: input.title === undefined ? undefined : requiredText(input.title, 300),
             description: input.description,
-            statusId: input.statusId,
+            status: input.status,
             priority: input.priority,
             assigneeActorEntityId: input.assigneeActorEntityId,
             dueDate: input.dueDate,

@@ -5,7 +5,6 @@ import { TaskForm } from "./task-form";
 import { TaskDetail } from "./task-detail";
 import { ProjectForm } from "./project-form";
 import { ProjectSharing } from "./project-sharing";
-import { ProjectStatuses } from "./project-statuses";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { CopyLink } from "../context/copy-link";
 import { workHref } from "@/lib/context-links";
@@ -82,10 +81,7 @@ export function ProjectPane({
         />
       )}
       renderSettings={(detail) => (
-        <>
-          <ProjectSharing organizationId={organizationId} detail={detail} />
-          <ProjectStatuses organizationId={organizationId} detail={detail} />
-        </>
+        <ProjectSharing organizationId={organizationId} detail={detail} />
       )}
     />
   );

@@ -108,27 +108,22 @@ for (const theme of ["light", "dark"] as const) {
     }
   });
 
-  test(`long custom status stays contained in ${theme}`, async ({ page }) => {
+  test(`standard status selection stays contained in ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(
       `/iframe.html?id=projects-scenes-tasks--${theme === "dark" ? "dark-project" : "project"}&viewMode=story`,
     );
-    const statusName = "Review" + "R".repeat(94);
-    await page.getByRole("button", { name: "Project settings", exact: true }).click();
-    await page.getByLabel("New status name", { exact: true }).fill(statusName);
-    await page.getByRole("button", { name: "Add status", exact: true }).click();
-    await expect(
-      page
-        .getByRole("region", { name: "Project statuses", exact: true })
-        .getByText(statusName, { exact: false }),
-    ).toBeVisible();
-    await expectWorkspaceFits(page);
     await page.getByRole("button", { name: "New task", exact: true }).click();
-    await page.getByLabel("Task title", { exact: true }).fill("Task with long workflow status");
+    await page.getByLabel("Task title", { exact: true }).fill("Task with standard workflow status");
     await page.getByRole("combobox", { name: "Status", exact: true }).click();
-    await page.getByRole("option", { name: statusName, exact: true }).click();
+    await page.getByRole("option", { name: "In Review", exact: true }).click();
     await page.getByRole("button", { name: "Create task", exact: true }).click();
     await expect(page.getByRole("region", { name: "Task details", exact: true })).toBeVisible();
+    await expect(
+      page
+        .getByRole("region", { name: "Task details", exact: true })
+        .getByText("In Review", { exact: true }),
+    ).toBeVisible();
     await expectWorkspaceFits(page);
   });
 }

@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { taskStatusLabels } from "@startup-os/contracts/tasks";
 import { Button } from "../primitives/button";
 import type { ProjectDetail, Task } from "./types";
 
@@ -40,7 +41,7 @@ export function TaskDetail({
           <dl className="grid grid-cols-2 gap-4 text-sm wrap-anywhere">
             <div>
               <dt className="text-muted-foreground">Status</dt>
-              <dd>{detail.statuses.find((status) => status.id === task.statusId)?.name}</dd>
+              <dd>{taskStatusLabels[task.status]}</dd>
             </div>
             <div>
               <dt className="text-muted-foreground">Priority</dt>

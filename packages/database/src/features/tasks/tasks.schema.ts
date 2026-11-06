@@ -4,7 +4,8 @@ import { actors } from "../../core/actors/schema";
 import { entityIdentity } from "../../core/entities/identity";
 import { entities } from "../../core/entities/schema";
 import { entityAccessParents } from "../../core/permissions/access-parents";
-import { projects, projectStatuses } from "../projects/schema";
+import { projects } from "../projects/schema";
+import { taskStatusValues } from "@startup-os/contracts/tasks";
 
 export const tasks = pgTable(
   "tasks",
@@ -14,7 +15,7 @@ export const tasks = pgTable(
     parentTaskEntityId: uuid("parent_task_entity_id"),
     title: text("title").notNull(),
     description: text("description").default("").notNull(),
-    statusId: uuid("status_id").notNull(),
+    status: text("status", { enum: taskStatusValues }).default("not_started").notNull(),
     priority: text("priority")
       .$type<"none" | "low" | "medium" | "high" | "urgent">()
       .default("none")
@@ -50,18 +51,14 @@ export const tasks = pgTable(
       foreignColumns: [table.organizationId, table.projectEntityId, table.entityId],
     }),
     foreignKey({
-      columns: [table.organizationId, table.projectEntityId, table.statusId],
-      foreignColumns: [
-        projectStatuses.organizationId,
-        projectStatuses.projectEntityId,
-        projectStatuses.id,
-      ],
-    }),
-    foreignKey({
       columns: [table.organizationId, table.assigneeActorEntityId],
       foreignColumns: [actors.organizationId, actors.entityId],
     }),
     check("tasks_title_check", sql`length(trim(${table.title})) BETWEEN 1 AND 300`),
+    check(
+      "tasks_status_check",
+      sql`${table.status} IN ('not_started', 'in_progress', 'in_review', 'completed', 'canceled')`,
+    ),
     check(
       "tasks_priority_check",
       sql`${table.priority} IN ('none', 'low', 'medium', 'high', 'urgent')`,

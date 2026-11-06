@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import { taskStatusLabels, taskStatusValues } from "@startup-os/contracts/tasks";
 import { Button } from "../primitives/button";
 import { Input } from "../primitives/input";
 import { Label } from "../primitives/label";
@@ -32,7 +33,7 @@ export function TaskForm({
   const id = useId();
   const [title, setTitle] = useState(task?.title ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
-  const [statusId, setStatusId] = useState(task?.statusId ?? detail.statuses[0]!.id);
+  const [status, setStatus] = useState<Task["status"]>(task?.status ?? "not_started");
   const [priority, setPriority] = useState<Task["priority"]>(task?.priority ?? "none");
   const [assignee, setAssignee] = useState(task?.assigneeActorEntityId ?? "unassigned");
   const [dueDate, setDueDate] = useState(task?.dueDate ?? "");
@@ -56,7 +57,7 @@ export function TaskForm({
         onSubmit({
           title,
           description,
-          statusId,
+          status,
           priority,
           assigneeActorEntityId: assignee === "unassigned" ? null : assignee,
           dueDate: dueDate || null,
@@ -91,9 +92,9 @@ export function TaskForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <TaskSelect
           label="Status"
-          value={statusId}
-          onChange={setStatusId}
-          options={detail.statuses.map((status) => ({ value: status.id, label: status.name }))}
+          value={status}
+          onChange={setStatus}
+          options={taskStatusValues.map((value) => ({ value, label: taskStatusLabels[value] }))}
         />
         <TaskSelect
           label="Priority"

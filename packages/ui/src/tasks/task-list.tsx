@@ -1,4 +1,5 @@
 import { Button } from "../primitives/button";
+import { taskStatusLabels, taskStatusValues } from "@startup-os/contracts/tasks";
 import type { ProjectDetail } from "./types";
 
 export function TaskList({
@@ -22,13 +23,14 @@ export function TaskList({
           </p>
         </div>
       )}
-      {detail.statuses.map((status) => {
-        const rows = detail.tasks.filter((task) => task.statusId === status.id);
+      {taskStatusValues.map((status) => {
+        const rows = detail.tasks.filter((task) => task.status === status);
         if (!rows.length) return null;
         return (
-          <div key={status.id}>
+          <div key={status}>
             <h2 className="mb-2 text-sm font-semibold wrap-anywhere">
-              {status.name} <span className="text-muted-foreground">{rows.length}</span>
+              {taskStatusLabels[status]}{" "}
+              <span className="text-muted-foreground">{rows.length}</span>
             </h2>
             <ul className="space-y-1">
               {rows.map((task) => (

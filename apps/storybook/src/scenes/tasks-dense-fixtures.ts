@@ -43,7 +43,16 @@ const actors: ProjectDetail["actors"] = [
   { entityId: "research-agent", name: "Research assistant", type: "agent" },
 ];
 const priorities: Task["priority"][] = ["urgent", "high", "medium", "low", "none"];
-const statuses = ["todo", "todo", "active", "active", "active", "done", "done", "canceled"];
+const statuses: Task["status"][] = [
+  "not_started",
+  "not_started",
+  "in_progress",
+  "in_progress",
+  "in_review",
+  "completed",
+  "completed",
+  "canceled",
+];
 
 function createProjects(taskCount: number): ProjectDetail[] {
   return projectNames.map((name, projectIndex) => {
@@ -68,7 +77,7 @@ function createProjects(taskCount: number): ProjectDetail[] {
         parentTaskEntityId: index % 6 === 5 ? `${projectId}-task-${index}` : null,
         title: `${taskNames[index % taskNames.length]} · ${name}${index >= taskNames.length ? ` · Sprint ${Math.floor(index / taskNames.length) + 1}` : ""}`,
         description: `Coordinate the ${name.toLowerCase()} work with the team.\n\nConfirm acceptance criteria, capture review notes, and check the result before release.`,
-        statusId: statuses[index % statuses.length]!,
+        status: statuses[index % statuses.length]!,
         priority: priorities[index % priorities.length]!,
         assigneeActorEntityId: index % 7 === 6 ? null : actors[index % actors.length]!.entityId,
         dueDate: index % 4 === 3 ? null : `2026-11-${String(6 + (index % 24)).padStart(2, "0")}`,

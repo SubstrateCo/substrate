@@ -1,7 +1,9 @@
+import type { TaskStatus } from "@startup-os/contracts/tasks";
+
 export interface TaskFields {
   title: string;
   description: string;
-  statusId: string;
+  status: TaskStatus;
   priority: "none" | "low" | "medium" | "high" | "urgent";
   assigneeActorEntityId: string | null;
   dueDate: string | null;
