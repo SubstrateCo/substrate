@@ -1,2 +1,0 @@
-ALTER TABLE "task_activity" ADD COLUMN "source_message_id" uuid;--> statement-breakpoint
-ALTER TABLE "task_activity" ADD CONSTRAINT "task_activity_source_message_id_messaging_messages_id_fk" FOREIGN KEY ("source_message_id") REFERENCES "public"."messaging_messages"("id") ON DELETE cascade ON UPDATE no action;
