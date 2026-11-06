@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { DatabaseExecutor } from "../../client";
 import { ensureHumanActor } from "../../core/actors/provisioning";
 import { actors } from "../../core/actors/schema";
@@ -7,7 +7,7 @@ import { member } from "../../core/organizations/schema";
 import { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { applyMessageEffects } from "../context/message-effects";
-import type { MessagingIdentity } from "./access";
+import { visibleConversations, type MessagingIdentity } from "./access";
 export type { MessagingIdentity as MessagingScope } from "./access";
 import {
   messagingConversations as conversations,
@@ -53,33 +53,11 @@ export function createMessagingService(
     }).requireActiveActor();
   }
 
-  function visible() {
-    return or(
-      and(
-        eq(conversations.kind, "channel"),
-        eq(conversations.private, false),
-        eq(conversations.organizationId, scope.organizationId),
-      ),
-      inArray(
-        conversations.id,
-        db
-          .select({ id: participants.conversationId })
-          .from(participants)
-          .where(
-            and(
-              eq(participants.userId, scope.userId),
-              eq(participants.organizationId, scope.organizationId),
-            ),
-          ),
-      ),
-    );
-  }
-
   async function requireConversation(tx: DatabaseExecutor, id: string) {
     const [conversation] = await tx
       .select()
       .from(conversations)
-      .where(and(eq(conversations.id, id), visible()))
+      .where(and(eq(conversations.id, id), visibleConversations(tx, scope)))
       .for("update");
     if (!conversation) throw new AccessDeniedError();
     return conversation;
@@ -133,7 +111,7 @@ export function createMessagingService(
         const rows = await tx
           .select()
           .from(conversations)
-          .where(visible())
+          .where(visibleConversations(tx, scope))
           .orderBy(asc(conversations.createdAt), asc(conversations.id));
         const names = rows.length
           ? await tx
@@ -314,7 +292,15 @@ export function createMessagingService(
         const replies = await tx
           .select({ threadId: messages.threadId, count: sql<number>`count(*)::int` })
           .from(messages)
-          .where(eq(messages.conversationId, conversationId))
+          .where(
+            and(
+              eq(messages.conversationId, conversationId),
+              inArray(
+                messages.threadId,
+                rows.filter((row) => !row.message.threadId).map((row) => row.message.id),
+              ),
+            ),
+          )
           .groupBy(messages.threadId);
         return rows.map(({ message, authorName }) => {
           const grouped = new Map<string, { emoji: string; count: number; reacted: boolean }>();

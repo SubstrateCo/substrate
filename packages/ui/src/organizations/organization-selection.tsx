@@ -7,6 +7,7 @@ import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
 import { ContentNotice } from "../feedback/content-notice";
 import { Spinner } from "../primitives/spinner";
+import { isAccessFailure } from "../feedback/request-failure";
 
 export function OrganizationSelection({
   organizations,
@@ -47,7 +48,9 @@ export function OrganizationSelection({
               errorDescription="We couldn’t open this workspace. Try selecting it again."
             />
             <div className="min-h-36 space-y-3">
-              {loading && <LoadingState label="Loading workspaces…" rows={2} />}
+              {loading && !organizations?.length && !isAccessFailure(loadError) && (
+                <LoadingState label="Loading workspaces…" rows={2} />
+              )}
               {loadError && (
                 <ErrorState
                   title="Couldn’t load workspaces"
@@ -62,7 +65,7 @@ export function OrganizationSelection({
                 />
               )}
               <div className="grid gap-2">
-                {!loading &&
+                {!isAccessFailure(loadError) &&
                   (!loadError || organizations !== undefined) &&
                   organizations?.map((organization) => (
                     <Button

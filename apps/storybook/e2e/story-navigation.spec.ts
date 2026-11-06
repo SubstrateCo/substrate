@@ -21,5 +21,20 @@ test("preview navigation renders the next story without reloading the document",
   await openStory(page, "primitives-actions-button--secondary");
   await openStory(page, "primitives-actions-button--sizes");
   await expect(page.getByRole("button", { name: "sm", exact: true })).toBeVisible();
+  await openStory(page, "primitives-actions-button--default");
+  await expect(page.getByRole("button", { name: "Button", exact: true })).toBeVisible();
   expect(await page.evaluate(() => performance.timeOrigin)).toBe(initialDocument);
+});
+
+test("linked work opens the destination preview", async ({ page }) => {
+  await openStory(page, "messaging-scenes-workspace--task-in-channel");
+  await page.getByRole("link", { name: "Open Review the onboarding flow", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Product launch", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Ship the launch/ })).toBeVisible();
+});
+
+test("inline references open the destination preview", async ({ page }) => {
+  await openStory(page, "messaging-components-references-inline-reference--task");
+  await page.getByRole("link", { name: "Review the onboarding flow", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Product launch", exact: true })).toBeVisible();
 });

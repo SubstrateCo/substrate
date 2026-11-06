@@ -31,7 +31,7 @@ export function TaskDetail({
           Close task
         </Button>
       </div>
-      {editing ? (
+      {editing && canEdit ? (
         renderEditor(() => setEditing(false))
       ) : (
         <>

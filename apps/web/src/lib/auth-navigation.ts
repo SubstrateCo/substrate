@@ -9,7 +9,11 @@ export function safeRedirect(value: unknown, fallback = "/dashboard"): string {
     // oxlint-disable-next-line no-control-regex -- Reject URL controls and backslashes before URL normalization.
     if (/[\\\u0000-\u0020\u007f]/.test(decoded) || decoded.startsWith("//")) return fallback;
     const url = new URL(value, "https://startup.invalid");
-    if (url.origin !== "https://startup.invalid" || url.pathname.startsWith("/api/"))
+    if (
+      url.origin !== "https://startup.invalid" ||
+      url.pathname.startsWith("//") ||
+      url.pathname.startsWith("/api/")
+    )
       return fallback;
     return `${url.pathname}${url.search}${url.hash}`;
   } catch {

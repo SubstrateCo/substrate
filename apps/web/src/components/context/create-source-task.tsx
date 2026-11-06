@@ -6,6 +6,7 @@ import type { TaskDraft } from "@startup-os/ui/tasks/types";
 import { Button } from "@startup-os/ui/primitives/button";
 import { ErrorState } from "@startup-os/ui/feedback/error-state";
 import { LoadingState } from "@startup-os/ui/feedback/loading-state";
+import { isAccessFailure } from "@startup-os/ui/feedback/request-failure";
 import { searchOptions } from "@/queries/context/options";
 import { projectQueryOptions } from "@/queries/tasks/options";
 import { queryKeys } from "@/queries/keys";
@@ -27,6 +28,8 @@ export function CreateSourceTask({
     searchOptions({ organizationId, query: "", kind: "project", editable: true }),
   );
   const [projectId, setProjectId] = useState("");
+  const accessDenied = isAccessFailure(projects.error);
+  const availableProjects = accessDenied ? undefined : projects.data;
   const [created, setCreated] = useState<{ entityId: string; projectEntityId: string } | null>(
     null,
   );
@@ -68,21 +71,21 @@ export function CreateSourceTask({
               onRetry={() => void projects.refetch()}
             />
           )}
-          {projects.data?.length === 0 && (
+          {availableProjects?.length === 0 && (
             <p>No editable projects. Create a project or ask its owner for edit access.</p>
           )}
-          {!!projects.data?.length && (
+          {!!availableProjects?.length && (
             <TaskSelect
               label="Destination project"
               value={projectId}
               onChange={setProjectId}
-              options={projects.data.map((project) => ({
+              options={availableProjects.map((project) => ({
                 value: project.id,
                 label: project.title,
               }))}
             />
           )}
-          {projectId && (
+          {projectId && !accessDenied && (
             <SourceTaskFields
               key={projectId}
               organizationId={organizationId}
@@ -93,7 +96,7 @@ export function CreateSourceTask({
               onClose={onClose}
             />
           )}
-          {!projectId && (
+          {(!projectId || accessDenied) && (
             <Button variant="ghost" onClick={onClose}>
               Cancel
             </Button>
@@ -134,24 +137,38 @@ function SourceTaskFields({
     },
   });
   if (project.isPending) return <LoadingState label="Loading task fields" variant="compact" />;
-  if (project.error)
+  if (!project.data || isAccessFailure(project.error))
     return (
-      <ErrorState compact title="Project unavailable" onRetry={() => void project.refetch()} />
+      <>
+        <ErrorState compact title="Project unavailable" onRetry={() => void project.refetch()} />
+        <Button variant="ghost" onClick={onClose}>
+          Cancel
+        </Button>
+      </>
     );
   return (
-    <TaskForm
-      detail={project.data}
-      sourceText={sourceText}
-      pending={save.isPending}
-      error={save.error}
-      onCancel={onClose}
-      onSubmit={(draft) => {
-        const fingerprint = JSON.stringify(draft);
-        const id = lastDraft && lastDraft !== fingerprint ? crypto.randomUUID() : requestId;
-        setLastDraft(fingerprint);
-        setRequestId(id);
-        save.mutate({ draft, id });
-      }}
-    />
+    <>
+      {project.error && (
+        <ErrorState
+          compact
+          title="Couldn’t refresh project"
+          onRetry={() => void project.refetch()}
+        />
+      )}
+      <TaskForm
+        detail={project.data}
+        sourceText={sourceText}
+        pending={save.isPending}
+        error={save.error}
+        onCancel={onClose}
+        onSubmit={(draft) => {
+          const fingerprint = JSON.stringify(draft);
+          const id = lastDraft && lastDraft !== fingerprint ? crypto.randomUUID() : requestId;
+          setLastDraft(fingerprint);
+          setRequestId(id);
+          save.mutate({ draft, id });
+        }}
+      />
+    </>
   );
 }

@@ -6,6 +6,7 @@ import { entityLinks } from "../../core/links/schema";
 import { member } from "../../core/organizations/schema";
 import { user } from "../../core/authentication/schema";
 import { pageSize } from "../../core/repository-context";
+import { visibilityCte } from "../../core/permissions/visibility";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { visibleConversations, type MessagingIdentity } from "../messaging/access";
@@ -131,6 +132,8 @@ export async function contextSearch(
   }
   const match = (column: SQLWrapper) =>
     sql`(to_tsvector('simple', ${column}) @@ plainto_tsquery('simple', ${query}) OR strpos(lower(coalesce(${column}, '')), lower(${query})) > 0)`;
+  const accessibleWork = sql`(${visibilityCte(ctx.scope)} SELECT DISTINCT entity_id FROM visible_entities
+    WHERE ${input.editable ? sql`level IN ('edit', 'owner')` : sql`true`})`;
   const results: SearchResult[] = [];
   if (kind === "all" || kind === "task" || kind === "project") {
     for (const type of ["task", "project"] as const) {
@@ -143,7 +146,8 @@ export async function contextSearch(
         .where(
           and(
             eq(table.organizationId, scope.organizationId),
-            inArray(table.entityId, ctx.readableEntities()),
+            inArray(table.entityId, accessibleWork),
+            type === "task" ? inArray(tasks.projectEntityId, accessibleWork) : undefined,
             anchorId ? inArray(table.entityId, relatedEntities) : undefined,
             anchorId ? sql`${table.entityId} <> ${anchorId}` : undefined,
             query ? match(sql`${column} || ' ' || ${table.description}`) : undefined,
@@ -221,6 +225,17 @@ export async function contextSearch(
         member,
         and(eq(member.userId, user.id), eq(member.organizationId, actors.organizationId)),
       )
+      .innerJoin(
+        messagingConversations,
+        and(
+          eq(messagingConversations.id, input.conversationId),
+          visibleConversations(db, scope),
+          visibleConversations(db, {
+            userId: actors.userId,
+            organizationId: scope.organizationId,
+          }),
+        ),
+      )
       .where(
         and(
           eq(actors.organizationId, scope.organizationId),
@@ -235,24 +250,7 @@ export async function contextSearch(
       )
       .orderBy(asc(actors.entityId))
       .limit(limit);
-    for (const row of rows) {
-      const [actor] = await db.select().from(actors).where(eq(actors.entityId, row.id));
-      if (!actor?.userId) continue;
-      const [conversation] = await db
-        .select({ id: messagingConversations.id })
-        .from(messagingConversations)
-        .where(
-          and(
-            eq(messagingConversations.id, input.conversationId),
-            visibleConversations(db, scope),
-            visibleConversations(db, {
-              userId: actor.userId,
-              organizationId: scope.organizationId,
-            }),
-          ),
-        );
-      if (conversation) results.push({ ...row, kind: "person" });
-    }
+    results.push(...rows.map((row) => ({ ...row, kind: "person" as const })));
   }
   return results.sort((a, b) => a.id.localeCompare(b.id)).slice(0, limit);
 }

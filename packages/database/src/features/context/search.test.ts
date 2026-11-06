@@ -10,6 +10,104 @@ import { entityLinks } from "../../core/links/schema";
 import { messagingParticipants } from "../messaging/schema";
 const f = setupDatabase();
 
+test("person search filters conversation access before paging and keeps organization boundaries", async () => {
+  await f.db.update(user).set({ emailVerified: true });
+  const [excluded, caller] = [
+    { id: f.alice, userId: "alice", email: "alice@example.com" },
+    { id: f.bob, userId: "bob", email: "bob@example.com" },
+  ].sort((a, b) => a.id.localeCompare(b.id));
+  const scope = { userId: caller!.userId, organizationId: f.orgA };
+  const chat = createMessagingService(f.db, scope);
+  const channel = await chat.createConversation({ kind: "channel", name: "People", private: true });
+  const context = createContextService(f.db, scope);
+  const search = (after?: string) =>
+    context.search({ query: "", kind: "person", conversationId: channel.id, limit: 1, after });
+  expect((await search()).map((row) => row.id)).toEqual([caller!.id]);
+  const otherContext = createContextService(f.db, {
+    userId: excluded!.userId,
+    organizationId: f.orgA,
+  });
+  expect(
+    await otherContext.search({ query: "", kind: "person", conversationId: channel.id }),
+  ).toEqual([]);
+  await chat.addMembers(channel.id, [excluded!.email, "outside@example.com"]);
+  const first = await search();
+  const second = await search(first[0]!.id);
+  expect(first.map((row) => row.id)).toEqual([excluded!.id]);
+  expect(second.map((row) => row.id)).toEqual([caller!.id]);
+  expect(await search(second[0]!.id)).toEqual([]);
+  const publicChannel = await chat.createConversation({ kind: "channel", name: "Everyone" });
+  expect(
+    (await context.search({ query: "", kind: "person", conversationId: publicChannel.id })).map(
+      (row) => row.id,
+    ),
+  ).toEqual([excluded!.id, caller!.id]);
+});
+
+test("editable project search applies access checks before limiting results", async () => {
+  await f.db.update(user).set({ emailVerified: true });
+  const alice = f.forActor(f.alice);
+  const projects = [
+    await alice.projects.create({ name: "Search one" }),
+    await alice.projects.create({ name: "Search two" }),
+  ];
+  projects.sort((a, b) => a.entityId.localeCompare(b.entityId));
+  const [readOnly, editable] = projects;
+  await alice.permissions.grant({
+    entityId: readOnly!.entityId,
+    actorEntityId: f.bob,
+    level: "view",
+  });
+  await alice.permissions.grant({
+    entityId: editable!.entityId,
+    actorEntityId: f.bob,
+    level: "edit",
+  });
+  const bob = createContextService(f.db, { userId: "bob", organizationId: f.orgA });
+  expect(
+    (await bob.search({ query: "Search", kind: "project", editable: true, limit: 1 })).map(
+      (row) => row.id,
+    ),
+  ).toEqual([editable!.entityId]);
+});
+
+test("task search filters project access before limiting results", async () => {
+  await f.db.update(user).set({ emailVerified: true });
+  const alice = f.forActor(f.alice);
+  const first = await alice.projects.create({ name: "One" });
+  const second = await alice.projects.create({ name: "Two" });
+  const tasks = [
+    await alice.tasks.create({ projectEntityId: first.entityId, title: "Search one" }),
+    await alice.tasks.create({ projectEntityId: second.entityId, title: "Search two" }),
+  ].sort((a, b) => a.entityId.localeCompare(b.entityId));
+  const [blocked, allowed] = tasks;
+  await alice.permissions.grant({
+    entityId: blocked!.projectEntityId,
+    actorEntityId: f.bob,
+    level: "view",
+  });
+  await alice.permissions.grant({
+    entityId: blocked!.entityId,
+    actorEntityId: f.bob,
+    level: "edit",
+  });
+  await alice.permissions.grant({
+    entityId: allowed!.projectEntityId,
+    actorEntityId: f.bob,
+    level: "edit",
+  });
+  const bob = createContextService(f.db, { userId: "bob", organizationId: f.orgA });
+  expect(
+    (await bob.search({ query: "Search", kind: "task", editable: true, limit: 1 })).map(
+      (row) => row.id,
+    ),
+  ).toEqual([allowed!.entityId]);
+  await alice.permissions.revoke({ entityId: blocked!.projectEntityId, actorEntityId: f.bob });
+  expect(
+    (await bob.search({ query: "Search", kind: "task", limit: 1 })).map((row) => row.id),
+  ).toEqual([allowed!.entityId]);
+});
+
 test("search finds each supported domain without leaking private work, and cursor pages do not overlap", async () => {
   await f.db.update(user).set({ emailVerified: true });
   const alice = f.forActor(f.alice);

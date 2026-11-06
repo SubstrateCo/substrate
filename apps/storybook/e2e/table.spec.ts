@@ -45,7 +45,6 @@ test("data removal on the last page recovers to a populated page", async ({ page
 
 for (const [story, message] of [
   ["empty", "No invitations yet."],
-  ["loading", "Loading invitations…"],
   ["load-error", "Couldn’t load invitations"],
 ]) {
   test(`${story} state does not expose stale rows or pagination`, async ({ page }) => {
@@ -59,6 +58,21 @@ for (const [story, message] of [
     }
   });
 }
+
+test("loading retains loaded rows and pagination while marking the table busy", async ({
+  page,
+}) => {
+  await page.goto("/iframe.html?id=components-data-display-table--loading&viewMode=story");
+  const table = page.getByRole("table", { name: "Invitations" });
+  await expect(table).toHaveAttribute("aria-busy", "true");
+  await expect(table.getByRole("row")).toHaveCount(11);
+  await expect(table.getByRole("row").filter({ hasText: "person-01@example.com" })).toBeVisible();
+  const pagination = page.getByRole("navigation", { name: "Invitations pagination" });
+  await expect(pagination).toBeVisible();
+  await pagination.getByRole("link", { name: "Go to next page" }).click();
+  await expect(table.getByRole("row").filter({ hasText: "person-11@example.com" })).toBeVisible();
+  await expect(table).toHaveAttribute("aria-busy", "true");
+});
 
 test("table scroll stays inside its container on narrow screens", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 740 });

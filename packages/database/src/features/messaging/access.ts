@@ -1,4 +1,4 @@
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, eq, inArray, or, type SQLWrapper } from "drizzle-orm";
 import type { DatabaseExecutor } from "../../client";
 import { AccessDeniedError } from "../../errors";
 import {
@@ -12,7 +12,10 @@ export interface MessagingIdentity {
   organizationId: string;
 }
 
-export function visibleConversations(db: DatabaseExecutor, scope: MessagingIdentity) {
+export function visibleConversations(
+  db: DatabaseExecutor,
+  scope: { userId: string | SQLWrapper; organizationId: string },
+) {
   return or(
     and(
       eq(conversations.kind, "channel"),

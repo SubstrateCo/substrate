@@ -1,6 +1,26 @@
 import { expect, test } from "bun:test";
 import { desktopAPITransport } from "./api-transport.js";
 
+test("desktop auth requests stop when the API proxy aborts them", async () => {
+  const controller = new AbortController();
+  const transport = desktopAPITransport({
+    getCookie: () => "",
+    authFetch: async (_path, options) => {
+      controller.abort(new Error("API request cancelled"));
+      options.signal?.throwIfAborted();
+      await options.onResponse({ response: Response.json({ session: null }) });
+    },
+  });
+  const result = await transport("https://api.example.com/api/auth/get-session", {
+    method: "GET",
+    signal: controller.signal,
+  }).then(
+    () => "completed",
+    (error: Error) => error.message,
+  );
+  expect(result).toBe("API request cancelled");
+});
+
 test("desktop auth transport stores cookies through the official client and hides credentials", async () => {
   let path = "";
   const transport = desktopAPITransport({

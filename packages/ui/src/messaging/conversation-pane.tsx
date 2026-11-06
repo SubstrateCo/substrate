@@ -31,14 +31,18 @@ export function ConversationPane({
   composer: ReactNode;
   thread?: ReactNode;
 }) {
-  const title = conversationName(conversation);
+  const title = isAccessFailure(error)
+    ? "Conversation unavailable"
+    : conversationName(conversation);
   const blocked = !!error && (!hasLoaded || isAccessFailure(error));
+  const initialLoading = loading && !hasLoaded;
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1">
       <section aria-label={title} className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface">
         <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b bg-card/60 px-4 sm:px-5">
           <h1 className="flex min-w-0 items-center gap-2 font-semibold">
-            {conversation.kind === "channel" &&
+            {!isAccessFailure(error) &&
+              conversation.kind === "channel" &&
               (conversation.private ? (
                 <LockKeyhole className="size-4 shrink-0" />
               ) : (
@@ -51,6 +55,7 @@ export function ConversationPane({
               variant="ghost"
               size="sm"
               onClick={onToggleMembers}
+              aria-label="Add people"
               aria-expanded={addingMembers}
             >
               <UserPlus />
@@ -70,9 +75,9 @@ export function ConversationPane({
           </div>
         )}
         {blocked && <PaneState label="Conversation unavailable" error={error} onRetry={onRetry} />}
-        {!blocked && loading && <PaneState label="Loading messages…" />}
-        {!blocked && !loading && messages}
-        {!blocked && !loading && !messages && (
+        {!blocked && initialLoading && <PaneState label="Loading messages…" />}
+        {!blocked && !initialLoading && messages}
+        {!blocked && !initialLoading && !messages && (
           <div className="flex min-h-0 flex-1 flex-col justify-end overflow-y-auto px-6 py-8">
             <h2 className="mb-2 text-2xl font-semibold tracking-tight">
               {conversation.kind === "channel" ? "Welcome to " : "Your conversation with "}
@@ -85,7 +90,7 @@ export function ConversationPane({
         )}
         {!blocked && <div className="mt-auto shrink-0">{composer}</div>}
       </section>
-      {!blocked && !loading && thread}
+      {!blocked && !initialLoading && thread}
     </div>
   );
 }

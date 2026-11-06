@@ -21,10 +21,21 @@ test("native user and organization updates accept only canonical managed picture
     fileId: id,
     organizationId: undefined,
   });
+  expect(readPictureMutation("/update-user", { image: null })).toEqual({
+    purpose: "avatar",
+    fileId: null,
+    organizationId: undefined,
+  });
+  expect(readPictureMutation("/organization/update", { data: { logo: image } })).toEqual({
+    purpose: "organization-logo",
+    fileId: id,
+    organizationId: undefined,
+  });
   expect(
     readPictureMutation("/organization/update", { data: { logo: null }, organizationId: "org" }),
   ).toEqual({ purpose: "organization-logo", fileId: null, organizationId: "org" });
   expect(readPictureMutation("/update-user", { name: "Alice" })).toBeNull();
+  expect(readPictureMutation("/organization/update", { data: { name: "Workspace" } })).toBeNull();
   for (const value of [
     "https://evil.test/a",
     `https://localhost:3001${image}`,
@@ -42,6 +53,14 @@ test("new identities cannot inject pictures before a managed upload exists", () 
   expect(protectUserPicture({ image: null }, true)).toEqual({ image: null });
   expect(() => readPictureMutation("/sign-up/email", { image })).toThrow();
   expect(() => readPictureMutation("/organization/create", { logo: image })).toThrow();
+  expect(readPictureMutation("/sign-up/email", { image: null })).toBeNull();
+  expect(readPictureMutation("/organization/create", { logo: null })).toBeNull();
+});
+
+test("malformed extra fields cannot bypass managed picture authorization", () => {
+  const body = { image, data: null };
+  expect(() => readPictureMutation("/update-user", body)).toThrow();
+  expect(readPictureMutation("/sign-in/email", body)).toBeNull();
 });
 
 test("native mutations derive identity from verified session and validate ready file ownership", async () => {

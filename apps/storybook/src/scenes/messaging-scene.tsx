@@ -169,7 +169,7 @@ export function MessagingScene({
                 statusName: "In progress",
                 purpose: "source",
                 canRemove: true,
-                href: "?path=/story/projects-scenes-tasks--project",
+                href: "/iframe.html?id=projects-scenes-tasks--project&viewMode=story",
               },
             ]}
             onRemove={() => setTaskLinked(false)}
@@ -179,7 +179,7 @@ export function MessagingScene({
   );
   const composer = (thread = false) => (
     <Composer
-      key={`${selectedId}-${thread}`}
+      key={`${selectedId}-${thread ? threadId : "channel"}`}
       label={
         thread
           ? "Reply in thread…"
@@ -228,7 +228,7 @@ export function MessagingScene({
           compact
           organizations={organizations}
           onSelect={() => setNotice(new Error("Workspace switching is a preview only."))}
-          manageHref="?path=/story/scenes-workspace-selection--populated"
+          manageHref="/iframe.html?id=scenes-workspace-selection--populated&viewMode=story"
         />
       }
       signOut={

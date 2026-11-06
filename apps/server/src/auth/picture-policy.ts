@@ -11,13 +11,6 @@ const pictureInput = z.looseObject({
   data: z.looseObject({ logo: z.unknown().optional() }).optional(),
 });
 
-function parsePicture(value: z.input<typeof managedPicture>) {
-  const parsed = managedPicture.safeParse(value);
-  if (!parsed.success)
-    throw new APIError("BAD_REQUEST", { message: "Use a completed managed picture URL or null." });
-  return managedPictureFileId(parsed.data);
-}
-
 export function protectUserPicture<T extends object>(input: T, creating = false): T {
   if ("image" in input && input.image !== undefined) {
     if (creating && input.image !== null)
@@ -39,12 +32,17 @@ export interface PictureMutation {
   organizationId: string | undefined;
 }
 
-export function readPictureMutation(
-  path: string,
-  body: z.input<typeof pictureInput>,
-): PictureMutation | null {
+// oxlint-disable-next-line deslop/no-unknown-parameters -- This parser validates raw Better Auth request bodies before authorization.
+export function readPictureMutation(path: string, body: unknown): PictureMutation | null {
+  if (
+    !["/sign-up/email", "/organization/create", "/update-user", "/organization/update"].includes(
+      path,
+    )
+  )
+    return null;
   const parsed = pictureInput.safeParse(body);
-  if (!parsed.success) return null;
+  if (!parsed.success)
+    throw new APIError("BAD_REQUEST", { message: "Invalid picture mutation input." });
   const input = parsed.data;
   if (
     (path === "/sign-up/email" && input.image != null) ||
@@ -60,7 +58,11 @@ export function readPictureMutation(
   const picture = managedPicture.safeParse(value);
   if (!picture.success)
     throw new APIError("BAD_REQUEST", { message: "Use a completed managed picture URL or null." });
-  return { purpose, fileId: parsePicture(picture.data), organizationId: input.organizationId };
+  return {
+    purpose,
+    fileId: managedPictureFileId(picture.data),
+    organizationId: input.organizationId,
+  };
 }
 
 interface PictureSession {

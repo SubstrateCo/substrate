@@ -7,6 +7,7 @@ export async function requestBrowserSignIn(
   browser: Page,
 ) {
   await desktop.evaluate(({ shell }) => {
+    delete process.env.STARTUP_OS_TEST_AUTH_URL;
     // Only replace the OS browser opener. PKCE, HTTP, IPC, and token exchange stay real.
     shell.openExternal = async (url) => {
       process.env.STARTUP_OS_TEST_AUTH_URL = url;

@@ -35,21 +35,26 @@ export function AppTable<TData extends RowData>({
   let emptyContent = (
     <ContentNotice title={emptyMessage} description="New items will appear here." />
   );
-  if (loading) {
-    emptyContent = <LoadingState label={loadingMessage} variant="table" />;
-  } else if (error) {
+  if (error) {
     emptyContent = (
       <ErrorState title={errorTitle} description={errorDescription} onRetry={onRetry} />
     );
+  } else if (loading) {
+    emptyContent = <LoadingState label={loadingMessage} variant="table" />;
   }
   return (
     <table.AppTable>
       <div className="min-w-0 space-y-3">
+        {loading && rows.length > 0 && !blocked && (
+          <span role="status" className="sr-only">
+            {loadingMessage}
+          </span>
+        )}
         {error && rows.length > 0 && !blocked && (
           <ErrorState compact title={errorTitle} description={errorDescription} onRetry={onRetry} />
         )}
         <div className="min-w-0 rounded-lg border">
-          <Table aria-label={name} aria-busy={loading}>
+          <Table aria-label={name} aria-busy={loading && !blocked}>
             <TableHeader>
               {table.getHeaderGroups().map((group) => (
                 <TableRow key={group.id}>
@@ -90,7 +95,7 @@ export function AppTable<TData extends RowData>({
               ))}
             </TableHeader>
             <TableBody>
-              {loading || blocked || rows.length === 0 ? (
+              {blocked || rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={table.getAllLeafColumns().length}>{emptyContent}</TableCell>
                 </TableRow>
@@ -110,7 +115,7 @@ export function AppTable<TData extends RowData>({
             </TableBody>
           </Table>
         </div>
-        {!loading && !blocked && rows.length > 0 && table.getPageCount() > 1 && (
+        {!blocked && rows.length > 0 && table.getPageCount() > 1 && (
           <TablePagination table={table} name={name} />
         )}
       </div>

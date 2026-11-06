@@ -16,7 +16,7 @@ function publicAuthData(value) {
 }
 
 /**
- * @typedef {{ method?: string, headers: Record<string, string>, body?: string, redirect: "manual", onResponse: (context: { response: Response }) => Promise<void> }} AuthFetchOptions
+ * @typedef {{ method?: string, headers: Record<string, string>, body?: string, redirect: "manual", signal?: AbortSignal | null, onResponse: (context: { response: Response }) => Promise<void> }} AuthFetchOptions
  * @param {{ getCookie: () => string, authFetch: (path: string, options: AuthFetchOptions) => Promise<unknown>, fetchUpstream?: (url: string, init: RequestInit) => Promise<Response> }} options
  */
 export function desktopAPITransport({ getCookie, authFetch, fetchUpstream = fetch }) {
@@ -39,6 +39,7 @@ export function desktopAPITransport({ getCookie, authFetch, fetchUpstream = fetc
         headers: Object.fromEntries(headers),
         body: init.body ? await new Response(init.body).text() : undefined,
         redirect: "manual",
+        signal: init.signal,
         onResponse: async ({ response }) => {
           const responseHeaders = new Headers(response.headers);
           responseHeaders.delete("set-cookie");

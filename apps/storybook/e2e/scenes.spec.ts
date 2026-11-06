@@ -80,6 +80,25 @@ for (const [story, title] of [
   });
 }
 
+for (const width of [390, 1440]) {
+  test(`adding people is keyboard-accessible at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await openStory(page, "messaging-scenes-workspace--public-channel");
+    const conversation = page.getByRole("region", { name: "general", exact: true });
+    const toggle = conversation.locator("header").getByRole("button", {
+      name: "Add people",
+      exact: true,
+    });
+    await toggle.focus();
+    await page.keyboard.press("Enter");
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(conversation.getByLabel("Add people by exact email address")).toBeVisible();
+    await conversation.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(conversation.getByLabel("Add people by exact email address")).toHaveCount(0);
+  });
+}
+
 test("message actions appear only for the hovered or focused message without layout shifts", async ({
   page,
 }) => {
@@ -127,6 +146,19 @@ test("touch devices keep message actions available without hover", async ({ brow
   } finally {
     await context.close();
   }
+});
+
+test("changing threads does not reuse another thread's reply draft", async ({ page }) => {
+  await openStory(page, "messaging-scenes-workspace--thread-open");
+  const thread = page.getByRole("complementary", { name: "Thread", exact: true });
+  await thread.getByRole("textbox").fill("Reply intended for the launch plan");
+  const otherMessage = page
+    .getByRole("region", { name: "general", exact: true })
+    .getByRole("article")
+    .filter({ hasText: "The API is ready:" });
+  await otherMessage.getByRole("button", { name: "Reply in thread", exact: true }).click();
+  await expect(thread).toContainText("The API is ready:");
+  await expect(thread.getByRole("textbox")).toHaveValue("");
 });
 
 test("message drafts, emoji, reactions, and threads work without a backend", async ({ page }) => {
@@ -438,10 +470,17 @@ for (const width of [320, 390, 1440]) {
       .boundingBox();
     for (const state of ["loading-messages", "message-access-error", "send-error"]) {
       await openStory(page, `messaging-scenes-workspace--${state}`);
-      expect(await region.boundingBox()).toEqual(ready);
+      const currentRegion = page.getByRole("region", {
+        name: state === "message-access-error" ? "Conversation unavailable" : "general",
+        exact: true,
+      });
+      expect(await currentRegion.boundingBox()).toEqual(ready);
       if (state === "message-access-error") {
-        await expect(region.getByRole("alert")).toBeVisible();
-        await expect(region.getByRole("log")).toHaveCount(0);
+        await expect(currentRegion.getByRole("alert")).toBeVisible();
+        await expect(
+          currentRegion.getByRole("heading", { name: "general", exact: true }),
+        ).toHaveCount(0);
+        await expect(currentRegion.getByRole("log")).toHaveCount(0);
         await expect(
           page.getByRole("textbox", { name: "Message #general", exact: true }),
         ).toHaveCount(0);

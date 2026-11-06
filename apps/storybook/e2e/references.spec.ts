@@ -31,6 +31,26 @@ test("typing @ opens the picker; people, tasks, and projects render after sendin
   await expect(draft).toHaveValue("");
 });
 
+test("composing Enter does not insert a reference before composition finishes", async ({
+  page,
+}) => {
+  await page.goto(
+    "/iframe.html?id=messaging-scenes-workspace--references-in-channel&viewMode=story",
+  );
+  const draft = page.getByRole("textbox", { name: "Message #general", exact: true });
+  await draft.fill("Please review @");
+  const picker = page.getByRole("region", { name: "Insert workspace reference" });
+  const search = picker.getByRole("combobox", { name: "Search references" });
+  await search.fill("Review");
+  await expect(picker.getByRole("option", { name: "Review the onboarding flow" })).toBeVisible();
+  await search.dispatchEvent("keydown", { key: "Enter", isComposing: true });
+  await expect(draft).toHaveValue("Please review @");
+  await expect(picker).toBeVisible();
+  await search.press("Enter");
+  await expect(draft).toHaveValue("Please review @[task:11111111-1111-4111-8111-111111111111] ");
+  await expect(picker).toHaveCount(0);
+});
+
 test("references preserve formatting and code stays literal", async ({ page }) => {
   await page.goto(
     "/iframe.html?id=messaging-components-references-inline-reference--formatting&viewMode=story",

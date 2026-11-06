@@ -71,6 +71,7 @@ export function ReferencePicker({
           available[selectedIndex] ? `${listId}-${available[selectedIndex]!.id}` : undefined
         }
         onKeyDown={(e) => {
+          if (e.nativeEvent.isComposing) return;
           if (e.key === "Escape") {
             e.preventDefault();
             e.stopPropagation();

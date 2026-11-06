@@ -3,6 +3,7 @@ import { Button } from "../primitives/button";
 import { FormMessage } from "../auth/form-message";
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
+import { isAccessFailure } from "../feedback/request-failure";
 
 export type MessageWorkLink = {
   entityId: string;
@@ -36,7 +37,7 @@ export function MessageWork({
     <section aria-label="Linked work" className="mt-3 max-w-lg space-y-2">
       {loading && <LoadingState label="Loading linked work" variant="compact" />}
       {error && <ErrorState compact title="Couldn’t load linked work" onRetry={onRetry} />}
-      {links.map((link) => {
+      {(isAccessFailure(error) ? [] : links).map((link) => {
         const Icon = link.entityType === "task" ? CircleCheck : FolderKanban;
         return (
           <div

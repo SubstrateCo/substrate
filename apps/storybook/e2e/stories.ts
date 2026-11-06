@@ -20,6 +20,9 @@ export async function selectStory(page: Page, id: string) {
         const rendered = (finished: { storyId: string }) => {
           if (finished.storyId !== storyId) return;
           cleanup();
+          const url = new URL(window.location.href);
+          url.searchParams.set("id", storyId);
+          window.history.replaceState(null, "", url);
           resolve();
         };
         const failed = () => {

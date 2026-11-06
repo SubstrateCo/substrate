@@ -13,6 +13,7 @@ import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
 import { Spinner } from "../primitives/spinner";
 import { PicturePreview } from "../upload/picture-preview";
+import { isAccessFailure } from "../feedback/request-failure";
 
 export function OrganizationSwitcher({
   organizationId,
@@ -102,7 +103,9 @@ export function OrganizationSwitcher({
           className="w-64"
         >
           <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
-          {loading && <LoadingState label="Loading workspaces…" variant="compact" />}
+          {loading && !organizations.length && !isAccessFailure(loadError) && (
+            <LoadingState label="Loading workspaces…" variant="compact" />
+          )}
           {loadError && (
             <ErrorState
               compact
@@ -111,7 +114,7 @@ export function OrganizationSwitcher({
               onRetry={onRetry}
             />
           )}
-          {!loading &&
+          {!isAccessFailure(loadError) &&
             organizations.map((organization) => (
               <DropdownMenuItem
                 key={organization.id}

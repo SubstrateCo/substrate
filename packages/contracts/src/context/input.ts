@@ -23,10 +23,6 @@ export const contextSourceTask = contextMessage.extend({
   status: z.enum(taskStatusValues).optional(),
   priority: z.enum(["none", "low", "medium", "high", "urgent"]).optional(),
   assigneeActorEntityId: z.uuid().nullable().optional(),
-  dueDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .nullable()
-    .optional(),
+  dueDate: z.iso.date().nullable().optional(),
 });
 export const contextNotification = contextWorkspace.extend({ id: z.uuid() });

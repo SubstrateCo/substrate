@@ -5,6 +5,7 @@ import { Button } from "@startup-os/ui/primitives/button";
 import { FormMessage } from "@startup-os/ui/auth/form-message";
 import { LoadingState } from "@startup-os/ui/feedback/loading-state";
 import { ErrorState } from "@startup-os/ui/feedback/error-state";
+import { isAccessFailure } from "@startup-os/ui/feedback/request-failure";
 import { searchOptions } from "@/queries/context/options";
 import { attachWork } from "@/api/context";
 import { queryKeys } from "@/queries/keys";
@@ -54,17 +55,18 @@ export function LinkMessageWork({
       )}
       {!results.error && results.data?.length === 0 && <p>No editable work found.</p>}
       <ul>
-        {results.data?.map((item) => (
-          <li key={item.id}>
-            <Button
-              variant="ghost"
-              disabled={attach.isPending}
-              onClick={() => attach.mutate(item.id)}
-            >
-              {item.title}
-            </Button>
-          </li>
-        ))}
+        {!isAccessFailure(results.error) &&
+          results.data?.map((item) => (
+            <li key={item.id}>
+              <Button
+                variant="ghost"
+                disabled={attach.isPending}
+                onClick={() => attach.mutate(item.id)}
+              >
+                {item.title}
+              </Button>
+            </li>
+          ))}
       </ul>
       <FormMessage
         error={attach.error}

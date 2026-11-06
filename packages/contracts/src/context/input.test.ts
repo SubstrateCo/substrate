@@ -1,5 +1,24 @@
 import { expect, test } from "bun:test";
 import { contextSourceTask, contextSearch, contextLink } from "./input";
+import { tasksWrite } from "../tasks/input";
+
+test("message-sourced and direct tasks require valid calendar due dates", () => {
+  const input = {
+    organizationId: "workspace",
+    messageId: crypto.randomUUID(),
+    projectEntityId: crypto.randomUUID(),
+    requestId: crypto.randomUUID(),
+    title: "Ship",
+  };
+  for (const dueDate of ["2026-02-29", "2026-04-31", "2026-13-01", "2026-00-10"]) {
+    expect(tasksWrite.safeParse({ ...input, action: "createTask", dueDate }).success).toBe(false);
+    expect(contextSourceTask.safeParse({ ...input, dueDate }).success).toBe(false);
+  }
+  for (const dueDate of ["2028-02-29", "2026-04-30", null, undefined]) {
+    expect(tasksWrite.safeParse({ ...input, action: "createTask", dueDate }).success).toBe(true);
+    expect(contextSourceTask.safeParse({ ...input, dueDate }).success).toBe(true);
+  }
+});
 
 test("source task inputs require stable identities and reject invalid task fields", () => {
   const valid = {

@@ -62,7 +62,8 @@ export function TaskComments({
           className="space-y-2"
           onSubmit={(event) => {
             event.preventDefault();
-            if (!pending) onSend(body, () => setBody(""));
+            if (!pending)
+              onSend(body, () => setBody((current) => (current === body ? "" : current)));
           }}
         >
           <Label htmlFor={id}>Add a comment</Label>

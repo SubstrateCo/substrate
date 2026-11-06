@@ -2,6 +2,7 @@ import electron from "electron";
 import { fileURLToPath } from "node:url";
 import { applicationURL } from "../src/navigation.js";
 import { developmentServices, ensureDevelopmentServices } from "../src/dev-services.js";
+import { backendURL } from "../src/bundled-renderer.js";
 import { bundlePreload } from "./preload.js";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
@@ -22,7 +23,7 @@ process.on("SIGTERM", stop);
 try {
   await bundlePreload();
   await ensureDevelopmentServices(
-    developmentServices(applicationURL, process.env.SERVER_URL ?? "http://localhost:3001"),
+    developmentServices(applicationURL, backendURL(process.env.STARTUP_OS_API_URL, false)),
     (service) => {
       console.log(`Starting the ${service.name} server at ${service.url}.`);
       const child = Bun.spawn([process.execPath, "run", "--no-orphans", service.script], {

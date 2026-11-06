@@ -3,6 +3,7 @@ import { conversationName, type Conversation } from "./types";
 import { Button } from "../primitives/button";
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
+import { isAccessFailure } from "../feedback/request-failure";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,7 +52,8 @@ export function ConversationSidebar({
             onRetry={onRetry}
           />
         )}
-        {(!error || conversations.length > 0) &&
+        {!isAccessFailure(error) &&
+          (!error || conversations.length > 0) &&
           (["channel", "dm"] as const).map((section) => (
             <section key={section}>
               <div className="mb-1 flex items-center justify-between px-2">
@@ -91,37 +93,36 @@ export function ConversationSidebar({
                   </DropdownMenu>
                 )}
               </div>
-              {loading && (
+              {loading && conversations.length === 0 && (
                 <LoadingState
                   label={section === "channel" ? "Loading channels…" : "Loading direct messages…"}
                   variant="compact"
                 />
               )}
-              {!loading &&
-                conversations
-                  .filter((conversation) =>
-                    section === "channel"
-                      ? conversation.kind === "channel"
-                      : conversation.kind !== "channel",
-                  )
-                  .map((conversation) => {
-                    let Icon = conversation.kind === "group" ? Users : MessageCircle;
-                    if (conversation.kind === "channel") {
-                      Icon = conversation.private ? LockKeyhole : Hash;
-                    }
-                    return (
-                      <Button
-                        key={conversation.id}
-                        variant="sidebar"
-                        className="mb-1 w-full justify-start"
-                        aria-current={selectedId === conversation.id ? "page" : undefined}
-                        onClick={() => onSelect(conversation.id)}
-                      >
-                        <Icon className="size-4 shrink-0" />
-                        <span className="truncate">{conversationName(conversation)}</span>
-                      </Button>
-                    );
-                  })}
+              {conversations
+                .filter((conversation) =>
+                  section === "channel"
+                    ? conversation.kind === "channel"
+                    : conversation.kind !== "channel",
+                )
+                .map((conversation) => {
+                  let Icon = conversation.kind === "group" ? Users : MessageCircle;
+                  if (conversation.kind === "channel") {
+                    Icon = conversation.private ? LockKeyhole : Hash;
+                  }
+                  return (
+                    <Button
+                      key={conversation.id}
+                      variant="sidebar"
+                      className="mb-1 w-full justify-start"
+                      aria-current={selectedId === conversation.id ? "page" : undefined}
+                      onClick={() => onSelect(conversation.id)}
+                    >
+                      <Icon className="size-4 shrink-0" />
+                      <span className="truncate">{conversationName(conversation)}</span>
+                    </Button>
+                  );
+                })}
               {!loading &&
                 !conversations.some((conversation) =>
                   section === "channel"
