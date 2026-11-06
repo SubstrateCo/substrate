@@ -6,7 +6,7 @@ import { Composer } from "./composer";
 import { MessageItem } from "./message-item";
 import { MessageList } from "./message-list";
 import { useState } from "react";
-import { Button } from "@startup-os/ui/primitives/button";
+import { MessageHistory } from "@startup-os/ui/messaging/message-history";
 
 export function ThreadPane({
   organizationId,
@@ -42,24 +42,18 @@ export function ThreadPane({
       onClose={onClose}
       replies={
         replies.data && (
-          <>
-            <div className="flex gap-2 px-4">
-              {replies.data.length === 50 && (
-                <Button size="xs" variant="ghost" onClick={() => setBeforeMessageId(rows[0]!.id)}>
-                  Older replies
-                </Button>
-              )}
-              {beforeMessageId && (
-                <Button size="xs" variant="ghost" onClick={() => setBeforeMessageId(undefined)}>
-                  Latest replies
-                </Button>
-              )}
-            </div>
+          <MessageHistory
+            replies
+            hasOlder={replies.data.length === 50}
+            hasPrevious={!!beforeMessageId}
+            onOlder={() => setBeforeMessageId(rows[0]!.id)}
+            onLatest={() => setBeforeMessageId(undefined)}
+          >
             <MessageList
               messages={rows.filter((message) => message.id !== threadId)}
               organizationId={organizationId}
             />
-          </>
+          </MessageHistory>
         )
       }
       composer={

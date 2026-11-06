@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ImageCropControls } from "./image-crop-controls";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "../primitives/dialog";
 import { Button } from "../primitives/button";
 import { PendingButton } from "../feedback/pending-button";
@@ -36,7 +37,6 @@ export function ImageCropDialog({ file, kind, onConfirm, onCancel }: ImageCropDi
   const [progress, setProgress] = useState<number | undefined>();
   const controller = useRef<AbortController | null>(null);
   const busy = useRef(false);
-  const id = useId();
   useEffect(() => {
     const url = URL.createObjectURL(file);
     // Synchronize the external object URL with the image element; revoke it on cleanup.
@@ -135,64 +135,25 @@ export function ImageCropDialog({ file, kind, onConfirm, onCancel }: ImageCropDi
               />
             </div>
           )}
-          {kind === "organization-logo" && (
-            <div className="flex gap-2" role="group" aria-label="Logo sizing">
-              <Button
-                type="button"
-                variant="outline"
-                aria-pressed={mode === "fit"}
-                onClick={() => {
-                  reset();
-                  setMode("fit");
-                }}
-              >
-                Fit whole logo
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                aria-pressed={mode === "fill"}
-                onClick={() => {
-                  reset();
-                  setMode("fill");
-                }}
-              >
-                Fill square
-              </Button>
-            </div>
-          )}
-          <div className="flex items-center gap-3">
-            <label htmlFor={id}>Zoom</label>
-            <input
-              id={id}
-              className="min-w-0 flex-1 accent-primary"
-              type="range"
-              min={1}
-              max={3}
-              step={0.01}
-              value={zoom}
-              disabled={pending || mode === "fit"}
-              onChange={(event) => {
-                setArea(null);
-                setZoom(Number(event.target.value));
-              }}
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setArea(null);
-                setRotation((value) => (value + 90) % 360);
-              }}
-            >
-              Rotate 90°
-            </Button>
-            <Button type="button" variant="ghost" onClick={reset}>
-              Reset
-            </Button>
-          </div>
+          <ImageCropControls
+            kind={kind}
+            mode={mode}
+            zoom={zoom}
+            pending={pending}
+            onModeChange={(next) => {
+              reset();
+              setMode(next);
+            }}
+            onZoomChange={(next) => {
+              setArea(null);
+              setZoom(next);
+            }}
+            onRotate={() => {
+              setArea(null);
+              setRotation((value) => (value + 90) % 360);
+            }}
+            onReset={reset}
+          />
         </fieldset>
         {error && (
           <p role="alert" className="text-sm text-destructive">

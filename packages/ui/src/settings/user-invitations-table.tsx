@@ -1,14 +1,13 @@
 import { useMemo } from "react";
-import { Link } from "@tanstack/react-router";
-import { AppTable, createAppColumnHelper, dateTimeColumn, useAppTable } from "@startup-os/ui/table";
-import { Button } from "@startup-os/ui/primitives/button";
-import { useCurrentTime } from "@/hooks/use-current-time";
+import { AppTable, createAppColumnHelper, dateTimeColumn, useAppTable } from "../table";
+import { Button } from "../primitives/button";
 
 type UserInvitation = {
   id: string;
   organizationName?: string;
   role: string;
   expiresAt: Date | string;
+  href: string;
 };
 
 type InvitationRow = UserInvitation & { expired: boolean };
@@ -34,9 +33,7 @@ const columns = column.columns([
     cell: ({ row }) =>
       !row.original.expired && (
         <Button asChild variant="outline">
-          <Link to="/accept-invitation/$invitationId" params={{ invitationId: row.original.id }}>
-            Review invitation
-          </Link>
+          <a href={row.original.href}>Review invitation</a>
         </Button>
       ),
   }),
@@ -47,13 +44,14 @@ export function UserInvitationsTable({
   loading,
   error,
   onRetry,
+  now,
 }: {
   invitations?: UserInvitation[];
   loading: boolean;
   error: Error | null;
   onRetry: () => void;
+  now: number;
 }) {
-  const now = useCurrentTime();
   const data = useMemo(
     () =>
       invitations.map((invitation) => ({

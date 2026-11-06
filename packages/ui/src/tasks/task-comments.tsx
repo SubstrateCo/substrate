@@ -1,13 +1,9 @@
-import { useId, useState } from "react";
-import { Button } from "../primitives/button";
-import { Label } from "../primitives/label";
-import { Textarea } from "../primitives/textarea";
-import { Spinner } from "../primitives/spinner";
-import { FormMessage } from "../auth/form-message";
 import { LoadingState } from "../feedback/loading-state";
 import { ErrorState } from "../feedback/error-state";
 import { isAccessFailure } from "../feedback/request-failure";
-import type { TaskComment } from "./types";
+import type { TaskComment as Comment } from "./types";
+import { TaskComment } from "./task-comment";
+import { TaskCommentForm } from "./task-comment-form";
 
 export function TaskComments({
   canComment,
@@ -20,7 +16,7 @@ export function TaskComments({
   onSend,
 }: {
   canComment: boolean;
-  comments: TaskComment[];
+  comments: Comment[];
   loading?: boolean;
   error?: Error | null;
   pending?: boolean;
@@ -28,8 +24,6 @@ export function TaskComments({
   onRetry: () => void;
   onSend: (body: string, onSuccess: () => void) => void;
 }) {
-  const id = useId();
-  const [body, setBody] = useState("");
   const unavailable = isAccessFailure(error);
   return (
     <section aria-label="Task comments" className="space-y-4 border-t pt-4">
@@ -43,43 +37,12 @@ export function TaskComments({
         />
       )}
       {!unavailable &&
-        comments.map((comment) => (
-          <article key={comment.id} className="rounded-lg border p-3">
-            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-              <strong className="text-foreground">{comment.authorName}</strong>
-              <time dateTime={new Date(comment.createdAt).toISOString()}>
-                {new Date(comment.createdAt).toLocaleString()}
-              </time>
-            </div>
-            <p className="mt-2 text-sm whitespace-pre-wrap wrap-break-word">{comment.body}</p>
-          </article>
-        ))}
+        comments.map((comment) => <TaskComment key={comment.id} comment={comment} />)}
       {!loading && !error && !comments.length && (
         <p className="text-sm text-muted-foreground">No comments yet.</p>
       )}
       {canComment && !unavailable && (
-        <form
-          className="space-y-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!pending)
-              onSend(body, () => setBody((current) => (current === body ? "" : current)));
-          }}
-        >
-          <Label htmlFor={id}>Add a comment</Label>
-          <Textarea
-            id={id}
-            value={body}
-            onChange={(event) => setBody(event.target.value)}
-            required
-            maxLength={20000}
-          />
-          <FormMessage error={actionError} />
-          <Button disabled={pending || !body.trim()}>
-            {pending && <Spinner />}
-            {pending ? "Posting comment…" : "Post comment"}
-          </Button>
-        </form>
+        <TaskCommentForm pending={pending} error={actionError} onSend={onSend} />
       )}
     </section>
   );

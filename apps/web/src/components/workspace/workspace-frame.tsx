@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { useLocation, useNavigate } from "@tanstack/react-router";
+import { WorkspaceHomeLink } from "@startup-os/ui/workspace/workspace-home-link";
 import { WorkspaceShell } from "@startup-os/ui/workspace/workspace-shell";
 import {
   activeMemberQueryOptions,
@@ -63,9 +64,7 @@ export function WorkspaceFrame({
             compact
           />
         ) : (
-          <Link to="/organizations" aria-label="Your workspaces">
-            OS
-          </Link>
+          <WorkspaceHomeLink href="/organizations" />
         )
       }
       signOut={<SignOutButton />}

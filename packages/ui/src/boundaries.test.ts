@@ -9,7 +9,7 @@ test("shared UI does not import application, query, auth, or database code", asy
     if (path.endsWith(".test.ts") || path.endsWith(".test.tsx")) continue;
     const source = await readFile(resolve(root, path), "utf8");
     if (
-      /from\s+["'](?:@\/|@tanstack\/(?!react-table["'])|better-auth|@startup-os\/(?:auth|database)|.*apps\/)/.test(
+      /from\s+["'](?:@\/|@tanstack\/(?!react-table["'])|better-auth|@better-auth\/|@startup-os\/(?:auth|database|server|storage|web|desktop)|electron|.*apps\/)/.test(
         source,
       )
     )

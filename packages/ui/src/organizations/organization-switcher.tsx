@@ -1,4 +1,5 @@
-import { Check, ChevronsUpDown, Settings2 } from "lucide-react";
+import { ChevronsUpDown, Settings2 } from "lucide-react";
+import { OrganizationSwitcherItem } from "./organization-switcher-item";
 import { Button } from "../primitives/button";
 import {
   DropdownMenu,
@@ -116,32 +117,12 @@ export function OrganizationSwitcher({
           )}
           {!isAccessFailure(loadError) &&
             organizations.map((organization) => (
-              <DropdownMenuItem
+              <OrganizationSwitcherItem
                 key={organization.id}
-                disabled={organization.id === organizationId}
-                aria-label={`${organization.name}${organization.id === organizationId ? " (current)" : ""}`}
-                variant="workspace"
+                organization={organization}
+                current={organization.id === organizationId}
                 onSelect={() => onSelect(organization.id)}
-              >
-                <span
-                  aria-hidden="true"
-                  className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-surface text-xs font-semibold text-foreground shadow-surface"
-                >
-                  <PicturePreview
-                    src={organization.logo}
-                    className="size-full rounded-lg object-contain"
-                    fallback={organization.name
-                      .split(/\s+/)
-                      .filter(Boolean)
-                      .slice(0, 2)
-                      .map((word) => word[0])
-                      .join("")
-                      .toUpperCase()}
-                  />
-                </span>
-                <span className="min-w-0 flex-1 truncate">{organization.name}</span>
-                {organization.id === organizationId && <Check className="size-4 shrink-0" />}
-              </DropdownMenuItem>
+              />
             ))}
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>

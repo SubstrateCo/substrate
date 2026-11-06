@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { AuthFrame } from "@startup-os/ui/auth/auth-frame";
-import { FormMessage } from "@startup-os/ui/auth/form-message";
-import { PendingButton } from "@startup-os/ui/feedback/pending-button";
+import { BrowserElectronReturn as BrowserElectronReturnView } from "@startup-os/ui/auth/browser-electron-return";
 import { authClient } from "@/lib/auth-client";
 import { electronQuery } from "@/lib/electron-query";
 
@@ -22,22 +20,10 @@ export function BrowserElectronReturn() {
     return () => clearInterval(id);
   }, [attempt]);
   return (
-    <AuthFrame
-      title="Return to Startup OS"
-      description="You are signed in. Continue in the desktop app."
-    >
-      <PendingButton
-        className="w-full"
-        pending={transfer.isPending}
-        pendingLabel="Returning…"
-        onClick={() => transfer.mutate()}
-      >
-        Continue to Startup OS
-      </PendingButton>
-      <FormMessage
-        error={transfer.error}
-        errorDescription="Could not return to Startup OS. Please try again."
-      />
-    </AuthFrame>
+    <BrowserElectronReturnView
+      pending={transfer.isPending}
+      error={transfer.error}
+      onContinue={() => transfer.mutate()}
+    />
   );
 }

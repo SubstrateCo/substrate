@@ -17,6 +17,10 @@ Startup OS is an Electron workspace for email, messages, docs, tasks, agents, an
 
 ## Code organization
 
+- `packages/ui` is the only owner of presentation for the renderer. This includes domain-specific and single-use views, layout markup, styles, forms, rows, tiles, and feedback states.
+- `apps/web` owns application integration only: routing, data loading, auth/session access, resource policies, mutations, cache updates, and Electron wiring. Its connected containers compose imported UI views; they must not define presentation markup, styles, or use primitives to build views.
+- UI receives application data, resolved capabilities, navigation targets, and callbacks. It must not import application code or perform domain data fetching, authorization, or persistence. Keep meaningful visual parts in focused component files and assemble them with composer components.
+- New or moved presentation must be available in Storybook through the actual UI components, not a duplicate view. Keep the package boundary tests passing without exceptions that weaken this ownership.
 - Group code by domain and responsibility. Keep files focused and avoid long, catch-all files.
 - Keep database schemas in separate domain files, such as authentication, actors, entities, contacts, and CRM. Do not combine all table definitions in one file.
 - Split repositories and tests by domain as needed. Keep test files beside the code they test, with shared fixtures in a test-support module.

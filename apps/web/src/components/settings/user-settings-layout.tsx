@@ -1,26 +1,16 @@
 import type { ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
-import { WorkspaceSettings } from "@startup-os/ui/workspace/workspace-settings";
+import { useLocation } from "@tanstack/react-router";
+import { UserSettingsLayout as UserSettingsLayoutView } from "@startup-os/ui/settings/user-settings-layout";
 
 export function UserSettingsLayout({ children }: { children: ReactNode }) {
+  const pathname = useLocation({ select: (location) => location.pathname });
   return (
-    <WorkspaceSettings title="User settings">
-      <nav aria-label="User settings" className="flex gap-4 border-b pb-3 text-sm">
-        <Link
-          to="/settings/user"
-          activeOptions={{ exact: true }}
-          activeProps={{ className: "font-semibold underline" }}
-        >
-          Appearance
-        </Link>
-        <Link
-          to="/settings/user/invitations"
-          activeProps={{ className: "font-semibold underline" }}
-        >
-          Invitations
-        </Link>
-      </nav>
+    <UserSettingsLayoutView
+      active={pathname.endsWith("/invitations") ? "invitations" : "profile"}
+      profileHref="/settings/user"
+      invitationsHref="/settings/user/invitations"
+    >
       {children}
-    </WorkspaceSettings>
+    </UserSettingsLayoutView>
   );
 }

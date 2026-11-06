@@ -9,8 +9,8 @@ import { ThreadPane } from "./thread-pane";
 import { AddMembersForm } from "./add-members-form";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { messageTargetOptions } from "@/queries/context/options";
-import { ErrorState } from "@startup-os/ui/feedback/error-state";
-import { Button } from "@startup-os/ui/primitives/button";
+import { MessageUnavailable } from "@startup-os/ui/messaging/message-unavailable";
+import { MessageHistory } from "@startup-os/ui/messaging/message-history";
 
 export function ConversationPane({
   organizationId,
@@ -42,29 +42,15 @@ export function ConversationPane({
   if (target.data && !timeline.some((message) => message.id === target.data.root.id))
     timeline.push(target.data.root);
   let messageContent;
-  if (target.error)
-    messageContent = (
-      <ErrorState compact title="Message unavailable" onRetry={() => void target.refetch()} />
-    );
+  if (target.error) messageContent = <MessageUnavailable onRetry={() => void target.refetch()} />;
   else if (timeline.length > 0)
     messageContent = (
-      <>
-        <div className="flex gap-2 px-4">
-          {messages.data?.length === 50 && (
-            <Button
-              size="xs"
-              variant="ghost"
-              onClick={() => setBeforeMessageId(messages.data?.[0]?.id)}
-            >
-              Older messages
-            </Button>
-          )}
-          {beforeMessageId && (
-            <Button size="xs" variant="ghost" onClick={() => setBeforeMessageId(undefined)}>
-              Back to latest
-            </Button>
-          )}
-        </div>
+      <MessageHistory
+        hasOlder={messages.data?.length === 50}
+        hasPrevious={!!beforeMessageId}
+        onOlder={() => setBeforeMessageId(messages.data?.[0]?.id)}
+        onLatest={() => setBeforeMessageId(undefined)}
+      >
         <MessageList
           messages={timeline}
           organizationId={organizationId}
@@ -79,7 +65,7 @@ export function ConversationPane({
             });
           }}
         />
-      </>
+      </MessageHistory>
     );
   return (
     <ConversationPaneView

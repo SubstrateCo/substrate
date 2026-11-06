@@ -1,17 +1,9 @@
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { TaskSelect } from "@startup-os/ui/tasks/task-select";
-import { TaskForm } from "@startup-os/ui/tasks/task-form";
-import type { TaskDraft } from "@startup-os/ui/tasks/types";
-import { Button } from "@startup-os/ui/primitives/button";
-import { ErrorState } from "@startup-os/ui/feedback/error-state";
-import { LoadingState } from "@startup-os/ui/feedback/loading-state";
-import { isAccessFailure } from "@startup-os/ui/feedback/request-failure";
+import { useQuery } from "@tanstack/react-query";
+import { CreateSourceTask as CreateSourceTaskView } from "@startup-os/ui/context/create-source-task";
 import { searchOptions } from "@/queries/context/options";
-import { projectQueryOptions } from "@/queries/tasks/options";
-import { queryKeys } from "@/queries/keys";
-import { createTaskFromMessage } from "@/api/context";
 import { workHref } from "@/lib/context-links";
+import { SourceTaskFields } from "./source-task-fields";
 
 export function CreateSourceTask({
   organizationId,
@@ -27,148 +19,31 @@ export function CreateSourceTask({
   const projects = useQuery(
     searchOptions({ organizationId, query: "", kind: "project", editable: true }),
   );
-  const [projectId, setProjectId] = useState("");
-  const accessDenied = isAccessFailure(projects.error);
-  const availableProjects = accessDenied ? undefined : projects.data;
   const [created, setCreated] = useState<{ entityId: string; projectEntityId: string } | null>(
     null,
   );
   return (
-    <section
-      aria-label="Create task from message"
-      className="space-y-4 rounded-lg border bg-card p-4"
-    >
-      <h3 className="font-semibold">Create task from message</h3>
-      <p className="text-xs text-muted-foreground">
-        The source stays private to people who can access this discussion. Creating a task does not
-        share it.
-      </p>
-      <blockquote className="line-clamp-4 border-l-2 pl-3 text-sm whitespace-pre-wrap wrap-anywhere">
-        {body.replace(/@\[[^\]]+\]/g, "[Reference]")}
-      </blockquote>
-      {created ? (
-        <div className="space-y-2">
-          <p role="status">Task created and linked.</p>
-          <a
-            className="underline"
-            href={workHref(organizationId, created.projectEntityId, created.entityId)}
-          >
-            Open created task
-          </a>
-          <Button variant="ghost" onClick={onClose}>
-            Done
-          </Button>
-        </div>
-      ) : (
-        <>
-          {projects.isPending && (
-            <LoadingState label="Loading editable projects" variant="compact" />
-          )}
-          {projects.error && (
-            <ErrorState
-              compact
-              title="Couldn’t load projects"
-              onRetry={() => void projects.refetch()}
-            />
-          )}
-          {availableProjects?.length === 0 && (
-            <p>No editable projects. Create a project or ask its owner for edit access.</p>
-          )}
-          {!!availableProjects?.length && (
-            <TaskSelect
-              label="Destination project"
-              value={projectId}
-              onChange={setProjectId}
-              options={availableProjects.map((project) => ({
-                value: project.id,
-                label: project.title,
-              }))}
-            />
-          )}
-          {projectId && !accessDenied && (
-            <SourceTaskFields
-              key={projectId}
-              organizationId={organizationId}
-              projectId={projectId}
-              messageId={messageId}
-              sourceText={body.replace(/@\[[^\]]+\]/g, "[Reference]")}
-              onSaved={setCreated}
-              onClose={onClose}
-            />
-          )}
-          {(!projectId || accessDenied) && (
-            <Button variant="ghost" onClick={onClose}>
-              Cancel
-            </Button>
-          )}
-        </>
-      )}
-    </section>
-  );
-}
-
-function SourceTaskFields({
-  organizationId,
-  projectId,
-  messageId,
-  sourceText,
-  onSaved,
-  onClose,
-}: {
-  organizationId: string;
-  projectId: string;
-  messageId: string;
-  sourceText: string;
-  onSaved: (task: { entityId: string; projectEntityId: string }) => void;
-  onClose: () => void;
-}) {
-  const project = useQuery(projectQueryOptions(organizationId, projectId));
-  const [requestId, setRequestId] = useState(() => crypto.randomUUID());
-  const [lastDraft, setLastDraft] = useState("");
-  const client = useQueryClient();
-  const save = useMutation({
-    mutationFn: ({ draft, id }: { draft: TaskDraft; id: string }) =>
-      createTaskFromMessage({
-        data: { organizationId, projectEntityId: projectId, messageId, requestId: id, ...draft },
-      }),
-    onSuccess: async (task) => {
-      await client.invalidateQueries({ queryKey: queryKeys.organization(organizationId) });
-      onSaved(task);
-    },
-  });
-  if (project.isPending) return <LoadingState label="Loading task fields" variant="compact" />;
-  if (!project.data || isAccessFailure(project.error))
-    return (
-      <>
-        <ErrorState compact title="Project unavailable" onRetry={() => void project.refetch()} />
-        <Button variant="ghost" onClick={onClose}>
-          Cancel
-        </Button>
-      </>
-    );
-  return (
-    <>
-      {project.error && (
-        <ErrorState
-          compact
-          title="Couldn’t refresh project"
-          onRetry={() => void project.refetch()}
+    <CreateSourceTaskView
+      body={body}
+      projects={projects.data ?? []}
+      loading={projects.isPending}
+      error={projects.error}
+      onRetry={() => void projects.refetch()}
+      createdHref={
+        created ? workHref(organizationId, created.projectEntityId, created.entityId) : undefined
+      }
+      onClose={onClose}
+      renderFields={(projectId, sourceText) => (
+        <SourceTaskFields
+          key={projectId}
+          organizationId={organizationId}
+          projectId={projectId}
+          messageId={messageId}
+          sourceText={sourceText}
+          onSaved={setCreated}
+          onClose={onClose}
         />
       )}
-      <TaskForm
-        detail={project.data}
-        sourceText={sourceText}
-        pending={save.isPending}
-        error={save.error}
-        onCancel={onClose}
-        onSubmit={(draft) => {
-          const fingerprint = JSON.stringify(draft);
-          const id = lastDraft && lastDraft !== fingerprint ? crypto.randomUUID() : requestId;
-          setLastDraft(fingerprint);
-          setRequestId(id);
-          save.mutate({ draft, id });
-        }}
-      />
-    </>
+    />
   );
 }

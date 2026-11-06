@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Bold, Code, Italic, Send } from "lucide-react";
-import { Button } from "../primitives/button";
+import { Send } from "lucide-react";
+import { ComposerToolbar } from "./composer-toolbar";
 import { Textarea } from "../primitives/textarea";
 import { FormMessage } from "../auth/form-message";
 import { EmojiPicker } from "./emoji-picker";
@@ -71,49 +71,11 @@ export function Composer({
         errorDescription="Your message couldn’t be sent. Your draft is still here. Try sending it again."
       />
       <div className="overflow-hidden rounded-xl border bg-card shadow-raised transition-shadow focus-within:border-ring/50 focus-within:ring-2 focus-within:ring-ring/15">
-        <div className="flex items-center gap-1 border-b border-border/60 bg-muted/30 px-2 py-1">
-          {renderReferences && (
-            <Button
-              type="button"
-              size="xs"
-              variant="ghost"
-              disabled={pending}
-              onClick={() => setReferences(!references)}
-            >
-              Insert reference
-            </Button>
-          )}
-          <Button
-            type="button"
-            size="icon-sm"
-            variant="ghost"
-            aria-label="Bold text"
-            disabled={pending}
-            onClick={() => insert("**", "**")}
-          >
-            <Bold />
-          </Button>
-          <Button
-            type="button"
-            size="icon-sm"
-            variant="ghost"
-            aria-label="Italic text"
-            disabled={pending}
-            onClick={() => insert("_", "_")}
-          >
-            <Italic />
-          </Button>
-          <Button
-            type="button"
-            size="icon-sm"
-            variant="ghost"
-            aria-label="Code text"
-            disabled={pending}
-            onClick={() => insert("`", "`")}
-          >
-            <Code />
-          </Button>
-        </div>
+        <ComposerToolbar
+          pending={pending}
+          onReferences={renderReferences ? () => setReferences(!references) : undefined}
+          onInsert={insert}
+        />
         <Textarea
           variant="composer"
           ref={textarea}

@@ -9,6 +9,8 @@ import { isAccessFailure } from "@startup-os/ui/feedback/request-failure";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { CopyLink } from "../context/copy-link";
 import { messageHref } from "@/lib/context-links";
+import { ConversationContent } from "@startup-os/ui/messaging/conversation-content";
+import { ConversationUnavailable } from "@startup-os/ui/messaging/conversation-unavailable";
 
 export function MessagingWorkspace({ organizationId }: { organizationId: string }) {
   const conversations = useQuery(conversationsQueryOptions(organizationId));
@@ -61,24 +63,23 @@ export function MessagingWorkspace({ organizationId }: { organizationId: string 
         />
       )}
       {!creating && selected && (
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="border-b px-4">
+        <ConversationContent
+          link={
             <CopyLink
               label="Copy conversation link"
               href={messageHref(organizationId, selected.id)}
             />
-          </div>
+          }
+        >
           <ConversationPane
             key={selected.id}
             organizationId={organizationId}
             conversation={selected}
           />
-        </div>
+        </ConversationContent>
       )}
       {!creating && search.conversationId && !selected && !conversations.isPending && (
-        <p role="status" className="p-6">
-          Conversation unavailable or access denied.
-        </p>
+        <ConversationUnavailable />
       )}
     </MessagingWorkspaceView>
   );

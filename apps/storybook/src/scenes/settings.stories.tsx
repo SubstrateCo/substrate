@@ -2,7 +2,8 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
 import { WorkspaceShell } from "@startup-os/ui/workspace/workspace-shell";
-import { WorkspaceSettings } from "@startup-os/ui/workspace/workspace-settings";
+import { OrganizationSettings } from "@startup-os/ui/workspace/organization-settings";
+import { PictureSettings } from "@startup-os/ui/settings/picture-settings";
 import {
   InvitationManager,
   type InvitationListItem,
@@ -43,8 +44,18 @@ function SettingsScene({
       }
       signOut={<SignOutButton onSignOut={fn()} />}
     >
-      <WorkspaceSettings>
-        {owner && (
+      <OrganizationSettings
+        isOwner={owner}
+        picture={
+          <PictureSettings
+            title="Organization logo"
+            kind="organization-logo"
+            onUpload={async () => {}}
+            onRemove={async () => {}}
+            onRetry={fn()}
+          />
+        }
+        invitations={
           <InvitationManager
             invitations={state === "loading" || state === "error" ? undefined : items}
             loading={state === "loading"}
@@ -75,13 +86,8 @@ function SettingsScene({
               setMessage("Invitation canceled.");
             }}
           />
-        )}
-        {!owner && (
-          <p className="text-sm text-muted-foreground">
-            Only organization owners can send and manage invitations.
-          </p>
-        )}
-      </WorkspaceSettings>
+        }
+      />
     </WorkspaceShell>
   );
 }

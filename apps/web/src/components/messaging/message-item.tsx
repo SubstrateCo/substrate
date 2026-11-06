@@ -3,9 +3,10 @@ import { MessageItem as MessageItemView } from "@startup-os/ui/messaging/message
 import type { Message } from "@/lib/messaging";
 import { queryKeys } from "@/queries/keys";
 import { toggleReaction } from "@/api/messaging";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useSearch } from "@tanstack/react-router";
-import { Button } from "@startup-os/ui/primitives/button";
+import { LinkedMessage } from "@startup-os/ui/messaging/linked-message";
+import { MessageWorkActions } from "@startup-os/ui/messaging/message-work-actions";
 import { CopyLink } from "../context/copy-link";
 import { CreateSourceTask } from "../context/create-source-task";
 import { LinkMessageWork } from "../context/link-message-work";
@@ -24,11 +25,7 @@ export function MessageItem({
 }) {
   const queryClient = useQueryClient();
   const search = useSearch({ strict: false });
-  const target = useRef<HTMLDivElement>(null);
   const highlighted = search.messageId === message.id;
-  useEffect(() => {
-    if (highlighted) target.current?.scrollIntoView({ block: "nearest" });
-  }, [highlighted]);
   const [action, setAction] = useState<"create" | "link" | null>(null);
   const reaction = useMutation({
     mutationFn: async (emoji: string) =>
@@ -37,12 +34,7 @@ export function MessageItem({
       queryClient.invalidateQueries({ queryKey: queryKeys.messaging(organizationId) }),
   });
   return (
-    <div
-      ref={target}
-      tabIndex={highlighted ? -1 : undefined}
-      aria-label={highlighted ? "Linked message" : undefined}
-      className={highlighted ? "rounded border-2 border-ring" : undefined}
-    >
+    <LinkedMessage highlighted={highlighted}>
       <MessageItemView
         message={message}
         body={
@@ -58,12 +50,10 @@ export function MessageItem({
               label="Copy message link"
               href={messageHref(organizationId, message.conversationId, message.id)}
             />
-            <Button size="xs" variant="ghost" onClick={() => setAction("create")}>
-              Create task
-            </Button>
-            <Button size="xs" variant="ghost" onClick={() => setAction("link")}>
-              Link existing work
-            </Button>
+            <MessageWorkActions
+              onCreate={() => setAction("create")}
+              onLink={() => setAction("link")}
+            />
           </>
         }
         onThread={onThread}
@@ -88,6 +78,6 @@ export function MessageItem({
           />
         )}
       </MessageItemView>
-    </div>
+    </LinkedMessage>
   );
 }

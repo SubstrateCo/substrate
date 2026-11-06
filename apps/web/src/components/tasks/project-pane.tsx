@@ -9,6 +9,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { CopyLink } from "../context/copy-link";
 import { workHref } from "@/lib/context-links";
 import { WorkDiscussions } from "../context/work-discussions";
+import { ProjectDiscussions } from "@startup-os/ui/context/project-discussions";
 
 export function ProjectPane({
   organizationId,
@@ -40,14 +41,13 @@ export function ProjectPane({
       context={
         project.data &&
         !project.error && (
-          <details>
-            <summary className="cursor-pointer text-sm">Project discussions</summary>
+          <ProjectDiscussions>
             <WorkDiscussions
               organizationId={organizationId}
               entityId={projectEntityId}
               label="Project discussions"
             />
-          </details>
+          </ProjectDiscussions>
         )
       }
       loading={project.isPending}

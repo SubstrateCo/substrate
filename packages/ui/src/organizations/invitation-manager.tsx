@@ -1,17 +1,7 @@
-import { useState } from "react";
-import { Input } from "../primitives/input";
-import { Label } from "../primitives/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../primitives/select";
+import { InvitationForm } from "./invitation-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../primitives/card";
 import { FormMessage } from "../auth/form-message";
 import { InvitationTable } from "./invitation-table";
-import { PendingButton } from "../feedback/pending-button";
 import { Spinner } from "../primitives/spinner";
 
 export type InvitationRole = "owner" | "admin" | "member";
@@ -47,8 +37,6 @@ export function InvitationManager({
   onInvite: (email: string, role: InvitationRole, resend?: boolean) => void;
   onCancel: (id: string) => void;
 }) {
-  const [role, setRole] = useState<InvitationRole>("member");
-  const [email, setEmail] = useState("");
   const busy = sending || canceling;
   return (
     <Card>
@@ -58,54 +46,7 @@ export function InvitationManager({
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
-          <form
-            className="grid gap-4 sm:grid-cols-12 sm:items-end"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (busy) return;
-              onInvite(email, role);
-            }}
-          >
-            <div className="grid min-w-0 gap-2 sm:col-span-6">
-              <Label htmlFor="invite-email">Email</Label>
-              <Input
-                id="invite-email"
-                name="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                type="email"
-                autoComplete="email"
-                placeholder="teammate@company.com"
-                required
-              />
-            </div>
-            <div className="grid min-w-0 gap-2 sm:col-span-3">
-              <Label htmlFor="invite-role">Role</Label>
-              <Select
-                value={role}
-                onValueChange={(value) => {
-                  if (value === "owner" || value === "admin" || value === "member") setRole(value);
-                }}
-              >
-                <SelectTrigger id="invite-role" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="member">Member</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="owner">Owner</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <PendingButton
-              className="sm:col-span-3"
-              disabled={busy}
-              pending={sending}
-              pendingLabel="Sending…"
-            >
-              Send invitation
-            </PendingButton>
-          </form>
+          <InvitationForm sending={sending} disabled={busy} onInvite={onInvite} />
           <FormMessage
             error={error}
             errorDescription="We couldn’t update this invitation. Check the email and try again."

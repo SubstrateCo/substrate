@@ -1,4 +1,4 @@
-import { WorkspaceSettings as WorkspaceSettingsView } from "@startup-os/ui/workspace/workspace-settings";
+import { OrganizationSettings } from "@startup-os/ui/workspace/organization-settings";
 import { InvitationManager } from "@/components/organizations/invitation-manager";
 import { OrganizationPicture } from "@/components/organizations/organization-picture";
 
@@ -10,14 +10,10 @@ export function WorkspaceSettings({
   isOwner: boolean;
 }) {
   return (
-    <WorkspaceSettingsView>
-      <OrganizationPicture organizationId={organizationId} />
-      {isOwner && <InvitationManager organizationId={organizationId} />}
-      {!isOwner && (
-        <p className="text-sm text-muted-foreground">
-          Only organization owners can send and manage invitations.
-        </p>
-      )}
-    </WorkspaceSettingsView>
+    <OrganizationSettings
+      isOwner={isOwner}
+      picture={<OrganizationPicture organizationId={organizationId} />}
+      invitations={<InvitationManager organizationId={organizationId} />}
+    />
   );
 }

@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import { CircleCheck, FolderKanban, UserRound } from "lucide-react";
+import { ReferencePickerOption } from "./reference-picker-option";
 import { Button } from "../primitives/button";
 import { Input } from "../primitives/input";
 import { ErrorState } from "../feedback/error-state";
@@ -34,8 +34,6 @@ export function ReferencePicker({
   const listId = useId();
   const available = loading || error ? [] : results;
   const selectedIndex = Math.min(index, Math.max(0, available.length - 1));
-  const icons = { task: CircleCheck, project: FolderKanban, person: UserRound };
-  const Icon = icons[kind];
   const insert = (id: string) => onInsert(`@[${kind}:${id}]`);
   return (
     <section aria-label="Insert workspace reference" className="space-y-3 border-t bg-card p-3">
@@ -103,19 +101,14 @@ export function ReferencePicker({
       )}
       <div id={listId} role="listbox" aria-label="References" className="max-h-48 overflow-auto">
         {available.map((item, itemIndex) => (
-          <Button
+          <ReferencePickerOption
             id={`${listId}-${item.id}`}
             key={item.id}
-            type="button"
-            role="option"
-            aria-selected={selectedIndex === itemIndex}
-              variant={selectedIndex === itemIndex ? "secondary" : "ghost"}
-              className="w-full justify-start"
-            onClick={() => insert(item.id)}
-          >
-            <Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-            <span className="truncate">{item.title}</span>
-          </Button>
+            kind={kind}
+            title={item.title}
+            selected={selectedIndex === itemIndex}
+            onSelect={() => insert(item.id)}
+          />
         ))}
       </div>
       <Button type="button" size="xs" variant="ghost" onClick={onClose}>

@@ -1,5 +1,6 @@
-import { Hash, LockKeyhole, MessageCircle, Plus, Users } from "lucide-react";
-import { conversationName, type Conversation } from "./types";
+import { Plus } from "lucide-react";
+import type { Conversation } from "./types";
+import { ConversationSidebarItem } from "./conversation-sidebar-item";
 import { Button } from "../primitives/button";
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
@@ -105,24 +106,14 @@ export function ConversationSidebar({
                     ? conversation.kind === "channel"
                     : conversation.kind !== "channel",
                 )
-                .map((conversation) => {
-                  let Icon = conversation.kind === "group" ? Users : MessageCircle;
-                  if (conversation.kind === "channel") {
-                    Icon = conversation.private ? LockKeyhole : Hash;
-                  }
-                  return (
-                    <Button
-                      key={conversation.id}
-                      variant="sidebar"
-                      className="mb-1 w-full justify-start"
-                      aria-current={selectedId === conversation.id ? "page" : undefined}
-                      onClick={() => onSelect(conversation.id)}
-                    >
-                      <Icon className="size-4 shrink-0" />
-                      <span className="truncate">{conversationName(conversation)}</span>
-                    </Button>
-                  );
-                })}
+                .map((conversation) => (
+                  <ConversationSidebarItem
+                    key={conversation.id}
+                    conversation={conversation}
+                    selected={selectedId === conversation.id}
+                    onSelect={() => onSelect(conversation.id)}
+                  />
+                ))}
               {!loading &&
                 !conversations.some((conversation) =>
                   section === "channel"

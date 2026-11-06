@@ -1,0 +1,35 @@
+import { Button } from "../primitives/button";
+import { Spinner } from "../primitives/spinner";
+
+export function OrganizationSelectionItem({
+  name,
+  pending,
+  onSelect,
+}: {
+  name: string;
+  pending: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <Button
+      variant="outline"
+      size="selection"
+      className="justify-start whitespace-normal text-left"
+      disabled={pending}
+      aria-busy={pending}
+      onClick={onSelect}
+    >
+      <span
+        aria-hidden="true"
+        className="mr-2 flex size-8 shrink-0 items-center justify-center rounded-md bg-accent text-xs font-semibold text-accent-foreground"
+      >
+        {pending ? (
+          <Spinner aria-hidden="true" role="presentation" />
+        ) : (
+          name.slice(0, 2).toUpperCase()
+        )}
+      </span>
+      <span className="min-w-0 wrap-break-word">{name}</span>
+    </Button>
+  );
+}

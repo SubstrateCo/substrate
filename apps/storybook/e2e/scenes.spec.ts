@@ -356,9 +356,15 @@ test("invitation fields and labels align on desktop and fit on mobile", async ({
     expect(box!.y).toBeCloseTo(controls[0]!.y, 0);
     expect(box!.height).toBe(controls[0]!.height);
   }
-  const emailLabel = await page.locator('label[for="invite-email"]').boundingBox();
-  const roleLabel = await page.locator('label[for="invite-role"]').boundingBox();
-  expect(emailLabel!.y).toBeCloseTo(roleLabel!.y, 0);
+  const emailLabelY = await email.evaluate(
+    (node) =>
+      document.querySelector(`label[for="${CSS.escape(node.id)}"]`)!.getBoundingClientRect().y,
+  );
+  const roleLabelY = await role.evaluate(
+    (node) =>
+      document.querySelector(`label[for="${CSS.escape(node.id)}"]`)!.getBoundingClientRect().y,
+  );
+  expect(emailLabelY).toBeCloseTo(roleLabelY, 0);
   await page.setViewportSize({ width: 390, height: 844 });
   for (const control of [email, role, send]) await expect(control).toBeInViewport({ ratio: 1 });
 });

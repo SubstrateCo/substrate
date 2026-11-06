@@ -4,7 +4,7 @@ import { authClient } from "@/lib/auth-client";
 import { organizationsQueryOptions, unwrap } from "@/queries/organizations/options";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { CreateOrganizationForm } from "./create-organization-form";
-import { Link } from "@tanstack/react-router";
+import { OrganizationSelectionActions } from "@startup-os/ui/organizations/organization-selection-actions";
 
 export function OrganizationSelection() {
   const organizations = useQuery(organizationsQueryOptions());
@@ -27,12 +27,10 @@ export function OrganizationSelection() {
       onRetry={() => void organizations.refetch()}
       onSelect={(id) => select.mutate(id)}
       signOut={
-        <div className="flex items-center gap-4">
-          <Link to="/settings/user/invitations" className="text-sm underline">
-            Your invitations
-          </Link>
-          <SignOutButton />
-        </div>
+        <OrganizationSelectionActions
+          invitationsHref="/settings/user/invitations"
+          signOut={<SignOutButton />}
+        />
       }
       createForm={<CreateOrganizationForm />}
     />

@@ -1,12 +1,11 @@
 import type { ReactNode } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../primitives/card";
-import { Button } from "../primitives/button";
+import { OrganizationSelectionItem } from "./organization-selection-item";
 import { Separator } from "../primitives/separator";
 import { FormMessage } from "../auth/form-message";
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
 import { ContentNotice } from "../feedback/content-notice";
-import { Spinner } from "../primitives/spinner";
 import { isAccessFailure } from "../feedback/request-failure";
 
 export function OrganizationSelection({
@@ -68,27 +67,12 @@ export function OrganizationSelection({
                 {!isAccessFailure(loadError) &&
                   (!loadError || organizations !== undefined) &&
                   organizations?.map((organization) => (
-                    <Button
+                    <OrganizationSelectionItem
                       key={organization.id}
-                      variant="outline"
-                      size="selection"
-                      className="justify-start whitespace-normal text-left"
-                      disabled={pending}
-                      aria-busy={pending}
-                      onClick={() => onSelect(organization.id)}
-                    >
-                      <span
-                        aria-hidden="true"
-                        className="mr-2 flex size-8 shrink-0 items-center justify-center rounded-md bg-accent text-xs font-semibold text-accent-foreground"
-                      >
-                        {pending ? (
-                          <Spinner aria-hidden="true" role="presentation" />
-                        ) : (
-                          organization.name.slice(0, 2).toUpperCase()
-                        )}
-                      </span>
-                      <span className="min-w-0 wrap-break-word">{organization.name}</span>
-                    </Button>
+                      name={organization.name}
+                      pending={pending}
+                      onSelect={() => onSelect(organization.id)}
+                    />
                   ))}
               </div>
             </div>

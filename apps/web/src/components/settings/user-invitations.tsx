@@ -1,32 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@startup-os/ui/primitives/card";
+import { UserInvitations as UserInvitationsView } from "@startup-os/ui/settings/user-invitations";
 import { userInvitationsQueryOptions } from "@/queries/organizations/options";
-import { UserInvitationsTable } from "./user-invitations-table";
+import { useCurrentTime } from "@/hooks/use-current-time";
 
 export function UserInvitations() {
   const invitations = useQuery(userInvitationsQueryOptions());
+  const now = useCurrentTime();
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Your invitations</CardTitle>
-        <CardDescription>
-          Pending organization invitations sent to your account’s email address.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <UserInvitationsTable
-          invitations={invitations.data}
-          loading={invitations.isPending}
-          error={invitations.error}
-          onRetry={() => void invitations.refetch()}
-        />
-      </CardContent>
-    </Card>
+    <UserInvitationsView
+      invitations={invitations.data?.map((item) => ({
+        ...item,
+        href: `/accept-invitation/${encodeURIComponent(item.id)}`,
+      }))}
+      now={now}
+      loading={invitations.isPending}
+      error={invitations.error}
+      onRetry={() => void invitations.refetch()}
+    />
   );
 }

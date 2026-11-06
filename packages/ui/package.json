@@ -17,6 +17,8 @@
     "./messaging/*": "./src/messaging/*.tsx",
     "./organizations/*": "./src/organizations/*.tsx",
     "./workspace/*": "./src/workspace/*.tsx",
+    "./settings/*": "./src/settings/*.tsx",
+    "./context/*": "./src/context/*.tsx",
     "./theme/*": "./src/theme/*.tsx",
     "./feedback/request-failure": "./src/feedback/request-failure.ts",
     "./feedback/*": "./src/feedback/*.tsx"

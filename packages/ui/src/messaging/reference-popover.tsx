@@ -1,26 +1,11 @@
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
-import { AtSign, CircleCheck, FolderKanban, UserRound } from "lucide-react";
-import { cva } from "class-variance-authority";
+import { AtSign } from "lucide-react";
+import { ReferenceSuggestion as ReferenceSuggestionOption } from "./reference-suggestion";
 import { Button } from "../primitives/button";
 import { Popover, PopoverAnchor, PopoverContent } from "../primitives/popover";
 import { LoadingState } from "../feedback/loading-state";
 import { ErrorState } from "../feedback/error-state";
 import type { ReferenceKind } from "./reference-picker";
-
-const optionVariants = cva("flex cursor-pointer items-center gap-3 rounded-md px-2 py-2", {
-  variants: {
-    selected: { true: "bg-accent text-accent-foreground", false: "" },
-  },
-});
-
-const iconVariants = cva(
-  "flex size-8 shrink-0 items-center justify-center bg-muted text-muted-foreground",
-  {
-    variants: {
-      kind: { person: "rounded-full", task: "rounded-md", project: "rounded-md" },
-    },
-  },
-);
 
 export type ReferenceSuggestion = {
   id: string;
@@ -153,38 +138,16 @@ export function ReferencePopover({
             aria-busy={loading}
             className="max-h-60 overflow-y-auto"
           >
-            {available.map((item, index) => {
-              const Icon = { person: UserRound, task: CircleCheck, project: FolderKanban }[
-                item.kind
-              ];
-              return (
-                <div
-                  key={`${item.kind}:${item.id}`}
-                  id={referenceOptionId(listId, item)}
-                  role="option"
-                  aria-selected={index === selectedIndex}
-                  onPointerMove={() => onHighlight(index)}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => onSelect(item)}
-                  className={optionVariants({ selected: index === selectedIndex })}
-                >
-                  <span className={iconVariants({ kind: item.kind })}>
-                    <Icon className="size-4" aria-hidden="true" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">{item.title}</span>
-                    {item.description && (
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {item.description}
-                      </span>
-                    )}
-                  </span>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {{ person: "User", task: "Task", project: "Project" }[item.kind]}
-                  </span>
-                </div>
-              );
-            })}
+            {available.map((item, index) => (
+              <ReferenceSuggestionOption
+                key={`${item.kind}:${item.id}`}
+                item={item}
+                id={referenceOptionId(listId, item)}
+                selected={index === selectedIndex}
+                onHighlight={() => onHighlight(index)}
+                onSelect={() => onSelect(item)}
+              />
+            ))}
           </div>
         </div>
       </PopoverContent>

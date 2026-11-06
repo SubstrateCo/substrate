@@ -1,6 +1,6 @@
-import { Button } from "../primitives/button";
 import { taskStatusLabels, taskStatusValues } from "@startup-os/contracts/tasks";
 import type { ProjectDetail } from "./types";
+import { TaskListItem } from "./task-list-item";
 
 export function TaskList({
   detail,
@@ -34,34 +34,13 @@ export function TaskList({
             </h2>
             <ul className="space-y-1">
               {rows.map((task) => (
-                <li key={task.entityId}>
-                  <Button
-                    variant="sidebar"
-                    size="selection"
-                    className="h-auto w-full justify-start text-left whitespace-normal"
-                    aria-pressed={task.entityId === selectedId}
-                    onClick={() => onSelect(task.entityId)}
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="block font-medium wrap-break-word">{task.title}</span>
-                      {task.parentTaskEntityId && (
-                        <span className="block text-xs text-muted-foreground">
-                          Subtask of{" "}
-                          {detail.tasks.find(
-                            (parent) => parent.entityId === task.parentTaskEntityId,
-                          )?.title ?? "archived task"}
-                        </span>
-                      )}
-                      <span className="block text-xs text-muted-foreground">
-                        {task.priority === "none" ? "No priority" : `${task.priority} priority`}
-                        {task.dueDate ? ` · Due ${task.dueDate}` : ""}
-                        {task.assigneeActorEntityId
-                          ? ` · ${detail.actors.find((actor) => actor.entityId === task.assigneeActorEntityId)?.name ?? "Former member"}`
-                          : ""}
-                      </span>
-                    </span>
-                  </Button>
-                </li>
+                <TaskListItem
+                  key={task.entityId}
+                  detail={detail}
+                  task={task}
+                  selected={task.entityId === selectedId}
+                  onSelect={() => onSelect(task.entityId)}
+                />
               ))}
             </ul>
           </div>
