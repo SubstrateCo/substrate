@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { TasksScene } from "./tasks-scene";
 
-const meta = { title: "Scenes/Tasks", component: TasksScene } satisfies Meta<typeof TasksScene>;
+const meta = { title: "Projects/Scenes/Tasks", component: TasksScene } satisfies Meta<
+  typeof TasksScene
+>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 

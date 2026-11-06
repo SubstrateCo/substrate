@@ -14,7 +14,7 @@ async function expectWorkspaceFits(page: Page) {
 test("keyboard task creation rejects blank titles and saves selected priority once", async ({
   page,
 }) => {
-  await page.goto("/iframe.html?id=scenes-tasks--project&viewMode=story");
+  await page.goto("/iframe.html?id=projects-scenes-tasks--project&viewMode=story");
   const newTask = page.getByRole("button", { name: "New task", exact: true });
   await newTask.focus();
   await page.keyboard.press("Enter");
@@ -54,7 +54,7 @@ test("keyboard task creation rejects blank titles and saves selected priority on
 });
 
 test("rapid create and comment activation does not duplicate content", async ({ page }) => {
-  await page.goto("/iframe.html?id=scenes-tasks--project&viewMode=story");
+  await page.goto("/iframe.html?id=projects-scenes-tasks--project&viewMode=story");
   await page.getByRole("button", { name: "New task", exact: true }).click();
   await page.getByLabel("Task title", { exact: true }).fill("One rapid task");
   await page.getByRole("button", { name: "Create task", exact: true }).dblclick();
@@ -73,7 +73,7 @@ for (const theme of ["light", "dark"] as const) {
   test(`long project, task, and comment content stays contained in ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(
-      `/iframe.html?id=scenes-tasks--${theme === "dark" ? "dark-project" : "project"}&viewMode=story`,
+      `/iframe.html?id=projects-scenes-tasks--${theme === "dark" ? "dark-project" : "project"}&viewMode=story`,
     );
     const projectName = "Project" + "P".repeat(190);
     const taskTitle = "Task" + "T".repeat(290);
@@ -111,7 +111,7 @@ for (const theme of ["light", "dark"] as const) {
   test(`long custom status stays contained in ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(
-      `/iframe.html?id=scenes-tasks--${theme === "dark" ? "dark-project" : "project"}&viewMode=story`,
+      `/iframe.html?id=projects-scenes-tasks--${theme === "dark" ? "dark-project" : "project"}&viewMode=story`,
     );
     const statusName = "Review" + "R".repeat(94);
     await page.getByRole("button", { name: "Project settings", exact: true }).click();

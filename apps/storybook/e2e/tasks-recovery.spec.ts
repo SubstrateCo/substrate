@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("workspace loading does not claim there are no projects or tasks", async ({ page }) => {
-  await page.goto("/iframe.html?id=scenes-tasks--loading-projects&viewMode=story");
+  await page.goto("/iframe.html?id=projects-scenes-tasks--loading-projects&viewMode=story");
   await expect(page.getByRole("status", { name: "Loading projects", exact: true })).toBeVisible();
   await expect(
     page.getByText("No projects yet. Create a project to start planning.", { exact: true }),
@@ -11,7 +11,7 @@ test("workspace loading does not claim there are no projects or tasks", async ({
 
 for (const state of ["projects-error", "unavailable-workspace"]) {
   test(`${state} retries without exposing inaccessible project content`, async ({ page }) => {
-    await page.goto(`/iframe.html?id=scenes-tasks--${state}&viewMode=story`);
+    await page.goto(`/iframe.html?id=projects-scenes-tasks--${state}&viewMode=story`);
     const unavailable = state === "unavailable-workspace";
     await expect(
       page.getByRole("heading", {
@@ -38,7 +38,7 @@ for (const state of ["projects-error", "unavailable-workspace"]) {
 }
 
 test("project access recovery reveals tasks only after retry", async ({ page }) => {
-  await page.goto("/iframe.html?id=scenes-tasks--unavailable-project&viewMode=story");
+  await page.goto("/iframe.html?id=projects-scenes-tasks--unavailable-project&viewMode=story");
   await expect(
     page.getByRole("heading", { name: "Project unavailable", exact: true }),
   ).toBeVisible();
@@ -50,7 +50,7 @@ test("project access recovery reveals tasks only after retry", async ({ page }) 
 });
 
 test("view-only project settings expose no mutation controls", async ({ page }) => {
-  await page.goto("/iframe.html?id=scenes-tasks--view-only&viewMode=story");
+  await page.goto("/iframe.html?id=projects-scenes-tasks--view-only&viewMode=story");
   await page.getByRole("button", { name: "Project settings", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Project access", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Workflow statuses", exact: true })).toBeVisible();
@@ -64,7 +64,7 @@ test("view-only project settings expose no mutation controls", async ({ page }) 
 });
 
 test("a failed comment does not appear as a failure on a different task", async ({ page }) => {
-  await page.goto("/iframe.html?id=scenes-tasks--comment-error&viewMode=story");
+  await page.goto("/iframe.html?id=projects-scenes-tasks--comment-error&viewMode=story");
   await page.getByRole("button", { name: "New task", exact: true }).click();
   await page
     .getByRole("textbox", { name: "Task title", exact: true })

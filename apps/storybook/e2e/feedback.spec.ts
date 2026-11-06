@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("workspace load errors have a title and preserve workspace creation", async ({ page }) => {
-  await page.goto("/iframe.html?id=scenes-workspaces--load-error&viewMode=story");
+  await page.goto("/iframe.html?id=scenes-workspace-selection--load-error&viewMode=story");
   await expect(page.getByRole("heading", { name: "Couldn’t load workspaces" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Create workspace", exact: true })).toBeEnabled();
@@ -10,7 +10,9 @@ test("workspace load errors have a title and preserve workspace creation", async
 
 test("conversation failures are not shown as an empty sidebar on mobile", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/iframe.html?id=scenes-messaging--conversation-list-error&viewMode=story");
+  await page.goto(
+    "/iframe.html?id=messaging-scenes-workspace--conversation-list-error&viewMode=story",
+  );
   await page.getByRole("button", { name: "Show conversations" }).click();
   const sidebar = page.getByRole("complementary", { name: "Conversations" });
   await expect(sidebar.getByRole("heading", { name: "Couldn’t load conversations" })).toBeVisible();
@@ -19,7 +21,7 @@ test("conversation failures are not shown as an empty sidebar on mobile", async 
 });
 
 test("table loading reserves space and announces the content being loaded", async ({ page }) => {
-  await page.goto("/iframe.html?id=scenes-settings--loading&viewMode=story");
+  await page.goto("/iframe.html?id=scenes-workspace-settings--loading&viewMode=story");
   const status = page.getByRole("status", { name: "Loading invitations…", exact: true });
   await expect(status).toBeVisible();
   expect((await status.boundingBox())!.height).toBeGreaterThan(100);
@@ -27,7 +29,7 @@ test("table loading reserves space and announces the content being loaded", asyn
 });
 
 test("workspace retry restores the list without discarding creation fields", async ({ page }) => {
-  await page.goto("/iframe.html?id=scenes-feedback--workspace-retry&viewMode=story");
+  await page.goto("/iframe.html?id=scenes-system-feedback--workspace-retry&viewMode=story");
   const name = page.getByRole("textbox", { name: "Workspace name", exact: true });
   await name.fill("My next workspace");
   await page.getByRole("button", { name: "Try again", exact: true }).click();
@@ -37,7 +39,7 @@ test("workspace retry restores the list without discarding creation fields", asy
 });
 
 test("workspace dropdown recovers in place and keeps management available", async ({ page }) => {
-  await page.goto("/iframe.html?id=scenes-feedback--switcher-retry&viewMode=story");
+  await page.goto("/iframe.html?id=scenes-system-feedback--switcher-retry&viewMode=story");
   await page.getByRole("button", { name: "Launch Studio ▾", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Couldn’t load workspaces" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "Manage workspaces" })).toBeVisible();
@@ -47,7 +49,7 @@ test("workspace dropdown recovers in place and keeps management available", asyn
 });
 
 test("invitation fetch retry restores acceptance", async ({ page }) => {
-  await page.goto("/iframe.html?id=scenes-feedback--invitation-retry&viewMode=story");
+  await page.goto("/iframe.html?id=scenes-system-feedback--invitation-retry&viewMode=story");
   await expect(page.getByRole("button", { name: "Accept invitation" })).toHaveCount(0);
   await page.getByRole("button", { name: "Try again" }).click();
   await expect(page.getByRole("button", { name: "Accept invitation" })).toBeEnabled();
@@ -55,7 +57,7 @@ test("invitation fetch retry restores acceptance", async ({ page }) => {
 });
 
 test("invitation action errors preserve the email for another attempt", async ({ page }) => {
-  await page.goto("/iframe.html?id=scenes-feedback--invitation-action-error&viewMode=story");
+  await page.goto("/iframe.html?id=scenes-system-feedback--invitation-action-error&viewMode=story");
   const email = page.getByRole("textbox", { name: "Email", exact: true });
   await email.fill("new@example.com");
   await page.getByRole("button", { name: "Send invitation" }).click();
@@ -67,7 +69,7 @@ test("invitation action errors preserve the email for another attempt", async ({
 });
 
 test("message failures preserve the draft until a successful retry", async ({ page }) => {
-  await page.goto("/iframe.html?id=scenes-feedback--message-action-error&viewMode=story");
+  await page.goto("/iframe.html?id=scenes-system-feedback--message-action-error&viewMode=story");
   const draft = page.getByRole("textbox", { name: "Message #general" });
   await draft.fill("Keep my draft");
   await draft.press("Enter");
@@ -79,17 +81,17 @@ test("message failures preserve the draft until a successful retry", async ({ pa
 });
 
 test("refresh failures keep loaded messages visible", async ({ page }) => {
-  await page.goto("/iframe.html?id=scenes-feedback--refresh-error&viewMode=story");
+  await page.goto("/iframe.html?id=scenes-system-feedback--refresh-error&viewMode=story");
   await expect(page.getByRole("heading", { name: "Couldn’t refresh messages" })).toBeVisible();
   await expect(page.getByRole("log")).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Message #general" })).toBeEnabled();
 });
 
 test("table refresh errors retain rows, but access loss hides them", async ({ page }) => {
-  await page.goto("/iframe.html?id=components-table--refresh-error&viewMode=story");
+  await page.goto("/iframe.html?id=components-data-display-table--refresh-error&viewMode=story");
   await expect(page.getByRole("alert")).toBeVisible();
   await expect(page.getByRole("row").filter({ hasText: "person-01@example.com" })).toBeVisible();
-  await page.goto("/iframe.html?id=components-table--access-error&viewMode=story");
+  await page.goto("/iframe.html?id=components-data-display-table--access-error&viewMode=story");
   await expect(page.getByRole("alert")).toBeVisible();
   await expect(page.getByRole("row").filter({ hasText: "person-01@example.com" })).toHaveCount(0);
 });
@@ -105,7 +107,7 @@ for (const theme of ["light", "dark"]) {
       "page-pending",
     ]) {
       await page.goto(
-        `/iframe.html?id=scenes-feedback--${story}&viewMode=story&globals=theme:${theme}`,
+        `/iframe.html?id=scenes-system-feedback--${story}&viewMode=story&globals=theme:${theme}`,
       );
       await expect(
         page.getByRole(
@@ -126,7 +128,7 @@ for (const theme of ["light", "dark"]) {
 
 test("loading placeholders honor reduced motion", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/iframe.html?id=scenes-feedback--list-loading&viewMode=story");
+  await page.goto("/iframe.html?id=scenes-system-feedback--list-loading&viewMode=story");
   const status = page.getByRole("status", { name: "Loading invitations…" });
   await expect(status).toBeVisible();
   const durations = await status

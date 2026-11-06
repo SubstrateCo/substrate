@@ -1,13 +1,25 @@
 import { expect, test } from "@playwright/test";
 import { openStory } from "./stories";
 
+test("feature sections separate components from full scenes", async ({ page }) => {
+  await page.goto("/?path=/story/messaging-components-composer--empty");
+  const navigation = page.getByRole("navigation", { name: "Stories" });
+  await expect(navigation.getByText("Messaging", { exact: true })).toBeVisible();
+  await expect(navigation.getByText("Projects", { exact: true })).toBeVisible();
+  await expect(navigation.getByText("Primitives", { exact: true })).toBeVisible();
+  const preview = page.frameLocator("#storybook-preview-iframe");
+  await expect(preview.getByRole("textbox", { name: "Message #general" })).toBeVisible();
+  await page.goto("/?path=/story/projects-components-connected-task--source");
+  await expect(preview.getByLabel("Task title", { exact: true })).toBeVisible();
+});
+
 test("preview navigation renders the next story without reloading the document", async ({
   page,
 }) => {
-  await openStory(page, "components-button--default");
+  await openStory(page, "primitives-actions-button--default");
   const initialDocument = await page.evaluate(() => performance.timeOrigin);
-  await openStory(page, "components-button--secondary");
-  await openStory(page, "components-button--sizes");
+  await openStory(page, "primitives-actions-button--secondary");
+  await openStory(page, "primitives-actions-button--sizes");
   await expect(page.getByRole("button", { name: "sm", exact: true })).toBeVisible();
   expect(await page.evaluate(() => performance.timeOrigin)).toBe(initialDocument);
 });

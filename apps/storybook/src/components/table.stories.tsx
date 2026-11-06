@@ -56,7 +56,7 @@ function TablePreview({
   );
 }
 
-const meta = { title: "Components/Table", component: TablePreview } satisfies Meta<
+const meta = { title: "Components/Data display/Table", component: TablePreview } satisfies Meta<
   typeof TablePreview
 >;
 export default meta;

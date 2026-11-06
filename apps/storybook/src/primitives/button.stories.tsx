@@ -3,7 +3,7 @@ import { fn } from "storybook/test";
 import { Button } from "@startup-os/ui/primitives/button";
 
 const meta = {
-  title: "Components/Button",
+  title: "Primitives/Actions/Button",
   component: Button,
   args: { children: "Button", onClick: fn() },
   argTypes: {

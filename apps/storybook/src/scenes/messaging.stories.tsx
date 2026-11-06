@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { MessagingScene } from "./messaging-scene";
 
-const meta = { title: "Scenes/Messaging", component: MessagingScene } satisfies Meta<
+const meta = { title: "Messaging/Scenes/Workspace", component: MessagingScene } satisfies Meta<
   typeof MessagingScene
 >;
 export default meta;

@@ -19,7 +19,20 @@ const preview: Preview = {
   ],
   parameters: {
     layout: "fullscreen",
-    options: { storySort: { order: ["Scenes", "Components", "Foundations"] } },
+    options: {
+      storySort: {
+        order: [
+          "Foundations",
+          "Primitives",
+          "Components",
+          "Messaging",
+          ["Components", "Scenes"],
+          "Projects",
+          ["Components", "Scenes"],
+          "Scenes",
+        ],
+      },
+    },
     viewport: {
       options: {
         narrow: { name: "Mobile 320", styles: { width: "320px", height: "740px" } },

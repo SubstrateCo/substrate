@@ -4,7 +4,7 @@ import { TaskForm } from "@startup-os/ui/tasks/task-form";
 import { taskProject } from "../scenes/tasks-fixtures";
 
 const meta = {
-  title: "Components/Connected task",
+  title: "Projects/Components/Connected task",
   component: TaskForm,
   args: {
     detail: taskProject,

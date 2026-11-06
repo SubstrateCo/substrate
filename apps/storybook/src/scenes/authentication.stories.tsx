@@ -6,7 +6,7 @@ import { ForgotPasswordForm } from "@startup-os/ui/auth/forgot-password-form";
 import { ResetPasswordForm } from "@startup-os/ui/auth/reset-password-form";
 import { VerifyEmailScreen } from "@startup-os/ui/auth/verify-email-screen";
 
-const meta = { title: "Scenes/Authentication" } satisfies Meta;
+const meta = { title: "Scenes/Account/Authentication" } satisfies Meta;
 export default meta;
 type Story = StoryObj<typeof meta>;
 

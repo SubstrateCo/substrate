@@ -86,7 +86,7 @@ function SettingsScene({
   );
 }
 
-const meta = { title: "Scenes/Settings", component: SettingsScene } satisfies Meta<
+const meta = { title: "Scenes/Workspace/Settings", component: SettingsScene } satisfies Meta<
   typeof SettingsScene
 >;
 export default meta;

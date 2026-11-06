@@ -19,7 +19,7 @@ import { NotFound } from "@startup-os/ui/feedback/not-found";
 import { ErrorScreen } from "@startup-os/ui/feedback/error-screen";
 import { organizations, invitations, conversations, messages } from "../fixtures";
 
-const meta = { title: "Scenes/Feedback" } satisfies Meta;
+const meta = { title: "Scenes/System/Feedback" } satisfies Meta;
 export default meta;
 type Story = StoryObj<typeof meta>;
 

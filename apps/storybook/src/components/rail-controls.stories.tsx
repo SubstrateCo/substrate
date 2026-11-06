@@ -5,7 +5,7 @@ import { SignOutButton } from "@startup-os/ui/auth/sign-out-button";
 import { organizations } from "../fixtures";
 
 const meta = {
-  title: "Components/Rail controls",
+  title: "Components/Workspace/Rail controls",
   decorators: [
     (Story) => (
       <div className="flex min-h-screen items-center justify-center p-8">

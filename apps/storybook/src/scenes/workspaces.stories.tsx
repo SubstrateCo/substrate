@@ -7,7 +7,7 @@ import { AcceptInvitationScreen } from "@startup-os/ui/organizations/accept-invi
 import { SignOutButton } from "@startup-os/ui/auth/sign-out-button";
 import { organizations } from "../fixtures";
 
-const meta = { title: "Scenes/Workspaces" } satisfies Meta;
+const meta = { title: "Scenes/Workspace/Selection" } satisfies Meta;
 export default meta;
 type Story = StoryObj<typeof meta>;
 

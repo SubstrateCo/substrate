@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/iframe.html?id=components-table--invitations&viewMode=story");
+  await page.goto("/iframe.html?id=components-data-display-table--invitations&viewMode=story");
 });
 
 test("shared table pages, sorts dates chronologically, and keeps missing dates last", async ({
@@ -49,7 +49,7 @@ for (const [story, message] of [
   ["load-error", "Couldn’t load invitations"],
 ]) {
   test(`${story} state does not expose stale rows or pagination`, async ({ page }) => {
-    await page.goto(`/iframe.html?id=components-table--${story}&viewMode=story`);
+    await page.goto(`/iframe.html?id=components-data-display-table--${story}&viewMode=story`);
     await expect(page.getByText(message, { exact: true })).toBeVisible();
     await expect(page.getByRole("table")).not.toContainText("person-01@example.com");
     await expect(page.getByRole("navigation", { name: "Invitations pagination" })).toHaveCount(0);
@@ -71,7 +71,7 @@ test("table scroll stays inside its container on narrow screens", async ({ page 
 for (const theme of ["light", "dark"]) {
   test(`table controls support keyboard access in the ${theme} theme`, async ({ page }) => {
     await page.goto(
-      `/iframe.html?id=components-table--invitations&viewMode=story&globals=theme:${theme}`,
+      `/iframe.html?id=components-data-display-table--invitations&viewMode=story&globals=theme:${theme}`,
     );
     const table = page.getByRole("table", { name: "Invitations" });
     await table.getByRole("button", { name: "Email", exact: true }).focus();

@@ -178,7 +178,7 @@ export function MessagingScene({
           compact
           organizations={organizations}
           onSelect={() => setNotice(new Error("Workspace switching is a preview only."))}
-          manageHref="?path=/story/scenes-workspaces--populated"
+          manageHref="?path=/story/scenes-workspace-selection--populated"
         />
       }
       signOut={
