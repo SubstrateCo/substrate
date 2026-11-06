@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "@playwright/test";
 import { availablePort } from "../../scripts/testing/server";
 
@@ -33,7 +34,13 @@ export default defineConfig({
           process.env.STORYBOOK_TEST_STATIC === "true"
             ? `bun ../../scripts/testing/serve-storybook.ts ${port}`
             : `bunx storybook dev --host 127.0.0.1 --port ${port} --ci --no-open --disable-telemetry`,
-        env: { STORYBOOK_HEADLESS: "true", NODE_ENV: "production" },
+        env: {
+          STORYBOOK_HEADLESS: "true",
+          NODE_ENV: "production",
+          CACHE_DIR:
+            process.env.CACHE_DIR ??
+            fileURLToPath(new URL("./node_modules/.cache/storybook-test", import.meta.url)),
+        },
         url: `${baseURL}/index.json`,
         reuseExistingServer: false,
         timeout: 120_000,
