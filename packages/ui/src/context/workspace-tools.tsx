@@ -9,6 +9,7 @@ export function WorkspaceTools({
     onClose: () => void,
     query: string,
     onQueryChange: (query: string) => void,
+    focusInput: () => void,
   ) => ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -16,6 +17,7 @@ export function WorkspaceTools({
   const [focusRequest, setFocusRequest] = useState(0);
   const input = useRef<HTMLInputElement>(null);
   const container = useRef<HTMLDivElement>(null);
+  const focusInput = useCallback(() => setFocusRequest((value) => value + 1), []);
   const close = useCallback(() => {
     setOpen(false);
     setFocusRequest((value) => value + 1);
@@ -38,11 +40,14 @@ export function WorkspaceTools({
         input.current?.focus();
         setOpen(true);
       }
-      if (event.key === "Escape") close();
+      if (event.key === "Escape" && open && !event.defaultPrevented) {
+        event.preventDefault();
+        close();
+      }
     };
     window.addEventListener("keydown", handle);
     return () => window.removeEventListener("keydown", handle);
-  }, [close]);
+  }, [close, open]);
   return (
     <div ref={container} className="relative z-10 shrink-0 border-b bg-sidebar px-4 py-2">
       <div className="relative mx-auto max-w-2xl">
@@ -55,7 +60,11 @@ export function WorkspaceTools({
             aria-expanded={open}
             onClick={() => setOpen(true)}
             onKeyDown={(event) => {
-              if (event.key === "Escape") event.preventDefault();
+              if (event.key === "Escape" && open) {
+                event.preventDefault();
+                event.stopPropagation();
+                close();
+              }
               if (event.key === "ArrowDown" || event.key === "Enter") setOpen(true);
             }}
             onValueChange={(value) => {
@@ -70,7 +79,7 @@ export function WorkspaceTools({
           </CommandInput>
           {open && (
             <div className="absolute inset-x-0 top-full mt-2 overflow-hidden rounded-xl border bg-popover shadow-xl">
-              {renderSearch(close, query, setQuery)}
+              {renderSearch(close, query, setQuery, focusInput)}
             </div>
           )}
         </Command>

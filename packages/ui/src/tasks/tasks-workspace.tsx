@@ -1,7 +1,17 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ProjectSidebar } from "./project-sidebar";
 import { isAccessFailure } from "../feedback/request-failure";
 import type { Project } from "./types";
+import { FolderKanban } from "lucide-react";
+import { Button } from "../primitives/button";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "../primitives/empty";
 
 export function TasksWorkspace({
   projects,
@@ -24,6 +34,24 @@ export function TasksWorkspace({
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const createTrigger = useRef<HTMLElement | null>(null);
+  const createProjectButton = useRef<HTMLButtonElement>(null);
+  const emptyCreateButton = useRef<HTMLButtonElement>(null);
+  const wasCreating = useRef(false);
+  useEffect(() => {
+    if (wasCreating.current && !creating) {
+      (createTrigger.current?.isConnected
+        ? createTrigger.current
+        : (emptyCreateButton.current ?? createProjectButton.current)
+      )?.focus();
+    }
+    wasCreating.current = creating;
+  }, [creating]);
+  const openCreate = () => {
+    createTrigger.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setCreating(true);
+  };
   const visible = isAccessFailure(error) ? [] : projects;
   const selected =
     visible.find((project) => project.entityId === (selectedProjectId ?? selectedId)) ??
@@ -31,7 +59,7 @@ export function TasksWorkspace({
   return (
     <section
       aria-label="Tasks application"
-      className="flex min-h-0 flex-1 flex-col overflow-auto md:flex-row"
+      className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row"
     >
       <ProjectSidebar
         projects={visible}
@@ -39,33 +67,49 @@ export function TasksWorkspace({
         loading={loading}
         error={error}
         onRetry={onRetry}
-        onCreate={() => setCreating(true)}
+        onCreate={openCreate}
+        createButtonRef={createProjectButton}
         onSelect={(id) => {
           setSelectedId(id);
           onSelectProject?.(id);
           setCreating(false);
         }}
       />
-      <div className="min-h-0 min-w-0 flex-1 md:overflow-y-auto">
-        {creating &&
-          renderCreate(
-            (id) => {
-              setSelectedId(id);
-              onSelectProject?.(id);
-              setCreating(false);
-            },
-            () => setCreating(false),
-          )}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        {creating && (
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {renderCreate(
+              (id) => {
+                setSelectedId(id);
+                onSelectProject?.(id);
+                setCreating(false);
+              },
+              () => setCreating(false),
+            )}
+          </div>
+        )}
         {!creating && selected && renderProject(selected)}
         {!creating && !selected && !loading && !error && (
-          <div className="p-8">
-            <h2 className="text-lg font-semibold">
-              {selectedProjectId ? "Project unavailable" : "Your team's work, in one place"}
-            </h2>
-            <p className="mt-2 text-muted-foreground">
-              Choose a project or create one to add tasks, subtasks, and comments.
-            </p>
-          </div>
+          <Empty className="min-h-0 flex-1">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <FolderKanban aria-hidden="true" />
+              </EmptyMedia>
+              <EmptyTitle>
+                <h2>{!visible.length ? "No projects yet" : "Project unavailable"}</h2>
+              </EmptyTitle>
+              <EmptyDescription>
+                {!visible.length
+                  ? "Create a project to organize tasks, subtasks, and comments."
+                  : "This project was removed or you no longer have access. Choose another project or create one."}
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button ref={emptyCreateButton} onClick={openCreate}>
+                Create project
+              </Button>
+            </EmptyContent>
+          </Empty>
         )}
       </div>
     </section>

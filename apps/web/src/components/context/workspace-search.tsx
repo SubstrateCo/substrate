@@ -12,11 +12,13 @@ export function WorkspaceSearch({
   onClose,
   query: externalQuery,
   onQueryChange,
+  onFocusInput,
 }: {
   organizationId: string;
   onClose: () => void;
   query?: string;
   onQueryChange?: (query: string) => void;
+  onFocusInput?: () => void;
 }) {
   const [localQuery, setLocalQuery] = useState("");
   const query = externalQuery ?? localQuery;
@@ -31,6 +33,7 @@ export function WorkspaceSearch({
     <WorkspaceSearchView
       query={query}
       hideInput={externalQuery !== undefined}
+      onFocusInput={onFocusInput}
       kind={kind}
       related={!!relatedToEntityId}
       results={(results.data ?? []).map((item) => ({

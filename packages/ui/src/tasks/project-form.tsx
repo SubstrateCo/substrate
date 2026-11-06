@@ -1,9 +1,9 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "../primitives/button";
 import { Input } from "../primitives/input";
 import { Label } from "../primitives/label";
 import { Textarea } from "../primitives/textarea";
-import { Spinner } from "../primitives/spinner";
+import { PendingButton } from "../feedback/pending-button";
 import { FormMessage } from "../auth/form-message";
 import type { Project } from "./types";
 
@@ -21,10 +21,13 @@ export function ProjectForm({
   error?: Error | null;
 }) {
   const id = useId();
+  const nameInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    nameInput.current?.focus();
+  }, []);
   const [name, setName] = useState(project?.name ?? "");
   const [description, setDescription] = useState(project?.description ?? "");
-  let submitLabel = project ? "Save project" : "Create project";
-  if (pending) submitLabel = "Saving project…";
+  const submitLabel = project ? "Save project" : "Create project";
   return (
     <form
       className="mx-auto w-full max-w-xl space-y-5 p-6"
@@ -33,39 +36,41 @@ export function ProjectForm({
         if (!pending) onSubmit({ name, description });
       }}
     >
-      <h2 className="text-lg font-semibold">{project ? "Edit project" : "New project"}</h2>
-      <p className="text-sm text-muted-foreground">
-        Projects start private. Share a project to give others access to all its tasks.
-      </p>
-      <div className="space-y-2">
-        <Label htmlFor={`${id}-name`}>Project name</Label>
-        <Input
-          id={`${id}-name`}
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          required
-          maxLength={200}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor={`${id}-description`}>Project description</Label>
-        <Textarea
-          id={`${id}-description`}
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-          maxLength={20000}
-        />
-      </div>
-      <FormMessage error={error} />
-      <div className="flex gap-2">
-        <Button disabled={pending || !name.trim()}>
-          {pending && <Spinner />}
-          {submitLabel}
-        </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-      </div>
+      <fieldset disabled={pending} className="min-w-0 space-y-5">
+        <h2 className="text-lg font-semibold">{project ? "Edit project" : "New project"}</h2>
+        <p className="text-sm text-muted-foreground">
+          Projects start private. Share a project to give others access to all its tasks.
+        </p>
+        <div className="space-y-2">
+          <Label htmlFor={`${id}-name`}>Project name</Label>
+          <Input
+            id={`${id}-name`}
+            ref={nameInput}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            required
+            maxLength={200}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`${id}-description`}>Project description</Label>
+          <Textarea
+            id={`${id}-description`}
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            maxLength={20000}
+          />
+        </div>
+        <FormMessage error={error} />
+        <div className="flex gap-2">
+          <PendingButton disabled={!name.trim()} pending={pending} pendingLabel="Saving project…">
+            {submitLabel}
+          </PendingButton>
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+        </div>
+      </fieldset>
     </form>
   );
 }

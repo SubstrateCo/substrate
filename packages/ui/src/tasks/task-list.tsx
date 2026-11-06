@@ -1,6 +1,8 @@
 import { taskStatusLabels, taskStatusValues } from "@startup-os/contracts/tasks";
 import type { ProjectDetail } from "./types";
 import { TaskListItem } from "./task-list-item";
+import { ContentNotice } from "../feedback/content-notice";
+import { TaskStatusIcon } from "./task-cues";
 
 export function TaskList({
   detail,
@@ -12,15 +14,29 @@ export function TaskList({
   onSelect: (id: string) => void;
 }) {
   return (
-    <section aria-label="Project tasks" className="min-w-0 space-y-5">
+    <section
+      aria-label="Project tasks"
+      className="@container min-h-0 min-w-0 space-y-4 md:h-full md:overflow-y-auto"
+    >
       {!detail.tasks.length && (
-        <div className="rounded-xl border border-dashed p-6">
-          <h2 className="font-semibold">No tasks yet</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {detail.level === "edit" || detail.level === "owner"
+        <ContentNotice
+          title="No tasks yet"
+          description={
+            detail.level === "edit" || detail.level === "owner"
               ? "Create the first task for this project."
-              : "Tasks will appear here when a project editor creates them."}
-          </p>
+              : "Tasks will appear here when a project editor creates them."
+          }
+        />
+      )}
+      {!!detail.tasks.length && (
+        <div
+          aria-hidden="true"
+          className="hidden gap-3 border-b px-3 pb-2 text-xs text-muted-foreground @xl:flex"
+        >
+          <span className="min-w-0 flex-1">Task</span>
+          <span className="w-24 shrink-0">Priority</span>
+          <span className="w-32 shrink-0">Assignee</span>
+          <span className="w-24 shrink-0">Due date</span>
         </div>
       )}
       {taskStatusValues.map((status) => {
@@ -28,11 +44,14 @@ export function TaskList({
         if (!rows.length) return null;
         return (
           <div key={status}>
-            <h2 className="mb-2 text-sm font-semibold wrap-anywhere">
+            <h2 className="mb-1 flex items-center gap-2 px-3 py-1.5 text-xs font-semibold wrap-anywhere">
+              <TaskStatusIcon status={status} />
               {taskStatusLabels[status]}{" "}
-              <span className="text-muted-foreground">{rows.length}</span>
+              <span className="rounded bg-muted px-1.5 py-0.5 font-normal text-muted-foreground tabular-nums">
+                {rows.length}
+              </span>
             </h2>
-            <ul className="space-y-1">
+            <ul className="divide-y divide-border/50">
               {rows.map((task) => (
                 <TaskListItem
                   key={task.entityId}

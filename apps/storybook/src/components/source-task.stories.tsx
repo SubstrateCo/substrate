@@ -43,7 +43,11 @@ function SourceTaskPreview({
       onClose={() => setClosed(true)}
       renderFields={(_projectId, sourceText) => (
         <SourceTaskFields
-          detail={state === "fields-error" && !retried ? undefined : taskProject}
+          detail={
+            state === "fields-loading" || (state === "fields-error" && !retried)
+              ? undefined
+              : taskProject
+          }
           loading={state === "fields-loading"}
           loadError={state === "fields-error" && !retried ? new Error("Request failed") : null}
           onRetry={() => setRetried(true)}

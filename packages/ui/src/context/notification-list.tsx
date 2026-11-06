@@ -1,5 +1,5 @@
 import { useState, type MouseEvent } from "react";
-import { Bell, CheckCheck } from "lucide-react";
+import { Bell, CheckCheck, X } from "lucide-react";
 import { Button } from "../primitives/button";
 import { LoadingState } from "../feedback/loading-state";
 import { ErrorState } from "../feedback/error-state";
@@ -35,8 +35,8 @@ export function NotificationList({
   const unread = visible.filter((item) => !item.read).length;
   return (
     <section aria-label="Notifications" className="min-h-0 flex-1 overflow-auto bg-surface">
-      <div className="border-b bg-card px-6 py-6 sm:px-10">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
+      <div className="border-b bg-card py-6">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-6">
           <div>
             <p className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
               <Bell className="size-4" /> Your inbox
@@ -47,8 +47,14 @@ export function NotificationList({
             </p>
           </div>
           {onClose && (
-            <Button variant="ghost" onClick={onClose}>
-              Close notifications
+            <Button
+              variant="outline"
+              size="icon-sm"
+              aria-label="Close notifications"
+              title="Close notifications"
+              onClick={onClose}
+            >
+              <X aria-hidden="true" />
             </Button>
           )}
         </div>

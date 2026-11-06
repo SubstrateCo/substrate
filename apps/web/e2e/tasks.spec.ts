@@ -26,7 +26,7 @@ test("tasks application creates projects, standard-status assigned tasks, subtas
     .getByRole("button", { name: "Tasks", exact: true })
     .click();
   await expect(page).toHaveURL(/\/tasks\/?$/);
-  await expect(page.getByRole("heading", { name: "Your team's work, in one place" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "No projects yet", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "New project", exact: true }).click();
   await page.getByLabel("Project name", { exact: true }).fill("Product launch");
   await page
@@ -34,7 +34,7 @@ test("tasks application creates projects, standard-status assigned tasks, subtas
     .fill("Bring the new workspace to our customers.");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Product launch", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Project settings", exact: true }).click();
+  await page.getByRole("tab", { name: "Project settings", exact: true }).click();
   await expect(page.getByRole("button", { name: "Add status", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "New task", exact: true }).click();
   await page.getByLabel("Task title", { exact: true }).fill("Ship the launch");

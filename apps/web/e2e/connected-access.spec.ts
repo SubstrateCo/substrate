@@ -17,19 +17,20 @@ async function send(page: Page, label: string, body: string) {
 }
 
 async function notifications(page: Page) {
-  await page.getByRole("button", { name: "Notifications", exact: true }).click();
+  await page.getByRole("button", { name: /^Notifications(?:, unread notifications)?$/ }).click();
   return page.getByRole("region", { name: "Notifications", exact: true });
 }
 
 async function searchAbsent(page: Page, query: string) {
-  await page.getByRole("button", { name: "Search workspace", exact: true }).click();
+  await page.keyboard.press("Control+k");
   const panel = page.getByRole("region", { name: "Workspace search", exact: true });
-  await panel.getByRole("searchbox", { name: "Search workspace", exact: true }).fill(query);
+  await page.getByRole("combobox", { name: "Search workspace", exact: true }).fill(query);
   await expect(
-    panel.getByRole("heading", { name: "No accessible results found", exact: true }),
+    panel.getByText("No accessible results found. Try another search.", { exact: true }),
   ).toBeVisible();
   await expect(panel.getByRole("link")).toHaveCount(0);
-  await panel.getByRole("button", { name: "Close search", exact: true }).click();
+  await page.getByRole("combobox", { name: "Search workspace", exact: true }).press("Escape");
+  await expect(panel).toBeHidden();
 }
 
 test("connected work preserves private boundaries and assignment notifications", async ({
@@ -79,16 +80,26 @@ test("connected work preserves private boundaries and assignment notifications",
       await ownerPage.getByRole("button", { name: "New project", exact: true }).click();
       await ownerPage.getByLabel("Project name", { exact: true }).fill(project);
       await ownerPage.getByRole("button", { name: "Create project", exact: true }).click();
-      await ownerPage.getByRole("button", { name: "Project settings", exact: true }).click();
+      await ownerPage.getByRole("tab", { name: "Project settings", exact: true }).click();
       await select(ownerPage, "Person or agent", member.name);
       await select(ownerPage, "Permission", "View");
       await ownerPage.getByRole("button", { name: "Update access", exact: true }).click();
-      await expect(ownerPage.getByText(`${member.name} · view`, { exact: true })).toBeVisible();
+      await ownerPage.getByRole("button", { name: "Confirm access", exact: true }).click();
+      await expect(
+        ownerPage
+          .getByRole("region", { name: "Project sharing", exact: true })
+          .getByRole("listitem")
+          .filter({ has: ownerPage.getByText(member.name, { exact: true }) })
+          .getByText("View access", { exact: true }),
+      ).toBeVisible();
     });
 
     await test.step("create an assigned task from a discussion that the assignee cannot read", async () => {
       await ownerPage.getByRole("button", { name: "Messages", exact: true }).click();
-      await ownerPage.getByRole("button", { name: "Create channel", exact: true }).click();
+      await ownerPage
+        .getByRole("complementary", { name: "Conversations", exact: true })
+        .getByRole("button", { name: "Create channel", exact: true })
+        .click();
       await ownerPage.getByLabel("Channel name", { exact: true }).fill(conversation);
       await ownerPage.getByLabel("Add people (optional)", { exact: true }).fill(external.email);
       await ownerPage.getByRole("checkbox", { name: "Make this channel private" }).check();
@@ -109,7 +120,10 @@ test("connected work preserves private boundaries and assignment notifications",
       ).toContainText(source);
       await memberPage.reload();
       const panel = await notifications(memberPage);
-      const item = panel.getByRole("listitem").filter({ hasText: `Assigned to you: ${title}` });
+      const item = panel
+        .getByRole("listitem")
+        .filter({ has: memberPage.getByText(title, { exact: true }) });
+      await expect(item.getByText("Assigned to you", { exact: true })).toBeVisible();
       await expect(item).toContainText("Unread");
       await item.getByRole("button", { name: "Mark as read", exact: true }).click();
       await expect(item).toContainText("Read");
@@ -118,7 +132,7 @@ test("connected work preserves private boundaries and assignment notifications",
       await expect(refreshed.getByRole("listitem").filter({ hasText: title })).toContainText(
         "Read",
       );
-      await refreshed.getByRole("link", { name: `Assigned to you: ${title}`, exact: true }).click();
+      await refreshed.getByRole("link", { name: `Assigned to you ${title}`, exact: true }).click();
       await expect(
         memberPage
           .getByRole("region", { name: "Task details", exact: true })
@@ -167,7 +181,7 @@ test("connected work preserves private boundaries and assignment notifications",
       await memberPage.reload();
       const panel = await notifications(memberPage);
       await panel
-        .getByRole("link", { name: `Assigned to you: ${editedTitle}`, exact: true })
+        .getByRole("link", { name: `Assigned to you ${editedTitle}`, exact: true })
         .click();
       await expect(
         memberPage
@@ -177,19 +191,25 @@ test("connected work preserves private boundaries and assignment notifications",
     });
 
     await test.step("revoking project access hides tasks, search results, and assignment notifications", async () => {
-      await ownerPage.getByRole("button", { name: "Project settings", exact: true }).click();
+      await ownerPage.getByRole("tab", { name: "Project settings", exact: true }).click();
       await ownerPage.getByRole("button", { name: `Remove ${member.name}`, exact: true }).click();
-      await expect(ownerPage.getByText(`${member.name} · view`, { exact: true })).toHaveCount(0);
+      await expect(
+        ownerPage
+          .getByRole("region", { name: "Project sharing", exact: true })
+          .getByRole("listitem")
+          .filter({ has: ownerPage.getByText(member.name, { exact: true }) }),
+      ).toHaveCount(0);
       await memberPage.reload();
       await expect(
         memberPage.getByRole("region", { name: "Task details", exact: true }),
       ).toHaveCount(0);
       const panel = await notifications(memberPage);
       await expect(
-        panel.getByRole("heading", { name: "No accessible notifications", exact: true }),
+        panel.getByRole("heading", { name: "No notifications yet", exact: true }),
       ).toBeVisible();
       await expect(panel.getByRole("link")).toHaveCount(0);
-      await panel.getByRole("button", { name: "Close notifications", exact: true }).click();
+      await memberPage.getByRole("button", { name: "Messages", exact: true }).click();
+      await expect(panel).toBeHidden();
       await searchAbsent(memberPage, title);
     });
 
@@ -204,8 +224,7 @@ test("connected work preserves private boundaries and assignment notifications",
       await ownerPage.getByRole("checkbox", { name: "Make this channel private" }).check();
       await ownerPage.getByRole("button", { name: "Create channel", exact: true }).last().click();
       const input = ownerPage.getByRole("textbox", { name: `Message #${channel}`, exact: true });
-      await input.fill(`${mentionBody} `);
-      await ownerPage.getByRole("button", { name: "Insert reference", exact: true }).click();
+      await input.fill(`${mentionBody} @`);
       const picker = ownerPage.getByRole("region", {
         name: "Insert workspace reference",
         exact: true,
@@ -220,7 +239,7 @@ test("connected work preserves private boundaries and assignment notifications",
       await expect(input).toHaveValue("");
       await memberPage.reload();
       const panel = await notifications(memberPage);
-      const mention = panel.getByRole("listitem").filter({ hasText: "You were mentioned" });
+      const mention = panel.getByRole("listitem").filter({ hasText: "Mentioned you" });
       await expect(mention).toContainText("Unread");
       await mention.getByRole("link").click();
       await expect(memberPage.getByRole("heading", { name: channel, exact: true })).toBeVisible();
@@ -232,7 +251,7 @@ test("connected work preserves private boundaries and assignment notifications",
       await send(memberPage, "Reply in thread…", replyBody);
       await ownerPage.reload();
       const replies = await notifications(ownerPage);
-      const reply = replies.getByRole("listitem").filter({ hasText: "New thread reply" });
+      const reply = replies.getByRole("listitem").filter({ hasText: "Replied to your thread" });
       await expect(reply).toContainText("Unread");
       await reply.getByRole("link").click();
       await expect(

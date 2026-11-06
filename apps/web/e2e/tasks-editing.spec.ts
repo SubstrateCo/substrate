@@ -28,7 +28,7 @@ test("project and task edits, cleared fields, nested subtasks, and comments surv
   await page.getByLabel("Project description", { exact: true }).fill("Original description");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Original project", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Project settings", exact: true }).click();
+  await page.getByRole("tab", { name: "Project settings", exact: true }).click();
   await page.getByRole("button", { name: "Edit project", exact: true }).click();
   await expect(page.getByLabel("Project name", { exact: true })).toHaveValue("Original project");
   await expect(page.getByLabel("Project description", { exact: true })).toHaveValue(
@@ -105,7 +105,10 @@ test("project and task edits, cleared fields, nested subtasks, and comments surv
   await expect(page.getByRole("heading", { name: "Edited project", exact: true })).toBeVisible();
   await expect(page.getByText("Edited project description", { exact: true })).toBeVisible();
   const tasks = page.getByRole("region", { name: "Project tasks", exact: true });
-  await tasks.getByRole("button", { name: /^Edited parent task/ }).click();
+  await tasks
+    .getByRole("button")
+    .filter({ has: page.getByText("Edited parent task", { exact: true }) })
+    .click();
   await expect(details.getByText("Edited task description", { exact: true })).toBeVisible();
   await expect(details.getByText("Parent comment persists.", { exact: true })).toBeVisible();
   await expect(details.getByText("Grandchild comment persists.", { exact: true })).toBeHidden();
@@ -120,7 +123,10 @@ test("project and task edits, cleared fields, nested subtasks, and comments surv
     "Unassigned",
   );
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
-  await tasks.getByRole("button", { name: /^Grandchild task/ }).click();
+  await tasks
+    .getByRole("button")
+    .filter({ has: page.getByText("Grandchild task", { exact: true }) })
+    .click();
   await expect(details.getByText("Grandchild comment persists.", { exact: true })).toBeVisible();
   await expect(tasks.getByText("Subtask of Child task", { exact: true })).toBeVisible();
   await apps.getByRole("button", { name: "Messages", exact: true }).click();
@@ -130,7 +136,8 @@ test("project and task edits, cleared fields, nested subtasks, and comments surv
   await expect(page).toHaveURL(projectUrl.href);
   await page
     .getByRole("region", { name: "Project tasks", exact: true })
-    .getByRole("button", { name: /^Grandchild task/ })
+    .getByRole("button")
+    .filter({ has: page.getByText("Grandchild task", { exact: true }) })
     .click();
   await expect(
     details.getByRole("heading", { name: "Grandchild task", exact: true }),

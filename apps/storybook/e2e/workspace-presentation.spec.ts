@@ -70,7 +70,7 @@ test("link work retries without losing the search or selected kind", async ({ pa
     "aria-pressed",
     "true",
   );
-  await page.getByRole("button", { name: "Product launch", exact: true }).click();
+  await page.getByRole("button", { name: "Link Product launch", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText("Work linked.");
 });
 
@@ -139,6 +139,28 @@ test("workspace tools open from the keyboard and close with Escape", async ({ pa
     "page",
   );
   await expect(page.getByText("You’re all caught up").first()).toBeVisible();
+});
+
+test("Escape outside search does not move focus to the closed search input", async ({ page }) => {
+  await openStory(page, "scenes-workspace-connected-tools--ready");
+  const account = page.getByRole("button", { name: "Signed in as Taylor Kim", exact: true });
+  await account.focus();
+  await account.press("Escape");
+  await expect(account).toBeFocused();
+  await expect(page.getByRole("region", { name: "Workspace search" })).toHaveCount(0);
+});
+
+test("an account popover owns Escape while workspace search is open", async ({ page }) => {
+  await openStory(page, "scenes-workspace-connected-tools--ready");
+  await page.keyboard.press("Control+k");
+  const account = page.getByRole("button", { name: "Signed in as Taylor Kim", exact: true });
+  // Keyboard activation leaves search open; only the top overlay should handle Escape.
+  await account.focus();
+  await account.press("Enter");
+  await expect(page.getByRole("dialog", { name: "User actions" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(account).toBeFocused();
+  await expect(page.getByRole("region", { name: "Workspace search" })).toBeVisible();
 });
 
 test("user invitations expose only current review links", async ({ page }) => {

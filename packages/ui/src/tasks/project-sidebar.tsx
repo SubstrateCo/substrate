@@ -3,6 +3,8 @@ import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
 import { isAccessFailure } from "../feedback/request-failure";
 import type { Project } from "./types";
+import { FolderKanban, Plus } from "lucide-react";
+import type { Ref } from "react";
 
 export function ProjectSidebar({
   projects,
@@ -12,6 +14,7 @@ export function ProjectSidebar({
   onRetry,
   onCreate,
   onSelect,
+  createButtonRef,
 }: {
   projects: Project[];
   selectedId?: string;
@@ -20,17 +23,18 @@ export function ProjectSidebar({
   onRetry: () => void;
   onCreate: () => void;
   onSelect: (id: string) => void;
+  createButtonRef?: Ref<HTMLButtonElement>;
 }) {
   const visible = isAccessFailure(error) ? [] : projects;
   return (
     <aside
       aria-label="Projects"
-      className="shrink-0 space-y-4 border-b bg-muted/20 p-4 md:w-56 md:overflow-y-auto md:border-r md:border-b-0"
+      className="shrink-0 space-y-4 border-b bg-muted/20 p-3 md:w-52 md:overflow-y-auto md:border-r md:border-b-0"
     >
       <div className="flex items-center justify-between">
         <h1 className="font-semibold">Projects</h1>
-        <Button size="sm" variant="outline" onClick={onCreate}>
-          New project
+        <Button ref={createButtonRef} size="sm" variant="outline" onClick={onCreate}>
+          <Plus aria-hidden="true" className="size-3.5" /> New project
         </Button>
       </div>
       {loading && <LoadingState label="Loading projects" variant="compact" />}
@@ -51,10 +55,11 @@ export function ProjectSidebar({
           <Button
             key={project.entityId}
             variant="sidebar"
-            className="justify-start"
+            className="min-w-0 justify-start"
             aria-current={selectedId === project.entityId ? "page" : undefined}
             onClick={() => onSelect(project.entityId)}
           >
+            <FolderKanban aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
             <span className="truncate">{project.name}</span>
           </Button>
         ))}

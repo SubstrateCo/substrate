@@ -91,7 +91,8 @@ test("failed source-task submission keeps the draft and retry creates one linked
   await expect(
     page
       .getByRole("region", { name: "Project tasks" })
-      .getByRole("button", { name: new RegExp(`^${title}`) }),
+      .getByRole("button")
+      .filter({ has: page.getByText(title, { exact: true }) }),
   ).toHaveCount(1);
   await expect(
     page

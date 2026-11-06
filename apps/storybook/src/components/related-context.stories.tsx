@@ -8,9 +8,11 @@ import { ProjectDiscussions } from "@startup-os/ui/context/project-discussions";
 function ContextPreview({
   state = "ready",
   project = false,
+  longTitle = false,
 }: {
   state?: "ready" | "loading" | "error" | "empty" | "refresh-error" | "unavailable";
   project?: boolean;
+  longTitle?: boolean;
 }) {
   const [retried, setRetried] = useState(false);
   const failed = !retried && ["error", "refresh-error", "unavailable"].includes(state);
@@ -28,7 +30,7 @@ function ContextPreview({
                 messageId: "source",
                 purpose: "source",
                 href: "#message",
-                conversationName: "Launch team",
+                conversationName: longTitle ? "LaunchTeam".repeat(20) : "Launch team",
                 authorName: "Alex Morgan",
                 createdAt: "2026-11-06T09:00:00Z",
                 body: "Customer asked for a launch checklist. @[person:alex] can help.",
@@ -72,3 +74,4 @@ export const RefreshError: Story = { args: { state: "refresh-error" } };
 export const Unavailable: Story = { args: { state: "unavailable" } };
 export const Project: Story = { args: { project: true } };
 export const Dark: Story = { globals: { theme: "dark" } };
+export const LongTitle: Story = { args: { longTitle: true } };

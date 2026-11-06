@@ -18,7 +18,8 @@ async function comment(page: Page, body: string) {
 async function openTask(page: Page, title: string) {
   await page
     .getByRole("region", { name: "Project tasks", exact: true })
-    .getByRole("button", { name: new RegExp(`^${title} `) })
+    .getByRole("button")
+    .filter({ has: page.getByText(title, { exact: true }) })
     .click();
   await expect(
     page
@@ -89,23 +90,38 @@ test("explicit project grants control inherited task, subtask, and comment acces
       await expect(memberPage.getByText("Parent private comment", { exact: true })).toHaveCount(0);
     });
 
-    await ownerPage.getByRole("button", { name: "Project settings", exact: true }).click();
+    await ownerPage.getByRole("tab", { name: "Project settings", exact: true }).click();
     const sharing = ownerPage.getByRole("region", { name: "Project sharing", exact: true });
     await test.step("the last owner cannot remove self and gets a clear error", async () => {
       await sharing.getByRole("button", { name: `Remove ${owner.name}`, exact: true }).click();
       await expect
         .soft(sharing.getByRole("alert"))
         .toContainText("Cannot remove or downgrade the last owner.");
-      await expect(sharing.getByText(`${owner.name} · owner`, { exact: true })).toBeVisible();
+      await expect(
+        sharing
+          .getByRole("listitem")
+          .filter({ has: ownerPage.getByText(owner.name, { exact: true }) })
+          .getByText("Owner access", { exact: true }),
+      ).toBeVisible();
     });
 
-    for (const permission of ["View", "Comment", "Edit", "View"] as const) {
+    for (const [index, permission] of (["View", "Comment", "Edit", "View"] as const).entries()) {
       await test.step(`${permission} grant reaches every task and controls match the permission`, async () => {
         await select(ownerPage, "Person or agent", member.name);
         await select(ownerPage, "Permission", permission);
         await sharing.getByRole("button", { name: "Update access", exact: true }).click();
+        if (index === 0 || permission !== "View") {
+          await sharing.getByRole("button", { name: "Confirm access", exact: true }).click();
+        } else {
+          await expect(
+            sharing.getByRole("button", { name: "Confirm access", exact: true }),
+          ).toHaveCount(0);
+        }
         await expect(
-          sharing.getByText(`${member.name} · ${permission.toLowerCase()}`, { exact: true }),
+          sharing
+            .getByRole("listitem")
+            .filter({ has: ownerPage.getByText(member.name, { exact: true }) })
+            .getByText(`${permission} access`, { exact: true }),
         ).toBeVisible();
         await memberPage.clock.fastForward(5000);
         await expect(
@@ -121,7 +137,8 @@ test("explicit project grants control inherited task, subtask, and comment acces
           await expect(
             memberPage
               .getByRole("region", { name: "Project tasks", exact: true })
-              .getByRole("button", { name: new RegExp(`^${title} `) }),
+              .getByRole("button")
+              .filter({ has: memberPage.getByText(title, { exact: true }) }),
           ).toBeVisible();
         }
         await openTask(memberPage, child);
@@ -149,7 +166,7 @@ test("explicit project grants control inherited task, subtask, and comment acces
             memberPage.getByText("Edited by shared admin", { exact: true }),
           ).toBeVisible();
         }
-        await memberPage.getByRole("button", { name: "Project settings", exact: true }).click();
+        await memberPage.getByRole("tab", { name: "Project settings", exact: true }).click();
         const memberSharing = memberPage.getByRole("region", {
           name: "Project sharing",
           exact: true,
@@ -161,14 +178,18 @@ test("explicit project grants control inherited task, subtask, and comment acces
         const editProject = memberPage.getByRole("button", { name: "Edit project", exact: true });
         if (permission === "Edit") await expect(editProject).toBeVisible();
         else await expect(editProject).toHaveCount(0);
-        await memberPage.getByRole("button", { name: "Back to tasks", exact: true }).click();
+        await memberPage.getByRole("tab", { name: "Tasks", exact: true }).click();
         await openTask(memberPage, parent);
       });
     }
 
     await test.step("revocation removes an open task and its comments through polling without reload", async () => {
       await sharing.getByRole("button", { name: `Remove ${member.name}`, exact: true }).click();
-      await expect(sharing.getByText(`${member.name} · view`, { exact: true })).toHaveCount(0);
+      await expect(
+        sharing
+          .getByRole("listitem")
+          .filter({ has: ownerPage.getByText(member.name, { exact: true }) }),
+      ).toHaveCount(0);
       await memberPage.clock.fastForward(5000);
       await expect(
         memberPage

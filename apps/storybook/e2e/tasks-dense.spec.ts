@@ -14,7 +14,7 @@ test("populated projects switch task lists and retain changes in their own proje
   ).toBeVisible();
   await expect(
     tasks.getByRole("button", {
-      name: /^Map the current workflow · Customer onboarding urgent priority/,
+      name: /Map the current workflow · Customer onboarding urgent priority/i,
     }),
   ).toBeVisible();
   await page.getByRole("button", { name: "New task", exact: true }).click();

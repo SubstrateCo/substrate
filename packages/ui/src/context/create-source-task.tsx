@@ -22,11 +22,8 @@ export function CreateSourceTask({
   renderFields: (projectId: string, sourceText: string) => ReactNode;
 }) {
   return (
-    <section
-      aria-label="Create task from message"
-      className="space-y-4 rounded-lg border bg-card p-4"
-    >
-      <h3 className="font-semibold">Create task from message</h3>
+    <section aria-label="Create task from message" className="min-w-0 space-y-4">
+      <h3 className="text-sm font-semibold">Create task from message</h3>
       <p className="text-xs text-muted-foreground">
         The source stays private to people who can access this discussion. Creating a task does not
         share it.

@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 import { TaskForm } from "../tasks/task-form";
-import { LoadingState } from "../feedback/loading-state";
+import { TaskFormLoading } from "../tasks/task-form-loading";
 import { ErrorState } from "../feedback/error-state";
 import { isAccessFailure } from "../feedback/request-failure";
 import { Button } from "../primitives/button";
@@ -17,7 +17,8 @@ export function SourceTaskFields({
   loadError?: Error | null;
   onRetry: () => void;
 }) {
-  if (loading) return <LoadingState label="Loading task fields" variant="compact" />;
+  if (loading && !detail && !isAccessFailure(loadError))
+    return <TaskFormLoading hasSourceText={!!form.sourceText} />;
   if (!detail || isAccessFailure(loadError))
     return (
       <>

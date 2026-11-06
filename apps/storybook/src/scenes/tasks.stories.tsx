@@ -8,6 +8,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Project: Story = {};
+export const DraftAccessLoss: Story = { args: { accessControls: true } };
 export const PopulatedWorkspace: Story = { args: { dataset: "populated" } };
 export const LargeProject: Story = { args: { dataset: "large" } };
 export const DarkPopulatedWorkspace: Story = {

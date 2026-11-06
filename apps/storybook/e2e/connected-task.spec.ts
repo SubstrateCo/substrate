@@ -20,6 +20,7 @@ test("source text is copied only by an explicit action, and failure preserves ed
 
 test("pending source creation cannot be submitted twice", async ({ page }) => {
   await page.goto("/iframe.html?id=projects-components-connected-task--saving&viewMode=story");
-  await page.getByLabel("Task title", { exact: true }).fill("Checklist");
+  await expect(page.getByLabel("Task title", { exact: true })).toBeDisabled();
+  await expect(page.getByLabel("Task description", { exact: true })).toBeDisabled();
   await expect(page.getByRole("button", { name: /Saving task…$/ })).toBeDisabled();
 });

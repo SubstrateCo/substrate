@@ -10,6 +10,7 @@ import { ProjectSharing } from "@startup-os/ui/tasks/project-sharing";
 import type { ProjectDetail, TaskComment } from "@startup-os/ui/tasks/types";
 import { taskProject } from "./tasks-fixtures";
 import { populatedProjects, largeProjects } from "./tasks-dense-fixtures";
+import { Button } from "@startup-os/ui/primitives/button";
 
 export function TasksScene({
   state = "ready",
@@ -17,12 +18,14 @@ export function TasksScene({
   level = "owner",
   failComment = false,
   dataset = "simple",
+  accessControls = false,
 }: {
   state?: "ready" | "empty" | "loading" | "error" | "unavailable";
-  projectState?: "ready" | "empty" | "loading" | "error" | "unavailable";
+  projectState?: "ready" | "empty" | "loading" | "error" | "unavailable" | "refresh-error";
   level?: ProjectDetail["level"];
   failComment?: boolean;
   dataset?: "simple" | "populated" | "large";
+  accessControls?: boolean;
 }) {
   const [currentState, setState] = useState(state);
   const [currentProjectState, setProjectState] = useState(projectState);
@@ -50,7 +53,7 @@ export function TasksScene({
   const [commentErrors, setCommentErrors] = useState<Record<string, Error | null>>({});
   const [shouldFail, setShouldFail] = useState(failComment);
   const requestError = (value: string) => {
-    if (value === "error") return new Error("Offline");
+    if (value === "error" || value === "refresh-error") return new Error("Offline");
     if (value === "unavailable") return new Error("Project or task not found or access denied.");
     return null;
   };
@@ -93,6 +96,18 @@ export function TasksScene({
             loading={currentProjectState === "loading"}
             error={requestError(currentProjectState)}
             onRetry={() => setProjectState("ready")}
+            headerActions={
+              accessControls && (
+                <>
+                  <Button variant="outline" onClick={() => setProjectState("unavailable")}>
+                    Lose project access
+                  </Button>
+                  <Button variant="outline" onClick={() => setProjectState("refresh-error")}>
+                    Fail refresh
+                  </Button>
+                </>
+              )
+            }
             renderProjectEditor={(value, onDone) => (
               <ProjectForm
                 project={value.project}

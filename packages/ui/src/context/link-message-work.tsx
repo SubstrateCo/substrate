@@ -5,6 +5,7 @@ import { LoadingState } from "../feedback/loading-state";
 import { ErrorState } from "../feedback/error-state";
 import { isAccessFailure } from "../feedback/request-failure";
 import { LinkWorkItem } from "./link-work-item";
+import { Empty, EmptyDescription } from "../primitives/empty";
 
 export function LinkMessageWork({
   query,
@@ -35,28 +36,43 @@ export function LinkMessageWork({
 }) {
   const visible = isAccessFailure(error) ? [] : results;
   return (
-    <section aria-label="Link existing work" className="space-y-3 rounded-lg border p-3">
-      <h3 className="font-semibold">Link existing work</h3>
+    <section aria-label="Link existing work" className="min-w-0 space-y-3">
+      <h3 className="text-sm font-semibold">Link existing work</h3>
       <p className="text-xs text-muted-foreground">
         Only people with access can open this item. Linking does not share it.
       </p>
       <div role="group" aria-label="Work type" className="flex gap-2">
-        <Button size="xs" aria-pressed={kind === "task"} onClick={() => onKindChange("task")}>
+        <Button
+          size="xs"
+          variant={kind === "task" ? "secondary" : "outline"}
+          aria-pressed={kind === "task"}
+          onClick={() => onKindChange("task")}
+        >
           Tasks
         </Button>
-        <Button size="xs" aria-pressed={kind === "project"} onClick={() => onKindChange("project")}>
+        <Button
+          size="xs"
+          variant={kind === "project" ? "secondary" : "outline"}
+          aria-pressed={kind === "project"}
+          onClick={() => onKindChange("project")}
+        >
           Projects
         </Button>
       </div>
       <Input
         aria-label="Search work to link"
+        placeholder={kind === "task" ? "Search tasks to link…" : "Search projects to link…"}
         value={query}
         onChange={(event) => onQueryChange(event.target.value)}
       />
       {loading && !visible.length && <LoadingState label="Searching work" variant="compact" />}
       {error && <ErrorState compact title="Couldn't search work" onRetry={onRetry} />}
-      {!loading && !error && !visible.length && <p>No editable work found.</p>}
-      <ul>
+      {!loading && !error && !visible.length && (
+        <Empty>
+          <EmptyDescription>No editable work found.</EmptyDescription>
+        </Empty>
+      )}
+      <ul className="space-y-1">
         {visible.map((item) => (
           <LinkWorkItem
             key={item.id}

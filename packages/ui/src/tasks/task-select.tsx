@@ -23,7 +23,7 @@ export function TaskSelect<T extends string>({
 }) {
   const id = useId();
   return (
-    <div className="space-y-2">
+    <div className="relative space-y-2">
       <Label htmlFor={id}>{label}</Label>
       <Select
         value={value}

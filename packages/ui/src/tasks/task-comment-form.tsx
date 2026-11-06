@@ -24,18 +24,21 @@ export function TaskCommentForm({
           onSend(body, () => setBody((current) => (current === body ? "" : current)));
       }}
     >
-      <Label htmlFor={id}>Add a comment</Label>
-      <Textarea
-        id={id}
-        value={body}
-        onChange={(event) => setBody(event.target.value)}
-        required
-        maxLength={20000}
-      />
-      <FormMessage error={error} />
-      <PendingButton disabled={!body.trim()} pending={pending} pendingLabel="Posting comment…">
-        Post comment
-      </PendingButton>
+      <fieldset disabled={pending} className="min-w-0 space-y-2">
+        <Label htmlFor={id}>Add a comment</Label>
+        <Textarea
+          id={id}
+          value={body}
+          onChange={(event) => setBody(event.target.value)}
+          required
+          maxLength={20000}
+          placeholder="Write a comment…"
+        />
+        <FormMessage error={error} />
+        <PendingButton disabled={!body.trim()} pending={pending} pendingLabel="Posting comment…">
+          Post comment
+        </PendingButton>
+      </fieldset>
     </form>
   );
 }

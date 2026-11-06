@@ -143,7 +143,7 @@ test("connected work preserves source, links, references, and stable navigation"
         new URL(response.url()).pathname === "/api/v1/context/links" &&
         response.request().method() === "POST",
     );
-    await linking.getByRole("button", { name: task, exact: true }).click();
+    await linking.getByRole("button", { name: `Link ${task}`, exact: true }).click();
     expect(
       await (await attached).json(),
       "Commands without a payload return explicit null data",
@@ -200,12 +200,12 @@ test("connected work preserves source, links, references, and stable navigation"
 
   await test.step("insert task and project references with pointer and keyboard", async () => {
     const composer = page.getByRole("textbox", { name: `Message #${channel}`, exact: true });
-    await composer.fill(`References ${suffix} `);
-    await page.getByRole("button", { name: "Insert reference", exact: true }).click();
+    await composer.fill(`References ${suffix} @`);
     const picker = page.getByRole("region", { name: "Insert workspace reference", exact: true });
     await picker.getByRole("combobox", { name: "Search references", exact: true }).fill(task);
     await picker.getByRole("option", { name: task, exact: true }).click();
-    await page.getByRole("button", { name: "Insert reference", exact: true }).click();
+    await composer.press("End");
+    await composer.pressSequentially("@");
     await picker.getByRole("button", { name: "Projects", exact: true }).click();
     const search = picker.getByRole("combobox", { name: "Search references", exact: true });
     await search.fill(project);
@@ -228,7 +228,8 @@ test("connected work preserves source, links, references, and stable navigation"
     ).toContainText(`References ${suffix}`);
     await page
       .getByRole("region", { name: "Project tasks", exact: true })
-      .getByRole("button", { name: new RegExp(`^${task}`) })
+      .getByRole("button")
+      .filter({ has: page.getByText(task, { exact: true }) })
       .click();
     await expect(page).toHaveURL(taskUrl);
     await expect(page.getByRole("heading", { name: task, exact: true })).toBeVisible();
@@ -237,25 +238,28 @@ test("connected work preserves source, links, references, and stable navigation"
   await test.step("workspace search resolves the task and narrow layouts keep context usable", async () => {
     await page.keyboard.press("Control+k");
     const search = page.getByRole("region", { name: "Workspace search", exact: true });
-    await search.getByRole("searchbox", { name: "Search workspace", exact: true }).fill(task);
-    await search.getByRole("button", { name: "task", exact: true }).click();
+    await page.getByRole("combobox", { name: "Search workspace", exact: true }).fill(task);
+    await search.getByRole("button", { name: "Tasks", exact: true }).click();
+    await expect(search.getByRole("link", { name: `task · ${task}`, exact: true })).toBeVisible();
     await search
-      .getByRole("listitem")
-      .filter({ has: page.getByRole("link", { name: `task · ${task}`, exact: true }) })
       .getByRole("button", { name: `Find related records for ${task}`, exact: true })
       .click();
     await expect(
       search.getByRole("link", { name: `message · ${source}`, exact: true }),
     ).toBeVisible();
+    const searchInput = page.getByRole("combobox", { name: "Search workspace", exact: true });
+    await expect(searchInput).toHaveValue("");
+    await expect(searchInput).toBeFocused();
+    await page.keyboard.type("abc");
+    await expect(searchInput).toHaveValue("abc");
+    await searchInput.fill("");
     await search
-      .getByRole("listitem")
-      .filter({ has: page.getByRole("link", { name: `message · ${source}`, exact: true }) })
       .getByRole("button", { name: `Find related records for ${source}`, exact: true })
       .click();
     await expect(search.getByRole("link", { name: `task · ${task}`, exact: true })).toBeVisible();
     await search.getByRole("button", { name: "Search all records", exact: true }).click();
-    await search.getByRole("searchbox", { name: "Search workspace", exact: true }).fill(task);
-    await search.getByRole("button", { name: "task", exact: true }).click();
+    await page.getByRole("combobox", { name: "Search workspace", exact: true }).fill(task);
+    await search.getByRole("button", { name: "Tasks", exact: true }).click();
     await search.getByRole("link", { name: `task · ${task}`, exact: true }).click();
     await expect(page).toHaveURL(taskUrl);
     await page.setViewportSize({ width: 390, height: 844 });
@@ -267,13 +271,13 @@ test("connected work preserves source, links, references, and stable navigation"
     await expect
       .soft(
         page
-          .getByRole("region", { name: channel, exact: true })
+          .getByRole("complementary", { name: "Thread", exact: true })
           .getByLabel("Linked message", { exact: true }),
         "Narrow source deep link opens its message",
       )
       .toContainText(source, { timeout: 5_000 });
     await openConversation();
-    await page.getByRole("button", { name: "Insert reference", exact: true }).click();
+    await page.getByRole("textbox", { name: `Message #${channel}`, exact: true }).fill("@");
     const picker = page.getByRole("region", { name: "Insert workspace reference", exact: true });
     await picker.getByRole("combobox", { name: "Search references", exact: true }).fill(task);
     await expect(picker.getByRole("option", { name: task, exact: true })).toBeVisible();

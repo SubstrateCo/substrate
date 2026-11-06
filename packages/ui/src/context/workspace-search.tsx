@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, CornerDownLeft, X } from "lucide-react";
 import {
   Command,
@@ -33,6 +33,7 @@ export function WorkspaceSearch({
   onFirst,
   onRetry,
   onClose,
+  onFocusInput,
   hideInput = false,
 }: {
   query: string;
@@ -51,17 +52,28 @@ export function WorkspaceSearch({
   onFirst: () => void;
   onRetry: () => void;
   onClose: () => void;
+  onFocusInput?: () => void;
   hideInput?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
+  const panel = useRef<HTMLElement>(null);
+  const [panelTop, setPanelTop] = useState(0);
+  useLayoutEffect(() => {
+    const measure = () => setPanelTop(panel.current?.getBoundingClientRect().top ?? 0);
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
   useEffect(() => {
     input.current?.focus();
   }, []);
   const visible = isAccessFailure(error) ? [] : results;
   const content = (
     <section
+      ref={panel}
       aria-label="Workspace search"
-      className="min-w-0 bg-popover"
+      className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-popover"
+      style={{ maxHeight: `calc(100dvh - ${panelTop}px - var(--spacing) * 2)` }}
       onKeyDown={(event) => {
         if (
           event.key === "Enter" &&
@@ -72,7 +84,7 @@ export function WorkspaceSearch({
       }}
     >
       {!hideInput && (
-        <div className="flex items-center gap-2 p-2">
+        <div className="flex shrink-0 items-center gap-2 p-2">
           <CommandInput
             ref={input}
             aria-label="Search workspace"
@@ -86,7 +98,7 @@ export function WorkspaceSearch({
         </div>
       )}
       {related && (
-        <div className="flex items-center gap-2 px-3 pt-2">
+        <div className="flex shrink-0 items-center gap-2 px-3 pt-2">
           <span className="text-sm text-muted-foreground">Related records</span>
           <Button variant="ghost" size="xs" onClick={onClearRelated}>
             Search all records
@@ -96,7 +108,7 @@ export function WorkspaceSearch({
       <div
         role="group"
         aria-label="Search type"
-        className="flex flex-wrap gap-1 border-b px-2 py-2"
+        className="flex shrink-0 flex-wrap gap-1 border-b px-2 py-2"
       >
         {(["all", "task", "project", "message", "conversation"] as const).map((type) => (
           <Button
@@ -118,7 +130,7 @@ export function WorkspaceSearch({
           </Button>
         ))}
       </div>
-      <CommandList aria-label="Search results">
+      <CommandList aria-label="Search results" className="min-h-0">
         {loading && !visible.length && (
           <div className="p-3">
             <LoadingState label="Searching workspace" variant="compact" />
@@ -140,7 +152,8 @@ export function WorkspaceSearch({
                 item={item}
                 onRelated={() => {
                   onRelated(item.id);
-                  input.current?.focus();
+                  if (hideInput) onFocusInput?.();
+                  else input.current?.focus();
                 }}
               />
             ))}
@@ -157,7 +170,7 @@ export function WorkspaceSearch({
           First results
         </Button>
       )}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t px-3 py-2 text-xs text-muted-foreground">
+      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-t px-3 py-2 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <KbdGroup>
             <Kbd>

@@ -4,6 +4,7 @@ import { Button } from "../primitives/button";
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
 import { isAccessFailure } from "../feedback/request-failure";
+import { Empty, EmptyDescription } from "../primitives/empty";
 
 export function SourceTaskDestination({
   projects,
@@ -29,7 +30,11 @@ export function SourceTaskDestination({
       )}
       {error && <ErrorState compact title="Couldn't load projects" onRetry={onRetry} />}
       {!loading && !error && !available.length && (
-        <p>No editable projects. Create a project or ask its owner for edit access.</p>
+        <Empty>
+          <EmptyDescription>
+            No editable projects. Create a project or ask its owner for edit access.
+          </EmptyDescription>
+        </Empty>
       )}
       {!!available.length && (
         <TaskSelect

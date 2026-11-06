@@ -1,4 +1,5 @@
 import { AtSign, CircleCheck, FolderKanban, LockKeyhole } from "lucide-react";
+import { Spinner } from "../primitives/spinner";
 import type { ReferenceKind } from "./reference-picker";
 
 export type WorkspaceReference = {
@@ -19,8 +20,21 @@ export function EntityReference({
   const Icon = reference ? icons[reference.kind] : LockKeyhole;
   const content = (
     <>
-      <Icon aria-hidden="true" className="inline size-3.5 align-text-bottom" />{" "}
-      <span>{reference?.label ?? (loading ? "Loading reference…" : "Unavailable reference")}</span>
+      {loading && !reference ? (
+        <Spinner
+          aria-hidden="true"
+          className="inline size-3.5 align-text-bottom motion-reduce:animate-none"
+        />
+      ) : (
+        <Icon
+          aria-hidden="true"
+          className="inline size-3.5 align-text-bottom"
+        />
+      )}{" "}
+      <span>
+        {reference?.label ??
+          (loading ? "Loading reference…" : "Unavailable reference")}
+      </span>
     </>
   );
   const className =
@@ -30,6 +44,12 @@ export function EntityReference({
       {content}
     </a>
   ) : (
-    <span className={className}>{content}</span>
+    <span
+      className={className}
+      role={loading && !reference ? "status" : undefined}
+      aria-label={loading && !reference ? "Loading reference…" : undefined}
+    >
+      {content}
+    </span>
   );
 }

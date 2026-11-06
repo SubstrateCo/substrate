@@ -18,6 +18,7 @@ function WorkspaceToolsScene({
     "messages" | "tasks" | "notifications" | "user-settings" | "organization-settings"
   >(initialView);
   const [kind, setKind] = useState<SearchKind>("all");
+  const [relatedId, setRelatedId] = useState<string>();
   const [read, setRead] = useState(false);
   return (
     <WorkspaceShell
@@ -31,12 +32,13 @@ function WorkspaceToolsScene({
       signOut={<SignOutButton onSignOut={fn()} />}
     >
       <WorkspaceTools
-        renderSearch={(onClose, query, setQuery) => (
+        renderSearch={(onClose, query, setQuery, focusInput) => (
           <WorkspaceSearch
             query={query}
             hideInput
+            onFocusInput={focusInput}
             kind={kind}
-            related={false}
+            related={!!relatedId}
             results={[
               { id: "launch", kind: "task", title: "Ship the launch", href: "#task" },
               { id: "review", kind: "task", title: "Review the onboarding flow", href: "#review" },
@@ -51,6 +53,7 @@ function WorkspaceToolsScene({
             ].filter(
               (item) =>
                 (kind === "all" || kind === item.kind) &&
+                (!relatedId || item.id === "review" || item.id === "project") &&
                 item.title.toLowerCase().includes(query.toLowerCase()),
             )}
             loading={false}
@@ -58,8 +61,12 @@ function WorkspaceToolsScene({
             hasPrevious={false}
             onQueryChange={setQuery}
             onKindChange={setKind}
-            onRelated={fn()}
-            onClearRelated={fn()}
+            onRelated={(id) => {
+              setRelatedId(id);
+              setQuery("");
+              setKind("all");
+            }}
+            onClearRelated={() => setRelatedId(undefined)}
             onMore={fn()}
             onFirst={fn()}
             onRetry={fn()}

@@ -79,7 +79,7 @@ for (const theme of ["light", "dark"] as const) {
     const taskTitle = "Task" + "T".repeat(290);
     const description = "Description" + "D".repeat(1000);
     const comment = "Comment" + "C".repeat(2000);
-    await page.getByRole("button", { name: "Project settings", exact: true }).click();
+    await page.getByRole("tab", { name: "Project settings", exact: true }).click();
     await page.getByRole("button", { name: "Edit project", exact: true }).click();
     await page.getByLabel("Project name", { exact: true }).fill(projectName);
     await page.getByLabel("Project description", { exact: true }).fill(description);

@@ -1,6 +1,8 @@
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
 import { isAccessFailure } from "../feedback/request-failure";
+import { Empty, EmptyDescription } from "../primitives/empty";
+import { Item, ItemContent } from "../primitives/item";
 
 export function TaskActivity({
   items,
@@ -16,16 +18,20 @@ export function TaskActivity({
   const visible = isAccessFailure(error) ? [] : items;
   return (
     <section aria-label="Task activity" className="space-y-2 border-t pt-4">
-      <h3 className="font-semibold">Activity</h3>
+      <h3 className="text-sm font-semibold">Activity</h3>
       {loading && !visible.length && <LoadingState label="Loading activity" variant="compact" />}
       {error && <ErrorState compact title="Couldn't load activity" onRetry={onRetry} />}
       {!loading && !error && !visible.length && (
-        <p className="text-sm text-muted-foreground">No activity yet.</p>
+        <Empty>
+          <EmptyDescription>No activity yet.</EmptyDescription>
+        </Empty>
       )}
       {visible.map((event) => (
-        <p key={event.id} className="text-sm">
-          {event.action} · {event.actorName}
-        </p>
+        <Item key={event.id} size="xs">
+          <ItemContent className="min-w-0 wrap-anywhere">
+            {event.action} · {event.actorName}
+          </ItemContent>
+        </Item>
       ))}
     </section>
   );

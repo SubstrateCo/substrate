@@ -60,7 +60,7 @@ for (const action of ["Create task", "Link existing work"] as const) {
       await expect(page.getByRole("option", { name: title, exact: true })).toBeVisible();
       await page.keyboard.press("Escape");
     } else {
-      await expect(panel.getByRole("button", { name: title, exact: true })).toBeVisible();
+      await expect(panel.getByRole("button", { name: `Link ${title}`, exact: true })).toBeVisible();
     }
     await panel.getByRole("button", { name: "Cancel", exact: true }).click();
     denied = true;
@@ -76,7 +76,7 @@ for (const action of ["Create task", "Link existing work"] as const) {
       await panel.getByRole("combobox", { name: "Destination project", exact: true }).click();
       await expect(page.getByRole("option", { name: title, exact: true })).toBeVisible();
     } else {
-      await expect(panel.getByRole("button", { name: title, exact: true })).toBeVisible();
+      await expect(panel.getByRole("button", { name: `Link ${title}`, exact: true })).toBeVisible();
     }
   });
 }

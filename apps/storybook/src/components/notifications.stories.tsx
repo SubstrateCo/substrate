@@ -4,7 +4,9 @@ import { NotificationList } from "@startup-os/ui/context/notification-list";
 
 function NotificationsPreview({
   state = "ready",
+  longTitle = false,
 }: {
+  longTitle?: boolean;
   state?:
     | "ready"
     | "loading"
@@ -28,7 +30,9 @@ function NotificationsPreview({
       : [
           {
             id: "assignment",
-            title: "Ship the launch",
+            title: longTitle
+              ? "Customer launch checklist — " + "UnbrokenCustomerReference".repeat(8)
+              : "Ship the launch",
             href: "#task",
             kind: "assignment",
             read: read.includes("assignment"),
@@ -74,3 +78,4 @@ export const Unavailable: Story = { args: { state: "unavailable" } };
 export const Pending: Story = { args: { state: "pending" } };
 export const ActionError: Story = { args: { state: "action-error" } };
 export const Dark: Story = { globals: { theme: "dark" } };
+export const LongTitle: Story = { args: { longTitle: true } };
