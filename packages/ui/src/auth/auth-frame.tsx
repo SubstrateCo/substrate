@@ -13,8 +13,8 @@ export function AuthFrame({
 }) {
   const hydrated = useHydrated();
   return (
-    <main className="flex min-h-dvh items-start justify-center bg-radial from-accent to-transparent px-4 py-auth-block sm:px-6">
-      <Card className="w-full max-w-md">
+    <main className="fixed inset-0 flex items-start justify-center bg-radial from-accent to-transparent px-4 py-auth-block sm:px-6">
+      <Card className="max-h-full min-h-0 w-full max-w-md overflow-y-auto">
         <CardHeader>
           <p className="mb-5 flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground">
             <span aria-hidden="true" className="size-3 rounded-sm bg-primary shadow-surface" />

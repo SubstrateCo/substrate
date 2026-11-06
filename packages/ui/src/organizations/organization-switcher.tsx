@@ -134,6 +134,7 @@ export function OrganizationSwitcher({
         </DropdownMenuContent>
       </DropdownMenu>
       <FormMessage
+        floating={compact}
         error={error}
         errorDescription="We couldn’t switch workspaces. Your current workspace is still open. Try again."
       />

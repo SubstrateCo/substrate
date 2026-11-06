@@ -30,12 +30,12 @@ export function OrganizationSelection({
   createForm: ReactNode;
 }) {
   return (
-    <main className="mx-auto max-w-2xl space-y-8 px-4 py-20 sm:px-6">
-      <header className="flex items-center justify-between">
+    <main className="fixed inset-0 mx-auto flex max-w-2xl flex-col gap-6 px-4 py-6 sm:px-6">
+      <header className="flex shrink-0 items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold tracking-tight">Your workspaces</h1>
         {signOut}
       </header>
-      <Card>
+      <Card className="min-h-0 overflow-y-auto">
         <CardHeader>
           <CardTitle>Choose a workspace</CardTitle>
           <CardDescription>Open an existing workspace or create one for your team.</CardDescription>

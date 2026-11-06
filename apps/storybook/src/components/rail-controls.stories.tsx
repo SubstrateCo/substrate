@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useState } from "react";
 import { fn } from "storybook/test";
 import { OrganizationSwitcher } from "@startup-os/ui/organizations/organization-switcher";
 import { SignOutButton } from "@startup-os/ui/auth/sign-out-button";
@@ -57,3 +58,50 @@ export const SignOutError: Story = {
   render: () =>
     rail(<SignOutButton compact onSignOut={fn()} error={new Error("Could not sign out.")} />),
 };
+
+function SwitchRetryScene() {
+  const [failed, setFailed] = useState(false);
+  const [selected, setSelected] = useState(organizations[0]!);
+  return rail(
+    <OrganizationSwitcher
+      {...switcher}
+      compact
+      organizationId={selected.id}
+      name={selected.name}
+      error={failed ? new Error("Internal switch failure") : null}
+      onSelect={(id) => {
+        if (!failed) setFailed(true);
+        else {
+          setSelected(organizations.find((organization) => organization.id === id)!);
+          setFailed(false);
+        }
+      }}
+    />,
+  );
+}
+
+function SignOutRetryScene() {
+  const [failed, setFailed] = useState(false);
+  const [signedOut, setSignedOut] = useState(false);
+  return (
+    <>
+      {rail(
+        <SignOutButton
+          compact
+          error={failed ? new Error("Internal sign-out failure") : null}
+          onSignOut={() => {
+            if (!failed) setFailed(true);
+            else {
+              setFailed(false);
+              setSignedOut(true);
+            }
+          }}
+        />,
+      )}
+      {signedOut && <p role="status">Signed out.</p>}
+    </>
+  );
+}
+
+export const SwitchRetry: Story = { render: () => <SwitchRetryScene /> };
+export const SignOutRetry: Story = { render: () => <SignOutRetryScene /> };

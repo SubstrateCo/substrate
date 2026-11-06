@@ -33,7 +33,11 @@ export function SignOutButton({
         )}
         {!compact && label}
       </Button>
-      <FormMessage error={error} errorDescription="We couldn’t sign you out. Please try again." />
+      <FormMessage
+        floating={compact}
+        error={error}
+        errorDescription="We couldn’t sign you out. Please try again."
+      />
     </div>
   );
 }
