@@ -8,6 +8,8 @@
   "type": "module",
   "scripts": {
     "dev": "bun run --filter @startup-os/web dev",
+    "dev:desktop": "bun run --filter @startup-os/desktop dev",
+    "test:desktop": "bun run --filter @startup-os/desktop test:e2e",
     "build": "bun run --filter @startup-os/web build",
     "test:e2e": "bun run --filter @startup-os/web test:e2e",
     "storybook": "bun run --filter @startup-os/storybook dev",
