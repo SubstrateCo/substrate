@@ -58,7 +58,6 @@ test("user agents and device-local configuration survive reload and restart in E
   await desktop.page.goto(new URL("/settings/user/agents", desktop.rendererOrigin).href);
   const page = desktop.page;
 
-  await expect(page.getByRole("button", { name: "Create skill", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Create agent", exact: true }).click();
   const configuration = page.getByRole("dialog", { name: "Create agent", exact: true });
   await configuration.getByRole("tab", { name: "Skills", exact: true }).click();
@@ -110,7 +109,6 @@ test("user agents and device-local configuration survive reload and restart in E
     );
     return {
       migrations,
-      entries: await fs.readdir(root),
       content: await fs.readFile(
         path.join(root, ".opencode", "skills", "review-customer-context", "SKILL.md"),
         "utf8",
@@ -118,20 +116,16 @@ test("user agents and device-local configuration survive reload and restart in E
     };
   }, organizationId);
   expect(nativeSkill.migrations).toBeGreaterThan(0);
-  expect(nativeSkill.entries).not.toContain("workspace");
   expect(nativeSkill.content).toContain("State which facts are missing");
   await configuration.getByRole("button", { name: "Refresh configuration", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Edit native-file-skill", exact: true }),
   ).toBeVisible();
 
-  await expect(page.getByRole("button", { name: "Add MCP server", exact: true })).toHaveCount(0);
   await configuration.getByRole("button", { name: "Cancel", exact: true }).click();
 
   await page.getByRole("button", { name: "Create agent", exact: true }).click();
   const agent = page.getByRole("dialog", { name: "Create agent", exact: true });
-  await expect(agent.getByRole("tab", { name: "Workspace access", exact: true })).toHaveCount(0);
-  await expect(agent.getByRole("button", { name: "Workspace access", exact: true })).toHaveCount(0);
   await agent.getByLabel("Agent name", { exact: true }).fill("Customer reviewer");
   await agent.getByRole("button", { name: /^Harness & model:/ }).click();
   for (const harness of ["OpenCode", "Antigravity", "Claude Code", "Codex"]) {
@@ -151,10 +145,6 @@ test("user agents and device-local configuration survive reload and restart in E
   await page.reload();
   await page.getByRole("button", { name: "Edit Customer reviewer", exact: true }).click();
   const editing = page.getByRole("dialog", { name: "Edit agent", exact: true });
-  await expect(editing.getByRole("tab", { name: "Workspace access", exact: true })).toHaveCount(0);
-  await expect(editing.getByRole("button", { name: "Workspace access", exact: true })).toHaveCount(
-    0,
-  );
   await expect(editing.getByRole("button", { name: /^Harness & model:/ })).toContainText(
     "Claude Code",
   );

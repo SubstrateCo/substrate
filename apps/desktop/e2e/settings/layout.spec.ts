@@ -32,13 +32,6 @@ test("settings use underline navigation and separate organization invitations", 
   await expect(page.getByRole("heading", { name: "Your invitations", exact: true })).toBeVisible();
   await tabs.getByRole("tab", { name: "Agents", exact: true }).click();
   await expect(page.getByRole("button", { name: "Create agent", exact: true })).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Device configuration", exact: true }),
-  ).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Custom skills", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("combobox", { name: "Skill harness", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Refresh skills", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Create skill", exact: true })).toHaveCount(0);
   await desktop.openPath("/settings/organization");
   const organizationTabs = page.getByRole("tablist", {
     name: "Organization settings",

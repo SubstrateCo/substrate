@@ -163,6 +163,18 @@ test("connected work preserves private boundaries and assignment notifications",
       await expect(article).not.toContainText(title);
       await searchAbsent(externalPage, title);
       await externalPage.goto(taskHref);
+      await expect(
+        externalPage.getByRole("heading", {
+          name: "This link belongs to another workspace",
+          exact: true,
+        }),
+      ).toBeVisible();
+      await externalPage
+        .getByRole("button", { name: "Switch workspace to open link", exact: true })
+        .click();
+      await expect(externalPage.getByRole("alert")).toContainText(
+        "This workspace is unavailable or you are not a member.",
+      );
       await expect(externalPage.getByRole("heading", { name: title, exact: true })).toHaveCount(0);
       await expect(externalPage.getByText(source, { exact: true })).toHaveCount(0);
     });
@@ -208,6 +220,9 @@ test("connected work preserves private boundaries and assignment notifications",
           .filter({ has: ownerPage.getByText(member.name, { exact: true }) }),
       ).toHaveCount(0);
       await memberPage.reload();
+      await expect(
+        memberPage.getByRole("heading", { name: "No projects yet", exact: true }),
+      ).toBeVisible();
       await expect(
         memberPage.getByRole("region", { name: "Task details", exact: true }),
       ).toHaveCount(0);

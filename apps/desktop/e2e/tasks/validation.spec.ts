@@ -47,7 +47,11 @@ test("Electron task creation explains invalid titles and saves a corrected title
   expect(errorBox!.y, "The readable title error is below its control").toBeGreaterThanOrEqual(
     controlBox!.y + controlBox!.height,
   );
-  await expect(tasks.getByRole("listitem")).toHaveCount(0);
+  await expect(
+    page
+      .getByRole("region", { name: "Project tasks", exact: true, includeHidden: true })
+      .getByRole("listitem", { includeHidden: true }),
+  ).toHaveCount(0);
 
   await title.fill("Prepare launch checklist");
   await title.blur();

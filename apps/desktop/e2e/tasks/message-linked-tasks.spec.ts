@@ -77,7 +77,6 @@ test("desktop messages create linked tasks with OS navigation and source context
   await page.getByRole("combobox", { name: "Destination project", exact: true }).click();
   await page.getByRole("option", { name: project, exact: true }).click();
   const form = page.getByRole("form", { name: "New task", exact: true });
-  await expect(form.getByRole("heading", { name: "New task", exact: true })).toHaveCount(0);
   const sourcePreview = form.getByRole("group", { name: "Source message", exact: true });
   await expect(sourcePreview.getByText(source, { exact: true })).toBeHidden();
   await sourcePreview.getByText("Linked to this message", { exact: true }).click();

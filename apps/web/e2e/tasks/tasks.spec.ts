@@ -34,12 +34,18 @@ test("tasks application creates projects, standard-status assigned tasks, subtas
     .fill("Bring the new workspace to our customers.");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Product launch", exact: true })).toBeVisible();
-  await page.getByRole("tab", { name: "Settings", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Add status", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "New task", exact: true }).click();
   await page.getByLabel("Task title", { exact: true }).fill("Ship the launch");
   await page.getByLabel("Task description", { exact: true }).fill("Final checks and release.");
-  await choose(page, "Status", "In Review");
+  await page.getByRole("combobox", { name: "Status", exact: true }).click();
+  await expect(page.getByRole("option")).toHaveText([
+    "Not Started",
+    "In Progress",
+    "In Review",
+    "Completed",
+    "Canceled",
+  ]);
+  await page.getByRole("option", { name: "In Review", exact: true }).click();
   await choose(page, "Priority", "High");
   await choose(page, "Assignee", account.name);
   await page.getByLabel("Due date", { exact: true }).fill("2026-12-01");

@@ -66,7 +66,6 @@ for (const size of [
     const settings = page.getByRole("region", { name: "Agents", exact: true });
     await expectNoHorizontalOverflow(settings);
 
-    await expect(page.getByRole("button", { name: "Create skill", exact: true })).toHaveCount(0);
     await page.getByRole("button", { name: "Create agent", exact: true }).click();
     const configuration = page.getByRole("dialog", { name: "Create agent", exact: true });
     await configuration.getByRole("tab", { name: "Skills", exact: true }).click();

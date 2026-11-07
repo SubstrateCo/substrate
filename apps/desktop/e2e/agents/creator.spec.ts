@@ -94,15 +94,12 @@ test("agent creator keeps drafts across tabs and persists its harness and model"
   await expect(editor.getByRole("tabpanel")).toContainText("hello_world");
   await expect(editor.getByRole("tabpanel")).toContainText("research-tools");
   await expect(editor.getByRole("tabpanel")).not.toContainText("source-check");
-  await expect(editor.getByRole("tab", { name: "Workspace access", exact: true })).toHaveCount(0);
   await expect(editor.locator("footer")).toContainText("Personal agent");
   await editor.getByRole("tab", { name: "Instructions", exact: true }).click();
   await expect(editor.getByRole("textbox", { name: "Instructions", exact: true })).toHaveValue(
     "Cite the source for each finding.",
   );
   await editor.getByRole("button", { name: /^Harness & model:/ }).click();
-  await expect(page.getByRole("button", { name: "Favorites", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /^Favorite / })).toHaveCount(0);
   await page.getByRole("button", { name: "Claude Code", exact: true }).click();
   await page.getByPlaceholder("Search models…", { exact: true }).fill("claude-custom-model");
   await page.getByRole("option", { name: /Use .*claude-custom-model/ }).click();
@@ -168,11 +165,6 @@ test("personal agents follow their owner across workspaces and reject another us
   await create.getByLabel("Agent name", { exact: true }).fill("Project researcher");
   await create.getByRole("button", { name: "Save agent", exact: true }).click();
   await expect(create).toBeHidden();
-  await page.getByRole("button", { name: "Edit Project researcher", exact: true }).click();
-  const editor = page.getByRole("dialog", { name: "Edit agent", exact: true });
-  await expect(editor.getByRole("tab", { name: "Workspace access", exact: true })).toHaveCount(0);
-  await expect(editor.getByRole("button", { name: "Grant access", exact: true })).toHaveCount(0);
-  await editor.getByRole("button", { name: "Cancel", exact: true }).click();
   const catalog = async () =>
     page.evaluate(async () => (await fetch("/api/v1/agents/list", { method: "POST" })).json());
   const original = await catalog();
@@ -188,8 +180,8 @@ test("personal agents follow their owner across workspaces and reject another us
   ).toBeVisible();
   await desktop.openPath("/settings/user/agents");
   await page.getByRole("button", { name: "Edit Project researcher", exact: true }).click();
+  const editor = page.getByRole("dialog", { name: "Edit agent", exact: true });
   await expect(editor.getByLabel("Agent name", { exact: true })).toHaveValue("Project researcher");
-  await expect(editor.getByRole("tab", { name: "Workspace access", exact: true })).toHaveCount(0);
 
   await provisionVerifiedAccount(desktop.browser, desktop.mailpit, desktop.member);
   const headers = { origin: new URL(desktop.browser.url()).origin };

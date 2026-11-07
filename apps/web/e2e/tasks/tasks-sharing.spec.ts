@@ -93,6 +93,9 @@ test("explicit project grants control inherited task, subtask, and comment acces
       await ownerPage.getByRole("button", { name: "Create task", exact: true }).click();
       await memberPage.reload();
       await expect(
+        memberPage.getByRole("heading", { name: "No projects yet", exact: true }),
+      ).toBeVisible();
+      await expect(
         memberPage
           .getByRole("complementary", { name: "Projects", exact: true })
           .getByRole("button", { name: project, exact: true }),
@@ -186,9 +189,12 @@ test("explicit project grants control inherited task, subtask, and comment acces
           exact: true,
         });
         await expect(
-          memberSharing.getByRole("combobox", { name: "Permission", exact: true }),
+          memberSharing.getByRole("listitem").filter({ hasText: member.name }),
+        ).toContainText(`${permission.toLowerCase()} access`);
+        await expect(
+          memberSharing.getByRole("button", { name: "Add access", exact: true }),
         ).toHaveCount(0);
-        await expect(memberSharing.getByRole("button", { name: /^Remove / })).toHaveCount(0);
+        await expect(memberSharing.getByRole("combobox", { name: / permission$/ })).toHaveCount(0);
         const editProject = memberPage.getByRole("form", { name: "Project details", exact: true });
         if (permission === "Edit") await expect(editProject).toBeVisible();
         else await expect(editProject).toHaveCount(0);

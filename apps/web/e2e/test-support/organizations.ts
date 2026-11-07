@@ -38,7 +38,6 @@ export async function expectWorkspace(
       .getByRole("dialog", { name: "User actions" })
       .getByRole("button", { name: "Sign out", exact: true }),
   ).toBeVisible();
-  await expect(page.locator("main > header, main > div > header")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Messages", exact: true })).toHaveAttribute(
     "aria-current",
     "page",

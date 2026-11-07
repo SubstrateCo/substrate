@@ -109,6 +109,11 @@ async function openThread(page: Page, conversation: string, body: string) {
   await expect(page.getByRole("complementary", { name: "Thread", exact: true })).toContainText(
     body,
   );
+  await expect(
+    page
+      .getByRole("complementary", { name: "Thread", exact: true })
+      .getByRole("log", { name: "Messages", exact: true }),
+  ).toBeVisible();
 }
 
 async function messageId(page: Page, id: string, body: string) {
@@ -288,11 +293,7 @@ for (const scenario of ["channels", "direct messages", "shared access"] as const
           ).toContainText("First thread secret");
           await expect(timeline.getByRole("log")).not.toContainText("First thread secret");
           await senderPage.getByRole("button", { name: "Close thread" }).click();
-          await timeline
-            .getByRole("article")
-            .filter({ hasText: "Teammate public reply" })
-            .getByRole("button", { name: "Reply in thread", exact: true })
-            .click();
+          await openThread(senderPage, publicChannel, "Teammate public reply");
           await expect(senderPage.getByRole("complementary", { name: "Thread" })).not.toContainText(
             "First thread secret",
           );
@@ -553,6 +554,12 @@ for (const scenario of ["channels", "direct messages", "shared access"] as const
           await expectDeniedAccess(outsiderPage, id, rootId, outsider.email);
           await outsiderPage.reload();
           await expect(
+            outsiderPage.getByRole("heading", {
+              name: "Your conversations start here",
+              exact: true,
+            }),
+          ).toBeVisible();
+          await expect(
             outsiderPage.getByRole("button", { name: privateChannel, exact: true }),
           ).toHaveCount(0);
           for (const [, body] of replies) {
@@ -706,7 +713,7 @@ test("a stale workspace tab cannot read or mutate the newly active workspace", a
   });
   expect(staleSend.error).toBe(changed);
 
-  await expect(page.getByLabel("Channel name", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Create channel", exact: true })).toHaveCount(0);
   const staleCreate = await callMessaging(page, "createConversation", {
     organizationId: firstOrganization.id,
     kind: "channel",

@@ -99,12 +99,17 @@ test("personal invitations work without a workspace and organization settings en
   expect(organizationResponse.ok()).toBe(true);
   const organization: { id: string } = await organizationResponse.json();
   const headers = { Origin: new URL(page.url()).origin };
+  let recipientInvitationId = "";
   for (const email of [recipient.email, `unrelated-${suffix}@example.test`]) {
     const invitation = await page.request.post("/api/auth/organization/invite-member", {
       headers,
       data: { organizationId: organization.id, email, role: "member" },
     });
     expect(invitation.ok(), await invitation.text()).toBe(true);
+    if (email === recipient.email) {
+      const created: { id: string } = await invitation.json();
+      recipientInvitationId = created.id;
+    }
   }
   await page.goto("/settings/organization");
   await expect(
@@ -128,7 +133,9 @@ test("personal invitations work without a workspace and organization settings en
     const invitations = memberPage.getByRole("table", { name: "Your invitations" });
     await expect(invitations.getByRole("row")).toHaveCount(2);
     await expect(invitations).toContainText(organizationName);
-    await expect(invitations).not.toContainText("unrelated-");
+    const review = invitations.getByRole("link", { name: "Review invitation", exact: true });
+    await expect(review).toHaveCount(1);
+    await expect(review).toHaveAttribute("href", `/accept-invitation/${recipientInvitationId}`);
     await memberPage.getByRole("link", { name: "Profile and appearance", exact: true }).click();
     const theme = memberPage.getByRole("switch", { name: "Dark mode", exact: true });
     await theme.check();

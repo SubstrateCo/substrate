@@ -223,11 +223,14 @@ for (const workflow of ["onboarding", "recovery"] as const) {
       });
 
       await test.step("a nonowner cannot see invitation controls or another user's private workspace", async () => {
+        await page.goto("/settings/organization");
+        await expect(page).toHaveURL(/\/dashboard$/);
+        await expect(
+          page.getByRole("button", { name: `${firstWorkspace} ▾`, exact: true }),
+        ).toBeVisible();
         await expect(
           page.getByRole("button", { name: "Send invitation", exact: true }),
         ).toHaveCount(0);
-        await expect(page.getByLabel("Role", { exact: true })).toHaveCount(0);
-        await expect(page.getByText("Invite your team", { exact: true })).toHaveCount(0);
         await page.getByRole("button", { name: `${firstWorkspace} ▾`, exact: true }).click();
         await expect(
           page.getByRole("menuitem", { name: `${firstWorkspace} (current)`, exact: true }),

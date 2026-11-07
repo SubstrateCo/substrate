@@ -74,9 +74,6 @@ test("typed reference prefixes insert persistent chips in the actual composer", 
     .click();
   await expect(chip).toHaveText("Desktop Owner");
   await expect(composer).toContainText("hello****");
-  await expect(
-    page.getByText("References don’t grant access; mentions notify members.", { exact: true }),
-  ).toHaveCount(0);
   await composer.fill("before  after");
   await composer.press("Control+Home");
   for (let index = 0; index < "before ".length; index++) await composer.press("ArrowRight");

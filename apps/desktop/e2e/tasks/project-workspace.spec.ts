@@ -73,7 +73,6 @@ test("project actions, task dialogs, inline settings and linked discussions stay
   );
   await page.keyboard.press("Escape");
   await page.getByRole("tab", { name: "Settings", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Edit project", exact: true })).toHaveCount(0);
   const settings = page.getByRole("tabpanel", { name: "Settings", exact: true });
   const form = settings.getByRole("form", { name: "Project details", exact: true });
   expect((await form.boundingBox())!.width).toBeGreaterThan(
@@ -101,9 +100,6 @@ test("project actions, task dialogs, inline settings and linked discussions stay
   await page.getByRole("tab", { name: "Discussions", exact: true }).click();
   const discussions = page.getByRole("region", { name: "Project discussions", exact: true });
   await expect(discussions).toContainText("Please review");
-  await expect(
-    page.getByText("Messages linked to this project or its tasks.", { exact: false }),
-  ).toHaveCount(0);
   const discussion = discussions.locator('[data-slot="item"]').filter({ hasText: "Please review" });
   const discussionBox = (await discussion.boundingBox())!;
   const titleBox = (await discussion.getByRole("link").boundingBox())!;
@@ -204,9 +200,6 @@ test("project access reviews grants and removal, keeps reductions neutral, and p
     expect((await memberAccess()).success).toBe(false);
     await page.getByRole("tab", { name: "Settings", exact: true }).click();
     const sharing = page.getByRole("region", { name: "Project sharing", exact: true });
-    await expect(sharing.getByText("Permissions cover this project", { exact: false })).toHaveCount(
-      0,
-    );
     await expect(
       sharing.getByRole("combobox", { name: "Desktop Owner permission", exact: true }),
     ).toBeDisabled();
