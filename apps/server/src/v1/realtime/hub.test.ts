@@ -91,6 +91,153 @@ function fixture(options: Parameters<typeof createRealtimeHub>[1] = {}) {
 }
 
 describe("realtime delivery", () => {
+  test("coalesces 100 contiguous equivalent hints with one authorization and acknowledgement", async () => {
+    const f = fixture();
+    const viewer = await f.connect();
+    await f.hub.tick(1);
+    let authentications = 0;
+    let permissions = 0;
+    const acknowledgements: string[][] = [];
+    const authenticate = f.deps.authenticate.bind(f.deps);
+    const acknowledge = f.deps.acknowledgeChanges;
+    f.deps.authenticate = async (...args) => {
+      authentications++;
+      return authenticate(...args);
+    };
+    f.deps.canReceive = async () => {
+      permissions++;
+      return true;
+    };
+    f.deps.acknowledgeChanges = async (ids) => {
+      acknowledgements.push(ids);
+      await acknowledge(ids);
+    };
+    const rows = Array.from({ length: 100 }, () => f.change(realtimeKeys.conversation("shared")));
+    await f.hub.tick(2);
+    expect(authentications).toBe(1);
+    expect(permissions).toBe(1);
+    expect(acknowledgements).toEqual([rows.map((row) => row.id)]);
+    expect(viewer.events.slice(1)).toHaveLength(1);
+    expect(viewer.events[1]).toMatchObject({ domain: "messaging", conversationId: "shared" });
+    expect(rows.map((row) => row.id)).not.toContain(
+      viewer.events[1]?.type === "change" ? viewer.events[1].id : undefined,
+    );
+    expect(f.changes).toEqual([]);
+    f.hub.stop();
+  });
+
+  test("keeps exact audiences, domains, and access/reset boundaries in order", async () => {
+    const f = fixture();
+    const viewer = await f.connect();
+    await f.hub.tick(1);
+    const rows = [
+      f.change(realtimeKeys.actor("org", "one"), "notifications"),
+      f.change(realtimeKeys.actor("org", "two"), "notifications"),
+      f.change(realtimeKeys.organization("org"), "tasks"),
+      f.change(realtimeKeys.organization("org"), "access"),
+      f.change(realtimeKeys.organization("org"), "access"),
+      f.change(realtimeKeys.organization("org"), "tasks"),
+      f.change(realtimeKeys.organization("org"), "session"),
+      f.change(realtimeKeys.organization("org"), "session"),
+      f.change(realtimeKeys.organization("org"), "organization"),
+      f.change(realtimeKeys.organization("org"), "organization"),
+      f.change(realtimeKeys.organization("org"), "profile"),
+      f.change(realtimeKeys.organization("org"), "profile"),
+      f.change(realtimeKeys.organization("org"), "tasks"),
+    ];
+    const checked: Change["audience"][] = [];
+    f.deps.canReceive = async (_, audience) => {
+      checked.push(audience);
+      return true;
+    };
+    await f.hub.tick(2);
+    expect(checked).toEqual(rows.map((row) => row.audience));
+    expect(viewer.events.slice(1).map((event) => event.type === "change" && event.id)).toEqual(
+      rows.map((row) => row.id),
+    );
+    f.hub.stop();
+  });
+
+  test("revalidates after an access boundary and does not deliver after session revocation", async () => {
+    const f = fixture();
+    const viewer = await f.connect();
+    await f.hub.tick(1);
+    f.change(realtimeKeys.organization("org"), "tasks");
+    f.change(realtimeKeys.organization("org"), "tasks");
+    const reset = f.change(realtimeKeys.organization("org"), "access");
+    f.change(realtimeKeys.organization("org"), "tasks");
+    f.change(realtimeKeys.organization("org"), "tasks");
+    f.deps.canReceive = async (_, audience) => {
+      if (audience[0] === "organization" && viewer.events.length === 2)
+        f.sessions.delete(viewer.cookie);
+      return true;
+    };
+    await f.hub.tick(2);
+    expect(viewer.events.slice(1)).toMatchObject([
+      { domain: "tasks" },
+      { id: reset.id, domain: "access" },
+    ]);
+    expect(viewer.closed).toEqual([1008]);
+    expect(f.changes).toEqual([]);
+    f.hub.stop();
+  });
+
+  test("acknowledges only completed groups and stops after a resolver failure", async () => {
+    const f = fixture();
+    const viewer = await f.connect();
+    const completed = f.change(realtimeKeys.organization("org"), "tasks");
+    const failed = [
+      f.change(realtimeKeys.conversation("private")),
+      f.change(realtimeKeys.conversation("private")),
+    ];
+    const later = f.change(realtimeKeys.organization("org"), "context");
+    f.deps.canReceive = async (_, audience) => {
+      if (audience[0] === "conversation") throw new Error("unavailable");
+      return true;
+    };
+    await f.hub.tick(1);
+    expect(f.changes).toEqual([...failed, later]);
+    expect(viewer.events.slice(1)).toMatchObject([{ id: completed.id }]);
+    f.deps.canReceive = async () => true;
+    await f.hub.tick(2);
+    expect(f.changes).toEqual([]);
+    expect(viewer.events.slice(1)).toHaveLength(3);
+    f.hub.stop();
+  });
+
+  test("expanded retry groups get a fresh ID so client deduplication cannot hide new work", async () => {
+    const f = fixture();
+    const viewer = await f.connect();
+    f.change(realtimeKeys.user("user"));
+    f.change(realtimeKeys.user("user"));
+    const acknowledge = f.deps.acknowledgeChanges;
+    f.deps.acknowledgeChanges = async () => {
+      throw new Error("unavailable");
+    };
+    await f.hub.tick(1);
+    f.change(realtimeKeys.user("user"));
+    f.deps.acknowledgeChanges = acknowledge;
+    await f.hub.tick(2);
+    const ids = viewer.events.slice(1).map((event) => event.type === "change" && event.id);
+    expect(ids).toHaveLength(2);
+    expect(new Set(ids).size).toBe(2);
+    expect(f.changes).toEqual([]);
+    f.hub.stop();
+  });
+
+  test("does not send or acknowledge a group when stopped during permission resolution", async () => {
+    const f = fixture();
+    const viewer = await f.connect();
+    const rows = [f.change(realtimeKeys.user("user")), f.change(realtimeKeys.user("user"))];
+    f.deps.canReceive = async () => {
+      f.hub.stop();
+      return true;
+    };
+    await f.hub.tick(1);
+    expect(viewer.events).toEqual([{ version: 1, type: "ready" }]);
+    expect(f.changes).toEqual(rows);
+  });
+
   test("routes server-owned audiences, checks permissions, and uses the viewer's org", async () => {
     const f = fixture();
     const owner = await f.connect("owner", "org-a");

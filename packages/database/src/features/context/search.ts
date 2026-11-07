@@ -141,7 +141,11 @@ export async function contextSearch(
       const table = type === "task" ? tasks : projects;
       const column = type === "task" ? tasks.title : projects.name;
       const rows = await db
-        .select({ id: table.entityId, title: column })
+        .select({
+          id: table.entityId,
+          title: column,
+          projectEntityId: type === "task" ? tasks.projectEntityId : projects.entityId,
+        })
         .from(table)
         .where(
           and(
@@ -156,15 +160,7 @@ export async function contextSearch(
         )
         .orderBy(asc(table.entityId))
         .limit(limit);
-      for (const row of rows) {
-        try {
-          const work = await requireWork(ctx, row.id, input.editable ? "edit" : "view");
-          results.push({ ...row, kind: type, projectEntityId: work.projectEntityId });
-        } catch (error) {
-          if (error instanceof Error && error.name === "AccessDeniedError") continue;
-          throw error;
-        }
-      }
+      results.push(...rows.map((row) => ({ ...row, kind: type })));
     }
   }
   if (kind === "all" || kind === "conversation") {

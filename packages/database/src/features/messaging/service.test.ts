@@ -1,6 +1,7 @@
-import { AccessDeniedError, ValidationError } from "../../errors";
+import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { user, member, entityGrants, actors } from "../../schema";
 import { setupDatabase } from "../../testing/database";
+import { recordQueries } from "../../testing/queries";
 import {
   messagingConversations,
   messagingMessages,
@@ -18,6 +19,76 @@ const service = (userId: string, organizationId = fixture.orgA) =>
 async function verified() {
   await fixture.db.update(user).set({ emailVerified: true });
 }
+
+test("send and replay reuse authenticated identity and the locked conversation", async () => {
+  await verified();
+  const channel = await service("alice").createConversation({ kind: "channel", name: "general" });
+  const { db, queries } = recordQueries();
+  const chat = createMessagingService(db, { userId: "alice", organizationId: fixture.orgA });
+  const requestId = crypto.randomUUID();
+  const sent = await chat.sendMessage(channel.id, "hello", undefined, requestId);
+  expect(sent).toMatchObject({ authorName: "Alice", body: "hello", replyCount: 0, reactions: [] });
+  const redundant = () =>
+    queries.filter(
+      (query) =>
+        query.startsWith('select "name" from "user"') ||
+        (query.includes('from "messaging_conversations"') && !query.includes("for update")),
+    );
+  expect(redundant()).toEqual([]);
+  expect(
+    queries.filter((query) => query.includes('from "actors"') && !query.includes("join")),
+  ).toHaveLength(1);
+  queries.length = 0;
+  expect(await chat.sendMessage(channel.id, "hello", undefined, requestId)).toEqual(sent);
+  expect(redundant()).toEqual([]);
+  expect(
+    queries.filter((query) => query.includes('from "actors"') && !query.includes("join")),
+  ).toHaveLength(1);
+  await expect(
+    chat.sendMessage(channel.id, "changed", undefined, requestId),
+  ).rejects.toBeInstanceOf(ConflictError);
+  await expect(chat.sendMessage(channel.id, "hello", sent.id, requestId)).rejects.toBeInstanceOf(
+    ConflictError,
+  );
+  const other = await service("alice").createConversation({ kind: "channel", name: "other" });
+  await expect(chat.sendMessage(other.id, "hello", undefined, requestId)).rejects.toBeInstanceOf(
+    ConflictError,
+  );
+});
+
+test("reaction summaries stay message-local and replies skip the root count query", async () => {
+  await verified();
+  const channel = await service("alice").createConversation({ kind: "channel", name: "general" });
+  const first = await service("alice").sendMessage(channel.id, "first");
+  const second = await service("alice").sendMessage(channel.id, "second");
+  const reply = await service("bob").sendMessage(channel.id, "reply", first.id);
+  await service("alice").toggleReaction(first.id, "👍");
+  await service("bob").toggleReaction(first.id, "👍");
+  await service("bob").toggleReaction(second.id, "🎉");
+  const { db, queries } = recordQueries();
+  const chat = createMessagingService(db, { userId: "alice", organizationId: fixture.orgA });
+  expect(await chat.listMessages(channel.id)).toMatchObject([
+    { id: first.id, replyCount: 1, reactions: [{ emoji: "👍", count: 2, reacted: true }] },
+    { id: second.id, replyCount: 0, reactions: [{ emoji: "🎉", count: 1, reacted: false }] },
+  ]);
+  queries.length = 0;
+  expect(await chat.listMessages(channel.id, first.id)).toMatchObject([
+    { id: reply.id, replyCount: 0, reactions: [] },
+  ]);
+  expect(
+    queries.filter(
+      (query) => query.includes("count(*)") && query.includes('from "messaging_messages"'),
+    ),
+  ).toEqual([]);
+  queries.length = 0;
+  const empty = await service("alice").createConversation({ kind: "channel", name: "empty" });
+  expect(await chat.listMessages(empty.id)).toEqual([]);
+  expect(
+    queries.filter(
+      (query) => query.includes("count(*)") && query.includes('from "messaging_messages"'),
+    ),
+  ).toEqual([]);
+});
 
 test("external authors follow the viewer organization for partner channel roots and replies", async () => {
   await verified();

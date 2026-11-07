@@ -194,29 +194,53 @@ export function createRealtimeHub(
           }
         }
         const changes = await deps.readChanges();
-        for (const change of changes) {
-          if (isStopped()) return;
-          for (const connection of connections) {
-            if (
-              !connection.transport ||
-              !connection.ready ||
-              !relevant(connection.identity, change.audience)
-            )
-              continue;
-            if (!(await revalidate(connection))) continue;
-            if (!(await deps.canReceive(connection.identity, change.audience))) continue;
-            if (isStopped() || !connections.has(connection)) continue;
-            const event: Extract<RealtimeEvent, { type: "change" }> = {
-              version: 1,
-              type: "change",
-              id: change.id,
-              organizationId: connection.identity.organizationId,
-              domain: change.domain,
-            };
-            if (change.audience[0] === "conversation") event.conversationId = change.audience[1];
-            send(connection, event);
+        const completed: string[] = [];
+        try {
+          for (let index = 0; index < changes.length;) {
+            const change = changes[index]!;
+            const ids = [change.id];
+            index++;
+            // Reset events are ordering boundaries, not ordinary invalidation hints.
+            if (!["access", "session", "organization", "profile"].includes(change.domain)) {
+              while (index < changes.length) {
+                const next = changes[index]!;
+                if (
+                  next.domain !== change.domain ||
+                  next.audience.length !== change.audience.length ||
+                  !next.audience.every((part, position) => part === change.audience[position])
+                )
+                  break;
+                ids.push(next.id);
+                index++;
+              }
+            }
+            // A retry can include new rows. Never reuse a previously seen row ID for a group.
+            const eventId = ids.length === 1 ? change.id : crypto.randomUUID();
+            if (isStopped()) return;
+            for (const connection of connections) {
+              if (
+                !connection.transport ||
+                !connection.ready ||
+                !relevant(connection.identity, change.audience)
+              )
+                continue;
+              if (!(await revalidate(connection))) continue;
+              if (!(await deps.canReceive(connection.identity, change.audience))) continue;
+              if (isStopped() || !connections.has(connection)) continue;
+              const event: Extract<RealtimeEvent, { type: "change" }> = {
+                version: 1,
+                type: "change",
+                id: eventId,
+                organizationId: connection.identity.organizationId,
+                domain: change.domain,
+              };
+              if (change.audience[0] === "conversation") event.conversationId = change.audience[1];
+              send(connection, event);
+            }
+            completed.push(...ids);
           }
-          if (!isStopped()) await deps.acknowledgeChanges([change.id]);
+        } finally {
+          if (!isStopped() && completed.length) await deps.acknowledgeChanges(completed);
         }
       } catch {
         // Keep the outbox row for retry. No event content or credentials in logs.

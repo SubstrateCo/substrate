@@ -1,6 +1,5 @@
 import type { DatabaseExecutor } from "../../client";
 import { ensureHumanActor } from "../../core/actors/provisioning";
-import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
 import { member } from "../../core/organizations/schema";
 import { RepositoryContext } from "../../core/repository-context";
@@ -51,6 +50,7 @@ export function createMessagingService(
       organizationId: scope.organizationId,
       actorEntityId: actor.entityId,
     }).requireActiveActor();
+    return { actor, authorName: identity.user.name };
   }
 
   async function requireConversation(tx: DatabaseExecutor, id: string) {
@@ -131,20 +131,21 @@ export function createMessagingService(
               )
               .orderBy(asc(user.name), asc(user.id))
           : [];
+        const byConversation = new Map<string, typeof names>();
+        for (const participant of names) {
+          const group = byConversation.get(participant.conversationId) ?? [];
+          group.push(participant);
+          byConversation.set(participant.conversationId, group);
+        }
         return rows.map((row) => ({
           ...row,
-          partner: names.some(
-            (participant) =>
-              participant.conversationId === row.id &&
-              participant.organizationId !== scope.organizationId,
+          partner: (byConversation.get(row.id) ?? []).some(
+            (participant) => participant.organizationId !== scope.organizationId,
           ),
           name:
             row.name ??
-            (names
-              .filter(
-                (participant) =>
-                  participant.conversationId === row.id && participant.userId !== scope.userId,
-              )
+            ((byConversation.get(row.id) ?? [])
+              .filter((participant) => participant.userId !== scope.userId)
               .map((participant) => participant.name)
               .join(", ") ||
               null),
@@ -294,7 +295,12 @@ export function createMessagingService(
         rows.reverse();
         const allReactions = rows.length
           ? await tx
-              .select()
+              .select({
+                messageId: reactions.messageId,
+                emoji: reactions.emoji,
+                count: sql<number>`count(*)::int`,
+                reacted: sql<boolean>`bool_or(${reactions.userId} = ${scope.userId})`,
+              })
               .from(reactions)
               .where(
                 inArray(
@@ -302,48 +308,38 @@ export function createMessagingService(
                   rows.map((row) => row.message.id),
                 ),
               )
+              .groupBy(reactions.messageId, reactions.emoji)
           : [];
-        const replies = await tx
-          .select({ threadId: messages.threadId, count: sql<number>`count(*)::int` })
-          .from(messages)
-          .where(
-            and(
-              eq(messages.conversationId, conversationId),
-              inArray(
-                messages.threadId,
-                rows.filter((row) => !row.message.threadId).map((row) => row.message.id),
-              ),
-            ),
-          )
-          .groupBy(messages.threadId);
-        return rows.map(({ message, authorName, authorExternal }) => {
-          const grouped = new Map<string, { emoji: string; count: number; reacted: boolean }>();
-          for (const reaction of allReactions.filter(
-            (reaction) => reaction.messageId === message.id,
-          )) {
-            const item = grouped.get(reaction.emoji) ?? {
-              emoji: reaction.emoji,
-              count: 0,
-              reacted: false,
-            };
-            item.count++;
-            item.reacted ||= reaction.userId === scope.userId;
-            grouped.set(reaction.emoji, item);
-          }
-          return {
-            ...message,
-            authorName,
-            authorExternal,
-            replyCount: replies.find((reply) => reply.threadId === message.id)?.count ?? 0,
-            reactions: [...grouped.values()],
-          };
-        });
+        const roots = rows.filter((row) => !row.message.threadId).map((row) => row.message.id);
+        const replies = roots.length
+          ? await tx
+              .select({ threadId: messages.threadId, count: sql<number>`count(*)::int` })
+              .from(messages)
+              .where(
+                and(eq(messages.conversationId, conversationId), inArray(messages.threadId, roots)),
+              )
+              .groupBy(messages.threadId)
+          : [];
+        const replyCounts = new Map(replies.map((reply) => [reply.threadId, reply.count]));
+        const byMessage = new Map<string, { emoji: string; count: number; reacted: boolean }[]>();
+        for (const { messageId, ...reaction } of allReactions) {
+          const group = byMessage.get(messageId) ?? [];
+          group.push(reaction);
+          byMessage.set(messageId, group);
+        }
+        return rows.map(({ message, authorName, authorExternal }) => ({
+          ...message,
+          authorName,
+          authorExternal,
+          replyCount: replyCounts.get(message.id) ?? 0,
+          reactions: byMessage.get(message.id) ?? [],
+        }));
       });
     },
     async sendMessage(conversationId: string, body: string, threadId?: string, requestId?: string) {
       return db.transaction(async (tx) => {
-        await authenticate(tx);
-        await requireConversation(tx, conversationId);
+        const { actor, authorName } = await authenticate(tx);
+        const conversation = await requireConversation(tx, conversationId);
         if (!body.trim() || body.length > 20000)
           throw new ValidationError("Message must contain 1 to 20000 characters.");
         if (requestId) {
@@ -358,12 +354,8 @@ export function createMessagingService(
               existing.threadId !== (threadId ?? null)
             )
               throw new ConflictError("This request was already used for another message.");
-            const [author] = await tx
-              .select({ name: user.name })
-              .from(user)
-              .where(eq(user.id, scope.userId));
             const reactions: { emoji: string; count: number; reacted: boolean }[] = [];
-            return { ...existing, authorName: author!.name, reactions, replyCount: 0 };
+            return { ...existing, authorName, reactions, replyCount: 0 };
           }
         }
         if (threadId) {
@@ -385,28 +377,19 @@ export function createMessagingService(
           .insert(messages)
           .values({ conversationId, authorId: scope.userId, body, threadId, requestId })
           .returning();
-        const [actor] = await tx
-          .select()
-          .from(actors)
-          .where(
-            and(eq(actors.organizationId, scope.organizationId), eq(actors.userId, scope.userId)),
-          );
         await applyMessageEffects(
           new RepositoryContext(tx, {
             organizationId: scope.organizationId,
-            actorEntityId: actor!.entityId,
+            actorEntityId: actor.entityId,
           }),
           scope,
           message!,
+          conversation.organizationId,
         );
-        const [author] = await tx
-          .select({ name: user.name })
-          .from(user)
-          .where(eq(user.id, scope.userId));
         const initialReactions: { emoji: string; count: number; reacted: boolean }[] = [];
         return {
           ...message!,
-          authorName: author!.name,
+          authorName,
           replyCount: 0,
           reactions: initialReactions,
         };

@@ -13,23 +13,20 @@ import { notifications } from "../notifications/schema";
 import { requireWork } from "./access";
 import { messageReferences } from "./references";
 import { messageEntityReferences } from "./schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 
 export async function applyMessageEffects(
   ctx: RepositoryContext,
   scope: MessagingIdentity,
   message: typeof messagingMessages.$inferSelect,
+  conversationOrganizationId: string,
 ) {
   const { db } = ctx;
-  const [conversation] = await db
-    .select()
-    .from(messagingConversations)
-    .where(eq(messagingConversations.id, message.conversationId));
   const recipients = new Map<string, "mention" | "reply">();
   const references = messageReferences(message.body);
   for (const reference of references) {
     if (reference.kind !== "person") {
-      if (conversation!.organizationId !== scope.organizationId) throw new AccessDeniedError();
+      if (conversationOrganizationId !== scope.organizationId) throw new AccessDeniedError();
       const work = await requireWork(ctx, reference.id);
       if (work.entityType !== reference.kind) throw new AccessDeniedError();
       await db
@@ -71,19 +68,18 @@ export async function applyMessageEffects(
   }
   if (message.threadId) {
     const authors = await db
-      .select({ userId: messagingMessages.authorId })
+      .selectDistinct({ userId: messagingMessages.authorId })
       .from(messagingMessages)
       .where(
         and(
           eq(messagingMessages.conversationId, message.conversationId),
-          eq(messagingMessages.id, message.threadId),
+          or(
+            eq(messagingMessages.id, message.threadId),
+            eq(messagingMessages.threadId, message.threadId),
+          ),
         ),
       );
-    const replies = await db
-      .select({ userId: messagingMessages.authorId })
-      .from(messagingMessages)
-      .where(eq(messagingMessages.threadId, message.threadId));
-    for (const author of [...authors, ...replies])
+    for (const author of authors)
       if (!recipients.has(author.userId)) recipients.set(author.userId, "reply");
   }
   recipients.delete(scope.userId);
@@ -120,7 +116,7 @@ export async function applyMessageEffects(
             eq(messagingParticipants.organizationId, actor.organizationId),
           ),
         );
-      if (!participant && actor.organizationId !== conversation!.organizationId) continue;
+      if (!participant && actor.organizationId !== conversationOrganizationId) continue;
       await db
         .insert(notifications)
         .values({

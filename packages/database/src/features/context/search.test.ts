@@ -2,6 +2,7 @@ import { user } from "../../core/authentication/schema";
 import { entityLinks } from "../../core/links/schema";
 import { AccessDeniedError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
+import { recordQueries } from "../../testing/queries";
 import { messagingParticipants } from "../messaging/schema";
 import { createMessagingService } from "../messaging/service";
 import { createContextService } from "./service";
@@ -9,6 +10,48 @@ import { createContextService } from "./service";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 const f = setupDatabase();
+
+test("30-task search and project search each project authorized output in one statement", async () => {
+  await f.db.update(user).set({ emailVerified: true });
+  const alice = f.forActor(f.alice);
+  const project = await alice.projects.create({ name: "Search project" });
+  const tasks = [];
+  for (let i = 0; i < 30; i++)
+    tasks.push(
+      await alice.tasks.create({ projectEntityId: project.entityId, title: `Search ${i}` }),
+    );
+  const { db, queries } = recordQueries();
+  const context = createContextService(db, { userId: "alice", organizationId: f.orgA });
+  const results = await context.search({ query: "Search", kind: "task" });
+  expect(queries.slice(queries.findIndex((query) => query.includes('from "tasks"')))).toHaveLength(
+    1,
+  );
+  expect(results).toEqual(
+    tasks
+      .sort((a, b) => a.entityId.localeCompare(b.entityId))
+      .map((task) => ({
+        id: task.entityId,
+        title: task.title,
+        kind: "task",
+        projectEntityId: project.entityId,
+      })),
+  );
+  expect(queries.filter((query) => query.includes('from "tasks"'))).toHaveLength(1);
+  expect(queries.filter((query) => query.includes('from "projects"'))).toHaveLength(0);
+  queries.length = 0;
+  expect(await context.search({ query: "Search", kind: "project" })).toEqual([
+    {
+      id: project.entityId,
+      title: project.name,
+      kind: "project",
+      projectEntityId: project.entityId,
+    },
+  ]);
+  expect(queries.filter((query) => query.includes('from "projects"'))).toHaveLength(1);
+  expect(
+    queries.slice(queries.findIndex((query) => query.includes('from "projects"'))),
+  ).toHaveLength(1);
+});
 
 test("person search filters conversation access before paging and keeps organization boundaries", async () => {
   await f.db.update(user).set({ emailVerified: true });

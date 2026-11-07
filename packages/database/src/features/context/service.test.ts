@@ -9,6 +9,7 @@ import {
   notifications,
 } from "../../schema";
 import { setupDatabase } from "../../testing/database";
+import { recordQueries } from "../../testing/queries";
 import { messagingParticipants } from "../messaging/schema";
 import { createMessagingService } from "../messaging/service";
 import { messageEntityReferences, sourceTaskRequests } from "./schema";
@@ -20,6 +21,59 @@ import { eq } from "drizzle-orm";
 const f = setupDatabase();
 const context = (userId = "alice", organizationId = f.orgA) =>
   createContextService(f.db, { userId, organizationId });
+
+test("thread recipients use one distinct conversation-scoped query and mentions take precedence", async () => {
+  await f.db.update(user).set({ emailVerified: true });
+  const chat = createMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
+  const channel = await chat.createConversation({
+    kind: "channel",
+    name: "discussion",
+    emails: ["bob@example.com", "outside@example.com"],
+  });
+  const root = await chat.sendMessage(channel.id, "root");
+  const bob = createMessagingService(f.db, { userId: "bob", organizationId: f.orgA });
+  for (let i = 0; i < 5; i++) await bob.sendMessage(channel.id, `reply ${i}`, root.id);
+  const { db, queries } = recordQueries();
+  const partner = createMessagingService(db, { userId: "outsider", organizationId: f.orgB });
+  const sent = await partner.sendMessage(channel.id, "partner reply", root.id);
+  expect(
+    queries.filter((query) => query.includes('"author_id" from "messaging_messages"')),
+  ).toHaveLength(1);
+  expect(
+    await f.db.select().from(notifications).where(eq(notifications.messageId, sent.id)),
+  ).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        recipientActorEntityId: f.alice,
+        organizationId: f.orgA,
+        kind: "reply",
+      }),
+      expect.objectContaining({
+        recipientActorEntityId: f.bob,
+        organizationId: f.orgA,
+        kind: "reply",
+      }),
+    ]),
+  );
+  const mentioned = await chat.sendMessage(channel.id, `@[person:${f.bob}]`, root.id);
+  expect(
+    await f.db.select().from(notifications).where(eq(notifications.messageId, mentioned.id)),
+  ).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ recipientActorEntityId: f.bob, kind: "mention" }),
+      expect.objectContaining({
+        recipientActorEntityId: f.outsider,
+        organizationId: f.orgB,
+        kind: "reply",
+      }),
+    ]),
+  );
+  expect(
+    (await f.db.select().from(notifications).where(eq(notifications.messageId, mentioned.id)))
+      .map((row) => row.recipientActorEntityId)
+      .sort(),
+  ).toEqual([f.bob, f.outsider].sort());
+});
 async function setup() {
   await f.db.update(user).set({ emailVerified: true });
   const repos = f.forActor(f.alice);
