@@ -17,4 +17,3 @@ export type {
   AgentMcpServer,
   AgentCatalog,
 } from "./input";
-export { agentAccessScope, agentAccessChange, type AgentAccessChange } from "./access";

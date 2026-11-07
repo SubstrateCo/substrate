@@ -10,7 +10,7 @@ import { eq } from "drizzle-orm";
 const f = setupDatabase();
 
 describe("actor provisioning", () => {
-  test("concurrent user agent provisioning reuses identity but never shares grants across organizations", async () => {
+  test("concurrent user agent provisioning reuses identity and keeps workspaces isolated", async () => {
     const [agent] = await f.db
       .insert(userAgents)
       .values({
@@ -21,6 +21,11 @@ describe("actor provisioning", () => {
       })
       .returning();
     await f.db.insert(member).values({ id: "alice-b", organizationId: f.orgB, userId: "alice" });
+    const otherOwner = await ensureHumanActor(f.db, {
+      organizationId: f.orgB,
+      userId: "alice",
+      name: "Alice",
+    });
     const input = { organizationId: f.orgA, userId: "alice", userAgentId: agent!.id };
     const [first, second] = await Promise.all([
       ensureUserAgentActor(f.db, input),
@@ -29,14 +34,13 @@ describe("actor provisioning", () => {
     expect(first.entityId).toBe(second.entityId);
     const other = await ensureUserAgentActor(f.db, { ...input, organizationId: f.orgB });
     expect(other.entityId).not.toBe(first.entityId);
+    const otherContact = await f
+      .forActor(otherOwner.entityId, f.orgB)
+      .contacts.create({ displayName: "Other workspace" });
+    expect(
+      (await f.forActor(other.entityId, f.orgB).contacts.list()).map((item) => item.entityId),
+    ).toEqual([otherContact.entityId]);
     const contact = await f.forActor(f.alice).contacts.create({ displayName: "Private" });
-    await f
-      .forActor(f.alice)
-      .permissions.grant({
-        entityId: contact.entityId,
-        actorEntityId: first.entityId,
-        level: "edit",
-      });
     await f
       .forActor(first.entityId)
       .contacts.update(contact.entityId, { displayName: "Agent edit" });
@@ -46,12 +50,6 @@ describe("actor provisioning", () => {
     await expect(
       f.forActor(other.entityId, f.orgB).contacts.get(contact.entityId),
     ).rejects.toBeInstanceOf(AccessDeniedError);
-    await f
-      .forActor(f.alice)
-      .permissions.revoke({ entityId: contact.entityId, actorEntityId: first.entityId });
-    await expect(f.forActor(first.entityId).contacts.get(contact.entityId)).rejects.toBeInstanceOf(
-      AccessDeniedError,
-    );
     const before = await f.db.select().from(entities);
     await expect(
       ensureUserAgentActor(f.db, { ...input, userAgentId: crypto.randomUUID() }),
@@ -99,7 +97,7 @@ describe("actor provisioning", () => {
     ).rejects.toMatchObject({ cause: { code: "23514" } });
   });
 
-  test("user agents receive separate organization-scoped grants and lose access when inactive", async () => {
+  test("user agents inherit owner access, retain assignment identity, and lose access when inactive", async () => {
     const [agent] = await f.db
       .insert(userAgents)
       .values({
@@ -113,37 +111,19 @@ describe("actor provisioning", () => {
     const input = { organizationId: f.orgA, userId: "alice", userAgentId: agent!.id };
     const assistant = await repositories.forUserAgent(input);
     const contact = await f.forActor(f.alice).contacts.create({ displayName: "Private" });
-    await expect(assistant.contacts.get(contact.entityId)).rejects.toBeInstanceOf(
-      AccessDeniedError,
-    );
+    expect((await assistant.contacts.get(contact.entityId)).displayName).toBe("Private");
     const [actor] = await f.db.select().from(actors).where(eq(actors.userAgentId, agent!.id));
     const project = await f.forActor(f.alice).projects.create({ name: "Agent work" });
-    await f
-      .forActor(f.alice)
-      .permissions.grant({
-        entityId: project.entityId,
-        actorEntityId: actor!.entityId,
-        level: "view",
-      });
-    const task = await f
-      .forActor(f.alice)
-      .tasks.create({
-        projectEntityId: project.entityId,
-        title: "Assigned",
-        assigneeActorEntityId: actor!.entityId,
-      });
+    const task = await f.forActor(f.alice).tasks.create({
+      projectEntityId: project.entityId,
+      title: "Assigned",
+      assigneeActorEntityId: actor!.entityId,
+    });
     expect((await assistant.tasks.get(task.entityId)).assigneeActorEntityId).toBe(actor!.entityId);
-    await f
-      .forActor(f.alice)
-      .permissions.grant({
-        entityId: contact.entityId,
-        actorEntityId: actor!.entityId,
-        level: "view",
-      });
     expect((await assistant.contacts.get(contact.entityId)).displayName).toBe("Private");
-    await expect(
-      assistant.contacts.update(contact.entityId, { displayName: "Changed" }),
-    ).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(
+      (await assistant.contacts.update(contact.entityId, { displayName: "Changed" })).displayName,
+    ).toBe("Changed");
     await repositories.forUserAgent(input);
     expect(await f.db.select().from(actors).where(eq(actors.userAgentId, agent!.id))).toHaveLength(
       1,
@@ -161,13 +141,11 @@ describe("actor provisioning", () => {
       ),
     ).not.toContain(actor!.entityId);
     await expect(
-      f
-        .forActor(f.alice)
-        .permissions.grant({
-          entityId: contact.entityId,
-          actorEntityId: actor!.entityId,
-          level: "edit",
-        }),
+      f.forActor(f.alice).permissions.grant({
+        entityId: contact.entityId,
+        actorEntityId: actor!.entityId,
+        level: "edit",
+      }),
     ).rejects.toBeInstanceOf(AccessDeniedError);
     await expect(assistant.contacts.list()).rejects.toBeInstanceOf(AccessDeniedError);
     await expect(repositories.forUserAgent(input)).rejects.toBeInstanceOf(AccessDeniedError);

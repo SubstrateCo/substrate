@@ -52,7 +52,7 @@ export function ProjectSharing({
         <div>
           <h2 className="text-sm font-semibold">Project access</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Only these people and agents can open this project.
+            Only these people can open this project.
           </p>
         </div>
         {canManage && (
@@ -69,7 +69,7 @@ export function ProjectSharing({
               }}
             >
               <DialogTitle>Add project access</DialogTitle>
-              <DialogDescription>Choose a person or agent in this workspace.</DialogDescription>
+              <DialogDescription>Choose a person in this workspace.</DialogDescription>
               <ProjectAccessForm
                 detail={detail}
                 onReview={reviewChange}

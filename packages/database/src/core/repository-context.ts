@@ -1,6 +1,6 @@
 import type { DatabaseExecutor } from "../client";
 import { AccessDeniedError, ValidationError } from "../errors";
-import { activeActorCondition } from "./actors/access";
+import { activeActorCondition, permissionActorEntityId } from "./actors/access";
 import { actors } from "./actors/schema";
 import { entities } from "./entities/schema";
 import { entityAccessParents } from "./permissions/access-parents";
@@ -95,7 +95,7 @@ export class RepositoryContext {
       await this.db.insert(entityGrants).values({
         organizationId: this.scope.organizationId,
         entityId: entity!.entityId,
-        actorEntityId: this.scope.actorEntityId,
+        actorEntityId: permissionActorEntityId(this.scope),
         level: "owner",
       });
     }

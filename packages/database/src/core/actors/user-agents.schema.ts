@@ -12,7 +12,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-// User-owned definitions receive workspace grants through organization-scoped actors.
+// User-owned definitions retain organization-scoped actors for attribution.
 export const userAgents = pgTable(
   "user_agents",
   {

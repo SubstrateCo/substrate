@@ -1,4 +1,6 @@
+import { entities } from "../entities/schema";
 import { member } from "../organizations/schema";
+import type { ActorScope } from "../repository-context";
 import { actors } from "./schema";
 import { userAgents } from "./user-agents.schema";
 import { and, isNull, sql } from "drizzle-orm";
@@ -12,13 +14,23 @@ export function activeActorCondition() {
         SELECT 1 FROM ${member} m
         WHERE m.organization_id = ${actors.organizationId} AND m.user_id = ${actors.userId}
       )) OR
-      (${actors.type} = 'agent' AND (
-        ${actors.userAgentId} IS NULL OR EXISTS (
+      (${actors.type} = 'agent' AND EXISTS (
           SELECT 1 FROM ${userAgents} a
           JOIN ${member} m ON m.user_id = a.user_id AND m.organization_id = ${actors.organizationId}
+          JOIN ${actors} h ON h.user_id = a.user_id AND h.organization_id = m.organization_id AND h.type = 'human'
+          JOIN ${entities} e ON e.entity_id = h.entity_id AND e.organization_id = h.organization_id
           WHERE a.id = ${actors.userAgentId} AND a.enabled = true AND a.deleted_at IS NULL
+            AND h.disabled_at IS NULL AND e.deleted_at IS NULL
         )
-      ))
+      )
     )`,
   );
+}
+
+export function permissionActorEntityId(scope: ActorScope) {
+  return sql`(SELECT h.entity_id FROM ${actors} a
+    LEFT JOIN ${userAgents} ua ON ua.id = a.user_agent_id
+    JOIN ${actors} h ON h.organization_id = a.organization_id AND h.type = 'human'
+      AND h.user_id = CASE WHEN a.type = 'human' THEN a.user_id ELSE ua.user_id END
+    WHERE a.organization_id = ${scope.organizationId} AND a.entity_id = ${scope.actorEntityId})`;
 }

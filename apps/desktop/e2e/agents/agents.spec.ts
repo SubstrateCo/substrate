@@ -125,6 +125,8 @@ test("user agents and device-local configuration survive reload and restart in E
 
   await page.getByRole("button", { name: "Create agent", exact: true }).click();
   const agent = page.getByRole("dialog", { name: "Create agent", exact: true });
+  await expect(agent.getByRole("tab", { name: "Workspace access", exact: true })).toHaveCount(0);
+  await expect(agent.getByRole("button", { name: "Workspace access", exact: true })).toHaveCount(0);
   await agent.getByLabel("Agent name", { exact: true }).fill("Customer reviewer");
   await agent.getByRole("button", { name: /^Harness & model:/ }).click();
   for (const harness of ["OpenCode", "Antigravity", "Claude Code", "Codex"]) {
@@ -147,6 +149,10 @@ test("user agents and device-local configuration survive reload and restart in E
   await page.reload();
   await page.getByRole("button", { name: "Edit Customer reviewer", exact: true }).click();
   const editing = page.getByRole("dialog", { name: "Edit agent", exact: true });
+  await expect(editing.getByRole("tab", { name: "Workspace access", exact: true })).toHaveCount(0);
+  await expect(editing.getByRole("button", { name: "Workspace access", exact: true })).toHaveCount(
+    0,
+  );
   await expect(editing.getByRole("button", { name: /^Harness & model:/ })).toContainText(
     "Claude Code",
   );

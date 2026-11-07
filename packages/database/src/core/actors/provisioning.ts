@@ -44,12 +44,14 @@ export function createActor(db: DatabaseExecutor, input: ActorInput) {
         agentConfig: input.type === "agent" ? input.agentConfig : null,
       })
       .returning();
-    await tx.insert(entityGrants).values({
-      organizationId: input.organizationId,
-      entityId: actor!.entityId,
-      actorEntityId: actor!.entityId,
-      level: "owner",
-    });
+    if (input.type === "human") {
+      await tx.insert(entityGrants).values({
+        organizationId: input.organizationId,
+        entityId: actor!.entityId,
+        actorEntityId: actor!.entityId,
+        level: "owner",
+      });
+    }
     return actor!;
   });
 }

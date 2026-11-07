@@ -5,7 +5,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import type { LocalConfigurationController } from "../../lib/desktop/agents/local-configuration-controller";
-import { AgentAccess } from "./access/agent-access";
 import { AgentConfiguration } from "./device/agent-configuration";
 import { AgentPicture } from "./editors/agent-picture";
 import { saveAgent, deleteAgent } from "@/api/agents/requests";
@@ -103,9 +102,6 @@ export function AgentSettings({
           section={section}
           defaults={defaults}
         />
-      )}
-      renderAgentAccess={(agent) => (
-        <AgentAccess userId={userId} organizationId={organizationId} agent={agent} />
       )}
       onRetry={() => void catalog.refetch()}
       onSaveAgent={async (input) => {

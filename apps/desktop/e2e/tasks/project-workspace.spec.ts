@@ -138,7 +138,7 @@ test("project access reviews grants and removal, keeps reductions neutral, and p
     const review = page.getByRole("dialog", { name: "Review access change", exact: true });
     await add.click();
     const actorSearch = addDialog.getByRole("combobox", {
-      name: "Search people or agents",
+      name: "Search people",
       exact: true,
     });
     await actorSearch.fill("Desktop Member");

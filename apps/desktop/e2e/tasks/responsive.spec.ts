@@ -145,7 +145,7 @@ for (const size of [
     await sharing.getByRole("button", { name: "Add access", exact: true }).click();
     const addDialog = page.getByRole("dialog", { name: "Add project access", exact: true });
     await addDialog
-      .getByRole("combobox", { name: "Search people or agents", exact: true })
+      .getByRole("combobox", { name: "Search people", exact: true })
       .fill(desktop.member.name);
     await fits(page, addDialog);
     await addDialog.getByRole("option", { name: desktop.member.name, exact: true }).click();

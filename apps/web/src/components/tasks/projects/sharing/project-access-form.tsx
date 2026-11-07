@@ -11,7 +11,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Bot, Check, UserRound } from "lucide-react";
+import { Check, UserRound } from "lucide-react";
 
 export function ProjectAccessForm({
   detail,
@@ -25,7 +25,9 @@ export function ProjectAccessForm({
   const [actorEntityId, setActorEntityId] = useState("");
   const [level, setLevel] = useState<ProjectPermission>("edit");
   const available = detail.actors.filter(
-    (actor) => !detail.members.some((member) => member.actorEntityId === actor.entityId),
+    (actor) =>
+      actor.type === "human" &&
+      !detail.members.some((member) => member.actorEntityId === actor.entityId),
   );
   const actor = available.find((candidate) => candidate.entityId === actorEntityId);
   return (
@@ -37,12 +39,9 @@ export function ProjectAccessForm({
       }}
     >
       <Command>
-        <CommandInput
-          aria-label="Search people or agents"
-          placeholder="Search workspace people or agents…"
-        />
+        <CommandInput aria-label="Search people" placeholder="Search workspace people…" />
         <CommandList>
-          <CommandEmpty>No other workspace people or agents available.</CommandEmpty>
+          <CommandEmpty>No other workspace people available.</CommandEmpty>
           <CommandGroup heading="Available in this workspace">
             {available.map((candidate) => (
               <CommandItem
@@ -50,11 +49,7 @@ export function ProjectAccessForm({
                 value={`${candidate.name} ${candidate.entityId}`}
                 onSelect={() => setActorEntityId(candidate.entityId)}
               >
-                {candidate.type === "agent" ? (
-                  <Bot aria-hidden="true" />
-                ) : (
-                  <UserRound aria-hidden="true" />
-                )}
+                <UserRound aria-hidden="true" />
                 <span className="min-w-0 flex-1 truncate">{candidate.name}</span>
                 {candidate.entityId === actorEntityId && <Check aria-hidden="true" />}
               </CommandItem>
@@ -75,8 +70,8 @@ export function ProjectAccessForm({
         ]}
       />
       <p className="text-xs text-muted-foreground">
-        Choose an existing workspace person or agent. This does not invite external users or grant
-        access across workspaces.
+        Choose an existing workspace person. This does not invite external users or grant access
+        across workspaces.
       </p>
       <div className="flex flex-wrap justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel}>

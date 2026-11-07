@@ -40,6 +40,11 @@ export const actors = pgTable(
       foreignColumns: [entities.organizationId, entities.entityId, entities.entityType],
     }).onDelete("cascade"),
     unique("actors_organization_entity_unique").on(table.organizationId, table.entityId),
+    unique("actors_organization_entity_type_unique").on(
+      table.organizationId,
+      table.entityId,
+      table.type,
+    ),
     unique("actors_organization_user_unique").on(table.organizationId, table.userId),
     unique("actors_organization_user_agent_unique").on(table.organizationId, table.userAgentId),
     index("actors_user_idx").on(table.userId),

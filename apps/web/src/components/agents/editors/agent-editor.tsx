@@ -43,7 +43,6 @@ export function AgentEditor({
   onClose,
   onSave,
   renderConfiguration,
-  access,
 }: {
   userId: string;
   organizationId?: string | null;
@@ -57,7 +56,6 @@ export function AgentEditor({
     section: AgentSection,
     defaults: boolean,
   ) => ReactNode;
-  access: ReactNode;
 }) {
   const [error, setError] = useState<string>();
   const formId = useId();
@@ -180,7 +178,6 @@ export function AgentEditor({
                                 <TabsTrigger value="instructions">Instructions</TabsTrigger>
                                 <TabsTrigger value="skills">Skills</TabsTrigger>
                                 <TabsTrigger value="mcps">MCP servers</TabsTrigger>
-                                <TabsTrigger value="access">Workspace access</TabsTrigger>
                               </TabsList>
                             </div>
                             <TabsContent value="instructions" className="mt-3 md:min-h-80">
@@ -236,9 +233,6 @@ export function AgentEditor({
                                 </form.Subscribe>
                               </TabsContent>
                             ))}
-                            <TabsContent value="access" className="mt-3 md:min-h-80">
-                              {access}
-                            </TabsContent>
                           </Tabs>
                         </div>
                         <aside
@@ -286,7 +280,6 @@ export function AgentEditor({
                             {[
                               { value: "skills", label: "Skills" },
                               { value: "mcps", label: "MCP servers" },
-                              { value: "access", label: "Workspace access" },
                             ].map((section) => (
                               <Button
                                 key={section.value}

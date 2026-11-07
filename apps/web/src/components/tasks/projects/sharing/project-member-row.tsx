@@ -3,7 +3,7 @@ import { useState } from "react";
 import { TaskSelect } from "../../task-select";
 import type { ProjectDetail, ProjectPermission } from "../../types";
 import { PendingButton } from "@/components/feedback/pending-button";
-import { Bot, UserRound } from "lucide-react";
+import { UserRound } from "lucide-react";
 
 const permissionRank = { view: 0, comment: 1, edit: 2, owner: 3 };
 
@@ -26,16 +26,10 @@ export function ProjectMemberRow({
   return (
     <li className="flex flex-wrap items-center justify-between gap-3 p-4">
       <div className="flex min-w-0 flex-1 basis-36 items-center gap-3">
-        {member.type === "agent" ? (
-          <Bot className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-        ) : (
-          <UserRound className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-        )}
+        <UserRound className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
         <div className="min-w-0">
           <p className="text-sm font-medium wrap-anywhere">{member.name}</p>
-          <p className="text-xs text-muted-foreground">
-            {member.type === "agent" ? "Agent" : "Person"} · Direct access
-          </p>
+          <p className="text-xs text-muted-foreground">Person · Direct access</p>
         </div>
       </div>
       {canManage ? (

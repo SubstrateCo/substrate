@@ -5,14 +5,12 @@ import {
 } from "@startup-os/contracts/agents";
 
 import { respond, validationHook } from "../../shared/http";
-import { agentAccessRoutes } from "./access-routes";
 import * as defaultServices from "./service";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 
 export function createAgentsRoutes(services = defaultServices) {
   return new Hono()
-    .route("/access", agentAccessRoutes)
     .post("/list", async (c) => respond(c, await services.listAgents(c.req.raw.headers)))
     .post("/actors/save", zValidator("json", saveAgentInput, validationHook), async (c) =>
       respond(c, await services.saveAgent(c.req.raw.headers, c.req.valid("json"))),

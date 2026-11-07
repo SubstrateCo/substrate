@@ -40,7 +40,6 @@ export function AgentSettingsView({
   onSaveSkill,
   renderAgentPicture,
   renderAgentConfiguration,
-  renderAgentAccess,
   onDelete,
 }: {
   userId: string;
@@ -65,7 +64,6 @@ export function AgentSettingsView({
     section: AgentSection,
     defaults: boolean,
   ) => ReactNode;
-  renderAgentAccess: (agent?: AgentConfiguration) => ReactNode;
   onDelete: (kind: CatalogKind, id: string) => Promise<void>;
 }) {
   const [editor, setEditor] = useState<Editor>();
@@ -135,7 +133,6 @@ export function AgentSettingsView({
               agent={editedAgent}
               picture={editedAgent && renderAgentPicture(editedAgent)}
               renderConfiguration={renderAgentConfiguration}
-              access={renderAgentAccess(editedAgent)}
               pending={pending}
               onClose={close}
               onSave={async (input) => {

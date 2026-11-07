@@ -144,7 +144,7 @@ describe("access controls", () => {
     );
   });
 
-  test("agents need explicit grants and can be disabled", async () => {
+  test("agents without a user owner cannot receive grants or access records", async () => {
     const agent = await createActor(f.db, {
       organizationId: f.orgA,
       type: "agent",
@@ -154,18 +154,16 @@ describe("access controls", () => {
     await expect(f.forActor(agent.entityId).contacts.get(contact.entityId)).rejects.toBeInstanceOf(
       AccessDeniedError,
     );
-    await f.forActor(f.alice).permissions.grant({
-      entityId: contact.entityId,
-      actorEntityId: agent.entityId,
-      level: "edit",
-    });
-    expect(
-      (
-        await f
-          .forActor(agent.entityId)
-          .contacts.update(contact.entityId, { displayName: "Updated" })
-      ).displayName,
-    ).toBe("Updated");
+    await expect(
+      f.forActor(f.alice).permissions.grant({
+        entityId: contact.entityId,
+        actorEntityId: agent.entityId,
+        level: "edit",
+      }),
+    ).rejects.toBeInstanceOf(AccessDeniedError);
+    await expect(
+      f.forActor(agent.entityId).contacts.create({ displayName: "Blocked" }),
+    ).rejects.toBeInstanceOf(AccessDeniedError);
     await f.db
       .update(actors)
       .set({ disabledAt: new Date() })
