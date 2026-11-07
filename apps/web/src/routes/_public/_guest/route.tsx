@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { redirectAuthenticatedSession } from "@/queries/auth/session";
+import { redirectAuthenticatedSession } from "@/lib/auth/route-access";
 
 export const Route = createFileRoute("/_public/_guest")({
   ssr: false,

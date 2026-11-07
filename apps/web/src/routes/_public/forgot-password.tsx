@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
+import { ForgotPasswordForm } from "@/components/auth/password/forgot-password-form";
 
 export const Route = createFileRoute("/_public/forgot-password")({
   component: ForgotPassword,

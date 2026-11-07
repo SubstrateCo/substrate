@@ -55,7 +55,7 @@ export default defineConfig({
       },
     },
     {
-      files: ["apps/web/src/components/messaging/composer-view.tsx"],
+      files: ["apps/web/src/components/messaging/composer/composer-view.tsx"],
       rules: {
         "shadcn/no-arbitrary-values": ["error", { allow: ["max-h-[25dvh]"] }],
       },

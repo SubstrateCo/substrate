@@ -1,5 +1,5 @@
-import { provisionVerifiedAccount } from "../../../web/e2e/auth.js";
-import { Mailpit } from "../../../web/e2e/mailpit.js";
+import { provisionVerifiedAccount } from "../../../web/e2e/test-support/auth.js";
+import { Mailpit } from "../../../web/e2e/test-support/mailpit.js";
 import { applicationURL } from "../../src/shell/navigation.js";
 import { authorizationCallback, requestBrowserSignIn } from "../test-support/auth.js";
 import { _electron as electron, expect, test } from "@playwright/test";

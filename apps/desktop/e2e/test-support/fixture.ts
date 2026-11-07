@@ -5,9 +5,9 @@ import {
   signup as browserSignup,
   verifyEmail,
   type TestAccount,
-} from "../../../web/e2e/auth.js";
-import { Mailpit } from "../../../web/e2e/mailpit.js";
-import { provisionWorkspaceSession } from "../../../web/e2e/organizations.js";
+} from "../../../web/e2e/test-support/auth.js";
+import { Mailpit } from "../../../web/e2e/test-support/mailpit.js";
+import { provisionWorkspaceSession } from "../../../web/e2e/test-support/organizations.js";
 import { applicationURL } from "../../src/shell/navigation.js";
 import { authorizationCallback, requestBrowserSignIn } from "./auth.js";
 import {

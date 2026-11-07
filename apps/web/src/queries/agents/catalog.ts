@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { listAgents } from "@/api/agents";
+import { listAgents } from "@/api/agents/requests";
 import { queryKeys } from "@/queries/keys";
 
 export const agentCatalogQueryOptions = (userId: string) =>

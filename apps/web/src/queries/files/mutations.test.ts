@@ -1,7 +1,7 @@
 import { MutationObserver, QueryClient } from "@tanstack/react-query";
 
 import { pictureMutationOptions } from "./mutations";
-import { testPictureApi } from "@/api/files.test-support";
+import { testPictureApi } from "@/api/files/pictures.test-support";
 import { queryKeys } from "@/queries/keys";
 import { afterEach, expect, spyOn, test } from "bun:test";
 

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { WorkspaceSettings } from "../workspace/workspace-settings-view";
+import { WorkspaceSettings } from "../organizations/settings/organization-settings-view";
 
 export function UserSettingsLayout({
   children,

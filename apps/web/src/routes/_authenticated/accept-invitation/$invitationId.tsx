@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { AcceptInvitationScreen } from "@/components/organizations/accept-invitation-screen";
+import { AcceptInvitationScreen } from "@/components/organizations/invitations/accept-invitation-screen";
 
 export const Route = createFileRoute("/_authenticated/accept-invitation/$invitationId")({
   component: AcceptInvitation,

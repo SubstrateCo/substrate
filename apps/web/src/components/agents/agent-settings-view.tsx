@@ -8,13 +8,13 @@ import type { HarnessKind, HarnessSkill } from "@startup-os/contracts/harness";
 
 import { useState, type ReactNode } from "react";
 
-import { AgentEditor } from "./agent-editor";
-import { AgentCatalog } from "./agent-settings/agent-catalog";
-import { DeleteDefinitionDialog } from "./agent-settings/delete-definition-dialog";
-import { DeviceConfiguration } from "./agent-settings/device-configuration";
-import { CatalogSection } from "./catalog-section";
-import { CatalogRow } from "./catalog-section/catalog-row";
-import { SkillEditor } from "./skill-editor";
+import { AgentCatalog } from "./catalog/agent-catalog";
+import { CatalogRow } from "./catalog/catalog-row";
+import { CatalogSection } from "./catalog/catalog-section";
+import { DeleteDefinitionDialog } from "./catalog/delete-definition-dialog";
+import { DeviceConfiguration } from "./device/device-configuration";
+import { AgentEditor } from "./editors/agent-editor";
+import { SkillEditor } from "./editors/skill-editor";
 import { Button } from "@/components/ui/button";
 
 export type CatalogKind = "agent" | "skill";

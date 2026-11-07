@@ -1,5 +1,5 @@
-import { provisionVerifiedAccount } from "../../../web/e2e/auth.js";
-import { provisionWorkspaceSession } from "../../../web/e2e/organizations.js";
+import { provisionVerifiedAccount } from "../../../web/e2e/test-support/auth.js";
+import { provisionWorkspaceSession } from "../../../web/e2e/test-support/organizations.js";
 import { test } from "../test-support/fixture.js";
 import { expect, type Locator, type Page } from "@playwright/test";
 
@@ -245,7 +245,8 @@ for (const size of [
     const canceledRow = invitations
       .getByRole("listitem")
       .or(invitations.getByRole("row"))
-      .filter({ hasText: `responsive-0-${desktop.suffix}@example.test` });
+      .filter({ has: page.getByRole("button", { name: "Cancel", exact: true }) })
+      .first();
     const cancellation = page.waitForResponse(
       (response) =>
         new URL(response.url()).pathname === "/api/auth/organization/cancel-invitation" &&

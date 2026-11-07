@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { MessagingWorkspace } from "@/components/messaging/messaging-workspace";
+import { MessagingWorkspace } from "@/components/messaging/workspace/messaging-workspace";
 import { z } from "zod";
 
 export const Route = createFileRoute("/_authenticated/_workspace/dashboard")({

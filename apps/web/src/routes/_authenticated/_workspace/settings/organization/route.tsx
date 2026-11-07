@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { getOrganizationSettingsAccess } from "@/api/organization-settings";
+import { getOrganizationSettingsAccess } from "@/api/organizations/settings";
 
 export const Route = createFileRoute("/_authenticated/_workspace/settings/organization")({
   beforeLoad: async ({ context }) => {

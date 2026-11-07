@@ -4,11 +4,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useState } from "react";
 
-import { AgentPicture } from "./agent-picture";
-import type { LocalConfigurationController } from "./local-configuration";
-import { saveAgent, deleteAgent } from "@/api/agents";
-import { desktopLocalConfiguration } from "@/api/harness";
+import type { LocalConfigurationController } from "../../lib/desktop/agents/local-configuration-controller";
+import { AgentPicture } from "./editors/agent-picture";
+import { saveAgent, deleteAgent } from "@/api/agents/requests";
 import { AgentSettingsView, type CatalogKind } from "@/components/agents/agent-settings-view";
+import { desktopLocalConfiguration } from "@/lib/desktop/agents/local-configuration";
 import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
 import { queryKeys } from "@/queries/keys";
 

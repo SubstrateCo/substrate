@@ -1,4 +1,4 @@
-import { callMessaging } from "../../../web/e2e/api.js";
+import { callMessaging } from "../../../web/e2e/test-support/api.js";
 import { test } from "../test-support/fixture.js";
 import { createChannel } from "./test-support.js";
 import { expect } from "@playwright/test";

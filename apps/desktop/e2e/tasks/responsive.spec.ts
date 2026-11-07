@@ -1,5 +1,5 @@
-import { provisionVerifiedAccount } from "../../../web/e2e/auth.js";
-import { provisionMember } from "../../../web/e2e/organizations.js";
+import { provisionVerifiedAccount } from "../../../web/e2e/test-support/auth.js";
+import { provisionMember } from "../../../web/e2e/test-support/organizations.js";
 import { test } from "../test-support/fixture.js";
 import { expect, type Locator, type Page } from "@playwright/test";
 

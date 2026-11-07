@@ -1,5 +1,5 @@
-import { provisionVerifiedAccount } from "../../../web/e2e/auth.js";
-import { Mailpit } from "../../../web/e2e/mailpit.js";
+import { provisionVerifiedAccount } from "../../../web/e2e/test-support/auth.js";
+import { Mailpit } from "../../../web/e2e/test-support/mailpit.js";
 import { choose } from "../test-support/controls.js";
 import { test } from "../test-support/fixture.js";
 import { expect } from "@playwright/test";

@@ -5,7 +5,7 @@ import {
   type QueryClient,
 } from "@tanstack/react-query";
 
-import { pictureApi, type PictureKind } from "@/api/files";
+import { pictureApi, type PictureKind } from "@/api/files/pictures";
 import { queryKeys } from "@/queries/keys";
 
 export function pictureMutationOptions(

@@ -1,0 +1,35 @@
+import { useQuery } from "@tanstack/react-query";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+
+import { ProjectForm } from "../projects/editor/project-form";
+import { ProjectPane } from "../projects/project-pane";
+import { TasksWorkspace as TasksWorkspaceView } from "@/components/tasks/workspace/tasks-workspace-view";
+import { projectsQueryOptions } from "@/queries/tasks/options";
+
+export function TasksWorkspace({ organizationId }: { organizationId: string }) {
+  const projects = useQuery(projectsQueryOptions(organizationId));
+  const search = useSearch({ strict: false });
+  const navigate = useNavigate();
+  return (
+    <TasksWorkspaceView
+      projects={projects.data ?? []}
+      selectedProjectId={search.projectId}
+      onSelectProject={(projectId) =>
+        void navigate({ to: "/tasks", search: { workspaceId: organizationId, projectId } })
+      }
+      loading={projects.isPending}
+      error={projects.error}
+      onRetry={() => void projects.refetch()}
+      renderCreate={(onSaved, onCancel) => (
+        <ProjectForm organizationId={organizationId} onSaved={onSaved} onCancel={onCancel} />
+      )}
+      renderProject={(project) => (
+        <ProjectPane
+          key={project.entityId}
+          organizationId={organizationId}
+          projectEntityId={project.entityId}
+        />
+      )}
+    />
+  );
+}

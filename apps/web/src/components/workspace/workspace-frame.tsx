@@ -5,12 +5,12 @@ import { useLocation, useNavigate } from "@tanstack/react-router";
 
 import type { ReactNode } from "react";
 
-import { SignOutButton } from "@/components/auth/sign-out-button";
-import { OrganizationSwitcher } from "@/components/organizations/organization-switcher";
+import { SignOutButton } from "@/components/auth/sign-out/sign-out-button";
+import { OrganizationSwitcher } from "@/components/organizations/switcher/organization-switcher";
 import { WorkspaceHomeLink } from "@/components/workspace/workspace-home-link";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { sessionQueryOptions } from "@/queries/auth/session";
-import { notificationsOptions } from "@/queries/context/options";
+import { notificationsOptions } from "@/queries/context/notifications";
 import {
   activeMemberQueryOptions,
   organizationQueryOptions,

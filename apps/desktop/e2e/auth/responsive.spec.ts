@@ -1,5 +1,5 @@
-import { signup, verifyEmail } from "../../../web/e2e/auth.js";
-import { openEmailLink } from "../../../web/e2e/mailpit.js";
+import { signup, verifyEmail } from "../../../web/e2e/test-support/auth.js";
+import { openEmailLink } from "../../../web/e2e/test-support/mailpit.js";
 import { requestBrowserSignIn } from "../test-support/auth.js";
 import { test } from "../test-support/fixture.js";
 import { expect, type Page } from "@playwright/test";
