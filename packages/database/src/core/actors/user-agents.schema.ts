@@ -12,7 +12,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-// User-owned identities are not organization actors and cannot receive workspace grants.
+// User-owned definitions receive workspace grants through organization-scoped actors.
 export const userAgents = pgTable(
   "user_agents",
   {

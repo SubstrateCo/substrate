@@ -1,12 +1,12 @@
 import type { DatabaseExecutor } from "../client";
 import { AccessDeniedError, ValidationError } from "../errors";
+import { activeActorCondition } from "./actors/access";
 import { actors } from "./actors/schema";
 import { entities } from "./entities/schema";
-import { member } from "./organizations/schema";
 import { entityAccessParents } from "./permissions/access-parents";
 import { entityGrants, permissionLevel } from "./permissions/schema";
 import { visibilityCte, lockAccessPath } from "./permissions/visibility";
-import { and, eq, isNull, or, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 
 export interface ActorScope {
   organizationId: string;
@@ -40,17 +40,12 @@ export class RepositoryContext {
           eq(entities.organizationId, actors.organizationId),
         ),
       )
-      .leftJoin(
-        member,
-        and(eq(member.organizationId, actors.organizationId), eq(member.userId, actors.userId)),
-      )
       .where(
         and(
           eq(actors.organizationId, this.scope.organizationId),
           eq(actors.entityId, actorEntityId),
-          isNull(actors.disabledAt),
+          activeActorCondition(),
           isNull(entities.deletedAt),
-          or(eq(actors.type, "agent"), sql`${member.id} IS NOT NULL`),
         ),
       );
     if (!actor) throw new AccessDeniedError();

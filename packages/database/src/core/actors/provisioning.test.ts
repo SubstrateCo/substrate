@@ -1,13 +1,189 @@
 import { AccessDeniedError } from "../../errors";
-import { actors, entities, member } from "../../schema";
+import { createRepositories } from "../../repositories";
+import { actors, entities, member, userAgents } from "../../schema";
 import { setupDatabase } from "../../testing/database";
-import { createActor, ensureHumanActor } from "./provisioning";
+import { createActor, ensureHumanActor, ensureUserAgentActor } from "./provisioning";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { describe, expect, test } from "bun:test";
+import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
 
 describe("actor provisioning", () => {
+  test("concurrent user agent provisioning reuses identity but never shares grants across organizations", async () => {
+    const [agent] = await f.db
+      .insert(userAgents)
+      .values({
+        userId: "alice",
+        name: "Assistant",
+        instructions: "Help",
+        harness: "opencode",
+      })
+      .returning();
+    await f.db.insert(member).values({ id: "alice-b", organizationId: f.orgB, userId: "alice" });
+    const input = { organizationId: f.orgA, userId: "alice", userAgentId: agent!.id };
+    const [first, second] = await Promise.all([
+      ensureUserAgentActor(f.db, input),
+      ensureUserAgentActor(f.db, input),
+    ]);
+    expect(first.entityId).toBe(second.entityId);
+    const other = await ensureUserAgentActor(f.db, { ...input, organizationId: f.orgB });
+    expect(other.entityId).not.toBe(first.entityId);
+    const contact = await f.forActor(f.alice).contacts.create({ displayName: "Private" });
+    await f
+      .forActor(f.alice)
+      .permissions.grant({
+        entityId: contact.entityId,
+        actorEntityId: first.entityId,
+        level: "edit",
+      });
+    await f
+      .forActor(first.entityId)
+      .contacts.update(contact.entityId, { displayName: "Agent edit" });
+    expect((await f.forActor(f.alice).contacts.get(contact.entityId)).displayName).toBe(
+      "Agent edit",
+    );
+    await expect(
+      f.forActor(other.entityId, f.orgB).contacts.get(contact.entityId),
+    ).rejects.toBeInstanceOf(AccessDeniedError);
+    await f
+      .forActor(f.alice)
+      .permissions.revoke({ entityId: contact.entityId, actorEntityId: first.entityId });
+    await expect(f.forActor(first.entityId).contacts.get(contact.entityId)).rejects.toBeInstanceOf(
+      AccessDeniedError,
+    );
+    const before = await f.db.select().from(entities);
+    await expect(
+      ensureUserAgentActor(f.db, { ...input, userAgentId: crypto.randomUUID() }),
+    ).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(await f.db.select().from(entities)).toHaveLength(before.length);
+  });
+
+  test("database enforces user agent references, actor type, and one identity per organization", async () => {
+    const [agent] = await f.db
+      .insert(userAgents)
+      .values({
+        userId: "alice",
+        name: "Assistant",
+        instructions: "Help",
+        harness: "opencode",
+      })
+      .returning();
+    await ensureUserAgentActor(f.db, {
+      organizationId: f.orgA,
+      userId: "alice",
+      userAgentId: agent!.id,
+    });
+    await expect(
+      createActor(f.db, {
+        organizationId: f.orgA,
+        type: "agent",
+        userAgentId: agent!.id,
+        name: "Duplicate",
+      }),
+    ).rejects.toMatchObject({ cause: { code: "23505" } });
+    await expect(
+      createActor(f.db, {
+        organizationId: f.orgA,
+        type: "agent",
+        userAgentId: crypto.randomUUID(),
+        name: "Missing",
+      }),
+    ).rejects.toMatchObject({ cause: { code: "23503" } });
+    await expect(
+      f.db
+        .update(actors)
+        .set({ userAgentId: agent!.id })
+        .where(eq(actors.entityId, f.alice))
+        .execute(),
+    ).rejects.toMatchObject({ cause: { code: "23514" } });
+  });
+
+  test("user agents receive separate organization-scoped grants and lose access when inactive", async () => {
+    const [agent] = await f.db
+      .insert(userAgents)
+      .values({
+        userId: "alice",
+        name: "Assistant",
+        instructions: "Help",
+        harness: "opencode",
+      })
+      .returning();
+    const repositories = createRepositories(f.db);
+    const input = { organizationId: f.orgA, userId: "alice", userAgentId: agent!.id };
+    const assistant = await repositories.forUserAgent(input);
+    const contact = await f.forActor(f.alice).contacts.create({ displayName: "Private" });
+    await expect(assistant.contacts.get(contact.entityId)).rejects.toBeInstanceOf(
+      AccessDeniedError,
+    );
+    const [actor] = await f.db.select().from(actors).where(eq(actors.userAgentId, agent!.id));
+    const project = await f.forActor(f.alice).projects.create({ name: "Agent work" });
+    await f
+      .forActor(f.alice)
+      .permissions.grant({
+        entityId: project.entityId,
+        actorEntityId: actor!.entityId,
+        level: "view",
+      });
+    const task = await f
+      .forActor(f.alice)
+      .tasks.create({
+        projectEntityId: project.entityId,
+        title: "Assigned",
+        assigneeActorEntityId: actor!.entityId,
+      });
+    expect((await assistant.tasks.get(task.entityId)).assigneeActorEntityId).toBe(actor!.entityId);
+    await f
+      .forActor(f.alice)
+      .permissions.grant({
+        entityId: contact.entityId,
+        actorEntityId: actor!.entityId,
+        level: "view",
+      });
+    expect((await assistant.contacts.get(contact.entityId)).displayName).toBe("Private");
+    await expect(
+      assistant.contacts.update(contact.entityId, { displayName: "Changed" }),
+    ).rejects.toBeInstanceOf(AccessDeniedError);
+    await repositories.forUserAgent(input);
+    expect(await f.db.select().from(actors).where(eq(actors.userAgentId, agent!.id))).toHaveLength(
+      1,
+    );
+    await expect(repositories.forUserAgent({ ...input, userId: "bob" })).rejects.toBeInstanceOf(
+      AccessDeniedError,
+    );
+    await expect(
+      repositories.forUserAgent({ ...input, organizationId: f.orgB }),
+    ).rejects.toBeInstanceOf(AccessDeniedError);
+    await f.db.update(userAgents).set({ enabled: false }).where(eq(userAgents.id, agent!.id));
+    expect(
+      (await f.forActor(f.alice).projects.availableActors(project.entityId)).map(
+        (candidate) => candidate.entityId,
+      ),
+    ).not.toContain(actor!.entityId);
+    await expect(
+      f
+        .forActor(f.alice)
+        .permissions.grant({
+          entityId: contact.entityId,
+          actorEntityId: actor!.entityId,
+          level: "edit",
+        }),
+    ).rejects.toBeInstanceOf(AccessDeniedError);
+    await expect(assistant.contacts.list()).rejects.toBeInstanceOf(AccessDeniedError);
+    await expect(repositories.forUserAgent(input)).rejects.toBeInstanceOf(AccessDeniedError);
+    await f.db
+      .update(userAgents)
+      .set({ enabled: true, deletedAt: new Date() })
+      .where(eq(userAgents.id, agent!.id));
+    await expect(assistant.contacts.get(contact.entityId)).rejects.toBeInstanceOf(
+      AccessDeniedError,
+    );
+    await f.db.update(userAgents).set({ deletedAt: null }).where(eq(userAgents.id, agent!.id));
+    await f.db.delete(member).where(eq(member.id, "alice-a"));
+    await expect(assistant.contacts.get(contact.entityId)).rejects.toBeInstanceOf(
+      AccessDeniedError,
+    );
+  });
   test("onboarding reuses human actors without changing grants or adding entities", async () => {
     const before = await f.db.select().from(entities);
     const actor = await ensureHumanActor(f.db, {

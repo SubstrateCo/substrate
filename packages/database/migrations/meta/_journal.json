@@ -50,6 +50,13 @@
       "when": 1794009262372,
       "tag": "0006_sour_silver_samurai",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794010470655,
+      "tag": "0007_simple_red_ghost",
+      "breakpoints": true
     }
   ]
 }
