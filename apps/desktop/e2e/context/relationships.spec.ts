@@ -3,7 +3,11 @@ import type { ServiceResult } from "@startup-os/contracts/result";
 import { callMessaging } from "../../../web/e2e/test-support/api.js";
 import { test } from "../test-support/fixture.js";
 import { joinWorkspace } from "../test-support/organizations.js";
-import { observeRealtime, waitForRealtimeIdle } from "../test-support/realtime.js";
+import {
+  disconnectRealtime,
+  observeRealtime,
+  waitForRealtimeIdle,
+} from "../test-support/realtime.js";
 import { callTasks } from "../test-support/tasks.js";
 import { expect } from "@playwright/test";
 
@@ -309,13 +313,32 @@ test("explicit unlinking preserves provenance and typed references create naviga
   const conversationPath = `/dashboard?conversationId=${conversation.data!.id}`;
   await desktop.openPath(conversationPath);
   const article = page.getByRole("article").filter({ hasText: source });
+  await expect(article).toBeVisible();
+  await waitForRealtimeIdle(page);
+  await disconnectRealtime(page);
   await article.hover();
   await article.getByRole("button", { name: "Link existing work", exact: true }).click();
   const linking = page.getByRole("region", { name: "Link existing work", exact: true });
   await linking.getByLabel("Search work to link", { exact: true }).fill(title);
+  await expect(linking.getByRole("button", { name: `Link ${title}`, exact: true })).toBeVisible();
+  const linkReads: string[] = [];
+  page.on("request", (request) => {
+    const path = new URL(request.url()).pathname;
+    if (
+      path.startsWith("/api/v1/") &&
+      (request.method() === "GET" || /\/(message-page|search)$/.test(path))
+    )
+      linkReads.push(path);
+  });
   await linking.getByRole("button", { name: `Link ${title}`, exact: true }).click();
   await expect(article.getByText("Linked work", { exact: true })).toBeVisible();
+  await expect(linking).toHaveCount(0);
+  expect(linkReads).toEqual(["/api/v1/context/message-page"]);
+  linkReads.length = 0;
   await article.getByRole("button", { name: `Unlink ${title}`, exact: true }).click();
+  await expect(article.getByText("Linked work", { exact: true })).toBeHidden();
+  await expect(article.getByText("Created here", { exact: true })).toBeVisible();
+  expect(linkReads).toEqual(["/api/v1/context/message-page"]);
   await page.reload();
   await expect(article.getByText("Linked work", { exact: true })).toBeHidden();
   await expect(article.getByText("Created here", { exact: true })).toBeVisible();

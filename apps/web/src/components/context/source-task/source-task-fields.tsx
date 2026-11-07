@@ -5,6 +5,8 @@ import { useState } from "react";
 import { createTaskFromMessage } from "@/api/context/links";
 import { SourceTaskFields as SourceTaskFieldsView } from "@/components/context/source-task/source-task-fields-view";
 import type { TaskDraft } from "@/components/tasks/types";
+import { invalidateMessageWork } from "@/queries/context/mutations";
+import { notificationsOptions } from "@/queries/context/notifications";
 import { queryKeys } from "@/queries/keys";
 import { projectQueryOptions } from "@/queries/tasks/options";
 
@@ -33,7 +35,14 @@ export function SourceTaskFields({
         data: { organizationId, projectEntityId: projectId, messageId, requestId: id, ...draft },
       }),
     onSuccess: async (task) => {
-      await client.invalidateQueries({ queryKey: queryKeys.organization(organizationId) });
+      await Promise.all([
+        client.invalidateQueries({ queryKey: queryKeys.project(organizationId, projectId) }),
+        client.invalidateQueries({
+          queryKey: notificationsOptions(organizationId).queryKey,
+          exact: true,
+        }),
+        invalidateMessageWork(client, organizationId, messageId, task.entityId, projectId),
+      ]);
       onSaved(task);
     },
   });

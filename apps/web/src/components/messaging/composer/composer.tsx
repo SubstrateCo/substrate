@@ -5,7 +5,7 @@ import { useRef } from "react";
 import { ReferencePicker } from "../../context/references/reference-picker";
 import { sendMessage } from "@/api/messaging/requests";
 import { Composer as ComposerView } from "@/components/messaging/composer/composer-view";
-import { queryKeys } from "@/queries/keys";
+import { invalidateSentMessage } from "@/queries/messaging/mutations";
 
 export function Composer({
   organizationId,
@@ -28,9 +28,9 @@ export function Composer({
         data: { organizationId, conversationId, threadId, body, requestId: request.current.id },
       });
     },
-    onSuccess: () => {
+    onSuccess: (_, body) => {
       request.current = null;
-      return queryClient.invalidateQueries({ queryKey: queryKeys.organization(organizationId) });
+      return invalidateSentMessage(queryClient, organizationId, conversationId, body, threadId);
     },
   });
   return (

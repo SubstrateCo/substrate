@@ -81,7 +81,14 @@ export function realtimeQueryTargets(
         );
       break;
     case "context":
-      if (organizationId) targets.push({ queryKey: queryKeys.context(organizationId) });
+      if (organizationId)
+        targets.push(
+          ...["activity", "related", "message", "message-pages", "people", "target"].map(
+            (kind) => ({ queryKey: [...queryKeys.context(organizationId), kind] }),
+          ),
+          { queryKey: [...queryKeys.context(organizationId), "notifications"], exact: true },
+          ...searchTargets(organizationId),
+        );
       break;
     case "notifications":
       if (organizationId)

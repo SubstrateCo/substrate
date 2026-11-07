@@ -5,8 +5,8 @@ import { useState } from "react";
 import { attachWork } from "@/api/context/links";
 import { LinkMessageWork as LinkMessageWorkView } from "@/components/context/links/link-message-work-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
+import { invalidateMessageWork } from "@/queries/context/mutations";
 import { searchOptions } from "@/queries/context/search";
-import { queryKeys } from "@/queries/keys";
 import { toast } from "sonner";
 
 export function LinkMessageWork({
@@ -23,13 +23,14 @@ export function LinkMessageWork({
   const results = useQuery(searchOptions({ organizationId, query, kind, editable: true }));
   const client = useQueryClient();
   const attach = useMutation({
-    mutationFn: (entityId: string) => attachWork({ data: { organizationId, messageId, entityId } }),
+    mutationFn: ({ entityId }: { entityId: string; projectEntityId: string }) =>
+      attachWork({ data: { organizationId, messageId, entityId } }),
     onError: (error) =>
       toast.error(
         actionErrorMessage(error, "Couldn't link this item. Check that you still have access."),
       ),
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: queryKeys.organization(organizationId) });
+    onSuccess: async (_, { entityId, projectEntityId }) => {
+      await invalidateMessageWork(client, organizationId, messageId, entityId, projectEntityId);
       onClose();
     },
   });
@@ -40,11 +41,14 @@ export function LinkMessageWork({
       results={results.data ?? []}
       loading={results.isPending}
       error={results.error}
-      pendingId={attach.isPending ? attach.variables : undefined}
+      pendingId={attach.isPending ? attach.variables.entityId : undefined}
       onQueryChange={setQuery}
       onKindChange={setKind}
       onRetry={() => void results.refetch()}
-      onLink={(id) => attach.mutate(id)}
+      onLink={(entityId) => {
+        const work = results.data?.find((item) => item.id === entityId);
+        if (work) attach.mutate({ entityId, projectEntityId: work.projectEntityId ?? entityId });
+      }}
       onClose={onClose}
     />
   );

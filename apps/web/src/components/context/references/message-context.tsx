@@ -5,7 +5,7 @@ import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { isAccessFailure } from "@/components/feedback/request-failure";
 import { MessageWork } from "@/components/messaging/messages/message-work";
 import { workHref } from "@/lib/navigation/record-links";
-import { queryKeys } from "@/queries/keys";
+import { invalidateMessageWork } from "@/queries/context/mutations";
 import { toast } from "sonner";
 
 export type MessageContextState = {
@@ -26,12 +26,14 @@ export function MessageContext({
 }) {
   const client = useQueryClient();
   const remove = useMutation({
-    mutationFn: (entityId: string) => detachWork({ data: { organizationId, messageId, entityId } }),
+    mutationFn: ({ entityId }: { entityId: string; projectEntityId: string }) =>
+      detachWork({ data: { organizationId, messageId, entityId } }),
     onError: (error) =>
       toast.error(
         actionErrorMessage(error, "Couldn’t remove this link. Check that you still have access."),
       ),
-    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.organization(organizationId) }),
+    onSuccess: (_, { entityId, projectEntityId }) =>
+      invalidateMessageWork(client, organizationId, messageId, entityId, projectEntityId),
   });
   return (
     <MessageWork
@@ -46,7 +48,10 @@ export function MessageContext({
       loading={context.loading}
       error={context.error}
       onRetry={context.onRetry}
-      onRemove={(entityId) => remove.mutate(entityId)}
+      onRemove={(entityId) => {
+        const work = context.data?.links.find((link) => link.entityId === entityId);
+        if (work) remove.mutate({ entityId, projectEntityId: work.projectEntityId });
+      }}
       removing={remove.isPending}
     />
   );

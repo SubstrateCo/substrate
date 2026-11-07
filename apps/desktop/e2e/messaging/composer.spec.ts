@@ -1,4 +1,5 @@
 import { test } from "../test-support/fixture.js";
+import { disconnectRealtime, waitForRealtimeIdle } from "../test-support/realtime.js";
 import { createChannel } from "./test-support.js";
 import { expect } from "@playwright/test";
 
@@ -23,13 +24,47 @@ test("composer formatting, emoji and persisted reactions work without rendering 
   await page.getByRole("button", { name: "Add emoji", exact: true }).click();
   await page.getByRole("button", { name: "🚀", exact: true }).click();
   await expect(composer).toHaveText("Composer emoji 🚀");
+  await waitForRealtimeIdle(page);
+  await disconnectRealtime(page);
+  const reads: string[] = [];
+  let completedPages = 0;
+  let abortedPages = 0;
+  page.on("response", (response) => {
+    if (response.url().endsWith("/api/v1/context/message-page") && response.ok()) completedPages++;
+  });
+  page.on("requestfailed", (request) => {
+    if (request.url().endsWith("/api/v1/context/message-page")) abortedPages++;
+  });
+  page.on("request", (request) => {
+    const path = new URL(request.url()).pathname;
+    if (
+      path.startsWith("/api/v1/") &&
+      (request.method() === "GET" || path.endsWith("/message-page"))
+    )
+      reads.push(path);
+  });
   await composer.press("Enter");
   const message = page.getByRole("article").filter({ hasText: "Composer emoji 🚀" });
+  await expect(message).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  expect(reads.filter((path) => !path.endsWith("/message-page")).sort()).toEqual([
+    "/api/v1/messaging/conversations",
+    "/api/v1/messaging/messages",
+  ]);
+  await expect.poll(() => completedPages).toBe(1);
+  expect(reads.filter((path) => path.endsWith("/message-page"))).toHaveLength(
+    completedPages + abortedPages,
+  );
+  reads.length = 0;
   await message.hover();
   await message.getByRole("button", { name: "React to message", exact: true }).click();
   await page.getByRole("button", { name: "👍", exact: true }).click();
   const reaction = message.getByRole("button", { name: "👍, 1 reactions", exact: true });
   await expect(reaction).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    message.getByRole("status", { name: "Loading linked work", exact: true }),
+  ).toHaveCount(0);
+  expect(reads).toEqual(["/api/v1/messaging/messages"]);
   await page.reload();
   await expect(reaction).toHaveAttribute("aria-pressed", "true");
   await reaction.click();

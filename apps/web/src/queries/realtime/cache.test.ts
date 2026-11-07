@@ -51,41 +51,44 @@ test("a task hint during an in-flight read stays stale when its panel becomes hi
   }
 });
 
-for (const overlap of ["none", "before", "after"] as const) {
-  test(`in-flight search stays stale without a second read unless an overlapping target permits it (${overlap})`, async () => {
-    const client = new QueryClient();
-    const key = [...queryKeys.context("org"), "search", "task"];
-    const first = Promise.withResolvers<string[]>();
-    let reads = 0;
-    const observer = new QueryObserver(client, {
-      queryKey: key,
-      staleTime: Infinity,
-      queryFn: async () => (++reads === 1 ? first.promise : ["fresh"]),
+for (const domain of ["context", "profile"] as const) {
+  for (const overlap of ["none", "before", "after"] as const) {
+    test(`in-flight search respects stale-only policy across overlapping task/${domain} events (${overlap})`, async () => {
+      const client = new QueryClient();
+      const key = [...queryKeys.context("org"), "search", "task"];
+      const first = Promise.withResolvers<string[]>();
+      let reads = 0;
+      const observer = new QueryObserver(client, {
+        queryKey: key,
+        staleTime: Infinity,
+        queryFn: async () => (++reads === 1 ? first.promise : ["fresh"]),
+      });
+      const unsubscribe = observer.subscribe(() => {});
+      const cache = createRealtimeCache({
+        queryClient: client,
+        organizationId: "org",
+        userId: "user",
+        revalidate: async () => {},
+      });
+      try {
+        if (overlap === "before") await cache.receive(change(domain));
+        await cache.receive(change("tasks"));
+        if (overlap === "after") await cache.receive(change(domain));
+        await Bun.sleep(80);
+        first.resolve(["old snapshot"]);
+        await Bun.sleep(80);
+        const refresh = domain === "profile" && overlap !== "none";
+        expect(reads).toBe(refresh ? 2 : 1);
+        expect(client.getQueryState(key)?.isInvalidated).toBe(!refresh);
+        expect(client.getQueryData(key)).toEqual(refresh ? ["fresh"] : ["old snapshot"]);
+      } finally {
+        first.resolve([]);
+        cache.dispose();
+        unsubscribe();
+        client.clear();
+      }
     });
-    const unsubscribe = observer.subscribe(() => {});
-    const cache = createRealtimeCache({
-      queryClient: client,
-      organizationId: "org",
-      userId: "user",
-      revalidate: async () => {},
-    });
-    try {
-      if (overlap === "before") await cache.receive(change("context"));
-      await cache.receive(change("tasks"));
-      if (overlap === "after") await cache.receive(change("context"));
-      await Bun.sleep(80);
-      first.resolve(["old snapshot"]);
-      await Bun.sleep(80);
-      expect(reads).toBe(overlap === "none" ? 1 : 2);
-      expect(client.getQueryState(key)?.isInvalidated).toBe(overlap === "none");
-      expect(client.getQueryData(key)).toEqual(overlap === "none" ? ["old snapshot"] : ["fresh"]);
-    } finally {
-      first.resolve([]);
-      cache.dispose();
-      unsubscribe();
-      client.clear();
-    }
-  });
+  }
 }
 
 test("access resets clear hidden task data without issuing hidden reads", async () => {
@@ -203,7 +206,7 @@ test("conversation hints refresh only matching mounted context pages, with a bro
 });
 
 test("task activity and related context refresh while task/message search becomes stale without a refetch storm", async () => {
-  for (const domain of ["tasks", "messaging"] as const) {
+  for (const domain of ["tasks", "messaging", "context"] as const) {
     const client = new QueryClient();
     const context = queryKeys.context("org");
     const keys = {
@@ -233,11 +236,11 @@ test("task activity and related context refresh while task/message search become
     });
     await cache.receive(change(domain));
     await new Promise((resolve) => setTimeout(resolve, 80));
-    expect(client.getQueryState(keys.activity)?.isInvalidated).toBe(domain === "tasks");
+    expect(client.getQueryState(keys.activity)?.isInvalidated).toBe(domain !== "messaging");
     expect(client.getQueryState(keys.related)?.isInvalidated).toBe(true);
     expect(client.getQueryState(keys.search)?.isInvalidated).toBe(true);
     expect(client.getQueryState(keys.pages)?.isInvalidated).toBe(true);
-    expect(client.getQueryState(keys.notifications)?.isInvalidated).toBe(domain === "tasks");
+    expect(client.getQueryState(keys.notifications)?.isInvalidated).toBe(domain !== "messaging");
     expect(searchFetches).toBe(0);
     cache.dispose();
     unsubscribe();
@@ -271,6 +274,60 @@ test("access clears private organization and harness data before revalidation, p
   expect(client.getQueryData(otherKey)).toBe("other");
   cache.dispose();
   client.clear();
+});
+
+test("context changes refetch known context families only, leaving both search families stale", async () => {
+  const client = new QueryClient();
+  const context = queryKeys.context("org");
+  const keys = [
+    ...["activity", "related", "message", "message-pages", "people", "target"].map((kind) => [
+      ...context,
+      kind,
+      "record",
+    ]),
+    [...context, "notifications"],
+    [...context, "search", "term"],
+    [...context, "search-pages", "term"],
+    [...context, "unknown"],
+    [...context, "notifications", "unrelated"],
+    [...queryKeys.context("other"), "message", "record"],
+    queryKeys.projects("org"),
+    queryKeys.conversations("org"),
+  ];
+  const reads = keys.map(() => 0);
+  const observers = keys.map(
+    (queryKey, index) =>
+      new QueryObserver(client, {
+        queryKey,
+        initialData: ["old"],
+        staleTime: Infinity,
+        queryFn: async () => {
+          reads[index]++;
+          return ["fresh"];
+        },
+      }),
+  );
+  const unsubscribes = observers.map((observer) => observer.subscribe(() => {}));
+  const cache = createRealtimeCache({
+    queryClient: client,
+    organizationId: "org",
+    userId: "user",
+    revalidate: async () => {},
+  });
+  try {
+    await client.invalidateQueries({ queryKey: context });
+    expect(reads.reduce((sum, count) => sum + count, 0)).toBe(11);
+    reads.fill(0);
+    await cache.receive(change("context"));
+    await Bun.sleep(80);
+    expect(reads).toEqual([1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0]);
+    expect(client.getQueryState(keys[7]!)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(keys[8]!)?.isInvalidated).toBe(true);
+  } finally {
+    cache.dispose();
+    unsubscribes.forEach((unsubscribe) => unsubscribe());
+    client.clear();
+  }
 });
 
 test("task edits refresh titles shown by message links and existing notifications", async () => {

@@ -2,6 +2,8 @@ import { callMessaging } from "../../../web/e2e/test-support/api.js";
 import { provisionVerifiedAccount } from "../../../web/e2e/test-support/auth.js";
 import { createChannel } from "../messaging/test-support.js";
 import { test } from "../test-support/fixture.js";
+import { disconnectRealtime, waitForRealtimeIdle } from "../test-support/realtime.js";
+import { failRequestsAt } from "../test-support/request-failure.js";
 import { expect } from "@playwright/test";
 
 test("notifications center empty states and persist bulk mark-read across reload", async ({
@@ -11,7 +13,7 @@ test("notifications center empty states and persist bulk mark-read across reload
   const { page, browser, member } = desktop;
   await page
     .getByRole("navigation", { name: "Apps", exact: true })
-    .getByRole("button", { name: "Notifications", exact: true })
+    .getByRole("button", { name: /^Notifications/ })
     .click();
   const panel = page.getByRole("region", { name: "Notifications", exact: true });
   for (const title of ["No notifications yet", "You’re all caught up"]) {
@@ -78,16 +80,18 @@ test("notifications center empty states and persist bulk mark-read across reload
   }, conversationId);
   expect(recipient.success).toBe(true);
   expect(recipient.data).toHaveLength(1);
+  let firstMessageId = "";
   for (const body of ["First mention", "Second mention"]) {
-    const sent = await callMessaging(browser, "sendMessage", {
+    const sent = await callMessaging<{ id: string }>(browser, "sendMessage", {
       conversationId,
       body: `${body} @[person:${recipient.data[0].id}]`,
     });
     expect(sent.error).toBeNull();
+    if (body === "First mention") firstMessageId = sent.data!.id;
   }
   await page
     .getByRole("navigation", { name: "Apps", exact: true })
-    .getByRole("button", { name: "Notifications", exact: true })
+    .getByRole("button", { name: /^Notifications/ })
     .click();
   await expect(panel.getByRole("heading", { name: "Notifications", exact: true })).toHaveCSS(
     "font-size",
@@ -95,6 +99,63 @@ test("notifications center empty states and persist bulk mark-read across reload
   );
   const unread = panel.getByRole("button", { name: /^Unread/ });
   await expect(unread).toHaveText("Unread 2");
+  await waitForRealtimeIdle(page);
+  await disconnectRealtime(page);
+  let writes = 0;
+  let notificationReads = 0;
+  let documents = 0;
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/v1/context/notifications/read")) writes++;
+    if (
+      request.method() === "GET" &&
+      new URL(request.url()).pathname === "/api/v1/context/notifications"
+    )
+      notificationReads++;
+    if (request.isNavigationRequest() && request.frame() === page.mainFrame()) documents++;
+  });
+  const first = panel.locator(`a[href*="messageId=${firstMessageId}"]`);
+  const notificationURL = page.url();
+  const failure = await page.evaluateHandle(failRequestsAt, "/api/v1/context/notifications/read");
+  await first.click();
+  await expect(
+    page.locator("[data-sonner-toast]").filter({ hasText: /update notifications/ }),
+  ).toBeVisible();
+  await expect(page).toHaveURL(notificationURL);
+  await expect(unread).toHaveText("Unread 2");
+  await failure.evaluate((control) => control.recover());
+  await failure.dispose();
+  writes = 0;
+  notificationReads = 0;
+  await first.click();
+  await expect(
+    page.getByRole("article").filter({ hasText: "First mention" }).first(),
+  ).toBeVisible();
+  expect(writes).toBe(1);
+  expect(notificationReads).toBe(1);
+  expect(documents).toBe(0);
+  expect(new URL(page.url()).searchParams.get("workspaceId")).toBe(
+    membership.member.organizationId,
+  );
+  await page
+    .getByRole("navigation", { name: "Apps", exact: true })
+    .getByRole("button", { name: /^Notifications/ })
+    .click();
+  await expect(unread).toHaveText("Unread 1");
+  await expect(first.locator("..").getByText("Read", { exact: true })).toBeVisible();
+  writes = 0;
+  notificationReads = 0;
+  await first.click();
+  await expect(
+    page.getByRole("article").filter({ hasText: "First mention" }).first(),
+  ).toBeVisible();
+  expect(writes).toBe(0);
+  expect(notificationReads).toBe(0);
+  expect(documents).toBe(0);
+  await page
+    .getByRole("navigation", { name: "Apps", exact: true })
+    .getByRole("button", { name: /^Notifications/ })
+    .click();
+  await expect(unread).toHaveText("Unread 1");
   const allRead = panel.getByRole("button", { name: "Mark all as read", exact: true });
   await allRead.click();
   await expect(unread).toHaveText("Unread 0");

@@ -1,5 +1,6 @@
 import { callMessaging } from "../../../web/e2e/test-support/api.js";
 import { test } from "../test-support/fixture.js";
+import { disconnectRealtime, waitForRealtimeIdle } from "../test-support/realtime.js";
 import { callTasks } from "../test-support/tasks.js";
 import { expect } from "@playwright/test";
 
@@ -75,6 +76,20 @@ test("source task cancellation and validation preserve the thread draft and subm
   );
   await form.getByLabel("Task title", { exact: true }).fill("Add a projects empty state");
   const create = form.getByRole("button", { name: "Create task", exact: true });
+  await waitForRealtimeIdle(page);
+  await disconnectRealtime(page);
+  const unrelated: string[] = [];
+  const reads: string[] = [];
+  page.on("request", (request) => {
+    const path = new URL(request.url()).pathname;
+    if (
+      path.startsWith("/api/v1/") &&
+      (request.method() === "GET" || path.endsWith("/message-page"))
+    )
+      reads.push(path);
+    if (/\/api\/v1\/(session|messaging\/conversations|context\/search)$/.test(path))
+      unrelated.push(path);
+  });
   await create.scrollIntoViewIfNeeded();
   await expect(create).toBeInViewport();
   await create.click();
@@ -83,6 +98,14 @@ test("source task cancellation and validation preserve the thread draft and subm
     exact: true,
   });
   await expect(createdTask).toBeVisible();
+  await expect(builder.getByRole("link", { name: "Open created task", exact: true })).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  expect(unrelated).toEqual([]);
+  expect(reads.sort()).toEqual([
+    "/api/v1/context/message-page",
+    "/api/v1/context/notifications",
+    "/api/v1/tasks/project",
+  ]);
   expect(taskCreations, "Submission creates one linked task").toBe(1);
   await expect(replyComposer).toHaveText("Keep this reply draft.");
   await createdTask.click();
