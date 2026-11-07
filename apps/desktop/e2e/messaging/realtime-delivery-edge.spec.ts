@@ -236,6 +236,11 @@ test("bounded concurrent roots, replies and reactions converge live with unread 
   await expect.poll(() => log.evaluate((node) => node.scrollTop)).toBe(0);
   const before = await root.boundingBox();
   expect(before).not.toBeNull();
+  const notificationButton = viewer
+    .getByRole("navigation", { name: "Apps", exact: true })
+    .getByRole("button", { name: /^Notifications(?:, unread notifications)?$/ });
+  await expect(notificationButton).toHaveAccessibleName("Notifications");
+  await expect(notificationButton.locator('span[aria-hidden="true"]')).toBeHidden();
   const events = await observeRealtime(viewer);
   const requests = await viewer.evaluateHandle(() => {
     const original = window.fetch;
@@ -335,10 +340,9 @@ test("bounded concurrent roots, replies and reactions converge live with unread 
         );
       }
     }
-    await viewer
-      .getByRole("navigation", { name: "Apps", exact: true })
-      .getByRole("button", { name: /^Notifications(?:, unread notifications)?$/ })
-      .click();
+    await expect(notificationButton).toHaveAccessibleName("Notifications, unread notifications");
+    await expect(notificationButton.locator('span[aria-hidden="true"]')).toBeVisible();
+    await notificationButton.click();
     const notifications = viewer.getByRole("region", { name: "Notifications", exact: true });
     await expect(
       notifications.getByRole("listitem").filter({ hasText: "New thread reply" }),

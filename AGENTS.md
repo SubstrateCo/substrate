@@ -7,6 +7,7 @@ Startup OS is an Electron workspace for email, messages, docs, tasks, agents, an
 - Design for the Electron desktop app. The web app is its renderer, not a standalone browser product.
 - Run application UI, integration, and end-to-end workflows through the real Electron app. Browser-only Playwright runs do not establish desktop workflow coverage.
 - Share workflow tests through desktop fixtures that preserve native authentication, session isolation, navigation, and permissions. Keep unit tests for non-UI logic; isolated component tests do not replace desktop workflow tests.
+- Full end-to-end runs take a long time. Default to the smallest relevant desktop test run, selecting a specific file and test with `--grep` where useful. Run the full end-to-end suite only when broad regression coverage is warranted by the change or the user explicitly requests it.
 
 ## Connected workspace
 
