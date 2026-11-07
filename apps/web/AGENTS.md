@@ -20,6 +20,11 @@
 - Test application policies and complete workflows. Do not test Better Auth internals or third-party guarantees.
 - Use Playwright for UI behavior, accessibility, and layout tests. Do not assert against rendered HTML strings or HTML snapshots, including markup substring checks.
 
+## Test placement
+
+- Put application UI workflows in `apps/desktop/e2e`, using the Electron functional and layout projects. Keep browser E2E cases here for external-browser authentication and email handoff; do not duplicate desktop application journeys.
+- Keep non-UI rules and cache logic in unit tests. Put HTTP security and permission matrices in `apps/server/integration`, not in long UI journeys or viewport loops.
+
 ## Connected workflows
 
 - Give shareable records stable, organization-aware navigation targets that resolve the intended record and enforce access.

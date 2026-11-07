@@ -15,4 +15,9 @@
 - Preserve structured source references, relationship permissions, and organization boundaries in connected workflows.
 - Preserve compatibility with supported installed desktop clients. Prefer additive contracts and coordinate breaking API and database changes.
 - Export the Hono application type for the renderer's typed RPC client. Client imports of server types must be type-only.
-- Test application contracts, status/error mapping, validation boundaries, access policies, and workflows. Do not test Hono or Better Auth internals. Keep tests beside their domain.
+- Test application contracts, status/error mapping, validation boundaries, access policies, and workflows. Do not test Hono or Better Auth internals. Keep unit tests beside their domain.
+
+## Integration tests
+
+- Put request-only HTTP integration cases in `integration`, using API fixtures without browser pages or viewport matrices. Cover HTTP permission, origin, and isolation boundaries here; keep repository and transaction edge cases in database tests.
+- Keep a few Electron workflows to verify native transport, visible permission controls, and removal of cached private content. Do not repeat the full API policy matrix through the UI.
