@@ -100,13 +100,32 @@ CREATE TABLE "actors" (
 	"entity_type" "entity_type" GENERATED ALWAYS AS ('actor'::entity_type) STORED NOT NULL,
 	"type" "actor_type" NOT NULL,
 	"user_id" text,
+	"user_agent_id" uuid,
 	"name" text NOT NULL,
 	"agent_config" jsonb,
 	"disabled_at" timestamp with time zone,
 	CONSTRAINT "actors_organization_entity_unique" UNIQUE("organization_id","entity_id"),
 	CONSTRAINT "actors_organization_user_unique" UNIQUE("organization_id","user_id"),
+	CONSTRAINT "actors_organization_user_agent_unique" UNIQUE("organization_id","user_agent_id"),
 	CONSTRAINT "actors_identity_check" CHECK (("actors"."type" = 'human' AND "actors"."user_id" IS NOT NULL AND "actors"."agent_config" IS NULL) OR ("actors"."type" = 'agent' AND "actors"."user_id" IS NULL)),
-	CONSTRAINT "actors_name_check" CHECK (length(trim("actors"."name")) > 0)
+	CONSTRAINT "actors_name_check" CHECK (length(trim("actors"."name")) > 0),
+	CONSTRAINT "actors_user_agent_type_check" CHECK ("actors"."user_agent_id" IS NULL OR "actors"."type" = 'agent')
+);
+--> statement-breakpoint
+CREATE TABLE "user_agents" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" text NOT NULL,
+	"name" text NOT NULL,
+	"instructions" text NOT NULL,
+	"harness" text NOT NULL,
+	"model" text,
+	"image_file_id" uuid,
+	"picture_purpose" text DEFAULT 'avatar' NOT NULL,
+	"enabled" boolean DEFAULT true NOT NULL,
+	"use_startup_defaults" boolean DEFAULT true NOT NULL,
+	"deleted_at" timestamp with time zone,
+	CONSTRAINT "user_agents_owner_id_unique" UNIQUE("user_id","id"),
+	CONSTRAINT "user_agent_picture_purpose" CHECK ("user_agents"."picture_purpose" = 'avatar')
 );
 --> statement-breakpoint
 CREATE TABLE "contact_identifiers" (
@@ -153,6 +172,68 @@ CREATE TABLE "entity_links" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "entity_links_organization_id_source_entity_id_target_entity_id_relation_type_pk" PRIMARY KEY("organization_id","source_entity_id","target_entity_id","relation_type"),
 	CONSTRAINT "entity_links_no_self_link" CHECK ("entity_links"."source_entity_id" <> "entity_links"."target_entity_id")
+);
+--> statement-breakpoint
+CREATE TABLE "file_uploads" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"owner_user_id" text,
+	"organization_id" text,
+	"uploaded_by" text NOT NULL,
+	"purpose" text NOT NULL,
+	"filename" text NOT NULL,
+	"content_type" text NOT NULL,
+	"size" integer NOT NULL,
+	"temporary_key" text NOT NULL,
+	"expires_at" timestamp with time zone NOT NULL,
+	"temporary_cleaned_at" timestamp with time zone,
+	"deleted_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "file_uploads_temporary_key_unique" UNIQUE("temporary_key"),
+	CONSTRAINT "file_upload_owner" CHECK (("file_uploads"."purpose" = 'avatar' AND "file_uploads"."owner_user_id" IS NOT NULL AND "file_uploads"."organization_id" IS NULL AND "file_uploads"."uploaded_by" = "file_uploads"."owner_user_id") OR ("file_uploads"."purpose" IN ('organization-logo', 'file') AND "file_uploads"."organization_id" IS NOT NULL AND "file_uploads"."owner_user_id" IS NULL)),
+	CONSTRAINT "file_upload_size" CHECK ("file_uploads"."size" > 0 AND "file_uploads"."size" <= 5242880)
+);
+--> statement-breakpoint
+CREATE TABLE "organization_pictures" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"organization_id" text NOT NULL,
+	"file_id" uuid NOT NULL,
+	"purpose" text DEFAULT 'organization-logo' NOT NULL,
+	CONSTRAINT "organization_pictures_organization_id_unique" UNIQUE("organization_id"),
+	CONSTRAINT "organization_picture_purpose" CHECK ("organization_pictures"."purpose" = 'organization-logo')
+);
+--> statement-breakpoint
+CREATE TABLE "storage_candidates" (
+	"object_key" text PRIMARY KEY NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "stored_files" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"owner_user_id" text,
+	"organization_id" text,
+	"uploaded_by" text,
+	"purpose" text NOT NULL,
+	"filename" text NOT NULL,
+	"content_type" text NOT NULL,
+	"size" integer NOT NULL,
+	"object_key" text NOT NULL,
+	"sha256" text NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "stored_files_object_key_unique" UNIQUE("object_key"),
+	CONSTRAINT "stored_file_user_purpose" UNIQUE("id","owner_user_id","purpose"),
+	CONSTRAINT "stored_file_organization_purpose" UNIQUE("id","organization_id","purpose"),
+	CONSTRAINT "stored_file_owner" CHECK (("stored_files"."purpose" = 'avatar' AND "stored_files"."owner_user_id" IS NOT NULL AND "stored_files"."organization_id" IS NULL AND "stored_files"."uploaded_by" = "stored_files"."owner_user_id") OR ("stored_files"."purpose" IN ('organization-logo', 'file') AND "stored_files"."organization_id" IS NOT NULL AND "stored_files"."owner_user_id" IS NULL)),
+	CONSTRAINT "stored_file_size" CHECK ("stored_files"."size" > 0 AND "stored_files"."size" <= 5242880),
+	CONSTRAINT "stored_file_image_type" CHECK ("stored_files"."purpose" = 'file' OR "stored_files"."content_type" = 'image/webp')
+);
+--> statement-breakpoint
+CREATE TABLE "user_pictures" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"user_id" text NOT NULL,
+	"file_id" uuid NOT NULL,
+	"purpose" text DEFAULT 'avatar' NOT NULL,
+	CONSTRAINT "user_pictures_user_id_unique" UNIQUE("user_id"),
+	CONSTRAINT "user_picture_purpose" CHECK ("user_pictures"."purpose" = 'avatar')
 );
 --> statement-breakpoint
 CREATE TABLE "messaging_conversations" (
@@ -298,7 +379,10 @@ ALTER TABLE "member" ADD CONSTRAINT "member_organization_id_organization_id_fk" 
 ALTER TABLE "member" ADD CONSTRAINT "member_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "entities" ADD CONSTRAINT "entities_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "actors" ADD CONSTRAINT "actors_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "actors" ADD CONSTRAINT "actors_user_agent_id_user_agents_id_fk" FOREIGN KEY ("user_agent_id") REFERENCES "public"."user_agents"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "actors" ADD CONSTRAINT "actors_organization_id_entity_id_entity_type_entities_organization_id_entity_id_entity_type_fk" FOREIGN KEY ("organization_id","entity_id","entity_type") REFERENCES "public"."entities"("organization_id","entity_id","entity_type") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_agents" ADD CONSTRAINT "user_agents_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_agents" ADD CONSTRAINT "user_agent_picture_file_owner_fk" FOREIGN KEY ("image_file_id","user_id","picture_purpose") REFERENCES "public"."stored_files"("id","owner_user_id","purpose") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "contact_identifiers" ADD CONSTRAINT "contact_identifiers_organization_id_contact_entity_id_contacts_organization_id_entity_id_fk" FOREIGN KEY ("organization_id","contact_entity_id") REFERENCES "public"."contacts"("organization_id","entity_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "contacts" ADD CONSTRAINT "contacts_organization_id_entity_id_entity_type_entities_organization_id_entity_id_entity_type_fk" FOREIGN KEY ("organization_id","entity_id","entity_type") REFERENCES "public"."entities"("organization_id","entity_id","entity_type") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "entity_grants" ADD CONSTRAINT "entity_grants_organization_id_entity_id_entities_organization_id_entity_id_fk" FOREIGN KEY ("organization_id","entity_id") REFERENCES "public"."entities"("organization_id","entity_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -308,6 +392,16 @@ ALTER TABLE "entity_access_parents" ADD CONSTRAINT "entity_access_parents_organi
 ALTER TABLE "entity_links" ADD CONSTRAINT "entity_links_organization_id_source_entity_id_entities_organization_id_entity_id_fk" FOREIGN KEY ("organization_id","source_entity_id") REFERENCES "public"."entities"("organization_id","entity_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "entity_links" ADD CONSTRAINT "entity_links_organization_id_target_entity_id_entities_organization_id_entity_id_fk" FOREIGN KEY ("organization_id","target_entity_id") REFERENCES "public"."entities"("organization_id","entity_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "entity_links" ADD CONSTRAINT "entity_links_organization_id_created_by_actor_entity_id_actors_organization_id_entity_id_fk" FOREIGN KEY ("organization_id","created_by_actor_entity_id") REFERENCES "public"."actors"("organization_id","entity_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "file_uploads" ADD CONSTRAINT "file_uploads_owner_user_id_user_id_fk" FOREIGN KEY ("owner_user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "file_uploads" ADD CONSTRAINT "file_uploads_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "file_uploads" ADD CONSTRAINT "file_uploads_uploaded_by_user_id_fk" FOREIGN KEY ("uploaded_by") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "organization_pictures" ADD CONSTRAINT "organization_pictures_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "organization_pictures" ADD CONSTRAINT "organization_picture_file_owner_fk" FOREIGN KEY ("file_id","organization_id","purpose") REFERENCES "public"."stored_files"("id","organization_id","purpose") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "stored_files" ADD CONSTRAINT "stored_files_owner_user_id_user_id_fk" FOREIGN KEY ("owner_user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "stored_files" ADD CONSTRAINT "stored_files_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "stored_files" ADD CONSTRAINT "stored_files_uploaded_by_user_id_fk" FOREIGN KEY ("uploaded_by") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_pictures" ADD CONSTRAINT "user_pictures_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_pictures" ADD CONSTRAINT "user_picture_file_owner_fk" FOREIGN KEY ("file_id","user_id","purpose") REFERENCES "public"."stored_files"("id","owner_user_id","purpose") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "messaging_conversations" ADD CONSTRAINT "messaging_conversations_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "messaging_conversations" ADD CONSTRAINT "messaging_conversations_created_by_user_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "messaging_messages" ADD CONSTRAINT "messaging_messages_conversation_id_messaging_conversations_id_fk" FOREIGN KEY ("conversation_id") REFERENCES "public"."messaging_conversations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -351,6 +445,7 @@ CREATE INDEX "contacts_organization_idx" ON "contacts" USING btree ("organizatio
 CREATE INDEX "entity_grants_actor_idx" ON "entity_grants" USING btree ("organization_id","actor_entity_id","entity_id");--> statement-breakpoint
 CREATE INDEX "entity_access_parents_parent_idx" ON "entity_access_parents" USING btree ("organization_id","parent_entity_id");--> statement-breakpoint
 CREATE INDEX "entity_links_target_idx" ON "entity_links" USING btree ("organization_id","target_entity_id");--> statement-breakpoint
+CREATE INDEX "file_upload_expiry_idx" ON "file_uploads" USING btree ("expires_at");--> statement-breakpoint
 CREATE INDEX "messaging_message_timeline_idx" ON "messaging_messages" USING btree ("conversation_id","created_at","id");--> statement-breakpoint
 CREATE INDEX "messaging_participants_user_idx" ON "messaging_participants" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "tasks_project_idx" ON "tasks" USING btree ("organization_id","project_entity_id");--> statement-breakpoint
@@ -358,3 +453,45 @@ CREATE INDEX "task_comments_timeline_idx" ON "task_comments" USING btree ("organ
 CREATE INDEX "message_reference_target_idx" ON "message_entity_references" USING btree ("organization_id","entity_id");--> statement-breakpoint
 CREATE INDEX "task_activity_timeline_idx" ON "task_activity" USING btree ("organization_id","task_entity_id","created_at","id");--> statement-breakpoint
 CREATE INDEX "notification_recipient_idx" ON "notifications" USING btree ("organization_id","recipient_actor_entity_id","created_at","id");
+--> statement-breakpoint
+CREATE FUNCTION sync_user_picture() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE managed_file_id uuid;
+BEGIN
+  IF NEW.image IS NULL THEN
+    DELETE FROM user_pictures WHERE user_id = NEW.id;
+  ELSE
+    managed_file_id := substring(NEW.image FROM '^/api/v1/files/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/content$')::uuid;
+    IF managed_file_id IS NULL THEN
+      RAISE EXCEPTION 'User pictures require a managed file URL' USING ERRCODE = '23514';
+    END IF;
+    INSERT INTO user_pictures (id, user_id, file_id, purpose)
+      VALUES (gen_random_uuid(), NEW.id, managed_file_id, 'avatar')
+      ON CONFLICT (user_id) DO UPDATE SET file_id = EXCLUDED.file_id;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+--> statement-breakpoint
+CREATE TRIGGER user_picture_sync AFTER INSERT OR UPDATE OF image ON "user"
+FOR EACH ROW EXECUTE FUNCTION sync_user_picture();
+--> statement-breakpoint
+CREATE FUNCTION sync_organization_picture() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE managed_file_id uuid;
+BEGIN
+  IF NEW.logo IS NULL THEN
+    DELETE FROM organization_pictures WHERE organization_id = NEW.id;
+  ELSE
+    managed_file_id := substring(NEW.logo FROM '^/api/v1/files/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/content$')::uuid;
+    IF managed_file_id IS NULL THEN
+      RAISE EXCEPTION 'Organization pictures require a managed file URL' USING ERRCODE = '23514';
+    END IF;
+    INSERT INTO organization_pictures (id, organization_id, file_id, purpose)
+      VALUES (gen_random_uuid(), NEW.id, managed_file_id, 'organization-logo')
+      ON CONFLICT (organization_id) DO UPDATE SET file_id = EXCLUDED.file_id;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+--> statement-breakpoint
+CREATE TRIGGER organization_picture_sync AFTER INSERT OR UPDATE OF logo ON organization
+FOR EACH ROW EXECUTE FUNCTION sync_organization_picture();

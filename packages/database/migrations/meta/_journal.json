@@ -5,57 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1793936639777,
+      "when": 1794010695496,
       "tag": "0000_initial",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1793984248566,
-      "tag": "0001_past_cerebro",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1793984442408,
-      "tag": "0002_remarkable_toxin",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1793984702129,
-      "tag": "0003_curious_malice",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1793989843146,
-      "tag": "0004_managed_picture_bindings",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1794007648510,
-      "tag": "0005_stormy_puma",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1794009262372,
-      "tag": "0006_sour_silver_samurai",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1794010470655,
-      "tag": "0007_simple_red_ghost",
       "breakpoints": true
     }
   ]

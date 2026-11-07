@@ -158,6 +158,10 @@ export const test = base.extend<{ desktop: DesktopFixture }>({
     if (packaged) {
       delete env.STARTUP_OS_API_URL;
       delete env.STARTUP_OS_WEB_URL;
+    } else {
+      env.STARTUP_OS_STORAGE_ORIGINS =
+        process.env.STARTUP_OS_STORAGE_ORIGINS ??
+        new URL(process.env.S3_ENDPOINT ?? "http://localhost:4566").origin;
     }
     const bundled = packaged || Boolean(process.env.DESKTOP_BUNDLED_RENDERER);
     const launchOptions = {
