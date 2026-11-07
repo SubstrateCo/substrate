@@ -1,4 +1,4 @@
-import { applicationURL } from "./src/navigation.js";
+import { applicationURL } from "./src/shell/navigation.js";
 import { defineConfig } from "@playwright/test";
 
 export default defineConfig({

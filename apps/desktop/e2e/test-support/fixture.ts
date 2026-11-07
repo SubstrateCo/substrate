@@ -5,10 +5,10 @@ import {
   signup as browserSignup,
   verifyEmail,
   type TestAccount,
-} from "../../web/e2e/auth.js";
-import { Mailpit } from "../../web/e2e/mailpit.js";
-import { provisionWorkspaceSession } from "../../web/e2e/organizations.js";
-import { applicationURL } from "../src/navigation.js";
+} from "../../../web/e2e/auth.js";
+import { Mailpit } from "../../../web/e2e/mailpit.js";
+import { provisionWorkspaceSession } from "../../../web/e2e/organizations.js";
+import { applicationURL } from "../../src/shell/navigation.js";
 import { authorizationCallback, requestBrowserSignIn } from "./auth.js";
 import {
   _electron as electron,
@@ -170,7 +170,7 @@ export const test = base.extend<{ desktop: DesktopFixture }>({
         ...(packaged
           ? []
           : [
-              fileURLToPath(new URL("../src/main.js", import.meta.url)),
+              fileURLToPath(new URL("../../src/main.js", import.meta.url)),
               ...(bundled ? ["--bundled-renderer"] : []),
             ]),
         "--desktop-smoke-test",

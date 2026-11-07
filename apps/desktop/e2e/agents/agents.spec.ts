@@ -1,6 +1,6 @@
 import type { HarnessAPI } from "@startup-os/contracts/harness/desktop";
 
-import { test } from "./fixture.js";
+import { test } from "../test-support/fixture.js";
 import { expect } from "@playwright/test";
 import { fileURLToPath } from "node:url";
 
@@ -41,7 +41,7 @@ test("the embedded MCP serves hello_world in Electron and revokes access", async
         await host.close();
       }
     },
-    fileURLToPath(new URL("../../../packages/harness-runtime/src/mcp.ts", import.meta.url)),
+    fileURLToPath(new URL("../../../../packages/harness-runtime/src/mcp.ts", import.meta.url)),
   );
   expect(result).toEqual({
     tools: ["hello_world"],

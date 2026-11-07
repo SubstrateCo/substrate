@@ -1,4 +1,4 @@
-import { test } from "./fixture.js";
+import { test } from "../test-support/fixture.js";
 import { expect } from "@playwright/test";
 
 test("scrollbars appear while scrolling and disappear when idle", async ({ desktop }) => {

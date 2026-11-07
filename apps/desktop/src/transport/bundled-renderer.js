@@ -1,4 +1,4 @@
-import { bundledApplicationURL } from "./navigation.js";
+import { bundledApplicationURL } from "../shell/navigation.js";
 import { storageOrigins as validateStorageOrigins } from "./storage.js";
 import { realpath, stat } from "node:fs/promises";
 import { extname, isAbsolute, relative, resolve, sep } from "node:path";

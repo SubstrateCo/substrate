@@ -1,5 +1,5 @@
-import { backendURL } from "../src/bundled-renderer.js";
-import { storageOrigins } from "../src/storage.js";
+import { backendURL } from "../src/transport/bundled-renderer.js";
+import { storageOrigins } from "../src/transport/storage.js";
 import { bundleHarnessWorker, stageHarnessProductionAssets } from "./harness-worker.ts";
 import { bundlePreload } from "./preload.js";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -37,8 +37,8 @@ const { name, version, description, author } = JSON.parse(
 );
 await Promise.all([
   cp(`${web}/dist`, `${desktop}/dist/renderer`, { recursive: true }),
-  cp(`${desktop}/src/offline.html`, `${desktop}/dist/offline.html`),
-  cp(`${desktop}/src/offline.css`, `${desktop}/dist/offline.css`),
+  cp(`${desktop}/src/shell/offline.html`, `${desktop}/dist/offline.html`),
+  cp(`${desktop}/src/shell/offline.css`, `${desktop}/dist/offline.css`),
   writeFile(
     `${desktop}/dist/desktop-config.json`,
     JSON.stringify({ apiURL, webURL, storageOrigins: allowedStorageOrigins }),

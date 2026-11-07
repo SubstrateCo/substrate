@@ -1,6 +1,6 @@
-import { backendURL } from "../src/bundled-renderer.js";
-import { developmentServices, ensureDevelopmentServices } from "../src/dev-services.js";
-import { applicationURL } from "../src/navigation.js";
+import { applicationURL } from "../src/shell/navigation.js";
+import { backendURL } from "../src/transport/bundled-renderer.js";
+import { developmentServices, ensureDevelopmentServices } from "./dev-services.js";
 import { bundleHarnessWorker } from "./harness-worker.ts";
 import { bundlePreload } from "./preload.js";
 import electron from "electron";

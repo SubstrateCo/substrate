@@ -1,7 +1,7 @@
-import { provisionVerifiedAccount } from "../../web/e2e/auth.js";
-import { Mailpit } from "../../web/e2e/mailpit.js";
-import { applicationURL } from "../src/navigation.js";
-import { authorizationCallback, requestBrowserSignIn } from "./auth.js";
+import { provisionVerifiedAccount } from "../../../web/e2e/auth.js";
+import { Mailpit } from "../../../web/e2e/mailpit.js";
+import { applicationURL } from "../../src/shell/navigation.js";
+import { authorizationCallback, requestBrowserSignIn } from "../test-support/auth.js";
 import { _electron as electron, expect, test } from "@playwright/test";
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -32,7 +32,7 @@ test("source desktop saves rotated avatars and logos, reloads them, and removes 
   env.STARTUP_OS_TEST_ID = suffix;
   env.STARTUP_OS_STORAGE_ORIGINS =
     process.env.STARTUP_OS_STORAGE_ORIGINS ?? "http://localhost:4566";
-  const source = fileURLToPath(new URL("../src/main.js", import.meta.url));
+  const source = fileURLToPath(new URL("../../src/main.js", import.meta.url));
   const desktop = await electron.launch({ args: [source, "--desktop-smoke-test"], env });
   try {
     const page = await desktop.firstWindow();

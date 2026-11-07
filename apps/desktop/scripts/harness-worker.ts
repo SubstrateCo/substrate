@@ -38,7 +38,7 @@ export async function bundleHarnessWorker(
   outdir = fileURLToPath(new URL("../.runtime/", import.meta.url)),
 ) {
   const result = await Bun.build({
-    entrypoints: [fileURLToPath(new URL("../src/harness-worker.ts", import.meta.url))],
+    entrypoints: [fileURLToPath(new URL("../src/harness/harness-worker.ts", import.meta.url))],
     outdir,
     naming: "harness-worker-entry.mjs",
     target: "node",

@@ -1,4 +1,4 @@
-import { bundledApplicationURL } from "../src/navigation.js";
+import { bundledApplicationURL } from "../../src/shell/navigation.js";
 import { _electron as electron, expect, test } from "@playwright/test";
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -77,8 +77,8 @@ test("isolated bundled renderer crops a blob and uploads directly to allowed HTT
     throw new Error("Missing fixture port.");
   const storage = `https://127.0.0.1:${address.port}`;
   const denied = `https://127.0.0.1:${blockedAddress.port}`;
-  const rendererModule = new URL("../src/bundled-renderer.js", import.meta.url).href;
-  const storageModule = new URL("../src/storage.js", import.meta.url).href;
+  const rendererModule = new URL("../../src/transport/bundled-renderer.js", import.meta.url).href;
+  const storageModule = new URL("../../src/transport/storage.js", import.meta.url).href;
   await writeFile(
     join(directory, "index.html"),
     '<!doctype html><title>Storage fixture</title><img id="preview"><img id="saved">',

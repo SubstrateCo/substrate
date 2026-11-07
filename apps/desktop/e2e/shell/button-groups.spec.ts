@@ -1,4 +1,4 @@
-import { test } from "./fixture.js";
+import { test } from "../test-support/fixture.js";
 import { expect } from "@playwright/test";
 
 const variants = ["default", "secondary", "ghost", "outline", "destructive", "link"] as const;

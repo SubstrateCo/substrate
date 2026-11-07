@@ -1,4 +1,4 @@
-import { test } from "./fixture.js";
+import { test } from "../test-support/fixture.js";
 import { expect, type Locator } from "@playwright/test";
 
 async function expectNoHorizontalOverflow(locator: Locator) {

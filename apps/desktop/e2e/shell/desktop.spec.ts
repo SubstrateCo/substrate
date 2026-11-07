@@ -1,4 +1,4 @@
-import { applicationURL } from "../src/navigation.js";
+import { applicationURL } from "../../src/shell/navigation.js";
 import { _electron as electron, expect, test } from "@playwright/test";
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -15,7 +15,7 @@ test("loads the existing app in an isolated desktop window", async () => {
   }
   env.STARTUP_OS_TEST_ID = randomUUID();
   const desktop = await electron.launch({
-    args: [fileURLToPath(new URL("../src/main.js", import.meta.url)), "--desktop-smoke-test"],
+    args: [fileURLToPath(new URL("../../src/main.js", import.meta.url)), "--desktop-smoke-test"],
     env,
   });
   try {
@@ -36,7 +36,7 @@ test("loads the existing app in an isolated desktop window", async () => {
     const executable = await desktop.evaluate(() => process.execPath);
     const second = await execFileAsync(
       executable,
-      [fileURLToPath(new URL("../src/main.js", import.meta.url)), "--desktop-smoke-test"],
+      [fileURLToPath(new URL("../../src/main.js", import.meta.url)), "--desktop-smoke-test"],
       {
         env,
         timeout: 10_000,
@@ -64,7 +64,7 @@ test("loads the existing app in an isolated desktop window", async () => {
       async ({ BrowserWindow }, path) => {
         await BrowserWindow.getAllWindows()[0]!.loadFile(path);
       },
-      fileURLToPath(new URL("../src/offline.html", import.meta.url)),
+      fileURLToPath(new URL("../../src/shell/offline.html", import.meta.url)),
     );
     await expect(
       page.getByRole("heading", { name: "Cannot connect to Startup OS", exact: true }),

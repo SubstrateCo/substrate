@@ -1,5 +1,5 @@
-import { callMessaging } from "../../web/e2e/api.js";
-import { test } from "./fixture.js";
+import { callMessaging } from "../../../web/e2e/api.js";
+import { test } from "../test-support/fixture.js";
 import { expect, type Locator, type Page } from "@playwright/test";
 
 async function withinViewport(page: Page, locator: Locator) {

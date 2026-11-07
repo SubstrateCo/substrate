@@ -1,6 +1,6 @@
-import { provisionVerifiedAccount } from "../../web/e2e/auth.js";
-import { provisionMember } from "../../web/e2e/organizations.js";
-import { test } from "./fixture.js";
+import { provisionVerifiedAccount } from "../../../web/e2e/auth.js";
+import { provisionMember } from "../../../web/e2e/organizations.js";
+import { test } from "../test-support/fixture.js";
 import { expect, type Locator, type Page } from "@playwright/test";
 
 async function fits(page: Page, locator: Locator) {

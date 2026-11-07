@@ -1,7 +1,7 @@
 import type { HarnessEvent } from "@startup-os/contracts/harness";
 
-import type { HarnessAPI } from "./harness-api.ts";
-import { harnessChannel, harnessEventChannel } from "./harness-bridge.ts";
+import type { HarnessAPI } from "./harness/harness-api.ts";
+import { harnessChannel, harnessEventChannel } from "./harness/harness-bridge.ts";
 import { setupRenderer } from "@better-auth/electron/preload";
 import { contextBridge, ipcRenderer } from "electron";
 

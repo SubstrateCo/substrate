@@ -1,18 +1,18 @@
 import { desktopScheme, resolveDesktopLink } from "@startup-os/contracts/desktop/links";
 
-import { desktopAPITransport } from "./api-transport.js";
-import { createDesktopAuthClient } from "./auth-client.js";
-import { backendURL, bundledRenderer } from "./bundled-renderer.js";
+import { createDesktopAuthClient } from "./auth/auth-client.js";
 import {
   harnessChannel,
   harnessEventChannel,
   localHarnessMethods,
   trustedHarnessSender,
-} from "./harness-bridge.ts";
-import { createHarnessController } from "./harness-controller.ts";
-import { createHarnessProcess } from "./harness-process.ts";
-import { applicationURL, bundledApplicationURL, navigationTarget } from "./navigation.js";
-import { storageOrigins, storageRequest } from "./storage.js";
+} from "./harness/harness-bridge.ts";
+import { createHarnessController } from "./harness/harness-controller.ts";
+import { createHarnessProcess } from "./harness/harness-process.ts";
+import { applicationURL, bundledApplicationURL, navigationTarget } from "./shell/navigation.js";
+import { desktopAPITransport } from "./transport/api-transport.js";
+import { backendURL, bundledRenderer } from "./transport/bundled-renderer.js";
+import { storageOrigins, storageRequest } from "./transport/storage.js";
 import { app, BrowserWindow, ipcMain, Menu, net, session, shell } from "electron";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -23,7 +23,10 @@ const rendererURL = bundled ? bundledApplicationURL : applicationURL;
 /** @param {string} url */
 const target = (url) => navigationTarget(url, rendererURL);
 
-const errorPageURL = new URL("./offline.html", import.meta.url).href;
+const errorPageURL = new URL(
+  app.isPackaged ? "./offline.html" : "./shell/offline.html",
+  import.meta.url,
+).href;
 const errorPage = fileURLToPath(errorPageURL);
 app.setName("Startup OS");
 // Keep the lock identity stable for package, source-file, and smoke-test launches.
