@@ -167,7 +167,7 @@ test("project access reviews grants and removal, keeps reductions neutral, and p
     );
     await row.getByRole("button", { name: "Apply", exact: true }).click();
     await expect(row.getByRole("button", { name: "Apply", exact: true })).toHaveCount(0);
-    expect((await memberAccess()).data.level).toBe("view");
+    await expect.poll(async () => (await memberAccess()).data.level).toBe("view");
     await row.getByRole("combobox", { name: "Desktop Member permission", exact: true }).click();
     await page.getByRole("option", { name: "No access", exact: true }).click();
     await row.getByRole("button", { name: "Apply", exact: true }).click();

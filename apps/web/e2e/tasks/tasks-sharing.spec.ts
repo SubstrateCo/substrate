@@ -73,10 +73,20 @@ test("explicit project grants control inherited task, subtask, and comment acces
       await ownerPage.getByRole("button", { name: "New task", exact: true }).click();
       await ownerPage.getByLabel("Task title", { exact: true }).fill(parent);
       await ownerPage.getByRole("button", { name: "Create task", exact: true }).click();
+      await expect(
+        ownerPage
+          .getByRole("region", { name: "Task details", exact: true })
+          .getByRole("heading", { name: parent, exact: true }),
+      ).toBeVisible();
       await comment(ownerPage, "Parent private comment");
       await ownerPage.getByRole("button", { name: "Add subtask", exact: true }).click();
       await ownerPage.getByLabel("Task title", { exact: true }).fill(child);
       await ownerPage.getByRole("button", { name: "Create subtask", exact: true }).click();
+      await expect(
+        ownerPage
+          .getByRole("region", { name: "Task details", exact: true })
+          .getByRole("heading", { name: child, exact: true }),
+      ).toBeVisible();
       await comment(ownerPage, "Child private comment");
       await ownerPage.getByRole("button", { name: "New task", exact: true }).click();
       await ownerPage.getByLabel("Task title", { exact: true }).fill(sibling);

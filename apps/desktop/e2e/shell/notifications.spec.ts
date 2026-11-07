@@ -4,6 +4,37 @@ import { createChannel } from "../messaging/test-support.js";
 import { test } from "../test-support/fixture.js";
 import { expect } from "@playwright/test";
 
+test("empty notifications are centered below the filters", async ({ desktop }) => {
+  await desktop.provision();
+  const { page } = desktop;
+  await page
+    .getByRole("navigation", { name: "Apps", exact: true })
+    .getByRole("button", { name: "Notifications", exact: true })
+    .click();
+  const panel = page.getByRole("region", { name: "Notifications", exact: true });
+  for (const title of ["No notifications yet", "You’re all caught up"]) {
+    if (title === "You’re all caught up")
+      await panel.getByRole("button", { name: /^Unread/ }).click();
+    const notice = panel.getByRole("status").filter({ hasText: title });
+    await expect(notice).toBeVisible();
+    const bounds = (await notice.boundingBox())!;
+    const panelBounds = (await panel.boundingBox())!;
+    const filters = (await panel
+      .getByRole("group", { name: "Notification filter" })
+      .boundingBox())!;
+    expect(
+      Math.abs(bounds.x + bounds.width / 2 - (panelBounds.x + panelBounds.width / 2)),
+    ).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs(
+        bounds.y +
+          bounds.height / 2 -
+          (filters.y + filters.height + panelBounds.y + panelBounds.height) / 2,
+      ),
+    ).toBeLessThanOrEqual(1);
+  }
+});
+
 test("compact notifications mark all activity read and persist across reload", async ({
   desktop,
 }) => {

@@ -50,7 +50,7 @@ export function ConversationPane({
     }
   }
   return (
-    <div className="relative flex min-h-0 min-w-0 flex-1">
+    <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
       <ResizablePanelGroup
         orientation="horizontal"
         className="min-h-0 min-w-0 flex-1 max-lg:contents! max-lg:*:data-panel:contents!"

@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { useCallback } from "react";
+
 import {
   InvitationManager as InvitationManagerView,
   type InvitationRole,
@@ -42,6 +44,22 @@ export function InvitationManager({ organizationId }: { organizationId: string }
     },
     onSuccess: refresh,
   });
+  const { mutate: sendInvite, reset: resetInvite } = invite;
+  const { mutate: cancelInvite, reset: resetCancel } = cancel;
+  const onInvite = useCallback(
+    (email: string, role: InvitationRole, resend?: boolean) => {
+      resetCancel();
+      sendInvite({ email, role, resend });
+    },
+    [resetCancel, sendInvite],
+  );
+  const onCancel = useCallback(
+    (id: string) => {
+      resetInvite();
+      cancelInvite(id);
+    },
+    [resetInvite, cancelInvite],
+  );
   let message: string | undefined;
   if (invite.isSuccess) message = "Invitation email sent.";
   else if (cancel.isSuccess) message = "Invitation canceled.";
@@ -58,14 +76,8 @@ export function InvitationManager({ organizationId }: { organizationId: string }
       loadError={invitations.error}
       message={message}
       onRetry={() => void invitations.refetch()}
-      onInvite={(email, role, resend) => {
-        cancel.reset();
-        invite.mutate({ email, role, resend });
-      }}
-      onCancel={(id) => {
-        invite.reset();
-        cancel.mutate(id);
-      }}
+      onInvite={onInvite}
+      onCancel={onCancel}
     />
   );
 }

@@ -191,6 +191,8 @@ for (const size of [
       .first()
       .screenshot({ path: test.info().outputPath("invitation-action-group.png") });
     await resend.focus();
+    await page.clock.runFor(2100);
+    await expect(resend).toBeFocused();
     await expect(
       page.getByRole("tooltip", { name: "Resend invitation", exact: true }),
     ).toBeVisible();

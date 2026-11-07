@@ -38,8 +38,11 @@ export function NotificationList({
   const filtered = filter === "unread" ? visible.filter((item) => !item.read) : visible;
   const unread = visible.filter((item) => !item.read).length;
   return (
-    <section aria-label="Notifications" className="min-h-0 flex-1 overflow-auto bg-surface">
-      <div className="border-b bg-card">
+    <section
+      aria-label="Notifications"
+      className="flex min-h-0 flex-1 flex-col overflow-auto bg-surface"
+    >
+      <div className="shrink-0 border-b bg-card">
         <div className="mx-auto flex h-12 max-w-3xl items-center justify-between gap-3 px-4">
           <h1 className="text-sm font-semibold">Notifications</h1>
           {onClose && (
@@ -55,7 +58,7 @@ export function NotificationList({
           )}
         </div>
       </div>
-      <div className="mx-auto max-w-3xl space-y-4 p-4">
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div role="group" aria-label="Notification filter" className="flex items-center gap-2">
             <Button
@@ -92,12 +95,14 @@ export function NotificationList({
         )}
         {error && <ErrorState compact title="Couldn't load notifications" onRetry={onRetry} />}
         {!loading && !error && !filtered.length && (
-          <ContentNotice
-            title={filter === "unread" ? "You’re all caught up" : "No notifications yet"}
-            description="Mentions and task assignments will appear here."
-          />
+          <div className="flex flex-1 items-center justify-center">
+            <ContentNotice
+              title={filter === "unread" ? "You’re all caught up" : "No notifications yet"}
+              description="Mentions and task assignments will appear here."
+            />
+          </div>
         )}
-        <ul className="space-y-2">
+        <ul className="space-y-2 empty:hidden">
           {filtered.map((item) => (
             <NotificationItem
               key={item.id}
@@ -115,7 +120,7 @@ export function NotificationList({
           error={actionError}
           errorDescription="Couldn't update notifications. Try again."
         />
-        {!loading && !error && visible.length > 0 && unread === 0 && (
+        {!loading && !error && filtered.length > 0 && unread === 0 && (
           <p className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
             <CheckCheck className="size-4" /> You’re all caught up
           </p>

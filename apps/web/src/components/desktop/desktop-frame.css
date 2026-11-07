@@ -7,6 +7,24 @@
     -webkit-app-region: initial;
   }
 
+  .desktop-title-bar-search {
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(
+      32rem,
+      calc(100% - 2 * max(var(--desktop-controls-left), var(--desktop-controls-right)) - 24px)
+    );
+  }
+
+  @media (max-width: 400px) {
+    .desktop-title-bar-search {
+      left: calc(var(--desktop-controls-left) + 12px);
+      right: calc(var(--desktop-controls-right) + 12px);
+      transform: none;
+      width: auto;
+    }
+  }
+
   .desktop-title-bar
     :is(button, a, input, select, [data-workspace-search], [data-workspace-search] *) {
     -webkit-app-region: no-drag;

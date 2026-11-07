@@ -102,7 +102,7 @@ test("project and task edits, cleared fields, nested subtasks, and comments surv
     details.getByRole("heading", { name: "Grandchild task", exact: true }),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Edited project", exact: true })).toBeVisible();
-  await expect(page.getByText("Edited project description", { exact: true })).toBeVisible();
+  await expect(page.getByTitle("Edited project description", { exact: true })).toBeVisible();
   const tasks = page.getByRole("region", { name: "Project tasks", exact: true });
   await tasks
     .getByRole("button")

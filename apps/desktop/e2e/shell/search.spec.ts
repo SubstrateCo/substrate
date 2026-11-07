@@ -100,9 +100,18 @@ test("title-bar search and results fit a narrow zoomed window", async ({ desktop
   const input = bar.getByRole("combobox", { name: "Search workspace", exact: true });
   await expect(input).toBeVisible();
   const fieldBounds = (await input.locator("..").boundingBox())!;
+  const safeArea = await bar.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      left: Number.parseFloat(style.paddingLeft),
+      right: innerWidth - Number.parseFloat(style.paddingRight),
+    };
+  });
   expect(
-    Math.abs(fieldBounds.x + fieldBounds.width / 2 - (await page.evaluate(() => innerWidth / 2))),
+    Math.abs(fieldBounds.x + fieldBounds.width / 2 - (safeArea.left + safeArea.right) / 2),
   ).toBeLessThanOrEqual(1);
+  expect(fieldBounds.x).toBeGreaterThanOrEqual(safeArea.left);
+  expect(fieldBounds.x + fieldBounds.width).toBeLessThanOrEqual(safeArea.right);
   await input.click();
   const results = page.getByRole("region", { name: "Workspace search", exact: true });
   await expect(results).toBeVisible();

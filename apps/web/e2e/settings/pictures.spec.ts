@@ -35,9 +35,7 @@ test("cropped profile pictures and logos support retry, replacement, persistence
     const title = isAvatar ? "Edit profile picture" : "Edit organization logo";
     await page.goto(isAvatar ? "/settings/user" : "/settings/organization");
     const control = page.getByRole("region", { name, exact: true });
-    await control
-      .getByLabel("Choose picture", { exact: true })
-      .setInputFiles(await picture(page, "#2563eb"));
+    await control.locator('input[type="file"]').setInputFiles(await picture(page, "#2563eb"));
     const crop = page.getByRole("dialog", { name: title });
     await expect(crop).toBeVisible();
     if (isAvatar) {
@@ -143,9 +141,7 @@ test("cropped profile pictures and logos support retry, replacement, persistence
       )
       .toBe(true);
 
-    await control
-      .getByLabel("Replace picture", { exact: true })
-      .setInputFiles(await picture(page, "#dc2626"));
+    await control.locator('input[type="file"]').setInputFiles(await picture(page, "#dc2626"));
     await crop.getByRole("button", { name: "Save picture", exact: true }).click();
     await expect(crop).toBeHidden();
     await expect(image).not.toHaveAttribute("src", original!);

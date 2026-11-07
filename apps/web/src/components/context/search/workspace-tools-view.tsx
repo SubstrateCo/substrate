@@ -106,7 +106,7 @@ export function WorkspaceTools({
               data-workspace-search-results
               className={
                 desktop
-                  ? "absolute top-full left-1/2 mt-2 -translate-x-1/2 overflow-hidden rounded-xl border bg-popover shadow-xl"
+                  ? "absolute top-full left-1/2 mt-2 -translate-x-1/2 overflow-hidden rounded-xl border bg-popover shadow-xl max-[400px]:fixed max-[400px]:top-(--desktop-title-bar-height)"
                   : "absolute inset-x-0 top-full mt-2 overflow-hidden rounded-xl border bg-popover shadow-xl"
               }
               style={desktop ? { width: "min(32rem, calc(100vw - 24px))" } : undefined}

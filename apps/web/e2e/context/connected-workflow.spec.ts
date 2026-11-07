@@ -223,10 +223,11 @@ test("connected work preserves source, links, references, and stable navigation"
     await expect(message.getByRole("link", { name: project, exact: true }).first()).toBeVisible();
     await page.reload();
     await message.getByRole("link", { name: project, exact: true }).first().click();
-    await page.locator("summary").filter({ hasText: "Project discussions" }).click();
+    await page.getByRole("tab", { name: "Discussions", exact: true }).click();
     await expect(
       page.getByRole("region", { name: "Project discussions", exact: true }),
     ).toContainText(`References ${suffix}`);
+    await page.getByRole("tab", { name: "Tasks", exact: true }).click();
     await page
       .getByRole("region", { name: "Project tasks", exact: true })
       .getByRole("button")

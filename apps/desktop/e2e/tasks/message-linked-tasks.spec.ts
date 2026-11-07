@@ -1,14 +1,16 @@
 import { test } from "../test-support/fixture.js";
-import { expect, type Locator } from "@playwright/test";
+import { expect, type ElectronApplication, type Locator } from "@playwright/test";
 
-async function copyAndReset(button: Locator) {
+async function copyAndReset(button: Locator, app: ElectronApplication) {
   const width = (await button.boundingBox())!.width;
   await button.click();
   await expect(button.locator("[data-copy-icon=check]")).toHaveCSS("opacity", "1");
   await expect(button.locator("[data-copy-icon=copy]")).toHaveCSS("opacity", "0");
+  const copied = await app.evaluate(({ clipboard }) => clipboard.readText());
   expect((await button.boundingBox())!.width).toBeCloseTo(width, 0);
   await expect(button.locator("[data-copy-icon=copy]")).toHaveCSS("opacity", "1");
   await expect(button.locator("[data-copy-icon=check]")).toHaveCSS("opacity", "0");
+  return copied;
 }
 
 test("desktop messages create linked tasks with OS navigation and source context", async ({
@@ -39,9 +41,8 @@ test("desktop messages create linked tasks with OS navigation and source context
   await expect(page.getByRole("status").filter({ hasText: "Couldn't copy link" })).toBeVisible();
   await expect(copyProject.locator("[data-copy-icon=check]")).toHaveCSS("opacity", "0");
   await page.evaluate(() => Reflect.deleteProperty(navigator.clipboard, "writeText"));
-  await copyAndReset(copyProject);
+  expect(await copyAndReset(copyProject, desktop.app)).toBe(projectURL);
   await expect(page.getByText("Couldn't copy link", { exact: true })).toHaveCount(0);
-  expect(await desktop.app.evaluate(({ clipboard }) => clipboard.readText())).toBe(projectURL);
   await apps.getByRole("button", { name: "Messages", exact: true }).click();
   await page
     .getByRole("complementary", { name: "Conversations" })
@@ -58,8 +59,12 @@ test("desktop messages create linked tasks with OS navigation and source context
     .filter({ hasText: source });
   await expect(message).toBeVisible();
   await message.hover();
-  await copyAndReset(message.getByRole("button", { name: "Copy message link", exact: true }));
-  const messageURL = new URL(await desktop.app.evaluate(({ clipboard }) => clipboard.readText()));
+  const messageURL = new URL(
+    await copyAndReset(
+      message.getByRole("button", { name: "Copy message link", exact: true }),
+      desktop.app,
+    ),
+  );
   const conversationURL = new URL(page.url());
   expect(messageURL.origin).toBe(conversationURL.origin);
   expect(messageURL.pathname).toBe("/dashboard");
@@ -78,11 +83,13 @@ test("desktop messages create linked tasks with OS navigation and source context
   await expect(form).toContainText("The source message stays private");
   await form.getByLabel("Task title", { exact: true }).fill(task);
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await copyAndReset(
-    form.getByRole("button", { name: "Copy source text into description", exact: true }),
-  );
+  expect(
+    await copyAndReset(
+      form.getByRole("button", { name: "Copy source text into description", exact: true }),
+      desktop.app,
+    ),
+  ).toBe(messageURL.href);
   await expect(form.getByLabel("Task description", { exact: true })).toHaveValue(source);
-  expect(await desktop.app.evaluate(({ clipboard }) => clipboard.readText())).toBe(messageURL.href);
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await form.getByRole("combobox", { name: "Priority", exact: true }).click();
   await page.getByRole("option", { name: "High", exact: true }).click();
@@ -96,8 +103,12 @@ test("desktop messages create linked tasks with OS navigation and source context
   await expect(details.getByRole("heading", { name: task, exact: true })).toBeVisible();
   await expect(details).toContainText(/high/i);
   await expect(details).toContainText("2026-12-15");
-  await copyAndReset(details.getByRole("button", { name: "Copy task link", exact: true }));
-  expect(await desktop.app.evaluate(({ clipboard }) => clipboard.readText())).toBe(page.url());
+  expect(
+    await copyAndReset(
+      details.getByRole("button", { name: "Copy task link", exact: true }),
+      desktop.app,
+    ),
+  ).toBe(page.url());
   const target = new URL(page.url());
   await desktop.openPath(`${target.pathname}${target.search}`);
   await expect(details.getByRole("heading", { name: task, exact: true })).toBeVisible();

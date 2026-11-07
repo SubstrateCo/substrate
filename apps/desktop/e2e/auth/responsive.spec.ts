@@ -82,6 +82,11 @@ for (const size of [
     await expect(
       page.getByRole("button", { name: "Sign in with browser", exact: true }),
     ).toBeVisible();
+    const card = (await page.getByRole("main").locator('[data-slot="card"]').boundingBox())!;
+    const bar = (await page.getByRole("banner", { name: "Window title bar" }).boundingBox())!;
+    expect(Math.abs(card.y + card.height / 2 - (size.height + bar.height) / 2)).toBeLessThanOrEqual(
+      1,
+    );
     await review(page, "native-sign-in");
     await requestBrowserSignIn(desktop.app, page, browser);
     await expect(browser.getByText("Welcome back", { exact: true })).toBeVisible();

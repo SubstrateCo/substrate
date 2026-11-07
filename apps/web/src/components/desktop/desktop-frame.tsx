@@ -65,11 +65,7 @@ export function DesktopFrame({ children }: { children: ReactNode }) {
           </span>
           <div
             ref={setTitleBarTarget}
-            className="absolute left-1/2 min-w-0 -translate-x-1/2 empty:hidden"
-            style={{
-              width:
-                "min(32rem, calc(100% - 2 * max(var(--desktop-controls-left), var(--desktop-controls-right)) - 24px))",
-            }}
+            className="desktop-title-bar-search absolute min-w-0 empty:hidden"
           />
         </header>
         {/* Keep fixed auth screens and local overlays below the native controls. */}
