@@ -20,7 +20,7 @@ createRoot(document.getElementById("root")!).render(
       <ThemeProvider>
         <DesktopFrame>
           <RouterProvider router={router} />
-          <Toaster position="bottom-right" closeButton richColors />
+          <Toaster position="bottom-right" closeButton />
         </DesktopFrame>
       </ThemeProvider>
     </QueryClientProvider>
