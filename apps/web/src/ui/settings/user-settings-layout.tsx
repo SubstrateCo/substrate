@@ -7,11 +7,13 @@ export function UserSettingsLayout({
   active,
   profileHref,
   invitationsHref,
+  agentsHref,
 }: {
   children: ReactNode;
-  active: "profile" | "invitations";
+  active: "profile" | "invitations" | "agents";
   profileHref: string;
   invitationsHref: string;
+  agentsHref: string;
 }) {
   return (
     <WorkspaceSettings title="User settings">
@@ -29,6 +31,13 @@ export function UserSettingsLayout({
           className={active === "invitations" ? "font-semibold underline" : undefined}
         >
           Invitations
+        </a>
+        <a
+          href={agentsHref}
+          aria-current={active === "agents" ? "page" : undefined}
+          className={active === "agents" ? "font-semibold underline" : undefined}
+        >
+          Agents
         </a>
       </nav>
       {children}

@@ -1,3 +1,4 @@
+import { bundleHarnessWorker } from "./harness-worker.ts";
 import { fileURLToPath } from "node:url";
 
 export async function bundlePreload(
@@ -14,4 +15,7 @@ export async function bundlePreload(
   if (!result.success) throw new AggregateError(result.logs, "Desktop preload bundle failed.");
 }
 
-if (import.meta.main) await bundlePreload();
+if (import.meta.main) {
+  await bundlePreload();
+  await bundleHarnessWorker();
+}

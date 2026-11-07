@@ -1,6 +1,7 @@
 import { backendURL } from "../src/bundled-renderer.js";
 import { developmentServices, ensureDevelopmentServices } from "../src/dev-services.js";
 import { applicationURL } from "../src/navigation.js";
+import { bundleHarnessWorker } from "./harness-worker.ts";
 import { bundlePreload } from "./preload.js";
 import electron from "electron";
 import { fileURLToPath } from "node:url";
@@ -22,6 +23,7 @@ process.on("SIGTERM", stop);
 
 try {
   await bundlePreload();
+  await bundleHarnessWorker();
   await ensureDevelopmentServices(
     developmentServices(applicationURL, backendURL(process.env.STARTUP_OS_API_URL, false)),
     (service) => {

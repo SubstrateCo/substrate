@@ -1,3 +1,4 @@
+import { setAgentPicture, uploadAgentPicture } from "./agents";
 import { testPictureApi } from "./files.test-support";
 import { afterEach, expect, spyOn, test } from "bun:test";
 
@@ -61,6 +62,86 @@ test("uploads cropped bytes without credentials before attaching the completed a
   expect(await new Response(requests[3]?.init?.body).json()).toEqual({
     image: "/api/v1/files/file-1/content",
   });
+});
+
+test("attaches an agent avatar by file ID without changing the human profile", async () => {
+  const controller = new AbortController();
+  let committing = false;
+  fetchSpy = spyOn(globalThis, "fetch")
+    .mockResolvedValueOnce(
+      success({ uploadId: "upload-1", uploadUrl: "https://storage.test/picture", headers: {} }),
+    )
+    .mockResolvedValueOnce(new Response(null, { status: 200 }))
+    .mockResolvedValueOnce(success({ fileId: "file-1" }))
+    .mockImplementationOnce(
+      Object.assign(
+        async (_input: RequestInfo | URL, init?: RequestInit) => {
+          expect(committing).toBe(true);
+          controller.abort();
+          expect(init?.signal?.aborted).not.toBe(true);
+          return Response.json({
+            success: true,
+            data: { id: "agent-1", image: "/api/v1/files/file-1/content" },
+          });
+        },
+        { preconnect: globalThis.fetch.preconnect },
+      ),
+    );
+  const result = await uploadAgentPicture("agent-1", file(), controller.signal, () => {
+    committing = true;
+  });
+  expect(result.image).toBe("/api/v1/files/file-1/content");
+  expect(await new Response(fetchSpy.mock.calls[0]?.[1]?.body).json()).toMatchObject({
+    purpose: "avatar",
+  });
+  expect(fetchSpy.mock.calls[1]?.[1]?.credentials).toBe("omit");
+  const [url, init] = fetchSpy.mock.calls[3]!;
+  expect(url instanceof Request ? url.url : url.toString()).toEndWith(
+    "/api/v1/agents/actors/picture",
+  );
+  expect(await new Response(init?.body).json()).toEqual({ id: "agent-1", fileId: "file-1" });
+  expect(fetchSpy).toHaveBeenCalledTimes(4);
+});
+
+test("agent avatar cancellation before commit does not attach the completed file", async () => {
+  const controller = new AbortController();
+  const completion = success({ fileId: "file-1" });
+  spyOn(completion, "json").mockImplementation(async () => {
+    controller.abort();
+    return { success: true, data: { fileId: "file-1" } };
+  });
+  fetchSpy = spyOn(globalThis, "fetch")
+    .mockResolvedValueOnce(
+      success({ uploadId: "upload-1", uploadUrl: "https://storage.test/picture", headers: {} }),
+    )
+    .mockResolvedValueOnce(new Response(null, { status: 200 }))
+    .mockResolvedValueOnce(completion);
+  let committing = false;
+  await uploadAgentPicture("agent-1", file(), controller.signal, () => {
+    committing = true;
+  }).then(
+    () => {
+      throw new Error("Expected cancellation before attachment");
+    },
+    (error: Error) => {
+      expect(error.name).toBe("AbortError");
+    },
+  );
+  expect(committing).toBe(false);
+  expect(fetchSpy).toHaveBeenCalledTimes(3);
+});
+
+test("removes an agent avatar with a nullable file ID, not a user update", async () => {
+  fetchSpy = spyOn(globalThis, "fetch").mockResolvedValue(
+    Response.json({ success: true, data: { id: "agent-1", image: null } }),
+  );
+  await setAgentPicture("agent-1", null);
+  const [url, init] = fetchSpy.mock.calls[0]!;
+  expect(url instanceof Request ? url.url : url.toString()).toEndWith(
+    "/api/v1/agents/actors/picture",
+  );
+  expect(await new Response(init?.body).json()).toEqual({ id: "agent-1", fileId: null });
+  expect(fetchSpy).toHaveBeenCalledTimes(1);
 });
 
 test("does not complete or attach a failed storage upload", async () => {

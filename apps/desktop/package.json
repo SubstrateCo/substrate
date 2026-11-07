@@ -13,14 +13,16 @@
     "build:dir": "bun run build && electron-builder --win --dir",
     "package": "bun run build && electron-builder --win nsis",
     "typecheck": "tsc --noEmit",
-    "test": "bun test src",
+    "test": "bun test src scripts",
     "test:e2e": "bun run setup && bun scripts/preload.ts && playwright test"
   },
   "dependencies": {
     "@better-auth/electron": "^1.7.18",
     "@startup-os/contracts": "workspace:*",
+    "@startup-os/harness-runtime": "workspace:*",
     "better-auth": "^1.7.18",
-    "conf": "^16.0.0"
+    "conf": "^16.0.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
@@ -40,6 +42,11 @@
       "**/*"
     ],
     "asar": true,
+    "asarUnpack": [
+      "harness-worker-entry.mjs",
+      "harness-migrations/**",
+      "node_modules/**/*"
+    ],
     "npmRebuild": false,
     "protocols": [
       {

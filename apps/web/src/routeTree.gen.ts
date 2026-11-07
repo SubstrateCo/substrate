@@ -27,6 +27,7 @@ import { Route as PublicGuestSignupRouteImport } from './routes/_public/_guest/s
 import { Route as AuthenticatedWorkspaceSettingsOrganizationRouteRouteImport } from './routes/_authenticated/_workspace/settings/organization/route'
 import { Route as AuthenticatedWorkspaceTasksIndexRouteImport } from './routes/_authenticated/_workspace/tasks/index'
 import { Route as AuthenticatedSettingsUserIndexRouteImport } from './routes/_authenticated/settings/user/index'
+import { Route as AuthenticatedSettingsUserAgentsRouteImport } from './routes/_authenticated/settings/user/agents'
 import { Route as AuthenticatedSettingsUserInvitationsRouteImport } from './routes/_authenticated/settings/user/invitations'
 import { Route as AuthenticatedWorkspaceSettingsOrganizationIndexRouteImport } from './routes/_authenticated/_workspace/settings/organization/index'
 
@@ -125,6 +126,12 @@ const AuthenticatedSettingsUserIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedSettingsUserRouteRoute,
   } as any)
+const AuthenticatedSettingsUserAgentsRoute =
+  AuthenticatedSettingsUserAgentsRouteImport.update({
+    id: '/agents',
+    path: '/agents',
+    getParentRoute: () => AuthenticatedSettingsUserRouteRoute,
+  } as any)
 const AuthenticatedSettingsUserInvitationsRoute =
   AuthenticatedSettingsUserInvitationsRouteImport.update({
     id: '/invitations',
@@ -151,6 +158,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof PublicGuestLoginRoute
   '/signup': typeof PublicGuestSignupRoute
   '/settings/organization': typeof AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren
+  '/settings/user/agents': typeof AuthenticatedSettingsUserAgentsRoute
   '/settings/user/invitations': typeof AuthenticatedSettingsUserInvitationsRoute
   '/tasks/': typeof AuthenticatedWorkspaceTasksIndexRoute
   '/settings/user/': typeof AuthenticatedSettingsUserIndexRoute
@@ -167,6 +175,7 @@ export interface FileRoutesByTo {
   '/accept-invitation/$invitationId': typeof AuthenticatedAcceptInvitationInvitationIdRoute
   '/login': typeof PublicGuestLoginRoute
   '/signup': typeof PublicGuestSignupRoute
+  '/settings/user/agents': typeof AuthenticatedSettingsUserAgentsRoute
   '/settings/user/invitations': typeof AuthenticatedSettingsUserInvitationsRoute
   '/tasks': typeof AuthenticatedWorkspaceTasksIndexRoute
   '/settings/user': typeof AuthenticatedSettingsUserIndexRoute
@@ -190,6 +199,7 @@ export interface FileRoutesById {
   '/_public/_guest/login': typeof PublicGuestLoginRoute
   '/_public/_guest/signup': typeof PublicGuestSignupRoute
   '/_authenticated/_workspace/settings/organization': typeof AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren
+  '/_authenticated/settings/user/agents': typeof AuthenticatedSettingsUserAgentsRoute
   '/_authenticated/settings/user/invitations': typeof AuthenticatedSettingsUserInvitationsRoute
   '/_authenticated/_workspace/tasks/': typeof AuthenticatedWorkspaceTasksIndexRoute
   '/_authenticated/settings/user/': typeof AuthenticatedSettingsUserIndexRoute
@@ -210,6 +220,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/settings/organization'
+    | '/settings/user/agents'
     | '/settings/user/invitations'
     | '/tasks/'
     | '/settings/user/'
@@ -226,6 +237,7 @@ export interface FileRouteTypes {
     | '/accept-invitation/$invitationId'
     | '/login'
     | '/signup'
+    | '/settings/user/agents'
     | '/settings/user/invitations'
     | '/tasks'
     | '/settings/user'
@@ -248,6 +260,7 @@ export interface FileRouteTypes {
     | '/_public/_guest/login'
     | '/_public/_guest/signup'
     | '/_authenticated/_workspace/settings/organization'
+    | '/_authenticated/settings/user/agents'
     | '/_authenticated/settings/user/invitations'
     | '/_authenticated/_workspace/tasks/'
     | '/_authenticated/settings/user/'
@@ -388,6 +401,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsUserIndexRouteImport
       parentRoute: typeof AuthenticatedSettingsUserRouteRoute
     }
+    '/_authenticated/settings/user/agents': {
+      id: '/_authenticated/settings/user/agents'
+      path: '/agents'
+      fullPath: '/settings/user/agents'
+      preLoaderRoute: typeof AuthenticatedSettingsUserAgentsRouteImport
+      parentRoute: typeof AuthenticatedSettingsUserRouteRoute
+    }
     '/_authenticated/settings/user/invitations': {
       id: '/_authenticated/settings/user/invitations'
       path: '/invitations'
@@ -444,12 +464,14 @@ const AuthenticatedWorkspaceRouteRouteWithChildren =
   )
 
 interface AuthenticatedSettingsUserRouteRouteChildren {
+  AuthenticatedSettingsUserAgentsRoute: typeof AuthenticatedSettingsUserAgentsRoute
   AuthenticatedSettingsUserInvitationsRoute: typeof AuthenticatedSettingsUserInvitationsRoute
   AuthenticatedSettingsUserIndexRoute: typeof AuthenticatedSettingsUserIndexRoute
 }
 
 const AuthenticatedSettingsUserRouteRouteChildren: AuthenticatedSettingsUserRouteRouteChildren =
   {
+    AuthenticatedSettingsUserAgentsRoute: AuthenticatedSettingsUserAgentsRoute,
     AuthenticatedSettingsUserInvitationsRoute:
       AuthenticatedSettingsUserInvitationsRoute,
     AuthenticatedSettingsUserIndexRoute: AuthenticatedSettingsUserIndexRoute,

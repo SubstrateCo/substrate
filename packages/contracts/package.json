@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./harness": "./src/harness/index.ts",
+    "./harness/desktop": "./src/harness/desktop.ts",
+    "./agents": "./src/agents/index.ts",
     "./files/input": "./src/files/input.ts",
     "./files/pictures": "./src/files/pictures.ts",
     "./tasks": "./src/tasks/status.ts",

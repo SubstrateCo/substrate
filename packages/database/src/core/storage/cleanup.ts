@@ -1,4 +1,5 @@
 import type { Database } from "../../client";
+import { userAgents } from "../actors/user-agents.schema";
 import {
   fileUploads,
   storedFiles,
@@ -39,6 +40,12 @@ export function createStorageCleanup(db: Database) {
                 and(eq(storedFiles.purpose, "file"), isNull(storedFiles.uploadedBy)),
               ),
               lt(storedFiles.createdAt, before),
+              notExists(
+                tx
+                  .select({ id: userAgents.id })
+                  .from(userAgents)
+                  .where(eq(userAgents.imageFileId, storedFiles.id)),
+              ),
               notExists(
                 tx
                   .select({ id: userPictures.id })

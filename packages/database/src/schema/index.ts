@@ -2,6 +2,7 @@ export * from "../core/authentication/schema";
 export * from "../core/organizations/schema";
 export * from "../core/entities/schema";
 export * from "../core/actors/schema";
+export * from "../core/actors/user-agents.schema";
 export * from "../core/contacts/schema";
 export * from "../core/permissions/schema";
 export * from "../core/permissions/access-parents";

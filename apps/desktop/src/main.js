@@ -3,9 +3,17 @@ import { desktopScheme, resolveDesktopLink } from "@startup-os/contracts/desktop
 import { desktopAPITransport } from "./api-transport.js";
 import { createDesktopAuthClient } from "./auth-client.js";
 import { backendURL, bundledRenderer } from "./bundled-renderer.js";
+import {
+  harnessChannel,
+  harnessEventChannel,
+  localHarnessMethods,
+  trustedHarnessSender,
+} from "./harness-bridge.ts";
+import { createHarnessController } from "./harness-controller.ts";
+import { createHarnessProcess } from "./harness-process.ts";
 import { applicationURL, bundledApplicationURL, navigationTarget } from "./navigation.js";
 import { storageOrigins, storageRequest } from "./storage.js";
-import { app, BrowserWindow, Menu, net, session, shell } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, net, session, shell } from "electron";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -38,11 +46,14 @@ const allowedStorageOrigins = storageOrigins(
   process.env.STARTUP_OS_STORAGE_ORIGINS ?? publicConfig.storageOrigins,
   app.isPackaged,
 );
+/** @type {ReturnType<typeof createHarnessController> | undefined} */
+let harness;
 const { authClient, handleAuthLink } = createDesktopAuthClient(
   backend,
   process.env.STARTUP_OS_WEB_URL ?? publicConfig.webURL ?? applicationURL,
   app.commandLine.hasSwitch("desktop-smoke-test"),
   () => mainWindow,
+  () => harness?.disconnect(),
 );
 /** @type {BrowserWindow | undefined} */
 let mainWindow;
@@ -112,6 +123,7 @@ function createWindow() {
   mainWindow = window;
   window.once("ready-to-show", () => window.show());
   window.on("closed", () => {
+    harness?.disconnect();
     mainWindow = undefined;
   });
   window.webContents.on("will-navigate", (event, url) => {
@@ -174,6 +186,40 @@ if (!app.requestSingleInstanceLock()) {
         getCookie: () => authClient.getCookie(),
         authFetch: (path, options) => authClient.$fetch(path, options),
       });
+      harness = createHarnessController({
+        backend,
+        accountsDirectory: join(app.getPath("userData"), "accounts"),
+        fetchAPI,
+        createWorker: (directory) =>
+          createHarnessProcess(
+            fileURLToPath(
+              new URL(
+                app.isPackaged ? "./harness-worker.js" : "../.runtime/harness-worker.js",
+                import.meta.url,
+              ),
+            ),
+            directory,
+            (event) => {
+              const contents = mainWindow?.webContents;
+              if (contents && target(contents.getURL()) === "internal")
+                contents.send(harnessEventChannel, event);
+            },
+          ),
+      });
+      ipcMain.handle(harnessChannel, (event, method, value) => {
+        if (!trustedHarnessSender(event, mainWindow?.webContents, rendererURL))
+          throw new Error("Harness unavailable.");
+        if (method === "disconnect" && value === undefined) {
+          harness?.disconnect();
+          return;
+        }
+        if (!["status", "synchronize", "execute", ...localHarnessMethods].includes(method))
+          throw new Error("Invalid harness operation.");
+        if ((method === "status" || method === "synchronize") && value !== undefined)
+          throw new Error("Invalid harness operation.");
+        return harness?.run(method, value);
+      });
+      app.on("before-quit", () => harness?.disconnect());
       const fetchStorage = storageRequest(allowedStorageOrigins, (request, options) =>
         desktopSession.fetch(request, { ...options, bypassCustomProtocolHandlers: true }),
       );

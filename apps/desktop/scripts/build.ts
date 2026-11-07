@@ -1,5 +1,6 @@
 import { backendURL } from "../src/bundled-renderer.js";
 import { storageOrigins } from "../src/storage.js";
+import { bundleHarnessWorker, stageHarnessProductionAssets } from "./harness-worker.ts";
 import { bundlePreload } from "./preload.js";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -28,6 +29,8 @@ const result = await Bun.build({
 if (!result.success) throw new AggregateError(result.logs, "Desktop main build failed.");
 await mkdir(`${desktop}/dist`, { recursive: true });
 await bundlePreload(`${desktop}/dist`);
+await bundleHarnessWorker(`${desktop}/dist`);
+const harnessDependencies = await stageHarnessProductionAssets(`${desktop}/dist`);
 await bundlePreload();
 const { name, version, description, author } = JSON.parse(
   await readFile(`${desktop}/package.json`, "utf8"),
@@ -42,6 +45,14 @@ await Promise.all([
   ),
   writeFile(
     `${desktop}/dist/package.json`,
-    JSON.stringify({ name, version, description, author, type: "module", main: "main.js" }),
+    JSON.stringify({
+      name,
+      version,
+      description,
+      author,
+      type: "module",
+      main: "main.js",
+      dependencies: harnessDependencies,
+    }),
   ),
 ]);

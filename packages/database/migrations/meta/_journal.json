@@ -36,6 +36,20 @@
       "when": 1793989843146,
       "tag": "0004_managed_picture_bindings",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794007648510,
+      "tag": "0005_stormy_puma",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794009262372,
+      "tag": "0006_sour_silver_samurai",
+      "breakpoints": true
     }
   ]
 }

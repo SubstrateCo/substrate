@@ -4,6 +4,7 @@ import { authEnvironment } from "./auth/environment";
 import { auth } from "./auth/server";
 import { createDesktopRoutes } from "./desktop/routes";
 import { respond } from "./shared/http";
+import { createAgentsRoutes } from "./v1/agents/routes";
 import { createContextRoutes } from "./v1/context/routes";
 import { createFilesRoutes } from "./v1/files/routes";
 import { createMessagingRoutes } from "./v1/messaging/routes";
@@ -47,6 +48,7 @@ export function createApp() {
     .route("/api/v1/tasks", createTasksRoutes())
     .route("/api/v1/messaging", createMessagingRoutes())
     .route("/api/v1/context", createContextRoutes())
+    .route("/api/v1/agents", createAgentsRoutes())
     .notFound((c) => respond(c, failure("NOT_FOUND", "Endpoint not found.")))
     .onError((error, c) => {
       if (error instanceof HTTPException && error.status === 400) {

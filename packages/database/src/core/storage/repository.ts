@@ -3,6 +3,7 @@ import type { CreateUploadInput } from "@startup-os/contracts/files/input";
 
 import type { Database, DatabaseExecutor } from "../../client";
 import { AccessDeniedError, ConflictError } from "../../errors";
+import { userAgents } from "../actors/user-agents.schema";
 import { member } from "../organizations/schema";
 import { createStorageCleanup } from "./cleanup";
 import { temporaryObjectKey } from "./object-keys";
@@ -212,7 +213,11 @@ export function createStorageRepository(db: Database) {
           .select({ id: organizationPictures.id })
           .from(organizationPictures)
           .where(eq(organizationPictures.fileId, id));
-        if (avatar || logo)
+        const [agent] = await tx
+          .select({ id: userAgents.id })
+          .from(userAgents)
+          .where(eq(userAgents.imageFileId, id));
+        if (avatar || logo || agent)
           throw new ConflictError("Remove the picture before deleting this file.");
         await tx
           .insert(storageCandidates)

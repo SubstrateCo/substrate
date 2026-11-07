@@ -4,8 +4,14 @@ import { electronClient, handleDeepLink } from "@better-auth/electron/client";
 import { storage } from "@better-auth/electron/storage";
 import { createAuthClient } from "better-auth/client";
 
-/** @param {string} backend @param {string} frontend @param {boolean} smokeTest @param {() => import("electron").BrowserWindow | undefined} getWindow */
-export function createDesktopAuthClient(backend, frontend, smokeTest, getWindow) {
+/** @param {string} backend @param {string} frontend @param {boolean} smokeTest @param {() => import("electron").BrowserWindow | undefined} getWindow @param {() => void} onSessionInvalidated */
+export function createDesktopAuthClient(
+  backend,
+  frontend,
+  smokeTest,
+  getWindow,
+  onSessionInvalidated,
+) {
   /** @type {import("@better-auth/electron/client").ElectronClientOptions} */
   const options = {
     signInURL: new URL("/login", frontend),
@@ -25,7 +31,13 @@ export function createDesktopAuthClient(backend, frontend, smokeTest, getWindow)
   const authClient = createAuthClient({
     baseURL: backend,
     plugins: [electronClient(options)],
+    fetchOptions: {
+      onRequest: (context) => {
+        if (new URL(context.url).pathname.endsWith("/sign-out")) onSessionInvalidated();
+      },
+    },
   });
+  authClient.$store.listen("$sessionSignal", onSessionInvalidated);
   return {
     authClient,
     /** @param {string} url */
