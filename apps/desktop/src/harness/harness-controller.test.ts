@@ -31,6 +31,13 @@ function fixture(beforeScan?: () => Promise<void>, nativeMcpServers: unknown[] =
       return {
         request: async (method, value) => {
           calls.push({ method, value });
+          if (method === "listModels")
+            return {
+              harness: "codex",
+              status: "ready",
+              models: [{ id: "gpt-native", name: "Native GPT", credentials: "must-not-cross-ipc" }],
+              stderr: "must-not-cross-ipc",
+            };
           if (method === "scanConfiguration") {
             await beforeScan?.();
             return {
@@ -73,6 +80,22 @@ function fixture(beforeScan?: () => Promise<void>, nativeMcpServers: unknown[] =
 }
 
 describe("desktop harness authority", () => {
+  test("model discovery uses verified organization scope and returns only catalog metadata", async () => {
+    const f = fixture();
+    await f.controller.run("synchronize");
+    expect(await f.controller.run("listModels", { harness: "codex" })).toEqual({
+      harness: "codex",
+      status: "ready",
+      models: [{ id: "gpt-native", name: "Native GPT" }],
+    });
+    expect(f.calls.at(-1)).toEqual({
+      method: "listModels",
+      value: { harness: "codex", organizationId: "org-1" },
+    });
+    expect(
+      f.controller.run("listModels", { harness: "codex", organizationId: "org-2" }),
+    ).rejects.toThrow();
+  });
   test("derives account directory and catalog from verified main requests", async () => {
     const f = fixture();
     expect(await f.controller.run("synchronize")).toEqual({

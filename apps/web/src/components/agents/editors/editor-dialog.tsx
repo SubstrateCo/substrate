@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -40,7 +41,7 @@ export function EditorDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
+          <DialogDescription className="sr-only">{description}</DialogDescription>
         </DialogHeader>
         <form
           noValidate
@@ -63,9 +64,9 @@ export function EditorDialog({
             <Button type="button" variant="outline" disabled={pending} onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : saveLabel}
-            </Button>
+            <PendingButton type="submit" pending={pending} pendingLabel={saveLabel}>
+              {saveLabel}
+            </PendingButton>
           </DialogFooter>
         </form>
       </DialogContent>

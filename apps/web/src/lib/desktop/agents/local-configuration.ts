@@ -11,8 +11,8 @@ export function desktopLocalConfiguration(
   return {
     async scan() {
       await bridge.synchronize();
-      const { skills } = await bridge.scanSkills({ harness });
-      return { skills };
+      const { skills, mcpServers } = await bridge.scanConfiguration({ harness });
+      return { skills, mcpServers };
     },
     saveSkill: (skill) => bridge.saveSkill({ ...skill, harness }),
     deleteSkill: (id) => bridge.deleteSkill({ id, harness }),

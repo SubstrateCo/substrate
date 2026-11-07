@@ -7,7 +7,7 @@ import { useForm } from "@tanstack/react-form";
 import { useState } from "react";
 
 import { EditorDialog } from "./editor-dialog";
-import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { z } from "zod";
@@ -60,7 +60,7 @@ export function SkillEditor({
         <EditorDialog
           title={skill ? "Edit skill" : "Create skill"}
           saveLabel="Save skill"
-          description="Create a reusable custom skill in native files on this device."
+          description="Native skill"
           pending={pending || isSubmitting}
           onClose={onClose}
           onSubmit={() => form.handleSubmit()}
@@ -82,12 +82,9 @@ export function SkillEditor({
                     onBlur={field.handleBlur}
                     onChange={(event) => field.handleChange(event.target.value)}
                     aria-invalid={invalid}
-                    aria-describedby={`skill-name-hint${invalid ? " skill-name-error" : ""}`}
+                    aria-describedby={invalid ? "skill-name-error" : undefined}
                   />
                   {invalid && <FieldError id="skill-name-error" errors={field.state.meta.errors} />}
-                  <FieldDescription id="skill-name-hint">
-                    Native skill name: lowercase words separated by hyphens.
-                  </FieldDescription>
                 </Field>
               );
             }}

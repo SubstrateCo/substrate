@@ -1,7 +1,7 @@
 import type { SaveSkillInput } from "@startup-os/contracts/agents";
 import type { HarnessLocalConfiguration } from "@startup-os/contracts/harness";
 
-export type LocalAgentConfiguration = Pick<HarnessLocalConfiguration, "skills">;
+export type LocalAgentConfiguration = Pick<HarnessLocalConfiguration, "skills" | "mcpServers">;
 
 // The desktop adapter owns native file scanning and writes. No cloud requests.
 export interface LocalConfigurationController {

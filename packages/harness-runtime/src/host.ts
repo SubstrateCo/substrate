@@ -12,6 +12,7 @@ import type { AdapterContext, NativeAdapter } from "./adapters/types.ts";
 import { materialize } from "./config.ts";
 import { HarnessError } from "./errors.ts";
 import { createStartupMcp } from "./mcp.ts";
+import { discoverModels } from "./models/discover.ts";
 import {
   deleteNativeSkill,
   editNativeServer,
@@ -47,6 +48,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ha
     { ref: HarnessSessionRef; adapter: NativeAdapter; revoke(): void; busy: boolean }
   >();
   let disposed = false;
+  const modelDiscovery = new AbortController();
   const assertOpen = () => {
     if (disposed) throw new HarnessError("disposed", "Harness host is disposed.");
   };
@@ -133,6 +135,14 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ha
     }
   }
   return {
+    async listModels(scope) {
+      return discoverModels(
+        scope.harness,
+        await directory(scope),
+        options.executables?.[scope.harness],
+        modelDiscovery.signal,
+      );
+    },
     async configure(input) {
       assertOpen();
       const configuration: HarnessConfiguration = {
@@ -310,6 +320,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ha
     async dispose() {
       if (disposed) return;
       disposed = true;
+      modelDiscovery.abort();
       const results = await Promise.allSettled(
         [...sessions.values()].map(async (session) => {
           session.revoke();

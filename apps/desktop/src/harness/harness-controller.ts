@@ -1,4 +1,4 @@
-import { harnessKinds } from "@startup-os/contracts/harness";
+import { harnessKinds, harnessModelCatalogSchema } from "@startup-os/contracts/harness";
 
 import {
   localHarnessMethods,
@@ -48,7 +48,13 @@ const localResultSchema = z.object({
   organizationId: z.string(),
   harness: z.enum(harnessKinds),
   skills: z.array(skillSchema.strip()),
-  mcpServers: z.array(z.union(serverSchema.options.map((schema) => schema.strip()))),
+  mcpServers: z.array(
+    z.union(
+      serverSchema.options.map((schema) =>
+        schema.strip().extend({ readOnly: z.boolean().optional() }),
+      ),
+    ),
+  ),
 });
 const inspectionSchema = z.array(
   z.object({
@@ -182,6 +188,11 @@ export function createHarnessController(options: {
         if (method === "scanConfiguration") {
           return localResultSchema.parse(result);
         }
+        if (method === "listModels") {
+          const catalog = harnessModelCatalogSchema.parse(result);
+          if (catalog.harness !== input.harness) throw new Error("Invalid model catalog.");
+          return catalog;
+        }
         if (method === "scanSkills") {
           return localResultSchema.omit({ mcpServers: true }).parse(result);
         }
@@ -209,6 +220,7 @@ export function createHarnessController(options: {
     disconnect,
     run(method: HarnessMethod, value?: unknown) {
       const result = queue.then(() => perform(method, value));
+      if (method === "listModels") return result;
       queue = result.catch(() => undefined);
       return result;
     },

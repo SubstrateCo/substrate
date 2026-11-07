@@ -6,6 +6,7 @@ import type {
   HarnessMcpServer,
   HarnessSessionRef,
   HarnessSkill,
+  HarnessModelCatalog,
 } from "./index.ts";
 
 /** Main derives the account and organization for every desktop operation. */
@@ -18,6 +19,7 @@ export interface HarnessAPI {
     harnesses?: Omit<HarnessInspection, "executable" | "error">[];
   }>;
   status(): ReturnType<HarnessAPI["inspect"]>;
+  listModels(input: { harness: HarnessKind }): Promise<HarnessModelCatalog>;
   scanConfiguration(input: { harness: HarnessKind }): Promise<{
     organizationId: string;
     harness: HarnessKind;

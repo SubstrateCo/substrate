@@ -31,10 +31,6 @@ export function DeviceConfiguration({
   return (
     <div className="grid gap-2">
       <h3 className="font-semibold">Device configuration</h3>
-      <p className="text-sm text-muted-foreground">
-        Skills are native files on this device, not database records. Scan the selected
-        organization's local configuration to find them.
-      </p>
       <Field className="max-w-sm">
         <FieldLabel htmlFor="configuration-harness">Configuration harness</FieldLabel>
         <Select

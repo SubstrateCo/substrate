@@ -1,9 +1,7 @@
 import { nativeName } from "../config.ts";
 import { HarnessError } from "../errors.ts";
-import { launch, stopProcess } from "../process.ts";
+import { startOpenCode } from "./opencode-client.ts";
 import type { AdapterContext, NativeAdapter } from "./types.ts";
-import { OpenCode } from "@opencode/client";
-import { randomBytes } from "node:crypto";
 
 /* oxlint-disable deslop/no-runtime-typeof -- Host form responses and the native endpoint announcement are validated at this I/O boundary. */
 
@@ -41,87 +39,20 @@ export async function connectOpenCode(
         }
       : undefined,
   };
-  const password = randomBytes(32).toString("hex");
   // --stdio emits the private endpoint and couples the server to its parent pipe.
   // This never discovers, reconfigures, or stops the user's shared service.
-  const child = launch(
-    context.executable,
-    ["serve", "--stdio", "--hostname", "127.0.0.1", "--port", "0"],
-    context.directory,
-    {
-      OPENCODE_SERVER_PASSWORD: password,
-      OPENCODE_CONFIG_CONTENT: JSON.stringify(config),
-      STARTUP_OS_MCP_TOKEN: context.lease?.token,
-    },
-  );
-  child.stderr.resume();
+  const { client, close } = await startOpenCode(context.executable, context.directory, {
+    OPENCODE_CONFIG_CONTENT: JSON.stringify(config),
+    STARTUP_OS_MCP_TOKEN: context.lease?.token,
+  });
   const controller = new AbortController();
   let eventLoop: Promise<void> | undefined;
   async function stop() {
     controller.abort();
     await eventLoop?.catch(() => {});
-    await stopProcess(child);
+    await close();
   }
   try {
-    const baseUrl = await new Promise<string>((resolve, reject) => {
-      let buffer = "";
-      const timer = setTimeout(
-        () =>
-          reject(
-            new HarnessError("process-timeout", "OpenCode server did not announce its endpoint."),
-          ),
-        30_000,
-      );
-      const fail = () => {
-        clearTimeout(timer);
-        reject(
-          new HarnessError(
-            "process-exit",
-            "OpenCode server stopped before announcing its endpoint.",
-          ),
-        );
-      };
-      child.once("error", fail);
-      child.once("exit", fail);
-      child.stdout.on("data", (chunk: Buffer) => {
-        buffer += chunk.toString();
-        if (buffer.length > 65536) {
-          clearTimeout(timer);
-          reject(
-            new HarnessError("protocol-limit", "OpenCode startup output exceeded the size limit."),
-          );
-          return;
-        }
-        const newline = buffer.indexOf("\n");
-        if (newline < 0) return;
-        clearTimeout(timer);
-        try {
-          // SAFETY: the URL is validated below before any request or credential is sent to it.
-          const endpoint = JSON.parse(buffer.slice(0, newline)) as { url: string };
-          const url = new URL(endpoint.url);
-          if (
-            url.protocol !== "http:" ||
-            url.hostname !== "127.0.0.1" ||
-            url.username ||
-            url.password ||
-            url.pathname !== "/"
-          )
-            throw new Error("Invalid endpoint");
-          resolve(endpoint.url);
-        } catch {
-          reject(
-            new HarnessError(
-              "invalid-endpoint",
-              "OpenCode did not announce a safe loopback endpoint.",
-            ),
-          );
-        }
-      });
-    });
-    const client = OpenCode.make({
-      baseUrl,
-      headers: { authorization: `Basic ${Buffer.from(`opencode:${password}`).toString("base64")}` },
-    });
     const session = resumeId
       ? await client.session.get({ sessionID: resumeId })
       : await client.session.create({

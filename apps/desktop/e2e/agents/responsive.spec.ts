@@ -124,22 +124,20 @@ for (const size of [
     await expectDialogFits(agent);
     await capture("agent-editor-top.png");
     await agent.getByLabel("Agent name", { exact: true }).fill(agentName);
-    await agent.getByRole("combobox", { name: "Harness", exact: true }).click();
-    await page.getByRole("option", { name: "Claude Code", exact: true }).click();
-    await agent.getByLabel("Model", { exact: true }).fill("claude-sonnet");
+    await agent.getByRole("button", { name: /^Harness & model:/ }).click();
+    await page.getByRole("button", { name: "Claude Code", exact: true }).click();
+    await page.getByPlaceholder("Search models…", { exact: true }).fill("claude-sonnet");
+    await page.getByRole("option", { name: /Use .*claude-sonnet/ }).click();
     const instructions = "Review customer context.\n".repeat(30).trim();
-    await agent.getByLabel("Instructions", { exact: true }).fill(instructions);
+    await agent.getByRole("textbox", { name: "Instructions", exact: true }).fill(instructions);
     await expectDialogFits(agent);
     await agent.getByRole("switch", { name: "Enabled", exact: true }).click();
     await agent.getByLabel("Agent name", { exact: true }).scrollIntoViewIfNeeded();
-    const agentScroll = await agent.evaluate((element) => element.scrollTop);
-    await agent.hover({ position: { x: 10, y: 200 } });
-    await page.mouse.wheel(0, 300);
-    await expect
-      .poll(() => agent.evaluate((element) => element.scrollTop))
-      .toBeGreaterThan(agentScroll);
+    await expect(agent.getByLabel("Agent name", { exact: true })).toBeInViewport();
+    await agent.getByRole("switch", { name: "Enabled", exact: true }).scrollIntoViewIfNeeded();
+    await expect(agent.getByRole("switch", { name: "Enabled", exact: true })).toBeInViewport();
     await agent.getByRole("button", { name: "Save agent", exact: true }).scrollIntoViewIfNeeded();
-    await expect.poll(() => agent.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+    await expect(agent.getByRole("button", { name: "Save agent", exact: true })).toBeInViewport();
     await capture("agent-editor-bottom.png");
     await agent.getByRole("button", { name: "Save agent", exact: true }).click();
     await expect(agent).toBeHidden();
@@ -153,8 +151,12 @@ for (const size of [
     await page.getByRole("button", { name: `Edit ${agentName}`, exact: true }).click();
     const editedAgent = page.getByRole("dialog", { name: "Edit agent", exact: true });
     await expectDialogFits(editedAgent);
-    await expect(editedAgent.getByLabel("Model", { exact: true })).toHaveValue("claude-sonnet");
-    await expect(editedAgent.getByLabel("Instructions", { exact: true })).toHaveValue(instructions);
+    await expect(editedAgent.getByRole("button", { name: /^Harness & model:/ })).toContainText(
+      "claude-sonnet",
+    );
+    await expect(
+      editedAgent.getByRole("textbox", { name: "Instructions", exact: true }),
+    ).toHaveValue(instructions);
     await expect(
       editedAgent.getByRole("switch", { name: "Enabled", exact: true }),
     ).not.toBeChecked();

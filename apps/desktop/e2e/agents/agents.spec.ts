@@ -126,13 +126,14 @@ test("user agents and device-local configuration survive reload and restart in E
   await page.getByRole("button", { name: "Create agent", exact: true }).click();
   const agent = page.getByRole("dialog", { name: "Create agent", exact: true });
   await agent.getByLabel("Agent name", { exact: true }).fill("Customer reviewer");
-  await agent.getByRole("combobox", { name: "Harness", exact: true }).click();
+  await agent.getByRole("button", { name: /^Harness & model:/ }).click();
   for (const harness of ["OpenCode", "Antigravity", "Claude Code", "Codex"]) {
-    await expect(page.getByRole("option", { name: harness, exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: harness, exact: true })).toBeVisible();
   }
-  await page.getByRole("option", { name: "Claude Code", exact: true }).click();
+  await page.getByRole("button", { name: "Claude Code", exact: true }).click();
+  await page.getByRole("option", { name: "Harness default", exact: true }).click();
   await agent
-    .getByLabel("Instructions", { exact: true })
+    .getByRole("textbox", { name: "Instructions", exact: true })
     .fill("Review customer requests carefully.");
   await agent.getByRole("button", { name: "Save agent", exact: true }).click();
   await expect(agent).toBeHidden();
@@ -146,10 +147,10 @@ test("user agents and device-local configuration survive reload and restart in E
   await page.reload();
   await page.getByRole("button", { name: "Edit Customer reviewer", exact: true }).click();
   const editing = page.getByRole("dialog", { name: "Edit agent", exact: true });
-  await expect(editing.getByRole("combobox", { name: "Harness", exact: true })).toHaveText(
+  await expect(editing.getByRole("button", { name: /^Harness & model:/ })).toContainText(
     "Claude Code",
   );
-  await expect(editing.getByLabel("Instructions", { exact: true })).toHaveValue(
+  await expect(editing.getByRole("textbox", { name: "Instructions", exact: true })).toHaveValue(
     "Review customer requests carefully.",
   );
   const pictureBytes = await page.evaluate(() => {

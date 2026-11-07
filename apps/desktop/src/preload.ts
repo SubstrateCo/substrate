@@ -30,6 +30,7 @@ if (process.isMainFrame && window.location.origin === origin) {
     version: 1,
     inspect: () => ipcRenderer.invoke(harnessChannel, "status"),
     status: () => ipcRenderer.invoke(harnessChannel, "status"),
+    listModels: (input) => ipcRenderer.invoke(harnessChannel, "listModels", input),
     synchronize: () => ipcRenderer.invoke(harnessChannel, "synchronize"),
     execute: (command) => ipcRenderer.invoke(harnessChannel, "execute", command),
     disconnect: () => ipcRenderer.invoke(harnessChannel, "disconnect"),

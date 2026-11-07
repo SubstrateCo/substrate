@@ -13,7 +13,7 @@ import { CatalogRow } from "./catalog/catalog-row";
 import { CatalogSection } from "./catalog/catalog-section";
 import { DeleteDefinitionDialog } from "./catalog/delete-definition-dialog";
 import { DeviceConfiguration } from "./device/device-configuration";
-import { AgentEditor } from "./editors/agent-editor";
+import { AgentEditor, type AgentSection } from "./editors/agent-editor";
 import { SkillEditor } from "./editors/skill-editor";
 import { Button } from "@/components/ui/button";
 
@@ -21,6 +21,8 @@ export type CatalogKind = "agent" | "skill";
 type Editor = { kind: CatalogKind; id?: string };
 
 export function AgentSettingsView({
+  userId,
+  organizationId,
   catalog,
   localConfiguration,
   localAvailable,
@@ -36,8 +38,12 @@ export function AgentSettingsView({
   onSaveAgent,
   onSaveSkill,
   renderAgentPicture,
+  renderAgentConfiguration,
+  renderAgentAccess,
   onDelete,
 }: {
+  userId: string;
+  organizationId?: string | null;
   catalog?: AgentCatalogData;
   loading: boolean;
   error: Error | null;
@@ -53,6 +59,12 @@ export function AgentSettingsView({
   onSaveAgent: (input: SaveAgentInput) => Promise<void>;
   onSaveSkill: (input: SaveSkillInput) => Promise<void>;
   renderAgentPicture: (agent: AgentConfiguration) => ReactNode;
+  renderAgentConfiguration: (
+    harness: HarnessKind,
+    section: AgentSection,
+    defaults: boolean,
+  ) => ReactNode;
+  renderAgentAccess: (agent?: AgentConfiguration) => ReactNode;
   onDelete: (kind: CatalogKind, id: string) => Promise<void>;
 }) {
   const [editor, setEditor] = useState<Editor>();
@@ -66,24 +78,7 @@ export function AgentSettingsView({
         <h2 id="agents-title" className="text-lg font-semibold">
           Agents
         </h2>
-        <p className="text-sm text-muted-foreground">
-          Your personal agent definitions are shared across your workspaces, not owned by an
-          organization. Agents execute locally through installed harnesses under the selected
-          organization directory. No arbitrary working directory picker is available.
-        </p>
       </div>
-      <aside aria-label="Startup OS defaults" className="rounded-xl border bg-muted/30 p-4 text-sm">
-        <p className="font-medium">Built-in Startup OS defaults</p>
-        <p>
-          The bundled Startup OS skill and embedded MCP server (hello_world only) are assigned to
-          new agents by default. These are built-in, not custom definitions, and grant no app-data
-          permissions.
-        </p>
-        <p className="mt-2 text-muted-foreground">
-          Saving updates your configuration. Local execution requires the desktop harness
-          integration and an installed, signed-in harness.
-        </p>
-      </aside>
       {loading && <p role="status">Loading agent settings…</p>}
       {error && (
         <div role="alert">
@@ -114,7 +109,6 @@ export function AgentSettingsView({
           <CatalogSection
             title="Custom skills"
             label="Skills"
-            description="Reusable instructions stored in native files on this device."
             addLabel="Create skill"
             disabled={!localAvailable || pending || localLoading}
             onAdd={() => setEditor({ kind: "skill" })}
@@ -135,8 +129,12 @@ export function AgentSettingsView({
           </CatalogSection>
           {editor?.kind === "agent" && (
             <AgentEditor
+              userId={userId}
+              organizationId={organizationId}
               agent={editedAgent}
               picture={editedAgent && renderAgentPicture(editedAgent)}
+              renderConfiguration={renderAgentConfiguration}
+              access={renderAgentAccess(editedAgent)}
               pending={pending}
               onClose={close}
               onSave={async (input) => {

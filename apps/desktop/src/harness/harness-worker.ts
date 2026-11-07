@@ -8,6 +8,7 @@ import type {
   HarnessInspection,
   HarnessSessionRef,
   HarnessLocalConfiguration,
+  HarnessModelCatalog,
 } from "@startup-os/contracts/harness";
 import { createHarnessHost } from "@startup-os/harness-runtime";
 
@@ -20,6 +21,7 @@ type Request = { id: number } & (
   | { method: "dispose" }
   | { method: "execute"; value: HarnessCommand }
   | { method: "scanConfiguration"; value: HarnessLocalScope }
+  | { method: "listModels"; value: HarnessLocalScope }
   | { method: "scanSkills"; value: HarnessLocalScope }
   | { method: "saveSkill"; value: HarnessLocalScope & { skill: HarnessSkill } }
   | { method: "saveMcpServer"; value: HarnessLocalScope & { server: HarnessMcpServer } }
@@ -30,6 +32,7 @@ type Result =
   | HarnessInspection[]
   | HarnessSessionRef
   | HarnessLocalConfiguration
+  | HarnessModelCatalog
   | Pick<HarnessLocalConfiguration, "organizationId" | "harness" | "skills">
   | void;
 // This dedicated process receives messages only from the trusted main-process controller.
@@ -37,6 +40,13 @@ const port = process.parentPort;
 let host: HarnessHost | undefined;
 let queue = Promise.resolve();
 port.on("message", ({ data }: { data: Request }) => {
+  if (data.method === "listModels" && host) {
+    void host.listModels(data.value).then(
+      (result) => port.postMessage({ id: data.id, result }),
+      () => port.postMessage({ id: data.id, error: "Model discovery failed." }),
+    );
+    return;
+  }
   if (data.method === "dispose") {
     void Promise.resolve(host?.dispose()).then(
       () => port.postMessage({ id: data.id }),
@@ -58,6 +68,7 @@ port.on("message", ({ data }: { data: Request }) => {
       else if (data.method === "configure") result = await host.configure(data.value);
       else if (data.method === "inspect") result = await host.inspect();
       else if (data.method === "execute") result = await host.execute(data.value);
+      else if (data.method === "listModels") result = await host.listModels(data.value);
       else if (data.method === "scanConfiguration")
         result = await host.scanConfiguration(data.value);
       else if (data.method === "scanSkills") result = await host.scanSkills(data.value);

@@ -16,7 +16,7 @@ export function CatalogSection({
 }: {
   title: string;
   label: string;
-  description: string;
+  description?: string;
   addLabel: string;
   onAdd: () => void;
   children: ReactNode;
@@ -28,7 +28,7 @@ export function CatalogSection({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="font-semibold">{title}</h3>
-          <p className="text-sm text-muted-foreground">{description}</p>
+          {description && <p className="text-sm text-muted-foreground">{description}</p>}
         </div>
         <Tooltip>
           <TooltipTrigger asChild>

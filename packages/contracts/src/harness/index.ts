@@ -1,3 +1,5 @@
+import type { HarnessModelCatalog } from "./models.ts";
+
 export const harnessKinds = ["opencode", "antigravity", "claude", "codex"] as const;
 export type HarnessKind = (typeof harnessKinds)[number];
 
@@ -95,6 +97,7 @@ export interface HarnessInspection {
 }
 
 export interface HarnessHost {
+  listModels(scope: HarnessLocalScope): Promise<HarnessModelCatalog>;
   configure(configuration: HarnessConfiguration): Promise<{ directory: string }>;
   scanConfiguration(scope: HarnessLocalScope): Promise<HarnessLocalConfiguration>;
   scanSkills(
@@ -109,3 +112,9 @@ export interface HarnessHost {
   subscribe(listener: (event: HarnessEvent) => void): () => void;
   dispose(): Promise<void>;
 }
+export {
+  harnessModelSchema,
+  harnessModelCatalogSchema,
+  type HarnessModel,
+  type HarnessModelCatalog,
+} from "./models.ts";

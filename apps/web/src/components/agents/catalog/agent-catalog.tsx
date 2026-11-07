@@ -22,7 +22,6 @@ export function AgentCatalog({
     <CatalogSection
       title="Agents"
       label="Agent actors"
-      description="Choose a harness and instructions for your agent actor."
       addLabel="Create agent"
       onAdd={onCreate}
       empty={!agents.length}

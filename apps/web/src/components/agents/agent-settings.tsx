@@ -5,6 +5,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import type { LocalConfigurationController } from "../../lib/desktop/agents/local-configuration-controller";
+import { AgentAccess } from "./access/agent-access";
+import { AgentConfiguration } from "./device/agent-configuration";
 import { AgentPicture } from "./editors/agent-picture";
 import { saveAgent, deleteAgent } from "@/api/agents/requests";
 import { AgentSettingsView, type CatalogKind } from "@/components/agents/agent-settings-view";
@@ -63,6 +65,8 @@ export function AgentSettings({
   });
   return (
     <AgentSettingsView
+      userId={userId}
+      organizationId={organizationId}
       catalog={catalog.data}
       localConfiguration={local.data}
       localAvailable={!!localConfiguration && !!organizationId}
@@ -76,6 +80,19 @@ export function AgentSettings({
       pending={agent.isPending || skill.isPending || remove.isPending}
       renderAgentPicture={(agent) => (
         <AgentPicture userId={userId} agentId={agent.id} image={agent.image} />
+      )}
+      renderAgentConfiguration={(harness, section, defaults) => (
+        <AgentConfiguration
+          key={`${harness}/${section}`}
+          userId={userId}
+          organizationId={organizationId}
+          harness={harness}
+          section={section}
+          defaults={defaults}
+        />
+      )}
+      renderAgentAccess={(agent) => (
+        <AgentAccess userId={userId} organizationId={organizationId} agent={agent} />
       )}
       onRetry={() => void catalog.refetch()}
       onSaveAgent={async (input) => {

@@ -1,0 +1,38 @@
+import {
+  harnessModelCatalogSchema,
+  type HarnessKind,
+  type HarnessModelCatalog,
+} from "@startup-os/contracts/harness";
+
+import { resolveExecutable } from "../process.ts";
+import { discoverAntigravityModels } from "./antigravity.ts";
+import { discoverClaudeModels } from "./claude.ts";
+import { discoverCodexModels } from "./codex.ts";
+import { discoverOpenCodeModels } from "./opencode.ts";
+
+const probes = {
+  opencode: discoverOpenCodeModels,
+  claude: discoverClaudeModels,
+  codex: discoverCodexModels,
+  antigravity: discoverAntigravityModels,
+};
+
+export async function discoverModels(
+  harness: HarnessKind,
+  directory: string,
+  executableOverride?: string,
+  signal: AbortSignal = AbortSignal.timeout(30_000),
+): Promise<HarnessModelCatalog> {
+  try {
+    const executable = await resolveExecutable(harness, executableOverride);
+    const models = await probes[harness](
+      executable,
+      directory,
+      AbortSignal.any([signal, AbortSignal.timeout(30_000)]),
+    );
+    return harnessModelCatalogSchema.parse({ harness, status: "ready", models });
+  } catch {
+    // Do not send native stderr, authentication payloads, or local paths to the renderer.
+    return { harness, status: "unavailable", models: [] };
+  }
+}

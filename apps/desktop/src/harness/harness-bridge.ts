@@ -6,6 +6,7 @@ import { z } from "zod";
 export const harnessChannel = "startup-os:harness";
 export const harnessEventChannel = "startup-os:harness-event";
 export const localHarnessMethods = [
+  "listModels",
   "scanConfiguration",
   "scanSkills",
   "saveSkill",
@@ -71,6 +72,7 @@ export const serverSchema = z.discriminatedUnion("transport", [
   }),
 ]);
 const localSchemas = {
+  listModels: z.strictObject(scope),
   scanConfiguration: z.strictObject(scope),
   scanSkills: z.strictObject(scope),
   saveSkill: z.strictObject({ ...scope, skill: skillSchema }),
@@ -82,6 +84,7 @@ export function parseLocalConfiguration(method: LocalHarnessMethod, value: unkno
   return localSchemas[method].parse(value);
 }
 export const rendererLocalSchemas = {
+  listModels: z.strictObject({ harness: scope.harness }),
   scanConfiguration: z.strictObject({ harness: scope.harness }),
   scanSkills: z.strictObject({ harness: scope.harness }),
   saveSkill: skillSchema.extend({ harness: scope.harness, id: id.optional() }),
