@@ -47,6 +47,7 @@ export function ConversationPane({
         <MessageList
           messages={timeline}
           organizationId={organizationId}
+          conversationId={conversation.id}
           onThread={(id) => {
             void navigate({
               to: "/dashboard",
@@ -92,6 +93,7 @@ export function ConversationPane({
             organizationId={organizationId}
             conversationId={conversation.id}
             threadId={activeThreadId}
+            contextMessageIds={timeline.map((message) => message.id)}
             root={
               target.data?.root ?? messages.data?.find((message) => message.id === activeThreadId)
             }

@@ -9,9 +9,13 @@ import {
   getMessageTarget,
 } from "@/api/context/links";
 
-export const messagePageOptions = (organizationId: string, messageIds: string[]) =>
+export const messagePageOptions = (
+  organizationId: string,
+  conversationId: string,
+  messageIds: string[],
+) =>
   queryOptions({
-    queryKey: [...queryKeys.context(organizationId), "message-pages", messageIds],
+    queryKey: [...queryKeys.context(organizationId), "message-pages", conversationId, messageIds],
     queryFn: ({ signal }) => getMessagePage({ data: { organizationId, messageIds }, signal }),
     enabled: messageIds.length > 0,
     retry: false,

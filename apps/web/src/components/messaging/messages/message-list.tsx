@@ -8,15 +8,18 @@ import { messagePageOptions } from "@/queries/context/links";
 export function MessageList({
   messages,
   organizationId,
+  conversationId,
   onThread,
 }: {
   messages: Message[];
   organizationId: string;
+  conversationId: string;
   onThread?: (id: string) => void;
 }) {
   const context = useQuery(
     messagePageOptions(
       organizationId,
+      conversationId,
       messages.map((message) => message.id),
     ),
   );

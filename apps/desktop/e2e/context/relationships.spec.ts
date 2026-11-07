@@ -3,7 +3,7 @@ import type { ServiceResult } from "@startup-os/contracts/result";
 import { callMessaging } from "../../../web/e2e/test-support/api.js";
 import { test } from "../test-support/fixture.js";
 import { joinWorkspace } from "../test-support/organizations.js";
-import { waitForRealtimeIdle } from "../test-support/realtime.js";
+import { observeRealtime, waitForRealtimeIdle } from "../test-support/realtime.js";
 import { callTasks } from "../test-support/tasks.js";
 import { expect } from "@playwright/test";
 
@@ -22,12 +22,19 @@ test("fifty message contexts load and refresh through one page request", async (
     name: "page-context",
   });
   expect(conversation.error).toBeNull();
+  const unrelated = await callMessaging<{ id: string }>(page, "createConversation", {
+    kind: "channel",
+    name: "unrelated-page-context",
+  });
+  expect(unrelated.error).toBeNull();
+  let rootId = "";
   for (let i = 0; i < 50; i++) {
-    const sent = await callMessaging(page, "sendMessage", {
+    const sent = await callMessaging<{ id: string }>(page, "sendMessage", {
       conversationId: conversation.data!.id,
       body: `Page row ${i} @[project:${project.id}]`,
     });
     expect(sent.error).toBeNull();
+    if (i === 49) rootId = sent.data!.id;
   }
   await waitForRealtimeIdle(page);
   const requests: string[] = [];
@@ -91,6 +98,68 @@ test("fifty message contexts load and refresh through one page request", async (
   expect(requests).toEqual(["/api/v1/context/message-page"]);
   expect(completed).toHaveLength(1);
   expect(failed).toHaveLength(0);
+  requests.length = 0;
+  const observation = await observeRealtime(page);
+  try {
+    const sent = await callMessaging(page, "sendMessage", {
+      conversationId: unrelated.data!.id,
+      body: "Unrelated conversation update",
+    });
+    expect(sent.error).toBeNull();
+    await expect
+      .poll(() =>
+        observation.evaluate(
+          ({ events }, id) =>
+            events.some(
+              (event) =>
+                event.type === "change" &&
+                event.domain === "messaging" &&
+                event.conversationId === id,
+            ),
+          unrelated.data!.id,
+        ),
+      )
+      .toBe(true);
+    await waitForRealtimeIdle(page);
+    expect(requests).toEqual([]);
+  } finally {
+    await observation.evaluate(({ stop }) => stop());
+    await observation.dispose();
+  }
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Page row 49" })
+    .getByRole("button", { name: "Reply in thread", exact: true })
+    .click();
+  const thread = page.getByRole("complementary", { name: "Thread", exact: true });
+  await expect(thread.getByText("Page row 49", { exact: false })).toBeVisible();
+  await expect(
+    thread.getByRole("link", { name: "Updated page project", exact: true }),
+  ).toBeVisible();
+  await waitForRealtimeIdle(page);
+  expect(requests).toEqual([]);
+  const replied = await callMessaging(page, "sendMessage", {
+    conversationId: conversation.data!.id,
+    threadId: rootId,
+    body: "Same conversation reply",
+  });
+  expect(replied.error).toBeNull();
+  await expect(thread.getByText("Same conversation reply", { exact: true })).toBeVisible();
+  await waitForRealtimeIdle(page);
+  expect(requests.length).toBeGreaterThan(0);
+  const fallback = page.waitForRequest(
+    (request) =>
+      request.url().endsWith("/api/v1/context/message-page") &&
+      request.postDataJSON().messageIds.length === 1 &&
+      request.postDataJSON().messageIds[0] === rootId,
+  );
+  const channel = page.getByRole("region", { name: "page-context", exact: true });
+  await channel.getByRole("button", { name: "Older messages", exact: true }).click();
+  await fallback;
+  await expect(channel.getByRole("article")).toHaveCount(0);
+  await expect(
+    thread.getByRole("link", { name: "Updated page project", exact: true }),
+  ).toBeVisible();
 });
 
 test("page context drops private work on a live access reset without hiding the message", async ({
@@ -155,13 +224,14 @@ test("page context drops private work on a live access reset without hiding the 
     expect(result.success).toBe(true);
   };
   await access("share");
-  const sent = await callMessaging(desktop.page, "sendMessage", {
+  const sent = await callMessaging<{ id: string }>(desktop.page, "sendMessage", {
     conversationId: conversation.data!.id,
     body: `Keep discussion visible @[project:${project.id}] @[person:${actorEntityId}]`,
   });
   expect(sent.error).toBeNull();
   await desktopPeer.openPath(`/dashboard?conversationId=${conversation.data!.id}`);
   const article = desktopPeer.page
+    .getByRole("region", { name: "context-access", exact: true })
     .getByRole("article")
     .filter({ hasText: "Keep discussion visible" });
   await expect(
@@ -173,6 +243,13 @@ test("page context drops private work on a live access reset without hiding the 
     article.locator(".message-markdown").getByText("Context Viewer", { exact: true }),
   ).toBeVisible();
   await waitForRealtimeIdle(desktopPeer.page);
+  await article.getByRole("button", { name: "Reply in thread", exact: true }).click();
+  const threadRoot = desktopPeer.page
+    .getByRole("complementary", { name: "Thread", exact: true })
+    .getByRole("article");
+  await expect(
+    threadRoot.getByRole("link", { name: "Revocable context project", exact: true }),
+  ).toBeVisible();
   await access("revoke");
   await expect(article.getByText("Revocable context project", { exact: true })).toHaveCount(0);
   await expect(article.getByText("Unavailable reference", { exact: true })).toBeVisible();
@@ -182,6 +259,9 @@ test("page context drops private work on a live access reset without hiding the 
   await waitForRealtimeIdle(desktopPeer.page);
   await expect(article).toContainText("Keep discussion visible");
   await expect(article.getByRole("link")).toHaveCount(0);
+  await expect(threadRoot.getByText("Unavailable reference", { exact: true })).toBeVisible();
+  await expect(threadRoot.getByText("Revocable context project", { exact: true })).toHaveCount(0);
+  await expect(threadRoot.getByRole("link")).toHaveCount(0);
 });
 
 test("explicit unlinking preserves provenance and typed references create navigable backlinks", async ({

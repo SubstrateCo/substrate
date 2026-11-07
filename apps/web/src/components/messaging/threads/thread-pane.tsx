@@ -14,6 +14,7 @@ export function ThreadPane({
   conversationId,
   threadId,
   root,
+  contextMessageIds,
   targetMessage,
   onClose,
 }: {
@@ -21,6 +22,7 @@ export function ThreadPane({
   conversationId: string;
   threadId: string;
   root?: Message;
+  contextMessageIds: string[];
   targetMessage?: Message;
   onClose: () => void;
 }) {
@@ -35,7 +37,16 @@ export function ThreadPane({
     aroundMessageId: targetMessage?.threadId ? targetMessage.id : undefined,
   });
   const rows = [...(replies.data ?? [])];
-  const rootContext = useQuery(messagePageOptions(organizationId, root ? [root.id] : []));
+  const reuseContext = !!root && contextMessageIds.includes(root.id);
+  const rootMessageIds = root ? [root.id] : [];
+  const rootContext = useQuery({
+    ...messagePageOptions(
+      organizationId,
+      conversationId,
+      reuseContext ? contextMessageIds : rootMessageIds,
+    ),
+    refetchOnMount: !reuseContext,
+  });
   return (
     <ThreadPaneView
       loading={replies.isPending}
@@ -47,7 +58,7 @@ export function ThreadPane({
             message={root}
             organizationId={organizationId}
             context={{
-              data: rootContext.data?.[0],
+              data: rootContext.data?.find((row) => row.messageId === root.id),
               loading: rootContext.isPending,
               error: rootContext.error,
               onRetry: () => void rootContext.refetch(),
@@ -62,6 +73,7 @@ export function ThreadPane({
             <MessageList
               messages={rows.filter((message) => message.id !== threadId)}
               organizationId={organizationId}
+              conversationId={conversationId}
             />
           </MessageHistory>
         )

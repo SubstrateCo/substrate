@@ -51,6 +51,43 @@ test("a task hint during an in-flight read stays stale when its panel becomes hi
   }
 });
 
+for (const overlap of ["none", "before", "after"] as const) {
+  test(`in-flight search stays stale without a second read unless an overlapping target permits it (${overlap})`, async () => {
+    const client = new QueryClient();
+    const key = [...queryKeys.context("org"), "search", "task"];
+    const first = Promise.withResolvers<string[]>();
+    let reads = 0;
+    const observer = new QueryObserver(client, {
+      queryKey: key,
+      staleTime: Infinity,
+      queryFn: async () => (++reads === 1 ? first.promise : ["fresh"]),
+    });
+    const unsubscribe = observer.subscribe(() => {});
+    const cache = createRealtimeCache({
+      queryClient: client,
+      organizationId: "org",
+      userId: "user",
+      revalidate: async () => {},
+    });
+    try {
+      if (overlap === "before") await cache.receive(change("context"));
+      await cache.receive(change("tasks"));
+      if (overlap === "after") await cache.receive(change("context"));
+      await Bun.sleep(80);
+      first.resolve(["old snapshot"]);
+      await Bun.sleep(80);
+      expect(reads).toBe(overlap === "none" ? 1 : 2);
+      expect(client.getQueryState(key)?.isInvalidated).toBe(overlap === "none");
+      expect(client.getQueryData(key)).toEqual(overlap === "none" ? ["old snapshot"] : ["fresh"]);
+    } finally {
+      first.resolve([]);
+      cache.dispose();
+      unsubscribe();
+      client.clear();
+    }
+  });
+}
+
 test("access resets clear hidden task data without issuing hidden reads", async () => {
   const client = new QueryClient();
   const key = queryKeys.taskComments("org", "project", "task");
@@ -112,7 +149,7 @@ test("messaging targets all thread variants of one conversation, not another", (
     { queryKey: queryKeys.conversations("org") },
     { queryKey: queryKeys.messages("org", "conversation").slice(0, -1) },
     { queryKey: [...queryKeys.context("org"), "related"] },
-    { queryKey: [...queryKeys.context("org"), "message-pages"] },
+    { queryKey: [...queryKeys.context("org"), "message-pages", "conversation"] },
     { queryKey: [...queryKeys.context("org"), "search"], refetchType: "none" },
     { queryKey: [...queryKeys.context("org"), "search-pages"], refetchType: "none" },
   ]);
@@ -122,6 +159,47 @@ test("messaging targets all thread variants of one conversation, not another", (
   expect(realtimeQueryTargets(change("agents", null), "user")).toEqual([
     { queryKey: queryKeys.agents("user") },
   ]);
+});
+
+test("conversation hints refresh only matching mounted context pages, with a broad unhinted fallback", async () => {
+  const client = new QueryClient();
+  const reads = [0, 0];
+  const observers = ["viewed", "other"].map(
+    (id, index) =>
+      new QueryObserver(client, {
+        queryKey: [...queryKeys.context("org"), "message-pages", id, [id]],
+        initialData: ["old"],
+        staleTime: Infinity,
+        queryFn: async () => {
+          reads[index]++;
+          return ["fresh"];
+        },
+      }),
+  );
+  const unsubscribes = observers.map((observer) => observer.subscribe(() => {}));
+  const cache = createRealtimeCache({
+    queryClient: client,
+    organizationId: "org",
+    userId: "user",
+    revalidate: async () => {},
+  });
+  try {
+    await cache.receive({ ...change("messaging"), conversationId: "other" });
+    await Bun.sleep(80);
+    expect(reads).toEqual([0, 1]);
+    expect(observers[0]!.getCurrentResult().data).toEqual(["old"]);
+    await cache.receive({ ...change("messaging"), conversationId: "viewed" });
+    await Bun.sleep(80);
+    expect(reads).toEqual([1, 1]);
+    expect(observers[0]!.getCurrentResult().data).toEqual(["fresh"]);
+    await cache.receive(change("messaging"));
+    await Bun.sleep(80);
+    expect(reads).toEqual([2, 2]);
+  } finally {
+    cache.dispose();
+    unsubscribes.forEach((unsubscribe) => unsubscribe());
+    client.clear();
+  }
 });
 
 test("task activity and related context refresh while task/message search becomes stale without a refetch storm", async () => {

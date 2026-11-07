@@ -1,6 +1,11 @@
 import { realtimeEvent, type RealtimeEvent } from "@startup-os/contracts/realtime";
 
-import type { QueryClient, QueryFilters, QueryKey } from "@tanstack/react-query";
+import {
+  matchQuery,
+  type QueryClient,
+  type QueryFilters,
+  type QueryKey,
+} from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
 
@@ -53,7 +58,13 @@ export function realtimeQueryTargets(
             : [...queryKeys.messaging(organizationId), "messages"],
         });
         targets.push({ queryKey: [...queryKeys.context(organizationId), "related"] });
-        targets.push({ queryKey: [...queryKeys.context(organizationId), "message-pages"] });
+        targets.push({
+          queryKey: [
+            ...queryKeys.context(organizationId),
+            "message-pages",
+            ...(event.conversationId ? [event.conversationId] : []),
+          ],
+        });
         targets.push(...searchTargets(organizationId));
       }
       break;
@@ -179,12 +190,16 @@ export function createRealtimeCache({
         )
         .map((query) => [query.queryHash, query]),
     );
-    const loads = [...inflight.values()].map((query) => ({ query, promise: query.promise }));
+    const loads = [...inflight.values()].map((query) => ({
+      query,
+      refetch: targets.some((target) => target.refetchType !== "none" && matchQuery(target, query)),
+      promise: query.promise,
+    }));
     // Observers can share a request with imperative route loaders. Never cancel ordinary refreshes.
     const invalidations = targets.map((target) =>
       queryClient.invalidateQueries(target, { cancelRefetch: false }),
     );
-    const deferred = loads.map(async ({ query, promise }) => {
+    const deferred = loads.map(async ({ query, promise, refetch }) => {
       await promise;
       if (!isCurrent(epoch)) return;
       // Mark stale after the original snapshot commits, so its success cannot erase the event.
@@ -192,7 +207,7 @@ export function createRealtimeCache({
         { queryKey: query.queryKey, exact: true, refetchType: "none" },
         { cancelRefetch: false },
       );
-      if (!isCurrent(epoch) || query.isDisabled()) return;
+      if (!isCurrent(epoch) || !refetch || query.isDisabled()) return;
       await queryClient.query({ ...query.options, queryKey: query.queryKey });
     });
     await Promise.all([...invalidations, ...deferred]);
