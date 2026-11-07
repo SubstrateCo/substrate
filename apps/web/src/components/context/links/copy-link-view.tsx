@@ -1,6 +1,4 @@
-import { useState } from "react";
-
-import { Button } from "../../ui/button";
+import { CopyButton } from "@/components/feedback/copy-button";
 
 export function CopyLink({
   onCopy,
@@ -9,24 +7,14 @@ export function CopyLink({
   onCopy: () => Promise<void>;
   label?: string;
 }) {
-  const [status, setStatus] = useState("");
   return (
-    <span className="inline-flex items-center gap-2">
-      <Button
-        size="xs"
-        variant="ghost"
-        onClick={() => {
-          void onCopy().then(
-            () => setStatus("Link copied"),
-            () => setStatus("Couldn't copy link"),
-          );
-        }}
-      >
-        {label}
-      </Button>
-      <span role="status" className="text-xs">
-        {status}
-      </span>
-    </span>
+    <CopyButton
+      iconOnly
+      size="icon-xs"
+      label={label}
+      onCopy={onCopy}
+      successMessage="Link copied"
+      errorMessage="Couldn't copy link"
+    />
   );
 }

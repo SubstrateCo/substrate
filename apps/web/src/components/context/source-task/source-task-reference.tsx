@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/feedback/copy-button";
 import { ChevronDown, Link2, LockKeyhole } from "lucide-react";
 
 export function SourceTaskReference({
@@ -23,15 +23,14 @@ export function SourceTaskReference({
           <blockquote className="max-h-40 overflow-y-auto border-l-2 border-primary/20 pl-3 wrap-anywhere whitespace-pre-wrap text-muted-foreground">
             {sourceText}
           </blockquote>
-          <Button
-            type="button"
-            variant="ghost"
+          <CopyButton
             size="sm"
             className="h-auto max-w-full whitespace-normal"
-            onClick={onCopy}
-          >
-            Copy source text into description
-          </Button>
+            onCopy={onCopy}
+            label="Copy source text into description"
+            successMessage="Source text copied into description"
+            errorMessage="Couldn't copy source text into description"
+          />
         </div>
       </details>
       <p className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
