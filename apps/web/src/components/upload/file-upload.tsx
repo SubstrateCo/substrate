@@ -17,6 +17,7 @@ export interface FileUploadProps {
   description?: string;
   compact?: boolean;
   icon?: ReactNode;
+  actions?: ReactNode;
   chooseButtonRef?: Ref<HTMLButtonElement>;
   onFiles: (files: File[]) => void | Promise<void>;
 }
@@ -30,6 +31,7 @@ export function FileUpload({
   description = "Drop files here, or choose files.",
   compact = false,
   icon,
+  actions,
   chooseButtonRef,
   onFiles,
 }: FileUploadProps) {
@@ -99,26 +101,29 @@ export function FileUpload({
             void select(files);
           }}
         />
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                ref={chooseButtonRef}
-                type="button"
-                variant="outline"
-                size={icon ? "icon" : "default"}
-                aria-label={pending ? "Selecting" : label}
-                disabled={disabled || pending}
-                aria-busy={pending}
-                aria-describedby={error ? `${id} ${id}-error` : id}
-                onClick={() => input.current?.click()}
-              >
-                {buttonContent}
-              </Button>
-            </TooltipTrigger>
-            {icon && <TooltipContent>{label}</TooltipContent>}
-          </Tooltip>
-        </TooltipProvider>
+        <div className="flex items-center gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  ref={chooseButtonRef}
+                  type="button"
+                  variant="outline"
+                  size={icon ? "icon" : "default"}
+                  aria-label={pending ? "Selecting" : label}
+                  disabled={disabled || pending}
+                  aria-busy={pending}
+                  aria-describedby={error ? `${id} ${id}-error` : id}
+                  onClick={() => input.current?.click()}
+                >
+                  {buttonContent}
+                </Button>
+              </TooltipTrigger>
+              {icon && <TooltipContent>{label}</TooltipContent>}
+            </Tooltip>
+          </TooltipProvider>
+          {actions}
+        </div>
         <FieldDescription id={id} className={compact ? undefined : "text-center"}>
           {description}
         </FieldDescription>

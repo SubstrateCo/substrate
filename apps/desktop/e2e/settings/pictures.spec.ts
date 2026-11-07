@@ -137,6 +137,16 @@ test("desktop saves rotated avatars and logos without storage credentials, reloa
       });
     const saved = await image.getAttribute("src");
     expect(saved).toMatch(/^\/api\/v1\/files\/[^/]+\/content$/);
+    const replaceButton = await control
+      .getByRole("button", { name: "Replace picture", exact: true })
+      .boundingBox();
+    const removeButton = await control
+      .getByRole("button", { name: "Remove picture", exact: true })
+      .boundingBox();
+    expect(replaceButton).not.toBeNull();
+    expect(removeButton).not.toBeNull();
+    expect(removeButton!.y).toBeCloseTo(replaceButton!.y, 0);
+    expect(removeButton!.x).toBeGreaterThanOrEqual(replaceButton!.x + replaceButton!.width);
     if (isAvatar) await expect(userMenu.locator("img")).toHaveAttribute("src", saved!);
     const pixels = await page.evaluate(async (url) => {
       const blob = await (await fetch(url!)).blob();
@@ -166,14 +176,26 @@ test("desktop saves rotated avatars and logos without storage credentials, reloa
       )
       .toBe(true);
     if (isAvatar) {
-      const imageURL = `**${saved}`;
-      await page.route(imageURL, (route) => route.fulfill({ status: 404, body: "" }));
-      await page.reload();
-      await expect(userMenu).toHaveText("DE");
-      await expect(
-        control.getByLabel("Profile picture unavailable", { exact: true }),
-      ).toBeVisible();
-      await page.unroute(imageURL);
+      const imageURL = new URL(saved!, page.url()).href;
+      // Block in Electron's session: page routing can miss cached protocol responses.
+      await desktop.app.evaluate(({ session }, url) => {
+        session
+          .fromPartition("startup-os-smoke-test")
+          .webRequest.onBeforeRequest({ urls: [url] }, (_details, callback) =>
+            callback({ cancel: true }),
+          );
+      }, imageURL);
+      try {
+        await page.reload();
+        await expect(userMenu).toHaveText("DE");
+        await expect(
+          control.getByLabel("Profile picture unavailable", { exact: true }),
+        ).toBeVisible();
+      } finally {
+        await desktop.app.evaluate(({ session }) => {
+          session.fromPartition("startup-os-smoke-test").webRequest.onBeforeRequest(null);
+        });
+      }
       await page.reload();
       await expect(image).toHaveAttribute("src", saved!);
       await expect(userMenu.locator("img")).toHaveAttribute("src", saved!);

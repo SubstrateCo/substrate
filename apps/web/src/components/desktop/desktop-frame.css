@@ -1,7 +1,7 @@
 @layer components {
   .desktop-title-bar {
     -webkit-app-region: drag;
-    padding-inline: max(var(--desktop-controls-left), var(--desktop-controls-right));
+    --desktop-controls-padding: max(var(--desktop-controls-left), var(--desktop-controls-right));
   }
 
   .desktop-title-bar > * {

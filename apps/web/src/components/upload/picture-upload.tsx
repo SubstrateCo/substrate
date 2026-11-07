@@ -81,6 +81,32 @@ export function PictureUpload({
           disabled={disabled || removing || !!source}
           label={value ? "Replace picture" : "Choose picture"}
           description="JPEG, PNG, or WebP. Up to 5 MB. Drop an image here."
+          actions={
+            value && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      disabled={disabled || !!source || removing}
+                      aria-busy={removing}
+                      aria-label={removing ? "Removing picture…" : "Remove picture"}
+                      onClick={() => void remove()}
+                    >
+                      {removing ? (
+                        <Spinner aria-hidden="true" role="presentation" />
+                      ) : (
+                        <Trash2 aria-hidden="true" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Remove picture</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )
+          }
           onFiles={async ([file]) => {
             setError(null);
             try {
@@ -94,30 +120,6 @@ export function PictureUpload({
             }
           }}
         />
-        {value && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  disabled={disabled || !!source || removing}
-                  aria-busy={removing}
-                  aria-label={removing ? "Removing picture…" : "Remove picture"}
-                  onClick={() => void remove()}
-                >
-                  {removing ? (
-                    <Spinner aria-hidden="true" role="presentation" />
-                  ) : (
-                    <Trash2 aria-hidden="true" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Remove picture</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
         {error && (
           <p role="alert" className="w-full text-sm text-destructive">
             {error}

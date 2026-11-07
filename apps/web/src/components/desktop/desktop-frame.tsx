@@ -56,7 +56,7 @@ export function DesktopFrame({ children }: { children: ReactNode }) {
         style={frameStyle}
       >
         <header
-          className="desktop-title-bar group/desktop-title-bar fixed inset-x-0 top-0 z-30 flex h-(--desktop-title-bar-height) items-center justify-center bg-rail text-xs font-medium text-rail-foreground select-none"
+          className="desktop-title-bar group/desktop-title-bar fixed inset-x-0 top-0 z-30 flex h-(--desktop-title-bar-height) items-center justify-center bg-rail px-(--desktop-controls-padding) text-xs font-medium text-rail-foreground select-none max-[400px]:pr-(--desktop-controls-right) max-[400px]:pl-(--desktop-controls-left)"
           style={titleBarStyle}
           aria-label="Window title bar"
         >

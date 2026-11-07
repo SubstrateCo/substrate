@@ -45,7 +45,7 @@ export function UserMenu({
         side="right"
         align="end"
         sideOffset={12}
-        className="w-72"
+        className="w-72 max-w-(--radix-popover-content-available-width)"
       >
         <p className="truncate px-2 py-2 text-sm font-medium">{name}</p>
         <AppearanceControl />
