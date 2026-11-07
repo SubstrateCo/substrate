@@ -32,23 +32,25 @@ export function ReferencePicker({
   onInsert: (token: string) => void;
   onClose: () => void;
 }) {
-  const [index, setIndex] = useState(0);
+  const [selection, setSelection] = useState({ query, kind, index: 0 });
+  const index = selection.query === query && selection.kind === kind ? selection.index : 0;
+  if (selection.query !== query || selection.kind !== kind) setSelection({ query, kind, index: 0 });
+  const setIndex = (index: number) => setSelection({ query, kind, index });
   const listId = useId();
-  const search = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    search.current?.focus();
-  }, []);
   const available = loading || error ? [] : results;
   const selectedIndex = Math.min(index, Math.max(0, available.length - 1));
+  const selectedId = available[selectedIndex]
+    ? `${listId}-${available[selectedIndex]!.id}`
+    : undefined;
   const insert = (id: string) => onInsert(`@[${kind}:${id}]`);
   useEffect(() => {
     list.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" });
-  }, [selectedIndex]);
+  }, [selectedId, selectedIndex]);
   return (
     <section
       aria-label="Insert workspace reference"
-      className="flex max-h-36 flex-col gap-0.5 overflow-hidden border-t bg-card p-2"
+      className="flex max-h-96 min-h-0 flex-col gap-2 overflow-hidden p-2"
     >
       <div className="flex shrink-0 items-center gap-1">
         {(["task", "project", "person"] as const).map((type) => (
@@ -60,7 +62,6 @@ export function ReferencePicker({
             aria-pressed={kind === type}
             onClick={() => {
               onKindChange(type);
-              setIndex(0);
             }}
           >
             {type === "person" ? "People" : `${type[0]!.toUpperCase()}${type.slice(1)}s`}
@@ -79,22 +80,18 @@ export function ReferencePicker({
         </Button>
       </div>
       <Input
-        ref={search}
         className="shrink-0"
         aria-label="Search references"
         value={query}
         onChange={(e) => {
           onQueryChange(e.target.value);
-          setIndex(0);
         }}
         role="combobox"
         aria-expanded={true}
         aria-controls={listId}
         aria-autocomplete="list"
         aria-describedby={`${listId}-help`}
-        aria-activedescendant={
-          available[selectedIndex] ? `${listId}-${available[selectedIndex]!.id}` : undefined
-        }
+        aria-activedescendant={selectedId}
         onKeyDown={(e) => {
           if (e.nativeEvent.isComposing) return;
           if (e.key === "Escape") {

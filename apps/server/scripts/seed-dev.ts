@@ -11,8 +11,8 @@ const url = new URL(connectionString);
 if (!["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)) {
   throw new Error("Development seeding requires a local DATABASE_URL.");
 }
-const password = process.env.DEV_SEED_PASSWORD ?? "StartupOS-dev-2026!";
-if (password.length < 12) throw new Error("DEV_SEED_PASSWORD must have at least 12 characters.");
+const password = process.env.DEV_SEED_PASSWORD ?? "password";
+if (password.length < 8) throw new Error("DEV_SEED_PASSWORD must have at least 8 characters.");
 const { db, close } = createDatabase({ connectionString, maxConnections: 1 });
 try {
   await migrateDatabase(db);

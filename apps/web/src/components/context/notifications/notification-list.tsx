@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { markRead } from "@/api/context/notifications";
+import { markAllRead, markRead } from "@/api/context/notifications";
 import { NotificationList as NotificationListView } from "@/components/context/notifications/notification-list-view";
 import { messageHref, workHref } from "@/lib/navigation/record-links";
 import { notificationsOptions } from "@/queries/context/notifications";
@@ -16,7 +16,8 @@ export function NotificationList({
   const items = useQuery(notificationsOptions(organizationId));
   const client = useQueryClient();
   const read = useMutation({
-    mutationFn: (id: string) => markRead({ data: { organizationId, id } }),
+    mutationFn: (id: string | null) =>
+      id ? markRead({ data: { organizationId, id } }) : markAllRead({ data: { organizationId } }),
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.context(organizationId) }),
   });
   return (
@@ -31,9 +32,10 @@ export function NotificationList({
       loading={items.isPending}
       error={items.error}
       actionError={read.error}
-      pendingId={read.isPending ? read.variables : undefined}
+      pendingId={read.isPending ? (read.variables ?? "all") : undefined}
       onRetry={() => void items.refetch()}
       onRead={(id) => read.mutate(id)}
+      onReadAll={() => read.mutate(null)}
       onOpen={(item, event) => {
         event.preventDefault();
         if (read.isPending) return;

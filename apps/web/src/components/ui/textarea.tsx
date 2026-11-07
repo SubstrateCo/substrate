@@ -9,6 +9,7 @@ const textareaVariants = cva(
     variants: {
       variant: {
         default: "",
+        surface: "border-border bg-surface dark:bg-surface",
         composer:
           "rounded-none border-0 bg-transparent px-3 shadow-none focus-visible:ring-0 dark:bg-transparent",
         "task-title":

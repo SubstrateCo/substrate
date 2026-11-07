@@ -9,6 +9,7 @@ export function TaskForm({
   parentTaskEntityId,
   onSaved,
   onCancel,
+  initialStatus,
 }: {
   organizationId: string;
   detail: ProjectDetail;
@@ -16,6 +17,7 @@ export function TaskForm({
   parentTaskEntityId?: string;
   onSaved: (id: string) => void;
   onCancel: () => void;
+  initialStatus?: Task["status"];
 }) {
   const save = useTasksMutation(organizationId);
   return (
@@ -23,6 +25,7 @@ export function TaskForm({
       detail={detail}
       task={task}
       parentTaskEntityId={parentTaskEntityId}
+      initialStatus={initialStatus}
       pending={save.isPending}
       error={save.error}
       onCancel={onCancel}

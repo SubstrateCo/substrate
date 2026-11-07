@@ -1,18 +1,22 @@
-import { taskStatusLabels, taskStatusValues } from "@startup-os/contracts/tasks";
+import { taskStatusLabels, taskStatusValues, type TaskStatus } from "@startup-os/contracts/tasks";
 
 import { ContentNotice } from "../../feedback/content-notice";
 import { TaskStatusIcon } from "../task-cues/task-status-icon";
 import type { ProjectDetail } from "../types";
 import { TaskListItem } from "./task-list-item";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 
 export function TaskList({
   detail,
   selectedId,
   onSelect,
+  onCreate,
 }: {
   detail: ProjectDetail;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onCreate?: (status: TaskStatus) => void;
 }) {
   return (
     <section
@@ -44,14 +48,26 @@ export function TaskList({
         const rows = detail.tasks.filter((task) => task.status === status);
         if (!rows.length) return null;
         return (
-          <div key={status}>
-            <h2 className="mb-1 flex items-center gap-2 px-3 py-1.5 text-xs font-semibold wrap-anywhere">
-              <TaskStatusIcon status={status} />
-              {taskStatusLabels[status]}{" "}
-              <span className="rounded bg-muted px-1.5 py-0.5 font-normal text-muted-foreground tabular-nums">
-                {rows.length}
-              </span>
-            </h2>
+          <div key={status} className="overflow-hidden rounded-lg border bg-card">
+            <div className="flex items-center justify-between gap-2 border-b bg-muted px-3 py-2">
+              <h2 className="flex items-center gap-2 text-xs font-semibold tracking-wide wrap-anywhere uppercase">
+                <TaskStatusIcon status={status} />
+                {taskStatusLabels[status]}{" "}
+                <span className="rounded bg-muted px-1.5 py-0.5 font-normal text-muted-foreground tabular-nums">
+                  {rows.length}
+                </span>
+              </h2>
+              {onCreate && (
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label={`Add ${taskStatusLabels[status]} task`}
+                  onClick={() => onCreate(status)}
+                >
+                  <Plus aria-hidden="true" />
+                </Button>
+              )}
+            </div>
             <ul className="divide-y divide-border/50">
               {rows.map((task) => (
                 <TaskListItem

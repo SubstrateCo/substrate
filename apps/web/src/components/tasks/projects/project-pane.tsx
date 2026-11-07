@@ -37,7 +37,11 @@ export function ProjectPane({
         })
       }
       headerActions={
-        <CopyLink label="Copy project link" href={workHref(organizationId, projectEntityId)} />
+        <CopyLink
+          grouped
+          label="Copy project link"
+          href={workHref(organizationId, projectEntityId)}
+        />
       }
       context={
         project.data &&
@@ -54,21 +58,17 @@ export function ProjectPane({
       loading={project.isPending}
       error={project.error}
       onRetry={() => void project.refetch()}
-      renderProjectEditor={(detail, onDone) => (
-        <ProjectForm
-          organizationId={organizationId}
-          project={detail.project}
-          onCancel={onDone}
-          onSaved={onDone}
-        />
+      renderProjectEditor={(detail) => (
+        <ProjectForm organizationId={organizationId} project={detail.project} />
       )}
-      renderTaskForm={(detail, parentTaskEntityId, onSaved, onCancel) => (
+      renderTaskForm={(detail, parentTaskEntityId, onSaved, onCancel, initialStatus) => (
         <TaskForm
           organizationId={organizationId}
           detail={detail}
           parentTaskEntityId={parentTaskEntityId}
           onSaved={onSaved}
           onCancel={onCancel}
+          initialStatus={initialStatus}
         />
       )}
       renderTaskDetail={(detail, task, onClose, onSubtask) => (

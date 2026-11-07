@@ -47,6 +47,11 @@ export function createContextRoutes(services = defaultServices) {
       respond(c, await services.getNotifications(c.req.raw.headers, c.req.valid("query"))),
     )
     .post(
+      "/notifications/read-all",
+      zValidator("json", contextWorkspace, validationHook),
+      async (c) => respond(c, await services.markAllRead(c.req.raw.headers, c.req.valid("json"))),
+    )
+    .post(
       "/notifications/read",
       zValidator("json", contextNotification, validationHook),
       async (c) => respond(c, await services.markRead(c.req.raw.headers, c.req.valid("json"))),

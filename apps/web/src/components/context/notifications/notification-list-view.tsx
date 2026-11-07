@@ -4,10 +4,11 @@ import { FormMessage } from "../../auth/form-message";
 import { ContentNotice } from "../../feedback/content-notice";
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
+import { PendingButton } from "../../feedback/pending-button";
 import { isAccessFailure } from "../../feedback/request-failure";
 import { Button } from "../../ui/button";
 import { NotificationItem, type Notification } from "./notification-item";
-import { Bell, CheckCheck, X } from "lucide-react";
+import { CheckCheck, X } from "lucide-react";
 
 export function NotificationList({
   items,
@@ -17,6 +18,7 @@ export function NotificationList({
   actionError,
   onRetry,
   onRead,
+  onReadAll,
   onOpen,
   onClose,
 }: {
@@ -27,6 +29,7 @@ export function NotificationList({
   actionError?: Error | null;
   onRetry: () => void;
   onRead: (id: string) => void;
+  onReadAll: () => void;
   onOpen: (item: Notification, event: MouseEvent<HTMLAnchorElement>) => void;
   onClose?: () => void;
 }) {
@@ -36,17 +39,9 @@ export function NotificationList({
   const unread = visible.filter((item) => !item.read).length;
   return (
     <section aria-label="Notifications" className="min-h-0 flex-1 overflow-auto bg-surface">
-      <div className="border-b bg-card py-6">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-6">
-          <div>
-            <p className="mb-2 flex items-center gap-2 text-xs font-medium tracking-wider text-muted-foreground uppercase">
-              <Bell className="size-4" /> Your inbox
-            </p>
-            <h1 className="text-2xl font-semibold tracking-tight">Notifications</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Mentions and assignments that need your attention.
-            </p>
-          </div>
+      <div className="border-b bg-card">
+        <div className="mx-auto flex h-12 max-w-3xl items-center justify-between gap-3 px-4">
+          <h1 className="text-sm font-semibold">Notifications</h1>
           {onClose && (
             <Button
               variant="outline"
@@ -60,24 +55,37 @@ export function NotificationList({
           )}
         </div>
       </div>
-      <div className="mx-auto max-w-3xl space-y-4 px-6 py-6">
-        <div role="group" aria-label="Notification filter" className="flex items-center gap-2">
-          <Button
+      <div className="mx-auto max-w-3xl space-y-4 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div role="group" aria-label="Notification filter" className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant={filter === "all" ? "secondary" : "ghost"}
+              aria-pressed={filter === "all"}
+              onClick={() => setFilter("all")}
+            >
+              All activity
+            </Button>
+            <Button
+              size="sm"
+              variant={filter === "unread" ? "secondary" : "ghost"}
+              aria-pressed={filter === "unread"}
+              onClick={() => setFilter("unread")}
+            >
+              Unread <span className="rounded-full bg-muted px-2 text-xs">{unread}</span>
+            </Button>
+          </div>
+          <PendingButton
             size="sm"
-            variant={filter === "all" ? "secondary" : "ghost"}
-            aria-pressed={filter === "all"}
-            onClick={() => setFilter("all")}
+            variant="ghost"
+            pending={pendingId === "all"}
+            pendingLabel="Marking all as read…"
+            disabled={!!pendingId || unread === 0 || !!error}
+            onClick={onReadAll}
           >
-            All activity
-          </Button>
-          <Button
-            size="sm"
-            variant={filter === "unread" ? "secondary" : "ghost"}
-            aria-pressed={filter === "unread"}
-            onClick={() => setFilter("unread")}
-          >
-            Unread <span className="rounded-full bg-muted px-2 text-xs">{unread}</span>
-          </Button>
+            <CheckCheck aria-hidden="true" />
+            Mark all as read
+          </PendingButton>
         </div>
         {loading && !visible.length && (
           <LoadingState label="Loading notifications" variant="compact" />
@@ -105,7 +113,7 @@ export function NotificationList({
         </ul>
         <FormMessage
           error={actionError}
-          errorDescription="Couldn't update this notification. Try again."
+          errorDescription="Couldn't update notifications. Try again."
         />
         {!loading && !error && visible.length > 0 && unread === 0 && (
           <p className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">

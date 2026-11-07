@@ -39,7 +39,6 @@ export function Composer({
       label={label}
       renderReferences={(query, onInsert, onClose) => (
         <ReferencePicker
-          key={query}
           organizationId={organizationId}
           conversationId={conversationId}
           initialQuery={query}

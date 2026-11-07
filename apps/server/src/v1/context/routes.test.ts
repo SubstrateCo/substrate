@@ -19,6 +19,7 @@ test("context routes reject invalid input without invoking services", async () =
     getActivity: mock(services.getActivity),
     getNotifications: mock(services.getNotifications),
     markRead: mock(services.markRead),
+    markAllRead: mock(services.markAllRead),
   };
   const app = createContextRoutes(spies);
   for (const path of [
@@ -47,6 +48,12 @@ test("context routes reject invalid input without invoking services", async () =
     });
     expect(response.status).toBe(400);
   }
+  const readAll = await app.request("/notifications/read-all", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({}),
+  });
+  expect(readAll.status).toBe(400);
   for (const spy of Object.values(spies)) expect(spy).not.toHaveBeenCalled();
 });
 

@@ -10,8 +10,8 @@ export function ProjectForm({
 }: {
   organizationId: string;
   project?: Project;
-  onSaved: (id: string) => void;
-  onCancel: () => void;
+  onSaved?: (id: string) => void;
+  onCancel?: () => void;
 }) {
   const save = useTasksMutation(organizationId);
   return (
@@ -30,7 +30,7 @@ export function ProjectForm({
                 ...draft,
               }
             : { action: "createProject", organizationId, ...draft },
-          { onSuccess: ({ id }) => onSaved(id) },
+          { onSuccess: ({ id }) => onSaved?.(id) },
         )
       }
     />

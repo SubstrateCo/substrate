@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
 
@@ -7,7 +7,7 @@ import {
   type SearchKind,
 } from "@/components/context/search/workspace-search-view";
 import { messageHref, workHref } from "@/lib/navigation/record-links";
-import { searchOptions } from "@/queries/context/search";
+import { searchPagesOptions } from "@/queries/context/search";
 
 export function WorkspaceSearch({
   organizationId,
@@ -21,10 +21,9 @@ export function WorkspaceSearch({
   onFocusInput: () => void;
 }) {
   const [kind, setKind] = useState<SearchKind>("all");
-  const [after, setAfter] = useState<string>();
   const [relatedToEntityId, setRelatedToEntityId] = useState<string>();
-  const results = useQuery(
-    searchOptions({ organizationId, query, kind, after, relatedToEntityId, limit: 30 }),
+  const results = useInfiniteQuery(
+    searchPagesOptions({ organizationId, query, kind, relatedToEntityId }),
   );
   return (
     <WorkspaceSearchView
@@ -32,7 +31,7 @@ export function WorkspaceSearch({
       onFocusInput={onFocusInput}
       kind={kind}
       related={!!relatedToEntityId}
-      results={(results.data ?? []).map((item) => ({
+      results={(results.data?.pages.flat() ?? []).map((item) => ({
         ...item,
         href: item.conversationId
           ? messageHref(
@@ -48,25 +47,25 @@ export function WorkspaceSearch({
       }))}
       loading={results.isPending}
       error={results.error}
-      hasMore={results.data?.length === 30}
-      hasPrevious={!!after}
+      hasMore={results.hasNextPage}
+      loadingMore={results.isFetchingNextPage}
       onKindChange={(value) => {
         setKind(value);
-        setAfter(undefined);
       }}
       onRelated={(id) => {
         setRelatedToEntityId(id);
         onQueryChange("");
         setKind("all");
-        setAfter(undefined);
       }}
       onClearRelated={() => {
         setRelatedToEntityId(undefined);
-        setAfter(undefined);
       }}
-      onMore={() => setAfter(results.data?.at(-1)?.id)}
-      onFirst={() => setAfter(undefined)}
-      onRetry={() => void results.refetch()}
+      onMore={() => {
+        if (!results.isFetching) void results.fetchNextPage();
+      }}
+      onRetry={() =>
+        void (results.isFetchNextPageError ? results.fetchNextPage() : results.refetch())
+      }
     />
   );
 }

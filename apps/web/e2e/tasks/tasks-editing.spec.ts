@@ -28,17 +28,16 @@ test("project and task edits, cleared fields, nested subtasks, and comments surv
   await page.getByLabel("Project description", { exact: true }).fill("Original description");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Original project", exact: true })).toBeVisible();
-  await page.getByRole("tab", { name: "Project settings", exact: true }).click();
-  await page.getByRole("button", { name: "Edit project", exact: true }).click();
+  await page.getByRole("tab", { name: "Settings", exact: true }).click();
   await expect(page.getByLabel("Project name", { exact: true })).toHaveValue("Original project");
   await expect(page.getByLabel("Project description", { exact: true })).toHaveValue(
     "Original description",
   );
   await page.getByLabel("Project name", { exact: true }).fill("Edited project");
   await page.getByLabel("Project description", { exact: true }).fill("Edited project description");
-  await page.getByRole("button", { name: "Save project", exact: true }).click();
+  await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Edited project", exact: true })).toBeVisible();
-  await expect(page.getByText("Edited project description", { exact: true })).toBeVisible();
+  await expect(page.getByTitle("Edited project description", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "New task", exact: true }).click();
   await page.getByLabel("Task title", { exact: true }).fill("Original task");

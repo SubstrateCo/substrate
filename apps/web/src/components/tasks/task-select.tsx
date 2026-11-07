@@ -33,7 +33,7 @@ export function TaskSelect<T extends string>({
       className={cn("relative min-w-0", compact && "w-auto max-w-full")}
       data-invalid={errors.length > 0}
     >
-      <FieldLabel htmlFor={id} className={compact ? "sr-only" : undefined}>
+      <FieldLabel htmlFor={id} className={compact ? "sr-only max-w-px" : undefined}>
         {label}
       </FieldLabel>
       <Select

@@ -21,7 +21,9 @@ export function ReferencePicker({
   onInsert: (token: string) => void;
   onClose: () => void;
 }) {
-  const [query, setQuery] = useState(initialQuery);
+  const [search, setSearch] = useState({ source: initialQuery, query: initialQuery });
+  const query = search.source === initialQuery ? search.query : initialQuery;
+  if (search.source !== initialQuery) setSearch({ source: initialQuery, query: initialQuery });
   const [kind, setKind] = useState<ReferenceKind>("task");
   const results = useQuery(searchOptions({ organizationId, conversationId, query, kind }));
   return (
@@ -31,7 +33,7 @@ export function ReferencePicker({
       results={results.data ?? []}
       loading={results.isPending}
       error={results.error}
-      onQueryChange={setQuery}
+      onQueryChange={(query) => setSearch({ source: initialQuery, query })}
       onKindChange={setKind}
       onRetry={() => void results.refetch()}
       onInsert={onInsert}

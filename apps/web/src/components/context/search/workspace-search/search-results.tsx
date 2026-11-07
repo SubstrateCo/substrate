@@ -1,6 +1,7 @@
 import { SearchResult, type SearchResultItem } from "@/components/context/search/search-result";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
+import { PendingButton } from "@/components/feedback/pending-button";
 import { isAccessFailure } from "@/components/feedback/request-failure";
 import { CommandEmpty, CommandGroup, CommandList } from "@/components/ui/command";
 
@@ -11,6 +12,9 @@ export function SearchResults({
   error,
   onRetry,
   onRelated,
+  hasMore,
+  loadingMore,
+  onMore,
 }: {
   query: string;
   results: SearchResultItem[];
@@ -18,10 +22,13 @@ export function SearchResults({
   error?: Error | null;
   onRetry: () => void;
   onRelated: (id: string) => void;
+  hasMore: boolean;
+  loadingMore: boolean;
+  onMore: () => void;
 }) {
   const visible = isAccessFailure(error) ? [] : results;
   return (
-    <CommandList aria-label="Search results" className="min-h-0">
+    <CommandList label="Search results" className="min-h-0">
       {loading && !visible.length && (
         <div className="p-3">
           <LoadingState label="Searching workspace" variant="compact" />
@@ -41,6 +48,23 @@ export function SearchResults({
             <SearchResult key={item.id} item={item} onRelated={() => onRelated(item.id)} />
           ))}
         </CommandGroup>
+      )}
+      {!isAccessFailure(error) && visible.length > 0 && (
+        <div className="px-2 py-3 text-center">
+          {hasMore ? (
+            <PendingButton
+              variant="ghost"
+              size="sm"
+              pending={loadingMore}
+              pendingLabel="Loading results…"
+              onClick={onMore}
+            >
+              Load more results
+            </PendingButton>
+          ) : (
+            !loading && !error && <p className="text-xs text-muted-foreground">End of results</p>
+          )}
+        </div>
       )}
     </CommandList>
   );

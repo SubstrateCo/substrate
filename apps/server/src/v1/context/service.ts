@@ -104,3 +104,12 @@ export function markRead(headers: Headers, raw: z.input<typeof contextNotificati
     return null;
   });
 }
+export function markAllRead(headers: Headers, raw: z.input<typeof contextWorkspace>) {
+  return serviceResult(async () => {
+    requireOrigin(headers);
+    const input = contextWorkspace.parse(raw);
+    const { feed } = await sessionServices(headers, input.organizationId);
+    await feed.markAllRead();
+    return null;
+  });
+}

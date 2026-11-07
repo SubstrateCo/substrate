@@ -1,3 +1,5 @@
+import type { TaskStatus } from "@startup-os/contracts/tasks";
+
 import type { ReactNode, Ref } from "react";
 
 import { TaskList } from "../../list/task-list";
@@ -11,6 +13,7 @@ export interface TaskPanelRenderers {
     parentTaskEntityId: string | undefined,
     onSaved: (id: string) => void,
     onCancel: () => void,
+    status?: TaskStatus,
   ) => ReactNode;
   detail: (
     detail: ProjectDetail,
@@ -34,29 +37,25 @@ export function ProjectTaskPanel({
   renderers: TaskPanelRenderers;
 }) {
   const selected = detail.tasks.find((task) => task.entityId === panel.selectedTaskId);
-  const { creating, selectedTaskId } = panel;
+  const { selectedTaskId } = panel;
   return (
     <div
-      className={`grid min-h-0 min-w-0 grid-cols-1 items-start gap-5 md:h-full ${creating || selected || selectedTaskId ? "md:grid-cols-2" : ""}`}
+      className={`grid min-h-0 min-w-0 grid-cols-1 items-start gap-5 md:h-full ${selectedTaskId ? "md:grid-cols-2" : ""}`}
     >
-      <TaskList detail={detail} selectedId={selectedTaskId} onSelect={panel.select} />
-      {(creating || selected || selectedTaskId) && (
+      <TaskList
+        detail={detail}
+        selectedId={selectedTaskId}
+        onSelect={panel.select}
+        onCreate={canEdit ? panel.create : undefined}
+      />
+      {selectedTaskId && (
         <div
           ref={inspectorRef}
           tabIndex={-1}
-          aria-label={creating ? "Task form panel" : "Selected task panel"}
+          aria-label="Selected task panel"
           className="order-first min-h-0 min-w-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring md:order-0 md:h-full md:overflow-y-auto"
         >
-          {creating && canEdit && (
-            <div
-              key={creating.parentTaskEntityId ?? "root"}
-              className="min-w-0 rounded-xl border bg-card p-4 sm:p-6"
-            >
-              {renderers.form(detail, creating.parentTaskEntityId, panel.saved, panel.cancel)}
-            </div>
-          )}
-          {!(creating && canEdit) &&
-            selected &&
+          {selected &&
             renderers.detail(detail, selected, panel.close, () =>
               panel.createSubtask(selected.entityId),
             )}

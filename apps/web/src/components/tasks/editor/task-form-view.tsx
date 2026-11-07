@@ -16,11 +16,13 @@ import { cn } from "cn";
 
 function useTaskForm({
   task,
+  initialStatus,
   assignees,
   pending,
   onSubmit,
 }: {
   task?: Task;
+  initialStatus?: Task["status"];
   assignees: ProjectDetail["actors"];
   pending: boolean;
   onSubmit: (draft: TaskDraft) => void;
@@ -29,7 +31,7 @@ function useTaskForm({
     defaultValues: {
       title: task?.title ?? "",
       description: task?.description ?? "",
-      status: task?.status ?? "not_started",
+      status: task?.status ?? initialStatus ?? "not_started",
       priority: task?.priority ?? "none",
       assignee: task?.assigneeActorEntityId ?? "unassigned",
       dueDate: task?.dueDate ?? "",
@@ -61,6 +63,7 @@ export function TaskForm({
   pending = false,
   error,
   sourceText,
+  initialStatus,
 }: {
   detail: ProjectDetail;
   task?: Task;
@@ -70,12 +73,13 @@ export function TaskForm({
   pending?: boolean;
   error?: Error | null;
   sourceText?: string;
+  initialStatus?: Task["status"];
 }) {
   const id = useId();
   const assignees = detail.actors.filter((actor) =>
     detail.members.some((member) => member.actorEntityId === actor.entityId),
   );
-  const form = useTaskForm({ task, assignees, pending, onSubmit });
+  const form = useTaskForm({ task, assignees, pending, onSubmit, initialStatus });
   const fromMessage = sourceText !== undefined;
   let titleLabel = parentTaskEntityId ? "New subtask" : "New task";
   let submitLabel = parentTaskEntityId ? "Create subtask" : "Create task";
@@ -86,6 +90,7 @@ export function TaskForm({
   return (
     <form
       aria-label={titleLabel}
+      aria-busy={pending}
       aria-keyshortcuts={fromMessage ? "Control+Enter Meta+Enter" : undefined}
       noValidate
       className="@container min-w-0 space-y-4"
@@ -119,7 +124,7 @@ export function TaskForm({
                   placeholder="What needs to be done?"
                   rows={2}
                   variant="task-title"
-                  className="max-h-32 min-h-14 resize-none"
+                  className="max-h-32 min-h-14 resize-none scroll-my-2"
                   onChange={(event) => {
                     field.handleChange(event.target.value);
                     if (!field.state.meta.isValid) void field.validate("blur");
@@ -132,6 +137,7 @@ export function TaskForm({
                 />
               ) : (
                 <Input
+                  variant="surface"
                   id={`${id}-title`}
                   value={field.state.value}
                   onChange={(event) => {
@@ -162,7 +168,7 @@ export function TaskForm({
                 id={`${id}-description`}
                 value={field.state.value}
                 placeholder={fromMessage ? "Add a description…" : undefined}
-                variant={fromMessage ? "task-description" : "default"}
+                variant={fromMessage ? "task-description" : "surface"}
                 className={fromMessage ? "max-h-48" : undefined}
                 onChange={(event) => {
                   field.handleChange(event.target.value);
@@ -199,7 +205,13 @@ export function TaskForm({
           )}
         >
           {fromMessage && (
-            <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onPointerDown={(event) => event.preventDefault()}
+              onClick={onCancel}
+            >
               Cancel
             </Button>
           )}
@@ -212,7 +224,12 @@ export function TaskForm({
             )}
           </PendingButton>
           {!fromMessage && (
-            <Button type="button" variant="outline" onClick={onCancel}>
+            <Button
+              type="button"
+              variant="outline"
+              onPointerDown={(event) => event.preventDefault()}
+              onClick={onCancel}
+            >
               Cancel
             </Button>
           )}

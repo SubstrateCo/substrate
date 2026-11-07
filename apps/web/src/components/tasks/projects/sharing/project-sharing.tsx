@@ -16,10 +16,13 @@ export function ProjectSharing({
       detail={detail}
       pending={share.isPending}
       error={share.error}
-      onShare={(actorEntityId, level) =>
-        share.mutate({ action: "share", ...scope, actorEntityId, level })
+      onClearError={() => share.reset()}
+      onShare={(actorEntityId, level, onSuccess) =>
+        share.mutate({ action: "share", ...scope, actorEntityId, level }, { onSuccess })
       }
-      onRevoke={(actorEntityId) => share.mutate({ action: "revoke", ...scope, actorEntityId })}
+      onRevoke={(actorEntityId, onSuccess) =>
+        share.mutate({ action: "revoke", ...scope, actorEntityId }, { onSuccess })
+      }
     />
   );
 }

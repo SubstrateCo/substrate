@@ -23,7 +23,7 @@ export function WorkDiscussions({
 }) {
   const rows = isAccessFailure(error) ? [] : items;
   return (
-    <section aria-label={label} className="space-y-3 border-t pt-4">
+    <section aria-label={label} className="space-y-3">
       <h3 className="text-sm font-semibold">{label}</h3>
       {children}
       {loading && !rows.length && (
@@ -35,9 +35,17 @@ export function WorkDiscussions({
           <EmptyDescription>No accessible discussions linked yet.</EmptyDescription>
         </Empty>
       )}
-      {rows.map((item) => (
-        <DiscussionItem key={`${item.messageId}:${item.purpose}`} item={item} />
-      ))}
+      {rows
+        .filter(
+          (item, index) =>
+            rows.findIndex(
+              (candidate) =>
+                candidate.messageId === item.messageId && candidate.purpose === item.purpose,
+            ) === index,
+        )
+        .map((item) => (
+          <DiscussionItem key={`${item.messageId}:${item.purpose}`} item={item} />
+        ))}
     </section>
   );
 }

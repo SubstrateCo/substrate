@@ -3,18 +3,24 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../
 
 export type Discussion = {
   messageId: string;
-  purpose: string;
+  purpose: "source" | "mention" | "association";
   href: string;
   conversationName: string | null;
   authorName: string | null;
   createdAt: string;
   body: string;
+  replyCount?: number;
 };
 
 export function DiscussionItem({ item }: { item: Discussion }) {
   const title = `${item.purpose === "source" ? "Created from a discussion" : "Related discussion"} · ${item.conversationName ?? "Direct conversation"}`;
+  const relationship = {
+    source: "Created from this discussion",
+    mention: "Linked through a reference",
+    association: "Linked work",
+  }[item.purpose];
   return (
-    <Item size="xs" className="items-start">
+    <Item size="xs" variant="outline" className="items-start">
       <ItemContent className="min-w-0">
         <TooltipProvider>
           <Tooltip>
@@ -36,6 +42,11 @@ export function DiscussionItem({ item }: { item: Discussion }) {
         <p className="line-clamp-3 wrap-anywhere whitespace-pre-wrap">
           {item.body.replace(/@\[[^\]]+\]/g, "[Reference]")}
         </p>
+        {item.replyCount !== undefined && (
+          <p className="text-xs text-muted-foreground">
+            {item.replyCount} {item.replyCount === 1 ? "reply" : "replies"} · {relationship}
+          </p>
+        )}
       </ItemContent>
     </Item>
   );

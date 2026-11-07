@@ -3,12 +3,13 @@ import { useState, type ReactNode } from "react";
 import type { ProjectDetail } from "../types";
 import { ProjectSettings } from "./pane/project-settings";
 import { ProjectTaskPanel, type TaskPanelRenderers } from "./pane/project-task-panel";
-import { useProjectEditor } from "./pane/use-project-editor";
+import { TaskCreationDialog } from "./pane/task-creation-dialog";
 import { useTaskPanel } from "./pane/use-task-panel";
 import { ErrorState } from "@/components/feedback/error-state";
 import { isAccessFailure } from "@/components/feedback/request-failure";
 import { ProjectLoading } from "@/components/tasks/projects/project-loading";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Plus } from "lucide-react";
@@ -31,7 +32,7 @@ export function ProjectPane({
   loading?: boolean;
   error?: Error | null;
   onRetry: () => void;
-  renderProjectEditor: (detail: ProjectDetail, onDone: () => void) => ReactNode;
+  renderProjectEditor: (detail: ProjectDetail) => ReactNode;
   renderTaskForm: TaskPanelRenderers["form"];
   renderTaskDetail: TaskPanelRenderers["detail"];
   renderSettings: (detail: ProjectDetail) => ReactNode;
@@ -40,13 +41,13 @@ export function ProjectPane({
   headerActions?: ReactNode;
   context?: ReactNode;
 }) {
-  const [settings, setSettings] = useState(false);
-  const { panel, inspector, viewport, newTaskButton } = useTaskPanel({
+  const [tab, setTab] = useState("tasks");
+  const detail = isAccessFailure(error) ? undefined : data;
+  const { panel, inspector, viewport, newTaskButton, restoreFocus } = useTaskPanel({
     selectedTaskId,
     onSelectTask,
+    ready: !!detail,
   });
-  const { editor, editButton } = useProjectEditor(settings);
-  const detail = isAccessFailure(error) ? undefined : data;
   if (!detail) {
     if (loading) return <ProjectLoading />;
     return (
@@ -66,11 +67,7 @@ export function ProjectPane({
   const canEdit = detail.level === "edit" || detail.level === "owner";
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-4 sm:p-6">
-      <Tabs
-        value={settings ? "settings" : "tasks"}
-        onValueChange={(value) => setSettings(value === "settings")}
-        className="min-h-0 min-w-0 flex-1"
-      >
+      <Tabs value={tab} onValueChange={setTab} className="min-h-0 min-w-0 flex-1">
         <header className="mb-3 flex shrink-0 flex-wrap items-start gap-x-3 gap-y-1">
           <div className="min-w-0 flex-1 basis-full sm:basis-auto">
             <h1
@@ -80,7 +77,7 @@ export function ProjectPane({
               {detail.project.name}
             </h1>
           </div>
-          <div className="flex max-w-full shrink-0 flex-wrap gap-2">
+          <ButtonGroup aria-label="Project actions" className="relative shrink-0">
             {headerActions}
             {canEdit && (
               <Tooltip>
@@ -92,7 +89,6 @@ export function ProjectPane({
                     aria-label="New task"
                     onClick={() => {
                       panel.create();
-                      setSettings(false);
                     }}
                   >
                     <Plus aria-hidden="true" />
@@ -101,7 +97,7 @@ export function ProjectPane({
                 <TooltipContent>New task</TooltipContent>
               </Tooltip>
             )}
-          </div>
+          </ButtonGroup>
           <p
             className="line-clamp-2 w-full text-sm wrap-break-word whitespace-pre-wrap text-muted-foreground"
             title={detail.project.description}
@@ -114,33 +110,36 @@ export function ProjectPane({
             <TabsTrigger value="tasks" className="flex-none">
               Tasks
             </TabsTrigger>
+            <TabsTrigger value="discussions" className="flex-none">
+              Discussions
+            </TabsTrigger>
             <TabsTrigger value="settings" className="flex-none">
-              Project settings
+              Settings
             </TabsTrigger>
           </TabsList>
         </div>
-        {context}
         {error && <ErrorState compact title="Couldn’t refresh project" onRetry={onRetry} />}
         <TabsContent
           value="settings"
           forceMount
-          hidden={!settings}
+          hidden={tab !== "settings"}
           className="mt-3 min-h-0 overflow-y-auto"
         >
           <ProjectSettings
             detail={detail}
             canEdit={canEdit}
-            editor={editor}
-            editButtonRef={editButton}
             renderEditor={renderProjectEditor}
             renderSettings={renderSettings}
           />
+        </TabsContent>
+        <TabsContent value="discussions" className="mt-3 min-h-0 overflow-y-auto">
+          {context}
         </TabsContent>
         <TabsContent
           ref={viewport}
           value="tasks"
           forceMount
-          hidden={settings}
+          hidden={tab !== "tasks"}
           className="mt-3 min-h-0 overflow-y-auto md:overflow-hidden"
         >
           <ProjectTaskPanel
@@ -152,6 +151,25 @@ export function ProjectPane({
           />
         </TabsContent>
       </Tabs>
+      {panel.creating && canEdit && (
+        <TaskCreationDialog
+          subtask={!!panel.creating.parentTaskEntityId}
+          projectName={detail.project.name}
+          onCancel={panel.cancel}
+          onRestoreFocus={restoreFocus}
+        >
+          {renderTaskForm(
+            detail,
+            panel.creating.parentTaskEntityId,
+            (id) => {
+              setTab("tasks");
+              panel.saved(id);
+            },
+            panel.cancel,
+            panel.creating.status,
+          )}
+        </TaskCreationDialog>
+      )}
     </div>
   );
 }

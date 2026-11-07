@@ -172,8 +172,10 @@ if (!app.requestSingleInstanceLock()) {
   // One dispatcher owns workspace links and auth callbacks. Better Auth owns PKCE and exchange.
   authClient.setupMain({ getWindow: () => mainWindow, scheme: false, bridges: true, csp: false });
   if (!app.commandLine.hasSwitch("desktop-smoke-test")) {
-    if (process.defaultApp && process.argv[1])
-      app.setAsDefaultProtocolClient(desktopScheme, process.execPath, [process.argv[1]]);
+    if (process.defaultApp)
+      app.setAsDefaultProtocolClient(desktopScheme, process.execPath, [
+        fileURLToPath(import.meta.url),
+      ]);
     else app.setAsDefaultProtocolClient(desktopScheme);
   }
   app.on("second-instance", (_event, argv) => {

@@ -80,18 +80,19 @@ test("connected work preserves private boundaries and assignment notifications",
       await ownerPage.getByRole("button", { name: "New project", exact: true }).click();
       await ownerPage.getByLabel("Project name", { exact: true }).fill(project);
       await ownerPage.getByRole("button", { name: "Create project", exact: true }).click();
-      await ownerPage.getByRole("tab", { name: "Project settings", exact: true }).click();
-      await select(ownerPage, "Person or agent", member.name);
+      await ownerPage.getByRole("tab", { name: "Settings", exact: true }).click();
+      await ownerPage.getByRole("button", { name: "Add access", exact: true }).click();
+      await ownerPage.getByRole("option", { name: member.name, exact: true }).click();
       await select(ownerPage, "Permission", "View");
-      await ownerPage.getByRole("button", { name: "Update access", exact: true }).click();
+      await ownerPage.getByRole("button", { name: "Review access", exact: true }).click();
       await ownerPage.getByRole("button", { name: "Confirm access", exact: true }).click();
       await expect(
         ownerPage
           .getByRole("region", { name: "Project sharing", exact: true })
           .getByRole("listitem")
           .filter({ has: ownerPage.getByText(member.name, { exact: true }) })
-          .getByText("View access", { exact: true }),
-      ).toBeVisible();
+          .getByRole("combobox", { name: `${member.name} permission`, exact: true }),
+      ).toContainText("View");
     });
 
     await test.step("create an assigned task from a discussion that the assignee cannot read", async () => {
@@ -191,8 +192,15 @@ test("connected work preserves private boundaries and assignment notifications",
     });
 
     await test.step("revoking project access hides tasks, search results, and assignment notifications", async () => {
-      await ownerPage.getByRole("tab", { name: "Project settings", exact: true }).click();
-      await ownerPage.getByRole("button", { name: `Remove ${member.name}`, exact: true }).click();
+      await ownerPage.getByRole("tab", { name: "Settings", exact: true }).click();
+      await select(ownerPage, `${member.name} permission`, "No access");
+      await ownerPage
+        .getByRole("region", { name: "Project sharing", exact: true })
+        .getByRole("listitem")
+        .filter({ hasText: member.name })
+        .getByRole("button", { name: "Apply", exact: true })
+        .click();
+      await ownerPage.getByRole("button", { name: "Remove access", exact: true }).click();
       await expect(
         ownerPage
           .getByRole("region", { name: "Project sharing", exact: true })

@@ -1,6 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
 
-import { isAccessFailure } from "../../feedback/request-failure";
 import { Button } from "../../ui/button";
 import type { SearchResultItem } from "./search-result";
 import { SearchResults } from "@/components/context/search/workspace-search/search-results";
@@ -16,12 +15,11 @@ export function WorkspaceSearch({
   loading,
   error,
   hasMore,
-  hasPrevious,
+  loadingMore,
   onKindChange,
   onRelated,
   onClearRelated,
   onMore,
-  onFirst,
   onRetry,
   onFocusInput,
 }: {
@@ -32,12 +30,11 @@ export function WorkspaceSearch({
   loading: boolean;
   error?: Error | null;
   hasMore: boolean;
-  hasPrevious: boolean;
+  loadingMore: boolean;
   onKindChange: (kind: SearchKind) => void;
   onRelated: (id: string) => void;
   onClearRelated: () => void;
   onMore: () => void;
-  onFirst: () => void;
   onRetry: () => void;
   onFocusInput: () => void;
 }) {
@@ -107,17 +104,10 @@ export function WorkspaceSearch({
           onRelated(id);
           onFocusInput();
         }}
+        hasMore={hasMore}
+        loadingMore={loadingMore}
+        onMore={onMore}
       />
-      {!isAccessFailure(error) && hasMore && (
-        <Button variant="outline" onClick={onMore}>
-          More results
-        </Button>
-      )}
-      {hasPrevious && (
-        <Button variant="ghost" onClick={onFirst}>
-          First results
-        </Button>
-      )}
       <SearchShortcuts />
     </section>
   );

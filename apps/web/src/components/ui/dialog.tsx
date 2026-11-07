@@ -115,13 +115,15 @@ function DialogTitle({ className, ...props }: React.ComponentProps<typeof Dialog
 
 function DialogDescription({
   className,
+  variant = "default",
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Description>) {
+}: React.ComponentProps<typeof DialogPrimitive.Description> & { variant?: "default" | "context" }) {
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
       className={cn(
         "text-sm text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
+        variant === "context" && "line-clamp-2 wrap-anywhere",
         className,
       )}
       {...props}

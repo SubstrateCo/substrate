@@ -1,17 +1,19 @@
 import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
+import { visibilityCte } from "../../core/permissions/visibility";
 import { ConflictError, AccessDeniedError } from "../../errors";
 import { recordTaskActivity } from "../activity/events";
 import { requireMessage, visibleConversations, type MessagingIdentity } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import type { CreateTaskInput } from "../tasks/contracts";
 import { taskRepository } from "../tasks/repository";
+import { tasks } from "../tasks/tasks.schema";
 import { workspaceContext, requireWork } from "./access";
 import { messageReferences } from "./references";
 import { messageEntityReferences, sourceTaskRequests } from "./schema";
 import { contextSearch } from "./search";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 
 export function createContextService(db: DatabaseExecutor, scope: MessagingIdentity) {
   return {
@@ -192,7 +194,23 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
     },
     async related(entityId: string) {
       const ctx = await workspaceContext(db, scope);
-      await requireWork(ctx, entityId);
+      const work = await requireWork(ctx, entityId);
+      const projectTasks =
+        work.entityType === "project"
+          ? db
+              .select({ entityId: tasks.entityId })
+              .from(tasks)
+              .where(
+                and(
+                  eq(tasks.organizationId, scope.organizationId),
+                  eq(tasks.projectEntityId, entityId),
+                  inArray(
+                    tasks.entityId,
+                    sql`(${visibilityCte(ctx.scope)} SELECT entity_id FROM visible_entities)`,
+                  ),
+                ),
+              )
+          : undefined;
       return db
         .select({
           messageId: messagingMessages.id,
@@ -203,6 +221,7 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
           authorName: sql<string>`(select name from "user" where id = ${messagingMessages.authorId})`,
           createdAt: messagingMessages.createdAt,
           purpose: messageEntityReferences.purpose,
+          replyCount: sql<number>`(select count(*)::int from ${messagingMessages} replies where replies.conversation_id = ${messagingMessages.conversationId} and replies.thread_id = coalesce(${messagingMessages.threadId}, ${messagingMessages.id}))`,
         })
         .from(messageEntityReferences)
         .innerJoin(messagingMessages, eq(messagingMessages.id, messageEntityReferences.messageId))
@@ -213,7 +232,10 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
         .where(
           and(
             eq(messageEntityReferences.organizationId, scope.organizationId),
-            eq(messageEntityReferences.entityId, entityId),
+            or(
+              eq(messageEntityReferences.entityId, entityId),
+              projectTasks ? inArray(messageEntityReferences.entityId, projectTasks) : undefined,
+            ),
             visibleConversations(db, scope),
           ),
         )

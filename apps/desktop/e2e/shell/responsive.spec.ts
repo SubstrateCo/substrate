@@ -128,6 +128,10 @@ for (const size of [
       userMenu.getByRole("button", { name: "Organization settings", exact: true }),
     );
     const darkMode = userMenu.getByRole("switch", { name: "Dark mode", exact: true });
+    await expect(
+      userMenu.getByRole("button", { name: "Use system theme", exact: true }),
+    ).toHaveText("");
+    expect((await darkMode.boundingBox())!.height).toBeLessThanOrEqual(20);
     await darkMode.setChecked(true);
     await expect(page.locator("html")).toHaveClass(/dark/);
     await darkMode.setChecked(false);

@@ -1,5 +1,5 @@
 import { AccessDeniedError, ConflictError } from "../../errors";
-import { entityGrants, user, tasks, taskActivity, notifications } from "../../schema";
+import { entityGrants, entities, user, tasks, taskActivity, notifications } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { messagingParticipants } from "../messaging/schema";
 import { createMessagingService } from "../messaging/service";
@@ -85,6 +85,40 @@ test("both endpoints are required, membership revocation hides context, and link
   expect(await context("bob").related(task.entityId)).toEqual([]);
   await repos.permissions.revoke({ entityId: project.entityId, actorEntityId: f.bob });
   expect(await context("bob").search({ query: "Private", kind: "task" })).toEqual([]);
+});
+
+test("project discussions include task links while checking both work and conversation access", async () => {
+  const { project, reply, root, repos, chat } = await setup();
+  const task = await context().createTaskFromMessage({
+    requestId: crypto.randomUUID(),
+    messageId: reply.id,
+    projectEntityId: project.entityId,
+    title: "Milestone",
+  });
+  const publicChannel = await chat.createConversation({ kind: "channel", name: "Public updates" });
+  const visible = await chat.sendMessage(publicChannel.id, `Review @[task:${task.entityId}]`);
+  const otherProject = await repos.projects.create({ name: "Separate work" });
+  await context().attach(visible.id, otherProject.entityId);
+  await context().attach(root.id, project.entityId);
+  const discussions = await context().related(project.entityId);
+  expect(discussions.map((item) => item.messageId).sort()).toEqual(
+    [reply.id, visible.id, root.id].sort(),
+  );
+  expect(discussions.find((item) => item.messageId === root.id)!.replyCount).toBe(1);
+  await repos.permissions.grant({
+    entityId: project.entityId,
+    actorEntityId: f.bob,
+    level: "view",
+  });
+  expect(await context("bob").related(project.entityId)).toMatchObject([{ messageId: visible.id }]);
+  await expect(context("outsider", f.orgB).related(project.entityId)).rejects.toBeInstanceOf(
+    AccessDeniedError,
+  );
+  await f.db
+    .update(entities)
+    .set({ deletedAt: new Date() })
+    .where(eq(entities.entityId, task.entityId));
+  expect(await context().related(project.entityId)).toMatchObject([{ messageId: root.id }]);
 });
 
 test("source provenance survives explicit unlinking and caller rollback removes all new work", async () => {

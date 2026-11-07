@@ -13,6 +13,7 @@ export function CopyButton({
   size = "xs",
   iconOnly = false,
   className,
+  grouped = false,
 }: {
   onCopy: () => void | Promise<void>;
   label: string;
@@ -21,6 +22,7 @@ export function CopyButton({
   size?: ComponentProps<typeof Button>["size"];
   iconOnly?: boolean;
   className?: string;
+  grouped?: boolean;
 }) {
   const [status, setStatus] = useState<"idle" | "pending" | "copied" | "error">("idle");
   const copying = useRef(false);
@@ -50,7 +52,7 @@ export function CopyButton({
     <Button
       type="button"
       size={size}
-      variant="ghost"
+      variant={grouped ? "outline" : "ghost"}
       className={className}
       aria-label={iconOnly ? label : undefined}
       aria-busy={status === "pending"}
@@ -76,8 +78,8 @@ export function CopyButton({
     </Button>
   );
 
-  return (
-    <span className="inline-flex min-w-0 items-center gap-2">
+  const content = (
+    <>
       {iconOnly ? (
         <Tooltip>
           <TooltipTrigger asChild>{button}</TooltipTrigger>
@@ -86,10 +88,22 @@ export function CopyButton({
       ) : (
         button
       )}
-      <span role="status" className={status === "error" ? "text-xs text-destructive" : "sr-only"}>
+      <span
+        role="status"
+        className={
+          status === "error"
+            ? `${grouped ? "absolute top-full mt-1 " : ""}text-xs text-destructive`
+            : "sr-only"
+        }
+      >
         {status === "error" && errorMessage}
         {copied && successMessage}
       </span>
-    </span>
+    </>
+  );
+  return grouped ? (
+    content
+  ) : (
+    <span className="inline-flex min-w-0 items-center gap-2">{content}</span>
   );
 }

@@ -31,7 +31,7 @@ export function TaskListItem({
             <span className="sr-only">{taskStatusLabels[task.status]}: </span>
             <TaskStatusIcon status={task.status} />
             <span className="min-w-0">
-              <span className="block truncate font-medium" title={task.title}>
+              <span className="block truncate font-normal" title={task.title}>
                 {task.title}
               </span>
               {task.parentTaskEntityId && (

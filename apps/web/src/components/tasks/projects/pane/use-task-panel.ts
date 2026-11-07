@@ -1,43 +1,58 @@
+import type { TaskStatus } from "@startup-os/contracts/tasks";
+
 import { useEffect, useRef, useState } from "react";
 
 export function useTaskPanel({
   selectedTaskId,
   onSelectTask,
+  ready,
 }: {
   selectedTaskId: string | null;
   onSelectTask: (id: string | null) => void;
+  ready: boolean;
 }) {
-  const [creating, setCreating] = useState<{ parentTaskEntityId?: string } | null>(null);
+  const [creating, setCreating] = useState<{
+    parentTaskEntityId?: string;
+    status?: TaskStatus;
+  } | null>(null);
   const [restore, setRestore] = useState(0);
   const inspector = useRef<HTMLDivElement>(null);
   const viewport = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLElement | null>(null);
+  const creationTrigger = useRef<HTMLElement | null>(null);
   const newTaskButton = useRef<HTMLButtonElement>(null);
   const previousId = useRef<string | null | undefined>(undefined);
   useEffect(() => {
-    if ((creating || selectedTaskId) && (creating || selectedTaskId !== previousId.current)) {
-      const target = creating
-        ? inspector.current?.querySelector<HTMLInputElement>("input")
-        : inspector.current;
+    if (!ready) return;
+    if (selectedTaskId && selectedTaskId !== previousId.current) {
       if (inspector.current) inspector.current.scrollTop = 0;
       if (viewport.current) viewport.current.scrollTop = 0;
-      target?.focus({ preventScroll: true });
+      inspector.current?.focus({ preventScroll: true });
     }
     previousId.current = selectedTaskId;
-  }, [creating, selectedTaskId]);
+  }, [selectedTaskId, ready]);
   useEffect(() => {
-    if (restore) (trigger.current?.isConnected ? trigger.current : newTaskButton.current)?.focus();
-  }, [restore]);
+    if (restore && !selectedTaskId)
+      (trigger.current?.isConnected ? trigger.current : newTaskButton.current)?.focus();
+  }, [restore, selectedTaskId]);
   return {
     inspector,
     viewport,
     newTaskButton,
+    restoreFocus: () =>
+      (creationTrigger.current?.isConnected
+        ? creationTrigger.current
+        : newTaskButton.current
+      )?.focus(),
     panel: {
       creating,
       selectedTaskId,
-      create: () => {
-        trigger.current = newTaskButton.current;
-        setCreating({});
+      create: (status?: TaskStatus) => {
+        creationTrigger.current =
+          document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : newTaskButton.current;
+        setCreating({ status });
       },
       select: (id: string) => {
         trigger.current =
@@ -48,17 +63,17 @@ export function useTaskPanel({
       saved: (id: string) => {
         onSelectTask(id);
         setCreating(null);
-        setRestore((count) => count + 1);
       },
       cancel: () => {
         setCreating(null);
-        setRestore((count) => count + 1);
       },
       close: () => {
         onSelectTask(null);
         setRestore((count) => count + 1);
       },
       createSubtask: (parentTaskEntityId: string) => {
+        creationTrigger.current =
+          document.activeElement instanceof HTMLElement ? document.activeElement : null;
         setCreating({ parentTaskEntityId });
       },
     },

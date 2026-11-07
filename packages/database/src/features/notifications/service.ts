@@ -5,7 +5,7 @@ import { taskActivity } from "../activity/schema";
 import { workspaceContext, requireWork } from "../context/access";
 import { requireMessage, type MessagingIdentity } from "../messaging/access";
 import { notifications } from "./schema";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 
 export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity) {
   return {
@@ -105,6 +105,19 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
         }
       }
       return result.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    },
+    async markAllRead() {
+      const ctx = await workspaceContext(db, scope);
+      await db
+        .update(notifications)
+        .set({ readAt: sql`now()` })
+        .where(
+          and(
+            eq(notifications.organizationId, scope.organizationId),
+            eq(notifications.recipientActorEntityId, ctx.scope.actorEntityId),
+            isNull(notifications.readAt),
+          ),
+        );
     },
     async markRead(id: string) {
       const ctx = await workspaceContext(db, scope);

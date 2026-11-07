@@ -101,6 +101,55 @@ test("private source activity is filtered independently from ordinary task activ
   ]);
 });
 
+test("mark all read covers more than one page, preserves read timestamps, and isolates recipients and workspaces", async () => {
+  const { alice, project } = await setup();
+  const task = await alice.tasks.create({
+    projectEntityId: project.entityId,
+    title: "Shared task",
+  });
+  const outside = f.forActor(f.outsider, f.orgB);
+  const outsideProject = await outside.projects.create({ name: "Other workspace" });
+  const outsideTask = await outside.tasks.create({
+    projectEntityId: outsideProject.entityId,
+    title: "Private",
+  });
+  const readAt = new Date("2026-01-01T00:00:00Z");
+  await f.db.insert(notifications).values([
+    ...Array.from({ length: 105 }, (_, index) => ({
+      organizationId: f.orgA,
+      recipientActorEntityId: f.bob,
+      kind: "assignment" as const,
+      entityId: task.entityId,
+      eventKey: `bulk-${index}`,
+      readAt: index === 0 ? readAt : null,
+    })),
+    {
+      organizationId: f.orgA,
+      recipientActorEntityId: f.alice,
+      kind: "assignment",
+      entityId: task.entityId,
+      eventKey: "alice-unread",
+    },
+    {
+      organizationId: f.orgB,
+      recipientActorEntityId: f.outsider,
+      kind: "assignment",
+      entityId: outsideTask.entityId,
+      eventKey: "outside-unread",
+    },
+  ]);
+  await feed("bob").markAllRead();
+  const rows = await f.db.select().from(notifications);
+  const mine = rows.filter((row) => row.recipientActorEntityId === f.bob);
+  expect(mine).toHaveLength(105);
+  expect(mine.every((row) => row.readAt !== null)).toBe(true);
+  expect(mine.find((row) => row.eventKey === "bulk-0")!.readAt).toEqual(readAt);
+  expect(
+    rows.filter((row) => row.recipientActorEntityId !== f.bob).map((row) => row.readAt),
+  ).toEqual([null, null]);
+  await expect(feed("outsider").markAllRead()).rejects.toBeInstanceOf(AccessDeniedError);
+});
+
 test("notification and activity writes roll back with the task transaction", async () => {
   const { project } = await setup();
   await expect(

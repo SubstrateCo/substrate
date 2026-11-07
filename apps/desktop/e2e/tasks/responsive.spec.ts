@@ -131,32 +131,29 @@ for (const size of [
     await fits(page, page.getByRole("form", { name: "New subtask", exact: true }));
     await reachable(page.getByRole("button", { name: "Create subtask", exact: true }));
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
-    await page.getByRole("tab", { name: "Project settings", exact: true }).click();
-    await page.getByRole("button", { name: "Edit project", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "New subtask", exact: true })).toHaveCount(0);
+    await page.getByRole("tab", { name: "Settings", exact: true }).click();
     await fits(page, page.getByLabel("Project name", { exact: true }));
-    await page.getByRole("button", { name: "Cancel", exact: true }).click();
     const sharing = page.getByRole("region", { name: "Project sharing", exact: true });
     await sharing.scrollIntoViewIfNeeded();
     await fits(page, sharing);
-    await reachable(
-      sharing.getByRole("button", {
-        name: `Remove ${desktop.owner.name} from project`,
-        exact: true,
-      }),
-    );
-    await reachable(sharing.getByRole("button", { name: "Update access", exact: true }));
+    await expect(
+      sharing.getByRole("combobox", { name: `${desktop.owner.name} permission`, exact: true }),
+    ).toBeDisabled();
+    await reachable(sharing.getByRole("button", { name: "Add access", exact: true }));
     await page.screenshot({ path: test.info().outputPath(`tasks-sharing-${size.width}.png`) });
-    await reachable(page.getByRole("button", { name: "Edit project", exact: true }));
-    await sharing.getByRole("combobox", { name: "Person or agent", exact: true }).click();
+    await sharing.getByRole("button", { name: "Add access", exact: true }).click();
+    const addDialog = page.getByRole("dialog", { name: "Add project access", exact: true });
+    await addDialog
+      .getByRole("combobox", { name: "Search people or agents", exact: true })
+      .fill(desktop.member.name);
+    await fits(page, addDialog);
+    await addDialog.getByRole("option", { name: desktop.member.name, exact: true }).click();
+    await addDialog.getByRole("combobox", { name: "Permission", exact: true }).click();
     await fits(page, page.getByRole("listbox"));
     await page.keyboard.press("Escape");
-    await sharing.getByRole("combobox", { name: "Permission", exact: true }).click();
-    await fits(page, page.getByRole("listbox"));
-    await page.keyboard.press("Escape");
-    await sharing.getByRole("combobox", { name: "Person or agent", exact: true }).click();
-    await page.getByRole("option", { name: desktop.member.name, exact: true }).click();
-    await sharing.getByRole("button", { name: "Update access", exact: true }).click();
-    const review = sharing.getByRole("region", { name: "Access change review", exact: true });
+    await addDialog.getByRole("button", { name: "Review access", exact: true }).click();
+    const review = page.getByRole("dialog", { name: "Review access change", exact: true });
     await fits(page, review);
     await reachable(review.getByRole("button", { name: "Confirm access", exact: true }));
     await reachable(review.getByRole("button", { name: "Cancel access change", exact: true }));
@@ -165,27 +162,28 @@ for (const size of [
     });
     await review.getByRole("button", { name: "Cancel access change", exact: true }).click();
     await expect(
-      sharing.getByRole("button", {
-        name: `Remove ${desktop.member.name} from project`,
-        exact: true,
-      }),
+      sharing.getByRole("listitem").filter({ hasText: desktop.member.name }),
     ).toHaveCount(0);
-    await sharing.getByRole("button", { name: "Update access", exact: true }).click();
+    await sharing.getByRole("button", { name: "Add access", exact: true }).click();
+    await addDialog.getByRole("option", { name: desktop.member.name, exact: true }).click();
+    await addDialog.getByRole("button", { name: "Review access", exact: true }).click();
     await review.getByRole("button", { name: "Confirm access", exact: true }).click();
-    const removeMember = sharing.getByRole("button", {
-      name: `Remove ${desktop.member.name} from project`,
-      exact: true,
-    });
-    await expect(removeMember).toBeVisible();
-    await expect(removeMember).toHaveAttribute("data-variant", "destructive");
-    await sharing.getByRole("combobox", { name: "Permission", exact: true }).click();
+    await expect(review).toHaveCount(0);
+    const memberRow = sharing.getByRole("listitem").filter({ hasText: desktop.member.name });
+    await memberRow.getByRole("combobox").click();
     await page.getByRole("option", { name: "View", exact: true }).click();
-    await expect(
-      sharing.getByRole("button", { name: "Update access", exact: true }),
-    ).toHaveAttribute("data-variant", "destructive");
-    await reachable(removeMember);
-    await removeMember.click();
-    await expect(removeMember).toHaveCount(0);
+    await expect(memberRow.getByRole("button", { name: "Apply", exact: true })).toHaveAttribute(
+      "data-variant",
+      "outline",
+    );
+    await memberRow.getByRole("button", { name: "Apply", exact: true }).click();
+    await expect(memberRow.getByRole("button", { name: "Apply", exact: true })).toHaveCount(0);
+    await memberRow.getByRole("combobox").click();
+    await page.getByRole("option", { name: "No access", exact: true }).click();
+    await memberRow.getByRole("button", { name: "Apply", exact: true }).click();
+    await reachable(review.getByRole("button", { name: "Remove access", exact: true }));
+    await review.getByRole("button", { name: "Remove access", exact: true }).click();
+    await expect(memberRow).toHaveCount(0);
     await page.getByRole("tab", { name: "Tasks", exact: true }).click();
     await detail.getByRole("button", { name: "Close task", exact: true }).click();
     await fits(page, page.getByRole("region", { name: "Project tasks", exact: true }));
