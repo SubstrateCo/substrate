@@ -338,6 +338,8 @@ test("project access reviews grants and removal, keeps reductions neutral, and p
     await review.getByRole("button", { name: "Confirm access", exact: true }).click();
     await expect(review).toHaveCount(0);
     expect((await memberAccess()).data.level).toBe("edit");
+    // Access echoes clear private query data before the sharing controls remount.
+    await waitForRealtimeIdle(page);
     const row = sharing.getByRole("listitem").filter({ hasText: "Desktop Member" });
     await row.getByRole("combobox", { name: "Desktop Member permission", exact: true }).click();
     await page.getByRole("option", { name: "View", exact: true }).click();
@@ -348,6 +350,7 @@ test("project access reviews grants and removal, keeps reductions neutral, and p
     await row.getByRole("button", { name: "Apply", exact: true }).click();
     await expect(row.getByRole("button", { name: "Apply", exact: true })).toHaveCount(0);
     await expect.poll(async () => (await memberAccess()).data.level).toBe("view");
+    await waitForRealtimeIdle(page);
     await row.getByRole("combobox", { name: "Desktop Member permission", exact: true }).click();
     await page.getByRole("option", { name: "No access", exact: true }).click();
     await row.getByRole("button", { name: "Apply", exact: true }).click();

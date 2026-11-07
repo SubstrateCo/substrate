@@ -53,7 +53,8 @@ test("fifty message contexts load and refresh through one page request", async (
       completed.push(response.url());
   });
   page.on("requestfailed", (request) => {
-    if (request.url().endsWith("/api/v1/context/message-page")) failed.push(request.url());
+    if (request.url().endsWith("/api/v1/context/message-page"))
+      failed.push(request.failure()?.errorText ?? request.url());
   });
   await page.getByRole("button", { name: "Messages", exact: true }).click();
   await page
@@ -68,7 +69,7 @@ test("fifty message contexts load and refresh through one page request", async (
   await waitForRealtimeIdle(page);
   // Development StrictMode can abort and restart the initial mount request.
   expect(requests.length).toBeGreaterThanOrEqual(1);
-  expect(requests.length).toBeLessThanOrEqual(2);
+  expect(requests.length, JSON.stringify({ requests, completed, failed })).toBeLessThanOrEqual(2);
   expect(requests.every((path) => path === "/api/v1/context/message-page")).toBe(true);
   expect(completed).toHaveLength(1);
   expect(requests.length).toBe(completed.length + failed.length);
