@@ -43,7 +43,10 @@ export function WorkspaceShell({
   children: ReactNode;
 }) {
   return (
-    <main data-workspace-shell className="flex h-dvh min-h-0 overflow-hidden bg-background">
+    <main
+      data-workspace-shell
+      className="flex h-(--app-height) min-h-0 overflow-hidden bg-background"
+    >
       <TooltipProvider delayDuration={350}>
         <nav
           aria-label="Apps"

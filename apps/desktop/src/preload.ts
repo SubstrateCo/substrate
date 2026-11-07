@@ -1,3 +1,8 @@
+import {
+  fullscreenChannel,
+  windowChannel,
+  type DesktopWindowAPI,
+} from "@startup-os/contracts/desktop/window";
 import type { HarnessEvent } from "@startup-os/contracts/harness";
 
 import type { HarnessAPI } from "./harness/harness-api.ts";
@@ -10,6 +15,17 @@ const origin = process.argv
   ?.slice("--startup-os-origin=".length);
 if (process.isMainFrame && window.location.origin === origin) {
   setupRenderer();
+  const windowAPI: DesktopWindowAPI = {
+    platform: process.platform,
+    isFullscreen: () => ipcRenderer.invoke(windowChannel, "fullscreen"),
+    setTheme: (theme) => ipcRenderer.invoke(windowChannel, "theme", theme),
+    onFullscreenChange: (callback) => {
+      const listener = (_event: Electron.IpcRendererEvent, value: boolean) => callback(value);
+      ipcRenderer.on(fullscreenChannel, listener);
+      return () => ipcRenderer.removeListener(fullscreenChannel, listener);
+    },
+  };
+  contextBridge.exposeInMainWorld("startupOSWindow", windowAPI);
   const api: HarnessAPI = {
     version: 1,
     inspect: () => ipcRenderer.invoke(harnessChannel, "status"),

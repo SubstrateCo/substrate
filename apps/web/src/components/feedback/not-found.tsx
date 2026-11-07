@@ -4,7 +4,7 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "
 
 export function NotFound({ homeLink }: { homeLink: ReactNode }) {
   return (
-    <main className="flex min-h-dvh items-center justify-center p-6">
+    <main className="flex min-h-(--app-height) items-center justify-center p-6">
       <Empty className="max-w-md">
         <EmptyHeader>
           <p className="text-xs font-medium text-muted-foreground">404</p>

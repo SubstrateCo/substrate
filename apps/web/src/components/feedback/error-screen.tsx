@@ -11,7 +11,7 @@ import { CircleAlert } from "lucide-react";
 
 export function ErrorScreen({ onRetry }: { onRetry: () => void }) {
   return (
-    <main className="flex min-h-dvh items-center justify-center p-6">
+    <main className="flex min-h-(--app-height) items-center justify-center p-6">
       <Empty role="alert" className="max-w-md">
         <EmptyHeader>
           <EmptyMedia variant="error">

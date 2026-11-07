@@ -62,6 +62,7 @@
 }
 
 :root {
+  --app-height: 100dvh;
   --background: oklch(0.975 0.002 275);
   --foreground: oklch(0.25 0.008 275);
   --card: oklch(1 0 0);
@@ -180,6 +181,45 @@
 }
 
 @layer components {
+  .desktop-frame {
+    --desktop-title-bar-height: max(40px, env(titlebar-area-height, 40px));
+    --app-height: calc(100dvh - var(--desktop-title-bar-height));
+    height: 100dvh;
+    overflow: hidden;
+  }
+  .desktop-title-bar {
+    position: fixed;
+    inset: 0 0 auto;
+    height: var(--desktop-title-bar-height);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-left: env(titlebar-area-x, 0px);
+    padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw));
+    border-bottom: 1px solid var(--border);
+    background: var(--background);
+    color: var(--muted-foreground);
+    font-size: 12px;
+    font-weight: 500;
+    user-select: none;
+    -webkit-app-region: drag;
+  }
+  .desktop-title-bar > * {
+    -webkit-app-region: initial;
+  }
+  .desktop-title-bar :is(button, a, input, select) {
+    -webkit-app-region: no-drag;
+  }
+  .desktop-frame[data-platform="darwin"][data-fullscreen="false"] .desktop-title-bar {
+    padding-left: 88px;
+  }
+  .desktop-content {
+    position: absolute;
+    inset: var(--desktop-title-bar-height) 0 0;
+    overflow: auto;
+    /* Keep fixed auth screens and local overlays below the native controls. */
+    contain: layout;
+  }
   body:has([data-workspace-shell]) [data-theme-control] {
     display: none;
   }

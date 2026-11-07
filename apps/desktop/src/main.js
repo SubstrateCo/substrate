@@ -10,6 +10,7 @@ import {
 import { createHarnessController } from "./harness/harness-controller.ts";
 import { createHarnessProcess } from "./harness/harness-process.ts";
 import { applicationURL, bundledApplicationURL, navigationTarget } from "./shell/navigation.js";
+import { attachTitleBar, titleBarOptions } from "./shell/title-bar.ts";
 import { desktopAPITransport } from "./transport/api-transport.js";
 import { backendURL, bundledRenderer } from "./transport/bundled-renderer.js";
 import { storageOrigins, storageRequest } from "./transport/storage.js";
@@ -109,8 +110,9 @@ function createWindow() {
     width: 1440,
     height: 960,
     minWidth: 320,
-    minHeight: 600,
+    minHeight: 568,
     show: false,
+    ...titleBarOptions(),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -124,6 +126,8 @@ function createWindow() {
     },
   });
   mainWindow = window;
+  attachTitleBar(window, rendererURL);
+  window.setMenuBarVisibility(false);
   window.once("ready-to-show", () => window.show());
   window.on("closed", () => {
     harness?.disconnect();

@@ -15,6 +15,7 @@
     "./auth/permissions": "./src/auth/permissions.ts",
     "./auth/settings-access": "./src/auth/settings-access.ts",
     "./desktop/links": "./src/desktop/links.js",
+    "./desktop/window": "./src/desktop/window.ts",
     "./result": "./src/result.ts"
   },
   "scripts": {
