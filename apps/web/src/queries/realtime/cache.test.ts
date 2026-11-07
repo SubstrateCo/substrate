@@ -167,3 +167,62 @@ test("duplicate changes coalesce and ready resyncs cached state", async () => {
   cache.dispose();
   client.clear();
 });
+
+test("changes during a slow refresh share one follow-up snapshot", async () => {
+  const client = new QueryClient();
+  const key = queryKeys.messages("org", "conversation");
+  const first = Promise.withResolvers<void>();
+  let snapshot = 0;
+  let reads = 0;
+  const observer = new QueryObserver(client, {
+    queryKey: key,
+    initialData: 0,
+    staleTime: Infinity,
+    queryFn: async () => {
+      const value = snapshot;
+      if (++reads === 1) await first.promise;
+      return value;
+    },
+  });
+  const unsubscribe = observer.subscribe(() => {});
+  const threadKey = queryKeys.messages("org", "conversation", "thread");
+  let threadReads = 0;
+  const threadObserver = new QueryObserver(client, {
+    queryKey: threadKey,
+    initialData: 0,
+    staleTime: Infinity,
+    queryFn: async () => {
+      threadReads++;
+      return snapshot;
+    },
+  });
+  const unsubscribeThread = threadObserver.subscribe(() => {});
+  const cache = createRealtimeCache({
+    queryClient: client,
+    organizationId: "org",
+    userId: "user",
+    revalidate: async () => {},
+  });
+  try {
+    snapshot++;
+    await cache.receive(change("messaging"));
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    for (let index = 0; index < 4; index++) {
+      snapshot++;
+      await cache.receive(change("messaging"));
+      await new Promise((resolve) => setTimeout(resolve, 80));
+    }
+    first.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect(client.getQueryData(key)).toBe(snapshot);
+    expect(client.getQueryData(threadKey)).toBe(snapshot);
+    expect(reads).toBe(2);
+    expect(threadReads).toBe(2);
+  } finally {
+    first.resolve();
+    cache.dispose();
+    unsubscribe();
+    unsubscribeThread();
+    client.clear();
+  }
+});

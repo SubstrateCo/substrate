@@ -52,8 +52,13 @@ export class DesktopFixture {
   async window() {
     this.page = await this.app.firstWindow();
     await this.app.evaluate(({ BrowserWindow }) => {
-      BrowserWindow.getAllWindows()[0]!.setContentSize(1024, 768);
+      const window = BrowserWindow.getAllWindows()[0]!;
+      window.setContentSize(1024, 768);
+      window.webContents.setBackgroundThrottling(false);
     });
+    // Keep renderer focus local to each test instead of following shared OS focus.
+    const session = await this.page.context().newCDPSession(this.page);
+    await session.send("Emulation.setFocusEmulationEnabled", { enabled: true });
     this.page.on("pageerror", () => this.pageErrors++);
     return this.page;
   }

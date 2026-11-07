@@ -95,6 +95,7 @@ export function createRealtimeCache({
   const seen = new Set<string>();
   const pending = new Map<string, RealtimeQueryTarget>();
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let flushing = false;
   let disposed = false;
   let generation = 0;
   const isDisposed = () => disposed;
@@ -196,13 +197,25 @@ export function createRealtimeCache({
   }
   async function flush() {
     timer = undefined;
+    flushing = true;
     const targets = [...pending.values()];
     pending.clear();
     const route = routePending;
     routePending = false;
     const epoch = generation;
-    await refresh(targets);
-    if (isCurrent(epoch) && route) await revalidate();
+    try {
+      await refresh(targets);
+      if (isCurrent(epoch) && route) await revalidate();
+    } finally {
+      flushing = false;
+      if (pending.size) schedule();
+    }
+  }
+  function schedule() {
+    if (disposed || flushing || timer !== undefined) return;
+    timer = setTimeout(() => {
+      void flush().catch(() => {});
+    }, 50);
   }
   return {
     forbidden: revoke,
@@ -230,9 +243,7 @@ export function createRealtimeCache({
         event.domain === "profile" ||
         event.domain === "organization" ||
         event.domain === "access";
-      timer ??= setTimeout(() => {
-        void flush().catch(() => {});
-      }, 50);
+      schedule();
     },
     dispose() {
       disposed = true;

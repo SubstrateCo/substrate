@@ -133,7 +133,8 @@ for (const privateChannel of [true, false]) {
         partnerThread.getByRole("article").filter({ hasText: "Missed while disconnected" }),
       ).toBeVisible();
       await waitForRealtimeIdle(partner);
-      // Span both former polling periods after event-driven resync has settled.
+      // Advance past both former polling periods without a real-time sleep.
+      await partner.clock.install();
       const idle = await partner.evaluateHandle(() => {
         const original = window.fetch;
         const requests: string[] = [];
@@ -151,7 +152,7 @@ for (const privateChannel of [true, false]) {
         };
       });
       try {
-        await partner.waitForTimeout(6_500);
+        await partner.clock.fastForward(6_500);
         expect(await idle.evaluate(({ requests }) => requests)).toEqual([]);
       } finally {
         await idle.evaluate(({ restore }) => restore());

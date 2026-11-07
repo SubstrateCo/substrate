@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => {
   if (!Number.isInteger(port) || port < 1 || port > 65535)
     throw new Error("WEB_PORT must be a valid port.");
   return {
+    cacheDir: process.env.VITE_CACHE_DIR,
     server: {
       port,
       strictPort: true,

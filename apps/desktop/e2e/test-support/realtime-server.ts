@@ -3,6 +3,9 @@ import { availablePort } from "../../../../scripts/testing/server.ts";
 import { createRealtimeGateway } from "./realtime-gateway.js";
 import { expect } from "@playwright/test";
 import { execFile } from "node:child_process";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
@@ -48,8 +51,10 @@ async function ready(origin: string, { child }: OwnedProcess) {
 export async function createRealtimeServer() {
   const databases = await createTestDatabases(1);
   const processes = new Set<OwnedProcess>();
+  let cacheDirectory: string | undefined;
   let gateway: Awaited<ReturnType<typeof createRealtimeGateway>> | undefined;
   try {
+    cacheDirectory = await mkdtemp(join(tmpdir(), "startup-os-vite-"));
     const backendPort = await availablePort();
     const gatewayPort = await availablePort();
     const webPort = await availablePort();
@@ -65,6 +70,7 @@ export async function createRealtimeServer() {
       FRONTEND_ORIGINS: `${webOrigin},${new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000").origin},https://desktop.startup-os.local`,
       SERVER_URL: apiOrigin,
       WEB_PORT: String(webPort),
+      VITE_CACHE_DIR: cacheDirectory,
       STARTUP_OS_API_URL: apiOrigin,
       STARTUP_OS_WEB_URL: webOrigin,
     };
@@ -101,12 +107,14 @@ export async function createRealtimeServer() {
       async close() {
         await network.close();
         await Promise.all([...processes].map(stop));
+        await rm(cacheDirectory!, { recursive: true, force: true });
         await databases.close();
       },
     };
   } catch (error) {
     if (gateway) await gateway.close();
     await Promise.all([...processes].map(stop));
+    if (cacheDirectory) await rm(cacheDirectory, { recursive: true, force: true });
     await databases.close();
     throw error;
   }

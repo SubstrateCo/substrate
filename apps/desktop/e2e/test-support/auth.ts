@@ -31,7 +31,7 @@ export async function authorizationCallback(browser: Page, action: () => Promise
   );
   await action();
   const result = await response;
-  expect(result.ok(), "Browser authorization succeeds").toBe(true);
+  expect(result.ok(), `Browser authorization succeeds (${result.status()})`).toBe(true);
   const cookies = (await result.headersArray()).filter(
     (header) => header.name.toLowerCase() === "set-cookie",
   );

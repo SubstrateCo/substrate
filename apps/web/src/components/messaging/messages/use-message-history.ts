@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useEffect, useState } from "react";
 
@@ -23,6 +23,7 @@ export function useMessageHistory({
   threadId?: string;
   aroundMessageId?: string;
 }) {
+  const queryClient = useQueryClient();
   const scope = JSON.stringify([organizationId, conversationId, threadId]);
   const initialPosition: HistoryPosition = {
     scope,
@@ -69,6 +70,11 @@ export function useMessageHistory({
       hasOlder: messages.data?.length === 50,
       hasPrevious: !!current.beforeMessageId || !!current.aroundMessageId || pending === "latest",
       onLatest: () => {
+        void queryClient.invalidateQueries({
+          queryKey: messagesQueryOptions(organizationId, conversationId, threadId).queryKey,
+          exact: true,
+          refetchType: "none",
+        });
         setHistoryRequest("latest");
         setPosition({ ...current, beforeMessageId: undefined, aroundMessageId: undefined });
       },

@@ -4,6 +4,9 @@ import { createTestDatabases } from "../../packages/database/src/testing/databas
 import { createTestBucket } from "../../packages/storage/src/testing/bucket";
 import { availablePort } from "./server";
 import { staticFilePath } from "./static";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 async function run(command: string[], env: Record<string, string | undefined>) {
@@ -73,6 +76,9 @@ async function main() {
         stderr: "inherit",
       });
       try {
+        const cacheDirectory = development
+          ? await mkdtemp(join(tmpdir(), "startup-os-vite-"))
+          : undefined;
         const vite = development
           ? Bun.spawn(
               [
@@ -83,7 +89,7 @@ async function main() {
               ],
               {
                 cwd: fileURLToPath(new URL("../../apps/web/", import.meta.url)),
-                env,
+                env: { ...env, VITE_CACHE_DIR: cacheDirectory },
                 stdout: "ignore",
                 stderr: "inherit",
               },
@@ -148,6 +154,7 @@ async function main() {
           await web?.stop(true);
           vite?.kill();
           if (vite) await vite.exited;
+          if (cacheDirectory) await rm(cacheDirectory, { recursive: true, force: true });
         }
       } finally {
         backend.kill();

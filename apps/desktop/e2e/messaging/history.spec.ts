@@ -1,5 +1,6 @@
 import { callMessaging } from "../../../web/e2e/test-support/api.js";
 import { test } from "../test-support/fixture.js";
+import { waitForRealtimeIdle } from "../test-support/realtime.js";
 import { expect } from "@playwright/test";
 
 for (const replies of [false, true]) {
@@ -33,7 +34,6 @@ for (const replies of [false, true]) {
       });
       expect(sent.error).toBeNull();
     }
-    await page.clock.install();
     await page.reload();
     await page
       .getByRole("complementary", { name: "Conversations", exact: true })
@@ -44,25 +44,54 @@ for (const replies of [false, true]) {
       ? page.getByRole("complementary", { name: "Thread", exact: true })
       : page.getByRole("region", { name: "history", exact: true });
     await expect(pane.getByText("History entry 50", { exact: true })).toBeVisible();
-    let direction: "older" | "latest" = "older";
-    let release: () => void = () => {};
-    let held = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    await page.route("**/api/v1/messaging/messages?*", async (route) => {
-      const url = new URL(route.request().url());
-      if (
-        url.searchParams.get("conversationId") === conversationId &&
-        (url.searchParams.get("threadId") ?? undefined) === threadId &&
-        (direction !== "older" || url.searchParams.has("beforeMessageId"))
-      )
-        await held;
-      await route.continue();
-    });
+    await waitForRealtimeIdle(page);
+    // Hold renderer fetches before they enter Electron's native protocol transport.
+    const requests = await page.evaluateHandle(
+      ({ conversationId, threadId }) => {
+        const original = window.fetch;
+        let direction: "older" | "latest" = "older";
+        let release!: () => void;
+        let held = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        let blocked = 0;
+        window.fetch = Object.assign(async (...args: Parameters<typeof fetch>) => {
+          const input = args[0];
+          const url = new URL(input instanceof Request ? input.url : String(input), location.href);
+          if (
+            url.pathname === "/api/v1/messaging/messages" &&
+            url.searchParams.get("conversationId") === conversationId &&
+            (url.searchParams.get("threadId") ?? undefined) === threadId &&
+            url.searchParams.has("beforeMessageId") === (direction === "older")
+          ) {
+            blocked++;
+            await held;
+          }
+          return original(...args);
+        }, original);
+        return {
+          blocked: () => blocked,
+          release: () => release(),
+          holdLatest: () => {
+            direction = "latest";
+            blocked = 0;
+            held = new Promise<void>((resolve) => {
+              release = resolve;
+            });
+          },
+          restore: () => {
+            window.fetch = original;
+            release();
+          },
+        };
+      },
+      { conversationId, threadId },
+    );
     try {
       await pane
         .getByRole("button", { name: replies ? "Older replies" : "Older messages", exact: true })
         .click();
+      await expect.poll(() => requests.evaluate((control) => control.blocked())).toBeGreaterThan(0);
       const loadingOlder = pane.getByRole("button", {
         name: replies ? "Loading older replies…" : "Loading older messages…",
         exact: true,
@@ -77,16 +106,15 @@ for (const replies of [false, true]) {
       ).toBeDisabled();
       await expect(pane.getByRole("button", { name: /Loading latest/ })).toHaveCount(0);
       await expect(pane.getByText("History entry 50", { exact: true })).toBeVisible();
-      release();
+      await requests.evaluate((control) => control.release());
       await expect(pane.getByText("History entry 0", { exact: true })).toBeVisible();
       await expect(loadingOlder).toHaveCount(0);
-      direction = "latest";
-      held = new Promise<void>((resolve) => {
-        release = resolve;
-      });
+      await waitForRealtimeIdle(page);
+      await requests.evaluate((control) => control.holdLatest());
       await pane
         .getByRole("button", { name: replies ? "Latest replies" : "Back to latest", exact: true })
         .click();
+      await expect.poll(() => requests.evaluate((control) => control.blocked())).toBeGreaterThan(0);
       const loadingLatest = pane.getByRole("button", {
         name: replies ? "Loading latest replies…" : "Loading latest messages…",
         exact: true,
@@ -97,7 +125,7 @@ for (const replies of [false, true]) {
       await expect(
         pane.getByRole("log", { name: "Messages", exact: true }).getByRole("article"),
       ).not.toHaveCount(0);
-      release();
+      await requests.evaluate((control) => control.release());
       await expect(loadingLatest).toHaveCount(0);
       await expect(pane.getByText("History entry 50", { exact: true })).toBeVisible();
       await expect(
@@ -107,8 +135,8 @@ for (const replies of [false, true]) {
         }),
       ).toBeEnabled();
     } finally {
-      release();
-      await page.unrouteAll({ behavior: "wait" });
+      await requests.evaluate((control) => control.restore());
+      await requests.dispose();
     }
   });
 }
