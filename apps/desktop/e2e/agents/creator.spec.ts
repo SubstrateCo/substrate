@@ -1,3 +1,4 @@
+import { provisionVerifiedAccount } from "../../../web/e2e/test-support/auth.js";
 import { test } from "../test-support/fixture.js";
 import { expect } from "@playwright/test";
 
@@ -85,8 +86,8 @@ test("agent creator keeps drafts across tabs and persists its harness and model"
   await expect(editor.getByRole("tabpanel")).toContainText("hello_world");
   await expect(editor.getByRole("tabpanel")).toContainText("research-tools");
   await expect(editor.getByRole("tabpanel")).not.toContainText("source-check");
-  await editor.getByRole("tab", { name: "Workspace access", exact: true }).click();
-  await expect(editor.getByRole("tabpanel")).toContainText("Save the agent to manage access.");
+  await expect(editor.getByRole("tab", { name: "Workspace access", exact: true })).toHaveCount(0);
+  await expect(editor.locator("footer")).toContainText("Personal agent");
   await editor.getByRole("tab", { name: "Instructions", exact: true }).click();
   await expect(editor.getByRole("textbox", { name: "Instructions", exact: true })).toHaveValue(
     "Cite the source for each finding.",
@@ -128,25 +129,12 @@ test("agent creator keeps drafts across tabs and persists its harness and model"
   );
 });
 
-test("agent project access requires review and persists grants and revocation", async ({
+test("personal agents follow their owner across workspaces and reject another user's updates", async ({
   desktop,
 }) => {
   test.setTimeout(120_000);
   await desktop.provision();
   const page = desktop.page;
-  await page.evaluate(async () => {
-    const session = await (await fetch("/api/v1/session")).json();
-    const response = await fetch("/api/v1/tasks/mutations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "createProject",
-        organizationId: session.data.session.activeOrganizationId,
-        name: "Product launch",
-      }),
-    });
-    if (!response.ok) throw new Error("Could not provision the test project.");
-  });
   await page.goto(new URL("/settings/user/agents", desktop.rendererOrigin).href);
   await page.getByRole("button", { name: "Create agent", exact: true }).click();
   const create = page.getByRole("dialog", { name: "Create agent", exact: true });
@@ -155,27 +143,57 @@ test("agent project access requires review and persists grants and revocation", 
   await expect(create).toBeHidden();
   await page.getByRole("button", { name: "Edit Project researcher", exact: true }).click();
   const editor = page.getByRole("dialog", { name: "Edit agent", exact: true });
-  await editor.getByRole("tab", { name: "Workspace access", exact: true }).click();
-  await editor.getByRole("button", { name: "Grant access", exact: true }).click();
-  const grant = page.getByRole("dialog", { name: "Grant workspace access", exact: true });
-  await grant.getByRole("button", { name: "Review access", exact: true }).click();
-  await expect(
-    grant.getByRole("region", { name: "Access change review", exact: true }),
-  ).toContainText("every task, subtask, and comment");
-  await grant.getByRole("button", { name: "Confirm access", exact: true }).click();
-  await expect(grant).toBeHidden();
-  await expect(editor.getByRole("link", { name: "Product launch", exact: true })).toBeVisible();
-  await expect(editor.getByRole("tabpanel")).toContainText("Direct · view");
-  await page.reload();
-  await page.getByRole("button", { name: "Edit Project researcher", exact: true }).click();
-  await editor.getByRole("tab", { name: "Workspace access", exact: true }).click();
-  await expect(editor.getByRole("tabpanel")).toContainText("Direct · view");
-  await editor.getByRole("button", { name: "Revoke", exact: true }).click();
-  await expect(editor.getByRole("tabpanel")).toContainText("No project grants.");
+  await expect(editor.getByRole("tab", { name: "Workspace access", exact: true })).toHaveCount(0);
+  await expect(editor.getByRole("button", { name: "Grant access", exact: true })).toHaveCount(0);
   await editor.getByRole("button", { name: "Cancel", exact: true }).click();
+  const catalog = async () =>
+    page.evaluate(async () => (await fetch("/api/v1/agents/list", { method: "POST" })).json());
+  const original = await catalog();
+  expect(original.success).toBe(true);
+  expect(original.data.agents).toHaveLength(1);
+  const agent = original.data.agents[0];
+  await desktop.openPath("/organizations");
+  await page.getByLabel("Workspace name", { exact: true }).fill("Research workspace");
+  await page.getByLabel("Workspace slug", { exact: true }).fill(`research-${desktop.suffix}`);
+  await page.getByRole("button", { name: "Create workspace", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Research workspace ▾", exact: true }),
+  ).toBeVisible();
+  await desktop.openPath("/settings/user/agents");
   await page.getByRole("button", { name: "Edit Project researcher", exact: true }).click();
-  await editor.getByRole("tab", { name: "Workspace access", exact: true }).click();
-  await expect(editor.getByRole("tabpanel")).toContainText("No project grants.");
+  await expect(editor.getByLabel("Agent name", { exact: true })).toHaveValue("Project researcher");
+  await expect(editor.getByRole("tab", { name: "Workspace access", exact: true })).toHaveCount(0);
+
+  await provisionVerifiedAccount(desktop.browser, desktop.mailpit, desktop.member);
+  const headers = { origin: new URL(desktop.browser.url()).origin };
+  const other = await desktop.browser.request.post("/api/v1/agents/list");
+  expect(other.ok()).toBe(true);
+  expect(await other.json()).toEqual({ success: true, data: { agents: [] } });
+  for (const [path, data] of [
+    [
+      "save",
+      {
+        id: agent.id,
+        name: "Unauthorized edit",
+        instructions: "",
+        harness: "opencode",
+        enabled: true,
+      },
+    ],
+    ["delete", { id: agent.id }],
+  ] as const) {
+    const denied = await desktop.browser.request.post(`/api/v1/agents/actors/${path}`, {
+      headers,
+      data,
+    });
+    expect(denied.status()).toBe(404);
+    expect(await denied.json()).toMatchObject({ success: false, error: { code: "NOT_FOUND" } });
+  }
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Edit Project researcher", exact: true }),
+  ).toBeVisible();
+  expect(await catalog()).toEqual(original);
 });
 
 test("agent creator and model picker fit desktop and narrow windows", async ({ desktop }) => {
@@ -201,7 +219,7 @@ test("agent creator and model picker fit desktop and narrow windows", async ({ d
     await expect
       .poll(() => page.evaluate(() => ({ width: innerWidth, height: innerHeight })))
       .toEqual(size);
-    for (const tab of ["Instructions", "Skills", "MCP servers", "Workspace access"]) {
+    for (const tab of ["Instructions", "Skills", "MCP servers"]) {
       await editor.getByRole("tab", { name: tab, exact: true }).click();
       await expect
         .poll(() =>
