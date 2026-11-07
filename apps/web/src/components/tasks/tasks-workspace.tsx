@@ -3,8 +3,8 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { ProjectForm } from "./project-form";
 import { ProjectPane } from "./project-pane";
+import { TasksWorkspace as TasksWorkspaceView } from "@/components/tasks/tasks-workspace-view";
 import { projectsQueryOptions } from "@/queries/tasks/options";
-import { TasksWorkspace as TasksWorkspaceView } from "@/ui/tasks/tasks-workspace";
 
 export function TasksWorkspace({ organizationId }: { organizationId: string }) {
   const projects = useQuery(projectsQueryOptions(organizationId));

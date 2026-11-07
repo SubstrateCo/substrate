@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { formText } from "@/components/auth/form-values";
+import { CreateOrganizationForm as CreateOrganizationFormView } from "@/components/organizations/create-organization-form-view";
 import { authClient } from "@/lib/auth-client";
 import { unwrap } from "@/queries/organizations/options";
-import { CreateOrganizationForm as CreateOrganizationFormView } from "@/ui/organizations/create-organization-form";
 
 export function CreateOrganizationForm() {
   const queryClient = useQueryClient();

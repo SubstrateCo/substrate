@@ -3,9 +3,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { attachWork } from "@/api/context";
+import { LinkMessageWork as LinkMessageWorkView } from "@/components/context/link-message-work-view";
 import { searchOptions } from "@/queries/context/options";
 import { queryKeys } from "@/queries/keys";
-import { LinkMessageWork as LinkMessageWorkView } from "@/ui/context/link-message-work";
 
 export function LinkMessageWork({
   organizationId,

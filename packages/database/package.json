@@ -17,7 +17,7 @@
     "typecheck": "tsc --noEmit",
     "test": "bun --env-file=../../.env src/testing/run.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "bun src/migrate.ts"
+    "db:migrate": "bun --env-file=../../.env src/migrate.ts"
   },
   "dependencies": {
     "@startup-os/contracts": "workspace:*",

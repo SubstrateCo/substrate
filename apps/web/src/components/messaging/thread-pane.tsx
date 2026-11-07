@@ -2,9 +2,9 @@ import { Composer } from "./composer";
 import { MessageItem } from "./message-item";
 import { MessageList } from "./message-list";
 import { useMessageHistory } from "./use-message-history";
+import { MessageHistory } from "@/components/messaging/message-history";
+import { ThreadPane as ThreadPaneView } from "@/components/messaging/thread-pane-view";
 import type { Message } from "@/lib/messaging";
-import { MessageHistory } from "@/ui/messaging/message-history";
-import { ThreadPane as ThreadPaneView } from "@/ui/messaging/thread-pane";
 
 export function ThreadPane({
   organizationId,

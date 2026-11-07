@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { WorkDiscussions } from "./work-discussions";
+import { ProjectReference } from "@/components/context/project-reference";
+import { TaskActivity } from "@/components/context/task-activity";
 import { workHref } from "@/lib/context-links";
 import { activityOptions } from "@/queries/context/options";
-import { ProjectReference } from "@/ui/context/project-reference";
-import { TaskActivity } from "@/ui/context/task-activity";
 
 export function TaskContext({
   organizationId,

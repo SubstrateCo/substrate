@@ -7,10 +7,10 @@ import { ProjectForm } from "./project-form";
 import { ProjectSharing } from "./project-sharing";
 import { TaskDetail } from "./task-detail";
 import { TaskForm } from "./task-form";
+import { ProjectDiscussions } from "@/components/context/project-discussions";
+import { ProjectPane as ProjectPaneView } from "@/components/tasks/project-pane-view";
 import { workHref } from "@/lib/context-links";
 import { projectQueryOptions } from "@/queries/tasks/options";
-import { ProjectDiscussions } from "@/ui/context/project-discussions";
-import { ProjectPane as ProjectPaneView } from "@/ui/tasks/project-pane";
 
 export function ProjectPane({
   organizationId,

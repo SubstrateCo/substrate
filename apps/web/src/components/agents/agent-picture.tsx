@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { setAgentPicture, uploadAgentPicture } from "@/api/agents";
+import { PictureUpload, type PictureUploadContext } from "@/components/upload/picture-upload";
 import { queryKeys } from "@/queries/keys";
-import { PictureUpload, type PictureUploadContext } from "@/ui/upload/picture-upload";
 
 export function AgentPicture({
   userId,

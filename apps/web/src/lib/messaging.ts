@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export { conversationName, type Conversation } from "@/ui/messaging/types";
+export { conversationName, type Conversation } from "@/components/messaging/types";
 import type { listMessages } from "@/api/messaging";
 export type Message = Awaited<ReturnType<typeof listMessages>>[number];
 

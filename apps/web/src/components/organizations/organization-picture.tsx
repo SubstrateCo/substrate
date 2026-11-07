@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { PictureSettings } from "@/components/settings/picture-settings";
 import { usePictureMutations } from "@/queries/files/mutations";
 import { organizationQueryOptions } from "@/queries/organizations/options";
-import { PictureSettings } from "@/ui/settings/picture-settings";
 
 export function OrganizationPicture({ organizationId }: { organizationId: string }) {
   const organization = useQuery(organizationQueryOptions(organizationId));

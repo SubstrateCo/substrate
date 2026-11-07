@@ -7,7 +7,7 @@ export default defineConfig({
   options: deslopConfigs.recommended.options,
   settings: {
     shadcn: {
-      ui: "@/ui/primitives",
+      ui: "@/components/ui",
     },
   },
   rules: {
@@ -26,7 +26,7 @@ export default defineConfig({
     "react/use-memo": "error",
     "react/void-use-memo": "error",
     "no-nested-ternary": "error",
-    "deslop/canonical-class-names": ["error", { cssPath: "./apps/web/src/ui/styles.css" }],
+    "deslop/canonical-class-names": ["error", { cssPath: "./apps/web/src/components/styles.css" }],
     "deslop/no-duplicate-types": "error",
     "shadcn/no-restyle": ["error", { allow: ["layout"] }],
     "shadcn/no-raw-colors": "error",
@@ -34,19 +34,19 @@ export default defineConfig({
   },
   overrides: [
     {
-      files: ["apps/web/src/ui/primitives/**"],
+      files: ["apps/web/src/components/ui/**"],
       rules: {
         "shadcn/no-restyle": "off",
       },
     },
     {
-      files: ["apps/web/src/ui/primitives/alert.tsx"],
+      files: ["apps/web/src/components/ui/alert.tsx"],
       rules: {
         "shadcn/no-arbitrary-values": ["error", { allow: ["grid-cols-[auto_1fr]"] }],
       },
     },
     {
-      files: ["apps/web/src/ui/primitives/card.tsx"],
+      files: ["apps/web/src/components/ui/card.tsx"],
       rules: {
         "shadcn/no-arbitrary-values": [
           "error",
@@ -55,13 +55,13 @@ export default defineConfig({
       },
     },
     {
-      files: ["apps/web/src/ui/messaging/composer.tsx"],
+      files: ["apps/web/src/components/messaging/composer-view.tsx"],
       rules: {
         "shadcn/no-arbitrary-values": ["error", { allow: ["max-h-[25dvh]"] }],
       },
     },
     {
-      files: ["apps/web/src/ui/auth/form-message.tsx"],
+      files: ["apps/web/src/components/auth/form-message.tsx"],
       rules: {
         "shadcn/no-arbitrary-values": ["error", { allow: ["max-h-[50dvh]"] }],
       },

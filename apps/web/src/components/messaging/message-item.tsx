@@ -9,12 +9,12 @@ import { LinkMessageWork } from "../context/link-message-work";
 import { MessageContext } from "../context/message-context";
 import { ReferencedMessageBody } from "../context/referenced-message-body";
 import { toggleReaction } from "@/api/messaging";
+import { LinkedMessage } from "@/components/messaging/linked-message";
+import { MessageItem as MessageItemView } from "@/components/messaging/message-item-view";
+import { MessageWorkActions } from "@/components/messaging/message-work-actions";
 import { messageHref } from "@/lib/context-links";
 import type { Message } from "@/lib/messaging";
 import { queryKeys } from "@/queries/keys";
-import { LinkedMessage } from "@/ui/messaging/linked-message";
-import { MessageItem as MessageItemView } from "@/ui/messaging/message-item";
-import { MessageWorkActions } from "@/ui/messaging/message-work-actions";
 
 export function MessageItem({
   message,

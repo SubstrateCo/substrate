@@ -2,11 +2,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { BrowserElectronReturn } from "../browser-electron-return";
 import { formText } from "../form-values";
+import { LoginForm as LoginFormView } from "@/components/auth/login-form-view";
 import { authClient } from "@/lib/auth-client";
 import { safeRedirect } from "@/lib/auth-navigation";
 import { authHref } from "@/lib/browser-auth-links";
 import { electronQuery } from "@/lib/electron-query";
-import { LoginForm as LoginFormView } from "@/ui/auth/login-form";
 
 export function BrowserLoginForm({ redirect, email }: { redirect: string; email: string }) {
   const queryClient = useQueryClient();

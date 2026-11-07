@@ -2,12 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
 
-import { messageHref, workHref } from "@/lib/context-links";
-import { searchOptions } from "@/queries/context/options";
 import {
   WorkspaceSearch as WorkspaceSearchView,
   type SearchKind,
-} from "@/ui/context/workspace-search";
+} from "@/components/context/workspace-search-view";
+import { messageHref, workHref } from "@/lib/context-links";
+import { searchOptions } from "@/queries/context/options";
 
 export function WorkspaceSearch({
   organizationId,

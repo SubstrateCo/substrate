@@ -2,9 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 
 import type { ReactNode } from "react";
 
+import { WorkDiscussions as WorkDiscussionsView } from "@/components/context/work-discussions-view";
 import { messageHref } from "@/lib/context-links";
 import { relatedContextOptions } from "@/queries/context/options";
-import { WorkDiscussions as WorkDiscussionsView } from "@/ui/context/work-discussions";
 
 export function WorkDiscussions({
   organizationId,

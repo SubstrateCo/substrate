@@ -3,10 +3,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { createTaskFromMessage } from "@/api/context";
+import { SourceTaskFields as SourceTaskFieldsView } from "@/components/context/source-task-fields-view";
+import type { TaskDraft } from "@/components/tasks/types";
 import { queryKeys } from "@/queries/keys";
 import { projectQueryOptions } from "@/queries/tasks/options";
-import { SourceTaskFields as SourceTaskFieldsView } from "@/ui/context/source-task-fields";
-import type { TaskDraft } from "@/ui/tasks/types";
 
 export function SourceTaskFields({
   organizationId,

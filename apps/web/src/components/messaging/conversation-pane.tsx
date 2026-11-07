@@ -8,11 +8,11 @@ import { Composer } from "./composer";
 import { MessageList } from "./message-list";
 import { ThreadPane } from "./thread-pane";
 import { useMessageHistory } from "./use-message-history";
+import { ConversationPane as ConversationPaneView } from "@/components/messaging/conversation-pane-view";
+import { MessageHistory } from "@/components/messaging/message-history";
+import { MessageUnavailable } from "@/components/messaging/message-unavailable";
 import { conversationName, type Conversation } from "@/lib/messaging";
 import { messageTargetOptions } from "@/queries/context/options";
-import { ConversationPane as ConversationPaneView } from "@/ui/messaging/conversation-pane";
-import { MessageHistory } from "@/ui/messaging/message-history";
-import { MessageUnavailable } from "@/ui/messaging/message-unavailable";
 
 export function ConversationPane({
   organizationId,

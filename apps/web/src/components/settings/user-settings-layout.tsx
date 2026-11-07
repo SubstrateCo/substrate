@@ -2,7 +2,7 @@ import { useLocation } from "@tanstack/react-router";
 
 import type { ReactNode } from "react";
 
-import { UserSettingsLayout as UserSettingsLayoutView } from "@/ui/settings/user-settings-layout";
+import { UserSettingsLayout as UserSettingsLayoutView } from "@/components/settings/user-settings-layout-view";
 
 export function UserSettingsLayout({ children }: { children: ReactNode }) {
   const pathname = useLocation({ select: (location) => location.pathname });

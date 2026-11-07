@@ -3,9 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { SourceTaskFields } from "./source-task-fields";
+import { CreateSourceTask as CreateSourceTaskView } from "@/components/context/create-source-task-view";
 import { workHref } from "@/lib/context-links";
 import { searchOptions } from "@/queries/context/options";
-import { CreateSourceTask as CreateSourceTaskView } from "@/ui/context/create-source-task";
 
 export function CreateSourceTask({
   organizationId,

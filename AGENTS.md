@@ -20,7 +20,7 @@ Startup OS is an Electron workspace for email, messages, docs, tasks, agents, an
 ## Code organization
 
 - `apps/web` owns renderer presentation and application integration, including routing, data loading, auth/session access, resource policies, mutations, cache updates, and Electron wiring.
-- Keep presentation in `apps/web/src/ui`, grouped by domain. Split large views into focused components with meaningful responsibilities and assemble them with composer components.
+- Keep presentation in `apps/web/src/components`, grouped by domain. Split large views into focused components with meaningful responsibilities and assemble them with composer components.
 - Keep data fetching, authorization, and persistence separate from visual components where useful. Pass data, resolved capabilities, navigation targets, and callbacks to views.
 - Do not add Storybook or a separate presentation package boundary. Validate UI workflows through the Electron app.
 - Group code by domain and responsibility. Keep files focused and avoid long, catch-all files.

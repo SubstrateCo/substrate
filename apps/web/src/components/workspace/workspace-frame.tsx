@@ -7,14 +7,14 @@ import type { ReactNode } from "react";
 
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { OrganizationSwitcher } from "@/components/organizations/organization-switcher";
+import { WorkspaceHomeLink } from "@/components/workspace/workspace-home-link";
+import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { sessionQueryOptions } from "@/queries/auth/session";
 import { notificationsOptions } from "@/queries/context/options";
 import {
   activeMemberQueryOptions,
   organizationQueryOptions,
 } from "@/queries/organizations/options";
-import { WorkspaceHomeLink } from "@/ui/workspace/workspace-home-link";
-import { WorkspaceShell } from "@/ui/workspace/workspace-shell";
 
 export function WorkspaceFrame({
   organizationId,

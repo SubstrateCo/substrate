@@ -4,8 +4,8 @@ import { useRef } from "react";
 
 import { ReferencePicker } from "../context/reference-picker";
 import { sendMessage } from "@/api/messaging";
+import { Composer as ComposerView } from "@/components/messaging/composer-view";
 import { queryKeys } from "@/queries/keys";
-import { Composer as ComposerView } from "@/ui/messaging/composer";
 
 export function Composer({
   organizationId,

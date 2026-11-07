@@ -5,7 +5,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { getRouter } from "./router";
-import { ScrollbarVisibility } from "@/ui/scroll/scrollbar-visibility";
+import { ScrollbarVisibility } from "@/components/scroll/scrollbar-visibility";
 import "./styles.css";
 
 const router = getRouter();

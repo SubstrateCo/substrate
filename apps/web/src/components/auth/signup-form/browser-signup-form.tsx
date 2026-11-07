@@ -1,10 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { formText } from "../form-values";
+import { SignupForm as SignupFormView } from "@/components/auth/signup-form-view";
 import { authClient } from "@/lib/auth-client";
 import { authHref } from "@/lib/browser-auth-links";
 import { electronQuery } from "@/lib/electron-query";
-import { SignupForm as SignupFormView } from "@/ui/auth/signup-form";
 
 export function BrowserSignupForm({ redirect }: { redirect: string }) {
   const queryClient = useQueryClient();

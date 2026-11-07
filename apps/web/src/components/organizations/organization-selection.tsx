@@ -2,10 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { CreateOrganizationForm } from "./create-organization-form";
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { OrganizationSelectionActions } from "@/components/organizations/organization-selection-actions";
+import { OrganizationSelection as OrganizationSelectionView } from "@/components/organizations/organization-selection-view";
 import { authClient } from "@/lib/auth-client";
 import { organizationsQueryOptions, unwrap } from "@/queries/organizations/options";
-import { OrganizationSelection as OrganizationSelectionView } from "@/ui/organizations/organization-selection";
-import { OrganizationSelectionActions } from "@/ui/organizations/organization-selection-actions";
 
 export function OrganizationSelection() {
   const organizations = useQuery(organizationsQueryOptions());

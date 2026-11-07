@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { MessageMarkdown } from "@/components/messaging/message-markdown";
 import { workHref } from "@/lib/context-links";
 import { messageLinksOptions, messagePeopleOptions } from "@/queries/context/options";
-import { MessageMarkdown } from "@/ui/messaging/message-markdown";
 
 export function ReferencedMessageBody({
   organizationId,

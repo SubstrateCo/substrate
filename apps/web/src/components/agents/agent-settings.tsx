@@ -8,9 +8,9 @@ import { AgentPicture } from "./agent-picture";
 import type { LocalConfigurationController } from "./local-configuration";
 import { saveAgent, deleteAgent } from "@/api/agents";
 import { desktopLocalConfiguration } from "@/api/harness";
+import { AgentSettingsView, type CatalogKind } from "@/components/agents/agent-settings-view";
 import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
 import { queryKeys } from "@/queries/keys";
-import { AgentSettingsView, type CatalogKind } from "@/ui/agents/agent-settings";
 
 export function AgentSettings({
   userId,

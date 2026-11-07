@@ -1,9 +1,9 @@
 import { useMutation } from "@tanstack/react-query";
 
 import { formText } from "./form-values";
+import { ForgotPasswordForm as ForgotPasswordFormView } from "@/components/auth/forgot-password-form-view";
 import { authClient } from "@/lib/auth-client";
 import { authHref } from "@/lib/browser-auth-links";
-import { ForgotPasswordForm as ForgotPasswordFormView } from "@/ui/auth/forgot-password-form";
 
 export function ForgotPasswordForm({ redirect }: { redirect: string }) {
   const reset = useMutation({

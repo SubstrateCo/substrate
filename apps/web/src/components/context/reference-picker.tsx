@@ -2,11 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
 
-import { searchOptions } from "@/queries/context/options";
 import {
   ReferencePicker as ReferencePickerView,
   type ReferenceKind,
-} from "@/ui/messaging/reference-picker";
+} from "@/components/messaging/reference-picker";
+import { searchOptions } from "@/queries/context/options";
 
 export function ReferencePicker({
   organizationId,

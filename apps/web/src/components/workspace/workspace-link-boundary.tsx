@@ -3,9 +3,9 @@ import { useSearch } from "@tanstack/react-router";
 
 import { type ReactNode } from "react";
 
+import { WorkspaceLinkPrompt } from "@/components/workspace/workspace-link-prompt";
 import { authClient } from "@/lib/auth-client";
 import { unwrap } from "@/queries/organizations/options";
-import { WorkspaceLinkPrompt } from "@/ui/workspace/workspace-link-prompt";
 
 export function WorkspaceLinkBoundary({
   organizationId,

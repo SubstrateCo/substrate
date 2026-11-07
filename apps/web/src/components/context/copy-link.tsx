@@ -1,4 +1,4 @@
-import { CopyLink as CopyLinkView } from "@/ui/context/copy-link";
+import { CopyLink as CopyLinkView } from "@/components/context/copy-link-view";
 
 export function CopyLink({ href, label = "Copy link" }: { href: string; label?: string }) {
   return (

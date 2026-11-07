@@ -32,8 +32,8 @@ for (const size of [
       await page.evaluate(
         async ({ variants, orientation }) => {
           // Variable URLs are resolved by Vite inside the native renderer, not by the test runner.
-          const buttonURL = "/src/ui/primitives/button.tsx";
-          const groupURL = "/src/ui/primitives/button-group.tsx";
+          const buttonURL = "/src/components/ui/button.tsx";
+          const groupURL = "/src/components/ui/button-group.tsx";
           const cnURL = "/node_modules/.vite/deps/cn.js";
           const { buttonVariants } = await import(buttonURL);
           const { buttonGroupVariants } = await import(groupURL);

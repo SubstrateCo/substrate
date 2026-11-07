@@ -1,6 +1,6 @@
 import { MessageItem } from "./message-item";
+import { MessageList as MessageListView } from "@/components/messaging/message-list-view";
 import type { Message } from "@/lib/messaging";
-import { MessageList as MessageListView } from "@/ui/messaging/message-list";
 
 export function MessageList({
   messages,

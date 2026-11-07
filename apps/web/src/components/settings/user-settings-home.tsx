@@ -1,5 +1,5 @@
 import { UserProfile } from "./user-profile";
-import { UserAppearance } from "@/ui/settings/user-appearance";
+import { UserAppearance } from "@/components/settings/user-appearance";
 
 export function UserSettingsHome() {
   return (

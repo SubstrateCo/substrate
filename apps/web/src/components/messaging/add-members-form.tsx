@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { addMembers } from "@/api/messaging";
+import { AddMembersForm as AddMembersFormView } from "@/components/messaging/add-members-form-view";
 import { parseRecipientEmails } from "@/lib/messaging";
 import { queryKeys } from "@/queries/keys";
-import { AddMembersForm as AddMembersFormView } from "@/ui/messaging/add-members-form";
 
 export function AddMembersForm({
   organizationId,

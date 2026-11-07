@@ -1,12 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { createConversation } from "@/api/messaging";
-import { parseRecipientEmails, type Conversation } from "@/lib/messaging";
-import { queryKeys } from "@/queries/keys";
 import {
   CreateConversationForm as CreateConversationFormView,
   type ConversationDraft,
-} from "@/ui/messaging/create-conversation-form";
+} from "@/components/messaging/create-conversation-form-view";
+import { parseRecipientEmails, type Conversation } from "@/lib/messaging";
+import { queryKeys } from "@/queries/keys";
 
 export function CreateConversationForm({
   organizationId,

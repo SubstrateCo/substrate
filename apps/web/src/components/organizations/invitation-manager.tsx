@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import {
+  InvitationManager as InvitationManagerView,
+  type InvitationRole,
+} from "@/components/organizations/invitation-manager-view";
 import { useCurrentTime } from "@/hooks/use-current-time";
 import { authClient } from "@/lib/auth-client";
 import { queryKeys } from "@/queries/keys";
 import { invitationsQueryOptions } from "@/queries/organizations/options";
-import {
-  InvitationManager as InvitationManagerView,
-  type InvitationRole,
-} from "@/ui/organizations/invitation-manager";
 
 export function InvitationManager({ organizationId }: { organizationId: string }) {
   const now = useCurrentTime();
