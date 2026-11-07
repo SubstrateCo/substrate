@@ -1,4 +1,3 @@
-import { FormMessage } from "../../auth/form-message";
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
 import { isAccessFailure } from "../../feedback/request-failure";
@@ -21,7 +20,6 @@ export function MessageWork({
   onRetry,
   onRemove,
   removing = false,
-  removeError,
 }: {
   links: MessageWorkLink[];
   loading?: boolean;
@@ -29,9 +27,8 @@ export function MessageWork({
   onRetry?: () => void;
   onRemove?: (entityId: string) => void;
   removing?: boolean;
-  removeError?: Error | null;
 }) {
-  if (!loading && !error && !links.length && !removeError) return null;
+  if (!loading && !error && !links.length) return null;
   return (
     <section aria-label="Linked work" className="mt-3 max-w-lg space-y-2">
       {loading && <LoadingState label="Loading linked work" variant="compact" />}
@@ -44,10 +41,6 @@ export function MessageWork({
           onRemove={onRemove}
         />
       ))}
-      <FormMessage
-        error={removeError}
-        errorDescription="Couldn’t remove this link. Check that you still have access."
-      />
     </section>
   );
 }

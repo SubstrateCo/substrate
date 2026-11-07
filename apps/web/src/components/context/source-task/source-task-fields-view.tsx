@@ -31,7 +31,11 @@ export function SourceTaskFields({
     );
   return (
     <>
-      {loadError && <ErrorState compact title="Couldn't refresh project" onRetry={onRetry} />}
+      {loadError && (
+        <p role="status" className="text-xs text-muted-foreground">
+          Project may be out of date.
+        </p>
+      )}
       <TaskForm {...form} detail={detail} />
     </>
   );

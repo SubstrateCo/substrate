@@ -33,6 +33,7 @@ export function MessagingWorkspace({ organizationId }: { organizationId: string 
         setSidebarOpen(false);
       }}
       loading={conversations.isPending}
+      hasLoaded={conversations.data !== undefined}
       error={conversations.error}
       onRetry={() => void conversations.refetch()}
       renderCreate={(kind, { onCancel, onComplete }) => (

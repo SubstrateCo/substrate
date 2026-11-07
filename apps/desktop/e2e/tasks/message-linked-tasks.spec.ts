@@ -38,7 +38,9 @@ test("desktop messages create linked tasks with OS navigation and source context
     });
   });
   await copyProject.click();
-  await expect(page.getByRole("status").filter({ hasText: "Couldn't copy link" })).toBeVisible();
+  await expect(
+    page.locator("[data-sonner-toast]").filter({ hasText: "Couldn't copy link" }),
+  ).toBeVisible();
   await expect(copyProject.locator("[data-copy-icon=check]")).toHaveCSS("opacity", "0");
   await page.evaluate(() => Reflect.deleteProperty(navigator.clipboard, "writeText"));
   expect(await copyAndReset(copyProject, desktop.app)).toBe(projectURL);

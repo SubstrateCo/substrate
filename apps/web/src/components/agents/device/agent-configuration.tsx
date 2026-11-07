@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { desktopLocalConfiguration } from "@/lib/desktop/agents/local-configuration";
 import { queryKeys } from "@/queries/keys";
 import { Blocks, RefreshCw, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 
 export function AgentConfiguration({
   userId,
@@ -46,7 +47,10 @@ export function AgentConfiguration({
       if (!controller || !organizationId) throw new Error("Select a workspace in the desktop app.");
       await controller.deleteSkill(id);
     },
-    onSuccess: () => client.invalidateQueries({ queryKey: key }),
+    onSuccess: async () => {
+      toast.success("Skill deleted.");
+      await client.invalidateQueries({ queryKey: key });
+    },
   });
   const skills =
     configuration.data?.skills.filter((skill) => skill.id !== "startup-os-default") ?? [];
@@ -160,6 +164,7 @@ export function AgentConfiguration({
             if (!controller || !organizationId)
               throw new Error("Select a workspace in the desktop app.");
             await controller.saveSkill(input);
+            toast.success("Skill saved.");
             await client.invalidateQueries({ queryKey: key });
             setEditing(undefined);
           }}

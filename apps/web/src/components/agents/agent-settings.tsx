@@ -13,6 +13,7 @@ import { AgentSettingsView, type CatalogKind } from "@/components/agents/agent-s
 import { desktopLocalConfiguration } from "@/lib/desktop/agents/local-configuration";
 import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
 import { queryKeys } from "@/queries/keys";
+import { toast } from "sonner";
 
 export function AgentSettings({
   userId,
@@ -50,18 +51,30 @@ export function AgentSettings({
       client.invalidateQueries({ queryKey: localKey }),
     ]);
   const invalidateLocal = () => client.invalidateQueries({ queryKey: localKey });
-  const agent = useMutation({ mutationFn: saveAgent, onSuccess: invalidate });
+  const agent = useMutation({
+    mutationFn: saveAgent,
+    onSuccess: async () => {
+      toast.success("Agent saved.");
+      await invalidate();
+    },
+  });
   const skill = useMutation({
     mutationFn: (input: Parameters<LocalConfigurationController["saveSkill"]>[0]) =>
       requireLocal().saveSkill(input),
-    onSuccess: invalidateLocal,
+    onSuccess: async () => {
+      toast.success("Skill saved.");
+      await invalidateLocal();
+    },
   });
   const remove = useMutation({
     mutationFn: async ({ kind, id }: { kind: CatalogKind; id: string }) => {
       if (kind === "agent") return deleteAgent(id);
       return requireLocal().deleteSkill(id);
     },
-    onSuccess: invalidate,
+    onSuccess: async (_, { kind }) => {
+      toast.success(kind === "agent" ? "Agent deleted." : "Skill deleted.");
+      await invalidate();
+    },
   });
   return (
     <AgentSettingsView

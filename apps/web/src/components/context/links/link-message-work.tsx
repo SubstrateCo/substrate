@@ -4,8 +4,10 @@ import { useState } from "react";
 
 import { attachWork } from "@/api/context/links";
 import { LinkMessageWork as LinkMessageWorkView } from "@/components/context/links/link-message-work-view";
+import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { searchOptions } from "@/queries/context/search";
 import { queryKeys } from "@/queries/keys";
+import { toast } from "sonner";
 
 export function LinkMessageWork({
   organizationId,
@@ -22,6 +24,10 @@ export function LinkMessageWork({
   const client = useQueryClient();
   const attach = useMutation({
     mutationFn: (entityId: string) => attachWork({ data: { organizationId, messageId, entityId } }),
+    onError: (error) =>
+      toast.error(
+        actionErrorMessage(error, "Couldn't link this item. Check that you still have access."),
+      ),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: queryKeys.organization(organizationId) });
       onClose();
@@ -35,7 +41,6 @@ export function LinkMessageWork({
       loading={results.isPending}
       error={results.error}
       pendingId={attach.isPending ? attach.variables : undefined}
-      actionError={attach.error}
       onQueryChange={setQuery}
       onKindChange={setKind}
       onRetry={() => void results.refetch()}

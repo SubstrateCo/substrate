@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 
 import { ContentNotice } from "../../feedback/content-notice";
-import { ErrorState } from "../../feedback/error-state";
 import { PaneState } from "../../feedback/pane-state";
 import { isAccessFailure } from "../../feedback/request-failure";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "../../ui/resizable";
@@ -74,14 +73,9 @@ export function ConversationPane({
             />
             {!blocked && addingMembers && membersForm}
             {error && !blocked && (
-              <div className="px-4 pt-3">
-                <ErrorState
-                  compact
-                  title="Couldn’t refresh messages"
-                  description="Your loaded messages are still available. Try again for the latest messages."
-                  onRetry={onRetry}
-                />
-              </div>
+              <p role="status" className="px-4 pt-3 text-xs text-muted-foreground">
+                Messages may be out of date.
+              </p>
             )}
             {blocked && (
               <PaneState label="Conversation unavailable" error={error} onRetry={onRetry} />

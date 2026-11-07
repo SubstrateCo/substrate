@@ -118,7 +118,11 @@ export function ProjectPane({
             </TabsTrigger>
           </TabsList>
         </div>
-        {error && <ErrorState compact title="Couldn’t refresh project" onRetry={onRetry} />}
+        {error && (
+          <p role="status" className="py-2 text-xs text-muted-foreground">
+            Project may be out of date.
+          </p>
+        )}
         <TabsContent
           value="settings"
           forceMount

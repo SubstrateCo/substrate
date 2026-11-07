@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-import { FormMessage } from "@/components/auth/form-message";
 import { EmojiPicker } from "@/components/messaging/composer/emoji-picker";
 import type { Message } from "@/components/messaging/types";
 import { Button } from "@/components/ui/button";
@@ -10,14 +9,12 @@ export function MessageInteractions({
   message,
   onReact,
   pending,
-  error,
   onThread,
   actions,
 }: {
   message: Message;
   onReact: (emoji: string) => void;
   pending: boolean;
-  error?: Error | null;
   onThread?: (id: string) => void;
   actions?: ReactNode;
 }) {
@@ -62,10 +59,6 @@ export function MessageInteractions({
           {!message.replyCount && threadAction}
         </div>
       </div>
-      <FormMessage
-        error={error}
-        errorDescription="Your reaction couldn’t be saved. Try selecting it again."
-      />
     </>
   );
 }

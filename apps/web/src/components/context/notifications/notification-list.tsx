@@ -2,9 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { markAllRead, markRead } from "@/api/context/notifications";
 import { NotificationList as NotificationListView } from "@/components/context/notifications/notification-list-view";
+import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { messageHref, workHref } from "@/lib/navigation/record-links";
 import { notificationsOptions } from "@/queries/context/notifications";
 import { queryKeys } from "@/queries/keys";
+import { toast } from "sonner";
 
 export function NotificationList({
   organizationId,
@@ -19,6 +21,8 @@ export function NotificationList({
     mutationFn: (id: string | null) =>
       id ? markRead({ data: { organizationId, id } }) : markAllRead({ data: { organizationId } }),
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.context(organizationId) }),
+    onError: (error) =>
+      toast.error(actionErrorMessage(error, "Couldn't update notifications. Try again.")),
   });
   return (
     <NotificationListView
@@ -31,7 +35,6 @@ export function NotificationList({
       }))}
       loading={items.isPending}
       error={items.error}
-      actionError={read.error}
       pendingId={read.isPending ? (read.variables ?? "all") : undefined}
       onRetry={() => void items.refetch()}
       onRead={(id) => read.mutate(id)}

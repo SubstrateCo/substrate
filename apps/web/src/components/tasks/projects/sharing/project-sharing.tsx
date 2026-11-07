@@ -1,6 +1,7 @@
 import { useTasksMutation } from "../../use-tasks-mutation";
 import { ProjectSharing as ProjectSharingView } from "@/components/tasks/projects/sharing/project-sharing-view";
 import type { ProjectDetail } from "@/components/tasks/types";
+import { toast } from "sonner";
 
 export function ProjectSharing({
   organizationId,
@@ -18,10 +19,26 @@ export function ProjectSharing({
       error={share.error}
       onClearError={() => share.reset()}
       onShare={(actorEntityId, level, onSuccess) =>
-        share.mutate({ action: "share", ...scope, actorEntityId, level }, { onSuccess })
+        share.mutate(
+          { action: "share", ...scope, actorEntityId, level },
+          {
+            onSuccess: () => {
+              toast.success("Project access updated.");
+              onSuccess?.();
+            },
+          },
+        )
       }
       onRevoke={(actorEntityId, onSuccess) =>
-        share.mutate({ action: "revoke", ...scope, actorEntityId }, { onSuccess })
+        share.mutate(
+          { action: "revoke", ...scope, actorEntityId },
+          {
+            onSuccess: () => {
+              toast.success("Project access revoked.");
+              onSuccess();
+            },
+          },
+        )
       }
     />
   );

@@ -9,6 +9,7 @@ import { pictureAccept, pictureMaxSize } from "./file-validation";
 import { ImageCropDialog, type PictureUploadContext } from "./image-crop-dialog";
 import { PicturePreview } from "./picture-preview";
 import { ImageIcon, ImagePlus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 export interface PictureUploadProps {
   value?: string | null;
@@ -38,7 +39,7 @@ export function PictureUpload({
     try {
       await onRemove();
     } catch {
-      setError("We couldn’t remove this picture. Please try again.");
+      toast.error("We couldn’t remove this picture. Please try again.");
     } finally {
       setRemoving(false);
     }

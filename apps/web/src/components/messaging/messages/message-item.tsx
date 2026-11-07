@@ -10,11 +10,13 @@ import { ReferencedMessageBody } from "../../context/references/referenced-messa
 import { CreateSourceTask } from "../../context/source-task/create-source-task";
 import { toggleReaction } from "@/api/messaging/requests";
 import type { Message } from "@/api/messaging/requests";
+import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { LinkedMessage } from "@/components/messaging/messages/linked-message";
 import { MessageItem as MessageItemView } from "@/components/messaging/messages/message-item-view";
 import { MessageWorkActions } from "@/components/messaging/messages/message-work-actions";
 import { messageHref } from "@/lib/navigation/record-links";
 import { queryKeys } from "@/queries/keys";
+import { toast } from "sonner";
 
 export function MessageItem({
   message,
@@ -30,6 +32,10 @@ export function MessageItem({
   const highlighted = search.messageId === message.id;
   const [action, setAction] = useState<"create" | "link" | null>(null);
   const reaction = useMutation({
+    onError: (error) =>
+      toast.error(
+        actionErrorMessage(error, "Your reaction couldn’t be saved. Try selecting it again."),
+      ),
     mutationFn: async (emoji: string) =>
       toggleReaction({ data: { organizationId, messageId: message.id, emoji } }),
     onSuccess: () =>
@@ -61,7 +67,6 @@ export function MessageItem({
         onThread={onThread}
         onReact={(emoji) => reaction.mutate(emoji)}
         pending={reaction.isPending}
-        error={reaction.error}
       >
         <MessageContext organizationId={organizationId} messageId={message.id} />
         {action === "create" && (

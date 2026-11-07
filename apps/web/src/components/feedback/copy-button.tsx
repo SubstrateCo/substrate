@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, type ComponentProps } from "react";
+import { useEffect, useId, useRef, useState, type ComponentProps } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Check, Copy } from "lucide-react";
+import { toast } from "sonner";
 
 export function CopyButton({
   onCopy,
@@ -24,7 +25,8 @@ export function CopyButton({
   className?: string;
   grouped?: boolean;
 }) {
-  const [status, setStatus] = useState<"idle" | "pending" | "copied" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "pending" | "copied">("idle");
+  const toastId = useId();
   const copying = useRef(false);
   const copied = status === "copied";
 
@@ -40,9 +42,11 @@ export function CopyButton({
     setStatus("pending");
     try {
       await onCopy();
+      toast.dismiss(toastId);
       setStatus("copied");
     } catch {
-      setStatus("error");
+      setStatus("idle");
+      toast.error(errorMessage, { id: toastId });
     } finally {
       copying.current = false;
     }
@@ -88,15 +92,7 @@ export function CopyButton({
       ) : (
         button
       )}
-      <span
-        role="status"
-        className={
-          status === "error"
-            ? `${grouped ? "absolute top-full mt-1 " : ""}text-xs text-destructive`
-            : "sr-only"
-        }
-      >
-        {status === "error" && errorMessage}
+      <span role="status" className="sr-only">
         {copied && successMessage}
       </span>
     </>

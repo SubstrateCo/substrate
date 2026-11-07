@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useCallback } from "react";
 
+import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import {
   InvitationManager as InvitationManagerView,
   type InvitationRole,
@@ -10,6 +11,7 @@ import { useCurrentTime } from "@/hooks/use-current-time";
 import { authClient } from "@/lib/auth/client";
 import { queryKeys } from "@/queries/keys";
 import { invitationsQueryOptions } from "@/queries/organizations/invitations";
+import { toast } from "sonner";
 
 export function InvitationManager({ organizationId }: { organizationId: string }) {
   const now = useCurrentTime();
@@ -35,14 +37,30 @@ export function InvitationManager({ organizationId }: { organizationId: string }
       });
       if (result.error) throw new Error(result.error.message || "Could not send the invitation.");
     },
-    onSuccess: refresh,
+    onSuccess: async (_, { resend }) => {
+      toast.success(resend ? "Invitation email resent." : "Invitation email sent.");
+      await refresh();
+    },
+    onError: (error, { resend }) => {
+      if (resend)
+        toast.error(
+          actionErrorMessage(error, "We couldn’t resend this invitation. Please try again."),
+        );
+    },
   });
   const cancel = useMutation({
     mutationFn: async (invitationId: string) => {
       const result = await authClient.organization.cancelInvitation({ invitationId });
       if (result.error) throw new Error(result.error.message || "Could not cancel the invitation.");
     },
-    onSuccess: refresh,
+    onSuccess: async () => {
+      toast.success("Invitation canceled.");
+      await refresh();
+    },
+    onError: (error) =>
+      toast.error(
+        actionErrorMessage(error, "We couldn’t cancel this invitation. Please try again."),
+      ),
   });
   const { mutate: sendInvite, reset: resetInvite } = invite;
   const { mutate: cancelInvite, reset: resetCancel } = cancel;
@@ -60,9 +78,6 @@ export function InvitationManager({ organizationId }: { organizationId: string }
     },
     [resetInvite, cancelInvite],
   );
-  let message: string | undefined;
-  if (invite.isSuccess) message = "Invitation email sent.";
-  else if (cancel.isSuccess) message = "Invitation canceled.";
   return (
     <InvitationManagerView
       invitations={invitations.data?.map((invitation) => ({
@@ -72,9 +87,8 @@ export function InvitationManager({ organizationId }: { organizationId: string }
       loading={invitations.isPending}
       sending={invite.isPending}
       canceling={cancel.isPending}
-      error={invite.error || cancel.error}
+      error={invite.variables?.resend ? undefined : invite.error}
       loadError={invitations.error}
-      message={message}
       onRetry={() => void invitations.refetch()}
       onInvite={onInvite}
       onCancel={onCancel}

@@ -8,7 +8,6 @@ export function MessageItem({
   message,
   onReact,
   pending = false,
-  error,
   onThread,
   body,
   actions,
@@ -17,7 +16,6 @@ export function MessageItem({
   message: Message;
   onReact: (emoji: string) => void;
   pending?: boolean;
-  error?: Error | null;
   onThread?: (id: string) => void;
   body?: ReactNode;
   actions?: ReactNode;
@@ -51,7 +49,6 @@ export function MessageItem({
           message={message}
           onReact={onReact}
           pending={pending}
-          error={error}
           onThread={onThread}
           actions={actions}
         />

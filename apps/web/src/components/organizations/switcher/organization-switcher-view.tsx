@@ -1,4 +1,3 @@
-import { FormMessage } from "../../auth/form-message";
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
 import { isAccessFailure } from "../../feedback/request-failure";
@@ -21,7 +20,6 @@ export function OrganizationSwitcher({
   organizations,
   pending = false,
   loading = false,
-  error,
   loadError,
   onRetry,
   onSelect,
@@ -34,7 +32,6 @@ export function OrganizationSwitcher({
   organizations: { id: string; name: string; logo?: string | null }[];
   pending?: boolean;
   loading?: boolean;
-  error?: Error | null;
   loadError?: Error | null;
   onRetry?: () => void;
   onSelect: (id: string) => void;
@@ -80,12 +77,6 @@ export function OrganizationSwitcher({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <FormMessage
-        floating={compact}
-        floatingPlacement="workspace"
-        error={error}
-        errorDescription="We couldn’t switch workspaces. Your current workspace is still open. Try again."
-      />
     </div>
   );
 }

@@ -261,8 +261,7 @@ for (const size of [
     await expect(page.getByText("Invitation canceled.", { exact: true })).toBeVisible();
     await expect(page.getByText("Invitation email sent.", { exact: true })).toHaveCount(0);
     await invitations.getByRole("button", { name: "Resend", exact: true }).first().click();
-    await expect(page.getByText("Invitation email sent.", { exact: true })).toBeVisible();
-    await expect(page.getByText("Invitation canceled.", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Invitation email resent.", { exact: true })).toBeVisible();
 
     for (const kind of ["organization", "user"] as const) {
       await desktop.openPath(`/settings/${kind}`);

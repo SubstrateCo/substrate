@@ -1,6 +1,5 @@
 import { useState, type MouseEvent } from "react";
 
-import { FormMessage } from "../../auth/form-message";
 import { ContentNotice } from "../../feedback/content-notice";
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
@@ -15,7 +14,6 @@ export function NotificationList({
   loading,
   error,
   pendingId,
-  actionError,
   onRetry,
   onRead,
   onReadAll,
@@ -26,7 +24,6 @@ export function NotificationList({
   loading: boolean;
   error?: Error | null;
   pendingId?: string;
-  actionError?: Error | null;
   onRetry: () => void;
   onRead: (id: string) => void;
   onReadAll: () => void;
@@ -116,10 +113,6 @@ export function NotificationList({
             />
           ))}
         </ul>
-        <FormMessage
-          error={actionError}
-          errorDescription="Couldn't update notifications. Try again."
-        />
         {!loading && !error && filtered.length > 0 && unread === 0 && (
           <p className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
             <CheckCheck className="size-4" /> You’re all caught up

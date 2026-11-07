@@ -3,9 +3,11 @@ import { createRouter } from "@tanstack/react-router";
 
 import { routeTree } from "./routeTree.gen";
 import { PageLoading } from "@/components/feedback/page-loading";
+import { createRefreshErrorCache } from "@/queries/refresh-error-cache";
 
 export function getRouter() {
   const queryClient = new QueryClient({
+    queryCache: createRefreshErrorCache(),
     defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
   });
   const router = createRouter({

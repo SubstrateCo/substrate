@@ -6,6 +6,7 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { changeAgentAccess } from "@/api/agents/requests";
+import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ import {
 import { agentAccessQueryOptions } from "@/queries/agents/access";
 import { queryKeys } from "@/queries/keys";
 import { ArrowUpRight, FolderKanban } from "lucide-react";
+import { toast } from "sonner";
 
 export function AgentAccess({
   userId,
@@ -67,7 +69,12 @@ function ProjectAccess({
   const [reviewing, setReviewing] = useState(false);
   const change = useMutation({
     mutationFn: (input: AgentAccessChange) => changeAgentAccess(input),
-    onSuccess: async () => {
+    onError: (error) => {
+      if (!editing)
+        toast.error(actionErrorMessage(error, "Couldn’t revoke access. Please try again."));
+    },
+    onSuccess: async (_, input) => {
+      toast.success(input.level ? "Project access updated." : "Project access revoked.");
       await Promise.all([
         client.invalidateQueries({
           queryKey: queryKeys.agentAccess(userId, organizationId, agent.id),
@@ -157,11 +164,6 @@ function ProjectAccess({
           </li>
         ))}
       </ul>
-      {change.error && !editing && (
-        <p role="alert" className="text-sm text-destructive">
-          {change.error.message}
-        </p>
-      )}
       <Dialog
         open={editing}
         onOpenChange={(open) => {

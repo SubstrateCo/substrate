@@ -20,7 +20,6 @@ export function InvitationManager({
   sending = false,
   canceling = false,
   error,
-  message,
   loadError,
   onRetry,
   onInvite,
@@ -31,7 +30,6 @@ export function InvitationManager({
   sending?: boolean;
   canceling?: boolean;
   error?: Error | null;
-  message?: string;
   loadError?: Error | null;
   onRetry: () => void;
   onInvite: (email: string, role: InvitationRole, resend?: boolean) => void;
@@ -50,7 +48,6 @@ export function InvitationManager({
           <FormMessage
             error={error}
             errorDescription="We couldn’t update this invitation. Check the email and try again."
-            message={message}
           />
           <section className="min-h-48 space-y-3">
             <h3 className="text-sm font-medium">Invitations</h3>

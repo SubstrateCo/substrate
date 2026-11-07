@@ -1,6 +1,5 @@
 import { Children, type ReactNode } from "react";
 
-import { ErrorState } from "../../feedback/error-state";
 import { PaneState } from "../../feedback/pane-state";
 import { isAccessFailure } from "../../feedback/request-failure";
 import { Button } from "../../ui/button";
@@ -21,6 +20,7 @@ export function MessagingWorkspace({
   renderCreate,
   initialCreating,
   loading = false,
+  hasLoaded,
   error,
   onRetry,
   children,
@@ -36,6 +36,7 @@ export function MessagingWorkspace({
   ) => ReactNode;
   initialCreating?: Conversation["kind"];
   loading?: boolean;
+  hasLoaded: boolean;
   error?: Error | null;
   onRetry: () => void;
   children?: ReactNode;
@@ -46,7 +47,7 @@ export function MessagingWorkspace({
     onSidebarOpenChange,
   );
   const hasContent = !!creating || Children.toArray(children).length > 0;
-  const blocked = !!error && (!hasContent || isAccessFailure(error));
+  const blocked = !!error && (!hasLoaded || isAccessFailure(error));
   return (
     <ComposerDraftProvider>
       <div ref={container} className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -76,7 +77,7 @@ export function MessagingWorkspace({
             <ConversationSidebar
               mobileOpen={sidebarOpen}
               loading={loading}
-              error={error}
+              error={blocked ? error : undefined}
               onRetry={onRetry}
               conversations={conversations}
               selectedId={creating ? undefined : selectedId}
@@ -94,18 +95,13 @@ export function MessagingWorkspace({
             className={`${sidebarOpen ? "max-md:hidden!" : "flex"} min-h-0 min-w-0 flex-1 flex-col md:flex`}
           >
             {blocked && <PaneState label="Workspace unavailable" error={error} onRetry={onRetry} />}
+            {!blocked && error && (
+              <p role="status" className="p-3 text-xs text-muted-foreground">
+                Conversations may be out of date.
+              </p>
+            )}
             {!blocked && hasContent && (
               <>
-                {error && (
-                  <div className="p-3">
-                    <ErrorState
-                      compact
-                      title="Couldn’t refresh conversations"
-                      description="You can still read your loaded messages. Try again to update the conversation list."
-                      onRetry={onRetry}
-                    />
-                  </div>
-                )}
                 {creating
                   ? renderCreate(creating, {
                       onCancel: cancelCreate,

@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-import { FormMessage } from "../auth/form-message";
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
 import { isAccessFailure } from "../feedback/request-failure";
@@ -21,7 +20,6 @@ export function WorkspaceShell({
   error,
   loading = false,
   onRetry,
-  notice,
   children,
   hasUnreadNotifications = false,
 }: {
@@ -39,7 +37,6 @@ export function WorkspaceShell({
   error?: Error | null;
   loading?: boolean;
   onRetry?: () => void;
-  notice?: string;
   children: ReactNode;
 }) {
   return (
@@ -85,7 +82,6 @@ export function WorkspaceShell({
           </div>
         </nav>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface">
-          <FormMessage message={notice} floating floatingPlacement="workspace" />
           {loading && (
             <div className="border-b p-3">
               <LoadingState label="Loading workspace details…" variant="compact" rows={1} />

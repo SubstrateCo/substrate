@@ -1,17 +1,14 @@
 import { Button } from "../../ui/button";
 import { Spinner } from "../../ui/spinner";
-import { FormMessage } from "../form-message";
 import { LogOut } from "lucide-react";
 
 export function SignOutButton({
   compact = false,
   pending = false,
-  error,
   onSignOut,
 }: {
   compact?: boolean;
   pending?: boolean;
-  error?: Error | null;
   onSignOut: () => void;
 }) {
   const label = pending ? "Signing out…" : "Sign out";
@@ -33,12 +30,6 @@ export function SignOutButton({
         )}
         {!compact && label}
       </Button>
-      <FormMessage
-        floating={compact}
-        floatingPlacement="workspace"
-        error={error}
-        errorDescription="We couldn’t sign you out. Please try again."
-      />
     </div>
   );
 }

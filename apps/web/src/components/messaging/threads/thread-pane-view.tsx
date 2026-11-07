@@ -1,6 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
 
-import { ErrorState } from "../../feedback/error-state";
 import { PaneState } from "../../feedback/pane-state";
 import { isAccessFailure } from "../../feedback/request-failure";
 import { Button } from "../../ui/button";
@@ -60,14 +59,9 @@ export function ThreadPane({
       ) : (
         <>
           {error && (
-            <div className="p-3">
-              <ErrorState
-                compact
-                title="Couldn’t refresh replies"
-                description="Your loaded replies are still available. Try again to update this thread."
-                onRetry={onRetry}
-              />
-            </div>
+            <p role="status" className="p-3 text-xs text-muted-foreground">
+              Replies may be out of date.
+            </p>
           )}
           {root && <div className="max-h-7/20 shrink-0 overflow-y-auto border-b">{root}</div>}
           {loading && !replies ? <PaneState label="Loading replies…" /> : replies}

@@ -13,6 +13,7 @@ export const projectsQueryOptions = (organizationId: string) =>
 export const projectQueryOptions = (organizationId: string, projectEntityId: string) =>
   queryOptions({
     queryKey: queryKeys.project(organizationId, projectEntityId),
+    meta: { refreshError: "Couldn’t refresh project" },
     queryFn: ({ signal }) => getProject({ data: { organizationId, projectEntityId }, signal }),
     refetchInterval: 5000,
     retry: false,

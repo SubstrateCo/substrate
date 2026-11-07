@@ -13,7 +13,9 @@ test("desktop invitation email returns a new member to the invited workspace", a
   await page.getByRole("button", { name: "Organization settings", exact: true }).click();
   await page.getByLabel("Email", { exact: true }).fill(member.email);
   await page.getByRole("button", { name: "Send invitation", exact: true }).click();
-  await expect(page.getByText("Invitation email sent.", { exact: true })).toBeVisible();
+  await expect(
+    page.locator("[data-sonner-toast]").filter({ hasText: "Invitation email sent." }),
+  ).toBeVisible();
   await desktop.signout();
   await desktop.openMail(member.email, `Join ${workspace} on Startup OS`);
   await expect(page.getByText("Welcome back", { exact: true })).toBeVisible();
@@ -55,6 +57,9 @@ test("Electron invitation pagination supports keyboard and pointer without chang
   await expect(page.getByRole("combobox", { name: "Role", exact: true })).toHaveText("Admin");
   await invitation.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(invitation).toContainText("canceled");
+  await expect(
+    page.locator("[data-sonner-toast]").filter({ hasText: "Invitation canceled." }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Send invitation", exact: true }).click();
   const pending = invitation.filter({ hasText: "pending" });
   await expect(pending).toHaveCount(1);

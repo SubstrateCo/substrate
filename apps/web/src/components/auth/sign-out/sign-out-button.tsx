@@ -1,8 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { SignOutButton as SignOutButtonView } from "@/components/auth/sign-out/sign-out-button-view";
+import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { authClient } from "@/lib/auth/client";
 import { isDesktop } from "@/lib/desktop/auth";
+import { toast } from "sonner";
 
 export function SignOutButton({ compact = false }: { compact?: boolean } = {}) {
   const queryClient = useQueryClient();
@@ -17,12 +19,13 @@ export function SignOutButton({ compact = false }: { compact?: boolean } = {}) {
       queryClient.clear();
       window.location.assign("/login");
     },
+    onError: (error) =>
+      toast.error(actionErrorMessage(error, "We couldn’t sign you out. Please try again.")),
   });
   return (
     <SignOutButtonView
       compact={compact}
       pending={signOut.isPending}
-      error={signOut.error}
       onSignOut={() => signOut.mutate()}
     />
   );

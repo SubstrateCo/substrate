@@ -8,6 +8,7 @@ import { getRouter } from "./router";
 import { DesktopFrame } from "@/components/desktop/desktop-frame";
 import { ScrollbarVisibility } from "@/components/scroll/scrollbar-visibility";
 import { ThemeProvider } from "@/components/theme/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
 import "./styles.css";
 
 const router = getRouter();
@@ -19,6 +20,7 @@ createRoot(document.getElementById("root")!).render(
       <ThemeProvider>
         <DesktopFrame>
           <RouterProvider router={router} />
+          <Toaster position="bottom-right" closeButton richColors />
         </DesktopFrame>
       </ThemeProvider>
     </QueryClientProvider>

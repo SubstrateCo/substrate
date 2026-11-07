@@ -1,6 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
 
-import { FormMessage } from "../../auth/form-message";
 import { ContentNotice } from "../../feedback/content-notice";
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
@@ -13,7 +12,6 @@ export function OrganizationSelection({
   organizations,
   loading = false,
   pending = false,
-  error,
   loadError,
   onRetry,
   onSelect,
@@ -23,7 +21,6 @@ export function OrganizationSelection({
   organizations?: { id: string; name: string }[];
   loading?: boolean;
   pending?: boolean;
-  error?: Error | null;
   loadError?: Error | null;
   onRetry: () => void;
   onSelect: (id: string) => void;
@@ -32,7 +29,6 @@ export function OrganizationSelection({
 }) {
   const retryOrigin = useRef<Element | null>(null);
   const firstChoice = useRef<HTMLButtonElement | null>(null);
-  const actionOrigin = useRef<HTMLButtonElement | null>(null);
   const creationHeading = useRef<HTMLHeadingElement | null>(null);
   useEffect(() => {
     const origin = retryOrigin.current;
@@ -55,18 +51,6 @@ export function OrganizationSelection({
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <FormMessage
-              floating
-              floatingPlacement="below-header"
-              onDismiss={() => {
-                const target = actionOrigin.current?.isConnected
-                  ? actionOrigin.current
-                  : firstChoice.current;
-                target?.focus();
-              }}
-              error={error}
-              errorDescription="We couldn’t open this workspace. Try selecting it again."
-            />
             <div className="h-44 space-y-3 overflow-y-auto">
               {loading && !organizations?.length && !isAccessFailure(loadError) && (
                 <LoadingState label="Loading workspaces…" rows={2} />
@@ -97,11 +81,7 @@ export function OrganizationSelection({
                       buttonRef={index === 0 ? firstChoice : undefined}
                       name={organization.name}
                       pending={pending}
-                      onSelect={() => {
-                        const active = document.activeElement;
-                        actionOrigin.current = active instanceof HTMLButtonElement ? active : null;
-                        onSelect(organization.id);
-                      }}
+                      onSelect={() => onSelect(organization.id)}
                     />
                   ))}
               </div>

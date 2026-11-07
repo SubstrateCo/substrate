@@ -1,4 +1,3 @@
-import { FormMessage } from "../../auth/form-message";
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
 import { isAccessFailure } from "../../feedback/request-failure";
@@ -14,7 +13,6 @@ export function LinkMessageWork({
   loading,
   error,
   pendingId,
-  actionError,
   onQueryChange,
   onKindChange,
   onRetry,
@@ -27,7 +25,6 @@ export function LinkMessageWork({
   loading: boolean;
   error?: Error | null;
   pendingId?: string;
-  actionError?: Error | null;
   onQueryChange: (query: string) => void;
   onKindChange: (kind: "task" | "project") => void;
   onRetry: () => void;
@@ -83,10 +80,6 @@ export function LinkMessageWork({
           />
         ))}
       </ul>
-      <FormMessage
-        error={actionError}
-        errorDescription="Couldn't link this item. Check that you still have access."
-      />
       <Button size="xs" variant="outline" onClick={onClose}>
         Cancel
       </Button>
