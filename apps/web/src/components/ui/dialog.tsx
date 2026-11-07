@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "cn";
 import { XIcon } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
@@ -113,19 +114,29 @@ function DialogTitle({ className, ...props }: React.ComponentProps<typeof Dialog
   );
 }
 
+const dialogDescriptionVariants = cva(
+  "text-sm text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
+  {
+    variants: {
+      variant: {
+        default: "",
+        context: "line-clamp-2 wrap-anywhere",
+      },
+    },
+    defaultVariants: { variant: "default" },
+  },
+);
+
 function DialogDescription({
   className,
   variant = "default",
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Description> & { variant?: "default" | "context" }) {
+}: React.ComponentProps<typeof DialogPrimitive.Description> &
+  VariantProps<typeof dialogDescriptionVariants>) {
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn(
-        "text-sm text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
-        variant === "context" && "line-clamp-2 wrap-anywhere",
-        className,
-      )}
+      className={cn(dialogDescriptionVariants({ variant }), className)}
       {...props}
     />
   );
