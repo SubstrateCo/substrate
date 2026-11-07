@@ -7,6 +7,16 @@ test("desktop saves rotated avatars and logos without storage credentials, reloa
   test.setTimeout(120_000);
   await desktop.provision();
   const page = desktop.page;
+  const userMenu = page.getByRole("button", {
+    name: `Signed in as ${desktop.owner.name}`,
+    exact: true,
+  });
+  await expect(userMenu).toHaveText("DE");
+  await userMenu.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("button", { name: "User settings", exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(userMenu).toBeFocused();
   const uploads = await desktop.app.evaluateHandle(({ session }) => {
     const transfers: { id: number; cookie: boolean; authorization: boolean; ok: boolean }[] = [];
     const requests = session.fromPartition("startup-os-smoke-test").webRequest;
@@ -127,6 +137,7 @@ test("desktop saves rotated avatars and logos without storage credentials, reloa
       });
     const saved = await image.getAttribute("src");
     expect(saved).toMatch(/^\/api\/v1\/files\/[^/]+\/content$/);
+    if (isAvatar) await expect(userMenu.locator("img")).toHaveAttribute("src", saved!);
     const pixels = await page.evaluate(async (url) => {
       const blob = await (await fetch(url!)).blob();
       const bitmap = await createImageBitmap(blob);
@@ -154,8 +165,22 @@ test("desktop saves rotated avatars and logos without storage credentials, reloa
         ),
       )
       .toBe(true);
+    if (isAvatar) {
+      const imageURL = `**${saved}`;
+      await page.route(imageURL, (route) => route.fulfill({ status: 404, body: "" }));
+      await page.reload();
+      await expect(userMenu).toHaveText("DE");
+      await expect(
+        control.getByLabel("Profile picture unavailable", { exact: true }),
+      ).toBeVisible();
+      await page.unroute(imageURL);
+      await page.reload();
+      await expect(image).toHaveAttribute("src", saved!);
+      await expect(userMenu.locator("img")).toHaveAttribute("src", saved!);
+    }
     await control.getByRole("button", { name: "Remove picture", exact: true }).click();
     await expect(image).toHaveCount(0);
+    if (isAvatar) await expect(userMenu).toHaveText("DE");
     await page.reload();
     await expect(
       control.getByRole("button", { name: "Choose picture", exact: true }),

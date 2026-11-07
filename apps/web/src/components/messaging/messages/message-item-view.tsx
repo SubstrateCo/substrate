@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { MessageMarkdown } from "../markdown/message-markdown";
 import type { Message } from "../types";
 import { MessageInteractions } from "@/components/messaging/messages/message-item/message-interactions";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export function MessageItem({
   message,
@@ -23,12 +24,9 @@ export function MessageItem({
 }) {
   return (
     <article className="group flex gap-2.5 px-4 py-2 hover:bg-muted/40">
-      <div
-        aria-hidden="true"
-        className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-primary/10 bg-accent text-sm font-semibold text-accent-foreground shadow-surface"
-      >
-        {(message.authorName || "?").slice(0, 2).toUpperCase()}
-      </div>
+      <Avatar aria-hidden="true" variant="message" className="size-9">
+        <AvatarFallback>{(message.authorName || "?").slice(0, 2).toUpperCase()}</AvatarFallback>
+      </Avatar>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-2">
           <span className="text-sm font-semibold">{message.authorName || "Unknown member"}</span>

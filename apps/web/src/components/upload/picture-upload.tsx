@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
@@ -46,21 +47,31 @@ export function PictureUpload({
   }
   return (
     <section aria-label={name} className="flex flex-wrap items-center gap-x-4 gap-y-2">
-      <div
-        className={`flex size-12 shrink-0 items-center justify-center overflow-hidden border border-border bg-muted ${kind === "avatar" ? "rounded-full" : "rounded-lg"}`}
-      >
-        <PicturePreview
-          src={value}
-          alt={name}
-          className="size-full object-contain"
-          fallback={
+      {kind === "avatar" ? (
+        <Avatar variant="picture" className="size-12">
+          <AvatarImage src={value ?? undefined} alt={name} className="object-contain" />
+          <AvatarFallback>
             <ImageIcon
               className="size-7 text-muted-foreground"
               aria-label={value ? `${name} unavailable` : `No ${name.toLowerCase()}`}
             />
-          }
-        />
-      </div>
+          </AvatarFallback>
+        </Avatar>
+      ) : (
+        <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
+          <PicturePreview
+            src={value}
+            alt={name}
+            className="size-full object-contain"
+            fallback={
+              <ImageIcon
+                className="size-7 text-muted-foreground"
+                aria-label={value ? `${name} unavailable` : `No ${name.toLowerCase()}`}
+              />
+            }
+          />
+        </div>
+      )}
       <FileUpload
         chooseButtonRef={chooseButton}
         compact

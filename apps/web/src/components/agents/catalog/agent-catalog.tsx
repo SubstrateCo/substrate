@@ -3,7 +3,7 @@ import type { AgentConfiguration } from "@startup-os/contracts/agents";
 import { harnessOptions } from "../harness-meta";
 import { CatalogRow } from "./catalog-row";
 import { CatalogSection } from "./catalog-section";
-import { PicturePreview } from "@/components/upload/picture-preview";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function AgentCatalog({
   agents,
@@ -31,19 +31,12 @@ export function AgentCatalog({
           key={agent.id}
           name={agent.name}
           picture={
-            <PicturePreview
-              src={agent.image}
-              alt={`${agent.name} profile picture`}
-              className="size-10 shrink-0 rounded-full object-cover"
-              fallback={
-                <span
-                  className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm"
-                  aria-hidden="true"
-                >
-                  {agent.name.slice(0, 2).toUpperCase()}
-                </span>
-              }
-            />
+            <Avatar size="lg" variant="catalog">
+              <AvatarImage src={agent.image ?? undefined} alt={`${agent.name} profile picture`} />
+              <AvatarFallback aria-hidden="true">
+                {agent.name.slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
           }
           detail={`${harnessOptions.find((option) => option.value === agent.harness)?.label ?? agent.harness} · ${agent.enabled ? "Enabled" : "Disabled"}${agent.useStartupDefaults ? " · Startup OS defaults" : ""}`}
           disabled={pending}

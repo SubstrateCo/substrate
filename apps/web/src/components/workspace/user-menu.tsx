@@ -1,9 +1,9 @@
 import { useState, type ReactNode } from "react";
 
 import { AppearanceControl } from "../theme/appearance-control";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { PicturePreview } from "../upload/picture-preview";
 import { Building2, Settings } from "lucide-react";
 
 export function UserMenu({
@@ -34,11 +34,10 @@ export function UserMenu({
           aria-label={`Signed in as ${name}`}
           title={name}
         >
-          <PicturePreview
-            src={image}
-            fallback={name.slice(0, 2).toUpperCase()}
-            className="size-full object-cover"
-          />
+          <Avatar variant="user" className="size-full">
+            <AvatarImage src={image ?? undefined} alt="" />
+            <AvatarFallback>{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+          </Avatar>
         </Button>
       </PopoverTrigger>
       <PopoverContent

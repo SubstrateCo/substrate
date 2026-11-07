@@ -8,6 +8,7 @@ import { useId, useState, type ReactNode } from "react";
 
 import { ModelPicker } from "../model-picker/model-picker";
 import { PendingButton } from "@/components/feedback/pending-button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -133,12 +134,11 @@ export function AgentEditor({
                           <div className="mb-7 flex items-start gap-4">
                             <form.Subscribe selector={(state) => state.values.name}>
                               {(name) => (
-                                <div
-                                  aria-hidden="true"
-                                  className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-accent text-xl font-medium text-primary"
-                                >
-                                  {name.trim().charAt(0).toUpperCase() || "A"}
-                                </div>
+                                <Avatar aria-hidden="true" variant="editor" className="size-12">
+                                  <AvatarFallback>
+                                    {name.trim().charAt(0).toUpperCase() || "A"}
+                                  </AvatarFallback>
+                                </Avatar>
                               )}
                             </form.Subscribe>
                             <form.Field name="name">
