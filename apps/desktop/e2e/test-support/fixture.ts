@@ -19,6 +19,7 @@ import {
 } from "@playwright/test";
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
@@ -52,6 +53,14 @@ class DesktopFixture {
     this.page = await this.app.firstWindow();
     this.page.on("pageerror", () => this.pageErrors++);
     return this.page;
+  }
+
+  async screenshot(path: string) {
+    const image = await this.app.evaluate(async ({ BrowserWindow }) => {
+      const capture = await BrowserWindow.getAllWindows()[0]!.webContents.capturePage();
+      return capture.toPNG().toString("base64");
+    });
+    await writeFile(path, Buffer.from(image, "base64"));
   }
 
   async openLink(link: string) {

@@ -1,6 +1,5 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 
-import { WorkspaceTools } from "@/components/context/search/workspace-tools";
 import { isAccessFailure } from "@/components/feedback/request-failure";
 import { WorkspaceFrame } from "@/components/workspace/workspace-frame";
 import { WorkspaceLinkBoundary } from "@/components/workspace/workspace-link-boundary";
@@ -31,7 +30,6 @@ function WorkspaceLayout() {
   return (
     <WorkspaceFrame organizationId={organizationId} name={userName}>
       <WorkspaceLinkBoundary organizationId={organizationId}>
-        <WorkspaceTools key={organizationId} organizationId={organizationId} />
         <Outlet />
       </WorkspaceLinkBoundary>
     </WorkspaceFrame>

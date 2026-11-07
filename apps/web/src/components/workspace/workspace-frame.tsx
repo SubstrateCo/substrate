@@ -6,6 +6,7 @@ import { useLocation, useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import { SignOutButton } from "@/components/auth/sign-out/sign-out-button";
+import { WorkspaceTools } from "@/components/context/search/workspace-tools";
 import { OrganizationSwitcher } from "@/components/organizations/switcher/organization-switcher";
 import { WorkspaceHomeLink } from "@/components/workspace/workspace-home-link";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
@@ -89,6 +90,9 @@ export function WorkspaceFrame({
         void member.refetch();
       }}
     >
+      {organizationId && organization.data && !organization.error && (
+        <WorkspaceTools key={organizationId} organizationId={organizationId} />
+      )}
       {children}
     </WorkspaceShell>
   );

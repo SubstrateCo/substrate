@@ -2,12 +2,14 @@ import type {} from "@startup-os/contracts/desktop/window";
 
 import { useEffect, useState, type ReactNode } from "react";
 
+import { DesktopTitleBarContext } from "@/components/desktop/desktop-title-bar-content";
 import { useTheme } from "@/components/theme/theme-provider";
 
 export function DesktopFrame({ children }: { children: ReactNode }) {
   const bridge = window.startupOSWindow;
   const { resolvedTheme } = useTheme();
   const [fullscreen, setFullscreen] = useState(false);
+  const [titleBarTarget, setTitleBarTarget] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!bridge) return;
@@ -34,11 +36,14 @@ export function DesktopFrame({ children }: { children: ReactNode }) {
 
   if (!bridge) return children;
   return (
-    <div className="desktop-frame" data-platform={bridge.platform} data-fullscreen={fullscreen}>
-      <header className="desktop-title-bar" aria-label="Window title bar">
-        <span>Startup OS</span>
-      </header>
-      <div className="desktop-content">{children}</div>
-    </div>
+    <DesktopTitleBarContext value={titleBarTarget}>
+      <div className="desktop-frame" data-platform={bridge.platform} data-fullscreen={fullscreen}>
+        <header className="desktop-title-bar" aria-label="Window title bar">
+          <span className="desktop-title-bar-label">Startup OS</span>
+          <div ref={setTitleBarTarget} className="desktop-title-bar-content" />
+        </header>
+        <div className="desktop-content">{children}</div>
+      </div>
+    </DesktopTitleBarContext>
   );
 }

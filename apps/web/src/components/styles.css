@@ -188,14 +188,19 @@
     overflow: hidden;
   }
   .desktop-title-bar {
+    --desktop-controls-left: env(titlebar-area-x, 0px);
+    --desktop-controls-right: calc(
+      100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)
+    );
     position: fixed;
+    z-index: 30;
     inset: 0 0 auto;
     height: var(--desktop-title-bar-height);
     display: flex;
     align-items: center;
     justify-content: center;
-    padding-left: env(titlebar-area-x, 0px);
-    padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw));
+    padding-left: var(--desktop-controls-left);
+    padding-right: var(--desktop-controls-right);
     border-bottom: 1px solid var(--border);
     background: var(--background);
     color: var(--muted-foreground);
@@ -207,11 +212,32 @@
   .desktop-title-bar > * {
     -webkit-app-region: initial;
   }
+  .desktop-title-bar-content {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(
+      32rem,
+      calc(100% - 2 * max(var(--desktop-controls-left), var(--desktop-controls-right)) - 24px)
+    );
+    min-width: 0;
+  }
+  .desktop-title-bar-content:empty,
+  .desktop-title-bar:has([data-workspace-search]) .desktop-title-bar-label {
+    display: none;
+  }
+  .desktop-title-bar [data-workspace-search],
+  .desktop-title-bar [data-workspace-search] * {
+    -webkit-app-region: no-drag;
+  }
+  .desktop-title-bar [data-workspace-search-results] {
+    width: min(32rem, calc(100vw - 24px));
+  }
   .desktop-title-bar :is(button, a, input, select) {
     -webkit-app-region: no-drag;
   }
   .desktop-frame[data-platform="darwin"][data-fullscreen="false"] .desktop-title-bar {
-    padding-left: 88px;
+    --desktop-controls-left: 88px;
   }
   .desktop-content {
     position: absolute;
