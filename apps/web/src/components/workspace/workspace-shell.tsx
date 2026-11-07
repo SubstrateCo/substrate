@@ -85,7 +85,7 @@ export function WorkspaceShell({
           </div>
         </nav>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface">
-          <FormMessage message={notice} floating />
+          <FormMessage message={notice} floating floatingPlacement="workspace" />
           {loading && (
             <div className="border-b p-3">
               <LoadingState label="Loading workspace details…" variant="compact" rows={1} />

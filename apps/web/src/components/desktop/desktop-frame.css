@@ -1,0 +1,14 @@
+@layer components {
+  .desktop-title-bar {
+    -webkit-app-region: drag;
+  }
+
+  .desktop-title-bar > * {
+    -webkit-app-region: initial;
+  }
+
+  .desktop-title-bar
+    :is(button, a, input, select, [data-workspace-search], [data-workspace-search] *) {
+    -webkit-app-region: no-drag;
+  }
+}

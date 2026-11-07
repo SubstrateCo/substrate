@@ -34,6 +34,19 @@ export default defineConfig({
   },
   overrides: [
     {
+      files: [
+        "apps/web/src/components/ui/input.tsx",
+        "apps/web/src/components/ui/textarea.tsx",
+        "apps/web/src/components/ui/select.tsx",
+      ],
+      rules: {
+        "shadcn/no-arbitrary-values": [
+          "error",
+          { allow: ["transition-[border-color,box-shadow]"] },
+        ],
+      },
+    },
+    {
       files: ["apps/web/src/components/ui/**"],
       rules: {
         "shadcn/no-restyle": "off",

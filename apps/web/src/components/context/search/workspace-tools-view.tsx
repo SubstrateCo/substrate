@@ -109,6 +109,7 @@ export function WorkspaceTools({
                   ? "absolute top-full left-1/2 mt-2 -translate-x-1/2 overflow-hidden rounded-xl border bg-popover shadow-xl"
                   : "absolute inset-x-0 top-full mt-2 overflow-hidden rounded-xl border bg-popover shadow-xl"
               }
+              style={desktop ? { width: "min(32rem, calc(100vw - 24px))" } : undefined}
             >
               {renderSearch(query, setQuery, focusInput)}
             </div>

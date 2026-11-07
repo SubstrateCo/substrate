@@ -17,7 +17,7 @@ export function FormMessage({
   error?: Error | null;
   message?: string;
   floating?: boolean;
-  floatingPlacement?: "top" | "below-header";
+  floatingPlacement?: "top" | "below-header" | "workspace";
   onDismiss?: () => void;
   reserve?: boolean;
   errorDescription?: string;
@@ -29,7 +29,11 @@ export function FormMessage({
     setDismissed(error || message || null);
     onDismiss?.();
   }
-  const floatingPosition = floatingPlacement === "below-header" ? "top-20" : "top-4";
+  const floatingPosition = {
+    top: "top-4 w-auto",
+    "below-header": "top-20 w-auto",
+    workspace: "top-28 md:top-22",
+  }[floatingPlacement];
   const Icon = error ? CircleAlert : CircleCheck;
   const feedback = (
     <Alert
@@ -46,7 +50,12 @@ export function FormMessage({
       }}
       className={
         floating
-          ? `fixed inset-x-4 ${floatingPosition} z-50 ml-auto max-h-[50dvh] w-auto max-w-sm overflow-y-auto`
+          ? `fixed inset-x-4 ${floatingPosition} z-50 ml-auto max-h-[50dvh] max-w-sm overflow-y-auto`
+          : undefined
+      }
+      style={
+        floating && floatingPlacement === "workspace"
+          ? { width: "min(24rem, calc(100vw - 5.5rem))" }
           : undefined
       }
     >

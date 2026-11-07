@@ -12,7 +12,10 @@ export function AuthFrame({
   children: ReactNode;
 }) {
   return (
-    <main className="fixed inset-0 flex items-start justify-center bg-radial from-accent to-transparent px-4 py-auth-block sm:px-6">
+    <main
+      className="fixed inset-0 flex items-start justify-center bg-radial from-accent to-transparent px-4 sm:px-6"
+      style={{ paddingBlock: "clamp(1rem, calc((100dvh - 36rem) / 2), 7rem)" }}
+    >
       <Card className="max-h-full min-h-0 w-full max-w-md overflow-y-auto">
         <CardHeader>
           <p className="mb-5 flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground">

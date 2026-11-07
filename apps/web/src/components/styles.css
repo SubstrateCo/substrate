@@ -8,8 +8,6 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --spacing-auth-block: clamp(1rem, calc((100dvh - 36rem) / 2), 7rem);
-  --spacing-crop-preview: min(20rem, max(5rem, calc(100dvh - 22rem)));
   --font-heading: var(--font-sans);
   --font-sans: "Geist Variable", sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
@@ -177,99 +175,6 @@
     @apply font-sans;
     font-optical-sizing: auto;
     color-scheme: light;
-  }
-}
-
-@layer components {
-  .desktop-frame {
-    --desktop-title-bar-height: max(40px, env(titlebar-area-height, 40px));
-    --app-height: calc(100dvh - var(--desktop-title-bar-height));
-    height: 100dvh;
-    overflow: hidden;
-  }
-  .desktop-title-bar {
-    --desktop-controls-left: env(titlebar-area-x, 0px);
-    --desktop-controls-right: calc(
-      100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)
-    );
-    position: fixed;
-    z-index: 30;
-    inset: 0 0 auto;
-    height: var(--desktop-title-bar-height);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding-left: var(--desktop-controls-left);
-    padding-right: var(--desktop-controls-right);
-    border-bottom: 1px solid var(--border);
-    background: var(--background);
-    color: var(--muted-foreground);
-    font-size: 12px;
-    font-weight: 500;
-    user-select: none;
-    -webkit-app-region: drag;
-  }
-  .desktop-title-bar > * {
-    -webkit-app-region: initial;
-  }
-  .desktop-title-bar-content {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    width: min(
-      32rem,
-      calc(100% - 2 * max(var(--desktop-controls-left), var(--desktop-controls-right)) - 24px)
-    );
-    min-width: 0;
-  }
-  .desktop-title-bar-content:empty,
-  .desktop-title-bar:has([data-workspace-search]) .desktop-title-bar-label {
-    display: none;
-  }
-  .desktop-title-bar [data-workspace-search],
-  .desktop-title-bar [data-workspace-search] * {
-    -webkit-app-region: no-drag;
-  }
-  .desktop-title-bar [data-workspace-search-results] {
-    width: min(32rem, calc(100vw - 24px));
-  }
-  .desktop-title-bar :is(button, a, input, select) {
-    -webkit-app-region: no-drag;
-  }
-  .desktop-frame[data-platform="darwin"][data-fullscreen="false"] .desktop-title-bar {
-    --desktop-controls-left: 88px;
-  }
-  .desktop-content {
-    position: absolute;
-    inset: var(--desktop-title-bar-height) 0 0;
-    overflow: auto;
-    /* Keep fixed auth screens and local overlays below the native controls. */
-    contain: layout;
-  }
-  body:has([data-workspace-shell]) [data-theme-control] {
-    display: none;
-  }
-  [data-workspace-shell] [data-action-notice] {
-    top: 7rem;
-    width: min(24rem, calc(100vw - 5.5rem));
-    @media (width >= 48rem) {
-      top: 5.5rem;
-    }
-  }
-  [data-slot="card"] {
-    border: 1px solid var(--border);
-  }
-  [data-slot="popover-content"],
-  [data-slot="dropdown-menu-content"],
-  [data-slot="select-content"] {
-    box-shadow: var(--elevation-floating);
-  }
-  [data-slot="input"],
-  [data-slot="textarea"],
-  [data-slot="select-trigger"] {
-    transition:
-      border-color 150ms,
-      box-shadow 150ms;
   }
 }
 

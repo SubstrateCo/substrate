@@ -35,6 +35,7 @@ export function SignOutButton({
       </Button>
       <FormMessage
         floating={compact}
+        floatingPlacement="workspace"
         error={error}
         errorDescription="We couldn’t sign you out. Please try again."
       />
