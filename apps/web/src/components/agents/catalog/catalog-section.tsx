@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Plus } from "lucide-react";
 
 export function CatalogSection({
   title,
@@ -28,9 +30,20 @@ export function CatalogSection({
           <h3 className="font-semibold">{title}</h3>
           <p className="text-sm text-muted-foreground">{description}</p>
         </div>
-        <Button variant="outline" disabled={disabled} onClick={onAdd}>
-          {addLabel}
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label={addLabel}
+              disabled={disabled}
+              onClick={onAdd}
+            >
+              <Plus aria-hidden="true" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{addLabel}</TooltipContent>
+        </Tooltip>
       </div>
       {empty ? (
         <p className="text-sm text-muted-foreground">No {title.toLowerCase()} yet.</p>

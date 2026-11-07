@@ -8,7 +8,8 @@ import {
   ItemMedia,
   ItemTitle,
 } from "@/components/ui/item";
-import { Bot, UserRound } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Bot, UserRound, UserRoundMinus } from "lucide-react";
 
 export function ProjectMembers({
   members,
@@ -45,15 +46,20 @@ export function ProjectMembers({
             </ItemContent>
             {canManage && (
               <ItemActions>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  disabled={pending}
-                  aria-label={`Remove ${member.name}`}
-                  onClick={() => onRevoke(member.actorEntityId)}
-                >
-                  Remove
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="destructive"
+                      size="icon-sm"
+                      disabled={pending}
+                      aria-label={`Remove ${member.name} from project`}
+                      onClick={() => onRevoke(member.actorEntityId)}
+                    >
+                      <UserRoundMinus aria-hidden="true" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Remove {member.name} from project</TooltipContent>
+                </Tooltip>
               </ItemActions>
             )}
           </Item>

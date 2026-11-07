@@ -85,7 +85,7 @@ test("source desktop saves rotated avatars and logos, reloads them, and removes 
         context.fillRect(0, 0, 160, 180);
         return canvas.toDataURL("image/png").split(",")[1]!;
       });
-      await control.getByLabel("Choose picture", { exact: true }).setInputFiles({
+      await control.locator('input[type="file"]').setInputFiles({
         name: `desktop-${kind}.png`,
         mimeType: "image/png",
         buffer: Buffer.from(data, "base64"),

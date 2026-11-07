@@ -139,7 +139,10 @@ for (const size of [
     await sharing.scrollIntoViewIfNeeded();
     await fits(page, sharing);
     await reachable(
-      sharing.getByRole("button", { name: `Remove ${desktop.owner.name}`, exact: true }),
+      sharing.getByRole("button", {
+        name: `Remove ${desktop.owner.name} from project`,
+        exact: true,
+      }),
     );
     await reachable(sharing.getByRole("button", { name: "Update access", exact: true }));
     await page.screenshot({ path: test.info().outputPath(`tasks-sharing-${size.width}.png`) });
@@ -162,12 +165,15 @@ for (const size of [
     });
     await review.getByRole("button", { name: "Cancel access change", exact: true }).click();
     await expect(
-      sharing.getByRole("button", { name: `Remove ${desktop.member.name}`, exact: true }),
+      sharing.getByRole("button", {
+        name: `Remove ${desktop.member.name} from project`,
+        exact: true,
+      }),
     ).toHaveCount(0);
     await sharing.getByRole("button", { name: "Update access", exact: true }).click();
     await review.getByRole("button", { name: "Confirm access", exact: true }).click();
     const removeMember = sharing.getByRole("button", {
-      name: `Remove ${desktop.member.name}`,
+      name: `Remove ${desktop.member.name} from project`,
       exact: true,
     });
     await expect(removeMember).toBeVisible();

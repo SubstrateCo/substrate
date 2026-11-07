@@ -10,6 +10,7 @@ import { isAccessFailure } from "@/components/feedback/request-failure";
 import { ProjectLoading } from "@/components/tasks/projects/project-loading";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Plus } from "lucide-react";
 
 export function ProjectPane({
@@ -82,15 +83,23 @@ export function ProjectPane({
           <div className="flex max-w-full shrink-0 flex-wrap gap-2">
             {headerActions}
             {canEdit && (
-              <Button
-                ref={newTaskButton}
-                onClick={() => {
-                  panel.create();
-                  setSettings(false);
-                }}
-              >
-                <Plus aria-hidden="true" /> New task
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    ref={newTaskButton}
+                    size="icon"
+                    variant="outline"
+                    aria-label="New task"
+                    onClick={() => {
+                      panel.create();
+                      setSettings(false);
+                    }}
+                  >
+                    <Plus aria-hidden="true" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>New task</TooltipContent>
+              </Tooltip>
             )}
           </div>
           <p

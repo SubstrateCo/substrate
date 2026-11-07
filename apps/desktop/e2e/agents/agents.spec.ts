@@ -161,7 +161,7 @@ test("user agents and device-local configuration survive reload and restart in E
     return canvas.toDataURL("image/png").split(",")[1]!;
   });
   const picture = editing.getByRole("region", { name: "Profile picture", exact: true });
-  await picture.getByLabel("Choose picture", { exact: true }).setInputFiles({
+  await picture.locator('input[type="file"]').setInputFiles({
     name: "agent-avatar.png",
     mimeType: "image/png",
     buffer: Buffer.from(pictureBytes, "base64"),

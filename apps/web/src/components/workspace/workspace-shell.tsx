@@ -84,26 +84,26 @@ export function WorkspaceShell({
             />
           </div>
         </nav>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface">
+          <FormMessage message={notice} floating />
+          {loading && (
+            <div className="border-b p-3">
+              <LoadingState label="Loading workspace details…" variant="compact" rows={1} />
+            </div>
+          )}
+          {error && (
+            <div className="shrink-0 p-3">
+              <ErrorState
+                compact
+                title="Couldn’t load workspace details"
+                description="Some workspace controls may be unavailable. Try again to update your workspace details."
+                onRetry={onRetry}
+              />
+            </div>
+          )}
+          {!isAccessFailure(error) && children}
+        </div>
       </TooltipProvider>
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface">
-        <FormMessage message={notice} floating />
-        {loading && (
-          <div className="border-b p-3">
-            <LoadingState label="Loading workspace details…" variant="compact" rows={1} />
-          </div>
-        )}
-        {error && (
-          <div className="shrink-0 p-3">
-            <ErrorState
-              compact
-              title="Couldn’t load workspace details"
-              description="Some workspace controls may be unavailable. Try again to update your workspace details."
-              onRetry={onRetry}
-            />
-          </div>
-        )}
-        {!isAccessFailure(error) && children}
-      </div>
     </main>
   );
 }

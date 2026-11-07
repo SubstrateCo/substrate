@@ -11,7 +11,11 @@ test("Electron task edit cancel resets drafts and saved edits retain message pro
   const page = desktop.page;
   const apps = page.getByRole("navigation", { name: "Apps", exact: true });
   await apps.getByRole("button", { name: "Tasks", exact: true }).click();
-  await page.getByRole("button", { name: "New project", exact: true }).click();
+  const newProject = page.getByRole("button", { name: "New project", exact: true });
+  await expect(newProject).toHaveText("");
+  await newProject.focus();
+  await expect(page.getByRole("tooltip")).toHaveText("New project");
+  await page.keyboard.press("Enter");
   await expect(page.getByLabel("Project name", { exact: true })).toBeFocused();
   await page.getByLabel("Project name", { exact: true }).fill("Desktop launch");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
@@ -59,6 +63,9 @@ test("Electron task edit cancel resets drafts and saved edits retain message pro
   expect(target.searchParams.get("projectId")).toBe(projectURL.searchParams.get("projectId"));
   expect(target.searchParams.get("taskId")).toBeTruthy();
   const edit = details.getByRole("button", { name: "Edit task", exact: true });
+  await expect(edit).toHaveText("");
+  await edit.focus();
+  await expect(page.getByRole("tooltip")).toHaveText("Edit task");
   await edit.click();
   const editor = page.getByRole("form", { name: "Edit task", exact: true });
   await expect(editor.getByLabel("Task title", { exact: true })).toBeFocused();

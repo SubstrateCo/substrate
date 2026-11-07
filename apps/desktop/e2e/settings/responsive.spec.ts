@@ -274,7 +274,7 @@ for (const size of [
         canvas.getContext("2d")!.fillRect(0, 0, 320, 180);
         return canvas.toDataURL("image/png").split(",")[1]!;
       });
-      await region.getByLabel("Choose picture", { exact: true }).setInputFiles({
+      await region.locator('input[type="file"]').setInputFiles({
         name: "responsive.png",
         mimeType: "image/png",
         buffer: Buffer.from(image, "base64"),
@@ -296,7 +296,7 @@ for (const size of [
         region.getByRole("button", { name: "Choose picture", exact: true }),
       ).toBeFocused();
       await expect(region.getByRole("img", { name, exact: true })).toHaveCount(0);
-      await region.getByLabel("Choose picture", { exact: true }).setInputFiles({
+      await region.locator('input[type="file"]').setInputFiles({
         name: "responsive.png",
         mimeType: "image/png",
         buffer: Buffer.from(image, "base64"),

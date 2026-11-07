@@ -1,12 +1,14 @@
 import { useRef, useState } from "react";
 
-import { PendingButton } from "../feedback/pending-button";
+import { Button } from "../ui/button";
+import { Spinner } from "../ui/spinner";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { openPicture } from "./crop-image";
 import { FileUpload } from "./file-upload";
 import { pictureAccept, pictureMaxSize } from "./file-validation";
 import { ImageCropDialog, type PictureUploadContext } from "./image-crop-dialog";
 import { PicturePreview } from "./picture-preview";
-import { ImageIcon } from "lucide-react";
+import { ImageIcon, ImagePlus, Trash2 } from "lucide-react";
 
 export interface PictureUploadProps {
   value?: string | null;
@@ -61,6 +63,7 @@ export function PictureUpload({
       <FileUpload
         chooseButtonRef={chooseButton}
         compact
+        icon={<ImagePlus aria-hidden="true" />}
         accept={pictureAccept}
         maxSize={pictureMaxSize}
         disabled={disabled || removing || !!source}
@@ -80,16 +83,28 @@ export function PictureUpload({
         }}
       />
       {value && (
-        <PendingButton
-          type="button"
-          variant="destructive"
-          disabled={disabled || !!source}
-          pending={removing}
-          pendingLabel="Removing picture…"
-          onClick={() => void remove()}
-        >
-          Remove picture
-        </PendingButton>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="destructive"
+                size="icon"
+                disabled={disabled || !!source || removing}
+                aria-busy={removing}
+                aria-label={removing ? "Removing picture…" : "Remove picture"}
+                onClick={() => void remove()}
+              >
+                {removing ? (
+                  <Spinner aria-hidden="true" role="presentation" />
+                ) : (
+                  <Trash2 aria-hidden="true" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Remove picture</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       )}
       {error && (
         <p role="alert" className="w-full text-sm text-destructive">

@@ -4,6 +4,7 @@ import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
 import { isAccessFailure } from "../../feedback/request-failure";
 import { Button } from "../../ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import type { Project } from "../types";
 import { FolderKanban, Plus } from "lucide-react";
 
@@ -34,9 +35,20 @@ export function ProjectSidebar({
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="font-semibold">Projects</h1>
-        <Button ref={createButtonRef} size="sm" variant="outline" onClick={onCreate}>
-          <Plus aria-hidden="true" className="size-3.5" /> New project
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              ref={createButtonRef}
+              size="icon-sm"
+              variant="outline"
+              aria-label="New project"
+              onClick={onCreate}
+            >
+              <Plus aria-hidden="true" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>New project</TooltipContent>
+        </Tooltip>
       </div>
       {loading && <LoadingState label="Loading projects" variant="compact" />}
       {error && (

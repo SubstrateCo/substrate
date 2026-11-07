@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "../../ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import type { ProjectDetail, Task } from "../types";
 import { TaskMetadata } from "./task-metadata";
 import { X, Pencil, ListPlus } from "lucide-react";
@@ -54,12 +55,33 @@ export function TaskDetail({
           />
           {canEdit && (
             <div className="flex flex-wrap gap-2">
-              <Button ref={editButton} variant="outline" onClick={() => setEditing(true)}>
-                <Pencil aria-hidden="true" /> Edit task
-              </Button>
-              <Button variant="outline" onClick={onSubtask}>
-                <ListPlus aria-hidden="true" /> Add subtask
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    ref={editButton}
+                    variant="outline"
+                    size="icon"
+                    aria-label="Edit task"
+                    onClick={() => setEditing(true)}
+                  >
+                    <Pencil aria-hidden="true" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Edit task</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    aria-label="Add subtask"
+                    onClick={onSubtask}
+                  >
+                    <ListPlus aria-hidden="true" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Add subtask</TooltipContent>
+              </Tooltip>
             </div>
           )}
         </>

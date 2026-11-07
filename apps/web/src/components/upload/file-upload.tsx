@@ -1,8 +1,10 @@
-import { useId, useRef, useState, type Ref } from "react";
+import { useId, useRef, useState, type ReactNode, type Ref } from "react";
 
 import { Button } from "../ui/button";
 import { Field, FieldDescription, FieldError } from "../ui/field";
 import { Input } from "../ui/input";
+import { Spinner } from "../ui/spinner";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { validateFiles } from "./file-validation";
 import { Upload } from "lucide-react";
 
@@ -14,6 +16,7 @@ export interface FileUploadProps {
   label?: string;
   description?: string;
   compact?: boolean;
+  icon?: ReactNode;
   chooseButtonRef?: Ref<HTMLButtonElement>;
   onFiles: (files: File[]) => void | Promise<void>;
 }
@@ -26,6 +29,7 @@ export function FileUpload({
   label = "Choose files",
   description = "Drop files here, or choose files.",
   compact = false,
+  icon,
   chooseButtonRef,
   onFiles,
 }: FileUploadProps) {
@@ -38,6 +42,9 @@ export function FileUpload({
   let dropzoneState = "";
   if (dragging) dropzoneState = "bg-accent outline-2 outline-primary";
   else if (!compact) dropzoneState = "border-border bg-muted/30";
+  let buttonContent = icon ?? label;
+  if (pending)
+    buttonContent = icon ? <Spinner aria-hidden="true" role="presentation" /> : "Selecting…";
   async function select(files: File[]) {
     if (disabled || busy.current || !files.length) return;
     const invalid = validateFiles(files, { accept, maxSize, multiple });
@@ -87,17 +94,26 @@ export function FileUpload({
             void select(files);
           }}
         />
-        <Button
-          ref={chooseButtonRef}
-          type="button"
-          variant="outline"
-          disabled={disabled || pending}
-          aria-busy={pending}
-          aria-describedby={error ? `${id} ${id}-error` : id}
-          onClick={() => input.current?.click()}
-        >
-          {pending ? "Selecting…" : label}
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                ref={chooseButtonRef}
+                type="button"
+                variant="outline"
+                size={icon ? "icon" : "default"}
+                aria-label={pending ? "Selecting…" : label}
+                disabled={disabled || pending}
+                aria-busy={pending}
+                aria-describedby={error ? `${id} ${id}-error` : id}
+                onClick={() => input.current?.click()}
+              >
+                {buttonContent}
+              </Button>
+            </TooltipTrigger>
+            {icon && <TooltipContent>{label}</TooltipContent>}
+          </Tooltip>
+        </TooltipProvider>
         <FieldDescription id={id} className={compact ? undefined : "text-center"}>
           {description}
         </FieldDescription>
