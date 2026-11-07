@@ -43,8 +43,8 @@ export function OrganizationSelection({
     retryOrigin.current = null;
   }, [loading, loadError, organizations]);
   return (
-    <main className="fixed inset-0 mx-auto flex max-w-2xl flex-col gap-6 px-4 py-6 sm:px-6">
-      <header className="flex shrink-0 items-center justify-between gap-4">
+    <main className="fixed inset-0 mx-auto flex max-w-2xl flex-col gap-6 px-4 pt-20 pb-6 sm:px-6 sm:pt-6">
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold tracking-tight">Your workspaces</h1>
         {signOut}
       </header>

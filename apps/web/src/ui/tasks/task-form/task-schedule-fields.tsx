@@ -27,7 +27,7 @@ export function TaskScheduleFields({
 }) {
   const id = useId();
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="grid min-w-0 gap-4 @sm:grid-cols-2">
       <TaskSelect
         label="Status"
         value={value.status}
@@ -67,7 +67,7 @@ export function TaskScheduleFields({
             : []),
         ]}
       />
-      <div className="space-y-2">
+      <div className="min-w-0 space-y-2">
         <Label htmlFor={`${id}-due`}>Due date</Label>
         <Input
           id={`${id}-due`}

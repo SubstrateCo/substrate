@@ -17,7 +17,10 @@ export function UserSettingsLayout({
 }) {
   return (
     <WorkspaceSettings title="User settings">
-      <nav aria-label="User settings" className="flex gap-4 border-b pb-3 text-sm">
+      <nav
+        aria-label="User settings"
+        className="flex flex-wrap gap-x-4 gap-y-3 border-b pb-3 text-sm"
+      >
         <a
           href={profileHref}
           aria-current={active === "profile" ? "page" : undefined}

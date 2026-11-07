@@ -56,7 +56,7 @@ export function AcceptInvitationScreen({
           />
         )}
         {!loading && !failed && !unavailable && invitation && (
-          <div className="space-y-4">
+          <div className="space-y-4 wrap-anywhere">
             <p>
               Join <strong>{invitation.organizationName}</strong> as{" "}
               <strong>{invitation.role}</strong>.
@@ -80,7 +80,7 @@ export function AcceptInvitationScreen({
           </div>
         )}
       </div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <a className="text-sm underline" href={workspacesHref}>
           Your workspaces
         </a>

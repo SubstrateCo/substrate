@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 
 import { Button } from "@/ui/primitives/button";
+import { ButtonGroup } from "@/ui/primitives/button-group";
+import { PencilIcon, Trash2Icon } from "lucide-react";
 
 export function CatalogRow({
   name,
@@ -22,30 +24,32 @@ export function CatalogRow({
       <div className="flex min-w-0 items-center gap-3">
         {picture}
         <div className="min-w-0">
-          <p className="font-medium wrap-break-word">{name}</p>
-          <p className="text-sm wrap-break-word text-muted-foreground">{detail}</p>
+          <p className="font-medium wrap-anywhere">{name}</p>
+          <p className="text-sm wrap-anywhere text-muted-foreground">{detail}</p>
         </div>
       </div>
-      <div className="flex gap-2">
+      <ButtonGroup aria-label={`Actions for ${name}`}>
         <Button
           variant="outline"
-          size="sm"
+          size="icon-sm"
           disabled={disabled}
           aria-label={`Edit ${name}`}
+          title={`Edit ${name}`}
           onClick={onEdit}
         >
-          Edit
+          <PencilIcon />
         </Button>
         <Button
-          variant="ghost"
-          size="sm"
+          variant="destructive"
+          size="icon-sm"
           disabled={disabled}
           aria-label={`Delete ${name}`}
+          title={`Delete ${name}`}
           onClick={onDelete}
         >
-          Delete
+          <Trash2Icon />
         </Button>
-      </div>
+      </ButtonGroup>
     </li>
   );
 }

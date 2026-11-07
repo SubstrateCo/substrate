@@ -8,7 +8,7 @@ export function OrganizationSelectionActions({
   signOut: ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex flex-wrap items-center gap-4">
       <a href={invitationsHref} className="text-sm underline">
         Your invitations
       </a>

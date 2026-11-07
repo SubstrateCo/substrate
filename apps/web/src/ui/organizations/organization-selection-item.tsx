@@ -17,7 +17,7 @@ export function OrganizationSelectionItem({
       ref={buttonRef}
       variant="outline"
       size="selection"
-      className="justify-start text-left whitespace-normal"
+      className="max-w-full min-w-0 justify-start text-left whitespace-normal"
       disabled={pending}
       aria-busy={pending}
       onClick={onSelect}
@@ -32,7 +32,7 @@ export function OrganizationSelectionItem({
           name.slice(0, 2).toUpperCase()
         )}
       </span>
-      <span className="min-w-0 wrap-break-word">{name}</span>
+      <span className="min-w-0 wrap-anywhere">{name}</span>
     </Button>
   );
 }

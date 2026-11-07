@@ -105,7 +105,7 @@ function createWindow() {
     title: "Startup OS",
     width: 1440,
     height: 960,
-    minWidth: 800,
+    minWidth: 320,
     minHeight: 600,
     show: false,
     webPreferences: {

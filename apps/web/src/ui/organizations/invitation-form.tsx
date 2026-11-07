@@ -25,7 +25,7 @@ export function InvitationForm({
   const [role, setRole] = useState<InvitationRole>("member");
   return (
     <form
-      className="grid gap-4 sm:grid-cols-12 sm:items-end"
+      className="grid gap-4 lg:grid-cols-12 lg:items-end"
       onSubmit={(event) => {
         event.preventDefault();
         if (!disabled) {
@@ -35,7 +35,7 @@ export function InvitationForm({
         }
       }}
     >
-      <div className="grid min-w-0 gap-2 sm:col-span-6">
+      <div className="grid min-w-0 gap-2 lg:col-span-6">
         <Label htmlFor={`${id}-email`}>Email</Label>
         <Input
           id={`${id}-email`}
@@ -46,7 +46,7 @@ export function InvitationForm({
           required
         />
       </div>
-      <div className="grid min-w-0 gap-2 sm:col-span-3">
+      <div className="grid min-w-0 gap-2 lg:col-span-3">
         <Label htmlFor={`${id}-role`}>Role</Label>
         <Select
           value={role}
@@ -65,7 +65,7 @@ export function InvitationForm({
         </Select>
       </div>
       <PendingButton
-        className="sm:col-span-3"
+        className="lg:col-span-3"
         disabled={disabled}
         pending={sending}
         pendingLabel="Sending…"

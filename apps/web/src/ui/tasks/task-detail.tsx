@@ -31,7 +31,10 @@ export function TaskDetail({
   }, [editing]);
   const canEdit = detail.level === "edit" || detail.level === "owner";
   return (
-    <section aria-label="Task details" className="min-w-0 space-y-5 rounded-xl border bg-card p-4">
+    <section
+      aria-label="Task details"
+      className="min-w-0 space-y-5 rounded-xl border bg-card p-4 wrap-anywhere"
+    >
       <div className="flex items-start gap-2">
         <h2 className="min-w-0 flex-1 text-lg font-semibold wrap-break-word">{task.title}</h2>
         <Button variant="ghost" size="icon-sm" aria-label="Close task" onClick={onClose}>

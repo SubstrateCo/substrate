@@ -63,7 +63,7 @@ export function UserMenu({
         </Button>
         {showOrganizationSettings && (
           <div className="mt-2 border-t pt-2">
-            <p className="px-2 py-1 text-xs font-medium text-muted-foreground">
+            <p className="px-2 py-1 text-xs font-medium wrap-anywhere text-muted-foreground">
               Organization{organizationName ? ` · ${organizationName}` : ""}
             </p>
             <Button

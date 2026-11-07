@@ -49,7 +49,7 @@ export function TaskForm({
   return (
     <form
       aria-label={titleLabel}
-      className="space-y-4"
+      className="@container min-w-0 space-y-4"
       onSubmit={(event) => {
         event.preventDefault();
         if (pending) return;
@@ -85,7 +85,12 @@ export function TaskForm({
           />
         </div>
         {sourceText && (
-          <Button type="button" variant="outline" onClick={() => setDescription(sourceText)}>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-auto max-w-full whitespace-normal"
+            onClick={() => setDescription(sourceText)}
+          >
             Copy source text into description
           </Button>
         )}
@@ -98,7 +103,7 @@ export function TaskForm({
           error={error}
           errorDescription="Couldn’t save this task. Check its fields and make sure the assignee still has project access."
         />
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <PendingButton disabled={!title.trim()} pending={pending} pendingLabel="Saving task…">
             {submitLabel}
           </PendingButton>

@@ -33,6 +33,8 @@ export function ProjectAccessForm({
     }
   }, [reviewing, pending]);
   const actor = detail.actors.find((candidate) => candidate.entityId === actorEntityId);
+  const member = detail.members.find((candidate) => candidate.actorEntityId === actorEntityId);
+  const reducesAccess = member && permissionRank[level] < permissionRank[member.level];
   const permissionLabel = level[0]!.toUpperCase() + level.slice(1);
   if (detail.level !== "owner") return null;
   return (
@@ -41,9 +43,6 @@ export function ProjectAccessForm({
       onSubmit={(event) => {
         event.preventDefault();
         if (pending || !actor) return;
-        const member = detail.members.find(
-          (candidate) => candidate.actorEntityId === actorEntityId,
-        );
         const expandsAccess = !member || permissionRank[level] > permissionRank[member.level];
         if (expandsAccess && !reviewing) {
           setReviewing(true);
@@ -108,6 +107,7 @@ export function ProjectAccessForm({
         ) : (
           <PendingButton
             ref={updateButton}
+            variant={reducesAccess ? "destructive" : "default"}
             disabled={!actor}
             pending={pending}
             pendingLabel="Updating access…"

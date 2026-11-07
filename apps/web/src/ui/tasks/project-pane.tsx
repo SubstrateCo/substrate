@@ -71,7 +71,7 @@ export function ProjectPane({
         className="min-h-0 min-w-0 flex-1"
       >
         <header className="mb-3 flex shrink-0 flex-wrap items-start gap-x-3 gap-y-1">
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 basis-full sm:basis-auto">
             <h1
               className="line-clamp-2 text-xl font-semibold wrap-break-word"
               title={detail.project.name}

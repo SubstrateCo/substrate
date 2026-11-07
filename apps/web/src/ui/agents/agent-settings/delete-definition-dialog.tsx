@@ -40,7 +40,7 @@ export function DeleteDefinitionDialog({
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete {name}?</DialogTitle>
+          <DialogTitle className="wrap-anywhere">Delete {name}?</DialogTitle>
           <DialogDescription>
             This deletes the selected definition. Native conversation history is not deleted. This
             cannot be undone.

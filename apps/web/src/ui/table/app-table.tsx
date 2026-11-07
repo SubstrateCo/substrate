@@ -1,5 +1,7 @@
 import type { RowData } from "@tanstack/react-table";
 
+import type { ReactNode } from "react";
+
 import { ContentNotice } from "../feedback/content-notice";
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
@@ -19,6 +21,7 @@ export function AppTable<TData extends RowData>({
   emptyMessage = "No results.",
   errorTitle = "Couldn’t load results",
   errorDescription = "Your results are unavailable. Please try again.",
+  renderMobileRow,
 }: {
   table: AppTableInstance<TData>;
   name: string;
@@ -29,6 +32,7 @@ export function AppTable<TData extends RowData>({
   emptyMessage?: string;
   errorTitle?: string;
   errorDescription?: string;
+  renderMobileRow?: (row: TData) => ReactNode;
 }) {
   const rows = table.getRowModel().rows;
   const blocked = isAccessFailure(error);
@@ -44,7 +48,7 @@ export function AppTable<TData extends RowData>({
   }
   return (
     <table.AppTable>
-      <div className="min-w-0 space-y-3">
+      <div className="@container min-w-0 space-y-3">
         {loading && rows.length > 0 && !blocked && (
           <span role="status" className="sr-only">
             {loadingMessage}
@@ -53,7 +57,24 @@ export function AppTable<TData extends RowData>({
         {error && rows.length > 0 && !blocked && (
           <ErrorState compact title={errorTitle} description={errorDescription} onRetry={onRetry} />
         )}
-        <div className="min-w-0 rounded-lg border">
+        {renderMobileRow && (
+          <div className="space-y-3 @min-[40rem]:hidden">
+            {blocked || rows.length === 0 ? (
+              emptyContent
+            ) : (
+              <ul aria-label={name} className="space-y-3">
+                {rows.map((row) => (
+                  <li key={row.id} className="min-w-0 space-y-3 rounded-lg border p-3">
+                    {renderMobileRow(row.original)}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+        <div
+          className={`min-w-0 rounded-lg border${renderMobileRow ? " hidden @min-[40rem]:block" : ""}`}
+        >
           <Table aria-label={name} aria-busy={loading && !blocked}>
             <AppTableHeader table={table} />
             <TableBody>

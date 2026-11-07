@@ -24,7 +24,7 @@ export function TaskSelect<T extends string>({
 }) {
   const id = useId();
   return (
-    <div className="relative space-y-2">
+    <div className="relative min-w-0 space-y-2">
       <Label htmlFor={id}>{label}</Label>
       <Select
         value={value}
@@ -34,12 +34,20 @@ export function TaskSelect<T extends string>({
         }}
         disabled={disabled}
       >
-        <SelectTrigger id={id} className="w-full">
-          <SelectValue />
+        <SelectTrigger id={id} className="w-full min-w-0">
+          <SelectValue className="min-w-0" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent
+          position="popper"
+          align="start"
+          className="w-(--radix-select-trigger-width) max-w-dvw"
+        >
           {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              className="wrap-anywhere whitespace-normal"
+            >
               {option.label}
             </SelectItem>
           ))}

@@ -89,7 +89,7 @@ export function ConversationPane({
             {!blocked && initialLoading && <PaneState label="Loading messages…" />}
             {!blocked && !initialLoading && messages}
             {!blocked && !initialLoading && !messages && (
-              <div className="flex min-h-0 flex-1 flex-col justify-center overflow-y-auto p-4">
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center overflow-y-auto p-4 wrap-anywhere">
                 <ContentNotice
                   title={
                     conversation.kind === "channel"

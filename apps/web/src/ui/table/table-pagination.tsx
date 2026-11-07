@@ -31,22 +31,27 @@ export function TablePagination<TData extends RowData>({
           <Button
             type="button"
             variant="ghost"
+            size="icon"
             aria-label="Go to previous page"
             disabled={!previous}
             onClick={() => table.previousPage()}
           >
             <ChevronLeftIcon />
-            <span className="hidden sm:block">Previous</span>
           </Button>
+        </PaginationItem>
+        <PaginationItem className="sm:hidden">
+          <span className="px-2 text-sm text-muted-foreground">
+            Page {pageIndex + 1} of {table.getPageCount()}
+          </span>
         </PaginationItem>
         {pages.map((page, index) => (
           <Fragment key={page}>
             {index > 0 && page - pages[index - 1] > 1 && (
-              <PaginationItem>
+              <PaginationItem className="hidden sm:block">
                 <PaginationEllipsis />
               </PaginationItem>
             )}
-            <PaginationItem>
+            <PaginationItem className="hidden sm:block">
               <Button
                 type="button"
                 variant={page === pageIndex ? "outline" : "ghost"}
@@ -64,11 +69,11 @@ export function TablePagination<TData extends RowData>({
           <Button
             type="button"
             variant="ghost"
+            size="icon"
             aria-label="Go to next page"
             disabled={!next}
             onClick={() => table.nextPage()}
           >
-            <span className="hidden sm:block">Next</span>
             <ChevronRightIcon />
           </Button>
         </PaginationItem>

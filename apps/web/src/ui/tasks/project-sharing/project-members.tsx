@@ -34,7 +34,11 @@ export function ProjectMembers({
               )}
             </ItemMedia>
             <ItemContent className="min-w-0">
-              <ItemTitle className="max-w-full">{member.name}</ItemTitle>
+              <ItemTitle className="max-w-full">
+                <span className="line-clamp-2 wrap-anywhere" title={member.name}>
+                  {member.name}
+                </span>
+              </ItemTitle>
               <ItemDescription>
                 {member.level[0]!.toUpperCase() + member.level.slice(1)} access
               </ItemDescription>
@@ -42,7 +46,7 @@ export function ProjectMembers({
             {canManage && (
               <ItemActions>
                 <Button
-                  variant="ghost"
+                  variant="destructive"
                   size="sm"
                   disabled={pending}
                   aria-label={`Remove ${member.name}`}

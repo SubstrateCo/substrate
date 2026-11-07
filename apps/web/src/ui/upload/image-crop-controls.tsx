@@ -23,7 +23,7 @@ export function ImageCropControls({
   return (
     <>
       {kind === "organization-logo" && (
-        <div className="flex gap-2" role="group" aria-label="Logo sizing">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Logo sizing">
           <Button
             type="button"
             variant="outline"

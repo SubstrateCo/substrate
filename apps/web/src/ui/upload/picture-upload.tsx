@@ -82,7 +82,7 @@ export function PictureUpload({
       {value && (
         <PendingButton
           type="button"
-          variant="outline"
+          variant="destructive"
           disabled={disabled || !!source}
           pending={removing}
           pendingLabel="Removing picture…"

@@ -30,9 +30,9 @@ export function ProjectSidebar({
   return (
     <aside
       aria-label="Projects"
-      className="shrink-0 space-y-4 border-b bg-muted/20 p-3 md:w-52 md:overflow-y-auto md:border-r md:border-b-0"
+      className="min-w-0 shrink-0 space-y-4 border-b bg-muted/20 p-3 md:w-52 md:overflow-y-auto md:border-r md:border-b-0"
     >
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="font-semibold">Projects</h1>
         <Button ref={createButtonRef} size="sm" variant="outline" onClick={onCreate}>
           <Plus aria-hidden="true" className="size-3.5" /> New project
@@ -56,7 +56,8 @@ export function ProjectSidebar({
           <Button
             key={project.entityId}
             variant="sidebar"
-            className="min-w-0 justify-start"
+            className="max-w-full min-w-0 shrink-0 justify-start md:w-full"
+            title={project.name}
             aria-current={selectedId === project.entityId ? "page" : undefined}
             onClick={() => onSelect(project.entityId)}
           >

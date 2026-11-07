@@ -27,7 +27,7 @@ export function ConversationSidebar({
       id="conversation-sidebar"
       aria-label="Conversations"
       aria-busy={loading}
-      className={`${mobileOpen ? "flex" : "hidden"} h-full w-full min-w-0 shrink-0 flex-col bg-sidebar text-sidebar-foreground md:flex`}
+      className={`${mobileOpen ? "flex" : "hidden"} min-h-0 w-full min-w-0 flex-1 flex-col bg-sidebar text-sidebar-foreground md:flex md:h-full`}
     >
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-2 py-4">
         {error && (

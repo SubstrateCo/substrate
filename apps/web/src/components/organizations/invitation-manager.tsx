@@ -58,8 +58,14 @@ export function InvitationManager({ organizationId }: { organizationId: string }
       loadError={invitations.error}
       message={message}
       onRetry={() => void invitations.refetch()}
-      onInvite={(email, role, resend) => invite.mutate({ email, role, resend })}
-      onCancel={(id) => cancel.mutate(id)}
+      onInvite={(email, role, resend) => {
+        cancel.reset();
+        invite.mutate({ email, role, resend });
+      }}
+      onCancel={(id) => {
+        invite.reset();
+        cancel.mutate(id);
+      }}
     />
   );
 }

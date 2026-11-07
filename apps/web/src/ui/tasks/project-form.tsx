@@ -27,7 +27,7 @@ export function ProjectForm({
   const submitLabel = project ? "Save project" : "Create project";
   return (
     <form
-      className="mx-auto w-full max-w-xl space-y-5 p-6"
+      className="mx-auto w-full max-w-xl min-w-0 space-y-5 p-4 sm:p-6"
       onSubmit={(event) => {
         event.preventDefault();
         if (!pending) onSubmit({ name, description });
@@ -59,7 +59,7 @@ export function ProjectForm({
           />
         </div>
         <FormMessage error={error} />
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <PendingButton disabled={!name.trim()} pending={pending} pendingLabel="Saving project…">
             {submitLabel}
           </PendingButton>
