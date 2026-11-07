@@ -4,9 +4,11 @@ import { createChannel } from "../messaging/test-support.js";
 import { test } from "../test-support/fixture.js";
 import { expect } from "@playwright/test";
 
-test("empty notifications are centered below the filters", async ({ desktop }) => {
+test("notifications center empty states and persist bulk mark-read across reload", async ({
+  desktop,
+}) => {
   await desktop.provision();
-  const { page } = desktop;
+  const { page, browser, member } = desktop;
   await page
     .getByRole("navigation", { name: "Apps", exact: true })
     .getByRole("button", { name: "Notifications", exact: true })
@@ -33,13 +35,10 @@ test("empty notifications are centered below the filters", async ({ desktop }) =
       ),
     ).toBeLessThanOrEqual(1);
   }
-});
-
-test("compact notifications mark all activity read and persist across reload", async ({
-  desktop,
-}) => {
-  await desktop.provision();
-  const { page, browser, member } = desktop;
+  await page
+    .getByRole("navigation", { name: "Apps", exact: true })
+    .getByRole("button", { name: "Messages", exact: true })
+    .click();
   await provisionVerifiedAccount(browser, desktop.mailpit, member);
   const invitation = await page.evaluate(async (email) => {
     const response = await fetch("/api/auth/organization/invite-member", {
@@ -90,7 +89,6 @@ test("compact notifications mark all activity read and persist across reload", a
     .getByRole("navigation", { name: "Apps", exact: true })
     .getByRole("button", { name: "Notifications", exact: true })
     .click();
-  const panel = page.getByRole("region", { name: "Notifications", exact: true });
   await expect(panel.getByRole("heading", { name: "Notifications", exact: true })).toHaveCSS(
     "font-size",
     "14px",

@@ -201,7 +201,6 @@ for (const size of [
           if (element instanceof HTMLAnchorElement) element.blur();
         });
       }
-      await page.screenshot({ path: test.info().outputPath("button-variant-matrix.png") });
     });
   }
 }

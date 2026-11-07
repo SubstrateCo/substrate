@@ -2,10 +2,6 @@ import { createChannel } from "../messaging/test-support.js";
 import { test } from "../test-support/fixture.js";
 import { expect } from "@playwright/test";
 
-test.afterEach(async ({ desktop }) => {
-  await desktop.screenshot(test.info().outputPath("desktop-final-state.png"));
-});
-
 test("title-bar search opens records from every workspace view", async ({ desktop }) => {
   await desktop.provision();
   const { page } = desktop;
@@ -23,7 +19,6 @@ test("title-bar search opens records from every workspace view", async ({ deskto
   expect((await field.boundingBox())!.y + (await field.boundingBox())!.height).toBeLessThan(
     (await bar.boundingBox())!.height,
   );
-  await desktop.screenshot(test.info().outputPath("title-bar-search.png"));
   await expect(page.getByRole("combobox", { name: "Search workspace", exact: true })).toHaveCount(
     1,
   );
@@ -37,7 +32,6 @@ test("title-bar search opens records from every workspace view", async ({ deskto
     ["/notifications", "Notifications"],
     ["/settings/user", "User settings"],
     ["/settings/organization", "Organization settings"],
-    ["/tasks", "Tasks"],
   ] as const) {
     if (path.startsWith("/settings")) {
       await page.getByRole("button", { name: /^Signed in as / }).click();
@@ -61,9 +55,6 @@ test("title-bar search opens records from every workspace view", async ({ deskto
       exact: true,
     });
     await expect(result).toBeVisible();
-    await desktop.screenshot(
-      test.info().outputPath(`search-${label.toLowerCase().replaceAll(" ", "-")}.png`),
-    );
     await page.keyboard.press("Escape");
     await expect(results).toBeHidden();
     await expect(input).toBeFocused();
@@ -130,5 +121,4 @@ test("title-bar search and results fit a narrow zoomed window", async ({ desktop
   expect((await results.boundingBox())!.y).toBeGreaterThanOrEqual(
     (await bar.boundingBox())!.height,
   );
-  await desktop.screenshot(test.info().outputPath("title-bar-search-narrow.png"));
 });

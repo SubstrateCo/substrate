@@ -37,50 +37,6 @@ async function fitsWindow(locator: Locator, page: Page) {
   expect(clippedBy, "The control fits inside every clipping or scrolling panel").toEqual([]);
 }
 
-test("Incoming invitation pagination survives expiry updates in Electron", async ({
-  desktop,
-  browser,
-}) => {
-  test.setTimeout(120_000);
-  await desktop.provision();
-  const page = desktop.page;
-  await desktop.app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]!.setContentSize(320, 568);
-  });
-  await page.clock.install();
-  const other = await browser.newContext({ baseURL: desktop.rendererOrigin });
-  try {
-    await provisionVerifiedAccount({ request: other.request }, desktop.mailpit, desktop.member);
-    for (let index = 0; index < 11; index++) {
-      const organization = await provisionWorkspaceSession(
-        other.request,
-        `Incoming ${index}`,
-        `incoming-${index}-${desktop.suffix}`,
-      );
-      const invited = await other.request.post("/api/auth/organization/invite-member", {
-        headers: { origin: desktop.rendererOrigin },
-        data: { organizationId: organization.id, email: desktop.owner.email, role: "member" },
-      });
-      expect(invited.ok()).toBe(true);
-    }
-    await desktop.openPath("/settings/user/invitations");
-    const pagination = page.getByRole("navigation", {
-      name: "Your invitations pagination",
-      exact: true,
-    });
-    const next = pagination.getByRole("button", { name: "Go to next page", exact: true });
-    await next.click();
-    await expect(next).toBeDisabled();
-    await page.clock.runFor(2100);
-    await expect(next).toBeDisabled();
-    await expect(
-      pagination.getByRole("button", { name: "Go to previous page", exact: true }),
-    ).toBeEnabled();
-  } finally {
-    await other.close();
-  }
-});
-
 for (const size of [
   { width: 1024, height: 768 },
   { width: 700, height: 768 },
@@ -103,7 +59,6 @@ for (const size of [
       .poll(() => page.evaluate(() => ({ width: innerWidth, height: innerHeight })))
       .toEqual(size);
     await fitsWindow(page.getByRole("button", { name: "Sign in with browser", exact: true }), page);
-    await page.screenshot({ path: test.info().outputPath("sign-in.png") });
     await desktop.provision();
     await page.clock.install();
 
@@ -186,10 +141,6 @@ for (const size of [
       actionEdges[1],
       "Grouped actions have matching bounds and visible outer border edges",
     ).toEqual(actionEdges[0]);
-    await invitations
-      .getByRole("group", { name: "Invitation actions", exact: true })
-      .first()
-      .screenshot({ path: test.info().outputPath("invitation-action-group.png") });
     await resend.focus();
     await page.clock.runFor(2100);
     await expect(resend).toBeFocused();
@@ -208,7 +159,6 @@ for (const size of [
       invitations.getByRole("button", { name: "Cancel", exact: true }).first(),
       page,
     );
-    await page.screenshot({ path: test.info().outputPath("invitations.png") });
     const firstPage = await invitations.innerText();
     const pagination = page.getByRole("navigation", {
       name: "Invitations pagination",
@@ -232,7 +182,6 @@ for (const size of [
       pagination.getByRole("button", { name: "Go to next page", exact: true }),
       page,
     );
-    await page.screenshot({ path: test.info().outputPath("pagination.png") });
     const previousBounds = await pagination
       .getByRole("button", { name: "Go to previous page", exact: true })
       .boundingBox();
@@ -290,7 +239,6 @@ for (const size of [
       await crop.getByRole("slider", { name: "Zoom", exact: true }).press("End");
       await expect(crop.getByRole("button", { name: "Save picture", exact: true })).toBeEnabled();
       await fitsWindow(crop.getByRole("button", { name: "Save picture", exact: true }), page);
-      await page.screenshot({ path: test.info().outputPath(`${kind}-crop.png`) });
       await crop.getByRole("button", { name: "Cancel", exact: true }).click();
       await expect(crop).toBeHidden();
       await expect(
@@ -313,13 +261,11 @@ for (const size of [
       const remove = region.getByRole("button", { name: "Remove picture", exact: true });
       await expect(remove).toHaveAttribute("data-variant", "destructive");
       await fitsWindow(remove, page);
-      await page.screenshot({ path: test.info().outputPath(`${kind}-picture.png`) });
       await remove.click();
       await expect(saved).toHaveCount(0);
     }
     const navigation = page.getByRole("navigation", { name: "User settings", exact: true });
     for (const link of await navigation.getByRole("link").all()) await fitsWindow(link, page);
-    await page.screenshot({ path: test.info().outputPath("profile.png") });
     await navigation.getByRole("link", { name: "Invitations", exact: true }).click();
     await expect(
       page.getByText("You have no pending invitations.", { exact: true }).filter({ visible: true }),
@@ -345,14 +291,12 @@ for (const size of [
       await fitsWindow(review, page);
       await expect(review).toHaveAttribute("data-size", "icon");
       await expect(review).toHaveText("");
-      await page.screenshot({ path: test.info().outputPath("incoming-invitation.png") });
       await review.click();
       await expect(
         page.getByRole("heading", { name: "Join your team", exact: true }),
       ).toBeVisible();
       const accept = page.getByRole("button", { name: "Accept invitation", exact: true });
       await fitsWindow(accept, page);
-      await page.screenshot({ path: test.info().outputPath("accept-invitation.png") });
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
         true,
       );
@@ -382,7 +326,6 @@ for (const size of [
     const create = page.getByRole("button", { name: "Create workspace", exact: true });
     await create.scrollIntoViewIfNeeded();
     await fitsWindow(create, page);
-    await page.screenshot({ path: test.info().outputPath("workspace-creation.png") });
     await create.click();
     await expect(
       page.getByRole("button", { name: `Responsive ${size.width} ▾`, exact: true }),

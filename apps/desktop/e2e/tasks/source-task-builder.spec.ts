@@ -108,10 +108,6 @@ for (const scenario of [
     const form = builder.getByRole("form", { name: "New task", exact: true });
     await form.getByLabel("Task title", { exact: true }).fill("Add a projects empty state");
     await form.getByLabel("Task title", { exact: true }).scrollIntoViewIfNeeded();
-    await page.screenshot({
-      path: test.info().outputPath(`source-task-collapsed-${scenario.kind}-${scenario.width}.png`),
-      animations: "disabled",
-    });
     await expect(builder.getByRole("combobox")).toHaveCount(4);
     await fits(builder, builder.getByRole("combobox"));
     await fits(form, form.getByRole("textbox"));
@@ -132,10 +128,6 @@ for (const scenario of [
     await sourcePreview.getByText("Linked to this message", { exact: true }).click();
     await expect(sourcePreview.getByText(source, { exact: true })).toBeVisible();
     await fits(sourcePreview, sourcePreview.locator("blockquote"));
-    await page.screenshot({
-      path: test.info().outputPath(`source-task-${scenario.kind}-${scenario.width}.png`),
-      animations: "disabled",
-    });
     await form.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(builder).toHaveCount(0);
     expect(taskCreations, "Cancel does not create a task").toBe(0);

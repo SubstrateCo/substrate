@@ -51,10 +51,6 @@ test("project actions, task dialogs, inline settings and linked discussions stay
     "text-transform",
     "uppercase",
   );
-  await page.screenshot({
-    path: test.info().outputPath("project-tasks-dark.png"),
-    animations: "disabled",
-  });
   await page.getByRole("button", { name: "Add In Progress task", exact: true }).click();
   await expect(dialog.getByRole("combobox", { name: "Status", exact: true })).toContainText(
     "In Progress",
@@ -71,10 +67,6 @@ test("project actions, task dialogs, inline settings and linked discussions stay
   await form.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(form.getByRole("button", { name: "Save changes", exact: true })).toBeDisabled();
   await expect(page.getByTitle("A clearer project workspace", { exact: true })).toBeVisible();
-  await page.screenshot({
-    path: test.info().outputPath("project-settings-dark.png"),
-    animations: "disabled",
-  });
   await page
     .getByRole("navigation", { name: "Apps", exact: true })
     .getByRole("button", { name: "Messages", exact: true })

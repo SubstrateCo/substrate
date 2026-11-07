@@ -41,7 +41,7 @@ for (const size of [
 ]) {
   test(`agent settings and native skill actions fit ${size.width}x${size.height} in Electron`, async ({
     desktop,
-  }, testInfo) => {
+  }) => {
     test.setTimeout(120_000);
     await desktop.provision();
     await desktop.app.evaluate(({ BrowserWindow }, dimensions) => {
@@ -50,15 +50,12 @@ for (const size of [
       window.setContentSize(dimensions.width, dimensions.height);
     }, size);
     const page = desktop.page;
-    const capture = (name: string) =>
-      page.screenshot({ path: testInfo.outputPath(name), animations: "disabled" });
     await expect
       .poll(() => page.evaluate(() => ({ width: innerWidth, height: innerHeight })))
       .toEqual(size);
     await page.goto(new URL("/settings/user/agents", desktop.rendererOrigin).href);
     const settings = page.getByRole("region", { name: "Agents", exact: true });
     await expectNoHorizontalOverflow(settings);
-    await capture("settings.png");
 
     const configuration = page.getByRole("combobox", {
       name: "Configuration harness",
@@ -66,7 +63,6 @@ for (const size of [
     });
     await configuration.click();
     await expect(page.getByRole("option", { name: "Claude Code", exact: true })).toBeVisible();
-    await capture("configuration-harness.png");
     await page.getByRole("option", { name: "Claude Code", exact: true }).click();
     await expect(configuration).toHaveText("Claude Code");
     await configuration.click();
@@ -81,7 +77,6 @@ for (const size of [
     await page.getByRole("button", { name: "Create skill", exact: true }).click();
     const skill = page.getByRole("dialog", { name: "Create skill", exact: true });
     await expectDialogFits(skill);
-    await capture("skill-editor-top.png");
     await skill.getByLabel("Skill name", { exact: true }).fill(skillName);
     await skill
       .getByLabel("Description", { exact: true })
@@ -97,7 +92,6 @@ for (const size of [
       .toBeGreaterThan(skillScroll);
     await skill.getByRole("button", { name: "Save skill", exact: true }).scrollIntoViewIfNeeded();
     await expect.poll(() => skill.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
-    await capture("skill-editor-bottom.png");
     await skill.getByRole("button", { name: "Save skill", exact: true }).click();
     await expect(skill).toBeHidden();
     await expectNoHorizontalOverflow(page.getByRole("region", { name: "Skills", exact: true }));
@@ -116,13 +110,11 @@ for (const size of [
     await page
       .getByRole("button", { name: `Edit ${skillName}`, exact: true })
       .scrollIntoViewIfNeeded();
-    await capture("skill-catalog.png");
 
     const agentName = "Responsive" + "x".repeat(170);
     await page.getByRole("button", { name: "Create agent", exact: true }).click();
     const agent = page.getByRole("dialog", { name: "Create agent", exact: true });
     await expectDialogFits(agent);
-    await capture("agent-editor-top.png");
     await agent.getByLabel("Agent name", { exact: true }).fill(agentName);
     await agent.getByRole("button", { name: /^Harness & model:/ }).click();
     await page.getByRole("button", { name: "Claude Code", exact: true }).click();
@@ -138,7 +130,6 @@ for (const size of [
     await expect(agent.getByRole("switch", { name: "Enabled", exact: true })).toBeInViewport();
     await agent.getByRole("button", { name: "Save agent", exact: true }).scrollIntoViewIfNeeded();
     await expect(agent.getByRole("button", { name: "Save agent", exact: true })).toBeInViewport();
-    await capture("agent-editor-bottom.png");
     await agent.getByRole("button", { name: "Save agent", exact: true }).click();
     await expect(agent).toBeHidden();
     const agents = page.getByRole("region", { name: "Agent actors", exact: true });
@@ -147,7 +138,6 @@ for (const size of [
     await page
       .getByRole("button", { name: `Edit ${agentName}`, exact: true })
       .scrollIntoViewIfNeeded();
-    await capture("catalog.png");
     await page.getByRole("button", { name: `Edit ${agentName}`, exact: true }).click();
     const editedAgent = page.getByRole("dialog", { name: "Edit agent", exact: true });
     await expectDialogFits(editedAgent);
@@ -179,7 +169,6 @@ for (const size of [
       await page.getByRole("button", { name: `Delete ${name}`, exact: true }).click();
       const confirmation = page.getByRole("dialog", { name: `Delete ${name}?`, exact: true });
       await expect(confirmation).toBeVisible();
-      await capture(name === agentName ? "delete-agent.png" : "delete-skill.png");
       await expectDialogFits(confirmation);
       await confirmation.getByRole("button", { name: "Cancel", exact: true }).click();
       await expect(confirmation).toBeHidden();

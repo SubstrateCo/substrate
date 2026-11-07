@@ -55,7 +55,6 @@ async function review(page: Page, name: string) {
     )
     .toBe(true);
   await page.evaluate(() => window.scrollTo(0, 0));
-  await page.screenshot({ path: test.info().outputPath(`${name}.png`), fullPage: true });
 }
 
 for (const size of [

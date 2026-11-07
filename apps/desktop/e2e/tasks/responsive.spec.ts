@@ -87,29 +87,21 @@ for (const size of [
     await page.getByRole("button", { name: "New task", exact: true }).click();
     const form = page.getByRole("form", { name: "New task", exact: true });
     await fits(page, form);
-    await page.screenshot({ path: test.info().outputPath(`tasks-form-${size.width}.png`) });
     const taskTitle = `Checklist ${"t".repeat(200)}`;
     await form.getByLabel("Task title", { exact: true }).fill(taskTitle);
     await form.getByLabel("Task description", { exact: true }).fill("description".repeat(100));
     for (const label of ["Status", "Priority", "Assignee"]) {
       await form.getByRole("combobox", { name: label, exact: true }).click();
       await fits(page, page.getByRole("listbox"));
-      if (label === "Assignee")
-        await page.screenshot({
-          path: test.info().outputPath(`tasks-popover-${size.width}.png`),
-          animations: "disabled",
-        });
       await page.keyboard.press("Escape");
     }
     await form.getByLabel("Due date", { exact: true }).fill("2026-12-15");
     await reachable(form.getByRole("button", { name: "Create task", exact: true }));
     await reachable(form.getByRole("button", { name: "Cancel", exact: true }));
-    await page.screenshot({ path: test.info().outputPath(`tasks-form-actions-${size.width}.png`) });
     await form.getByRole("button", { name: "Create task", exact: true }).click();
     const detail = page.getByRole("region", { name: "Task details", exact: true });
     await fits(page, detail);
     await detail.getByRole("heading", { name: taskTitle, exact: true }).scrollIntoViewIfNeeded();
-    await page.screenshot({ path: test.info().outputPath(`tasks-detail-${size.width}.png`) });
     await reachable(detail.getByRole("button", { name: "Close task", exact: true }));
     await reachable(detail.getByRole("button", { name: "Add subtask", exact: true }));
     await reachable(detail.getByRole("button", { name: "Edit task", exact: true }));
@@ -141,7 +133,6 @@ for (const size of [
       sharing.getByRole("combobox", { name: `${desktop.owner.name} permission`, exact: true }),
     ).toBeDisabled();
     await reachable(sharing.getByRole("button", { name: "Add access", exact: true }));
-    await page.screenshot({ path: test.info().outputPath(`tasks-sharing-${size.width}.png`) });
     await sharing.getByRole("button", { name: "Add access", exact: true }).click();
     const addDialog = page.getByRole("dialog", { name: "Add project access", exact: true });
     await addDialog
@@ -157,9 +148,6 @@ for (const size of [
     await fits(page, review);
     await reachable(review.getByRole("button", { name: "Confirm access", exact: true }));
     await reachable(review.getByRole("button", { name: "Cancel access change", exact: true }));
-    await page.screenshot({
-      path: test.info().outputPath(`tasks-access-review-${size.width}.png`),
-    });
     await review.getByRole("button", { name: "Cancel access change", exact: true }).click();
     await expect(
       sharing.getByRole("listitem").filter({ hasText: desktop.member.name }),

@@ -90,7 +90,6 @@ for (const size of [
     const search = page.getByRole("region", { name: "Workspace search", exact: true });
     const result = search.getByRole("link", { name: `conversation · ${title}`, exact: true });
     await expect(result).toBeVisible();
-    await page.screenshot({ path: test.info().outputPath("search.png"), animations: "disabled" });
     await withinViewport(page, search);
     await withinViewport(page, result);
     await withinViewport(
@@ -115,10 +114,6 @@ for (const size of [
 
     await page.getByRole("button", { name: /^Signed in as / }).click();
     const userMenu = page.getByRole("dialog", { name: "User actions", exact: true });
-    await page.screenshot({
-      path: test.info().outputPath("user-menu.png"),
-      animations: "disabled",
-    });
     await withinViewport(page, userMenu);
     expect(
       await userMenu.evaluate((element) => element.scrollWidth - element.clientWidth),
@@ -146,10 +141,6 @@ for (const size of [
       page,
       notifications.getByRole("heading", { name: "Notifications", exact: true }),
     );
-    await page.screenshot({
-      path: test.info().outputPath("notifications.png"),
-      animations: "disabled",
-    });
     await notifications.getByRole("button", { name: /^Unread/ }).click();
     await expect(notifications.getByText("You’re all caught up", { exact: true })).toBeVisible();
     expect(

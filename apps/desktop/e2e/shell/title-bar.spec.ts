@@ -7,8 +7,9 @@ test("native title bar stays clear of sign-in, workspace and offline content", a
 }) => {
   const page = desktop.page;
   const bar = page.getByRole("banner", { name: "Window title bar" });
+  const theme = page.locator("[data-theme-control]");
+  await expect(theme).toBeVisible();
   await expect(bar).toBeVisible();
-  await page.screenshot({ path: test.info().outputPath("title-bar-sign-in.png") });
   expect(
     await desktop.app.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows()[0]!.isMenuBarVisible(),
@@ -59,7 +60,6 @@ test("native title bar stays clear of sign-in, workspace and offline content", a
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(
     await page.evaluate(() => innerHeight),
   );
-  await page.screenshot({ path: test.info().outputPath("title-bar-workspace.png") });
   await desktop.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.maximize());
   await expect
     .poll(() =>
@@ -73,6 +73,13 @@ test("native title bar stays clear of sign-in, workspace and offline content", a
       desktop.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.isMaximized()),
     )
     .toBe(false);
+
+  await desktop.openPath("/organizations");
+  await expect(page.getByRole("heading", { name: "Your workspaces", exact: true })).toBeVisible();
+  await expect(theme).toBeVisible();
+  await page.getByRole("button", { name: desktop.workspace, exact: true }).click();
+  await expect(workspace).toBeVisible();
+  await expect(theme).toHaveCount(0);
 
   await desktop.app.evaluate(
     async ({ BrowserWindow }, path) => {
@@ -90,20 +97,6 @@ test("native title bar stays clear of sign-in, workspace and offline content", a
   await retry.click();
   await expect(bar).toBeVisible();
   await expect(workspace).toBeVisible();
-});
-
-test("theme control follows non-workspace layouts", async ({ desktop }) => {
-  const page = desktop.page;
-  const theme = page.locator("[data-theme-control]");
-  await expect(theme).toBeVisible();
-  await desktop.provision();
-  await expect(theme).toHaveCount(0);
-  await desktop.openPath("/organizations");
-  await expect(page.getByRole("heading", { name: "Your workspaces", exact: true })).toBeVisible();
-  await expect(theme).toBeVisible();
-  await page.getByRole("button", { name: desktop.workspace, exact: true }).click();
-  await expect(page.locator("[data-workspace-shell]")).toBeVisible();
-  await expect(theme).toHaveCount(0);
   await desktop.signout();
   await expect(theme).toBeVisible();
 });
@@ -125,5 +118,4 @@ test("title bar and auth content fit narrow windows at app zoom", async ({ deskt
   expect(content!.y).toBeGreaterThanOrEqual((await bar.boundingBox())!.height);
   expect(content!.x + content!.width).toBeLessThanOrEqual(viewport.width);
   expect(content!.y + content!.height).toBeLessThanOrEqual(viewport.height);
-  await page.screenshot({ path: test.info().outputPath("title-bar-narrow-zoom.png") });
 });

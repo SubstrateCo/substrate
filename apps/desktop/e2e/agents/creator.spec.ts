@@ -178,9 +178,7 @@ test("agent project access requires review and persists grants and revocation", 
   await expect(editor.getByRole("tabpanel")).toContainText("No project grants.");
 });
 
-test("agent creator and model picker fit desktop and narrow windows", async ({
-  desktop,
-}, testInfo) => {
+test("agent creator and model picker fit desktop and narrow windows", async ({ desktop }) => {
   test.setTimeout(120_000);
   await desktop.provision();
   const page = desktop.page;
@@ -229,10 +227,6 @@ test("agent creator and model picker fit desktop and narrow windows", async ({
       expect(bodyBounds).not.toBeNull();
       expect(footerBounds).not.toBeNull();
       expect(bodyBounds!.y + bodyBounds!.height).toBeLessThanOrEqual(footerBounds!.y + 1);
-      await page.screenshot({
-        path: testInfo.outputPath(`${size.width}-${size.height}-${tab.replaceAll(" ", "-")}.png`),
-        animations: "disabled",
-      });
     }
     await editor.getByRole("button", { name: /^Harness & model:/ }).click();
     const picker = page.getByRole("dialog", { name: "Harness and model picker", exact: true });
@@ -253,16 +247,8 @@ test("agent creator and model picker fit desktop and narrow windows", async ({
         }),
       )
       .toBe(true);
-    await page.screenshot({
-      path: testInfo.outputPath(`${size.width}-${size.height}-model-picker.png`),
-      animations: "disabled",
-    });
     await page.emulateMedia({ colorScheme: "dark" });
     await expect(page.locator("html")).toHaveClass(/dark/);
-    await page.screenshot({
-      path: testInfo.outputPath(`${size.width}-${size.height}-model-picker-dark.png`),
-      animations: "disabled",
-    });
     await page.emulateMedia({ colorScheme: "light" });
     const search = page.getByPlaceholder("Search models…", { exact: true });
     await expect(search).toBeVisible();

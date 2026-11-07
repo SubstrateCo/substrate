@@ -23,30 +23,31 @@ const png = Buffer.from(
 type APIClient = { request: APIRequestContext };
 
 const test = base.extend<{
+  owner: APIClient;
   accounts: { a: APIClient; b: APIClient };
   anonymous: APIRequestContext;
 }>({
-  accounts: async ({ request }, use) => {
-    const contexts = await Promise.all([
-      playwrightRequest.newContext({ baseURL: origin }),
-      playwrightRequest.newContext({ baseURL: origin }),
-    ]);
+  owner: async ({ request }, use) => {
+    const suffix = randomUUID();
+    await provisionVerifiedAccount({ request }, new Mailpit(request), {
+      name: `File owner ${suffix}`,
+      email: `file-owner-${suffix}@example.test`,
+      password: `Files-${randomUUID()}!`,
+    });
+    await use({ request });
+  },
+  accounts: async ({ owner }, use) => {
+    const request = await playwrightRequest.newContext({ baseURL: origin });
     try {
-      const [a, b] = contexts.map((request) => ({ request }));
-      const mailpit = new Mailpit(request);
-      await Promise.all(
-        [a!, b!].map((page, index) => {
-          const suffix = randomUUID();
-          return provisionVerifiedAccount(page, mailpit, {
-            name: `File security ${index} ${suffix}`,
-            email: `file-security-${suffix}@example.test`,
-            password: `Files-${randomUUID()}!`,
-          });
-        }),
-      );
-      await use({ a: a!, b: b! });
+      const suffix = randomUUID();
+      await provisionVerifiedAccount({ request }, new Mailpit(request), {
+        name: `File security ${suffix}`,
+        email: `file-security-${suffix}@example.test`,
+        password: `Files-${randomUUID()}!`,
+      });
+      await use({ a: { request }, b: owner });
     } finally {
-      await Promise.all(contexts.map((context) => context.dispose()));
+      await request.dispose();
     }
   },
   anonymous: async ({ baseURL }, use) => {
@@ -152,10 +153,10 @@ test("file endpoints reject unauthenticated requests without exposing upload dat
 });
 
 test("signed storage uploads enforce declared size and content type and keep objects private", async ({
-  accounts,
+  owner,
   anonymous,
 }) => {
-  const ticket = await createUpload(accounts.b, "avatar", "storage-boundary.png", "image/png", png);
+  const ticket = await createUpload(owner, "avatar", "storage-boundary.png", "image/png", png);
   const put = async (bytes: Buffer, headers: Record<string, string>) => {
     try {
       return await anonymous.put(ticket.uploadUrl, { headers, data: bytes });
@@ -404,24 +405,24 @@ test("workspace pictures are readable by members but cannot be managed by member
 });
 
 test("an image MIME declaration cannot make non-image bytes a completed avatar", async ({
-  accounts,
+  owner,
   anonymous,
 }) => {
-  const { b } = accounts;
-  const before = await image(b);
+  const before = await image(owner);
   const bytes = Buffer.from(`<html>Not an image ${randomUUID()}</html>`);
-  const ticket = await createUpload(b, "avatar", "spoofed.png", "image/png", bytes);
+  const ticket = await createUpload(owner, "avatar", "spoofed.png", "image/png", bytes);
   await putBytes(anonymous, ticket, bytes);
-  await rejected(await complete(b, ticket), [ticket.uploadUrl]);
-  expect(await image(b), "Rejected content leaves the persisted profile unchanged").toBe(before);
+  await rejected(await complete(owner, ticket), [ticket.uploadUrl]);
+  expect(await image(owner), "Rejected content leaves the persisted profile unchanged").toBe(
+    before,
+  );
 });
 
 for (const purpose of ["avatar", "organization-logo"] as const) {
   test(`native picture updates attach and clear a managed ${purpose} atomically`, async ({
-    accounts,
+    owner,
     anonymous,
   }) => {
-    const { b: owner } = accounts;
     let organizationId: string | undefined;
     if (purpose === "organization-logo") {
       const suffix = randomUUID();
@@ -506,11 +507,10 @@ for (const purpose of ["avatar", "organization-logo"] as const) {
   });
 }
 
-test("Better Auth organization creation cannot persist an unmanaged logo", async ({ accounts }) => {
-  const { b } = accounts;
+test("Better Auth organization creation cannot persist an unmanaged logo", async ({ owner }) => {
   const suffix = randomUUID();
   const slug = `unmanaged-logo-${suffix}`;
-  const created = await b.request.post("/api/auth/organization/create", {
+  const created = await owner.request.post("/api/auth/organization/create", {
     headers: { origin },
     data: {
       name: `Unmanaged logo ${suffix}`,
@@ -520,7 +520,7 @@ test("Better Auth organization creation cannot persist an unmanaged logo", async
   });
   if (!created.ok()) await rejected(created);
 
-  const listed = await b.request.get("/api/auth/organization/list");
+  const listed = await owner.request.get("/api/auth/organization/list");
   expect(listed.ok()).toBe(true);
   const organizations: { id: string; slug: string; logo?: string | null }[] = await listed.json();
   const organization = organizations.find((candidate) => candidate.slug === slug);
@@ -531,7 +531,7 @@ test("Better Auth organization creation cannot persist an unmanaged logo", async
       organization,
       "Accepted creation persists the organization without the supplied logo",
     ).toBeDefined();
-    const fetched = await b.request.get("/api/auth/organization/get-full-organization", {
+    const fetched = await owner.request.get("/api/auth/organization/get-full-organization", {
       params: { organizationId: organization!.id },
     });
     expect(fetched.ok()).toBe(true);
@@ -541,37 +541,38 @@ test("Better Auth organization creation cannot persist an unmanaged logo", async
 });
 
 test("Better Auth profile and organization updates cannot bypass managed picture attachments", async ({
-  accounts,
+  owner,
 }) => {
-  const { b } = accounts;
   const external = `https://example.test/unmanaged-${randomUUID()}.png`;
-  const before = await image(b);
+  const before = await image(owner);
   // A server may reject the field or ignore it, but must never persist the supplied URL.
-  const updatedUser = await b.request.post("/api/auth/update-user", {
+  const updatedUser = await owner.request.post("/api/auth/update-user", {
     headers: { origin },
     data: { image: external },
   });
   expect(updatedUser.status()).toBeLessThan(500);
-  expect(await image(b), "Native profile updates cannot persist an unmanaged image").toBe(before);
+  expect(await image(owner), "Native profile updates cannot persist an unmanaged image").toBe(
+    before,
+  );
 
   const suffix = randomUUID();
-  const created = await b.request.post("/api/auth/organization/create", {
+  const created = await owner.request.post("/api/auth/organization/create", {
     headers: { origin },
     data: { name: `File security ${suffix}`, slug: `file-security-${suffix}` },
   });
   expect(created.ok()).toBe(true);
   const organization: { id: string; logo?: string | null } = await created.json();
-  const activated = await b.request.post("/api/auth/organization/set-active", {
+  const activated = await owner.request.post("/api/auth/organization/set-active", {
     headers: { origin },
     data: { organizationId: organization.id },
   });
   expect(activated.ok()).toBe(true);
-  const updatedOrganization = await b.request.post("/api/auth/organization/update", {
+  const updatedOrganization = await owner.request.post("/api/auth/organization/update", {
     headers: { origin },
     data: { organizationId: organization.id, data: { logo: external } },
   });
   expect(updatedOrganization.status()).toBeLessThan(500);
-  const fetched = await b.request.get("/api/auth/organization/get-full-organization", {
+  const fetched = await owner.request.get("/api/auth/organization/get-full-organization", {
     params: { organizationId: organization.id },
   });
   expect(fetched.ok()).toBe(true);

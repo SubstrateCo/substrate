@@ -58,8 +58,6 @@ for (const size of [
       window.setContentSize(size.width, size.height);
     }, size);
     const page = desktop.page;
-    const capture = (name: string) =>
-      page.screenshot({ animations: "disabled", path: test.info().outputPath(name) });
     const project = await page.evaluate(async () => {
       const session = await (await fetch("/api/v1/session")).json();
       return (
@@ -81,7 +79,6 @@ for (const size of [
     const sidebar = page.getByRole("complementary", { name: "Conversations", exact: true });
     const showConversations = page.getByRole("button", { name: "Show conversations", exact: true });
     if (size.width < 768) await showConversations.click();
-    await capture("conversations.png");
     await withinViewport(page, sidebar);
     const createChannel = sidebar.getByRole("button", { name: "Create channel", exact: true });
     await createChannel.click();
@@ -95,12 +92,10 @@ for (const size of [
     await page.getByRole("button", { name: "Create channel", exact: true }).last().click();
     const welcome = page.getByRole("heading", { name: `Welcome to #${longName}`, exact: true });
     await expect(welcome).toBeVisible();
-    await capture("long-channel-empty.png");
     await withinViewport(page, welcome);
     if (size.width < 768) await showConversations.click();
     await createChannel.click();
     await page.getByLabel("Channel name", { exact: true }).fill("responsive-channel");
-    await capture("create-channel.png");
     const create = page.getByRole("button", { name: "Create channel", exact: true }).last();
     await withinViewport(page, create);
     await create.click();
@@ -127,13 +122,11 @@ for (const size of [
     const emojiPicker = page.locator('[data-slot="popover-content"]');
     await withinViewport(page, emojiPicker);
     await expect(emojiPicker.getByRole("button").last()).toBeInViewport({ ratio: 1 });
-    await capture("emoji.png");
     await withinViewport(page, page.getByRole("button", { name: "🚀", exact: true }));
     await page.getByRole("button", { name: "🚀", exact: true }).click();
     await expect(
       root.getByRole("button", { name: "🚀, 1 reactions", exact: true }),
     ).toHaveAttribute("aria-pressed", "true");
-    await capture("channel.png");
 
     for (const action of ["Create task", "Link existing work"]) {
       await actions.hover();
@@ -150,12 +143,10 @@ for (const size of [
         const title = panel.getByLabel("Task title", { exact: true });
         await title.fill("A task from a narrow conversation");
         await title.scrollIntoViewIfNeeded();
-        await capture("create-task.png");
         await withinViewport(page, title);
       } else {
         await panel.getByRole("button", { name: "Projects", exact: true }).click();
         await expect(panel.getByText("Responsive messaging work", { exact: true })).toBeVisible();
-        await capture("link-work.png");
       }
       const cancel = panel.getByRole("button", { name: "Cancel", exact: true });
       await cancel.scrollIntoViewIfNeeded();
@@ -167,7 +158,6 @@ for (const size of [
           exact: true,
         }),
       );
-      await capture(action === "Create task" ? "create-task-actions.png" : "link-work-actions.png");
       await cancel.click();
       await expect(panel).toBeHidden();
     }
@@ -198,7 +188,6 @@ for (const size of [
       )
       .toBe(true);
     await expect(unlink).toHaveAttribute("data-variant", "destructive");
-    await capture("linked-work.png");
     await unlink.click();
     await expect(unlink).toHaveCount(0);
 
@@ -221,7 +210,6 @@ for (const size of [
       .fill("Desktop Owner");
     const referenceOption = references.getByRole("option").filter({ hasText: "Desktop Owner" });
     await expect(referenceOption).toBeVisible();
-    await capture("references.png");
     await expect(referenceOption).toBeInViewport({ ratio: 1 });
     await referenceOption.click();
     await expect(composer).toHaveValue(/@\[person:/);
@@ -260,7 +248,6 @@ for (const size of [
     ]) {
       await withinViewport(page, replyMessage.getByRole("button", { name: action, exact: true }));
     }
-    await capture("thread.png");
     await thread.getByRole("button", { name: "Close thread", exact: true }).click();
     await withinViewport(page, composer);
 
@@ -269,7 +256,6 @@ for (const size of [
       .getByLabel("Add people by exact email address", { exact: true })
       .fill(desktop.member.email);
     const addPeople = page.getByRole("button", { name: "Add people", exact: true }).last();
-    await capture("add-people.png");
     await withinViewport(page, addPeople);
     const [added] = await Promise.all([
       page.waitForResponse(
@@ -303,7 +289,6 @@ for (const size of [
         await page.getByLabel("Group name (optional)").fill("Responsive group");
       const start = page.getByRole("button", { name: "Start conversation", exact: true });
       await withinViewport(page, start);
-      await capture(kind === "New group message" ? "create-group.png" : "create-dm.png");
       await start.click();
       await expect(
         page.getByRole("heading", {

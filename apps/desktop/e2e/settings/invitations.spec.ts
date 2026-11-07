@@ -31,7 +31,7 @@ test("desktop invitation email returns a new member to the invited workspace", a
   await expect(page.getByRole("button", { name: `${workspace} ▾`, exact: true })).toBeVisible();
 });
 
-test("Electron invitation pagination supports keyboard and pointer without changing the route", async ({
+test("Electron invitation pagination supports keyboard, pointer, and narrow expiry updates without changing the route", async ({
   desktop,
   playwright,
 }) => {
@@ -125,5 +125,28 @@ test("Electron invitation pagination supports keyboard and pointer without chang
   await expect(rows).toHaveCount(10);
   expect(await rows.allTextContents()).toEqual(firstPage);
   await expect(previous).toBeDisabled();
+  await expect(page).toHaveURL(route);
+
+  await desktop.app.evaluate(({ BrowserWindow }) => {
+    const window = BrowserWindow.getAllWindows()[0]!;
+    window.setMinimumSize(320, 200);
+    window.setContentSize(320, 568);
+  });
+  await expect
+    .poll(() => page.evaluate(() => ({ width: innerWidth, height: innerHeight })))
+    .toEqual({ width: 320, height: 568 });
+  await page.clock.install();
+  const cards = page
+    .getByRole("list", { name: "Your invitations", exact: true })
+    .getByRole("listitem");
+  await expect(cards).toHaveCount(10);
+  await next.click();
+  await expect(cards).toHaveCount(1);
+  await expect(next).toBeDisabled();
+  await page.clock.runFor(2100);
+  await expect(cards).toHaveCount(1);
+  await expect(next).toBeDisabled();
+  await expect(previous).toBeEnabled();
+  await expect(pagination).toContainText("Page 2 of 2");
   await expect(page).toHaveURL(route);
 });

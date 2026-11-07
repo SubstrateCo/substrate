@@ -159,35 +159,29 @@ for (const scenario of ["channels", "direct messages", "shared access"] as const
     const external = account("Recipient", suffix);
     const outsider = account("Outsider", suffix);
     const mailpit = new Mailpit(request);
-    const contexts = await Promise.all(
-      [owner, member, external, outsider].map(() => browser.newContext()),
-    );
-    const [senderPage, memberPage, recipientPage, outsiderPage] = await Promise.all(
-      contexts.map((context) => context.newPage()),
-    );
+    const participants =
+      scenario === "channels" ? [owner, member] : [owner, member, external, outsider];
+    const contexts = await Promise.all(participants.map(() => browser.newContext()));
+    const pages = await Promise.all(contexts.map((context) => context.newPage()));
+    const [senderPage, memberPage, recipientPage, outsiderPage] = pages;
     const publicChannel = `public-${suffix}`;
     const privateChannel = `private-${suffix}`;
     const group = `Launch ${suffix}`;
 
     try {
       await test.step("create verified users and separate workspaces through auth and Mailpit", async () => {
+        await Promise.all(pages.map((page) => page.clock.install()));
         await Promise.all(
-          [senderPage, memberPage, recipientPage, outsiderPage].map((page) => page.clock.install()),
-        );
-        await Promise.all(
-          (
-            [
-              [senderPage, owner],
-              [memberPage, member],
-              [recipientPage, external],
-              [outsiderPage, outsider],
-            ] as const
-          ).map(([page, user]) => provisionVerifiedAccount(page, mailpit, user)),
+          pages.map((page, index) => provisionVerifiedAccount(page, mailpit, participants[index]!)),
         );
         await Promise.all([
           provisionWorkspace(senderPage, `Messaging ${suffix}`, `messaging-${suffix}`),
-          provisionWorkspace(recipientPage, `External ${suffix}`, `external-${suffix}`),
-          provisionWorkspace(outsiderPage, `Unrelated ${suffix}`, `unrelated-${suffix}`),
+          ...(scenario === "channels"
+            ? []
+            : [
+                provisionWorkspace(recipientPage, `External ${suffix}`, `external-${suffix}`),
+                provisionWorkspace(outsiderPage, `Unrelated ${suffix}`, `unrelated-${suffix}`),
+              ]),
         ]);
       });
 

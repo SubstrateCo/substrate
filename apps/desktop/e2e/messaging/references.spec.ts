@@ -175,10 +175,6 @@ for (const size of [
     const owner = popover.getByRole("option", { name: "Desktop Owner", exact: true });
     await expect(owner).toBeVisible();
     await expect(owner).toBeInViewport({ ratio: 1 });
-    await page.screenshot({
-      path: test.info().outputPath("reference-popover.png"),
-      animations: "disabled",
-    });
     await owner.click();
     await expect(popover).toHaveCount(0);
     await expect(composer).toBeFocused();
