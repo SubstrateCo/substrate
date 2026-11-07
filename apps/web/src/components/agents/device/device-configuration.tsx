@@ -1,7 +1,7 @@
 import type { HarnessKind } from "@startup-os/contracts/harness";
 
 import { harnessOptions } from "../harness-meta";
-import { Button } from "@/components/ui/button";
+import { PendingButton } from "@/components/feedback/pending-button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import {
   Select,
@@ -56,14 +56,16 @@ export function DeviceConfiguration({
       {!available ? (
         <p role="status">Local configuration requires Electron and a selected organization.</p>
       ) : (
-        <Button
+        <PendingButton
           className="justify-self-start"
           variant="outline"
-          disabled={loading || pending}
+          pending={loading}
+          pendingLabel="Scanning"
+          disabled={pending}
           onClick={onScan}
         >
-          {loading ? "Scanning…" : "Scan local configuration"}
-        </Button>
+          Scan local configuration
+        </PendingButton>
       )}
       {error && (
         <p role="alert" className="text-destructive">

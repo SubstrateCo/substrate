@@ -106,6 +106,15 @@ test("source desktop saves rotated avatars and logos, reloads them, and removes 
           response.request().method() === "PUT" &&
           new URL(response.url()).origin !== applicationURL,
       );
+      const releaseUpload = Promise.withResolvers<void>();
+      await page.route(
+        "**/api/v1/files/uploads",
+        async (route) => {
+          await releaseUpload.promise;
+          await route.continue();
+        },
+        { times: 1 },
+      );
       await crop.getByRole("button", { name: "Save picture", exact: true }).click();
       // Observe upload failures immediately so a failed UI assertion cannot leave
       // a pending event waiter to reject after the test has finished.
@@ -120,6 +129,19 @@ test("source desktop saves rotated avatars and logos, reloads them, and removes 
         },
         () => undefined,
       );
+      try {
+        const progress = crop.getByRole("progressbar", { name: "Uploading picture", exact: true });
+        await expect(progress).toBeVisible();
+        await expect(progress).not.toHaveAttribute("value");
+        await expect(
+          crop.getByRole("button", { name: "Save picture", exact: true }),
+        ).toBeDisabled();
+        await expect(
+          crop.getByRole("button", { name: "Cancel upload", exact: true }),
+        ).toBeEnabled();
+      } finally {
+        releaseUpload.resolve();
+      }
       await expect(crop)
         .toBeHidden()
         .catch(async () => {

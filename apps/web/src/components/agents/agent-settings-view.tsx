@@ -15,6 +15,7 @@ import { DeleteDefinitionDialog } from "./catalog/delete-definition-dialog";
 import { DeviceConfiguration } from "./device/device-configuration";
 import { AgentEditor, type AgentSection } from "./editors/agent-editor";
 import { SkillEditor } from "./editors/skill-editor";
+import { LoadingState } from "@/components/feedback/loading-state";
 import { Button } from "@/components/ui/button";
 
 export type CatalogKind = "agent" | "skill";
@@ -79,7 +80,7 @@ export function AgentSettingsView({
           Agents
         </h2>
       </div>
-      {loading && <p role="status">Loading agent settings…</p>}
+      {loading && <LoadingState label="Loading agent settings" />}
       {error && (
         <div role="alert">
           <p>{error.message}</p>

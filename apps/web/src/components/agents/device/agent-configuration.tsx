@@ -8,6 +8,7 @@ import { CatalogRow } from "../catalog/catalog-row";
 import { DeleteDefinitionDialog } from "../catalog/delete-definition-dialog";
 import type { AgentSection } from "../editors/agent-editor";
 import { SkillEditor } from "../editors/skill-editor";
+import { LoadingState } from "@/components/feedback/loading-state";
 import { Button } from "@/components/ui/button";
 import { desktopLocalConfiguration } from "@/lib/desktop/agents/local-configuration";
 import { queryKeys } from "@/queries/keys";
@@ -104,9 +105,7 @@ export function AgentConfiguration({
           <p className="text-sm text-muted-foreground">Select a workspace in the desktop app.</p>
         )}
         {available && configuration.isPending && (
-          <p role="status" className="text-sm text-muted-foreground">
-            Loading…
-          </p>
+          <LoadingState label="Loading native configuration" variant="compact" />
         )}
         {configuration.error && (
           <p role="alert" className="text-sm text-destructive">

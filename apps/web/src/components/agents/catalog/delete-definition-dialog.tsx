@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -55,9 +56,14 @@ export function DeleteDefinitionDialog({
           <Button variant="outline" disabled={pending} onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="destructive" disabled={pending} onClick={() => void remove()}>
-            {pending ? "Deleting…" : "Delete"}
-          </Button>
+          <PendingButton
+            variant="destructive"
+            pending={pending}
+            pendingLabel="Deleting"
+            onClick={() => void remove()}
+          >
+            Delete
+          </PendingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 
-import { PendingButton } from "../feedback/pending-button";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "../ui/dialog";
 import type { CropArea } from "./crop-image";
@@ -131,34 +130,28 @@ export function ImageCropDialog({
         {pending && (
           <div className="space-y-2">
             <progress
-              aria-label="Uploading picture"
+              aria-label={committing ? "Finishing picture" : "Uploading picture"}
               className="w-full accent-primary"
               max={100}
-              value={progress}
+              value={committing ? undefined : progress}
             />
             <Button type="button" variant="outline" disabled={committing} onClick={cancelUpload}>
               Cancel upload
             </Button>
-            {committing && (
-              <p role="status" className="text-sm text-muted-foreground">
-                Finishing picture…
-              </p>
-            )}
           </div>
         )}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
             Cancel
           </Button>
-          <PendingButton
+          <Button
             type="button"
-            pending={pending}
-            pendingLabel="Saving picture…"
-            disabled={mediaFailed || !src || (mode === "fill" && !area)}
+            aria-busy={pending}
+            disabled={pending || mediaFailed || !src || (mode === "fill" && !area)}
             onClick={() => void confirm()}
           >
             Save picture
-          </PendingButton>
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

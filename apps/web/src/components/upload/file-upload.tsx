@@ -44,7 +44,12 @@ export function FileUpload({
   else if (!compact) dropzoneState = "border-border bg-muted/30";
   let buttonContent = icon ?? label;
   if (pending)
-    buttonContent = icon ? <Spinner aria-hidden="true" role="presentation" /> : "Selecting…";
+    buttonContent = (
+      <>
+        <Spinner aria-hidden="true" role="presentation" />
+        {!icon && "Selecting"}
+      </>
+    );
   async function select(files: File[]) {
     if (disabled || busy.current || !files.length) return;
     const invalid = validateFiles(files, { accept, maxSize, multiple });
@@ -102,7 +107,7 @@ export function FileUpload({
                 type="button"
                 variant="outline"
                 size={icon ? "icon" : "default"}
-                aria-label={pending ? "Selecting…" : label}
+                aria-label={pending ? "Selecting" : label}
                 disabled={disabled || pending}
                 aria-busy={pending}
                 aria-describedby={error ? `${id} ${id}-error` : id}

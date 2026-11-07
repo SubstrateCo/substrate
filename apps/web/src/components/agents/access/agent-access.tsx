@@ -6,6 +6,7 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { changeAgentAccess } from "@/api/agents/requests";
+import { LoadingState } from "@/components/feedback/loading-state";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import {
@@ -102,11 +103,7 @@ function ProjectAccess({
         </Button>
       </div>
       <h4 className="text-xs font-medium text-muted-foreground">Projects · Current workspace</h4>
-      {access.isPending && (
-        <p role="status" className="text-sm text-muted-foreground">
-          Loading…
-        </p>
-      )}
+      {access.isPending && <LoadingState label="Loading project access" variant="compact" />}
       {access.error && (
         <div className="space-y-2">
           <p role="alert" className="text-sm text-destructive">
