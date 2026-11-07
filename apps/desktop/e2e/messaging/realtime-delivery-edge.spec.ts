@@ -1,10 +1,6 @@
 import { callMessaging } from "../../../web/e2e/test-support/api.js";
 import { test } from "../test-support/fixture.js";
-import {
-  observeRealtime,
-  reconnectRealtime,
-  waitForRealtimeIdle,
-} from "../test-support/realtime.js";
+import { reconnectRealtime, waitForRealtimeIdle } from "../test-support/realtime.js";
 import { expect, type Page } from "@playwright/test";
 
 type Message = {
@@ -241,7 +237,6 @@ test("bounded concurrent roots, replies and reactions converge live with unread 
     .getByRole("button", { name: /^Notifications(?:, unread notifications)?$/ });
   await expect(notificationButton).toHaveAccessibleName("Notifications");
   await expect(notificationButton.locator('span[aria-hidden="true"]')).toBeHidden();
-  const events = await observeRealtime(viewer);
   const requests = await viewer.evaluateHandle(() => {
     const original = window.fetch;
     const reads: string[] = [];
@@ -271,26 +266,12 @@ test("bounded concurrent roots, replies and reactions converge live with unread 
         root.getByRole("button", { name: `${emoji}, 1 reactions`, exact: true }),
       ).toBeVisible();
     }
-    await expect
-      .poll(() =>
-        events.evaluate(
-          ({ events }, conversationId) =>
-            events.filter(
-              (event) =>
-                event.type === "change" &&
-                event.domain === "messaging" &&
-                event.conversationId === conversationId,
-            ).length,
-          conversationId,
-        ),
-      )
-      .toBeGreaterThanOrEqual(43);
     await waitForRealtimeIdle(viewer);
     const reads = await requests.evaluate(({ reads }) => reads);
-    // Each independently fetched feed must coalesce the 43-event burst.
+    // Visible and API convergence above/below must not depend on one frame per write.
     const channelReads = reads.filter((key) => key === "channel").length;
     const threadReads = reads.filter((key) => key === threadId).length;
-    console.log(`43-event burst message GETs: channel=${channelReads}, thread=${threadReads}`);
+    console.log(`43-write burst message GETs: channel=${channelReads}, thread=${threadReads}`);
     expect(channelReads).toBeGreaterThan(0);
     expect(channelReads, "The channel feed must coalesce the 43-event burst").toBeLessThan(43);
     expect(threadReads).toBeGreaterThan(0);
@@ -352,7 +333,5 @@ test("bounded concurrent roots, replies and reactions converge live with unread 
   } finally {
     await requests.evaluate(({ restore }) => restore());
     await requests.dispose();
-    await events.evaluate(({ stop }) => stop());
-    await events.dispose();
   }
 });
