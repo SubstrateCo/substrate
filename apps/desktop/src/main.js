@@ -1,4 +1,5 @@
 import { desktopScheme, resolveDesktopLink } from "@startup-os/contracts/desktop/links";
+import { realtimeChannel } from "@startup-os/contracts/realtime";
 
 import { createDesktopAuthClient } from "./auth/auth-client.js";
 import {
@@ -13,6 +14,8 @@ import { applicationURL, bundledApplicationURL, navigationTarget } from "./shell
 import { attachTitleBar, titleBarOptions } from "./shell/title-bar.ts";
 import { desktopAPITransport } from "./transport/api-transport.js";
 import { backendURL, bundledRenderer } from "./transport/bundled-renderer.js";
+import { createRealtimeController } from "./transport/realtime-controller.ts";
+import { emitRealtimeUpdate } from "./transport/realtime-events.ts";
 import { storageOrigins, storageRequest } from "./transport/storage.js";
 import { app, BrowserWindow, ipcMain, Menu, net, session, shell } from "electron";
 import { readFileSync } from "node:fs";
@@ -52,12 +55,24 @@ const allowedStorageOrigins = storageOrigins(
 );
 /** @type {ReturnType<typeof createHarnessController> | undefined} */
 let harness;
+/** @type {ReturnType<typeof createRealtimeController> | undefined} */
+let realtime;
 const { authClient, handleAuthLink } = createDesktopAuthClient(
   backend,
   process.env.STARTUP_OS_WEB_URL ?? publicConfig.webURL ?? applicationURL,
   app.commandLine.hasSwitch("desktop-smoke-test"),
   () => mainWindow,
-  () => harness?.disconnect(),
+  () => {
+    harness?.disconnect();
+    realtime?.disconnect();
+  },
+  () => {
+    harness?.disconnect();
+    realtime?.disconnect();
+    const contents = mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : undefined;
+    if (contents && !contents.isDestroyed() && target(contents.getURL()) === "internal")
+      contents.reload();
+  },
 );
 /** @type {BrowserWindow | undefined} */
 let mainWindow;
@@ -130,8 +145,12 @@ function createWindow() {
   window.setMenuBarVisibility(false);
   window.once("ready-to-show", () => window.show());
   window.on("closed", () => {
+    realtime?.disconnect();
     harness?.disconnect();
     mainWindow = undefined;
+  });
+  window.webContents.on("did-start-navigation", (_event, _url, isInPlace, isMainFrame) => {
+    if (isMainFrame && !isInPlace) realtime?.disconnect();
   });
   window.webContents.on("will-navigate", (event, url) => {
     if (url === `${bundledApplicationURL}/` && window.webContents.getURL() === errorPageURL) {
@@ -191,6 +210,19 @@ if (!app.requestSingleInstanceLock()) {
     .whenReady()
     .then(() => {
       const desktopSession = session.fromPartition(sessionPartition);
+      realtime = createRealtimeController({
+        backend,
+        getCookie: () => authClient.getCookie(),
+        emit: (event) => emitRealtimeUpdate(mainWindow, event, rendererURL),
+      });
+      ipcMain.handle(realtimeChannel, (event, method, value) => {
+        if (!trustedHarnessSender(event, mainWindow?.webContents, rendererURL))
+          throw new Error("Realtime unavailable.");
+        if (method === "connect") return realtime?.connect(value);
+        if (method === "disconnect" && value === undefined) return realtime?.disconnect();
+        throw new Error("Invalid realtime operation.");
+      });
+      app.on("before-quit", () => realtime?.disconnect());
       const fetchAPI = desktopAPITransport({
         getCookie: () => authClient.getCookie(),
         authFetch: (path, options) => authClient.$fetch(path, options),

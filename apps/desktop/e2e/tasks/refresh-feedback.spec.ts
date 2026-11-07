@@ -1,4 +1,5 @@
 import { test } from "../test-support/fixture.js";
+import { reconnectRealtime } from "../test-support/realtime.js";
 import { failRequestsAt } from "../test-support/request-failure.js";
 import { expect } from "@playwright/test";
 
@@ -22,6 +23,8 @@ test("project refresh toasts preserve content, retry, and stay dismissed during 
   await description.fill("Keep this unsaved edit");
 
   const failure = await page.evaluateHandle(failRequestsAt, "/api/v1/tasks/project");
+  await reconnectRealtime(page);
+  await expect.poll(() => failure.evaluate((control) => control.failures())).toBeGreaterThan(0);
   const toast = page.locator("[data-sonner-toast]").filter({ hasText: "Couldn’t refresh project" });
   const stale = page.getByText("Project may be out of date.", { exact: true });
   await expect(toast).toBeVisible();
@@ -32,13 +35,16 @@ test("project refresh toasts preserve content, retry, and stay dismissed during 
   await failure.evaluate((control) => control.recover());
   await toast.getByRole("button", { name: "Retry", exact: true }).click();
   await expect(stale).toHaveCount(0);
+  await expect(toast).toHaveCount(0);
   await expect(description).toHaveValue("Keep this unsaved edit");
 
   await failure.evaluate((control) => control.fail());
+  await reconnectRealtime(page);
   await expect(toast).toBeVisible();
   await toast.getByRole("button", { name: "Close toast", exact: true }).click();
   await expect(toast).toHaveCount(0);
   const previousFailures = await failure.evaluate((control) => control.failures());
+  await reconnectRealtime(page);
   await expect
     .poll(() => failure.evaluate((control) => control.failures()), { timeout: 20_000 })
     .toBeGreaterThan(previousFailures);
@@ -46,5 +52,6 @@ test("project refresh toasts preserve content, retry, and stay dismissed during 
   await expect(stale).toBeVisible();
   await expect(description).toHaveValue("Keep this unsaved edit");
   await failure.evaluate((control) => control.recover());
+  await reconnectRealtime(page);
   await expect(stale).toHaveCount(0);
 });

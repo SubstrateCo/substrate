@@ -10,7 +10,6 @@ export const conversationsQueryOptions = (organizationId: string) =>
     queryFn: async ({ signal }) => {
       return listConversations({ data: { organizationId }, signal });
     },
-    refetchInterval: 5000,
     retry: false,
   });
 
@@ -29,6 +28,5 @@ export const messagesQueryOptions = (
         signal,
       });
     },
-    refetchInterval: 3000,
     retry: false,
   });

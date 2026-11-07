@@ -11,6 +11,7 @@
     "./messaging": "./src/features/messaging/index.ts",
     "./context": "./src/features/context/index.ts",
     "./agents": "./src/features/agents/index.ts",
+    "./realtime": "./src/core/realtime/index.ts",
     "./development": "./src/development/seed.ts"
   },
   "scripts": {

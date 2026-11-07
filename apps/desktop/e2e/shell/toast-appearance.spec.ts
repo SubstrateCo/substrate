@@ -1,4 +1,5 @@
 import { test } from "../test-support/fixture.js";
+import { reconnectRealtime } from "../test-support/realtime.js";
 import { failRequestsAt } from "../test-support/request-failure.js";
 import { expect } from "@playwright/test";
 
@@ -14,6 +15,7 @@ for (const dark of [false, true]) {
     await expect(page.getByText("Your conversations start here", { exact: true })).toBeVisible();
 
     const failure = await page.evaluateHandle(failRequestsAt, "/api/v1/messaging/conversations");
+    await reconnectRealtime(page);
     const toast = page
       .locator("[data-sonner-toast]")
       .filter({ hasText: "Couldn’t refresh conversations" });

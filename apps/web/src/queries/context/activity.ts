@@ -7,6 +7,5 @@ export const activityOptions = (organizationId: string, entityId: string) =>
   queryOptions({
     queryKey: [...queryKeys.context(organizationId), "activity", entityId],
     queryFn: ({ signal }) => getActivity({ data: { organizationId, entityId }, signal }),
-    refetchInterval: 5000,
     retry: false,
   });

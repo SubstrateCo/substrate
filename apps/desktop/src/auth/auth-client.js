@@ -4,13 +4,14 @@ import { electronClient, handleDeepLink } from "@better-auth/electron/client";
 import { storage } from "@better-auth/electron/storage";
 import { createAuthClient } from "better-auth/client";
 
-/** @param {string} backend @param {string} frontend @param {boolean} smokeTest @param {() => import("electron").BrowserWindow | undefined} getWindow @param {() => void} onSessionInvalidated */
+/** @param {string} backend @param {string} frontend @param {boolean} smokeTest @param {() => import("electron").BrowserWindow | undefined} getWindow @param {() => void} onSessionInvalidated @param {() => void} onSessionChanged */
 export function createDesktopAuthClient(
   backend,
   frontend,
   smokeTest,
   getWindow,
   onSessionInvalidated,
+  onSessionChanged,
 ) {
   /** @type {import("@better-auth/electron/client").ElectronClientOptions} */
   const options = {
@@ -37,7 +38,7 @@ export function createDesktopAuthClient(
       },
     },
   });
-  authClient.$store.listen("$sessionSignal", onSessionInvalidated);
+  authClient.$store.atoms.$sessionSignal.listen(onSessionChanged);
   return {
     authClient,
     /** @param {string} url */

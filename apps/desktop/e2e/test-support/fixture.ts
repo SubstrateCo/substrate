@@ -147,50 +147,67 @@ class DesktopFixture {
   }
 }
 
-export const test = base.extend<{ desktop: DesktopFixture }>({
-  desktop: async ({ page: browser, request }, use) => {
-    const env: Record<string, string> = {};
-    for (const [key, value] of Object.entries(process.env)) {
-      if (value !== undefined && key !== "ELECTRON_RUN_AS_NODE") env[key] = value;
-    }
-    env.STARTUP_OS_TEST_ID = randomUUID();
-    const packaged = Boolean(process.env.DESKTOP_EXECUTABLE_PATH);
-    if (packaged) {
-      delete env.STARTUP_OS_API_URL;
-      delete env.STARTUP_OS_WEB_URL;
-    } else {
-      env.STARTUP_OS_STORAGE_ORIGINS =
-        process.env.STARTUP_OS_STORAGE_ORIGINS ??
-        new URL(process.env.S3_ENDPOINT ?? "http://localhost:4566").origin;
-    }
-    const bundled = packaged || Boolean(process.env.DESKTOP_BUNDLED_RENDERER);
-    const launchOptions = {
-      executablePath: process.env.DESKTOP_EXECUTABLE_PATH,
-      args: [
-        ...(packaged
-          ? []
-          : [
-              fileURLToPath(new URL("../../src/main.js", import.meta.url)),
-              ...(bundled ? ["--bundled-renderer"] : []),
-            ]),
-        "--desktop-smoke-test",
-        desktopLink("/signup"),
-      ],
-      env,
-    };
-    const fixture = new DesktopFixture(
-      await electron.launch(launchOptions),
-      browser,
-      new Mailpit(request),
-      launchOptions,
-      bundled ? desktopOrigin : applicationURL,
-    );
+async function useDesktop(
+  browser: Page,
+  mailpit: Mailpit,
+  use: (fixture: DesktopFixture) => Promise<void>,
+) {
+  const env: Record<string, string> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined && key !== "ELECTRON_RUN_AS_NODE") env[key] = value;
+  }
+  env.STARTUP_OS_TEST_ID = randomUUID();
+  const packaged = Boolean(process.env.DESKTOP_EXECUTABLE_PATH);
+  if (packaged) {
+    delete env.STARTUP_OS_API_URL;
+    delete env.STARTUP_OS_WEB_URL;
+  } else {
+    env.STARTUP_OS_STORAGE_ORIGINS =
+      process.env.STARTUP_OS_STORAGE_ORIGINS ??
+      new URL(process.env.S3_ENDPOINT ?? "http://localhost:4566").origin;
+  }
+  const bundled = packaged || Boolean(process.env.DESKTOP_BUNDLED_RENDERER);
+  const launchOptions = {
+    executablePath: process.env.DESKTOP_EXECUTABLE_PATH,
+    args: [
+      ...(packaged
+        ? []
+        : [
+            fileURLToPath(new URL("../../src/main.js", import.meta.url)),
+            ...(bundled ? ["--bundled-renderer"] : []),
+          ]),
+      "--desktop-smoke-test",
+      "--no-error-dialogs",
+      desktopLink("/signup"),
+    ],
+    env,
+  };
+  const fixture = new DesktopFixture(
+    await electron.launch(launchOptions),
+    browser,
+    mailpit,
+    launchOptions,
+    bundled ? desktopOrigin : applicationURL,
+  );
+  try {
+    await fixture.window();
+    await use(fixture);
+    expect(fixture.pageErrors, "The packaged workflow has no uncaught renderer errors").toBe(0);
+  } finally {
+    await fixture.app.close();
+  }
+}
+
+export const test = base.extend<{ desktop: DesktopFixture; desktopPeer: DesktopFixture }>({
+  desktop: async ({ page, request }, use) => {
+    await useDesktop(page, new Mailpit(request), use);
+  },
+  desktopPeer: async ({ browser, request }, use) => {
+    const context = await browser.newContext();
     try {
-      await fixture.window();
-      await use(fixture);
-      expect(fixture.pageErrors, "The packaged workflow has no uncaught renderer errors").toBe(0);
+      await useDesktop(await context.newPage(), new Mailpit(request), use);
     } finally {
-      await fixture.app.close();
+      await context.close();
     }
   },
 });

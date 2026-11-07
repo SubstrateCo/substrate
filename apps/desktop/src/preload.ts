@@ -4,6 +4,12 @@ import {
   type DesktopWindowAPI,
 } from "@startup-os/contracts/desktop/window";
 import type { HarnessEvent } from "@startup-os/contracts/harness";
+import {
+  realtimeChannel,
+  realtimeEventChannel,
+  type RealtimeAPI,
+  type RealtimeUpdate,
+} from "@startup-os/contracts/realtime";
 
 import type { HarnessAPI } from "./harness/harness-api.ts";
 import { harnessChannel, harnessEventChannel } from "./harness/harness-bridge.ts";
@@ -15,6 +21,18 @@ const origin = process.argv
   ?.slice("--startup-os-origin=".length);
 if (process.isMainFrame && window.location.origin === origin) {
   setupRenderer();
+  const realtime: RealtimeAPI = {
+    connect: (input: { organizationId: string | null }) =>
+      ipcRenderer.invoke(realtimeChannel, "connect", input),
+    disconnect: () => ipcRenderer.invoke(realtimeChannel, "disconnect"),
+    onEvent: (callback: (event: RealtimeUpdate) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, value: RealtimeUpdate) =>
+        callback(value);
+      ipcRenderer.on(realtimeEventChannel, listener);
+      return () => ipcRenderer.removeListener(realtimeEventChannel, listener);
+    },
+  };
+  contextBridge.exposeInMainWorld("startupOSRealtime", realtime);
   const windowAPI: DesktopWindowAPI = {
     platform: process.platform,
     isFullscreen: () => ipcRenderer.invoke(windowChannel, "fullscreen"),

@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./realtime": "./src/realtime/index.ts",
     "./harness": "./src/harness/index.ts",
     "./harness/desktop": "./src/harness/desktop.ts",
     "./agents": "./src/agents/index.ts",

@@ -7,7 +7,6 @@ export const projectsQueryOptions = (organizationId: string) =>
   queryOptions({
     queryKey: queryKeys.projects(organizationId),
     queryFn: ({ signal }) => listProjects({ data: { organizationId }, signal }),
-    refetchInterval: 5000,
     retry: false,
   });
 export const projectQueryOptions = (organizationId: string, projectEntityId: string) =>
@@ -15,7 +14,6 @@ export const projectQueryOptions = (organizationId: string, projectEntityId: str
     queryKey: queryKeys.project(organizationId, projectEntityId),
     meta: { refreshError: "Couldn’t refresh project" },
     queryFn: ({ signal }) => getProject({ data: { organizationId, projectEntityId }, signal }),
-    refetchInterval: 5000,
     retry: false,
   });
 export const taskCommentsQueryOptions = (
@@ -27,6 +25,5 @@ export const taskCommentsQueryOptions = (
     queryKey: queryKeys.taskComments(organizationId, projectEntityId, taskEntityId),
     queryFn: ({ signal }) =>
       listTaskComments({ data: { organizationId, projectEntityId, taskEntityId }, signal }),
-    refetchInterval: 5000,
     retry: false,
   });

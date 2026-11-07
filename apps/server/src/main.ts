@@ -1,12 +1,26 @@
 import { createApp } from "./app";
+import { closeDatabase } from "./auth/database";
 import { defaultFileService } from "./v1/files/default-service";
+import { createRealtimeService } from "./v1/realtime/service";
 
 const port = Number(process.env.SERVER_PORT ?? "3001");
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error("SERVER_PORT must be a valid port.");
 }
 
-const server = Bun.serve({ port, fetch: createApp().fetch });
+const app = createApp();
+const realtime = createRealtimeService();
+const server = Bun.serve({
+  port,
+  websocket: realtime.websocket,
+  fetch(request, server) {
+    // Upgrade responses must not pass through response-mutating HTTP middleware.
+    if (new URL(request.url).pathname === "/api/v1/realtime")
+      return realtime.app.fetch(request, server);
+    return app.fetch(request, server);
+  },
+});
+realtime.hub.start();
 console.log(`Startup OS API listening on ${server.url}`);
 
 let cleaningStorage = false;
@@ -22,4 +36,22 @@ async function cleanupStorage() {
   }
 }
 void cleanupStorage();
-setInterval(() => void cleanupStorage(), 60 * 60_000).unref();
+const cleanupTimer = setInterval(() => void cleanupStorage(), 60 * 60_000);
+cleanupTimer.unref();
+
+let stopping = false;
+function shutdown() {
+  if (stopping) return;
+  stopping = true;
+  clearInterval(cleanupTimer);
+  realtime.hub.stop();
+  void server
+    .stop(true)
+    .then(() => closeDatabase())
+    .catch(() => {
+      console.error("Server shutdown failed");
+      process.exitCode = 1;
+    });
+}
+process.once("SIGINT", shutdown);
+process.once("SIGTERM", shutdown);

@@ -29,7 +29,7 @@ export function TasksWorkspace({
   error?: Error | null;
   onRetry: () => void;
   renderCreate: (onSaved: (id: string) => void, onCancel: () => void) => ReactNode;
-  renderProject: (project: Project) => ReactNode;
+  renderProject: (projectEntityId: string) => ReactNode;
   selectedProjectId?: string;
   onSelectProject: (id: string) => void;
 }) {
@@ -53,10 +53,6 @@ export function TasksWorkspace({
     setCreating(true);
   };
   const visible = isAccessFailure(error) ? [] : projects;
-  const selected =
-    selectedProjectId === undefined
-      ? visible[0]
-      : visible.find((project) => project.entityId === selectedProjectId);
   const selectProject = (id: string) => {
     onSelectProject(id);
     setCreating(false);
@@ -68,7 +64,7 @@ export function TasksWorkspace({
     >
       <ProjectSidebar
         projects={visible}
-        selectedId={creating ? undefined : selected?.entityId}
+        selectedId={creating ? undefined : selectedProjectId}
         loading={loading}
         error={error}
         onRetry={onRetry}
@@ -82,8 +78,8 @@ export function TasksWorkspace({
             {renderCreate(selectProject, () => setCreating(false))}
           </div>
         )}
-        {!creating && selected && renderProject(selected)}
-        {!creating && !selected && !loading && !error && (
+        {!creating && selectedProjectId && renderProject(selectedProjectId)}
+        {!creating && !selectedProjectId && !loading && !error && (
           <Empty className="min-h-0 flex-1">
             <EmptyHeader>
               <EmptyMedia variant="icon">

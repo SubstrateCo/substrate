@@ -1,8 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { useState } from "react";
+
 import { ProjectForm } from "../projects/editor/project-form";
 import { ProjectPane } from "../projects/project-pane";
+import { isAccessFailure } from "@/components/feedback/request-failure";
 import { TasksWorkspace as TasksWorkspaceView } from "@/components/tasks/workspace/tasks-workspace-view";
 import { projectsQueryOptions } from "@/queries/tasks/options";
 
@@ -10,10 +13,27 @@ export function TasksWorkspace({ organizationId }: { organizationId: string }) {
   const projects = useQuery(projectsQueryOptions(organizationId));
   const search = useSearch({ strict: false });
   const navigate = useNavigate();
+  const [lastSelection, setLastSelection] = useState<{
+    organizationId: string;
+    projectId?: string;
+  }>({ organizationId });
+  const defaultProjectId = isAccessFailure(projects.error)
+    ? undefined
+    : projects.data?.[0]?.entityId;
+  const selectedProjectId =
+    search.projectId ??
+    (projects.isPending && lastSelection.organizationId === organizationId
+      ? lastSelection.projectId
+      : defaultProjectId);
+  if (
+    lastSelection.organizationId !== organizationId ||
+    lastSelection.projectId !== selectedProjectId
+  )
+    setLastSelection({ organizationId, projectId: selectedProjectId });
   return (
     <TasksWorkspaceView
       projects={projects.data ?? []}
-      selectedProjectId={search.projectId}
+      selectedProjectId={selectedProjectId}
       onSelectProject={(projectId) =>
         void navigate({ to: "/tasks", search: { workspaceId: organizationId, projectId } })
       }
@@ -23,11 +43,11 @@ export function TasksWorkspace({ organizationId }: { organizationId: string }) {
       renderCreate={(onSaved, onCancel) => (
         <ProjectForm organizationId={organizationId} onSaved={onSaved} onCancel={onCancel} />
       )}
-      renderProject={(project) => (
+      renderProject={(projectEntityId) => (
         <ProjectPane
-          key={project.entityId}
+          key={`${organizationId}:${projectEntityId}`}
           organizationId={organizationId}
-          projectEntityId={project.entityId}
+          projectEntityId={projectEntityId}
         />
       )}
     />

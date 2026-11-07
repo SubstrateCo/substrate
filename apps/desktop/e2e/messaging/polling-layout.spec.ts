@@ -1,8 +1,9 @@
 import { test } from "../test-support/fixture.js";
+import { reconnectRealtime } from "../test-support/realtime.js";
 import { createChannel } from "./test-support.js";
 import { expect } from "@playwright/test";
 
-test("background polling keeps channel and thread message layouts stable", async ({ desktop }) => {
+test("realtime resync keeps channel and thread message layouts stable", async ({ desktop }) => {
   await desktop.provision();
   const page = desktop.page;
   await createChannel(page, "stable-polling");
@@ -27,7 +28,7 @@ test("background polling keeps channel and thread message layouts stable", async
       return { y: box.y, height: box.height, scrollTop: node.scrollTop };
     }),
   );
-  const polling = await page.evaluateHandle(() => {
+  const refresh = await page.evaluateHandle(() => {
     const original = window.fetch;
     let release!: () => void;
     const gate = new Promise<void>((resolve) => {
@@ -52,7 +53,8 @@ test("background polling keeps channel and thread message layouts stable", async
     };
   });
   try {
-    await expect.poll(() => polling.evaluate((control) => control.count())).toBe(2);
+    await reconnectRealtime(page);
+    await expect.poll(() => refresh.evaluate((control) => control.count())).toBe(2);
     await expect
       .poll(() =>
         logs.evaluateAll((nodes) =>
@@ -65,7 +67,8 @@ test("background polling keeps channel and thread message layouts stable", async
       .toEqual(before);
     await expect(page.getByText(/Refreshing (messages|replies)…/)).toHaveCount(0);
   } finally {
-    await polling.evaluate((control) => control.recover());
+    await refresh.evaluate((control) => control.recover());
+    await refresh.dispose();
   }
   await expect(thread.getByRole("article").filter({ hasText: "Stable reply" })).toBeVisible();
 });

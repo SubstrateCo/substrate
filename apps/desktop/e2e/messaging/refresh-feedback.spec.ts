@@ -1,4 +1,5 @@
 import { test } from "../test-support/fixture.js";
+import { reconnectRealtime } from "../test-support/realtime.js";
 import { failRequestsAt } from "../test-support/request-failure.js";
 import { expect } from "@playwright/test";
 
@@ -10,6 +11,7 @@ test("an empty loaded workspace uses refresh toasts but initial failures stay in
   const empty = page.getByText("Your conversations start here", { exact: true });
   await expect(empty).toBeVisible();
   const failure = await page.evaluateHandle(failRequestsAt, "/api/v1/messaging/conversations");
+  await reconnectRealtime(page);
   const toast = page
     .locator("[data-sonner-toast]")
     .filter({ hasText: "Couldn’t refresh conversations" });

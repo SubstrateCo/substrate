@@ -1,4 +1,5 @@
 import { test } from "../test-support/fixture.js";
+import { reconnectRealtime } from "../test-support/realtime.js";
 import { failRequestsAt } from "../test-support/request-failure.js";
 import { expect } from "@playwright/test";
 
@@ -12,7 +13,6 @@ test("failed source-task submission keeps the draft and retry creates one linked
   const project = `Recovery ${suffix}`;
   const title = `Retry task ${suffix}`;
   const channel = `recovery-${suffix}`;
-  await page.clock.install();
   const apps = page.getByRole("navigation", { name: "Apps" });
   await apps.getByRole("button", { name: "Tasks", exact: true }).click();
   await page.getByRole("button", { name: "New project", exact: true }).click();
@@ -40,7 +40,7 @@ test("failed source-task submission keeps the draft and retry creates one linked
   await form.getByLabel("Task title", { exact: true }).fill(title);
   await form.getByLabel("Task description", { exact: true }).fill("Do not lose my draft.");
   const failure = await page.evaluateHandle(failRequestsAt, "/api/v1/tasks/project");
-  await page.clock.fastForward(5000);
+  await reconnectRealtime(page);
   const source = page.getByRole("region", { name: "Create task from message", exact: true });
   const stale = source.getByRole("status").filter({ hasText: "Project may be out of date." });
   const toast = page.locator("[data-sonner-toast]").filter({ hasText: "Couldn’t refresh project" });

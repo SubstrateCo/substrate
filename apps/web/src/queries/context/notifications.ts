@@ -7,6 +7,5 @@ export const notificationsOptions = (organizationId: string) =>
   queryOptions({
     queryKey: [...queryKeys.context(organizationId), "notifications"],
     queryFn: ({ signal }) => getNotifications({ data: { organizationId }, signal }),
-    refetchInterval: 5000,
     retry: false,
   });
