@@ -14,7 +14,7 @@ export interface MessagingIdentity {
 
 export function visibleConversations(
   db: DatabaseExecutor,
-  scope: { userId: string | SQLWrapper; organizationId: string },
+  scope: { userId: string | SQLWrapper; organizationId: string | SQLWrapper },
 ) {
   return or(
     and(

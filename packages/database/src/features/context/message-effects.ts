@@ -1,5 +1,6 @@
 import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
+import { entities } from "../../core/entities/schema";
 import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError } from "../../errors";
@@ -13,7 +14,7 @@ import { notifications } from "../notifications/schema";
 import { requireWork } from "./access";
 import { messageReferences } from "./references";
 import { messageEntityReferences } from "./schema";
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 
 export async function applyMessageEffects(
   ctx: RepositoryContext,
@@ -83,50 +84,27 @@ export async function applyMessageEffects(
       if (!recipients.has(author.userId)) recipients.set(author.userId, "reply");
   }
   recipients.delete(scope.userId);
-  for (const [userId, kind] of recipients) {
-    const candidates = await db
-      .select({ actor: actors })
-      .from(actors)
-      .innerJoin(user, eq(user.id, actors.userId))
-      .innerJoin(
-        member,
-        and(eq(member.userId, user.id), eq(member.organizationId, actors.organizationId)),
-      )
-      .where(and(eq(actors.userId, userId), eq(user.emailVerified, true)));
-    for (const { actor } of candidates) {
-      if (actor.disabledAt) continue;
-      const [visible] = await db
-        .select({ id: messagingConversations.id })
-        .from(messagingConversations)
-        .where(
-          and(
-            eq(messagingConversations.id, message.conversationId),
-            visibleConversations(db, { userId, organizationId: actor.organizationId }),
-          ),
-        );
-      if (!visible) continue;
-      // Only the participant's workspace receives cross-workspace conversation notifications.
-      const [participant] = await db
-        .select()
-        .from(messagingParticipants)
-        .where(
-          and(
-            eq(messagingParticipants.conversationId, message.conversationId),
-            eq(messagingParticipants.userId, userId),
-            eq(messagingParticipants.organizationId, actor.organizationId),
-          ),
-        );
-      if (!participant && actor.organizationId !== conversationOrganizationId) continue;
-      await db
-        .insert(notifications)
-        .values({
-          organizationId: actor.organizationId,
-          recipientActorEntityId: actor.entityId,
-          kind,
-          eventKey: message.id,
-          messageId: message.id,
-        })
-        .onConflictDoNothing();
-    }
+  if (recipients.size) {
+    await db.execute(sql`
+      INSERT INTO ${notifications} (organization_id, recipient_actor_entity_id, kind, event_key, message_id)
+      SELECT ${actors.organizationId}, ${actors.entityId}, recipient.kind, ${message.id}, ${message.id}::uuid
+      FROM ${actors}
+      JOIN (VALUES ${sql.join(
+        [...recipients].map(([userId, kind]) => sql`(${userId}::text, ${kind}::text)`),
+        sql`, `,
+      )}) AS recipient(user_id, kind) ON recipient.user_id = ${actors.userId}
+      JOIN ${user} ON ${user.id} = ${actors.userId} AND ${user.emailVerified} = true
+      JOIN ${entities} ON ${entities.entityId} = ${actors.entityId}
+        AND ${entities.organizationId} = ${actors.organizationId} AND ${entities.deletedAt} IS NULL
+      JOIN ${member} ON ${member.userId} = ${user.id} AND ${member.organizationId} = ${actors.organizationId}
+      JOIN ${messagingConversations} ON ${messagingConversations.id} = ${message.conversationId}::uuid
+        AND ${visibleConversations(db, { userId: actors.userId, organizationId: actors.organizationId })}
+      LEFT JOIN ${messagingParticipants} ON ${messagingParticipants.conversationId} = ${messagingConversations.id}
+        AND ${messagingParticipants.userId} = ${actors.userId}
+        AND ${messagingParticipants.organizationId} = ${actors.organizationId}
+      WHERE ${actors.disabledAt} IS NULL
+        AND (${actors.organizationId} = ${conversationOrganizationId} OR ${messagingParticipants.userId} IS NOT NULL)
+      ON CONFLICT DO NOTHING
+    `);
   }
 }

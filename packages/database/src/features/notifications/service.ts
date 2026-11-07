@@ -3,8 +3,9 @@ import { actors } from "../../core/actors/schema";
 import { AccessDeniedError } from "../../errors";
 import { taskActivity } from "../activity/schema";
 import { workspaceContext, requireWork } from "../context/access";
-import { requireMessage, type MessagingIdentity } from "../messaging/access";
+import type { MessagingIdentity } from "../messaging/access";
 import { notifications } from "./schema";
+import { readableWorkTargets, readableMessageTargets } from "./targets";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 
 export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity) {
@@ -31,16 +32,17 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
         )
         .orderBy(desc(taskActivity.createdAt), desc(taskActivity.id))
         .limit(100);
-      const result = [];
-      for (const { sourceMessageId, ...event } of rows) {
-        try {
-          if (sourceMessageId) await requireMessage(db, scope, sourceMessageId);
-          result.push(event);
-        } catch (error) {
-          if (!(error instanceof AccessDeniedError)) throw error;
-        }
-      }
-      return result;
+      const messages = await readableMessageTargets(db, scope, [
+        ...new Set(rows.flatMap((row) => (row.sourceMessageId ? [row.sourceMessageId] : []))),
+      ]);
+      return rows
+        .filter((row) => !row.sourceMessageId || messages.has(row.sourceMessageId))
+        .map((row) => ({
+          id: row.id,
+          action: row.action,
+          actorName: row.actorName,
+          createdAt: row.createdAt,
+        }));
     },
     async list(after?: string) {
       const ctx = await workspaceContext(db, scope);
@@ -71,37 +73,41 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
         .orderBy(desc(notifications.createdAt), desc(notifications.id))
         .limit(100);
       const result = [];
+      const workTargets = await readableWorkTargets(ctx, [
+        ...new Set(rows.flatMap((row) => (row.entityId ? [row.entityId] : []))),
+      ]);
+      const messageTargets = await readableMessageTargets(db, scope, [
+        ...new Set(rows.flatMap((row) => (!row.entityId && row.messageId ? [row.messageId] : []))),
+      ]);
       for (const row of rows) {
-        try {
-          if (row.entityId) {
-            const work = await requireWork(ctx, row.entityId);
-            result.push({
-              id: row.id,
-              kind: row.kind,
-              readAt: row.readAt,
-              createdAt: row.createdAt,
-              title: work.title,
-              entityId: row.entityId,
-              projectEntityId: work.projectEntityId,
-              conversationId: null,
-              messageId: null,
-            });
-          } else {
-            const { message, conversation } = await requireMessage(db, scope, row.messageId!);
-            result.push({
-              id: row.id,
-              kind: row.kind,
-              readAt: row.readAt,
-              createdAt: row.createdAt,
-              title: row.kind === "mention" ? "You were mentioned" : "New thread reply",
-              entityId: null,
-              projectEntityId: null,
-              conversationId: conversation.id,
-              messageId: message.id,
-            });
-          }
-        } catch (error) {
-          if (!(error instanceof AccessDeniedError)) throw error;
+        if (row.entityId) {
+          const work = workTargets.get(row.entityId);
+          if (!work) continue;
+          result.push({
+            id: row.id,
+            kind: row.kind,
+            readAt: row.readAt,
+            createdAt: row.createdAt,
+            title: work.title,
+            entityId: row.entityId,
+            projectEntityId: work.projectEntityId,
+            conversationId: null,
+            messageId: null,
+          });
+        } else {
+          const message = messageTargets.get(row.messageId!);
+          if (!message) continue;
+          result.push({
+            id: row.id,
+            kind: row.kind,
+            readAt: row.readAt,
+            createdAt: row.createdAt,
+            title: row.kind === "mention" ? "You were mentioned" : "New thread reply",
+            entityId: null,
+            projectEntityId: null,
+            conversationId: message.conversationId,
+            messageId: message.id,
+          });
         }
       }
       return result.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());

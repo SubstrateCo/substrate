@@ -9,7 +9,7 @@ for (const trigger of ["tasks", "ready", "messaging"] as const) {
     const client = new QueryClient();
     const key =
       trigger === "messaging"
-        ? [...queryKeys.context("org"), "search", "term"]
+        ? queryKeys.messages("org", "conversation")
         : queryKeys.projects("org");
     const initial = Promise.withResolvers<string[]>();
     let reads = 0;
@@ -65,6 +65,50 @@ for (const trigger of ["tasks", "ready", "messaging"] as const) {
     }
   });
 }
+
+test("messaging leaves an in-flight search snapshot loaded and stale without a second read", async () => {
+  const client = new QueryClient();
+  const key = [...queryKeys.context("org"), "search", "term"];
+  const initial = Promise.withResolvers<string[]>();
+  let reads = 0;
+  const observer = new QueryObserver(client, {
+    queryKey: key,
+    staleTime: Infinity,
+    queryFn: () => {
+      reads++;
+      return initial.promise;
+    },
+  });
+  const unsubscribe = observer.subscribe(() => {});
+  const cache = createRealtimeCache({
+    queryClient: client,
+    organizationId: "org",
+    userId: "user",
+    revalidate: async () => {},
+  });
+  try {
+    const received = cache.receive({
+      version: 1,
+      type: "change",
+      domain: "messaging",
+      organizationId: "org",
+      id: crypto.randomUUID(),
+    });
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    initial.resolve(["retained result"]);
+    await received;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(reads).toBe(1);
+    expect(client.getQueryData(key)).toEqual(["retained result"]);
+    expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+    expect(observer.getCurrentResult().fetchStatus).toBe("idle");
+  } finally {
+    initial.resolve([]);
+    cache.dispose();
+    unsubscribe();
+    client.clear();
+  }
+});
 
 test("refresh retains loaded content until the replacement request completes", async () => {
   const client = new QueryClient();
