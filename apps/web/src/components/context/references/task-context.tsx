@@ -11,16 +11,18 @@ export function TaskContext({
   taskEntityId,
   projectEntityId,
   projectName,
+  visible,
 }: {
   organizationId: string;
   taskEntityId: string;
   projectEntityId: string;
   projectName: string;
+  visible: boolean;
 }) {
-  const activity = useQuery(activityOptions(organizationId, taskEntityId));
+  const activity = useQuery({ ...activityOptions(organizationId, taskEntityId), enabled: visible });
   return (
     <>
-      <WorkDiscussions organizationId={organizationId} entityId={taskEntityId}>
+      <WorkDiscussions organizationId={organizationId} entityId={taskEntityId} visible={visible}>
         <ProjectReference href={workHref(organizationId, projectEntityId)} name={projectName} />
       </WorkDiscussions>
       <TaskActivity

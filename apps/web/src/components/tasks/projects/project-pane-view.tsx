@@ -147,6 +147,7 @@ export function ProjectPane({
           className="mt-3 min-h-0 overflow-y-auto md:overflow-hidden"
         >
           <ProjectTaskPanel
+            visible={tab === "tasks"}
             detail={detail}
             canEdit={canEdit}
             panel={panel}

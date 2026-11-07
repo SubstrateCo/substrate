@@ -9,15 +9,18 @@ export function TaskComments({
   projectEntityId,
   taskEntityId,
   canComment,
+  visible,
 }: {
   organizationId: string;
   projectEntityId: string;
   taskEntityId: string;
   canComment: boolean;
+  visible: boolean;
 }) {
-  const comments = useQuery(
-    taskCommentsQueryOptions(organizationId, projectEntityId, taskEntityId),
-  );
+  const comments = useQuery({
+    ...taskCommentsQueryOptions(organizationId, projectEntityId, taskEntityId),
+    enabled: visible,
+  });
   const send = useTasksMutation(organizationId);
   return (
     <TaskCommentsView

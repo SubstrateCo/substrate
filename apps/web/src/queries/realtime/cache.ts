@@ -192,7 +192,7 @@ export function createRealtimeCache({
         { queryKey: query.queryKey, exact: true, refetchType: "none" },
         { cancelRefetch: false },
       );
-      if (!isCurrent(epoch)) return;
+      if (!isCurrent(epoch) || query.isDisabled()) return;
       await queryClient.query({ ...query.options, queryKey: query.queryKey });
     });
     await Promise.all([...invalidations, ...deferred]);

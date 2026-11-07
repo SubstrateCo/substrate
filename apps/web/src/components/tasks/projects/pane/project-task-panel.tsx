@@ -20,6 +20,7 @@ export interface TaskPanelRenderers {
     task: Task,
     onClose: () => void,
     onSubtask: () => void,
+    visible: boolean,
   ) => ReactNode;
 }
 
@@ -29,12 +30,14 @@ export function ProjectTaskPanel({
   panel,
   inspectorRef,
   renderers,
+  visible,
 }: {
   detail: ProjectDetail;
   canEdit: boolean;
   panel: ReturnType<typeof useTaskPanel>["panel"];
   inspectorRef: Ref<HTMLDivElement>;
   renderers: TaskPanelRenderers;
+  visible: boolean;
 }) {
   const selected = detail.tasks.find((task) => task.entityId === panel.selectedTaskId);
   const { selectedTaskId } = panel;
@@ -56,8 +59,12 @@ export function ProjectTaskPanel({
           className="order-first min-h-0 min-w-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring md:order-0 md:h-full md:overflow-y-auto"
         >
           {selected &&
-            renderers.detail(detail, selected, panel.close, () =>
-              panel.createSubtask(selected.entityId),
+            renderers.detail(
+              detail,
+              selected,
+              panel.close,
+              () => panel.createSubtask(selected.entityId),
+              visible,
             )}
           {selectedTaskId && !selected && (
             <ContentNotice

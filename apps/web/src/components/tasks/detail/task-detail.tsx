@@ -12,12 +12,14 @@ export function TaskDetail({
   task,
   onClose,
   onSubtask,
+  visible,
 }: {
   organizationId: string;
   detail: ProjectDetail;
   task: Task;
   onClose: () => void;
   onSubtask: () => void;
+  visible: boolean;
 }) {
   return (
     <TaskDetailView
@@ -43,12 +45,14 @@ export function TaskDetail({
       )}
     >
       <TaskContext
+        visible={visible}
         organizationId={organizationId}
         taskEntityId={task.entityId}
         projectEntityId={detail.project.entityId}
         projectName={detail.project.name}
       />
       <TaskComments
+        visible={visible}
         organizationId={organizationId}
         projectEntityId={detail.project.entityId}
         taskEntityId={task.entityId}

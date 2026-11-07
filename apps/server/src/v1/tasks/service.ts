@@ -37,13 +37,7 @@ export function getProject(
   return serviceResult(async () => {
     const input = projectRequest.parse(raw);
     const repositories = await repositoriesForSession(headers, input.organizationId);
-    return repositories.transaction(async (repos) => ({
-      project: await repos.projects.get(input.projectEntityId),
-      level: await repos.permissions.getEffectiveLevel(input.projectEntityId),
-      members: await repos.projects.listMembers(input.projectEntityId),
-      actors: await repos.projects.availableActors(input.projectEntityId),
-      tasks: await repos.tasks.list(input.projectEntityId),
-    }));
+    return repositories.transaction((repos) => repos.projects.getDetail(input.projectEntityId));
   });
 }
 

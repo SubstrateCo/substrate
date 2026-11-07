@@ -7,6 +7,111 @@ import { waitForRealtimeIdle } from "../test-support/realtime.js";
 import { callTasks } from "../test-support/tasks.js";
 import { expect } from "@playwright/test";
 
+test("hidden selected task defers refreshes and keeps its draft until shown", async ({
+  desktop,
+}) => {
+  await desktop.provision();
+  const page = desktop.page;
+  const { id: projectEntityId } = await callTasks<{ id: string }>(page, {
+    action: "createProject",
+    name: "Hidden task queries",
+  });
+  const { id: taskEntityId } = await callTasks<{ id: string }>(page, {
+    action: "createTask",
+    projectEntityId,
+    title: "Keep selected",
+  });
+  await desktop.openPath(`/tasks?projectId=${projectEntityId}&taskId=${taskEntityId}`);
+  const draft = page.getByLabel("Add a comment", { exact: true });
+  await draft.fill("Mounted comment draft");
+  await page.getByRole("button", { name: "Edit task", exact: true }).click();
+  const titleDraft = page.getByLabel("Task title", { exact: true });
+  await titleDraft.fill("Mounted edit draft");
+  await waitForRealtimeIdle(page);
+  const selectedURL = page.url();
+  const requests: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (
+      request.method() === "GET" &&
+      (url.searchParams.get("taskEntityId") === taskEntityId ||
+        url.searchParams.get("entityId") === taskEntityId)
+    )
+      requests.push(url.pathname);
+  });
+  for (const tab of ["Settings", "Discussions"]) {
+    await page.getByRole("tab", { name: tab, exact: true }).click();
+    await waitForRealtimeIdle(page);
+    requests.length = 0;
+    await callTasks(page, {
+      action: "comment",
+      projectEntityId,
+      taskEntityId,
+      body: `Fresh while ${tab}`,
+    });
+    const changed = await page.evaluate(
+      async ({ projectEntityId, taskEntityId, tab }) => {
+        const session = await (await fetch("/api/v1/session")).json();
+        const organizationId = session.data.session.activeOrganizationId;
+        const post = async (path: string, input: Record<string, string | null>) =>
+          (
+            await fetch(`/api/v1/${path}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ organizationId, ...input }),
+            })
+          ).json();
+        const conversation = await post("messaging/conversations", {
+          kind: "channel",
+          name: `hidden-${tab.toLowerCase()}`,
+        });
+        if (!conversation.success) return false;
+        const message = await post("messaging/messages", {
+          conversationId: conversation.data.id,
+          body: `Context while ${tab}`,
+        });
+        if (!message.success) return false;
+        const link = await post("context/links", {
+          entityId: taskEntityId,
+          messageId: message.data.id,
+        });
+        const update = await post("tasks/mutations", {
+          action: "updateTask",
+          projectEntityId,
+          taskEntityId,
+          title: "Keep selected",
+          description: "",
+          status: "not_started",
+          priority: tab === "Settings" ? "high" : "urgent",
+          assigneeActorEntityId: null,
+          dueDate: null,
+        });
+        return link.success && update.success;
+      },
+      { projectEntityId, taskEntityId, tab },
+    );
+    expect(changed).toBe(true);
+    await waitForRealtimeIdle(page);
+    expect(requests, `No hidden task reads under ${tab}`).toEqual([]);
+    await expect(page).toHaveURL(selectedURL);
+    await page.getByRole("tab", { name: "Tasks", exact: true }).click();
+    await expect(page.getByText(`Fresh while ${tab}`, { exact: true })).toBeVisible();
+    await expect(draft).toHaveValue("Mounted comment draft");
+    await expect(titleDraft).toHaveValue("Mounted edit draft");
+    await expect(
+      page
+        .getByRole("region", { name: "Task activity", exact: true })
+        .getByText("Priority changed · Desktop Owner", { exact: true }),
+    ).toHaveCount(tab === "Settings" ? 1 : 2);
+    await expect(page.getByText(`Context while ${tab}`, { exact: true })).toBeVisible();
+    await waitForRealtimeIdle(page);
+    expect(requests.filter((path) => path.endsWith("/comments"))).toHaveLength(1);
+    expect(requests.filter((path) => path.endsWith("/activity"))).toHaveLength(1);
+    expect(requests.filter((path) => path.endsWith("/related"))).toHaveLength(1);
+    await expect(page.getByRole("tab", { name: "Tasks", exact: true })).toBeFocused();
+  }
+});
+
 test("project actions, task dialogs, inline settings and linked discussions stay connected", async ({
   desktop,
 }) => {

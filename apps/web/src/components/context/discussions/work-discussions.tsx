@@ -11,13 +11,18 @@ export function WorkDiscussions({
   entityId,
   label = "Related context",
   children,
+  visible = true,
 }: {
   organizationId: string;
   entityId: string;
   label?: string;
   children?: ReactNode;
+  visible?: boolean;
 }) {
-  const related = useQuery(relatedContextOptions(organizationId, entityId));
+  const related = useQuery({
+    ...relatedContextOptions(organizationId, entityId),
+    enabled: visible,
+  });
   return (
     <WorkDiscussionsView
       items={(related.data ?? []).map((item) => ({

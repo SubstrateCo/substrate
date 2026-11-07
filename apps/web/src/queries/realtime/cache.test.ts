@@ -13,6 +13,77 @@ function change(
   return { version: 1, type: "change", id: crypto.randomUUID(), organizationId, domain } as const;
 }
 
+test("a task hint during an in-flight read stays stale when its panel becomes hidden", async () => {
+  const client = new QueryClient();
+  const key = queryKeys.taskComments("org", "project", "task");
+  const first = Promise.withResolvers<string[]>();
+  let reads = 0;
+  const options = {
+    queryKey: key,
+    staleTime: Infinity,
+    queryFn: async () => (++reads === 1 ? first.promise : ["fresh"]),
+  };
+  const observer = new QueryObserver(client, options);
+  const unsubscribe = observer.subscribe(() => {});
+  const cache = createRealtimeCache({
+    queryClient: client,
+    organizationId: "org",
+    userId: "user",
+    revalidate: async () => {},
+  });
+  try {
+    await cache.receive(change("tasks"));
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    observer.setOptions({ ...options, enabled: false });
+    first.resolve(["old snapshot"]);
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect(reads).toBe(1);
+    expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+    observer.setOptions({ ...options, enabled: true });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(client.getQueryData(key)).toEqual(["fresh"]);
+    expect(reads).toBe(2);
+  } finally {
+    first.resolve([]);
+    cache.dispose();
+    unsubscribe();
+    client.clear();
+  }
+});
+
+test("access resets clear hidden task data without issuing hidden reads", async () => {
+  const client = new QueryClient();
+  const key = queryKeys.taskComments("org", "project", "task");
+  let reads = 0;
+  const observer = new QueryObserver(client, {
+    queryKey: key,
+    enabled: false,
+    queryFn: async () => {
+      reads++;
+      return ["private"];
+    },
+  });
+  const unsubscribe = observer.subscribe(() => {});
+  client.setQueryData(key, ["private"]);
+  const cache = createRealtimeCache({
+    queryClient: client,
+    organizationId: "org",
+    userId: "user",
+    revalidate: async () => {},
+  });
+  try {
+    const reset = cache.receive(change("access"));
+    expect(client.getQueryData(key)).toBeUndefined();
+    expect(observer.getCurrentResult().data).toBeUndefined();
+    await reset;
+    expect(reads).toBe(0);
+  } finally {
+    cache.dispose();
+    unsubscribe();
+    client.clear();
+  }
+});
+
 test("workspace profile changes refresh actor names across domains and the session", () => {
   expect(realtimeQueryTargets(change("profile"), "user")).toEqual([
     { queryKey: queryKeys.session },

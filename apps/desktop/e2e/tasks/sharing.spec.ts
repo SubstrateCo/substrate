@@ -135,6 +135,7 @@ test("explicit project grants control inherited task, subtask, and comment acces
           .getByRole("complementary", { name: "Projects", exact: true })
           .getByRole("button", { name: project, exact: true }),
       ).toBeVisible({ timeout: 20_000 });
+      await waitForRealtimeIdle(memberPage);
       await memberPage
         .getByRole("complementary", { name: "Projects", exact: true })
         .getByRole("button", { name: project, exact: true })
@@ -191,6 +192,8 @@ test("explicit project grants control inherited task, subtask, and comment acces
   }
 
   await test.step("revocation removes an open task and its comments through realtime without reload", async () => {
+    await memberPage.getByRole("tab", { name: "Settings", exact: true }).click();
+    await waitForRealtimeIdle(memberPage);
     await select(ownerPage, `${member.name} permission`, "No access");
     await sharing
       .getByRole("listitem")
@@ -212,6 +215,7 @@ test("explicit project grants control inherited task, subtask, and comment acces
       0,
     );
     await expect(memberPage.getByText("Parent private comment", { exact: true })).toHaveCount(0);
+    await expect(memberPage.getByLabel("Add a comment", { exact: true })).toHaveCount(0);
     await expect(
       memberPage.getByRole("region", { name: "Project tasks", exact: true }),
     ).toHaveCount(0);

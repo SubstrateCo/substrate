@@ -4,6 +4,7 @@ import { entities } from "../../core/entities/schema";
 import { entityGrants } from "../../core/permissions/schema";
 import { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
+import { tasks } from "../tasks/tasks.schema";
 import { projects } from "./schema";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 
@@ -23,8 +24,69 @@ export function projectRepository(context: RepositoryContext) {
     if (!project) throw new AccessDeniedError();
     return project;
   }
+  function members(projectEntityId: string) {
+    return db
+      .select({
+        actorEntityId: actors.entityId,
+        name: actors.name,
+        type: actors.type,
+        level: entityGrants.level,
+      })
+      .from(entityGrants)
+      .innerJoin(
+        actors,
+        and(
+          eq(actors.organizationId, entityGrants.organizationId),
+          eq(actors.entityId, entityGrants.actorEntityId),
+        ),
+      )
+      .where(
+        and(
+          eq(entityGrants.organizationId, scope.organizationId),
+          eq(entityGrants.entityId, projectEntityId),
+        ),
+      )
+      .orderBy(asc(actors.name));
+  }
+  function availableActors() {
+    // Organization actors are discoverable only inside an accessible project, not across organizations.
+    return db
+      .select({ entityId: actors.entityId, name: actors.name, type: actors.type })
+      .from(actors)
+      .innerJoin(entities, eq(entities.entityId, actors.entityId))
+      .where(
+        and(
+          eq(actors.organizationId, scope.organizationId),
+          activeActorCondition(),
+          isNull(entities.deletedAt),
+        ),
+      )
+      .orderBy(asc(actors.name), asc(actors.entityId));
+  }
   return {
     get,
+    async getDetail(projectEntityId: string) {
+      const { level } = await context.requireAccess(projectEntityId, "view");
+      const [project] = await db.select().from(projects).where(projectWhere(projectEntityId));
+      if (!project) throw new AccessDeniedError();
+      return {
+        project,
+        level,
+        members: await members(projectEntityId),
+        actors: await availableActors(),
+        tasks: await db
+          .select()
+          .from(tasks)
+          .where(
+            and(
+              eq(tasks.organizationId, scope.organizationId),
+              eq(tasks.projectEntityId, projectEntityId),
+              inArray(tasks.entityId, context.readableEntities()),
+            ),
+          )
+          .orderBy(asc(tasks.entityId)),
+      };
+    },
     async create(input: { name: string; description?: string }) {
       const name = requiredText(input.name, 200);
       return db.transaction(async (tx) => {
@@ -71,44 +133,11 @@ export function projectRepository(context: RepositoryContext) {
     },
     async listMembers(projectEntityId: string) {
       await get(projectEntityId);
-      return db
-        .select({
-          actorEntityId: actors.entityId,
-          name: actors.name,
-          type: actors.type,
-          level: entityGrants.level,
-        })
-        .from(entityGrants)
-        .innerJoin(
-          actors,
-          and(
-            eq(actors.organizationId, entityGrants.organizationId),
-            eq(actors.entityId, entityGrants.actorEntityId),
-          ),
-        )
-        .where(
-          and(
-            eq(entityGrants.organizationId, scope.organizationId),
-            eq(entityGrants.entityId, projectEntityId),
-          ),
-        )
-        .orderBy(asc(actors.name));
+      return members(projectEntityId);
     },
     async availableActors(projectEntityId: string) {
       await get(projectEntityId);
-      // Organization actors are discoverable only inside an accessible project, not across organizations.
-      return db
-        .select({ entityId: actors.entityId, name: actors.name, type: actors.type })
-        .from(actors)
-        .innerJoin(entities, eq(entities.entityId, actors.entityId))
-        .where(
-          and(
-            eq(actors.organizationId, scope.organizationId),
-            activeActorCondition(),
-            isNull(entities.deletedAt),
-          ),
-        )
-        .orderBy(asc(actors.name), asc(actors.entityId));
+      return availableActors();
     },
   };
 }
