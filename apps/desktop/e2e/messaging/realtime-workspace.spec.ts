@@ -1,6 +1,6 @@
 import { switchWorkspace } from "../../../web/e2e/test-support/organizations.js";
 import { test } from "../test-support/fixture.js";
-import { reconnectRealtime } from "../test-support/realtime.js";
+import { reconnectRealtime, waitForRealtimeIdle } from "../test-support/realtime.js";
 import { createChannel } from "./test-support.js";
 import { expect } from "@playwright/test";
 
@@ -90,6 +90,7 @@ test("same-workspace replies notify live, navigate to the reply and retain read 
     await expect(
       page.getByRole("heading", { name: "Live team project", exact: true }),
     ).toBeVisible();
+    await waitForRealtimeIdle(page);
     const projectURL = new URL(page.url());
     await desktopPeer.openPath("/tasks");
     await expect(

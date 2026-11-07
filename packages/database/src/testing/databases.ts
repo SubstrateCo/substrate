@@ -1,4 +1,4 @@
-import { testDatabaseURL } from "./environment";
+import { testDatabaseURL } from "./environment.ts";
 import postgres from "postgres";
 
 export async function createTestDatabases(count: number) {

@@ -49,3 +49,41 @@ export async function reconnectRealtime(page: Page) {
     await observation.dispose();
   }
 }
+
+export async function waitForRealtimeIdle(page: Page) {
+  const activity = await page.evaluateHandle(() => {
+    const bridge = window.startupOSRealtime;
+    if (!bridge) throw new Error("The Electron realtime preload bridge is unavailable.");
+    const original = window.fetch;
+    let pending = 0;
+    let lastActivity = performance.now();
+    const stop = bridge.onEvent(() => {
+      lastActivity = performance.now();
+    });
+    window.fetch = Object.assign(async (...args: Parameters<typeof fetch>) => {
+      pending++;
+      lastActivity = performance.now();
+      try {
+        return await original(...args);
+      } finally {
+        pending--;
+        lastActivity = performance.now();
+      }
+    }, original);
+    return {
+      idle: () => pending === 0 && performance.now() - lastActivity >= 250,
+      restore: () => {
+        window.fetch = original;
+        stop();
+      },
+    };
+  });
+  try {
+    await expect(page.getByRole("status").filter({ hasText: /live updates/ })).toHaveCount(0);
+    await page.waitForLoadState("networkidle");
+    await expect.poll(() => activity.evaluate(({ idle }) => idle())).toBe(true);
+  } finally {
+    await activity.evaluate(({ restore }) => restore());
+    await activity.dispose();
+  }
+}

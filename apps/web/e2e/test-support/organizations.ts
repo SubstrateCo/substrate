@@ -1,26 +1,41 @@
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
+import { z } from "zod";
 
 export async function expectScopedMembershipAfter(page: Page, action: () => Promise<void>) {
+  const target = page
+    .waitForRequest(
+      (request) =>
+        request.method() === "POST" &&
+        new URL(request.url()).pathname === "/api/auth/organization/set-active",
+    )
+    .then(
+      (request) =>
+        z.object({ organizationId: z.string().min(1) }).parse(request.postDataJSON())
+          .organizationId,
+    );
   const [organizationResponse, membershipRequest] = await Promise.all([
     page.waitForResponse(
-      (response) =>
+      async (response) =>
         new URL(response.url()).pathname === "/api/auth/organization/get-full-organization" &&
-        response.ok(),
+        response.ok() &&
+        new URL(response.url()).searchParams.get("organizationId") === (await target),
     ),
     page.waitForRequest(
-      (request) =>
-        new URL(request.url()).pathname === "/api/auth/organization/get-active-member-role",
+      async (request) =>
+        new URL(request.url()).pathname === "/api/auth/organization/get-active-member-role" &&
+        new URL(request.url()).searchParams.get("organizationId") === (await target),
     ),
     action(),
   ]);
-  const organization: { id: string } = await organizationResponse.json();
+  const organizationId = new URL(organizationResponse.url()).searchParams.get("organizationId");
   const membershipOrganizationId = new URL(membershipRequest.url()).searchParams.get(
     "organizationId",
   );
+  expect(organizationId, "The organization detail request names its workspace").toBeTruthy();
   expect(
     membershipOrganizationId,
-    "The displayed membership is fetched for the displayed workspace",
-  ).toBe(organization.id);
+    "Membership and organization detail requests use the same workspace",
+  ).toBe(organizationId);
 }
 
 export async function expectWorkspace(

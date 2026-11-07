@@ -151,11 +151,13 @@ async function useDesktop(
   browser: Page,
   mailpit: Mailpit,
   use: (fixture: DesktopFixture) => Promise<void>,
+  environment: Record<string, string>,
 ) {
   const env: Record<string, string> = {};
   for (const [key, value] of Object.entries(process.env)) {
     if (value !== undefined && key !== "ELECTRON_RUN_AS_NODE") env[key] = value;
   }
+  Object.assign(env, environment);
   env.STARTUP_OS_TEST_ID = randomUUID();
   const packaged = Boolean(process.env.DESKTOP_EXECUTABLE_PATH);
   if (packaged) {
@@ -187,7 +189,7 @@ async function useDesktop(
     browser,
     mailpit,
     launchOptions,
-    bundled ? desktopOrigin : applicationURL,
+    bundled ? desktopOrigin : new URL(env.STARTUP_OS_WEB_URL || applicationURL).origin,
   );
   try {
     await fixture.window();
@@ -198,14 +200,19 @@ async function useDesktop(
   }
 }
 
-export const test = base.extend<{ desktop: DesktopFixture; desktopPeer: DesktopFixture }>({
-  desktop: async ({ page, request }, use) => {
-    await useDesktop(page, new Mailpit(request), use);
+export const test = base.extend<{
+  desktop: DesktopFixture;
+  desktopPeer: DesktopFixture;
+  desktopEnvironment: Record<string, string>;
+}>({
+  desktopEnvironment: [{}, { option: true }],
+  desktop: async ({ page, request, desktopEnvironment }, use) => {
+    await useDesktop(page, new Mailpit(request), use, desktopEnvironment);
   },
-  desktopPeer: async ({ browser, request }, use) => {
-    const context = await browser.newContext();
+  desktopPeer: async ({ browser, request, baseURL, desktopEnvironment }, use) => {
+    const context = await browser.newContext({ baseURL });
     try {
-      await useDesktop(await context.newPage(), new Mailpit(request), use);
+      await useDesktop(await context.newPage(), new Mailpit(request), use, desktopEnvironment);
     } finally {
       await context.close();
     }

@@ -8,6 +8,7 @@ import {
   disconnectRealtime,
   observeRealtime,
   reconnectRealtime,
+  waitForRealtimeIdle,
 } from "../test-support/realtime.js";
 import { expect, type Page } from "@playwright/test";
 
@@ -131,7 +132,8 @@ for (const privateChannel of [true, false]) {
       await expect(
         partnerThread.getByRole("article").filter({ hasText: "Missed while disconnected" }),
       ).toBeVisible();
-      // Span both former polling periods. With no events, cached messages must stay idle.
+      await waitForRealtimeIdle(partner);
+      // Span both former polling periods after event-driven resync has settled.
       const idle = await partner.evaluateHandle(() => {
         const original = window.fetch;
         const requests: string[] = [];
