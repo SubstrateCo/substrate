@@ -75,15 +75,28 @@ export async function messagePage(
       ),
     )
     .orderBy(asc(references.createdAt));
-  const tokens = new Map(
-    messages.map((message) => [
-      message.id,
+  const messagesById = new Map(messages.map((message) => [message.id, message]));
+  const workByMessage = new Map<string, typeof work>();
+  for (const link of work) {
+    const links = workByMessage.get(link.messageId) ?? [];
+    links.push(link);
+    workByMessage.set(link.messageId, links);
+  }
+  const tokens = new Map<string, Set<string>>();
+  const conversationTokens = new Map<string, Set<string>>();
+  for (const message of messages) {
+    const ids = new Set(
       messageReferences(message.body)
         .filter((item) => item.kind === "person")
         .map((item) => item.id),
-    ]),
-  );
-  const people = [...tokens.values()].some((ids) => ids.length > 0)
+    );
+    tokens.set(message.id, ids);
+    if (!ids.size) continue;
+    const combined = conversationTokens.get(message.conversationId) ?? new Set<string>();
+    for (const id of ids) combined.add(id);
+    conversationTokens.set(message.conversationId, combined);
+  }
+  const people = conversationTokens.size
     ? await db
         .select({
           id: actors.entityId,
@@ -96,10 +109,10 @@ export async function messagePage(
           messagingConversations,
           and(
             or(
-              ...messages.map((message) =>
+              ...[...conversationTokens].map(([conversationId, ids]) =>
                 and(
-                  eq(messagingConversations.id, message.conversationId),
-                  inArray(actors.entityId, tokens.get(message.id)!),
+                  eq(messagingConversations.id, conversationId),
+                  inArray(actors.entityId, [...ids]),
                 ),
               ),
             ),
@@ -118,28 +131,31 @@ export async function messagePage(
           ),
         )
     : [];
+  const peopleByConversation = new Map<string, Map<string, (typeof people)[number]>>();
+  for (const person of people) {
+    const members =
+      peopleByConversation.get(person.conversationId) ?? new Map<string, (typeof people)[number]>();
+    members.set(person.id, person);
+    peopleByConversation.set(person.conversationId, members);
+  }
   return ids.map((id) => {
-    const message = messages.find((row) => row.id === id)!;
+    const message = messagesById.get(id)!;
     return {
       messageId: id,
-      links: work
-        .filter((row) => row.messageId === id)
-        .map((link) => ({
-          entityId: link.entityId,
-          entityType: link.entityType,
-          title: link.title,
-          projectEntityId: link.projectEntityId,
-          status: link.status,
-          purpose: link.purpose,
-          canRemove: link.canRemove,
-          statusName: link.status ? taskStatusLabels[link.status] : null,
-        })),
-      people: people
-        .filter(
-          (person) =>
-            person.conversationId === message.conversationId && tokens.get(id)!.includes(person.id),
-        )
-        .map(({ id, name }) => ({ id, name })),
+      links: (workByMessage.get(id) ?? []).map((link) => ({
+        entityId: link.entityId,
+        entityType: link.entityType,
+        title: link.title,
+        projectEntityId: link.projectEntityId,
+        status: link.status,
+        purpose: link.purpose,
+        canRemove: link.canRemove,
+        statusName: link.status ? taskStatusLabels[link.status] : null,
+      })),
+      people: [...tokens.get(id)!].flatMap((personId) => {
+        const person = peopleByConversation.get(message.conversationId)?.get(personId);
+        return person ? [{ id: person.id, name: person.name }] : [];
+      }),
     };
   });
 }

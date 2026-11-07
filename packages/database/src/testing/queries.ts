@@ -4,13 +4,15 @@ import { drizzle } from "drizzle-orm/postgres-js";
 
 export function recordQueries() {
   const queries: string[] = [];
+  const parameters: unknown[][] = [];
   const db = drizzle(testDatabase.$client, {
     schema,
     logger: {
-      logQuery: (query) => {
+      logQuery: (query, params) => {
         queries.push(query);
+        parameters.push(params);
       },
     },
   });
-  return { db, queries };
+  return { db, queries, parameters };
 }

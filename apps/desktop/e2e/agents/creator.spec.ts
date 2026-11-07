@@ -1,6 +1,155 @@
 import { provisionVerifiedAccount } from "../../../web/e2e/test-support/auth.js";
+import { provisionWorkspaceSession } from "../../../web/e2e/test-support/organizations.js";
 import { test } from "../test-support/fixture.js";
 import { expect } from "@playwright/test";
+
+type ModelPickerProbe = {
+  calls: { method: string; harness?: string }[];
+  requests: string[];
+};
+
+test("model picker loads only needed native catalogs across search, refresh and workspaces", async ({
+  desktop,
+}) => {
+  test.setTimeout(120_000);
+  await desktop.provision();
+  const page = desktop.page;
+  await page.goto(new URL("/settings/user/agents", desktop.rendererOrigin).href);
+  await page.getByRole("button", { name: "Create agent", exact: true }).click();
+  const editor = page.getByRole("dialog", { name: "Create agent", exact: true });
+  await desktop.app.evaluate(({ ipcMain }) => {
+    const { channel } = process.getBuiltinModule("node:diagnostics_channel");
+    const probe: ModelPickerProbe = { calls: [], requests: [] };
+    Object.assign(globalThis, { modelPickerProbe: probe });
+    // SAFETY: Electron stores invoke handlers here; main registers this channel before opening its window.
+    const handlers = (
+      ipcMain as typeof ipcMain & {
+        _invokeHandlers: Map<
+          string,
+          (
+            event: Electron.IpcMainInvokeEvent,
+            method: string,
+            value?: { harness?: string },
+            // oxlint-disable-next-line deslop/no-unknown-returns -- The observer forwards the native payload unchanged, without interpreting it.
+          ) => Promise<unknown>
+        >;
+      }
+    )._invokeHandlers;
+    const original = handlers.get("startup-os:harness")!;
+    handlers.set("startup-os:harness", (event, method, value) => {
+      if (method === "synchronize" || method === "listModels")
+        probe.calls.push({ method, harness: value?.harness });
+      return original(event, method, value);
+    });
+    channel("undici:request:create").subscribe((message) => {
+      // SAFETY: undici:request:create publishes a request with its path, not response or credential data.
+      const { request } = message as { request: { path: string } };
+      const path = request.path.split("?")[0]!;
+      if (
+        [
+          "/api/v1/session",
+          "/api/auth/organization/get-active-member-role",
+          "/api/v1/agents/list",
+        ].includes(path)
+      )
+        probe.requests.push(path);
+    });
+  });
+  const probe = () =>
+    desktop.app.evaluate(() => {
+      // SAFETY: The setup evaluate above installs this probe before any read.
+      const state = (globalThis as typeof globalThis & { modelPickerProbe: ModelPickerProbe })
+        .modelPickerProbe;
+      return { calls: state.calls.splice(0), requests: state.requests.splice(0) };
+    });
+  const refresh = page.getByRole("button", { name: "Refresh models", exact: true });
+  const check = async (harnesses: string[]) => {
+    if (harnesses.length)
+      await expect
+        .poll(
+          () =>
+            desktop.app.evaluate(() => {
+              // SAFETY: The setup evaluate above installs this probe before any read.
+              const state = (
+                globalThis as typeof globalThis & { modelPickerProbe: ModelPickerProbe }
+              ).modelPickerProbe;
+              return state.calls.filter((call) => call.method === "listModels").length;
+            }),
+          { timeout: 60_000 },
+        )
+        .toBe(harnesses.length);
+    await expect(refresh).toBeEnabled({ timeout: 60_000 });
+    const result = await probe();
+    console.log("model picker measured", {
+      harnesses,
+      ipc: result.calls.length,
+      http: result.requests.length,
+    });
+    expect(
+      result.calls
+        .filter((call) => call.method === "listModels")
+        .map((call) => call.harness)
+        .sort((a, b) => (a ?? "").localeCompare(b ?? "")),
+    ).toEqual([...harnesses].sort((a, b) => a.localeCompare(b)));
+    expect(result.calls.filter((call) => call.method === "synchronize")).toHaveLength(
+      harnesses.length,
+    );
+    expect(result.requests).toHaveLength(harnesses.length * 7);
+  };
+  const open = () => editor.getByRole("button", { name: /^Harness & model:/ }).click();
+  await open();
+  await check(["opencode"]);
+  await page.getByRole("button", { name: "Claude Code", exact: true }).click();
+  await check(["claude"]);
+  await page.getByRole("button", { name: "OpenCode", exact: true }).click();
+  await check([]);
+  const search = page.getByPlaceholder("Search models…", { exact: true });
+  await search.fill("   ");
+  await check([]);
+  await search.fill("model");
+  await check(["codex", "antigravity"]);
+  await refresh.click();
+  await check(["opencode", "claude", "codex", "antigravity"]);
+  await search.fill("");
+  await refresh.click();
+  await check(["opencode"]);
+  await page.keyboard.press("Escape");
+  await open();
+  await check([]);
+  await page.keyboard.press("Escape");
+  await page.clock.setFixedTime(new Date(Date.now() + 61_000));
+  await open();
+  await check(["opencode"]);
+  await page.keyboard.press("Escape");
+  await editor.getByRole("button", { name: "Cancel", exact: true }).click();
+  await desktop.openPath("/organizations");
+  await page.getByLabel("Workspace name", { exact: true }).fill("Catalog workspace");
+  await page.getByLabel("Workspace slug", { exact: true }).fill(`catalog-${desktop.suffix}`);
+  await page.getByRole("button", { name: "Create workspace", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Catalog workspace ▾", exact: true }),
+  ).toBeVisible();
+  await desktop.openPath("/settings/user/agents");
+  await page.getByRole("button", { name: "Create agent", exact: true }).click();
+  await probe();
+  await open();
+  await check(["opencode"]);
+  await page.keyboard.press("Escape");
+  await editor.getByRole("button", { name: "Cancel", exact: true }).click();
+  await desktop.signout();
+  await provisionVerifiedAccount(desktop.browser, desktop.mailpit, desktop.member);
+  await provisionWorkspaceSession(
+    desktop.browser.request,
+    "Other account",
+    `account-${desktop.suffix}`,
+  );
+  await desktop.authorize();
+  await desktop.openPath("/settings/user/agents");
+  await page.getByRole("button", { name: "Create agent", exact: true }).click();
+  await probe();
+  await open();
+  await check(["opencode"]);
+});
 
 test("the Electron picker displays and saves a model from the native OpenCode catalog", async ({
   desktop,

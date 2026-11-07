@@ -44,10 +44,11 @@ export function ModelPicker({
   const [selectedHarness, setSelectedHarness] = useState<HarnessKind>(harness);
   const [search, setSearch] = useState("");
   const available = !!window.startupOSHarness && !!organizationId;
+  const query = search.trim();
   const catalogs = useQueries({
     queries: harnessOptions.map((option) => ({
       ...harnessModelsQueryOptions(userId, organizationId ?? "", option.value),
-      enabled: open && available,
+      enabled: open && available && (!!query || option.value === selectedHarness),
     })),
   });
   const choices: Choice[] = harnessOptions.flatMap((option, index) =>
@@ -58,7 +59,6 @@ export function ModelPicker({
   const activeModel = choices.find((choice) => choice.harness === harness && choice.id === model);
   const modelName = activeModel?.name ?? "Harness default";
   const label = harnessOptions.find((option) => option.value === harness)!.label;
-  const query = search.trim();
   const selectedIndex = harnessOptions.findIndex((option) => option.value === selectedHarness);
   const selectedCatalog = catalogs[selectedIndex];
   const groups = harnessOptions.filter((option) => query || selectedHarness === option.value);
@@ -237,8 +237,9 @@ export function ModelPicker({
               aria-label="Refresh models"
               disabled={!available || catalogs.some((catalog) => catalog.isFetching)}
               onClick={() =>
-                catalogs.forEach((catalog) => {
-                  void catalog.refetch();
+                catalogs.forEach((catalog, index) => {
+                  if (query || harnessOptions[index]!.value === selectedHarness)
+                    void catalog.refetch();
                 })
               }
             >

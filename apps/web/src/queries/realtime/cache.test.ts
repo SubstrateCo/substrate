@@ -277,7 +277,7 @@ test("task edits refresh titles shown by message links and existing notification
   const client = new QueryClient();
   const keys = [
     [...queryKeys.context("org"), "message", "message"],
-    [...queryKeys.context("org"), "message-pages", ["message"]],
+    [...queryKeys.context("org"), "message-pages", "conversation", ["message"]],
     [...queryKeys.context("org"), "notifications"],
   ];
   for (const key of keys) client.setQueryData(key, [{ title: "Old task title" }]);
@@ -299,6 +299,7 @@ test("a task hint refreshes one mounted fifty-message context page, and access r
   const key = [
     ...queryKeys.context("org"),
     "message-pages",
+    "conversation",
     Array.from({ length: 50 }, (_, i) => `message-${i}`),
   ];
   let reads = 0;

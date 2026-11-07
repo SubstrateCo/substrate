@@ -223,13 +223,15 @@ test("page people resolve parsed tokens in sets and clear inactive, deleted and 
   const rows = [];
   for (let i = 0; i < 50; i++)
     rows.push(await chat.sendMessage(conversation.id, `@[person:${f.bob}]`));
-  const { db, queries } = recordQueries();
+  const { db, queries, parameters } = recordQueries();
   const service = createContextService(db, { userId: "alice", organizationId: f.orgA });
   const one = await service.messagePage([rows[0]!.id]);
+  const onePeopleParameters = parameters.at(-1)!.length;
   const count = queries.length;
   queries.length = 0;
   const page = await service.messagePage(rows.map((row) => row.id));
-  expect(page.every((row) => row.people[0]?.name === "Bob")).toBe(true);
+  expect(page.map((row) => row.people)).toEqual(rows.map(() => [{ id: f.bob, name: "Bob" }]));
+  expect(parameters.at(-1)!).toHaveLength(onePeopleParameters);
   expect(one[0]!.people).toEqual([{ id: f.bob, name: "Bob" }]);
   expect(queries).toHaveLength(count);
   expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(7);
@@ -270,6 +272,31 @@ test("page people resolve parsed tokens in sets and clear inactive, deleted and 
   await expect(context("bob").messagePage([rows[0]!.id])).rejects.toBeInstanceOf(AccessDeniedError);
   await f.db.delete(member).where(eq(member.userId, "bob"));
   expect((await service.messagePage([publicMention.id]))[0]!.people).toEqual([]);
+});
+
+test("page context deduplicates requested IDs in order and keeps people tokens within each message and conversation", async () => {
+  const { chat, conversation } = await setup();
+  await chat.addMembers(conversation.id, ["bob@example.com"]);
+  const bob = await chat.sendMessage(conversation.id, `@[person:${f.bob}] @[person:${f.bob}]`);
+  const alice = await chat.sendMessage(conversation.id, `@[person:${f.alice}]`);
+  const empty = await chat.sendMessage(conversation.id, "no tokens");
+  const other = await chat.createConversation({
+    kind: "channel",
+    name: "Other private",
+    private: true,
+  });
+  const hidden = await chat.sendMessage(other.id, "a previously visible person");
+  await f.db
+    .update(messagingMessages)
+    .set({ body: `@[person:${f.bob}]` })
+    .where(eq(messagingMessages.id, hidden.id));
+  const result = await context().messagePage([hidden.id, alice.id, bob.id, alice.id, empty.id]);
+  expect(result).toEqual([
+    { messageId: hidden.id, links: [], people: [] },
+    { messageId: alice.id, links: [], people: [{ id: f.alice, name: "Alice" }] },
+    { messageId: bob.id, links: [], people: [{ id: f.bob, name: "Bob" }] },
+    { messageId: empty.id, links: [], people: [] },
+  ]);
 });
 
 test("source creation is atomic, concurrent-idempotent, and preserves the exact reply without granting access", async () => {
