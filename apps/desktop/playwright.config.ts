@@ -4,10 +4,15 @@ import { defineConfig } from "@playwright/test";
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
-  workers: 5,
+  // Native windows share OS focus. Parallel tests can dismiss each other's menus.
+  workers: 1,
   timeout: 60_000,
   expect: { timeout: 15_000 },
   reporter: "list",
+  projects: [
+    { name: "functional", grepInvert: /@layout/ },
+    { name: "layout", grep: /@layout/ },
+  ],
   use: {
     baseURL: applicationURL,
     trace: "off",

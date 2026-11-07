@@ -10,21 +10,6 @@ export default defineConfig({
   timeout: 180_000,
   expect: { timeout: 15_000 },
   reporter: "list",
-  projects: [
-    {
-      name: "workflows",
-      testMatch: /(?:connected-access|connected-workflow|messaging|tasks-sharing)\.spec\.ts$/,
-    },
-    {
-      name: "accounts",
-      testMatch: /workspace\.spec\.ts$/,
-    },
-    {
-      name: "screens",
-      testIgnore:
-        /(?:connected-access|connected-workflow|messaging|tasks-sharing|workspace)\.spec\.ts$/,
-    },
-  ],
   use: {
     actionTimeout: 10_000,
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",

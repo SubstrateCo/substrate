@@ -77,12 +77,13 @@ test("failed source-task submission keeps the draft and retry creates one linked
     "Do not lose my draft.",
   );
   await form.getByRole("button", { name: "Create task", exact: true }).click();
-  await expect(page.getByText("Task created and linked.", { exact: true })).toBeVisible();
+  const created = message.getByRole("link", { name: `Open ${title}`, exact: true });
+  await expect(created).toBeVisible();
   const requestIds = await submission.evaluate((control) => control.requestIds());
   expect(requestIds).toHaveLength(2);
   expect(requestIds[0]).toBeTruthy();
   expect(requestIds[1], "Retry retains the original request's idempotency key").toBe(requestIds[0]);
-  await page.getByRole("link", { name: "Open created task", exact: true }).click();
+  await created.click();
   await expect(
     page
       .getByRole("region", { name: "Project tasks" })

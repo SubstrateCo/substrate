@@ -17,6 +17,31 @@ test("desktop invitation email returns a new member to the invited workspace", a
   await expect(
     page.locator("[data-sonner-toast]").filter({ hasText: "Invitation email sent." }),
   ).toBeVisible();
+  const row = page.getByRole("row").filter({ hasText: member.email });
+  const previousIds = await desktop.mailpit.messageIds(member.email);
+  await row.getByRole("button", { name: "Resend", exact: true }).click();
+  const canceledLink = new URL(
+    await desktop.mailpit.link(
+      member.email,
+      `Join ${workspace} on Startup OS`,
+      "/desktop/open",
+      previousIds,
+    ),
+  );
+  const canceledPath = canceledLink.searchParams.get("path")!;
+  await row.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(row).toContainText("canceled");
+  const canceledIds = await desktop.mailpit.messageIds(member.email);
+  await page.getByRole("button", { name: "Send invitation", exact: true }).click();
+  const replacement = new URL(
+    await desktop.mailpit.link(
+      member.email,
+      `Join ${workspace} on Startup OS`,
+      "/desktop/open",
+      canceledIds,
+    ),
+  );
+  expect(replacement.searchParams.get("path")).not.toBe(canceledPath);
   await desktop.signout();
   await desktop.openMail(member.email, `Join ${workspace} on Startup OS`);
   await expect(page.getByText("Welcome back", { exact: true })).toBeVisible();
@@ -26,6 +51,11 @@ test("desktop invitation email returns a new member to the invited workspace", a
   await browser.context().clearCookies();
   await desktop.signup(member);
   await desktop.login(member);
+  await desktop.openPath(canceledPath);
+  await expect(
+    page.getByRole("heading", { name: "Invitation unavailable", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Accept invitation", exact: true })).toHaveCount(0);
   await desktop.openMail(member.email, `Join ${workspace} on Startup OS`);
   await expect(page.getByText(`Invited email: ${member.email}`, { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Accept invitation", exact: true }).click();

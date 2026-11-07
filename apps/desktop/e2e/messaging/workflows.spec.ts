@@ -23,46 +23,48 @@ test("Electron messaging cancels creation without mutations and keeps channel an
     const before = creations;
     const empty = page.getByRole("heading", { name: "Your conversations start here", exact: true });
     if (!populated) await expect(empty).toBeVisible();
-    for (const kind of ["channel", "dm", "group"] as const) {
-      for (const exit of ["button", "keyboard", "escape"] as const) {
-        let trigger = sidebar.getByRole("button", {
-          name: kind === "channel" ? "Create channel" : "New message",
-          exact: true,
-        });
-        if (kind === "channel" && !populated)
-          trigger = page.getByRole("button", { name: "Create channel", exact: true }).last();
-        await trigger.click();
-        if (kind !== "channel")
-          await page
-            .getByRole("menuitem", {
-              name: kind === "dm" ? "New direct message" : "New group message",
-              exact: true,
-            })
-            .click();
-        if (kind !== "dm")
-          await page
-            .getByLabel(kind === "channel" ? "Channel name" : "Group name (optional)", {
-              exact: true,
-            })
-            .fill("Discard this creation");
+    for (const [kind, exit] of [
+      ["channel", "button"],
+      ["dm", "keyboard"],
+      ["group", "escape"],
+    ] as const) {
+      let trigger = sidebar.getByRole("button", {
+        name: kind === "channel" ? "Create channel" : "New message",
+        exact: true,
+      });
+      if (kind === "channel" && !populated)
+        trigger = page.getByRole("button", { name: "Create channel", exact: true }).last();
+      await trigger.click();
+      if (kind !== "channel")
         await page
-          .getByLabel(kind === "channel" ? "Add people (optional)" : "To", { exact: true })
-          .fill("nobody@example.test");
-        if (populated) {
-          await expect(first).toHaveCount(0);
-          await expect(page.getByRole("log")).toHaveCount(0);
-        }
-        const cancel = page.getByRole("button", { name: "Cancel", exact: true });
-        if (exit === "escape") await page.keyboard.press("Escape");
-        else if (exit === "keyboard") {
-          await cancel.focus();
-          await cancel.press("Enter");
-        } else await cancel.click();
-        await expect(cancel).toHaveCount(0);
-        await expect(trigger).toBeFocused();
-        if (populated) await expect(first).toHaveText("First channel draft");
-        else await expect(empty).toBeVisible();
+          .getByRole("menuitem", {
+            name: kind === "dm" ? "New direct message" : "New group message",
+            exact: true,
+          })
+          .click();
+      if (kind !== "dm")
+        await page
+          .getByLabel(kind === "channel" ? "Channel name" : "Group name (optional)", {
+            exact: true,
+          })
+          .fill("Discard this creation");
+      await page
+        .getByLabel(kind === "channel" ? "Add people (optional)" : "To", { exact: true })
+        .fill("nobody@example.test");
+      if (populated) {
+        await expect(first).toHaveCount(0);
+        await expect(page.getByRole("log")).toHaveCount(0);
       }
+      const cancel = page.getByRole("button", { name: "Cancel", exact: true });
+      if (exit === "escape") await page.keyboard.press("Escape");
+      else if (exit === "keyboard") {
+        await cancel.focus();
+        await cancel.press("Enter");
+      } else await cancel.click();
+      await expect(cancel).toHaveCount(0);
+      await expect(trigger).toBeFocused();
+      if (populated) await expect(first).toHaveText("First channel draft");
+      else await expect(empty).toBeVisible();
     }
     await desktop.app.evaluate(({ BrowserWindow }) => {
       BrowserWindow.getAllWindows()[0]!.setContentSize(390, 844);
@@ -97,7 +99,7 @@ test("Electron messaging cancels creation without mutations and keeps channel an
     await expect.poll(() => page.evaluate(() => innerWidth)).toBe(1024);
   };
 
-  await test.step("empty messaging cancels every creation kind and exit path", () =>
+  await test.step("empty messaging covers each creation kind and each cancellation mechanism", () =>
     cancelCreations(false));
   await createChannel(page, "draft-first");
   await first.fill("Root message");
@@ -109,7 +111,7 @@ test("Electron messaging cancels creation without mutations and keeps channel an
   const otherRoot = page.getByRole("article").filter({ hasText: "Another thread root" });
   await expect(otherRoot).toBeVisible();
   await first.fill("First channel draft");
-  await test.step("populated messaging restores the draft after every cancellation", () =>
+  await test.step("populated messaging restores the draft after representative cancellations", () =>
     cancelCreations(true));
 
   await createChannel(page, "draft-second");

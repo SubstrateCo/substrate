@@ -1,3 +1,5 @@
+import { signup, verifyEmail } from "../../../web/e2e/test-support/auth.js";
+import { requestBrowserSignIn } from "../test-support/auth.js";
 import { test } from "../test-support/fixture.js";
 import { expect } from "@playwright/test";
 
@@ -8,7 +10,19 @@ test("desktop signup creates a workspace and OS navigation preserves the session
   await expect(page).toHaveURL(
     (url) => url.origin === desktop.rendererOrigin && url.pathname === "/signup",
   );
-  await desktop.signup(owner);
+  await requestBrowserSignIn(desktop.app, page, desktop.browser);
+  await desktop.browser.getByRole("link", { name: "Create account", exact: true }).click();
+  await signup(desktop.browser, owner);
+  const previousIds = await desktop.mailpit.messageIds(owner.email);
+  await desktop.browser
+    .getByRole("button", { name: "Resend verification email", exact: true })
+    .click();
+  await expect(
+    desktop.browser.getByText("Verification email requested. Check your inbox and spam folder.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await verifyEmail(desktop.browser, desktop.mailpit, owner.email, previousIds);
   await desktop.login(owner);
   await expect(page.getByRole("heading", { name: "Your workspaces", exact: true })).toBeVisible();
   await page.getByLabel("Workspace name", { exact: true }).fill(workspace);

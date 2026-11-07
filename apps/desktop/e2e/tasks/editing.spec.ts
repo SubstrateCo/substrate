@@ -1,6 +1,7 @@
 import { createChannel } from "../messaging/test-support.js";
 import { choose } from "../test-support/controls.js";
 import { test } from "../test-support/fixture.js";
+import { waitForRealtimeIdle } from "../test-support/realtime.js";
 import { expect } from "@playwright/test";
 
 test("Electron task edit cancel resets drafts and saved edits retain message provenance across navigation", async ({
@@ -22,6 +23,7 @@ test("Electron task edit cancel resets drafts and saved edits retain message pro
   await expect(page.getByRole("heading", { name: "Desktop launch", exact: true })).toBeVisible();
   const projectURL = new URL(page.url());
   expect(projectURL.searchParams.get("projectId")).toBeTruthy();
+  await waitForRealtimeIdle(page);
   await page.getByRole("tab", { name: "Settings", exact: true }).click();
   await expect(page.getByLabel("Project name", { exact: true })).toBeEnabled();
   await page.getByLabel("Project name", { exact: true }).fill("Discarded project name");
@@ -50,7 +52,7 @@ test("Electron task edit cancel resets drafts and saved edits retain message pro
     .click();
   await creating.getByLabel("Due date", { exact: true }).fill("2026-12-15");
   await creating.getByRole("button", { name: "Create task", exact: true }).click();
-  await page.getByRole("link", { name: "Open created task", exact: true }).click();
+  await message.getByRole("link", { name: "Open Launch checklist", exact: true }).click();
   const details = page.getByRole("region", { name: "Task details", exact: true });
   await expect(
     details.getByRole("heading", { name: "Launch checklist", exact: true }),

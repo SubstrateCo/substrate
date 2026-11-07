@@ -28,6 +28,12 @@
       "cache": false,
       "outputs": []
     },
+    "test:integration": {
+      "outputLogs": "errors-only",
+      "env": ["PLAYWRIGHT_BASE_URL", "MAILPIT_BASE_URL"],
+      "cache": false,
+      "outputs": []
+    },
     "test:e2e": {
       "outputLogs": "errors-only",
       "env": [

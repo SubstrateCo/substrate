@@ -78,51 +78,55 @@ test("title-bar search opens records from every workspace view", async ({ deskto
   await expect(bar).toContainText("Startup OS");
 });
 
-test("title-bar search and results fit a narrow zoomed window", async ({ desktop }) => {
-  await desktop.provision();
-  const { page } = desktop;
-  await desktop.app.evaluate(({ BrowserWindow }) => {
-    const window = BrowserWindow.getAllWindows()[0]!;
-    window.setMinimumSize(320, 200);
-    window.setContentSize(480, 640);
-    window.webContents.setZoomFactor(1.25);
-  });
-  const bar = page.getByRole("banner", { name: "Window title bar" });
-  const input = bar.getByRole("combobox", { name: "Search workspace", exact: true });
-  await expect(input).toBeVisible();
-  await expect.poll(() => page.evaluate(() => innerWidth)).toBe(384);
-  // Native control insets update asynchronously after resizing and changing zoom.
-  await expect(async () => {
-    const fieldBounds = (await input.locator("..").boundingBox())!;
-    const safeArea = await bar.evaluate((element) => {
-      const style = getComputedStyle(element);
-      return {
-        left: Number.parseFloat(style.paddingLeft),
-        right: innerWidth - Number.parseFloat(style.paddingRight),
-      };
+test(
+  "title-bar search and results fit a narrow zoomed window",
+  { tag: "@layout" },
+  async ({ desktop }) => {
+    await desktop.provision();
+    const { page } = desktop;
+    await desktop.app.evaluate(({ BrowserWindow }) => {
+      const window = BrowserWindow.getAllWindows()[0]!;
+      window.setMinimumSize(320, 200);
+      window.setContentSize(480, 640);
+      window.webContents.setZoomFactor(1.25);
     });
-    expect(
-      Math.abs(fieldBounds.x + fieldBounds.width / 2 - (safeArea.left + safeArea.right) / 2),
-    ).toBeLessThanOrEqual(1);
-    expect(fieldBounds.x).toBeGreaterThanOrEqual(safeArea.left);
-    expect(fieldBounds.x + fieldBounds.width).toBeLessThanOrEqual(safeArea.right);
-  }).toPass({ timeout: 15_000 });
-  await input.click();
-  const results = page.getByRole("region", { name: "Workspace search", exact: true });
-  await expect(results).toBeVisible();
-  for (const element of [input, results]) {
-    const bounds = (await element.boundingBox())!;
-    const viewport = await page.evaluate(() => ({ width: innerWidth, height: innerHeight }));
-    expect(bounds.x).toBeGreaterThanOrEqual(0);
-    expect(bounds.x + bounds.width).toBeLessThanOrEqual(viewport.width);
-    expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height);
-    expect(
-      await element.evaluate((node) =>
-        getComputedStyle(node).getPropertyValue("-webkit-app-region"),
-      ),
-    ).toBe("no-drag");
-  }
-  expect((await results.boundingBox())!.y).toBeGreaterThanOrEqual(
-    (await bar.boundingBox())!.height,
-  );
-});
+    const bar = page.getByRole("banner", { name: "Window title bar" });
+    const input = bar.getByRole("combobox", { name: "Search workspace", exact: true });
+    await expect(input).toBeVisible();
+    await expect.poll(() => page.evaluate(() => innerWidth)).toBe(384);
+    // Native control insets update asynchronously after resizing and changing zoom.
+    await expect(async () => {
+      const fieldBounds = (await input.locator("..").boundingBox())!;
+      const safeArea = await bar.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          left: Number.parseFloat(style.paddingLeft),
+          right: innerWidth - Number.parseFloat(style.paddingRight),
+        };
+      });
+      expect(
+        Math.abs(fieldBounds.x + fieldBounds.width / 2 - (safeArea.left + safeArea.right) / 2),
+      ).toBeLessThanOrEqual(1);
+      expect(fieldBounds.x).toBeGreaterThanOrEqual(safeArea.left);
+      expect(fieldBounds.x + fieldBounds.width).toBeLessThanOrEqual(safeArea.right);
+    }).toPass({ timeout: 15_000 });
+    await input.click();
+    const results = page.getByRole("region", { name: "Workspace search", exact: true });
+    await expect(results).toBeVisible();
+    for (const element of [input, results]) {
+      const bounds = (await element.boundingBox())!;
+      const viewport = await page.evaluate(() => ({ width: innerWidth, height: innerHeight }));
+      expect(bounds.x).toBeGreaterThanOrEqual(0);
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(viewport.width);
+      expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height);
+      expect(
+        await element.evaluate((node) =>
+          getComputedStyle(node).getPropertyValue("-webkit-app-region"),
+        ),
+      ).toBe("no-drag");
+    }
+    expect((await results.boundingBox())!.y).toBeGreaterThanOrEqual(
+      (await bar.boundingBox())!.height,
+    );
+  },
+);

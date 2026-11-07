@@ -33,6 +33,10 @@ test("desktop password recovery returns to browser sign-in and the existing work
     browser.getByText("Your password was changed. You can now sign in.", { exact: true }),
   ).toBeVisible();
   await browser.getByRole("link", { name: "Sign in", exact: true }).click();
+  await browser.getByLabel("Email", { exact: true }).fill(owner.email);
+  await browser.getByLabel("Password", { exact: true }).fill("Old-invalid-password!");
+  await browser.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(browser.getByRole("alert")).toContainText(/invalid|incorrect/i);
   await desktop.login(owner);
   await expect(page.getByRole("button", { name: `${workspace} ▾`, exact: true })).toBeVisible();
 });

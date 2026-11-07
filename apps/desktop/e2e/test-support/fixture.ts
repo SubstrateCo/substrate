@@ -10,6 +10,7 @@ import { Mailpit } from "../../../web/e2e/test-support/mailpit.js";
 import { provisionWorkspaceSession } from "../../../web/e2e/test-support/organizations.js";
 import { applicationURL } from "../../src/shell/navigation.js";
 import { authorizationCallback, requestBrowserSignIn } from "./auth.js";
+import { waitForRealtimeIdle } from "./realtime.js";
 import {
   _electron as electron,
   expect,
@@ -24,7 +25,7 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
-class DesktopFixture {
+export class DesktopFixture {
   readonly suffix = randomUUID();
   readonly workspace = `Desktop ${this.suffix.slice(0, 8)}`;
   readonly owner = this.account("Owner");
@@ -50,6 +51,9 @@ class DesktopFixture {
 
   async window() {
     this.page = await this.app.firstWindow();
+    await this.app.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows()[0]!.setContentSize(1024, 768);
+    });
     this.page.on("pageerror", () => this.pageErrors++);
     return this.page;
   }
@@ -126,6 +130,14 @@ class DesktopFixture {
   async provision() {
     await provisionVerifiedAccount(this.browser, this.mailpit, this.owner);
     await provisionWorkspaceSession(this.browser.request, this.workspace, `desktop-${this.suffix}`);
+    await this.authorize();
+    await expect(
+      this.page.getByRole("button", { name: `${this.workspace} ▾`, exact: true }),
+    ).toBeVisible();
+    await waitForRealtimeIdle(this.page);
+  }
+
+  async authorize() {
     await requestBrowserSignIn(this.app, this.page, this.browser);
     await this.openLink(
       await authorizationCallback(this.browser, () =>
@@ -133,8 +145,8 @@ class DesktopFixture {
       ),
     );
     await expect(
-      this.page.getByRole("button", { name: `${this.workspace} ▾`, exact: true }),
-    ).toBeVisible();
+      this.page.getByRole("button", { name: "Sign in with browser", exact: true }),
+    ).toBeHidden();
   }
 
   async restart() {
@@ -147,12 +159,7 @@ class DesktopFixture {
   }
 }
 
-async function useDesktop(
-  browser: Page,
-  mailpit: Mailpit,
-  use: (fixture: DesktopFixture) => Promise<void>,
-  environment: Record<string, string>,
-) {
+async function launchDesktop(browser: Page, mailpit: Mailpit, environment: Record<string, string>) {
   const env: Record<string, string> = {};
   for (const [key, value] of Object.entries(process.env)) {
     if (value !== undefined && key !== "ELECTRON_RUN_AS_NODE") env[key] = value;
@@ -193,8 +200,23 @@ async function useDesktop(
   );
   try {
     await fixture.window();
+    return fixture;
+  } catch (error) {
+    await fixture.app.close();
+    throw error;
+  }
+}
+
+async function useDesktop(
+  browser: Page,
+  mailpit: Mailpit,
+  use: (fixture: DesktopFixture) => Promise<void>,
+  environment: Record<string, string>,
+) {
+  const fixture = await launchDesktop(browser, mailpit, environment);
+  try {
     await use(fixture);
-    expect(fixture.pageErrors, "The packaged workflow has no uncaught renderer errors").toBe(0);
+    expect(fixture.pageErrors, "The desktop workflow has no uncaught renderer errors").toBe(0);
   } finally {
     await fixture.app.close();
   }
@@ -204,6 +226,7 @@ export const test = base.extend<{
   desktop: DesktopFixture;
   desktopPeer: DesktopFixture;
   desktopEnvironment: Record<string, string>;
+  createDesktop: () => Promise<DesktopFixture>;
 }>({
   desktopEnvironment: [{}, { option: true }],
   desktop: async ({ page, request, desktopEnvironment }, use) => {
@@ -215,6 +238,31 @@ export const test = base.extend<{
       await useDesktop(await context.newPage(), new Mailpit(request), use, desktopEnvironment);
     } finally {
       await context.close();
+    }
+  },
+  createDesktop: async ({ browser, request, baseURL, desktopEnvironment }, use) => {
+    const fixtures: DesktopFixture[] = [];
+    const contexts: Awaited<ReturnType<typeof browser.newContext>>[] = [];
+    try {
+      await use(async () => {
+        const context = await browser.newContext({ baseURL });
+        contexts.push(context);
+        const fixture = await launchDesktop(
+          await context.newPage(),
+          new Mailpit(request),
+          desktopEnvironment,
+        );
+        fixtures.push(fixture);
+        return fixture;
+      });
+      for (const fixture of fixtures)
+        expect(fixture.pageErrors, "The desktop workflow has no uncaught renderer errors").toBe(0);
+    } finally {
+      try {
+        await Promise.all(fixtures.map((fixture) => fixture.app.close()));
+      } finally {
+        await Promise.all(contexts.map((context) => context.close()));
+      }
     }
   },
 });

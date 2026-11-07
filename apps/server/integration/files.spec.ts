@@ -1,9 +1,9 @@
 import type { CompletedUpload, FilePurpose, UploadTicket } from "@startup-os/contracts/files/input";
 import type { ServiceResult } from "@startup-os/contracts/result";
 
-import { provisionVerifiedAccount } from "../test-support/auth";
-import { Mailpit } from "../test-support/mailpit";
-import { provisionWorkspaceSession } from "../test-support/organizations";
+import { provisionVerifiedAccount } from "../../web/e2e/test-support/auth";
+import { Mailpit } from "../../web/e2e/test-support/mailpit";
+import { provisionWorkspaceSession } from "../../web/e2e/test-support/organizations";
 import {
   expect,
   request as playwrightRequest,

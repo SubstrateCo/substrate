@@ -1,4 +1,5 @@
 import { test } from "../test-support/fixture.js";
+import { reconnectRealtime, waitForRealtimeIdle } from "../test-support/realtime.js";
 import { createChannel } from "./test-support.js";
 import { expect, type Page } from "@playwright/test";
 
@@ -63,12 +64,10 @@ for (const older of [false, true]) {
     await root.getByRole("button", { name: "Reply in thread", exact: true }).click();
     await expect(page.getByRole("complementary", { name: "Thread", exact: true })).toBeVisible();
     await expect(channel.getByRole("article")).toHaveCount(older ? 15 : 12);
-    // Let both the selected target and the next background refresh finish.
+    // Exercise a real resync; idle workspaces no longer poll for messages.
     await expect.poll(() => page.url()).toContain("messageId=");
-    await page.waitForResponse((response) => {
-      const url = new URL(response.url());
-      return url.pathname === "/api/v1/messaging/messages" && !url.searchParams.has("threadId");
-    });
+    await reconnectRealtime(page);
+    await waitForRealtimeIdle(page);
     await expect
       .poll(() => log.evaluate((node) => ({ text: node.textContent, scrollTop: node.scrollTop })))
       .toEqual(before);
@@ -120,10 +119,8 @@ test("an old-message desktop deep link loads context and Back to latest restores
   await expect(channel.getByRole("article")).toHaveCount(50);
   await expect(channel.getByRole("article").filter({ hasText: "Window root 064" })).toBeAttached();
   await expect(channel.getByRole("button", { name: "Back to latest", exact: true })).toBeHidden();
-  await page.waitForResponse((response) => {
-    const url = new URL(response.url());
-    return url.pathname === "/api/v1/messaging/messages" && !url.searchParams.has("threadId");
-  });
+  await reconnectRealtime(page);
+  await waitForRealtimeIdle(page);
   await expect(channel.getByRole("article")).toHaveCount(50);
   await expect(channel.getByRole("article").filter({ hasText: "Window root 064" })).toBeAttached();
   await page.getByRole("button", { name: "Close thread", exact: true }).click();
@@ -153,12 +150,7 @@ test("an old-reply desktop deep link returns to exactly the latest replies in or
   await expect(log.locator(".message-markdown")).toHaveText(latest);
   await expect(log.getByRole("article").filter({ hasText: "Window reply 005" })).toHaveCount(0);
   await expect(thread.getByRole("button", { name: "Latest replies", exact: true })).toBeHidden();
-  await page.waitForResponse((response) => {
-    const responseUrl = new URL(response.url());
-    return (
-      responseUrl.pathname === "/api/v1/messaging/messages" &&
-      responseUrl.searchParams.get("threadId") === rootId
-    );
-  });
+  await reconnectRealtime(page);
+  await waitForRealtimeIdle(page);
   await expect(log.locator(".message-markdown")).toHaveText(latest);
 });

@@ -96,10 +96,7 @@ test("desktop messages create linked tasks with OS navigation and source context
   await page.getByRole("option", { name: "High", exact: true }).click();
   await form.getByLabel("Due date", { exact: true }).fill("2026-12-15");
   await form.getByLabel("Task title", { exact: true }).press("ControlOrMeta+Enter");
-  await expect(
-    page.getByRole("region", { name: "Create task from message", exact: true }).getByRole("status"),
-  ).toContainText("Task created and linked");
-  await page.getByRole("link", { name: "Open created task", exact: true }).click();
+  await message.getByRole("link", { name: `Open ${task}`, exact: true }).click();
   const details = page.getByRole("region", { name: "Task details", exact: true });
   await expect(details.getByRole("heading", { name: task, exact: true })).toBeVisible();
   await expect(details).toContainText(/high/i);

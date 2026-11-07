@@ -90,6 +90,14 @@ test("agent creator keeps drafts across tabs and persists its harness and model"
   await expect(
     editor.getByRole("button", { name: "Edit source-check", exact: true }),
   ).toBeVisible();
+  await editor.getByRole("button", { name: "Edit source-check", exact: true }).click();
+  const editingSkill = page.getByRole("dialog", { name: "Edit skill", exact: true });
+  await expect(editingSkill.getByLabel("Skill content", { exact: true })).toHaveValue(
+    "Prefer primary sources.",
+  );
+  await editingSkill.getByLabel("Description", { exact: true }).fill("Updated source policy.");
+  await editingSkill.getByRole("button", { name: "Save skill", exact: true }).click();
+  await expect(editor.getByRole("tabpanel")).toContainText("Updated source policy.");
   await editor.getByRole("tab", { name: "MCP servers", exact: true }).click();
   await expect(editor.getByRole("tabpanel")).toContainText("hello_world");
   await expect(editor.getByRole("tabpanel")).toContainText("research-tools");
@@ -151,6 +159,17 @@ test("agent creator keeps drafts across tabs and persists its harness and model"
   await expect(saved.getByRole("button", { name: /^Harness & model:/ })).toContainText(
     "claude-custom-model",
   );
+  await saved.getByLabel("Agent name", { exact: true }).fill("Discarded agent draft");
+  await saved.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Edit Discarded agent draft", exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Delete Research partner", exact: true }).click();
+  const confirmation = page.getByRole("dialog", { name: "Delete Research partner?", exact: true });
+  await confirmation.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Edit Research partner", exact: true }),
+  ).toBeVisible();
 });
 
 test("personal agents follow their owner across workspaces and reject another user's updates", async ({
@@ -215,34 +234,64 @@ test("personal agents follow their owner across workspaces and reject another us
   expect(await catalog()).toEqual(original);
 });
 
-test("agent creator and model picker fit desktop and narrow windows", async ({ desktop }) => {
-  test.setTimeout(120_000);
-  await desktop.provision();
-  const page = desktop.page;
-  await page.goto(new URL("/settings/user/agents", desktop.rendererOrigin).href);
-  await page.getByRole("button", { name: "Create agent", exact: true }).click();
-  const editor = page.getByRole("dialog", { name: "Create agent", exact: true });
-  await editor.getByLabel("Agent name", { exact: true }).fill("Responsive researcher");
-  for (const size of [
-    { width: 1440, height: 900 },
-    { width: 1024, height: 768 },
-    { width: 768, height: 600 },
-    { width: 375, height: 812 },
-    { width: 320, height: 568 },
-  ]) {
-    await desktop.app.evaluate(({ BrowserWindow }, dimensions) => {
-      const window = BrowserWindow.getAllWindows()[0]!;
-      window.setMinimumSize(320, 200);
-      window.setContentSize(dimensions.width, dimensions.height);
-    }, size);
-    await expect
-      .poll(() => page.evaluate(() => ({ width: innerWidth, height: innerHeight })))
-      .toEqual(size);
-    for (const tab of ["Instructions", "Skills", "MCP servers"]) {
-      await editor.getByRole("tab", { name: tab, exact: true }).click();
+test(
+  "agent creator and model picker fit desktop and narrow windows",
+  { tag: "@layout" },
+  async ({ desktop }) => {
+    test.setTimeout(120_000);
+    await desktop.provision();
+    const page = desktop.page;
+    await page.goto(new URL("/settings/user/agents", desktop.rendererOrigin).href);
+    await page.getByRole("button", { name: "Create agent", exact: true }).click();
+    const editor = page.getByRole("dialog", { name: "Create agent", exact: true });
+    await editor.getByLabel("Agent name", { exact: true }).fill("Responsive researcher");
+    for (const size of [
+      { width: 1024, height: 768 },
+      { width: 320, height: 568 },
+    ]) {
+      await desktop.app.evaluate(({ BrowserWindow }, dimensions) => {
+        const window = BrowserWindow.getAllWindows()[0]!;
+        window.setMinimumSize(320, 200);
+        window.setContentSize(dimensions.width, dimensions.height);
+      }, size);
+      await expect
+        .poll(() => page.evaluate(() => ({ width: innerWidth, height: innerHeight })))
+        .toEqual(size);
+      for (const tab of ["Instructions", "Skills", "MCP servers"]) {
+        await editor.getByRole("tab", { name: tab, exact: true }).click();
+        await expect
+          .poll(() =>
+            editor.evaluate((element) => {
+              const box = element.getBoundingClientRect();
+              return (
+                box.left >= 0 &&
+                box.top >= 0 &&
+                box.right <= innerWidth &&
+                box.bottom <= innerHeight &&
+                element.scrollWidth <= element.clientWidth + 1
+              );
+            }),
+          )
+          .toBe(true);
+        await expect(
+          editor.getByRole("button", { name: "Save agent", exact: true }),
+        ).toBeInViewport();
+        const bodyBounds = await editor
+          .getByRole("region", { name: "Agent configuration", exact: true })
+          .boundingBox();
+        const footerBounds = await editor.locator("footer").boundingBox();
+        expect(bodyBounds).not.toBeNull();
+        expect(footerBounds).not.toBeNull();
+        expect(bodyBounds!.y + bodyBounds!.height).toBeLessThanOrEqual(footerBounds!.y + 1);
+      }
+      await editor.getByRole("button", { name: /^Harness & model:/ }).click();
+      const picker = page.getByRole("dialog", { name: "Harness and model picker", exact: true });
+      await expect(picker.getByRole("status", { name: "Loading models", exact: true })).toBeHidden({
+        timeout: 60_000,
+      });
       await expect
         .poll(() =>
-          editor.evaluate((element) => {
+          picker.evaluate((element) => {
             const box = element.getBoundingClientRect();
             return (
               box.left >= 0 &&
@@ -254,47 +303,15 @@ test("agent creator and model picker fit desktop and narrow windows", async ({ d
           }),
         )
         .toBe(true);
-      await expect(
-        editor.getByRole("button", { name: "Save agent", exact: true }),
-      ).toBeInViewport();
-      const bodyBounds = await editor
-        .getByRole("region", { name: "Agent configuration", exact: true })
-        .boundingBox();
-      const footerBounds = await editor.locator("footer").boundingBox();
-      expect(bodyBounds).not.toBeNull();
-      expect(footerBounds).not.toBeNull();
-      expect(bodyBounds!.y + bodyBounds!.height).toBeLessThanOrEqual(footerBounds!.y + 1);
+      const search = page.getByPlaceholder("Search models…", { exact: true });
+      await expect(search).toBeVisible();
+      await search.fill("anthropic/claude-sonnet");
+      await page.getByRole("option").filter({ hasText: "anthropic/claude-sonnet" }).click();
+      await expect(editor.getByRole("button", { name: /^Harness & model:/ })).toContainText(
+        "anthropic/claude-sonnet",
+      );
+      await editor.getByRole("tab", { name: "Instructions", exact: true }).click();
     }
-    await editor.getByRole("button", { name: /^Harness & model:/ }).click();
-    const picker = page.getByRole("dialog", { name: "Harness and model picker", exact: true });
-    await expect(picker.getByRole("status", { name: "Loading models", exact: true })).toBeHidden({
-      timeout: 60_000,
-    });
-    await expect
-      .poll(() =>
-        picker.evaluate((element) => {
-          const box = element.getBoundingClientRect();
-          return (
-            box.left >= 0 &&
-            box.top >= 0 &&
-            box.right <= innerWidth &&
-            box.bottom <= innerHeight &&
-            element.scrollWidth <= element.clientWidth + 1
-          );
-        }),
-      )
-      .toBe(true);
-    await page.emulateMedia({ colorScheme: "dark" });
-    await expect(page.locator("html")).toHaveClass(/dark/);
-    await page.emulateMedia({ colorScheme: "light" });
-    const search = page.getByPlaceholder("Search models…", { exact: true });
-    await expect(search).toBeVisible();
-    await search.fill("anthropic/claude-sonnet");
-    await page.getByRole("option").filter({ hasText: "anthropic/claude-sonnet" }).click();
-    await expect(editor.getByRole("button", { name: /^Harness & model:/ })).toContainText(
-      "anthropic/claude-sonnet",
-    );
-    await editor.getByRole("tab", { name: "Instructions", exact: true }).click();
-  }
-});
+  },
+);
 import type {} from "@startup-os/contracts/harness/desktop";

@@ -1,8 +1,6 @@
-import { provisionVerifiedAccount } from "../test-support/auth";
-import { Mailpit } from "../test-support/mailpit";
-import { provisionWorkspace } from "../test-support/organizations";
-import { expect, test, type Page } from "@playwright/test";
-import { randomUUID } from "node:crypto";
+import { test } from "../test-support/fixture.js";
+import { waitForRealtimeIdle } from "../test-support/realtime.js";
+import { expect, type Page } from "@playwright/test";
 
 async function choose(page: Page, label: string, option: string) {
   await page.getByRole("combobox", { name: label, exact: true }).click();
@@ -10,17 +8,10 @@ async function choose(page: Page, label: string, option: string) {
 }
 
 test("project and task edits, cleared fields, nested subtasks, and comments survive reload and app switching", async ({
-  page,
-  request,
+  desktop,
 }) => {
-  const suffix = randomUUID().slice(0, 8);
-  const account = {
-    name: `Editor ${suffix}`,
-    email: `task-editor-${suffix}@example.test`,
-    password: `Tasks-${randomUUID()}!`,
-  };
-  await provisionVerifiedAccount(page, new Mailpit(request), account);
-  await provisionWorkspace(page, `Editing ${suffix}`, `editing-${suffix}`);
+  await desktop.provision();
+  const { page, owner: account } = desktop;
   const apps = page.getByRole("navigation", { name: "Apps", exact: true });
   await apps.getByRole("button", { name: "Tasks", exact: true }).click();
   await page.getByRole("button", { name: "New project", exact: true }).click();
@@ -28,6 +19,7 @@ test("project and task edits, cleared fields, nested subtasks, and comments surv
   await page.getByLabel("Project description", { exact: true }).fill("Original description");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Original project", exact: true })).toBeVisible();
+  await waitForRealtimeIdle(page);
   await page.getByRole("tab", { name: "Settings", exact: true }).click();
   await expect(page.getByLabel("Project name", { exact: true })).toHaveValue("Original project");
   await expect(page.getByLabel("Project description", { exact: true })).toHaveValue(
@@ -38,10 +30,20 @@ test("project and task edits, cleared fields, nested subtasks, and comments surv
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Edited project", exact: true })).toBeVisible();
   await expect(page.getByTitle("Edited project description", { exact: true })).toBeVisible();
+  await waitForRealtimeIdle(page);
 
   await page.getByRole("button", { name: "New task", exact: true }).click();
   await page.getByLabel("Task title", { exact: true }).fill("Original task");
   await page.getByLabel("Task description", { exact: true }).fill("Original task description");
+  await page.getByRole("combobox", { name: "Status", exact: true }).click();
+  await expect(page.getByRole("option")).toHaveText([
+    "Not Started",
+    "In Progress",
+    "In Review",
+    "Completed",
+    "Canceled",
+  ]);
+  await page.keyboard.press("Escape");
   await choose(page, "Status", "In Progress");
   await choose(page, "Priority", "Urgent");
   await choose(page, "Assignee", account.name);
@@ -51,6 +53,7 @@ test("project and task edits, cleared fields, nested subtasks, and comments surv
   for (const value of ["In Progress", "urgent", account.name, "2026-12-15"]) {
     await expect(details.getByRole("definition").filter({ hasText: value })).toBeVisible();
   }
+  await waitForRealtimeIdle(page);
   await details.getByRole("button", { name: "Edit task", exact: true }).click();
   await expect(page.getByLabel("Task title", { exact: true })).toHaveValue("Original task");
   await expect(page.getByLabel("Task description", { exact: true })).toHaveValue(
@@ -83,9 +86,11 @@ test("project and task edits, cleared fields, nested subtasks, and comments surv
     ["Child task", "Edited parent task"],
     ["Grandchild task", "Child task"],
   ] as const) {
+    await waitForRealtimeIdle(page);
     await details.getByRole("button", { name: "Add subtask", exact: true }).click();
     await page.getByLabel("Task title", { exact: true }).fill(title);
     await page.getByRole("button", { name: "Create subtask", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "New subtask", exact: true })).toBeHidden();
     await expect(details.getByRole("heading", { name: title, exact: true })).toBeVisible();
     await expect(page.getByText(`Subtask of ${parent}`, { exact: true })).toBeVisible();
   }

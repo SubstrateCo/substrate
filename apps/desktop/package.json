@@ -14,7 +14,8 @@
     "package": "bun run build && electron-builder --win nsis",
     "typecheck": "tsc --noEmit",
     "test": "bun test src scripts",
-    "test:e2e": "bun run setup && bun scripts/preload.ts && playwright test"
+    "test:e2e": "bun run setup && bun scripts/preload.ts && playwright test",
+    "test:e2e:dev": "playwright test"
   },
   "dependencies": {
     "@better-auth/electron": "^1.7.18",

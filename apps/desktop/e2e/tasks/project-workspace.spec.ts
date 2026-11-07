@@ -3,6 +3,8 @@ import { provisionMember } from "../../../web/e2e/test-support/organizations.js"
 import { createChannel } from "../messaging/test-support.js";
 import { choose } from "../test-support/controls.js";
 import { test } from "../test-support/fixture.js";
+import { waitForRealtimeIdle } from "../test-support/realtime.js";
+import { callTasks } from "../test-support/tasks.js";
 import { expect } from "@playwright/test";
 
 test("project actions, task dialogs, inline settings and linked discussions stay connected", async ({
@@ -125,29 +127,30 @@ test("status groups toggle every task without hiding other groups or changing se
 }) => {
   await desktop.provision();
   const page = desktop.page;
-  await desktop.openPath("/tasks");
-  await page.getByRole("button", { name: "New project", exact: true }).click();
-  await page.getByLabel("Project name", { exact: true }).fill("Collapsible tasks");
-  await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await expect(page).toHaveURL(/projectId=/);
+  const { id: projectEntityId } = await callTasks<{ id: string }>(page, {
+    action: "createProject",
+    name: "Collapsible tasks",
+  });
+  let activeTaskId = "";
   for (const [title, status] of [
-    ["First queued task", "Not Started"],
-    ["Second queued task", "Not Started"],
-    ["Active task", "In Progress"],
-  ]) {
-    await page.getByRole("button", { name: "New task", exact: true }).click();
-    const dialog = page.getByRole("dialog", { name: "New task", exact: true });
-    await dialog.getByLabel("Task title", { exact: true }).fill(title!);
-    await choose(page, "Status", status!);
-    await dialog.getByRole("button", { name: "Create task", exact: true }).click();
-    await expect(dialog).toHaveCount(0);
+    ["First queued task", "not_started"],
+    ["Second queued task", "not_started"],
+    ["Active task", "in_progress"],
+  ] as const) {
+    const task = await callTasks<{ id: string }>(page, {
+      action: "createTask",
+      projectEntityId,
+      title,
+      status,
+    });
+    if (status === "in_progress") activeTaskId = task.id;
   }
+  await desktop.openPath(`/tasks?projectId=${projectEntityId}&taskId=${activeTaskId}`);
   const tasks = page.getByRole("region", { name: "Project tasks", exact: true });
   const queued = tasks.getByRole("button", { name: "Not Started", exact: true });
   const active = tasks.getByRole("button", { name: "In Progress", exact: true });
-  await page.getByRole("button", { name: /^Signed in as / }).click();
-  await page.getByRole("switch", { name: "Dark mode", exact: true }).setChecked(true);
-  await page.keyboard.press("Escape");
+  await waitForRealtimeIdle(page);
+  await page.emulateMedia({ colorScheme: "dark" });
   await page.getByRole("heading", { name: "Collapsible tasks", exact: true }).hover();
   await expect(queued).toHaveAttribute("aria-expanded", "true");
   await expect(queued).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
@@ -191,6 +194,7 @@ test("project access reviews grants and removal, keeps reductions neutral, and p
     await page.getByRole("button", { name: "Create project", exact: true }).click();
     await expect(page).toHaveURL(/projectId=/);
     const url = new URL(page.url());
+    await waitForRealtimeIdle(page);
     const memberAccess = async () =>
       (
         await member.request.get(
@@ -278,6 +282,7 @@ test("search loads more inside its scroll area, keeps earlier results, and reset
     return results.every((result) => result.success);
   });
   expect(created).toBe(true);
+  await waitForRealtimeIdle(page);
   await page.keyboard.press("Control+k");
   const input = page.getByRole("combobox", { name: "Search workspace", exact: true });
   await input.fill("Search paging");

@@ -22,9 +22,14 @@ async function run(command: string[], env: Record<string, string | undefined>) {
 }
 
 async function main() {
+  const development = process.argv.includes("--dev");
+  const e2eOnly = process.argv.includes("--e2e-only");
+  const desktopArguments = process.argv
+    .slice(2)
+    .filter((argument) => argument !== "--dev" && argument !== "--e2e-only" && argument !== "--");
   const preparation = await Promise.all([
-    run(["test:unit"], { ...process.env, TEST_DATABASE_SHARDS: "3" }),
-    run(["turbo", "run", "@startup-os/web#build"], { ...process.env }),
+    ...(e2eOnly ? [] : [run(["test:unit"], { ...process.env, TEST_DATABASE_SHARDS: "3" })]),
+    ...(development ? [] : [run(["turbo", "run", "@startup-os/web#build"], { ...process.env })]),
   ]);
   const failure = preparation.find((code) => code !== 0);
   if (failure !== undefined) return failure;
@@ -55,7 +60,9 @@ async function main() {
         PLAYWRIGHT_API_URL: apiURL,
         STARTUP_OS_WEB_URL: webURL,
         STARTUP_OS_API_URL: apiURL,
-        DESKTOP_BUNDLED_RENDERER: "true",
+        DESKTOP_BUNDLED_RENDERER: development ? "" : "true",
+        WEB_PORT: String(webPort),
+        SERVER_URL: apiURL,
         S3_BUCKET: storage.bucket,
       };
       const directory = new URL("../../apps/web/dist/", import.meta.url);
@@ -66,37 +73,81 @@ async function main() {
         stderr: "inherit",
       });
       try {
-        const web = Bun.serve({
-          hostname: "localhost",
-          port: webPort,
-          async fetch(request) {
-            const url = new URL(request.url);
-            if (url.pathname.startsWith("/api/")) {
-              return fetch(new Request(new URL(url.pathname + url.search, apiURL).href, request), {
-                redirect: "manual",
-              });
-            }
-            const path = staticFilePath(fileURLToPath(directory), url.pathname);
-            if (!path) return new Response(null, { status: 403 });
-            const file = Bun.file(path);
-            return new Response((await file.exists()) ? file : index);
-          },
-        });
+        const vite = development
+          ? Bun.spawn(
+              [
+                process.execPath,
+                fileURLToPath(
+                  new URL("../../apps/web/node_modules/vite/bin/vite.js", import.meta.url),
+                ),
+              ],
+              {
+                cwd: fileURLToPath(new URL("../../apps/web/", import.meta.url)),
+                env,
+                stdout: "ignore",
+                stderr: "inherit",
+              },
+            )
+          : undefined;
+        const web = development
+          ? undefined
+          : Bun.serve({
+              hostname: "localhost",
+              port: webPort,
+              async fetch(request) {
+                const url = new URL(request.url);
+                if (url.pathname.startsWith("/api/")) {
+                  return fetch(
+                    new Request(new URL(url.pathname + url.search, apiURL).href, request),
+                    {
+                      redirect: "manual",
+                    },
+                  );
+                }
+                const path = staticFilePath(fileURLToPath(directory), url.pathname);
+                if (!path) return new Response(null, { status: 403 });
+                const file = Bun.file(path);
+                return new Response((await file.exists()) ? file : index);
+              },
+            });
         try {
-          const deadline = performance.now() + 10_000;
+          const deadline = performance.now() + 60_000;
           for (;;) {
             const ready = await fetch(`${apiURL}/api/v1/session`).then(
               (response) => response.ok,
               () => false,
             );
-            if (ready) break;
-            if (performance.now() > deadline || backend.exitCode !== null)
-              throw new Error("The test API did not start.");
+            const rendererReady = await fetch(`${webURL}/login`).then(
+              (response) => response.ok,
+              () => false,
+            );
+            if (ready && rendererReady) break;
+            if (
+              performance.now() > deadline ||
+              backend.exitCode !== null ||
+              (vite && vite.exitCode !== null)
+            )
+              throw new Error("The test API or renderer did not start.");
             await Bun.sleep(50);
           }
-          return await run(["turbo", "run", "test:e2e"], env);
+          const results = await Promise.all([
+            run(["--filter", "@startup-os/server", "test:integration"], env),
+            run(["--filter", "@startup-os/web", "test:e2e"], env),
+            run(
+              [
+                "--filter",
+                "@startup-os/desktop",
+                development ? "test:e2e:dev" : "test:e2e",
+                ...desktopArguments,
+              ],
+              env,
+            ),
+          ]);
+          return results.find((code) => code !== 0) ?? 0;
         } finally {
-          await web.stop(true);
+          await web?.stop(true);
+          vite?.kill();
+          if (vite) await vite.exited;
         }
       } finally {
         backend.kill();

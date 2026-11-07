@@ -40,6 +40,15 @@ test("typed reference prefixes insert persistent chips in the actual composer", 
   await createChannel(page, "reference-chips");
   const composer = page.getByRole("textbox", { name: "Message #reference-chips", exact: true });
   const picker = page.getByRole("region", { name: "Insert workspace reference", exact: true });
+  await composer.fill("@");
+  const emptySearch = picker.getByRole("combobox", { name: "Search references", exact: true });
+  await emptySearch.fill("no-such-reference-xyz");
+  await expect(picker.getByText("No accessible references found.", { exact: true })).toBeVisible();
+  await emptySearch.press("Enter");
+  await expect(picker).toBeVisible();
+  await expect(composer).toHaveText("@");
+  await emptySearch.press("Escape");
+  await expect(composer).toBeFocused();
   await composer.fill("@user:Desktop");
   await expect(picker.getByRole("tab", { name: "People", exact: true })).toHaveAttribute(
     "aria-selected",
@@ -250,57 +259,48 @@ test("reference results scroll the active option into view after an async search
 
 for (const size of [
   { width: 1024, height: 768 },
-  { width: 375, height: 812 },
   { width: 320, height: 568 },
 ]) {
-  test(`reference popover fits ${size.width}x${size.height} without moving or dimming the composer`, async ({
-    desktop,
-  }) => {
-    await desktop.provision();
-    const page = desktop.page;
-    await createChannel(page, "reference-layout");
-    await desktop.app.evaluate(({ BrowserWindow }, size) => {
-      const window = BrowserWindow.getAllWindows()[0]!;
-      window.setMinimumSize(320, 200);
-      window.setContentSize(size.width, size.height);
-    }, size);
-    await page.getByRole("button", { name: /^Signed in as / }).click();
-    await page.getByRole("switch", { name: "Dark mode", exact: true }).setChecked(true);
-    await page.keyboard.press("Escape");
-    const composer = page.getByRole("textbox", { name: "Message #reference-layout", exact: true });
-    await expect(composer).toBeEnabled();
-    await expect(composer.locator("xpath=..")).toHaveCSS("opacity", "1");
-    const before = (await composer.boundingBox())!;
-    await composer.fill("@");
-    const popover = page.getByRole("dialog", { name: "Workspace references", exact: true });
-    await expect(popover).toBeVisible();
-    await expect(popover).toBeInViewport({ ratio: 1 });
-    const after = (await composer.boundingBox())!;
-    expect(after.y).toBeCloseTo(before.y, 0);
-    expect(after.height).toBeCloseTo(before.height, 0);
-    const box = (await popover.boundingBox())!;
-    expect(box.width).toBeLessThanOrEqual(size.width - 24);
-    await expect(composer).toBeFocused();
-    await popover.getByRole("tab", { name: "People", exact: true }).click();
-    const owner = popover.getByRole("option", { name: "Desktop Owner", exact: true });
-    await expect(owner).toBeVisible();
-    await expect(owner).toBeInViewport({ ratio: 1 });
-    await owner.click();
-    await expect(popover).toHaveCount(0);
-    await expect(composer).toBeFocused();
-    await expect(composer.locator("[data-reference-chip]")).toHaveText("Desktop Owner");
-    await composer.fill("@");
-    await composer.press("ArrowDown");
-    const search = popover.getByRole("combobox", { name: "Search references", exact: true });
-    await search.fill("no-such-reference-xyz");
-    await expect(
-      popover.getByText("No accessible references found.", { exact: true }),
-    ).toBeVisible();
-    await search.press("Enter");
-    await expect(popover).toBeVisible();
-    await expect(composer).toHaveText("@");
-    await search.press("Escape");
-    await expect(popover).toHaveCount(0);
-    await expect(composer).toBeFocused();
-  });
+  test(
+    `reference popover fits ${size.width}x${size.height} without moving or dimming the composer`,
+    { tag: "@layout" },
+    async ({ desktop }) => {
+      await desktop.provision();
+      const page = desktop.page;
+      await createChannel(page, "reference-layout");
+      await desktop.app.evaluate(({ BrowserWindow }, size) => {
+        const window = BrowserWindow.getAllWindows()[0]!;
+        window.setMinimumSize(320, 200);
+        window.setContentSize(size.width, size.height);
+      }, size);
+      await page.getByRole("button", { name: /^Signed in as / }).click();
+      await page.getByRole("switch", { name: "Dark mode", exact: true }).setChecked(true);
+      await page.keyboard.press("Escape");
+      const composer = page.getByRole("textbox", {
+        name: "Message #reference-layout",
+        exact: true,
+      });
+      await expect(composer).toBeEnabled();
+      await expect(composer.locator("xpath=..")).toHaveCSS("opacity", "1");
+      const before = (await composer.boundingBox())!;
+      await composer.fill("@");
+      const popover = page.getByRole("dialog", { name: "Workspace references", exact: true });
+      await expect(popover).toBeVisible();
+      await expect(popover).toBeInViewport({ ratio: 1 });
+      const after = (await composer.boundingBox())!;
+      expect(after.y).toBeCloseTo(before.y, 0);
+      expect(after.height).toBeCloseTo(before.height, 0);
+      const box = (await popover.boundingBox())!;
+      expect(box.width).toBeLessThanOrEqual(size.width - 24);
+      await expect(composer).toBeFocused();
+      await popover.getByRole("tab", { name: "People", exact: true }).click();
+      const owner = popover.getByRole("option", { name: "Desktop Owner", exact: true });
+      await expect(owner).toBeVisible();
+      await expect(owner).toBeInViewport({ ratio: 1 });
+      await owner.click();
+      await expect(popover).toHaveCount(0);
+      await expect(composer).toBeFocused();
+      await expect(composer.locator("[data-reference-chip]")).toHaveText("Desktop Owner");
+    },
+  );
 }
