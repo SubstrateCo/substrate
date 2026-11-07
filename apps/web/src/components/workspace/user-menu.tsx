@@ -45,9 +45,9 @@ export function UserMenu({
         side="right"
         align="end"
         sideOffset={12}
-        className="w-64"
+        className="w-72"
       >
-        <p className="px-2 py-1 text-xs font-medium text-muted-foreground">User</p>
+        <p className="truncate px-2 py-2 text-sm font-medium">{name}</p>
         <AppearanceControl />
         <Button
           variant="ghost"

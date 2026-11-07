@@ -83,6 +83,7 @@ for (const size of [
     await expect(
       page.getByRole("heading", { name: "Organization settings", exact: true }),
     ).toBeVisible();
+    await page.getByRole("tab", { name: "Invitations", exact: true }).click();
     await fitsWindow(page.getByRole("button", { name: "Send invitation", exact: true }), page);
     await page.getByRole("combobox", { name: "Role", exact: true }).click();
     await fitsWindow(page.getByRole("option", { name: "Admin", exact: true }), page);
@@ -264,9 +265,9 @@ for (const size of [
       await remove.click();
       await expect(saved).toHaveCount(0);
     }
-    const navigation = page.getByRole("navigation", { name: "User settings", exact: true });
-    for (const link of await navigation.getByRole("link").all()) await fitsWindow(link, page);
-    await navigation.getByRole("link", { name: "Invitations", exact: true }).click();
+    const navigation = page.getByRole("tablist", { name: "User settings", exact: true });
+    for (const tab of await navigation.getByRole("tab").all()) await fitsWindow(tab, page);
+    await navigation.getByRole("tab", { name: "Invitations", exact: true }).click();
     await expect(
       page.getByText("You have no pending invitations.", { exact: true }).filter({ visible: true }),
     ).toBeVisible();

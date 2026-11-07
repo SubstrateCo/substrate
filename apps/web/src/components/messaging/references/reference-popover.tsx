@@ -1,7 +1,7 @@
 import { useRef, type KeyboardEvent, type ReactNode } from "react";
 
-import { Button } from "../../ui/button";
 import { Popover, PopoverAnchor, PopoverContent } from "../../ui/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import type { ReferenceKind } from "./reference-picker";
 import {
   ReferenceResults,
@@ -93,32 +93,46 @@ export function ReferencePopover({
             {query}
           </span>
         </div>
-        <div role="group" aria-label="Reference type" className="flex gap-1 border-b px-2 pb-2">
-          {kinds.map((type) => (
-            <Button
-              key={type}
-              type="button"
-              size="xs"
-              variant={kind === type ? "secondary" : "ghost"}
-              aria-pressed={kind === type}
-              onClick={() => onKindChange(type)}
-            >
-              {{ all: "All", person: "Users", task: "Tasks", project: "Projects" }[type]}
-            </Button>
-          ))}
-        </div>
-        <ReferenceResults
-          open={open}
-          listId={listId}
-          query={query}
-          results={results}
-          selectedIndex={selectedIndex}
-          onHighlight={onHighlight}
-          onSelect={onSelect}
-          loading={loading}
-          error={error}
-          onRetry={onRetry}
-        />
+        <Tabs
+          value={kind}
+          onValueChange={(value) => {
+            if (value === "all" || value === "task" || value === "project" || value === "person")
+              onKindChange(value);
+          }}
+          asChild
+        >
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="px-2 pb-2">
+              <TabsList variant="line" aria-label="Reference type">
+                {kinds.map((type) => (
+                  <TabsTrigger key={type} value={type}>
+                    {{ all: "All", person: "Users", task: "Tasks", project: "Projects" }[type]}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
+            {kinds.map((type) => (
+              <TabsContent key={type} value={type} forceMount hidden={type !== kind} asChild>
+                <div className="min-h-0 overflow-y-auto">
+                  {kind === type && (
+                    <ReferenceResults
+                      open={open}
+                      listId={listId}
+                      query={query}
+                      results={results}
+                      selectedIndex={selectedIndex}
+                      onHighlight={onHighlight}
+                      onSelect={onSelect}
+                      loading={loading}
+                      error={error}
+                      onRetry={onRetry}
+                    />
+                  )}
+                </div>
+              </TabsContent>
+            ))}
+          </div>
+        </Tabs>
       </PopoverContent>
     </Popover>
   );

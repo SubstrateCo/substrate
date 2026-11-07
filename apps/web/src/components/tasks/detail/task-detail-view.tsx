@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "../../ui/button";
+import { ButtonGroup } from "../../ui/button-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import type { ProjectDetail, Task } from "../types";
 import { TaskMetadata } from "./task-metadata";
@@ -12,6 +13,7 @@ export function TaskDetail({
   onClose,
   onSubtask,
   renderEditor,
+  actions,
   children,
 }: {
   detail: ProjectDetail;
@@ -19,6 +21,7 @@ export function TaskDetail({
   onClose: () => void;
   onSubtask: () => void;
   renderEditor: (onDone: () => void) => ReactNode;
+  actions?: ReactNode;
   children: ReactNode;
 }) {
   const [editing, setEditing] = useState(false);
@@ -45,47 +48,43 @@ export function TaskDetail({
       {editing && canEdit ? (
         <div ref={editor}>{renderEditor(() => setEditing(false))}</div>
       ) : (
-        <>
-          <TaskMetadata
-            task={task}
-            assigneeName={
-              detail.actors.find((actor) => actor.entityId === task.assigneeActorEntityId)?.name ??
-              "Unassigned"
-            }
-          />
-          {canEdit && (
-            <div className="flex flex-wrap gap-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    ref={editButton}
-                    variant="outline"
-                    size="icon"
-                    aria-label="Edit task"
-                    onClick={() => setEditing(true)}
-                  >
-                    <Pencil aria-hidden="true" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Edit task</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    aria-label="Add subtask"
-                    onClick={onSubtask}
-                  >
-                    <ListPlus aria-hidden="true" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Add subtask</TooltipContent>
-              </Tooltip>
-            </div>
-          )}
-        </>
+        <TaskMetadata
+          task={task}
+          assigneeName={
+            detail.actors.find((actor) => actor.entityId === task.assigneeActorEntityId)?.name ??
+            "Unassigned"
+          }
+        />
       )}
+      <ButtonGroup aria-label="Task actions">
+        {canEdit && !editing && (
+          <>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  ref={editButton}
+                  variant="outline"
+                  size="icon"
+                  aria-label="Edit task"
+                  onClick={() => setEditing(true)}
+                >
+                  <Pencil aria-hidden="true" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Edit task</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" aria-label="Add subtask" onClick={onSubtask}>
+                  <ListPlus aria-hidden="true" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Add subtask</TooltipContent>
+            </Tooltip>
+          </>
+        )}
+        {actions}
+      </ButtonGroup>
       {children}
     </section>
   );

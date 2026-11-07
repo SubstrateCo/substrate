@@ -2,6 +2,119 @@ import { test } from "../test-support/fixture.js";
 import { createChannel } from "./test-support.js";
 import { expect } from "@playwright/test";
 
+test("typed reference prefixes insert persistent chips in the actual composer", async ({
+  desktop,
+}) => {
+  await desktop.provision();
+  const page = desktop.page;
+  const seeded = await page.evaluate(async () => {
+    const session = await (await fetch("/api/v1/session")).json();
+    const organizationId = session.data.session.activeOrganizationId;
+    const mutate = async (
+      data: { organizationId: string } & (
+        | { action: "createProject"; name: string }
+        | { action: "createTask"; projectEntityId: string; title: string }
+      ),
+    ) =>
+      (
+        await fetch("/api/v1/tasks/mutations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        })
+      ).json();
+    const project = await mutate({
+      organizationId,
+      action: "createProject",
+      name: "Prefix project",
+    });
+    const task = await mutate({
+      action: "createTask",
+      organizationId,
+      projectEntityId: project.data.id,
+      title: "Prefix task",
+    });
+    return project.success && task.success;
+  });
+  expect(seeded).toBe(true);
+  await createChannel(page, "reference-chips");
+  const composer = page.getByRole("textbox", { name: "Message #reference-chips", exact: true });
+  const picker = page.getByRole("region", { name: "Insert workspace reference", exact: true });
+  await composer.fill("@user:Desktop");
+  await expect(picker.getByRole("tab", { name: "People", exact: true })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(picker.getByRole("combobox")).toHaveValue("Desktop");
+  for (const tab of await picker.getByRole("tab").all()) {
+    const panelId = await tab.getAttribute("aria-controls");
+    const panel = picker.locator(`[id="${panelId}"]`);
+    await expect(panel).toHaveAttribute("role", "tabpanel");
+    await expect(panel).toHaveAttribute("aria-labelledby", (await tab.getAttribute("id"))!);
+  }
+  await expect(
+    picker
+      .getByRole("tabpanel", { name: "People", exact: true })
+      .getByRole("option", { name: "Desktop Owner", exact: true }),
+  ).toBeVisible();
+  await picker.getByRole("option", { name: "Desktop Owner", exact: true }).click();
+  const chip = composer.locator("[data-reference-chip]");
+  await expect(chip).toHaveText("Desktop Owner");
+  await chip.click();
+  await expect(chip).toBeVisible();
+  await expect(chip).toHaveText("Desktop Owner");
+  await composer.pressSequentially(" hello");
+  await page.getByRole("button", { name: "Bold text", exact: true }).click();
+  await expect(chip).toBeVisible();
+  await expect(composer).toContainText("hello****");
+  await createChannel(page, "reference-chip-draft");
+  await page
+    .getByRole("complementary", { name: "Conversations", exact: true })
+    .getByRole("button", { name: "reference-chips", exact: true })
+    .click();
+  await expect(chip).toHaveText("Desktop Owner");
+  await expect(composer).toContainText("hello****");
+  await expect(
+    page.getByText("References don’t grant access; mentions notify members.", { exact: true }),
+  ).toHaveCount(0);
+  await composer.fill("before  after");
+  await composer.press("Control+Home");
+  for (let index = 0; index < "before ".length; index++) await composer.press("ArrowRight");
+  await composer.pressSequentially("@user:Desktop");
+  await picker.getByRole("option", { name: "Desktop Owner", exact: true }).click();
+  await expect(composer).toHaveText("before Desktop Owner  after");
+  await composer.pressSequentially("here");
+  await expect(composer).toHaveText("before Desktop Owner here after");
+  await composer.fill("@task:");
+  await expect(picker.getByRole("tab", { name: "Tasks", exact: true })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(picker.getByRole("combobox")).toHaveValue("");
+  await picker.getByRole("option", { name: "Prefix task", exact: true }).click();
+  await expect(chip).toHaveText("Prefix task");
+  for (const prefix of ["@project:", "@projects:", "@projects:Prefix"]) {
+    await composer.fill(prefix);
+    await expect(picker.getByRole("tab", { name: "Projects", exact: true })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await expect(picker.getByRole("combobox")).toHaveValue(prefix.split(":")[1]!);
+    await picker.getByRole("option", { name: "Prefix project", exact: true }).click();
+    await expect(chip).toHaveText("Prefix project");
+  }
+  await chip.click();
+  await expect(chip).toBeVisible();
+  await composer.press("End");
+  await composer.press("Enter");
+  await expect(
+    page
+      .getByRole("article")
+      .locator(".message-markdown")
+      .getByText("Prefix project", { exact: true }),
+  ).toBeVisible();
+});
+
 test("mention typing keeps composer focus and the selected reference type", async ({ desktop }) => {
   await desktop.provision();
   const page = desktop.page;
@@ -21,13 +134,13 @@ test("mention typing keeps composer focus and the selected reference type", asyn
   ).toBeVisible();
   expect((await composer.boundingBox())!.height).toBeCloseTo(composerBox.height, 0);
   await expect(composer).toBeFocused();
-  await picker.getByRole("button", { name: "People", exact: true }).click();
+  await picker.getByRole("tab", { name: "People", exact: true }).click();
   await composer.focus();
   await composer.pressSequentially("Desktop");
-  await expect(composer).toHaveValue("@Desktop");
+  await expect(composer).toHaveText("@Desktop");
   await expect(composer).toBeFocused();
-  await expect(picker.getByRole("button", { name: "People", exact: true })).toHaveAttribute(
-    "aria-pressed",
+  await expect(picker.getByRole("tab", { name: "People", exact: true })).toHaveAttribute(
+    "aria-selected",
     "true",
   );
   await expect(search).toHaveValue("Desktop");
@@ -40,7 +153,7 @@ test("mention typing keeps composer focus and the selected reference type", asyn
   await search.press("Escape");
   await expect(picker).toHaveCount(0);
   await expect(composer).toBeFocused();
-  await expect(composer).toHaveValue("@Desktop");
+  await expect(composer).toHaveText("@Desktop");
 
   await composer.fill("@");
   const workspaceSearch = page.getByRole("combobox", { name: "Search workspace", exact: true });
@@ -49,14 +162,14 @@ test("mention typing keeps composer focus and the selected reference type", asyn
   await expect(workspaceSearch).toBeFocused();
   await workspaceSearch.press("Escape");
   await composer.fill("@D");
-  await picker.getByRole("button", { name: "People", exact: true }).click();
+  await picker.getByRole("tab", { name: "People", exact: true }).click();
   await composer.press("ArrowDown");
   await search.fill("Desktop Owner");
   await expect(owner).toBeVisible();
   await search.press("Enter");
   await expect(picker).toHaveCount(0);
   await expect(composer).toBeFocused();
-  await expect(composer).toHaveValue(/^@\[person:[^\]]+\] $/);
+  await expect(composer.locator("[data-reference-chip]")).toHaveText("Desktop Owner");
   await composer.press("Enter");
   await expect(
     page
@@ -96,7 +209,7 @@ test("reference results scroll the active option into view after an async search
   const composer = page.getByRole("textbox", { name: "Message #reference-scrolling", exact: true });
   await composer.fill("@");
   const picker = page.getByRole("region", { name: "Insert workspace reference", exact: true });
-  await picker.getByRole("button", { name: "Projects", exact: true }).click();
+  await picker.getByRole("tab", { name: "Projects", exact: true }).click();
   const search = picker.getByRole("combobox", { name: "Search references", exact: true });
   const options = picker.getByRole("option");
   await search.fill("Reference project");
@@ -171,14 +284,14 @@ for (const size of [
     const box = (await popover.boundingBox())!;
     expect(box.width).toBeLessThanOrEqual(size.width - 24);
     await expect(composer).toBeFocused();
-    await popover.getByRole("button", { name: "People", exact: true }).click();
+    await popover.getByRole("tab", { name: "People", exact: true }).click();
     const owner = popover.getByRole("option", { name: "Desktop Owner", exact: true });
     await expect(owner).toBeVisible();
     await expect(owner).toBeInViewport({ ratio: 1 });
     await owner.click();
     await expect(popover).toHaveCount(0);
     await expect(composer).toBeFocused();
-    await expect(composer).toHaveValue(/^@\[person:/);
+    await expect(composer.locator("[data-reference-chip]")).toHaveText("Desktop Owner");
     await composer.fill("@");
     await composer.press("ArrowDown");
     const search = popover.getByRole("combobox", { name: "Search references", exact: true });
@@ -188,7 +301,7 @@ for (const size of [
     ).toBeVisible();
     await search.press("Enter");
     await expect(popover).toBeVisible();
-    await expect(composer).toHaveValue("@");
+    await expect(composer).toHaveText("@");
     await search.press("Escape");
     await expect(popover).toHaveCount(0);
     await expect(composer).toBeFocused();

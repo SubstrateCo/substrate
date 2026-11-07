@@ -30,6 +30,11 @@ export function MessageItem({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-2">
           <span className="text-sm font-semibold">{message.authorName || "Unknown member"}</span>
+          {message.authorExternal && (
+            <span className="rounded border px-1.5 py-0.5 text-xs text-muted-foreground">
+              External
+            </span>
+          )}
           <time
             dateTime={new Date(message.createdAt).toISOString()}
             title={new Date(message.createdAt).toLocaleString()}

@@ -10,6 +10,15 @@ test("native title bar stays clear of sign-in, workspace and offline content", a
   const theme = page.locator("[data-theme-control]");
   await expect(theme).toBeVisible();
   await expect(bar).toBeVisible();
+  const title = bar.getByText("Startup OS", { exact: true });
+  await expect(title).toBeVisible();
+  await expect
+    .poll(async () => {
+      const box = (await title.boundingBox())!;
+      const width = await page.evaluate(() => innerWidth);
+      return Math.abs(box.x + box.width / 2 - width / 2);
+    })
+    .toBeLessThanOrEqual(1);
   expect(
     await desktop.app.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows()[0]!.isMenuBarVisible(),
@@ -49,6 +58,10 @@ test("native title bar stays clear of sign-in, workspace and offline content", a
   await expect(page.locator("[data-theme-control]")).toHaveCount(0);
   const search = bar.getByRole("combobox", { name: "Search workspace", exact: true });
   await expect(search).toBeVisible();
+  const searchBox = (await bar.locator(".desktop-title-bar-search").boundingBox())!;
+  expect(
+    Math.abs(searchBox.x + searchBox.width / 2 - (await page.evaluate(() => innerWidth / 2))),
+  ).toBeLessThanOrEqual(1);
   await expect(bar.getByText("Startup OS", { exact: true })).toBeHidden();
   expect(
     await search.evaluate((element) =>
@@ -89,6 +102,14 @@ test("native title bar stays clear of sign-in, workspace and offline content", a
   );
   await expect(bar).toBeVisible();
   const retry = page.getByRole("link", { name: "Try again", exact: true });
+  expect(
+    await bar.evaluate((element) => {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      const box = range.getBoundingClientRect();
+      return Math.abs(box.x + box.width / 2 - innerWidth / 2);
+    }),
+  ).toBeLessThanOrEqual(1);
   expect(
     await retry.evaluate((element) =>
       getComputedStyle(element).getPropertyValue("-webkit-app-region"),

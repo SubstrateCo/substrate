@@ -1,5 +1,13 @@
 import { AccessDeniedError, ConflictError } from "../../errors";
-import { entityGrants, entities, user, tasks, taskActivity, notifications } from "../../schema";
+import {
+  entityGrants,
+  entities,
+  user,
+  member,
+  tasks,
+  taskActivity,
+  notifications,
+} from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { messagingParticipants } from "../messaging/schema";
 import { createMessagingService } from "../messaging/service";
@@ -160,6 +168,31 @@ test("message targets resolve a reply and root, and mismatched conversations fai
     root: { id: root.id },
   });
   await expect(context().messageTarget(crypto.randomUUID(), reply.id)).rejects.toBeInstanceOf(
+    AccessDeniedError,
+  );
+});
+
+test("linked message targets classify root and reply authors by current viewer membership", async () => {
+  const { chat, conversation, root } = await setup();
+  await chat.addMembers(conversation.id, ["outside@example.com"]);
+  const partner = createMessagingService(f.db, { userId: "outsider", organizationId: f.orgB });
+  const reply = await partner.sendMessage(conversation.id, "Partner reply", root.id);
+  expect(await context().messageTarget(conversation.id, reply.id)).toMatchObject({
+    message: { id: reply.id, authorExternal: true },
+    root: { id: root.id, authorExternal: false },
+  });
+  expect(await context("outsider", f.orgB).messageTarget(conversation.id, reply.id)).toMatchObject({
+    message: { id: reply.id, authorExternal: false },
+    root: { id: root.id, authorExternal: true },
+  });
+  await f.db
+    .insert(member)
+    .values({ id: "outsider-a", userId: "outsider", organizationId: f.orgA });
+  expect(await context().messageTarget(conversation.id, reply.id)).toMatchObject({
+    message: { id: reply.id, authorExternal: false },
+    root: { id: root.id, authorExternal: false },
+  });
+  await expect(context("bob").messageTarget(conversation.id, reply.id)).rejects.toBeInstanceOf(
     AccessDeniedError,
   );
 });

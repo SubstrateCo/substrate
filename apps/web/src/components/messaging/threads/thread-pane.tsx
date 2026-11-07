@@ -32,8 +32,6 @@ export function ThreadPane({
     aroundMessageId: targetMessage?.threadId ? targetMessage.id : undefined,
   });
   const rows = [...(replies.data ?? [])];
-  if (targetMessage?.threadId === threadId && !rows.some((row) => row.id === targetMessage.id))
-    rows.push(targetMessage);
   return (
     <ThreadPaneView
       loading={replies.isPending}

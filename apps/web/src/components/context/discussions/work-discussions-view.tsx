@@ -23,7 +23,7 @@ export function WorkDiscussions({
 }) {
   const rows = isAccessFailure(error) ? [] : items;
   return (
-    <section aria-label={label} className="space-y-3">
+    <section aria-label={label} className="space-y-4">
       <h3 className="text-sm font-semibold">{label}</h3>
       {children}
       {loading && !rows.length && (

@@ -1,11 +1,13 @@
 import { taskStatusLabels, taskStatusValues, type TaskStatus } from "@startup-os/contracts/tasks";
 
+import { useId, useState } from "react";
+
 import { ContentNotice } from "../../feedback/content-notice";
 import { TaskStatusIcon } from "../task-cues/task-status-icon";
 import type { ProjectDetail } from "../types";
 import { TaskListItem } from "./task-list-item";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 
 export function TaskList({
   detail,
@@ -18,6 +20,8 @@ export function TaskList({
   onSelect: (id: string) => void;
   onCreate?: (status: TaskStatus) => void;
 }) {
+  const listId = useId();
+  const [collapsed, setCollapsed] = useState<Partial<Record<TaskStatus, boolean>>>({});
   return (
     <section
       aria-label="Project tasks"
@@ -50,12 +54,31 @@ export function TaskList({
         return (
           <div key={status} className="overflow-hidden rounded-lg border bg-card">
             <div className="flex items-center justify-between gap-2 border-b bg-muted px-3 py-2">
-              <h2 className="flex items-center gap-2 text-xs font-semibold tracking-wide wrap-anywhere uppercase">
-                <TaskStatusIcon status={status} />
-                {taskStatusLabels[status]}{" "}
-                <span className="rounded bg-muted px-1.5 py-0.5 font-normal text-muted-foreground tabular-nums">
-                  {rows.length}
-                </span>
+              <h2 className="min-w-0 flex-1 text-xs font-semibold tracking-wide wrap-anywhere uppercase">
+                <Button
+                  variant="sidebar"
+                  size="xs"
+                  className="w-full justify-start"
+                  aria-label={taskStatusLabels[status]}
+                  aria-expanded={!collapsed[status]}
+                  aria-controls={`${listId}-${status}`}
+                  onClick={() =>
+                    setCollapsed((current) => ({ ...current, [status]: !current[status] }))
+                  }
+                >
+                  {collapsed[status] ? (
+                    <ChevronRight aria-hidden="true" />
+                  ) : (
+                    <ChevronDown aria-hidden="true" />
+                  )}
+                  <TaskStatusIcon status={status} />
+                  <span className="font-semibold tracking-wide uppercase">
+                    {taskStatusLabels[status]}
+                  </span>{" "}
+                  <span className="rounded bg-muted px-1.5 py-0.5 font-normal text-muted-foreground tabular-nums">
+                    {rows.length}
+                  </span>
+                </Button>
               </h2>
               {onCreate && (
                 <Button
@@ -68,7 +91,11 @@ export function TaskList({
                 </Button>
               )}
             </div>
-            <ul className="divide-y divide-border/50">
+            <ul
+              id={`${listId}-${status}`}
+              hidden={!!collapsed[status]}
+              className="divide-y divide-border/50"
+            >
               {rows.map((task) => (
                 <TaskListItem
                   key={task.entityId}

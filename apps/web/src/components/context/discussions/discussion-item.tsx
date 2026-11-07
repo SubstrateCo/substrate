@@ -20,33 +20,37 @@ export function DiscussionItem({ item }: { item: Discussion }) {
     association: "Linked work",
   }[item.purpose];
   return (
-    <Item size="xs" variant="outline" className="items-start">
+    <Item variant="outline" className="items-start">
       <ItemContent className="min-w-0">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <a
-                className="line-clamp-3 text-sm font-medium wrap-anywhere underline underline-offset-4"
-                href={item.href}
-              >
-                {title}
-              </a>
-            </TooltipTrigger>
-            <TooltipContent className="wrap-anywhere">{title}</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-        <ItemDescription className="wrap-anywhere">
-          {item.authorName} ·{" "}
-          <time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString()}</time>
-        </ItemDescription>
-        <p className="line-clamp-3 wrap-anywhere whitespace-pre-wrap">
-          {item.body.replace(/@\[[^\]]+\]/g, "[Reference]")}
-        </p>
-        {item.replyCount !== undefined && (
-          <p className="text-xs text-muted-foreground">
-            {item.replyCount} {item.replyCount === 1 ? "reply" : "replies"} · {relationship}
+        <div className="space-y-3 px-1 py-1.5">
+          <div className="space-y-1">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <a
+                    className="line-clamp-3 text-sm font-medium wrap-anywhere underline underline-offset-4"
+                    href={item.href}
+                  >
+                    {title}
+                  </a>
+                </TooltipTrigger>
+                <TooltipContent className="wrap-anywhere">{title}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <ItemDescription className="wrap-anywhere">
+              {item.authorName} ·{" "}
+              <time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString()}</time>
+            </ItemDescription>
+          </div>
+          <p className="line-clamp-3 text-sm leading-relaxed wrap-anywhere whitespace-pre-wrap">
+            {item.body.replace(/@\[[^\]]+\]/g, "[Reference]")}
           </p>
-        )}
+          {item.replyCount !== undefined && (
+            <p className="text-xs text-muted-foreground">
+              {item.replyCount} {item.replyCount === 1 ? "reply" : "replies"} · {relationship}
+            </p>
+          )}
+        </div>
       </ItemContent>
     </Item>
   );

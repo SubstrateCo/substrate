@@ -271,7 +271,15 @@ export function createMessagingService(
             : sql`(${messages.createdAt}, ${messages.id}) <= (select anchor.created_at, anchor.id from ${messages} anchor where anchor.id = ${anchor.id}::uuid)`;
         }
         const rows = await tx
-          .select({ message: messages, authorName: user.name })
+          .select({
+            message: messages,
+            authorName: user.name,
+            authorExternal: sql<boolean>`not exists (
+              select 1 from ${member}
+              where ${member.userId} = ${messages.authorId}
+                and ${member.organizationId} = ${scope.organizationId}
+            )`,
+          })
           .from(messages)
           .innerJoin(user, eq(user.id, messages.authorId))
           .where(
@@ -308,7 +316,7 @@ export function createMessagingService(
             ),
           )
           .groupBy(messages.threadId);
-        return rows.map(({ message, authorName }) => {
+        return rows.map(({ message, authorName, authorExternal }) => {
           const grouped = new Map<string, { emoji: string; count: number; reacted: boolean }>();
           for (const reaction of allReactions.filter(
             (reaction) => reaction.messageId === message.id,
@@ -325,6 +333,7 @@ export function createMessagingService(
           return {
             ...message,
             authorName,
+            authorExternal,
             replyCount: replies.find((reply) => reply.threadId === message.id)?.count ?? 0,
             reactions: [...grouped.values()],
           };

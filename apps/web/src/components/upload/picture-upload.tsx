@@ -9,7 +9,7 @@ import { FileUpload } from "./file-upload";
 import { pictureAccept, pictureMaxSize } from "./file-validation";
 import { ImageCropDialog, type PictureUploadContext } from "./image-crop-dialog";
 import { PicturePreview } from "./picture-preview";
-import { ImageIcon, ImagePlus, Trash2 } from "lucide-react";
+import { ImageIcon, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export interface PictureUploadProps {
@@ -46,9 +46,9 @@ export function PictureUpload({
     }
   }
   return (
-    <section aria-label={name} className="flex flex-wrap items-center gap-x-4 gap-y-2">
+    <section aria-label={name} className="flex items-start gap-4">
       {kind === "avatar" ? (
-        <Avatar variant="picture" className="size-12">
+        <Avatar variant="picture" className="size-16 shrink-0">
           <AvatarImage src={value ?? undefined} alt={name} className="object-contain" />
           <AvatarFallback>
             <ImageIcon
@@ -58,7 +58,7 @@ export function PictureUpload({
           </AvatarFallback>
         </Avatar>
       ) : (
-        <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
+        <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
           <PicturePreview
             src={value}
             alt={name}
@@ -72,57 +72,58 @@ export function PictureUpload({
           />
         </div>
       )}
-      <FileUpload
-        chooseButtonRef={chooseButton}
-        compact
-        icon={<ImagePlus aria-hidden="true" />}
-        accept={pictureAccept}
-        maxSize={pictureMaxSize}
-        disabled={disabled || removing || !!source}
-        label={value ? "Replace picture" : "Choose picture"}
-        description="JPEG, PNG, or WebP. Up to 5 MB. Drop an image here."
-        onFiles={async ([file]) => {
-          setError(null);
-          try {
-            const image = await openPicture(file);
-            image.close();
-            setSource(file);
-          } catch (failure) {
-            setError(
-              failure instanceof Error ? failure.message : "This image could not be opened.",
-            );
-          }
-        }}
-      />
-      {value && (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="destructive"
-                size="icon"
-                disabled={disabled || !!source || removing}
-                aria-busy={removing}
-                aria-label={removing ? "Removing picture…" : "Remove picture"}
-                onClick={() => void remove()}
-              >
-                {removing ? (
-                  <Spinner aria-hidden="true" role="presentation" />
-                ) : (
-                  <Trash2 aria-hidden="true" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Remove picture</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )}
-      {error && (
-        <p role="alert" className="w-full text-sm text-destructive">
-          {error}
-        </p>
-      )}
+      <div className="grid min-w-0 flex-1 gap-2">
+        <FileUpload
+          chooseButtonRef={chooseButton}
+          compact
+          accept={pictureAccept}
+          maxSize={pictureMaxSize}
+          disabled={disabled || removing || !!source}
+          label={value ? "Replace picture" : "Choose picture"}
+          description="JPEG, PNG, or WebP. Up to 5 MB. Drop an image here."
+          onFiles={async ([file]) => {
+            setError(null);
+            try {
+              const image = await openPicture(file);
+              image.close();
+              setSource(file);
+            } catch (failure) {
+              setError(
+                failure instanceof Error ? failure.message : "This image could not be opened.",
+              );
+            }
+          }}
+        />
+        {value && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  disabled={disabled || !!source || removing}
+                  aria-busy={removing}
+                  aria-label={removing ? "Removing picture…" : "Remove picture"}
+                  onClick={() => void remove()}
+                >
+                  {removing ? (
+                    <Spinner aria-hidden="true" role="presentation" />
+                  ) : (
+                    <Trash2 aria-hidden="true" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Remove picture</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+        {error && (
+          <p role="alert" className="w-full text-sm text-destructive">
+            {error}
+          </p>
+        )}
+      </div>
       {source && (
         <ImageCropDialog
           file={source}

@@ -11,6 +11,7 @@ test("desktop invitation email returns a new member to the invited workspace", a
   const { page, browser, member, workspace } = desktop;
   await page.getByRole("button", { name: /^Signed in as / }).click();
   await page.getByRole("button", { name: "Organization settings", exact: true }).click();
+  await page.getByRole("tab", { name: "Invitations", exact: true }).click();
   await page.getByLabel("Email", { exact: true }).fill(member.email);
   await page.getByRole("button", { name: "Send invitation", exact: true }).click();
   await expect(
@@ -39,6 +40,7 @@ test("Electron invitation pagination supports keyboard, pointer, and narrow expi
   await desktop.provision();
   const page = desktop.page;
   await page.goto(new URL("/settings/organization", desktop.rendererOrigin).href);
+  await page.getByRole("tab", { name: "Invitations", exact: true }).click();
   const email = page.getByLabel("Email", { exact: true });
   await email.fill(desktop.member.email);
   await choose(page, "Role", "Admin");

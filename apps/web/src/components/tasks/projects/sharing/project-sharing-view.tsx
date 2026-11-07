@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, ShieldCheck } from "lucide-react";
+import { Plus } from "lucide-react";
 
 export function ProjectSharing({
   detail,
@@ -97,11 +97,6 @@ export function ProjectSharing({
           <FormMessage error={error} />
         </div>
       )}
-      <p className="flex items-start gap-2 border-t bg-surface p-4 text-xs text-muted-foreground">
-        <ShieldCheck aria-hidden="true" className="size-4 shrink-0" />
-        Permissions cover this project and all its tasks, subtasks, and comments. Workspace roles do
-        not grant project access. Linked messages keep their own permissions.
-      </p>
       {review && canManage && (
         <ProjectAccessReview
           change={review}

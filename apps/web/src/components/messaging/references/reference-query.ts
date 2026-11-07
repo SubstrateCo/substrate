@@ -11,7 +11,7 @@ export function referenceQuery(draft: string, caret: number): ReferenceQuery | n
   const match = /(?:^|\s)@([^\s@[\]]*)$/.exec(draft.slice(0, caret));
   if (!match) return null;
   const text = match[1]!;
-  const prefix = /^(user|task|project):/i.exec(text);
+  const prefix = /^(user|task|project)s?:/i.exec(text);
   let kind: ReferenceQuery["kind"] = "all";
   if (prefix) {
     if (prefix[1]!.toLowerCase() === "user") kind = "person";

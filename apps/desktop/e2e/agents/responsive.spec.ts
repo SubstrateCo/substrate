@@ -1,5 +1,14 @@
 import { test } from "../test-support/fixture.js";
-import { expect, type Locator } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
+
+async function dismissToast(page: Page, message: string) {
+  const toast = page.locator("[data-sonner-toast]").filter({ hasText: message });
+  while (await toast.count()) {
+    const count = await toast.count();
+    await toast.last().getByRole("button", { name: "Close toast", exact: true }).click();
+    await expect.poll(() => toast.count()).toBeLessThan(count);
+  }
+}
 
 async function expectNoHorizontalOverflow(locator: Locator) {
   await expect
@@ -57,17 +66,11 @@ for (const size of [
     const settings = page.getByRole("region", { name: "Agents", exact: true });
     await expectNoHorizontalOverflow(settings);
 
-    const configuration = page.getByRole("combobox", {
-      name: "Configuration harness",
-      exact: true,
-    });
-    await configuration.click();
-    await expect(page.getByRole("option", { name: "Claude Code", exact: true })).toBeVisible();
-    await page.getByRole("option", { name: "Claude Code", exact: true }).click();
-    await expect(configuration).toHaveText("Claude Code");
-    await configuration.click();
-    await page.getByRole("option", { name: "OpenCode", exact: true }).click();
-    await page.getByRole("button", { name: "Scan local configuration", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Create skill", exact: true })).toHaveCount(0);
+    await page.getByRole("button", { name: "Create agent", exact: true }).click();
+    const configuration = page.getByRole("dialog", { name: "Create agent", exact: true });
+    await configuration.getByRole("tab", { name: "Skills", exact: true }).click();
+    await configuration.getByRole("button", { name: "Refresh configuration", exact: true }).click();
     await expect(page.getByRole("button", { name: "Create skill", exact: true })).toBeEnabled();
 
     const skillName = "responsive-skill-" + "x".repeat(47);
@@ -94,7 +97,7 @@ for (const size of [
     await expect.poll(() => skill.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
     await skill.getByRole("button", { name: "Save skill", exact: true }).click();
     await expect(skill).toBeHidden();
-    await expectNoHorizontalOverflow(page.getByRole("region", { name: "Skills", exact: true }));
+    await expectNoHorizontalOverflow(configuration.getByRole("tabpanel"));
     await page.getByRole("button", { name: `Edit ${skillName}`, exact: true }).click();
     const editedSkill = page.getByRole("dialog", { name: "Edit skill", exact: true });
     await expectDialogFits(editedSkill);
@@ -104,12 +107,13 @@ for (const size of [
     await editedSkill.getByLabel("Description", { exact: true }).fill("Updated native skill.");
     await editedSkill.getByRole("button", { name: "Save skill", exact: true }).click();
     await expect(editedSkill).toBeHidden();
-    await expect(page.getByRole("region", { name: "Skills", exact: true })).toContainText(
-      "Updated native skill.",
-    );
+    await expect(configuration.getByRole("tabpanel")).toContainText("Updated native skill.");
     await page
       .getByRole("button", { name: `Edit ${skillName}`, exact: true })
       .scrollIntoViewIfNeeded();
+    await configuration.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(configuration).toBeHidden();
+    await dismissToast(page, "Skill saved.");
 
     const agentName = "Responsive" + "x".repeat(170);
     await page.getByRole("button", { name: "Create agent", exact: true }).click();
@@ -132,6 +136,7 @@ for (const size of [
     await expect(agent.getByRole("button", { name: "Save agent", exact: true })).toBeInViewport();
     await agent.getByRole("button", { name: "Save agent", exact: true }).click();
     await expect(agent).toBeHidden();
+    await dismissToast(page, "Agent saved.");
     const agents = page.getByRole("region", { name: "Agent actors", exact: true });
     await expectNoHorizontalOverflow(agents);
     await expect(agents).toContainText("Claude Code · Disabled");
@@ -158,6 +163,10 @@ for (const size of [
     );
 
     for (const name of [agentName, skillName]) {
+      if (name === skillName) {
+        await page.getByRole("button", { name: "Create agent", exact: true }).click();
+        await configuration.getByRole("tab", { name: "Skills", exact: true }).click();
+      }
       const actions = page.getByRole("group", { name: `Actions for ${name}`, exact: true });
       await expect(actions.getByRole("button")).toHaveCount(2);
       await expect(
@@ -176,8 +185,12 @@ for (const size of [
       await page.getByRole("button", { name: `Delete ${name}`, exact: true }).click();
       await confirmation.getByRole("button", { name: "Delete", exact: true }).click();
       await expect(confirmation).toBeHidden();
+      if (name === agentName) await dismissToast(page, "Agent deleted.");
       await expect(page.getByRole("button", { name: `Edit ${name}`, exact: true })).toHaveCount(0);
     }
+    await configuration.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(configuration).toBeHidden();
+    await dismissToast(page, "Skill deleted.");
     await expectNoHorizontalOverflow(settings);
   });
 }

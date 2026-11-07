@@ -13,6 +13,7 @@ export function CatalogSection({
   children,
   empty,
   disabled,
+  controls,
 }: {
   title: string;
   label: string;
@@ -22,6 +23,7 @@ export function CatalogSection({
   children: ReactNode;
   empty: boolean;
   disabled?: boolean;
+  controls?: ReactNode;
 }) {
   return (
     <section aria-label={label} className="grid gap-4 rounded-xl border p-5">
@@ -45,6 +47,7 @@ export function CatalogSection({
           <TooltipContent>{addLabel}</TooltipContent>
         </Tooltip>
       </div>
+      {controls}
       {empty ? (
         <p className="text-sm text-muted-foreground">No {title.toLowerCase()} yet.</p>
       ) : (

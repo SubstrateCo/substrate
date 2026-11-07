@@ -21,9 +21,9 @@ header {
   height: max(40px, env(titlebar-area-height, 40px));
   display: grid;
   place-items: center;
-  padding-left: env(titlebar-area-x, 88px);
-  padding-right: calc(
-    100vw - env(titlebar-area-x, 88px) - env(titlebar-area-width, calc(100vw - 88px))
+  padding-inline: max(
+    env(titlebar-area-x, 88px),
+    calc(100vw - env(titlebar-area-x, 88px) - env(titlebar-area-width, calc(100vw - 88px)))
   );
   font-size: 12px;
   user-select: none;

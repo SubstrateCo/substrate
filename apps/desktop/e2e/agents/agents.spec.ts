@@ -58,6 +58,10 @@ test("user agents and device-local configuration survive reload and restart in E
   await desktop.page.goto(new URL("/settings/user/agents", desktop.rendererOrigin).href);
   const page = desktop.page;
 
+  await expect(page.getByRole("button", { name: "Create skill", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Create agent", exact: true }).click();
+  const configuration = page.getByRole("dialog", { name: "Create agent", exact: true });
+  await configuration.getByRole("tab", { name: "Skills", exact: true }).click();
   await page.getByRole("button", { name: "Create skill", exact: true }).click();
   const skill = page.getByRole("dialog", { name: "Create skill", exact: true });
   await skill.getByLabel("Skill name", { exact: true }).fill("review-customer-context");
@@ -116,12 +120,13 @@ test("user agents and device-local configuration survive reload and restart in E
   expect(nativeSkill.migrations).toBeGreaterThan(0);
   expect(nativeSkill.entries).not.toContain("workspace");
   expect(nativeSkill.content).toContain("State which facts are missing");
-  await page.getByRole("button", { name: "Scan local configuration", exact: true }).click();
+  await configuration.getByRole("button", { name: "Refresh configuration", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Edit native-file-skill", exact: true }),
   ).toBeVisible();
 
   await expect(page.getByRole("button", { name: "Add MCP server", exact: true })).toHaveCount(0);
+  await configuration.getByRole("button", { name: "Cancel", exact: true }).click();
 
   await page.getByRole("button", { name: "Create agent", exact: true }).click();
   const agent = page.getByRole("dialog", { name: "Create agent", exact: true });
@@ -139,9 +144,6 @@ test("user agents and device-local configuration survive reload and restart in E
     .fill("Review customer requests carefully.");
   await agent.getByRole("button", { name: "Save agent", exact: true }).click();
   await expect(agent).toBeHidden();
-  await expect(
-    page.getByRole("button", { name: "Edit review-customer-context", exact: true }),
-  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Edit Customer reviewer", exact: true }),
   ).toBeVisible();
@@ -186,9 +188,6 @@ test("user agents and device-local configuration survive reload and restart in E
   await expect(
     desktop.page.getByRole("button", { name: "Edit Updated reviewer", exact: true }),
   ).toBeVisible();
-  await expect(
-    desktop.page.getByRole("button", { name: "Edit review-customer-context", exact: true }),
-  ).toBeVisible();
   await desktop.page.getByRole("button", { name: "Edit Updated reviewer", exact: true }).click();
   const savedAgent = desktop.page.getByRole("dialog", { name: "Edit agent", exact: true });
   const savedPicture = savedAgent.getByRole("region", { name: "Profile picture", exact: true });
@@ -200,7 +199,16 @@ test("user agents and device-local configuration survive reload and restart in E
     0,
   );
   await savedAgent.getByRole("button", { name: "Cancel", exact: true }).click();
-  for (const name of ["Updated reviewer", "review-customer-context", "native-file-skill"]) {
+  await desktop.page.getByRole("button", { name: "Create agent", exact: true }).click();
+  const nativeConfiguration = desktop.page.getByRole("dialog", {
+    name: "Create agent",
+    exact: true,
+  });
+  await nativeConfiguration.getByRole("tab", { name: "Skills", exact: true }).click();
+  await expect(
+    nativeConfiguration.getByRole("button", { name: "Edit review-customer-context", exact: true }),
+  ).toBeVisible();
+  for (const name of ["review-customer-context", "native-file-skill"]) {
     await desktop.page.getByRole("button", { name: `Delete ${name}`, exact: true }).click();
     const confirmation = desktop.page.getByRole("dialog", { name: `Delete ${name}?`, exact: true });
     await confirmation.getByRole("button", { name: "Delete", exact: true }).click();
@@ -209,6 +217,14 @@ test("user agents and device-local configuration survive reload and restart in E
       desktop.page.getByRole("button", { name: `Edit ${name}`, exact: true }),
     ).toHaveCount(0);
   }
+  await nativeConfiguration.getByRole("button", { name: "Cancel", exact: true }).click();
+  await desktop.page.getByRole("button", { name: "Delete Updated reviewer", exact: true }).click();
+  const confirmation = desktop.page.getByRole("dialog", {
+    name: "Delete Updated reviewer?",
+    exact: true,
+  });
+  await confirmation.getByRole("button", { name: "Delete", exact: true }).click();
+  await expect(confirmation).toBeHidden();
   await desktop.page.reload();
   await expect(
     desktop.page.getByRole("button", { name: "Create agent", exact: true }),

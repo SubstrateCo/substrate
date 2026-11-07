@@ -1,11 +1,15 @@
-import { useRef, useState } from "react";
+import { useContext, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import { FormMessage } from "../../auth/form-message";
 import { PendingButton } from "../../feedback/pending-button";
 import { Field } from "../../ui/field";
-import { InputGroup, InputGroupAddon, InputGroupTextarea } from "../../ui/input-group";
+import { InputGroup, InputGroupAddon } from "../../ui/input-group";
 import { Popover, PopoverAnchor, PopoverContent } from "../../ui/popover";
+import type { WorkspaceReference } from "../references/entity-reference";
+import { ReferenceEditor } from "../references/reference-editor";
+import { referenceQuery } from "../references/reference-query";
+import { ComposerDraftReferences } from "./composer-drafts";
 import { ComposerToolbar } from "./composer-toolbar";
 import { EmojiPicker } from "./emoji-picker";
 import { useComposerDraft } from "@/components/messaging/composer/composer/use-composer-draft";
@@ -28,28 +32,44 @@ export function Composer({
   draftKey?: string;
   renderReferences?: (
     query: string,
-    onInsert: (token: string) => void,
+    onInsert: (token: string, reference: WorkspaceReference) => void,
     onClose: () => void,
   ) => ReactNode;
 }) {
-  const { draft, setDraft, textarea, setComposing, isComposing, submit, insert } = useComposerDraft(
-    {
+  const { draft, setDraft, editor, setComposing, isComposing, submit, insert, requestFocus } =
+    useComposerDraft({
       draftKey,
       defaultValue,
       pending,
       onSend,
-    },
-  );
+    });
   const [references, setReferences] = useState(false);
+  const [caret, setCaret] = useState(draft.length);
+  const draftReferences = useContext(ComposerDraftReferences);
+  const [localReferences, setLocalReferences] = useState<WorkspaceReference[]>([]);
+  const resolvedReferences =
+    (draftKey ? draftReferences?.get(draftKey) : undefined) ?? localReferences;
+  const anchor = useRef<HTMLDivElement>(null);
+  const activeReference = referenceQuery(draft, caret);
   const referencePicker = useRef<HTMLDivElement>(null);
   const closeReferences = () => {
     setReferences(false);
   };
-  const insertReference = (token: string) => {
+  const insertReference = (token: string, reference: WorkspaceReference) => {
+    if (!activeReference) return;
+    const nextReferences = [
+      ...resolvedReferences.filter(
+        (item) => item.id !== reference.id || item.kind !== reference.kind,
+      ),
+      reference,
+    ];
+    if (draftKey) draftReferences?.set(draftKey, nextReferences);
+    setLocalReferences(nextReferences);
+    const nextCaret = activeReference.start + token.length + 1;
+    requestFocus(nextCaret);
+    setCaret(nextCaret);
     setDraft(
-      /(?:^|\s)@[^\s[\]]*$/.test(draft)
-        ? draft.replace(/@[^\s[\]]*$/, `${token} `)
-        : `${draft}${draft.endsWith(" ") || !draft ? "" : " "}${token} `,
+      draft.slice(0, activeReference.start) + token + " " + draft.slice(activeReference.end),
     );
     closeReferences();
   };
@@ -67,49 +87,52 @@ export function Composer({
             <InputGroupAddon align="block-start" className="[&>div]:w-full">
               <ComposerToolbar pending={pending} onInsert={insert} />
             </InputGroupAddon>
-            <PopoverAnchor asChild data-slot="input-group-control">
-              <InputGroupTextarea
-                ref={textarea}
-                aria-label={label}
-                placeholder={label}
-                value={draft}
-                maxLength={20000}
-                disabled={pending}
-                onCompositionStart={() => {
-                  setComposing(true);
-                }}
-                onCompositionEnd={(event) => {
-                  setComposing(false);
-                  setReferences(/(?:^|\s)@[^\s[\]]*$/.test(event.currentTarget.value));
-                }}
-                onChange={(event) => {
-                  setDraft(event.target.value);
-                  if (!isComposing()) setReferences(/(?:^|\s)@[^\s[\]]*$/.test(event.target.value));
-                }}
-                rows={1}
-                className="max-h-[25dvh] min-h-10 resize-none"
-                onKeyDown={(event) => {
-                  if (event.nativeEvent.isComposing || isComposing()) return;
-                  if (references && renderReferences && !event.shiftKey) {
-                    if (event.key === "Escape") {
-                      event.preventDefault();
-                      closeReferences();
-                      return;
+            <PopoverAnchor asChild>
+              <div
+                ref={anchor}
+                data-slot="input-group-control"
+                className="w-full min-w-0"
+                onCompositionStart={() => setComposing(true)}
+                onCompositionEnd={() => setComposing(false)}
+              >
+                <ReferenceEditor
+                  ref={editor}
+                  label={label}
+                  value={draft}
+                  references={resolvedReferences}
+                  disabled={pending}
+                  onChange={(value, position) => {
+                    setDraft(value);
+                    setCaret(position);
+                    if (!isComposing()) setReferences(!!referenceQuery(value, position));
+                  }}
+                  onSelectionChange={(position) => {
+                    setCaret(position);
+                    if (!referenceQuery(draft, position)) closeReferences();
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.isComposing || isComposing()) return;
+                    if (references && renderReferences && !event.shiftKey) {
+                      if (event.key === "Escape") {
+                        event.preventDefault();
+                        closeReferences();
+                        return;
+                      }
+                      if (["ArrowDown", "ArrowUp", "Enter"].includes(event.key)) {
+                        event.preventDefault();
+                        referencePicker.current
+                          ?.querySelector<HTMLInputElement>('[role="combobox"]')
+                          ?.focus();
+                        return;
+                      }
                     }
-                    if (["ArrowDown", "ArrowUp", "Enter"].includes(event.key)) {
+                    if (event.key === "Enter" && !event.shiftKey) {
                       event.preventDefault();
-                      referencePicker.current
-                        ?.querySelector<HTMLInputElement>('[role="combobox"]')
-                        ?.focus();
-                      return;
+                      submit();
                     }
-                  }
-                  if (event.key === "Enter" && !event.shiftKey) {
-                    event.preventDefault();
-                    submit();
-                  }
-                }}
-              />
+                  }}
+                />
+              </div>
             </PopoverAnchor>
             {references && renderReferences && (
               <PopoverContent
@@ -124,21 +147,26 @@ export function Composer({
                 onOpenAutoFocus={(event) => event.preventDefault()}
                 onCloseAutoFocus={(event) => {
                   event.preventDefault();
-                  if (document.activeElement === document.body) textarea.current?.focus();
+                  if (document.activeElement === document.body) editor.current?.focusAt(caret);
                 }}
                 onEscapeKeyDown={(event) => {
                   event.preventDefault();
                   closeReferences();
                 }}
                 onInteractOutside={(event) => {
-                  if (event.target instanceof Node && textarea.current?.contains(event.target))
+                  if (event.target instanceof Node && anchor.current?.contains(event.target))
                     event.preventDefault();
                 }}
               >
                 {renderReferences(
-                  /(?:^|\s)@([^\s[\]]*)$/.exec(draft)?.[1] ?? "",
+                  activeReference
+                    ? draft.slice(activeReference.start + 1, activeReference.end)
+                    : "",
                   insertReference,
-                  closeReferences,
+                  () => {
+                    closeReferences();
+                    requestFocus(caret);
+                  },
                 )}
               </PopoverContent>
             )}
@@ -148,7 +176,7 @@ export function Composer({
                 type="submit"
                 size="sm"
                 className="min-w-16"
-                disabled={!draft.trim()}
+                disabled={!draft.trim() || draft.length > 20000}
                 pending={pending}
                 pendingLabel="Sending…"
               >

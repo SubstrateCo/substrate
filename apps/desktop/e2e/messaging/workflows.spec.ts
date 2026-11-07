@@ -60,7 +60,7 @@ test("Electron messaging cancels creation without mutations and keeps channel an
         } else await cancel.click();
         await expect(cancel).toHaveCount(0);
         await expect(trigger).toBeFocused();
-        if (populated) await expect(first).toHaveValue("First channel draft");
+        if (populated) await expect(first).toHaveText("First channel draft");
         else await expect(empty).toBeVisible();
       }
     }
@@ -79,7 +79,7 @@ test("Electron messaging cancels creation without mutations and keeps channel an
     await expect(mobileTrigger).toBeFocused();
     if (populated) {
       await sidebar.getByRole("button", { name: "draft-first", exact: true }).click();
-      await expect(first).toHaveValue("First channel draft");
+      await expect(first).toHaveText("First channel draft");
     } else {
       await page.getByRole("button", { name: "Back to messages", exact: true }).click();
       const emptyDm = page.getByRole("button", { name: "New direct message", exact: true });
@@ -114,10 +114,10 @@ test("Electron messaging cancels creation without mutations and keeps channel an
 
   await createChannel(page, "draft-second");
   const second = page.getByRole("textbox", { name: "Message #draft-second", exact: true });
-  await expect(second).toHaveValue("");
+  await expect(second).toHaveText("");
   await second.fill("Second channel draft");
   await sidebar.getByRole("button", { name: "draft-first", exact: true }).click();
-  await expect(first).toHaveValue("First channel draft");
+  await expect(first).toHaveText("First channel draft");
   const reply = page.getByRole("textbox", { name: "Reply in thread…", exact: true });
   for (const [message, draft] of [
     [root, "Thread-only draft"],
@@ -125,7 +125,7 @@ test("Electron messaging cancels creation without mutations and keeps channel an
   ] as const) {
     await message.hover();
     await message.getByRole("button", { name: "Reply in thread", exact: true }).click();
-    await expect(reply).toHaveValue("");
+    await expect(reply).toHaveText("");
     await reply.fill(draft);
     await page.getByRole("button", { name: "Close thread", exact: true }).click();
   }
@@ -135,24 +135,24 @@ test("Electron messaging cancels creation without mutations and keeps channel an
   ] as const) {
     await message.hover();
     await message.getByRole("button", { name: "Reply in thread", exact: true }).click();
-    await expect(reply).toHaveValue(draft);
+    await expect(reply).toHaveText(draft);
     await page.getByRole("button", { name: "Close thread", exact: true }).click();
   }
-  await expect(first).toHaveValue("First channel draft");
+  await expect(first).toHaveText("First channel draft");
   await sidebar.getByRole("button", { name: "draft-second", exact: true }).click();
-  await expect(second).toHaveValue("Second channel draft");
+  await expect(second).toHaveText("Second channel draft");
   await sidebar.getByRole("button", { name: "draft-first", exact: true }).click();
   await root.hover();
   await root.getByRole("button", { name: "Reply in thread", exact: true }).click();
-  await expect(reply).toHaveValue("Thread-only draft");
-  await expect(first).toHaveValue("First channel draft");
+  await expect(reply).toHaveText("Thread-only draft");
+  await expect(first).toHaveText("First channel draft");
   await reply.press("Enter");
-  await expect(reply).toHaveValue("");
+  await expect(reply).toHaveText("");
   await expect(
     page
       .getByRole("complementary", { name: "Thread", exact: true })
       .getByRole("article")
       .filter({ hasText: "Thread-only draft" }),
   ).toBeVisible();
-  await expect(first).toHaveValue("First channel draft");
+  await expect(first).toHaveText("First channel draft");
 });

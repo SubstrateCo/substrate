@@ -1,49 +1,41 @@
 import type { ReactNode } from "react";
 
 import { WorkspaceSettings } from "../organizations/settings/organization-settings-view";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 
 export function UserSettingsLayout({
   children,
   active,
-  profileHref,
-  invitationsHref,
-  agentsHref,
+  onTabChange,
 }: {
   children: ReactNode;
   active: "profile" | "invitations" | "agents";
-  profileHref: string;
-  invitationsHref: string;
-  agentsHref: string;
+  onTabChange: (tab: "profile" | "invitations" | "agents") => void;
 }) {
   return (
     <WorkspaceSettings title="User settings">
-      <nav
-        aria-label="User settings"
-        className="flex flex-wrap gap-x-4 gap-y-3 border-b pb-3 text-sm"
+      <Tabs
+        value={active}
+        onValueChange={(value) => {
+          if (value === "profile" || value === "invitations" || value === "agents")
+            onTabChange(value);
+        }}
       >
-        <a
-          href={profileHref}
-          aria-current={active === "profile" ? "page" : undefined}
-          className={active === "profile" ? "font-semibold underline" : undefined}
-        >
-          Profile and appearance
-        </a>
-        <a
-          href={invitationsHref}
-          aria-current={active === "invitations" ? "page" : undefined}
-          className={active === "invitations" ? "font-semibold underline" : undefined}
-        >
-          Invitations
-        </a>
-        <a
-          href={agentsHref}
-          aria-current={active === "agents" ? "page" : undefined}
-          className={active === "agents" ? "font-semibold underline" : undefined}
-        >
-          Agents
-        </a>
-      </nav>
-      {children}
+        <TabsList variant="line" aria-label="User settings" className="h-auto max-w-full flex-wrap">
+          <TabsTrigger value="profile">Profile and appearance</TabsTrigger>
+          <TabsTrigger value="invitations">Invitations</TabsTrigger>
+          <TabsTrigger value="agents">Agents</TabsTrigger>
+        </TabsList>
+        <TabsContent value="profile" className="mt-6">
+          {active === "profile" && children}
+        </TabsContent>
+        <TabsContent value="invitations" className="mt-6">
+          {active === "invitations" && children}
+        </TabsContent>
+        <TabsContent value="agents" className="mt-6">
+          {active === "agents" && children}
+        </TabsContent>
+      </Tabs>
     </WorkspaceSettings>
   );
 }

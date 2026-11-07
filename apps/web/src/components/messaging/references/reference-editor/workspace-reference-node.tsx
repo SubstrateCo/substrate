@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, type MouseEvent } from "react";
 
 import {
   EntityReference,
@@ -10,7 +10,7 @@ import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from "@tip
 
 export const ReferencesContext = createContext<WorkspaceReference[]>([]);
 
-function ReferenceNodeView({ node }: NodeViewProps) {
+function ReferenceNodeView({ node, editor, getPos }: NodeViewProps) {
   const references = useContext(ReferencesContext);
   const reference = references.find(
     (item) => item.id === node.attrs.id && item.kind === node.attrs.kind,
@@ -21,6 +21,13 @@ function ReferenceNodeView({ node }: NodeViewProps) {
       contentEditable={false}
       className="inline-block max-w-full align-baseline"
       data-reference-chip
+      onMouseDown={(event: MouseEvent<HTMLSpanElement>) => {
+        event.preventDefault();
+        const position = getPos();
+        if (position === undefined) return;
+        editor.commands.setTextSelection(position + node.nodeSize);
+        editor.view.focus();
+      }}
     >
       <EntityReference
         reference={
@@ -36,6 +43,7 @@ export const WorkspaceReferenceNode = Node.create({
   group: "inline",
   inline: true,
   atom: true,
+  selectable: false,
   addAttributes: () => ({ kind: { default: "person" }, id: { default: "" } }),
   renderHTML: () => ["span", {}, "Workspace reference"],
   renderText: ({ node }) => referenceToken(node),

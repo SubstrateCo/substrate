@@ -56,11 +56,11 @@ export function DesktopFrame({ children }: { children: ReactNode }) {
         style={frameStyle}
       >
         <header
-          className="desktop-title-bar group/desktop-title-bar fixed inset-x-0 top-0 z-30 flex h-(--desktop-title-bar-height) items-center justify-center bg-rail pr-(--desktop-controls-right) pl-(--desktop-controls-left) text-xs font-medium text-rail-foreground select-none"
+          className="desktop-title-bar group/desktop-title-bar fixed inset-x-0 top-0 z-30 flex h-(--desktop-title-bar-height) items-center justify-center bg-rail text-xs font-medium text-rail-foreground select-none"
           style={titleBarStyle}
           aria-label="Window title bar"
         >
-          <span className="group-has-data-workspace-search/desktop-title-bar:hidden">
+          <span className="truncate group-has-data-workspace-search/desktop-title-bar:hidden">
             Startup OS
           </span>
           <div

@@ -19,6 +19,7 @@ test("project actions, task dialogs, inline settings and linked discussions stay
   await page.getByRole("button", { name: "Create project", exact: true }).click();
   await expect(page).toHaveURL(/projectId=/);
   const projectURL = page.url();
+  await expect(page.getByRole("tablist")).toHaveAttribute("data-variant", "line");
   const actions = page.getByRole("group", { name: "Project actions", exact: true });
   const copy = actions.getByRole("button", { name: "Copy project link", exact: true });
   const create = actions.getByRole("button", { name: "New task", exact: true });
@@ -47,6 +48,21 @@ test("project actions, task dialogs, inline settings and linked discussions stay
       .getByRole("region", { name: "Task details", exact: true })
       .getByRole("heading", { name: "Portal milestone", exact: true }),
   ).toBeVisible();
+  const taskActions = page.getByRole("group", { name: "Task actions", exact: true });
+  const taskButtons = taskActions.getByRole("button");
+  await expect(taskButtons).toHaveCount(3);
+  const boxes = await taskButtons.evaluateAll((buttons) =>
+    buttons.map((button) => {
+      const { x, y, width, height } = button.getBoundingClientRect();
+      return { x, y, width, height };
+    }),
+  );
+  for (let index = 1; index < boxes.length; index++) {
+    expect(boxes[index]!.y).toBe(boxes[0]!.y);
+    expect(boxes[index]!.width).toBe(boxes[0]!.width);
+    expect(boxes[index]!.height).toBe(boxes[0]!.height);
+    expect(boxes[index]!.x).toBeCloseTo(boxes[index - 1]!.x + boxes[index - 1]!.width, 0);
+  }
   await expect(page.getByRole("heading", { name: /^In Progress/ })).toHaveCSS(
     "text-transform",
     "uppercase",
@@ -85,6 +101,19 @@ test("project actions, task dialogs, inline settings and linked discussions stay
   await page.getByRole("tab", { name: "Discussions", exact: true }).click();
   const discussions = page.getByRole("region", { name: "Project discussions", exact: true });
   await expect(discussions).toContainText("Please review");
+  await expect(
+    page.getByText("Messages linked to this project or its tasks.", { exact: false }),
+  ).toHaveCount(0);
+  const discussion = discussions.locator('[data-slot="item"]').filter({ hasText: "Please review" });
+  const discussionBox = (await discussion.boundingBox())!;
+  const titleBox = (await discussion.getByRole("link").boundingBox())!;
+  const bodyBox = (await discussion
+    .getByText("Please review [Reference]", { exact: true })
+    .boundingBox())!;
+  const metadataBox = (await discussion.locator("time").boundingBox())!;
+  expect(titleBox.x - discussionBox.x).toBeGreaterThanOrEqual(16);
+  expect(titleBox.y - discussionBox.y).toBeGreaterThanOrEqual(16);
+  expect(bodyBox.y - (metadataBox.y + metadataBox.height)).toBeGreaterThanOrEqual(12);
   await discussions
     .getByRole("link", { name: "Related discussion · portal-discussions", exact: true })
     .click();
@@ -93,6 +122,60 @@ test("project actions, task dialogs, inline settings and linked discussions stay
       .getByRole("region", { name: "portal-discussions", exact: true })
       .getByLabel("Linked message", { exact: true }),
   ).toContainText("Please review");
+});
+
+test("status groups toggle every task without hiding other groups or changing selection", async ({
+  desktop,
+}) => {
+  await desktop.provision();
+  const page = desktop.page;
+  await desktop.openPath("/tasks");
+  await page.getByRole("button", { name: "New project", exact: true }).click();
+  await page.getByLabel("Project name", { exact: true }).fill("Collapsible tasks");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await expect(page).toHaveURL(/projectId=/);
+  for (const [title, status] of [
+    ["First queued task", "Not Started"],
+    ["Second queued task", "Not Started"],
+    ["Active task", "In Progress"],
+  ]) {
+    await page.getByRole("button", { name: "New task", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "New task", exact: true });
+    await dialog.getByLabel("Task title", { exact: true }).fill(title!);
+    await choose(page, "Status", status!);
+    await dialog.getByRole("button", { name: "Create task", exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+  }
+  const tasks = page.getByRole("region", { name: "Project tasks", exact: true });
+  const queued = tasks.getByRole("button", { name: "Not Started", exact: true });
+  const active = tasks.getByRole("button", { name: "In Progress", exact: true });
+  await page.getByRole("button", { name: /^Signed in as / }).click();
+  await page.getByRole("switch", { name: "Dark mode", exact: true }).setChecked(true);
+  await page.keyboard.press("Escape");
+  await page.getByRole("heading", { name: "Collapsible tasks", exact: true }).hover();
+  await expect(queued).toHaveAttribute("aria-expanded", "true");
+  await expect(queued).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(active).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await queued.click();
+  await expect(queued).toHaveAttribute("aria-expanded", "false");
+  for (const title of ["First queued task", "Second queued task"])
+    await expect(tasks.getByText(title, { exact: true })).toBeHidden();
+  await expect(tasks.getByText("Active task", { exact: true })).toBeVisible();
+  const selectedURL = page.url();
+  await active.focus();
+  await page.keyboard.press("Space");
+  await expect(tasks.getByText("Active task", { exact: true })).toBeHidden();
+  await expect(page).toHaveURL(selectedURL);
+  await expect(
+    page
+      .getByRole("region", { name: "Task details", exact: true })
+      .getByRole("heading", { name: "Active task", exact: true }),
+  ).toBeVisible();
+  await queued.focus();
+  await page.keyboard.press("Enter");
+  for (const title of ["First queued task", "Second queued task"])
+    await expect(tasks.getByText(title, { exact: true })).toBeVisible();
+  await expect(active).toHaveAttribute("aria-expanded", "false");
 });
 
 test("project access reviews grants and removal, keeps reductions neutral, and protects the last owner", async ({
@@ -121,6 +204,9 @@ test("project access reviews grants and removal, keeps reductions neutral, and p
     expect((await memberAccess()).success).toBe(false);
     await page.getByRole("tab", { name: "Settings", exact: true }).click();
     const sharing = page.getByRole("region", { name: "Project sharing", exact: true });
+    await expect(sharing.getByText("Permissions cover this project", { exact: false })).toHaveCount(
+      0,
+    );
     await expect(
       sharing.getByRole("combobox", { name: "Desktop Owner permission", exact: true }),
     ).toBeDisabled();

@@ -25,6 +25,13 @@ export function TaskDetail({
       task={task}
       onClose={onClose}
       onSubtask={onSubtask}
+      actions={
+        <CopyLink
+          grouped
+          label="Copy task link"
+          href={workHref(organizationId, detail.project.entityId, task.entityId)}
+        />
+      }
       renderEditor={(onDone) => (
         <TaskForm
           organizationId={organizationId}
@@ -35,10 +42,6 @@ export function TaskDetail({
         />
       )}
     >
-      <CopyLink
-        label="Copy task link"
-        href={workHref(organizationId, detail.project.entityId, task.entityId)}
-      />
       <TaskContext
         organizationId={organizationId}
         taskEntityId={task.entityId}

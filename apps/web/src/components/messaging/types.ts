@@ -3,6 +3,7 @@ export type Message = {
   body: string;
   authorName: string;
   authorId: string;
+  authorExternal: boolean;
   createdAt: string | Date;
   threadId: string | null;
   replyCount: number;

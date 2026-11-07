@@ -28,6 +28,13 @@ test("the Electron picker displays and saves a model from the native OpenCode ca
   if (model.provider) await expect(row).toContainText(model.provider);
   await row.click();
   await expect(editor.getByRole("button", { name: /^Harness & model:/ })).toContainText(model.name);
+  await editor.getByRole("button", { name: /^Harness & model:/ }).click();
+  await expect(row).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("option", { selected: true })).toHaveCount(1);
+  await page.getByPlaceholder("Search models…", { exact: true }).press("ArrowDown");
+  await expect(page.getByRole("option", { selected: true })).toHaveCount(1);
+  await page.keyboard.press("Escape");
+  await expect(editor.getByRole("button", { name: /^Harness & model:/ })).toContainText(model.name);
   await editor.getByRole("button", { name: "Save agent", exact: true }).click();
   await expect(editor).toBeHidden();
   const savedModel = await page.evaluate(async () => {
@@ -66,6 +73,7 @@ test("agent creator keeps drafts across tabs and persists its harness and model"
   await page.getByRole("button", { name: "Create agent", exact: true }).click();
   const editor = page.getByRole("dialog", { name: "Create agent", exact: true });
   await editor.getByLabel("Agent name", { exact: true }).fill("Research partner");
+  await expect(editor.getByRole("tablist")).toHaveAttribute("data-variant", "line");
   await editor
     .getByRole("textbox", { name: "Instructions", exact: true })
     .fill("Cite the source for each finding.");
@@ -93,19 +101,33 @@ test("agent creator keeps drafts across tabs and persists its harness and model"
     "Cite the source for each finding.",
   );
   await editor.getByRole("button", { name: /^Harness & model:/ }).click();
+  await expect(page.getByRole("button", { name: "Favorites", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Favorite / })).toHaveCount(0);
   await page.getByRole("button", { name: "Claude Code", exact: true }).click();
   await page.getByPlaceholder("Search models…", { exact: true }).fill("claude-custom-model");
   await page.getByRole("option", { name: /Use .*claude-custom-model/ }).click();
   await expect(editor.getByRole("button", { name: /^Harness & model:/ })).toContainText(
     "claude-custom-model",
   );
-  let releaseSave: () => void = () => {};
-  const saveGate = new Promise<void>((resolve) => {
-    releaseSave = resolve;
-  });
-  await page.route("**/api/v1/agents/actors/save", async (route) => {
-    await saveGate;
-    await route.continue();
+  await page.evaluate(() => {
+    const originalFetch = window.fetch.bind(window);
+    let release: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    Object.assign(window, {
+      releaseAgentSave: () => {
+        window.fetch = originalFetch;
+        release();
+      },
+    });
+    Object.assign(window, {
+      fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = input instanceof Request ? input.url : String(input);
+        if (new URL(url, location.href).pathname === "/api/v1/agents/actors/save") await gate;
+        return originalFetch(input, init);
+      },
+    });
   });
   const save = editor.getByRole("button", { name: "Save agent", exact: true });
   try {
@@ -115,7 +137,12 @@ test("agent creator keeps drafts across tabs and persists its harness and model"
     await expect(save.locator('[data-slot="spinner"]')).toBeVisible();
     await expect(save).toHaveText("Save agent");
   } finally {
-    releaseSave();
+    await page.evaluate(() => {
+      // SAFETY: The request gate above installs this callback before Save is clicked.
+      const windowWithGate = window as typeof window & { releaseAgentSave?: () => void };
+      windowWithGate.releaseAgentSave?.();
+      delete windowWithGate.releaseAgentSave;
+    });
   }
   await expect(editor).toBeHidden();
   await page.reload();

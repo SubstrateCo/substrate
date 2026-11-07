@@ -106,7 +106,7 @@ export function ProjectPane({
           </p>
         </header>
         <div className="shrink-0 border-b pb-2">
-          <TabsList variant="line" className="w-full justify-start">
+          <TabsList variant="line">
             <TabsTrigger value="tasks" className="flex-none">
               Tasks
             </TabsTrigger>

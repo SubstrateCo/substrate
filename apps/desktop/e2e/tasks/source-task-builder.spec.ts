@@ -92,7 +92,7 @@ for (const scenario of [
       `Add an explanation and a Create project button. ${"Long source context without losing the thread. ".repeat(15)}`.trim();
     await replyComposer.fill(source);
     await replyComposer.press("Enter");
-    await expect(replyComposer).toHaveValue("");
+    await expect(replyComposer).toHaveText("");
     await replyComposer.fill("Keep this reply draft.");
     const message = thread.getByRole("article").filter({ hasText: source });
     await message.getByRole("group", { name: "Message actions", exact: true }).hover();
@@ -131,7 +131,7 @@ for (const scenario of [
     await form.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(builder).toHaveCount(0);
     expect(taskCreations, "Cancel does not create a task").toBe(0);
-    await expect(replyComposer).toHaveValue("Keep this reply draft.");
+    await expect(replyComposer).toHaveText("Keep this reply draft.");
 
     await message.getByRole("group", { name: "Message actions", exact: true }).hover();
     await message.getByRole("button", { name: "Create task", exact: true }).click();
@@ -151,7 +151,7 @@ for (const scenario of [
     await create.click();
     await expect(builder.getByRole("status")).toContainText("Task created and linked");
     expect(taskCreations, "Submission creates one linked task").toBe(1);
-    await expect(replyComposer).toHaveValue("Keep this reply draft.");
+    await expect(replyComposer).toHaveText("Keep this reply draft.");
     await builder.getByRole("link", { name: "Open created task", exact: true }).click();
     const details = page.getByRole("region", { name: "Task details", exact: true });
     await expect(

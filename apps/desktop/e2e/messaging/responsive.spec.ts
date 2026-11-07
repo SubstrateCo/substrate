@@ -193,18 +193,18 @@ for (const size of [
 
     await page.getByRole("button", { name: "Add emoji", exact: true }).click();
     await page.getByRole("button", { name: "😀", exact: true }).click();
-    await expect(composer).toHaveValue("😀");
+    await expect(composer).toHaveText("😀");
     await composer.fill("formatted message");
     await composer.selectText();
     await page.getByRole("button", { name: "Bold text", exact: true }).click();
-    await expect(composer).toHaveValue("**formatted message**");
+    await expect(composer).toHaveText("**formatted message**");
     await composer.fill("@");
     const references = page.getByRole("region", {
       name: "Insert workspace reference",
       exact: true,
     });
     await withinViewport(page, references);
-    await references.getByRole("button", { name: "People", exact: true }).click();
+    await references.getByRole("tab", { name: "People", exact: true }).click();
     await page
       .getByRole("combobox", { name: "Search references", exact: true })
       .fill("Desktop Owner");
@@ -212,7 +212,7 @@ for (const size of [
     await expect(referenceOption).toBeVisible();
     await expect(referenceOption).toBeInViewport({ ratio: 1 });
     await referenceOption.click();
-    await expect(composer).toHaveValue(/@\[person:/);
+    await expect(composer.locator("[data-reference-chip]")).toHaveText("Desktop Owner");
     await composer.press("Enter");
     await expect(
       channel.locator(".message-markdown").getByText("Desktop Owner", { exact: true }),

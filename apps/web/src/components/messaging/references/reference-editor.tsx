@@ -1,4 +1,4 @@
-import { useImperativeHandle, useLayoutEffect, type Ref } from "react";
+import { useImperativeHandle, useLayoutEffect, useMemo, type Ref } from "react";
 
 import {
   referenceDocument,
@@ -11,6 +11,7 @@ import {
   WorkspaceReferenceNode,
 } from "@/components/messaging/references/reference-editor/workspace-reference-node";
 import { closeHistory } from "@tiptap/pm/history";
+import { Selection, TextSelection } from "@tiptap/pm/state";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 
@@ -37,6 +38,8 @@ const extensions = [
 
 export type ReferenceEditorHandle = {
   focusAt: (caret: number) => void;
+  focusRange: (start: number, end: number) => void;
+  getSelection: () => { start: number; end: number };
 };
 
 export function ReferenceEditor({
@@ -50,6 +53,7 @@ export function ReferenceEditor({
   onChange,
   onSelectionChange,
   onKeyDown,
+  disabled = false,
 }: {
   ref?: Ref<ReferenceEditorHandle>;
   value: string;
@@ -61,27 +65,51 @@ export function ReferenceEditor({
   onChange: (value: string, caret: number) => void;
   onSelectionChange: (caret: number) => void;
   onKeyDown: (event: KeyboardEvent) => void;
+  disabled?: boolean;
 }) {
-  const attributes = {
-    role: "textbox",
-    "aria-label": label,
-    "aria-multiline": "true",
-    "aria-autocomplete": "list",
-    "aria-describedby": descriptionId ?? "",
-    "aria-controls": listId ?? "",
-    "aria-activedescendant": activeDescendant ?? "",
-    class:
-      "min-h-24 max-h-64 overflow-y-auto px-3 py-2 text-sm whitespace-pre-wrap wrap-anywhere outline-none [&_p]:m-0",
-  };
+  const attributes = useMemo(
+    () => ({
+      role: "textbox",
+      "aria-label": label,
+      "aria-multiline": "true",
+      "aria-autocomplete": "list",
+      "aria-describedby": descriptionId ?? "",
+      "aria-controls": listId ?? "",
+      "aria-activedescendant": activeDescendant ?? "",
+      class:
+        "min-h-10 max-h-[25dvh] overflow-y-auto px-3 py-2 text-sm whitespace-pre-wrap wrap-anywhere outline-none [&_p]:m-0",
+    }),
+    [label, descriptionId, listId, activeDescendant],
+  );
   const editor = useEditor({
     extensions,
+    editable: !disabled,
     content: referenceDocument(value),
     enableInputRules: false,
     enablePasteRules: false,
     editorProps: {
       attributes,
-      handleKeyDown: (_view, event) => {
+      handleKeyDown: (view, event) => {
         onKeyDown(event);
+        if (
+          !event.defaultPrevented &&
+          !event.isComposing &&
+          event.ctrlKey &&
+          !event.altKey &&
+          (event.key === "Home" || event.key === "End")
+        ) {
+          // Native Home selection can be mistaken for a browser reset just after focus.
+          const { doc, selection, tr } = view.state;
+          const target = event.key === "Home" ? Selection.atStart(doc) : Selection.atEnd(doc);
+          view.dispatch(
+            tr
+              .setSelection(
+                event.shiftKey ? TextSelection.create(doc, selection.anchor, target.head) : target,
+              )
+              .scrollIntoView(),
+          );
+          return true;
+        }
         return event.defaultPrevented;
       },
       handlePaste: (_view, event) => {
@@ -111,9 +139,28 @@ export function ReferenceEditor({
     }
   }, [editor, value]);
 
+  useLayoutEffect(() => {
+    editor.setEditable(!disabled, false);
+  }, [editor, disabled]);
+
+  useLayoutEffect(() => {
+    editor.setOptions({ editorProps: { ...editor.options.editorProps, attributes } });
+  }, [editor, attributes]);
+
   useImperativeHandle(
     ref,
     () => ({
+      getSelection: () => ({
+        start: referenceDraftText(editor.state.doc, editor.state.selection.from).length,
+        end: referenceDraftText(editor.state.doc, editor.state.selection.to).length,
+      }),
+      focusRange: (start, end) => {
+        editor.commands.setTextSelection({
+          from: referenceEditorPosition(editor.state.doc, start),
+          to: referenceEditorPosition(editor.state.doc, end),
+        });
+        editor.view.focus();
+      },
       focusAt: (caret) => {
         editor.commands.setTextSelection(referenceEditorPosition(editor.state.doc, caret));
         editor.view.focus();

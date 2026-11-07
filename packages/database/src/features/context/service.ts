@@ -1,6 +1,7 @@
 import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
+import { member } from "../../core/organizations/schema";
 import { visibilityCte } from "../../core/permissions/visibility";
 import { ConflictError, AccessDeniedError } from "../../errors";
 import { recordTaskActivity } from "../activity/events";
@@ -251,10 +252,23 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
         : message;
       const decorate = async (row: typeof message) => {
         const [author] = await db
-          .select({ name: user.name })
+          .select({
+            name: user.name,
+            external: sql<boolean>`not exists (
+              select 1 from ${member}
+              where ${member.userId} = ${row.authorId}
+                and ${member.organizationId} = ${scope.organizationId}
+            )`,
+          })
           .from(user)
           .where(eq(user.id, row.authorId));
-        return { ...row, authorName: author?.name ?? "Member", reactions: [], replyCount: 0 };
+        return {
+          ...row,
+          authorName: author?.name ?? "Member",
+          authorExternal: author?.external ?? true,
+          reactions: [],
+          replyCount: 0,
+        };
       };
       return { message: await decorate(message), root: await decorate(root) };
     },

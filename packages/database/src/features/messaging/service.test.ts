@@ -19,6 +19,82 @@ async function verified() {
   await fixture.db.update(user).set({ emailVerified: true });
 }
 
+test("external authors follow the viewer organization for partner channel roots and replies", async () => {
+  await verified();
+  await fixture.db.update(user).set({ name: "Alice" }).where(eq(user.id, "outsider"));
+  const channel = await service("alice").createConversation({
+    kind: "channel",
+    name: "partners",
+    private: true,
+    emails: ["outside@example.com"],
+  });
+  const internalRoot = await service("alice").sendMessage(channel.id, "Internal root");
+  const externalRoot = await service("outsider", fixture.orgB).sendMessage(
+    channel.id,
+    "Partner root",
+  );
+  const internalReply = await service("alice").sendMessage(
+    channel.id,
+    "Internal reply",
+    internalRoot.id,
+  );
+  const externalReply = await service("outsider", fixture.orgB).sendMessage(
+    channel.id,
+    "Partner reply",
+    internalRoot.id,
+  );
+  for (const [viewer, organizationId, aliceExternal, outsiderExternal] of [
+    ["alice", fixture.orgA, false, true],
+    ["outsider", fixture.orgB, true, false],
+  ] as const) {
+    expect(await service(viewer, organizationId).listMessages(channel.id)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: internalRoot.id, authorExternal: aliceExternal }),
+        expect.objectContaining({ id: externalRoot.id, authorExternal: outsiderExternal }),
+      ]),
+    );
+    expect(await service(viewer, organizationId).listMessages(channel.id, internalRoot.id)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: internalReply.id, authorExternal: aliceExternal }),
+        expect.objectContaining({ id: externalReply.id, authorExternal: outsiderExternal }),
+      ]),
+    );
+  }
+  await expect(service("bob").listMessages(channel.id)).rejects.toBeInstanceOf(AccessDeniedError);
+});
+
+test("external authors use current membership, not participant organization or author identity", async () => {
+  await verified();
+  const channel = await service("alice").createConversation({
+    kind: "channel",
+    name: "partners",
+    emails: ["outside@example.com"],
+  });
+  const root = await service("outsider", fixture.orgB).sendMessage(channel.id, "Partner root");
+  const reply = await service("outsider", fixture.orgB).sendMessage(
+    channel.id,
+    "Partner reply",
+    root.id,
+  );
+  const assertExternal = async (authorExternal: boolean) => {
+    expect(await service("alice").listMessages(channel.id)).toMatchObject([
+      { id: root.id, authorExternal },
+    ]);
+    expect(await service("alice").listMessages(channel.id, root.id)).toMatchObject([
+      { id: reply.id, authorExternal },
+    ]);
+  };
+  await assertExternal(true);
+  await fixture.db.insert(member).values({
+    id: "outsider-a",
+    userId: "outsider",
+    organizationId: fixture.orgA,
+  });
+  await assertExternal(false);
+  await fixture.db.delete(member).where(eq(member.id, "outsider-a"));
+  await assertExternal(true);
+});
+
 test("cross-org DMs use explicit participants without adding entity grants", async () => {
   await verified();
   const before = await fixture.db.select().from(entityGrants);
