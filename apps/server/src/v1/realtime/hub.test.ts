@@ -91,6 +91,80 @@ function fixture(options: Parameters<typeof createRealtimeHub>[1] = {}) {
 }
 
 describe("realtime delivery", () => {
+  test("groups interleaved hints by first occurrence within each reset-free segment", async () => {
+    const f = fixture();
+    const viewer = await f.connect("user", "org-a");
+    const rows = [
+      f.change(realtimeKeys.organization("org-a"), "tasks"),
+      f.change(realtimeKeys.organization("org-a"), "context"),
+      f.change(realtimeKeys.organization("org-a"), "tasks"),
+    ];
+    const beforeBytes = rows.reduce(
+      (bytes, row) =>
+        bytes +
+        JSON.stringify({
+          version: 1,
+          type: "change",
+          id: row.id,
+          organizationId: "org-a",
+          domain: row.domain,
+        }).length,
+      0,
+    );
+    await f.hub.tick(1);
+    const frames = viewer.events.slice(1);
+    expect(frames).toMatchObject([{ domain: "tasks" }, { id: rows[1]!.id, domain: "context" }]);
+    const afterBytes = frames.reduce((bytes, event) => bytes + JSON.stringify(event).length, 0);
+    expect(beforeBytes).toBe(347);
+    expect(afterBytes).toBe(232);
+    expect(f.changes).toEqual([]);
+    f.hub.stop();
+  });
+
+  for (const domain of ["access", "session", "organization", "profile"] as const) {
+    test(`${domain} individually separates interleaved groups`, async () => {
+      const f = fixture();
+      const viewer = await f.connect();
+      for (let i = 0; i < 2; i++) {
+        f.change(realtimeKeys.organization("org"), "tasks");
+        f.change(realtimeKeys.organization("org"), "context");
+        f.change(realtimeKeys.organization("org"), "tasks");
+        f.change(realtimeKeys.organization("org"), domain);
+      }
+      await f.hub.tick(1);
+      expect(
+        viewer.events.slice(1).map((event) => event.type === "change" && event.domain),
+      ).toEqual(["tasks", "context", domain, "tasks", "context", domain]);
+      expect(f.changes).toEqual([]);
+      f.hub.stop();
+    });
+  }
+
+  test("partial recipient failure retries the whole expanded group with a fresh ID", async () => {
+    const f = fixture();
+    const first = await f.connect("first");
+    const second = await f.connect("second");
+    f.change(realtimeKeys.organization("org"), "tasks");
+    const context = f.change(realtimeKeys.organization("org"), "context");
+    f.change(realtimeKeys.organization("org"), "tasks");
+    f.deps.canReceive = async (identity) => {
+      if (identity.userId === "second") throw new Error("unavailable");
+      return true;
+    };
+    await f.hub.tick(1);
+    expect(f.changes).toHaveLength(3);
+    expect(first.events.slice(1)).toMatchObject([{ domain: "tasks" }]);
+    expect(second.events).toHaveLength(1);
+    f.change(realtimeKeys.organization("org"), "tasks");
+    f.deps.canReceive = async () => true;
+    await f.hub.tick(2);
+    expect(first.events.slice(2)).toMatchObject([{ domain: "tasks" }, { id: context.id }]);
+    expect(second.events.slice(1)).toEqual(first.events.slice(2));
+    expect(first.events[1]).not.toEqual(first.events[2]);
+    expect(f.changes).toEqual([]);
+    f.hub.stop();
+  });
+
   test("coalesces 100 contiguous equivalent hints with one authorization and acknowledgement", async () => {
     const f = fixture();
     const viewer = await f.connect();
@@ -185,11 +259,12 @@ describe("realtime delivery", () => {
   test("acknowledges only completed groups and stops after a resolver failure", async () => {
     const f = fixture();
     const viewer = await f.connect();
-    const completed = f.change(realtimeKeys.organization("org"), "tasks");
+    f.change(realtimeKeys.organization("org"), "tasks");
     const failed = [
       f.change(realtimeKeys.conversation("private")),
       f.change(realtimeKeys.conversation("private")),
     ];
+    f.change(realtimeKeys.organization("org"), "tasks");
     const later = f.change(realtimeKeys.organization("org"), "context");
     f.deps.canReceive = async (_, audience) => {
       if (audience[0] === "conversation") throw new Error("unavailable");
@@ -197,7 +272,7 @@ describe("realtime delivery", () => {
     };
     await f.hub.tick(1);
     expect(f.changes).toEqual([...failed, later]);
-    expect(viewer.events.slice(1)).toMatchObject([{ id: completed.id }]);
+    expect(viewer.events.slice(1)).toMatchObject([{ domain: "tasks" }]);
     f.deps.canReceive = async () => true;
     await f.hub.tick(2);
     expect(f.changes).toEqual([]);

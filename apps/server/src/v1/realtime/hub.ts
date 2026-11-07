@@ -194,26 +194,27 @@ export function createRealtimeHub(
           }
         }
         const changes = await deps.readChanges();
+        const groups: { change: Change; ids: string[] }[] = [];
+        const segment = new Map<string, (typeof groups)[number]>();
+        for (const change of changes) {
+          // Each reset is its own ordering boundary, including consecutive resets.
+          if (["access", "session", "organization", "profile"].includes(change.domain)) {
+            segment.clear();
+            groups.push({ change, ids: [change.id] });
+            continue;
+          }
+          const key = JSON.stringify([change.domain, change.audience]);
+          const group = segment.get(key);
+          if (group) group.ids.push(change.id);
+          else {
+            const next = { change, ids: [change.id] };
+            segment.set(key, next);
+            groups.push(next);
+          }
+        }
         const completed: string[] = [];
         try {
-          for (let index = 0; index < changes.length;) {
-            const change = changes[index]!;
-            const ids = [change.id];
-            index++;
-            // Reset events are ordering boundaries, not ordinary invalidation hints.
-            if (!["access", "session", "organization", "profile"].includes(change.domain)) {
-              while (index < changes.length) {
-                const next = changes[index]!;
-                if (
-                  next.domain !== change.domain ||
-                  next.audience.length !== change.audience.length ||
-                  !next.audience.every((part, position) => part === change.audience[position])
-                )
-                  break;
-                ids.push(next.id);
-                index++;
-              }
-            }
+          for (const { change, ids } of groups) {
             // A retry can include new rows. Never reuse a previously seen row ID for a group.
             const eventId = ids.length === 1 ? change.id : crypto.randomUUID();
             if (isStopped()) return;
