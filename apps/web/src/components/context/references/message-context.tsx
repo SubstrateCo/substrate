@@ -1,22 +1,29 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { detachWork } from "@/api/context/links";
+import { detachWork, type MessagePageContext } from "@/api/context/links";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { isAccessFailure } from "@/components/feedback/request-failure";
 import { MessageWork } from "@/components/messaging/messages/message-work";
 import { workHref } from "@/lib/navigation/record-links";
-import { messageLinksOptions } from "@/queries/context/links";
 import { queryKeys } from "@/queries/keys";
 import { toast } from "sonner";
+
+export type MessageContextState = {
+  data?: MessagePageContext;
+  loading: boolean;
+  error: Error | null;
+  onRetry: () => void;
+};
 
 export function MessageContext({
   organizationId,
   messageId,
+  context,
 }: {
   organizationId: string;
   messageId: string;
+  context: MessageContextState;
 }) {
-  const links = useQuery(messageLinksOptions(organizationId, messageId));
   const client = useQueryClient();
   const remove = useMutation({
     mutationFn: (entityId: string) => detachWork({ data: { organizationId, messageId, entityId } }),
@@ -28,7 +35,7 @@ export function MessageContext({
   });
   return (
     <MessageWork
-      links={(isAccessFailure(links.error) ? [] : (links.data ?? [])).map((link) => ({
+      links={(isAccessFailure(context.error) ? [] : (context.data?.links ?? [])).map((link) => ({
         ...link,
         href: workHref(
           organizationId,
@@ -36,9 +43,9 @@ export function MessageContext({
           link.entityType === "task" ? link.entityId : undefined,
         ),
       }))}
-      loading={links.isPending}
-      error={links.error}
-      onRetry={() => void links.refetch()}
+      loading={context.loading}
+      error={context.error}
+      onRetry={context.onRetry}
       onRemove={(entityId) => remove.mutate(entityId)}
       removing={remove.isPending}
     />

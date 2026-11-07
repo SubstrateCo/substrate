@@ -1,6 +1,7 @@
 import type {
   contextEntity,
   contextMessage,
+  contextMessagePage,
   contextTarget,
   contextLink,
   contextSourceTask,
@@ -12,6 +13,9 @@ import type { z } from "zod";
 
 export const getMessageLinks = ({ data, signal }: ApiInput<z.input<typeof contextMessage>>) =>
   readResult(api.context["message-links"].$get({ query: data }, { init: { signal } }));
+export const getMessagePage = ({ data, signal }: ApiInput<z.input<typeof contextMessagePage>>) =>
+  readResult(api.context["message-page"].$post({ json: data }, { init: { signal } }));
+export type MessagePageContext = Awaited<ReturnType<typeof getMessagePage>>[number];
 export const getMessagePeople = ({ data, signal }: ApiInput<z.input<typeof contextMessage>>) =>
   readResult(api.context["message-people"].$get({ query: data }, { init: { signal } }));
 export const getRelatedContext = ({ data, signal }: ApiInput<z.input<typeof contextEntity>>) =>

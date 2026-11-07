@@ -41,6 +41,7 @@ test("messaging targets all thread variants of one conversation, not another", (
     { queryKey: queryKeys.conversations("org") },
     { queryKey: queryKeys.messages("org", "conversation").slice(0, -1) },
     { queryKey: [...queryKeys.context("org"), "related"] },
+    { queryKey: [...queryKeys.context("org"), "message-pages"] },
     { queryKey: [...queryKeys.context("org"), "search"], refetchType: "none" },
     { queryKey: [...queryKeys.context("org"), "search-pages"], refetchType: "none" },
   ]);
@@ -127,6 +128,7 @@ test("task edits refresh titles shown by message links and existing notification
   const client = new QueryClient();
   const keys = [
     [...queryKeys.context("org"), "message", "message"],
+    [...queryKeys.context("org"), "message-pages", ["message"]],
     [...queryKeys.context("org"), "notifications"],
   ];
   for (const key of keys) client.setQueryData(key, [{ title: "Old task title" }]);
@@ -141,6 +143,53 @@ test("task edits refresh titles shown by message links and existing notification
   for (const key of keys) expect(client.getQueryState(key)?.isInvalidated).toBe(true);
   cache.dispose();
   client.clear();
+});
+
+test("a task hint refreshes one mounted fifty-message context page, and access resets erase it", async () => {
+  const client = new QueryClient();
+  const key = [
+    ...queryKeys.context("org"),
+    "message-pages",
+    Array.from({ length: 50 }, (_, i) => `message-${i}`),
+  ];
+  let reads = 0;
+  let title = "Old work title";
+  const observer = new QueryObserver(client, {
+    queryKey: key,
+    staleTime: Infinity,
+    retry: false,
+    queryFn: async () => {
+      reads++;
+      return Array.from({ length: 50 }, () => ({ title }));
+    },
+  });
+  const unsubscribe = observer.subscribe(() => {});
+  await observer.refetch();
+  expect(reads).toBe(1);
+  const cache = createRealtimeCache({
+    queryClient: client,
+    organizationId: "org",
+    userId: "user",
+    revalidate: async () => {},
+  });
+  try {
+    title = "Updated work title";
+    await cache.receive(change("tasks"));
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect(reads).toBe(2);
+    expect(client.getQueryData(key)).toEqual(Array.from({ length: 50 }, () => ({ title })));
+    const blocked = Promise.withResolvers<{ title: string }[]>();
+    observer.setOptions({ ...observer.options, queryFn: () => blocked.promise });
+    const reset = cache.receive(change("access"));
+    expect(observer.getCurrentResult().data).toBeUndefined();
+    blocked.resolve([]);
+    await reset;
+    expect(observer.getCurrentResult().data).toEqual([]);
+  } finally {
+    cache.dispose();
+    unsubscribe();
+    client.clear();
+  }
 });
 
 test("duplicate changes coalesce and ready resyncs cached state", async () => {

@@ -4,6 +4,9 @@ import { z } from "zod";
 export const contextWorkspace = z.object({ organizationId: z.string().min(1).max(200) });
 export const contextEntity = contextWorkspace.extend({ entityId: z.uuid() });
 export const contextMessage = contextWorkspace.extend({ messageId: z.uuid() });
+export const contextMessagePage = contextWorkspace.extend({
+  messageIds: z.array(z.uuid()).max(50),
+});
 export const contextTarget = contextMessage.extend({ conversationId: z.uuid() });
 export const contextLink = contextMessage.extend({ entityId: z.uuid() });
 export const contextSearch = contextWorkspace.extend({

@@ -3,10 +3,19 @@ import { queryOptions } from "@tanstack/react-query";
 import { queryKeys } from "../keys";
 import {
   getMessageLinks,
+  getMessagePage,
   getMessagePeople,
   getRelatedContext,
   getMessageTarget,
 } from "@/api/context/links";
+
+export const messagePageOptions = (organizationId: string, messageIds: string[]) =>
+  queryOptions({
+    queryKey: [...queryKeys.context(organizationId), "message-pages", messageIds],
+    queryFn: ({ signal }) => getMessagePage({ data: { organizationId, messageIds }, signal }),
+    enabled: messageIds.length > 0,
+    retry: false,
+  });
 
 export const messageLinksOptions = (organizationId: string, messageId: string) =>
   queryOptions({

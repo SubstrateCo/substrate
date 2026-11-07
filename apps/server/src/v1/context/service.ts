@@ -2,6 +2,7 @@ import {
   contextWorkspace,
   contextEntity,
   contextMessage,
+  contextMessagePage,
   contextTarget,
   contextLink,
   contextSearch,
@@ -25,6 +26,13 @@ export function getMessageLinks(headers: Headers, raw: z.input<typeof contextMes
     const input = contextMessage.parse(raw);
     const { context } = await sessionServices(headers, input.organizationId);
     return context.messageLinks(input.messageId);
+  });
+}
+export function getMessagePage(headers: Headers, raw: z.input<typeof contextMessagePage>) {
+  return serviceResult(async () => {
+    const input = contextMessagePage.parse(raw);
+    const { context } = await sessionServices(headers, input.organizationId);
+    return context.messagePage(input.messageIds);
   });
 }
 export function getMessagePeople(headers: Headers, raw: z.input<typeof contextMessage>) {

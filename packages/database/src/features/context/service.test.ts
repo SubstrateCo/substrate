@@ -7,10 +7,11 @@ import {
   tasks,
   taskActivity,
   notifications,
+  actors,
 } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
-import { messagingParticipants } from "../messaging/schema";
+import { messagingMessages, messagingParticipants } from "../messaging/schema";
 import { createMessagingService } from "../messaging/service";
 import { messageEntityReferences, sourceTaskRequests } from "./schema";
 import { createContextService } from "./service";
@@ -88,6 +89,188 @@ async function setup() {
   const reply = await chat.sendMessage(conversation.id, "Specific detail", root.id);
   return { repos, project, chat, conversation, root, reply };
 }
+
+test("page context uses constant reads for one or fifty messages, including empty links", async () => {
+  const { chat, conversation, project } = await setup();
+  const rows = [];
+  for (let i = 0; i < 50; i++) rows.push(await chat.sendMessage(conversation.id, `row ${i}`));
+  const { db, queries } = recordQueries();
+  const service = createContextService(db, { userId: "alice", organizationId: f.orgA });
+  const reads = async (ids: string[]) => {
+    queries.length = 0;
+    const result = await service.messagePage(ids);
+    return { result, count: queries.filter((query) => /^(select|with)/i.test(query)).length };
+  };
+  const emptyOne = await reads([rows[0]!.id]);
+  const emptyPage = await reads(rows.map((row) => row.id));
+  expect(emptyPage.result).toHaveLength(50);
+  expect(emptyPage.result.every((row) => row.links.length === 0 && row.people.length === 0)).toBe(
+    true,
+  );
+  expect(emptyPage.count).toBe(emptyOne.count);
+  expect(emptyPage.count).toBe(6);
+  queries.length = 0;
+  for (const row of rows) await service.messageLinks(row.id);
+  expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(300);
+  for (const row of rows) await context().attach(row.id, project.entityId);
+  const one = await reads([rows[0]!.id]);
+  const page = await reads(rows.map((row) => row.id));
+  expect(page.result.every((row) => row.links[0]?.title === "Launch")).toBe(true);
+  expect(page.count).toBe(one.count);
+  expect(page.count).toBe(6);
+  queries.length = 0;
+  for (const row of rows) await service.messageLinks(row.id);
+  expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(650);
+  await expect(context("bob").messagePage([rows[0]!.id])).rejects.toBeInstanceOf(AccessDeniedError);
+  await expect(service.messagePage([rows[0]!.id, crypto.randomUUID()])).rejects.toBeInstanceOf(
+    AccessDeniedError,
+  );
+  const bob = createContextService(db, { userId: "bob", organizationId: f.orgA });
+  const deniedReads = async (ids: string[]) => {
+    queries.length = 0;
+    await expect(bob.messagePage(ids)).rejects.toBeInstanceOf(AccessDeniedError);
+    return queries.filter((query) => /^(select|with)/i.test(query)).length;
+  };
+  expect(await deniedReads(rows.map((row) => row.id))).toBe(await deniedReads([rows[0]!.id]));
+  expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(5);
+  expect(queries.some((query) => query.includes('from "message_entity_references"'))).toBe(false);
+  const publicConversation = await chat.createConversation({
+    kind: "channel",
+    name: "Visible page row",
+  });
+  const visible = await chat.sendMessage(publicConversation.id, "Public message");
+  await expect(bob.messagePage([visible.id, rows[0]!.id])).rejects.toBeInstanceOf(
+    AccessDeniedError,
+  );
+});
+
+test("page context preserves purposes, removal rights and both work visibility boundaries", async () => {
+  const { chat, conversation, root, reply, project, repos } = await setup();
+  await chat.addMembers(conversation.id, ["bob@example.com", "outside@example.com"]);
+  const task = await context().createTaskFromMessage({
+    requestId: crypto.randomUUID(),
+    messageId: root.id,
+    projectEntityId: project.entityId,
+    title: "Source work",
+  });
+  const mention = await chat.sendMessage(conversation.id, `@[task:${task.entityId}]`);
+  await context().attach(mention.id, task.entityId);
+  await context().attach(reply.id, project.entityId);
+  await repos.permissions.grant({
+    entityId: project.entityId,
+    actorEntityId: f.bob,
+    level: "view",
+  });
+  const ids = [root.id, mention.id, reply.id];
+  expect(
+    (await context().messagePage(ids))
+      .flatMap((row) => row.links)
+      .map((link) => [link.purpose, link.canRemove]),
+  ).toEqual([
+    ["source", false],
+    ["mention", false],
+    ["association", true],
+    ["association", true],
+  ]);
+  expect(
+    (await context("bob").messagePage(ids))
+      .flatMap((row) => row.links)
+      .every((link) => !link.canRemove),
+  ).toBe(true);
+  expect(
+    (await context("outsider", f.orgB).messagePage(ids)).every(
+      (row) => row.links.length === 0 && row.people.length === 0,
+    ),
+  ).toBe(true);
+  await repos.permissions.grant({
+    entityId: project.entityId,
+    actorEntityId: f.bob,
+    level: "edit",
+  });
+  await context("bob").attach(root.id, project.entityId);
+  expect(
+    (await context("bob").messagePage([root.id]))[0]!.links.find(
+      (link) => link.entityId === project.entityId,
+    )?.canRemove,
+  ).toBe(true);
+  expect(
+    (await context().messagePage([root.id]))[0]!.links.find(
+      (link) => link.entityId === project.entityId,
+    )?.canRemove,
+  ).toBe(true);
+  await repos.permissions.revoke({ entityId: project.entityId, actorEntityId: f.bob });
+  await repos.permissions.grant({ entityId: task.entityId, actorEntityId: f.bob, level: "view" });
+  expect((await context("bob").messagePage(ids)).every((row) => row.links.length === 0)).toBe(true);
+  await f.db
+    .update(entities)
+    .set({ deletedAt: new Date() })
+    .where(eq(entities.entityId, task.entityId));
+  expect(
+    (await context().messagePage([root.id]))[0]!.links.filter(
+      (link) => link.entityId === task.entityId,
+    ),
+  ).toEqual([]);
+  await f.db
+    .update(entities)
+    .set({ deletedAt: new Date() })
+    .where(eq(entities.entityId, project.entityId));
+  expect((await context().messagePage(ids)).every((row) => row.links.length === 0)).toBe(true);
+});
+
+test("page people resolve parsed tokens in sets and clear inactive, deleted and conversation-hidden actors", async () => {
+  const { chat, conversation } = await setup();
+  await chat.addMembers(conversation.id, ["bob@example.com", "outside@example.com"]);
+  const rows = [];
+  for (let i = 0; i < 50; i++)
+    rows.push(await chat.sendMessage(conversation.id, `@[person:${f.bob}]`));
+  const { db, queries } = recordQueries();
+  const service = createContextService(db, { userId: "alice", organizationId: f.orgA });
+  const one = await service.messagePage([rows[0]!.id]);
+  const count = queries.length;
+  queries.length = 0;
+  const page = await service.messagePage(rows.map((row) => row.id));
+  expect(page.every((row) => row.people[0]?.name === "Bob")).toBe(true);
+  expect(one[0]!.people).toEqual([{ id: f.bob, name: "Bob" }]);
+  expect(queries).toHaveLength(count);
+  expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(7);
+  queries.length = 0;
+  for (const row of rows) {
+    await service.messageLinks(row.id);
+    await service.messagePeople(row.id);
+  }
+  expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(700);
+  expect(
+    (await context("outsider", f.orgB).messagePage(rows.map((row) => row.id))).every(
+      (row) => row.people.length === 0 && row.links.length === 0,
+    ),
+  ).toBe(true);
+  await f.db
+    .update(messagingMessages)
+    .set({ body: `@[person:${f.bob}] @[person:${f.outsider}]` })
+    .where(eq(messagingMessages.id, rows[0]!.id));
+  expect((await service.messagePage([rows[0]!.id]))[0]!.people).toEqual([
+    { id: f.bob, name: "Bob" },
+  ]);
+  await f.db.update(actors).set({ disabledAt: new Date() }).where(eq(actors.entityId, f.bob));
+  expect((await service.messagePage([rows[0]!.id]))[0]!.people).toEqual([]);
+  await f.db.update(actors).set({ disabledAt: null }).where(eq(actors.entityId, f.bob));
+  await f.db.update(entities).set({ deletedAt: new Date() }).where(eq(entities.entityId, f.bob));
+  expect((await service.messagePage([rows[0]!.id]))[0]!.people).toEqual([]);
+  await f.db.update(entities).set({ deletedAt: null }).where(eq(entities.entityId, f.bob));
+  await f.db.delete(messagingParticipants).where(eq(messagingParticipants.userId, "bob"));
+  expect((await service.messagePage([rows[0]!.id]))[0]!.people).toEqual([]);
+  const publicConversation = await chat.createConversation({
+    kind: "channel",
+    name: "Public mentions",
+  });
+  const publicMention = await chat.sendMessage(publicConversation.id, `@[person:${f.bob}]`);
+  expect(
+    (await service.messagePage([rows[0]!.id, publicMention.id])).map((row) => row.people),
+  ).toEqual([[], [{ id: f.bob, name: "Bob" }]]);
+  await expect(context("bob").messagePage([rows[0]!.id])).rejects.toBeInstanceOf(AccessDeniedError);
+  await f.db.delete(member).where(eq(member.userId, "bob"));
+  expect((await service.messagePage([publicMention.id]))[0]!.people).toEqual([]);
+});
 
 test("source creation is atomic, concurrent-idempotent, and preserves the exact reply without granting access", async () => {
   const { project, reply, root } = await setup();

@@ -11,6 +11,7 @@ import type { CreateTaskInput } from "../tasks/contracts";
 import { taskRepository } from "../tasks/repository";
 import { tasks } from "../tasks/tasks.schema";
 import { workspaceContext, requireWork } from "./access";
+import { messagePage } from "./message-page";
 import { messageReferences } from "./references";
 import { messageEntityReferences, sourceTaskRequests } from "./schema";
 import { contextSearch } from "./search";
@@ -18,6 +19,7 @@ import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 
 export function createContextService(db: DatabaseExecutor, scope: MessagingIdentity) {
   return {
+    messagePage: (messageIds: string[]) => messagePage(db, scope, messageIds),
     async createTaskFromMessage(input: CreateTaskInput & { requestId: string; messageId: string }) {
       return db.transaction(async (tx) => {
         const ctx = await workspaceContext(tx, scope);

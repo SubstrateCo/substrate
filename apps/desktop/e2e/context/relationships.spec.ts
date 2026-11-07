@@ -1,7 +1,188 @@
+import type { ServiceResult } from "@startup-os/contracts/result";
+
 import { callMessaging } from "../../../web/e2e/test-support/api.js";
 import { test } from "../test-support/fixture.js";
+import { joinWorkspace } from "../test-support/organizations.js";
+import { waitForRealtimeIdle } from "../test-support/realtime.js";
 import { callTasks } from "../test-support/tasks.js";
 import { expect } from "@playwright/test";
+
+test("fifty message contexts load and refresh through one page request", async ({ desktop }) => {
+  test.setTimeout(120_000);
+  await desktop.provision();
+  const { page } = desktop;
+  const project = await callTasks<{ id: string }>(page, {
+    action: "createProject",
+    name: "Page context project",
+  });
+  await desktop.openPath(`/tasks?projectId=${project.id}`);
+  await expect(page).toHaveURL(/\/tasks\?/);
+  const conversation = await callMessaging<{ id: string }>(page, "createConversation", {
+    kind: "channel",
+    name: "page-context",
+  });
+  expect(conversation.error).toBeNull();
+  for (let i = 0; i < 50; i++) {
+    const sent = await callMessaging(page, "sendMessage", {
+      conversationId: conversation.data!.id,
+      body: `Page row ${i} @[project:${project.id}]`,
+    });
+    expect(sent.error).toBeNull();
+  }
+  await waitForRealtimeIdle(page);
+  const requests: string[] = [];
+  const completed: string[] = [];
+  const failed: string[] = [];
+  page.on("request", (request) => {
+    if (/\/context\/message-(page|links|people)(?:\?|$)/.test(request.url()))
+      requests.push(new URL(request.url()).pathname);
+  });
+  page.on("response", (response) => {
+    if (response.url().endsWith("/api/v1/context/message-page") && response.ok())
+      completed.push(response.url());
+  });
+  page.on("requestfailed", (request) => {
+    if (request.url().endsWith("/api/v1/context/message-page")) failed.push(request.url());
+  });
+  await page.getByRole("button", { name: "Messages", exact: true }).click();
+  await page
+    .getByRole("complementary", { name: "Conversations", exact: true })
+    .getByRole("button", { name: "page-context", exact: true })
+    .click();
+  const links = page
+    .getByRole("article")
+    .locator(".message-markdown")
+    .getByRole("link", { name: "Page context project", exact: true });
+  await expect(links).toHaveCount(50);
+  await waitForRealtimeIdle(page);
+  // Development StrictMode can abort and restart the initial mount request.
+  expect(requests.length).toBeGreaterThanOrEqual(1);
+  expect(requests.length).toBeLessThanOrEqual(2);
+  expect(requests.every((path) => path === "/api/v1/context/message-page")).toBe(true);
+  expect(completed).toHaveLength(1);
+  expect(requests.length).toBe(completed.length + failed.length);
+  requests.length = 0;
+  completed.length = 0;
+  failed.length = 0;
+  const renamed = await page.evaluate(async (projectEntityId) => {
+    const session = await (await fetch("/api/v1/session")).json();
+    return (
+      await fetch("/api/v1/tasks/mutations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "updateProject",
+          organizationId: session.data.session.activeOrganizationId,
+          projectEntityId,
+          name: "Updated page project",
+          description: "",
+        }),
+      })
+    ).json();
+  }, project.id);
+  expect(renamed.success).toBe(true);
+  await expect(
+    page
+      .getByRole("article")
+      .locator(".message-markdown")
+      .getByRole("link", { name: "Updated page project", exact: true }),
+  ).toHaveCount(50);
+  await waitForRealtimeIdle(page);
+  expect(requests).toEqual(["/api/v1/context/message-page"]);
+  expect(completed).toHaveLength(1);
+  expect(failed).toHaveLength(0);
+});
+
+test("page context drops private work on a live access reset without hiding the message", async ({
+  desktop,
+  desktopPeer,
+}) => {
+  test.setTimeout(120_000);
+  desktopPeer.owner.name = "Context Viewer";
+  await Promise.all([desktop.provision(), desktopPeer.provision()]);
+  await joinWorkspace(desktop, desktopPeer);
+  const project = await callTasks<{ id: string }>(desktop.page, {
+    action: "createProject",
+    name: "Revocable context project",
+  });
+  const conversation = await callMessaging<{ id: string }>(desktop.page, "createConversation", {
+    kind: "channel",
+    name: "context-access",
+  });
+  expect(conversation.error).toBeNull();
+  const people: ServiceResult<{ id: string }[]> = await desktop.page.evaluate(
+    async (conversationId) => {
+      const session = await (await fetch("/api/v1/session")).json();
+      return (
+        await fetch("/api/v1/context/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            organizationId: session.data.session.activeOrganizationId,
+            conversationId,
+            kind: "person",
+            query: "Context Viewer",
+          }),
+        })
+      ).json();
+    },
+    conversation.data!.id,
+  );
+  expect(people.success).toBe(true);
+  if (!people.success) throw new Error(people.error.message);
+  expect(people.data).toHaveLength(1);
+  const actorEntityId = people.data[0]!.id;
+  const access = async (action: "share" | "revoke") => {
+    const result = await desktop.page.evaluate(
+      async ({ action, projectEntityId, actorEntityId }) => {
+        const session = await (await fetch("/api/v1/session")).json();
+        return (
+          await fetch("/api/v1/tasks/mutations", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action,
+              organizationId: session.data.session.activeOrganizationId,
+              projectEntityId,
+              actorEntityId,
+              level: action === "share" ? "view" : undefined,
+            }),
+          })
+        ).json();
+      },
+      { action, projectEntityId: project.id, actorEntityId },
+    );
+    expect(result.success).toBe(true);
+  };
+  await access("share");
+  const sent = await callMessaging(desktop.page, "sendMessage", {
+    conversationId: conversation.data!.id,
+    body: `Keep discussion visible @[project:${project.id}] @[person:${actorEntityId}]`,
+  });
+  expect(sent.error).toBeNull();
+  await desktopPeer.openPath(`/dashboard?conversationId=${conversation.data!.id}`);
+  const article = desktopPeer.page
+    .getByRole("article")
+    .filter({ hasText: "Keep discussion visible" });
+  await expect(
+    article
+      .locator(".message-markdown")
+      .getByRole("link", { name: "Revocable context project", exact: true }),
+  ).toBeVisible();
+  await expect(
+    article.locator(".message-markdown").getByText("Context Viewer", { exact: true }),
+  ).toBeVisible();
+  await waitForRealtimeIdle(desktopPeer.page);
+  await access("revoke");
+  await expect(article.getByText("Revocable context project", { exact: true })).toHaveCount(0);
+  await expect(article.getByText("Unavailable reference", { exact: true })).toBeVisible();
+  await expect(
+    article.locator(".message-markdown").getByText("Context Viewer", { exact: true }),
+  ).toBeVisible();
+  await waitForRealtimeIdle(desktopPeer.page);
+  await expect(article).toContainText("Keep discussion visible");
+  await expect(article.getByRole("link")).toHaveCount(0);
+});
 
 test("explicit unlinking preserves provenance and typed references create navigable backlinks", async ({
   desktop,

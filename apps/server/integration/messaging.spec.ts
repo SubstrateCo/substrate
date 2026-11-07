@@ -134,6 +134,9 @@ for (const kind of ["channel", "dm", "group"] as const) {
     for (const actor of deniedActors) {
       const params = { organizationId: actor.organizationId, conversationId: conversation.id };
       const responses = [
+        await actor.request.post("/api/v1/context/message-page", {
+          data: { organizationId: actor.organizationId, messageIds: [root.id] },
+        }),
         await actor.request.get("/api/v1/messaging/messages", { params }),
         await actor.request.get("/api/v1/messaging/messages", {
           params: { ...params, threadId: root.id },
@@ -176,5 +179,13 @@ for (const kind of ["channel", "dm", "group"] as const) {
     expect((await persisted.json()).data.map((item: { body: string }) => item.body)).toEqual([
       "Private root",
     ]);
+    const context = await owner.request.post("/api/v1/context/message-page", {
+      data: { organizationId: owner.organizationId, messageIds: [root.id] },
+    });
+    expect(context.status()).toBe(200);
+    expect(await context.json()).toEqual({
+      success: true,
+      data: [{ messageId: root.id, links: [], people: [] }],
+    });
   });
 }

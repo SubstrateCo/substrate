@@ -8,6 +8,7 @@ const id = "00000000-0000-4000-8000-000000000001";
 
 test("context routes reject invalid input without invoking services", async () => {
   const spies = {
+    getMessagePage: mock(services.getMessagePage),
     getMessageLinks: mock(services.getMessageLinks),
     getMessagePeople: mock(services.getMessagePeople),
     getRelatedContext: mock(services.getRelatedContext),
@@ -35,6 +36,7 @@ test("context routes reject invalid input without invoking services", async () =
     expect(await response.json()).toEqual(failure("INVALID_INPUT", "Invalid request input."));
   }
   for (const [method, path] of [
+    ["POST", "/message-page"],
     ["POST", "/search"],
     ["POST", "/source-tasks"],
     ["POST", "/links"],
@@ -83,4 +85,20 @@ test("context unlink reads JSON on DELETE and preserves structured IDs", async (
   expect(response.status).toBe(404);
   expect(await response.json()).toEqual(failure("NOT_FOUND", "Item not found or access denied."));
   expect(detachWork).toHaveBeenCalledWith(expect.any(Headers), input);
+});
+
+test("page context rejects oversized pages before authorization and returns no partial metadata on denial", async () => {
+  const getMessagePage = mock(async () => failure("NOT_FOUND", "Item not found or access denied."));
+  const app = createContextRoutes({ ...services, getMessagePage });
+  const request = (messageIds: string[]) =>
+    app.request("/message-page", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ organizationId: "org", messageIds }),
+    });
+  expect((await request(Array.from({ length: 51 }, () => id))).status).toBe(400);
+  expect(getMessagePage).not.toHaveBeenCalled();
+  const response = await request([id]);
+  expect(response.status).toBe(404);
+  expect(await response.json()).toEqual(failure("NOT_FOUND", "Item not found or access denied."));
 });

@@ -53,6 +53,7 @@ export function realtimeQueryTargets(
             : [...queryKeys.messaging(organizationId), "messages"],
         });
         targets.push({ queryKey: [...queryKeys.context(organizationId), "related"] });
+        targets.push({ queryKey: [...queryKeys.context(organizationId), "message-pages"] });
         targets.push(...searchTargets(organizationId));
       }
       break;
@@ -63,6 +64,7 @@ export function realtimeQueryTargets(
           { queryKey: [...queryKeys.context(organizationId), "activity"] },
           { queryKey: [...queryKeys.context(organizationId), "related"] },
           { queryKey: [...queryKeys.context(organizationId), "message"] },
+          { queryKey: [...queryKeys.context(organizationId), "message-pages"] },
           { queryKey: [...queryKeys.context(organizationId), "notifications"], exact: true },
           ...searchTargets(organizationId),
         );

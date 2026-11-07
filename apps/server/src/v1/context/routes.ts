@@ -2,6 +2,7 @@ import {
   contextWorkspace,
   contextEntity,
   contextMessage,
+  contextMessagePage,
   contextTarget,
   contextLink,
   contextSearch,
@@ -16,6 +17,9 @@ import { Hono } from "hono";
 
 export function createContextRoutes(services = defaultServices) {
   return new Hono()
+    .post("/message-page", zValidator("json", contextMessagePage, validationHook), async (c) =>
+      respond(c, await services.getMessagePage(c.req.raw.headers, c.req.valid("json"))),
+    )
     .get("/message-links", zValidator("query", contextMessage, validationHook), async (c) =>
       respond(c, await services.getMessageLinks(c.req.raw.headers, c.req.valid("query"))),
     )

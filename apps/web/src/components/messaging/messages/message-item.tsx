@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { CopyLink } from "../../context/links/copy-link";
 import { LinkMessageWork } from "../../context/links/link-message-work";
-import { MessageContext } from "../../context/references/message-context";
+import { MessageContext, type MessageContextState } from "../../context/references/message-context";
 import { ReferencedMessageBody } from "../../context/references/referenced-message-body";
 import { CreateSourceTask } from "../../context/source-task/create-source-task";
 import { toggleReaction } from "@/api/messaging/requests";
@@ -22,10 +22,12 @@ export function MessageItem({
   message,
   organizationId,
   onThread,
+  context,
 }: {
   message: Message;
   organizationId: string;
   onThread?: (id: string) => void;
+  context: MessageContextState;
 }) {
   const queryClient = useQueryClient();
   const search = useSearch({ strict: false });
@@ -48,7 +50,7 @@ export function MessageItem({
         body={
           <ReferencedMessageBody
             organizationId={organizationId}
-            messageId={message.id}
+            context={context}
             body={message.body}
           />
         }
@@ -68,7 +70,7 @@ export function MessageItem({
         onReact={(emoji) => reaction.mutate(emoji)}
         pending={reaction.isPending}
       >
-        <MessageContext organizationId={organizationId} messageId={message.id} />
+        <MessageContext organizationId={organizationId} messageId={message.id} context={context} />
         {action === "create" && (
           <CreateSourceTask
             organizationId={organizationId}
