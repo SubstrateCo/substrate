@@ -11,13 +11,13 @@ export function validateFiles(
   },
 ): string | null {
   if (!multiple && files.length > 1) return "Choose one file at a time.";
+  const types = accept
+    ?.split(",")
+    .map((type) => type.trim().toLowerCase())
+    .filter(Boolean);
   for (const file of files) {
     if (maxSize !== undefined && file.size > maxSize)
       return `Each file must be ${Math.round((maxSize / 1024 / 1024) * 10) / 10} MB or smaller.`;
-    const types = accept
-      ?.split(",")
-      .map((type) => type.trim().toLowerCase())
-      .filter(Boolean);
     if (
       types?.length &&
       !types.some((type) => {

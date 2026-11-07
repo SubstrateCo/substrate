@@ -2,17 +2,16 @@ import type { RowData } from "@tanstack/react-table";
 
 import { Fragment } from "react";
 
+import { Button } from "../primitives/button";
 import {
   Pagination,
   PaginationContent,
   PaginationEllipsis,
   PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
 } from "../primitives/pagination";
 import { paginationPages } from "./pagination-pages";
 import type { AppTableInstance } from "./table";
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 
 export function TablePagination<TData extends RowData>({
   table,
@@ -29,15 +28,16 @@ export function TablePagination<TData extends RowData>({
     <Pagination aria-label={`${name} pagination`}>
       <PaginationContent className="flex-wrap justify-center">
         <PaginationItem>
-          <PaginationPrevious
-            href="#"
-            aria-disabled={!previous}
-            tabIndex={previous ? undefined : -1}
-            onClick={(event) => {
-              event.preventDefault();
-              if (previous) table.previousPage();
-            }}
-          />
+          <Button
+            type="button"
+            variant="ghost"
+            aria-label="Go to previous page"
+            disabled={!previous}
+            onClick={() => table.previousPage()}
+          >
+            <ChevronLeftIcon />
+            <span className="hidden sm:block">Previous</span>
+          </Button>
         </PaginationItem>
         {pages.map((page, index) => (
           <Fragment key={page}>
@@ -47,30 +47,30 @@ export function TablePagination<TData extends RowData>({
               </PaginationItem>
             )}
             <PaginationItem>
-              <PaginationLink
-                href="#"
+              <Button
+                type="button"
+                variant={page === pageIndex ? "outline" : "ghost"}
+                size="icon"
                 aria-label={`Go to page ${page + 1}`}
-                isActive={page === pageIndex}
-                onClick={(event) => {
-                  event.preventDefault();
-                  table.setPageIndex(page);
-                }}
+                aria-current={page === pageIndex ? "page" : undefined}
+                onClick={() => table.setPageIndex(page)}
               >
                 {page + 1}
-              </PaginationLink>
+              </Button>
             </PaginationItem>
           </Fragment>
         ))}
         <PaginationItem>
-          <PaginationNext
-            href="#"
-            aria-disabled={!next}
-            tabIndex={next ? undefined : -1}
-            onClick={(event) => {
-              event.preventDefault();
-              if (next) table.nextPage();
-            }}
-          />
+          <Button
+            type="button"
+            variant="ghost"
+            aria-label="Go to next page"
+            disabled={!next}
+            onClick={() => table.nextPage()}
+          >
+            <span className="hidden sm:block">Next</span>
+            <ChevronRightIcon />
+          </Button>
         </PaginationItem>
       </PaginationContent>
     </Pagination>

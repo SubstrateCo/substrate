@@ -1,7 +1,8 @@
 import { taskStatusLabels } from "@startup-os/contracts/tasks";
 
 import { Button } from "../primitives/button";
-import { TaskPriorityIcon, TaskStatusIcon } from "./task-cues";
+import { TaskPriorityIcon } from "./task-cues/task-priority-icon";
+import { TaskStatusIcon } from "./task-cues/task-status-icon";
 import type { ProjectDetail, Task } from "./types";
 import { CornerDownRight, UserRound } from "lucide-react";
 

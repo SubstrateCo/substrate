@@ -5,6 +5,7 @@ import { openPicture } from "./crop-image";
 import { FileUpload } from "./file-upload";
 import { pictureAccept, pictureMaxSize } from "./file-validation";
 import { ImageCropDialog, type PictureUploadContext } from "./image-crop-dialog";
+import { PicturePreview } from "./picture-preview";
 import { ImageIcon } from "lucide-react";
 
 export interface PictureUploadProps {
@@ -27,7 +28,6 @@ export function PictureUpload({
   const chooseButton = useRef<HTMLButtonElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
-  const [unavailable, setUnavailable] = useState<string | null>(null);
   const name = kind === "avatar" ? "Profile picture" : "Organization logo";
   async function remove() {
     if (removing) return;
@@ -46,24 +46,20 @@ export function PictureUpload({
       <div
         className={`flex size-12 shrink-0 items-center justify-center overflow-hidden border border-border bg-muted ${kind === "avatar" ? "rounded-full" : "rounded-lg"}`}
       >
-        {value && unavailable !== value ? (
-          <img
-            src={value}
-            alt={name}
-            className="size-full object-contain"
-            onError={() => setUnavailable(value)}
-          />
-        ) : (
-          <ImageIcon
-            className="size-7 text-muted-foreground"
-            aria-label={value ? `${name} unavailable` : `No ${name.toLowerCase()}`}
-          />
-        )}
+        <PicturePreview
+          src={value}
+          alt={name}
+          className="size-full object-contain"
+          fallback={
+            <ImageIcon
+              className="size-7 text-muted-foreground"
+              aria-label={value ? `${name} unavailable` : `No ${name.toLowerCase()}`}
+            />
+          }
+        />
       </div>
       <FileUpload
-        chooseButtonRef={(button) => {
-          chooseButton.current = button;
-        }}
+        chooseButtonRef={chooseButton}
         compact
         accept={pictureAccept}
         maxSize={pictureMaxSize}

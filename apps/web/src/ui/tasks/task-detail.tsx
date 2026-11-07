@@ -1,9 +1,7 @@
-import { taskStatusLabels } from "@startup-os/contracts/tasks";
-
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "../primitives/button";
-import { TaskPriorityIcon, TaskStatusIcon } from "./task-cues";
+import { TaskMetadata } from "./task-detail/task-metadata";
 import type { ProjectDetail, Task } from "./types";
 import { X, Pencil, ListPlus } from "lucide-react";
 
@@ -44,39 +42,13 @@ export function TaskDetail({
         <div ref={editor}>{renderEditor(() => setEditing(false))}</div>
       ) : (
         <>
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-lg bg-muted/40 p-3 text-sm wrap-anywhere [&_dt]:mb-1 [&_dt]:text-xs">
-            <div>
-              <dt className="text-muted-foreground">Status</dt>
-              <dd className="flex items-center gap-1.5">
-                <TaskStatusIcon status={task.status} />
-                {taskStatusLabels[task.status]}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Priority</dt>
-              <dd className="flex items-center gap-1.5 capitalize">
-                <TaskPriorityIcon priority={task.priority} />
-                {task.priority}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Assignee</dt>
-              <dd>
-                {detail.actors.find((actor) => actor.entityId === task.assigneeActorEntityId)
-                  ?.name ?? "Unassigned"}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Due date</dt>
-              <dd>{task.dueDate ?? "No due date"}</dd>
-            </div>
-          </dl>
-          <div className="space-y-2">
-            <h3 className="text-xs font-medium text-muted-foreground">Description</h3>
-            <p className="text-sm leading-relaxed wrap-break-word whitespace-pre-wrap">
-              {task.description || "No description."}
-            </p>
-          </div>
+          <TaskMetadata
+            task={task}
+            assigneeName={
+              detail.actors.find((actor) => actor.entityId === task.assigneeActorEntityId)?.name ??
+              "Unassigned"
+            }
+          />
           {canEdit && (
             <div className="flex flex-wrap gap-2">
               <Button ref={editButton} variant="outline" onClick={() => setEditing(true)}>

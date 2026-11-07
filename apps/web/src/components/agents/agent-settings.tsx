@@ -45,9 +45,7 @@ export function AgentSettings({
   const invalidate = () =>
     Promise.all([
       client.invalidateQueries({ queryKey: queryKeys.agents(userId) }),
-      client.invalidateQueries({
-        queryKey: queryKeys.localAgentConfiguration(userId, organizationId ?? "", localHarness),
-      }),
+      client.invalidateQueries({ queryKey: localKey }),
     ]);
   const invalidateLocal = () => client.invalidateQueries({ queryKey: localKey });
   const agent = useMutation({ mutationFn: saveAgent, onSuccess: invalidate });
@@ -61,7 +59,7 @@ export function AgentSettings({
       if (kind === "agent") return deleteAgent(id);
       return requireLocal().deleteSkill(id);
     },
-    onSuccess: () => Promise.all([invalidate(), invalidateLocal()]),
+    onSuccess: invalidate,
   });
   return (
     <AgentSettingsView

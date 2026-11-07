@@ -33,13 +33,13 @@ export function ProjectTaskPanel({
   inspectorRef: Ref<HTMLDivElement>;
   renderers: TaskPanelRenderers;
 }) {
-  const selected = detail.tasks.find((task) => task.entityId === panel.effectiveId);
+  const selected = detail.tasks.find((task) => task.entityId === panel.selectedTaskId);
   const { creating, selectedTaskId } = panel;
   return (
     <div
       className={`grid min-h-0 min-w-0 grid-cols-1 items-start gap-5 md:h-full ${creating || selected || selectedTaskId ? "md:grid-cols-2" : ""}`}
     >
-      <TaskList detail={detail} selectedId={panel.effectiveId} onSelect={panel.select} />
+      <TaskList detail={detail} selectedId={selectedTaskId} onSelect={panel.select} />
       {(creating || selected || selectedTaskId) && (
         <div
           ref={inspectorRef}

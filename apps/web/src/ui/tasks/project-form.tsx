@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useState } from "react";
 
 import { FormMessage } from "../auth/form-message";
 import { PendingButton } from "../feedback/pending-button";
@@ -22,10 +22,6 @@ export function ProjectForm({
   error?: Error | null;
 }) {
   const id = useId();
-  const nameInput = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    nameInput.current?.focus();
-  }, []);
   const [name, setName] = useState(project?.name ?? "");
   const [description, setDescription] = useState(project?.description ?? "");
   const submitLabel = project ? "Save project" : "Create project";
@@ -46,7 +42,7 @@ export function ProjectForm({
           <Label htmlFor={`${id}-name`}>Project name</Label>
           <Input
             id={`${id}-name`}
-            ref={nameInput}
+            autoFocus
             value={name}
             onChange={(event) => setName(event.target.value)}
             required

@@ -11,20 +11,15 @@ import {
 
 export function WorkspaceSearch({
   organizationId,
-  onClose,
-  query: externalQuery,
+  query,
   onQueryChange,
   onFocusInput,
 }: {
   organizationId: string;
-  onClose: () => void;
-  query?: string;
-  onQueryChange?: (query: string) => void;
-  onFocusInput?: () => void;
+  query: string;
+  onQueryChange: (query: string) => void;
+  onFocusInput: () => void;
 }) {
-  const [localQuery, setLocalQuery] = useState("");
-  const query = externalQuery ?? localQuery;
-  const setQuery = onQueryChange ?? setLocalQuery;
   const [kind, setKind] = useState<SearchKind>("all");
   const [after, setAfter] = useState<string>();
   const [relatedToEntityId, setRelatedToEntityId] = useState<string>();
@@ -34,7 +29,6 @@ export function WorkspaceSearch({
   return (
     <WorkspaceSearchView
       query={query}
-      hideInput={externalQuery !== undefined}
       onFocusInput={onFocusInput}
       kind={kind}
       related={!!relatedToEntityId}
@@ -56,17 +50,13 @@ export function WorkspaceSearch({
       error={results.error}
       hasMore={results.data?.length === 30}
       hasPrevious={!!after}
-      onQueryChange={(value) => {
-        setQuery(value);
-        setAfter(undefined);
-      }}
       onKindChange={(value) => {
         setKind(value);
         setAfter(undefined);
       }}
       onRelated={(id) => {
         setRelatedToEntityId(id);
-        setQuery("");
+        onQueryChange("");
         setKind("all");
         setAfter(undefined);
       }}
@@ -77,7 +67,6 @@ export function WorkspaceSearch({
       onMore={() => setAfter(results.data?.at(-1)?.id)}
       onFirst={() => setAfter(undefined)}
       onRetry={() => void results.refetch()}
-      onClose={onClose}
     />
   );
 }

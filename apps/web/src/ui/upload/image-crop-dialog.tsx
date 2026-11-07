@@ -108,7 +108,6 @@ export function ImageCropDialog({
             kind={kind}
             mode={mode}
             zoom={zoom}
-            pending={pending}
             onModeChange={(next) => {
               reset();
               setMode(next);

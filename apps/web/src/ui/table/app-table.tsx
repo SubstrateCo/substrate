@@ -4,11 +4,10 @@ import { ContentNotice } from "../feedback/content-notice";
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
 import { isAccessFailure } from "../feedback/request-failure";
-import { Button } from "../primitives/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../primitives/table";
+import { Table, TableBody, TableCell, TableRow } from "../primitives/table";
+import { AppTableHeader } from "./app-table/app-table-header";
 import type { AppTableInstance } from "./table";
 import { TablePagination } from "./table-pagination";
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
 export function AppTable<TData extends RowData>({
   table,
@@ -56,45 +55,7 @@ export function AppTable<TData extends RowData>({
         )}
         <div className="min-w-0 rounded-lg border">
           <Table aria-label={name} aria-busy={loading && !blocked}>
-            <TableHeader>
-              {table.getHeaderGroups().map((group) => (
-                <TableRow key={group.id}>
-                  {group.headers.map((header) => {
-                    const sorting = header.column.getIsSorted();
-                    let Icon = ArrowUpDown;
-                    let sortDirection: "ascending" | "descending" | "none" = "none";
-                    if (sorting === "asc") {
-                      Icon = ArrowUp;
-                      sortDirection = "ascending";
-                    } else if (sorting === "desc") {
-                      Icon = ArrowDown;
-                      sortDirection = "descending";
-                    }
-                    return (
-                      <TableHead
-                        key={header.id}
-                        colSpan={header.colSpan}
-                        aria-sort={header.column.getCanSort() ? sortDirection : undefined}
-                      >
-                        {!header.isPlaceholder &&
-                          (header.column.getCanSort() ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={header.column.getToggleSortingHandler()}
-                            >
-                              <table.FlexRender header={header} />
-                              <Icon aria-hidden="true" />
-                            </Button>
-                          ) : (
-                            <table.FlexRender header={header} />
-                          ))}
-                      </TableHead>
-                    );
-                  })}
-                </TableRow>
-              ))}
-            </TableHeader>
+            <AppTableHeader table={table} />
             <TableBody>
               {blocked || rows.length === 0 ? (
                 <TableRow>

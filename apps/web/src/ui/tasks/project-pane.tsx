@@ -34,8 +34,8 @@ export function ProjectPane({
   renderTaskForm: TaskPanelRenderers["form"];
   renderTaskDetail: TaskPanelRenderers["detail"];
   renderSettings: (detail: ProjectDetail) => ReactNode;
-  selectedTaskId?: string | null;
-  onSelectTask?: (id: string | null) => void;
+  selectedTaskId: string | null;
+  onSelectTask: (id: string | null) => void;
   headerActions?: ReactNode;
   context?: ReactNode;
 }) {

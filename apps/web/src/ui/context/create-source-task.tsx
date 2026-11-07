@@ -22,6 +22,7 @@ export function CreateSourceTask({
   onClose: () => void;
   renderFields: (projectId: string, sourceText: string) => ReactNode;
 }) {
+  const sourceText = body.replace(/@\[[^\]]+\]/g, "[Reference]");
   return (
     <section aria-label="Create task from message" className="min-w-0 space-y-4">
       <h3 className="text-sm font-semibold">Create task from message</h3>
@@ -30,7 +31,7 @@ export function CreateSourceTask({
         share it.
       </p>
       <blockquote className="line-clamp-4 border-l-2 pl-3 text-sm wrap-anywhere whitespace-pre-wrap">
-        {body.replace(/@\[[^\]]+\]/g, "[Reference]")}
+        {sourceText}
       </blockquote>
       {createdHref ? (
         <div className="space-y-2">
@@ -49,7 +50,7 @@ export function CreateSourceTask({
           error={error}
           onRetry={onRetry}
           onClose={onClose}
-          renderFields={(id) => renderFields(id, body.replace(/@\[[^\]]+\]/g, "[Reference]"))}
+          renderFields={(id) => renderFields(id, sourceText)}
         />
       )}
     </section>

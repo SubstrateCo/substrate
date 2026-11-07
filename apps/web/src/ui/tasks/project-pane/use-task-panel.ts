@@ -4,20 +4,18 @@ export function useTaskPanel({
   selectedTaskId,
   onSelectTask,
 }: {
-  selectedTaskId?: string | null;
-  onSelectTask?: (id: string | null) => void;
+  selectedTaskId: string | null;
+  onSelectTask: (id: string | null) => void;
 }) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState<{ parentTaskEntityId?: string } | null>(null);
   const [restore, setRestore] = useState(0);
   const inspector = useRef<HTMLDivElement>(null);
   const viewport = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLElement | null>(null);
   const newTaskButton = useRef<HTMLButtonElement>(null);
-  const effectiveId = selectedTaskId === undefined ? selectedId : selectedTaskId;
   const previousId = useRef<string | null | undefined>(undefined);
   useEffect(() => {
-    if ((creating || effectiveId) && (creating || effectiveId !== previousId.current)) {
+    if ((creating || selectedTaskId) && (creating || selectedTaskId !== previousId.current)) {
       const target = creating
         ? inspector.current?.querySelector<HTMLInputElement>("input")
         : inspector.current;
@@ -25,22 +23,17 @@ export function useTaskPanel({
       if (viewport.current) viewport.current.scrollTop = 0;
       target?.focus({ preventScroll: true });
     }
-    previousId.current = effectiveId;
-  }, [creating, effectiveId]);
+    previousId.current = selectedTaskId;
+  }, [creating, selectedTaskId]);
   useEffect(() => {
     if (restore) (trigger.current?.isConnected ? trigger.current : newTaskButton.current)?.focus();
   }, [restore]);
-  const select = (id: string | null) => {
-    setSelectedId(id);
-    onSelectTask?.(id);
-  };
   return {
     inspector,
     viewport,
     newTaskButton,
     panel: {
       creating,
-      effectiveId,
       selectedTaskId,
       create: () => {
         trigger.current = newTaskButton.current;
@@ -49,11 +42,11 @@ export function useTaskPanel({
       select: (id: string) => {
         trigger.current =
           document.activeElement instanceof HTMLElement ? document.activeElement : null;
-        select(id);
+        onSelectTask(id);
         setCreating(null);
       },
       saved: (id: string) => {
-        select(id);
+        onSelectTask(id);
         setCreating(null);
         setRestore((count) => count + 1);
       },
@@ -62,7 +55,7 @@ export function useTaskPanel({
         setRestore((count) => count + 1);
       },
       close: () => {
-        select(null);
+        onSelectTask(null);
         setRestore((count) => count + 1);
       },
       createSubtask: (parentTaskEntityId: string) => {

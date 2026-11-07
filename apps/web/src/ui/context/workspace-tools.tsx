@@ -7,7 +7,6 @@ export function WorkspaceTools({
   renderSearch,
 }: {
   renderSearch: (
-    onClose: () => void,
     query: string,
     onQueryChange: (query: string) => void,
     focusInput: () => void,
@@ -80,7 +79,7 @@ export function WorkspaceTools({
           </CommandInput>
           {open && (
             <div className="absolute inset-x-0 top-full mt-2 overflow-hidden rounded-xl border bg-popover shadow-xl">
-              {renderSearch(close, query, setQuery, focusInput)}
+              {renderSearch(query, setQuery, focusInput)}
             </div>
           )}
         </Command>

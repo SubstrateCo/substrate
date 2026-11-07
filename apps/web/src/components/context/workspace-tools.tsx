@@ -4,10 +4,9 @@ import { WorkspaceTools as WorkspaceToolsView } from "@/ui/context/workspace-too
 export function WorkspaceTools({ organizationId }: { organizationId: string }) {
   return (
     <WorkspaceToolsView
-      renderSearch={(onClose, query, onQueryChange, focusInput) => (
+      renderSearch={(query, onQueryChange, focusInput) => (
         <WorkspaceSearch
           organizationId={organizationId}
-          onClose={onClose}
           query={query}
           onQueryChange={onQueryChange}
           onFocusInput={focusInput}

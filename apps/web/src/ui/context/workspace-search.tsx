@@ -1,12 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 import { isAccessFailure } from "../feedback/request-failure";
 import { Button } from "../primitives/button";
-import { Command, CommandInput } from "../primitives/command";
 import type { SearchResultItem } from "./search-result";
 import { SearchResults } from "@/ui/context/workspace-search/search-results";
 import { SearchShortcuts } from "@/ui/context/workspace-search/search-shortcuts";
-import { X } from "lucide-react";
 
 export type SearchKind = "all" | "task" | "project" | "message" | "conversation";
 
@@ -19,16 +17,13 @@ export function WorkspaceSearch({
   error,
   hasMore,
   hasPrevious,
-  onQueryChange,
   onKindChange,
   onRelated,
   onClearRelated,
   onMore,
   onFirst,
   onRetry,
-  onClose,
   onFocusInput,
-  hideInput = false,
 }: {
   query: string;
   kind: SearchKind;
@@ -38,18 +33,14 @@ export function WorkspaceSearch({
   error?: Error | null;
   hasMore: boolean;
   hasPrevious: boolean;
-  onQueryChange: (query: string) => void;
   onKindChange: (kind: SearchKind) => void;
   onRelated: (id: string) => void;
   onClearRelated: () => void;
   onMore: () => void;
   onFirst: () => void;
   onRetry: () => void;
-  onClose: () => void;
-  onFocusInput?: () => void;
-  hideInput?: boolean;
+  onFocusInput: () => void;
 }) {
-  const input = useRef<HTMLInputElement>(null);
   const panel = useRef<HTMLElement>(null);
   const [panelTop, setPanelTop] = useState(0);
   useLayoutEffect(() => {
@@ -58,10 +49,7 @@ export function WorkspaceSearch({
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, []);
-  useEffect(() => {
-    input.current?.focus();
-  }, []);
-  const content = (
+  return (
     <section
       ref={panel}
       aria-label="Workspace search"
@@ -76,20 +64,6 @@ export function WorkspaceSearch({
           event.stopPropagation();
       }}
     >
-      {!hideInput && (
-        <div className="flex shrink-0 items-center gap-2 p-2">
-          <CommandInput
-            ref={input}
-            aria-label="Search workspace"
-            placeholder="Search your accessible work."
-            value={query}
-            onValueChange={onQueryChange}
-          />
-          <Button variant="ghost" size="icon-sm" aria-label="Close search" onClick={onClose}>
-            <X />
-          </Button>
-        </div>
-      )}
       {related && (
         <div className="flex shrink-0 items-center gap-2 px-3 pt-2">
           <span className="text-sm text-muted-foreground">Related records</span>
@@ -131,8 +105,7 @@ export function WorkspaceSearch({
         onRetry={onRetry}
         onRelated={(id) => {
           onRelated(id);
-          if (hideInput) onFocusInput?.();
-          else input.current?.focus();
+          onFocusInput();
         }}
       />
       {!isAccessFailure(error) && hasMore && (
@@ -147,12 +120,5 @@ export function WorkspaceSearch({
       )}
       <SearchShortcuts />
     </section>
-  );
-  return hideInput ? (
-    content
-  ) : (
-    <Command shouldFilter={false} label="Search workspace">
-      {content}
-    </Command>
   );
 }

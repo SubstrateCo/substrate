@@ -14,13 +14,11 @@ export function MessagingWorkspace({ organizationId }: { organizationId: string 
   const conversations = useQuery(conversationsQueryOptions(organizationId));
   const search = useSearch({ strict: false });
   const navigate = useNavigate();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const visibleConversations = isAccessFailure(conversations.error) ? [] : conversations.data || [];
-  const selected =
-    visibleConversations.find(
-      (conversation) => conversation.id === (search.conversationId ?? selectedId),
-    ) ?? (!search.conversationId && selectedId === null ? visibleConversations[0] : undefined);
+  const selected = search.conversationId
+    ? visibleConversations.find((conversation) => conversation.id === search.conversationId)
+    : visibleConversations[0];
   return (
     <MessagingWorkspaceView
       conversations={visibleConversations}
@@ -28,7 +26,6 @@ export function MessagingWorkspace({ organizationId }: { organizationId: string 
       sidebarOpen={sidebarOpen}
       onSidebarOpenChange={setSidebarOpen}
       onSelect={(id) => {
-        setSelectedId(id);
         void navigate({
           to: "/dashboard",
           search: { workspaceId: organizationId, conversationId: id },
@@ -45,7 +42,6 @@ export function MessagingWorkspace({ organizationId }: { organizationId: string 
           kind={kind}
           onCancel={onCancel}
           onCreated={(id) => {
-            setSelectedId(id);
             void navigate({
               to: "/dashboard",
               search: { workspaceId: organizationId, conversationId: id },

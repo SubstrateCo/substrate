@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-import { useHydrated } from "../hooks/use-hydrated";
 import { Card, CardContent, CardDescription, CardHeader } from "../primitives/card";
 
 export function AuthFrame({
@@ -12,7 +11,6 @@ export function AuthFrame({
   description: string;
   children: ReactNode;
 }) {
-  const hydrated = useHydrated();
   return (
     <main className="fixed inset-0 flex items-start justify-center bg-radial from-accent to-transparent px-4 py-auth-block sm:px-6">
       <Card className="max-h-full min-h-0 w-full max-w-md overflow-y-auto">
@@ -25,9 +23,7 @@ export function AuthFrame({
           <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent>
-          <fieldset disabled={!hydrated} className="min-w-0 space-y-5">
-            {children}
-          </fieldset>
+          <div className="min-w-0 space-y-5">{children}</div>
         </CardContent>
       </Card>
     </main>

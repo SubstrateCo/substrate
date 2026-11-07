@@ -1,7 +1,7 @@
 import { taskStatusLabels, taskStatusValues } from "@startup-os/contracts/tasks";
 
 import { ContentNotice } from "../feedback/content-notice";
-import { TaskStatusIcon } from "./task-cues";
+import { TaskStatusIcon } from "./task-cues/task-status-icon";
 import { TaskListItem } from "./task-list-item";
 import type { ProjectDetail } from "./types";
 

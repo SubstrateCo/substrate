@@ -23,13 +23,16 @@ export function InvitationForm({
 }) {
   const id = useId();
   const [role, setRole] = useState<InvitationRole>("member");
-  const [email, setEmail] = useState("");
   return (
     <form
       className="grid gap-4 sm:grid-cols-12 sm:items-end"
       onSubmit={(event) => {
         event.preventDefault();
-        if (!disabled) onInvite(email, role);
+        if (!disabled) {
+          const email = new FormData(event.currentTarget).get("email");
+          // SAFETY: This form's required email input supplies a text value.
+          onInvite(email as string, role);
+        }
       }}
     >
       <div className="grid min-w-0 gap-2 sm:col-span-6">
@@ -37,8 +40,6 @@ export function InvitationForm({
         <Input
           id={`${id}-email`}
           name="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
           type="email"
           autoComplete="email"
           placeholder="teammate@company.com"

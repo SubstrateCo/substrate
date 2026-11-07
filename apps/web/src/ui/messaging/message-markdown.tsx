@@ -1,5 +1,6 @@
-import { EntityReference, type WorkspaceReference } from "./entity-reference";
+import type { WorkspaceReference } from "./entity-reference";
 import { remarkWorkspaceReferences } from "./remark-workspace-references";
+import { MarkdownReference } from "@/ui/messaging/message-markdown/markdown-reference";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import "./message-markdown.css";
@@ -19,18 +20,11 @@ export function MessageMarkdown({
         remarkPlugins={references ? [remarkGfm, remarkWorkspaceReferences] : [remarkGfm]}
         skipHtml
         components={{
-          span: ({ node, children }) => {
-            const id = node?.properties["data-reference-id"];
-            const kind = node?.properties["data-reference-kind"];
-            return id ? (
-              <EntityReference
-                reference={references?.find((item) => item.id === id && item.kind === kind)}
-                loading={referencesLoading}
-              />
-            ) : (
-              <span>{children}</span>
-            );
-          },
+          span: ({ node, children }) => (
+            <MarkdownReference node={node} references={references} loading={referencesLoading}>
+              {children}
+            </MarkdownReference>
+          ),
           a: ({ children, href }) => (
             <a href={href} target="_blank" rel="noopener noreferrer">
               {children}

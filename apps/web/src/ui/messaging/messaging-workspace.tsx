@@ -1,6 +1,5 @@
 import { Children, type ReactNode } from "react";
 
-import { ContentNotice } from "../feedback/content-notice";
 import { ErrorState } from "../feedback/error-state";
 import { PaneState } from "../feedback/pane-state";
 import { isAccessFailure } from "../feedback/request-failure";
@@ -10,6 +9,7 @@ import { ComposerDraftProvider } from "./composer-drafts";
 import { ConversationSidebar } from "./conversation-sidebar";
 import type { Conversation } from "./types";
 import { useConversationCreation } from "@/ui/messaging/messaging-workspace/use-conversation-creation";
+import { WorkspaceEmpty } from "@/ui/messaging/messaging-workspace/workspace-empty";
 import { ArrowLeft, PanelLeft } from "lucide-react";
 
 export function MessagingWorkspace({
@@ -118,27 +118,7 @@ export function MessagingWorkspace({
               <PaneState label="Loading your conversations…" />
             )}
             {!blocked && !hasContent && !loading && (
-              <div className="m-auto flex max-w-md flex-col items-center p-6 text-center">
-                <ContentNotice
-                  title="Your conversations start here"
-                  description="Create a channel for your team, or send someone a direct message."
-                />
-                <div className="flex flex-wrap justify-center gap-2">
-                  <Button
-                    data-create-conversation="empty-channel"
-                    onClick={() => beginCreate("channel", "empty")}
-                  >
-                    Create channel
-                  </Button>
-                  <Button
-                    data-create-conversation="empty-dm"
-                    variant="outline"
-                    onClick={() => beginCreate("dm", "empty")}
-                  >
-                    New direct message
-                  </Button>
-                </div>
-              </div>
+              <WorkspaceEmpty onCreate={(kind) => beginCreate(kind, "empty")} />
             )}
           </ResizablePanel>
         </ResizablePanelGroup>

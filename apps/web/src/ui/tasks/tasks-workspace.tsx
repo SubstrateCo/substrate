@@ -31,9 +31,8 @@ export function TasksWorkspace({
   renderCreate: (onSaved: (id: string) => void, onCancel: () => void) => ReactNode;
   renderProject: (project: Project) => ReactNode;
   selectedProjectId?: string;
-  onSelectProject?: (id: string) => void;
+  onSelectProject: (id: string) => void;
 }) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const createTrigger = useRef<HTMLElement | null>(null);
   const createProjectButton = useRef<HTMLButtonElement>(null);
@@ -55,8 +54,13 @@ export function TasksWorkspace({
   };
   const visible = isAccessFailure(error) ? [] : projects;
   const selected =
-    visible.find((project) => project.entityId === (selectedProjectId ?? selectedId)) ??
-    (selectedProjectId === undefined && selectedId === null ? visible[0] : undefined);
+    selectedProjectId === undefined
+      ? visible[0]
+      : visible.find((project) => project.entityId === selectedProjectId);
+  const selectProject = (id: string) => {
+    onSelectProject(id);
+    setCreating(false);
+  };
   return (
     <section
       aria-label="Tasks application"
@@ -70,23 +74,12 @@ export function TasksWorkspace({
         onRetry={onRetry}
         onCreate={openCreate}
         createButtonRef={createProjectButton}
-        onSelect={(id) => {
-          setSelectedId(id);
-          onSelectProject?.(id);
-          setCreating(false);
-        }}
+        onSelect={selectProject}
       />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {creating && (
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {renderCreate(
-              (id) => {
-                setSelectedId(id);
-                onSelectProject?.(id);
-                setCreating(false);
-              },
-              () => setCreating(false),
-            )}
+            {renderCreate(selectProject, () => setCreating(false))}
           </div>
         )}
         {!creating && selected && renderProject(selected)}

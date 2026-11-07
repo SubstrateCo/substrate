@@ -6,7 +6,6 @@ export function ImageCropControls({
   kind,
   mode,
   zoom,
-  pending,
   onModeChange,
   onZoomChange,
   onRotate,
@@ -15,7 +14,6 @@ export function ImageCropControls({
   kind: "avatar" | "organization-logo";
   mode: "fit" | "fill";
   zoom: number;
-  pending: boolean;
   onModeChange: (mode: "fit" | "fill") => void;
   onZoomChange: (zoom: number) => void;
   onRotate: () => void;
@@ -54,7 +52,7 @@ export function ImageCropControls({
           max={3}
           step={0.01}
           value={zoom}
-          disabled={pending || mode === "fit"}
+          disabled={mode === "fit"}
           onChange={(event) => onZoomChange(Number(event.target.value))}
         />
       </div>

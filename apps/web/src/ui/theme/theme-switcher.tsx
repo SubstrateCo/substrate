@@ -1,4 +1,3 @@
-import { useHydrated } from "../hooks/use-hydrated";
 import { Button } from "../primitives/button";
 import {
   DropdownMenu,
@@ -12,7 +11,6 @@ import { Monitor, Moon, Sun } from "lucide-react";
 
 export function ThemeSwitcher({ compact = false }: { compact?: boolean }) {
   const { theme, setTheme } = useTheme();
-  const hydrated = useHydrated();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -21,7 +19,6 @@ export function ThemeSwitcher({ compact = false }: { compact?: boolean }) {
           size={compact ? "icon" : "default"}
           aria-label="Color theme"
           title="Color theme"
-          disabled={!hydrated}
         >
           <Sun className="size-4 dark:hidden" />
           <Moon className="hidden size-4 dark:block" />
