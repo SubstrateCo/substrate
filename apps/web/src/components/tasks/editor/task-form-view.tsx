@@ -11,6 +11,8 @@ import { Textarea } from "../../ui/textarea";
 import type { ProjectDetail, Task, TaskDraft } from "../types";
 import { taskFormSchema } from "./task-form-validation";
 import { TaskScheduleFields } from "./task-schedule-fields";
+import { SourceTaskReference } from "@/components/context/source-task/source-task-reference";
+import { cn } from "cn";
 
 function useTaskForm({
   task,
@@ -74,6 +76,7 @@ export function TaskForm({
     detail.members.some((member) => member.actorEntityId === actor.entityId),
   );
   const form = useTaskForm({ task, assignees, pending, onSubmit });
+  const fromMessage = sourceText !== undefined;
   let titleLabel = parentTaskEntityId ? "New subtask" : "New task";
   let submitLabel = parentTaskEntityId ? "Create subtask" : "Create task";
   if (task) {
@@ -83,6 +86,7 @@ export function TaskForm({
   return (
     <form
       aria-label={titleLabel}
+      aria-keyshortcuts={fromMessage ? "Control+Enter Meta+Enter" : undefined}
       noValidate
       className="@container min-w-0 space-y-4"
       onSubmit={(event) => {
@@ -90,26 +94,57 @@ export function TaskForm({
         if (pending) return;
         void form.handleSubmit();
       }}
+      onKeyDown={(event) => {
+        if (fromMessage && (event.ctrlKey || event.metaKey) && event.key === "Enter") {
+          event.preventDefault();
+          if (!pending) void form.handleSubmit();
+        }
+      }}
     >
-      <fieldset disabled={pending} className="min-w-0 space-y-4">
-        <h3 className="font-semibold">{titleLabel}</h3>
+      <fieldset
+        disabled={pending}
+        className={cn("min-w-0 space-y-4", fromMessage && "space-y-3 px-4 pb-4")}
+      >
+        {!fromMessage && <h3 className="font-semibold">{titleLabel}</h3>}
         <form.Field name="title">
           {(field) => (
             <Field data-invalid={!field.state.meta.isValid}>
-              <FieldLabel htmlFor={`${id}-title`}>Task title</FieldLabel>
-              <Input
-                id={`${id}-title`}
-                value={field.state.value}
-                onChange={(event) => {
-                  field.handleChange(event.target.value);
-                  if (!field.state.meta.isValid) void field.validate("blur");
-                }}
-                onBlur={field.handleBlur}
-                aria-required
-                aria-invalid={!field.state.meta.isValid}
-                aria-describedby={!field.state.meta.isValid ? `${id}-title-error` : undefined}
-                maxLength={300}
-              />
+              <FieldLabel htmlFor={`${id}-title`} className={fromMessage ? "sr-only" : undefined}>
+                Task title
+              </FieldLabel>
+              {fromMessage ? (
+                <Textarea
+                  id={`${id}-title`}
+                  value={field.state.value}
+                  placeholder="What needs to be done?"
+                  rows={2}
+                  variant="task-title"
+                  className="max-h-32 min-h-14 resize-none"
+                  onChange={(event) => {
+                    field.handleChange(event.target.value);
+                    if (!field.state.meta.isValid) void field.validate("blur");
+                  }}
+                  onBlur={field.handleBlur}
+                  aria-required
+                  aria-invalid={!field.state.meta.isValid}
+                  aria-describedby={!field.state.meta.isValid ? `${id}-title-error` : undefined}
+                  maxLength={300}
+                />
+              ) : (
+                <Input
+                  id={`${id}-title`}
+                  value={field.state.value}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value);
+                    if (!field.state.meta.isValid) void field.validate("blur");
+                  }}
+                  onBlur={field.handleBlur}
+                  aria-required
+                  aria-invalid={!field.state.meta.isValid}
+                  aria-describedby={!field.state.meta.isValid ? `${id}-title-error` : undefined}
+                  maxLength={300}
+                />
+              )}
               <FieldError id={`${id}-title-error`} errors={field.state.meta.errors} />
             </Field>
           )}
@@ -117,10 +152,18 @@ export function TaskForm({
         <form.Field name="description">
           {(field) => (
             <Field data-invalid={!field.state.meta.isValid}>
-              <FieldLabel htmlFor={`${id}-description`}>Task description</FieldLabel>
+              <FieldLabel
+                htmlFor={`${id}-description`}
+                className={fromMessage ? "sr-only" : undefined}
+              >
+                Task description
+              </FieldLabel>
               <Textarea
                 id={`${id}-description`}
                 value={field.state.value}
+                placeholder={fromMessage ? "Add a description…" : undefined}
+                variant={fromMessage ? "task-description" : "default"}
+                className={fromMessage ? "max-h-48" : undefined}
                 onChange={(event) => {
                   field.handleChange(event.target.value);
                   if (!field.state.meta.isValid) void field.validate("blur");
@@ -134,31 +177,45 @@ export function TaskForm({
             </Field>
           )}
         </form.Field>
-        {sourceText && (
-          <Button
-            type="button"
-            variant="outline"
-            className="h-auto max-w-full whitespace-normal"
-            onClick={() => {
+        <TaskScheduleFields form={form} assignees={assignees} compact={fromMessage} />
+        {fromMessage && (
+          <SourceTaskReference
+            sourceText={sourceText}
+            onCopy={() => {
               form.setFieldValue("description", sourceText);
               void form.validateField("description", "blur");
             }}
-          >
-            Copy source text into description
-          </Button>
+          />
         )}
-        <TaskScheduleFields form={form} assignees={assignees} />
         <FormMessage
           error={error}
           errorDescription="Couldn’t save this task. Check its fields and make sure the assignee still has project access."
         />
-        <div className="flex flex-wrap gap-2">
+        <div
+          className={cn(
+            "flex flex-wrap gap-2",
+            fromMessage &&
+              "-mx-4 -mb-4 items-center justify-between border-t bg-muted/20 px-4 py-3",
+          )}
+        >
+          {fromMessage && (
+            <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+              Cancel
+            </Button>
+          )}
           <PendingButton pending={pending} pendingLabel="Saving task…">
             {submitLabel}
+            {fromMessage && (
+              <kbd aria-hidden className="ml-2 hidden text-xs font-normal opacity-60 @xs:inline">
+                Ctrl/⌘ ↵
+              </kbd>
+            )}
           </PendingButton>
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
-          </Button>
+          {!fromMessage && (
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+          )}
         </div>
       </fieldset>
     </form>

@@ -1,7 +1,8 @@
-import { useId } from "react";
+import { useId, type ReactNode } from "react";
 
 import { Field, FieldError, FieldLabel } from "../ui/field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { cn } from "cn";
 
 export function TaskSelect<T extends string>({
   label,
@@ -11,6 +12,9 @@ export function TaskSelect<T extends string>({
   disabled = false,
   onBlur,
   errors = [],
+  compact = false,
+  icon,
+  placeholder,
 }: {
   label: string;
   value: T;
@@ -19,11 +23,19 @@ export function TaskSelect<T extends string>({
   disabled?: boolean;
   onBlur?: () => void;
   errors?: ({ message?: string } | undefined)[];
+  compact?: boolean;
+  icon?: ReactNode;
+  placeholder?: string;
 }) {
   const id = useId();
   return (
-    <Field className="relative min-w-0" data-invalid={errors.length > 0}>
-      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+    <Field
+      className={cn("relative min-w-0", compact && "w-auto max-w-full")}
+      data-invalid={errors.length > 0}
+    >
+      <FieldLabel htmlFor={id} className={compact ? "sr-only" : undefined}>
+        {label}
+      </FieldLabel>
       <Select
         value={value}
         onValueChange={(next) => {
@@ -35,11 +47,13 @@ export function TaskSelect<T extends string>({
         <SelectTrigger
           id={id}
           className="w-full min-w-0"
+          size={compact ? "compact" : "default"}
           onBlur={onBlur}
           aria-invalid={errors.length > 0}
           aria-describedby={errors.length > 0 ? `${id}-error` : undefined}
         >
-          <SelectValue className="min-w-0" />
+          {icon}
+          <SelectValue className="min-w-0" placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent
           position="popper"

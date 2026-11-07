@@ -76,6 +76,7 @@ test("connected work preserves source, links, references, and stable navigation"
     await choose(page, "Destination project", project);
     const form = page.getByRole("form", { name: "New task", exact: true });
     await form.getByLabel("Task title", { exact: true }).fill(task);
+    await form.getByText("Linked to this message", { exact: true }).click();
     await form
       .getByRole("button", { name: "Copy source text into description", exact: true })
       .click();

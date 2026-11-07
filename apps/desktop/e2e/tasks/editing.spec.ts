@@ -48,6 +48,7 @@ test("Electron task edit cancel resets drafts and saved edits retain message pro
   await choose(page, "Destination project", "Desktop launch");
   const creating = page.getByRole("form", { name: "New task", exact: true });
   await creating.getByLabel("Task title", { exact: true }).fill("Launch checklist");
+  await creating.getByText("Linked to this message", { exact: true }).click();
   await creating
     .getByRole("button", { name: "Copy source text into description", exact: true })
     .click();

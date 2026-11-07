@@ -11,6 +11,10 @@ const textareaVariants = cva(
         default: "",
         composer:
           "rounded-none border-0 bg-transparent px-3 shadow-none focus-visible:ring-0 dark:bg-transparent",
+        "task-title":
+          "border-transparent bg-transparent px-0 py-1 text-lg font-semibold tracking-tight shadow-none md:text-lg dark:bg-transparent",
+        "task-description":
+          "border-transparent bg-transparent px-0 text-xs shadow-none md:text-xs dark:bg-transparent",
       },
     },
     defaultVariants: {

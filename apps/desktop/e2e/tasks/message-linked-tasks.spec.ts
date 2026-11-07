@@ -36,14 +36,29 @@ test("desktop messages create linked tasks with OS navigation and source context
   await page.getByRole("combobox", { name: "Destination project", exact: true }).click();
   await page.getByRole("option", { name: project, exact: true }).click();
   const form = page.getByRole("form", { name: "New task", exact: true });
+  await expect(form.getByRole("heading", { name: "New task", exact: true })).toHaveCount(0);
+  const sourcePreview = form.getByRole("group", { name: "Source message", exact: true });
+  await expect(sourcePreview.getByText(source, { exact: true })).toBeHidden();
+  await sourcePreview.getByText("Linked to this message", { exact: true }).click();
+  await expect(sourcePreview.getByText(source, { exact: true })).toBeVisible();
+  await expect(form).toContainText("The source message stays private");
   await form.getByLabel("Task title", { exact: true }).fill(task);
   await form
     .getByRole("button", { name: "Copy source text into description", exact: true })
     .click();
-  await form.getByRole("button", { name: "Create task", exact: true }).click();
+  await expect(form.getByLabel("Task description", { exact: true })).toHaveValue(source);
+  await form.getByRole("combobox", { name: "Priority", exact: true }).click();
+  await page.getByRole("option", { name: "High", exact: true }).click();
+  await form.getByLabel("Due date", { exact: true }).fill("2026-12-15");
+  await form.getByLabel("Task title", { exact: true }).press("ControlOrMeta+Enter");
+  await expect(
+    page.getByRole("region", { name: "Create task from message", exact: true }).getByRole("status"),
+  ).toContainText("Task created and linked");
   await page.getByRole("link", { name: "Open created task", exact: true }).click();
   const details = page.getByRole("region", { name: "Task details", exact: true });
   await expect(details.getByRole("heading", { name: task, exact: true })).toBeVisible();
+  await expect(details).toContainText(/high/i);
+  await expect(details).toContainText("2026-12-15");
   const target = new URL(page.url());
   await desktop.openPath(`${target.pathname}${target.search}`);
   await expect(details.getByRole("heading", { name: task, exact: true })).toBeVisible();

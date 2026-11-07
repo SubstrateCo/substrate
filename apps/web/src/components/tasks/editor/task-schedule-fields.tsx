@@ -7,23 +7,31 @@ import type { ProjectDetail, Task } from "../types";
 import type { TaskEditorForm } from "./task-form-view";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { cn } from "cn";
+import { Circle, Signal, UserRound } from "lucide-react";
 
 const priorities: Task["priority"][] = ["none", "low", "medium", "high", "urgent"];
 
 export function TaskScheduleFields({
   form,
   assignees,
+  compact = false,
 }: {
   form: TaskEditorForm;
   assignees: ProjectDetail["actors"];
+  compact?: boolean;
 }) {
   const id = useId();
   return (
-    <div className="grid min-w-0 gap-4 @sm:grid-cols-2">
+    <div className={cn("grid min-w-0 gap-4 @sm:grid-cols-2", compact && "flex flex-wrap gap-2")}>
       <form.Field name="status">
         {(field) => (
           <TaskSelect
             label="Status"
+            compact={compact}
+            icon={
+              compact ? <Circle aria-hidden className="size-3 text-muted-foreground" /> : undefined
+            }
             value={field.state.value}
             onChange={(value) => {
               field.handleChange(value);
@@ -39,6 +47,10 @@ export function TaskScheduleFields({
         {(field) => (
           <TaskSelect
             label="Priority"
+            compact={compact}
+            icon={
+              compact ? <Signal aria-hidden className="size-3 text-muted-foreground" /> : undefined
+            }
             value={field.state.value}
             onChange={(value) => {
               field.handleChange(value);
@@ -57,6 +69,12 @@ export function TaskScheduleFields({
         {(field) => (
           <TaskSelect
             label="Assignee"
+            compact={compact}
+            icon={
+              compact ? (
+                <UserRound aria-hidden className="size-3 text-muted-foreground" />
+              ) : undefined
+            }
             value={field.state.value}
             onChange={(value) => {
               field.handleChange(value);
@@ -85,11 +103,18 @@ export function TaskScheduleFields({
       </form.Field>
       <form.Field name="dueDate">
         {(field) => (
-          <Field className="min-w-0" data-invalid={!field.state.meta.isValid}>
-            <FieldLabel htmlFor={`${id}-due`}>Due date</FieldLabel>
+          <Field
+            className={cn("min-w-0", compact && "relative w-auto max-w-full")}
+            data-invalid={!field.state.meta.isValid}
+          >
+            <FieldLabel htmlFor={`${id}-due`} className={compact ? "sr-only" : undefined}>
+              Due date
+            </FieldLabel>
             <Input
               id={`${id}-due`}
               type="date"
+              variant={compact ? "compact" : "default"}
+              className={compact ? "w-36 max-w-full" : undefined}
               value={field.state.value}
               onChange={(event) => {
                 field.handleChange(event.target.value);
