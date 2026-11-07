@@ -41,7 +41,7 @@ test("cropped profile pictures and logos support retry, replacement, persistence
     const crop = page.getByRole("dialog", { name: title });
     await expect(crop).toBeVisible();
     if (isAvatar) {
-      await crop.getByRole("slider", { name: "Zoom", exact: true }).fill("1.5");
+      await crop.getByRole("slider", { name: "Zoom", exact: true }).press("End");
     } else {
       await expect(
         crop.getByRole("button", { name: "Fit whole logo", exact: true }),
@@ -62,7 +62,10 @@ test("cropped profile pictures and logos support retry, replacement, persistence
     await crop.getByRole("button", { name: "Save picture", exact: true }).click();
     await expect(crop.getByRole("alert")).toContainText("Your crop is still here");
     if (isAvatar)
-      await expect(crop.getByRole("slider", { name: "Zoom", exact: true })).toHaveValue("1.5");
+      await expect(crop.getByRole("slider", { name: "Zoom", exact: true })).toHaveAttribute(
+        "aria-valuenow",
+        "3",
+      );
     const started = Promise.withResolvers<void>();
     const release = Promise.withResolvers<void>();
     await page.route(
@@ -82,7 +85,10 @@ test("cropped profile pictures and logos support retry, replacement, persistence
       "Upload cancelled. Your crop is still here.",
     );
     if (isAvatar)
-      await expect(crop.getByRole("slider", { name: "Zoom", exact: true })).toHaveValue("1.5");
+      await expect(crop.getByRole("slider", { name: "Zoom", exact: true })).toHaveAttribute(
+        "aria-valuenow",
+        "3",
+      );
     const initialized = page.waitForResponse(
       (response) =>
         new URL(response.url()).pathname === "/api/v1/files/uploads" &&

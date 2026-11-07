@@ -286,7 +286,7 @@ for (const size of [
       if (kind === "organization") {
         await crop.getByRole("button", { name: "Fill square", exact: true }).click();
       }
-      await crop.getByRole("slider", { name: "Zoom", exact: true }).fill("1.5");
+      await crop.getByRole("slider", { name: "Zoom", exact: true }).press("End");
       await expect(crop.getByRole("button", { name: "Save picture", exact: true })).toBeEnabled();
       await fitsWindow(crop.getByRole("button", { name: "Save picture", exact: true }), page);
       await page.screenshot({ path: test.info().outputPath(`${kind}-crop.png`) });

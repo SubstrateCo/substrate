@@ -2,12 +2,27 @@ import type { SaveSkillInput } from "@startup-os/contracts/agents";
 import { saveSkillInput } from "@startup-os/contracts/agents";
 import type { HarnessSkill } from "@startup-os/contracts/harness";
 
+import { useForm } from "@tanstack/react-form";
+
 import { useState } from "react";
 
 import { EditorDialog } from "./editor-dialog";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { z } from "zod";
+
+const skillFields = saveSkillInput.omit({ id: true }).extend({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Enter a skill name.")
+    .max(64, "Use a skill name of 64 characters or fewer.")
+    .regex(
+      /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+      "Use lowercase words separated by hyphens for the skill name.",
+    ),
+});
 
 export function SkillEditor({
   skill,
@@ -20,56 +35,112 @@ export function SkillEditor({
   onClose: () => void;
   onSave: (input: SaveSkillInput) => Promise<void>;
 }) {
-  const [draft, setDraft] = useState<SaveSkillInput>(
-    skill ?? { name: "", description: "", content: "" },
-  );
+  const [error, setError] = useState<string>();
+  const form = useForm({
+    defaultValues: {
+      name: skill?.name ?? "",
+      description: skill?.description ?? "",
+      content: skill?.content ?? "",
+    },
+    validators: { onChange: skillFields, onBlur: skillFields, onSubmit: skillFields },
+    onSubmit: async ({ value }) => {
+      if (pending) return;
+      setError(undefined);
+      const parsed = skillFields.parse(value);
+      try {
+        await onSave(skill?.id ? { ...parsed, id: skill.id } : parsed);
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : "Could not save changes.");
+      }
+    },
+  });
   return (
-    <EditorDialog
-      title={skill ? "Edit skill" : "Create skill"}
-      saveLabel="Save skill"
-      description="Create a reusable custom skill in native files on this device."
-      pending={pending}
-      onClose={onClose}
-      onSave={() => {
-        const { id, ...fields } = draft;
-        const parsed = saveSkillInput.omit({ id: true }).parse(fields);
-        return onSave(id ? { ...parsed, id } : parsed);
-      }}
-    >
-      <div className="grid gap-2">
-        <Label htmlFor="skill-name">Skill name</Label>
-        <Input
-          id="skill-name"
-          required
-          maxLength={64}
-          pattern="[a-z0-9]+(-[a-z0-9]+)*"
-          aria-describedby="skill-name-hint"
-          value={draft.name}
-          onChange={(event) => setDraft({ ...draft, name: event.target.value })}
-        />
-        <p id="skill-name-hint" className="text-sm text-muted-foreground">
-          Native skill name: lowercase words separated by hyphens.
-        </p>
-      </div>
-      <div className="grid gap-2">
-        <Label htmlFor="skill-description">Description</Label>
-        <Textarea
-          id="skill-description"
-          maxLength={2000}
-          value={draft.description}
-          onChange={(event) => setDraft({ ...draft, description: event.target.value })}
-        />
-      </div>
-      <div className="grid gap-2">
-        <Label htmlFor="skill-content">Skill content</Label>
-        <Textarea
-          id="skill-content"
-          rows={10}
-          maxLength={100000}
-          value={draft.content}
-          onChange={(event) => setDraft({ ...draft, content: event.target.value })}
-        />
-      </div>
-    </EditorDialog>
+    <form.Subscribe selector={(state) => [state.isSubmitting, state.submissionAttempts] as const}>
+      {([isSubmitting, submissionAttempts]) => (
+        <EditorDialog
+          title={skill ? "Edit skill" : "Create skill"}
+          saveLabel="Save skill"
+          description="Create a reusable custom skill in native files on this device."
+          pending={pending || isSubmitting}
+          onClose={onClose}
+          onSubmit={() => form.handleSubmit()}
+          error={error}
+        >
+          <form.Field name="name">
+            {(field) => {
+              const invalid =
+                (field.state.meta.isBlurred || submissionAttempts > 0) && !field.state.meta.isValid;
+              return (
+                <Field data-invalid={invalid}>
+                  <FieldLabel htmlFor="skill-name">Skill name</FieldLabel>
+                  <Input
+                    id="skill-name"
+                    required
+                    maxLength={64}
+                    pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    aria-invalid={invalid}
+                    aria-describedby={`skill-name-hint${invalid ? " skill-name-error" : ""}`}
+                  />
+                  {invalid && <FieldError id="skill-name-error" errors={field.state.meta.errors} />}
+                  <FieldDescription id="skill-name-hint">
+                    Native skill name: lowercase words separated by hyphens.
+                  </FieldDescription>
+                </Field>
+              );
+            }}
+          </form.Field>
+          <form.Field name="description">
+            {(field) => {
+              const invalid =
+                (field.state.meta.isBlurred || submissionAttempts > 0) && !field.state.meta.isValid;
+              return (
+                <Field data-invalid={invalid}>
+                  <FieldLabel htmlFor="skill-description">Description</FieldLabel>
+                  <Textarea
+                    id="skill-description"
+                    maxLength={2000}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    aria-invalid={invalid}
+                    aria-describedby={invalid ? "skill-description-error" : undefined}
+                  />
+                  {invalid && (
+                    <FieldError id="skill-description-error" errors={field.state.meta.errors} />
+                  )}
+                </Field>
+              );
+            }}
+          </form.Field>
+          <form.Field name="content">
+            {(field) => {
+              const invalid =
+                (field.state.meta.isBlurred || submissionAttempts > 0) && !field.state.meta.isValid;
+              return (
+                <Field data-invalid={invalid}>
+                  <FieldLabel htmlFor="skill-content">Skill content</FieldLabel>
+                  <Textarea
+                    id="skill-content"
+                    rows={10}
+                    maxLength={100000}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    aria-invalid={invalid}
+                    aria-describedby={invalid ? "skill-content-error" : undefined}
+                  />
+                  {invalid && (
+                    <FieldError id="skill-content-error" errors={field.state.meta.errors} />
+                  )}
+                </Field>
+              );
+            }}
+          </form.Field>
+        </EditorDialog>
+      )}
+    </form.Subscribe>
   );
 }

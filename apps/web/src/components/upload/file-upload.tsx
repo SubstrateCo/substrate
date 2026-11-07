@@ -1,6 +1,8 @@
 import { useId, useRef, useState, type Ref } from "react";
 
 import { Button } from "../ui/button";
+import { Field, FieldDescription, FieldError } from "../ui/field";
+import { Input } from "../ui/input";
 import { validateFiles } from "./file-validation";
 import { Upload } from "lucide-react";
 
@@ -53,7 +55,7 @@ export function FileUpload({
     }
   }
   return (
-    <div className="space-y-2">
+    <Field data-invalid={Boolean(error)}>
       <div
         className={`${compact ? "flex flex-col items-start gap-2 rounded-md p-1" : "flex flex-col items-center gap-3 rounded-xl border border-dashed p-6"} ${dropzoneState}`}
         onDragOver={(event) => {
@@ -68,13 +70,14 @@ export function FileUpload({
         }}
       >
         {!compact && <Upload className="size-5 text-muted-foreground" aria-hidden="true" />}
-        <input
+        <Input
           ref={input}
           type="file"
           hidden
           tabIndex={-1}
           aria-label={label}
-          aria-describedby={id}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? `${id} ${id}-error` : id}
           accept={accept}
           multiple={multiple}
           disabled={disabled || pending}
@@ -90,24 +93,16 @@ export function FileUpload({
           variant="outline"
           disabled={disabled || pending}
           aria-busy={pending}
+          aria-describedby={error ? `${id} ${id}-error` : id}
           onClick={() => input.current?.click()}
         >
           {pending ? "Selecting…" : label}
         </Button>
-        <p
-          id={id}
-          className={
-            compact ? "text-xs text-muted-foreground" : "text-center text-sm text-muted-foreground"
-          }
-        >
+        <FieldDescription id={id} className={compact ? undefined : "text-center"}>
           {description}
-        </p>
+        </FieldDescription>
       </div>
-      {error && (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      )}
-    </div>
+      <FieldError id={`${id}-error`}>{error}</FieldError>
+    </Field>
   );
 }

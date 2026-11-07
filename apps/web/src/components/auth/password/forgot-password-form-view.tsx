@@ -1,6 +1,7 @@
 import { PendingButton } from "../../feedback/pending-button";
+import { useNativeValidation } from "../../forms/use-native-validation";
+import { Field, FieldError, FieldLabel } from "../../ui/field";
 import { Input } from "../../ui/input";
-import { Label } from "../../ui/label";
 import { AuthFrame } from "../auth-frame";
 import { FormMessage } from "../form-message";
 
@@ -17,6 +18,7 @@ export function ForgotPasswordForm({
   onSubmit: (form: FormData) => void;
   loginHref: string;
 }) {
+  const validation = useNativeValidation();
   return (
     <AuthFrame
       title="Reset your password"
@@ -24,16 +26,26 @@ export function ForgotPasswordForm({
     >
       <form
         className="space-y-4"
+        onInvalidCapture={validation.onInvalid}
+        onInputCapture={validation.onInput}
         onSubmit={(event) => {
           event.preventDefault();
           if (pending) return;
           onSubmit(new FormData(event.currentTarget));
         }}
       >
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" autoComplete="email" required />
-        </div>
+        <Field data-invalid={Boolean(validation.errors.email)}>
+          <FieldLabel htmlFor="email">Email</FieldLabel>
+          <Input
+            {...validation.inputProps("email")}
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            required
+          />
+          <FieldError id="email-error">{validation.errors.email}</FieldError>
+        </Field>
         <PendingButton className="w-full" pending={pending} pendingLabel="Sending…">
           Send reset link
         </PendingButton>

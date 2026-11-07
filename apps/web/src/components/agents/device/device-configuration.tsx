@@ -2,7 +2,7 @@ import type { HarnessKind } from "@startup-os/contracts/harness";
 
 import { harnessOptions } from "../harness-meta";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { Field, FieldLabel } from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -35,8 +35,8 @@ export function DeviceConfiguration({
         Skills are native files on this device, not database records. Scan the selected
         organization's local configuration to find them.
       </p>
-      <div className="grid max-w-sm gap-2">
-        <Label htmlFor="configuration-harness">Configuration harness</Label>
+      <Field className="max-w-sm">
+        <FieldLabel htmlFor="configuration-harness">Configuration harness</FieldLabel>
         <Select
           value={harness}
           disabled={pending || loading}
@@ -56,7 +56,7 @@ export function DeviceConfiguration({
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </Field>
       {!available ? (
         <p role="status">Local configuration requires Electron and a selected organization.</p>
       ) : (

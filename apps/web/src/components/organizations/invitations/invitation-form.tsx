@@ -1,8 +1,9 @@
 import { useId, useState } from "react";
 
 import { PendingButton } from "../../feedback/pending-button";
+import { useNativeValidation } from "../../forms/use-native-validation";
+import { Field, FieldError, FieldLabel } from "../../ui/field";
 import { Input } from "../../ui/input";
-import { Label } from "../../ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
 import type { InvitationRole } from "./invitation-manager-view";
 
@@ -17,9 +18,12 @@ export function InvitationForm({
 }) {
   const id = useId();
   const [role, setRole] = useState<InvitationRole>("member");
+  const validation = useNativeValidation();
   return (
     <form
       className="grid gap-4 lg:grid-cols-12 lg:items-end"
+      onInvalidCapture={validation.onInvalid}
+      onInputCapture={validation.onInput}
       onSubmit={(event) => {
         event.preventDefault();
         if (!disabled) {
@@ -29,9 +33,13 @@ export function InvitationForm({
         }
       }}
     >
-      <div className="grid min-w-0 gap-2 lg:col-span-6">
-        <Label htmlFor={`${id}-email`}>Email</Label>
+      <Field
+        className="min-w-0 lg:col-span-6"
+        data-invalid={Boolean(validation.errors[`${id}-email`])}
+      >
+        <FieldLabel htmlFor={`${id}-email`}>Email</FieldLabel>
         <Input
+          {...validation.inputProps(`${id}-email`)}
           id={`${id}-email`}
           name="email"
           type="email"
@@ -39,9 +47,10 @@ export function InvitationForm({
           placeholder="teammate@company.com"
           required
         />
-      </div>
-      <div className="grid min-w-0 gap-2 lg:col-span-3">
-        <Label htmlFor={`${id}-role`}>Role</Label>
+        <FieldError id={`${id}-email-error`}>{validation.errors[`${id}-email`]}</FieldError>
+      </Field>
+      <Field className="min-w-0 lg:col-span-3">
+        <FieldLabel htmlFor={`${id}-role`}>Role</FieldLabel>
         <Select
           value={role}
           onValueChange={(value) => {
@@ -57,7 +66,7 @@ export function InvitationForm({
             <SelectItem value="owner">Owner</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </Field>
       <PendingButton
         className="lg:col-span-3"
         disabled={disabled}

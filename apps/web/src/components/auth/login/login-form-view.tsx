@@ -1,6 +1,7 @@
 import { PendingButton } from "../../feedback/pending-button";
+import { useNativeValidation } from "../../forms/use-native-validation";
+import { Field, FieldError, FieldLabel } from "../../ui/field";
 import { Input } from "../../ui/input";
-import { Label } from "../../ui/label";
 import { AuthFrame } from "../auth-frame";
 import { FormMessage } from "../form-message";
 
@@ -19,19 +20,23 @@ export function LoginForm({
   forgotPasswordHref: string;
   signupHref: string;
 }) {
+  const validation = useNativeValidation();
   return (
     <AuthFrame title="Welcome back" description="Sign in to your workspace.">
       <form
         className="space-y-4"
+        onInvalidCapture={validation.onInvalid}
+        onInputCapture={validation.onInput}
         onSubmit={(event) => {
           event.preventDefault();
           if (pending) return;
           onSubmit(new FormData(event.currentTarget));
         }}
       >
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+        <Field data-invalid={Boolean(validation.errors.email)}>
+          <FieldLabel htmlFor="email">Email</FieldLabel>
           <Input
+            {...validation.inputProps("email")}
             id="email"
             name="email"
             type="email"
@@ -39,17 +44,20 @@ export function LoginForm({
             defaultValue={email}
             required
           />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <FieldError id="email-error">{validation.errors.email}</FieldError>
+        </Field>
+        <Field data-invalid={Boolean(validation.errors.password)}>
+          <FieldLabel htmlFor="password">Password</FieldLabel>
           <Input
+            {...validation.inputProps("password")}
             id="password"
             name="password"
             type="password"
             autoComplete="current-password"
             required
           />
-        </div>
+          <FieldError id="password-error">{validation.errors.password}</FieldError>
+        </Field>
         <PendingButton className="w-full" pending={pending} pendingLabel="Signing in…">
           Sign in
         </PendingButton>

@@ -1,6 +1,6 @@
 import { useId } from "react";
 
-import { Label } from "../ui/label";
+import { Field, FieldError, FieldLabel } from "../ui/field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 
 export function TaskSelect<T extends string>({
@@ -9,17 +9,21 @@ export function TaskSelect<T extends string>({
   onChange,
   options,
   disabled = false,
+  onBlur,
+  errors = [],
 }: {
   label: string;
   value: T;
   onChange: (value: T) => void;
   options: { value: NoInfer<T>; label: string }[];
   disabled?: boolean;
+  onBlur?: () => void;
+  errors?: ({ message?: string } | undefined)[];
 }) {
   const id = useId();
   return (
-    <div className="relative min-w-0 space-y-2">
-      <Label htmlFor={id}>{label}</Label>
+    <Field className="relative min-w-0" data-invalid={errors.length > 0}>
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
       <Select
         value={value}
         onValueChange={(next) => {
@@ -28,7 +32,13 @@ export function TaskSelect<T extends string>({
         }}
         disabled={disabled}
       >
-        <SelectTrigger id={id} className="w-full min-w-0">
+        <SelectTrigger
+          id={id}
+          className="w-full min-w-0"
+          onBlur={onBlur}
+          aria-invalid={errors.length > 0}
+          aria-describedby={errors.length > 0 ? `${id}-error` : undefined}
+        >
           <SelectValue className="min-w-0" />
         </SelectTrigger>
         <SelectContent
@@ -47,6 +57,7 @@ export function TaskSelect<T extends string>({
           ))}
         </SelectContent>
       </Select>
-    </div>
+      <FieldError id={`${id}-error`} errors={errors} />
+    </Field>
   );
 }

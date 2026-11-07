@@ -93,7 +93,7 @@ test("source desktop saves rotated avatars and logos, reloads them, and removes 
       const crop = page.getByRole("dialog", { name: title, exact: true });
       await expect(crop).toBeVisible();
       if (isAvatar) {
-        await crop.getByRole("slider", { name: "Zoom", exact: true }).fill("1.5");
+        await crop.getByRole("slider", { name: "Zoom", exact: true }).press("End");
       } else {
         await expect(
           crop.getByRole("button", { name: "Fit whole logo", exact: true }),

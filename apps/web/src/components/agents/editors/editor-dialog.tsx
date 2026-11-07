@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { FieldSet } from "@/components/ui/field";
 
 export function EditorDialog({
   title,
@@ -18,7 +18,8 @@ export function EditorDialog({
   children,
   pending,
   onClose,
-  onSave,
+  onSubmit,
+  error,
 }: {
   title: string;
   saveLabel: string;
@@ -26,9 +27,9 @@ export function EditorDialog({
   children: ReactNode;
   pending: boolean;
   onClose: () => void;
-  onSave: () => Promise<void>;
+  onSubmit: () => Promise<void>;
+  error?: string;
 }) {
-  const [error, setError] = useState<string>();
   return (
     <Dialog
       open
@@ -42,20 +43,17 @@ export function EditorDialog({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <form
+          noValidate
           className="grid gap-4"
           onSubmit={(event) => {
             event.preventDefault();
-            setError(undefined);
-            void Promise.resolve()
-              .then(onSave)
-              .catch((cause: unknown) =>
-                setError(cause instanceof Error ? cause.message : "Could not save changes."),
-              );
+            if (pending) return;
+            void onSubmit();
           }}
         >
-          <fieldset disabled={pending} className="grid min-w-0 gap-4">
+          <FieldSet disabled={pending} className="min-w-0">
             {children}
-          </fieldset>
+          </FieldSet>
           {error && (
             <p role="alert" className="text-sm text-destructive">
               {error}

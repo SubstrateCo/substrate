@@ -1,7 +1,10 @@
+import { useState } from "react";
+
 import { ContentNotice } from "../../feedback/content-notice";
 import { PendingButton } from "../../feedback/pending-button";
+import { useNativeValidation } from "../../forms/use-native-validation";
+import { Field, FieldDescription, FieldError, FieldLabel } from "../../ui/field";
 import { Input } from "../../ui/input";
-import { Label } from "../../ui/label";
 import { AuthFrame } from "../auth-frame";
 import { FormMessage } from "../form-message";
 
@@ -22,6 +25,9 @@ export function ResetPasswordForm({
   loginHref: string;
   requestResetHref: string;
 }) {
+  const validation = useNativeValidation();
+  const [mismatch, setMismatch] = useState("");
+  const confirmError = validation.errors.confirm || mismatch;
   return (
     <AuthFrame title="Choose a new password" description="Use at least 8 characters.">
       {invalid && (
@@ -41,15 +47,32 @@ export function ResetPasswordForm({
       {!invalid && !success && (
         <form
           className="space-y-4"
+          onInvalidCapture={validation.onInvalid}
+          onInputCapture={(event) => {
+            validation.onInput(event);
+            setMismatch("");
+          }}
           onSubmit={(event) => {
             event.preventDefault();
             if (pending) return;
-            onSubmit(new FormData(event.currentTarget));
+            const form = new FormData(event.currentTarget);
+            if (form.get("password") !== form.get("confirm")) {
+              setMismatch("The passwords do not match.");
+              event.currentTarget.querySelector<HTMLInputElement>("#confirm")?.focus();
+              return;
+            }
+            onSubmit(form);
           }}
         >
-          <div className="space-y-2">
-            <Label htmlFor="password">New password</Label>
+          <Field data-invalid={Boolean(validation.errors.password)}>
+            <FieldLabel htmlFor="password">New password</FieldLabel>
             <Input
+              {...validation.inputProps("password")}
+              aria-describedby={
+                validation.errors.password
+                  ? "password-description password-error"
+                  : "password-description"
+              }
               id="password"
               name="password"
               type="password"
@@ -57,10 +80,16 @@ export function ResetPasswordForm({
               minLength={8}
               required
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="confirm">Confirm password</Label>
+            <FieldDescription id="password-description">
+              Use at least 8 characters.
+            </FieldDescription>
+            <FieldError id="password-error">{validation.errors.password}</FieldError>
+          </Field>
+          <Field data-invalid={Boolean(confirmError)}>
+            <FieldLabel htmlFor="confirm">Confirm password</FieldLabel>
             <Input
+              aria-invalid={Boolean(confirmError)}
+              aria-describedby={confirmError ? "confirm-error" : undefined}
               id="confirm"
               name="confirm"
               type="password"
@@ -68,7 +97,8 @@ export function ResetPasswordForm({
               minLength={8}
               required
             />
-          </div>
+            <FieldError id="confirm-error">{confirmError}</FieldError>
+          </Field>
           <PendingButton className="w-full" pending={pending} pendingLabel="Saving…">
             Save new password
           </PendingButton>
