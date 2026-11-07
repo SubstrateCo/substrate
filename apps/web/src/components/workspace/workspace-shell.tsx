@@ -40,14 +40,11 @@ export function WorkspaceShell({
   children: ReactNode;
 }) {
   return (
-    <main
-      data-workspace-shell
-      className="flex h-(--app-height) min-h-0 overflow-hidden bg-background"
-    >
+    <main data-workspace-shell className="flex h-(--app-height) min-h-0 overflow-hidden bg-rail">
       <TooltipProvider delayDuration={350}>
         <nav
           aria-label="Apps"
-          className="z-20 flex w-14 shrink-0 flex-col items-center gap-3 border-r border-rail-foreground/10 bg-rail py-3 text-rail-foreground"
+          className="z-20 flex w-14 shrink-0 flex-col items-center gap-3 bg-rail py-3 text-rail-foreground"
         >
           {switcher}
           <WorkspaceAppButton
@@ -81,7 +78,7 @@ export function WorkspaceShell({
             />
           </div>
         </nav>
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-tl-2xl bg-surface">
           {loading && (
             <div className="border-b p-3">
               <LoadingState label="Loading workspace details…" variant="compact" rows={1} />

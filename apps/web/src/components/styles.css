@@ -95,8 +95,8 @@
   --sidebar-ring: var(--ring);
   --surface: oklch(0.994 0.002 275);
   --success: oklch(0.43 0.1 165);
-  --rail: oklch(0.215 0.023 275);
-  --rail-foreground: oklch(0.94 0.014 280);
+  --rail: oklch(0.94 0.012 275);
+  --rail-foreground: oklch(0.38 0.025 275);
   --surface-highlight: oklch(1 0 0 / 25%);
   --elevation-surface: 0 1px 2px oklch(0.2 0.03 275 / 5%);
   --elevation-raised: 0 1px 3px oklch(0.2 0.03 275 / 6%), 0 4px 12px -4px oklch(0.2 0.03 275 / 8%);
@@ -140,6 +140,7 @@
   --surface: oklch(0.215 0.014 275);
   --success: oklch(0.76 0.12 165);
   --rail: oklch(0.155 0.017 275);
+  --rail-foreground: oklch(0.94 0.014 280);
   --surface-highlight: oklch(1 0 0 / 2%);
   --elevation-surface: 0 1px 2px oklch(0 0 0 / 12%);
   --elevation-raised: 0 2px 6px oklch(0 0 0 / 16%), 0 8px 20px -8px oklch(0 0 0 / 25%);

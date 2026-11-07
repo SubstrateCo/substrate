@@ -67,7 +67,7 @@ export function WorkspaceTools({
       }}
       className={
         desktop
-          ? "relative z-10 min-w-0 text-sm font-normal text-foreground [&_[data-slot=command-input-wrapper]]:h-7 [&_[data-slot=command-input-wrapper]]:rounded-md [&_[data-slot=command-input-wrapper]]:border-border/60 [&_[data-slot=command-input-wrapper]]:bg-muted/40 [&_[data-slot=command-input-wrapper]]:px-2 [&_[data-slot=command-input-wrapper]]:shadow-none [&_[data-slot=command-input]]:text-xs"
+          ? "relative z-10 min-w-0 text-sm font-normal text-foreground [&_[data-slot=command-input-wrapper]]:h-7 [&_[data-slot=command-input-wrapper]]:rounded-md [&_[data-slot=command-input-wrapper]]:border-rail-foreground/12 [&_[data-slot=command-input-wrapper]]:bg-surface/65 [&_[data-slot=command-input-wrapper]]:px-2 [&_[data-slot=command-input-wrapper]]:shadow-none dark:[&_[data-slot=command-input-wrapper]]:bg-popover [&_[data-slot=command-input]]:text-xs [&_[data-slot=command]]:bg-transparent"
           : "relative z-10 shrink-0 border-b bg-sidebar px-4 py-2 text-sm font-normal text-foreground"
       }
     >
