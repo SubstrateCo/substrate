@@ -92,13 +92,7 @@ describe("desktop harness authority", () => {
     expect(await f.controller.run("status")).toEqual({
       connected: true,
       organizationId: "org-1",
-      harnesses: [
-        {
-          harness: "codex",
-          available: true,
-          capabilities: { resume: true, permissions: true, nativeAgents: false },
-        },
-      ],
+      harnesses: [{ harness: "codex", available: true }],
     });
   });
   test("rejects renderer-selected organizations before fetching a catalog", async () => {

@@ -1,0 +1,45 @@
+import type { HarnessKind } from "@startup-os/contracts/harness";
+
+/** Native file locations inside an agent folder, relative to that folder. */
+export interface HarnessLayout {
+  /** Project instructions file the harness loads from its working directory. */
+  instructions: string;
+  /** Folder that holds `<id>/SKILL.md` skills. */
+  skills: string;
+  /** MCP configuration candidates in precedence order. The first one is created when none exist. */
+  mcpFiles: string[];
+  /** Key path to the MCP server map inside the configuration file. */
+  mcpKeys: string[];
+}
+
+export const harnessLayouts: Record<HarnessKind, HarnessLayout> = {
+  opencode: {
+    instructions: "AGENTS.md",
+    skills: ".opencode/skills",
+    mcpFiles: [
+      "opencode.json",
+      "opencode.jsonc",
+      ".opencode/opencode.json",
+      ".opencode/opencode.jsonc",
+    ],
+    mcpKeys: ["mcp", "servers"],
+  },
+  claude: {
+    instructions: "CLAUDE.md",
+    skills: ".claude/skills",
+    mcpFiles: [".mcp.json"],
+    mcpKeys: ["mcpServers"],
+  },
+  antigravity: {
+    instructions: "AGENTS.md",
+    skills: ".agents/skills",
+    mcpFiles: [".agents/mcp_config.json"],
+    mcpKeys: ["mcpServers"],
+  },
+  codex: {
+    instructions: "AGENTS.md",
+    skills: ".agents/skills",
+    mcpFiles: [".codex/config.toml"],
+    mcpKeys: ["mcp_servers"],
+  },
+};

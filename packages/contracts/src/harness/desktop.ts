@@ -30,6 +30,7 @@ export interface HarnessAPI {
     content: string;
   }): Promise<void>;
   deleteSkill(input: { harness: HarnessKind; agentId: string; id: string }): Promise<void>;
+  resetDefaults(input: { harness: HarnessKind; agentId: string }): Promise<void>;
   saveMcpServer(input: {
     harness: HarnessKind;
     agentId: string;

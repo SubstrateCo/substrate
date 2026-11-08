@@ -55,7 +55,6 @@ export function fixture(beforeScan?: () => Promise<void>, nativeMcpServers: unkn
                   harness: "codex",
                   executable: "secret-path",
                   available: true,
-                  capabilities: { resume: true, permissions: true, nativeAgents: false },
                 },
               ]
             : undefined;

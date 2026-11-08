@@ -17,5 +17,10 @@ export function desktopLocalConfiguration(
     },
     saveSkill: (skill) => bridge.saveSkill({ ...skill, harness, agentId }),
     deleteSkill: (id) => bridge.deleteSkill({ id, harness, agentId }),
+    async resetDefaults() {
+      // Reset writes from the latest saved agent, so sync it to the host first.
+      await bridge.synchronize();
+      await bridge.resetDefaults({ harness, agentId });
+    },
   };
 }

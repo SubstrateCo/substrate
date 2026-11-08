@@ -1,6 +1,6 @@
 import type { HarnessConfiguration, HarnessKind } from "@startup-os/contracts/harness";
 
-import { materialize, nativeName, startupSkill } from "./config.ts";
+import { startupSkill, startupSkillId } from "./config.ts";
 import { createHarnessHost } from "./host.ts";
 import {
   editNativeServer,
@@ -8,7 +8,7 @@ import {
   scanNativeServers,
   scanNativeSkills,
 } from "./native-config.ts";
-import { agentDirectory, organizationDirectory, safePath } from "./paths.ts";
+import { organizationDirectory, safePath } from "./paths.ts";
 import { createMemoryStorage } from "./test-support.ts";
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import * as fs from "node:fs/promises";
@@ -61,50 +61,6 @@ describe("native skill files", () => {
     await saveNativeSkill(directory, "claude", { ...skill, content: "Updated body" });
     expect(await readFile(path, "utf8")).toContain("allowed-tools: Read");
     expect((await scanNativeSkills(directory, "claude"))[0].content).toBe("Updated body");
-  });
-
-  test("defaults do not replace a colliding native skill", async () => {
-    const directory = await agentDirectory(root, "org-a", "agent-a");
-    await saveNativeSkill(directory, "antigravity", { ...startupSkill, content: "User-owned" });
-    await expect(materialize(root, config())).rejects.toMatchObject({
-      code: "configuration-conflict",
-    });
-    expect((await scanNativeSkills(directory, "antigravity"))[0].content).toBe("User-owned");
-  });
-
-  test("sync removes only owned inactive agent profiles, not native history", async () => {
-    const configuration = config();
-    await materialize(root, configuration);
-    const directory = await agentDirectory(root, "org-a", "agent-a");
-    await materialize(root, configuration);
-    await writeFile(
-      await safePath(directory, ".agents/agents/user.md", false, true),
-      "user profile",
-    );
-    await writeFile(
-      await safePath(directory, ".native-sessions/conversation.jsonl", false, true),
-      "native history",
-    );
-    await materialize(root, { ...configuration, agents: [] });
-    expect(await readdir(join(directory, ".agents", "agents"))).toEqual(["user.md"]);
-    expect(await readFile(join(directory, ".native-sessions", "conversation.jsonl"), "utf8")).toBe(
-      "native history",
-    );
-    expect(
-      await Bun.file(join(directory, ".startup-os", "harness", "agent-a", "agent.json")).exists(),
-    ).toBe(false);
-  });
-
-  test("modified owned profiles are never overwritten or deleted", async () => {
-    const configuration = config();
-    await materialize(root, configuration);
-    const directory = await agentDirectory(root, "org-a", "agent-a");
-    const path = join(directory, ".agents", "agents", `${nativeName("agent-a")}.md`);
-    await writeFile(path, "User changed this profile");
-    await expect(materialize(root, { ...configuration, agents: [] })).rejects.toMatchObject({
-      code: "configuration-conflict",
-    });
-    expect(await readFile(path, "utf8")).toBe("User changed this profile");
   });
 });
 
@@ -338,15 +294,31 @@ test("recreates the host and synchronizes edited actors without replacing local 
     expect(local.mcpServers.find((server) => server.id === "local-tools")?.args).toEqual([
       "--read-only",
     ]);
-    expect(local.skills.find((skill) => skill.id === startupSkill.id)?.content).toBe(
-      startupSkill.content,
+    expect(local.skills.find((skill) => skill.id === startupSkillId)?.content).toBe(
+      startupSkill("opencode").content,
     );
-    expect(
-      await readFile(
-        join(root, "orgs", configuration.organizationId, "claude-agent", "AGENTS.md"),
-        "utf8",
-      ),
-    ).toContain("Edited Claude instructions");
+    const claudePrompt = join(
+      root,
+      "orgs",
+      configuration.organizationId,
+      "claude-agent",
+      "CLAUDE.md",
+    );
+    // Sync seeds files once; later instruction edits apply only on reset.
+    expect(await readFile(claudePrompt, "utf8")).toContain("Initial Claude instructions");
+    await second.resetDefaults({
+      organizationId: configuration.organizationId,
+      agentId: "claude-agent",
+      harness: "claude",
+    });
+    expect(await readFile(claudePrompt, "utf8")).toContain("Edited Claude instructions");
+    await expect(
+      second.resetDefaults({
+        organizationId: configuration.organizationId,
+        agentId: "claude-agent",
+        harness: "codex",
+      }),
+    ).rejects.toMatchObject({ code: "agent-not-found" });
   } finally {
     await second.dispose();
   }

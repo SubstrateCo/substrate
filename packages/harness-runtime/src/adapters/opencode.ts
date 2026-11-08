@@ -1,4 +1,3 @@
-import { nativeName } from "../config.ts";
 import { HarnessError } from "../errors.ts";
 import { startOpenCode } from "./opencode-client.ts";
 import type { AdapterContext, NativeAdapter } from "./types.ts";
@@ -17,15 +16,7 @@ export async function connectOpenCode(
   context: AdapterContext,
   resumeId?: string,
 ): Promise<NativeAdapter> {
-  const agent = nativeName(context.agent.id);
   const config = {
-    agents: {
-      [agent]: {
-        description: context.agent.name,
-        mode: "primary",
-        system: context.agent.instructions,
-      },
-    },
     mcp: context.lease
       ? {
           servers: {
@@ -57,7 +48,6 @@ export async function connectOpenCode(
       ? await client.session.get({ sessionID: resumeId })
       : await client.session.create({
           location: { directory: context.directory },
-          agent,
           model: openCodeModel(context.agent.model),
         });
     if (session.location.directory !== context.directory)

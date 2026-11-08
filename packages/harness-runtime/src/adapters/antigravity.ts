@@ -1,4 +1,3 @@
-import { nativeName } from "../config.ts";
 import { HarnessError, unsupported } from "../errors.ts";
 import { antigravityAcpAvailable, launch, stopProcess } from "../process.ts";
 import { PendingRequests } from "./requests.ts";
@@ -22,12 +21,7 @@ export async function connectAntigravity(
     unsupported(
       "Installed Antigravity CLI lacks agy acp --process-per-session. Update agy to an ACP-capable release; no print-mode fallback is used.",
     );
-  const name = nativeName(context.agent.id);
-  const child = launch(
-    context.executable,
-    ["acp", "--process-per-session", "--agent", name],
-    context.directory,
-  );
+  const child = launch(context.executable, ["acp", "--process-per-session"], context.directory);
   const requests = new PendingRequests();
   let nativeSessionId = resumeId ?? "";
   const app = client()

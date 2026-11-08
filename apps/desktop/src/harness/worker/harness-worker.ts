@@ -21,6 +21,7 @@ type Request = { id: number } & (
   | { method: "dispose" }
   | { method: "execute"; value: HarnessCommand }
   | { method: "scanConfiguration"; value: HarnessLocalScope }
+  | { method: "resetDefaults"; value: HarnessLocalScope }
   | { method: "listModels"; value: Omit<HarnessLocalScope, "agentId"> & { agentId?: string } }
   | { method: "saveSkill"; value: HarnessLocalScope & { skill: HarnessSkill } }
   | { method: "saveMcpServer"; value: HarnessLocalScope & { server: HarnessMcpServer } }
@@ -77,6 +78,7 @@ port.on("message", ({ data }: { data: Request | WorkspaceApiResponse }) => {
         result = await host.scanConfiguration(data.value);
       else if (data.method === "saveSkill") result = await host.saveSkill(data.value);
       else if (data.method === "deleteSkill") result = await host.deleteSkill(data.value);
+      else if (data.method === "resetDefaults") result = await host.resetDefaults(data.value);
       else if (data.method === "saveMcpServer") result = await host.saveMcpServer(data.value);
       else result = await host.deleteMcpServer(data.value);
       port.postMessage({ id: data.id, result });

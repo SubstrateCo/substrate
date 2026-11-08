@@ -1,6 +1,7 @@
 import type { HarnessKind, HarnessMcpServer, HarnessSkill } from "@startup-os/contracts/harness";
 
 import { HarnessError } from "./errors.ts";
+import { harnessLayouts } from "./harness-layout.ts";
 import { readOptional, safeId, safePath } from "./paths.ts";
 import { applyEdits, modify, parse, type ParseError } from "jsonc-parser";
 import { readdir, unlink, writeFile } from "node:fs/promises";
@@ -15,25 +16,6 @@ function nativeObject(value: unknown, label: string): Record<string, unknown> {
   // SAFETY: the value is a non-null object and not an array; all properties remain unknown until checked below.
   return value as Record<string, unknown>;
 }
-
-const skillRoots: Record<HarnessKind, string> = {
-  opencode: ".opencode/skills",
-  claude: ".claude/skills",
-  antigravity: ".agents/skills",
-  codex: ".agents/skills",
-};
-const mcpFiles: Record<HarnessKind, string> = {
-  opencode: "opencode.json",
-  claude: ".mcp.json",
-  antigravity: ".agents/mcp_config.json",
-  codex: ".codex/config.toml",
-};
-const mcpKeys: Record<HarnessKind, string[]> = {
-  opencode: ["mcp", "servers"],
-  claude: ["mcpServers"],
-  antigravity: ["mcpServers"],
-  codex: ["mcp_servers"],
-};
 
 // Environment keys and native arguments use the same credential-name screen.
 const credentialName = /token|secret|password|credential|api.?key|authorization/i;
@@ -73,7 +55,7 @@ export async function scanNativeSkills(
   directory: string,
   harness: HarnessKind,
 ): Promise<HarnessSkill[]> {
-  const root = await safePath(directory, skillRoots[harness]);
+  const root = await safePath(directory, harnessLayouts[harness].skills);
   const skills: HarnessSkill[] = [];
   for (const entry of await readdir(root, { withFileTypes: true }).catch(
     (error: NodeJS.ErrnoException) => {
@@ -82,7 +64,10 @@ export async function scanNativeSkills(
     },
   )) {
     if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
-    const path = await safePath(directory, `${skillRoots[harness]}/${safeId(entry.name)}/SKILL.md`);
+    const path = await safePath(
+      directory,
+      `${harnessLayouts[harness].skills}/${safeId(entry.name)}/SKILL.md`,
+    );
     const text = await readOptional(path);
     if (!text) continue;
     const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/.exec(text);
@@ -109,7 +94,6 @@ export async function saveNativeSkill(
   directory: string,
   harness: HarnessKind,
   skill: HarnessSkill,
-  onlyIfAbsent = false,
 ): Promise<void> {
   safeId(skill.id);
   if (
@@ -123,30 +107,11 @@ export async function saveNativeSkill(
     );
   const path = await safePath(
     directory,
-    `${skillRoots[harness]}/${safeId(skill.id)}/SKILL.md`,
+    `${harnessLayouts[harness].skills}/${safeId(skill.id)}/SKILL.md`,
     false,
     true,
   );
   const existing = await readOptional(path);
-  if (onlyIfAbsent && existing !== undefined) {
-    const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/.exec(existing);
-    if (!match)
-      throw new HarnessError(
-        "configuration-conflict",
-        "A native skill already uses the Startup OS default name.",
-      );
-    const metadata = parseDocument(match[1]);
-    const matchesDefaultSkill =
-      metadata.get("name") === skill.name &&
-      metadata.get("description") === skill.description &&
-      match[2].replace(/^\r?\n/, "") === skill.content;
-    if (metadata.errors.length || !matchesDefaultSkill)
-      throw new HarnessError(
-        "configuration-conflict",
-        "A native skill already uses the Startup OS default name.",
-      );
-    return;
-  }
   // Preserve all unrelated frontmatter fields when editing a native skill.
   const match = existing && /^---\r?\n([\s\S]*?)\r?\n---\r?\n/.exec(existing);
   const frontmatter = parseDocument(match ? match[1] : "{}");
@@ -167,15 +132,14 @@ export async function deleteNativeSkill(
   harness: HarnessKind,
   id: string,
 ): Promise<void> {
-  await unlink(await safePath(directory, `${skillRoots[harness]}/${safeId(id)}/SKILL.md`));
+  await unlink(
+    await safePath(directory, `${harnessLayouts[harness].skills}/${safeId(id)}/SKILL.md`),
+  );
 }
 
 /** Reads each candidate once, in precedence order. A missing configuration yields the default file. */
 async function loadMcpDocuments(directory: string, harness: HarnessKind) {
-  const candidates =
-    harness === "opencode"
-      ? ["opencode.json", "opencode.jsonc", ".opencode/opencode.json", ".opencode/opencode.jsonc"]
-      : [mcpFiles[harness]];
+  const candidates = harnessLayouts[harness].mcpFiles;
   const documents: ReturnType<typeof mcpDocument>[] = [];
   for (const name of candidates) {
     const path = await safePath(directory, name);
@@ -183,7 +147,7 @@ async function loadMcpDocuments(directory: string, harness: HarnessKind) {
     if (text !== undefined) documents.push(mcpDocument(harness, name, path, text));
   }
   if (documents.length) return documents;
-  const name = mcpFiles[harness];
+  const name = candidates[0];
   return [
     mcpDocument(harness, name, await safePath(directory, name), harness === "codex" ? "" : "{}\n"),
   ];
@@ -202,7 +166,7 @@ function mcpDocument(harness: HarnessKind, name: string, path: string, text: str
     throw new HarnessError("invalid-config", `Invalid native configuration: ${name}`);
   const document = nativeObject(parsed, `Invalid native configuration: ${name}`);
   let servers: Record<string, unknown> = document;
-  for (const key of mcpKeys[harness]) {
+  for (const key of harnessLayouts[harness].mcpKeys) {
     servers = nativeObject(servers[key] ?? {}, `Invalid MCP configuration in ${name}`);
   }
   return { name, path, text, document, servers };
@@ -320,7 +284,7 @@ export async function editNativeServer(
       path,
       applyEdits(
         text,
-        modify(text, [...mcpKeys[harness], id], server ? replacement : undefined, {
+        modify(text, [...harnessLayouts[harness].mcpKeys, id], server ? replacement : undefined, {
           formattingOptions: { insertSpaces: true, tabSize: 2 },
         }),
       ),

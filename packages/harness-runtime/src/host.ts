@@ -11,7 +11,7 @@ import {
 import type { WorkspaceApiProxy } from "@startup-os/contracts/harness/mcp";
 
 import type { AdapterContext, NativeAdapter } from "./adapters/types.ts";
-import { materialize } from "./config.ts";
+import { materialize, writeDefaultFiles } from "./config.ts";
 import { HarnessError } from "./errors.ts";
 import { createStartupMcp } from "./mcp.ts";
 import { discoverModels } from "./models/discover.ts";
@@ -202,6 +202,15 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ha
     async deleteSkill(input) {
       await deleteNativeSkill(await directory(input), input.harness, input.id);
     },
+    async resetDefaults(scope) {
+      const root = await directory(scope);
+      const agent = (await store.configuration(scope.organizationId))?.agents.find(
+        (entry) => entry.id === scope.agentId && entry.harness === scope.harness,
+      );
+      if (!agent)
+        throw new HarnessError("agent-not-found", "Agent is not configured for this harness.");
+      await writeDefaultFiles(root, scope.organizationId, agent, true);
+    },
     async saveMcpServer(input) {
       await editNativeServer(await directory(input), input.harness, input.server.id, input.server);
     },
@@ -212,26 +221,15 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ha
       assertOpen();
       return Promise.all(
         harnessKinds.map(async (harness) => {
-          const capabilities = {
-            resume: true,
-            permissions: true,
-            nativeAgents:
-              harness === "opencode" || harness === "antigravity" || harness === "claude",
-          };
           try {
             const executable = await resolveExecutable(harness, options.executables?.[harness]);
             const version = await binaryVersion(executable);
             // Installed agy without ACP --process-per-session is unavailable until updated.
-            if (harness === "antigravity" && !(await antigravityAcpAvailable(executable)))
-              return {
-                harness,
-                available: false,
-                version,
-                capabilities: { resume: false, permissions: false, nativeAgents: false },
-              };
-            return { harness, available: true, version, capabilities };
+            const available =
+              harness !== "antigravity" || (await antigravityAcpAvailable(executable));
+            return { harness, available, version };
           } catch {
-            return { harness, available: false, capabilities };
+            return { harness, available: false };
           }
         }),
       );

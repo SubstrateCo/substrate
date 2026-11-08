@@ -73,11 +73,6 @@ export const harnessInspectionSchema = z.object({
   harness: z.enum(harnessKinds),
   available: z.boolean(),
   version: z.string().optional(),
-  capabilities: z.object({
-    resume: z.boolean(),
-    permissions: z.boolean(),
-    nativeAgents: z.boolean(),
-  }),
 });
 export type HarnessSkill = z.infer<typeof harnessSkillSchema>;
 export type HarnessMcpServer = z.infer<typeof scannedMcpServerSchema>;

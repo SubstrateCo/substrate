@@ -53,6 +53,7 @@ if (process.isMainFrame && window.location.origin === origin) {
     scanConfiguration: (input) => ipcRenderer.invoke(harnessChannel, "scanConfiguration", input),
     saveSkill: (input) => ipcRenderer.invoke(harnessChannel, "saveSkill", input),
     deleteSkill: (input) => ipcRenderer.invoke(harnessChannel, "deleteSkill", input),
+    resetDefaults: (input) => ipcRenderer.invoke(harnessChannel, "resetDefaults", input),
     saveMcpServer: (input) => ipcRenderer.invoke(harnessChannel, "saveMcpServer", input),
     deleteMcpServer: (input) => ipcRenderer.invoke(harnessChannel, "deleteMcpServer", input),
     onEvent: (callback: (event: HarnessEvent) => void) => {

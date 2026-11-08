@@ -8,4 +8,5 @@ export interface LocalConfigurationController {
   scan(): Promise<LocalAgentConfiguration>;
   saveSkill(input: SaveSkillInput): Promise<void>;
   deleteSkill(id: string): Promise<void>;
+  resetDefaults(): Promise<void>;
 }

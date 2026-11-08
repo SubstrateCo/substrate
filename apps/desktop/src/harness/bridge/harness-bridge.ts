@@ -15,6 +15,7 @@ export const localHarnessMethods = [
   "scanConfiguration",
   "saveSkill",
   "deleteSkill",
+  "resetDefaults",
   "saveMcpServer",
   "deleteMcpServer",
 ] as const;
@@ -28,6 +29,7 @@ export const rendererLocalSchemas = {
   scanConfiguration: z.strictObject({ harness, agentId: id }),
   saveSkill: harnessSkillSchema.extend({ harness, agentId: id, id: id.optional() }),
   deleteSkill: z.strictObject({ harness, agentId: id, id }),
+  resetDefaults: z.strictObject({ harness, agentId: id }),
   saveMcpServer: z.union(
     harnessMcpServerSchema.options.map((schema) =>
       schema.extend({ harness, agentId: id, id: id.optional() }),

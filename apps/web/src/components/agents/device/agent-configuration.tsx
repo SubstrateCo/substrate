@@ -8,11 +8,12 @@ import { CatalogRow } from "../catalog/catalog-row";
 import { DeleteDefinitionDialog } from "../catalog/delete-definition-dialog";
 import type { AgentSection } from "../editors/agent-editor";
 import { SkillEditor } from "../editors/skill-editor";
+import { ResetDefaultsDialog } from "./reset-defaults-dialog";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { Button } from "@/components/ui/button";
 import { desktopLocalConfiguration } from "@/lib/desktop/agents/local-configuration";
 import { queryKeys } from "@/queries/keys";
-import { Blocks, RefreshCw, Sparkles } from "lucide-react";
+import { Blocks, RefreshCw, RotateCcw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 export function AgentConfiguration({
@@ -59,6 +60,17 @@ export function AgentConfiguration({
       await client.invalidateQueries({ queryKey: key });
     },
   });
+  const [resetting, setResetting] = useState(false);
+  const reset = useMutation({
+    mutationFn: async () => {
+      if (!controller || !organizationId) throw new Error("Select a workspace in the desktop app.");
+      await controller.resetDefaults();
+    },
+    onSuccess: async () => {
+      toast.success("Startup OS defaults reset.");
+      await client.invalidateQueries({ queryKey: key });
+    },
+  });
   const skills =
     configuration.data?.skills.filter((skill) => skill.id !== "startup-os-default") ?? [];
   const nativeDefault =
@@ -81,14 +93,25 @@ export function AgentConfiguration({
             <RefreshCw className={configuration.isFetching ? "animate-spin" : ""} />
           </Button>
           {section === "skills" && (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!available || configuration.isFetching}
-              onClick={() => setEditing({})}
-            >
-              Create skill
-            </Button>
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!available || reset.isPending}
+                onClick={() => setResetting(true)}
+              >
+                <RotateCcw />
+                Reset defaults
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!available || configuration.isFetching}
+                onClick={() => setEditing({})}
+              >
+                Create skill
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -179,6 +202,13 @@ export function AgentConfiguration({
             await client.invalidateQueries({ queryKey: key });
             setEditing(undefined);
           }}
+        />
+      )}
+      {resetting && (
+        <ResetDefaultsDialog
+          pending={reset.isPending}
+          onClose={() => setResetting(false)}
+          onReset={() => reset.mutateAsync()}
         />
       )}
       {deleting && (

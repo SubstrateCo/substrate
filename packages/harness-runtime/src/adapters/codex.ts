@@ -10,7 +10,6 @@ interface ThreadOptions {
   excludeTurns?: boolean;
   model?: string;
   cwd: string;
-  developerInstructions: string;
   approvalPolicy: "on-request";
   sandbox: "workspace-write";
 }
@@ -104,7 +103,6 @@ export async function connectCodex(
     rpc.send({ method: "initialized", params: {} });
     const params: ThreadOptions = {
       cwd: context.directory,
-      developerInstructions: context.agent.instructions,
       approvalPolicy: "on-request",
       sandbox: "workspace-write",
     };

@@ -1,40 +1,36 @@
-import type { HarnessConfiguration } from "@startup-os/contracts/harness";
+import type {
+  HarnessAgent,
+  HarnessConfiguration,
+  HarnessKind,
+} from "@startup-os/contracts/harness";
 
-import { materialize, nativeName } from "./config.ts";
-import { safePath } from "./paths.ts";
+import { materialize, startupSkill, writeDefaultFiles } from "./config.ts";
+import { harnessLayouts } from "./harness-layout.ts";
+import { scanNativeSkills, saveNativeSkill } from "./native-config.ts";
+import { agentDirectory } from "./paths.ts";
 import { afterEach, beforeEach, expect, test } from "bun:test";
-import {
-  mkdir,
-  mkdtemp,
-  readFile,
-  rm,
-  stat,
-  symlink,
-  unlink,
-  utimes,
-  writeFile,
-} from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 /* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous despite their assertion return declarations. */
 
 let root: string;
-const configuration = (): HarnessConfiguration => ({
-  organizationId: "org-a",
-  agents: [
-    {
-      id: "agent-a",
-      name: "Reviewer",
-      harness: "antigravity",
-      instructions: "Review only.",
-      enabled: true,
-      useStartupDefaults: true,
-    },
-  ],
+const agent = (harness: HarnessKind, overrides: Partial<HarnessAgent> = {}): HarnessAgent => ({
+  id: "agent-a",
+  name: "Reviewer",
+  harness,
+  instructions: "Review only.",
+  enabled: true,
+  useStartupDefaults: true,
+  ...overrides,
 });
-const manifestPath = ".startup-os/harness/owned-files.json";
-const profilePath = `agent-a/.agents/agents/${nativeName("agent-a")}.md`;
+const configuration = (...agents: HarnessAgent[]): HarnessConfiguration => ({
+  organizationId: "org-a",
+  agents,
+});
+const read = (directory: string, path: string) => readFile(join(directory, path), "utf8");
+const exists = (directory: string, path: string) => Bun.file(join(directory, path)).exists();
 
 beforeEach(async () => {
   await mkdir(join(tmpdir(), "opencode"), { recursive: true });
@@ -44,141 +40,71 @@ afterEach(async () => {
   await rm(root, { recursive: true, force: true });
 });
 
-async function snapshot(directory: string, paths: string[]) {
-  return Promise.all(
-    paths.map(async (path) => {
-      const target = join(directory, path);
-      // A fixed old timestamp detects rewrites without sleeps or filesystem clock assumptions.
-      await utimes(target, new Date("2001-01-01T00:00:00Z"), new Date("2001-01-01T00:00:00Z"));
-      return { path, content: await readFile(target, "utf8"), mtime: (await stat(target)).mtimeMs };
-    }),
-  );
+for (const harness of ["opencode", "claude", "antigravity", "codex"] satisfies HarnessKind[]) {
+  test(`${harness} gets its own instructions file and a scannable default skill`, async () => {
+    await materialize(root, configuration(agent(harness)));
+    const directory = await agentDirectory(root, "org-a", "agent-a");
+    const { instructions } = harnessLayouts[harness];
+    const prompt = await read(directory, instructions);
+    expect(prompt).toContain("Organization ID: org-a");
+    expect(prompt).toContain("Review only.");
+    for (const other of ["AGENTS.md", "CLAUDE.md"].filter((name) => name !== instructions))
+      expect(await exists(directory, other)).toBe(false);
+    expect(await scanNativeSkills(directory, harness)).toEqual([startupSkill(harness)]);
+    expect(startupSkill(harness).content).toStartWith(`Read ${instructions} `);
+  });
 }
 
-test("unchanged sync preserves managed contents and mtimes", async () => {
-  const config = configuration();
-  const directory = await materialize(root, config);
-  const before = await snapshot(directory, [
-    "agent-a/AGENTS.md",
-    profilePath,
-    manifestPath,
-    "agent-a/.agents/skills/startup-os-default/SKILL.md",
-  ]);
+test("sync never replaces existing files and restores missing ones", async () => {
+  const config = configuration(agent("antigravity"));
   await materialize(root, config);
-  const rewritten: string[] = [];
-  for (const file of before) {
-    expect(await readFile(join(directory, file.path), "utf8")).toBe(file.content);
-    if ((await stat(join(directory, file.path))).mtimeMs !== file.mtime) rewritten.push(file.path);
-  }
-  expect(rewritten).toEqual([]);
-  expect(Object.keys(JSON.parse(await readFile(join(directory, manifestPath), "utf8")))).toEqual([
-    "agent-a/AGENTS.md",
-    profilePath,
-  ]);
-});
-
-test("instruction changes update real native instructions and profiles, not unchanged default skills", async () => {
-  const config = configuration();
-  const directory = await materialize(root, config);
-  const before = await snapshot(directory, [
-    "agent-a/AGENTS.md",
-    profilePath,
-    manifestPath,
-    "agent-a/.agents/skills/startup-os-default/SKILL.md",
-  ]);
+  const directory = await agentDirectory(root, "org-a", "agent-a");
+  await writeFile(join(directory, "AGENTS.md"), "User prompt");
+  await unlink(join(directory, `.agents/skills/${startupSkill("antigravity").id}/SKILL.md`));
   config.agents[0].instructions = "Check linked source records.";
-  config.agents[0].name = "Source reviewer";
   await materialize(root, config);
-  for (const file of before.slice(0, 3)) {
-    expect(await readFile(join(directory, file.path), "utf8")).toContain(
-      "Check linked source records.",
-    );
-    expect((await stat(join(directory, file.path))).mtimeMs).not.toBe(file.mtime);
-  }
-  expect(await readFile(join(directory, profilePath), "utf8")).toContain(
-    'description: "Source reviewer"',
-  );
-  expect(await readFile(join(directory, "agent-a/AGENTS.md"), "utf8")).toContain(
-    'Agent: "Source reviewer"',
-  );
-  const skill = before[3];
-  expect(await readFile(join(directory, skill.path), "utf8")).toBe(skill.content);
-  expect((await stat(join(directory, skill.path))).mtimeMs).toBe(skill.mtime);
+  expect(await read(directory, "AGENTS.md")).toBe("User prompt");
+  expect(await scanNativeSkills(directory, "antigravity")).toEqual([startupSkill("antigravity")]);
 });
 
-test("sync restores a missing owned file without rewriting unchanged files or manifest", async () => {
-  const config = configuration();
-  const directory = await materialize(root, config);
-  const profile = await readFile(join(directory, profilePath), "utf8");
-  const before = await snapshot(directory, ["agent-a/AGENTS.md", manifestPath]);
-  await unlink(join(directory, profilePath));
+test("disabling or removing an agent leaves its files in place", async () => {
+  const config = configuration(agent("claude"));
   await materialize(root, config);
-  expect(await readFile(join(directory, profilePath), "utf8")).toBe(profile);
-  for (const file of before) {
-    expect(await readFile(join(directory, file.path), "utf8")).toBe(file.content);
-    expect((await stat(join(directory, file.path))).mtimeMs).toBe(file.mtime);
-  }
+  const directory = await agentDirectory(root, "org-a", "agent-a");
+  const before = await read(directory, "CLAUDE.md");
+  await materialize(root, configuration(agent("claude", { enabled: false })));
+  await materialize(root, configuration());
+  expect(await read(directory, "CLAUDE.md")).toBe(before);
 });
 
-test("unchanged sync and cleanup reject modified owned files without changing other managed files", async () => {
-  const config = configuration();
-  const directory = await materialize(root, config);
-  await writeFile(join(directory, profilePath), "Local profile changes");
-  const before = await snapshot(directory, ["agent-a/AGENTS.md", profilePath, manifestPath]);
-  for (const agents of [config.agents, []]) {
-    await expect(materialize(root, { ...config, agents })).rejects.toMatchObject({
-      code: "configuration-conflict",
-    });
-    for (const file of before) {
-      expect(await readFile(join(directory, file.path), "utf8")).toBe(file.content);
-      expect((await stat(join(directory, file.path))).mtimeMs).toBe(file.mtime);
-    }
-  }
+test("without Startup OS defaults, only the agent instructions are seeded", async () => {
+  await materialize(root, configuration(agent("codex", { useStartupDefaults: false })));
+  const directory = await agentDirectory(root, "org-a", "agent-a");
+  expect(await read(directory, "AGENTS.md")).toBe("Review only.\n");
+  expect(await scanNativeSkills(directory, "codex")).toEqual([]);
 });
 
-test("generic ownership cleanup removes inactive generated files and preserves native and unowned files", async () => {
-  const config = configuration();
-  const directory = await materialize(root, config);
-  const protectedFiles = [
-    "agent-a/.agents/agents/user.md",
-    "agent-a/.agents/skills/review/SKILL.md",
-    "agent-a/.agents/mcp_config.json",
-    "agent-a/.native-sessions/conversation.jsonl",
-    "agent-a/CLAUDE.md",
-    "agent-a/.startup-os/harness/unowned/agent.json",
-    "agent-b/AGENTS.md",
-  ];
-  for (const path of protectedFiles)
-    await writeFile(await safePath(directory, path, false, true), `User content: ${path}`);
-  const before = await snapshot(directory, [
-    ...protectedFiles,
-    "agent-a/.agents/skills/startup-os-default/SKILL.md",
-  ]);
-  await materialize(root, { ...config, agents: [] });
-  for (const path of ["agent-a/AGENTS.md", profilePath])
-    expect(await Bun.file(join(directory, path)).exists()).toBe(false);
-  expect(await readFile(join(directory, manifestPath), "utf8")).toBe("{}");
-  for (const file of before) {
-    expect(await readFile(join(directory, file.path), "utf8")).toBe(file.content);
-    expect((await stat(join(directory, file.path))).mtimeMs).toBe(file.mtime);
-  }
+test("reset replaces only Startup OS files with the current agent", async () => {
+  await materialize(root, configuration(agent("claude")));
+  const directory = await agentDirectory(root, "org-a", "agent-a");
+  await writeFile(join(directory, "CLAUDE.md"), "User prompt");
+  const userSkill = { id: "review", name: "review", description: "Mine", content: "Keep me." };
+  await saveNativeSkill(directory, "claude", userSkill);
+  await writeDefaultFiles(directory, "org-a", agent("claude", { instructions: "Updated." }), true);
+  expect(await read(directory, "CLAUDE.md")).toContain("Updated.");
+  expect(await scanNativeSkills(directory, "claude")).toContainEqual(userSkill);
 });
 
-test("unchanged sync still rejects symlinked targets and unexpected ownership paths", async () => {
-  const config = configuration();
-  const directory = await materialize(root, config);
+test("defaults are never written through a symlink", async () => {
+  const directory = await agentDirectory(root, "org-a", "agent-a");
   const outside = join(root, "outside.md");
   await writeFile(outside, "Outside content");
-  await unlink(join(directory, profilePath));
-  await symlink(outside, join(directory, profilePath));
-  await expect(materialize(root, config)).rejects.toMatchObject({ code: "unsafe-path" });
-  expect(await readFile(outside, "utf8")).toBe("Outside content");
-  await writeFile(
-    join(directory, manifestPath),
-    JSON.stringify({ "../outside.md": "Outside content" }),
-  );
-  await expect(materialize(root, { ...config, agents: [] })).rejects.toMatchObject({
-    code: "invalid-manifest",
+  await symlink(outside, join(directory, "CLAUDE.md"));
+  await expect(materialize(root, configuration(agent("claude")))).rejects.toMatchObject({
+    code: "unsafe-path",
+  });
+  await expect(writeDefaultFiles(directory, "org-a", agent("claude"), true)).rejects.toMatchObject({
+    code: "unsafe-path",
   });
   expect(await readFile(outside, "utf8")).toBe("Outside content");
 });
