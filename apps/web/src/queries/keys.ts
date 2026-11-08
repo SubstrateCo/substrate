@@ -3,6 +3,8 @@ export const queryKeys = {
   agents: (userId: string) => ["users", userId, "agents"] as const,
   harnessModels: (userId: string, organizationId: string, harness: string, agentId?: string) =>
     ["users", userId, "harness-models", organizationId, harness, agentId ?? ""] as const,
+  harnessStatus: (userId: string, organizationId: string) =>
+    ["users", userId, "harness-status", organizationId] as const,
   localAgentConfiguration: (
     userId: string,
     organizationId: string,

@@ -6,6 +6,7 @@ import { revalidateLogic, useForm } from "@tanstack/react-form";
 
 import { useId, useState, type ReactNode } from "react";
 
+import { HarnessAvailability } from "../model-picker/harness-availability";
 import { ModelPicker } from "../model-picker/model-picker";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -259,19 +260,26 @@ export function AgentEditor({
                               }
                             >
                               {([harness, model]) => (
-                                <ModelPicker
-                                  key={`${userId}/${organizationId}`}
-                                  userId={userId}
-                                  organizationId={organizationId}
-                                  agentId={agent?.id}
-                                  harness={harness}
-                                  model={model}
-                                  disabled={busy}
-                                  onChange={(nextHarness, nextModel) => {
-                                    form.setFieldValue("harness", nextHarness);
-                                    form.setFieldValue("model", nextModel);
-                                  }}
-                                />
+                                <>
+                                  <ModelPicker
+                                    key={`${userId}/${organizationId}`}
+                                    userId={userId}
+                                    organizationId={organizationId}
+                                    agentId={agent?.id}
+                                    harness={harness}
+                                    model={model}
+                                    disabled={busy}
+                                    onChange={(nextHarness, nextModel) => {
+                                      form.setFieldValue("harness", nextHarness);
+                                      form.setFieldValue("model", nextModel);
+                                    }}
+                                  />
+                                  <HarnessAvailability
+                                    userId={userId}
+                                    organizationId={organizationId}
+                                    harness={harness}
+                                  />
+                                </>
                               )}
                             </form.Subscribe>
                           </div>
