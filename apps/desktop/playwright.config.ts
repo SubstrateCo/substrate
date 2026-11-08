@@ -8,7 +8,7 @@ export default defineConfig({
   workers: 4,
   timeout: 60_000,
   expect: { timeout: 15_000 },
-  reporter: "list",
+  reporter: "./e2e/test-support/errors-reporter.ts",
   projects: [
     { name: "functional", grepInvert: /@layout/ },
     { name: "layout", grep: /@layout/ },

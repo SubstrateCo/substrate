@@ -4,7 +4,7 @@ import { createTestDatabases } from "../../packages/database/src/testing/databas
 import { createTestBucket } from "../../packages/storage/src/testing/bucket";
 import { availablePort } from "./server";
 import { staticFilePath } from "./static";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -70,10 +70,14 @@ async function main() {
       };
       const directory = new URL("../../apps/web/dist/", import.meta.url);
       const index = Bun.file(new URL("index.html", directory));
+      const logs = new URL("../../test-results/services/", import.meta.url);
+      await mkdir(logs, { recursive: true });
+      const serverLog = new URL("server.log", logs);
+      const rendererLog = new URL("renderer.log", logs);
       const backend = Bun.spawn([process.execPath, "apps/server/src/main.ts"], {
         env,
         stdout: "ignore",
-        stderr: "inherit",
+        stderr: Bun.file(serverLog),
       });
       try {
         const cacheDirectory = development
@@ -91,7 +95,7 @@ async function main() {
                 cwd: fileURLToPath(new URL("../../apps/web/", import.meta.url)),
                 env: { ...env, VITE_CACHE_DIR: cacheDirectory },
                 stdout: "ignore",
-                stderr: "inherit",
+                stderr: Bun.file(rendererLog),
               },
             )
           : undefined;
@@ -133,7 +137,9 @@ async function main() {
               backend.exitCode !== null ||
               (vite && vite.exitCode !== null)
             )
-              throw new Error("The test API or renderer did not start.");
+              throw new Error(
+                `The test API or renderer did not start. Logs: ${fileURLToPath(logs)}`,
+              );
             await Bun.sleep(50);
           }
           const results = await Promise.all([
@@ -149,7 +155,9 @@ async function main() {
               env,
             ),
           ]);
-          return results.find((code) => code !== 0) ?? 0;
+          const failure = results.find((code) => code !== 0) ?? 0;
+          if (failure) console.error(`Service logs: ${fileURLToPath(logs)}`);
+          return failure;
         } finally {
           await web?.stop(true);
           vite?.kill();

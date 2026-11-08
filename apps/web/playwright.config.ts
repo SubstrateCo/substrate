@@ -9,7 +9,7 @@ export default defineConfig({
   retries: 0,
   timeout: 180_000,
   expect: { timeout: 15_000 },
-  reporter: "list",
+  reporter: "../desktop/e2e/test-support/errors-reporter.ts",
   use: {
     actionTimeout: 10_000,
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
