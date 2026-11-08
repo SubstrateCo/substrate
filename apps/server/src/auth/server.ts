@@ -22,6 +22,14 @@ import {
   readPictureMutation,
   protectUserPicture,
 } from "./picture-policy";
+import {
+  publishSessionChange,
+  publishProfileChange,
+  publishMembershipChange,
+  publishInvitationChange,
+  publishOrganizationChange,
+  publishOrganizationDeletion,
+} from "./realtime";
 import { normalizeUserName } from "./user-name";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { electron } from "@better-auth/electron";
@@ -41,6 +49,7 @@ const provisionMember = async (input: {
     userId: input.user.id,
     name: input.user.name,
   });
+  await publishMembershipChange(input);
 };
 
 export const auth = betterAuth({
@@ -85,6 +94,7 @@ export const auth = betterAuth({
       },
       update: {
         before: async (user) => ({ data: protectUserPicture(normalizeUserName(user)) }),
+        after: publishProfileChange,
       },
     },
     session: {
@@ -94,7 +104,15 @@ export const auth = betterAuth({
           const activeOrganizationId = await getRememberedOrganization(db, session.userId);
           return { data: { ...session, activeOrganizationId } };
         },
+        after: publishSessionChange,
       },
+      update: { after: publishSessionChange },
+      delete: { after: publishSessionChange },
+    },
+    account: {
+      create: { after: publishSessionChange },
+      update: { after: publishSessionChange },
+      delete: { after: publishSessionChange },
     },
   },
   hooks: {
@@ -144,7 +162,17 @@ export const auth = betterAuth({
         },
         afterCreateOrganization: provisionMember,
         afterAddMember: provisionMember,
-        afterAcceptInvitation: provisionMember,
+        afterAcceptInvitation: async (input) => {
+          await provisionMember(input);
+          await publishInvitationChange(input);
+        },
+        afterRemoveMember: publishMembershipChange,
+        afterUpdateMemberRole: publishMembershipChange,
+        afterUpdateOrganization: publishOrganizationChange,
+        afterDeleteOrganization: publishOrganizationDeletion,
+        afterCreateInvitation: publishInvitationChange,
+        afterRejectInvitation: publishInvitationChange,
+        afterCancelInvitation: publishInvitationChange,
       },
       sendInvitationEmail: async ({ id, email, organization }, request) => {
         const url = invitationLink(id, env.frontendURL, { baseURL: env.baseURL, request });

@@ -25,8 +25,6 @@ export interface Transport {
 export interface HubDependencies {
   authenticate(headers: Headers, organizationId: string | null): Promise<Identity | null>;
   canReceive(identity: Identity, audience: Readonly<RealtimeAudience>): Promise<boolean>;
-  readChanges(): Promise<Change[]>;
-  acknowledgeChanges(this: void, ids: string[]): Promise<void>;
   reportFailure(): void;
 }
 
@@ -74,6 +72,8 @@ export function createRealtimeHub(
   const heartbeatMs = options.heartbeatMs ?? 15_000;
   const maxBufferedBytes = options.maxBufferedBytes ?? 64 * 1024;
   let stopped = false;
+  let available = true;
+  const isAvailable = () => available;
   // Async authorization can yield while shutdown changes this flag.
   const isStopped = () => stopped;
   let running = false;
@@ -126,11 +126,11 @@ export function createRealtimeHub(
 
   return {
     async reserve(headers: Headers, organizationId: string | null) {
-      if (isStopped() || connections.size >= maxConnections)
+      if (isStopped() || !isAvailable() || connections.size >= maxConnections)
         throw new Error("Realtime capacity reached");
       const identity = await deps.authenticate(headers, organizationId);
       if (!identity || identity.organizationId !== organizationId) return null;
-      if (isStopped() || connections.size >= maxConnections)
+      if (isStopped() || !isAvailable() || connections.size >= maxConnections)
         throw new Error("Realtime capacity reached");
       let count = 0;
       for (const connection of connections)
@@ -147,7 +147,7 @@ export function createRealtimeHub(
       return connection;
     },
     async open(connection: Connection, transport: Transport) {
-      if (!connections.has(connection) || isStopped()) {
+      if (!connections.has(connection) || isStopped() || !available) {
         transport.close(1008, "Reconnect required");
         transport.terminate();
         return;
@@ -172,6 +172,40 @@ export function createRealtimeHub(
     pong(connection: Connection) {
       connection.awaitingPong = false;
     },
+    setAvailable(value: boolean) {
+      available = value;
+      if (!value) for (const connection of connections) remove(connection, 1012, "Resync required");
+    },
+    async publish(change: Change) {
+      if (isStopped() || !available) return;
+      await Promise.all(
+        [...connections].map(async (connection) => {
+          if (
+            !connection.transport ||
+            !connection.ready ||
+            !relevant(connection.identity, change.audience)
+          )
+            return;
+          try {
+            if (!(await revalidate(connection))) return;
+            if (!(await deps.canReceive(connection.identity, change.audience))) return;
+            if (isStopped() || !available || !connections.has(connection)) return;
+            const event: Extract<RealtimeEvent, { type: "change" }> = {
+              version: 1,
+              type: "change",
+              id: change.id,
+              organizationId: connection.identity.organizationId,
+              domain: change.domain,
+            };
+            if (change.audience[0] === "conversation") event.conversationId = change.audience[1];
+            send(connection, event);
+          } catch {
+            remove(connection, 1012, "Resync required");
+            deps.reportFailure();
+          }
+        }),
+      );
+    },
     async tick(now = Date.now()) {
       if (running || isStopped()) return;
       running = true;
@@ -187,64 +221,18 @@ export function createRealtimeHub(
               remove(connection, 1001, "Heartbeat timeout");
               continue;
             }
-            if (await revalidate(connection)) {
-              connection.awaitingPong = true;
-              connection.transport.ping();
+            try {
+              if (await revalidate(connection)) {
+                connection.awaitingPong = true;
+                connection.transport.ping();
+              }
+            } catch {
+              remove(connection, 1012, "Resync required");
+              deps.reportFailure();
             }
           }
-        }
-        const changes = await deps.readChanges();
-        const groups: { change: Change; ids: string[] }[] = [];
-        const segment = new Map<string, (typeof groups)[number]>();
-        for (const change of changes) {
-          // Each reset is its own ordering boundary, including consecutive resets.
-          if (["access", "session", "organization", "profile"].includes(change.domain)) {
-            segment.clear();
-            groups.push({ change, ids: [change.id] });
-            continue;
-          }
-          const key = JSON.stringify([change.domain, change.audience]);
-          const group = segment.get(key);
-          if (group) group.ids.push(change.id);
-          else {
-            const next = { change, ids: [change.id] };
-            segment.set(key, next);
-            groups.push(next);
-          }
-        }
-        const completed: string[] = [];
-        try {
-          for (const { change, ids } of groups) {
-            // A retry can include new rows. Never reuse a previously seen row ID for a group.
-            const eventId = ids.length === 1 ? change.id : crypto.randomUUID();
-            if (isStopped()) return;
-            for (const connection of connections) {
-              if (
-                !connection.transport ||
-                !connection.ready ||
-                !relevant(connection.identity, change.audience)
-              )
-                continue;
-              if (!(await revalidate(connection))) continue;
-              if (!(await deps.canReceive(connection.identity, change.audience))) continue;
-              if (isStopped() || !connections.has(connection)) continue;
-              const event: Extract<RealtimeEvent, { type: "change" }> = {
-                version: 1,
-                type: "change",
-                id: eventId,
-                organizationId: connection.identity.organizationId,
-                domain: change.domain,
-              };
-              if (change.audience[0] === "conversation") event.conversationId = change.audience[1];
-              send(connection, event);
-            }
-            completed.push(...ids);
-          }
-        } finally {
-          if (!isStopped() && completed.length) await deps.acknowledgeChanges(completed);
         }
       } catch {
-        // Keep the outbox row for retry. No event content or credentials in logs.
         deps.reportFailure();
       } finally {
         running = false;
@@ -252,7 +240,7 @@ export function createRealtimeHub(
     },
     start() {
       if (timer || isStopped()) return;
-      timer = setInterval(() => void this.tick(), 250);
+      timer = setInterval(() => void this.tick(), Math.min(heartbeatMs, 10_000));
       timer.unref();
     },
     stop() {

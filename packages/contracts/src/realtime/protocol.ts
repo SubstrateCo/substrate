@@ -32,6 +32,11 @@ export const realtimeDomain = z.enum([
 ]);
 export type RealtimeDomain = z.infer<typeof realtimeDomain>;
 
+export interface RealtimeHint {
+  audience: Readonly<RealtimeAudience>;
+  domain: RealtimeDomain;
+}
+
 export const realtimeEvent = z.discriminatedUnion("type", [
   z.object({ version: z.literal(1), type: z.literal("ready") }),
   z.object({

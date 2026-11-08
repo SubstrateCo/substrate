@@ -1,6 +1,7 @@
 import { createApp } from "./app";
 import { closeDatabase } from "./auth/database";
 import { defaultFileService } from "./v1/files/default-service";
+import { closeRefreshPublisher } from "./v1/realtime/publisher";
 import { createRealtimeService } from "./v1/realtime/service";
 
 const port = Number(process.env.SERVER_PORT ?? "3001");
@@ -10,6 +11,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 
 const app = createApp();
 const realtime = createRealtimeService();
+await realtime.start();
 const server = Bun.serve({
   port,
   websocket: realtime.websocket,
@@ -20,7 +22,6 @@ const server = Bun.serve({
     return app.fetch(request, server);
   },
 });
-realtime.hub.start();
 console.log(`Startup OS API listening on ${server.url}`);
 
 let cleaningStorage = false;
@@ -44,7 +45,8 @@ function shutdown() {
   if (stopping) return;
   stopping = true;
   clearInterval(cleanupTimer);
-  realtime.hub.stop();
+  realtime.stop();
+  closeRefreshPublisher();
   void server
     .stop(true)
     .then(() => closeDatabase())

@@ -9,17 +9,24 @@ import {
   contextSourceTask,
   contextNotification,
 } from "@startup-os/contracts/context/input";
+import { realtimeKeys } from "@startup-os/contracts/realtime";
+import type { RealtimeHint } from "@startup-os/contracts/realtime";
 import { createContextService, createFeedService } from "@startup-os/database/context";
 
 import { db } from "../../auth/database";
 import { serviceResult } from "../../shared/service-result";
 import { requireOrigin, workspaceSession } from "../../shared/workspace";
+import { publishRefresh } from "../realtime/publisher";
 import type { z } from "zod";
 
 async function sessionServices(headers: Headers, organizationId: string) {
   const { session } = await workspaceSession(headers, organizationId);
   const scope = { organizationId, userId: session.user.id };
-  return { context: createContextService(db, scope), feed: createFeedService(db, scope) };
+  return {
+    context: createContextService(db, scope),
+    feed: createFeedService(db, scope),
+    userId: session.user.id,
+  };
 }
 export function getMessageLinks(headers: Headers, raw: z.input<typeof contextMessage>) {
   return serviceResult(async () => {
@@ -68,7 +75,18 @@ export function createTaskFromMessage(headers: Headers, raw: z.input<typeof cont
     requireOrigin(headers);
     const input = contextSourceTask.parse(raw);
     const { context } = await sessionServices(headers, input.organizationId);
-    return context.createTaskFromMessage(input);
+    const task = await context.createTaskFromMessage(input);
+    const hints: RealtimeHint[] = [
+      { audience: realtimeKeys.organization(input.organizationId), domain: "tasks" },
+      { audience: realtimeKeys.organization(input.organizationId), domain: "context" },
+    ];
+    if (input.assigneeActorEntityId)
+      hints.push({
+        audience: realtimeKeys.actor(input.organizationId, input.assigneeActorEntityId),
+        domain: "notifications",
+      });
+    await publishRefresh(hints);
+    return task;
   });
 }
 export function attachWork(headers: Headers, raw: z.input<typeof contextLink>) {
@@ -77,6 +95,9 @@ export function attachWork(headers: Headers, raw: z.input<typeof contextLink>) {
     const input = contextLink.parse(raw);
     const { context } = await sessionServices(headers, input.organizationId);
     await context.attach(input.messageId, input.entityId);
+    await publishRefresh([
+      { audience: realtimeKeys.organization(input.organizationId), domain: "context" },
+    ]);
     return null;
   });
 }
@@ -86,6 +107,9 @@ export function detachWork(headers: Headers, raw: z.input<typeof contextLink>) {
     const input = contextLink.parse(raw);
     const { context } = await sessionServices(headers, input.organizationId);
     await context.detach(input.messageId, input.entityId);
+    await publishRefresh([
+      { audience: realtimeKeys.organization(input.organizationId), domain: "context" },
+    ]);
     return null;
   });
 }
@@ -107,8 +131,9 @@ export function markRead(headers: Headers, raw: z.input<typeof contextNotificati
   return serviceResult(async () => {
     requireOrigin(headers);
     const input = contextNotification.parse(raw);
-    const { feed } = await sessionServices(headers, input.organizationId);
+    const { feed, userId } = await sessionServices(headers, input.organizationId);
     await feed.markRead(input.id);
+    await publishRefresh([{ audience: realtimeKeys.user(userId), domain: "notifications" }]);
     return null;
   });
 }
@@ -116,8 +141,9 @@ export function markAllRead(headers: Headers, raw: z.input<typeof contextWorkspa
   return serviceResult(async () => {
     requireOrigin(headers);
     const input = contextWorkspace.parse(raw);
-    const { feed } = await sessionServices(headers, input.organizationId);
+    const { feed, userId } = await sessionServices(headers, input.organizationId);
     await feed.markAllRead();
+    await publishRefresh([{ audience: realtimeKeys.user(userId), domain: "notifications" }]);
     return null;
   });
 }

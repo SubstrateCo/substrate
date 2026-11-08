@@ -1,5 +1,5 @@
 import { desktopOrigin } from "@startup-os/contracts/desktop/links";
-import { acknowledgeChanges, canReceiveChange, readChanges } from "@startup-os/database/realtime";
+import { canReceiveChange } from "@startup-os/database/realtime";
 
 import { db } from "../../auth/database";
 import { authEnvironment } from "../../auth/environment";
@@ -7,6 +7,7 @@ import { auth } from "../../auth/server";
 import { createRealtimeHub } from "./hub";
 import { createRealtimeRoutes } from "./routes";
 import { createRealtimeAuthenticator } from "./session";
+import { createRealtimeSubscription } from "./subscription";
 
 export function createRealtimeService() {
   let failures = 0;
@@ -15,15 +16,28 @@ export function createRealtimeService() {
       canReceiveChange(db, identity, audience),
     ),
     canReceive: (identity, audience) => canReceiveChange(db, identity, audience),
-    readChanges: async () => await readChanges(db, 100),
-    acknowledgeChanges: (ids) => acknowledgeChanges(db, ids),
     reportFailure: () => {
       failures++;
-      console.warn("Realtime operation failed; dispatch will retry", { failures });
+      console.warn("Realtime operation failed; client resync required", { failures });
     },
   });
   const routes = createRealtimeRoutes(hub, [
     ...new Set([...authEnvironment().trustedOrigins, desktopOrigin]),
   ]);
-  return { ...routes, hub };
+  const subscription = createRealtimeSubscription({
+    receive: (change) => hub.publish(change),
+    setAvailable: (available) => hub.setAvailable(available),
+  });
+  return {
+    ...routes,
+    hub,
+    async start() {
+      await subscription.start();
+      hub.start();
+    },
+    stop() {
+      subscription.stop();
+      hub.stop();
+    },
+  };
 }

@@ -142,7 +142,7 @@ test("project sharing needs confirmation and revocation removes cached private c
   );
 });
 
-test("known issue: a background task creation must not discard an open task draft", async ({
+test("a background task creation does not discard an open task draft", async ({
   actors,
   client,
 }) => {
@@ -167,10 +167,6 @@ test("known issue: a background task creation must not discard an open task draf
     projectEntityId: created.entityId,
     title: "Background task",
   });
-  await expectChange(user, since, "access");
-  test.fail(
-    true,
-    "Access invalidation clears the project query and unmounts the editor, discarding its draft.",
-  );
+  await expectChange(user, since, "tasks");
   await expect(editor).toHaveValue(draft);
 });

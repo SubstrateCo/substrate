@@ -22,7 +22,6 @@ afterEach(() => {
 
 function fixture(options: Parameters<typeof createRealtimeHub>[1] = {}) {
   let active = true;
-  const rows: Change[] = [];
   const hub = createRealtimeHub(
     {
       authenticate: async (headers, organizationId) =>
@@ -30,13 +29,6 @@ function fixture(options: Parameters<typeof createRealtimeHub>[1] = {}) {
           ? { userId: "user", organizationId }
           : null,
       canReceive: async (_identity, audience) => audience[1] !== "forbidden-conversation",
-      readChanges: async () => rows.slice(),
-      acknowledgeChanges: async (ids) => {
-        for (const id of ids) {
-          const index = rows.findIndex((row) => row.id === id);
-          if (index >= 0) rows.splice(index, 1);
-        }
-      },
       reportFailure: () => {
         throw new Error("Unexpected dispatch failure");
       },
@@ -88,7 +80,6 @@ function fixture(options: Parameters<typeof createRealtimeHub>[1] = {}) {
   return {
     server,
     hub,
-    rows,
     connect,
     revoke: () => {
       active = false;
@@ -110,8 +101,8 @@ test("Bun transport upgrades on the HTTP port, sends ready on reconnect, and fil
     domain: "messaging",
     audience: realtimeKeys.conversation("shared-conversation"),
   };
-  f.rows.push(denied, allowed);
-  await f.hub.tick(1);
+  await f.hub.publish(denied);
+  await f.hub.publish(allowed);
   expect(await first.next()).toEqual({
     version: 1,
     type: "change",
@@ -120,7 +111,6 @@ test("Bun transport upgrades on the HTTP port, sends ready on reconnect, and fil
     domain: "messaging",
     conversationId: "shared-conversation",
   });
-  expect(f.rows).toEqual([]);
   first.socket.close();
   await first.closed;
   const second = f.connect("");
@@ -130,8 +120,7 @@ test("Bun transport upgrades on the HTTP port, sends ready on reconnect, and fil
     domain: "profile",
     audience: realtimeKeys.user("user"),
   };
-  f.rows.push(profile);
-  await f.hub.tick(2);
+  await f.hub.publish(profile);
   expect(await second.next()).toEqual({
     version: 1,
     type: "change",
@@ -217,8 +206,8 @@ test("raw Bun pong callbacks keep a live peer eligible for the next heartbeat", 
     domain: "tasks",
     audience: realtimeKeys.organization("org"),
   };
-  f.rows.push(row);
   await f.hub.tick(15_001);
+  await f.hub.publish(row);
   expect(f.hub.size).toBe(1);
   expect(await peer.next()).toMatchObject({ type: "change", id: row.id });
 });

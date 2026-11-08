@@ -122,6 +122,7 @@ export function createRealtimeCache({
   const isCurrent = (epoch: number) => !disposed && epoch === generation;
   let routePending = false;
   let accessWork = Promise.resolve();
+  let resyncWork: Promise<void> | undefined;
   const privateFilter = {
     predicate: (query: { queryKey: QueryKey }) =>
       (organizationId !== null &&
@@ -243,6 +244,16 @@ export function createRealtimeCache({
   }
   return {
     forbidden: revoke,
+    resync() {
+      if (disposed) return Promise.resolve();
+      // Reconnect may follow a missed revocation. Drop old private values first.
+      resyncWork ??= resetAccess()
+        .then(() => (isDisposed() ? undefined : refresh([{ queryKey: [] }])))
+        .finally(() => {
+          resyncWork = undefined;
+        });
+      return resyncWork;
+    },
     async receive(value: RealtimeEvent) {
       const parsed = realtimeEvent.safeParse(value);
       if (isDisposed() || !parsed.success) return;

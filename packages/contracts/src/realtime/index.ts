@@ -10,6 +10,7 @@ export {
 export type {
   RealtimeAudience,
   RealtimeDomain,
+  RealtimeHint,
   RealtimeEvent,
   RealtimeStatus,
   RealtimeUpdate,

@@ -1,3 +1,5 @@
+import { realtimeKeys } from "@startup-os/contracts/realtime";
+import type { RealtimeHint } from "@startup-os/contracts/realtime";
 import {
   projectRequest,
   taskRequest,
@@ -11,6 +13,7 @@ import { ensureHumanActor } from "@startup-os/database/provisioning";
 import { db } from "../../auth/database";
 import { serviceResult } from "../../shared/service-result";
 import { requireOrigin, workspaceSession } from "../../shared/workspace";
+import { publishRefresh } from "../realtime/publisher";
 
 async function repositoriesForSession(headers: Headers, expectedOrganizationId: string) {
   const { session, organizationId } = await workspaceSession(headers, expectedOrganizationId);
@@ -59,7 +62,7 @@ export function mutateTasks(headers: Headers, raw: TasksWrite) {
     requireOrigin(headers);
     const input = tasksWrite.parse(raw);
     const repositories = await repositoriesForSession(headers, input.organizationId);
-    return repositories.transaction(async (repos) => {
+    const result = await repositories.transaction(async (repos) => {
       if (input.action === "createProject")
         return { id: (await repos.projects.create(input)).entityId };
       await repos.projects.get(input.projectEntityId);
@@ -93,5 +96,21 @@ export function mutateTasks(headers: Headers, raw: TasksWrite) {
       }
       return { id: input.projectEntityId };
     });
+    const hints: RealtimeHint[] = [
+      {
+        audience: realtimeKeys.organization(input.organizationId),
+        domain: input.action === "share" || input.action === "revoke" ? "access" : "tasks",
+      },
+    ];
+    if (
+      (input.action === "createTask" || input.action === "updateTask") &&
+      input.assigneeActorEntityId
+    )
+      hints.push({
+        audience: realtimeKeys.actor(input.organizationId, input.assigneeActorEntityId),
+        domain: "notifications",
+      });
+    await publishRefresh(hints);
+    return result;
   });
 }

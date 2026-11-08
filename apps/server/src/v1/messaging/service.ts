@@ -6,11 +6,14 @@ import {
   reactionInput,
   membersInput,
 } from "@startup-os/contracts/messaging/input";
+import { realtimeKeys } from "@startup-os/contracts/realtime";
 import { createMessagingService } from "@startup-os/database/messaging";
+import { messageRefreshHints } from "@startup-os/database/realtime";
 
 import { db } from "../../auth/database";
 import { serviceResult } from "../../shared/service-result";
 import { requireOrigin, workspaceSession } from "../../shared/workspace";
+import { publishRefresh } from "../realtime/publisher";
 import type { z } from "zod";
 
 async function serviceForSession(headers: Headers, organizationId: string) {
@@ -39,7 +42,11 @@ export function createConversation(headers: Headers, raw: z.input<typeof convers
     requireOrigin(headers);
     const input = conversationInput.parse(raw);
     const service = await serviceForSession(headers, input.organizationId);
-    return service.createConversation(input);
+    const conversation = await service.createConversation(input);
+    await publishRefresh([
+      { audience: realtimeKeys.conversation(conversation.id), domain: "messaging" },
+    ]);
+    return conversation;
   });
 }
 
@@ -48,7 +55,19 @@ export function sendMessage(headers: Headers, raw: z.input<typeof messageInput>)
     requireOrigin(headers);
     const input = messageInput.parse(raw);
     const service = await serviceForSession(headers, input.organizationId);
-    return service.sendMessage(input.conversationId, input.body, input.threadId, input.requestId);
+    const message = await service.sendMessage(
+      input.conversationId,
+      input.body,
+      input.threadId,
+      input.requestId,
+    );
+    await publishRefresh(
+      messageRefreshHints(db, message.id).then((hints) => [
+        ...hints,
+        { audience: realtimeKeys.organization(input.organizationId), domain: "context" },
+      ]),
+    );
+    return message;
   });
 }
 
@@ -57,7 +76,9 @@ export function toggleReaction(headers: Headers, raw: z.input<typeof reactionInp
     requireOrigin(headers);
     const input = reactionInput.parse(raw);
     const service = await serviceForSession(headers, input.organizationId);
-    return service.toggleReaction(input.messageId, input.emoji);
+    const result = await service.toggleReaction(input.messageId, input.emoji);
+    await publishRefresh(messageRefreshHints(db, input.messageId));
+    return result;
   });
 }
 
@@ -66,6 +87,10 @@ export function addMembers(headers: Headers, raw: z.input<typeof membersInput>) 
     requireOrigin(headers);
     const input = membersInput.parse(raw);
     const service = await serviceForSession(headers, input.organizationId);
-    return service.addMembers(input.conversationId, input.emails);
+    const result = await service.addMembers(input.conversationId, input.emails);
+    await publishRefresh([
+      { audience: realtimeKeys.conversation(input.conversationId), domain: "messaging" },
+    ]);
+    return result;
   });
 }

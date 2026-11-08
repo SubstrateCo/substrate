@@ -50,6 +50,13 @@
       "when": 1794098419919,
       "tag": "0006_flat_black_bird",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794102802177,
+      "tag": "0007_faulty_peter_parker",
+      "breakpoints": true
     }
   ]
 }

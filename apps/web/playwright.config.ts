@@ -35,6 +35,7 @@ export default defineConfig({
       reuseExistingServer: false,
       env: {
         NODE_ENV: "test",
+        REALTIME_CHANNEL: "startup-os:realtime:e2e",
         DATABASE_URL:
           process.env.E2E_DATABASE_URL ??
           "postgres://startup_os_e2e:startup_os_e2e@localhost:5434/startup_os_e2e_test",

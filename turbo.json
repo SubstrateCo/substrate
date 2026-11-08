@@ -19,7 +19,14 @@
     },
     "test": {
       "outputLogs": "errors-only",
-      "env": ["TEST_DATABASE_URL", "TEST_DATABASE_SHARDS", "DATABASE_URL"],
+      "env": [
+        "TEST_DATABASE_URL",
+        "TEST_DATABASE_SHARDS",
+        "DATABASE_URL",
+        "TEST_VALKEY_URL",
+        "VALKEY_URL",
+        "REALTIME_CHANNEL"
+      ],
       "cache": false,
       "outputs": []
     },
