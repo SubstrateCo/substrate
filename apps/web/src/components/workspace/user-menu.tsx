@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from "react";
 
-import { AppearanceControl } from "../theme/appearance-control";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { Separator } from "../ui/separator";
+import { UserMenuTheme } from "./user-menu/user-menu-theme";
 import { Building2, Settings } from "lucide-react";
 
 export function UserMenu({
@@ -24,6 +25,16 @@ export function UserMenu({
   signOut: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const avatar = (
+    <Avatar variant="user" className="size-full">
+      <AvatarImage src={image ?? undefined} alt="" />
+      <AvatarFallback>{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+    </Avatar>
+  );
+  const go = (action: () => void) => () => {
+    setOpen(false);
+    action();
+  };
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -34,10 +45,7 @@ export function UserMenu({
           aria-label={`Signed in as ${name}`}
           title={name}
         >
-          <Avatar variant="user" className="size-full">
-            <AvatarImage src={image ?? undefined} alt="" />
-            <AvatarFallback>{name.slice(0, 2).toUpperCase()}</AvatarFallback>
-          </Avatar>
+          {avatar}
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -45,40 +53,38 @@ export function UserMenu({
         side="right"
         align="end"
         sideOffset={12}
-        className="w-72 max-w-(--radix-popover-content-available-width)"
+        variant="menu"
       >
-        <p className="truncate px-2 py-2 text-sm font-medium">{name}</p>
-        <AppearanceControl />
-        <Button
-          variant="ghost"
-          className="w-full justify-start"
-          onClick={() => {
-            setOpen(false);
-            onUserSettings();
-          }}
-        >
-          <Settings />
-          User settings
-        </Button>
-        {showOrganizationSettings && (
-          <div className="mt-2 border-t pt-2">
-            <p className="px-2 py-1 text-xs font-medium wrap-anywhere text-muted-foreground">
-              Organization{organizationName ? ` · ${organizationName}` : ""}
-            </p>
+        <div className="flex min-w-0 items-center gap-2.5 p-2">
+          <div className="size-8 shrink-0 overflow-hidden rounded-md">{avatar}</div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{name}</p>
+            {organizationName && (
+              <p className="truncate text-xs text-muted-foreground">{organizationName}</p>
+            )}
+          </div>
+        </div>
+        <Separator />
+        <div className="flex flex-col [&_svg]:text-muted-foreground">
+          <Button variant="ghost" className="w-full justify-start" onClick={go(onUserSettings)}>
+            <Settings aria-hidden="true" />
+            User settings
+          </Button>
+          {showOrganizationSettings && (
             <Button
               variant="ghost"
               className="w-full justify-start"
-              onClick={() => {
-                setOpen(false);
-                onOrganizationSettings();
-              }}
+              onClick={go(onOrganizationSettings)}
             >
-              <Building2 />
+              <Building2 aria-hidden="true" />
               Organization settings
             </Button>
-          </div>
-        )}
-        <div className="mt-2 border-t pt-2 [&_button]:w-full [&_button]:justify-start">
+          )}
+        </div>
+        <Separator />
+        <UserMenuTheme />
+        <Separator />
+        <div className="[&_button]:w-full [&_button]:justify-start [&_svg]:text-muted-foreground">
           {signOut}
         </div>
       </PopoverContent>

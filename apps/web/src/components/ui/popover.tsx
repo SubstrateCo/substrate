@@ -10,6 +10,7 @@ const popoverVariants = cva(
     variants: {
       variant: {
         default: "w-72 gap-2.5 p-2.5",
+        menu: "w-64 max-w-(--radix-popover-content-available-width) gap-1 p-1",
         reference:
           "w-104 max-w-(--radix-popover-content-available-width) gap-0 overflow-hidden p-0 motion-reduce:animate-none",
       },
