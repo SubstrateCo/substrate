@@ -1,4 +1,7 @@
-import { uploadPictureFile } from "./uploads";
+import type { PictureUploadInput } from "@startup-os/contracts/files/pictures";
+
+import { api } from "../client";
+import { readResult } from "../result";
 import { authClient } from "@/lib/auth/client";
 import { unwrap } from "@/lib/auth/result";
 
@@ -15,10 +18,20 @@ export function createPictureApi(client: PictureAuthClient) {
     onCommit?: () => void,
     organizationId?: string,
   ) {
-    const fileId = await uploadPictureFile(file, purpose, signal);
+    const form: PictureUploadInput = { file };
+    if (purpose === "organization-logo" && organizationId) form.organizationId = organizationId;
+    const { url } = await readResult(
+      api.files.pictures[":purpose"].$post(
+        {
+          param: { purpose },
+          form,
+        },
+        { init: { signal } },
+      ),
+    );
+    signal?.throwIfAborted();
     onCommit?.();
-    // Attachment commits the visible picture. Do not cancel its response after it starts.
-    const url = `/api/v1/files/${fileId}/content`;
+    // Do not cancel the Better Auth save once it starts.
     return purpose === "avatar"
       ? unwrap(await client.updateUser({ image: url }))
       : unwrap(await client.organization.update({ organizationId, data: { logo: url } }));

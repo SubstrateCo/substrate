@@ -1,0 +1,106 @@
+import { ServiceError } from "../../shared/service-result";
+import { createPictureService } from "./pictures";
+import { expect, test } from "bun:test";
+import sharp from "sharp";
+
+async function fixture() {
+  const objects = new Map<string, Uint8Array>();
+  let allowed = true;
+  const service = createPictureService({
+    authenticate: async () => ({ userId: "alice", organizationId: "org" }),
+    requireOrigin: () => {},
+    repository: {
+      requirePictureAccess: async () => {
+        if (!allowed) throw new ServiceError("FORBIDDEN", "Access denied.");
+      },
+      canReadPicture: async () => allowed,
+    },
+    storage: {
+      put: async (key, bytes) => {
+        objects.set(key, bytes);
+      },
+      signDownload: async (key) => `https://s3.test/${key}`,
+    },
+  });
+  const image = async (color: string) =>
+    new File(
+      [
+        new Uint8Array(
+          await sharp({ create: { width: 20, height: 20, channels: 3, background: color } })
+            .png()
+            .toBuffer(),
+        ),
+      ],
+      "picture.png",
+      { type: "image/png" },
+    );
+  return {
+    service,
+    objects,
+    image,
+    deny: () => {
+      allowed = false;
+    },
+  };
+}
+
+test("profile uploads overwrite one S3 object and return a fresh URL without attaching it", async () => {
+  const f = await fixture();
+  const first = await f.service.upload(new Headers(), "avatar", await f.image("red"));
+  const previous = f.objects.get("pictures/avatar/alice.webp")!.slice();
+  const second = await f.service.upload(new Headers(), "avatar", await f.image("blue"));
+  expect(first.success).toBe(true);
+  expect(second.success).toBe(true);
+  expect(first.success && first.data.url).toStartWith("/api/v1/files/pictures/avatar/alice?v=");
+  expect(second.success && second.data.url).not.toBe(first.success && first.data.url);
+  expect(f.objects.size).toBe(1);
+  expect(f.objects.get("pictures/avatar/alice.webp")).not.toEqual(previous);
+  expect((await sharp(f.objects.get("pictures/avatar/alice.webp")).metadata()).format).toBe("webp");
+});
+
+test("logos use the active organization key and denied writes do not replace it", async () => {
+  const f = await fixture();
+  expect(
+    (await f.service.upload(new Headers(), "organization-logo", await f.image("red"))).success,
+  ).toBe(true);
+  const previous = f.objects.get("pictures/organization-logo/org.webp")!.slice();
+  f.deny();
+  const denied = await f.service.upload(new Headers(), "organization-logo", await f.image("blue"));
+  expect(!denied.success && denied.error.code).toBe("FORBIDDEN");
+  expect(f.objects.get("pictures/organization-logo/org.webp")).toEqual(previous);
+  expect(f.objects.size).toBe(1);
+});
+
+test("invalid images and oversized uploads do not write S3 objects", async () => {
+  const f = await fixture();
+  for (const file of [
+    new File(["not an image"], "bad.png", { type: "image/png" }),
+    new File([new Uint8Array(5 * 1024 * 1024 + 1)], "large.png", { type: "image/png" }),
+  ]) {
+    expect((await f.service.upload(new Headers(), "avatar", file)).success).toBe(false);
+  }
+  expect(f.objects.size).toBe(0);
+});
+
+test("a changed active organization cannot overwrite another workspace's logo", async () => {
+  const f = await fixture();
+  const result = await f.service.upload(
+    new Headers(),
+    "organization-logo",
+    await f.image("red"),
+    "previous-org",
+  );
+  expect(!result.success && result.error.code).toBe("FORBIDDEN");
+  expect(f.objects.size).toBe(0);
+});
+
+test("picture reads require access before issuing a download URL", async () => {
+  const f = await fixture();
+  expect(await f.service.content(new Headers(), "avatar", "bob")).toEqual({
+    success: true,
+    data: { url: "https://s3.test/pictures/avatar/bob.webp" },
+  });
+  f.deny();
+  const denied = await f.service.content(new Headers(), "avatar", "bob");
+  expect(!denied.success && denied.error.code).toBe("NOT_FOUND");
+});

@@ -9,7 +9,8 @@ import {
 import { expect, test } from "bun:test";
 
 const id = crypto.randomUUID();
-const image = `/api/v1/files/${id}/content`;
+const image = `/api/v1/files/pictures/avatar/alice?v=${id}`;
+const logo = `/api/v1/files/pictures/organization-logo/org?v=${id}`;
 test("native user and organization updates accept only canonical managed pictures or clear", () => {
   expect(protectUserPicture({ image })).toEqual({ image });
   expect(protectUserPicture({ image: null })).toEqual({ image: null });
@@ -19,22 +20,22 @@ test("native user and organization updates accept only canonical managed picture
   });
   expect(readPictureMutation("/update-user", { image })).toEqual({
     purpose: "avatar",
-    fileId: id,
+    url: image,
     organizationId: undefined,
   });
   expect(readPictureMutation("/update-user", { image: null })).toEqual({
     purpose: "avatar",
-    fileId: null,
+    url: null,
     organizationId: undefined,
   });
-  expect(readPictureMutation("/organization/update", { data: { logo: image } })).toEqual({
+  expect(readPictureMutation("/organization/update", { data: { logo } })).toEqual({
     purpose: "organization-logo",
-    fileId: id,
+    url: logo,
     organizationId: undefined,
   });
   expect(
     readPictureMutation("/organization/update", { data: { logo: null }, organizationId: "org" }),
-  ).toEqual({ purpose: "organization-logo", fileId: null, organizationId: "org" });
+  ).toEqual({ purpose: "organization-logo", url: null, organizationId: "org" });
   expect(readPictureMutation("/update-user", { name: "Alice" })).toBeNull();
   expect(readPictureMutation("/organization/update", { data: { name: "Workspace" } })).toBeNull();
   for (const value of [
@@ -64,26 +65,24 @@ test("malformed extra fields cannot bypass managed picture authorization", () =>
   expect(readPictureMutation("/sign-in/email", body)).toBeNull();
 });
 
-test("native mutations derive identity from verified session and validate ready file ownership", async () => {
+test("native mutations derive identity from verified session and only accept the owner's picture path", async () => {
   const session = {
     user: { id: "alice", emailVerified: true },
     session: { activeOrganizationId: "org" },
   };
-  const valid = { purpose: "avatar" as const, fileId: id, organizationId: undefined };
+  const valid = { purpose: "avatar" as const, url: image, organizationId: undefined };
   const seen: string[] = [];
   const repository = {
-    validatePicture: async (
+    requirePictureAccess: async (
       scope: { userId: string; organizationId: string | null },
       purpose: string,
-      fileId: string | null,
     ) => {
-      if (fileId !== id && fileId !== null) throw new AccessDeniedError();
-      seen.push(`${scope.userId}:${scope.organizationId}:${purpose}:${fileId}`);
+      seen.push(`${scope.userId}:${scope.organizationId}:${purpose}`);
     },
   };
   await authorizePictureMutation(valid, session, repository);
-  await authorizePictureMutation({ ...valid, fileId: null }, session, repository);
-  expect(seen).toEqual([`alice:org:avatar:${id}`, "alice:org:avatar:null"]);
+  await authorizePictureMutation({ ...valid, url: null }, session, repository);
+  expect(seen).toEqual(["alice:org:avatar", "alice:org:avatar"]);
   await expect(authorizePictureMutation(valid, null, repository)).rejects.toMatchObject({
     statusCode: 401,
   });
@@ -95,7 +94,11 @@ test("native mutations derive identity from verified session and validate ready 
     ),
   ).rejects.toMatchObject({ statusCode: 403 });
   await expect(
-    authorizePictureMutation({ ...valid, fileId: crypto.randomUUID() }, session, repository),
+    authorizePictureMutation(
+      { ...valid, url: `/api/v1/files/pictures/avatar/bob?v=${id}` },
+      session,
+      repository,
+    ),
   ).rejects.toMatchObject({ statusCode: 400 });
   await expect(
     authorizePictureMutation(
@@ -104,4 +107,16 @@ test("native mutations derive identity from verified session and validate ready 
       repository,
     ),
   ).rejects.toMatchObject({ statusCode: 403 });
+  await authorizePictureMutation(
+    { ...valid, purpose: "organization-logo", url: logo },
+    session,
+    repository,
+  );
+  await expect(
+    authorizePictureMutation({ ...valid, purpose: "organization-logo", url: logo }, session, {
+      requirePictureAccess: async () => {
+        throw new AccessDeniedError();
+      },
+    }),
+  ).rejects.toMatchObject({ statusCode: 400 });
 });

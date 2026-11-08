@@ -15,11 +15,6 @@ export interface FileServiceDependencies {
   storage: ObjectStorage;
   authenticate(headers: Headers): Promise<StorageScope>;
   requireOrigin(headers: Headers): void;
-  updatePicture(
-    headers: Headers,
-    purpose: "avatar" | "organization-logo",
-    fileId: string | null,
-  ): Promise<{ fileId: string | null; url: string | null }>;
 }
 
 export function createFileService(deps: FileServiceDependencies) {
@@ -83,12 +78,6 @@ export function createFileService(deps: FileServiceDependencies) {
         });
         // Temporary keys stay writable until the ticket expires. Never use them for content.
         return { fileId: file.id };
-      });
-    },
-    setPicture(headers: Headers, purpose: "avatar" | "organization-logo", fileId: string | null) {
-      return serviceResult(async () => {
-        await mutationScope(headers);
-        return deps.updatePicture(headers, purpose, fileId);
       });
     },
     content(headers: Headers, id: string) {

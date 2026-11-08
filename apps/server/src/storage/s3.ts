@@ -65,6 +65,17 @@ export function createS3Storage(config = storageEnvironment()): ObjectStorage {
       }
       return bytes;
     },
+    async put(key, bytes, contentType) {
+      await client.send(
+        new PutObjectCommand({
+          Bucket,
+          Key: key,
+          Body: bytes,
+          ContentType: contentType,
+          CacheControl: "private, no-store",
+        }),
+      );
+    },
     async putImmutable(key, bytes, contentType) {
       try {
         await client.send(

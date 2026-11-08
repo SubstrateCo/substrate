@@ -30,19 +30,14 @@ for (const kind of ["avatar", "organization-logo"] as const) {
       }
       fetchSpy = spyOn(globalThis, "fetch");
       if (action === "upload") {
-        fetchSpy
-          .mockResolvedValueOnce(
-            Response.json({
-              success: true,
-              data: {
-                uploadId: "upload-1",
-                uploadUrl: "https://storage.test/picture",
-                headers: {},
-              },
-            }),
-          )
-          .mockResolvedValueOnce(new Response(null, { status: 200 }))
-          .mockResolvedValueOnce(Response.json({ success: true, data: { fileId: "file-1" } }));
+        fetchSpy.mockResolvedValueOnce(
+          Response.json({
+            success: true,
+            data: {
+              url: "/api/v1/files/pictures/avatar/alice?v=one",
+            },
+          }),
+        );
       }
       fetchSpy.mockRejectedValueOnce(new Error("Commit response lost"));
       const options = pictureMutationOptions(queryClient, kind, "active", testPictureApi);
@@ -93,15 +88,12 @@ for (const action of ["upload", "remove"] as const) {
     );
     fetchSpy = spyOn(globalThis, "fetch");
     if (action === "upload") {
-      fetchSpy
-        .mockResolvedValueOnce(
-          Response.json({
-            success: true,
-            data: { uploadId: "upload-1", uploadUrl: "https://storage.test/picture", headers: {} },
-          }),
-        )
-        .mockResolvedValueOnce(new Response(null, { status: 200 }))
-        .mockResolvedValueOnce(Response.json({ success: true, data: { fileId: "file-1" } }));
+      fetchSpy.mockResolvedValueOnce(
+        Response.json({
+          success: true,
+          data: { url: "/api/v1/files/pictures/organization-logo/organization-a?v=one" },
+        }),
+      );
     }
     fetchSpy.mockResolvedValueOnce(
       Response.json(
@@ -126,8 +118,18 @@ for (const action of ["upload", "remove"] as const) {
     const [, commit] = fetchSpy.mock.calls.at(-1)!;
     expect(await new Response(commit?.body).json()).toEqual({
       organizationId: "organization-a",
-      data: { logo: action === "upload" ? "/api/v1/files/file-1/content" : null },
+      data: {
+        logo:
+          action === "upload"
+            ? "/api/v1/files/pictures/organization-logo/organization-a?v=one"
+            : null,
+      },
     });
+    if (action === "upload") {
+      const body = fetchSpy.mock.calls[0]?.[1]?.body;
+      if (!(body instanceof FormData)) throw new Error("Expected multipart upload.");
+      expect(body.get("organizationId")).toBe("organization-a");
+    }
     expect(
       queryClient.getQueryState(queryKeys.organizationDetail("organization-a"))?.isInvalidated,
     ).toBe(true);

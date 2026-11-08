@@ -115,6 +115,13 @@ async function complete(page: APIClient, ticket: UploadTicket) {
   return page.request.post(`${root}/uploads/${ticket.uploadId}/complete`, { headers: { origin } });
 }
 
+function uploadPicture(page: APIClient, purpose: "avatar" | "organization-logo", bytes = png) {
+  return page.request.post(`${root}/pictures/${purpose}`, {
+    headers: { origin },
+    multipart: { file: { name: "picture.png", mimeType: "image/png", buffer: bytes } },
+  });
+}
+
 async function image(page: APIClient) {
   const session = await result<{ user: { image?: string | null } }>(
     await page.request.get("/api/v1/session"),
@@ -137,10 +144,9 @@ test("file endpoints reject unauthenticated requests without exposing upload dat
       },
     }),
     anonymous.post(`${root}/uploads/${id}/complete`, { headers: { origin } }),
-    anonymous.post(`${root}/avatar`, { headers: { origin }, data: { fileId: id } }),
-    anonymous.post(`${root}/organization-logo`, { headers: { origin }, data: { fileId: id } }),
-    anonymous.delete(`${root}/avatar`, { headers: { origin } }),
-    anonymous.delete(`${root}/organization-logo`, { headers: { origin } }),
+    uploadPicture({ request: anonymous }, "avatar"),
+    uploadPicture({ request: anonymous }, "organization-logo"),
+    anonymous.get(`${root}/pictures/avatar/alice`, { maxRedirects: 0 }),
     anonymous.delete(`${root}/${id}`, { headers: { origin } }),
     anonymous.get(`${root}/${id}/content`, { maxRedirects: 0 }),
   ]);
@@ -200,26 +206,18 @@ test("signed storage uploads enforce declared size and content type and keep obj
   expect(unsigned.status()).toBeLessThan(500);
 });
 
-test("another user cannot complete, attach, or read a personal avatar", async ({
-  accounts,
-  anonymous,
-}) => {
+test("another user cannot attach or read a personal avatar", async ({ accounts, anonymous }) => {
   const { a, b } = accounts;
-  const filename = `private-avatar-${randomUUID()}.png`;
   const beforeA = await image(a);
   const beforeB = await image(b);
-  const ticket = await createUpload(b, "avatar", filename, "image/png", png);
-  await putBytes(anonymous, ticket, png);
-  await rejected(await complete(a, ticket), [filename, ticket.uploadUrl]);
-  const { fileId } = await result<CompletedUpload>(await complete(b, ticket));
+  const { url } = await result<{ url: string }>(await uploadPicture(b, "avatar"));
   await rejected(
-    await a.request.post(`${root}/avatar`, {
+    await a.request.post("/api/auth/update-user", {
       headers: { origin },
-      data: { fileId },
+      data: { image: url },
     }),
-    [filename, ticket.uploadUrl],
   );
-  await rejected(await a.request.get(`${root}/${fileId}/content`, { maxRedirects: 0 }), [filename]);
+  await rejected(await a.request.get(url, { maxRedirects: 0 }));
   expect(
     await image(a),
     "The failed attachment does not change the attacker's persisted profile",
@@ -228,18 +226,26 @@ test("another user cannot complete, attach, or read a personal avatar", async ({
     beforeB,
   );
 
-  await result(await b.request.post(`${root}/avatar`, { headers: { origin }, data: { fileId } }));
+  expect(
+    (
+      await b.request.post("/api/auth/update-user", { headers: { origin }, data: { image: url } })
+    ).ok(),
+  ).toBe(true);
   const attached = await image(b);
   expect(attached, "The owner has a managed avatar after attachment").toBeTruthy();
   expect(attached).not.toBe(beforeB);
-  const content = await b.request.get(`${root}/${fileId}/content`);
+  const content = await b.request.get(url);
   expect(content.ok()).toBe(true);
   expect(content.headers()["content-type"]).toMatch(/^image\//);
   expect((await content.body()).length).toBeGreaterThan(0);
-  await rejected(await a.request.get(`${root}/${fileId}/content`, { maxRedirects: 0 }), [filename]);
-  await rejected(await anonymous.get(`${root}/${fileId}/content`, { maxRedirects: 0 }), [filename]);
+  await rejected(await a.request.get(url, { maxRedirects: 0 }));
+  await rejected(await anonymous.get(url, { maxRedirects: 0 }));
 
-  await result(await b.request.delete(`${root}/avatar`, { headers: { origin } }));
+  expect(
+    (
+      await b.request.post("/api/auth/update-user", { headers: { origin }, data: { image: null } })
+    ).ok(),
+  ).toBe(true);
   expect(await image(b)).toBeNull();
 });
 
@@ -269,7 +275,12 @@ test("arbitrary files download as attachments and remain private to their upload
       secret,
     ]);
   }
-  await rejected(await b.request.post(`${root}/avatar`, { headers: { origin }, data: { fileId } }));
+  await rejected(
+    await b.request.post("/api/auth/update-user", {
+      headers: { origin },
+      data: { image: `${root}/${fileId}/content` },
+    }),
+  );
   expect(await image(b), "A generic file cannot become an avatar").toBeNull();
   await rejected(await a.request.delete(`${root}/${fileId}`, { headers: { origin } }));
   await result(await b.request.delete(`${root}/${fileId}`, { headers: { origin } }));
@@ -278,7 +289,6 @@ test("arbitrary files download as attachments and remain private to their upload
 
 test("workspace pictures are readable by members but cannot be managed by members or read across organizations", async ({
   accounts,
-  anonymous,
 }) => {
   const { a: member, b: owner } = accounts;
   const suffix = randomUUID();
@@ -321,66 +331,52 @@ test("workspace pictures are readable by members but cannot be managed by member
   });
   expect(activated.ok()).toBe(true);
 
-  const logoName = `workspace-logo-${suffix}.png`;
-  const avatarName = `coworker-avatar-${suffix}.png`;
-  const logoTicket = await createUpload(owner, "organization-logo", logoName, "image/png", png);
-  const avatarTicket = await createUpload(owner, "avatar", avatarName, "image/png", png);
-  await putBytes(anonymous, logoTicket, png);
-  await putBytes(anonymous, avatarTicket, png);
-  const logo = await result<CompletedUpload>(await complete(owner, logoTicket));
-  const avatar = await result<CompletedUpload>(await complete(owner, avatarTicket));
-  for (const file of [logo, avatar]) {
-    await rejected(
-      await member.request.get(`${root}/${file.fileId}/content`, { maxRedirects: 0 }),
-      [logoName, avatarName],
-    );
-  }
-  await result(
-    await owner.request.post(`${root}/organization-logo`, {
-      headers: { origin },
-      data: { fileId: logo.fileId },
-    }),
-  );
-  await result(
-    await owner.request.post(`${root}/avatar`, {
-      headers: { origin },
-      data: { fileId: avatar.fileId },
-    }),
-  );
+  const logo = await result<{ url: string }>(await uploadPicture(owner, "organization-logo"));
+  const avatar = await result<{ url: string }>(await uploadPicture(owner, "avatar"));
+  expect(
+    (
+      await owner.request.post("/api/auth/organization/update", {
+        headers: { origin },
+        data: { organizationId: organization.id, data: { logo: logo.url } },
+      })
+    ).ok(),
+  ).toBe(true);
+  expect(
+    (
+      await owner.request.post("/api/auth/update-user", {
+        headers: { origin },
+        data: { image: avatar.url },
+      })
+    ).ok(),
+  ).toBe(true);
   const attachedLogo = (await getOrganization(owner)).logo;
   const attachedAvatar = await image(owner);
   expect(attachedLogo).toBeTruthy();
   expect(attachedAvatar).toBeTruthy();
   for (const file of [logo, avatar]) {
-    const content = await member.request.get(`${root}/${file.fileId}/content`);
+    const content = await member.request.get(file.url);
     expect(content.ok(), "Coworkers can read attached workspace pictures").toBe(true);
     expect(content.headers()["content-type"]).toMatch(/^image\//);
     expect((await content.body()).length).toBeGreaterThan(0);
   }
 
+  await rejected(await uploadPicture(member, "organization-logo"));
   await rejected(
-    await member.request.post(`${root}/uploads`, {
+    await member.request.post("/api/auth/organization/update", {
       headers: { origin },
-      data: {
-        purpose: "organization-logo",
-        filename: "member-logo.png",
-        contentType: "image/png",
-        size: png.length,
-      },
+      data: { organizationId: organization.id, data: { logo: logo.url } },
     }),
   );
   await rejected(
-    await member.request.post(`${root}/organization-logo`, {
+    await member.request.post("/api/auth/organization/update", {
       headers: { origin },
-      data: { fileId: logo.fileId },
+      data: { organizationId: organization.id, data: { logo: null } },
     }),
   );
-  await rejected(await member.request.delete(`${root}/organization-logo`, { headers: { origin } }));
-  await rejected(await member.request.delete(`${root}/${logo.fileId}`, { headers: { origin } }));
   await rejected(
-    await member.request.post(`${root}/avatar`, {
+    await member.request.post("/api/auth/update-user", {
       headers: { origin },
-      data: { fileId: avatar.fileId },
+      data: { image: avatar.url },
     }),
   );
   expect(
@@ -397,32 +393,23 @@ test("workspace pictures are readable by members but cannot be managed by member
   });
   expect(switched.ok()).toBe(true);
   for (const file of [logo, avatar]) {
-    await rejected(
-      await member.request.get(`${root}/${file.fileId}/content`, { maxRedirects: 0 }),
-      [logoName, avatarName],
-    );
+    await rejected(await member.request.get(file.url, { maxRedirects: 0 }));
   }
 });
 
-test("an image MIME declaration cannot make non-image bytes a completed avatar", async ({
+test("an image MIME declaration cannot make non-image bytes a profile picture", async ({
   owner,
-  anonymous,
 }) => {
   const before = await image(owner);
   const bytes = Buffer.from(`<html>Not an image ${randomUUID()}</html>`);
-  const ticket = await createUpload(owner, "avatar", "spoofed.png", "image/png", bytes);
-  await putBytes(anonymous, ticket, bytes);
-  await rejected(await complete(owner, ticket), [ticket.uploadUrl]);
+  await rejected(await uploadPicture(owner, "avatar", bytes));
   expect(await image(owner), "Rejected content leaves the persisted profile unchanged").toBe(
     before,
   );
 });
 
 for (const purpose of ["avatar", "organization-logo"] as const) {
-  test(`native picture updates attach and clear a managed ${purpose} atomically`, async ({
-    owner,
-    anonymous,
-  }) => {
+  test(`native picture updates save and clear an uploaded ${purpose}`, async ({ owner }) => {
     let organizationId: string | undefined;
     if (purpose === "organization-logo") {
       const suffix = randomUUID();
@@ -440,10 +427,7 @@ for (const purpose of ["avatar", "organization-logo"] as const) {
       expect(activated.ok()).toBe(true);
     }
 
-    const ticket = await createUpload(owner, purpose, `native-${purpose}.png`, "image/png", png);
-    await putBytes(anonymous, ticket, png);
-    const { fileId } = await result<CompletedUpload>(await complete(owner, ticket));
-    const managedURL = `${root}/${fileId}/content`;
+    const { url: managedURL } = await result<{ url: string }>(await uploadPicture(owner, purpose));
     const update = (value: string | null) =>
       owner.request.post(
         purpose === "avatar" ? "/api/auth/update-user" : "/api/auth/organization/update",
@@ -485,25 +469,16 @@ for (const purpose of ["avatar", "organization-logo"] as const) {
     expect(content.headers()["content-type"]).toMatch(/^image\//);
     expect((await content.body()).length).toBeGreaterThan(0);
 
-    await rejected(await owner.request.delete(`${root}/${fileId}`, { headers: { origin } }));
-    expect(
-      await persistedPicture(),
-      "Rejected deletion preserves the native picture attachment",
-    ).toBe(managedURL);
-    expect(
-      (await owner.request.get(managedURL)).ok(),
-      "The protected attached file remains readable",
-    ).toBe(true);
+    const replacement = await result<{ url: string }>(await uploadPicture(owner, purpose));
+    expect(replacement.url.split("?")[0]).toBe(managedURL.split("?")[0]);
+    expect(replacement.url).not.toBe(managedURL);
+    expect(await persistedPicture(), "Uploading does not write Better Auth").toBe(managedURL);
+    expect((await update(replacement.url)).ok()).toBe(true);
+    expect(await persistedPicture()).toBe(replacement.url);
 
     const cleared = await update(null);
     expect(cleared.ok(), "Native Better Auth updates can clear a managed picture").toBe(true);
     expect(await persistedPicture()).toBeNull();
-    await result(await owner.request.delete(`${root}/${fileId}`, { headers: { origin } }));
-    await rejected(await owner.request.get(managedURL, { maxRedirects: 0 }));
-    expect(
-      await persistedPicture(),
-      "Deleting the detached file does not restore a stale picture URL",
-    ).toBeNull();
   });
 }
 

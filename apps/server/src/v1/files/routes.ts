@@ -1,37 +1,24 @@
-import { createUploadInput, fileIdInput, uploadIdParam } from "@startup-os/contracts/files/input";
+import { createUploadInput, uploadIdParam } from "@startup-os/contracts/files/input";
 
 import { respond, validationHook } from "../../shared/http";
-import { defaultFileService } from "./default-service";
+import { defaultFileService, defaultPictureService } from "./default-service";
+import { createPictureRoutes } from "./picture-routes";
+import type { PictureService } from "./pictures";
 import type { FileService } from "./service";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 
-export function createFilesRoutes(service: FileService = defaultFileService) {
+export function createFilesRoutes(
+  service: FileService = defaultFileService,
+  pictures: PictureService = defaultPictureService,
+) {
   return new Hono()
+    .route("/pictures", createPictureRoutes(pictures))
     .post("/uploads", zValidator("json", createUploadInput, validationHook), async (c) =>
       respond(c, await service.createUpload(c.req.raw.headers, c.req.valid("json"))),
     )
     .post("/uploads/:id/complete", zValidator("param", uploadIdParam, validationHook), async (c) =>
       respond(c, await service.completeUpload(c.req.raw.headers, c.req.valid("param").id)),
-    )
-    .post("/avatar", zValidator("json", fileIdInput, validationHook), async (c) =>
-      respond(c, await service.setPicture(c.req.raw.headers, "avatar", c.req.valid("json").fileId)),
-    )
-    .delete("/avatar", async (c) =>
-      respond(c, await service.setPicture(c.req.raw.headers, "avatar", null)),
-    )
-    .post("/organization-logo", zValidator("json", fileIdInput, validationHook), async (c) =>
-      respond(
-        c,
-        await service.setPicture(
-          c.req.raw.headers,
-          "organization-logo",
-          c.req.valid("json").fileId,
-        ),
-      ),
-    )
-    .delete("/organization-logo", async (c) =>
-      respond(c, await service.setPicture(c.req.raw.headers, "organization-logo", null)),
     )
     .delete("/:id", zValidator("param", uploadIdParam, validationHook), async (c) =>
       respond(c, await service.deleteFile(c.req.raw.headers, c.req.valid("param").id)),

@@ -1,4 +1,4 @@
-import { managedPicture, managedPictureFileId } from "@startup-os/contracts/files/pictures";
+import { managedPicture, profilePicturePath } from "@startup-os/contracts/files/pictures";
 import { AccessDeniedError } from "@startup-os/database";
 import type { StorageRepository } from "@startup-os/database/storage";
 
@@ -21,7 +21,7 @@ export function protectUserPicture<T extends object>(input: T, creating = false)
     const parsed = managedPicture.safeParse(input.image);
     if (!parsed.success)
       throw new APIError("BAD_REQUEST", {
-        message: "Use a completed managed picture URL or null.",
+        message: "Use an uploaded picture URL or null.",
       });
   }
   return input;
@@ -29,7 +29,7 @@ export function protectUserPicture<T extends object>(input: T, creating = false)
 
 export interface PictureMutation {
   purpose: "avatar" | "organization-logo";
-  fileId: string | null;
+  url: string | null;
   organizationId: string | undefined;
 }
 
@@ -58,10 +58,10 @@ export function readPictureMutation(path: string, body: unknown): PictureMutatio
   if (value === undefined) return null;
   const picture = managedPicture.safeParse(value);
   if (!picture.success)
-    throw new APIError("BAD_REQUEST", { message: "Use a completed managed picture URL or null." });
+    throw new APIError("BAD_REQUEST", { message: "Use an uploaded picture URL or null." });
   return {
     purpose,
-    fileId: managedPictureFileId(picture.data),
+    url: picture.data,
     organizationId: input.organizationId,
   };
 }
@@ -74,7 +74,7 @@ interface PictureSession {
 export async function authorizePictureMutation(
   mutation: PictureMutation,
   session: PictureSession | null,
-  repository: Pick<StorageRepository, "validatePicture">,
+  repository: Pick<StorageRepository, "requirePictureAccess">,
 ) {
   if (!session) throw new APIError("UNAUTHORIZED", { message: "Sign in to continue." });
   if (!session.user.emailVerified)
@@ -86,11 +86,16 @@ export async function authorizePictureMutation(
     mutation.organizationId !== organizationId
   )
     throw new APIError("FORBIDDEN", { message: "Your active workspace changed." });
+  const owner = mutation.purpose === "avatar" ? session.user.id : organizationId;
+  if (
+    mutation.url !== null &&
+    (!owner || !mutation.url.startsWith(`${profilePicturePath(mutation.purpose, owner)}?v=`))
+  )
+    throw new APIError("BAD_REQUEST", { message: "Use your own uploaded picture URL." });
   try {
-    await repository.validatePicture(
+    await repository.requirePictureAccess(
       { userId: session.user.id, organizationId },
       mutation.purpose,
-      mutation.fileId,
     );
   } catch (error) {
     if (error instanceof AccessDeniedError)

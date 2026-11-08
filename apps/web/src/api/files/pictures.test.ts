@@ -12,25 +12,20 @@ type PictureResponse =
   | { uploadId: string; uploadUrl: string; headers: Record<string, string> }
   | { fileId: string }
   | { fileId: string | null; url: string | null }
+  | { url: string }
   | { logo: null };
 const success = (data: PictureResponse) => Response.json({ success: true, data });
 const file = () => new File(["picture"], "cropped.png", { type: "image/png" });
+const pictureUrl = `/api/v1/files/pictures/avatar/alice?v=${crypto.randomUUID()}`;
 
-test("uploads cropped bytes without credentials before attaching the completed avatar", async () => {
+test("uploads picture bytes before saving the returned URL through Better Auth", async () => {
   const requests: { url: string; init?: RequestInit }[] = [];
   fetchSpy = spyOn(globalThis, "fetch").mockImplementation(
     Object.assign(
       async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = input instanceof Request ? input.url : input.toString();
         requests.push({ url, init });
-        if (url.endsWith("/uploads"))
-          return success({
-            uploadId: "upload-1",
-            uploadUrl: "https://storage.test/picture",
-            headers: { "Content-Type": "image/png" },
-          });
-        if (url.startsWith("https://storage.test")) return new Response(null, { status: 200 });
-        if (url.endsWith("/complete")) return success({ fileId: "file-1" });
+        if (url.endsWith("/pictures/avatar")) return success({ url: pictureUrl });
         return Response.json({ status: true });
       },
       { preconnect: globalThis.fetch.preconnect },
@@ -39,29 +34,16 @@ test("uploads cropped bytes without credentials before attaching the completed a
   const picture = file();
   const controller = new AbortController();
   await uploadPicture(picture, "avatar", controller.signal);
-  const body = await new Response(requests[0]?.init?.body).json();
-  expect(body).toEqual({
-    purpose: "avatar",
-    filename: "cropped.png",
-    contentType: "image/png",
-    size: picture.size,
-  });
-  expect(requests[1]).toMatchObject({
-    url: "https://storage.test/picture",
-    init: {
-      method: "PUT",
-      body: picture,
-      credentials: "omit",
-      signal: controller.signal,
-      headers: { "Content-Type": "image/png" },
-    },
-  });
-  expect(requests[2]?.url).toEndWith("/uploads/upload-1/complete");
-  expect(requests[3]?.url).toEndWith("/api/auth/update-user");
-  expect(requests[3]?.init?.method).toBe("POST");
-  expect(await new Response(requests[3]?.init?.body).json()).toEqual({
-    image: "/api/v1/files/file-1/content",
-  });
+  const body = requests[0]?.init?.body;
+  if (!(body instanceof FormData)) throw new Error("Expected multipart upload.");
+  const uploaded = body.get("file");
+  if (!(uploaded instanceof File)) throw new Error("Expected picture bytes.");
+  expect(await uploaded.text()).toBe(await picture.text());
+  expect(requests[0]?.init?.signal).toBe(controller.signal);
+  expect(requests[1]?.url).toEndWith("/api/auth/update-user");
+  expect(requests[1]?.init?.method).toBe("POST");
+  expect(await new Response(requests[1]?.init?.body).json()).toEqual({ image: pictureUrl });
+  expect(requests).toHaveLength(2);
 });
 
 test("attaches an agent avatar by file ID without changing the human profile", async () => {
@@ -144,36 +126,32 @@ test("removes an agent avatar with a nullable file ID, not a user update", async
   expect(fetchSpy).toHaveBeenCalledTimes(1);
 });
 
-test("does not complete or attach a failed storage upload", async () => {
-  fetchSpy = spyOn(globalThis, "fetch")
-    .mockResolvedValueOnce(
-      success({ uploadId: "upload-1", uploadUrl: "https://storage.test/picture", headers: {} }),
-    )
-    .mockResolvedValueOnce(new Response(null, { status: 403 }));
+test("does not save a picture URL when the upload fails", async () => {
+  fetchSpy = spyOn(globalThis, "fetch").mockResolvedValueOnce(
+    Response.json(
+      { success: false, error: { code: "INTERNAL_ERROR", message: "Upload failed." } },
+      { status: 500 },
+    ),
+  );
   await uploadPicture(file(), "organization-logo").then(
     () => {
       throw new Error("Expected a failed upload");
     },
     (error: Error) => {
-      expect(error.message).toContain("could not be uploaded");
+      expect(error.message).toBe("Upload failed.");
     },
   );
-  expect(fetchSpy).toHaveBeenCalledTimes(2);
+  expect(fetchSpy).toHaveBeenCalledTimes(1);
 });
 
 test("cancellation after preparation prevents the committing attachment", async () => {
   const controller = new AbortController();
-  const completion = success({ fileId: "file-1" });
+  const completion = success({ url: pictureUrl });
   spyOn(completion, "json").mockImplementation(async () => {
     controller.abort();
-    return { success: true, data: { fileId: "file-1" } };
+    return { success: true, data: { url: pictureUrl } };
   });
-  fetchSpy = spyOn(globalThis, "fetch")
-    .mockResolvedValueOnce(
-      success({ uploadId: "upload-1", uploadUrl: "https://storage.test/picture", headers: {} }),
-    )
-    .mockResolvedValueOnce(new Response(null, { status: 200 }))
-    .mockResolvedValueOnce(completion);
+  fetchSpy = spyOn(globalThis, "fetch").mockResolvedValueOnce(completion);
   let committing = false;
   await uploadPicture(file(), "avatar", controller.signal, () => {
     committing = true;
@@ -186,7 +164,7 @@ test("cancellation after preparation prevents the committing attachment", async 
     },
   );
   expect(committing).toBe(false);
-  expect(fetchSpy).toHaveBeenCalledTimes(3);
+  expect(fetchSpy).toHaveBeenCalledTimes(1);
 });
 
 test("a late cancellation cannot abort a committing attachment or hide its success", async () => {
@@ -194,11 +172,7 @@ test("a late cancellation cannot abort a committing attachment or hide its succe
   const started = Promise.withResolvers<RequestInit | undefined>();
   const committed = Promise.withResolvers<Response>();
   fetchSpy = spyOn(globalThis, "fetch")
-    .mockResolvedValueOnce(
-      success({ uploadId: "upload-1", uploadUrl: "https://storage.test/picture", headers: {} }),
-    )
-    .mockResolvedValueOnce(new Response(null, { status: 200 }))
-    .mockResolvedValueOnce(success({ fileId: "file-1" }))
+    .mockResolvedValueOnce(success({ url: pictureUrl }))
     .mockImplementationOnce(
       Object.assign(
         async (_input: RequestInfo | URL, init?: RequestInit) => {
@@ -221,7 +195,7 @@ test("a late cancellation cannot abort a committing attachment or hide its succe
   expect(await upload).toEqual({ status: true });
 });
 
-test("keeps access failures actionable and does not send picture bytes", async () => {
+test("keeps upload access failures actionable without updating Better Auth", async () => {
   fetchSpy = spyOn(globalThis, "fetch").mockResolvedValue(
     Response.json(
       { success: false, error: { code: "FORBIDDEN", message: "You cannot change this logo." } },
@@ -257,11 +231,7 @@ for (const kind of ["avatar", "organization-logo"] as const) {
 
   test(`attaches ${kind} through the native endpoint without discarding validation errors`, async () => {
     fetchSpy = spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(
-        success({ uploadId: "upload-1", uploadUrl: "https://storage.test/picture", headers: {} }),
-      )
-      .mockResolvedValueOnce(new Response(null, { status: 200 }))
-      .mockResolvedValueOnce(success({ fileId: "file-1" }))
+      .mockResolvedValueOnce(success({ url: pictureUrl }))
       .mockResolvedValueOnce(
         Response.json(
           { code: "INVALID_PICTURE", message: "Choose a completed picture owned by this account." },
@@ -280,14 +250,14 @@ for (const kind of ["avatar", "organization-logo"] as const) {
         });
       },
     );
-    const [url, init] = fetchSpy.mock.calls[3]!;
+    const [url, init] = fetchSpy.mock.calls[1]!;
     expect(url instanceof Request ? url.url : url.toString()).toEndWith(
       kind === "avatar" ? "/api/auth/update-user" : "/api/auth/organization/update",
     );
     expect(await new Response(init?.body).json()).toEqual(
       kind === "avatar"
-        ? { image: "/api/v1/files/file-1/content" }
-        : { organizationId: "organization-a", data: { logo: "/api/v1/files/file-1/content" } },
+        ? { image: pictureUrl }
+        : { organizationId: "organization-a", data: { logo: pictureUrl } },
     );
   });
 }

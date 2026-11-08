@@ -34,7 +34,6 @@ export const createUploadInput = z
       ["image/jpeg", "image/png", "image/webp"].includes(input.contentType),
     { message: "Use a JPEG, PNG, or WebP image." },
   );
-export const fileIdInput = z.object({ fileId: z.uuid() }).strict();
 export const uploadIdParam = z.object({ id: z.uuid() });
 export type FilePurpose = z.infer<typeof filePurpose>;
 export type CreateUploadInput = z.infer<typeof createUploadInput>;

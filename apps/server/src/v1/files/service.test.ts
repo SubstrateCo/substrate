@@ -37,7 +37,8 @@ function fixture() {
     getUpload: async () => ({ upload, completed }),
     addCandidate: async () => {},
     complete: async (_scope, _id, data) => (completed ??= { ...upload, ...data }),
-    validatePicture: async () => {},
+    requirePictureAccess: async () => {},
+    canReadPicture: async () => true,
     getReadable: async () => completed,
     deleteFile: async () => {
       completed = null;
@@ -58,6 +59,9 @@ function fixture() {
       headers: { "Content-Type": upload.contentType },
     }),
     read: async (key) => objects.get(key)!,
+    put: async (key, bytes) => {
+      objects.set(key, bytes.slice());
+    },
     putImmutable: async (key, bytes) => {
       if (!objects.has(key)) objects.set(key, bytes.slice());
     },
@@ -69,10 +73,6 @@ function fixture() {
   const service = createFileService({
     repository,
     storage,
-    updatePicture: async (_headers, _purpose, fileId) => ({
-      fileId,
-      url: fileId ? `/api/v1/files/${fileId}/content` : null,
-    }),
     authenticate: async (headers) => {
       if (!headers.has("cookie")) throw new ServiceError("UNAUTHENTICATED", "Sign in.");
       return { userId: "alice", organizationId: "org" };

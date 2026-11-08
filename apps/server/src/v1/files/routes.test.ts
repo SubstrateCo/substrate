@@ -9,14 +9,13 @@ function service(): FileService {
     createUpload: async () =>
       success({ uploadId: crypto.randomUUID(), uploadUrl: "https://s3.test/upload", headers: {} }),
     completeUpload: async (_headers, id) => success({ fileId: id }),
-    setPicture: async (_headers, _purpose, fileId) => success({ fileId, url: null }),
     content: async () => success({ url: "https://s3.test/signed" }),
     deleteFile: async (_headers, id) => success({ fileId: id }),
     cleanup: async () => {},
   };
 }
 
-test("file routes validate upload limits and attachment identity", async () => {
+test("file routes validate upload limits and completion identity", async () => {
   const app = createFilesRoutes(service());
   const upload = await app.request("/uploads", {
     method: "POST",
@@ -29,12 +28,8 @@ test("file routes validate upload limits and attachment identity", async () => {
     }),
   });
   expect(upload.status).toBe(400);
-  const attach = await app.request("/avatar", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ fileId: "https://evil.test/image" }),
-  });
-  expect(attach.status).toBe(400);
+  const invalid = await app.request("/uploads/not-a-uuid/complete", { method: "POST" });
+  expect(invalid.status).toBe(400);
   const complete = await app.request(`/uploads/${crypto.randomUUID()}/complete`, {
     method: "POST",
   });

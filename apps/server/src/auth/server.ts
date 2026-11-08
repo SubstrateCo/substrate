@@ -157,7 +157,7 @@ export const auth = betterAuth({
             !managedPicture.safeParse(organization.logo).success
           )
             throw new APIError("BAD_REQUEST", {
-              message: "Use a completed managed picture URL or null.",
+              message: "Use an uploaded picture URL or null.",
             });
         },
         afterCreateOrganization: provisionMember,

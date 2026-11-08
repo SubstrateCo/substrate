@@ -1,17 +1,7 @@
 import { user } from "../authentication/schema";
 import { organization } from "../organizations/schema";
 import { sql } from "drizzle-orm";
-import {
-  check,
-  foreignKey,
-  index,
-  integer,
-  pgTable,
-  text,
-  timestamp,
-  unique,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { check, index, integer, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 
 const ownership = () => ({
   ownerUserId: text("owner_user_id").references(() => user.id, { onDelete: "cascade" }),
@@ -79,45 +69,3 @@ export const storageCandidates = pgTable("storage_candidates", {
   objectKey: text("object_key").primaryKey(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
-
-export const userPictures = pgTable(
-  "user_pictures",
-  {
-    id: uuid("id").primaryKey(),
-    userId: text("user_id")
-      .notNull()
-      .unique()
-      .references(() => user.id, { onDelete: "cascade" }),
-    fileId: uuid("file_id").notNull(),
-    purpose: text("purpose").default("avatar").notNull(),
-  },
-  (t) => [
-    check("user_picture_purpose", sql`${t.purpose} = 'avatar'`),
-    foreignKey({
-      name: "user_picture_file_owner_fk",
-      columns: [t.fileId, t.userId, t.purpose],
-      foreignColumns: [storedFiles.id, storedFiles.ownerUserId, storedFiles.purpose],
-    }),
-  ],
-);
-
-export const organizationPictures = pgTable(
-  "organization_pictures",
-  {
-    id: uuid("id").primaryKey(),
-    organizationId: text("organization_id")
-      .notNull()
-      .unique()
-      .references(() => organization.id, { onDelete: "cascade" }),
-    fileId: uuid("file_id").notNull(),
-    purpose: text("purpose").default("organization-logo").notNull(),
-  },
-  (t) => [
-    check("organization_picture_purpose", sql`${t.purpose} = 'organization-logo'`),
-    foreignKey({
-      name: "organization_picture_file_owner_fk",
-      columns: [t.fileId, t.organizationId, t.purpose],
-      foreignColumns: [storedFiles.id, storedFiles.organizationId, storedFiles.purpose],
-    }),
-  ],
-);

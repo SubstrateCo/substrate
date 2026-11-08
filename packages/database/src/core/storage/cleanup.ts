@@ -1,12 +1,6 @@
 import type { Database } from "../../client";
 import { userAgents } from "../actors/user-agents.schema";
-import {
-  fileUploads,
-  storedFiles,
-  storageCandidates,
-  userPictures,
-  organizationPictures,
-} from "./schema";
+import { fileUploads, storedFiles, storageCandidates } from "./schema";
 import { and, eq, inArray, isNull, lt, notExists, or } from "drizzle-orm";
 
 export function createStorageCleanup(db: Database) {
@@ -45,18 +39,6 @@ export function createStorageCleanup(db: Database) {
                   .select({ id: userAgents.id })
                   .from(userAgents)
                   .where(eq(userAgents.imageFileId, storedFiles.id)),
-              ),
-              notExists(
-                tx
-                  .select({ id: userPictures.id })
-                  .from(userPictures)
-                  .where(eq(userPictures.fileId, storedFiles.id)),
-              ),
-              notExists(
-                tx
-                  .select({ id: organizationPictures.id })
-                  .from(organizationPictures)
-                  .where(eq(organizationPictures.fileId, storedFiles.id)),
               ),
             ),
           )

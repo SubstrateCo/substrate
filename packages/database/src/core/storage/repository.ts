@@ -7,15 +7,8 @@ import { userAgents } from "../actors/user-agents.schema";
 import { member } from "../organizations/schema";
 import { createStorageCleanup } from "./cleanup";
 import { temporaryObjectKey } from "./object-keys";
-import {
-  fileUploads,
-  storedFiles,
-  storageCandidates,
-  userPictures,
-  organizationPictures,
-} from "./schema";
+import { fileUploads, storedFiles, storageCandidates } from "./schema";
 import { and, eq, sql } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
 
 // Trusted server-only identity scope. Personal files deliberately do not require an actor.
 export interface StorageScope {
@@ -47,6 +40,30 @@ async function requireScope(
 export function createStorageRepository(db: Database) {
   return {
     ...createStorageCleanup(db),
+    requirePictureAccess(scope: StorageScope, purpose: "avatar" | "organization-logo") {
+      return requireScope(db, scope, purpose);
+    },
+    async canReadPicture(
+      scope: StorageScope,
+      purpose: "avatar" | "organization-logo",
+      ownerId: string,
+    ) {
+      if (purpose === "avatar" && ownerId === scope.userId) return true;
+      if (!scope.organizationId) return false;
+      const [viewer] = await db
+        .select({ id: member.id })
+        .from(member)
+        .where(
+          and(eq(member.userId, scope.userId), eq(member.organizationId, scope.organizationId)),
+        );
+      if (!viewer) return false;
+      if (purpose === "organization-logo") return ownerId === scope.organizationId;
+      const [owner] = await db
+        .select({ id: member.id })
+        .from(member)
+        .where(and(eq(member.userId, ownerId), eq(member.organizationId, scope.organizationId)));
+      return !!owner;
+    },
     async createUpload(scope: StorageScope, input: CreateUploadInput, id: string, expiresAt: Date) {
       await requireScope(db, scope, input.purpose);
       const [upload] = await db
@@ -132,51 +149,10 @@ export function createStorageRepository(db: Database) {
         return file!;
       });
     },
-    async validatePicture(
-      scope: StorageScope,
-      purpose: "avatar" | "organization-logo",
-      fileId: string | null,
-    ) {
-      await requireScope(db, scope, purpose);
-      if (fileId) {
-        const [file] = await db.select().from(storedFiles).where(eq(storedFiles.id, fileId));
-        if (
-          !file ||
-          file.purpose !== purpose ||
-          (purpose === "avatar"
-            ? file.ownerUserId !== scope.userId
-            : file.organizationId !== scope.organizationId)
-        )
-          throw new AccessDeniedError();
-      }
-    },
     async getReadable(scope: StorageScope, id: string) {
       const [file] = await db.select().from(storedFiles).where(eq(storedFiles.id, id));
       if (!file) return null;
-      if (file.purpose === "avatar") {
-        if (file.ownerUserId === scope.userId) return file;
-        if (!scope.organizationId) return null;
-        // Another user's profile picture is readable only by a member of a shared organization.
-        const owner = alias(member, "owner");
-        const viewer = alias(member, "viewer");
-        const [shared] = await db
-          .select({ id: userPictures.id })
-          .from(userPictures)
-          .innerJoin(
-            owner,
-            and(
-              eq(owner.userId, userPictures.userId),
-              eq(owner.organizationId, scope.organizationId),
-            ),
-          )
-          .innerJoin(
-            viewer,
-            and(eq(viewer.userId, scope.userId), eq(viewer.organizationId, scope.organizationId)),
-          )
-          .where(eq(userPictures.fileId, id))
-          .limit(1);
-        return shared ? file : null;
-      }
+      if (file.purpose === "avatar") return file.ownerUserId === scope.userId ? file : null;
       if (file.organizationId !== scope.organizationId) return null;
       try {
         await requireScope(db, scope, file.purpose, false);
@@ -185,18 +161,6 @@ export function createStorageRepository(db: Database) {
         throw error;
       }
       if (file.uploadedBy === scope.userId) return file;
-      if (file.purpose === "organization-logo") {
-        const [picture] = await db
-          .select()
-          .from(organizationPictures)
-          .where(
-            and(
-              eq(organizationPictures.organizationId, scope.organizationId!),
-              eq(organizationPictures.fileId, id),
-            ),
-          );
-        if (picture) return file;
-      }
       return null;
     },
     async deleteFile(scope: StorageScope, id: string) {
@@ -214,9 +178,7 @@ export function createStorageRepository(db: Database) {
           throw new AccessDeniedError();
         await requireScope(tx, scope, file.purpose, false);
         const [usage] = await tx.execute<{ referenced: boolean }>(sql`
-          SELECT EXISTS (SELECT 1 FROM ${userPictures} WHERE ${userPictures.fileId} = ${id})
-            OR EXISTS (SELECT 1 FROM ${organizationPictures} WHERE ${organizationPictures.fileId} = ${id})
-            OR EXISTS (SELECT 1 FROM ${userAgents} WHERE ${userAgents.imageFileId} = ${id})
+          SELECT EXISTS (SELECT 1 FROM ${userAgents} WHERE ${userAgents.imageFileId} = ${id})
             AS referenced
         `);
         if (usage?.referenced)

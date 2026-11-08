@@ -3,41 +3,13 @@ import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { user } from "../authentication/schema";
 import { member, organization } from "../organizations/schema";
-import { createStorageRepository, type StorageScope } from "./repository";
-import {
-  fileUploads,
-  storedFiles,
-  storageCandidates,
-  userPictures,
-  organizationPictures,
-} from "./schema";
+import { createStorageRepository } from "./repository";
+import { fileUploads, storedFiles, storageCandidates } from "./schema";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
-function repositoryWithAuthWrites() {
-  const repository = createStorageRepository(f.db);
-  return {
-    ...repository,
-    async setPicture(
-      scope: StorageScope,
-      purpose: "avatar" | "organization-logo",
-      fileId: string | null,
-    ) {
-      await repository.validatePicture(scope, purpose, fileId);
-      const url = fileId ? `/api/v1/files/${fileId}/content` : null;
-      if (purpose === "avatar")
-        await f.db.update(user).set({ image: url }).where(eq(user.id, scope.userId));
-      else
-        await f.db
-          .update(organization)
-          .set({ logo: url })
-          .where(eq(organization.id, scope.organizationId!));
-      return { fileId, url };
-    },
-  };
-}
 const file = (purpose = "avatar", organizationId: string | null = null) => ({
   id: crypto.randomUUID(),
   ownerUserId: organizationId ? null : "alice",
@@ -206,92 +178,72 @@ describe("stored file relationships", () => {
     expect(completed.createdAt.getTime()).toBeGreaterThan(0);
   });
 
-  test("PostgreSQL rejects mismatched owners, purpose, and malformed ownership", async () => {
-    const avatar = file();
-    await f.db.insert(storedFiles).values(avatar);
-    await expect(
-      f.db
-        .insert(userPictures)
-        .values({ id: crypto.randomUUID(), userId: "bob", fileId: avatar.id })
-        .execute(),
-    ).rejects.toMatchObject({ cause: { code: "23503" } });
+  test("PostgreSQL rejects malformed file ownership", async () => {
     await expect(
       f.db
         .insert(storedFiles)
         .values({ ...file(), organizationId: f.orgA })
         .execute(),
     ).rejects.toMatchObject({ cause: { code: "23514" } });
-    await expect(
-      f.db
-        .insert(organizationPictures)
-        .values({ id: crypto.randomUUID(), organizationId: f.orgA, fileId: avatar.id })
-        .execute(),
-    ).rejects.toMatchObject({ cause: { code: "23503" } });
-    const logo = file("organization-logo", f.orgA);
-    await f.db.insert(storedFiles).values(logo);
-    await expect(
-      f.db
-        .insert(organizationPictures)
-        .values({ id: crypto.randomUUID(), organizationId: f.orgB, fileId: logo.id })
-        .execute(),
-    ).rejects.toMatchObject({ cause: { code: "23503" } });
   });
 
-  test("picture attachment updates the auth field atomically and blocks other owners", async () => {
-    const avatar = file();
-    await f.db.insert(storedFiles).values(avatar);
-    const repo = repositoryWithAuthWrites();
-    const alice = { userId: "alice", organizationId: f.orgA };
-    await expect(
-      repo.setPicture({ userId: "bob", organizationId: f.orgA }, "avatar", avatar.id),
-    ).rejects.toThrow();
-    await repo.setPicture(alice, "avatar", avatar.id);
-    const [saved] = await f.db.select().from(user).where(eq(user.id, "alice"));
-    expect(saved!.image).toBe(`/api/v1/files/${avatar.id}/content`);
-    expect((await repo.getReadable({ userId: "bob", organizationId: f.orgA }, avatar.id))?.id).toBe(
-      avatar.id,
-    );
+  test("profile pictures are readable only by their owner or members of the active shared organization", async () => {
+    const repo = createStorageRepository(f.db);
     expect(
-      await repo.getReadable({ userId: "outsider", organizationId: f.orgB }, avatar.id),
-    ).toBeNull();
-    await repo.setPicture(alice, "avatar", null);
-    expect(await repo.getReadable({ userId: "bob", organizationId: f.orgA }, avatar.id)).toBeNull();
-    expect((await f.db.select().from(user).where(eq(user.id, "alice")))[0]!.image).toBeNull();
+      await repo.canReadPicture({ userId: "alice", organizationId: null }, "avatar", "alice"),
+    ).toBe(true);
+    expect(
+      await repo.canReadPicture({ userId: "bob", organizationId: f.orgA }, "avatar", "alice"),
+    ).toBe(true);
+    expect(
+      await repo.canReadPicture({ userId: "outsider", organizationId: f.orgA }, "avatar", "alice"),
+    ).toBe(false);
+    expect(
+      await repo.canReadPicture({ userId: "outsider", organizationId: f.orgB }, "avatar", "alice"),
+    ).toBe(false);
+    expect(
+      await repo.canReadPicture({ userId: "bob", organizationId: null }, "avatar", "alice"),
+    ).toBe(false);
+    expect(
+      await repo.canReadPicture(
+        { userId: "bob", organizationId: f.orgA },
+        "organization-logo",
+        f.orgA,
+      ),
+    ).toBe(true);
+    expect(
+      await repo.canReadPicture(
+        { userId: "bob", organizationId: f.orgA },
+        "organization-logo",
+        f.orgB,
+      ),
+    ).toBe(false);
+    await f.db.delete(member).where(eq(member.id, "bob-a"));
+    expect(
+      await repo.canReadPicture(
+        { userId: "bob", organizationId: f.orgA },
+        "organization-logo",
+        f.orgA,
+      ),
+    ).toBe(false);
   });
 
-  test("shared avatar reads and delete reference checks use one statement each", async () => {
+  test("unattached agent uploads remain private and can be deleted", async () => {
     const avatar = file();
     await f.db.insert(storedFiles).values(avatar);
-    await repositoryWithAuthWrites().setPicture(
-      { userId: "alice", organizationId: f.orgA },
-      "avatar",
-      avatar.id,
-    );
-    const { db, queries } = recordQueries();
-    const repo = createStorageRepository(db);
-    queries.length = 0;
-    expect((await repo.getReadable({ userId: "bob", organizationId: f.orgA }, avatar.id))?.id).toBe(
-      avatar.id,
-    );
-    expect(queries).toHaveLength(2);
+    const repo = createStorageRepository(f.db);
+    expect(await repo.getReadable({ userId: "bob", organizationId: f.orgA }, avatar.id)).toBeNull();
     expect(
       await repo.getReadable({ userId: "outsider", organizationId: f.orgA }, avatar.id),
     ).toBeNull();
-    await expect(
-      repo.deleteFile({ userId: "alice", organizationId: null }, avatar.id),
-    ).rejects.toBeInstanceOf(ConflictError);
-    const generic = file("file", f.orgA);
-    await f.db.insert(storedFiles).values(generic);
-    queries.length = 0;
-    await repo.deleteFile({ userId: "alice", organizationId: f.orgA }, generic.id);
-    expect(queries).toHaveLength(6);
-    expect(await f.db.select().from(storedFiles).where(eq(storedFiles.id, generic.id))).toEqual([]);
+    await repo.deleteFile({ userId: "alice", organizationId: null }, avatar.id);
+    expect(await f.db.select().from(storedFiles).where(eq(storedFiles.id, avatar.id))).toEqual([]);
   });
 
   test("generic files are uploader-only, even within the organization", async () => {
     const generic = file("file", f.orgA);
     await f.db.insert(storedFiles).values({ ...generic, contentType: "application/pdf" });
-    const repo = repositoryWithAuthWrites();
+    const repo = createStorageRepository(f.db);
     expect(
       (await repo.getReadable({ userId: "alice", organizationId: f.orgA }, generic.id))?.id,
     ).toBe(generic.id);
@@ -304,7 +256,7 @@ describe("stored file relationships", () => {
   });
 
   test("concurrent completion converges; delete is owner-only and cannot be undone by completion", async () => {
-    const repo = repositoryWithAuthWrites();
+    const repo = createStorageRepository(f.db);
     const scope = { userId: "alice", organizationId: f.orgA };
     const id = crypto.randomUUID();
     const upload = await repo.createUpload(
@@ -334,54 +286,41 @@ describe("stored file relationships", () => {
     ).toContain(results[0].objectKey);
   });
 
-  test("logo management needs admin role, and attachments cannot be deleted directly", async () => {
-    const repo = repositoryWithAuthWrites();
-    const logo = file("organization-logo", f.orgA);
-    await f.db.insert(storedFiles).values(logo);
+  test("logo writes need an active organization and admin or owner role", async () => {
+    const repo = createStorageRepository(f.db);
     await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "bob"));
     await expect(
-      repo.setPicture({ userId: "bob", organizationId: f.orgA }, "organization-logo", logo.id),
+      repo.requirePictureAccess({ userId: "bob", organizationId: f.orgA }, "organization-logo"),
     ).rejects.toThrow();
-    await repo.setPicture(
+    await repo.requirePictureAccess(
       { userId: "alice", organizationId: f.orgA },
       "organization-logo",
-      logo.id,
-    );
-    const [saved] = await f.db.select().from(organization).where(eq(organization.id, f.orgA));
-    expect(saved!.logo).toBe(`/api/v1/files/${logo.id}/content`);
-    expect((await repo.getReadable({ userId: "bob", organizationId: f.orgA }, logo.id))?.id).toBe(
-      logo.id,
     );
     await expect(
-      repo.deleteFile({ userId: "alice", organizationId: f.orgA }, logo.id),
+      repo.requirePictureAccess({ userId: "alice", organizationId: null }, "organization-logo"),
     ).rejects.toThrow();
+    await f.db.update(member).set({ role: "admin" }).where(eq(member.id, "bob-a"));
+    await repo.requirePictureAccess({ userId: "bob", organizationId: f.orgA }, "organization-logo");
   });
 
-  test("cleanup prunes only unused old pictures; generic files and attached pictures stay", async () => {
-    const repo = repositoryWithAuthWrites();
+  test("cleanup prunes unused old agent uploads but keeps generic files", async () => {
+    const repo = createStorageRepository(f.db);
     const old = new Date(0);
     const unattached = { ...file(), createdAt: old };
-    const attached = { ...file(), createdAt: old };
     const generic = { ...file("file", f.orgA), createdAt: old };
-    await f.db.insert(storedFiles).values([unattached, attached, generic]);
-    await repo.setPicture({ userId: "alice", organizationId: f.orgA }, "avatar", attached.id);
+    await f.db.insert(storedFiles).values([unattached, generic]);
     await repo.pruneUnusedFiles(new Date());
     const remaining = await f.db.select({ id: storedFiles.id }).from(storedFiles);
-    expect(remaining.map((row) => row.id).sort()).toEqual([attached.id, generic.id].sort());
+    expect(remaining.map((row) => row.id)).toEqual([generic.id]);
   });
 
   test("organization deletion preserves final-object cleanup intent", async () => {
-    const repo = repositoryWithAuthWrites();
+    const repo = createStorageRepository(f.db);
     const logo = file("organization-logo", f.orgA);
     await f.db
       .insert(storageCandidates)
       .values({ objectKey: logo.objectKey, createdAt: new Date(0) });
     await f.db.insert(storedFiles).values(logo);
-    await repo.setPicture(
-      { userId: "alice", organizationId: f.orgA },
-      "organization-logo",
-      logo.id,
-    );
     await f.db.delete(organization).where(eq(organization.id, f.orgA));
     expect(await f.db.select().from(storedFiles).where(eq(storedFiles.id, logo.id))).toEqual([]);
     expect((await repo.cleanupCandidates(new Date())).map((row) => row.objectKey)).toContain(
@@ -389,8 +328,8 @@ describe("stored file relationships", () => {
     );
   });
 
-  test("uploader deletion keeps the organization logo but cleans ownerless private files", async () => {
-    const repo = repositoryWithAuthWrites();
+  test("uploader deletion cleans ownerless managed files", async () => {
+    const repo = createStorageRepository(f.db);
     // This storage-only identity has no actor history that would prevent account deletion.
     await f.db
       .insert(user)
@@ -398,11 +337,6 @@ describe("stored file relationships", () => {
     await f.db
       .insert(member)
       .values({ id: "uploader-a", userId: "uploader", organizationId: f.orgA, role: "owner" });
-    const logo = {
-      ...file("organization-logo", f.orgA),
-      uploadedBy: "uploader",
-      createdAt: new Date(0),
-    };
     const generic = { ...file("file", f.orgA), uploadedBy: "uploader", createdAt: new Date(0) };
     const avatar = {
       ...file(),
@@ -411,25 +345,18 @@ describe("stored file relationships", () => {
       createdAt: new Date(0),
     };
     await f.db.insert(storageCandidates).values(
-      [logo, generic, avatar].map((file) => ({
+      [generic, avatar].map((file) => ({
         objectKey: file.objectKey,
         createdAt: new Date(0),
       })),
     );
-    await f.db.insert(storedFiles).values([logo, generic, avatar]);
-    const scope = { userId: "uploader", organizationId: f.orgA };
-    await repo.setPicture(scope, "organization-logo", logo.id);
-    await repo.setPicture(scope, "avatar", avatar.id);
+    await f.db.insert(storedFiles).values([generic, avatar]);
     await f.db.delete(user).where(eq(user.id, "uploader"));
     await repo.pruneUnusedFiles(new Date());
-    expect((await repo.getReadable({ userId: "bob", organizationId: f.orgA }, logo.id))?.id).toBe(
-      logo.id,
-    );
     expect(await f.db.select().from(storedFiles).where(eq(storedFiles.id, generic.id))).toEqual([]);
     expect(await f.db.select().from(storedFiles).where(eq(storedFiles.id, avatar.id))).toEqual([]);
     const candidates = (await repo.cleanupCandidates(new Date())).map((row) => row.objectKey);
     expect(candidates).toContain(generic.objectKey);
     expect(candidates).toContain(avatar.objectKey);
-    expect(candidates).not.toContain(logo.objectKey);
   });
 });
