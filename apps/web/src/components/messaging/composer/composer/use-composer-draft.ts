@@ -17,7 +17,8 @@ export function useComposerDraft({
   const drafts = useContext(ComposerDrafts);
   const initialDraft = () => (draftKey ? drafts?.get(draftKey) : undefined) ?? defaultValue;
   const [state, updateDraft] = useState(() => ({ key: draftKey, text: initialDraft() }));
-  const draft = state.key === draftKey ? state.text : initialDraft();
+  let draft = state.key === draftKey ? state.text : initialDraft();
+  if (draftKey && drafts) draft = drafts.get(draftKey) ?? defaultValue;
   if (state.key !== draftKey) updateDraft({ key: draftKey, text: draft });
   const setDraft = (value: string) => {
     if (draftKey) drafts?.set(draftKey, value);
@@ -52,7 +53,8 @@ export function useComposerDraft({
   const submit = () => {
     if (!draft.trim() || draft.length > 20000 || pending || composing.current) return;
     onSend(draft.trim(), () => {
-      setDraft("");
+      if (draftKey && drafts) drafts.clear(draftKey, draft);
+      else setDraft("");
       if (currentDestination.current === draftKey) requestFocus();
     });
   };

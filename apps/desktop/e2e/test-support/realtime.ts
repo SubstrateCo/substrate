@@ -1,6 +1,11 @@
 import type { RealtimeAPI, RealtimeUpdate } from "@startup-os/contracts/realtime";
 
 import { expect, type Page } from "@playwright/test";
+import { execFile } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
 
 declare global {
   interface Window {
@@ -79,6 +84,12 @@ export async function waitForRealtimeIdle(page: Page) {
     };
   });
   try {
+    // A quiet socket can still have committed changes waiting in the server outbox.
+    await execFileAsync(
+      "bun",
+      [fileURLToPath(new URL("../../../../scripts/testing/realtime-outbox.ts", import.meta.url))],
+      { timeout: 20_000 },
+    );
     await expect(page.getByRole("status").filter({ hasText: /live updates/ })).toHaveCount(0);
     await page.waitForLoadState("networkidle");
     await expect.poll(() => activity.evaluate(({ idle }) => idle())).toBe(true);

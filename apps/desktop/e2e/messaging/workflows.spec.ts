@@ -1,7 +1,78 @@
 import { callMessaging } from "../../../web/e2e/test-support/api.js";
 import { test } from "../test-support/fixture.js";
+import { waitForRealtimeIdle } from "../test-support/realtime.js";
+import { callTasks } from "../test-support/tasks.js";
 import { createChannel } from "./test-support.js";
 import { expect } from "@playwright/test";
+
+for (const replaceDraft of [false, true])
+  test(
+    replaceDraft
+      ? "a late send does not clear a replacement draft after an access reset"
+      : "a completed send clears its draft after an access reset remounts the composer",
+    async ({ desktop }) => {
+      await desktop.provision();
+      const { page } = desktop;
+      const conversation = await callMessaging<{ id: string }>(page, "createConversation", {
+        kind: "channel",
+        name: "send-reset",
+      });
+      expect(conversation.error).toBeNull();
+      await desktop.openPath(`/dashboard?conversationId=${conversation.data!.id}`);
+      await waitForRealtimeIdle(page);
+      const input = page.getByRole("textbox", { name: "Message #send-reset", exact: true });
+      await input.fill("Committed before reset");
+      const originalInput = await input.elementHandle();
+      const response = await page.evaluateHandle(() => {
+        const original = window.fetch;
+        let release!: () => void;
+        const gate = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        let captured = false;
+        window.fetch = Object.assign(async (...args: Parameters<typeof fetch>) => {
+          const result = await original(...args);
+          const [source, init] = args;
+          const url = new URL(
+            source instanceof Request ? source.url : String(source),
+            location.href,
+          );
+          if (url.pathname === "/api/v1/messaging/messages" && init?.method === "POST") {
+            captured = true;
+            await gate;
+          }
+          return result;
+        }, original);
+        return {
+          captured: () => captured,
+          release,
+          restore: () => {
+            window.fetch = original;
+            release();
+          },
+        };
+      });
+      try {
+        await input.press("Enter");
+        await expect.poll(() => response.evaluate((control) => control.captured())).toBe(true);
+        await callTasks(page, { action: "createProject", name: "Concurrent access change" });
+        await expect
+          .poll(() => originalInput.evaluate((element) => !element.isConnected))
+          .toBe(true);
+        if (replaceDraft) await input.fill("Replacement draft");
+        await response.evaluate((control) => control.release());
+        await waitForRealtimeIdle(page);
+        await expect(input).toHaveText(replaceDraft ? "Replacement draft" : "");
+        await expect(
+          page.getByRole("article").filter({ hasText: "Committed before reset" }),
+        ).toHaveCount(1);
+      } finally {
+        await response.evaluate((control) => control.restore());
+        await response.dispose();
+        await originalInput.dispose();
+      }
+    },
+  );
 
 test("Electron messaging cancels creation without mutations and keeps channel and thread drafts separate", async ({
   desktop,

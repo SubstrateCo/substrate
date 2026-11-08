@@ -20,6 +20,7 @@ import {
 } from "@playwright/test";
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
@@ -223,6 +224,19 @@ async function useDesktop(
     await use(fixture);
     expect(fixture.pageErrors, "The desktop workflow has no uncaught renderer errors").toBe(0);
   } finally {
+    if (base.info().status !== base.info().expectedStatus) {
+      await writeFile(
+        base.info().outputPath("desktop-failure-state.json"),
+        JSON.stringify({
+          path: new URL(fixture.page.url()).pathname,
+          text: await fixture.page
+            .locator("body")
+            .innerText({ timeout: 1_000 })
+            .catch(() => "unavailable"),
+          browserPath: new URL(browser.url()).pathname,
+        }),
+      );
+    }
     await fixture.app.close();
   }
 }

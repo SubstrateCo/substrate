@@ -48,7 +48,12 @@ export function Composer({
       )}
       pending={send.isPending}
       error={send.error}
-      onSend={(body, onSuccess) => send.mutate(body, { onSuccess })}
+      onSend={(body, onSuccess) => {
+        void send
+          .mutateAsync(body)
+          .then(onSuccess)
+          .catch(() => {});
+      }}
     />
   );
 }

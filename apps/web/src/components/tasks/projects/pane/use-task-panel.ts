@@ -22,6 +22,13 @@ export function useTaskPanel({
   const creationTrigger = useRef<HTMLElement | null>(null);
   const newTaskButton = useRef<HTMLButtonElement>(null);
   const previousId = useRef<string | null | undefined>(undefined);
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   useEffect(() => {
     if (!ready) return;
     if (selectedTaskId && selectedTaskId !== previousId.current) {
@@ -61,6 +68,7 @@ export function useTaskPanel({
         setCreating(null);
       },
       saved: (id: string) => {
+        if (!mounted.current) return;
         onSelectTask(id);
         setCreating(null);
       },

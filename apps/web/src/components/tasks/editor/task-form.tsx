@@ -1,3 +1,5 @@
+import { useRouter } from "@tanstack/react-router";
+
 import { useTasksMutation } from "../use-tasks-mutation";
 import { TaskForm as TaskFormView } from "@/components/tasks/editor/task-form-view";
 import type { ProjectDetail, Task } from "@/components/tasks/types";
@@ -20,6 +22,7 @@ export function TaskForm({
   initialStatus?: Task["status"];
 }) {
   const save = useTasksMutation(organizationId);
+  const router = useRouter();
   return (
     <TaskFormView
       detail={detail}
@@ -31,12 +34,17 @@ export function TaskForm({
       onCancel={onCancel}
       onSubmit={(draft) => {
         const fields = { organizationId, projectEntityId: detail.project.entityId, ...draft };
-        save.mutate(
-          task
-            ? { action: "updateTask", ...fields, taskEntityId: task.entityId }
-            : { action: "createTask", ...fields, parentTaskEntityId },
-          { onSuccess: ({ id }) => onSaved(id) },
-        );
+        const destination = router.latestLocation.href;
+        void save
+          .mutateAsync(
+            task
+              ? { action: "updateTask", ...fields, taskEntityId: task.entityId }
+              : { action: "createTask", ...fields, parentTaskEntityId },
+          )
+          .then(({ id }) => {
+            if (router.latestLocation.href === destination) onSaved(id);
+          })
+          .catch(() => {});
       }}
     />
   );
