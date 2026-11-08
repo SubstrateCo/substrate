@@ -37,12 +37,13 @@
     "apps/server": {
       "name": "@startup-os/server",
       "dependencies": {
+        "@aws-sdk/client-s3": "^3.922.0",
+        "@aws-sdk/s3-request-presigner": "^3.922.0",
         "@better-auth/drizzle-adapter": "^1.7.18",
         "@better-auth/electron": "^1.7.18",
         "@hono/zod-validator": "^0.7.6",
         "@startup-os/contracts": "workspace:*",
         "@startup-os/database": "workspace:*",
-        "@startup-os/storage": "workspace:*",
         "better-auth": "^1.7.18",
         "drizzle-orm": "^0.45.4",
         "hono": "^4.10.0",
@@ -145,17 +146,6 @@
       "devDependencies": {
         "@types/node": "24.19.2",
         "drizzle-kit": "^0.31.11",
-        "typescript": "^7.0.2",
-      },
-    },
-    "packages/storage": {
-      "name": "@startup-os/storage",
-      "dependencies": {
-        "@aws-sdk/client-s3": "^3.922.0",
-        "@aws-sdk/s3-request-presigner": "^3.922.0",
-      },
-      "devDependencies": {
-        "@types/bun": "^1.4.4",
         "typescript": "^7.0.2",
       },
     },
@@ -854,8 +844,6 @@
     "@startup-os/harness-runtime": ["@startup-os/harness-runtime@workspace:packages/harness-runtime"],
 
     "@startup-os/server": ["@startup-os/server@workspace:apps/server"],
-
-    "@startup-os/storage": ["@startup-os/storage@workspace:packages/storage"],
 
     "@startup-os/web": ["@startup-os/web@workspace:apps/web"],
 

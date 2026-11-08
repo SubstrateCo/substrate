@@ -13,12 +13,13 @@
     "test:integration": "playwright test"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.922.0",
+    "@aws-sdk/s3-request-presigner": "^3.922.0",
     "@better-auth/drizzle-adapter": "^1.7.18",
     "@better-auth/electron": "^1.7.18",
     "@hono/zod-validator": "^0.7.6",
     "@startup-os/contracts": "workspace:*",
     "@startup-os/database": "workspace:*",
-    "@startup-os/storage": "workspace:*",
     "better-auth": "^1.7.18",
     "drizzle-orm": "^0.45.4",
     "hono": "^4.10.0",

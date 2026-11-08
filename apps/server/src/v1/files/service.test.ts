@@ -1,5 +1,5 @@
 import type { StorageRepository } from "@startup-os/database/storage";
-import type { ObjectStorage } from "@startup-os/storage";
+import type { ObjectStorage } from "../../storage/types";
 
 import { ServiceError } from "../../shared/service-result";
 import { createFileService } from "./service";

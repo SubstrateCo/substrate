@@ -4,7 +4,7 @@ import {
   type StorageRepository,
   type StorageScope,
 } from "@startup-os/database/storage";
-import type { ObjectStorage } from "@startup-os/storage";
+import type { ObjectStorage } from "../../storage/types";
 
 import { ServiceError, serviceResult } from "../../shared/service-result";
 import { normalizePicture } from "./image";
