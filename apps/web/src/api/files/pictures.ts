@@ -32,4 +32,3 @@ export function createPictureApi(client: PictureAuthClient) {
 }
 
 export const pictureApi = createPictureApi(authClient);
-export const { uploadPicture, removePicture } = pictureApi;

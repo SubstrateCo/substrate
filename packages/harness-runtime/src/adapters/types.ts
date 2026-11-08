@@ -8,7 +8,7 @@ import type { McpLease } from "../mcp.ts";
 
 /* oxlint-disable deslop/no-unknown-parameters -- Native response payloads have different protocols; each adapter validates its own wire boundary. */
 
-export type AdapterEvent = HarnessEvent extends infer E
+type AdapterEvent = HarnessEvent extends infer E
   ? E extends HarnessEvent
     ? Omit<E, "sessionId" | "organizationId" | "timestamp">
     : never

@@ -5,11 +5,13 @@ import {
 } from "@startup-os/contracts/agents";
 
 import { respond, validationHook } from "../../shared/http";
-import * as defaultServices from "./service";
+import { listAgents, saveAgent, deleteAgent, setAgentPicture } from "./service";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 
-export function createAgentsRoutes(services = defaultServices) {
+export function createAgentsRoutes(
+  services = { listAgents, saveAgent, deleteAgent, setAgentPicture },
+) {
   return new Hono()
     .post("/list", async (c) => respond(c, await services.listAgents(c.req.raw.headers)))
     .post("/actors/save", zValidator("json", saveAgentInput, validationHook), async (c) =>

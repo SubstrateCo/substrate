@@ -43,7 +43,7 @@ async function readOptional(path: string): Promise<string | undefined> {
   });
 }
 
-export function validateServer(server: HarnessMcpServer): void {
+function validateServer(server: HarnessMcpServer): void {
   safeId(server.id);
   if (server.id === "startup-os")
     throw new HarnessError("reserved-id", "Startup OS MCP is injected at execution time.");
@@ -198,11 +198,7 @@ async function mcpNames(directory: string, harness: HarnessKind): Promise<string
   return names.length ? names : [mcpFiles[harness]];
 }
 
-export async function mcpDocument(
-  directory: string,
-  harness: HarnessKind,
-  name = mcpFiles[harness],
-) {
+async function mcpDocument(directory: string, harness: HarnessKind, name = mcpFiles[harness]) {
   const path = await safePath(directory, name);
   const text = (await readOptional(path)) ?? (harness === "codex" ? "" : "{}\n");
   const errors: ParseError[] = [];
@@ -223,7 +219,7 @@ export async function mcpDocument(
   return { path, text, document, servers };
 }
 
-export function encodeServer(harness: HarnessKind, server: HarnessMcpServer) {
+function encodeServer(harness: HarnessKind, server: HarnessMcpServer) {
   if (harness === "opencode")
     return server.transport === "http"
       ? { type: "remote", url: server.url }

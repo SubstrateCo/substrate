@@ -89,7 +89,7 @@ export async function materialize(
   return directory;
 }
 
-export async function readOptional(path: string): Promise<string | undefined> {
+async function readOptional(path: string): Promise<string | undefined> {
   return readFile(path, "utf8").catch((error: NodeJS.ErrnoException) => {
     if (error.code !== "ENOENT") throw error;
     return undefined;

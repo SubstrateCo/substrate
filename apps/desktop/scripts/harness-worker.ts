@@ -3,7 +3,7 @@ import { cp, lstat, mkdir, realpath, symlink, unlink, writeFile } from "node:fs/
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const harnessWorkerExternals = [
+const harnessWorkerExternals = [
   "@agentclientprotocol/sdk",
   "@anthropic-ai/claude-agent-sdk",
   "@modelcontextprotocol/sdk",

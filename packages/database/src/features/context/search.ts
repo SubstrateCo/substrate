@@ -24,7 +24,7 @@ export type SearchKind =
   | "person"
   | "channel"
   | "thread";
-export interface SearchResult {
+interface SearchResult {
   id: string;
   kind: Exclude<SearchKind, "all">;
   title: string;

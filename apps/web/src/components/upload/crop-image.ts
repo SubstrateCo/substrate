@@ -1,8 +1,8 @@
 import { validatePicture } from "./file-validation";
 
 export type CropArea = { x: number; y: number; width: number; height: number };
-export const maxImagePixels = 32_000_000;
-export const maxImageDimension = 8192;
+const maxImagePixels = 32_000_000;
+const maxImageDimension = 8192;
 
 export function checkImageDimensions(width: number, height: number) {
   if (
