@@ -9,6 +9,7 @@ import { member } from "../../core/organizations/schema";
 import { messagingMessages, messagingParticipants } from "../messaging/schema";
 import { notifications } from "../notifications/schema";
 import { and, eq } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 export async function profileRefreshHints(
   db: DatabaseExecutor,
@@ -48,6 +49,36 @@ export async function agentRefreshHints(
     { audience: realtimeKeys.user(userId), domain: "agents" },
     ...organizations.map(({ id }) => ({
       audience: realtimeKeys.organization(id),
+      domain: "access" as const,
+    })),
+  ];
+}
+
+// A project grant changes what the granted actor can read, and an agent's reads are shown to its owner.
+// Other workspace members keep their access, so they only need a task refresh.
+export async function projectAccessRefreshHints(
+  db: DatabaseExecutor,
+  organizationId: string,
+  actorEntityId: string,
+): Promise<RealtimeHint[]> {
+  const agent = alias(actors, "agent");
+  const owners = await db
+    .select({ id: actors.entityId })
+    .from(agent)
+    .innerJoin(userAgents, eq(userAgents.id, agent.userAgentId))
+    .innerJoin(
+      actors,
+      and(
+        eq(actors.userId, userAgents.userId),
+        eq(actors.organizationId, organizationId),
+        eq(actors.type, "human"),
+      ),
+    )
+    .where(and(eq(agent.organizationId, organizationId), eq(agent.entityId, actorEntityId)));
+  return [
+    { audience: realtimeKeys.organization(organizationId), domain: "tasks" },
+    ...[actorEntityId, ...owners.map(({ id }) => id)].map((id) => ({
+      audience: realtimeKeys.actor(organizationId, id),
       domain: "access" as const,
     })),
   ];

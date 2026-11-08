@@ -1,9 +1,10 @@
 import { realtimeKeys } from "@startup-os/contracts/realtime";
 
+import { ensureUserAgentActor } from "../../core/actors/provisioning";
 import { canReceiveChange } from "../../core/realtime/audience";
-import { messagingConversations, messagingParticipants, user } from "../../schema";
+import { messagingConversations, messagingParticipants, user, userAgents } from "../../schema";
 import { setupDatabase } from "../../testing/database";
-import { invitationRefreshHints, profileRefreshHints } from "./routing";
+import { invitationRefreshHints, profileRefreshHints, projectAccessRefreshHints } from "./routing";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -51,6 +52,28 @@ test("profile changes refresh shared conversation labels across workspace bounda
       shared!.audience,
     ),
   ).toBe(false);
+});
+
+test("project access hints reset only the granted actor and an agent's owner", async () => {
+  const workspace = realtimeKeys.organization(fixture.orgA);
+  expect(await projectAccessRefreshHints(fixture.db, fixture.orgA, fixture.bob)).toEqual([
+    { audience: workspace, domain: "tasks" },
+    { audience: realtimeKeys.actor(fixture.orgA, fixture.bob), domain: "access" },
+  ]);
+  const [definition] = await fixture.db
+    .insert(userAgents)
+    .values({ userId: "alice", name: "Helper", instructions: "", harness: "opencode" })
+    .returning();
+  const agent = await ensureUserAgentActor(fixture.db, {
+    organizationId: fixture.orgA,
+    userId: "alice",
+    userAgentId: definition!.id,
+  });
+  expect(await projectAccessRefreshHints(fixture.db, fixture.orgA, agent.entityId)).toEqual([
+    { audience: workspace, domain: "tasks" },
+    { audience: realtimeKeys.actor(fixture.orgA, agent.entityId), domain: "access" },
+    { audience: realtimeKeys.actor(fixture.orgA, fixture.alice), domain: "access" },
+  ]);
 });
 
 test("invitation hints reach only the verified matching account and inviting workspace", async () => {

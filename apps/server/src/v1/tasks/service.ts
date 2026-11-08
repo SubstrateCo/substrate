@@ -8,6 +8,7 @@ import type {
 } from "@startup-os/contracts/tasks/input";
 import { createRepositories } from "@startup-os/database";
 import { ensureOwnedAgentActors, resolveHumanActor } from "@startup-os/database/provisioning";
+import { projectAccessRefreshHints } from "@startup-os/database/realtime";
 
 import { db } from "../../auth/database";
 import { serviceResult } from "../../shared/service-result";
@@ -95,12 +96,10 @@ export function mutateTasks(headers: Headers, input: z.output<typeof tasksWrite>
       }
       return { id: input.projectEntityId };
     });
-    const hints: RealtimeHint[] = [
-      {
-        audience: realtimeKeys.organization(input.organizationId),
-        domain: input.action === "share" || input.action === "revoke" ? "access" : "tasks",
-      },
-    ];
+    const hints: RealtimeHint[] =
+      input.action === "share" || input.action === "revoke"
+        ? await projectAccessRefreshHints(db, input.organizationId, input.actorEntityId)
+        : [{ audience: realtimeKeys.organization(input.organizationId), domain: "tasks" }];
     if (
       (input.action === "createTask" || input.action === "updateTask") &&
       input.assigneeActorEntityId
