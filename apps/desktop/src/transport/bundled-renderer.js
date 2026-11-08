@@ -1,5 +1,5 @@
 import { bundledApplicationURL } from "../shell/navigation.js";
-import { storageOrigins as validateStorageOrigins } from "./storage.js";
+import { storageOrigins } from "./storage.js";
 import { realpath, stat } from "node:fs/promises";
 import { extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -9,14 +9,10 @@ export function backendURL(value, packaged) {
   if (!value && packaged) throw new Error("Packaged Startup OS requires STARTUP_OS_API_URL.");
   const url = new URL(value || "http://localhost:3001");
   const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
-  if (
-    url.username ||
-    url.password ||
-    url.pathname !== "/" ||
-    url.search ||
-    url.hash ||
-    (url.protocol !== "https:" && !(url.protocol === "http:" && loopback))
-  ) {
+  const hasCredentials = url.username || url.password;
+  const hasPathQueryOrFragment = url.pathname !== "/" || url.search || url.hash;
+  const isAllowedProtocol = url.protocol === "https:" || (url.protocol === "http:" && loopback);
+  if (hasCredentials || hasPathQueryOrFragment || !isAllowedProtocol) {
     throw new Error(
       "STARTUP_OS_API_URL must be an HTTPS origin (HTTP is allowed only on loopback).",
     );
@@ -108,10 +104,10 @@ export function bundledRenderer({
   fetchFile,
   fetchUpstream = fetch,
   origin = bundledApplicationURL,
-  storageOrigins = [],
+  storageOrigins: configuredStorageOrigins = [],
 }) {
   const upstream = backendURL(backend, false);
-  const storageSources = validateStorageOrigins(storageOrigins, false)
+  const storageSources = storageOrigins(configuredStorageOrigins, false)
     .map((value) => ` ${value}`)
     .join("");
   /** @param {Request} request */

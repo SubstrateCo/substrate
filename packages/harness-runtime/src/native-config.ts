@@ -4,7 +4,7 @@ import { HarnessError } from "./errors.ts";
 import { readOptional, safeId, safePath } from "./paths.ts";
 import { applyEdits, modify, parse, type ParseError } from "jsonc-parser";
 import { readdir, unlink, writeFile } from "node:fs/promises";
-import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
+import { parse as parseToml, stringify } from "smol-toml";
 import { parseDocument } from "yaml";
 
 /* oxlint-disable deslop/no-runtime-typeof, deslop/no-unsafe-dictionary-type, deslop/no-unknown-parameters -- This codec validates arbitrary native file formats and preserves unowned settings without exposing them as app configuration. */
@@ -44,13 +44,10 @@ function validateServer(server: HarnessMcpServer): void {
     throw new HarnessError("reserved-id", "Startup OS MCP is injected at execution time.");
   if (server.transport === "http") {
     const url = new URL(server.url);
-    if (
-      !["http:", "https:"].includes(url.protocol) ||
-      url.username ||
-      url.password ||
-      url.search ||
-      url.hash
-    )
+    const isWebProtocol = ["http:", "https:"].includes(url.protocol);
+    const hasCredentials = url.username || url.password;
+    const hasQueryOrFragment = url.search || url.hash;
+    if (!isWebProtocol || hasCredentials || hasQueryOrFragment)
       throw new HarnessError(
         "invalid-mcp-url",
         "Use an HTTP(S) URL without credentials, query strings, or fragments.",
@@ -139,12 +136,11 @@ export async function saveNativeSkill(
         "A native skill already uses the Startup OS default name.",
       );
     const metadata = parseDocument(match[1]);
-    if (
-      metadata.errors.length ||
-      metadata.get("name") !== skill.name ||
-      metadata.get("description") !== skill.description ||
-      match[2].replace(/^\r?\n/, "") !== skill.content
-    )
+    const matchesDefaultSkill =
+      metadata.get("name") === skill.name &&
+      metadata.get("description") === skill.description &&
+      match[2].replace(/^\r?\n/, "") === skill.content;
+    if (metadata.errors.length || !matchesDefaultSkill)
       throw new HarnessError(
         "configuration-conflict",
         "A native skill already uses the Startup OS default name.",
@@ -356,7 +352,7 @@ export async function editNativeServer(
       path,
       updated +
         (server
-          ? `${updated.endsWith("\n") || !updated ? "" : "\n"}${stringifyToml({ mcp_servers: { [id]: replacement } })}`
+          ? `${updated.endsWith("\n") || !updated ? "" : "\n"}${stringify({ mcp_servers: { [id]: replacement } })}`
           : ""),
       { mode: 0o600 },
     );

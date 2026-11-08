@@ -15,6 +15,18 @@ interface ThreadOptions {
   sandbox: "workspace-write";
 }
 
+function hasField<Key extends string>(value: unknown, key: Key): value is Record<Key, unknown> {
+  return typeof value === "object" && value !== null && key in value;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item: unknown) => typeof item === "string");
+}
+
 export async function connectCodex(
   context: AdapterContext,
   resumeId?: string,
@@ -139,26 +151,13 @@ export async function connectCodex(
             );
           rpc.send({ id: request.id, result: { decision: response } });
         } else if (request.method === "item/tool/requestUserInput") {
-          if (
-            !response ||
-            typeof response !== "object" ||
-            !("answers" in response) ||
-            !response.answers ||
-            typeof response.answers !== "object" ||
-            Array.isArray(response.answers)
-          )
+          if (!hasField(response, "answers") || !isRecord(response.answers))
             throw new HarnessError(
               "invalid-response",
               "Codex user input requires an answers object.",
             );
           for (const answer of Object.values(response.answers))
-            if (
-              !answer ||
-              typeof answer !== "object" ||
-              !("answers" in answer) ||
-              !Array.isArray(answer.answers) ||
-              !answer.answers.every((value: unknown) => typeof value === "string")
-            )
+            if (!hasField(answer, "answers") || !isStringArray(answer.answers))
               throw new HarnessError(
                 "invalid-response",
                 "Each question requires an array of answer strings.",
@@ -166,9 +165,7 @@ export async function connectCodex(
           rpc.send({ id: request.id, result: { answers: response.answers } });
         } else {
           if (
-            !response ||
-            typeof response !== "object" ||
-            !("action" in response) ||
+            !hasField(response, "action") ||
             !["accept", "decline", "cancel"].includes(String(response.action))
           )
             throw new HarnessError(

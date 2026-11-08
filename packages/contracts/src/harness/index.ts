@@ -41,11 +41,8 @@ export interface HarnessLocalScope {
   harness: HarnessKind;
 }
 
-export interface HarnessSessionRef {
+export interface HarnessSessionRef extends HarnessLocalScope {
   id: string;
-  organizationId: string;
-  agentId: string;
-  harness: HarnessKind;
   nativeSessionId: string;
 }
 

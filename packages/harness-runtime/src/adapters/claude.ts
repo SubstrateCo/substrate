@@ -43,10 +43,10 @@ export async function connectClaude(
         signal,
       );
       if (toolName === "AskUserQuestion") {
+        const isAnswerObject =
+          typeof response === "object" && response !== null && !Array.isArray(response);
         if (
-          !response ||
-          typeof response !== "object" ||
-          Array.isArray(response) ||
+          !isAnswerObject ||
           !Object.values(response).every((answer) => typeof answer === "string")
         )
           throw new HarnessError(

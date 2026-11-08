@@ -1,17 +1,24 @@
 import { createRepositories } from "../repositories";
 import * as schema from "../schema";
-import { resetTestData, testDatabase as db } from "./connection";
+import { resetTestData, testDatabase } from "./connection";
 import { beforeEach } from "bun:test";
 
 export function setupDatabase() {
-  const fixture = { db, orgA: "org-a", orgB: "org-b", alice: "", bob: "", outsider: "" };
+  const fixture = {
+    db: testDatabase,
+    orgA: "org-a",
+    orgB: "org-b",
+    alice: "",
+    bob: "",
+    outsider: "",
+  };
 
   beforeEach(async () => {
-    await db.execute(resetTestData);
+    await testDatabase.execute(resetTestData);
     fixture.alice = crypto.randomUUID();
     fixture.bob = crypto.randomUUID();
     fixture.outsider = crypto.randomUUID();
-    await db.transaction(async (tx) => {
+    await testDatabase.transaction(async (tx) => {
       await tx.insert(schema.organization).values([
         { id: fixture.orgA, name: "A", slug: "a" },
         { id: fixture.orgB, name: "B", slug: "b" },
@@ -59,6 +66,6 @@ export function setupDatabase() {
 
   return Object.assign(fixture, {
     forActor: (actorEntityId: string, organizationId = fixture.orgA) =>
-      createRepositories(db).forActor({ organizationId, actorEntityId }),
+      createRepositories(testDatabase).forActor({ organizationId, actorEntityId }),
   });
 }

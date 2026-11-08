@@ -15,16 +15,11 @@ function explicitOrigin(value: string) {
   } catch {
     throw new Error("Frontend origins must be explicit HTTP or HTTPS origins.");
   }
-  if (
-    !["http:", "https:"].includes(url.protocol) ||
-    value.includes("*") ||
-    url.username ||
-    url.password ||
-    url.pathname !== "/" ||
-    url.search ||
-    url.hash ||
-    value !== url.origin
-  )
+  const isWebProtocol = ["http:", "https:"].includes(url.protocol);
+  const hasCredentials = url.username || url.password;
+  const hasPathQueryOrFragment = url.pathname !== "/" || url.search || url.hash;
+  const isBareOrigin = !hasCredentials && !hasPathQueryOrFragment && value === url.origin;
+  if (!isWebProtocol || value.includes("*") || !isBareOrigin)
     throw new Error("Frontend origins must be explicit HTTP or HTTPS origins.");
   return url.origin;
 }

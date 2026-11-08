@@ -1,10 +1,10 @@
 import type { DatabaseExecutor } from "../../client";
 import { AccessDeniedError } from "../../errors";
 import {
-  messagingConversations as conversations,
-  messagingMessages as messages,
-  messagingParticipants as participants,
-  messagingAgentParticipants as agentParticipants,
+  messagingConversations,
+  messagingMessages,
+  messagingParticipants,
+  messagingAgentParticipants,
 } from "./schema";
 import { and, eq, inArray, or, type SQLWrapper } from "drizzle-orm";
 
@@ -24,29 +24,29 @@ export function visibleConversations(
 ) {
   return or(
     and(
-      eq(conversations.kind, "channel"),
-      eq(conversations.private, false),
-      eq(conversations.organizationId, scope.organizationId),
+      eq(messagingConversations.kind, "channel"),
+      eq(messagingConversations.private, false),
+      eq(messagingConversations.organizationId, scope.organizationId),
     ),
     inArray(
-      conversations.id,
+      messagingConversations.id,
       scope.actorEntityId
         ? db
-            .select({ id: agentParticipants.conversationId })
-            .from(agentParticipants)
+            .select({ id: messagingAgentParticipants.conversationId })
+            .from(messagingAgentParticipants)
             .where(
               and(
-                eq(agentParticipants.actorEntityId, scope.actorEntityId),
-                eq(agentParticipants.organizationId, scope.organizationId),
+                eq(messagingAgentParticipants.actorEntityId, scope.actorEntityId),
+                eq(messagingAgentParticipants.organizationId, scope.organizationId),
               ),
             )
         : db
-            .select({ id: participants.conversationId })
-            .from(participants)
+            .select({ id: messagingParticipants.conversationId })
+            .from(messagingParticipants)
             .where(
               and(
-                eq(participants.userId, scope.userId),
-                eq(participants.organizationId, scope.organizationId),
+                eq(messagingParticipants.userId, scope.userId),
+                eq(messagingParticipants.organizationId, scope.organizationId),
               ),
             ),
     ),
@@ -59,10 +59,13 @@ export async function requireMessage(
   messageId: string,
 ) {
   const [row] = await db
-    .select({ message: messages, conversation: conversations })
-    .from(messages)
-    .innerJoin(conversations, eq(conversations.id, messages.conversationId))
-    .where(and(eq(messages.id, messageId), visibleConversations(db, scope)));
+    .select({ message: messagingMessages, conversation: messagingConversations })
+    .from(messagingMessages)
+    .innerJoin(
+      messagingConversations,
+      eq(messagingConversations.id, messagingMessages.conversationId),
+    )
+    .where(and(eq(messagingMessages.id, messageId), visibleConversations(db, scope)));
   if (!row) throw new AccessDeniedError();
   return row;
 }

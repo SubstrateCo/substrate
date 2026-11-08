@@ -4,10 +4,7 @@ import { actors } from "../../core/actors/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { requireMessage, visibleConversations, type MessagingIdentity } from "../messaging/access";
-import {
-  messagingConversations as conversations,
-  messagingMessages as messages,
-} from "../messaging/schema";
+import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { pagination } from "./pagination";
 import { actorSelection } from "./tasks";
 import { and, desc, eq, gte, isNotNull, isNull, lt, sql } from "drizzle-orm";
@@ -17,34 +14,39 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: MessagingI
   return {
     async listConversations(input: McpInput<"list_conversations">) {
       const p = pagination(scope, "list_conversations", input);
-      const lastActivity = sql<Date | null>`(select max(m.created_at) from ${messages} m where m.conversation_id = ${conversations.id})`;
+      const lastActivity = sql<Date | null>`(select max(m.created_at) from ${messagingMessages} m where m.conversation_id = ${messagingConversations.id})`;
       const rows = await db
         .select({
-          id: conversations.id,
-          kind: conversations.kind,
-          name: sql<string>`coalesce(${conversations.name}, 'Conversation')`,
+          id: messagingConversations.id,
+          kind: messagingConversations.kind,
+          name: sql<string>`coalesce(${messagingConversations.name}, 'Conversation')`,
           lastActivityAt: lastActivity,
         })
-        .from(conversations)
+        .from(messagingConversations)
         .where(
           and(
             visibleConversations(db, identity),
-            input.kind ? eq(conversations.kind, input.kind) : undefined,
+            input.kind ? eq(messagingConversations.kind, input.kind) : undefined,
             input.activeSince
               ? sql`${lastActivity} >= ${input.activeSince}::timestamptz`
               : undefined,
           ),
         )
-        .orderBy(desc(conversations.createdAt), desc(conversations.id))
+        .orderBy(desc(messagingConversations.createdAt), desc(messagingConversations.id))
         .offset(p.offset)
         .limit(p.take);
       return p.page(rows);
     },
     async listMessages(input: McpInput<"list_messages">) {
       const [conversation] = await db
-        .select({ id: conversations.id })
-        .from(conversations)
-        .where(and(eq(conversations.id, input.conversationId), visibleConversations(db, identity)));
+        .select({ id: messagingConversations.id })
+        .from(messagingConversations)
+        .where(
+          and(
+            eq(messagingConversations.id, input.conversationId),
+            visibleConversations(db, identity),
+          ),
+        );
       if (!conversation) throw new AccessDeniedError();
       if (input.threadId) {
         const { message } = await requireMessage(db, identity, input.threadId);
@@ -53,30 +55,32 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: MessagingI
       }
       const p = pagination(scope, "list_messages", input);
       const window = [
-        input.since ? gte(messages.createdAt, new Date(input.since)) : undefined,
-        input.until ? lt(messages.createdAt, new Date(input.until)) : undefined,
+        input.since ? gte(messagingMessages.createdAt, new Date(input.since)) : undefined,
+        input.until ? lt(messagingMessages.createdAt, new Date(input.until)) : undefined,
       ];
       const rows = await db
         .select({
-          id: messages.id,
+          id: messagingMessages.id,
           author: actorSelection,
-          body: messages.body,
-          createdAt: messages.createdAt,
-          replyCount: sql<number>`(select count(*)::int from ${messages} r where r.conversation_id = ${messages.conversationId} and r.thread_id = ${messages.id})`,
+          body: messagingMessages.body,
+          createdAt: messagingMessages.createdAt,
+          replyCount: sql<number>`(select count(*)::int from ${messagingMessages} r where r.conversation_id = ${messagingMessages.conversationId} and r.thread_id = ${messagingMessages.id})`,
           lastReplyAt: sql<
             string | null
-          >`(select max(r.created_at)::text from ${messages} r where r.conversation_id = ${messages.conversationId} and r.thread_id = ${messages.id})`,
+          >`(select max(r.created_at)::text from ${messagingMessages} r where r.conversation_id = ${messagingMessages.conversationId} and r.thread_id = ${messagingMessages.id})`,
         })
-        .from(messages)
-        .innerJoin(actors, eq(actors.entityId, messages.authorActorEntityId))
+        .from(messagingMessages)
+        .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
         .where(
           and(
-            eq(messages.conversationId, input.conversationId),
-            input.threadId ? eq(messages.threadId, input.threadId) : isNull(messages.threadId),
+            eq(messagingMessages.conversationId, input.conversationId),
+            input.threadId
+              ? eq(messagingMessages.threadId, input.threadId)
+              : isNull(messagingMessages.threadId),
             ...window,
           ),
         )
-        .orderBy(desc(messages.createdAt), desc(messages.id))
+        .orderBy(desc(messagingMessages.createdAt), desc(messagingMessages.id))
         .offset(p.offset)
         .limit(p.take);
       const items = rows.map(({ replyCount, lastReplyAt, ...message }) => {
@@ -95,21 +99,21 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: MessagingI
       if (input.threadId) return { messages: p.page(items) };
       const threads = await db
         .select({
-          threadId: sql<string>`${messages.threadId}`,
-          rootMessageId: sql<string>`${messages.threadId}`,
+          threadId: sql<string>`${messagingMessages.threadId}`,
+          rootMessageId: sql<string>`${messagingMessages.threadId}`,
           replyCountInWindow: sql<number>`count(*)::int`,
-          lastReplyAt: sql<string>`max(${messages.createdAt})::text`,
+          lastReplyAt: sql<string>`max(${messagingMessages.createdAt})::text`,
         })
-        .from(messages)
+        .from(messagingMessages)
         .where(
           and(
-            eq(messages.conversationId, input.conversationId),
-            isNotNull(messages.threadId),
+            eq(messagingMessages.conversationId, input.conversationId),
+            isNotNull(messagingMessages.threadId),
             ...window,
           ),
         )
-        .groupBy(messages.threadId)
-        .orderBy(desc(sql`max(${messages.createdAt})`), desc(messages.threadId))
+        .groupBy(messagingMessages.threadId)
+        .orderBy(desc(sql`max(${messagingMessages.createdAt})`), desc(messagingMessages.threadId))
         .offset(p.offset)
         .limit(p.take);
       const more = rows.length > input.limit || threads.length > input.limit;

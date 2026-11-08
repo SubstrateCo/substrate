@@ -54,15 +54,11 @@ export async function startOpenCode(
         try {
           const endpoint = z.object({ url: z.url() }).parse(JSON.parse(buffer.slice(0, newline)));
           const url = new URL(endpoint.url);
-          if (
-            url.protocol !== "http:" ||
-            url.hostname !== "127.0.0.1" ||
-            url.username ||
-            url.password ||
-            url.pathname !== "/" ||
-            url.search ||
-            url.hash
-          )
+          const isLoopbackRoot =
+            url.protocol === "http:" && url.hostname === "127.0.0.1" && url.pathname === "/";
+          const hasCredentials = url.username || url.password;
+          const hasQueryOrFragment = url.search || url.hash;
+          if (!isLoopbackRoot || hasCredentials || hasQueryOrFragment)
             throw new Error("Invalid endpoint");
           resolve(endpoint.url);
         } catch {

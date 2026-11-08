@@ -16,14 +16,11 @@ export async function normalizePicture(
     const image = sharp(bytes, { limitInputPixels: MAX_PIXELS, failOn: "warning", animated: true });
     const metadata = await image.metadata();
     const detectedType = formats.get(metadata.format);
-    if (
-      !detectedType ||
-      detectedType !== contentType ||
-      (metadata.pages ?? 1) !== 1 ||
-      !metadata.width ||
-      !metadata.height ||
-      metadata.width * metadata.height > MAX_PIXELS
-    )
+    const matchesDeclaredType = !!detectedType && detectedType === contentType;
+    const isSingleFrame = (metadata.pages ?? 1) === 1;
+    const hasAllowedDimensions =
+      !!metadata.width && !!metadata.height && metadata.width * metadata.height <= MAX_PIXELS;
+    if (!matchesDeclaredType || !isSingleFrame || !hasAllowedDimensions)
       throw new Error("Unsupported image.");
     // New pixels, no source metadata, no active content, and one predictable output format.
     return await image

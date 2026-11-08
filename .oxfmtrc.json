@@ -6,6 +6,7 @@
     "**/.turbo/**",
     "**/dist/**",
     "**/coverage/**",
+    "packages/*/migrations/**",
     "apps/web/src/routeTree.gen.ts"
   ],
   "sortImports": {

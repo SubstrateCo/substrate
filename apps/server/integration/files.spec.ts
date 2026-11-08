@@ -6,7 +6,7 @@ import { Mailpit } from "./test-support/mailpit";
 import { provisionWorkspaceSession } from "./test-support/organizations";
 import {
   expect,
-  request as playwrightRequest,
+  request,
   test as base,
   type APIRequestContext,
   type APIResponse,
@@ -37,21 +37,21 @@ const test = base.extend<{
     await use({ request });
   },
   accounts: async ({ owner }, use) => {
-    const request = await playwrightRequest.newContext({ baseURL: origin });
+    const accountRequest = await request.newContext({ baseURL: origin });
     try {
       const suffix = randomUUID();
-      await provisionVerifiedAccount({ request }, new Mailpit(request), {
+      await provisionVerifiedAccount({ request: accountRequest }, new Mailpit(accountRequest), {
         name: `File security ${suffix}`,
         email: `file-security-${suffix}@example.test`,
         password: `Files-${randomUUID()}!`,
       });
-      await use({ a: { request }, b: owner });
+      await use({ a: { request: accountRequest }, b: owner });
     } finally {
-      await request.dispose();
+      await accountRequest.dispose();
     }
   },
   anonymous: async ({ baseURL }, use) => {
-    const context = await playwrightRequest.newContext({ baseURL: baseURL ?? origin });
+    const context = await request.newContext({ baseURL: baseURL ?? origin });
     try {
       await use(context);
     } finally {

@@ -1,4 +1,4 @@
-import { bundledApplicationURL as origin } from "../shell/navigation.js";
+import { bundledApplicationURL } from "../shell/navigation.js";
 import { assetPath, backendURL, bundledRenderer, proxyURL } from "./bundled-renderer.js";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
@@ -31,15 +31,18 @@ describe("bundled backend configuration", () => {
 
   test("confines API forwarding to the configured backend and app API paths", () => {
     expect(
-      proxyURL(`${origin}/api/auth/session?next=https://evil.test`, "https://api.example.com"),
+      proxyURL(
+        `${bundledApplicationURL}/api/auth/session?next=https://evil.test`,
+        "https://api.example.com",
+      ),
     ).toBe("https://api.example.com/api/auth/session?next=https://evil.test");
     for (const url of [
       "https://evil.test/api/auth",
-      `${origin}/api-other`,
-      `${origin}//evil.test/api`,
-      `${origin}/api/../private`,
-      `${origin}/api/%2f../private`,
-      `${origin}/api/%5cprivate`,
+      `${bundledApplicationURL}/api-other`,
+      `${bundledApplicationURL}//evil.test/api`,
+      `${bundledApplicationURL}/api/../private`,
+      `${bundledApplicationURL}/api/%2f../private`,
+      `${bundledApplicationURL}/api/%5cprivate`,
       "https://user@desktop.startup-os.local/api/auth",
     ]) {
       expect(() => proxyURL(url, "https://api.example.com")).toThrow();
@@ -72,15 +75,17 @@ describe("bundled assets and responses", () => {
 
   test("serves workspace history routes but not missing assets or local file traversal", async () => {
     const serve = handler();
-    const page = await serve(new Request(`${origin}/projects/project-1`));
+    const page = await serve(new Request(`${bundledApplicationURL}/projects/project-1`));
     expect(page.status).toBe(200);
     expect(await page.text()).toBe("<h1>Workspace</h1>");
     expect(page.headers.get("x-content-type-options")).toBe("nosniff");
-    expect(await (await serve(new Request(`${origin}/app.js`))).text()).toBe(
+    expect(await (await serve(new Request(`${bundledApplicationURL}/app.js`))).text()).toBe(
       "console.log('workspace')",
     );
-    expect((await serve(new Request(`${origin}/missing.js`))).status).toBe(404);
-    expect((await serve(new Request(`${origin}/linked/private.txt`))).status).toBe(404);
+    expect((await serve(new Request(`${bundledApplicationURL}/missing.js`))).status).toBe(404);
+    expect((await serve(new Request(`${bundledApplicationURL}/linked/private.txt`))).status).toBe(
+      404,
+    );
     for (const path of [
       "/%2e%2e%2fprivate.txt",
       "/..%5cprivate.txt",
@@ -88,15 +93,21 @@ describe("bundled assets and responses", () => {
       "/%00",
       "/%ZZ",
     ]) {
-      expect(await assetPath(join(directory, "dist"), new URL(`${origin}${path}`))).toBeNull();
+      expect(
+        await assetPath(join(directory, "dist"), new URL(`${bundledApplicationURL}${path}`)),
+      ).toBeNull();
     }
   });
 
   test("rejects non-app origins and unsupported asset methods", async () => {
     const serve = handler();
     expect((await serve(new Request("https://evil.test/app.js"))).status).toBe(403);
-    expect((await serve(new Request(`${origin}/app.js`, { method: "POST" }))).status).toBe(405);
-    const response = await serve(new Request(`${origin}/app.js`, { method: "HEAD" }));
+    expect(
+      (await serve(new Request(`${bundledApplicationURL}/app.js`, { method: "POST" }))).status,
+    ).toBe(405);
+    const response = await serve(
+      new Request(`${bundledApplicationURL}/app.js`, { method: "HEAD" }),
+    );
     expect(response.status).toBe(200);
     expect(await response.text()).toBe("");
   });
@@ -108,7 +119,7 @@ describe("bundled assets and responses", () => {
       storageOrigins: ["https://storage.example.test"],
       fetchFile: async () => new Response("workspace"),
     });
-    const response = await serve(new Request(`${origin}/`));
+    const response = await serve(new Request(`${bundledApplicationURL}/`));
     const csp = response.headers.get("content-security-policy");
     expect(csp).toContain("img-src 'self' data: blob: https://storage.example.test;");
     expect(csp).toContain("connect-src 'self' https://storage.example.test;");
@@ -133,12 +144,12 @@ describe("bundled assets and responses", () => {
       return new Response('{"ok":true}', { status: 201, headers });
     });
     const response = await serve(
-      new Request(`${origin}/api/auth/sign-in/email`, {
+      new Request(`${bundledApplicationURL}/api/auth/sign-in/email`, {
         method: "POST",
         headers: {
           Cookie: "session=old",
           Host: "evil.test",
-          Origin: origin,
+          Origin: bundledApplicationURL,
           "Content-Type": "application/json",
         },
         body: '{"email":"user@example.com"}',
@@ -148,7 +159,7 @@ describe("bundled assets and responses", () => {
     const headers = new Headers(forwarded?.init.headers);
     expect(headers.get("host")).toBeNull();
     expect(headers.get("cookie")).toBe("session=old");
-    expect(headers.get("origin")).toBe(origin);
+    expect(headers.get("origin")).toBe(bundledApplicationURL);
     expect(forwardedBody).toBe('{"email":"user@example.com"}');
     expect(forwarded?.init.redirect).toBe("manual");
     expect(response.status).toBe(201);
@@ -163,15 +174,21 @@ describe("bundled assets and responses", () => {
 
   test("returns redirects without following them and reports backend failure", async () => {
     const serve = handler(
-      async () => new Response(null, { status: 302, headers: { Location: `${origin}/tasks` } }),
+      async () =>
+        new Response(null, {
+          status: 302,
+          headers: { Location: `${bundledApplicationURL}/tasks` },
+        }),
     );
-    const response = await serve(new Request(`${origin}/api/auth/callback`));
+    const response = await serve(new Request(`${bundledApplicationURL}/api/auth/callback`));
     expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toBe(`${origin}/tasks`);
+    expect(response.headers.get("location")).toBe(`${bundledApplicationURL}/tasks`);
     const failing = handler(async () => {
       throw new Error("offline");
     });
-    expect((await failing(new Request(`${origin}/api/auth/session`))).status).toBe(502);
+    expect((await failing(new Request(`${bundledApplicationURL}/api/auth/session`))).status).toBe(
+      502,
+    );
   });
 
   test("supplies the isolated renderer origin when protocol interception precedes Chromium's Origin header", async () => {
@@ -181,10 +198,13 @@ describe("bundled assets and responses", () => {
       return Response.json({ success: true });
     });
     const response = await serve(
-      new Request(`${origin}/api/auth/sign-up/email`, { method: "POST", body: "{}" }),
+      new Request(`${bundledApplicationURL}/api/auth/sign-up/email`, {
+        method: "POST",
+        body: "{}",
+      }),
     );
     expect(response.status).toBe(200);
-    expect(forwarded.get("origin")).toBe(origin);
+    expect(forwarded.get("origin")).toBe(bundledApplicationURL);
   });
 
   test("does not forward mutations with an explicitly foreign or opaque origin", async () => {
@@ -195,7 +215,7 @@ describe("bundled assets and responses", () => {
     });
     for (const value of ["https://evil.test", "null"]) {
       const response = await serve(
-        new Request(`${origin}/api/auth/sign-up/email`, {
+        new Request(`${bundledApplicationURL}/api/auth/sign-up/email`, {
           method: "POST",
           headers: { Origin: value },
           body: "{}",

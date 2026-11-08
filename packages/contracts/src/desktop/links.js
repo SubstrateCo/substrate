@@ -34,8 +34,9 @@ export function desktopLink(path) {
 export function resolveDesktopLink(value, rendererOrigin) {
   try {
     const url = new URL(value);
-    if (url.protocol !== `${desktopScheme}:` || url.host !== "open" || url.username || url.password)
-      return null;
+    const isOpenLink = url.protocol === `${desktopScheme}:` && url.host === "open";
+    const hasCredentials = url.username || url.password;
+    if (!isOpenLink || hasCredentials) return null;
     const path = desktopPath.safeParse(`${url.pathname}${url.search}${url.hash}`);
     return path.success ? new URL(path.data, rendererOrigin).href : null;
   } catch {

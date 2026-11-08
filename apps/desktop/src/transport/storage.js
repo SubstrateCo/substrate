@@ -11,15 +11,13 @@ export function storageOrigins(value, packaged) {
         if (typeof entry !== "string" || !entry.trim()) throw new Error("Invalid storage origin.");
         const url = new URL(entry.trim());
         const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
-        if (
-          url.username ||
-          url.password ||
-          url.pathname !== "/" ||
-          url.search ||
-          url.hash ||
-          /[\s;'"*]/.test(url.origin) ||
-          (url.protocol !== "https:" && !(url.protocol === "http:" && loopback && !packaged))
-        ) {
+        const hasCredentials = url.username || url.password;
+        const hasPathQueryOrFragment = url.pathname !== "/" || url.search || url.hash;
+        const isCspSafe = !/[\s;'"*]/.test(url.origin);
+        const isSafeBareOrigin = !hasCredentials && !hasPathQueryOrFragment && isCspSafe;
+        const isAllowedProtocol =
+          url.protocol === "https:" || (url.protocol === "http:" && loopback && !packaged);
+        if (!isSafeBareOrigin || !isAllowedProtocol) {
           throw new Error(
             "Storage origins must use HTTPS (loopback HTTP is allowed only in development).",
           );
@@ -38,12 +36,9 @@ export function storageRequest(origins, fetchStorage) {
   /** @param {Request} request */
   return async (request) => {
     const url = new URL(request.url);
-    if (
-      !origins.includes(url.origin) ||
-      url.username ||
-      url.password ||
-      !["GET", "HEAD", "PUT", "OPTIONS"].includes(request.method)
-    ) {
+    const hasCredentials = url.username || url.password;
+    const isAllowedMethod = ["GET", "HEAD", "PUT", "OPTIONS"].includes(request.method);
+    if (!origins.includes(url.origin) || hasCredentials || !isAllowedMethod) {
       return new Response("Forbidden", { status: 403 });
     }
     const headers = new Headers(request.headers);

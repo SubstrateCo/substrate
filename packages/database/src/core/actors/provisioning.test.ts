@@ -36,24 +36,20 @@ describe("actor provisioning", () => {
     const otherContact = await f
       .forActor(otherOwner.entityId, f.orgB)
       .contacts.create({ displayName: "Other workspace" });
-    await f
-      .forActor(otherOwner.entityId, f.orgB)
-      .permissions.grant({
-        entityId: otherContact.entityId,
-        actorEntityId: other.entityId,
-        level: "view",
-      });
+    await f.forActor(otherOwner.entityId, f.orgB).permissions.grant({
+      entityId: otherContact.entityId,
+      actorEntityId: other.entityId,
+      level: "view",
+    });
     expect(
       (await f.forActor(other.entityId, f.orgB).contacts.list()).map((item) => item.entityId),
     ).toEqual([otherContact.entityId]);
     const contact = await f.forActor(f.alice).contacts.create({ displayName: "Private" });
-    await f
-      .forActor(f.alice)
-      .permissions.grant({
-        entityId: contact.entityId,
-        actorEntityId: first.entityId,
-        level: "edit",
-      });
+    await f.forActor(f.alice).permissions.grant({
+      entityId: contact.entityId,
+      actorEntityId: first.entityId,
+      level: "edit",
+    });
     await f
       .forActor(first.entityId)
       .contacts.update(contact.entityId, { displayName: "Agent edit" });
@@ -128,20 +124,16 @@ describe("actor provisioning", () => {
     );
     const [actor] = await f.db.select().from(actors).where(eq(actors.userAgentId, agent!.id));
     const project = await f.forActor(f.alice).projects.create({ name: "Agent work" });
-    await f
-      .forActor(f.alice)
-      .permissions.grant({
-        entityId: project.entityId,
-        actorEntityId: actor!.entityId,
-        level: "edit",
-      });
-    await f
-      .forActor(f.alice)
-      .permissions.grant({
-        entityId: contact.entityId,
-        actorEntityId: actor!.entityId,
-        level: "edit",
-      });
+    await f.forActor(f.alice).permissions.grant({
+      entityId: project.entityId,
+      actorEntityId: actor!.entityId,
+      level: "edit",
+    });
+    await f.forActor(f.alice).permissions.grant({
+      entityId: contact.entityId,
+      actorEntityId: actor!.entityId,
+      level: "edit",
+    });
     const task = await f.forActor(f.alice).tasks.create({
       projectEntityId: project.entityId,
       title: "Assigned",

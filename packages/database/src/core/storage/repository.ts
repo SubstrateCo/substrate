@@ -206,12 +206,11 @@ export function createStorageRepository(db: Database) {
           .from(storedFiles)
           .where(eq(storedFiles.id, id))
           .for("update");
-        if (
-          !file ||
-          file.uploadedBy !== scope.userId ||
-          (file.ownerUserId !== null && file.ownerUserId !== scope.userId) ||
-          (file.organizationId !== null && file.organizationId !== scope.organizationId)
-        )
+        if (!file) throw new AccessDeniedError();
+        const ownedByOtherUser = file.ownerUserId !== null && file.ownerUserId !== scope.userId;
+        const inOtherOrganization =
+          file.organizationId !== null && file.organizationId !== scope.organizationId;
+        if (file.uploadedBy !== scope.userId || ownedByOtherUser || inOtherOrganization)
           throw new AccessDeniedError();
         await requireScope(tx, scope, file.purpose, false);
         const [usage] = await tx.execute<{ referenced: boolean }>(sql`

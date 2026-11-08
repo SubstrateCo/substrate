@@ -46,13 +46,11 @@ test("task tools require explicit grants, attribute writes and preserve source l
   await expect(call("get_project", { projectId: project.entityId })).rejects.toBeInstanceOf(
     AccessDeniedError,
   );
-  await f
-    .forActor(f.alice)
-    .permissions.grant({
-      entityId: project.entityId,
-      actorEntityId: actor.entityId,
-      level: "edit",
-    });
+  await f.forActor(f.alice).permissions.grant({
+    entityId: project.entityId,
+    actorEntityId: actor.entityId,
+    level: "edit",
+  });
   const channel = await human.createConversation({ kind: "channel", name: "general" });
   const message = await human.sendMessage(channel.id, "Please follow up");
   const input = {
@@ -210,13 +208,11 @@ test("send_message resolves the agent once and does not re-authenticate inside m
 
 test("failed source validation rolls back task creation; foreign owners and organizations cannot impersonate agents", async () => {
   const { actor, identity, project, call } = await fixture();
-  await f
-    .forActor(f.alice)
-    .permissions.grant({
-      entityId: project.entityId,
-      actorEntityId: actor.entityId,
-      level: "edit",
-    });
+  await f.forActor(f.alice).permissions.grant({
+    entityId: project.entityId,
+    actorEntityId: actor.entityId,
+    level: "edit",
+  });
   const before = (await f.forActor(f.alice).tasks.list(project.entityId)).length;
   await expect(
     call("create_task", {

@@ -13,15 +13,14 @@ import { applyMessageEffects } from "../context/message-effects";
 import { visibleConversations, type MessagingIdentity } from "./access";
 import { messageAuthorColumns } from "./message-authors";
 import { messageSummaries } from "./message-summaries";
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
-export type { MessagingIdentity as MessagingScope } from "./access";
 import {
-  messagingConversations as conversations,
-  messagingMessages as messages,
-  messagingParticipants as participants,
-  messagingReactions as reactions,
-  messagingAgentParticipants as agentParticipants,
+  messagingConversations,
+  messagingMessages,
+  messagingParticipants,
+  messagingReactions,
+  messagingAgentParticipants,
 } from "./schema";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 
 export interface CreateConversationInput {
   kind: "dm" | "group" | "channel";
@@ -33,8 +32,8 @@ export interface CreateConversationInput {
 async function lockConversation(tx: DatabaseExecutor, scope: MessagingIdentity, id: string) {
   const [conversation] = await tx
     .select()
-    .from(conversations)
-    .where(and(eq(conversations.id, id), visibleConversations(tx, scope)))
+    .from(messagingConversations)
+    .where(and(eq(messagingConversations.id, id), visibleConversations(tx, scope)))
     .for("update");
   if (!conversation) throw new AccessDeniedError();
   return conversation;
@@ -47,7 +46,7 @@ async function joinConversation(
 ) {
   if (scope.actorEntityId) {
     await tx
-      .insert(agentParticipants)
+      .insert(messagingAgentParticipants)
       .values({
         conversationId,
         organizationId: scope.organizationId,
@@ -57,20 +56,20 @@ async function joinConversation(
     return;
   }
   await tx
-    .insert(participants)
+    .insert(messagingParticipants)
     .values({ conversationId, userId: scope.userId, organizationId: scope.organizationId })
     .onConflictDoNothing();
 }
 
 async function requireThreadRoot(tx: DatabaseExecutor, conversationId: string, threadId: string) {
   const [root] = await tx
-    .select({ id: messages.id })
-    .from(messages)
+    .select({ id: messagingMessages.id })
+    .from(messagingMessages)
     .where(
       and(
-        eq(messages.conversationId, conversationId),
-        eq(messages.id, threadId),
-        isNull(messages.threadId),
+        eq(messagingMessages.conversationId, conversationId),
+        eq(messagingMessages.id, threadId),
+        isNull(messagingMessages.threadId),
       ),
     );
   if (!root) throw new ValidationError("Thread must be a root message in this conversation.");
@@ -92,9 +91,12 @@ export async function sendMessageAs(
   if (requestId) {
     const [existing] = await tx
       .select()
-      .from(messages)
+      .from(messagingMessages)
       .where(
-        and(eq(messages.authorActorEntityId, actor.entityId), eq(messages.requestId, requestId)),
+        and(
+          eq(messagingMessages.authorActorEntityId, actor.entityId),
+          eq(messagingMessages.requestId, requestId),
+        ),
       );
     if (existing) {
       if (
@@ -110,7 +112,7 @@ export async function sendMessageAs(
   if (threadId) await requireThreadRoot(tx, conversationId, threadId);
   await joinConversation(tx, scope, conversationId);
   const [created] = await tx
-    .insert(messages)
+    .insert(messagingMessages)
     .values({
       conversationId,
       authorId: scope.actorEntityId ? null : scope.userId,
@@ -198,22 +200,22 @@ export function createMessagingService(
         await authenticate(tx);
         const rows = await tx
           .select()
-          .from(conversations)
+          .from(messagingConversations)
           .where(visibleConversations(tx, scope))
-          .orderBy(asc(conversations.createdAt), asc(conversations.id));
+          .orderBy(asc(messagingConversations.createdAt), asc(messagingConversations.id));
         const names = rows.length
           ? await tx
               .select({
-                conversationId: participants.conversationId,
+                conversationId: messagingParticipants.conversationId,
                 userId: user.id,
                 name: user.name,
-                organizationId: participants.organizationId,
+                organizationId: messagingParticipants.organizationId,
               })
-              .from(participants)
-              .innerJoin(user, eq(user.id, participants.userId))
+              .from(messagingParticipants)
+              .innerJoin(user, eq(user.id, messagingParticipants.userId))
               .where(
                 inArray(
-                  participants.conversationId,
+                  messagingParticipants.conversationId,
                   rows.map((row) => row.id),
                 ),
               )
@@ -256,7 +258,7 @@ export function createMessagingService(
         if (input.kind === "channel" && !name)
           throw new ValidationError("Channels require a name.");
         const [conversation] = await tx
-          .insert(conversations)
+          .insert(messagingConversations)
           .values({
             organizationId: scope.organizationId,
             createdBy: scope.userId,
@@ -265,7 +267,7 @@ export function createMessagingService(
             private: input.kind === "channel" ? (input.private ?? false) : true,
           })
           .returning();
-        await tx.insert(participants).values([
+        await tx.insert(messagingParticipants).values([
           { conversationId: conversation!.id, ...scope },
           ...selected.map((recipient) => ({
             conversationId: conversation!.id,
@@ -323,7 +325,7 @@ export function createMessagingService(
             );
           if (agents.length !== agentIds.length) throw new AccessDeniedError();
           const added = await tx
-            .insert(agentParticipants)
+            .insert(messagingAgentParticipants)
             .values(
               agentIds.map((actorEntityId) => ({
                 conversationId,
@@ -338,7 +340,7 @@ export function createMessagingService(
         const selected = await recipients(tx, emails);
         if (!selected.length) return { added: agentsAdded };
         const added = await tx
-          .insert(participants)
+          .insert(messagingParticipants)
           .values(
             selected.map((recipient) => ({
               conversationId,
@@ -364,33 +366,37 @@ export function createMessagingService(
         const anchorId = options.beforeMessageId ?? options.aroundMessageId;
         if (anchorId) {
           const [anchor] = await tx
-            .select({ id: messages.id })
-            .from(messages)
+            .select({ id: messagingMessages.id })
+            .from(messagingMessages)
             .where(
               and(
-                eq(messages.id, anchorId),
-                eq(messages.conversationId, conversationId),
-                threadId ? eq(messages.threadId, threadId) : isNull(messages.threadId),
+                eq(messagingMessages.id, anchorId),
+                eq(messagingMessages.conversationId, conversationId),
+                threadId
+                  ? eq(messagingMessages.threadId, threadId)
+                  : isNull(messagingMessages.threadId),
               ),
             );
           if (!anchor) throw new AccessDeniedError();
           boundary = options.beforeMessageId
-            ? sql`(${messages.createdAt}, ${messages.id}) < (select anchor.created_at, anchor.id from ${messages} anchor where anchor.id = ${anchor.id}::uuid)`
-            : sql`(${messages.createdAt}, ${messages.id}) <= (select anchor.created_at, anchor.id from ${messages} anchor where anchor.id = ${anchor.id}::uuid)`;
+            ? sql`(${messagingMessages.createdAt}, ${messagingMessages.id}) < (select anchor.created_at, anchor.id from ${messagingMessages} anchor where anchor.id = ${anchor.id}::uuid)`
+            : sql`(${messagingMessages.createdAt}, ${messagingMessages.id}) <= (select anchor.created_at, anchor.id from ${messagingMessages} anchor where anchor.id = ${anchor.id}::uuid)`;
         }
         const rows = await tx
-          .select({ message: messages, ...messageAuthorColumns(scope.organizationId) })
-          .from(messages)
-          .leftJoin(user, eq(user.id, messages.authorId))
-          .leftJoin(actors, eq(actors.entityId, messages.authorActorEntityId))
+          .select({ message: messagingMessages, ...messageAuthorColumns(scope.organizationId) })
+          .from(messagingMessages)
+          .leftJoin(user, eq(user.id, messagingMessages.authorId))
+          .leftJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
           .where(
             and(
-              eq(messages.conversationId, conversationId),
-              threadId ? eq(messages.threadId, threadId) : isNull(messages.threadId),
+              eq(messagingMessages.conversationId, conversationId),
+              threadId
+                ? eq(messagingMessages.threadId, threadId)
+                : isNull(messagingMessages.threadId),
               boundary,
             ),
           )
-          .orderBy(desc(messages.createdAt), desc(messages.id))
+          .orderBy(desc(messagingMessages.createdAt), desc(messagingMessages.id))
           .limit(50);
         rows.reverse();
         const summaries = await messageSummaries(
@@ -420,18 +426,21 @@ export function createMessagingService(
         await authenticate(tx);
         if (!emoji.trim() || emoji.length > 64)
           throw new ValidationError("Reaction must contain 1 to 64 characters.");
-        const [message] = await tx.select().from(messages).where(eq(messages.id, messageId));
+        const [message] = await tx
+          .select()
+          .from(messagingMessages)
+          .where(eq(messagingMessages.id, messageId));
         if (!message) throw new AccessDeniedError();
         await requireConversation(tx, message.conversationId);
         await joinConversation(tx, scope, message.conversationId);
         const key = and(
-          eq(reactions.messageId, messageId),
-          eq(reactions.userId, scope.userId),
-          eq(reactions.emoji, emoji),
+          eq(messagingReactions.messageId, messageId),
+          eq(messagingReactions.userId, scope.userId),
+          eq(messagingReactions.emoji, emoji),
         );
-        const removed = await tx.delete(reactions).where(key).returning();
+        const removed = await tx.delete(messagingReactions).where(key).returning();
         if (removed.length) return { active: false };
-        await tx.insert(reactions).values({
+        await tx.insert(messagingReactions).values({
           conversationId: message.conversationId,
           messageId,
           userId: scope.userId,
