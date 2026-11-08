@@ -11,6 +11,12 @@ export const queryKeys = {
   ) => ["users", userId, "local-agent-configuration", organizationId, agentId, harness] as const,
   context: (organizationId: string) =>
     [...queryKeys.organization(organizationId), "context"] as const,
+  messageTargets: (organizationId: string, conversationId?: string) =>
+    [
+      ...queryKeys.context(organizationId),
+      "target",
+      ...(conversationId ? [conversationId] : []),
+    ] as const,
   organizations: ["organizations", "list"] as const,
   userInvitations: ["invitations", "user"] as const,
   organization: (organizationId: string) => ["organizations", organizationId] as const,

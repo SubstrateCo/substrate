@@ -153,6 +153,7 @@ test("messaging targets all thread variants of one conversation, not another", (
     { queryKey: queryKeys.messages("org", "conversation").slice(0, -1) },
     { queryKey: [...queryKeys.context("org"), "related"] },
     { queryKey: [...queryKeys.context("org"), "message-pages", "conversation"] },
+    { queryKey: [...queryKeys.context("org"), "target", "conversation"] },
     { queryKey: [...queryKeys.context("org"), "search"], refetchType: "none" },
     { queryKey: [...queryKeys.context("org"), "search-pages"], refetchType: "none" },
   ]);
@@ -162,6 +163,57 @@ test("messaging targets all thread variants of one conversation, not another", (
   expect(realtimeQueryTargets(change("agents", null), "user")).toEqual([
     { queryKey: queryKeys.agents("user") },
   ]);
+});
+
+test("conversation hints refresh root and reply targets without crossing conversation or workspace boundaries", async () => {
+  const client = new QueryClient();
+  const scopes = [
+    ["org", "viewed", "root"],
+    ["org", "viewed", "reply"],
+    ["org", "other", "root"],
+    ["foreign", "viewed", "root"],
+  ] as const;
+  const reads = [0, 0, 0, 0];
+  const observers = scopes.map(
+    ([org, conversation, message], index) =>
+      new QueryObserver(client, {
+        queryKey: [...queryKeys.messageTargets(org, conversation), message],
+        initialData: "old",
+        staleTime: Infinity,
+        queryFn: async () => {
+          reads[index]++;
+          return "fresh";
+        },
+      }),
+  );
+  const unsubscribes = observers.map((observer) => observer.subscribe(() => {}));
+  const cache = createRealtimeCache({
+    queryClient: client,
+    organizationId: "org",
+    userId: "user",
+    revalidate: async () => {},
+  });
+  try {
+    await cache.receive({ ...change("messaging", "foreign"), conversationId: "viewed" });
+    await Bun.sleep(80);
+    expect(reads).toEqual([0, 0, 0, 0]);
+    await cache.receive({ ...change("messaging"), conversationId: "viewed" });
+    await Bun.sleep(80);
+    expect(observers.map((observer) => observer.getCurrentResult().data)).toEqual([
+      "fresh",
+      "fresh",
+      "old",
+      "old",
+    ]);
+    expect(reads).toEqual([1, 1, 0, 0]);
+    await cache.receive(change("messaging"));
+    await Bun.sleep(80);
+    expect(reads).toEqual([2, 2, 1, 0]);
+  } finally {
+    cache.dispose();
+    unsubscribes.forEach((unsubscribe) => unsubscribe());
+    client.clear();
+  }
 });
 
 test("conversation hints refresh only matching mounted context pages, with a broad unhinted fallback", async () => {

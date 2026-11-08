@@ -28,6 +28,9 @@ export function invalidateSentMessage(
     client.invalidateQueries({
       queryKey: queryKeys.messages(organizationId, conversationId).slice(0, -1),
     }),
+    client.invalidateQueries({
+      queryKey: queryKeys.messageTargets(organizationId, conversationId),
+    }),
     client.invalidateQueries({ queryKey: [...context, "message-pages", conversationId] }),
     client.invalidateQueries({
       queryKey: [...context, "related"],

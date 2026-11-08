@@ -674,6 +674,49 @@ test("source provenance survives explicit unlinking and caller rollback removes 
   expect(await f.db.select().from(messageEntityReferences)).toHaveLength(1);
 });
 
+test("message targets retain timeline reaction and reply summaries for roots and replies", async () => {
+  const { chat, reply, root, conversation } = await setup();
+  await chat.addMembers(conversation.id, ["bob@example.com"]);
+  const bob = createMessagingService(f.db, { userId: "bob", organizationId: f.orgA });
+  await chat.toggleReaction(root.id, "👍");
+  await bob.toggleReaction(root.id, "👍");
+  await bob.toggleReaction(reply.id, "🎉");
+  const [timelineRoot] = await chat.listMessages(conversation.id);
+  const [timelineReply] = await chat.listMessages(conversation.id, root.id);
+  expect(timelineRoot).toMatchObject({
+    replyCount: 1,
+    reactions: [{ emoji: "👍", count: 2, reacted: true }],
+  });
+  expect(timelineReply).toMatchObject({
+    replyCount: 0,
+    reactions: [{ emoji: "🎉", count: 1, reacted: false }],
+  });
+  const { db, queries } = recordQueries();
+  const target = createContextService(db, { userId: "alice", organizationId: f.orgA });
+  for (const message of [timelineRoot!, timelineReply!]) {
+    queries.length = 0;
+    expect(await target.messageTarget(conversation.id, message.id)).toEqual({
+      message,
+      root: timelineRoot!,
+    });
+    expect(queries.filter((query) => query.includes('from "messaging_reactions"'))).toHaveLength(1);
+    expect(
+      queries.filter(
+        (query) => query.includes('from "messaging_messages"') && query.includes("count(*)"),
+      ),
+    ).toHaveLength(1);
+    console.info(
+      `message target ${message.threadId ? "reply" : "root"}: ${queries.length} statements, 2 summary reads`,
+    );
+  }
+  await chat.toggleReaction(root.id, "👍");
+  await bob.sendMessage(conversation.id, "Another reply", root.id);
+  expect(await context().messageTarget(conversation.id, reply.id)).toMatchObject({
+    root: { replyCount: 2, reactions: [{ emoji: "👍", count: 1, reacted: false }] },
+    message: { replyCount: 0, reactions: [{ emoji: "🎉", count: 1, reacted: false }] },
+  });
+});
+
 test("message targets resolve a reply and root, and mismatched conversations fail", async () => {
   const { reply, root, conversation } = await setup();
   expect(await context().messageTarget(conversation.id, reply.id)).toMatchObject({

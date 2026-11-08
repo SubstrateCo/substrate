@@ -9,6 +9,7 @@ import { AccessDeniedError, ConflictError, ValidationError } from "../../errors"
 import { workspaceContext } from "../context/access";
 import { applyMessageEffects } from "../context/message-effects";
 import { visibleConversations, type MessagingIdentity } from "./access";
+import { messageSummaries } from "./message-summaries";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 export type { MessagingIdentity as MessagingScope } from "./access";
 import {
@@ -387,47 +388,18 @@ export function createMessagingService(
           .orderBy(desc(messages.createdAt), desc(messages.id))
           .limit(50);
         rows.reverse();
-        const allReactions = rows.length
-          ? await tx
-              .select({
-                messageId: reactions.messageId,
-                emoji: reactions.emoji,
-                count: sql<number>`count(*)::int`,
-                reacted: sql<boolean>`bool_or(${reactions.userId} = ${scope.userId})`,
-              })
-              .from(reactions)
-              .where(
-                inArray(
-                  reactions.messageId,
-                  rows.map((row) => row.message.id),
-                ),
-              )
-              .groupBy(reactions.messageId, reactions.emoji)
-          : [];
-        const roots = rows.filter((row) => !row.message.threadId).map((row) => row.message.id);
-        const replies = roots.length
-          ? await tx
-              .select({ threadId: messages.threadId, count: sql<number>`count(*)::int` })
-              .from(messages)
-              .where(
-                and(eq(messages.conversationId, conversationId), inArray(messages.threadId, roots)),
-              )
-              .groupBy(messages.threadId)
-          : [];
-        const replyCounts = new Map(replies.map((reply) => [reply.threadId, reply.count]));
-        const byMessage = new Map<string, { emoji: string; count: number; reacted: boolean }[]>();
-        for (const { messageId, ...reaction } of allReactions) {
-          const group = byMessage.get(messageId) ?? [];
-          group.push(reaction);
-          byMessage.set(messageId, group);
-        }
+        const summaries = await messageSummaries(
+          tx,
+          scope.userId,
+          conversationId,
+          rows.map((row) => row.message),
+        );
         return rows.map(({ message, authorName, authorExternal, authorType }) => ({
           ...message,
           authorName,
           authorExternal,
           authorType,
-          replyCount: replyCounts.get(message.id) ?? 0,
-          reactions: byMessage.get(message.id) ?? [],
+          ...summaries.get(message.id)!,
         }));
       });
     },

@@ -93,6 +93,50 @@ test("sending a work reference refreshes its project discussions, not other conv
   }
 });
 
+test("local replies refresh cached root and reply target counts without realtime, within their conversation and workspace", async () => {
+  const client = new QueryClient();
+  const scopes = [
+    ["org", "conversation", "root"],
+    ["org", "conversation", "reply"],
+    ["org", "other", "root"],
+    ["foreign", "conversation", "root"],
+  ] as const;
+  let replyCount = 1;
+  const reads = [0, 0, 0, 0];
+  const snapshot = (messageId: string) => ({
+    root: { id: "root", replyCount },
+    message: { id: messageId, replyCount: messageId === "root" ? replyCount : 0 },
+  });
+  const observers = scopes.map(
+    ([organizationId, conversationId, messageId], index) =>
+      new QueryObserver(client, {
+        queryKey: [...queryKeys.messageTargets(organizationId, conversationId), messageId],
+        initialData: snapshot(messageId),
+        staleTime: Infinity,
+        queryFn: async () => {
+          reads[index]++;
+          return snapshot(messageId);
+        },
+      }),
+  );
+  const unsubscribes = observers.map((observer) => observer.subscribe(() => {}));
+  try {
+    // A successful local reply changes the server snapshot; no realtime cache is connected.
+    replyCount++;
+    await invalidateSentMessage(client, "org", "conversation", "Another reply", "root");
+    expect(observers.map((observer) => observer.getCurrentResult().data?.root.replyCount)).toEqual([
+      2, 2, 1, 1,
+    ]);
+    expect(
+      observers.map((observer) => observer.getCurrentResult().data?.message.replyCount),
+    ).toEqual([2, 0, 1, 1]);
+    expect(reads).toEqual([1, 1, 0, 0]);
+  } finally {
+    unsubscribes.forEach((unsubscribe) => unsubscribe());
+    client.clear();
+  }
+});
+
 test("plain replies refresh only discussion feeds containing that thread", async () => {
   const fixture = mount({
     linked: {

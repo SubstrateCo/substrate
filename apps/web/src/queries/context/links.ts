@@ -31,7 +31,7 @@ export const messageTargetOptions = (
   messageId: string,
 ) =>
   queryOptions({
-    queryKey: [...queryKeys.context(organizationId), "target", conversationId, messageId],
+    queryKey: [...queryKeys.messageTargets(organizationId, conversationId), messageId],
     queryFn: ({ signal }) =>
       getMessageTarget({ data: { organizationId, conversationId, messageId }, signal }),
     retry: false,

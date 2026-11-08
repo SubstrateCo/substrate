@@ -6,6 +6,7 @@ import { visibilityCte } from "../../core/permissions/visibility";
 import { ConflictError, AccessDeniedError } from "../../errors";
 import { recordTaskActivity } from "../activity/events";
 import { requireMessage, visibleConversations, type MessagingIdentity } from "../messaging/access";
+import { messageSummaries } from "../messaging/message-summaries";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import type { CreateTaskInput } from "../tasks/contracts";
 import { taskRepository } from "../tasks/repository";
@@ -203,6 +204,12 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
       const root = message.threadId
         ? (await requireMessage(db, scope, message.threadId)).message
         : message;
+      const summaries = await messageSummaries(
+        db,
+        scope.userId,
+        conversationId,
+        message.id === root.id ? [message] : [message, root],
+      );
       const decorate = async (row: typeof message) => {
         const [author] = row.authorId
           ? await db
@@ -228,11 +235,14 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
           authorName: agentAuthor?.type === "agent" ? agentAuthor.name : (author?.name ?? "Member"),
           authorType: agentAuthor?.type ?? ("human" as const),
           authorExternal: agentAuthor?.type === "agent" ? false : (author?.external ?? true),
-          reactions: [],
-          replyCount: 0,
+          ...summaries.get(row.id)!,
         };
       };
-      return { message: await decorate(message), root: await decorate(root) };
+      const decoratedMessage = await decorate(message);
+      return {
+        message: decoratedMessage,
+        root: message.id === root.id ? decoratedMessage : await decorate(root),
+      };
     },
     search: (input: Parameters<typeof contextSearch>[2]) => contextSearch(db, scope, input),
   };

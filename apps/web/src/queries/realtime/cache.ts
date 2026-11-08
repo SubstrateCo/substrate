@@ -65,6 +65,7 @@ export function realtimeQueryTargets(
             ...(event.conversationId ? [event.conversationId] : []),
           ],
         });
+        targets.push({ queryKey: queryKeys.messageTargets(organizationId, event.conversationId) });
         targets.push(...searchTargets(organizationId));
       }
       break;

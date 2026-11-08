@@ -40,9 +40,14 @@ export function MessageItem({
     mutationFn: async (emoji: string) =>
       toggleReaction({ data: { organizationId, messageId: message.id, emoji } }),
     onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.messages(organizationId, message.conversationId).slice(0, -1),
-      }),
+      Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.messages(organizationId, message.conversationId).slice(0, -1),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.messageTargets(organizationId, message.conversationId),
+        }),
+      ]),
   });
   return (
     <LinkedMessage highlighted={highlighted}>
