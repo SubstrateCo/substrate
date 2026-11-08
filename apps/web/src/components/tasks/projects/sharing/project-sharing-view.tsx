@@ -37,7 +37,9 @@ export function ProjectSharing({
   const canManage = detail.level === "owner";
   const ownerCount = detail.members.filter((member) => member.level === "owner").length;
   const canAdd = detail.actors.some(
-    (actor) => !detail.members.some((member) => member.actorEntityId === actor.entityId),
+    (actor) =>
+      actor.type === "human" &&
+      !detail.members.some((member) => member.actorEntityId === actor.entityId),
   );
   const reviewChange = (actorEntityId: string, name: string, level: ProjectPermission | null) => {
     reviewOrigin.current =

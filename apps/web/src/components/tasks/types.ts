@@ -27,7 +27,8 @@ export interface ProjectDetail {
     type: "human" | "agent";
     level: ProjectPermission;
   }[];
-  actors: { entityId: string; name: string; type: "human" | "agent" }[];
+  /** `assignable` is false for another user's agent shown only as an existing assignee. */
+  actors: { entityId: string; name: string; type: "human" | "agent"; assignable: boolean }[];
   tasks: Task[];
 }
 export interface TaskComment {

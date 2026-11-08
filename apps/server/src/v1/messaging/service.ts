@@ -29,12 +29,6 @@ export function listConversations(headers: Headers, input: z.output<typeof works
   });
 }
 
-export function listAvailableAgents(headers: Headers, input: z.output<typeof workspaceInput>) {
-  return serviceResult(async () => {
-    return (await serviceForSession(headers, input.organizationId)).listAvailableAgents();
-  });
-}
-
 export function listMessages(headers: Headers, input: z.output<typeof messageListInput>) {
   return serviceResult(async () => {
     const service = await serviceForSession(headers, input.organizationId);
@@ -95,11 +89,7 @@ export function addMembers(headers: Headers, input: z.output<typeof membersInput
   return serviceResult(async () => {
     requireOrigin(headers);
     const service = await serviceForSession(headers, input.organizationId);
-    const result = await service.addMembers(
-      input.conversationId,
-      input.emails,
-      input.agentActorIds,
-    );
+    const result = await service.addMembers(input.conversationId, input.emails);
     await publishRefresh([
       { audience: realtimeKeys.conversation(input.conversationId), domain: "messaging" },
     ]);

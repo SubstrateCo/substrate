@@ -281,7 +281,7 @@ test("task create locks the project once and update batches activity with one as
     priority: "high",
     assigneeActorEntityId: fixture.bob,
   });
-  expect(statements).toHaveLength(12);
+  expect(statements).toHaveLength(13);
   const activity = await fixture.db
     .select()
     .from(schema.taskActivity)

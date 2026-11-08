@@ -1,5 +1,6 @@
 import { taskStatusValues } from "@startup-os/contracts/tasks";
 
+import { visibleActorCondition } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
 import { RepositoryContext, type PermissionLevel } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
@@ -15,6 +16,7 @@ async function validate(
   ctx: RepositoryContext,
   projectEntityId: string,
   input: Partial<TaskFields>,
+  currentAssigneeActorEntityId: string | null = null,
 ) {
   if (input.title !== undefined) requiredText(input.title, 300);
   if (
@@ -32,6 +34,21 @@ async function validate(
   if (input.status !== undefined && !taskStatusValues.includes(input.status))
     throw new ValidationError("Select a standard task status.");
   if (input.assigneeActorEntityId) {
+    // Only the owner and the owner's agents can assign a local agent. Keeping an existing
+    // assignee is not a new assignment.
+    const [assignee] = await ctx.db
+      .select({ entityId: actors.entityId })
+      .from(actors)
+      .where(
+        and(
+          eq(actors.organizationId, ctx.scope.organizationId),
+          eq(actors.entityId, input.assigneeActorEntityId),
+          input.assigneeActorEntityId === currentAssigneeActorEntityId
+            ? undefined
+            : visibleActorCondition(ctx.scope),
+        ),
+      );
+    if (!assignee) throw new AccessDeniedError();
     await new RepositoryContext(ctx.db, {
       organizationId: ctx.scope.organizationId,
       actorEntityId: input.assigneeActorEntityId,
@@ -117,7 +134,7 @@ export function taskRepository(context: RepositoryContext) {
         const task = await taskRepository(ctx).get(entityId, "edit", true);
         if (expectedProjectEntityId && task.projectEntityId !== expectedProjectEntityId)
           throw new AccessDeniedError();
-        await validate(ctx, task.projectEntityId, input);
+        await validate(ctx, task.projectEntityId, input, task.assigneeActorEntityId);
         const changes: string[] = [];
         if (input.status !== undefined && input.status !== task.status)
           changes.push("Status changed");

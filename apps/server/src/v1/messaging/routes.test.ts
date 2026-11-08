@@ -9,7 +9,6 @@ const conversationId = "00000000-0000-4000-8000-000000000001";
 test("messaging validates each route before calling services", async () => {
   const spies = {
     listConversations: mock(services.listConversations),
-    listAvailableAgents: mock(services.listAvailableAgents),
     createConversation: mock(services.createConversation),
     listMessages: mock(services.listMessages),
     sendMessage: mock(services.sendMessage),

@@ -22,5 +22,5 @@ export function startupInstructions(agent: {
   harness: HarnessKind;
   organizationId: string;
 }): string {
-  return `# Startup OS workspace\n\nAgent: ${JSON.stringify(agent.name)}\nAgent definition ID: ${agent.id}\nOrganization ID: ${agent.organizationId}\n\n${startupSkillContent(agent.harness)}\n\nYou have your own actor and explicit record grants. Your owner's access is not your access. Messages and task activity must use your agent identity. The MCP credential supplies identity; do not put acting identity or organization fields in tool inputs. Other agents have separate folders.\n\n## Agent instructions\n\n`;
+  return `# Startup OS workspace\n\nAgent: ${JSON.stringify(agent.name)}\nAgent definition ID: ${agent.id}\nOrganization ID: ${agent.organizationId}\n\n${startupSkillContent(agent.harness)}\n\nYou work on your owner's behalf with your owner's access in this organization. You have your own actor, so messages and task activity show your agent name, not your owner's. The MCP credential supplies identity; do not put acting identity or organization fields in tool inputs. Other agents have separate folders.\n\n## Agent instructions\n\n`;
 }

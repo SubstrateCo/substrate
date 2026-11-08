@@ -29,8 +29,12 @@ type AgentToolExecution = {
 // Handler results are serialized to JSON, then parsed with the tool's output schema.
 type ToolPayload = object;
 type ToolHandlers = { [K in McpToolName]: (input: McpInput<K>) => Promise<ToolPayload> };
+// Every tool that accepts requestId can replay a stored result, so each one must recheck access.
+type ReplayableTool = {
+  [K in McpToolName]: "requestId" extends keyof McpInput<K> ? K : never;
+}[McpToolName];
 type ReplayChecks = {
-  [K in McpToolName]?: (input: McpInput<K>, output: McpOutput<K>) => Promise<void>;
+  [K in ReplayableTool]: (input: McpInput<K>, output: McpOutput<K>) => Promise<void>;
 };
 
 function requestIdOf(input: McpInput<McpToolName>) {
@@ -162,8 +166,16 @@ export async function executeAgentTool<K extends McpToolName>(
     const result = definition.output.parse(
       existing ? existing.result : JSON.parse(JSON.stringify(await handlers[tool](input))),
     ) as McpOutput<K>;
-    if (existing) await replayChecks[tool]?.(input, result);
-    else if (requestId)
+    if (existing) {
+      // SAFETY: a stored result exists only for a tool with requestId, and the check is keyed by that tool.
+      const recheck = (
+        replayChecks as Partial<
+          Record<McpToolName, (input: McpInput<K>, output: McpOutput<K>) => Promise<void>>
+        >
+      )[tool];
+      if (!recheck) throw new AccessDeniedError();
+      await recheck(input, result);
+    } else if (requestId)
       await tx.insert(agentToolRequests).values({
         organizationId: identity.organizationId,
         actorEntityId: actor.id,

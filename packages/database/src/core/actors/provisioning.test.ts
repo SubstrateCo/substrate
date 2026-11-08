@@ -33,23 +33,14 @@ describe("actor provisioning", () => {
     expect(first.entityId).toBe(second.entityId);
     const other = await ensureUserAgentActor(f.db, { ...input, organizationId: f.orgB });
     expect(other.entityId).not.toBe(first.entityId);
+    // Each workspace's agent uses the owner's access in that workspace only.
     const otherContact = await f
       .forActor(otherOwner.entityId, f.orgB)
       .contacts.create({ displayName: "Other workspace" });
-    await f.forActor(otherOwner.entityId, f.orgB).permissions.grant({
-      entityId: otherContact.entityId,
-      actorEntityId: other.entityId,
-      level: "view",
-    });
     expect(
       (await f.forActor(other.entityId, f.orgB).contacts.list()).map((item) => item.entityId),
     ).toEqual([otherContact.entityId]);
     const contact = await f.forActor(f.alice).contacts.create({ displayName: "Private" });
-    await f.forActor(f.alice).permissions.grant({
-      entityId: contact.entityId,
-      actorEntityId: first.entityId,
-      level: "edit",
-    });
     await f
       .forActor(first.entityId)
       .contacts.update(contact.entityId, { displayName: "Agent edit" });
@@ -106,7 +97,7 @@ describe("actor provisioning", () => {
     ).rejects.toMatchObject({ cause: { code: "23514" } });
   });
 
-  test("user agents need explicit access, retain assignment identity, and lose access when inactive", async () => {
+  test("user agents use their owner's access, retain assignment identity, and lose access when inactive", async () => {
     const [agent] = await f.db
       .insert(userAgents)
       .values({
@@ -119,21 +110,8 @@ describe("actor provisioning", () => {
     const input = { organizationId: f.orgA, userId: "alice", userAgentId: agent!.id };
     const assistant = f.forActor((await ensureUserAgentActor(f.db, input)).entityId);
     const contact = await f.forActor(f.alice).contacts.create({ displayName: "Private" });
-    await expect(assistant.contacts.get(contact.entityId)).rejects.toBeInstanceOf(
-      AccessDeniedError,
-    );
     const [actor] = await f.db.select().from(actors).where(eq(actors.userAgentId, agent!.id));
     const project = await f.forActor(f.alice).projects.create({ name: "Agent work" });
-    await f.forActor(f.alice).permissions.grant({
-      entityId: project.entityId,
-      actorEntityId: actor!.entityId,
-      level: "edit",
-    });
-    await f.forActor(f.alice).permissions.grant({
-      entityId: contact.entityId,
-      actorEntityId: actor!.entityId,
-      level: "edit",
-    });
     const task = await f.forActor(f.alice).tasks.create({
       projectEntityId: project.entityId,
       title: "Assigned",
@@ -155,11 +133,13 @@ describe("actor provisioning", () => {
       ensureUserAgentActor(f.db, { ...input, organizationId: f.orgB }),
     ).rejects.toBeInstanceOf(AccessDeniedError);
     await f.db.update(userAgents).set({ enabled: false }).where(eq(userAgents.id, agent!.id));
-    expect(
-      (await f.forActor(f.alice).projects.getDetail(project.entityId)).actors.map(
-        (candidate) => candidate.entityId,
-      ),
-    ).not.toContain(actor!.entityId);
+    // A disabled agent keeps its name on assigned tasks but cannot be assigned again.
+    expect((await f.forActor(f.alice).projects.getDetail(project.entityId)).actors).toContainEqual({
+      entityId: actor!.entityId,
+      name: "Assistant",
+      type: "agent",
+      assignable: false,
+    });
     await expect(
       f.forActor(f.alice).permissions.grant({
         entityId: contact.entityId,

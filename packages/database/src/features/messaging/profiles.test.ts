@@ -93,6 +93,11 @@ test("agent profiles show the owner to members and configuration only to the own
     userAgentId: definition!.id,
   });
   const general = await chat("alice").createConversation({ kind: "channel", name: "general" });
+  // Before the agent writes, only its owner can resolve it in a conversation.
+  expect((await chat("alice").getProfile(general.id, agent.entityId)).type).toBe("agent");
+  await expect(chat("bob").getProfile(general.id, agent.entityId)).rejects.toBeInstanceOf(
+    AccessDeniedError,
+  );
   await chat("alice", f.orgA, agent.entityId).sendMessage(general.id, "agent work");
 
   expect((await chat("alice").getProfile(general.id, agent.entityId)).agent).toEqual({

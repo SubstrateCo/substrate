@@ -1,4 +1,4 @@
-import { activeActorCondition } from "../../core/actors/access";
+import { activeActorCondition, visibleActorCondition } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
 import { entities } from "../../core/entities/schema";
 import { entityGrants } from "../../core/permissions/schema";
@@ -6,7 +6,7 @@ import { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { tasks } from "../tasks/tasks.schema";
 import { projects } from "./schema";
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
 export function requiredText(value: string, maximum: number) {
   if (!value.trim() || value.trim().length > maximum)
@@ -44,21 +44,40 @@ export function projectRepository(context: RepositoryContext) {
         and(
           eq(entityGrants.organizationId, scope.organizationId),
           eq(entityGrants.entityId, projectEntityId),
+          // Agents use their owner's access, so old agent grants are not memberships.
+          eq(actors.type, "human"),
         ),
       )
       .orderBy(asc(actors.name));
   }
-  function availableActors() {
+  function availableActors(projectEntityId: string) {
     // Organization actors are discoverable only inside an accessible project, not across organizations.
+    // Another user's agent appears only as the assignee of a readable task in this project.
+    const assignable = and(activeActorCondition(), visibleActorCondition(scope));
+    const assignedAgents = db
+      .select({ id: tasks.assigneeActorEntityId })
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.organizationId, scope.organizationId),
+          eq(tasks.projectEntityId, projectEntityId),
+          inArray(tasks.entityId, context.readableEntities()),
+        ),
+      );
     return db
-      .select({ entityId: actors.entityId, name: actors.name, type: actors.type })
+      .select({
+        entityId: actors.entityId,
+        name: actors.name,
+        type: actors.type,
+        assignable: sql<boolean>`coalesce(${assignable}, false)`,
+      })
       .from(actors)
       .innerJoin(entities, eq(entities.entityId, actors.entityId))
       .where(
         and(
           eq(actors.organizationId, scope.organizationId),
-          activeActorCondition(),
           isNull(entities.deletedAt),
+          or(assignable, and(eq(actors.type, "agent"), inArray(actors.entityId, assignedAgents))),
         ),
       )
       .orderBy(asc(actors.name), asc(actors.entityId));
@@ -73,7 +92,7 @@ export function projectRepository(context: RepositoryContext) {
         project,
         level,
         members: await members(projectEntityId),
-        actors: await availableActors(),
+        actors: await availableActors(projectEntityId),
         tasks: await db
           .select()
           .from(tasks)

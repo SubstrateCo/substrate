@@ -31,5 +31,4 @@ export const profileInput = workspaceInput.extend({
 export const membersInput = workspaceInput.extend({
   conversationId: id,
   emails: emails.default([]),
-  agentActorIds: z.array(id).max(30).default([]),
 });

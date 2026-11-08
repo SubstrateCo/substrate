@@ -1,10 +1,6 @@
 import type { DatabaseExecutor } from "../../client";
-import { activeActorCondition } from "../../core/actors/access";
-import { ensureOwnedAgentActors } from "../../core/actors/provisioning";
 import { actors } from "../../core/actors/schema";
-import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
-import { entities } from "../../core/entities/schema";
 import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
@@ -45,6 +41,8 @@ async function joinConversation(
   scope: MessagingIdentity,
   conversationId: string,
 ) {
+  // An agent uses its owner's conversation access. Its participant row only records authorship,
+  // which the agent-message foreign key requires.
   if (scope.actorEntityId) {
     await tx
       .insert(messagingAgentParticipants)
@@ -280,66 +278,15 @@ export function createMessagingService(
       });
     },
 
-    async listAvailableAgents() {
-      if (scope.actorEntityId) throw new AccessDeniedError();
-      return db.transaction(async (tx) => {
-        await authenticate(tx);
-        return (await ensureOwnedAgentActors(tx, scope)).map((actor) => ({
-          id: actor.entityId,
-          name: actor.name,
-        }));
-      });
-    },
-    async addMembers(conversationId: string, emails: string[], agentActorIds: string[] = []) {
+    async addMembers(conversationId: string, emails: string[]) {
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
         await authenticate(tx);
         const conversation = await requireConversation(tx, conversationId);
         if (conversation.kind === "dm" || conversation.createdBy !== scope.userId)
           throw new AccessDeniedError();
-        if (agentActorIds.length > 30) throw new ValidationError("At most 30 agents are allowed.");
-        let agentsAdded = 0;
-        const agentIds = [...new Set(agentActorIds)];
-        if (agentIds.length) {
-          if (conversation.organizationId !== scope.organizationId) throw new AccessDeniedError();
-          // Every agent must be active, undeleted, and owned by the session user.
-          const agents = await tx
-            .select({ id: actors.entityId })
-            .from(actors)
-            .innerJoin(
-              entities,
-              and(
-                eq(entities.entityId, actors.entityId),
-                eq(entities.organizationId, actors.organizationId),
-              ),
-            )
-            .innerJoin(userAgents, eq(userAgents.id, actors.userAgentId))
-            .where(
-              and(
-                inArray(actors.entityId, agentIds),
-                eq(actors.organizationId, scope.organizationId),
-                eq(actors.type, "agent"),
-                eq(userAgents.userId, scope.userId),
-                activeActorCondition(),
-                isNull(entities.deletedAt),
-              ),
-            );
-          if (agents.length !== agentIds.length) throw new AccessDeniedError();
-          const added = await tx
-            .insert(messagingAgentParticipants)
-            .values(
-              agentIds.map((actorEntityId) => ({
-                conversationId,
-                organizationId: scope.organizationId,
-                actorEntityId,
-              })),
-            )
-            .onConflictDoNothing()
-            .returning();
-          agentsAdded = added.length;
-        }
         const selected = await recipients(tx, emails);
-        if (!selected.length) return { added: agentsAdded };
+        if (!selected.length) return { added: 0 };
         const added = await tx
           .insert(messagingParticipants)
           .values(
@@ -351,7 +298,7 @@ export function createMessagingService(
           )
           .onConflictDoNothing()
           .returning();
-        return { added: added.length + agentsAdded };
+        return { added: added.length };
       });
     },
     async listMessages(

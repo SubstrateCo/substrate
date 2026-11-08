@@ -1,11 +1,6 @@
 import type { DatabaseExecutor } from "../../client";
 import { AccessDeniedError } from "../../errors";
-import {
-  messagingConversations,
-  messagingMessages,
-  messagingParticipants,
-  messagingAgentParticipants,
-} from "./schema";
+import { messagingConversations, messagingMessages, messagingParticipants } from "./schema";
 import { and, eq, inArray, or, type SQLWrapper } from "drizzle-orm";
 
 export interface MessagingIdentity {
@@ -14,13 +9,10 @@ export interface MessagingIdentity {
   actorEntityId?: string;
 }
 
+// A local agent's scope carries its owner's user ID, so the agent sees what the owner sees.
 export function visibleConversations(
   db: DatabaseExecutor,
-  scope: {
-    userId: string | SQLWrapper;
-    organizationId: string | SQLWrapper;
-    actorEntityId?: string;
-  },
+  scope: { userId: string | SQLWrapper; organizationId: string | SQLWrapper },
 ) {
   return or(
     and(
@@ -30,25 +22,15 @@ export function visibleConversations(
     ),
     inArray(
       messagingConversations.id,
-      scope.actorEntityId
-        ? db
-            .select({ id: messagingAgentParticipants.conversationId })
-            .from(messagingAgentParticipants)
-            .where(
-              and(
-                eq(messagingAgentParticipants.actorEntityId, scope.actorEntityId),
-                eq(messagingAgentParticipants.organizationId, scope.organizationId),
-              ),
-            )
-        : db
-            .select({ id: messagingParticipants.conversationId })
-            .from(messagingParticipants)
-            .where(
-              and(
-                eq(messagingParticipants.userId, scope.userId),
-                eq(messagingParticipants.organizationId, scope.organizationId),
-              ),
-            ),
+      db
+        .select({ id: messagingParticipants.conversationId })
+        .from(messagingParticipants)
+        .where(
+          and(
+            eq(messagingParticipants.userId, scope.userId),
+            eq(messagingParticipants.organizationId, scope.organizationId),
+          ),
+        ),
     ),
   );
 }

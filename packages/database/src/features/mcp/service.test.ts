@@ -40,15 +40,15 @@ async function fixture() {
   return { actor, identity, human, project, call };
 }
 
-test("task tools require explicit grants, attribute writes and preserve source links across retries", async () => {
-  const { actor, human, project, call } = await fixture();
-  expect(await call("list_projects", {})).toEqual({ items: [], nextCursor: null });
+test("task tools use the owner's access, attribute writes and preserve source links across retries", async () => {
+  const { actor, human, call } = await fixture();
+  const project = await f.forActor(f.bob).projects.create({ name: "Shared" });
   await expect(call("get_project", { projectId: project.entityId })).rejects.toBeInstanceOf(
     AccessDeniedError,
   );
-  await f.forActor(f.alice).permissions.grant({
+  await f.forActor(f.bob).permissions.grant({
     entityId: project.entityId,
-    actorEntityId: actor.entityId,
+    actorEntityId: f.alice,
     level: "edit",
   });
   const channel = await human.createConversation({ kind: "channel", name: "general" });
@@ -133,8 +133,8 @@ test("task tools require explicit grants, attribute writes and preserve source l
     "source",
   ]);
   await f
-    .forActor(f.alice)
-    .permissions.revoke({ entityId: project.entityId, actorEntityId: actor.entityId });
+    .forActor(f.bob)
+    .permissions.revoke({ entityId: project.entityId, actorEntityId: f.alice });
   await expect(call("create_task", input)).rejects.toBeInstanceOf(AccessDeniedError);
 });
 
@@ -207,12 +207,7 @@ test("send_message resolves the agent once and does not re-authenticate inside m
 });
 
 test("failed source validation rolls back task creation; foreign owners and organizations cannot impersonate agents", async () => {
-  const { actor, identity, project, call } = await fixture();
-  await f.forActor(f.alice).permissions.grant({
-    entityId: project.entityId,
-    actorEntityId: actor.entityId,
-    level: "edit",
-  });
+  const { identity, project, call } = await fixture();
   const before = (await f.forActor(f.alice).tasks.list(project.entityId)).length;
   await expect(
     call("create_task", {

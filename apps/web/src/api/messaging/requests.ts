@@ -28,5 +28,3 @@ export const addMembers = ({ data, signal }: ApiInput<z.input<typeof membersInpu
   readResult(api.messaging.members.$post({ json: data }, { init: { signal } }));
 export const getProfile = ({ data, signal }: ApiInput<z.input<typeof profileInput>>) =>
   readResult(api.messaging.profiles.$get({ query: data }, { init: { signal } }));
-export const listAvailableAgents = ({ data, signal }: ApiInput<z.input<typeof workspaceInput>>) =>
-  readResult(api.messaging.agents.$get({ query: data }, { init: { signal } }));

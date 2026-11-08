@@ -51,6 +51,18 @@ async function requireProfileContext(
     .limit(1);
   if (authored) return;
   if (actor.organizationId !== scope.organizationId) throw new AccessDeniedError();
+  let userId = actor.userId;
+  if (actor.type === "agent") {
+    // Before a local agent writes, only its owner can resolve it. It sees what its owner sees.
+    const [definition] = actor.userAgentId
+      ? await tx
+          .select({ userId: userAgents.userId })
+          .from(userAgents)
+          .where(eq(userAgents.id, actor.userAgentId))
+      : [];
+    if (!definition || definition.userId !== scope.userId) throw new AccessDeniedError();
+    userId = definition.userId;
+  }
   const [present] = await tx
     .select({ id: messagingConversations.id })
     .from(messagingConversations)
@@ -61,11 +73,7 @@ async function requireProfileContext(
         eq(messagingConversations.id, conversationId),
         activeActorCondition(),
         isNull(entities.deletedAt),
-        visibleConversations(tx, {
-          userId: actor.userId ?? "",
-          organizationId: scope.organizationId,
-          actorEntityId: actor.type === "agent" ? actor.entityId : undefined,
-        }),
+        visibleConversations(tx, { userId: userId ?? "", organizationId: scope.organizationId }),
       ),
     );
   if (!present) throw new AccessDeniedError();

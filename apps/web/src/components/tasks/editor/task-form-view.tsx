@@ -76,8 +76,13 @@ export function TaskForm({
   variant?: "inline" | "dialog";
 }) {
   const id = useId();
-  const assignees = detail.actors.filter((actor) =>
-    detail.members.some((member) => member.actorEntityId === actor.entityId),
+  // People need direct project access. Your own agents use your access. Keep the current assignee.
+  const assignees = detail.actors.filter(
+    (actor) =>
+      actor.entityId === task?.assigneeActorEntityId ||
+      (actor.assignable &&
+        (actor.type === "agent" ||
+          detail.members.some((member) => member.actorEntityId === actor.entityId))),
   );
   const form = useTaskForm({ task, assignees, pending, onSubmit, initialStatus });
   let titleLabel = parentTaskEntityId ? "New subtask" : "New task";

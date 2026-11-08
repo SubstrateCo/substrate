@@ -15,9 +15,6 @@ import { Hono } from "hono";
 
 export function createMessagingRoutes(services = defaultServices) {
   return new Hono()
-    .get("/agents", zValidator("query", workspaceInput, validationHook), async (c) =>
-      respond(c, await services.listAvailableAgents(c.req.raw.headers, c.req.valid("query"))),
-    )
     .get("/conversations", zValidator("query", workspaceInput, validationHook), async (c) =>
       respond(c, await services.listConversations(c.req.raw.headers, c.req.valid("query"))),
     )

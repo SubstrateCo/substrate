@@ -117,7 +117,7 @@ export const messagingMessages = pgTable(
   ],
 );
 
-// Explicit agent membership. Owning an agent does not give it the owner's private conversations.
+// Agents that wrote in a conversation. This does not grant access: agents use their owner's access.
 export const messagingAgentParticipants = pgTable(
   "messaging_agent_participants",
   {

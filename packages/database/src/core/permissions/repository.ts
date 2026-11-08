@@ -1,4 +1,5 @@
 import { ValidationError } from "../../errors";
+import { actors } from "../actors/schema";
 import { RepositoryContext, type PermissionLevel } from "../repository-context";
 import { entityGrants, permissionLevel } from "./schema";
 import { inheritedOwnerQuery } from "./visibility";
@@ -17,6 +18,19 @@ export function permissionRepository(context: RepositoryContext) {
       await ctx.requireAccess(input.entityId, "owner", true);
       if (input.level) {
         await ctx.requireActiveActor(input.actorEntityId);
+        const [target] = await tx
+          .select({ type: actors.type })
+          .from(actors)
+          .where(
+            and(
+              eq(actors.organizationId, scope.organizationId),
+              eq(actors.entityId, input.actorEntityId),
+            ),
+          );
+        if (target?.type !== "human")
+          throw new ValidationError(
+            "Agents use their owner's access. Share with the owner instead.",
+          );
       }
       const target = and(
         eq(entityGrants.organizationId, scope.organizationId),

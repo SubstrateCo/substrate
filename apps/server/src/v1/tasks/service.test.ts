@@ -66,7 +66,7 @@ function projectFixture() {
     },
     level: "view",
     members: [{ actorEntityId: actor.entityId, name: actor.name, type: "human", level: "view" }],
-    actors: [{ entityId: actor.entityId, name: actor.name, type: "human" }],
+    actors: [{ entityId: actor.entityId, name: actor.name, type: "human", assignable: true }],
     tasks: [],
   };
   const getDetail = spyOn(repositories.projects, "getDetail").mockResolvedValue(detail);

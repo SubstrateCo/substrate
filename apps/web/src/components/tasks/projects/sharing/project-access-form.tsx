@@ -24,8 +24,11 @@ export function ProjectAccessForm({
 }) {
   const [actorEntityId, setActorEntityId] = useState("");
   const [level, setLevel] = useState<ProjectPermission>("edit");
+  // Agents use their owner's access, so only people can be shared with.
   const available = detail.actors.filter(
-    (actor) => !detail.members.some((member) => member.actorEntityId === actor.entityId),
+    (actor) =>
+      actor.type === "human" &&
+      !detail.members.some((member) => member.actorEntityId === actor.entityId),
   );
   const actor = available.find((candidate) => candidate.entityId === actorEntityId);
   return (
@@ -37,12 +40,9 @@ export function ProjectAccessForm({
       }}
     >
       <Command>
-        <CommandInput
-          aria-label="Search people and agents"
-          placeholder="Search workspace people and agents…"
-        />
+        <CommandInput aria-label="Search people" placeholder="Search workspace people…" />
         <CommandList>
-          <CommandEmpty>No other workspace people or agents available.</CommandEmpty>
+          <CommandEmpty>No other workspace people available.</CommandEmpty>
           <CommandGroup heading="Available in this workspace">
             {available.map((candidate) => (
               <CommandItem
@@ -52,11 +52,6 @@ export function ProjectAccessForm({
               >
                 <UserRound aria-hidden="true" />
                 <span className="min-w-0 flex-1 truncate">{candidate.name}</span>
-                {candidate.type === "agent" && (
-                  <span className="rounded border px-1.5 py-0.5 text-xs text-muted-foreground">
-                    Agent
-                  </span>
-                )}
                 {candidate.entityId === actorEntityId && <Check aria-hidden="true" />}
               </CommandItem>
             ))}
@@ -76,8 +71,8 @@ export function ProjectAccessForm({
         ]}
       />
       <p className="text-xs text-muted-foreground">
-        Choose an existing workspace person or agent. This does not invite external users or grant
-        access across workspaces.
+        Choose an existing workspace person. Their agents use the same access. This does not invite
+        external users or grant access across workspaces.
       </p>
       <div className="flex flex-wrap justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel}>

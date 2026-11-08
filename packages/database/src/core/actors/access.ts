@@ -27,6 +27,26 @@ export function activeActorCondition() {
   );
 }
 
+// Grants belong to people. A local agent uses its owner's human actor, so it can do what the
+// owner can do in this organization. Agent-held grants are ignored. Unknown actors resolve to NULL.
+// Future team agents need their own rule here.
 export function permissionActorEntityId(scope: ActorScope) {
-  return sql`${scope.actorEntityId}::uuid`;
+  return sql`(SELECT CASE WHEN pa.type = 'agent' THEN ph.entity_id ELSE pa.entity_id END
+    FROM ${actors} pa
+    LEFT JOIN ${userAgents} pua ON pa.type = 'agent' AND pua.id = pa.user_agent_id
+    LEFT JOIN ${actors} ph ON ph.organization_id = pa.organization_id AND ph.user_id = pua.user_id
+      AND ph.type = 'human'
+    WHERE pa.organization_id = ${scope.organizationId} AND pa.entity_id = ${scope.actorEntityId}::uuid)`;
+}
+
+// People are visible to everyone in the organization. A local agent is visible only to its owner
+// and the owner's agents.
+export function visibleActorCondition(scope: ActorScope) {
+  return sql`(${actors.type} = 'human' OR EXISTS (
+    SELECT 1 FROM ${userAgents} vua
+    JOIN ${actors} vv ON vv.organization_id = ${scope.organizationId}
+      AND vv.entity_id = ${scope.actorEntityId}::uuid
+    LEFT JOIN ${userAgents} vvua ON vvua.id = vv.user_agent_id
+    WHERE vua.id = ${actors.userAgentId} AND vua.user_id = COALESCE(vv.user_id, vvua.user_id)
+  ))`;
 }
