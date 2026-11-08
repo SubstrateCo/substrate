@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Hash, LockKeyhole, UserPlus } from "lucide-react";
@@ -7,11 +9,13 @@ export function ConversationHeader({
   channelIcon,
   addingMembers,
   onToggleMembers,
+  actions,
 }: {
   title: string;
   channelIcon?: "private" | "public";
   addingMembers: boolean;
   onToggleMembers?: () => void;
+  actions?: ReactNode;
 }) {
   return (
     <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b bg-card/60 px-4">
@@ -20,22 +24,25 @@ export function ConversationHeader({
         {channelIcon === "public" && <Hash className="size-5 shrink-0" />}
         <span className="truncate">{title}</span>
       </h1>
-      {onToggleMembers && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              onClick={onToggleMembers}
-              aria-label="Add people"
-              aria-expanded={addingMembers}
-            >
-              <UserPlus />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Add people</TooltipContent>
-        </Tooltip>
-      )}
+      <div className="flex shrink-0 items-center gap-2">
+        {onToggleMembers && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={onToggleMembers}
+                aria-label="Add people"
+                aria-expanded={addingMembers}
+              >
+                <UserPlus />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Add people</TooltipContent>
+          </Tooltip>
+        )}
+        {actions}
+      </div>
     </header>
   );
 }

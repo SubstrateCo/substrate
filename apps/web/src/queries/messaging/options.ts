@@ -1,7 +1,27 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { listConversations, listMessages } from "@/api/messaging/requests";
+import {
+  getDeleteImpact,
+  listConversations,
+  listManagedConversations,
+  listMessages,
+} from "@/api/messaging/requests";
 import { queryKeys } from "@/queries/keys";
+
+export const managedConversationsQueryOptions = (organizationId: string) =>
+  queryOptions({
+    queryKey: queryKeys.managedConversations(organizationId),
+    meta: { refreshError: "Couldn’t refresh conversations" },
+    queryFn: ({ signal }) => listManagedConversations({ data: { organizationId }, signal }),
+    retry: false,
+  });
+
+export const deleteImpactQueryOptions = (organizationId: string, conversationId: string) =>
+  queryOptions({
+    queryKey: queryKeys.deleteImpact(organizationId, conversationId),
+    queryFn: ({ signal }) => getDeleteImpact({ data: { organizationId, conversationId }, signal }),
+    retry: false,
+  });
 
 export const conversationsQueryOptions = (organizationId: string) =>
   queryOptions({

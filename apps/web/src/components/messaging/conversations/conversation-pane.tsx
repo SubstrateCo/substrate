@@ -8,21 +8,27 @@ import { MessageList } from "../messages/message-list";
 import { useMessageHistory } from "../messages/use-message-history";
 import { ThreadPane } from "../threads/thread-pane";
 import { AddMembersForm } from "./add-members-form";
+import { ConversationActions } from "./conversation-actions";
+import { LeftChannelNotice } from "./conversation-pane/left-channel-notice";
 import { ConversationPane as ConversationPaneView } from "@/components/messaging/conversations/conversation-pane-view";
 import { MessageHistory } from "@/components/messaging/messages/message-history";
 import { MessageUnavailable } from "@/components/messaging/messages/message-unavailable";
 import { conversationName, type Conversation } from "@/lib/messaging/conversations";
 import { messageTargetOptions } from "@/queries/context/links";
+import { useConversationManagement } from "@/queries/messaging/management";
 
 export function ConversationPane({
   organizationId,
   conversation,
+  userId,
 }: {
   organizationId: string;
   conversation: Conversation;
+  userId?: string;
 }) {
   const search = useSearch({ strict: false });
   const navigate = useNavigate();
+  const { join } = useConversationManagement(organizationId);
   const target = useQuery({
     ...messageTargetOptions(
       organizationId,
@@ -78,6 +84,21 @@ export function ConversationPane({
         />
       }
       messages={messageContent}
+      actions={
+        <ConversationActions
+          organizationId={organizationId}
+          conversation={conversation}
+          userId={userId}
+          onRemoved={() => navigate({ to: "/dashboard", search: { workspaceId: organizationId } })}
+        />
+      }
+      leftNotice={
+        <LeftChannelNotice
+          pending={join.isPending}
+          error={join.error}
+          onJoin={() => join.mutate(conversation.id)}
+        />
+      }
       composer={
         <Composer
           organizationId={organizationId}

@@ -29,12 +29,14 @@ export function MessagingWorkspace({ organizationId }: { organizationId: string 
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const visibleConversations = isAccessFailure(conversations.error) ? [] : conversations.data || [];
+  // Public channels the person left stay reachable by link but leave the sidebar.
+  const sidebarConversations = visibleConversations.filter((conversation) => !conversation.left);
   const selected = search.conversationId
     ? visibleConversations.find((conversation) => conversation.id === search.conversationId)
-    : visibleConversations[0];
+    : sidebarConversations[0];
   return (
     <MessagingWorkspaceView
-      conversations={visibleConversations}
+      conversations={sidebarConversations}
       selectedId={selected?.id}
       sidebarOpen={sidebarOpen}
       onSidebarOpenChange={setSidebarOpen}
@@ -72,6 +74,7 @@ export function MessagingWorkspace({ organizationId }: { organizationId: string 
           key={selected.id}
           organizationId={organizationId}
           conversation={selected}
+          userId={session.data?.user.id}
         />
       )}
       {search.conversationId && !selected && !conversations.isPending && (

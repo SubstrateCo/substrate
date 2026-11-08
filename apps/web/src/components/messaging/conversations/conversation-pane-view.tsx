@@ -20,7 +20,11 @@ export function ConversationPane({
   hasLoaded = !!messages,
   composer,
   thread,
+  actions,
+  leftNotice,
 }: {
+  actions?: ReactNode;
+  leftNotice?: ReactNode;
   conversation: Conversation;
   loading?: boolean;
   error?: Error | null;
@@ -69,7 +73,12 @@ export function ConversationPane({
               title={title}
               channelIcon={channelIcon}
               addingMembers={addingMembers}
-              onToggleMembers={!blocked && conversation.kind !== "dm" ? onToggleMembers : undefined}
+              onToggleMembers={
+                !blocked && conversation.kind !== "dm" && conversation.canManage
+                  ? onToggleMembers
+                  : undefined
+              }
+              actions={!blocked && actions}
             />
             {!blocked && addingMembers && membersForm}
             {error && !blocked && (
@@ -94,7 +103,12 @@ export function ConversationPane({
                 />
               </div>
             )}
-            {!blocked && <div className="mt-auto shrink-0">{composer}</div>}
+            {!blocked && (
+              <div className="mt-auto shrink-0">
+                {conversation.left && leftNotice}
+                {composer}
+              </div>
+            )}
           </section>
         </ResizablePanel>
         {showThread && (

@@ -46,6 +46,29 @@ export function invalidateSentMessage(
   ]);
 }
 
+// Call after leaving the conversation's route. Its history may now be unreadable or gone, so it is
+// dropped instead of refetched. Task history, discussions, alerts and search can all change.
+export function invalidateRemovedConversation(
+  client: QueryClient,
+  organizationId: string,
+  conversationId: string,
+) {
+  const context = queryKeys.context(organizationId);
+  for (const queryKey of [
+    queryKeys.messages(organizationId, conversationId).slice(0, -1),
+    [...context, "message-pages", conversationId],
+    queryKeys.messageTargets(organizationId, conversationId),
+  ])
+    client.removeQueries({ queryKey });
+  return Promise.all([
+    client.invalidateQueries({ queryKey: queryKeys.conversations(organizationId) }),
+    client.invalidateQueries({ queryKey: [...context, "related"] }),
+    client.invalidateQueries({ queryKey: [...context, "activity"] }),
+    client.invalidateQueries({ queryKey: [...context, "notifications"], exact: true }),
+    staleSearches(client, organizationId),
+  ]);
+}
+
 export function invalidateAddedMembers(
   client: QueryClient,
   organizationId: string,

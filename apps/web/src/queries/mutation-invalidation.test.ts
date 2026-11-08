@@ -2,7 +2,11 @@ import { QueryClient, QueryObserver, type QueryKey } from "@tanstack/react-query
 
 import { staleSearches } from "./context/mutations";
 import { queryKeys } from "./keys";
-import { invalidateAddedMembers, invalidateSentMessage } from "./messaging/mutations";
+import {
+  invalidateAddedMembers,
+  invalidateRemovedConversation,
+  invalidateSentMessage,
+} from "./messaging/mutations";
 import { invalidateTasksWrite } from "./tasks/mutations";
 import { expect, test } from "bun:test";
 
@@ -305,6 +309,44 @@ test("project permission writes refresh child capabilities and comments without 
       otherRelated: 0,
       activity: 1,
       notifications: 1,
+    });
+  } finally {
+    fixture.close();
+  }
+});
+
+test("removing a conversation drops its history and refreshes lists, discussions, task history and alerts", async () => {
+  const fixture = mount({
+    conversations: { key: queryKeys.conversations("org") },
+    managed: { key: queryKeys.managedConversations("org") },
+    otherConversation: { key: queryKeys.messages("org", "other") },
+    otherPage: { key: [...context, "message-pages", "other", ["other"]] },
+    related: { key: [...context, "related", taskId] },
+    activity: { key: [...context, "activity", taskId] },
+    notifications: { key: [...context, "notifications"] },
+    otherWorkspace: { key: queryKeys.conversations("other") },
+  });
+  const removed = [
+    queryKeys.messages("org", "conversation"),
+    queryKeys.messages("org", "conversation", "root"),
+    [...context, "message-pages", "conversation", ["message"]],
+    [...queryKeys.messageTargets("org", "conversation"), "message"],
+  ];
+  for (const key of removed) fixture.client.setQueryData(key, ["private"]);
+  try {
+    await invalidateRemovedConversation(fixture.client, "org", "conversation");
+    expect(removed.map((key) => fixture.client.getQueryData(key))).toEqual(
+      removed.map(() => undefined),
+    );
+    expect(fixture.reads).toEqual({
+      conversations: 1,
+      managed: 1,
+      otherConversation: 0,
+      otherPage: 0,
+      related: 1,
+      activity: 1,
+      notifications: 1,
+      otherWorkspace: 0,
     });
   } finally {
     fixture.close();

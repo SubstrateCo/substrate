@@ -1,5 +1,8 @@
 import type {
   conversationInput,
+  conversationTargetInput,
+  leaveInput,
+  ownerInput,
   membersInput,
   messageInput,
   messageListInput,
@@ -28,3 +31,32 @@ export const addMembers = ({ data, signal }: ApiInput<z.input<typeof membersInpu
   readResult(api.messaging.members.$post({ json: data }, { init: { signal } }));
 export const getProfile = ({ data, signal }: ApiInput<z.input<typeof profileInput>>) =>
   readResult(api.messaging.profiles.$get({ query: data }, { init: { signal } }));
+
+export type ManagedConversation = Awaited<ReturnType<typeof listManagedConversations>>[number];
+
+export const listManagedConversations = ({
+  data,
+  signal,
+}: ApiInput<z.input<typeof workspaceInput>>) =>
+  readResult(api.messaging.conversations.managed.$get({ query: data }, { init: { signal } }));
+export const getDeleteImpact = ({
+  data,
+  signal,
+}: ApiInput<z.input<typeof conversationTargetInput>>) =>
+  readResult(
+    api.messaging.conversations["delete-impact"].$get({ query: data }, { init: { signal } }),
+  );
+export const joinConversation = ({
+  data,
+  signal,
+}: ApiInput<z.input<typeof conversationTargetInput>>) =>
+  readResult(api.messaging.conversations.join.$post({ json: data }, { init: { signal } }));
+export const leaveConversation = ({ data, signal }: ApiInput<z.input<typeof leaveInput>>) =>
+  readResult(api.messaging.conversations.leave.$post({ json: data }, { init: { signal } }));
+export const transferOwnership = ({ data, signal }: ApiInput<z.input<typeof ownerInput>>) =>
+  readResult(api.messaging.conversations.owner.$post({ json: data }, { init: { signal } }));
+export const deleteConversation = ({
+  data,
+  signal,
+}: ApiInput<z.input<typeof conversationTargetInput>>) =>
+  readResult(api.messaging.conversations.delete.$post({ json: data }, { init: { signal } }));

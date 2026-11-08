@@ -39,6 +39,11 @@ export const queryKeys = {
     [...queryKeys.organization(organizationId), "messaging"] as const,
   conversations: (organizationId: string) =>
     [...queryKeys.messaging(organizationId), "conversations"] as const,
+  // Nested under conversations, so conversation refreshes also refresh these.
+  managedConversations: (organizationId: string) =>
+    [...queryKeys.conversations(organizationId), "managed"] as const,
+  deleteImpact: (organizationId: string, conversationId: string) =>
+    [...queryKeys.conversations(organizationId), "delete-impact", conversationId] as const,
   messagingProfile: (organizationId: string, conversationId: string, actorId: string) =>
     [...queryKeys.messaging(organizationId), "profiles", conversationId, actorId] as const,
   messages: (organizationId: string, conversationId: string, threadId?: string) =>

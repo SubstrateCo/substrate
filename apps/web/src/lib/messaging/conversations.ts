@@ -4,6 +4,11 @@ export type Conversation = {
   name: string | null;
   private: boolean;
   partner?: boolean;
+  createdBy?: string;
+  members?: { userId: string; name: string }[];
+  // The person left this public channel. It stays readable but leaves the sidebar.
+  left?: boolean;
+  canManage?: boolean;
 };
 
 export function conversationName(conversation: Conversation): string {

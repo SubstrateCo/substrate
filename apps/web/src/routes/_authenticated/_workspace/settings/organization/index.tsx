@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { InvitationManager } from "@/components/organizations/invitations/invitation-manager";
+import { ManagedConversations } from "@/components/organizations/settings/managed-conversations";
 import { OrganizationPicture } from "@/components/organizations/settings/organization-picture";
 import { OrganizationSettings } from "@/components/organizations/settings/organization-settings-content";
 
@@ -15,6 +16,7 @@ function OrganizationSettingsRoute() {
       isOwner={organizationSettings.isOwner}
       picture={<OrganizationPicture organizationId={organizationSettings.organizationId} />}
       invitations={<InvitationManager organizationId={organizationSettings.organizationId} />}
+      conversations={<ManagedConversations organizationId={organizationSettings.organizationId} />}
     />
   );
 }
