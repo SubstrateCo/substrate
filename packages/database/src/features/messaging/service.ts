@@ -366,7 +366,7 @@ export function createMessagingService(
         const rows = await tx
           .select({
             message: messages,
-            authorName: sql<string>`coalesce(${actors.name}, ${user.name})`,
+            authorName: sql<string>`case when ${actors.type} = 'agent' then ${actors.name} else ${user.name} end`,
             authorType: sql<"human" | "agent">`coalesce(${actors.type}, 'human')`,
             authorExternal: sql<boolean>`coalesce(${actors.type}, 'human') <> 'agent' AND not exists (
               select 1 from ${member}

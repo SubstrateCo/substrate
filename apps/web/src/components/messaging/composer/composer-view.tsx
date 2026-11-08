@@ -21,7 +21,6 @@ export function Composer({
   pending = false,
   error,
   label,
-  defaultValue = "",
   draftKey,
   renderReferences,
 }: {
@@ -29,8 +28,7 @@ export function Composer({
   pending?: boolean;
   error?: Error | null;
   label: string;
-  defaultValue?: string;
-  draftKey?: string;
+  draftKey: string;
   renderReferences?: (
     query: ReferenceQuery,
     onInsert: (token: string, reference: WorkspaceReference) => void,
@@ -40,16 +38,21 @@ export function Composer({
   const { draft, setDraft, editor, setComposing, isComposing, submit, insert, requestFocus } =
     useComposerDraft({
       draftKey,
-      defaultValue,
       pending,
       onSend,
     });
   const [references, setReferences] = useState(false);
   const [caret, setCaret] = useState(draft.length);
   const draftReferences = useContext(ComposerDraftReferences);
-  const [localReferences, setLocalReferences] = useState<WorkspaceReference[]>([]);
+  if (!draftReferences) throw new Error("Composer requires ComposerDraftProvider");
+  const [localReferences, setLocalReferences] = useState(() => ({
+    key: draftKey,
+    items: draftReferences.get(draftKey) ?? [],
+  }));
   const resolvedReferences =
-    (draftKey ? draftReferences?.get(draftKey) : undefined) ?? localReferences;
+    localReferences.key === draftKey
+      ? localReferences.items
+      : (draftReferences.get(draftKey) ?? []);
   const anchor = useRef<HTMLDivElement>(null);
   const activeReference = referenceQuery(draft, caret);
   const referencePicker = useRef<HTMLDivElement>(null);
@@ -64,8 +67,8 @@ export function Composer({
       ),
       reference,
     ];
-    if (draftKey) draftReferences?.set(draftKey, nextReferences);
-    setLocalReferences(nextReferences);
+    draftReferences.set(draftKey, nextReferences);
+    setLocalReferences({ key: draftKey, items: nextReferences });
     const nextCaret = activeReference.start + token.length + 1;
     requestFocus(nextCaret);
     setCaret(nextCaret);

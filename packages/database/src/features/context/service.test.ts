@@ -1,4 +1,4 @@
-import { ensureHumanActor } from "../../core/actors/provisioning";
+import { ensureHumanActor, ensureUserAgentActor } from "../../core/actors/provisioning";
 import { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ConflictError } from "../../errors";
 import {
@@ -10,6 +10,7 @@ import {
   taskActivity,
   notifications,
   actors,
+  userAgents,
 } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
@@ -29,6 +30,16 @@ import { eq } from "drizzle-orm";
 const f = setupDatabase();
 const context = (userId = "alice", organizationId = f.orgA) =>
   createContextService(f.db, { userId, organizationId });
+
+async function checkedPage(messageIds: string[], userId = "alice", organizationId = f.orgA) {
+  const service = context(userId, organizationId);
+  const page = await service.messagePage(messageIds);
+  for (const row of page) {
+    expect(await service.messageLinks(row.messageId)).toEqual(row.links);
+    expect(await service.messagePeople(row.messageId)).toEqual(row.people);
+  }
+  return page;
+}
 
 test("notification recipients use one conflict-safe insert-select for one or many workspaces, with exact participant workspace selection", async () => {
   await f.db.update(user).set({ emailVerified: true });
@@ -307,7 +318,7 @@ test("page context uses constant reads for one or fifty messages, including empt
   expect(page.count).toBe(6);
   queries.length = 0;
   for (const row of rows) await service.messageLinks(row.id);
-  expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(650);
+  expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(300);
   await expect(context("bob").messagePage([rows[0]!.id])).rejects.toBeInstanceOf(AccessDeniedError);
   await expect(service.messagePage([rows[0]!.id, crypto.randomUUID()])).rejects.toBeInstanceOf(
     AccessDeniedError,
@@ -350,7 +361,7 @@ test("page context preserves purposes, removal rights and both work visibility b
   });
   const ids = [root.id, mention.id, reply.id];
   expect(
-    (await context().messagePage(ids))
+    (await checkedPage(ids))
       .flatMap((row) => row.links)
       .map((link) => [link.purpose, link.canRemove]),
   ).toEqual([
@@ -360,12 +371,10 @@ test("page context preserves purposes, removal rights and both work visibility b
     ["association", true],
   ]);
   expect(
-    (await context("bob").messagePage(ids))
-      .flatMap((row) => row.links)
-      .every((link) => !link.canRemove),
+    (await checkedPage(ids, "bob")).flatMap((row) => row.links).every((link) => !link.canRemove),
   ).toBe(true);
   expect(
-    (await context("outsider", f.orgB).messagePage(ids)).every(
+    (await checkedPage(ids, "outsider", f.orgB)).every(
       (row) => row.links.length === 0 && row.people.length === 0,
     ),
   ).toBe(true);
@@ -376,32 +385,29 @@ test("page context preserves purposes, removal rights and both work visibility b
   });
   await context("bob").attach(root.id, project.entityId);
   expect(
-    (await context("bob").messagePage([root.id]))[0]!.links.find(
+    (await checkedPage([root.id], "bob"))[0]!.links.find(
       (link) => link.entityId === project.entityId,
     )?.canRemove,
   ).toBe(true);
   expect(
-    (await context().messagePage([root.id]))[0]!.links.find(
-      (link) => link.entityId === project.entityId,
-    )?.canRemove,
+    (await checkedPage([root.id]))[0]!.links.find((link) => link.entityId === project.entityId)
+      ?.canRemove,
   ).toBe(true);
   await repos.permissions.revoke({ entityId: project.entityId, actorEntityId: f.bob });
   await repos.permissions.grant({ entityId: task.entityId, actorEntityId: f.bob, level: "view" });
-  expect((await context("bob").messagePage(ids)).every((row) => row.links.length === 0)).toBe(true);
+  expect((await checkedPage(ids, "bob")).every((row) => row.links.length === 0)).toBe(true);
   await f.db
     .update(entities)
     .set({ deletedAt: new Date() })
     .where(eq(entities.entityId, task.entityId));
   expect(
-    (await context().messagePage([root.id]))[0]!.links.filter(
-      (link) => link.entityId === task.entityId,
-    ),
+    (await checkedPage([root.id]))[0]!.links.filter((link) => link.entityId === task.entityId),
   ).toEqual([]);
   await f.db
     .update(entities)
     .set({ deletedAt: new Date() })
     .where(eq(entities.entityId, project.entityId));
-  expect((await context().messagePage(ids)).every((row) => row.links.length === 0)).toBe(true);
+  expect((await checkedPage(ids)).every((row) => row.links.length === 0)).toBe(true);
 });
 
 test("page people resolve parsed tokens in sets and clear inactive, deleted and conversation-hidden actors", async () => {
@@ -427,38 +433,41 @@ test("page people resolve parsed tokens in sets and clear inactive, deleted and 
     await service.messageLinks(row.id);
     await service.messagePeople(row.id);
   }
-  expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(700);
+  expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(600);
   expect(
-    (await context("outsider", f.orgB).messagePage(rows.map((row) => row.id))).every(
-      (row) => row.people.length === 0 && row.links.length === 0,
-    ),
+    (
+      await checkedPage(
+        rows.map((row) => row.id),
+        "outsider",
+        f.orgB,
+      )
+    ).every((row) => row.people.length === 0 && row.links.length === 0),
   ).toBe(true);
   await f.db
     .update(messagingMessages)
     .set({ body: `@[person:${f.bob}] @[person:${f.outsider}]` })
     .where(eq(messagingMessages.id, rows[0]!.id));
-  expect((await service.messagePage([rows[0]!.id]))[0]!.people).toEqual([
-    { id: f.bob, name: "Bob" },
-  ]);
+  expect((await checkedPage([rows[0]!.id]))[0]!.people).toEqual([{ id: f.bob, name: "Bob" }]);
   await f.db.update(actors).set({ disabledAt: new Date() }).where(eq(actors.entityId, f.bob));
-  expect((await service.messagePage([rows[0]!.id]))[0]!.people).toEqual([]);
+  expect((await checkedPage([rows[0]!.id]))[0]!.people).toEqual([]);
   await f.db.update(actors).set({ disabledAt: null }).where(eq(actors.entityId, f.bob));
   await f.db.update(entities).set({ deletedAt: new Date() }).where(eq(entities.entityId, f.bob));
-  expect((await service.messagePage([rows[0]!.id]))[0]!.people).toEqual([]);
+  expect((await checkedPage([rows[0]!.id]))[0]!.people).toEqual([]);
   await f.db.update(entities).set({ deletedAt: null }).where(eq(entities.entityId, f.bob));
   await f.db.delete(messagingParticipants).where(eq(messagingParticipants.userId, "bob"));
-  expect((await service.messagePage([rows[0]!.id]))[0]!.people).toEqual([]);
+  expect((await checkedPage([rows[0]!.id]))[0]!.people).toEqual([]);
   const publicConversation = await chat.createConversation({
     kind: "channel",
     name: "Public mentions",
   });
   const publicMention = await chat.sendMessage(publicConversation.id, `@[person:${f.bob}]`);
-  expect(
-    (await service.messagePage([rows[0]!.id, publicMention.id])).map((row) => row.people),
-  ).toEqual([[], [{ id: f.bob, name: "Bob" }]]);
+  expect((await checkedPage([rows[0]!.id, publicMention.id])).map((row) => row.people)).toEqual([
+    [],
+    [{ id: f.bob, name: "Bob" }],
+  ]);
   await expect(context("bob").messagePage([rows[0]!.id])).rejects.toBeInstanceOf(AccessDeniedError);
   await f.db.delete(member).where(eq(member.userId, "bob"));
-  expect((await service.messagePage([publicMention.id]))[0]!.people).toEqual([]);
+  expect((await checkedPage([publicMention.id]))[0]!.people).toEqual([]);
 });
 
 test("page context deduplicates requested IDs in order and keeps people tokens within each message and conversation", async () => {
@@ -484,6 +493,59 @@ test("page context deduplicates requested IDs in order and keeps people tokens w
     { messageId: bob.id, links: [], people: [{ id: f.bob, name: "Bob" }], messaging: [] },
     { messageId: empty.id, links: [], people: [], messaging: [] },
   ]);
+});
+
+test("single-purpose context matches page shapes and order with bounded reads as references grow", async () => {
+  const { chat, conversation, root, project, repos } = await setup();
+  await chat.addMembers(conversation.id, ["bob@example.com"]);
+  await context().attach(root.id, project.entityId);
+  await f.db
+    .update(messagingMessages)
+    .set({ body: `@[person:${f.bob}]` })
+    .where(eq(messagingMessages.id, root.id));
+  const { db, queries } = recordQueries();
+  const service = createContextService(db, { userId: "alice", organizationId: f.orgA });
+  const read = async () => {
+    queries.length = 0;
+    const links = await service.messageLinks(root.id);
+    const linkQueries = queries.length;
+    expect(queries.some((query) => query.includes('from "message_messaging_references"'))).toBe(
+      false,
+    );
+    queries.length = 0;
+    const people = await service.messagePeople(root.id);
+    const peopleQueries = queries.length;
+    expect(queries.some((query) => query.includes('from "message_entity_references"'))).toBe(false);
+    const [page] = await service.messagePage([root.id]);
+    expect(links).toEqual(page!.links);
+    expect(people).toEqual(page!.people);
+    return { links, people, linkQueries, peopleQueries };
+  };
+  const one = await read();
+  const task = await repos.tasks.create({
+    projectEntityId: project.entityId,
+    title: "Second link",
+  });
+  await context().attach(root.id, task.entityId);
+  await f.db
+    .update(messagingMessages)
+    .set({ body: `@[person:${f.bob}] @[person:${f.alice}] @[person:${f.bob}]` })
+    .where(eq(messagingMessages.id, root.id));
+  const many = await read();
+  expect(many.links.map((link) => link.entityId)).toEqual([project.entityId, task.entityId]);
+  expect(many.people).toEqual([
+    { id: f.bob, name: "Bob" },
+    { id: f.alice, name: "Alice" },
+  ]);
+  expect(many.linkQueries).toBe(one.linkQueries);
+  expect(many.peopleQueries).toBe(one.peopleQueries);
+  expect(many.linkQueries).toBeLessThanOrEqual(6);
+  expect(many.peopleQueries).toBeLessThanOrEqual(6);
+  await f.db
+    .update(messagingMessages)
+    .set({ body: "@[invalid-token" })
+    .where(eq(messagingMessages.id, root.id));
+  expect(await service.messageLinks(root.id)).toEqual(many.links);
 });
 
 test("source creation is atomic, concurrent-idempotent, and preserves the exact reply without granting access", async () => {
@@ -621,6 +683,87 @@ test("message targets resolve a reply and root, and mismatched conversations fai
   await expect(context().messageTarget(crypto.randomUUID(), reply.id)).rejects.toBeInstanceOf(
     AccessDeniedError,
   );
+});
+
+test("related discussions use current human names for local and partner authors", async () => {
+  const { chat, conversation, root, project } = await setup();
+  await chat.addMembers(conversation.id, ["outside@example.com"]);
+  const reply = await createMessagingService(f.db, {
+    userId: "outsider",
+    organizationId: f.orgB,
+  }).sendMessage(conversation.id, "Partner reply", root.id);
+  await context().attach(root.id, project.entityId);
+  await context().attach(reply.id, project.entityId);
+  await f.db.update(user).set({ name: "Alice renamed" }).where(eq(user.id, "alice"));
+  await f.db.update(user).set({ name: "Partner renamed" }).where(eq(user.id, "outsider"));
+  expect(
+    (await context().related(project.entityId)).map((row) => ({
+      messageId: row.messageId,
+      authorName: row.authorName,
+      authorType: row.authorType,
+    })),
+  ).toEqual([
+    { messageId: root.id, authorName: "Alice renamed", authorType: "human" },
+    { messageId: reply.id, authorName: "Partner renamed", authorType: "human" },
+  ]);
+});
+
+test("message targets use current human names for the root and partner reply", async () => {
+  const { chat, conversation, root } = await setup();
+  await chat.addMembers(conversation.id, ["outside@example.com"]);
+  const reply = await createMessagingService(f.db, {
+    userId: "outsider",
+    organizationId: f.orgB,
+  }).sendMessage(conversation.id, "Partner reply", root.id);
+  await f.db.update(user).set({ name: "Alice renamed" }).where(eq(user.id, "alice"));
+  await f.db.update(user).set({ name: "Partner renamed" }).where(eq(user.id, "outsider"));
+  expect(await context().messageTarget(conversation.id, reply.id)).toMatchObject({
+    root: { id: root.id, authorName: "Alice renamed", authorType: "human", authorExternal: false },
+    message: {
+      id: reply.id,
+      authorName: "Partner renamed",
+      authorType: "human",
+      authorExternal: true,
+    },
+  });
+});
+
+test("related discussions and message targets retain agent attribution after owner rename", async () => {
+  const { chat, project } = await setup();
+  const [agent] = await f.db
+    .insert(userAgents)
+    .values({
+      userId: "alice",
+      name: "Research",
+      instructions: "",
+      harness: "opencode",
+    })
+    .returning();
+  const actor = await ensureUserAgentActor(f.db, {
+    organizationId: f.orgA,
+    userId: "alice",
+    userAgentId: agent!.id,
+  });
+  const conversation = await chat.createConversation({ kind: "channel", name: "Agent discussion" });
+  const agentChat = createMessagingService(f.db, {
+    userId: "alice",
+    organizationId: f.orgA,
+    actorEntityId: actor.entityId,
+  });
+  const root = await agentChat.sendMessage(conversation.id, "Agent root");
+  const reply = await agentChat.sendMessage(conversation.id, "Agent reply", root.id);
+  await context().attach(root.id, project.entityId);
+  await context().attach(reply.id, project.entityId);
+  await f.db.update(user).set({ name: "Alice renamed" }).where(eq(user.id, "alice"));
+  const attribution = { authorName: "Research", authorType: "agent" };
+  expect(await context().related(project.entityId)).toMatchObject([
+    { messageId: root.id, ...attribution },
+    { messageId: reply.id, ...attribution },
+  ]);
+  expect(await context().messageTarget(conversation.id, reply.id)).toMatchObject({
+    root: { id: root.id, ...attribution, authorExternal: false },
+    message: { id: reply.id, ...attribution, authorExternal: false },
+  });
 });
 
 test("linked message targets classify root and reply authors by current viewer membership", async () => {

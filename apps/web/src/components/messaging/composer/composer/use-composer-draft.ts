@@ -5,25 +5,17 @@ import type { ReferenceEditorHandle } from "@/components/messaging/references/re
 
 export function useComposerDraft({
   draftKey,
-  defaultValue,
   pending,
   onSend,
 }: {
-  draftKey?: string;
-  defaultValue: string;
+  draftKey: string;
   pending: boolean;
   onSend: (body: string, onSuccess: () => void) => void;
 }) {
   const drafts = useContext(ComposerDrafts);
-  const initialDraft = () => (draftKey ? drafts?.get(draftKey) : undefined) ?? defaultValue;
-  const [state, updateDraft] = useState(() => ({ key: draftKey, text: initialDraft() }));
-  let draft = state.key === draftKey ? state.text : initialDraft();
-  if (draftKey && drafts) draft = drafts.get(draftKey) ?? defaultValue;
-  if (state.key !== draftKey) updateDraft({ key: draftKey, text: draft });
-  const setDraft = (value: string) => {
-    if (draftKey) drafts?.set(draftKey, value);
-    updateDraft({ key: draftKey, text: value });
-  };
+  if (!drafts) throw new Error("Composer requires ComposerDraftProvider");
+  const draft = drafts.get(draftKey) ?? "";
+  const setDraft = (value: string) => drafts.set(draftKey, value);
   const [focusRequest, setFocusRequest] = useState({ id: 0, caret: 0 });
   const appliedFocus = useRef(0);
   const currentDestination = useRef(draftKey);
@@ -53,8 +45,7 @@ export function useComposerDraft({
   const submit = () => {
     if (!draft.trim() || draft.length > 20000 || pending || composing.current) return;
     onSend(draft.trim(), () => {
-      if (draftKey && drafts) drafts.clear(draftKey, draft);
-      else setDraft("");
+      drafts.clear(draftKey, draft);
       if (currentDestination.current === draftKey) requestFocus();
     });
   };

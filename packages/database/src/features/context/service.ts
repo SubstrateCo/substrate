@@ -11,8 +11,8 @@ import type { CreateTaskInput } from "../tasks/contracts";
 import { taskRepository } from "../tasks/repository";
 import { tasks } from "../tasks/tasks.schema";
 import { workspaceContext, requireWork } from "./access";
+import { messagePeople, messageWorkLinks } from "./message-metadata";
 import { messagePage } from "./message-page";
-import { messageReferences } from "./references";
 import { messageEntityReferences, sourceTaskRequests } from "./schema";
 import { contextSearch } from "./search";
 import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
@@ -136,66 +136,12 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
       const ctx = await workspaceContext(db, scope);
       const { conversation } = await requireMessage(db, scope, messageId);
       if (conversation.organizationId !== scope.organizationId) return [];
-      const references = await db
-        .select()
-        .from(messageEntityReferences)
-        .where(eq(messageEntityReferences.messageId, messageId))
-        .orderBy(asc(messageEntityReferences.createdAt));
-      const result = [];
-      for (const reference of references) {
-        try {
-          const work = await requireWork(ctx, reference.entityId);
-          result.push({
-            ...work,
-            purpose: reference.purpose,
-            canRemove:
-              reference.purpose === "association" &&
-              (reference.createdByActorEntityId === ctx.scope.actorEntityId ||
-                (await ctx.requireAccess(work.entityId, "view")).level === "owner"),
-          });
-        } catch (error) {
-          if (!(error instanceof AccessDeniedError)) throw error;
-        }
-      }
-      return result;
+      return (await messageWorkLinks(ctx, [messageId])).get(messageId) ?? [];
     },
     async messagePeople(messageId: string) {
-      const ctx = await workspaceContext(db, scope);
+      await workspaceContext(db, scope);
       const { message } = await requireMessage(db, scope, messageId);
-      const result: { id: string; name: string }[] = [];
-      for (const reference of messageReferences(message.body).filter(
-        (item) => item.kind === "person",
-      )) {
-        try {
-          await ctx.requireActiveActor(reference.id);
-          const [actor] = await db
-            .select()
-            .from(actors)
-            .where(
-              and(
-                eq(actors.entityId, reference.id),
-                eq(actors.organizationId, scope.organizationId),
-              ),
-            );
-          if (!actor?.userId) continue;
-          const [visible] = await db
-            .select({ id: messagingConversations.id })
-            .from(messagingConversations)
-            .where(
-              and(
-                eq(messagingConversations.id, message.conversationId),
-                visibleConversations(db, {
-                  userId: actor.userId,
-                  organizationId: scope.organizationId,
-                }),
-              ),
-            );
-          if (visible) result.push({ id: reference.id, name: actor.name });
-        } catch (error) {
-          if (!(error instanceof AccessDeniedError)) throw error;
-        }
-      }
-      return result;
+      return (await messagePeople(db, scope, [message])).get(messageId)!;
     },
     async related(entityId: string) {
       const ctx = await workspaceContext(db, scope);
@@ -223,10 +169,8 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
           conversationName: messagingConversations.name,
           body: messagingMessages.body,
           threadId: messagingMessages.threadId,
-          authorName: sql<string>`coalesce((select name from ${actors} where entity_id = ${messagingMessages.authorActorEntityId}), (select name from "user" where id = ${messagingMessages.authorId}))`,
-          authorType: sql<
-            "human" | "agent"
-          >`coalesce((select type from ${actors} where entity_id = ${messagingMessages.authorActorEntityId}), 'human')`,
+          authorName: sql<string>`case when ${actors.type} = 'agent' then ${actors.name} else ${user.name} end`,
+          authorType: sql<"human" | "agent">`coalesce(${actors.type}, 'human')`,
           createdAt: messagingMessages.createdAt,
           purpose: messageEntityReferences.purpose,
           replyCount: sql<number>`(select count(*)::int from ${messagingMessages} replies where replies.conversation_id = ${messagingMessages.conversationId} and replies.thread_id = coalesce(${messagingMessages.threadId}, ${messagingMessages.id}))`,
@@ -237,6 +181,8 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
           messagingConversations,
           eq(messagingConversations.id, messageEntityReferences.conversationId),
         )
+        .leftJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
+        .leftJoin(user, eq(user.id, messagingMessages.authorId))
         .where(
           and(
             eq(messageEntityReferences.organizationId, scope.organizationId),
@@ -279,7 +225,7 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
           : [];
         return {
           ...row,
-          authorName: agentAuthor?.name ?? author?.name ?? "Member",
+          authorName: agentAuthor?.type === "agent" ? agentAuthor.name : (author?.name ?? "Member"),
           authorType: agentAuthor?.type ?? ("human" as const),
           authorExternal: agentAuthor?.type === "agent" ? false : (author?.external ?? true),
           reactions: [],

@@ -10,7 +10,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 
 const f = setupDatabase();
 
-test("project detail preserves protected output with seven SELECT statements", async () => {
+test("project detail preserves protected output with six SELECT statements", async () => {
   const alice = f.forActor(f.alice);
   const project = await alice.projects.create({ name: "Detail" });
   const visible = await alice.tasks.create({ projectEntityId: project.entityId, title: "Visible" });
@@ -39,7 +39,8 @@ test("project detail preserves protected output with seven SELECT statements", a
     actors: await repos.projects.availableActors(project.entityId),
     tasks: await repos.tasks.list(project.entityId),
   }));
-  expect(statements.filter((query) => /^(select|with)\b/i.test(query))).toHaveLength(22);
+  // Five access checks each save one read by selecting the entity and permission together.
+  expect(statements.filter((query) => /^(select|with)\b/i.test(query))).toHaveLength(17);
   statements.length = 0;
   const actual = await repos.transaction((tx) => tx.projects.getDetail(project.entityId));
   expect(actual).toEqual(expected);
@@ -50,7 +51,8 @@ test("project detail preserves protected output with seven SELECT statements", a
   expect(actual.members).toEqual([
     { actorEntityId: f.alice, name: "Alice", type: "human", level: "owner" },
   ]);
-  expect(statements.filter((query) => /^(select|with)\b/i.test(query))).toHaveLength(7);
+  // Detail performs one access check, reducing its budget from seven reads to six.
+  expect(statements.filter((query) => /^(select|with)\b/i.test(query))).toHaveLength(6);
 });
 
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */

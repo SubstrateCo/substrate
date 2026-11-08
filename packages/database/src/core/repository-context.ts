@@ -59,8 +59,12 @@ export class RepositoryContext {
       // Lock first, then read grants in a fresh statement after any competing writer commits.
       await this.db.execute(lockAccessPath(this.scope, entityId));
     }
-    const [entity] = await this.db
-      .select()
+    const [access] = await this.db
+      .select({
+        entity: entities,
+        level: sql<PermissionLevel | null>`(${visibilityCte(this.scope)}
+          SELECT level FROM visible_entities WHERE entity_id = ${entityId} ORDER BY level DESC LIMIT 1)`,
+      })
       .from(entities)
       .where(
         and(
@@ -69,13 +73,9 @@ export class RepositoryContext {
           isNull(entities.deletedAt),
         ),
       );
-    const [grant] = await this.db.execute<{
-      level: PermissionLevel;
-    }>(sql`${visibilityCte(this.scope)}
-      SELECT level FROM visible_entities WHERE entity_id = ${entityId} ORDER BY level DESC LIMIT 1`);
-    if (!entity || !grant || permissionRank[grant.level] < permissionRank[minimum])
+    if (!access || !access.level || permissionRank[access.level] < permissionRank[minimum])
       throw new AccessDeniedError();
-    return { entity, level: grant.level };
+    return { entity: access.entity, level: access.level };
   }
 
   async createEntity(entityType: typeof entities.$inferInsert.entityType, parentEntityId?: string) {

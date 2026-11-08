@@ -1,14 +1,11 @@
-import { useDebouncedState } from "@tanstack/react-pacer";
-
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export function useSearchDebounce(query: string, scope: string) {
-  const [settled, setSettled] = useDebouncedState<{ query: string; scope: string } | null>(null, {
-    wait: 200,
-  });
+  const [settled, setSettled] = useState<{ query: string; scope: string } | null>(null);
   useEffect(() => {
-    setSettled({ query, scope });
-  }, [query, scope, setSettled]);
+    const timeout = setTimeout(() => setSettled({ query, scope }), 200);
+    return () => clearTimeout(timeout);
+  }, [query, scope]);
   return {
     query: settled?.scope === scope ? settled.query : "",
     pending: settled?.scope !== scope || settled.query !== query,

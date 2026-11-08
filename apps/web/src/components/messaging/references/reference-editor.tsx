@@ -1,4 +1,4 @@
-import { useImperativeHandle, useLayoutEffect, useMemo, type Ref } from "react";
+import { useImperativeHandle, useLayoutEffect, type Ref } from "react";
 
 import {
   referenceDocument,
@@ -47,9 +47,6 @@ export function ReferenceEditor({
   value,
   references,
   label,
-  descriptionId,
-  listId,
-  activeDescendant,
   onChange,
   onSelectionChange,
   onKeyDown,
@@ -59,28 +56,11 @@ export function ReferenceEditor({
   value: string;
   references: WorkspaceReference[];
   label: string;
-  descriptionId?: string;
-  listId?: string;
-  activeDescendant?: string;
   onChange: (value: string, caret: number) => void;
   onSelectionChange: (caret: number) => void;
   onKeyDown: (event: KeyboardEvent) => void;
   disabled?: boolean;
 }) {
-  const attributes = useMemo(
-    () => ({
-      role: "textbox",
-      "aria-label": label,
-      "aria-multiline": "true",
-      "aria-autocomplete": "list",
-      "aria-describedby": descriptionId ?? "",
-      "aria-controls": listId ?? "",
-      "aria-activedescendant": activeDescendant ?? "",
-      class:
-        "min-h-10 max-h-[25dvh] overflow-y-auto px-3 py-2 text-sm whitespace-pre-wrap wrap-anywhere outline-none [&_p]:m-0",
-    }),
-    [label, descriptionId, listId, activeDescendant],
-  );
   const editor = useEditor({
     extensions,
     editable: !disabled,
@@ -88,7 +68,14 @@ export function ReferenceEditor({
     enableInputRules: false,
     enablePasteRules: false,
     editorProps: {
-      attributes,
+      attributes: {
+        role: "textbox",
+        "aria-label": label,
+        "aria-multiline": "true",
+        "aria-autocomplete": "list",
+        class:
+          "min-h-10 max-h-[25dvh] overflow-y-auto px-3 py-2 text-sm whitespace-pre-wrap wrap-anywhere outline-none [&_p]:m-0",
+      },
       handleKeyDown: (view, event) => {
         onKeyDown(event);
         if (
@@ -142,10 +129,6 @@ export function ReferenceEditor({
   useLayoutEffect(() => {
     editor.setEditable(!disabled, false);
   }, [editor, disabled]);
-
-  useLayoutEffect(() => {
-    editor.setOptions({ editorProps: { ...editor.options.editorProps, attributes } });
-  }, [editor, attributes]);
 
   useImperativeHandle(
     ref,
