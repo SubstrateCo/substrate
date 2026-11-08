@@ -34,16 +34,16 @@ test("send and replay reuse authenticated identity and the locked conversation",
         query.startsWith('select "name" from "user"') ||
         (query.includes('from "messaging_conversations"') && !query.includes("for update")),
     );
+  const provisioning = () =>
+    queries.filter((query) => query.includes('from "member"') && query.includes("for update"));
   expect(redundant()).toEqual([]);
-  expect(
-    queries.filter((query) => query.includes('from "actors"') && !query.includes("join")),
-  ).toHaveLength(1);
+  expect(provisioning()).toEqual([]);
+  expect(queries).toHaveLength(5);
   queries.length = 0;
   expect(await chat.sendMessage(channel.id, "hello", undefined, requestId)).toEqual(sent);
   expect(redundant()).toEqual([]);
-  expect(
-    queries.filter((query) => query.includes('from "actors"') && !query.includes("join")),
-  ).toHaveLength(1);
+  expect(provisioning()).toEqual([]);
+  expect(queries).toHaveLength(3);
   await expect(
     chat.sendMessage(channel.id, "changed", undefined, requestId),
   ).rejects.toBeInstanceOf(ConflictError);

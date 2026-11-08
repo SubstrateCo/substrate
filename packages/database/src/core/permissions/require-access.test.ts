@@ -26,7 +26,7 @@ async function hierarchy() {
 }
 
 for (const lock of [false, true]) {
-  test(`requireAccess uses ${lock ? 3 : 2} statements with lock=${lock} and preserves entity values`, async () => {
+  test(`requireAccess uses ${lock ? 3 : 1} statements with lock=${lock} and preserves entity values`, async () => {
     const contact = await f.forActor(f.alice).contacts.create({ displayName: "Owned" });
     const [entity] = await f.db
       .select()
@@ -41,7 +41,7 @@ for (const lock of [false, true]) {
         "owner",
         lock,
       );
-      expect(queries).toHaveLength(lock ? 3 : 2);
+      expect(queries).toHaveLength(lock ? 3 : 1);
       return access;
     });
     expect(result).toEqual({ entity: entity!, level: "owner" });
@@ -133,15 +133,17 @@ test("inactive and forged scopes fail the actor precheck before locks or visibil
   const contact = await f.forActor(f.alice).contacts.create({ displayName: "Private" });
   const { db, queries } = recordQueries();
   const deny = async (actorEntityId: string, organizationId = f.orgA) => {
-    queries.length = 0;
-    await expect(
-      new RepositoryContext(db, { organizationId, actorEntityId }).requireAccess(
-        contact.entityId,
-        "view",
-        true,
-      ),
-    ).rejects.toBeInstanceOf(AccessDeniedError);
-    expect(queries).toHaveLength(1);
+    for (const lock of [true, false]) {
+      queries.length = 0;
+      await expect(
+        new RepositoryContext(db, { organizationId, actorEntityId }).requireAccess(
+          contact.entityId,
+          "view",
+          lock,
+        ),
+      ).rejects.toBeInstanceOf(AccessDeniedError);
+      expect(queries).toHaveLength(1);
+    }
   };
   await deny(f.outsider);
   await deny(f.alice, f.orgB);

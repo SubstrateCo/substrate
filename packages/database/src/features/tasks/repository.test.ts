@@ -254,7 +254,7 @@ describe("projects and tasks", () => {
   });
 });
 
-test("task comments require their actual project and use six repository statements", async () => {
+test("task comments require their actual project and use four repository statements", async () => {
   const alice = fixture.forActor(fixture.alice);
   const project = await alice.projects.create({ name: "Comments" });
   const other = await alice.projects.create({ name: "Other accessible project" });
@@ -271,7 +271,7 @@ test("task comments require their actual project and use six repository statemen
   });
   const previousTask = await repos.tasks.get(task.entityId);
   const previousComments = await repos.tasks.listComments(previousTask.entityId, project.entityId);
-  expect(statements).toHaveLength(11);
+  expect(statements).toHaveLength(7);
   statements.length = 0;
   expect(await repos.tasks.listComments(task.entityId, project.entityId)).toEqual([
     {
@@ -283,7 +283,7 @@ test("task comments require their actual project and use six repository statemen
     },
   ]);
   expect(previousComments.map((row) => row.id)).toEqual([comment.id]);
-  expect(statements).toHaveLength(6);
+  expect(statements).toHaveLength(4);
   await expect(alice.tasks.listComments(task.entityId, other.entityId)).rejects.toBeInstanceOf(
     AccessDeniedError,
   );
@@ -343,4 +343,26 @@ test("task comments retain task and actual project grants, deletion and membersh
   await expect(bob.tasks.listComments(task.entityId, project.entityId)).rejects.toBeInstanceOf(
     AccessDeniedError,
   );
+});
+
+test("task writes deny non-project parents and mismatched projects without writing", async () => {
+  const alice = fixture.forActor(fixture.alice);
+  const project = await alice.projects.create({ name: "Actual" });
+  const other = await alice.projects.create({ name: "Other" });
+  const contact = await alice.contacts.create({ displayName: "Not a project" });
+  const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "Ship" });
+  await expect(
+    alice.tasks.create({ projectEntityId: contact.entityId, title: "Orphan" }),
+  ).rejects.toBeInstanceOf(AccessDeniedError);
+  await expect(
+    alice.tasks.update(task.entityId, { title: "Moved" }, other.entityId),
+  ).rejects.toBeInstanceOf(AccessDeniedError);
+  await expect(alice.tasks.addComment(task.entityId, "Hi", other.entityId)).rejects.toBeInstanceOf(
+    AccessDeniedError,
+  );
+  expect(await fixture.db.select().from(tasks)).toEqual([task]);
+  expect(await fixture.db.select().from(taskComments)).toEqual([]);
+  expect(
+    (await alice.tasks.update(task.entityId, { title: "Renamed" }, project.entityId)).title,
+  ).toBe("Renamed");
 });

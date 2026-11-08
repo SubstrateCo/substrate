@@ -13,7 +13,7 @@ export async function messagePage(
   messageIds: string[],
 ) {
   if (messageIds.length > 50) throw new ValidationError("At most 50 messages are allowed.");
-  const ctx = await workspaceContext(db, scope);
+  const { context: ctx } = await workspaceContext(db, scope);
   const ids = [...new Set(messageIds)];
   if (!ids.length) return [];
   const messages = await db

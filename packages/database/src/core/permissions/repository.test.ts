@@ -20,13 +20,8 @@ describe("access controls", () => {
   test("rejects invalid permission levels from untyped callers", async () => {
     const repo = f.forActor(f.alice);
     const contact = await repo.contacts.create({ displayName: "Private" });
-    // SAFETY: Deliberately invalid test input; the runtime guard must reject it before use.
-    const invalidLevel = "invalid" as PermissionLevel;
     // SAFETY: Deliberately empty test input; grant must reject it rather than revoke ownership.
     const emptyLevel = "" as PermissionLevel;
-    await expect(repo.permissions.require(contact.entityId, invalidLevel)).rejects.toThrow(
-      "Unknown permission level",
-    );
     expect(() =>
       repo.permissions.grant({
         entityId: contact.entityId,
@@ -44,7 +39,7 @@ describe("access controls", () => {
     for (const level of ["view", "comment", "edit"] as const) {
       await owner.permissions.grant({ entityId: contact.entityId, actorEntityId: f.bob, level });
       expect((await other.contacts.get(contact.entityId)).displayName).toBe("Original");
-      await other.permissions.require(contact.entityId, level);
+      expect(await other.permissions.getEffectiveLevel(contact.entityId)).toBe(level);
       await expect(
         other.permissions.grant({
           entityId: contact.entityId,
@@ -57,10 +52,6 @@ describe("access controls", () => {
           other.contacts.update(contact.entityId, { displayName: "Changed" }),
         ).rejects.toBeInstanceOf(AccessDeniedError);
       }
-      if (level === "view")
-        await expect(other.permissions.require(contact.entityId, "comment")).rejects.toBeInstanceOf(
-          AccessDeniedError,
-        );
     }
     expect(
       (await other.contacts.update(contact.entityId, { displayName: "Changed" })).displayName,

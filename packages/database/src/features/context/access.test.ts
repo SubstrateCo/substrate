@@ -1,0 +1,148 @@
+import { ensureUserAgentActor } from "../../core/actors/provisioning";
+import { AccessDeniedError } from "../../errors";
+import { actors, entities, entityGrants, member, user, userAgents } from "../../schema";
+import { setupDatabase } from "../../testing/database";
+import { recordQueries } from "../../testing/queries";
+import { requireWork, workspaceContext } from "./access";
+/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
+import { expect, test } from "bun:test";
+import { and, eq } from "drizzle-orm";
+
+const f = setupDatabase();
+const statements = (queries: string[]) =>
+  queries.filter((query) => !["begin", "commit", "rollback"].includes(query));
+
+test("an existing human actor is verified in one statement without the provisioning lock", async () => {
+  await f.db.update(user).set({ emailVerified: true });
+  const { db, queries } = recordQueries();
+  const { context, actor, userName } = await workspaceContext(db, {
+    userId: "alice",
+    organizationId: f.orgA,
+  });
+  expect(context.scope).toEqual({ organizationId: f.orgA, actorEntityId: f.alice });
+  expect(actor).toEqual({ entityId: f.alice, name: "Alice", type: "human" });
+  expect(userName).toBe("Alice");
+  expect(queries).toHaveLength(1);
+  expect(queries[0]).not.toContain("for update");
+});
+
+test("first human use provisions the actor once and later uses take the fast path", async () => {
+  await f.db.update(user).set({ emailVerified: true });
+  await f.db.insert(member).values({ id: "bob-b", userId: "bob", organizationId: f.orgB });
+  const { db, queries } = recordQueries();
+  const scope = { userId: "bob", organizationId: f.orgB };
+  const first = await workspaceContext(db, scope);
+  expect(first.actor).toMatchObject({ name: "Bob", type: "human" });
+  expect(first.actor.entityId).not.toBe(f.bob);
+  expect(queries.some((query) => query.includes("for update"))).toBe(true);
+  queries.length = 0;
+  const second = await workspaceContext(db, scope);
+  expect(second.actor).toEqual(first.actor);
+  expect(queries).toHaveLength(1);
+  expect(
+    await f.db
+      .select()
+      .from(actors)
+      .where(and(eq(actors.userId, "bob"), eq(actors.organizationId, f.orgB))),
+  ).toHaveLength(1);
+});
+
+for (const invalid of ["unverified", "removed", "disabled", "deleted", "foreign"] as const) {
+  test(`human workspace context denies a ${invalid} identity without provisioning`, async () => {
+    await f.db.update(user).set({ emailVerified: invalid !== "unverified" });
+    if (invalid === "removed") await f.db.delete(member).where(eq(member.id, "alice-a"));
+    if (invalid === "disabled")
+      await f.db.update(actors).set({ disabledAt: new Date() }).where(eq(actors.entityId, f.alice));
+    if (invalid === "deleted")
+      await f.db
+        .update(entities)
+        .set({ deletedAt: new Date() })
+        .where(eq(entities.entityId, f.alice));
+    const before = await f.db.select().from(actors);
+    await expect(
+      workspaceContext(f.db, {
+        userId: "alice",
+        organizationId: invalid === "foreign" ? f.orgB : f.orgA,
+      }),
+    ).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(await f.db.select().from(actors)).toEqual(before);
+  });
+}
+
+test("an agent actor is verified in one statement and locks only its actor row on request", async () => {
+  await f.db.update(user).set({ emailVerified: true });
+  const [agent] = await f.db
+    .insert(userAgents)
+    .values({ userId: "alice", name: "Research", instructions: "", harness: "opencode" })
+    .returning();
+  const actor = await ensureUserAgentActor(f.db, {
+    organizationId: f.orgA,
+    userId: "alice",
+    userAgentId: agent!.id,
+  });
+  const scope = { userId: "alice", organizationId: f.orgA, actorEntityId: actor.entityId };
+  const { db, queries } = recordQueries();
+  expect((await workspaceContext(db, scope)).actor).toEqual({
+    entityId: actor.entityId,
+    name: "Research",
+    type: "agent",
+  });
+  expect(queries).toHaveLength(1);
+  expect(queries[0]).not.toContain("for update");
+  queries.length = 0;
+  await db.transaction((tx) => workspaceContext(tx, scope, { lockActor: true }));
+  expect(statements(queries)).toHaveLength(1);
+  expect(statements(queries)[0]).toContain('for update of "actors"');
+  await expect(workspaceContext(f.db, { ...scope, userId: "bob" })).rejects.toBeInstanceOf(
+    AccessDeniedError,
+  );
+  await expect(workspaceContext(f.db, { ...scope, actorEntityId: f.alice })).rejects.toBeInstanceOf(
+    AccessDeniedError,
+  );
+  await f.db.update(userAgents).set({ enabled: false }).where(eq(userAgents.id, agent!.id));
+  await expect(workspaceContext(f.db, scope)).rejects.toBeInstanceOf(AccessDeniedError);
+});
+
+test("task work uses three statements and reports the weaker of task and project access", async () => {
+  await f.db.update(user).set({ emailVerified: true });
+  const alice = f.forActor(f.alice);
+  const project = await alice.projects.create({ name: "Launch" });
+  const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "Ship" });
+  await alice.permissions.grant({
+    entityId: project.entityId,
+    actorEntityId: f.bob,
+    level: "view",
+  });
+  await alice.permissions.grant({ entityId: task.entityId, actorEntityId: f.bob, level: "owner" });
+  const { db, queries } = recordQueries();
+  const { context } = await workspaceContext(db, { userId: "bob", organizationId: f.orgA });
+  queries.length = 0;
+  expect(await requireWork(context, task.entityId)).toMatchObject({
+    entityType: "task",
+    title: "Ship",
+    projectEntityId: project.entityId,
+    statusName: "Not Started",
+    level: "view",
+  });
+  expect(queries).toHaveLength(3);
+  queries.length = 0;
+  expect(await requireWork(context, project.entityId)).toMatchObject({
+    entityType: "project",
+    title: "Launch",
+    level: "view",
+  });
+  expect(queries).toHaveLength(2);
+  await expect(requireWork(context, task.entityId, "edit")).rejects.toBeInstanceOf(
+    AccessDeniedError,
+  );
+  await f.db
+    .delete(entityGrants)
+    .where(and(eq(entityGrants.entityId, project.entityId), eq(entityGrants.actorEntityId, f.bob)));
+  await expect(requireWork(context, task.entityId)).rejects.toBeInstanceOf(AccessDeniedError);
+  const contact = await alice.contacts.create({ displayName: "Customer" });
+  const { context: owner } = await workspaceContext(f.db, {
+    userId: "alice",
+    organizationId: f.orgA,
+  });
+  await expect(requireWork(owner, contact.entityId)).rejects.toBeInstanceOf(AccessDeniedError);
+});

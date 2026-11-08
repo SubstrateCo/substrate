@@ -12,6 +12,7 @@ import {
   messagingMessages,
 } from "../../schema";
 import { setupDatabase } from "../../testing/database";
+import { recordQueries } from "../../testing/queries";
 import { createMessagingService } from "../messaging/service";
 import { executeAgentTool } from "./service";
 import { expect, test } from "bun:test";
@@ -34,8 +35,8 @@ async function fixture() {
   const identity = { organizationId: f.orgA, userId: "alice", actorEntityId: actor.entityId };
   const human = createMessagingService(f.db, { organizationId: f.orgA, userId: "alice" });
   const project = await f.forActor(f.alice).projects.create({ name: "Work" });
-  const call = (tool: McpToolName, input: WorkspaceApiRequest["input"]) =>
-    executeAgentTool(f.db, identity, tool, input);
+  const call = async (tool: McpToolName, input: WorkspaceApiRequest["input"]) =>
+    (await executeAgentTool(f.db, identity, tool, input)).output;
   return { actor, identity, human, project, call };
 }
 
@@ -189,6 +190,22 @@ test("daily scans include active older threads without expanding reply bodies", 
     (await human.listMessages(channel.id, root.id)).find((item) => item.id === sent.messageId)
       ?.authorType,
   ).toBe("agent");
+});
+
+test("send_message resolves the agent once and does not re-authenticate inside messaging", async () => {
+  const { human, identity, actor } = await fixture();
+  const channel = await human.createConversation({ kind: "channel", name: "general" });
+  const { db, queries } = recordQueries();
+  const input = { requestId: crypto.randomUUID(), conversationId: channel.id, body: "Agent note" };
+  const sent = await executeAgentTool(db, identity, "send_message", input);
+  expect(sent.output.author).toEqual({ id: actor.entityId, name: "Research", type: "agent" });
+  const identityReads = () => queries.filter((query) => query.includes('from "user"'));
+  expect(identityReads()).toHaveLength(1);
+  expect(queries).toHaveLength(7);
+  queries.length = 0;
+  expect((await executeAgentTool(db, identity, "send_message", input)).output).toEqual(sent.output);
+  expect(identityReads()).toHaveLength(1);
+  expect(queries).toHaveLength(3);
 });
 
 test("failed source validation rolls back task creation; foreign owners and organizations cannot impersonate agents", async () => {

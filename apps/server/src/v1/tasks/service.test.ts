@@ -47,7 +47,7 @@ function projectFixture() {
     agentConfig: null,
     disabledAt: null,
   };
-  const ensureHumanActor = spyOn(provisioning, "ensureHumanActor").mockResolvedValue(actor);
+  const resolveHumanActor = spyOn(provisioning, "resolveHumanActor").mockResolvedValue(actor);
   const ensureOwnedAgentActors = spyOn(provisioning, "ensureOwnedAgentActors").mockResolvedValue(
     [],
   );
@@ -70,7 +70,9 @@ function projectFixture() {
     tasks: [],
   };
   const getDetail = spyOn(repositories.projects, "getDetail").mockResolvedValue(detail);
-  spyOn(repositories, "transaction").mockImplementation(async (work) => work(repositories));
+  const transaction = spyOn(repositories, "transaction").mockImplementation(async (work) =>
+    work(repositories),
+  );
   const forActor = spyOn(factory, "forActor").mockReturnValue(repositories);
   spyOn(database, "createRepositories").mockReturnValue(factory);
   return {
@@ -80,11 +82,12 @@ function projectFixture() {
     detail,
     getSession,
     getRole,
-    ensureHumanActor,
+    resolveHumanActor,
     ensureOwnedAgentActors,
     getDetail,
     forActor,
     repositories,
+    transaction,
   };
 }
 
@@ -154,7 +157,7 @@ test("project detail uses one authenticated workspace and retains provisioning a
     organizationId: fixture.input.organizationId,
     userId: fixture.session.user.id,
   });
-  expect(fixture.ensureHumanActor).toHaveBeenCalledWith(db, {
+  expect(fixture.resolveHumanActor).toHaveBeenCalledWith(db, {
     organizationId: fixture.input.organizationId,
     userId: fixture.session.user.id,
     name: fixture.session.user.name,
@@ -164,6 +167,7 @@ test("project detail uses one authenticated workspace and retains provisioning a
     actorEntityId: fixture.actor.entityId,
   });
   expect(fixture.getDetail).toHaveBeenCalledWith(fixture.input.projectEntityId);
+  expect(fixture.transaction).not.toHaveBeenCalled();
 });
 
 for (const denial of ["signed out", "unverified", "workspace mismatch", "not a member"] as const) {
@@ -192,7 +196,7 @@ for (const denial of ["signed out", "unverified", "workspace mismatch", "not a m
         break;
     }
     expect(await getProject(new Headers(), fixture.input)).toEqual(expected);
-    expect(fixture.ensureHumanActor).not.toHaveBeenCalled();
+    expect(fixture.resolveHumanActor).not.toHaveBeenCalled();
     expect(fixture.ensureOwnedAgentActors).not.toHaveBeenCalled();
     expect(fixture.forActor).not.toHaveBeenCalled();
     expect(fixture.getDetail).not.toHaveBeenCalled();

@@ -11,7 +11,7 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm";
 export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity) {
   return {
     async activity(taskEntityId: string) {
-      const ctx = await workspaceContext(db, scope);
+      const { context: ctx } = await workspaceContext(db, scope);
       const work = await requireWork(ctx, taskEntityId);
       if (work.entityType !== "task") throw new AccessDeniedError();
       const rows = await db
@@ -47,7 +47,7 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
         }));
     },
     async list(after?: string) {
-      const ctx = await workspaceContext(db, scope);
+      const { context: ctx } = await workspaceContext(db, scope);
       let boundary;
       if (after) {
         const [anchor] = await db
@@ -115,7 +115,7 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
       return result.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     },
     async markAllRead() {
-      const ctx = await workspaceContext(db, scope);
+      const { context: ctx } = await workspaceContext(db, scope);
       await db
         .update(notifications)
         .set({ readAt: sql`now()` })
@@ -128,7 +128,7 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
         );
     },
     async markRead(id: string) {
-      const ctx = await workspaceContext(db, scope);
+      const { context: ctx } = await workspaceContext(db, scope);
       const [row] = await db
         .update(notifications)
         .set({ readAt: sql`coalesce(${notifications.readAt}, now())` })

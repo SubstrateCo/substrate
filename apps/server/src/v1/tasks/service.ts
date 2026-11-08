@@ -7,8 +7,8 @@ import {
   tasksWrite,
   type TasksWrite,
 } from "@startup-os/contracts/tasks/input";
-import { AccessDeniedError, createRepositories } from "@startup-os/database";
-import { ensureHumanActor, ensureOwnedAgentActors } from "@startup-os/database/provisioning";
+import { createRepositories } from "@startup-os/database";
+import { ensureOwnedAgentActors, resolveHumanActor } from "@startup-os/database/provisioning";
 
 import { db } from "../../auth/database";
 import { serviceResult } from "../../shared/service-result";
@@ -23,7 +23,7 @@ async function repositoriesForWorkspace({
   session,
   organizationId,
 }: Awaited<ReturnType<typeof workspaceSession>>) {
-  const actor = await ensureHumanActor(db, {
+  const actor = await resolveHumanActor(db, {
     organizationId,
     userId: session.user.id,
     name: session.user.name,
@@ -51,7 +51,7 @@ export function getProject(
       userId: workspace.session.user.id,
     });
     const repositories = await repositoriesForWorkspace(workspace);
-    return repositories.transaction((repos) => repos.projects.getDetail(input.projectEntityId));
+    return repositories.projects.getDetail(input.projectEntityId);
   });
 }
 
@@ -72,24 +72,23 @@ export function mutateTasks(headers: Headers, raw: TasksWrite) {
     const input = tasksWrite.parse(raw);
     const repositories = await repositoriesForSession(headers, input.organizationId);
     const result = await repositories.transaction(async (repos) => {
-      if (input.action === "createProject")
-        return { id: (await repos.projects.create(input)).entityId };
-      await repos.projects.get(input.projectEntityId);
       switch (input.action) {
+        case "createProject":
+          return { id: (await repos.projects.create(input)).entityId };
         case "updateProject":
           await repos.projects.update(input.projectEntityId, input);
           break;
         case "createTask":
           return { id: (await repos.tasks.create(input)).entityId };
         case "updateTask":
-        case "comment": {
-          const task = await repos.tasks.get(input.taskEntityId);
-          if (task.projectEntityId !== input.projectEntityId) throw new AccessDeniedError();
-          if (input.action === "updateTask") await repos.tasks.update(input.taskEntityId, input);
-          else await repos.tasks.addComment(input.taskEntityId, input.body);
-          return { id: task.entityId };
-        }
+          await repos.tasks.update(input.taskEntityId, input, input.projectEntityId);
+          return { id: input.taskEntityId };
+        case "comment":
+          await repos.tasks.addComment(input.taskEntityId, input.body, input.projectEntityId);
+          return { id: input.taskEntityId };
         case "share":
+          // Grants through this API apply only to projects.
+          await repos.projects.get(input.projectEntityId);
           await repos.permissions.grant({
             entityId: input.projectEntityId,
             actorEntityId: input.actorEntityId,
@@ -97,6 +96,7 @@ export function mutateTasks(headers: Headers, raw: TasksWrite) {
           });
           break;
         case "revoke":
+          await repos.projects.get(input.projectEntityId);
           await repos.permissions.revoke({
             entityId: input.projectEntityId,
             actorEntityId: input.actorEntityId,

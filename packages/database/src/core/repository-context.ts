@@ -6,7 +6,8 @@ import { entities } from "./entities/schema";
 import { entityAccessParents } from "./permissions/access-parents";
 import { entityGrants, permissionLevel } from "./permissions/schema";
 import { visibilityCte, lockAccessPath } from "./permissions/visibility";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, exists, isNull, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 export interface ActorScope {
   organizationId: string;
@@ -14,7 +15,7 @@ export interface ActorScope {
 }
 
 export type PermissionLevel = (typeof permissionLevel.enumValues)[number];
-const permissionRank = { view: 0, comment: 1, edit: 2, owner: 3 };
+export const permissionRank = { view: 0, comment: 1, edit: 2, owner: 3 };
 
 export class RepositoryContext {
   readonly scope: Readonly<ActorScope>;
@@ -52,13 +53,15 @@ export class RepositoryContext {
   }
 
   async requireAccess(entityId: string, minimum: PermissionLevel, lock = false) {
-    if (!Object.hasOwn(permissionRank, minimum))
-      throw new ValidationError("Unknown permission level.");
-    await this.requireActiveActor();
+    // Fail closed: an unknown level would otherwise compare as granted.
+    if (!Object.hasOwn(permissionRank, minimum)) throw new AccessDeniedError();
     if (lock) {
+      // Inactive or forged scopes must not take locks.
+      await this.requireActiveActor();
       // Lock first, then read grants in a fresh statement after any competing writer commits.
       await this.db.execute(lockAccessPath(this.scope, entityId));
     }
+    const actorEntity = alias(entities, "actor_entity");
     const [access] = await this.db
       .select({
         entity: entities,
@@ -71,6 +74,26 @@ export class RepositoryContext {
           eq(entities.organizationId, this.scope.organizationId),
           eq(entities.entityId, entityId),
           isNull(entities.deletedAt),
+          exists(
+            this.db
+              .select({ one: sql`1` })
+              .from(actors)
+              .innerJoin(
+                actorEntity,
+                and(
+                  eq(actorEntity.entityId, actors.entityId),
+                  eq(actorEntity.organizationId, actors.organizationId),
+                ),
+              )
+              .where(
+                and(
+                  eq(actors.organizationId, this.scope.organizationId),
+                  eq(actors.entityId, this.scope.actorEntityId),
+                  activeActorCondition(),
+                  isNull(actorEntity.deletedAt),
+                ),
+              ),
+          ),
         ),
       );
     if (!access || !access.level || permissionRank[access.level] < permissionRank[minimum])
@@ -79,8 +102,8 @@ export class RepositoryContext {
   }
 
   async createEntity(entityType: typeof entities.$inferInsert.entityType, parentEntityId?: string) {
-    await this.requireActiveActor();
     if (parentEntityId) await this.requireAccess(parentEntityId, "edit", true);
+    else await this.requireActiveActor();
     const [entity] = await this.db
       .insert(entities)
       .values({ organizationId: this.scope.organizationId, entityType })

@@ -80,8 +80,5 @@ export function permissionRepository(context: RepositoryContext) {
     async getEffectiveLevel(entityId: string) {
       return (await context.requireAccess(entityId, "view")).level;
     },
-    async require(entityId: string, minimum: PermissionLevel) {
-      await context.requireAccess(entityId, minimum);
-    },
   };
 }

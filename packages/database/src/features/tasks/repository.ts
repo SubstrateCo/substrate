@@ -56,7 +56,8 @@ export function taskRepository(context: RepositoryContext) {
     async create(input: CreateTaskInput) {
       return db.transaction(async (tx) => {
         const ctx = new RepositoryContext(tx, scope);
-        await ctx.requireAccess(input.projectEntityId, "edit", true);
+        const project = await ctx.requireAccess(input.projectEntityId, "edit", true);
+        if (project.entity.entityType !== "project") throw new AccessDeniedError();
         await validate(ctx, input.projectEntityId, input);
         if (input.parentTaskEntityId) {
           const parent = await taskRepository(ctx).get(input.parentTaskEntityId);
@@ -98,10 +99,12 @@ export function taskRepository(context: RepositoryContext) {
         )
         .orderBy(asc(tasks.entityId));
     },
-    async update(entityId: string, input: Partial<TaskFields>) {
+    async update(entityId: string, input: Partial<TaskFields>, expectedProjectEntityId?: string) {
       return db.transaction(async (tx) => {
         const ctx = new RepositoryContext(tx, scope);
         const task = await taskRepository(ctx).get(entityId, "edit", true);
+        if (expectedProjectEntityId && task.projectEntityId !== expectedProjectEntityId)
+          throw new AccessDeniedError();
         await validate(ctx, task.projectEntityId, input);
         const changes: string[] = [];
         if (input.status !== undefined && input.status !== task.status)
@@ -140,11 +143,13 @@ export function taskRepository(context: RepositoryContext) {
         return updated!;
       });
     },
-    async addComment(entityId: string, body: string) {
+    async addComment(entityId: string, body: string, expectedProjectEntityId?: string) {
       const text = requiredText(body, 20000);
       return db.transaction(async (tx) => {
         const ctx = new RepositoryContext(tx, scope);
-        await taskRepository(ctx).get(entityId, "comment", true);
+        const task = await taskRepository(ctx).get(entityId, "comment", true);
+        if (expectedProjectEntityId && task.projectEntityId !== expectedProjectEntityId)
+          throw new AccessDeniedError();
         const [comment] = await tx
           .insert(taskComments)
           .values({

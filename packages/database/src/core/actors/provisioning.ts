@@ -122,6 +122,19 @@ export function ensureHumanActor(
   });
 }
 
+// Trusted, already verified session identity only. Existing actors skip the provisioning lock;
+// repositories still check that the actor is active.
+export async function resolveHumanActor(
+  db: DatabaseExecutor,
+  input: { organizationId: string; userId: string; name: string },
+) {
+  const [existing] = await db
+    .select()
+    .from(actors)
+    .where(and(eq(actors.organizationId, input.organizationId), eq(actors.userId, input.userId)));
+  return existing ?? ensureHumanActor(db, input);
+}
+
 export function ensureOwnedAgentActors(
   db: DatabaseExecutor,
   input: { organizationId: string; userId: string },

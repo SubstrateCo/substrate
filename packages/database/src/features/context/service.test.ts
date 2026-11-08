@@ -306,19 +306,19 @@ test("page context uses constant reads for one or fifty messages, including empt
     true,
   );
   expect(emptyPage.count).toBe(emptyOne.count);
-  expect(emptyPage.count).toBe(6);
+  expect(emptyPage.count).toBe(3);
   queries.length = 0;
   for (const row of rows) await service.messageLinks(row.id);
-  expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(300);
+  expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(150);
   for (const row of rows) await context().attach(row.id, project.entityId);
   const one = await reads([rows[0]!.id]);
   const page = await reads(rows.map((row) => row.id));
   expect(page.result.every((row) => row.links[0]?.title === "Launch")).toBe(true);
   expect(page.count).toBe(one.count);
-  expect(page.count).toBe(6);
+  expect(page.count).toBe(3);
   queries.length = 0;
   for (const row of rows) await service.messageLinks(row.id);
-  expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(300);
+  expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(150);
   await expect(context("bob").messagePage([rows[0]!.id])).rejects.toBeInstanceOf(AccessDeniedError);
   await expect(service.messagePage([rows[0]!.id, crypto.randomUUID()])).rejects.toBeInstanceOf(
     AccessDeniedError,
@@ -330,7 +330,7 @@ test("page context uses constant reads for one or fifty messages, including empt
     return queries.filter((query) => /^(select|with)/i.test(query)).length;
   };
   expect(await deniedReads(rows.map((row) => row.id))).toBe(await deniedReads([rows[0]!.id]));
-  expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(5);
+  expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(2);
   expect(queries.some((query) => query.includes('from "message_entity_references"'))).toBe(false);
   const publicConversation = await chat.createConversation({
     kind: "channel",
@@ -427,13 +427,13 @@ test("page people resolve parsed tokens in sets and clear inactive, deleted and 
   expect(parameters.at(-1)!).toHaveLength(onePeopleParameters);
   expect(one[0]!.people).toEqual([{ id: f.bob, name: "Bob" }]);
   expect(queries).toHaveLength(count);
-  expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(7);
+  expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(4);
   queries.length = 0;
   for (const row of rows) {
     await service.messageLinks(row.id);
     await service.messagePeople(row.id);
   }
-  expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(600);
+  expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(300);
   expect(
     (
       await checkedPage(

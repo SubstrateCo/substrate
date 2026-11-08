@@ -1,5 +1,5 @@
 import type { DatabaseExecutor } from "../../client";
-import { ensureHumanActor, ensureOwnedAgentActors } from "../../core/actors/provisioning";
+import { ensureOwnedAgentActors } from "../../core/actors/provisioning";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
@@ -27,6 +27,106 @@ export interface CreateConversationInput {
   emails?: string[];
 }
 
+async function lockConversation(tx: DatabaseExecutor, scope: MessagingIdentity, id: string) {
+  const [conversation] = await tx
+    .select()
+    .from(conversations)
+    .where(and(eq(conversations.id, id), visibleConversations(tx, scope)))
+    .for("update");
+  if (!conversation) throw new AccessDeniedError();
+  return conversation;
+}
+
+async function joinConversation(
+  tx: DatabaseExecutor,
+  scope: MessagingIdentity,
+  conversationId: string,
+) {
+  if (scope.actorEntityId) {
+    await tx
+      .insert(agentParticipants)
+      .values({
+        conversationId,
+        organizationId: scope.organizationId,
+        actorEntityId: scope.actorEntityId,
+      })
+      .onConflictDoNothing();
+    return;
+  }
+  await tx
+    .insert(participants)
+    .values({ conversationId, userId: scope.userId, organizationId: scope.organizationId })
+    .onConflictDoNothing();
+}
+
+// Trusted callers pass the context and author already resolved by workspaceContext.
+export async function sendMessageAs(
+  ctx: RepositoryContext,
+  scope: MessagingIdentity,
+  author: { actor: { entityId: string; type: "human" | "agent" }; authorName: string },
+  message: { conversationId: string; body: string; threadId?: string; requestId?: string },
+) {
+  const { db: tx } = ctx;
+  const { actor, authorName } = author;
+  const { conversationId, body, threadId, requestId } = message;
+  const conversation = await lockConversation(tx, scope, conversationId);
+  if (!body.trim() || body.length > 20000)
+    throw new ValidationError("Message must contain 1 to 20000 characters.");
+  if (requestId) {
+    const [existing] = await tx
+      .select()
+      .from(messages)
+      .where(
+        and(eq(messages.authorActorEntityId, actor.entityId), eq(messages.requestId, requestId)),
+      );
+    if (existing) {
+      if (
+        existing.conversationId !== conversationId ||
+        existing.body !== body ||
+        existing.threadId !== (threadId ?? null)
+      )
+        throw new ConflictError("This request was already used for another message.");
+      const reactions: { emoji: string; count: number; reacted: boolean }[] = [];
+      return { ...existing, authorName, authorType: actor.type, reactions, replyCount: 0 };
+    }
+  }
+  if (threadId) {
+    const [root] = await tx
+      .select()
+      .from(messages)
+      .where(
+        and(
+          eq(messages.conversationId, conversationId),
+          eq(messages.id, threadId),
+          isNull(messages.threadId),
+        ),
+      );
+    if (!root) throw new ValidationError("Thread must be a root message in this conversation.");
+  }
+  await joinConversation(tx, scope, conversationId);
+  const [created] = await tx
+    .insert(messages)
+    .values({
+      conversationId,
+      authorId: scope.actorEntityId ? null : scope.userId,
+      authorActorEntityId: actor.entityId,
+      authorOrganizationId: scope.organizationId,
+      body,
+      threadId,
+      requestId,
+    })
+    .returning();
+  await applyMessageEffects(ctx, scope, created!, conversation.organizationId);
+  const initialReactions: { emoji: string; count: number; reacted: boolean }[] = [];
+  return {
+    ...created!,
+    authorName,
+    authorType: actor.type,
+    replyCount: 0,
+    reactions: initialReactions,
+  };
+}
+
 // Trusted server facade: identity and active organization must come from the session.
 export function createMessagingService(
   db: DatabaseExecutor,
@@ -39,62 +139,11 @@ export function createMessagingService(
   });
 
   async function authenticate(tx: DatabaseExecutor) {
-    if (scope.actorEntityId) {
-      await workspaceContext(tx, scope);
-      const [actor] = await tx
-        .select()
-        .from(actors)
-        .where(eq(actors.entityId, scope.actorEntityId));
-      if (!actor) throw new AccessDeniedError();
-      return { actor, authorName: actor.name };
-    }
-    const [identity] = await tx
-      .select()
-      .from(user)
-      .innerJoin(member, eq(member.userId, user.id))
-      .where(
-        and(
-          eq(user.id, scope.userId),
-          eq(user.emailVerified, true),
-          eq(member.organizationId, scope.organizationId),
-        ),
-      );
-    if (!identity) throw new AccessDeniedError();
-    const actor = await ensureHumanActor(tx, { ...scope, name: identity.user.name });
-    await new RepositoryContext(tx, {
-      organizationId: scope.organizationId,
-      actorEntityId: actor.entityId,
-    }).requireActiveActor();
-    return { actor, authorName: identity.user.name };
+    const { context, actor, userName } = await workspaceContext(tx, scope);
+    return { context, actor, authorName: actor.type === "agent" ? actor.name : userName };
   }
 
-  async function requireConversation(tx: DatabaseExecutor, id: string) {
-    const [conversation] = await tx
-      .select()
-      .from(conversations)
-      .where(and(eq(conversations.id, id), visibleConversations(tx, scope)))
-      .for("update");
-    if (!conversation) throw new AccessDeniedError();
-    return conversation;
-  }
-
-  async function join(tx: DatabaseExecutor, conversationId: string) {
-    if (scope.actorEntityId) {
-      await tx
-        .insert(agentParticipants)
-        .values({
-          conversationId,
-          organizationId: scope.organizationId,
-          actorEntityId: scope.actorEntityId,
-        })
-        .onConflictDoNothing();
-      return;
-    }
-    await tx
-      .insert(participants)
-      .values({ conversationId, ...scope })
-      .onConflictDoNothing();
-  }
+  const requireConversation = (tx: DatabaseExecutor, id: string) => lockConversation(tx, scope, id);
 
   function normalizeEmail(email: string) {
     const normalized = email.trim().toLowerCase();
@@ -405,75 +454,8 @@ export function createMessagingService(
     },
     async sendMessage(conversationId: string, body: string, threadId?: string, requestId?: string) {
       return db.transaction(async (tx) => {
-        const { actor, authorName } = await authenticate(tx);
-        const conversation = await requireConversation(tx, conversationId);
-        if (!body.trim() || body.length > 20000)
-          throw new ValidationError("Message must contain 1 to 20000 characters.");
-        if (requestId) {
-          const [existing] = await tx
-            .select()
-            .from(messages)
-            .where(
-              and(
-                eq(messages.authorActorEntityId, actor.entityId),
-                eq(messages.requestId, requestId),
-              ),
-            );
-          if (existing) {
-            if (
-              existing.conversationId !== conversationId ||
-              existing.body !== body ||
-              existing.threadId !== (threadId ?? null)
-            )
-              throw new ConflictError("This request was already used for another message.");
-            const reactions: { emoji: string; count: number; reacted: boolean }[] = [];
-            return { ...existing, authorName, authorType: actor.type, reactions, replyCount: 0 };
-          }
-        }
-        if (threadId) {
-          const [root] = await tx
-            .select()
-            .from(messages)
-            .where(
-              and(
-                eq(messages.conversationId, conversationId),
-                eq(messages.id, threadId),
-                isNull(messages.threadId),
-              ),
-            );
-          if (!root)
-            throw new ValidationError("Thread must be a root message in this conversation.");
-        }
-        await join(tx, conversationId);
-        const [message] = await tx
-          .insert(messages)
-          .values({
-            conversationId,
-            authorId: scope.actorEntityId ? null : scope.userId,
-            authorActorEntityId: actor.entityId,
-            authorOrganizationId: scope.organizationId,
-            body,
-            threadId,
-            requestId,
-          })
-          .returning();
-        await applyMessageEffects(
-          new RepositoryContext(tx, {
-            organizationId: scope.organizationId,
-            actorEntityId: actor.entityId,
-          }),
-          scope,
-          message!,
-          conversation.organizationId,
-        );
-        const initialReactions: { emoji: string; count: number; reacted: boolean }[] = [];
-        return {
-          ...message!,
-          authorName,
-          authorType: actor.type,
-          replyCount: 0,
-          reactions: initialReactions,
-        };
+        const { context, ...author } = await authenticate(tx);
+        return sendMessageAs(context, scope, author, { conversationId, body, threadId, requestId });
       });
     },
     async toggleReaction(messageId: string, emoji: string) {
@@ -485,7 +467,7 @@ export function createMessagingService(
         const [message] = await tx.select().from(messages).where(eq(messages.id, messageId));
         if (!message) throw new AccessDeniedError();
         await requireConversation(tx, message.conversationId);
-        await join(tx, message.conversationId);
+        await joinConversation(tx, scope, message.conversationId);
         const key = and(
           eq(reactions.messageId, messageId),
           eq(reactions.userId, scope.userId),

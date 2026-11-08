@@ -46,7 +46,7 @@ export async function contextSearch(
     relatedToEntityId?: string;
   },
 ) {
-  const ctx = await workspaceContext(db, scope);
+  const { context: ctx } = await workspaceContext(db, scope);
   const limit = pageSize(input.limit ?? 30);
   if (
     input.query.length > 200 ||
@@ -76,11 +76,16 @@ export async function contextSearch(
   let anchorConversationId: string | undefined;
   const anchorId = input.relatedToEntityId;
   if (anchorId) {
-    const [entity] = await db.select().from(entities).where(eq(entities.entityId, anchorId));
+    const [entity] = await db
+      .select({ entityType: entities.entityType })
+      .from(entities)
+      .where(
+        and(eq(entities.organizationId, scope.organizationId), eq(entities.entityId, anchorId)),
+      );
     if (entity) {
-      await ctx.requireAccess(anchorId, "view");
       if (entity.entityType === "task" || entity.entityType === "project")
         await requireWork(ctx, anchorId);
+      else await ctx.requireAccess(anchorId, "view");
       anchorKind = "entity";
     } else {
       const [conversation] = await db

@@ -3,6 +3,7 @@ import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
 import { member } from "../../core/organizations/schema";
 import { visibilityCte } from "../../core/permissions/visibility";
+import type { RepositoryContext } from "../../core/repository-context";
 import { ConflictError, AccessDeniedError } from "../../errors";
 import { recordTaskActivity } from "../activity/events";
 import { requireMessage, visibleConversations, type MessagingIdentity } from "../messaging/access";
@@ -18,12 +19,100 @@ import { messageEntityReferences, sourceTaskRequests } from "./schema";
 import { contextSearch } from "./search";
 import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 
+interface ReferenceMessage {
+  messageId: string;
+  conversationId?: string;
+}
+interface ReferenceTarget {
+  id: string;
+  type?: "task" | "project";
+}
+
+async function referenceEndpoints(
+  ctx: RepositoryContext,
+  scope: MessagingIdentity,
+  source: ReferenceMessage,
+  target: ReferenceTarget,
+  level: "view" | "edit",
+) {
+  const { message, conversation } = await requireMessage(ctx.db, scope, source.messageId);
+  if (source.conversationId && message.conversationId !== source.conversationId)
+    throw new AccessDeniedError();
+  const work = await requireWork(ctx, target.id, level);
+  if (target.type && work.entityType !== target.type) throw new AccessDeniedError();
+  return { conversation, work };
+}
+
+// Callers resolve the workspace context; this performs the message and work checks once.
+export async function attachReference(
+  ctx: RepositoryContext,
+  scope: MessagingIdentity,
+  source: ReferenceMessage,
+  target: ReferenceTarget,
+) {
+  const { conversation, work } = await referenceEndpoints(ctx, scope, source, target, "edit");
+  if (conversation.organizationId !== scope.organizationId) throw new AccessDeniedError();
+  const rows = await ctx.db
+    .insert(messageEntityReferences)
+    .values({
+      organizationId: scope.organizationId,
+      conversationId: conversation.id,
+      messageId: source.messageId,
+      entityId: target.id,
+      entityType: work.entityType,
+      purpose: "association",
+      createdByActorEntityId: ctx.scope.actorEntityId,
+    })
+    .onConflictDoNothing()
+    .returning();
+  if (rows.length && work.entityType === "task")
+    await recordTaskActivity(ctx, target.id, "Discussion linked", source.messageId);
+  return rows.length > 0;
+}
+
+export async function detachReference(
+  ctx: RepositoryContext,
+  scope: MessagingIdentity,
+  source: ReferenceMessage,
+  target: ReferenceTarget,
+) {
+  const { db } = ctx;
+  const { work } = await referenceEndpoints(ctx, scope, source, target, "view");
+  const [reference] = await db
+    .select()
+    .from(messageEntityReferences)
+    .where(
+      and(
+        eq(messageEntityReferences.messageId, source.messageId),
+        eq(messageEntityReferences.entityId, target.id),
+        eq(messageEntityReferences.organizationId, scope.organizationId),
+        eq(messageEntityReferences.purpose, "association"),
+      ),
+    );
+  if (!reference) return false;
+  if (reference.createdByActorEntityId !== ctx.scope.actorEntityId && work.level !== "owner")
+    throw new AccessDeniedError();
+  const rows = await db
+    .delete(messageEntityReferences)
+    .where(
+      and(
+        eq(messageEntityReferences.messageId, source.messageId),
+        eq(messageEntityReferences.entityId, target.id),
+        eq(messageEntityReferences.purpose, "association"),
+      ),
+    )
+    .returning();
+  if (rows.length && work.entityType === "task")
+    await recordTaskActivity(ctx, target.id, "Discussion unlinked", source.messageId);
+  return rows.length > 0;
+}
+
 export function createContextService(db: DatabaseExecutor, scope: MessagingIdentity) {
   return {
     messagePage: (messageIds: string[]) => messagePage(db, scope, messageIds),
     async createTaskFromMessage(input: CreateTaskInput & { requestId: string; messageId: string }) {
       return db.transaction(async (tx) => {
-        const ctx = await workspaceContext(tx, scope);
+        const { context: ctx } = await workspaceContext(tx, scope);
         const { conversation } = await requireMessage(tx, scope, input.messageId);
         if (conversation.organizationId !== scope.organizationId) throw new AccessDeniedError();
         await ctx.requireAccess(input.projectEntityId, "edit", true);
@@ -77,64 +166,18 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
     },
     async attach(messageId: string, entityId: string) {
       return db.transaction(async (tx) => {
-        const ctx = await workspaceContext(tx, scope);
-        const { conversation } = await requireMessage(tx, scope, messageId);
-        if (conversation.organizationId !== scope.organizationId) throw new AccessDeniedError();
-        const work = await requireWork(ctx, entityId, "edit");
-        const rows = await tx
-          .insert(messageEntityReferences)
-          .values({
-            organizationId: scope.organizationId,
-            conversationId: conversation.id,
-            messageId,
-            entityId,
-            entityType: work.entityType,
-            purpose: "association",
-            createdByActorEntityId: ctx.scope.actorEntityId,
-          })
-          .onConflictDoNothing()
-          .returning();
-        if (rows.length && work.entityType === "task")
-          await recordTaskActivity(ctx, entityId, "Discussion linked", messageId);
-        return rows.length > 0;
+        const { context: ctx } = await workspaceContext(tx, scope);
+        return attachReference(ctx, scope, { messageId }, { id: entityId });
       });
     },
     async detach(messageId: string, entityId: string) {
       return db.transaction(async (tx) => {
-        const ctx = await workspaceContext(tx, scope);
-        await requireMessage(tx, scope, messageId);
-        const work = await requireWork(ctx, entityId);
-        const [reference] = await tx
-          .select()
-          .from(messageEntityReferences)
-          .where(
-            and(
-              eq(messageEntityReferences.messageId, messageId),
-              eq(messageEntityReferences.entityId, entityId),
-              eq(messageEntityReferences.organizationId, scope.organizationId),
-              eq(messageEntityReferences.purpose, "association"),
-            ),
-          );
-        if (!reference) return false;
-        if (reference.createdByActorEntityId !== ctx.scope.actorEntityId)
-          await requireWork(ctx, entityId, "owner");
-        const rows = await tx
-          .delete(messageEntityReferences)
-          .where(
-            and(
-              eq(messageEntityReferences.messageId, messageId),
-              eq(messageEntityReferences.entityId, entityId),
-              eq(messageEntityReferences.purpose, "association"),
-            ),
-          )
-          .returning();
-        if (rows.length && work.entityType === "task")
-          await recordTaskActivity(ctx, entityId, "Discussion unlinked", messageId);
-        return rows.length > 0;
+        const { context: ctx } = await workspaceContext(tx, scope);
+        return detachReference(ctx, scope, { messageId }, { id: entityId });
       });
     },
     async messageLinks(messageId: string) {
-      const ctx = await workspaceContext(db, scope);
+      const { context: ctx } = await workspaceContext(db, scope);
       const { conversation } = await requireMessage(db, scope, messageId);
       if (conversation.organizationId !== scope.organizationId) return [];
       return (await messageWorkLinks(ctx, [messageId])).get(messageId) ?? [];
@@ -145,7 +188,7 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
       return (await messagePeople(db, scope, [message])).get(messageId)!;
     },
     async related(entityId: string) {
-      const ctx = await workspaceContext(db, scope);
+      const { context: ctx } = await workspaceContext(db, scope);
       const work = await requireWork(ctx, entityId);
       const projectTasks =
         work.entityType === "project"
