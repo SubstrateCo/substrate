@@ -56,6 +56,53 @@ test("deleting a channel keeps its linked task and removes the channel for every
   ).toHaveCount(0);
 });
 
+test("members browse public channels in search and join from the list or the channel", async ({
+  actors,
+  client,
+}) => {
+  const create = (name: string) =>
+    post<{ id: string; name: string }>(actors.sender, "messaging/conversations", {
+      kind: "channel",
+      name,
+      private: false,
+    });
+  const [listed, opened] = await Promise.all([
+    create(`browse-${crypto.randomUUID()}`),
+    create(`browse-${crypto.randomUUID()}`),
+  ]);
+  const member = await client(actors.member);
+  await visit(member);
+  const { page } = member;
+  // Public channels the member never joined stay out of the sidebar.
+  await expect(page.getByText(listed.name, { exact: true })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Browse channels", exact: true }).first().click();
+  const search = page.getByRole("region", { name: "Workspace search", exact: true });
+  await expect(search.getByRole("button", { name: "Channels", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(search.getByText("Browse channels", { exact: true })).toBeVisible();
+  await page.getByLabel("Search workspace", { exact: true }).fill(listed.name);
+  await expect(search.getByText("1 member", { exact: true })).toBeVisible();
+  await search.getByRole("button", { name: `Join ${listed.name}`, exact: true }).click();
+  await expect(search.getByText("Joined", { exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: listed.name, exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Browse channels", exact: true }).first().click();
+  await page.getByLabel("Search workspace", { exact: true }).fill(opened.name);
+  await search.getByRole("link", { name: `channel · ${opened.name}`, exact: true }).click();
+  await expect.poll(() => new URL(page.url()).searchParams.get("conversationId")).toBe(opened.id);
+  const notice = page.getByText(
+    "You're not in this channel. Join or post to add it to your sidebar.",
+  );
+  await expect(notice).toBeVisible();
+  await page.getByRole("button", { name: "Join channel", exact: true }).click();
+  await expect(notice).toHaveCount(0);
+  await expect(page.getByRole("button", { name: opened.name, exact: true })).toBeVisible();
+});
+
 test("a member leaves a private channel and loses access to it", async ({ actors, client }) => {
   const channel = await conversation(actors.sender, [actors.member.email]);
   const member = await client(actors.member);

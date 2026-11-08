@@ -5,7 +5,8 @@ import type { SearchResultItem } from "./search-result";
 import { SearchResults } from "@/components/context/search/workspace-search/search-results";
 import { SearchShortcuts } from "@/components/context/search/workspace-search/search-shortcuts";
 
-export type SearchKind = "all" | "task" | "project" | "message" | "conversation";
+// "channel" lists channels only, with membership. DMs and group messages appear under "all".
+export type SearchKind = "all" | "task" | "project" | "message" | "channel";
 
 export function WorkspaceSearch({
   query,
@@ -16,9 +17,11 @@ export function WorkspaceSearch({
   error,
   hasMore,
   loadingMore,
+  joiningId,
   onKindChange,
   onRelated,
   onClearRelated,
+  onJoin,
   onMore,
   onRetry,
   onFocusInput,
@@ -31,9 +34,11 @@ export function WorkspaceSearch({
   error?: Error | null;
   hasMore: boolean;
   loadingMore: boolean;
+  joiningId?: string;
   onKindChange: (kind: SearchKind) => void;
   onRelated: (id: string) => void;
   onClearRelated: () => void;
+  onJoin: (conversationId: string) => void;
   onMore: () => void;
   onRetry: () => void;
   onFocusInput: () => void;
@@ -74,7 +79,7 @@ export function WorkspaceSearch({
         aria-label="Search type"
         className="flex shrink-0 flex-wrap gap-1 border-b px-2 py-2"
       >
-        {(["all", "task", "project", "message", "conversation"] as const).map((type) => (
+        {(["all", "task", "project", "message", "channel"] as const).map((type) => (
           <Button
             key={type}
             size="xs"
@@ -88,7 +93,7 @@ export function WorkspaceSearch({
                 task: "Tasks",
                 project: "Projects",
                 message: "Messages",
-                conversation: "Channels",
+                channel: "Channels",
               }[type]
             }
           </Button>
@@ -96,6 +101,9 @@ export function WorkspaceSearch({
       </div>
       <SearchResults
         query={query}
+        browsing={kind === "channel" && !query.trim() && !related}
+        joiningId={joiningId}
+        onJoin={onJoin}
         results={results}
         loading={loading}
         error={error}

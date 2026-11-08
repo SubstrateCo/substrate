@@ -9,19 +9,24 @@ import {
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { messageHref, workHref } from "@/lib/navigation/record-links";
 import { searchPagesOptions } from "@/queries/context/search";
+import { useConversationManagement } from "@/queries/messaging/management";
+import { toast } from "sonner";
 
 export function WorkspaceSearch({
   organizationId,
+  initialKind = "all",
   query,
   onQueryChange,
   onFocusInput,
 }: {
   organizationId: string;
+  initialKind?: SearchKind;
   query: string;
   onQueryChange: (query: string) => void;
   onFocusInput: () => void;
 }) {
-  const [kind, setKind] = useState<SearchKind>("all");
+  const [kind, setKind] = useState<SearchKind>(initialKind);
+  const { join } = useConversationManagement(organizationId);
   const [relatedToEntityId, setRelatedToEntityId] = useState<string>();
   const search = useSearchDebounce(
     query,
@@ -66,6 +71,14 @@ export function WorkspaceSearch({
       onClearRelated={() => {
         setRelatedToEntityId(undefined);
       }}
+      joiningId={join.isPending ? join.variables : undefined}
+      onJoin={(conversationId) =>
+        join.mutate(conversationId, {
+          // The joined row and the sidebar update together.
+          onSuccess: () => void results.refetch(),
+          onError: (error) => toast.error(error.message),
+        })
+      }
       onMore={() => {
         if (!search.pending && !results.isFetching) void results.fetchNextPage();
       }}

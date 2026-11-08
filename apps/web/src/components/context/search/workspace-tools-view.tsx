@@ -6,8 +6,11 @@ import { Kbd, KbdGroup } from "../../ui/kbd";
 export function WorkspaceTools({
   renderSearch,
   locationKey,
+  openRequest,
 }: {
   locationKey: string;
+  /** A new value opens the panel with an empty query and focuses the input. */
+  openRequest?: number;
   renderSearch: (
     query: string,
     onQueryChange: (query: string) => void,
@@ -23,6 +26,13 @@ export function WorkspaceTools({
   );
   const [query, setQuery] = useState("");
   const [focusRequest, setFocusRequest] = useState(0);
+  const [handledRequest, setHandledRequest] = useState(openRequest);
+  if (openRequest !== handledRequest) {
+    setHandledRequest(openRequest);
+    setPanel({ locationKey, open: true });
+    setQuery("");
+    setFocusRequest((value) => value + 1);
+  }
   const input = useRef<HTMLInputElement>(null);
   const container = useRef<HTMLDivElement>(null);
   const desktop = !!window.startupOSWindow;

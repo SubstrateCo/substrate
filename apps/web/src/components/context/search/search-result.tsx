@@ -6,7 +6,16 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { plainReferenceText } from "@/components/messaging/references/reference-token";
 import { ArrowUpLeft, CircleCheck, FolderKanban, Hash, MessageSquare } from "lucide-react";
 
-export type SearchResultItem = { id: string; kind: string; title: string; href: string };
+export type SearchResultItem = {
+  id: string;
+  kind: string;
+  title: string;
+  href: string;
+  // Channel results only.
+  private?: boolean;
+  membership?: "joined" | "left" | "none";
+  memberCount?: number;
+};
 
 export function SearchResult({
   item,

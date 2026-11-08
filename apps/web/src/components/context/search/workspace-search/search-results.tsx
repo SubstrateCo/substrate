@@ -1,3 +1,4 @@
+import { ChannelSearchResult } from "@/components/context/search/channel-search-result";
 import { SearchResult, type SearchResultItem } from "@/components/context/search/search-result";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
@@ -7,6 +8,9 @@ import { CommandEmpty, CommandGroup, CommandList } from "@/components/ui/command
 
 export function SearchResults({
   query,
+  browsing,
+  joiningId,
+  onJoin,
   results,
   loading,
   error,
@@ -17,6 +21,9 @@ export function SearchResults({
   onMore,
 }: {
   query: string;
+  browsing: boolean;
+  joiningId?: string;
+  onJoin: (conversationId: string) => void;
   results: SearchResultItem[];
   loading: boolean;
   error?: Error | null;
@@ -27,6 +34,8 @@ export function SearchResults({
   onMore: () => void;
 }) {
   const visible = isAccessFailure(error) ? [] : results;
+  let heading = query ? "Results" : "Suggested for you";
+  if (browsing) heading = "Browse channels";
   return (
     <CommandList label="Search results" className="min-h-0">
       {loading && !visible.length && (
@@ -40,13 +49,24 @@ export function SearchResults({
         </div>
       )}
       {!loading && !error && (
-        <CommandEmpty>No accessible results found. Try another search.</CommandEmpty>
+        <CommandEmpty>
+          {browsing ? "No channels yet." : "No accessible results found. Try another search."}
+        </CommandEmpty>
       )}
       {visible.length > 0 && (
-        <CommandGroup heading={query ? "Results" : "Suggested for you"}>
-          {visible.map((item) => (
-            <SearchResult key={item.id} item={item} onRelated={() => onRelated(item.id)} />
-          ))}
+        <CommandGroup heading={heading}>
+          {visible.map((item) =>
+            item.kind === "channel" ? (
+              <ChannelSearchResult
+                key={item.id}
+                item={item}
+                joining={joiningId === item.id}
+                onJoin={() => onJoin(item.id)}
+              />
+            ) : (
+              <SearchResult key={item.id} item={item} onRelated={() => onRelated(item.id)} />
+            ),
+          )}
         </CommandGroup>
       )}
       {!isAccessFailure(error) && visible.length > 0 && (

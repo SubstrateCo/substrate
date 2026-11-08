@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 
+import { useWorkspaceSearch } from "@/components/context/search/workspace-search-context";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,7 +13,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Conversation } from "@/lib/messaging/conversations";
-import { AtSign, Plus, Users } from "lucide-react";
+import { AtSign, Compass, Plus, Users } from "lucide-react";
 
 export type DirectMessagePerson = {
   id: string;
@@ -32,23 +33,39 @@ export function ConversationCreateMenu({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const { openSearch } = useWorkspaceSearch();
   const creatingFromMenu = useRef<{ kind: Conversation["kind"]; recipient?: string } | null>(null);
   if (section === "channel") {
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            size="icon-xs"
-            variant="ghost"
-            aria-label="Create channel"
-            data-create-conversation="sidebar-channel"
-            onClick={() => onCreate("channel")}
-          >
-            <Plus />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Create channel</TooltipContent>
-      </Tooltip>
+      <span className="flex items-center">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="icon-xs"
+              variant="ghost"
+              aria-label="Browse channels"
+              onClick={() => openSearch("channel")}
+            >
+              <Compass />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Browse channels</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="icon-xs"
+              variant="ghost"
+              aria-label="Create channel"
+              data-create-conversation="sidebar-channel"
+              onClick={() => onCreate("channel")}
+            >
+              <Plus />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Create channel</TooltipContent>
+        </Tooltip>
+      </span>
     );
   }
   const search = query.trim().toLowerCase();
