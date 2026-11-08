@@ -55,10 +55,10 @@ export function TaskList({
         if (!rows.length) return null;
         return (
           <div key={status} className="overflow-hidden rounded-lg border bg-card">
-            <div className="flex items-center justify-between gap-2 border-b bg-muted px-3 py-2">
+            <div className="flex items-center justify-between gap-2 border-b bg-muted py-2 pr-3 pl-1">
               <h2 className="min-w-0 flex-1 text-xs font-semibold tracking-wide wrap-anywhere uppercase">
                 <Button
-                  variant="sidebar"
+                  variant="disclosure"
                   size="xs"
                   className="w-full justify-start"
                   aria-label={taskStatusLabels[status]}
@@ -68,11 +68,6 @@ export function TaskList({
                     setCollapsed((current) => ({ ...current, [status]: !current[status] }))
                   }
                 >
-                  {collapsed[status] ? (
-                    <ChevronRight aria-hidden="true" />
-                  ) : (
-                    <ChevronDown aria-hidden="true" />
-                  )}
                   <TaskStatusIcon status={status} />
                   <span className="font-semibold tracking-wide uppercase">
                     {taskStatusLabels[status]}
@@ -80,6 +75,11 @@ export function TaskList({
                   <span className="rounded bg-muted px-1.5 py-0.5 font-normal text-muted-foreground tabular-nums">
                     {rows.length}
                   </span>
+                  {collapsed[status] ? (
+                    <ChevronRight aria-hidden="true" />
+                  ) : (
+                    <ChevronDown aria-hidden="true" />
+                  )}
                 </Button>
               </h2>
               {onCreate && (

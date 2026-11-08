@@ -6,6 +6,7 @@ import { Button } from "../../ui/button";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "../../ui/resizable";
 import { ComposerDraftProvider } from "../composer/composer-drafts";
 import { ConversationSidebar } from "../conversations/conversation-sidebar";
+import type { DirectMessagePerson } from "@/components/messaging/conversations/conversation-sidebar/conversation-create-menu";
 import { useConversationCreation } from "@/components/messaging/workspace/messaging-workspace/use-conversation-creation";
 import { WorkspaceEmpty } from "@/components/messaging/workspace/messaging-workspace/workspace-empty";
 import type { Conversation } from "@/lib/messaging/conversations";
@@ -17,6 +18,7 @@ export function MessagingWorkspace({
   sidebarOpen,
   onSidebarOpenChange,
   onSelect,
+  people,
   renderCreate,
   initialCreating,
   loading = false,
@@ -30,9 +32,10 @@ export function MessagingWorkspace({
   sidebarOpen: boolean;
   onSidebarOpenChange: (open: boolean) => void;
   onSelect: (id: string) => void;
+  people?: DirectMessagePerson[];
   renderCreate: (
     kind: Conversation["kind"],
-    actions: { onCancel: () => void; onComplete: () => void },
+    actions: { onCancel: () => void; onComplete: () => void; recipient?: string },
   ) => ReactNode;
   initialCreating?: Conversation["kind"];
   loading?: boolean;
@@ -41,11 +44,8 @@ export function MessagingWorkspace({
   onRetry: () => void;
   children?: ReactNode;
 }) {
-  const { creating, setCreating, container, beginCreate, cancelCreate } = useConversationCreation(
-    initialCreating,
-    sidebarOpen,
-    onSidebarOpenChange,
-  );
+  const { creating, recipient, setCreating, container, beginCreate, cancelCreate } =
+    useConversationCreation(initialCreating, sidebarOpen, onSidebarOpenChange);
   const hasContent = !!creating || Children.toArray(children).length > 0;
   const blocked = !!error && (!hasLoaded || isAccessFailure(error));
   return (
@@ -81,11 +81,12 @@ export function MessagingWorkspace({
               onRetry={onRetry}
               conversations={conversations}
               selectedId={creating ? undefined : selectedId}
+              people={people}
               onSelect={(id) => {
                 setCreating(undefined);
                 onSelect(id);
               }}
-              onCreate={(kind) => beginCreate(kind, "sidebar")}
+              onCreate={(kind, nextRecipient) => beginCreate(kind, "sidebar", nextRecipient)}
             />
           </ResizablePanel>
           <ResizableHandle aria-label="Resize conversations sidebar" className="max-md:hidden" />
@@ -106,6 +107,7 @@ export function MessagingWorkspace({
                   ? renderCreate(creating, {
                       onCancel: cancelCreate,
                       onComplete: () => setCreating(undefined),
+                      recipient,
                     })
                   : children}
               </>

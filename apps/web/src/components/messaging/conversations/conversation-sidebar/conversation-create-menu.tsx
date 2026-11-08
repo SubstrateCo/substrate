@@ -1,76 +1,173 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Command,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Conversation } from "@/lib/messaging/conversations";
-import { Plus } from "lucide-react";
+import { AtSign, Plus, Users } from "lucide-react";
+
+export type DirectMessagePerson = {
+  id: string;
+  name: string;
+  email: string;
+  image?: string | null;
+};
 
 export function ConversationCreateMenu({
   section,
+  people = [],
   onCreate,
 }: {
   section: "channel" | "dm";
-  onCreate: (kind: Conversation["kind"]) => void;
+  people?: DirectMessagePerson[];
+  onCreate: (kind: Conversation["kind"], recipient?: string) => void;
 }) {
-  const creatingFromMenu = useRef<Conversation["kind"] | null>(null);
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const creatingFromMenu = useRef<{ kind: Conversation["kind"]; recipient?: string } | null>(null);
   if (section === "channel") {
     return (
-      <Button
-        size="icon-xs"
-        variant="ghost"
-        aria-label="Create channel"
-        data-create-conversation="sidebar-channel"
-        title="Create channel"
-        onClick={() => onCreate("channel")}
-      >
-        <Plus />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            size="icon-xs"
+            variant="ghost"
+            aria-label="Create channel"
+            data-create-conversation="sidebar-channel"
+            onClick={() => onCreate("channel")}
+          >
+            <Plus />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Create channel</TooltipContent>
+      </Tooltip>
     );
   }
+  const search = query.trim().toLowerCase();
+  const matches = people.filter(
+    (person) =>
+      !search ||
+      person.name.toLowerCase().includes(search) ||
+      person.email.toLowerCase().includes(search),
+  );
+  const choose = (kind: Conversation["kind"], recipient?: string) => {
+    creatingFromMenu.current = { kind, recipient };
+    setOpen(false);
+  };
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          size="icon-xs"
-          variant="ghost"
-          aria-label="New message"
-          data-create-conversation="sidebar-message"
-          title="New message"
-        >
-          <Plus />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) setQuery("");
+      }}
+    >
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <Button
+              size="icon-xs"
+              variant="ghost"
+              aria-label="New message"
+              data-create-conversation="sidebar-message"
+            >
+              <Plus />
+            </Button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent>New message</TooltipContent>
+      </Tooltip>
+      <PopoverContent
+        align="start"
+        variant="reference"
+        className="w-80"
         onCloseAutoFocus={(event) => {
-          const kind = creatingFromMenu.current;
-          if (kind) {
+          const pending = creatingFromMenu.current;
+          if (pending) {
             event.preventDefault();
             creatingFromMenu.current = null;
-            onCreate(kind);
+            onCreate(pending.kind, pending.recipient);
           }
         }}
       >
-        <DropdownMenuItem
-          onSelect={() => {
-            creatingFromMenu.current = "dm";
-          }}
-        >
-          New direct message
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onSelect={() => {
-            creatingFromMenu.current = "group";
-          }}
-        >
-          New group message
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        <Command shouldFilter={false} loop>
+          <div className="border-b p-2">
+            <CommandInput
+              aria-label="Search people"
+              placeholder="Search people…"
+              value={query}
+              onValueChange={setQuery}
+            />
+          </div>
+          <CommandList aria-label="New message" className="max-h-80">
+            <div className="p-1">
+              <CommandGroup heading="People in this workspace">
+                {matches.map((person) => (
+                  <CommandItem
+                    key={person.id}
+                    value={`person-${person.id}`}
+                    onSelect={() => choose("dm", person.email)}
+                  >
+                    <Avatar aria-hidden="true" variant="user">
+                      {person.image && <AvatarImage src={person.image} alt="" />}
+                      <AvatarFallback>
+                        {(person.name || "?").slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">{person.name}</span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {person.email}
+                      </span>
+                    </span>
+                  </CommandItem>
+                ))}
+                {!matches.length && (
+                  <p className="px-3 py-4 text-center text-sm text-muted-foreground">
+                    {search
+                      ? "No one in this workspace matches. Message them by email below."
+                      : "No other people in this workspace yet."}
+                  </p>
+                )}
+              </CommandGroup>
+              <div className="border-t">
+                <CommandGroup heading="More options">
+                  <CommandItem value="new-direct-message" onSelect={() => choose("dm")}>
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                      <AtSign aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">New direct message</span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        Message anyone by email
+                      </span>
+                    </span>
+                  </CommandItem>
+                  <CommandItem value="new-group-message" onSelect={() => choose("group")}>
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                      <Users aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">New group message</span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        Start a conversation with several people
+                      </span>
+                    </span>
+                  </CommandItem>
+                </CommandGroup>
+              </div>
+            </div>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }

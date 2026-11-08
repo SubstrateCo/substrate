@@ -14,7 +14,7 @@ export function ThemeSwitcher() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" aria-label="Color theme" title="Color theme">
+        <Button variant="ghost" aria-label="Color theme">
           <Sun className="size-4 dark:hidden" />
           <Moon className="hidden size-4 dark:block" />
           Appearance

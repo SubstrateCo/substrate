@@ -8,10 +8,23 @@ import { CreateConversationForm } from "../conversations/create-conversation-for
 import { isAccessFailure } from "@/components/feedback/request-failure";
 import { ConversationUnavailable } from "@/components/messaging/conversations/conversation-unavailable";
 import { MessagingWorkspace as MessagingWorkspaceView } from "@/components/messaging/workspace/messaging-workspace-view";
+import { sessionQueryOptions } from "@/queries/auth/session";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
+import { organizationQueryOptions } from "@/queries/organizations/options";
 
 export function MessagingWorkspace({ organizationId }: { organizationId: string }) {
   const conversations = useQuery(conversationsQueryOptions(organizationId));
+  const session = useQuery({ ...sessionQueryOptions(), staleTime: Infinity });
+  const organization = useQuery(organizationQueryOptions(organizationId));
+  const people = (organization.data?.members ?? [])
+    .filter((member) => member.userId !== session.data?.user.id)
+    .map((member) => ({
+      id: member.userId,
+      name: member.user.name,
+      email: member.user.email,
+      image: member.user.image,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
   const search = useSearch({ strict: false });
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -36,11 +49,13 @@ export function MessagingWorkspace({ organizationId }: { organizationId: string 
       hasLoaded={conversations.data !== undefined}
       error={conversations.error}
       onRetry={() => void conversations.refetch()}
-      renderCreate={(kind, { onCancel, onComplete }) => (
+      people={people}
+      renderCreate={(kind, { onCancel, onComplete, recipient }) => (
         <CreateConversationForm
-          key={kind}
+          key={`${kind}:${recipient ?? ""}`}
           organizationId={organizationId}
           kind={kind}
+          initialEmails={recipient}
           onCancel={onCancel}
           onCreated={(id) => {
             void navigate({

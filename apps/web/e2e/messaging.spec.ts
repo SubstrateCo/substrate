@@ -39,7 +39,7 @@ for (const kind of ["dm", "channel"] as const) {
       await sender.page.getByLabel("Make this channel private").check();
     } else {
       await sender.page.getByRole("button", { name: "New message", exact: true }).click();
-      await sender.page.getByRole("menuitem", { name: "New direct message", exact: true }).click();
+      await sender.page.getByRole("option", { name: /^New direct message/ }).click();
       await sender.page.getByLabel("To", { exact: true }).fill(actors.partner.email);
     }
     const created = sender.page.waitForResponse(

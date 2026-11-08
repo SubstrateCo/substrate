@@ -3,6 +3,7 @@ import { createRootRouteWithContext, Link, Outlet } from "@tanstack/react-router
 
 import { NotFound } from "@/components/feedback/not-found";
 import { RouteErrorScreen } from "@/components/feedback/route-error-screen";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: Root,
@@ -11,5 +12,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function Root() {
-  return <Outlet />;
+  return (
+    <TooltipProvider delayDuration={350}>
+      <Outlet />
+    </TooltipProvider>
+  );
 }

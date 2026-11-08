@@ -6,6 +6,7 @@ import { LoadingState } from "../../feedback/loading-state";
 import { PendingButton } from "../../feedback/pending-button";
 import { isAccessFailure } from "../../feedback/request-failure";
 import { Button } from "../../ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { NotificationItem, type Notification } from "./notification-item";
 import { CheckCheck, X } from "lucide-react";
 
@@ -43,15 +44,19 @@ export function NotificationList({
         <div className="mx-auto flex h-12 max-w-3xl items-center justify-between gap-3 px-4">
           <h1 className="text-sm font-semibold">Notifications</h1>
           {onClose && (
-            <Button
-              variant="outline"
-              size="icon-sm"
-              aria-label="Close notifications"
-              title="Close notifications"
-              onClick={onClose}
-            >
-              <X aria-hidden="true" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  aria-label="Close notifications"
+                  onClick={onClose}
+                >
+                  <X aria-hidden="true" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Close notifications</TooltipContent>
+            </Tooltip>
           )}
         </div>
       </div>

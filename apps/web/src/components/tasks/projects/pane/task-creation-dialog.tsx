@@ -26,7 +26,6 @@ export function TaskCreationDialog({
     >
       <DialogContent
         ref={content}
-        showCloseButton={false}
         onEscapeKeyDown={(event) => {
           if (pending()) event.preventDefault();
         }}
@@ -39,7 +38,7 @@ export function TaskCreationDialog({
         }}
       >
         <DialogTitle className="sr-only">{subtask ? "New subtask" : "New task"}</DialogTitle>
-        <DialogDescription variant="context" className="min-w-0" title={projectName}>
+        <DialogDescription variant="context" className="mr-8 min-w-0" title={projectName}>
           {projectName}
         </DialogDescription>
         {children}

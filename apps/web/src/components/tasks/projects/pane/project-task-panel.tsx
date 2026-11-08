@@ -56,7 +56,7 @@ export function ProjectTaskPanel({
           ref={inspectorRef}
           tabIndex={-1}
           aria-label="Selected task panel"
-          className="order-first min-h-0 min-w-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring md:order-0 md:h-full md:overflow-y-auto"
+          className="order-first min-h-0 min-w-0 rounded-xl outline-none md:order-0 md:h-full md:overflow-y-auto"
         >
           {selected &&
             renderers.detail(

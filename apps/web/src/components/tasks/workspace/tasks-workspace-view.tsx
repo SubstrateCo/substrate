@@ -12,6 +12,7 @@ import {
 } from "../../ui/empty";
 import type { Project } from "../types";
 import { ProjectSidebar } from "./project-sidebar";
+import { PageContent, PageLayout } from "@/components/layout/page-layout";
 import { FolderKanban } from "lucide-react";
 
 export function TasksWorkspace({
@@ -58,10 +59,7 @@ export function TasksWorkspace({
     setCreating(false);
   };
   return (
-    <section
-      aria-label="Tasks application"
-      className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row"
-    >
+    <PageLayout aria-label="Tasks application">
       <ProjectSidebar
         projects={visible}
         selectedId={creating ? undefined : selectedProjectId}
@@ -72,7 +70,7 @@ export function TasksWorkspace({
         createButtonRef={createProjectButton}
         onSelect={selectProject}
       />
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <PageContent>
         {creating && (
           <div className="min-h-0 flex-1 overflow-y-auto">
             {renderCreate(selectProject, () => setCreating(false))}
@@ -101,7 +99,7 @@ export function TasksWorkspace({
             </EmptyContent>
           </Empty>
         )}
-      </div>
-    </section>
+      </PageContent>
+    </PageLayout>
   );
 }

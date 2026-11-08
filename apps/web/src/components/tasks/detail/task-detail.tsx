@@ -44,13 +44,7 @@ export function TaskDetail({
         />
       )}
     >
-      <TaskContext
-        visible={visible}
-        organizationId={organizationId}
-        taskEntityId={task.entityId}
-        projectEntityId={detail.project.entityId}
-        projectName={detail.project.name}
-      />
+      <TaskContext visible={visible} organizationId={organizationId} taskEntityId={task.entityId} />
       <TaskComments
         visible={visible}
         organizationId={organizationId}

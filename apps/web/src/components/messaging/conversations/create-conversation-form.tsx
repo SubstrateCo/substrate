@@ -12,11 +12,13 @@ import { queryKeys } from "@/queries/keys";
 export function CreateConversationForm({
   organizationId,
   kind,
+  initialEmails,
   onCreated,
   onCancel,
 }: {
   organizationId: string;
   kind: Conversation["kind"];
+  initialEmails?: string;
   onCreated: (id: string) => void;
   onCancel: () => void;
 }) {
@@ -40,6 +42,7 @@ export function CreateConversationForm({
   return (
     <CreateConversationFormView
       kind={kind}
+      initialEmails={initialEmails}
       onCancel={onCancel}
       pending={create.isPending}
       error={create.error}

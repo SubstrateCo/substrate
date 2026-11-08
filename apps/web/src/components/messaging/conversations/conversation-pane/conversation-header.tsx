@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Hash, LockKeyhole, UserPlus } from "lucide-react";
 
 export function ConversationHeader({
@@ -20,15 +21,20 @@ export function ConversationHeader({
         <span className="truncate">{title}</span>
       </h1>
       {onToggleMembers && (
-        <Button
-          variant="outline"
-          size="icon-sm"
-          onClick={onToggleMembers}
-          aria-label="Add people"
-          aria-expanded={addingMembers}
-        >
-          <UserPlus />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={onToggleMembers}
+              aria-label="Add people"
+              aria-expanded={addingMembers}
+            >
+              <UserPlus />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Add people</TooltipContent>
+        </Tooltip>
       )}
     </header>
   );

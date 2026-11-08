@@ -8,6 +8,7 @@ export function useConversationCreation(
   onSidebarOpenChange: (open: boolean) => void,
 ) {
   const [creating, setCreating] = useState(initialCreating);
+  const [recipient, setRecipient] = useState<string>();
   const container = useRef<HTMLDivElement>(null);
   const [returnFocus, setReturnFocus] = useState<{
     element: Element | null;
@@ -16,12 +17,17 @@ export function useConversationCreation(
   } | null>(null);
   const [focusRequest, setFocusRequest] = useState(0);
   const appliedFocus = useRef(0);
-  const beginCreate = (kind: Conversation["kind"], source: "sidebar" | "empty") => {
+  const beginCreate = (
+    kind: Conversation["kind"],
+    source: "sidebar" | "empty",
+    nextRecipient?: string,
+  ) => {
     setReturnFocus({
       element: document.activeElement,
       fallback: `${source}-${source === "sidebar" && kind !== "channel" ? "message" : kind}`,
       sidebarOpen,
     });
+    setRecipient(nextRecipient);
     setCreating(kind);
     onSidebarOpenChange(false);
   };
@@ -47,5 +53,5 @@ export function useConversationCreation(
         : fallback;
     target?.focus();
   }, [creating, focusRequest, returnFocus]);
-  return { creating, setCreating, container, beginCreate, cancelCreate };
+  return { creating, recipient, setCreating, container, beginCreate, cancelCreate };
 }

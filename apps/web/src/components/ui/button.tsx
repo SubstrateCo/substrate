@@ -25,6 +25,8 @@ const buttonVariants = cva(
           "border-rail-foreground/20 bg-rail-foreground/10 text-rail-foreground hover:bg-rail-foreground/20",
         sidebar:
           "font-normal text-muted-foreground hover:bg-muted hover:text-foreground aria-[current=page]:bg-sidebar-accent aria-[current=page]:font-medium aria-[current=page]:text-sidebar-accent-foreground",
+        // Expand/collapse headers: no fill when hovered, pressed, or expanded.
+        disclosure: "text-muted-foreground hover:text-foreground active:brightness-100",
         reaction:
           "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground aria-pressed:border-primary/30 aria-pressed:bg-accent aria-pressed:text-accent-foreground",
       },

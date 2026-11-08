@@ -11,7 +11,7 @@ const inputGroupVariants = cva(
     variants: {
       variant: {
         default: "",
-        composer: "bg-card dark:bg-card",
+        composer: "bg-card *:data-[align=block-start]:border-b dark:bg-card",
       },
     },
     defaultVariants: { variant: "default" },

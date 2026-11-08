@@ -1,6 +1,7 @@
 import { Button } from "../../ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import type { MessageWorkLink } from "./message-work";
-import { ArrowUpRight, CircleCheck, FolderKanban, Unlink } from "lucide-react";
+import { CircleCheck, FolderKanban, Unlink } from "lucide-react";
 
 export function MessageWorkTile({
   link,
@@ -13,46 +14,43 @@ export function MessageWorkTile({
 }) {
   const Icon = link.entityType === "task" ? CircleCheck : FolderKanban;
   return (
-    <div className="flex min-w-0 flex-wrap items-center rounded-lg border bg-card text-card-foreground shadow-surface">
-      <div className="flex min-w-0 grow basis-48 items-center gap-3 p-3">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-          <Icon aria-hidden="true" className="size-4" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-            <span>{link.entityType === "task" ? "Task" : "Project"}</span>
-            <span>·</span>
-            <span>{link.purpose === "source" ? "Created here" : "Linked work"}</span>
-          </span>
-          <span className="block text-sm font-medium wrap-anywhere">{link.title}</span>
-          {link.statusName && (
-            <span className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span aria-hidden="true" className="size-1.5 rounded-full bg-primary" />
-              {link.statusName}
-            </span>
-          )}
-        </span>
-      </div>
-      <div className="ml-auto flex shrink-0 items-center gap-1 p-2">
-        <Button asChild size="icon-xs" variant="ghost">
-          <a href={link.href} aria-label={`Open ${link.title}`} title={`Open ${link.entityType}`}>
-            <ArrowUpRight aria-hidden="true" className="size-3.5" />
-          </a>
-        </Button>
-        {link.canRemove && onRemove && (
-          <Button
-            type="button"
-            size="icon-xs"
-            variant="destructive"
-            aria-label={`Unlink ${link.title}`}
-            title="Unlink work"
-            disabled={removing}
-            onClick={() => onRemove(link.entityId)}
-          >
-            <Unlink aria-hidden="true" className="size-3.5" />
-          </Button>
+    <li className="group/work flex min-w-0 items-center gap-2 px-2 py-1 hover:bg-muted/50">
+      <a
+        href={link.href}
+        aria-label={`Open ${link.title}`}
+        className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+      >
+        <Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+        <span className="line-clamp-2 min-w-0 text-sm font-medium wrap-anywhere">{link.title}</span>
+        {link.purpose === "source" && (
+          <span className="shrink-0 text-xs text-muted-foreground">Created here</span>
         )}
-      </div>
-    </div>
+      </a>
+      {link.statusName && (
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
+          <span aria-hidden="true" className="size-1.5 rounded-full bg-primary" />
+          {link.statusName}
+        </span>
+      )}
+      {link.canRemove && onRemove && (
+        <span className="opacity-0 transition-opacity group-focus-within/work:opacity-100 group-hover/work:opacity-100">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                size="icon-xs"
+                variant="ghost"
+                aria-label={`Unlink ${link.title}`}
+                disabled={removing}
+                onClick={() => onRemove(link.entityId)}
+              >
+                <Unlink aria-hidden="true" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Unlink {link.entityType}</TooltipContent>
+          </Tooltip>
+        </span>
+      )}
+    </li>
   );
 }

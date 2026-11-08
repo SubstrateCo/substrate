@@ -15,6 +15,7 @@ export type ConversationDraft = { name: string; emails: string; isPrivate: boole
 
 export function CreateConversationForm({
   kind,
+  initialEmails = "",
   onSubmit,
   onCancel,
   pending = false,
@@ -22,6 +23,7 @@ export function CreateConversationForm({
   children,
 }: {
   kind: Conversation["kind"];
+  initialEmails?: string;
   onSubmit: (draft: ConversationDraft) => void;
   onCancel: () => void;
   pending?: boolean;
@@ -29,7 +31,7 @@ export function CreateConversationForm({
   children?: ReactNode;
 }) {
   const form = useForm({
-    defaultValues: { name: "", emails: "", isPrivate: false },
+    defaultValues: { name: "", emails: initialEmails, isPrivate: false },
     validationLogic: revalidateLogic({ mode: "blur", modeAfterSubmission: "change" }),
     validators: { onDynamic: createConversationDraftSchema(kind) },
     onSubmit: ({ value }) => {

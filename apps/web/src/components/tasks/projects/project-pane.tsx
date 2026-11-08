@@ -68,6 +68,7 @@ export function ProjectPane({
           onSaved={onSaved}
           onCancel={onCancel}
           initialStatus={initialStatus}
+          variant="dialog"
         />
       )}
       renderTaskDetail={(detail, task, onClose, onSubtask, visible) => (

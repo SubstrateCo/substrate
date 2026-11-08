@@ -5,6 +5,7 @@ import { LoadingState } from "../../feedback/loading-state";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import type { WorkspaceReference } from "./entity-reference";
 import { ReferencePickerOption } from "./reference-picker-option";
 import { X } from "lucide-react";
@@ -79,17 +80,21 @@ export function ReferencePicker({
               </TabsTrigger>
             ))}
           </TabsList>
-          <Button
-            type="button"
-            size="icon-xs"
-            variant="ghost"
-            className="ml-auto"
-            aria-label="Close references"
-            title="Close references"
-            onClick={onClose}
-          >
-            <X aria-hidden="true" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                size="icon-xs"
+                variant="ghost"
+                className="ml-auto"
+                aria-label="Close references"
+                onClick={onClose}
+              >
+                <X aria-hidden="true" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Close references</TooltipContent>
+          </Tooltip>
         </div>
         <Input
           className="shrink-0"

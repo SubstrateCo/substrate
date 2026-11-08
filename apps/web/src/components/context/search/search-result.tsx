@@ -2,6 +2,7 @@ import { useRef } from "react";
 
 import { Button } from "../../ui/button";
 import { CommandItem, CommandShortcut } from "../../ui/command";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { plainReferenceText } from "@/components/messaging/references/reference-token";
 import { ArrowUpLeft, CircleCheck, FolderKanban, Hash, MessageSquare } from "lucide-react";
 
@@ -35,15 +36,19 @@ export function SearchResult({
         </a>
         <CommandShortcut>{item.kind}</CommandShortcut>
       </CommandItem>
-      <Button
-        variant="ghost"
-        size="icon-xs"
-        aria-label={`Find related records for ${title}`}
-        title="Find related records"
-        onClick={onRelated}
-      >
-        <ArrowUpLeft />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label={`Find related records for ${title}`}
+            onClick={onRelated}
+          >
+            <ArrowUpLeft />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Find related records</TooltipContent>
+      </Tooltip>
     </div>
   );
 }

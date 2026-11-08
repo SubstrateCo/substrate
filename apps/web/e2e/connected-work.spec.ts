@@ -32,9 +32,9 @@ test("follow existing message-task links and find the task in search", async ({
   const requests = searches(sender.page);
 
   await sender.page.getByRole("button", { name: "Link existing work", exact: true }).click();
-  const picker = sender.page.getByRole("region", { name: "Link existing work", exact: true });
+  const picker = sender.page.getByRole("dialog", { name: "Link existing work", exact: true });
   await picker.getByRole("button", { name: "Projects", exact: true }).click();
-  const linkInput = picker.getByRole("textbox", { name: "Search work to link" });
+  const linkInput = picker.getByRole("combobox", { name: "Search work to link" });
   await linkInput.fill("intermediate link lookup");
   await sender.page.clock.runFor(100);
   await linkInput.fill(created.name);

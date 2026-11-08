@@ -5,7 +5,7 @@ import { ButtonGroup } from "../../ui/button-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import type { ProjectDetail, Task } from "../types";
 import { TaskMetadata } from "./task-metadata";
-import { X, Pencil, ListPlus } from "lucide-react";
+import { X, Pencil, ListPlus, FolderKanban } from "lucide-react";
 
 export function TaskDetail({
   detail,
@@ -41,7 +41,15 @@ export function TaskDetail({
       className="min-w-0 space-y-5 rounded-xl border bg-card p-4 wrap-anywhere"
     >
       <div className="flex items-start gap-2">
-        <h2 className="min-w-0 flex-1 text-lg font-semibold wrap-break-word">{task.title}</h2>
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+            <FolderKanban aria-hidden="true" className="size-3.5 shrink-0" />
+            <span className="truncate" title={detail.project.name}>
+              {detail.project.name}
+            </span>
+          </p>
+          <h2 className="text-lg font-semibold wrap-break-word">{task.title}</h2>
+        </div>
         <Button variant="ghost" size="icon-sm" aria-label="Close task" onClick={onClose}>
           <X aria-hidden="true" />
         </Button>

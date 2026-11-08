@@ -12,6 +12,7 @@ export function TaskForm({
   onSaved,
   onCancel,
   initialStatus,
+  variant,
 }: {
   organizationId: string;
   detail: ProjectDetail;
@@ -20,6 +21,7 @@ export function TaskForm({
   onSaved: (id: string) => void;
   onCancel: () => void;
   initialStatus?: Task["status"];
+  variant?: "inline" | "dialog";
 }) {
   const save = useTasksMutation(organizationId);
   const router = useRouter();
@@ -29,6 +31,7 @@ export function TaskForm({
       task={task}
       parentTaskEntityId={parentTaskEntityId}
       initialStatus={initialStatus}
+      variant={variant}
       pending={save.isPending}
       error={save.error}
       onCancel={onCancel}

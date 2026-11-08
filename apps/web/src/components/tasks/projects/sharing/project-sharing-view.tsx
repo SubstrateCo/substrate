@@ -36,6 +36,9 @@ export function ProjectSharing({
   const reviewOrigin = useRef<HTMLElement | null>(null);
   const canManage = detail.level === "owner";
   const ownerCount = detail.members.filter((member) => member.level === "owner").length;
+  const canAdd = detail.actors.some(
+    (actor) => !detail.members.some((member) => member.actorEntityId === actor.entityId),
+  );
   const reviewChange = (actorEntityId: string, name: string, level: ProjectPermission | null) => {
     reviewOrigin.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -55,7 +58,7 @@ export function ProjectSharing({
             Only these people can open this project.
           </p>
         </div>
-        {canManage && (
+        {canManage && canAdd && (
           <Dialog open={adding} onOpenChange={setAdding}>
             <DialogTrigger asChild>
               <Button ref={addButton} variant="outline" size="sm" disabled={pending}>

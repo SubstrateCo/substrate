@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { MessageMarkdown } from "../markdown/message-markdown";
 import type { Message } from "../types";
 import { MessageInteractions } from "@/components/messaging/messages/message-item/message-interactions";
+import { PersonCardTarget, useHasPersonCard } from "@/components/messaging/people/person-card-slot";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export function MessageItem({
@@ -22,6 +23,7 @@ export function MessageItem({
   actions?: ReactNode;
   children?: ReactNode;
 }) {
+  const hasPersonCard = useHasPersonCard();
   return (
     <article className="group flex gap-2.5 px-4 py-2 hover:bg-muted/40">
       <Avatar aria-hidden="true" variant="message" className="size-9">
@@ -29,7 +31,16 @@ export function MessageItem({
       </Avatar>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-2">
-          <span className="text-sm font-semibold">{message.authorName || "Unknown member"}</span>
+          <PersonCardTarget
+            actorId={message.authorActorEntityId}
+            name={message.authorName || "Unknown member"}
+          >
+            <span
+              className={`text-sm font-semibold ${hasPersonCard ? "rounded-sm underline-offset-2 hover:underline" : ""}`}
+            >
+              {message.authorName || "Unknown member"}
+            </span>
+          </PersonCardTarget>
           {message.authorType === "agent" && (
             <span className="rounded border px-1.5 py-0.5 text-xs text-muted-foreground">
               Agent

@@ -1,11 +1,26 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 
-import { TaskSelect } from "../../task-select";
 import type { ProjectDetail, ProjectPermission } from "../../types";
 import { PendingButton } from "@/components/feedback/pending-button";
-import { UserRound } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Trash2, UserRound } from "lucide-react";
 
 const permissionRank = { view: 0, comment: 1, edit: 2, owner: 3 };
+const permissionOptions: { value: ProjectPermission; label: string }[] = [
+  { value: "view", label: "View" },
+  { value: "comment", label: "Comment" },
+  { value: "edit", label: "Edit" },
+  { value: "owner", label: "Owner" },
+];
 
 export function ProjectMemberRow({
   member,
@@ -22,7 +37,8 @@ export function ProjectMemberRow({
   onShare: (actorEntityId: string, level: ProjectPermission) => void;
   onReview: (actorEntityId: string, name: string, level: ProjectPermission | null) => void;
 }) {
-  const [level, setLevel] = useState<ProjectPermission | "none">(member.level);
+  const [level, setLevel] = useState<ProjectPermission>(member.level);
+  const labelId = useId();
   return (
     <li className="flex flex-wrap items-center justify-between gap-3 p-4">
       <div className="flex min-w-0 flex-1 basis-36 items-center gap-3">
@@ -40,31 +56,56 @@ export function ProjectMemberRow({
           onSubmit={(event) => {
             event.preventDefault();
             if (pending || lastOwner || level === member.level) return;
-            if (level === "none" || permissionRank[level] > permissionRank[member.level])
-              onReview(member.actorEntityId, member.name, level === "none" ? null : level);
+            if (permissionRank[level] > permissionRank[member.level])
+              onReview(member.actorEntityId, member.name, level);
             else onShare(member.actorEntityId, level);
           }}
         >
-          <TaskSelect
-            compact
-            label={`${member.name} permission`}
-            value={level}
-            onChange={setLevel}
-            disabled={pending || lastOwner}
-            options={[
-              { value: "view", label: "View" },
-              { value: "comment", label: "Comment" },
-              { value: "edit", label: "Edit" },
-              { value: "owner", label: "Owner" },
-              { value: "none", label: "No access" },
-            ]}
-          />
           {lastOwner && <span className="text-xs text-muted-foreground">Last owner</span>}
           {level !== member.level && (
             <PendingButton size="sm" variant="outline" pending={pending} pendingLabel="Applying…">
               Apply
             </PendingButton>
           )}
+          <span id={labelId} className="sr-only">
+            {member.name} permission
+          </span>
+          <ButtonGroup aria-label={`${member.name} access`}>
+            <Select
+              value={level}
+              onValueChange={(next) => {
+                const option = permissionOptions.find((candidate) => candidate.value === next);
+                if (option) setLevel(option.value);
+              }}
+              disabled={pending || lastOwner}
+            >
+              <SelectTrigger size="compact" aria-labelledby={labelId}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper" align="start">
+                {permissionOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="destructive"
+                  aria-label={`Remove ${member.name}’s access`}
+                  disabled={pending || lastOwner}
+                  onClick={() => onReview(member.actorEntityId, member.name, null)}
+                >
+                  <Trash2 aria-hidden="true" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Remove access</TooltipContent>
+            </Tooltip>
+          </ButtonGroup>
         </form>
       ) : (
         <span className="text-sm capitalize">{member.level} access</span>

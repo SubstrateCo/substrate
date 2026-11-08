@@ -1,5 +1,6 @@
 import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { useTheme } from "./theme-provider";
 import { Monitor, Moon, Sun } from "lucide-react";
 
@@ -10,16 +11,20 @@ export function AppearanceControl() {
     <div className="flex items-center justify-between gap-4 rounded-md px-3 py-2">
       <span className="text-sm font-medium">Appearance</span>
       <div className="flex items-center gap-2">
-        <Button
-          variant={theme === "system" ? "secondary" : "ghost"}
-          size="icon-sm"
-          aria-label="Use system theme"
-          aria-pressed={theme === "system"}
-          title="Use system theme"
-          onClick={() => setTheme("system")}
-        >
-          <Monitor />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant={theme === "system" ? "secondary" : "ghost"}
+              size="icon-sm"
+              aria-label="Use system theme"
+              aria-pressed={theme === "system"}
+              onClick={() => setTheme("system")}
+            >
+              <Monitor />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Use system theme</TooltipContent>
+        </Tooltip>
         <Switch
           aria-label="Dark mode"
           checked={dark}

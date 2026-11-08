@@ -124,11 +124,8 @@ test("project sharing needs confirmation and revocation removes cached private c
   await expect(member.page.getByRole("button", { name: "Edit task", exact: true })).toHaveCount(0);
   await expect(member.page.getByLabel("Add a comment", { exact: true })).toHaveCount(0);
   const since = member.events.length;
-  await select(sender.page, `${actors.member.name} permission`, "No access");
   await sender.page
-    .getByRole("listitem")
-    .filter({ hasText: actors.member.name })
-    .getByRole("button", { name: "Apply", exact: true })
+    .getByRole("button", { name: `Remove ${actors.member.name}’s access`, exact: true })
     .click();
   await sender.page.getByRole("button", { name: "Remove access", exact: true }).click();
   await expectChange(member, since, "access");

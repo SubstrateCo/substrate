@@ -5,6 +5,7 @@ import { useId } from "react";
 import { FormMessage } from "../../auth/form-message";
 import { PendingButton } from "../../feedback/pending-button";
 import { Button } from "../../ui/button";
+import { DialogFooter } from "../../ui/dialog";
 import { Field, FieldError, FieldLabel } from "../../ui/field";
 import { Input } from "../../ui/input";
 import { Textarea } from "../../ui/textarea";
@@ -61,6 +62,7 @@ export function TaskForm({
   pending = false,
   error,
   initialStatus,
+  variant = "inline",
 }: {
   detail: ProjectDetail;
   task?: Task;
@@ -70,6 +72,8 @@ export function TaskForm({
   pending?: boolean;
   error?: Error | null;
   initialStatus?: Task["status"];
+  /** In a dialog, the dialog's close button cancels; the form only renders its submit action. */
+  variant?: "inline" | "dialog";
 }) {
   const id = useId();
   const assignees = detail.actors.filter((actor) =>
@@ -144,19 +148,27 @@ export function TaskForm({
           error={error}
           errorDescription="Couldn't save this task. Check its fields and make sure the assignee still has project access."
         />
-        <div className="flex flex-wrap gap-2">
-          <PendingButton pending={pending} pendingLabel="Saving task.">
-            {submitLabel}
-          </PendingButton>
-          <Button
-            type="button"
-            variant="outline"
-            onPointerDown={(event) => event.preventDefault()}
-            onClick={onCancel}
-          >
-            Cancel
-          </Button>
-        </div>
+        {variant === "dialog" ? (
+          <DialogFooter>
+            <PendingButton pending={pending} pendingLabel="Saving task.">
+              {submitLabel}
+            </PendingButton>
+          </DialogFooter>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            <PendingButton pending={pending} pendingLabel="Saving task.">
+              {submitLabel}
+            </PendingButton>
+            <Button
+              type="button"
+              variant="outline"
+              onPointerDown={(event) => event.preventDefault()}
+              onClick={onCancel}
+            >
+              Cancel
+            </Button>
+          </div>
+        )}
       </fieldset>
     </form>
   );

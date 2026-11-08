@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { EmojiPicker } from "@/components/messaging/composer/emoji-picker";
 import type { Message } from "@/components/messaging/types";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { MessageSquare } from "lucide-react";
 
 export function MessageInteractions({
@@ -19,18 +20,22 @@ export function MessageInteractions({
   actions?: ReactNode;
 }) {
   const threadAction = onThread && (
-    <Button
-      size={message.replyCount ? "xs" : "icon-xs"}
-      variant="ghost"
-      aria-label={message.replyCount ? undefined : "Reply in thread"}
-      title="Reply in thread"
-      onClick={() => onThread(message.id)}
-    >
-      <MessageSquare className="size-3" aria-hidden="true" />
-      {message.replyCount
-        ? `${message.replyCount} ${message.replyCount === 1 ? "reply" : "replies"}`
-        : null}
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          size={message.replyCount ? "xs" : "icon-xs"}
+          variant="ghost"
+          aria-label={message.replyCount ? undefined : "Reply in thread"}
+          onClick={() => onThread(message.id)}
+        >
+          <MessageSquare className="size-3" aria-hidden="true" />
+          {message.replyCount
+            ? `${message.replyCount} ${message.replyCount === 1 ? "reply" : "replies"}`
+            : null}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{message.replyCount ? "Open thread" : "Reply in thread"}</TooltipContent>
+    </Tooltip>
   );
   return (
     <>

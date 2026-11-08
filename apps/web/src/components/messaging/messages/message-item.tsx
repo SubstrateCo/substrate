@@ -13,6 +13,8 @@ import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { LinkedMessage } from "@/components/messaging/messages/linked-message";
 import { MessageItem as MessageItemView } from "@/components/messaging/messages/message-item-view";
 import { MessageWorkActions } from "@/components/messaging/messages/message-work-actions";
+import { PersonCardProvider } from "@/components/messaging/people/person-card-slot";
+import { PersonHoverCard } from "@/components/messaging/people/person-hover-card";
 import { messageHref } from "@/lib/navigation/record-links";
 import { queryKeys } from "@/queries/keys";
 import { toast } from "sonner";
@@ -53,37 +55,55 @@ export function MessageItem({
   });
   return (
     <LinkedMessage highlighted={highlighted}>
-      <MessageItemView
-        message={message}
-        body={
-          <ReferencedMessageBody
+      <PersonCardProvider
+        render={(actorId, name, trigger) => (
+          <PersonHoverCard
             organizationId={organizationId}
-            context={context}
-            body={message.body}
-          />
-        }
-        actions={
-          <>
-            <CopyLink
-              label="Copy message link"
-              href={messageHref(organizationId, message.conversationId, message.id)}
-            />
-            <MessageWorkActions onLink={() => setLinking(true)} />
-          </>
-        }
-        onThread={onThread}
-        onReact={(emoji) => reaction.mutate(emoji)}
-        pending={reaction.isPending}
+            conversationId={message.conversationId}
+            actorId={actorId}
+            name={name}
+          >
+            {trigger}
+          </PersonHoverCard>
+        )}
       >
-        <MessageContext organizationId={organizationId} messageId={message.id} context={context} />
-        {linking && (
-          <LinkMessageWork
+        <MessageItemView
+          message={message}
+          body={
+            <ReferencedMessageBody
+              organizationId={organizationId}
+              context={context}
+              body={message.body}
+            />
+          }
+          actions={
+            <>
+              <CopyLink
+                label="Copy message link"
+                href={messageHref(organizationId, message.conversationId, message.id)}
+              />
+              <MessageWorkActions onLink={() => setLinking(true)} />
+            </>
+          }
+          onThread={onThread}
+          onReact={(emoji) => reaction.mutate(emoji)}
+          pending={reaction.isPending}
+        >
+          <MessageContext
             organizationId={organizationId}
             messageId={message.id}
-            onClose={() => setLinking(false)}
+            context={context}
           />
-        )}
-      </MessageItemView>
+          {linking && (
+            <LinkMessageWork
+              organizationId={organizationId}
+              messageId={message.id}
+              linkedIds={context.data?.links.map((link) => link.entityId) ?? []}
+              onClose={() => setLinking(false)}
+            />
+          )}
+        </MessageItemView>
+      </PersonCardProvider>
     </LinkedMessage>
   );
 }

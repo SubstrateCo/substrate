@@ -3,8 +3,9 @@ import type { ReactNode } from "react";
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
 import { isAccessFailure } from "../../feedback/request-failure";
-import { Empty, EmptyDescription } from "../../ui/empty";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../ui/empty";
 import { DiscussionItem, type Discussion } from "./discussion-item";
+import { MessagesSquare } from "lucide-react";
 
 export function WorkDiscussions({
   items,
@@ -30,21 +31,35 @@ export function WorkDiscussions({
     return true;
   });
   return (
-    <section aria-label={label} className="space-y-4">
+    <section aria-label={label} className="space-y-3">
       <h3 className="text-sm font-semibold">{label}</h3>
       {children}
       {loading && !rows.length && (
-        <LoadingState label="Loading related context" variant="compact" />
+        <LoadingState label="Loading related context" variant="messages" rows={2} />
       )}
       {error && <ErrorState compact title="Couldn't load related context" onRetry={onRetry} />}
       {!loading && !error && !rows.length && (
-        <Empty>
-          <EmptyDescription>No accessible discussions linked yet.</EmptyDescription>
-        </Empty>
+        <div className="rounded-xl border border-dashed">
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <MessagesSquare aria-hidden="true" />
+              </EmptyMedia>
+              <EmptyTitle>No discussions yet</EmptyTitle>
+              <EmptyDescription>
+                Messages that link or reference this work will appear here.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        </div>
       )}
-      {uniqueRows.map((item) => (
-        <DiscussionItem key={`${item.messageId}:${item.purpose}`} item={item} />
-      ))}
+      {!!uniqueRows.length && (
+        <ul className="space-y-2">
+          {uniqueRows.map((item) => (
+            <DiscussionItem key={`${item.messageId}:${item.purpose}`} item={item} />
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

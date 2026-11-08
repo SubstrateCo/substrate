@@ -3,6 +3,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { PaneState } from "../../feedback/pane-state";
 import { isAccessFailure } from "../../feedback/request-failure";
 import { Button } from "../../ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { X } from "lucide-react";
 
 export function ThreadPane({
@@ -44,15 +45,20 @@ export function ThreadPane({
     >
       <header className="flex h-12 shrink-0 items-center justify-between border-b bg-card/60 px-4">
         <h2 className="font-semibold">Thread</h2>
-        <Button
-          ref={close}
-          size="icon-sm"
-          variant="ghost"
-          aria-label="Close thread"
-          onClick={onClose}
-        >
-          <X />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              ref={close}
+              size="icon-sm"
+              variant="ghost"
+              aria-label="Close thread"
+              onClick={onClose}
+            >
+              <X />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Close thread</TooltipContent>
+        </Tooltip>
       </header>
       {blocked ? (
         <PaneState label="Thread unavailable" error={error} onRetry={onRetry} />
