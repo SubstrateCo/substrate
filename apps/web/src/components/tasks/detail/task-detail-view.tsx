@@ -50,9 +50,48 @@ export function TaskDetail({
           </p>
           <h2 className="text-lg font-semibold wrap-break-word">{task.title}</h2>
         </div>
-        <Button variant="ghost" size="icon-sm" aria-label="Close task" onClick={onClose}>
-          <X aria-hidden="true" />
-        </Button>
+        <ButtonGroup aria-label="Task actions" className="shrink-0">
+          {canEdit && !editing && (
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    ref={editButton}
+                    variant="outline"
+                    size="icon"
+                    aria-label="Edit task"
+                    onClick={() => setEditing(true)}
+                  >
+                    <Pencil aria-hidden="true" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Edit task</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    aria-label="Add subtask"
+                    onClick={onSubtask}
+                  >
+                    <ListPlus aria-hidden="true" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Add subtask</TooltipContent>
+              </Tooltip>
+            </>
+          )}
+          {actions}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="icon" aria-label="Close task" onClick={onClose}>
+                <X aria-hidden="true" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Close task</TooltipContent>
+          </Tooltip>
+        </ButtonGroup>
       </div>
       {editing && canEdit ? (
         <div ref={editor}>{renderEditor(() => setEditing(false))}</div>
@@ -63,35 +102,6 @@ export function TaskDetail({
           assigneeType={assignee?.type}
         />
       )}
-      <ButtonGroup aria-label="Task actions">
-        {canEdit && !editing && (
-          <>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  ref={editButton}
-                  variant="outline"
-                  size="icon"
-                  aria-label="Edit task"
-                  onClick={() => setEditing(true)}
-                >
-                  <Pencil aria-hidden="true" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Edit task</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" aria-label="Add subtask" onClick={onSubtask}>
-                  <ListPlus aria-hidden="true" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Add subtask</TooltipContent>
-            </Tooltip>
-          </>
-        )}
-        {actions}
-      </ButtonGroup>
       {children}
     </section>
   );
