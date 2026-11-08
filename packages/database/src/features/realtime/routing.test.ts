@@ -37,17 +37,29 @@ test("profile changes refresh shared conversation labels across workspace bounda
       organizationId: fixture.orgB,
     },
   ]);
+  // Workspace conversations, joined or left, are covered by the organization hint.
+  for (const leftAt of [null, new Date()]) {
+    const [internal] = await fixture.db
+      .insert(messagingConversations)
+      .values({ organizationId: fixture.orgA, kind: "group", createdBy: "alice" })
+      .returning();
+    await fixture.db.insert(messagingParticipants).values(
+      [fixture.alice, fixture.bob].map((actorEntityId) => ({
+        conversationId: internal!.id,
+        actorEntityId,
+        actorType: "human" as const,
+        organizationId: fixture.orgA,
+        leftAt: actorEntityId === fixture.alice ? leftAt : null,
+      })),
+    );
+  }
   const hints = await profileRefreshHints(fixture.db, "alice");
-  expect(hints).toContainEqual({ audience: realtimeKeys.user("alice"), domain: "profile" });
-  expect(hints).toContainEqual({
-    audience: realtimeKeys.organization(fixture.orgA),
-    domain: "profile",
-  });
-  const shared = hints.find((hint) => hint.audience[0] === "conversation");
-  expect(shared).toEqual({
-    audience: realtimeKeys.conversation(conversation.id),
-    domain: "profile",
-  });
+  expect(hints).toEqual([
+    { audience: realtimeKeys.user("alice"), domain: "profile" },
+    { audience: realtimeKeys.organization(fixture.orgA), domain: "profile" },
+    { audience: realtimeKeys.conversation(conversation.id), domain: "profile" },
+  ]);
+  const shared = hints[2];
   expect(
     await canReceiveChange(
       fixture.db,

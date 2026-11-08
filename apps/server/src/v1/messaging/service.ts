@@ -14,7 +14,6 @@ import type {
 } from "@startup-os/contracts/messaging/input";
 import { realtimeKeys } from "@startup-os/contracts/realtime";
 import { createMessagingService } from "@startup-os/database/messaging";
-import { messageRefreshHints } from "@startup-os/database/realtime";
 
 import { db } from "../../auth/database";
 import { serviceResult } from "../../shared/service-result";
@@ -70,17 +69,14 @@ export function sendMessage(headers: Headers, input: z.output<typeof messageInpu
       input.threadId,
       input.requestId,
     );
-    const { agentRunsQueued, ...sent } = message;
-    await publishRefresh(
-      messageRefreshHints(db, message.id).then((hints) => [
-        ...hints,
-        { audience: realtimeKeys.organization(input.organizationId), domain: "context" },
-        // Wakes the author's desktops so the agent's home device claims the run.
-        ...(agentRunsQueued
-          ? [{ audience: realtimeKeys.user(message.authorId!), domain: "agent-runs" as const }]
-          : []),
-      ]),
-    );
+    const { agentRunsQueued, hints, ...sent } = message;
+    await publishRefresh([
+      ...hints,
+      // Wakes the author's desktops so the agent's home device claims the run.
+      ...(agentRunsQueued
+        ? [{ audience: realtimeKeys.user(message.authorId!), domain: "agent-runs" as const }]
+        : []),
+    ]);
     return sent;
   });
 }
@@ -113,8 +109,8 @@ export function toggleReaction(headers: Headers, input: z.output<typeof reaction
   return serviceResult(async () => {
     requireOrigin(headers);
     const service = await serviceForSession(headers, input.organizationId);
-    const result = await service.toggleReaction(input.messageId, input.emoji);
-    await publishRefresh(messageRefreshHints(db, input.messageId));
+    const { hints, ...result } = await service.toggleReaction(input.messageId, input.emoji);
+    await publishRefresh(hints);
     return result;
   });
 }
@@ -152,10 +148,12 @@ export function joinConversation(
   return serviceResult(async () => {
     requireOrigin(headers);
     const service = await serviceForSession(headers, input.organizationId);
-    const result = await service.joinConversation(input.conversationId);
-    await publishRefresh([
-      { audience: realtimeKeys.conversation(input.conversationId), domain: "messaging" },
-    ]);
+    const { changed, ...result } = await service.joinConversation(input.conversationId);
+    // Joining as a current member changes nothing that viewers need to refresh.
+    if (changed)
+      await publishRefresh([
+        { audience: realtimeKeys.conversation(input.conversationId), domain: "messaging" },
+      ]);
     return result;
   });
 }

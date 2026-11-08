@@ -24,7 +24,6 @@ export const contacts = pgTable(
       columns: [table.organizationId, table.entityId, table.entityType],
       foreignColumns: [entities.organizationId, entities.entityId, entities.entityType],
     }).onDelete("cascade"),
-    index("contacts_organization_idx").on(table.organizationId, table.entityId),
     unique("contacts_organization_entity_unique").on(table.organizationId, table.entityId),
     check("contacts_name_check", sql`length(trim(${table.displayName})) > 0`),
   ],

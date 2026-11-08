@@ -1,4 +1,4 @@
-import { realtimeAudience, realtimeDomain } from "@startup-os/contracts/realtime";
+import { realtimeAudience, realtimeDomain, realtimeScope } from "@startup-os/contracts/realtime";
 
 import type { Change } from "./hub";
 import { realtimeTopic } from "./publisher";
@@ -6,7 +6,12 @@ import { RedisClient } from "bun";
 import { z } from "zod";
 
 const changes = z.array(
-  z.object({ id: z.uuid(), audience: realtimeAudience, domain: realtimeDomain }),
+  z.object({
+    id: z.uuid(),
+    audience: realtimeAudience,
+    domain: realtimeDomain,
+    scope: realtimeScope.optional(),
+  }),
 );
 
 export function createRealtimeSubscription({
@@ -15,7 +20,7 @@ export function createRealtimeSubscription({
   url = process.env.VALKEY_URL ?? "redis://localhost:6379",
   topic = realtimeTopic,
 }: {
-  receive: (change: Change) => Promise<void>;
+  receive: (changes: Change[]) => Promise<void>;
   setAvailable: (available: boolean) => void;
   url?: string;
   topic?: string;
@@ -48,7 +53,7 @@ export function createRealtimeSubscription({
       await current.subscribe(topic, (message) => {
         try {
           const batch = changes.parse(JSON.parse(message));
-          for (const change of batch) void receive(change).catch(unavailable);
+          void receive(batch).catch(unavailable);
         } catch {
           unavailable();
         }

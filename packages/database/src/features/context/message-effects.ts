@@ -18,23 +18,26 @@ import { messageReferences } from "./references";
 import { messageEntityReferences } from "./schema";
 import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 
+// `referenced` reports saved work or messaging references. `notified` lists the alerts created.
 export async function applyMessageEffects(
   ctx: RepositoryContext,
   scope: MessagingIdentity,
   message: typeof messagingMessages.$inferSelect,
   conversationOrganizationId: string,
-) {
+): Promise<{ referenced: boolean; notified: { organizationId: string; actorId: string }[] }> {
   const { db } = ctx;
   const recipients = new Map<string, "mention" | "reply">();
   const personIds: string[] = [];
   const agentIds: string[] = [];
   const workReferences: { id: string; kind: "task" | "project" }[] = [];
+  let referenced = false;
   for (const reference of messageReferences(message.body)) {
     if (reference.kind === "channel" || reference.kind === "thread") {
       await saveMessagingReference(db, scope, message, conversationOrganizationId, {
         ...reference,
         kind: reference.kind,
       });
+      referenced = true;
     } else if (reference.kind === "person") personIds.push(reference.id);
     else if (reference.kind === "agent") agentIds.push(reference.id);
     else workReferences.push({ id: reference.id, kind: reference.kind });
@@ -120,6 +123,7 @@ export async function applyMessageEffects(
         })),
       )
       .onConflictDoNothing();
+    referenced = true;
   }
   if (message.threadId) {
     // Members who left get mention alerts only.
@@ -147,8 +151,8 @@ export async function applyMessageEffects(
       if (author.userId && !recipients.has(author.userId)) recipients.set(author.userId, "reply");
   }
   if (!scope.actorEntityId) recipients.delete(scope.userId);
-  if (recipients.size) {
-    await db.execute(sql`
+  if (!recipients.size) return { referenced, notified: [] };
+  const notified = await db.execute<{ organizationId: string; actorId: string }>(sql`
       INSERT INTO ${notifications} (organization_id, recipient_actor_entity_id, kind, event_key, message_id)
       SELECT ${actors.organizationId}, ${actors.entityId}, recipient.kind, ${message.id}, ${message.id}::uuid
       FROM ${actors}
@@ -167,6 +171,7 @@ export async function applyMessageEffects(
       WHERE ${actors.disabledAt} IS NULL
         AND (${actors.organizationId} = ${conversationOrganizationId} OR ${messagingParticipants.actorEntityId} IS NOT NULL)
       ON CONFLICT DO NOTHING
+      RETURNING organization_id AS "organizationId", recipient_actor_entity_id AS "actorId"
     `);
-  }
+  return { referenced, notified: [...notified] };
 }

@@ -1,6 +1,7 @@
 import { actors } from "../../core/actors/schema";
 import { messagingMessages } from "../messaging/schema";
 import { tasks } from "../tasks/tasks.schema";
+import { sql } from "drizzle-orm";
 import { foreignKey, index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const taskActivity = pgTable(
@@ -32,5 +33,9 @@ export const taskActivity = pgTable(
       table.createdAt,
       table.id,
     ),
+    // Message deletion clears the link here.
+    index("task_activity_source_message_idx")
+      .on(table.sourceMessageId)
+      .where(sql`${table.sourceMessageId} IS NOT NULL`),
   ],
 );

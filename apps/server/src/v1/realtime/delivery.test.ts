@@ -9,7 +9,7 @@ test("publishes without polling and isolates a failed recipient", async () => {
   const failures: boolean[] = [];
   const hub = createRealtimeHub({
     authenticate: async () => ({ userId: "user", organizationId: "org", actorId: "actor" }),
-    canReceive: async () => true,
+    recipients: async () => () => true,
     reportFailure: () => failures.push(true),
   });
   const received: RealtimeEvent[] = [];

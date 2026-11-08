@@ -135,7 +135,36 @@ export async function resolveHumanActor(
   return existing ?? ensureHumanActor(db, input);
 }
 
-export function ensureOwnedAgentActors(
+// Reads take one lock-free statement when every enabled agent already has an actor here. Only a
+// missing actor takes the provisioning locks.
+export async function ensureOwnedAgentActors(
+  db: DatabaseExecutor,
+  input: { organizationId: string; userId: string },
+) {
+  const rows = await db
+    .select({ membership: member.id, agentId: userAgents.id, actor: actors })
+    .from(member)
+    .leftJoin(
+      userAgents,
+      and(
+        eq(userAgents.userId, member.userId),
+        eq(userAgents.enabled, true),
+        isNull(userAgents.deletedAt),
+      ),
+    )
+    .leftJoin(
+      actors,
+      and(eq(actors.organizationId, member.organizationId), eq(actors.userAgentId, userAgents.id)),
+    )
+    .where(and(eq(member.organizationId, input.organizationId), eq(member.userId, input.userId)))
+    .orderBy(userAgents.id);
+  if (!rows.length) throw new AccessDeniedError();
+  const existing = rows.flatMap((row) => (row.actor ? [row.actor] : []));
+  if (rows.every((row) => row.agentId === null || row.actor)) return existing;
+  return provisionOwnedAgentActors(db, input);
+}
+
+function provisionOwnedAgentActors(
   db: DatabaseExecutor,
   input: { organizationId: string; userId: string },
 ) {

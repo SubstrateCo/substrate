@@ -22,7 +22,7 @@ test.skipIf(!process.env.TEST_VALKEY_URL)(
           organizationId,
           actorId: organizationId,
         }),
-        canReceive: async (_identity, audience) =>
+        recipients: async (audience) => () =>
           audience[0] !== "conversation" || audience[1] === "shared" || organizationId === "org-a",
         reportFailure: () => {
           throw new Error("Unexpected delivery failure");
@@ -32,7 +32,7 @@ test.skipIf(!process.env.TEST_VALKEY_URL)(
         createRealtimeSubscription({
           url,
           topic,
-          receive: (change) => hub.publish(change),
+          receive: (changes) => hub.publish(...changes),
           setAvailable: (available) => hub.setAvailable(available),
         });
       return {

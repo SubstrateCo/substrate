@@ -33,9 +33,15 @@ export const realtimeDomain = z.enum([
 ]);
 export type RealtimeDomain = z.infer<typeof realtimeDomain>;
 
+// Narrows a messaging change to message content: membership and conversation details did not
+// change. Optional, so clients that do not know it refresh the whole messaging domain.
+export const realtimeScope = z.enum(["messages"]);
+export type RealtimeScope = z.infer<typeof realtimeScope>;
+
 export interface RealtimeHint {
   audience: Readonly<RealtimeAudience>;
   domain: RealtimeDomain;
+  scope?: RealtimeScope;
 }
 
 export const realtimeEvent = z.discriminatedUnion("type", [
@@ -47,6 +53,7 @@ export const realtimeEvent = z.discriminatedUnion("type", [
     organizationId: identifier.nullable(),
     domain: realtimeDomain,
     conversationId: identifier.optional(),
+    scope: realtimeScope.optional(),
   }),
 ]);
 export type RealtimeEvent = z.infer<typeof realtimeEvent>;

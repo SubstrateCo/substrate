@@ -47,5 +47,7 @@ export const notifications = pgTable(
       table.createdAt,
       table.id,
     ),
+    // Message deletion cascades here.
+    index("notification_message_idx").on(table.messageId),
   ],
 );

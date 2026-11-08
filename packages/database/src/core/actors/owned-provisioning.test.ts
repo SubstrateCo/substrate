@@ -43,6 +43,7 @@ test("owned provisioning has constant read cost for cold and warm batches", asyn
       count,
       coldReads,
       warmReads: statements.filter((query) => /^select\b/i.test(query)).length,
+      warmLocks: statements.filter((query) => query.includes("for update")).length,
     });
     expect(cold).toHaveLength(count);
     expect(warm.map((actor) => actor.entityId).sort()).toEqual(
@@ -51,9 +52,11 @@ test("owned provisioning has constant read cost for cold and warm batches", asyn
     expect(statements.filter((query) => /^insert\b/i.test(query))).toHaveLength(0);
   }
   console.log("owned provisioning SELECT counts:", JSON.stringify(measurements));
+  // A cold batch adds the lock-free check to the three locking reads. A warm batch is one
+  // lock-free read.
   expect(measurements).toEqual([
-    { count: 1, coldReads: 3, warmReads: 3 },
-    { count: 8, coldReads: 3, warmReads: 3 },
+    { count: 1, coldReads: 4, warmReads: 1, warmLocks: 0 },
+    { count: 8, coldReads: 4, warmReads: 1, warmLocks: 0 },
   ]);
 });
 

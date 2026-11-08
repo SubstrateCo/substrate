@@ -6,7 +6,7 @@ import { entities } from "../../core/entities/schema";
 import { entityAccessParents } from "../../core/permissions/access-parents";
 import { projects } from "../projects/schema";
 import { sql } from "drizzle-orm";
-import { check, date, foreignKey, index, pgTable, text, unique, uuid } from "drizzle-orm/pg-core";
+import { check, date, foreignKey, pgTable, text, unique, uuid } from "drizzle-orm/pg-core";
 
 export const tasks = pgTable(
   "tasks",
@@ -65,6 +65,5 @@ export const tasks = pgTable(
       sql`${table.priority} IN ('none', 'low', 'medium', 'high', 'urgent')`,
     ),
     check("tasks_parent_check", sql`${table.entityId} <> ${table.parentTaskEntityId}`),
-    index("tasks_project_idx").on(table.organizationId, table.projectEntityId),
   ],
 );

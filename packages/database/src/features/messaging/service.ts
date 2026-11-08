@@ -11,7 +11,7 @@ import { queueAgentTriggers } from "../agent-runs/triggers";
 import { workspaceContext } from "../context/access";
 import { applyMessageEffects } from "../context/message-effects";
 import { messageEntityReferences } from "../context/schema";
-import { conversationRemovalHints } from "../realtime/routing";
+import { conversationRemovalHints, messageChangeHints } from "../realtime/routing";
 import { visibleConversations, type MessagingIdentity } from "./access";
 import { messageAuthorColumns } from "./message-authors";
 import { messageSummaries } from "./message-summaries";
@@ -45,12 +45,20 @@ export interface CreateConversationInput {
   agentIds?: string[];
 }
 
-async function lockConversation(tx: DatabaseExecutor, scope: MessagingIdentity, id: string) {
-  const [conversation] = await tx
+// Membership, ownership and deletion take "update" to serialize with each other. Posts and
+// reactions take "share": they block those changes until commit but not each other. Reads lock
+// nothing.
+async function lockConversation(
+  tx: DatabaseExecutor,
+  scope: MessagingIdentity,
+  id: string,
+  lock: "update" | "share" | "none" = "update",
+) {
+  const query = tx
     .select()
     .from(messagingConversations)
-    .where(and(eq(messagingConversations.id, id), visibleConversations(tx, scope)))
-    .for("update");
+    .where(and(eq(messagingConversations.id, id), visibleConversations(tx, scope)));
+  const [conversation] = lock === "none" ? await query : await query.for(lock);
   if (!conversation) throw new AccessDeniedError();
   return conversation;
 }
@@ -83,14 +91,17 @@ async function upsertMembers(
 }
 
 // Posting rejoins a public channel the person left. Private conversations are not visible
-// after leaving, so the caller's access check fails first.
+// after leaving, so the caller's access check fails first. Returns whether membership changed.
 async function joinConversation(
   tx: DatabaseExecutor,
   scope: MessagingIdentity,
   actor: MemberActor,
   conversationId: string,
 ) {
-  await upsertMembers(tx, conversationId, [{ ...actor, organizationId: scope.organizationId }]);
+  const changed = await upsertMembers(tx, conversationId, [
+    { ...actor, organizationId: scope.organizationId },
+  ]);
+  return changed.length > 0;
 }
 
 // An agent writes with its owner's access. Posting records authorship, which the message foreign
@@ -207,7 +218,7 @@ export async function sendMessageAs(
   const { db: tx } = ctx;
   const { actor, authorName } = author;
   const { conversationId, body, threadId, requestId } = message;
-  const conversation = await lockConversation(tx, scope, conversationId);
+  const conversation = await lockConversation(tx, scope, conversationId, "share");
   if (!body.trim() || body.length > 20000)
     throw new ValidationError("Message must contain 1 to 20000 characters.");
   if (requestId) {
@@ -235,12 +246,18 @@ export async function sendMessageAs(
         reactions,
         replyCount: 0,
         agentRunsQueued: 0,
+        // A replay changes nothing. The hint still lets viewers recover from a lost first publish.
+        hints: messageChangeHints(
+          { conversationId, organizationId: scope.organizationId },
+          { joined: false },
+        ),
       };
     }
   }
   if (threadId) await requireThreadRoot(tx, conversationId, threadId);
+  let joined = false;
   if (actor.type === "agent") await recordAgentAuthor(tx, scope, actor.entityId, conversationId);
-  else await joinConversation(tx, scope, actor, conversationId);
+  else joined = await joinConversation(tx, scope, actor, conversationId);
   const [created] = await tx
     .insert(messagingMessages)
     .values({
@@ -253,7 +270,7 @@ export async function sendMessageAs(
       requestId,
     })
     .returning();
-  await applyMessageEffects(ctx, scope, created!, conversation.organizationId);
+  const effects = await applyMessageEffects(ctx, scope, created!, conversation.organizationId);
   const agentRunsQueued = await queueAgentTriggers(tx, scope, created!, conversation.kind);
   const initialReactions: { emoji: string; count: number; reacted: boolean }[] = [];
   return {
@@ -263,6 +280,11 @@ export async function sendMessageAs(
     replyCount: 0,
     reactions: initialReactions,
     agentRunsQueued,
+    // Publish only after the caller's transaction commits.
+    hints: messageChangeHints(
+      { conversationId, organizationId: scope.organizationId },
+      { joined, ...effects },
+    ),
   };
 }
 
@@ -282,7 +304,11 @@ export function createMessagingService(
     return { context, actor, authorName: actor.type === "agent" ? actor.name : userName };
   }
 
-  const requireConversation = (tx: DatabaseExecutor, id: string) => lockConversation(tx, scope, id);
+  const requireConversation = (
+    tx: DatabaseExecutor,
+    id: string,
+    lock?: Parameters<typeof lockConversation>[3],
+  ) => lockConversation(tx, scope, id, lock);
 
   // Owners manage their conversation. Owners and admins of the owning organization manage any of
   // its conversations except 1:1 DMs, without gaining read access. Agents never manage.
@@ -559,8 +585,8 @@ export function createMessagingService(
       return db.transaction(async (tx) => {
         const { actor } = await authenticate(tx);
         await requireConversation(tx, conversationId);
-        await joinConversation(tx, scope, actor, conversationId);
-        return { joined: true };
+        const changed = await joinConversation(tx, scope, actor, conversationId);
+        return { joined: true, changed };
       });
     },
 
@@ -692,7 +718,7 @@ export function createMessagingService(
     ) {
       return db.transaction(async (tx) => {
         const { actor } = await authenticate(tx);
-        await requireConversation(tx, conversationId);
+        await requireConversation(tx, conversationId, "none");
         if (threadId) await requireThreadRoot(tx, conversationId, threadId);
         let boundary;
         const anchorId = options.beforeMessageId ?? options.aroundMessageId;
@@ -769,22 +795,34 @@ export function createMessagingService(
           .from(messagingMessages)
           .where(eq(messagingMessages.id, messageId));
         if (!message) throw new AccessDeniedError();
-        await requireConversation(tx, message.conversationId);
-        await joinConversation(tx, scope, actor, message.conversationId);
+        await requireConversation(tx, message.conversationId, "share");
+        const joined = await joinConversation(tx, scope, actor, message.conversationId);
+        const hints = messageChangeHints(
+          { conversationId: message.conversationId, organizationId: scope.organizationId },
+          { joined },
+        );
         const key = and(
           eq(messagingReactions.messageId, messageId),
           eq(messagingReactions.actorEntityId, actor.entityId),
           eq(messagingReactions.emoji, emoji),
         );
         const removed = await tx.delete(messagingReactions).where(key).returning();
-        if (removed.length) return { active: false };
-        await tx.insert(messagingReactions).values({
-          conversationId: message.conversationId,
-          messageId,
-          actorEntityId: actor.entityId,
-          emoji,
-        });
-        return { active: true };
+        if (removed.length) return { active: false, hints };
+        // The shared conversation lock lets toggles run together. If a concurrent toggle added
+        // this reaction, the insert waits for it to commit and this toggle removes it.
+        const added = await tx
+          .insert(messagingReactions)
+          .values({
+            conversationId: message.conversationId,
+            messageId,
+            actorEntityId: actor.entityId,
+            emoji,
+          })
+          .onConflictDoNothing()
+          .returning();
+        if (added.length) return { active: true, hints };
+        await tx.delete(messagingReactions).where(key);
+        return { active: false, hints };
       });
     },
   };

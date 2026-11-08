@@ -3,13 +3,15 @@ import type {
   RealtimeAudience,
   RealtimeDomain,
   RealtimeEvent,
+  RealtimeScope,
 } from "@startup-os/contracts/realtime";
-import type { RealtimeReceiver } from "@startup-os/database/realtime";
+import type { AudienceFilter, RealtimeReceiver } from "@startup-os/database/realtime";
 
 export interface Change {
   id: string;
   audience: Readonly<RealtimeAudience>;
   domain: RealtimeDomain;
+  scope?: RealtimeScope;
 }
 
 export interface Transport {
@@ -22,8 +24,9 @@ export interface Transport {
 
 export interface HubDependencies {
   authenticate(headers: Headers, organizationId: string | null): Promise<RealtimeReceiver | null>;
-  // Checks only the audience; the hub authenticates the identity before each delivery.
-  canReceive(identity: RealtimeReceiver, audience: Readonly<RealtimeAudience>): Promise<boolean>;
+  // Resolves an audience once per change. The filter checks only the audience; the hub
+  // authenticates each identity separately.
+  recipients(audience: Readonly<RealtimeAudience>): Promise<AudienceFilter>;
   reportFailure(): void;
 }
 
@@ -34,6 +37,21 @@ interface Connection {
   expiresAt: number;
   awaitingPong: boolean;
   ready: boolean;
+  // Start time of the last successful session check.
+  verifiedAt: number;
+  checking?: Promise<boolean>;
+}
+
+// Session and access hints can follow a revocation, so they recheck the session first.
+const forcesRecheck = (change: Change) => change.domain === "session" || change.domain === "access";
+
+async function forEachLimited<T>(items: T[], limit: number, run: (item: T) => Promise<void>) {
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, async () => {
+      while (next < items.length) await run(items[next++]!);
+    }),
+  );
 }
 
 // These keys select candidates only. The database resolver authorizes every delivery.
@@ -63,6 +81,7 @@ export function createRealtimeHub(
     maxPerUser?: number;
     heartbeatMs?: number;
     maxBufferedBytes?: number;
+    maxConcurrentChecks?: number;
   } = {},
 ) {
   const connections = new Set<Connection>();
@@ -70,6 +89,7 @@ export function createRealtimeHub(
   const maxPerUser = options.maxPerUser ?? 8;
   const heartbeatMs = options.heartbeatMs ?? 15_000;
   const maxBufferedBytes = options.maxBufferedBytes ?? 64 * 1024;
+  const maxConcurrentChecks = options.maxConcurrentChecks ?? 16;
   let stopped = false;
   let available = true;
   const isAvailable = () => available;
@@ -86,7 +106,8 @@ export function createRealtimeHub(
     connection.transport?.terminate();
   }
 
-  async function revalidate(connection: Connection) {
+  async function check(connection: Connection) {
+    const startedAt = Date.now();
     const identity = await deps.authenticate(
       connection.headers,
       connection.identity.organizationId,
@@ -101,8 +122,25 @@ export function createRealtimeHub(
       remove(connection);
       return false;
     }
+    connection.verifiedAt = Math.max(connection.verifiedAt, startedAt);
     return true;
   }
+
+  // Concurrent checks share one session lookup. A forced check never reuses a lookup that may
+  // have started before the revocation it follows.
+  function revalidate(connection: Connection, forced = false) {
+    if (!forced && connection.checking) return connection.checking;
+    const pending = check(connection);
+    connection.checking = pending;
+    const clear = () => {
+      if (connection.checking === pending) connection.checking = undefined;
+    };
+    void pending.then(clear, clear);
+    return pending;
+  }
+
+  // The heartbeat rechecks every session, so a check stays valid until the next one is due.
+  const fresh = (connection: Connection) => Date.now() - connection.verifiedAt < heartbeatMs;
 
   function send(connection: Connection, event: RealtimeEvent) {
     const transport = connection.transport;
@@ -128,6 +166,7 @@ export function createRealtimeHub(
     async reserve(headers: Headers, organizationId: string | null) {
       if (isStopped() || !isAvailable() || connections.size >= maxConnections)
         throw new Error("Realtime capacity reached");
+      const verifiedAt = Date.now();
       const identity = await deps.authenticate(headers, organizationId);
       if (!identity || identity.organizationId !== organizationId) return null;
       if (isStopped() || !isAvailable() || connections.size >= maxConnections)
@@ -142,6 +181,7 @@ export function createRealtimeHub(
         expiresAt: Date.now() + 10_000,
         awaitingPong: false,
         ready: false,
+        verifiedAt,
       };
       connections.add(connection);
       return connection;
@@ -154,7 +194,8 @@ export function createRealtimeHub(
       }
       connection.transport = transport;
       try {
-        if (await revalidate(connection)) {
+        // reserve() has just checked the session; recheck only after a slow upgrade.
+        if (fresh(connection) || (await revalidate(connection))) {
           send(connection, { version: 1, type: "ready" });
           connection.ready = connections.has(connection);
         }
@@ -176,20 +217,35 @@ export function createRealtimeHub(
       available = value;
       if (!value) for (const connection of connections) remove(connection, 1012, "Resync required");
     },
-    async publish(change: Change) {
+    // Delivers one Valkey batch as a unit: each audience resolves once, and each connection checks
+    // its session at most once.
+    async publish(...changes: Change[]) {
       if (isStopped() || !available) return;
-      await Promise.all(
-        [...connections].map(async (connection) => {
-          if (
-            !connection.transport ||
-            !connection.ready ||
-            !relevant(connection.identity, change.audience)
-          )
-            return;
-          try {
-            if (!(await revalidate(connection))) return;
-            if (!(await deps.canReceive(connection.identity, change.audience))) return;
+      const candidates: [Connection, Change[]][] = [];
+      for (const connection of connections) {
+        if (!connection.transport || !connection.ready) continue;
+        const matching = changes.filter((change) => relevant(connection.identity, change.audience));
+        if (matching.length) candidates.push([connection, matching]);
+      }
+      if (!candidates.length) return;
+      const filters = new Map<string, Promise<AudienceFilter>>();
+      for (const [, matching] of candidates)
+        for (const { audience } of matching) {
+          const key = JSON.stringify(audience);
+          if (filters.has(key)) continue;
+          const filter = deps.recipients(audience);
+          // Each recipient awaits the filter and handles its failure.
+          void filter.catch(() => {});
+          filters.set(key, filter);
+        }
+      await forEachLimited(candidates, maxConcurrentChecks, async ([connection, matching]) => {
+        try {
+          const forced = matching.some(forcesRecheck);
+          if ((forced || !fresh(connection)) && !(await revalidate(connection, forced))) return;
+          for (const change of matching) {
+            const receives = await filters.get(JSON.stringify(change.audience))!;
             if (isStopped() || !available || !connections.has(connection)) return;
+            if (!receives(connection.identity)) continue;
             const event: Extract<RealtimeEvent, { type: "change" }> = {
               version: 1,
               type: "change",
@@ -198,13 +254,14 @@ export function createRealtimeHub(
               domain: change.domain,
             };
             if (change.audience[0] === "conversation") event.conversationId = change.audience[1];
+            if (change.scope) event.scope = change.scope;
             send(connection, event);
-          } catch {
-            remove(connection, 1012, "Resync required");
-            deps.reportFailure();
           }
-        }),
-      );
+        } catch {
+          remove(connection, 1012, "Resync required");
+          deps.reportFailure();
+        }
+      });
     },
     async tick(now = Date.now()) {
       if (running || isStopped()) return;

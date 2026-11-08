@@ -165,6 +165,49 @@ test("messaging targets all thread variants of one conversation, not another", (
   ]);
 });
 
+test("message content changes refresh messages and their context, not conversation lists", () => {
+  const targets = realtimeQueryTargets(
+    { ...change("messaging"), conversationId: "conversation", scope: "messages" },
+    "user",
+  );
+  expect(targets).not.toContainEqual({ queryKey: queryKeys.conversations("org") });
+  expect(targets).toEqual(
+    realtimeQueryTargets({ ...change("messaging"), conversationId: "conversation" }, "user").slice(
+      1,
+    ),
+  );
+});
+
+test("workspace detail changes refresh organization details and invitations, not workspace records", () => {
+  const client = new QueryClient();
+  const refreshed = [
+    queryKeys.organizations,
+    queryKeys.userInvitations,
+    queryKeys.organizationDetail("org"),
+    queryKeys.invitations("org"),
+    queryKeys.activeMember("org"),
+  ];
+  const kept = [
+    queryKeys.conversations("org"),
+    queryKeys.projects("org"),
+    [...queryKeys.context("org"), "related", "task"],
+  ];
+  for (const key of [...refreshed, ...kept]) client.setQueryData(key, []);
+  const matched = (domain: "organization" | "access") =>
+    new Set(
+      realtimeQueryTargets(change(domain), "user").flatMap((target) =>
+        client
+          .getQueryCache()
+          .findAll(target)
+          .map((query) => query.queryHash),
+      ),
+    ).size;
+  expect(matched("organization")).toBe(refreshed.length);
+  // Access changes can hide or reveal any workspace record.
+  expect(matched("access")).toBe(refreshed.length + kept.length);
+  client.clear();
+});
+
 test("agent run hints refresh only the owner's runs in that workspace", () => {
   const [target] = realtimeQueryTargets(change("agent-runs"), "user");
   expect(target).toEqual({ queryKey: queryKeys.agentRuns("user", "org") });
@@ -312,7 +355,8 @@ test("task activity and related context refresh while task/message search become
     expect(client.getQueryState(keys.related)?.isInvalidated).toBe(true);
     expect(client.getQueryState(keys.search)?.isInvalidated).toBe(true);
     expect(client.getQueryState(keys.pages)?.isInvalidated).toBe(true);
-    expect(client.getQueryState(keys.notifications)?.isInvalidated).toBe(domain !== "messaging");
+    // Only task titles appear in existing notifications; new ones send their own hint.
+    expect(client.getQueryState(keys.notifications)?.isInvalidated).toBe(domain === "tasks");
     expect(searchFetches).toBe(0);
     cache.dispose();
     unsubscribe();
@@ -348,7 +392,7 @@ test("access clears private organization and harness data before revalidation, p
   client.clear();
 });
 
-test("context changes refetch known context families only, leaving both search families stale", async () => {
+test("context changes refetch known context families only, leaving notifications fresh and both search families stale", async () => {
   const client = new QueryClient();
   const context = queryKeys.context("org");
   const keys = [
@@ -392,7 +436,7 @@ test("context changes refetch known context families only, leaving both search f
     reads.fill(0);
     await cache.receive(change("context"));
     await Bun.sleep(80);
-    expect(reads).toEqual([1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0]);
+    expect(reads).toEqual([1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0]);
     expect(client.getQueryState(keys[5]!)?.isInvalidated).toBe(true);
     expect(client.getQueryState(keys[6]!)?.isInvalidated).toBe(true);
   } finally {
@@ -402,13 +446,14 @@ test("context changes refetch known context families only, leaving both search f
   }
 });
 
-test("task edits refresh titles shown by message links and existing notifications", async () => {
+test("task edits refresh titles shown by message links and existing notifications, not pages without links", async () => {
   const client = new QueryClient();
-  const keys = [
-    [...queryKeys.context("org"), "message-pages", "conversation", ["message"]],
-    [...queryKeys.context("org"), "notifications"],
-  ];
-  for (const key of keys) client.setQueryData(key, [{ title: "Old task title" }]);
+  const linked = [...queryKeys.context("org"), "message-pages", "conversation", ["message"]];
+  const plain = [...queryKeys.context("org"), "message-pages", "conversation", ["plain"]];
+  const notifications = [...queryKeys.context("org"), "notifications"];
+  client.setQueryData(linked, [{ links: [{ entityId: "task", title: "Old task title" }] }]);
+  client.setQueryData(plain, [{ links: [] }]);
+  client.setQueryData(notifications, [{ title: "Old task title" }]);
   const cache = createRealtimeCache({
     queryClient: client,
     organizationId: "org",
@@ -417,7 +462,13 @@ test("task edits refresh titles shown by message links and existing notification
   });
   await cache.receive(change("tasks"));
   await new Promise((resolve) => setTimeout(resolve, 80));
-  for (const key of keys) expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+  expect(client.getQueryState(linked)?.isInvalidated).toBe(true);
+  expect(client.getQueryState(notifications)?.isInvalidated).toBe(true);
+  expect(client.getQueryState(plain)?.isInvalidated).toBe(false);
+  // Reference changes can add links, so they still refresh every page.
+  await cache.receive(change("context"));
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  expect(client.getQueryState(plain)?.isInvalidated).toBe(true);
   cache.dispose();
   client.clear();
 });
@@ -438,7 +489,7 @@ test("a task hint refreshes one mounted fifty-message context page, and access r
     retry: false,
     queryFn: async () => {
       reads++;
-      return Array.from({ length: 50 }, () => ({ title }));
+      return Array.from({ length: 50 }, () => ({ links: [{ entityId: "task", title }] }));
     },
   });
   const unsubscribe = observer.subscribe(() => {});
@@ -455,8 +506,10 @@ test("a task hint refreshes one mounted fifty-message context page, and access r
     await cache.receive(change("tasks"));
     await new Promise((resolve) => setTimeout(resolve, 80));
     expect(reads).toBe(2);
-    expect(client.getQueryData(key)).toEqual(Array.from({ length: 50 }, () => ({ title })));
-    const blocked = Promise.withResolvers<{ title: string }[]>();
+    expect(client.getQueryData(key)).toEqual(
+      Array.from({ length: 50 }, () => ({ links: [{ entityId: "task", title }] })),
+    );
+    const blocked = Promise.withResolvers<{ links: { entityId: string; title: string }[] }[]>();
     observer.setOptions({ ...observer.options, queryFn: () => blocked.promise });
     const reset = cache.receive(change("access"));
     expect(observer.getCurrentResult().data).toBeUndefined();

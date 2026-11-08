@@ -12,7 +12,7 @@ import { OrganizationSwitcher } from "@/components/organizations/switcher/organi
 import { WorkspaceHomeLink } from "@/components/workspace/workspace-home-link";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { sessionQueryOptions } from "@/queries/auth/session";
-import { notificationsOptions } from "@/queries/context/notifications";
+import { notificationPageOptions } from "@/queries/context/notifications";
 import {
   activeMemberQueryOptions,
   organizationQueryOptions,
@@ -38,8 +38,9 @@ export function WorkspaceFrame({
     ...activeMemberQueryOptions(organizationId ?? ""),
     enabled: !!organizationId,
   });
+  // The dot needs only to know whether one unread notification exists.
   const notifications = useQuery({
-    ...notificationsOptions(organizationId ?? ""),
+    ...notificationPageOptions(organizationId ?? "", "unread", undefined, 1),
     enabled: !!organizationId,
   });
   const access = organizationSettingsAccess(
@@ -58,7 +59,7 @@ export function WorkspaceFrame({
         image={session.data?.user.image}
         view={view}
         hasUnreadNotifications={
-          !notifications.error && notifications.data?.some((item) => !item.readAt)
+          !notifications.error && notifications.data?.items.some((item) => !item.readAt)
         }
         onViewChange={(nextView) => {
           const to = {

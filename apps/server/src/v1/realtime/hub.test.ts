@@ -10,12 +10,14 @@ import { expect, test } from "bun:test";
 function fixture(options: Parameters<typeof createRealtimeHub>[1] = {}) {
   const sessions = new Map<string, RealtimeReceiver>();
   let failures = 0;
+  let checks = 0;
   const deps: HubDependencies = {
     authenticate: async (headers, organizationId) => {
+      checks++;
       const identity = sessions.get(headers.get("cookie") ?? "");
       return identity?.organizationId === organizationId ? identity : null;
     },
-    canReceive: async () => true,
+    recipients: async () => () => true,
     reportFailure: () => {
       failures++;
     },
@@ -76,6 +78,9 @@ function fixture(options: Parameters<typeof createRealtimeHub>[1] = {}) {
     get failures() {
       return failures;
     },
+    get checks() {
+      return checks;
+    },
   };
 }
 
@@ -85,7 +90,7 @@ test("routes server-owned audiences and authorizes each viewer in their own work
   const guest = await f.connect("guest", "org-b");
   const denied = await f.connect("denied", "org-b");
   const account = await f.connect("guest", null);
-  f.deps.canReceive = async (identity, audience) => {
+  f.deps.recipients = async (audience) => (identity) => {
     if (audience[0] === "conversation") return identity.userId !== "denied";
     if (audience[0] === "actor") return identity.userId === "owner";
     return true;
@@ -108,29 +113,132 @@ test("routes server-owned audiences and authorizes each viewer in their own work
   f.hub.stop();
 });
 
-test("revocation and workspace drift block delivery between heartbeats", async () => {
-  const f = fixture();
-  const revoked = await f.connect("revoked");
-  const moved = await f.connect("moved");
-  const recreated = await f.connect("recreated");
-  f.sessions.delete(revoked.cookie);
-  f.sessions.set(moved.cookie, {
+function drift(f: ReturnType<typeof fixture>, peers: { cookie: string }[]) {
+  const [revoked, moved, recreated] = peers;
+  f.sessions.delete(revoked!.cookie);
+  f.sessions.set(moved!.cookie, {
     userId: "moved",
     organizationId: "other",
     actorId: "moved-actor",
   });
   // A replaced workspace actor must not inherit the old connection's actor audience.
-  f.sessions.set(recreated.cookie, {
+  f.sessions.set(recreated!.cookie, {
     userId: "recreated",
     organizationId: "org",
     actorId: "replacement-actor",
   });
+}
+
+test("revocation and workspace drift stop delivery by the next heartbeat", async () => {
+  const f = fixture();
+  const peers = [
+    await f.connect("revoked"),
+    await f.connect("moved"),
+    await f.connect("recreated"),
+  ];
+  // reserve() checks each session once; open() reuses that check.
+  expect(f.checks).toBe(3);
+  drift(f, peers);
+  // A check stays valid until the next heartbeat, so ordinary hints skip the session lookup.
   await f.publish(realtimeKeys.organization("org"));
-  for (const peer of [revoked, moved, recreated]) {
-    expect(peer.events).toEqual([{ version: 1, type: "ready" }]);
+  expect(f.checks).toBe(3);
+  for (const peer of peers) expect(peer.events).toHaveLength(2);
+  await f.hub.tick();
+  await f.publish(realtimeKeys.organization("org"));
+  for (const peer of peers) {
+    expect(peer.events).toHaveLength(2);
     expect(peer.closed).toEqual([1008]);
   }
   expect(f.hub.size).toBe(0);
+});
+
+for (const domain of ["session", "access"] as const) {
+  test(`${domain} hints recheck the session before delivery`, async () => {
+    const f = fixture();
+    const peers = [
+      await f.connect("revoked"),
+      await f.connect("moved"),
+      await f.connect("recreated"),
+    ];
+    const live = await f.connect("live");
+    drift(f, peers);
+    await f.publish(realtimeKeys.organization("org"), domain);
+    for (const peer of peers) {
+      expect(peer.events).toEqual([{ version: 1, type: "ready" }]);
+      expect(peer.closed).toEqual([1008]);
+    }
+    expect(live.events.slice(1)).toMatchObject([{ domain }]);
+    expect(f.hub.size).toBe(1);
+    f.hub.stop();
+  });
+}
+
+test("a conversation change to fifty other-workspace connections resolves its audience once without session lookups", async () => {
+  const f = fixture();
+  let resolved = 0;
+  f.deps.recipients = async () => {
+    resolved++;
+    return (identity) => identity.organizationId === "org";
+  };
+  const member = await f.connect("member", "org");
+  const others = [];
+  for (let index = 0; index < 50; index++)
+    others.push(await f.connect(`other-${index}`, `o${index}`));
+  const checks = f.checks;
+  await f.publish(realtimeKeys.conversation("shared"));
+  expect(resolved).toBe(1);
+  expect(f.checks - checks).toBe(0);
+  expect(member.events.slice(1)).toMatchObject([{ conversationId: "shared" }]);
+  for (const other of others) expect(other.events).toHaveLength(1);
+  f.hub.stop();
+});
+
+test("a batch checks each stale session once, resolves each audience once and keeps event order", async () => {
+  const f = fixture({ heartbeatMs: 1 });
+  let resolved = 0;
+  f.deps.recipients = async () => {
+    resolved++;
+    return () => true;
+  };
+  const first = await f.connect("first");
+  const second = await f.connect("second");
+  await Bun.sleep(5);
+  const checks = f.checks;
+  const audience = realtimeKeys.organization("org");
+  await f.hub.publish(
+    { id: crypto.randomUUID(), audience, domain: "tasks" },
+    { id: crypto.randomUUID(), audience, domain: "context" },
+    { id: crypto.randomUUID(), audience: realtimeKeys.conversation("c"), domain: "messaging" },
+  );
+  expect(f.checks - checks).toBe(2);
+  expect(resolved).toBe(2);
+  for (const peer of [first, second])
+    expect(peer.events.slice(1).map((event) => event.type === "change" && event.domain)).toEqual([
+      "tasks",
+      "context",
+      "messaging",
+    ]);
+  f.hub.stop();
+});
+
+test("session checks during delivery run with bounded concurrency", async () => {
+  const f = fixture({ heartbeatMs: 1, maxConcurrentChecks: 2 });
+  const peers = [];
+  for (let index = 0; index < 6; index++) peers.push(await f.connect(`user-${index}`));
+  await Bun.sleep(5);
+  const authenticate = f.deps.authenticate.bind(f.deps);
+  let active = 0;
+  let peak = 0;
+  f.deps.authenticate = async (headers, organizationId) => {
+    peak = Math.max(peak, ++active);
+    await Bun.sleep(1);
+    active--;
+    return authenticate(headers, organizationId);
+  };
+  await f.publish(realtimeKeys.organization("org"));
+  expect(peak).toBe(2);
+  for (const peer of peers) expect(peer.events).toHaveLength(2);
+  f.hub.stop();
 });
 
 test("heartbeat rechecks idle sessions and terminates peers that do not pong", async () => {
@@ -185,7 +293,7 @@ test("disconnects slow peers and rejects client subscriptions without retaining 
 test("authorization failures require resync instead of replaying the hint", async () => {
   const f = fixture();
   const viewer = await f.connect();
-  f.deps.canReceive = async () => {
+  f.deps.recipients = async () => {
     throw new Error("database unavailable");
   };
   await f.publish(realtimeKeys.conversation("private"));
@@ -213,7 +321,7 @@ test("shutdown while authorization is pending prevents a late delivery", async (
   const f = fixture();
   const viewer = await f.connect();
   const gate = Promise.withResolvers<boolean>();
-  f.deps.canReceive = () => gate.promise;
+  f.deps.recipients = () => gate.promise.then((allowed) => () => allowed);
   const pending = f.publish(realtimeKeys.user("user"));
   await Bun.sleep(0);
   f.hub.stop();

@@ -10,8 +10,14 @@ import {
   user,
 } from "../../schema";
 import { setupDatabase } from "../../testing/database";
-import { ensureHumanActor } from "../actors/provisioning";
-import { canReceiveAudience, canReceiveChange, resolveReceiver } from "./audience";
+import { recordQueries } from "../../testing/queries";
+import { ensureHumanActor, ensureUserAgentActor } from "../actors/provisioning";
+import {
+  audienceRecipients,
+  canReceiveAudience,
+  canReceiveChange,
+  resolveReceiver,
+} from "./audience";
 import { beforeEach, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -160,6 +166,62 @@ test("a delivery resolves the receiver once and checks only conversation audienc
     counts[audience[0]] = statements.length;
   }
   expect(counts).toEqual({ organization: 1, actor: 1, conversation: 2 });
+});
+
+test("a conversation audience resolves in one statement for every receiver, and agent rows grant nothing", async () => {
+  const [conversation] = await fixture.db
+    .insert(messagingConversations)
+    .values({
+      organizationId: fixture.orgA,
+      kind: "group",
+      private: true,
+      createdBy: "alice",
+    })
+    .returning();
+  if (!conversation) throw new Error("Missing conversation");
+  const [definition] = await fixture.db
+    .insert(schema.userAgents)
+    .values({ userId: "bob", name: "Helper", instructions: "", harness: "opencode" })
+    .returning();
+  const agent = await ensureUserAgentActor(fixture.db, {
+    organizationId: fixture.orgA,
+    userId: "bob",
+    userAgentId: definition!.id,
+  });
+  await fixture.db.insert(messagingParticipants).values([
+    {
+      conversationId: conversation.id,
+      actorEntityId: fixture.alice,
+      actorType: "human",
+      organizationId: fixture.orgA,
+    },
+    {
+      conversationId: conversation.id,
+      actorEntityId: fixture.outsider,
+      actorType: "human",
+      organizationId: fixture.orgB,
+    },
+    {
+      conversationId: conversation.id,
+      actorEntityId: agent.entityId,
+      actorType: "agent",
+      organizationId: fixture.orgA,
+    },
+  ]);
+  const { db, queries } = recordQueries();
+  const receives = await audienceRecipients(db, realtimeKeys.conversation(conversation.id));
+  expect(queries).toHaveLength(1);
+  const receivers = await Promise.all(
+    [alice, bob, external].map((identity) => resolveReceiver(fixture.db, identity)),
+  );
+  expect(receivers.map((receiver) => receives(receiver!))).toEqual([true, false, true]);
+  // A partner's identity in another workspace is not the participant.
+  expect(receives({ ...receivers[2]!, organizationId: fixture.orgA })).toBe(false);
+  expect(receives({ userId: "alice", organizationId: null, actorId: null })).toBe(false);
+  expect(queries).toHaveLength(1);
+  expect(
+    (await audienceRecipients(db, realtimeKeys.conversation(crypto.randomUUID())))(receivers[0]!),
+  ).toBe(false);
 });
 
 test("disabled, deleted, revoked and unverified viewers lose scoped delivery", async () => {

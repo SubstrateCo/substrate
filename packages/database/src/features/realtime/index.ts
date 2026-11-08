@@ -1,5 +1,5 @@
-export { canReceiveAudience, resolveReceiver } from "../../core/realtime/audience";
-export type { RealtimeReceiver } from "../../core/realtime/audience";
+export { audienceRecipients, resolveReceiver } from "../../core/realtime/audience";
+export type { AudienceFilter, RealtimeReceiver } from "../../core/realtime/audience";
 export {
   profileRefreshHints,
   agentRefreshHints,

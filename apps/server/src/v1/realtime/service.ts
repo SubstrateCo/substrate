@@ -1,5 +1,5 @@
 import { desktopOrigin } from "@startup-os/contracts/desktop/links";
-import { canReceiveAudience, resolveReceiver } from "@startup-os/database/realtime";
+import { audienceRecipients, resolveReceiver } from "@startup-os/database/realtime";
 
 import { db } from "../../auth/database";
 import { authEnvironment } from "../../auth/environment";
@@ -15,7 +15,7 @@ export function createRealtimeService() {
     authenticate: createRealtimeAuthenticator(auth.api, (identity) =>
       resolveReceiver(db, identity),
     ),
-    canReceive: (identity, audience) => canReceiveAudience(db, identity, audience),
+    recipients: (audience) => audienceRecipients(db, audience),
     reportFailure: () => {
       failures++;
       console.warn("Realtime operation failed; client resync required", { failures });
@@ -25,7 +25,7 @@ export function createRealtimeService() {
     ...new Set([...authEnvironment().trustedOrigins, desktopOrigin]),
   ]);
   const subscription = createRealtimeSubscription({
-    receive: (change) => hub.publish(change),
+    receive: (changes) => hub.publish(...changes),
     setAvailable: (available) => hub.setAvailable(available),
   });
   return {

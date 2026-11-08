@@ -9,11 +9,28 @@ import {
 } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
+import type { MessagePageContext } from "@/api/context/links";
 
 interface RealtimeQueryTarget {
   queryKey: QueryKey;
   exact?: boolean;
   refetchType?: "none";
+  // Matches only message context pages that show work links, or have not loaded yet.
+  withLinks?: true;
+}
+
+function showsLinks(query: Query) {
+  // SAFETY: withLinks targets only match message context pages, which cache this shape.
+  const pages = query.state.data as MessagePageContext[] | undefined;
+  return pages === undefined || pages.some((page) => page.links.length > 0);
+}
+
+function targetFilter(target: RealtimeQueryTarget, predicate: (query: Query) => boolean) {
+  const { withLinks, ...filter } = target;
+  return {
+    ...filter,
+    predicate: (query: Query) => (!withLinks || showsLinks(query)) && predicate(query),
+  };
 }
 
 function searchTargets(organizationId: string): RealtimeQueryTarget[] {
@@ -49,13 +66,24 @@ export function realtimeQueryTargets(
       targets.push({ queryKey: queryKeys.agentRuns(userId, organizationId ?? undefined) });
       break;
     case "organization":
+      // Organization details and invitations changed. Membership and role changes send "access".
+      targets.push({ queryKey: queryKeys.organizations }, { queryKey: queryKeys.userInvitations });
+      if (organizationId)
+        targets.push(
+          { queryKey: queryKeys.organizationDetail(organizationId) },
+          { queryKey: queryKeys.invitations(organizationId) },
+          { queryKey: queryKeys.activeMember(organizationId) },
+        );
+      break;
     case "access":
       targets.push({ queryKey: queryKeys.organizations }, { queryKey: queryKeys.userInvitations });
       if (organizationId) targets.push({ queryKey: queryKeys.organization(organizationId) });
       break;
     case "messaging":
       if (organizationId) {
-        targets.push({ queryKey: queryKeys.conversations(organizationId) });
+        // Message content changes leave membership and conversation details unchanged.
+        if (event.scope !== "messages")
+          targets.push({ queryKey: queryKeys.conversations(organizationId) });
         targets.push({
           queryKey: event.conversationId
             ? queryKeys.messages(organizationId, event.conversationId).slice(0, -1)
@@ -79,18 +107,21 @@ export function realtimeQueryTargets(
           { queryKey: queryKeys.tasks(organizationId) },
           { queryKey: [...queryKeys.context(organizationId), "activity"] },
           { queryKey: [...queryKeys.context(organizationId), "related"] },
-          { queryKey: [...queryKeys.context(organizationId), "message-pages"] },
+          // Pages without work links show no task titles.
+          { queryKey: [...queryKeys.context(organizationId), "message-pages"], withLinks: true },
+          // Notifications show task titles. New notifications arrive as their own hints.
           { queryKey: [...queryKeys.context(organizationId), "notifications"] },
           ...searchTargets(organizationId),
         );
       break;
     case "context":
+      // Reference changes do not change notifications. Writes that create notifications, and
+      // conversation deletion, send notifications hints to the recipients.
       if (organizationId)
         targets.push(
           ...["activity", "related", "message-pages", "target"].map((kind) => ({
             queryKey: [...queryKeys.context(organizationId), kind],
           })),
-          { queryKey: [...queryKeys.context(organizationId), "notifications"] },
           ...searchTargets(organizationId),
         );
       break;
@@ -212,22 +243,33 @@ export function createRealtimeCache({
     const inflight = new Map(
       targets
         .flatMap((target) =>
-          queryClient.getQueryCache().findAll({
-            ...target,
-            predicate: (query) => query.state.fetchStatus !== "idle" && !fetchedSince(query),
-          }),
+          queryClient
+            .getQueryCache()
+            .findAll(
+              targetFilter(
+                target,
+                (query) => query.state.fetchStatus !== "idle" && !fetchedSince(query),
+              ),
+            ),
         )
         .map((query) => [query.queryHash, query]),
     );
     const loads = [...inflight.values()].map((query) => ({
       query,
-      refetch: targets.some((target) => target.refetchType !== "none" && matchQuery(target, query)),
+      refetch: targets.some(
+        (target) =>
+          target.refetchType !== "none" &&
+          matchQuery(
+            targetFilter(target, () => true),
+            query,
+          ),
+      ),
       promise: query.promise,
     }));
     // Observers can share a request with imperative route loaders. Never cancel ordinary refreshes.
     const invalidations = targets.map((target) =>
       queryClient.invalidateQueries(
-        { ...target, predicate: (query) => !fetchedSince(query) },
+        targetFilter(target, (query) => !fetchedSince(query)),
         { cancelRefetch: false },
       ),
     );

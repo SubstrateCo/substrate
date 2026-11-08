@@ -6,9 +6,13 @@ import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { member } from "../../core/organizations/schema";
-import { messagingMessages, messagingParticipants } from "../messaging/schema";
+import {
+  messagingConversations,
+  messagingMessages,
+  messagingParticipants,
+} from "../messaging/schema";
 import { notifications } from "../notifications/schema";
-import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, eq, exists, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 export async function profileRefreshHints(
@@ -19,11 +23,38 @@ export async function profileRefreshHints(
     .select({ id: member.organizationId })
     .from(member)
     .where(eq(member.userId, userId));
+  const own = organizations.map(({ id }) => id);
+  const viewer = alias(messagingParticipants, "viewer");
+  // Organization hints reach every member of the user's workspaces. Conversation hints are only
+  // needed where a viewer is outside them. Left conversations count: old messages show the name.
   const conversations = await db
     .selectDistinct({ id: messagingParticipants.conversationId })
     .from(messagingParticipants)
     .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
-    .where(eq(actors.userId, userId));
+    .innerJoin(
+      messagingConversations,
+      eq(messagingConversations.id, messagingParticipants.conversationId),
+    )
+    .where(
+      and(
+        eq(actors.userId, userId),
+        or(
+          notInArray(messagingConversations.organizationId, own),
+          exists(
+            db
+              .select({ id: viewer.actorEntityId })
+              .from(viewer)
+              .where(
+                and(
+                  eq(viewer.conversationId, messagingParticipants.conversationId),
+                  isNull(viewer.leftAt),
+                  notInArray(viewer.organizationId, own),
+                ),
+              ),
+          ),
+        ),
+      ),
+    );
   return [
     { audience: realtimeKeys.user(userId), domain: "profile" },
     ...organizations.map(({ id }) => ({
@@ -136,6 +167,33 @@ export async function conversationRemovalHints(
     { audience: realtimeKeys.organization(conversation.organizationId), domain: "messaging" },
     { audience: realtimeKeys.organization(conversation.organizationId), domain: "context" },
     ...recipients.map(({ organizationId, actorId }) => ({
+      audience: realtimeKeys.actor(organizationId, actorId),
+      domain: "notifications" as const,
+    })),
+  ];
+}
+
+// Builds hints from what a send or reaction changed, so nothing is read back after commit.
+// Membership changes refresh conversation lists; other changes touch only message content.
+export function messageChangeHints(
+  change: { conversationId: string; organizationId: string },
+  effects: {
+    joined: boolean;
+    referenced?: boolean;
+    notified?: { organizationId: string; actorId: string }[];
+  },
+): RealtimeHint[] {
+  const conversation: RealtimeHint = {
+    audience: realtimeKeys.conversation(change.conversationId),
+    domain: "messaging",
+  };
+  if (!effects.joined) conversation.scope = "messages";
+  return [
+    conversation,
+    ...(effects.referenced
+      ? [{ audience: realtimeKeys.organization(change.organizationId), domain: "context" as const }]
+      : []),
+    ...(effects.notified ?? []).map(({ organizationId, actorId }) => ({
       audience: realtimeKeys.actor(organizationId, actorId),
       domain: "notifications" as const,
     })),

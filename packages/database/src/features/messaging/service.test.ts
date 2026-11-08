@@ -1,3 +1,5 @@
+import { realtimeKeys, type RealtimeHint } from "@startup-os/contracts/realtime";
+
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { user, member, entityGrants, actors } from "../../schema";
 import { setupDatabase } from "../../testing/database";
@@ -32,7 +34,7 @@ test("send and replay reuse authenticated identity and the locked conversation",
     queries.filter(
       (query) =>
         query.startsWith('select "name" from "user"') ||
-        (query.includes('from "messaging_conversations"') && !query.includes("for update")),
+        (query.includes('from "messaging_conversations"') && !query.includes("for share")),
     );
   const provisioning = () =>
     queries.filter((query) => query.includes('from "member"') && query.includes("for update"));
@@ -55,6 +57,36 @@ test("send and replay reuse authenticated identity and the locked conversation",
   await expect(chat.sendMessage(other.id, "hello", undefined, requestId)).rejects.toBeInstanceOf(
     ConflictError,
   );
+});
+
+test("send hints come from the write itself and describe only what the message changed", async () => {
+  await verified();
+  const channel = await service("alice").createConversation({ kind: "channel", name: "general" });
+  const conversation = realtimeKeys.conversation(channel.id);
+  const project = await fixture.forActor(fixture.alice).projects.create({ name: "Launch" });
+  const { db, queries } = recordQueries();
+  const chat = (userId: string) =>
+    createMessagingService(db, { userId, organizationId: fixture.orgA });
+  const plain = await chat("alice").sendMessage(channel.id, "plain");
+  expect(plain.hints).toEqual([{ audience: conversation, domain: "messaging", scope: "messages" }]);
+  // Bob's first post joins the public channel.
+  expect((await chat("bob").sendMessage(channel.id, "joining")).hints).toEqual([
+    { audience: conversation, domain: "messaging" },
+  ]);
+  queries.length = 0;
+  const mention = await chat("alice").sendMessage(channel.id, `@[person:${fixture.bob}]`);
+  expect(mention.hints).toEqual([
+    { audience: conversation, domain: "messaging", scope: "messages" },
+    { audience: realtimeKeys.actor(fixture.orgA, fixture.bob), domain: "notifications" },
+  ]);
+  // The notification insert returns its recipients; nothing reads them back.
+  expect(queries.filter((query) => /^select .* from "notifications"/i.test(query))).toEqual([]);
+  expect(
+    (await chat("alice").sendMessage(channel.id, `@[project:${project.entityId}]`)).hints,
+  ).toEqual([
+    { audience: conversation, domain: "messaging", scope: "messages" },
+    { audience: realtimeKeys.organization(fixture.orgA), domain: "context" },
+  ]);
 });
 
 test("reaction summaries stay message-local and replies skip the root count query", async () => {
@@ -279,12 +311,24 @@ test("reactions aggregate per emoji, toggle per user and reject inaccessible mes
   await verified();
   const channel = await service("alice").createConversation({ kind: "channel", name: "general" });
   const message = await service("alice").sendMessage(channel.id, "hello");
-  expect(await service("alice").toggleReaction(message.id, "👍")).toEqual({ active: true });
-  await service("bob").toggleReaction(message.id, "👍");
+  const contentOnly: RealtimeHint[] = [
+    { audience: realtimeKeys.conversation(channel.id), domain: "messaging", scope: "messages" },
+  ];
+  expect(await service("alice").toggleReaction(message.id, "👍")).toEqual({
+    active: true,
+    hints: contentOnly,
+  });
+  // Bob's first reaction joins the public channel, so conversation lists must refresh too.
+  expect((await service("bob").toggleReaction(message.id, "👍")).hints).toEqual([
+    { audience: realtimeKeys.conversation(channel.id), domain: "messaging" },
+  ]);
   expect((await service("alice").listMessages(channel.id))[0]?.reactions).toEqual([
     { emoji: "👍", count: 2, reacted: true },
   ]);
-  expect(await service("alice").toggleReaction(message.id, "👍")).toEqual({ active: false });
+  expect(await service("alice").toggleReaction(message.id, "👍")).toEqual({
+    active: false,
+    hints: contentOnly,
+  });
   expect((await service("alice").listMessages(channel.id))[0]?.reactions).toEqual([
     { emoji: "👍", count: 1, reacted: false },
   ]);
@@ -452,6 +496,44 @@ test("disabled actors and unverified callers cannot use messaging", async () => 
     service("alice").createConversation({ kind: "channel", name: "blocked" }),
   ).rejects.toBeInstanceOf(AccessDeniedError);
   expect(await fixture.db.select().from(messagingConversations)).toEqual([]);
+});
+
+test("posts, reactions and reads do not wait for an open post, while leaving waits for it", async () => {
+  await verified();
+  const channel = await service("alice").createConversation({ kind: "channel", name: "busy" });
+  const root = await service("bob").sendMessage(channel.id, "joined");
+  const held = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  const open = fixture.db.transaction(async (tx) => {
+    await createMessagingService(tx, { userId: "alice", organizationId: fixture.orgA }).sendMessage(
+      channel.id,
+      "open",
+    );
+    held.resolve();
+    await release.promise;
+  });
+  try {
+    await held.promise;
+    const within = <T>(work: Promise<T>) =>
+      Promise.race([work.then(() => "done"), Bun.sleep(1_000).then(() => "blocked")]);
+    expect(await within(service("bob").sendMessage(channel.id, "second"))).toBe("done");
+    expect(await within(service("bob").toggleReaction(root.id, "👍"))).toBe("done");
+    expect(await within(service("bob").listMessages(channel.id))).toBe("done");
+    let left = false;
+    const leaving = service("bob")
+      .leaveConversation(channel.id)
+      .then(() => {
+        left = true;
+      });
+    await Bun.sleep(200);
+    expect(left).toBe(false);
+    release.resolve();
+    await Promise.all([open, leaving]);
+    expect(left).toBe(true);
+  } finally {
+    release.resolve();
+    await open;
+  }
 });
 
 test("concurrent toggles serialize and leave no duplicate reactions", async () => {

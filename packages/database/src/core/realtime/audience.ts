@@ -1,8 +1,7 @@
 import type { RealtimeAudience } from "@startup-os/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
-import { visibleConversations } from "../../features/messaging/access";
-import { messagingConversations } from "../../features/messaging/schema";
+import { messagingConversations, messagingParticipants } from "../../features/messaging/schema";
 import { activeActorCondition } from "../actors/access";
 import { actors } from "../actors/schema";
 import { user } from "../authentication/schema";
@@ -51,34 +50,82 @@ export async function resolveReceiver(
     : null;
 }
 
+export type AudienceFilter = (receiver: RealtimeReceiver) => boolean;
+
+// Resolves who may receive an audience, once per change. Only conversation audiences read the
+// database, in one statement. The filter applies the same rules as visibleConversations: a public
+// channel reaches its own workspace, and a live human participant reaches the participant's
+// workspace. Callers must pass receivers freshly returned by resolveReceiver.
+export async function audienceRecipients(
+  db: DatabaseExecutor,
+  audience: Readonly<RealtimeAudience>,
+): Promise<AudienceFilter> {
+  const workspace = (receiver: RealtimeReceiver) =>
+    receiver.organizationId !== null && receiver.actorId !== null;
+  switch (audience[0]) {
+    case "user":
+      return (receiver) => receiver.userId === audience[1];
+    case "organization":
+      return (receiver) => workspace(receiver) && receiver.organizationId === audience[1];
+    case "actor":
+      return (receiver) =>
+        workspace(receiver) &&
+        receiver.organizationId === audience[1] &&
+        receiver.actorId === audience[2];
+    case "conversation": {
+      const rows = await db
+        .select({
+          organizationId: messagingConversations.organizationId,
+          kind: messagingConversations.kind,
+          private: messagingConversations.private,
+          userId: actors.userId,
+          participantOrganizationId: messagingParticipants.organizationId,
+        })
+        .from(messagingConversations)
+        .leftJoin(
+          messagingParticipants,
+          and(
+            eq(messagingParticipants.conversationId, messagingConversations.id),
+            isNull(messagingParticipants.leftAt),
+          ),
+        )
+        .leftJoin(
+          actors,
+          and(
+            eq(actors.entityId, messagingParticipants.actorEntityId),
+            eq(actors.organizationId, messagingParticipants.organizationId),
+            eq(actors.type, "human"),
+          ),
+        )
+        .where(eq(messagingConversations.id, audience[1]));
+      const [conversation] = rows;
+      if (!conversation) return () => false;
+      const publicIn =
+        conversation.kind === "channel" && !conversation.private
+          ? conversation.organizationId
+          : null;
+      const members = new Set(
+        rows.flatMap((row) =>
+          row.userId && row.participantOrganizationId
+            ? [JSON.stringify([row.userId, row.participantOrganizationId])]
+            : [],
+        ),
+      );
+      return (receiver) =>
+        workspace(receiver) &&
+        (receiver.organizationId === publicIn ||
+          members.has(JSON.stringify([receiver.userId, receiver.organizationId])));
+    }
+  }
+}
+
 // Callers must pass a receiver freshly returned by resolveReceiver.
 export async function canReceiveAudience(
   db: DatabaseExecutor,
   receiver: RealtimeReceiver,
   audience: Readonly<RealtimeAudience>,
 ): Promise<boolean> {
-  if (audience[0] === "user") return audience[1] === receiver.userId;
-  const { organizationId, actorId } = receiver;
-  if (!organizationId || !actorId) return false;
-  switch (audience[0]) {
-    case "organization":
-      return audience[1] === organizationId;
-    case "actor":
-      return audience[1] === organizationId && audience[2] === actorId;
-    case "conversation": {
-      const [conversation] = await db
-        .select({ id: messagingConversations.id })
-        .from(messagingConversations)
-        .where(
-          and(
-            eq(messagingConversations.id, audience[1]),
-            visibleConversations(db, { userId: receiver.userId, organizationId }),
-          ),
-        )
-        .limit(1);
-      return !!conversation;
-    }
-  }
+  return (await audienceRecipients(db, audience))(receiver);
 }
 
 export async function canReceiveChange(
