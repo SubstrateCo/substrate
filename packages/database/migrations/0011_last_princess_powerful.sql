@@ -1,6 +1,0 @@
-ALTER TABLE "messaging_agent_participants" DROP CONSTRAINT "messaging_agent_participants_organization_id_actor_entity_id_actors_organization_id_entity_id_fk";
---> statement-breakpoint
-ALTER TABLE "messaging_agent_participants" ADD COLUMN "actor_type" "actor_type" GENERATED ALWAYS AS ('agent'::actor_type) STORED NOT NULL;--> statement-breakpoint
-ALTER TABLE "messaging_messages" ADD COLUMN "agent_author_entity_id" uuid GENERATED ALWAYS AS (case when author_id is null then author_actor_entity_id else null end) STORED;--> statement-breakpoint
-ALTER TABLE "messaging_agent_participants" ADD CONSTRAINT "messaging_agent_participants_organization_id_actor_entity_id_actor_type_actors_organization_id_entity_id_type_fk" FOREIGN KEY ("organization_id","actor_entity_id","actor_type") REFERENCES "public"."actors"("organization_id","entity_id","type") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "messaging_messages" ADD CONSTRAINT "messaging_messages_conversation_id_agent_author_entity_id_messaging_agent_participants_conversation_id_actor_entity_id_fk" FOREIGN KEY ("conversation_id","agent_author_entity_id") REFERENCES "public"."messaging_agent_participants"("conversation_id","actor_entity_id") ON DELETE no action ON UPDATE no action;
