@@ -124,6 +124,12 @@ test("owners and admins of the owning organization manage conversations without 
     { id: secret.id, name: "secret", private: true, ownerName: "Bob" },
   ]);
   await expect(chat("bob").listManagedConversations()).rejects.toBeInstanceOf(AccessDeniedError);
+  // Managing never becomes reading: an admin cannot add themselves or take ownership.
+  expect(await chat("alice").addMembers(secret.id, ["alice@example.com"])).toEqual({ added: 0 });
+  await expect(chat("alice").transferOwnership(secret.id, "alice")).rejects.toBeInstanceOf(
+    ValidationError,
+  );
+  await expect(chat("alice").listMessages(secret.id)).rejects.toBeInstanceOf(AccessDeniedError);
   // A member from another organization cannot manage it, even as that organization's owner.
   await expect(chat("outsider", f.orgB).deleteConversation(secret.id)).rejects.toBeInstanceOf(
     AccessDeniedError,
