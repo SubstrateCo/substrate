@@ -85,12 +85,12 @@ test("stages scoped packages, dependency and peer graphs, and companion assets w
   expect(new Uint8Array(await readFile(join(staged, "native/engine.wasm")))).toEqual(
     new Uint8Array([0, 97, 115, 109]),
   );
-  expect(
-    JSON.parse(await readFile(join(staged, "node_modules/parser/package.json"), "utf8")).name,
-  ).toBe("parser");
-  expect(
-    JSON.parse(await readFile(join(staged, "node_modules/protocol/package.json"), "utf8")).name,
-  ).toBe("protocol");
+  expect(JSON.parse(await readFile(join(f.output, "parser/package.json"), "utf8")).name).toBe(
+    "parser",
+  );
+  expect(JSON.parse(await readFile(join(f.output, "protocol/package.json"), "utf8")).name).toBe(
+    "protocol",
+  );
   expect(access(join(staged, "node_modules/undeclared"))).rejects.toThrow();
 });
 
@@ -103,7 +103,7 @@ test("cycles reuse the staged ancestor instead of recursively duplicating it", a
     fromDirectory: f.source,
     nodeModulesDirectory: f.output,
   });
-  const beta = join(f.output, "alpha/node_modules/beta");
+  const beta = join(f.output, "beta");
   expect(createRequire(join(beta, "package.json")).resolve("alpha/package.json")).toBe(
     join(f.output, "alpha/package.json"),
   );
@@ -125,11 +125,9 @@ test("installed asset-only optional packages are included; missing optional pack
     fromDirectory: f.source,
     nodeModulesDirectory: f.output,
   });
-  expect(await readFile(join(f.output, "sdk/node_modules/binary/vendor/cli.exe"), "utf8")).toBe(
-    "native executable",
-  );
-  expect(access(join(f.output, "sdk/node_modules/missing"))).rejects.toThrow();
-  expect(access(join(f.output, "sdk/node_modules/absentPeer"))).rejects.toThrow();
+  expect(await readFile(join(f.output, "binary/vendor/cli.exe"), "utf8")).toBe("native executable");
+  expect(access(join(f.output, "missing"))).rejects.toThrow();
+  expect(access(join(f.output, "absentPeer"))).rejects.toThrow();
 });
 
 test("missing required dependencies and peers fail staging rather than shipping an incomplete graph", async () => {
@@ -163,14 +161,52 @@ test("different installed dependency versions keep separate package-relative lay
     fromDirectory: f.source,
     nodeModulesDirectory: f.output,
   });
-  expect(
-    JSON.parse(await readFile(join(f.output, "first/node_modules/parser/package.json"), "utf8"))
-      .version,
-  ).toBe("1.2.0");
+  expect(JSON.parse(await readFile(join(f.output, "parser/package.json"), "utf8")).version).toBe(
+    "1.2.0",
+  );
   expect(
     JSON.parse(await readFile(join(f.output, "second/node_modules/parser/package.json"), "utf8"))
       .version,
   ).toBe("2.3.0");
+});
+
+test("a shared dependency is copied once at the top level and conflicting versions stay nested", async () => {
+  const f = await fixture();
+  await installed(f.source, "nested", { dependencies: { shared: "1" } });
+  await installed(f.source, "shared");
+  const outer = await installed(f.source, "outer", {
+    dependencies: { nested: "2", parser: "2", shared: "1" },
+  });
+  const nested = await installed(
+    outer,
+    "nested",
+    { dependencies: { parser: "1", shared: "1" } },
+    "2.0.0",
+  );
+  await installed(nested, "parser", {}, "1.0.0");
+  await installed(outer, "parser", {}, "2.0.0");
+  expect(
+    await stageInstalledPackages({
+      names: ["nested", "outer"],
+      fromDirectory: f.source,
+      nodeModulesDirectory: f.output,
+    }),
+  ).toEqual({ nested: "1.0.0", outer: "1.0.0" });
+  const resolved = async (from: string, name: string) =>
+    JSON.parse(
+      await readFile(
+        createRequire(join(f.output, from, "package.json")).resolve(`${name}/package.json`),
+        "utf8",
+      ),
+    ).version;
+  for (const path of ["nested/node_modules/shared", "outer/node_modules/shared"])
+    expect(access(join(f.output, path))).rejects.toThrow();
+  for (const from of ["nested", "outer", "outer/node_modules/nested"])
+    expect(await resolved(from, "shared")).toBe("1.0.0");
+  expect(await resolved("outer", "nested")).toBe("2.0.0");
+  // The nested copy keeps parser 1.x even though its parent hoisted parser 2.x.
+  expect(await resolved("outer", "parser")).toBe("2.0.0");
+  expect(await resolved("outer/node_modules/nested", "parser")).toBe("1.0.0");
 });
 
 test("worker bootstrap loads the unpacked entry rather than an ASAR virtual path", async () => {

@@ -1,3 +1,4 @@
+import { harnessKinds } from "../harness/kinds.ts";
 import { z } from "zod";
 
 const id = z.uuid();
@@ -6,7 +7,7 @@ export const saveAgentInput = z.strictObject({
   id: id.optional(),
   name,
   instructions: z.string().max(100000),
-  harness: z.enum(["opencode", "antigravity", "claude", "codex"]),
+  harness: z.enum(harnessKinds),
   model: z.string().trim().min(1).max(500).optional(),
   enabled: z.boolean(),
   useStartupDefaults: z.boolean().default(true),
@@ -101,14 +102,6 @@ export type AgentConfiguration = Omit<z.output<typeof saveAgentInput>, "id"> & {
   id: string;
   image: string | null;
 };
-export type AgentSkill = Omit<z.output<typeof saveSkillInput>, "id"> & { id: string };
-export type AgentMcpServer =
-  | (Omit<Extract<z.output<typeof saveMcpServerInput>, { transport: "stdio" }>, "id"> & {
-      id: string;
-    })
-  | (Omit<Extract<z.output<typeof saveMcpServerInput>, { transport: "http" }>, "id"> & {
-      id: string;
-    });
 export interface AgentCatalog {
   agents: AgentConfiguration[];
 }

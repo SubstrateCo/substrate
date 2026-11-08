@@ -6,10 +6,11 @@ import {
 } from "@startup-os/contracts/realtime";
 
 import type { ClientRequest, IncomingMessage } from "node:http";
-import WebSocket, { type RawData } from "ws";
+import WebSocket from "ws";
 
 interface RealtimeSocket {
-  on(event: "message", callback: (data: RawData) => void): void;
+  // ws uses the default "nodebuffer" binary type, which delivers each message as one Buffer.
+  on(event: "message", callback: (data: Buffer) => void): void;
   on(
     event: "unexpected-response",
     callback: (request: ClientRequest, response: IncomingMessage) => void,
@@ -84,12 +85,7 @@ export function createRealtimeController({
         current.on("message", (data) => {
           if (generation !== epoch || ended) return;
           try {
-            const text = Array.isArray(data)
-              ? Buffer.concat(data).toString("utf8")
-              : Buffer.from(data instanceof ArrayBuffer ? new Uint8Array(data) : data).toString(
-                  "utf8",
-                );
-            const result = realtimeEvent.safeParse(JSON.parse(text));
+            const result = realtimeEvent.safeParse(JSON.parse(data.toString("utf8")));
             if (!result.success) return;
             if (result.data.type === "change" && result.data.organizationId !== organizationId)
               return;

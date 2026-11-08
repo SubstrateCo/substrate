@@ -1,10 +1,14 @@
-import type { HarnessConfiguration, HarnessSkill } from "@startup-os/contracts/harness";
+import {
+  harnessKinds,
+  type HarnessConfiguration,
+  type HarnessSkill,
+} from "@startup-os/contracts/harness";
 
 import { HarnessError } from "./errors.ts";
 import { saveNativeSkill } from "./native-config.ts";
-import { agentDirectory, organizationDirectory, safeId, safePath } from "./paths.ts";
+import { organizationDirectory, readOptional, safeId, safePath } from "./paths.ts";
 import { createHash } from "node:crypto";
-import { readFile, unlink, writeFile } from "node:fs/promises";
+import { unlink, writeFile } from "node:fs/promises";
 
 export const startupSkill: HarnessSkill = {
   id: "startup-os-default",
@@ -30,9 +34,9 @@ export async function materialize(
     if (ids.has(agent.id))
       throw new HarnessError("duplicate-id", `Duplicate agent ID: ${agent.id}`);
     ids.add(agent.id);
-    if (!["opencode", "antigravity", "claude", "codex"].includes(agent.harness))
+    if (!harnessKinds.includes(agent.harness))
       throw new HarnessError("invalid-harness", "Unknown harness kind.");
-    const agentRoot = await agentDirectory(accountDirectory, config.organizationId, agent.id);
+    const agentRoot = await safePath(directory, safeId(agent.id), true);
     if (!agent.enabled) continue;
     if (agent.useStartupDefaults)
       await saveNativeSkill(agentRoot, agent.harness, startupSkill, true);
@@ -50,7 +54,6 @@ export async function materialize(
   const targets = new Map<string, { target: string; existing: string | undefined }>();
   for (const path of Object.keys({ ...previous, ...files })) {
     if (
-      !/^[a-zA-Z0-9_-]+\/\.startup-os\/harness\/[a-zA-Z0-9_-]+\/agent\.json$/.test(path) &&
       !/^[a-zA-Z0-9_-]+\/AGENTS\.md$/.test(path) &&
       !/^[a-zA-Z0-9_-]+\/\.agents\/agents\/startup-os-[a-z0-9_-]+-[a-f0-9]{8}\.md$/.test(path)
     )
@@ -75,11 +78,4 @@ export async function materialize(
   const serialized = JSON.stringify(files);
   if (previousManifest !== serialized) await writeFile(manifest, serialized, { mode: 0o600 });
   return directory;
-}
-
-async function readOptional(path: string): Promise<string | undefined> {
-  return readFile(path, "utf8").catch((error: NodeJS.ErrnoException) => {
-    if (error.code !== "ENOENT") throw error;
-    return undefined;
-  });
 }

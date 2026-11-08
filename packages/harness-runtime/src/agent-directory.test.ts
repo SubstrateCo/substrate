@@ -18,6 +18,7 @@ test("agents in the same organization have separate working folders and native c
     useStartupDefaults: false,
   };
   const scope = { organizationId: "org-a", agentId: agent.id, harness: agent.harness };
+  const secondDirectory = join(root, "orgs", "org-a", "agent-b");
   try {
     await host.configure({
       organizationId: scope.organizationId,
@@ -33,16 +34,19 @@ test("agents in the same organization have separate working folders and native c
     });
     const first = await host.scanConfiguration(scope);
     const second = await host.scanConfiguration({ ...scope, agentId: "agent-b" });
-    expect(first.directory).toBe(join(root, "orgs", "org-a", "agent-a"));
-    expect(second.directory).toBe(join(root, "orgs", "org-a", "agent-b"));
     expect(first.skills.map((skill) => skill.id)).toEqual(["review"]);
     expect(first.mcpServers.map((server) => server.id)).toEqual(["tools"]);
     expect(second.skills).toEqual([]);
     expect(second.mcpServers).toEqual([]);
-    expect(await readdir(second.directory)).not.toContain(".git");
+    expect(
+      await Bun.file(
+        join(root, "orgs", "org-a", "agent-a", ".opencode", "skills", "review", "SKILL.md"),
+      ).exists(),
+    ).toBe(true);
+    expect(await readdir(secondDirectory)).not.toContain(".git");
     await host.configure({ organizationId: "org-b", agents: [agent] });
     const otherOrganization = await host.scanConfiguration({ ...scope, organizationId: "org-b" });
-    expect(otherOrganization.directory).toBe(join(root, "orgs", "org-b", "agent-a"));
+    expect(await readdir(join(root, "orgs", "org-b"))).toContain("agent-a");
     expect(otherOrganization.skills).toEqual([]);
     expect(otherOrganization.mcpServers).toEqual([]);
     for (const agentId of ["../agent-b", "missing-agent"]) {
@@ -51,10 +55,10 @@ test("agents in the same organization have separate working folders and native c
         code: agentId === "missing-agent" ? "agent-not-found" : "invalid-id",
       });
     }
-    await rm(second.directory, { recursive: true });
+    await rm(secondDirectory, { recursive: true });
     await symlink(
-      first.directory,
-      second.directory,
+      join(root, "orgs", "org-a", "agent-a"),
+      secondDirectory,
       process.platform === "win32" ? "junction" : "dir",
     );
     // oxlint-disable-next-line typescript/await-thenable -- Bun rejection assertions return promises at runtime.

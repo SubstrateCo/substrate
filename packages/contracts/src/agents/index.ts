@@ -13,7 +13,5 @@ export type {
   SaveSkillInput,
   SaveMcpServerInput,
   AgentConfiguration,
-  AgentSkill,
-  AgentMcpServer,
   AgentCatalog,
 } from "./input";

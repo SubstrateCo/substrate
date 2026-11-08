@@ -1,4 +1,4 @@
-import { taskStatusValues } from "../tasks/status.ts";
+import { taskPriorityValues, taskStatusValues } from "../tasks/status.ts";
 import { z } from "zod";
 
 const id = z.uuid();
@@ -18,7 +18,7 @@ const messageRef = z
   .strict();
 const target = z.union([workRef, messageRef]);
 const status = z.enum(taskStatusValues);
-const priority = z.enum(["none", "low", "medium", "high", "urgent"]);
+const priority = z.enum(taskPriorityValues);
 const taskFields = {
   title: z.string().trim().min(1).max(300),
   description: z.string().max(20000),
@@ -240,7 +240,7 @@ export type McpToolName = keyof typeof mcpTools;
 export type McpInput<K extends McpToolName> = z.output<(typeof mcpTools)[K]["input"]>;
 export type McpOutput<K extends McpToolName> = z.output<(typeof mcpTools)[K]["output"]>;
 // SAFETY: these keys come directly from the nonempty tool registry above.
-export const mcpToolName = z.enum(Object.keys(mcpTools) as [McpToolName, ...McpToolName[]]);
+const mcpToolName = z.enum(Object.keys(mcpTools) as [McpToolName, ...McpToolName[]]);
 export const mcpCall = z
   .object({
     tool: mcpToolName,

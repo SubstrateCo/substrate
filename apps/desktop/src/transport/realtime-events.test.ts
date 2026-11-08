@@ -1,6 +1,6 @@
 import { realtimeEventChannel, type RealtimeUpdate } from "@startup-os/contracts/realtime";
 
-import { emitRealtimeUpdate } from "./realtime-events.ts";
+import { emitToRenderer } from "./realtime-events.ts";
 import { expect, test } from "bun:test";
 
 test("shutdown does not read webContents from an already destroyed BrowserWindow", () => {
@@ -11,8 +11,9 @@ test("shutdown does not read webContents from an already destroyed BrowserWindow
     },
   };
   expect(() =>
-    emitRealtimeUpdate(
+    emitToRenderer(
       window,
+      realtimeEventChannel,
       { type: "status", status: "disconnected" },
       "https://desktop.startup-os.local",
     ),
@@ -32,13 +33,13 @@ test("only a live internal renderer receives socket updates", () => {
     },
   };
   const event = { type: "status", status: "disconnected" } as const;
-  emitRealtimeUpdate(window, event, "https://desktop.startup-os.local");
+  emitToRenderer(window, realtimeEventChannel, event, "https://desktop.startup-os.local");
   expect(sent).toEqual([[realtimeEventChannel, event]]);
   destroyed = true;
-  emitRealtimeUpdate(window, event, "https://desktop.startup-os.local");
+  emitToRenderer(window, realtimeEventChannel, event, "https://desktop.startup-os.local");
   destroyed = false;
   url = "https://outside.example/";
-  emitRealtimeUpdate(window, event, "https://desktop.startup-os.local");
-  emitRealtimeUpdate(undefined, event, "https://desktop.startup-os.local");
+  emitToRenderer(window, realtimeEventChannel, event, "https://desktop.startup-os.local");
+  emitToRenderer(undefined, realtimeEventChannel, event, "https://desktop.startup-os.local");
   expect(sent).toHaveLength(1);
 });

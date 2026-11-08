@@ -6,6 +6,7 @@ export function fixture(beforeScan?: () => Promise<void>, nativeMcpServers: unkn
     session: { activeOrganizationId: "org-1" },
   };
   let catalogRequests = 0;
+  const requests: string[] = [];
   const calls: { method: string; value?: unknown }[] = [];
   const directories: string[] = [];
   let disposed = 0;
@@ -14,9 +15,15 @@ export function fixture(beforeScan?: () => Promise<void>, nativeMcpServers: unkn
     backend: "https://api.example.com",
     accountsDirectory: "accounts",
     fetchAPI: async (url) => {
-      if (url.endsWith("/session")) return Response.json({ success: true, data: session });
-      if (url.includes("get-active-member-role"))
+      if (url.endsWith("/session")) {
+        requests.push("session");
+        return Response.json({ success: true, data: session });
+      }
+      if (url.includes("get-active-member-role")) {
+        requests.push("membership");
         return membership ? Response.json({ role: "member" }) : new Response(null, { status: 403 });
+      }
+      requests.push("catalog");
       catalogRequests++;
       return Response.json({ success: true, data: { agents: [] } });
     },
@@ -67,6 +74,7 @@ export function fixture(beforeScan?: () => Promise<void>, nativeMcpServers: unkn
       session = value;
     },
     catalogRequests: () => catalogRequests,
+    requests: () => [...requests],
     disposed: () => disposed,
     revokeMembership: () => {
       membership = false;

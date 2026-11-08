@@ -1,11 +1,12 @@
-import type {
-  HarnessAgent,
-  HarnessConfiguration,
-  HarnessEvent,
-  HarnessHost,
-  HarnessKind,
-  HarnessLocalScope,
-  HarnessSessionRef,
+import {
+  harnessKinds,
+  type HarnessAgent,
+  type HarnessConfiguration,
+  type HarnessEvent,
+  type HarnessHost,
+  type HarnessKind,
+  type HarnessLocalScope,
+  type HarnessSessionRef,
 } from "@startup-os/contracts/harness";
 import type { WorkspaceApiProxy } from "@startup-os/contracts/harness/mcp";
 
@@ -68,7 +69,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ha
   }
   async function directory(scope: HarnessLocalScope) {
     assertOpen();
-    if (!["opencode", "antigravity", "claude", "codex"].includes(scope.harness))
+    if (!harnessKinds.includes(scope.harness))
       throw new HarnessError("invalid-harness", "Unknown harness.");
     safeId(scope.organizationId);
     safeId(scope.agentId);
@@ -183,22 +184,17 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ha
           emit(session.ref, { type: "disconnected" });
         }
       }
-      const directory = await materialize(accountDirectory, configuration);
-      await store.configure(configuration);
-      return { directory };
+      await materialize(accountDirectory, configuration);
+      if (JSON.stringify(previous) !== JSON.stringify(configuration))
+        await store.configure(configuration);
     },
     async scanConfiguration(scope) {
       const root = await directory(scope);
       return {
         ...scope,
-        directory: root,
         skills: await scanNativeSkills(root, scope.harness),
         mcpServers: await scanNativeServers(root, scope.harness),
       };
-    },
-    async scanSkills(scope) {
-      const root = await directory(scope);
-      return { ...scope, skills: await scanNativeSkills(root, scope.harness) };
     },
     async saveSkill(input) {
       await saveNativeSkill(await directory(input), input.harness, input.skill);
@@ -215,7 +211,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ha
     async inspect() {
       assertOpen();
       return Promise.all(
-        (["opencode", "antigravity", "claude", "codex"] as const).map(async (harness) => {
+        harnessKinds.map(async (harness) => {
           const capabilities = {
             resume: true,
             permissions: true,
@@ -225,23 +221,17 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ha
           try {
             const executable = await resolveExecutable(harness, options.executables?.[harness]);
             const version = await binaryVersion(executable);
+            // Installed agy without ACP --process-per-session is unavailable until updated.
             if (harness === "antigravity" && !(await antigravityAcpAvailable(executable)))
               return {
                 harness,
                 available: false,
-                executable,
                 version,
-                error: "Installed agy lacks ACP --process-per-session. Update Antigravity CLI.",
                 capabilities: { resume: false, permissions: false, nativeAgents: false },
               };
-            return { harness, available: true, executable, version, capabilities };
-          } catch (error) {
-            return {
-              harness,
-              available: false,
-              error: error instanceof Error ? error.message : "Inspection failed.",
-              capabilities,
-            };
+            return { harness, available: true, version, capabilities };
+          } catch {
+            return { harness, available: false, capabilities };
           }
         }),
       );

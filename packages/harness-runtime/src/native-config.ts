@@ -1,7 +1,7 @@
 import type { HarnessKind, HarnessMcpServer, HarnessSkill } from "@startup-os/contracts/harness";
 
 import { HarnessError } from "./errors.ts";
-import { safeId, safePath } from "./paths.ts";
+import { readOptional, safeId, safePath } from "./paths.ts";
 import { applyEdits, modify, parse, type ParseError } from "jsonc-parser";
 import { readdir, unlink, writeFile } from "node:fs/promises";
 import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
@@ -35,20 +35,15 @@ const mcpKeys: Record<HarnessKind, string[]> = {
   codex: ["mcp_servers"],
 };
 
-async function readOptional(path: string): Promise<string | undefined> {
-  const { readFile } = await import("node:fs/promises");
-  return readFile(path, "utf8").catch((error: NodeJS.ErrnoException) => {
-    if (error.code !== "ENOENT") throw error;
-    return undefined;
-  });
-}
+// Environment keys and native arguments use the same credential-name screen.
+const credentialName = /token|secret|password|credential|api.?key|authorization/i;
 
 function validateServer(server: HarnessMcpServer): void {
   safeId(server.id);
   if (server.id === "startup-os")
     throw new HarnessError("reserved-id", "Startup OS MCP is injected at execution time.");
   if (server.transport === "http") {
-    const url = new URL(server.url ?? "");
+    const url = new URL(server.url);
     if (
       !["http:", "https:"].includes(url.protocol) ||
       url.username ||
@@ -63,11 +58,7 @@ function validateServer(server: HarnessMcpServer): void {
   } else if (!server.command || /[\0\r\n]/.test(server.command))
     throw new HarnessError("invalid-mcp-command", "A stdio server needs an executable command.");
   for (const [key, value] of Object.entries(server.environment ?? {})) {
-    if (
-      !/^[A-Z_][A-Z0-9_]*$/i.test(key) ||
-      /token|secret|password|credential|api.?key|authorization/i.test(key) ||
-      /[\0\r\n]/.test(value)
-    )
+    if (!/^[A-Z_][A-Z0-9_]*$/i.test(key) || credentialName.test(key) || /[\0\r\n]/.test(value))
       throw new HarnessError(
         "secret-configuration",
         "Only nonsecret MCP environment settings are supported. Authenticate in the native harness.",
@@ -183,24 +174,26 @@ export async function deleteNativeSkill(
   await unlink(await safePath(directory, `${skillRoots[harness]}/${safeId(id)}/SKILL.md`));
 }
 
-async function mcpNames(directory: string, harness: HarnessKind): Promise<string[]> {
-  if (harness !== "opencode") return [mcpFiles[harness]];
-  const names: string[] = [];
-  for (const candidate of [
-    "opencode.json",
-    "opencode.jsonc",
-    ".opencode/opencode.json",
-    ".opencode/opencode.jsonc",
-  ]) {
-    if ((await readOptional(await safePath(directory, candidate))) !== undefined)
-      names.push(candidate);
+/** Reads each candidate once, in precedence order. A missing configuration yields the default file. */
+async function loadMcpDocuments(directory: string, harness: HarnessKind) {
+  const candidates =
+    harness === "opencode"
+      ? ["opencode.json", "opencode.jsonc", ".opencode/opencode.json", ".opencode/opencode.jsonc"]
+      : [mcpFiles[harness]];
+  const documents: ReturnType<typeof mcpDocument>[] = [];
+  for (const name of candidates) {
+    const path = await safePath(directory, name);
+    const text = await readOptional(path);
+    if (text !== undefined) documents.push(mcpDocument(harness, name, path, text));
   }
-  return names.length ? names : [mcpFiles[harness]];
+  if (documents.length) return documents;
+  const name = mcpFiles[harness];
+  return [
+    mcpDocument(harness, name, await safePath(directory, name), harness === "codex" ? "" : "{}\n"),
+  ];
 }
 
-async function mcpDocument(directory: string, harness: HarnessKind, name = mcpFiles[harness]) {
-  const path = await safePath(directory, name);
-  const text = (await readOptional(path)) ?? (harness === "codex" ? "" : "{}\n");
+function mcpDocument(harness: HarnessKind, name: string, path: string, text: string) {
   const errors: ParseError[] = [];
   let parsed: unknown;
   try {
@@ -216,7 +209,7 @@ async function mcpDocument(directory: string, harness: HarnessKind, name = mcpFi
   for (const key of mcpKeys[harness]) {
     servers = nativeObject(servers[key] ?? {}, `Invalid MCP configuration in ${name}`);
   }
-  return { path, text, document, servers };
+  return { name, path, text, document, servers };
 }
 
 function encodeServer(harness: HarnessKind, server: HarnessMcpServer) {
@@ -238,56 +231,59 @@ function encodeServer(harness: HarnessKind, server: HarnessMcpServer) {
   return { httpUrl: server.url };
 }
 
-export async function scanNativeServers(
-  directory: string,
-  harness: HarnessKind,
-): Promise<HarnessMcpServer[]> {
-  const servers: Record<string, unknown> = {};
-  for (const name of await mcpNames(directory, harness))
-    Object.assign(servers, (await mcpDocument(directory, harness, name)).servers);
-  return Object.entries(servers).map(([id, raw]) => {
-    const value = nativeObject(raw, "MCP server entry must be an object.");
-    const url = value.url ?? value.httpUrl;
-    const command = Array.isArray(value.command) ? value.command[0] : value.command;
-    // Never expose native credentials or environment values to the renderer.
-    let args: unknown[] = [];
-    if (Array.isArray(value.command)) args = value.command.slice(1);
-    else if (Array.isArray(value.args)) args = value.args;
-    const protectedCommand =
-      typeof command === "string" &&
-      /token|secret|password|credential|api.?key|authorization|bearer\s/i.test(command);
-    const protectedEntry =
-      protectedCommand ||
-      Object.entries(value).some(
-        ([key, entry]) =>
-          /token|secret|password|authorization|headers|env|environment|oauth/i.test(key) &&
-          entry !== undefined &&
-          (typeof entry !== "object" || (entry !== null && Object.keys(entry).length > 0)),
-      ) ||
-      args.some(
-        (arg) =>
-          typeof arg !== "string" ||
-          /token|secret|password|credential|api.?key|authorization/i.test(arg),
-      );
-    const result: HarnessMcpServer = {
-      id,
-      name: id,
-      transport: url ? "http" : "stdio",
-      readOnly: protectedEntry || (typeof url === "string" && /[?#@]/.test(url)),
-      args: [],
-    };
+function describeServer(id: string, raw: unknown): HarnessMcpServer {
+  const value = nativeObject(raw, "MCP server entry must be an object.");
+  const url = value.url ?? value.httpUrl;
+  const command = Array.isArray(value.command) ? value.command[0] : value.command;
+  // Never expose native credentials or environment values to the renderer.
+  let args: unknown[] = [];
+  if (Array.isArray(value.command)) args = value.command.slice(1);
+  else if (Array.isArray(value.args)) args = value.args;
+  const protectedCommand =
+    typeof command === "string" &&
+    /token|secret|password|credential|api.?key|authorization|bearer\s/i.test(command);
+  const protectedEntry =
+    protectedCommand ||
+    Object.entries(value).some(
+      ([key, entry]) =>
+        /token|secret|password|authorization|headers|env|environment|oauth/i.test(key) &&
+        entry !== undefined &&
+        (typeof entry !== "object" || (entry !== null && Object.keys(entry).length > 0)),
+    ) ||
+    args.some((arg) => typeof arg !== "string" || credentialName.test(arg));
+  const readOnly = protectedEntry || (typeof url === "string" && /[?#@]/.test(url));
+  if (url) {
+    let address = "";
     if (typeof url === "string") {
       const parsed = new URL(url);
       parsed.username = "";
       parsed.password = "";
       parsed.search = "";
       parsed.hash = "";
-      result.url = parsed.toString();
+      address = parsed.toString();
     }
-    if (typeof command === "string") result.command = protectedCommand ? "native-managed" : command;
-    if (!protectedEntry) result.args = args.filter((arg): arg is string => typeof arg === "string");
-    return result;
-  });
+    return { id, name: id, transport: "http", readOnly, url: address, args: [] };
+  }
+  let visibleCommand = "";
+  if (typeof command === "string") visibleCommand = protectedCommand ? "native-managed" : command;
+  return {
+    id,
+    name: id,
+    transport: "stdio",
+    readOnly,
+    command: visibleCommand,
+    args: protectedEntry ? [] : args.filter((arg): arg is string => typeof arg === "string"),
+  };
+}
+
+export async function scanNativeServers(
+  directory: string,
+  harness: HarnessKind,
+): Promise<HarnessMcpServer[]> {
+  const servers: Record<string, unknown> = {};
+  for (const document of await loadMcpDocuments(directory, harness))
+    Object.assign(servers, document.servers);
+  return Object.entries(servers).map(([id, raw]) => describeServer(id, raw));
 }
 
 export async function editNativeServer(
@@ -298,31 +294,22 @@ export async function editNativeServer(
 ): Promise<void> {
   safeId(id);
   if (server) validateServer(server);
-  const names = await mcpNames(directory, harness);
-  let definitions = 0;
-  let name = names[names.length - 1];
-  for (const candidate of names)
-    if (id in (await mcpDocument(directory, harness, candidate)).servers) {
-      name = candidate;
-      definitions++;
-    }
-  if (!server && definitions > 1)
+  const documents = await loadMcpDocuments(directory, harness);
+  const defining = documents.filter((document) => id in document.servers);
+  if (!server && defining.length > 1)
     throw new HarnessError(
       "configuration-conflict",
       "This MCP server is defined in several native files. Remove those definitions in the native harness to avoid exposing a lower-precedence server.",
     );
-  const { path, text, servers } = await mcpDocument(directory, harness, name);
+  // The last definition wins, matching the merged scan. A new entry goes in the last file.
+  const { path, text, servers } = defining.at(-1) ?? documents[documents.length - 1];
   await safePath(directory, path, false, true);
   const previous =
     servers[id] === undefined
       ? undefined
       : nativeObject(servers[id], "MCP server entry must be an object.");
   // Editing credential-bearing entries would silently remove or re-store secrets. Native UI owns those.
-  if (
-    server &&
-    previous &&
-    (await scanNativeServers(directory, harness)).find((entry) => entry.id === id)?.readOnly
-  )
+  if (server && previous && describeServer(id, previous).readOnly)
     throw new HarnessError(
       "native-auth-required",
       "Edit credential-bearing MCP entries in the native harness.",

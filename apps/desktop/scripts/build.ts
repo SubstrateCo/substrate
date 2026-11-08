@@ -2,7 +2,7 @@ import { backendURL } from "../src/transport/bundled-renderer.js";
 import { storageOrigins } from "../src/transport/storage.js";
 import { bundleHarnessWorker, stageHarnessProductionAssets } from "./harness-worker.ts";
 import { bundlePreload } from "./preload.js";
-import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, readFile, rm, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 const desktop = fileURLToPath(new URL("../", import.meta.url));
@@ -27,11 +27,9 @@ const result = await Bun.build({
   external: ["electron"],
 });
 if (!result.success) throw new AggregateError(result.logs, "Desktop main build failed.");
-await mkdir(`${desktop}/dist`, { recursive: true });
 await bundlePreload(`${desktop}/dist`);
 await bundleHarnessWorker(`${desktop}/dist`);
 const harnessDependencies = await stageHarnessProductionAssets(`${desktop}/dist`);
-await bundlePreload();
 const { name, version, description, author } = JSON.parse(
   await readFile(`${desktop}/package.json`, "utf8"),
 );

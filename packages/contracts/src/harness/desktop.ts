@@ -3,36 +3,24 @@ import type {
   HarnessEvent,
   HarnessInspection,
   HarnessKind,
-  HarnessMcpServer,
+  HarnessLocalConfiguration,
   HarnessSessionRef,
-  HarnessSkill,
   HarnessModelCatalog,
 } from "./index.ts";
 
 /** Main derives the account and organization for every desktop operation. */
 export interface HarnessAPI {
-  readonly version: 1;
   synchronize(): Promise<{ connected: true; organizationId: string }>;
-  inspect(): Promise<{
+  status(): Promise<{
     connected: boolean;
     organizationId?: string;
-    harnesses?: Omit<HarnessInspection, "executable" | "error">[];
+    harnesses?: HarnessInspection[];
   }>;
-  status(): ReturnType<HarnessAPI["inspect"]>;
   listModels(input: { harness: HarnessKind; agentId?: string }): Promise<HarnessModelCatalog>;
-  scanConfiguration(input: { harness: HarnessKind; agentId: string }): Promise<{
-    organizationId: string;
-    agentId: string;
+  scanConfiguration(input: {
     harness: HarnessKind;
-    skills: HarnessSkill[];
-    mcpServers: HarnessMcpServer[];
-  }>;
-  scanSkills(input: { harness: HarnessKind; agentId: string }): Promise<{
-    organizationId: string;
     agentId: string;
-    harness: HarnessKind;
-    skills: HarnessSkill[];
-  }>;
+  }): Promise<HarnessLocalConfiguration>;
   saveSkill(input: {
     harness: HarnessKind;
     agentId: string;
@@ -56,7 +44,6 @@ export interface HarnessAPI {
   deleteMcpServer(input: { harness: HarnessKind; agentId: string; id: string }): Promise<void>;
   execute(command: HarnessCommand): Promise<HarnessSessionRef | void>;
   disconnect(): Promise<void>;
-  reset(): Promise<void>;
   onEvent(callback: (event: HarnessEvent) => void): () => void;
 }
 

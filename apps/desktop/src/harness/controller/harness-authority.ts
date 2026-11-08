@@ -26,22 +26,28 @@ const catalogSchema = z.object({
   }),
 });
 
+const sessionResultSchema = z.object({ success: z.literal(true), data: verifiedSessionSchema });
+
+export async function readVerifiedSession(
+  fetchAPI: (url: string, init: RequestInit) => Promise<Response>,
+  backend: string,
+) {
+  const response = await fetchAPI(new URL("/api/v1/session", backend).href, {
+    method: "GET",
+    redirect: "error",
+  });
+  if (!response.ok) throw new Error("Session unavailable.");
+  return sessionResultSchema.parse(await response.json()).data;
+}
+
 export function createHarnessAuthority(options: {
   backend: string;
   fetchAPI: (url: string, init: RequestInit) => Promise<Response>;
 }) {
   return {
     async verify() {
-      const response = await options.fetchAPI(new URL("/api/v1/session", options.backend).href, {
-        method: "GET",
-        redirect: "error",
-      });
-      if (!response.ok) throw new Error("Session unavailable.");
-      const { data } = z
-        .object({ success: z.literal(true), data: verifiedSessionSchema })
-        .parse(await response.json());
+      const data = await readVerifiedSession(options.fetchAPI, options.backend);
       const organizationId = data.session.activeOrganizationId;
-      if (!/^[a-zA-Z0-9_-]{1,128}$/.test(organizationId)) throw new Error("Session unavailable.");
       const membershipURL = new URL(
         "/api/auth/organization/get-active-member-role",
         options.backend,

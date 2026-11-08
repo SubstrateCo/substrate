@@ -1,5 +1,6 @@
 import { fullscreenChannel, windowChannel } from "@startup-os/contracts/desktop/window";
 
+import { trustedSender } from "./trusted-sender.ts";
 import {
   ipcMain,
   nativeTheme,
@@ -43,11 +44,7 @@ export function attachTitleBar(window: BrowserWindow, rendererURL: string) {
     }
   };
   ipcMain.handle(windowChannel, (event, method, theme) => {
-    if (
-      event.sender !== window.webContents ||
-      event.senderFrame !== window.webContents.mainFrame ||
-      new URL(event.senderFrame.url).origin !== new URL(rendererURL).origin
-    ) {
+    if (!trustedSender(event, window.webContents, rendererURL)) {
       throw new Error("Untrusted window request.");
     }
     if (method === "fullscreen") return window.isFullScreen();

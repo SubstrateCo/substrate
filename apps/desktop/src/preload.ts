@@ -4,6 +4,7 @@ import {
   type DesktopWindowAPI,
 } from "@startup-os/contracts/desktop/window";
 import type { HarnessEvent } from "@startup-os/contracts/harness";
+import type { HarnessAPI } from "@startup-os/contracts/harness/desktop";
 import {
   realtimeChannel,
   realtimeEventChannel,
@@ -11,7 +12,6 @@ import {
   type RealtimeUpdate,
 } from "@startup-os/contracts/realtime";
 
-import type { HarnessAPI } from "./harness/bridge/harness-api.ts";
 import { harnessChannel, harnessEventChannel } from "./harness/bridge/harness-bridge.ts";
 import { setupRenderer } from "@better-auth/electron/preload";
 import { contextBridge, ipcRenderer } from "electron";
@@ -45,16 +45,12 @@ if (process.isMainFrame && window.location.origin === origin) {
   };
   contextBridge.exposeInMainWorld("startupOSWindow", windowAPI);
   const api: HarnessAPI = {
-    version: 1,
-    inspect: () => ipcRenderer.invoke(harnessChannel, "status"),
     status: () => ipcRenderer.invoke(harnessChannel, "status"),
     listModels: (input) => ipcRenderer.invoke(harnessChannel, "listModels", input),
     synchronize: () => ipcRenderer.invoke(harnessChannel, "synchronize"),
     execute: (command) => ipcRenderer.invoke(harnessChannel, "execute", command),
     disconnect: () => ipcRenderer.invoke(harnessChannel, "disconnect"),
-    reset: () => ipcRenderer.invoke(harnessChannel, "disconnect"),
     scanConfiguration: (input) => ipcRenderer.invoke(harnessChannel, "scanConfiguration", input),
-    scanSkills: (input) => ipcRenderer.invoke(harnessChannel, "scanSkills", input),
     saveSkill: (input) => ipcRenderer.invoke(harnessChannel, "saveSkill", input),
     deleteSkill: (input) => ipcRenderer.invoke(harnessChannel, "deleteSkill", input),
     saveMcpServer: (input) => ipcRenderer.invoke(harnessChannel, "saveMcpServer", input),

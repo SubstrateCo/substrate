@@ -10,7 +10,8 @@ import {
 } from "./native-config.ts";
 import { agentDirectory, organizationDirectory, safePath } from "./paths.ts";
 import { createMemoryStorage } from "./test-support.ts";
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
+import * as fs from "node:fs/promises";
 import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -41,39 +42,6 @@ const config = (): HarnessConfiguration => ({
 });
 
 describe("native skill files", () => {
-  test("skills-only discovery does not read unrelated MCP configuration", async () => {
-    const host = await createHarnessHost({
-      accountDirectory: root,
-      storage: createMemoryStorage(),
-    });
-    try {
-      await host.configure(config());
-      const directory = await agentDirectory(root, "org-a", "agent-a");
-      await host.saveSkill({
-        organizationId: "org-a",
-        agentId: "agent-a",
-        harness: "opencode",
-        skill: {
-          id: "review",
-          name: "review",
-          description: "Review work.",
-          content: "Check source context.",
-        },
-      });
-      await writeFile(join(directory, "opencode.json"), "{invalid native MCP configuration");
-      const result = await host.scanSkills({
-        organizationId: "org-a",
-        agentId: "agent-a",
-        harness: "opencode",
-      });
-      expect(result.skills.map((skill) => skill.name)).toEqual(["review"]);
-      expect(await readFile(join(directory, "opencode.json"), "utf8")).toBe(
-        "{invalid native MCP configuration",
-      );
-    } finally {
-      await host.dispose();
-    }
-  });
   test("scanning a missing native folder is read-only", async () => {
     const directory = await organizationDirectory(root, "org-a");
     expect(await scanNativeSkills(directory, "claude")).toEqual([]);
@@ -166,7 +134,9 @@ describe("native MCP files", () => {
         command: "new-tool",
         args: [],
       });
-      expect((await scanNativeServers(directory, harness))[0].command).toBe("new-tool");
+      expect((await scanNativeServers(directory, harness))[0]).toMatchObject({
+        command: "new-tool",
+      });
       await editNativeServer(directory, harness, "local-tools");
       expect(await scanNativeServers(directory, harness)).toEqual([]);
     });
@@ -213,6 +183,29 @@ describe("native MCP files", () => {
     expect(JSON.stringify(await scanNativeServers(directory, "codex"))).not.toContain(
       "NATIVE_SECRET",
     );
+  });
+
+  test("an edit reads each native MCP candidate file once", async () => {
+    const directory = await organizationDirectory(root, "org-a");
+    await writeFile(
+      join(directory, "opencode.json"),
+      '{"mcp":{"servers":{"tools":{"type":"local","command":["tool"]}}}}',
+    );
+    const reads = spyOn(fs, "readFile");
+    try {
+      await editNativeServer(directory, "opencode", "tools", {
+        id: "tools",
+        name: "tools",
+        transport: "stdio",
+        command: "new-tool",
+      });
+      expect(reads).toHaveBeenCalledTimes(4);
+    } finally {
+      reads.mockRestore();
+    }
+    expect((await scanNativeServers(directory, "opencode"))[0]).toMatchObject({
+      command: "new-tool",
+    });
   });
 
   test("rejects credential writes and URL credentials", async () => {

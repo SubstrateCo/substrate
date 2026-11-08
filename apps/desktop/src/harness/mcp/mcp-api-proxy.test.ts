@@ -23,13 +23,15 @@ function fixture() {
   let active = true;
   let afterRequest = () => {};
   let apiResult: WorkspaceApiResult = { success: true, data: ["project"] };
+  let sessionRequests = 0;
   const requests: { url: string; init: RequestInit }[] = [];
   const proxy = createMcpApiProxy({
     backend: "https://api.example.com",
     userId,
     isActive: () => active,
     fetchAPI: async (url, init) => {
-      if (url.endsWith("/session"))
+      if (url.endsWith("/session")) {
+        sessionRequests++;
         return Response.json({
           success: true,
           data: {
@@ -37,6 +39,7 @@ function fixture() {
             session: { activeOrganizationId: organizationId },
           },
         });
+      }
       requests.push({ url, init });
       afterRequest();
       return Response.json(apiResult);
@@ -45,6 +48,7 @@ function fixture() {
   return {
     proxy,
     requests,
+    sessionRequests: () => sessionRequests,
     switchWorkspace: () => {
       organizationId = "org-b";
     },
@@ -105,10 +109,11 @@ test("old credentials cannot cross accounts or survive disconnect", async () => 
   expect(f.requests).toEqual([]);
 });
 
-test("a workspace change during a request discards the result without replaying the request", async () => {
+test("a call verifies the session once and keeps a completed write after a workspace switch", async () => {
   const f = fixture();
   f.afterRequest(f.switchWorkspace);
-  await expect(f.proxy(createProject)).rejects.toThrow("Workspace changed");
+  expect(await f.proxy(createProject)).toEqual({ success: true, data: ["project"] });
+  expect(f.sessionRequests()).toBe(1);
   expect(f.requests).toHaveLength(1);
 });
 

@@ -1,4 +1,4 @@
-import { taskStatusValues } from "./status";
+import { taskPriorityValues, taskStatusValues } from "./status";
 import { z } from "zod";
 
 export const tasksWorkspace = z.object({ organizationId: z.string().min(1) });
@@ -10,7 +10,7 @@ const taskFields = z.object({
   title,
   description,
   status: z.enum(taskStatusValues),
-  priority: z.enum(["none", "low", "medium", "high", "urgent"]),
+  priority: z.enum(taskPriorityValues),
   assigneeActorEntityId: z.uuid().nullable(),
   dueDate: z.iso.date().nullable(),
 });

@@ -8,6 +8,8 @@ export const taskStatusValues = [
 
 export type TaskStatus = (typeof taskStatusValues)[number];
 
+export const taskPriorityValues = ["none", "low", "medium", "high", "urgent"] as const;
+
 export const taskStatusLabels: Record<TaskStatus, string> = {
   not_started: "Not Started",
   in_progress: "In Progress",

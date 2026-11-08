@@ -29,7 +29,7 @@ function isAppURL(url, origin = bundledApplicationURL) {
   return url.origin === origin && !url.username && !url.password;
 }
 
-/** @param {string} value @param {string} backend @param {string} [origin] */
+/** @param {string} value @param {string} backend A validated `backendURL()` origin. @param {string} [origin] */
 export function proxyURL(value, backend, origin = bundledApplicationURL) {
   const url = new URL(value);
   if (!isAppURL(url, origin) || !(url.pathname === "/api" || url.pathname.startsWith("/api/"))) {
@@ -40,7 +40,7 @@ export function proxyURL(value, backend, origin = bundledApplicationURL) {
     throw new Error("Unsafe API path.");
   }
   // Concatenation keeps even a double-slash pathname on the configured origin.
-  return new URL(`${backendURL(backend, false)}${url.pathname}${url.search}`).href;
+  return new URL(`${backend}${url.pathname}${url.search}`).href;
 }
 
 /** @param {string} root @param {string} file */

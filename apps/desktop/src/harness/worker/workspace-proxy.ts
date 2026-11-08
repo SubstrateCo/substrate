@@ -1,11 +1,14 @@
-import {
-  workspaceApiResult,
-  type WorkspaceApiRequest,
-  type WorkspaceApiResult,
-  type WorkspaceApiProxy,
+import type {
+  WorkspaceApiRequest,
+  WorkspaceApiResult,
+  WorkspaceApiProxy,
 } from "@startup-os/contracts/harness/mcp";
 
-export type WorkspaceApiResponse = { apiResponse: number; result?: unknown; error?: string };
+/** Main validates the result before it posts this message. */
+export type WorkspaceApiResponse = { apiResponse: number } & (
+  | { result: WorkspaceApiResult; error?: undefined }
+  | { error: string }
+);
 
 export function createWorkspaceProxy(
   postMessage: (message: { id: number; api: WorkspaceApiRequest }) => void,
@@ -37,12 +40,8 @@ export function createWorkspaceProxy(
       if (!pending) return;
       pendingApi.delete(data.apiResponse);
       clearTimeout(pending.timer);
-      if (data.error) pending.reject(new Error(data.error));
-      else {
-        const parsed = workspaceApiResult.safeParse(data.result);
-        if (parsed.success) pending.resolve(parsed.data);
-        else pending.reject(new Error("Invalid workspace response."));
-      }
+      if (data.error !== undefined) pending.reject(new Error(data.error));
+      else pending.resolve(data.result);
     },
     dispose() {
       for (const pending of pendingApi.values()) {

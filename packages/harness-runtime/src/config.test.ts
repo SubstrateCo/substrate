@@ -55,18 +55,15 @@ async function snapshot(directory: string, paths: string[]) {
   );
 }
 
-test("unchanged sync preserves managed contents and mtimes and creates no agent snapshot", async () => {
+test("unchanged sync preserves managed contents and mtimes", async () => {
   const config = configuration();
   const directory = await materialize(root, config);
-  const paths = [
+  const before = await snapshot(directory, [
     "agent-a/AGENTS.md",
     profilePath,
     manifestPath,
     "agent-a/.agents/skills/startup-os-default/SKILL.md",
-  ];
-  const snapshotPath = "agent-a/.startup-os/harness/agent-a/agent.json";
-  if (await Bun.file(join(directory, snapshotPath)).exists()) paths.push(snapshotPath);
-  const before = await snapshot(directory, paths);
+  ]);
   await materialize(root, config);
   const rewritten: string[] = [];
   for (const file of before) {
@@ -74,7 +71,6 @@ test("unchanged sync preserves managed contents and mtimes and creates no agent 
     if ((await stat(join(directory, file.path))).mtimeMs !== file.mtime) rewritten.push(file.path);
   }
   expect(rewritten).toEqual([]);
-  expect(await Bun.file(join(directory, snapshotPath)).exists()).toBe(false);
   expect(Object.keys(JSON.parse(await readFile(join(directory, manifestPath), "utf8")))).toEqual([
     "agent-a/AGENTS.md",
     profilePath,
@@ -154,20 +150,12 @@ test("generic ownership cleanup removes inactive generated files and preserves n
   ];
   for (const path of protectedFiles)
     await writeFile(await safePath(directory, path, false, true), `User content: ${path}`);
-  // Exercise the existing manifest allowlist and cleanup, with no filename-specific migration.
-  const obsolete = "agent-a/.startup-os/harness/agent-a/agent.json";
-  await writeFile(await safePath(directory, obsolete, false, true), "previously owned content");
-  const manifest = JSON.parse(await readFile(join(directory, manifestPath), "utf8"));
-  await writeFile(
-    join(directory, manifestPath),
-    JSON.stringify({ ...manifest, [obsolete]: "previously owned content" }),
-  );
   const before = await snapshot(directory, [
     ...protectedFiles,
     "agent-a/.agents/skills/startup-os-default/SKILL.md",
   ]);
   await materialize(root, { ...config, agents: [] });
-  for (const path of ["agent-a/AGENTS.md", profilePath, obsolete])
+  for (const path of ["agent-a/AGENTS.md", profilePath])
     expect(await Bun.file(join(directory, path)).exists()).toBe(false);
   expect(await readFile(join(directory, manifestPath), "utf8")).toBe("{}");
   for (const file of before) {

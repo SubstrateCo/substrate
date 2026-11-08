@@ -103,9 +103,28 @@ describe("desktop harness authority", () => {
   });
   test("rejects renderer-selected organizations before fetching a catalog", async () => {
     const f = fixture();
-    expect(f.controller.run("synchronize", "other-org")).rejects.toThrow("Harness unavailable");
+    expect(f.controller.run("synchronize", "other-org")).rejects.toThrow(
+      "Invalid harness operation",
+    );
+    expect(f.controller.run("status", {})).rejects.toThrow("Invalid harness operation");
+    expect(f.controller.run("scanSkills", {})).rejects.toThrow("Invalid harness operation");
     expect(f.catalogRequests()).toBe(0);
     expect(f.directories).toEqual([]);
+  });
+  test("concurrent synchronizations share one verified round trip", async () => {
+    const f = fixture();
+    const results = await Promise.all([
+      f.controller.run("synchronize"),
+      f.controller.run("synchronize"),
+      f.controller.run("synchronize"),
+    ]);
+    for (const result of results)
+      expect(result).toEqual({ connected: true, organizationId: "org-1" });
+    // Session and membership checks, the catalog, then one session recheck.
+    expect(f.requests()).toEqual(["session", "membership", "catalog", "session"]);
+    expect(f.calls.map((call) => call.method)).toEqual(["configure"]);
+    await f.controller.run("synchronize");
+    expect(f.requests()).toHaveLength(8);
   });
   test("revokes a running worker when verification is lost", async () => {
     const f = fixture();

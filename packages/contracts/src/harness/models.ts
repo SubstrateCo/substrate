@@ -1,6 +1,7 @@
+import { harnessKinds } from "./kinds.ts";
 import { z } from "zod";
 
-export const harnessModelSchema = z.object({
+const harnessModelSchema = z.object({
   id: z.string().min(1).max(500),
   name: z.string().min(1).max(500),
   provider: z.string().max(200).optional(),
@@ -8,7 +9,7 @@ export const harnessModelSchema = z.object({
   isDefault: z.boolean().optional(),
 });
 export const harnessModelCatalogSchema = z.object({
-  harness: z.enum(["opencode", "claude", "codex", "antigravity"]),
+  harness: z.enum(harnessKinds),
   status: z.enum(["ready", "unavailable"]),
   models: z.array(harnessModelSchema).max(10000),
 });

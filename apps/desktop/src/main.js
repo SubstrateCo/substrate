@@ -1,21 +1,17 @@
 import { desktopScheme, resolveDesktopLink } from "@startup-os/contracts/desktop/links";
-import { realtimeChannel } from "@startup-os/contracts/realtime";
+import { realtimeChannel, realtimeEventChannel } from "@startup-os/contracts/realtime";
 
 import { createDesktopAuthClient } from "./auth/auth-client.js";
-import {
-  harnessChannel,
-  harnessEventChannel,
-  localHarnessMethods,
-  trustedHarnessSender,
-} from "./harness/bridge/harness-bridge.ts";
+import { harnessChannel, harnessEventChannel } from "./harness/bridge/harness-bridge.ts";
 import { createHarnessController } from "./harness/controller/harness-controller.ts";
 import { createHarnessProcess } from "./harness/worker/harness-process.ts";
 import { applicationURL, bundledApplicationURL, navigationTarget } from "./shell/navigation.js";
 import { attachTitleBar, titleBarOptions } from "./shell/title-bar.ts";
+import { trustedSender } from "./shell/trusted-sender.ts";
 import { desktopAPITransport } from "./transport/api-transport.js";
 import { backendURL, bundledRenderer } from "./transport/bundled-renderer.js";
 import { createRealtimeController } from "./transport/realtime-controller.ts";
-import { emitRealtimeUpdate } from "./transport/realtime-events.ts";
+import { emitToRenderer } from "./transport/realtime-events.ts";
 import { storageOrigins, storageRequest } from "./transport/storage.js";
 import { app, BrowserWindow, ipcMain, Menu, net, session, shell } from "electron";
 import { readFileSync } from "node:fs";
@@ -213,10 +209,10 @@ if (!app.requestSingleInstanceLock()) {
       realtime = createRealtimeController({
         backend,
         getCookie: () => authClient.getCookie(),
-        emit: (event) => emitRealtimeUpdate(mainWindow, event, rendererURL),
+        emit: (event) => emitToRenderer(mainWindow, realtimeEventChannel, event, rendererURL),
       });
       ipcMain.handle(realtimeChannel, (event, method, value) => {
-        if (!trustedHarnessSender(event, mainWindow?.webContents, rendererURL))
+        if (!trustedSender(event, mainWindow?.webContents, rendererURL))
           throw new Error("Realtime unavailable.");
         if (method === "connect") return realtime?.connect(value);
         if (method === "disconnect" && value === undefined) return realtime?.disconnect();
@@ -240,25 +236,17 @@ if (!app.requestSingleInstanceLock()) {
               ),
             ),
             directory,
-            (event) => {
-              const contents = mainWindow?.webContents;
-              if (contents && target(contents.getURL()) === "internal")
-                contents.send(harnessEventChannel, event);
-            },
+            (event) => emitToRenderer(mainWindow, harnessEventChannel, event, rendererURL),
             proxy,
           ),
       });
       ipcMain.handle(harnessChannel, (event, method, value) => {
-        if (!trustedHarnessSender(event, mainWindow?.webContents, rendererURL))
+        if (!trustedSender(event, mainWindow?.webContents, rendererURL))
           throw new Error("Harness unavailable.");
         if (method === "disconnect" && value === undefined) {
           harness?.disconnect();
           return;
         }
-        if (!["status", "synchronize", "execute", ...localHarnessMethods].includes(method))
-          throw new Error("Invalid harness operation.");
-        if ((method === "status" || method === "synchronize") && value !== undefined)
-          throw new Error("Invalid harness operation.");
         return harness?.run(method, value);
       });
       app.on("before-quit", () => harness?.disconnect());

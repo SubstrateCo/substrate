@@ -1,7 +1,24 @@
+import type { HarnessKind } from "./kinds.ts";
+import type {
+  HarnessInspection,
+  HarnessLocalConfiguration,
+  HarnessMcpServer,
+  HarnessSkill,
+} from "./local.ts";
 import type { HarnessModelCatalog } from "./models.ts";
 
-export const harnessKinds = ["opencode", "antigravity", "claude", "codex"] as const;
-export type HarnessKind = (typeof harnessKinds)[number];
+export { harnessKinds, type HarnessKind } from "./kinds.ts";
+export {
+  harnessIdSchema,
+  harnessInspectionSchema,
+  harnessLocalConfigurationSchema,
+  harnessMcpServerSchema,
+  harnessSkillSchema,
+  type HarnessInspection,
+  type HarnessLocalConfiguration,
+  type HarnessMcpServer,
+  type HarnessSkill,
+} from "./local.ts";
 
 export interface HarnessAgent {
   id: string;
@@ -13,38 +30,9 @@ export interface HarnessAgent {
   useStartupDefaults: boolean;
 }
 
-export interface HarnessSkill {
-  id: string;
-  name: string;
-  description: string;
-  content: string;
-}
-
-/** Configuration only. Credentials remain in each native harness's credential store. */
-export interface HarnessMcpServer {
-  id: string;
-  name: string;
-  transport: "stdio" | "http";
-  command?: string;
-  args?: string[];
-  url?: string;
-  environment?: Record<string, string>;
-  /** Native credential-bearing entries must be edited in the native harness. */
-  readOnly?: boolean;
-}
-
 export interface HarnessConfiguration {
   organizationId: string;
   agents: HarnessAgent[];
-}
-
-export interface HarnessLocalConfiguration {
-  organizationId: string;
-  agentId: string;
-  harness: HarnessKind;
-  directory: string;
-  skills: HarnessSkill[];
-  mcpServers: HarnessMcpServer[];
 }
 
 export interface HarnessLocalScope {
@@ -89,24 +77,12 @@ export type HarnessEvent = {
   | { type: "disconnected" }
 );
 
-export interface HarnessInspection {
-  harness: HarnessKind;
-  available: boolean;
-  executable?: string;
-  version?: string;
-  error?: string;
-  capabilities: { resume: boolean; permissions: boolean; nativeAgents: boolean };
-}
-
 export interface HarnessHost {
   listModels(
     scope: Omit<HarnessLocalScope, "agentId"> & { agentId?: string },
   ): Promise<HarnessModelCatalog>;
-  configure(configuration: HarnessConfiguration): Promise<{ directory: string }>;
+  configure(configuration: HarnessConfiguration): Promise<void>;
   scanConfiguration(scope: HarnessLocalScope): Promise<HarnessLocalConfiguration>;
-  scanSkills(
-    scope: HarnessLocalScope,
-  ): Promise<Pick<HarnessLocalConfiguration, "organizationId" | "agentId" | "harness" | "skills">>;
   saveSkill(input: HarnessLocalScope & { skill: HarnessSkill }): Promise<void>;
   deleteSkill(input: HarnessLocalScope & { id: string }): Promise<void>;
   saveMcpServer(input: HarnessLocalScope & { server: HarnessMcpServer }): Promise<void>;
@@ -117,7 +93,6 @@ export interface HarnessHost {
   dispose(): Promise<void>;
 }
 export {
-  harnessModelSchema,
   harnessModelCatalogSchema,
   type HarnessModel,
   type HarnessModelCatalog,

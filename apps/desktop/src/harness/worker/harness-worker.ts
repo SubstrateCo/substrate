@@ -8,7 +8,6 @@ import type {
   HarnessInspection,
   HarnessSessionRef,
   HarnessLocalConfiguration,
-  HarnessModelCatalog,
 } from "@startup-os/contracts/harness";
 
 import { createDesktopHarnessHost } from "./desktop-harness-host.ts";
@@ -23,19 +22,11 @@ type Request = { id: number } & (
   | { method: "execute"; value: HarnessCommand }
   | { method: "scanConfiguration"; value: HarnessLocalScope }
   | { method: "listModels"; value: Omit<HarnessLocalScope, "agentId"> & { agentId?: string } }
-  | { method: "scanSkills"; value: HarnessLocalScope }
   | { method: "saveSkill"; value: HarnessLocalScope & { skill: HarnessSkill } }
   | { method: "saveMcpServer"; value: HarnessLocalScope & { server: HarnessMcpServer } }
   | { method: "deleteSkill" | "deleteMcpServer"; value: HarnessLocalScope & { id: string } }
 );
-type Result =
-  | { directory: string }
-  | HarnessInspection[]
-  | HarnessSessionRef
-  | HarnessLocalConfiguration
-  | HarnessModelCatalog
-  | Pick<HarnessLocalConfiguration, "organizationId" | "agentId" | "harness" | "skills">
-  | void;
+type Result = HarnessInspection[] | HarnessSessionRef | HarnessLocalConfiguration | void;
 // This dedicated process receives messages only from the trusted main-process controller.
 const port = process.parentPort;
 let host: HarnessHost | undefined;
@@ -46,7 +37,11 @@ port.on("message", ({ data }: { data: Request | WorkspaceApiResponse }) => {
     workspaceProxy.receive(data);
     return;
   }
-  if (data.method === "listModels" && host) {
+  if (data.method === "listModels") {
+    if (!host) {
+      port.postMessage({ id: data.id, error: "Harness not initialized." });
+      return;
+    }
     void host.listModels(data.value).then(
       (result) => port.postMessage({ id: data.id, result }),
       () => port.postMessage({ id: data.id, error: "Model discovery failed." }),
@@ -78,10 +73,8 @@ port.on("message", ({ data }: { data: Request | WorkspaceApiResponse }) => {
       else if (data.method === "configure") result = await host.configure(data.value);
       else if (data.method === "inspect") result = await host.inspect();
       else if (data.method === "execute") result = await host.execute(data.value);
-      else if (data.method === "listModels") result = await host.listModels(data.value);
       else if (data.method === "scanConfiguration")
         result = await host.scanConfiguration(data.value);
-      else if (data.method === "scanSkills") result = await host.scanSkills(data.value);
       else if (data.method === "saveSkill") result = await host.saveSkill(data.value);
       else if (data.method === "deleteSkill") result = await host.deleteSkill(data.value);
       else if (data.method === "saveMcpServer") result = await host.saveMcpServer(data.value);

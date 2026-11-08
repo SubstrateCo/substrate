@@ -1,9 +1,7 @@
 /* oxlint-disable deslop/no-unknown-parameters -- Local configuration payloads arrive from renderer IPC. */
-import {
-  parseLocalConfiguration,
-  rendererLocalSchemas,
-  type LocalHarnessMethod,
-} from "../bridge/harness-bridge.ts";
+import { harnessIdSchema } from "@startup-os/contracts/harness";
+
+import { rendererLocalSchemas, type LocalHarnessMethod } from "../bridge/harness-bridge.ts";
 
 export function prepareLocalInput(
   method: LocalHarnessMethod,
@@ -12,24 +10,21 @@ export function prepareLocalInput(
 ) {
   if (method === "saveSkill") {
     const { harness, agentId, ...skill } = rendererLocalSchemas.saveSkill.parse(value);
-    return parseLocalConfiguration(method, {
+    return {
       organizationId,
       agentId,
       harness,
-      skill: { ...skill, id: skill.id ?? skill.name },
-    });
+      skill: { ...skill, id: harnessIdSchema.parse(skill.id ?? skill.name) },
+    };
   }
   if (method === "saveMcpServer") {
     const { harness, agentId, ...server } = rendererLocalSchemas.saveMcpServer.parse(value);
-    return parseLocalConfiguration(method, {
+    return {
       organizationId,
       agentId,
       harness,
-      server: { ...server, id: server.id ?? server.name },
-    });
+      server: { ...server, id: harnessIdSchema.parse(server.id ?? server.name) },
+    };
   }
-  return parseLocalConfiguration(method, {
-    ...rendererLocalSchemas[method].parse(value),
-    organizationId,
-  });
+  return { ...rendererLocalSchemas[method].parse(value), organizationId };
 }

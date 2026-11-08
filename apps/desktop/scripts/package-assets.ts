@@ -73,10 +73,24 @@ export async function stageInstalledPackages(options: {
   fromDirectory: string;
   nodeModulesDirectory: string;
 }) {
+  const top = options.nodeModulesDirectory;
+  // For each node_modules directory, the package source that Node resolves for a name from there.
+  const visible = new Map<string, Map<string, string>>();
+  function reserve(directories: readonly string[], name: string, source: string) {
+    for (const directory of directories) {
+      const names = visible.get(directory) ?? new Map<string, string>();
+      names.set(name, source);
+      visible.set(directory, names);
+    }
+  }
+  /**
+   * Choose where Node will resolve a dependency and return its pending copy, if one is needed.
+   * @param chain node_modules directories that Node searches, nearest first.
+   */
   async function stage(
     name: string,
     from: string,
-    nodeModules: string,
+    chain: readonly string[],
     ancestors: ReadonlySet<string>,
     optional: boolean,
   ) {
@@ -89,7 +103,24 @@ export async function stageInstalledPackages(options: {
     }
     // Node will find this exact package in an ancestor's node_modules. Do not copy a cycle.
     if (ancestors.has(source)) return;
-    const destination = join(nodeModules, name);
+    const found = chain.findIndex((directory) => visible.get(directory)?.has(name));
+    if (found !== -1 && visible.get(chain[found])?.get(name) === source) {
+      reserve(chain.slice(0, found), name, source);
+      return;
+    }
+    // Hoist as high as possible, below the nearest different version.
+    const level = found === -1 ? chain.length - 1 : found - 1;
+    if (level < 0) throw new Error(`Conflicting harness dependency versions: ${name}.`);
+    reserve(chain.slice(0, level + 1), name, source);
+    return () => install(name, source, chain.slice(level), ancestors);
+  }
+  async function install(
+    name: string,
+    source: string,
+    chain: readonly string[],
+    ancestors: ReadonlySet<string>,
+  ) {
+    const destination = join(chain[0], name);
     const pathFromSource = relative(source, destination);
     if (
       !isAbsolute(pathFromSource) &&
@@ -104,7 +135,7 @@ export async function stageInstalledPackages(options: {
       dereference: true,
       filter: (path) => basename(path) !== "node_modules",
     });
-    const chain = new Set([...ancestors, source]);
+    const lineage = new Set([...ancestors, source]);
     const dependencies = new Map<string, boolean>();
     for (const dependency of Object.keys(manifest.dependencies))
       dependencies.set(dependency, false);
@@ -117,13 +148,34 @@ export async function stageInstalledPackages(options: {
     // optionalDependencies override dependencies, as they do during package installation.
     for (const dependency of Object.keys(manifest.optionalDependencies))
       dependencies.set(dependency, true);
-    for (const [dependency, isOptional] of dependencies)
-      await stage(dependency, source, join(destination, "node_modules"), chain, isOptional);
+    // Place all direct dependencies before their own dependencies can hoist through this level.
+    const pending: (() => Promise<string>)[] = [];
+    for (const [dependency, isOptional] of dependencies) {
+      const copy = await stage(
+        dependency,
+        source,
+        [join(destination, "node_modules"), ...chain],
+        lineage,
+        isOptional,
+      );
+      if (copy) pending.push(copy);
+    }
+    for (const copy of pending) await copy();
+    return manifest.version;
+  }
+  // Reserve every top-level package first so a dependency cannot take its place.
+  const roots = new Map<string, string>();
+  for (const name of new Set(options.names)) {
+    const source = await installedPackage(name, options.fromDirectory);
+    if (!source)
+      throw new Error(
+        `Required harness dependency is not installed: ${name} (required by ${options.fromDirectory}).`,
+      );
+    roots.set(name, source);
+    reserve([top], name, source);
   }
   const versions: Record<string, string> = {};
-  for (const name of new Set(options.names)) {
-    await stage(name, options.fromDirectory, options.nodeModulesDirectory, new Set(), false);
-    versions[name] = (await readManifest(join(options.nodeModulesDirectory, name))).version;
-  }
+  for (const [name, source] of roots)
+    versions[name] = await install(name, source, [top], new Set());
   return versions;
 }

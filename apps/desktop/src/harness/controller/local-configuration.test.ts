@@ -1,7 +1,45 @@
+import { prepareLocalInput } from "./local-configuration.ts";
 import { fixture } from "./test-support.ts";
 import { describe, expect, test } from "bun:test";
 
 describe("desktop harness local configuration", () => {
+  test("local configuration rejects paths, traversal, organization selection, and embedded credentials", () => {
+    for (const [method, value] of [
+      ["scanConfiguration", { harness: "codex" }],
+      ["scanConfiguration", { agentId: "../agent", harness: "codex" }],
+      ["scanConfiguration", { agentId: "agent-1", harness: "codex", organizationId: "other-org" }],
+      ["scanConfiguration", { agentId: "agent-1", harness: "codex", directory: "C:/other" }],
+      ["deleteSkill", { agentId: "agent-1", harness: "codex", id: "../notes" }],
+      [
+        "saveSkill",
+        { agentId: "agent-1", harness: "codex", name: "../notes", description: "", content: "" },
+      ],
+      [
+        "saveMcpServer",
+        {
+          agentId: "agent-1",
+          harness: "codex",
+          name: "Server",
+          id: "server",
+          transport: "stdio",
+          command: "server",
+          environment: { API_KEY: "secret" },
+        },
+      ],
+      [
+        "saveMcpServer",
+        {
+          agentId: "agent-1",
+          harness: "codex",
+          id: "server",
+          name: "Server",
+          transport: "http",
+          url: "https://user:password@example.com",
+        },
+      ],
+    ] as const)
+      expect(() => prepareLocalInput(method, value, "org")).toThrow();
+  });
   test("local file operations use the verified active organization", async () => {
     const f = fixture();
     await f.controller.run("synchronize");

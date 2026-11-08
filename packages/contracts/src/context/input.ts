@@ -1,4 +1,4 @@
-import { taskStatusValues } from "../tasks/status";
+import { taskPriorityValues, taskStatusValues } from "../tasks/status";
 import { z } from "zod";
 
 export const contextWorkspace = z.object({ organizationId: z.string().min(1).max(200) });
@@ -26,7 +26,7 @@ export const contextSourceTask = contextMessage.extend({
   title: z.string().trim().min(1).max(300),
   description: z.string().max(20000).optional(),
   status: z.enum(taskStatusValues).optional(),
-  priority: z.enum(["none", "low", "medium", "high", "urgent"]).optional(),
+  priority: z.enum(taskPriorityValues).optional(),
   assigneeActorEntityId: z.uuid().nullable().optional(),
   dueDate: z.iso.date().nullable().optional(),
 });

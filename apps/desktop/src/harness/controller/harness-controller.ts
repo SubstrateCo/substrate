@@ -1,11 +1,18 @@
-import { harnessModelCatalogSchema } from "@startup-os/contracts/harness";
+import {
+  harnessInspectionSchema,
+  harnessLocalConfigurationSchema,
+  harnessModelCatalogSchema,
+} from "@startup-os/contracts/harness";
 import type { WorkspaceApiProxy } from "@startup-os/contracts/harness/mcp";
 
-import { localHarnessMethods, parseHarnessCommand } from "../bridge/harness-bridge.ts";
+import {
+  harnessMethods,
+  localHarnessMethods,
+  parseHarnessCommand,
+} from "../bridge/harness-bridge.ts";
 import type { HarnessMethod, LocalHarnessMethod } from "../bridge/harness-bridge.ts";
 import { createMcpApiProxy } from "../mcp/mcp-api-proxy.ts";
-import { createHarnessAuthority } from "./harness-authority.ts";
-import { inspectionSchema, localResultSchema } from "./harness-results.ts";
+import { createHarnessAuthority, readVerifiedSession } from "./harness-authority.ts";
 import { prepareLocalInput } from "./local-configuration.ts";
 import { join } from "node:path";
 /* oxlint-disable deslop/no-unknown-parameters, deslop/no-unknown-returns -- Main parses IPC and worker response payloads at this boundary. The injected transport carries structured-clone values. */
@@ -19,6 +26,7 @@ export interface HarnessWorker {
   dispose(): void;
 }
 
+const methodSchema = z.enum(harnessMethods);
 const localMethodSchema = z.enum(localHarnessMethods);
 
 /** Main-only authority. Never accepts an account path or a catalog from IPC. */
@@ -33,9 +41,11 @@ export function createHarnessController(options: {
   let identity: string | undefined;
   let generation = 0;
   let queue = Promise.resolve<unknown>(undefined);
+  let syncing: Promise<unknown> | undefined;
 
   function disconnect() {
     generation++;
+    syncing = undefined;
     worker?.dispose();
     worker = undefined;
     identity = undefined;
@@ -48,15 +58,15 @@ export function createHarnessController(options: {
       if (epoch !== generation) throw new Error("Session changed.");
       if (identity && identity !== auth.identity) disconnect();
       if (method === "synchronize") {
-        if (value !== undefined) throw new Error("Invalid synchronization.");
         const current = generation;
         const agents = await authority.catalog();
-        // Recheck authority after the catalog request, including an organization switch.
-        const latest = await authority.verify();
+        // Renderer organization switches do not bump the generation; reread only the session.
+        // Membership was verified for this organization before the catalog request.
+        const latest = await readVerifiedSession(options.fetchAPI, options.backend);
         if (
           current !== generation ||
-          latest.identity !== auth.identity ||
-          latest.organizationId !== auth.organizationId
+          latest.user.id !== auth.userId ||
+          latest.session.activeOrganizationId !== auth.organizationId
         )
           throw new Error("Session changed.");
         worker ??= options.createWorker(
@@ -92,15 +102,12 @@ export function createHarnessController(options: {
         if (current !== generation || identity !== auth.identity)
           throw new Error("Session changed.");
         if (method === "scanConfiguration") {
-          return localResultSchema.parse(result);
+          return harnessLocalConfigurationSchema.parse(result);
         }
         if (method === "listModels") {
           const catalog = harnessModelCatalogSchema.parse(result);
           if (catalog.harness !== input.harness) throw new Error("Invalid model catalog.");
           return catalog;
-        }
-        if (method === "scanSkills") {
-          return localResultSchema.omit({ mcpServers: true }).parse(result);
         }
         return result;
       }
@@ -112,7 +119,7 @@ export function createHarnessController(options: {
         return {
           connected: true,
           organizationId: auth.organizationId,
-          harnesses: inspectionSchema.parse(result),
+          harnesses: z.array(harnessInspectionSchema).parse(result),
         };
       return result;
     } catch {
@@ -124,10 +131,25 @@ export function createHarnessController(options: {
 
   return {
     disconnect,
-    run(method: HarnessMethod, value?: unknown) {
-      const result = queue.then(() => perform(method, value));
-      if (method === "listModels") return result;
-      queue = result.catch(() => undefined);
+    /** The only IPC method allowlist. Renderer values are parsed again in perform(). */
+    run(method: unknown, value?: unknown) {
+      const parsed = methodSchema.safeParse(method);
+      if (
+        !parsed.success ||
+        ((parsed.data === "status" || parsed.data === "synchronize") && value !== undefined)
+      )
+        return Promise.reject(new Error("Invalid harness operation."));
+      // Several renderer views synchronize at once; they share one verified round trip.
+      if (parsed.data === "synchronize" && syncing) return syncing;
+      const result = queue.then(() => perform(parsed.data, value));
+      if (parsed.data !== "listModels") queue = result.catch(() => undefined);
+      if (parsed.data === "synchronize") {
+        syncing = result;
+        const clear = () => {
+          if (syncing === result) syncing = undefined;
+        };
+        result.then(clear, clear);
+      }
       return result;
     },
   };
