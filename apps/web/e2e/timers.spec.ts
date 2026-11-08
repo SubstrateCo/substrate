@@ -26,10 +26,10 @@ test("search waits for the last input and hides results immediately when the kin
   ]);
 
   const settledRequests = requests.length;
-  await panel.getByRole("button", { name: "Messages", exact: true }).click();
+  await panel.getByRole("tab", { name: "Messages", exact: true }).click();
   await expect(result).toHaveCount(0);
   await sender.page.clock.runFor(100);
-  await panel.getByRole("button", { name: "Projects", exact: true }).click();
+  await panel.getByRole("tab", { name: "Projects", exact: true }).click();
   await expect(result).toHaveCount(0);
   await sender.page.clock.runFor(199);
   await expect(result).toHaveCount(0);

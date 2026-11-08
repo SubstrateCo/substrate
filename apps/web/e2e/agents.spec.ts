@@ -8,7 +8,8 @@ test("agent definitions can be created, edited, persisted and deleted without ru
   const user = await client(actors.sender);
   await visit(user, undefined, "/settings/user/agents");
   const name = `Release helper ${crypto.randomUUID()}`;
-  await user.page.getByRole("button", { name: "Create agent", exact: true }).click();
+  // The header action stays available; the empty state repeats it as a call to action.
+  await user.page.getByLabel("Create agent", { exact: true }).click();
   await user.page.getByLabel("Agent name", { exact: true }).fill(name);
   await user.page
     .getByRole("textbox", { name: "Instructions", exact: true })
@@ -20,18 +21,23 @@ test("agent definitions can be created, edited, persisted and deleted without ru
   await expect(user.page.getByRole("textbox", { name: "Instructions", exact: true })).toHaveValue(
     "Review release tasks. Do not contact external services.",
   );
-  await user.page.getByLabel("Enabled", { exact: true }).uncheck();
+  await user.page
+    .getByRole("textbox", { name: "Instructions", exact: true })
+    .fill("Summarize release risks only.");
   await user.page.getByRole("button", { name: "Save agent", exact: true }).click();
-  await expect(
-    user.page
-      .getByRole("listitem")
-      .filter({ hasText: name })
-      .getByText(/Disabled/),
-  ).toBeVisible();
+  await expect(user.page.getByRole("dialog")).toHaveCount(0);
+  await user.page.reload();
+  await user.page.getByRole("button", { name: `Edit ${name}`, exact: true }).click();
+  await expect(user.page.getByRole("textbox", { name: "Instructions", exact: true })).toHaveValue(
+    "Summarize release risks only.",
+  );
+  await user.page.getByRole("button", { name: "Cancel", exact: true }).click();
   await user.page.getByRole("button", { name: `Delete ${name}`, exact: true }).click();
   await user.page.getByRole("dialog").getByRole("button", { name: "Delete", exact: true }).click();
   await expect(user.page.getByRole("button", { name: `Edit ${name}`, exact: true })).toHaveCount(0);
   await user.page.reload();
-  await expect(user.page.getByRole("button", { name: "Create agent", exact: true })).toBeVisible();
+  await expect(
+    user.page.getByRole("heading", { name: "No agents yet", exact: true }),
+  ).toBeVisible();
   await expect(user.page.getByRole("button", { name: `Edit ${name}`, exact: true })).toHaveCount(0);
 });

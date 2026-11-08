@@ -322,7 +322,7 @@ for (const kind of ["channel", "dm", "group"] as const) {
     expect(context.status()).toBe(200);
     expect(await context.json()).toEqual({
       success: true,
-      data: [{ messageId: root.id, links: [], people: [] }],
+      data: [{ messageId: root.id, links: [], people: [], messaging: [] }],
     });
   });
 }

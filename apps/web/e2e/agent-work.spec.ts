@@ -4,7 +4,7 @@ import { conversation, test, visit } from "./test-support/fixtures";
 import { project } from "./test-support/tasks";
 import { expect } from "@playwright/test";
 
-test("agents receive explicit access and their messages, comments and activity are labelled", async ({
+test("agents act with their owner's access and their messages, comments and activity are labelled", async ({
   actors,
   client,
 }) => {
@@ -21,12 +21,6 @@ test("agents receive explicit access and their messages, comments and activity a
   const [channel, created] = await Promise.all([conversation(owner), project(owner)]);
   const user = await client(owner);
   await visit(user, channel.id);
-  await user.page.getByRole("button", { name: "Add people", exact: true }).click();
-  await user.page.getByRole("checkbox", { name: `${name} Agent`, exact: true }).check();
-  await user.page.getByRole("button", { name: "Add members", exact: true }).click();
-  await expect(user.page.getByRole("checkbox", { name: `${name} Agent`, exact: true })).toHaveCount(
-    0,
-  );
   const sent = await owner.request.post("/api/v1/mcp/call", {
     headers: { origin },
     data: {
@@ -46,18 +40,6 @@ test("agents receive explicit access and their messages, comments and activity a
   await expect(article.getByText(name, { exact: true })).toBeVisible();
   await expect(article.getByText("Agent", { exact: true })).toBeVisible();
   await expect(article.getByText("External", { exact: true })).toHaveCount(0);
-  await visit(user, undefined, "/tasks", { projectId: created.entityId });
-  await user.page.getByRole("tab", { name: "Settings", exact: true }).click();
-  await user.page.getByRole("button", { name: "Add access", exact: true }).click();
-  const agentOption = user.page.getByRole("option", { name: new RegExp(name) });
-  await expect(agentOption.getByText("Agent", { exact: true })).toBeVisible();
-  await agentOption.click();
-  await user.page.getByRole("button", { name: "Review access", exact: true }).click();
-  await user.page.getByRole("button", { name: "Confirm access", exact: true }).click();
-  await expect(
-    user.page.getByRole("dialog", { name: "Review access change", exact: true }),
-  ).toHaveCount(0);
-  await expect(user.page.getByRole("listitem").filter({ hasText: name })).toBeVisible();
   const taskResponse = await owner.request.post("/api/v1/mcp/call", {
     headers: { origin },
     data: {
