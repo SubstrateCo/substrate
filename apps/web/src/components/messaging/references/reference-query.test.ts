@@ -6,6 +6,7 @@ describe("reference query", () => {
     expect(referenceQuery("Review @alex before launch", 12)).toEqual({
       start: 7,
       end: 12,
+      trigger: "@",
       kind: "all",
       query: "alex",
     });
@@ -24,6 +25,7 @@ describe("reference query", () => {
     expect(referenceQuery(draft, draft.length)).toEqual({
       start: 0,
       end: draft.length,
+      trigger: "@",
       kind,
       query,
     });
@@ -37,5 +39,30 @@ describe("reference query", () => {
   test("uses user-facing user syntax without changing person reference identity", () => {
     expect(referencePrefix("person")).toBe("@user:");
     expect(referencePrefix("all")).toBe("@");
+  });
+
+  test.each([
+    ["#", "channel", ""],
+    ["#prod", "channel", "prod"],
+    ["#channels:prod", "channel", "prod"],
+    ["#thread:launch", "thread", "launch"],
+  ] as const)("parses %s as a messaging reference", (draft, kind, query) => {
+    expect(referenceQuery(draft, draft.length)).toEqual({
+      start: 0,
+      end: draft.length,
+      trigger: "#",
+      kind,
+      query,
+    });
+  });
+
+  test.each(["word#prod", "##", "# heading", "`#prod", "```\n#prod", "\\#prod"])(
+    "does not open a hashtag picker for %s",
+    (draft) => expect(referenceQuery(draft, draft.length)).toBeNull(),
+  );
+
+  test("uses hashtag prefixes for channels and threads", () => {
+    expect(referencePrefix("channel")).toBe("#channel:");
+    expect(referencePrefix("thread")).toBe("#thread:");
   });
 });

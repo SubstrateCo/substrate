@@ -12,6 +12,7 @@ import {
 } from "../messaging/schema";
 import { notifications } from "../notifications/schema";
 import { requireWork } from "./access";
+import { saveMessagingReference } from "./messaging-references";
 import { messageReferences } from "./references";
 import { messageEntityReferences } from "./schema";
 import { and, eq, or, sql } from "drizzle-orm";
@@ -26,6 +27,13 @@ export async function applyMessageEffects(
   const recipients = new Map<string, "mention" | "reply">();
   const references = messageReferences(message.body);
   for (const reference of references) {
+    if (reference.kind === "channel" || reference.kind === "thread") {
+      await saveMessagingReference(db, scope, message, conversationOrganizationId, {
+        ...reference,
+        kind: reference.kind,
+      });
+      continue;
+    }
     if (reference.kind !== "person") {
       if (conversationOrganizationId !== scope.organizationId) throw new AccessDeniedError();
       const work = await requireWork(ctx, reference.id);

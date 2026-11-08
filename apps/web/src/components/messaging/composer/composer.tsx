@@ -37,11 +37,11 @@ export function Composer({
     <ComposerView
       draftKey={`${organizationId}:${conversationId}:${threadId ?? "channel"}`}
       label={label}
-      renderReferences={(query, onInsert, onClose) => (
+      renderReferences={(activeReference, onInsert, onClose) => (
         <ReferencePicker
           organizationId={organizationId}
           conversationId={conversationId}
-          initialQuery={query}
+          activeReference={activeReference}
           onInsert={onInsert}
           onClose={onClose}
         />

@@ -9,6 +9,7 @@ import { Popover, PopoverAnchor, PopoverContent } from "../../ui/popover";
 import type { WorkspaceReference } from "../references/entity-reference";
 import { ReferenceEditor } from "../references/reference-editor";
 import { referenceQuery } from "../references/reference-query";
+import type { ReferenceQuery } from "../references/reference-query";
 import { ComposerDraftReferences } from "./composer-drafts";
 import { ComposerToolbar } from "./composer-toolbar";
 import { EmojiPicker } from "./emoji-picker";
@@ -31,7 +32,7 @@ export function Composer({
   defaultValue?: string;
   draftKey?: string;
   renderReferences?: (
-    query: string,
+    query: ReferenceQuery,
     onInsert: (token: string, reference: WorkspaceReference) => void,
     onClose: () => void,
   ) => ReactNode;
@@ -134,7 +135,7 @@ export function Composer({
                 />
               </div>
             </PopoverAnchor>
-            {references && renderReferences && (
+            {references && activeReference && renderReferences && (
               <PopoverContent
                 ref={referencePicker}
                 variant="reference"
@@ -158,16 +159,10 @@ export function Composer({
                     event.preventDefault();
                 }}
               >
-                {renderReferences(
-                  activeReference
-                    ? draft.slice(activeReference.start + 1, activeReference.end)
-                    : "",
-                  insertReference,
-                  () => {
-                    closeReferences();
-                    requestFocus(caret);
-                  },
-                )}
+                {renderReferences(activeReference, insertReference, () => {
+                  closeReferences();
+                  requestFocus(caret);
+                })}
               </PopoverContent>
             )}
             <InputGroupAddon align="block-end" className="justify-between">

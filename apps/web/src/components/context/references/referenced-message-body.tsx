@@ -1,6 +1,6 @@
 import type { MessageContextState } from "./message-context";
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
-import { workHref } from "@/lib/navigation/record-links";
+import { workHref, messageHref } from "@/lib/navigation/record-links";
 
 export function ReferencedMessageBody({
   organizationId,
@@ -16,6 +16,16 @@ export function ReferencedMessageBody({
       body={body}
       referencesLoading={context.loading}
       references={[
+        ...(context.error ? [] : (context.data?.messaging ?? [])).map((reference) => ({
+          id: reference.id,
+          kind: reference.kind,
+          label: reference.title,
+          href: messageHref(
+            organizationId,
+            reference.conversationId,
+            reference.threadId ?? undefined,
+          ),
+        })),
         ...(context.error ? [] : (context.data?.links ?? [])).map((link) => ({
           id: link.entityId,
           kind: link.entityType,

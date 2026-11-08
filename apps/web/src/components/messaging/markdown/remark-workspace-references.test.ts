@@ -46,4 +46,20 @@ describe("workspace references in message Markdown", () => {
 
     expect(tree.children).toEqual([{ type: "text", value }]);
   });
+
+  test.each(["channel", "thread"])(
+    "renders a structured %s reference, not plain hashtags",
+    (kind) => {
+      const tree: Parameters<ReturnType<typeof remarkWorkspaceReferences>>[0] = {
+        type: "paragraph",
+        children: [{ type: "text", value: `#general @[${kind}:${id}]` }],
+      };
+      remarkWorkspaceReferences()(tree);
+      expect(tree.children?.[0]).toEqual({ type: "text", value: "#general " });
+      expect(tree.children?.[1]?.data?.hProperties).toEqual({
+        "data-reference-kind": kind,
+        "data-reference-id": id,
+      });
+    },
+  );
 });

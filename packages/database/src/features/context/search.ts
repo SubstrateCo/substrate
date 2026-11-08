@@ -12,10 +12,18 @@ import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { projects } from "../projects/schema";
 import { tasks } from "../tasks/tasks.schema";
 import { workspaceContext, requireWork } from "./access";
-import { messageEntityReferences } from "./schema";
-import { and, asc, eq, gt, inArray, isNull, sql, type SQL, type SQLWrapper } from "drizzle-orm";
+import { messageEntityReferences, messageMessagingReferences } from "./schema";
+import { and, asc, eq, gt, inArray, isNull, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
 
-export type SearchKind = "all" | "task" | "project" | "message" | "conversation" | "person";
+export type SearchKind =
+  | "all"
+  | "task"
+  | "project"
+  | "message"
+  | "conversation"
+  | "person"
+  | "channel"
+  | "thread";
 export interface SearchResult {
   id: string;
   kind: Exclude<SearchKind, "all">;
@@ -23,6 +31,7 @@ export interface SearchResult {
   projectEntityId?: string;
   conversationId?: string;
   threadId?: string | null;
+  conversationName?: string;
 }
 export async function contextSearch(
   db: DatabaseExecutor,
@@ -41,11 +50,26 @@ export async function contextSearch(
   const limit = pageSize(input.limit ?? 30);
   if (
     input.query.length > 200 ||
-    !["all", "task", "project", "message", "conversation", "person"].includes(input.kind ?? "all")
+    !["all", "task", "project", "message", "conversation", "person", "channel", "thread"].includes(
+      input.kind ?? "all",
+    )
   )
     throw new ValidationError("Invalid search.");
   const query = input.query.trim();
   const kind = input.kind ?? "all";
+  if ((kind === "channel" || kind === "thread") && input.conversationId) {
+    const [source] = await db
+      .select({ id: messagingConversations.id })
+      .from(messagingConversations)
+      .where(
+        and(
+          eq(messagingConversations.id, input.conversationId),
+          eq(messagingConversations.organizationId, scope.organizationId),
+          visibleConversations(db, scope),
+        ),
+      );
+    if (!source) return [];
+  }
   // One hop only. Membership stays structural; links never grant access.
   // The anchor can be an entity, a message, or a conversation ID.
   let anchorKind: "entity" | "message" | "conversation" | undefined;
@@ -125,9 +149,63 @@ export async function contextSearch(
         relatedReferenceIds(messageEntityReferences.messageId),
       );
     } else if (anchorKind === "message") {
-      relatedConversations = eq(messagingConversations.id, anchorConversationId!);
+      relatedConversations = or(
+        eq(messagingConversations.id, anchorConversationId!),
+        inArray(
+          messagingConversations.id,
+          db
+            .select({ id: messageMessagingReferences.targetConversationId })
+            .from(messageMessagingReferences)
+            .where(
+              and(
+                eq(messageMessagingReferences.organizationId, scope.organizationId),
+                eq(messageMessagingReferences.messageId, anchorId),
+              ),
+            ),
+        ),
+      );
+      relatedMessages = or(
+        inArray(
+          messagingMessages.id,
+          db
+            .select({ id: messageMessagingReferences.messageId })
+            .from(messageMessagingReferences)
+            .where(
+              and(
+                eq(messageMessagingReferences.organizationId, scope.organizationId),
+                eq(messageMessagingReferences.targetThreadId, anchorId),
+              ),
+            ),
+        ),
+        inArray(
+          messagingMessages.id,
+          db
+            .select({ id: messageMessagingReferences.targetThreadId })
+            .from(messageMessagingReferences)
+            .where(
+              and(
+                eq(messageMessagingReferences.organizationId, scope.organizationId),
+                eq(messageMessagingReferences.messageId, anchorId),
+              ),
+            ),
+        ),
+      );
     } else {
-      relatedMessages = eq(messagingMessages.conversationId, anchorConversationId!);
+      relatedMessages = or(
+        eq(messagingMessages.conversationId, anchorConversationId!),
+        inArray(
+          messagingMessages.id,
+          db
+            .select({ id: messageMessagingReferences.messageId })
+            .from(messageMessagingReferences)
+            .where(
+              and(
+                eq(messageMessagingReferences.organizationId, scope.organizationId),
+                eq(messageMessagingReferences.targetConversationId, anchorConversationId!),
+              ),
+            ),
+        ),
+      );
     }
   }
   const match = (column: SQLWrapper) =>
@@ -163,7 +241,7 @@ export async function contextSearch(
       results.push(...rows.map((row) => ({ ...row, kind: type })));
     }
   }
-  if (kind === "all" || kind === "conversation") {
+  if (kind === "all" || kind === "conversation" || kind === "channel") {
     const rows = await db
       .select({
         id: messagingConversations.id,
@@ -173,6 +251,12 @@ export async function contextSearch(
       .where(
         and(
           visibleConversations(db, scope),
+          kind === "channel"
+            ? and(
+                eq(messagingConversations.kind, "channel"),
+                eq(messagingConversations.organizationId, scope.organizationId),
+              )
+            : undefined,
           relatedConversations,
           query ? match(messagingConversations.name) : undefined,
           input.after ? gt(messagingConversations.id, input.after) : undefined,
@@ -181,7 +265,56 @@ export async function contextSearch(
       .orderBy(asc(messagingConversations.id))
       .limit(limit);
     results.push(
-      ...rows.map((row) => ({ ...row, kind: "conversation" as const, conversationId: row.id })),
+      ...rows.map((row) => ({
+        ...row,
+        kind: kind === "channel" ? ("channel" as const) : ("conversation" as const),
+        conversationId: row.id,
+      })),
+    );
+  }
+  if (kind === "thread") {
+    const rows = await db
+      .select({
+        id: messagingMessages.id,
+        title: messagingMessages.body,
+        conversationId: messagingMessages.conversationId,
+        conversationName: sql<string>`${messagingConversations.name}`,
+      })
+      .from(messagingMessages)
+      .innerJoin(
+        messagingConversations,
+        eq(messagingConversations.id, messagingMessages.conversationId),
+      )
+      .where(
+        and(
+          visibleConversations(db, scope),
+          eq(messagingConversations.organizationId, scope.organizationId),
+          eq(messagingConversations.kind, "channel"),
+          isNull(messagingMessages.threadId),
+          sql`exists (select 1 from messaging_messages replies where replies.conversation_id = ${messagingMessages.conversationId} and replies.thread_id = ${messagingMessages.id})`,
+          relatedMessages,
+          query
+            ? or(
+                match(messagingMessages.body),
+                match(messagingConversations.name),
+                sql`exists (
+          select 1 from messaging_messages replies where replies.conversation_id = ${messagingMessages.conversationId}
+            and replies.thread_id = ${messagingMessages.id} and ${match(sql`replies.body`)}
+        )`,
+              )
+            : undefined,
+          input.after ? gt(messagingMessages.id, input.after) : undefined,
+        ),
+      )
+      .orderBy(asc(messagingMessages.id))
+      .limit(limit);
+    results.push(
+      ...rows.map((row) => ({
+        ...row,
+        title: row.title.slice(0, 160),
+        kind: "thread" as const,
+        threadId: row.id,
+      })),
     );
   }
   if (kind === "all" || kind === "message") {

@@ -11,6 +11,7 @@ import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { projects } from "../projects/schema";
 import { tasks } from "../tasks/tasks.schema";
 import { workspaceContext } from "./access";
+import { messagingReferencePage } from "./messaging-references";
 import { messageReferences } from "./references";
 import { messageEntityReferences as references } from "./schema";
 import { and, asc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
@@ -38,6 +39,15 @@ export async function messagePage(
     .where(and(inArray(messagingMessages.id, ids), visibleConversations(db, scope)));
   // Reject the whole page before resolving any metadata if even one message is unavailable.
   if (messages.length !== ids.length) throw new AccessDeniedError();
+  const messaging = messages.some((message) => /@\[(channel|thread):/i.test(message.body))
+    ? await messagingReferencePage(db, scope, ids)
+    : [];
+  const messagingByMessage = new Map<string, typeof messaging>();
+  for (const reference of messaging) {
+    const items = messagingByMessage.get(reference.messageId) ?? [];
+    items.push(reference);
+    messagingByMessage.set(reference.messageId, items);
+  }
   const work = await db
     .select({
       messageId: references.messageId,
@@ -142,6 +152,14 @@ export async function messagePage(
     const message = messagesById.get(id)!;
     return {
       messageId: id,
+      messaging: (messagingByMessage.get(id) ?? []).map((reference) => ({
+        id: reference.id,
+        kind: reference.kind,
+        conversationId: reference.conversationId,
+        threadId: reference.threadId,
+        title: reference.title,
+        conversationName: reference.conversationName,
+      })),
       links: (workByMessage.get(id) ?? []).map((link) => ({
         entityId: link.entityId,
         entityType: link.entityType,

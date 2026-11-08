@@ -11,7 +11,9 @@ export function referenceDocument(value: string): JSONContent {
     content: value.split("\n").map((line) => {
       const content: JSONContent[] = [];
       let offset = 0;
-      for (const match of line.matchAll(/@\[(task|project|person):([0-9a-f-]{36})\]/gi)) {
+      for (const match of line.matchAll(
+        /@\[(task|project|person|channel|thread):([0-9a-f-]{36})\]/gi,
+      )) {
         if (match.index > offset)
           content.push({ type: "text", text: line.slice(offset, match.index) });
         const kind = match[1]!.toLowerCase();

@@ -13,9 +13,9 @@ export function invalidateSentMessage(
   threadId?: string,
 ) {
   const context = queryKeys.context(organizationId);
-  const referencedIds = [...body.matchAll(/@\[(task|project):([0-9a-f-]{36})\]/gi)].map(
-    (match) => match[2]!,
-  );
+  const referencedIds = [
+    ...body.matchAll(/@\[(task|project|channel|thread):([0-9a-f-]{36})\]/gi),
+  ].map((match) => match[2]!);
   const relatedIds = new Set<unknown>(referencedIds);
   // Project discussion feeds include references to their tasks, even when the feed is empty.
   for (const [key, detail] of client.getQueriesData<Awaited<ReturnType<typeof getProject>>>({

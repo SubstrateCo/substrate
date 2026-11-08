@@ -9,11 +9,12 @@ import type { WorkspaceReference } from "./entity-reference";
 import { ReferencePickerOption } from "./reference-picker-option";
 import { X } from "lucide-react";
 
-export type ReferenceKind = "task" | "project" | "person";
+export type ReferenceKind = "task" | "project" | "person" | "channel" | "thread";
 
 export function ReferencePicker({
   query,
   kind,
+  kinds,
   results,
   loading = false,
   error,
@@ -25,7 +26,8 @@ export function ReferencePicker({
 }: {
   query: string;
   kind: ReferenceKind;
-  results: { id: string; title: string }[];
+  kinds: readonly ReferenceKind[];
+  results: { id: string; title: string; conversationName?: string }[];
   loading?: boolean;
   error?: Error | null;
   onQueryChange: (query: string) => void;
@@ -56,7 +58,8 @@ export function ReferencePicker({
     <Tabs
       value={kind}
       onValueChange={(value) => {
-        if (value === "task" || value === "project" || value === "person") onKindChange(value);
+        const next = kinds.find((kind) => kind === value);
+        if (next) onKindChange(next);
       }}
       asChild
     >
@@ -66,8 +69,12 @@ export function ReferencePicker({
       >
         <div className="flex shrink-0 items-center gap-1">
           <TabsList variant="line" aria-label="Reference type">
-            {(["task", "project", "person"] as const).map((type) => (
-              <TabsTrigger key={type} value={type}>
+            {kinds.map((type) => (
+              <TabsTrigger
+                key={type}
+                value={type}
+                focusStyle={type === "channel" || type === "thread" ? "none" : "ring"}
+              >
                 {type === "person" ? "People" : `${type[0]!.toUpperCase()}${type.slice(1)}s`}
               </TabsTrigger>
             ))}
@@ -119,7 +126,7 @@ export function ReferencePicker({
             }
           }}
         />
-        {(["task", "project", "person"] as const).map((type) => (
+        {kinds.map((type) => (
           <TabsContent key={type} value={type} forceMount hidden={type !== kind} asChild>
             <div ref={type === kind ? list : undefined} className="min-h-8 flex-1 overflow-y-auto">
               {type === kind && (
@@ -138,6 +145,9 @@ export function ReferencePicker({
                         key={item.id}
                         kind={kind}
                         title={item.title}
+                        description={
+                          item.conversationName ? `# ${item.conversationName}` : undefined
+                        }
                         selected={selectedIndex === itemIndex}
                         onSelect={() => insert(item.id)}
                       />

@@ -82,6 +82,79 @@ async function post<T>(actor: Actor, endpoint: "conversations" | "messages", inp
   return result.data;
 }
 
+test("channel and thread references enforce target access through search, send and resolution", async ({
+  actors: { owner, member, outsider },
+}) => {
+  const source = await post<{ id: string }>(owner, "conversations", {
+    kind: "channel",
+    name: "reference-source",
+  });
+  const target = await post<{ id: string }>(owner, "conversations", {
+    kind: "channel",
+    name: "private-reference-target",
+    private: true,
+  });
+  const root = await post<{ id: string }>(owner, "messages", {
+    conversationId: target.id,
+    body: "Private reference thread",
+  });
+  await post(owner, "messages", {
+    conversationId: target.id,
+    threadId: root.id,
+    body: "Searchable reply",
+  });
+  const body = `See @[channel:${target.id}] and @[thread:${root.id}]`;
+  const sent = await post<{ id: string }>(owner, "messages", { conversationId: source.id, body });
+  for (const [actor, expectedIds] of [
+    [owner, [target.id]],
+    [member, []],
+    [outsider, []],
+  ] as const) {
+    const search = await actor.request.post("/api/v1/context/search", {
+      data: {
+        organizationId: actor.organizationId,
+        kind: "channel",
+        query: "private-reference-target",
+      },
+    });
+    expect(search.ok()).toBe(true);
+    expect((await search.json()).data.map((item: { id: string }) => item.id)).toEqual(expectedIds);
+    const threads = await actor.request.post("/api/v1/context/search", {
+      data: { organizationId: actor.organizationId, kind: "thread", query: "Searchable reply" },
+    });
+    expect(threads.ok()).toBe(true);
+    expect((await threads.json()).data.map((item: { id: string }) => item.id)).toEqual(
+      actor === owner ? [root.id] : [],
+    );
+  }
+  for (const actor of [owner, member]) {
+    const page = await actor.request.post("/api/v1/context/message-page", {
+      data: { organizationId: actor.organizationId, messageIds: [sent.id] },
+    });
+    expect(page.ok()).toBe(true);
+    const references = (await page.json()).data[0].messaging;
+    expect(references.map((item: { id: string }) => item.id).sort()).toEqual(
+      actor === owner ? [target.id, root.id].sort() : [],
+    );
+  }
+  for (const forbiddenBody of [body, `@[channel:${source.id}] @[thread:${crypto.randomUUID()}]`]) {
+    const rejected = await member.request.post("/api/v1/messaging/messages", {
+      headers: { origin },
+      data: {
+        organizationId: member.organizationId,
+        conversationId: source.id,
+        body: forbiddenBody,
+      },
+    });
+    expect(rejected.status()).toBe(404);
+    expect(await rejected.json()).toMatchObject({ success: false, error: { code: "NOT_FOUND" } });
+  }
+  const messages = await owner.request.get("/api/v1/messaging/messages", {
+    params: { organizationId: owner.organizationId, conversationId: source.id },
+  });
+  expect((await messages.json()).data.map((item: { id: string }) => item.id)).toEqual([sent.id]);
+});
+
 test("messaging writes reject missing, foreign and opaque origins without persisting changes", async ({
   actors: { owner },
 }) => {

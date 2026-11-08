@@ -61,7 +61,11 @@ export function ReferencePopover({
     event.preventDefault();
     event.stopPropagation();
     const direction = event.key === "ArrowRight" ? 1 : -1;
-    onKindChange(kinds[(kinds.indexOf(kind) + direction + kinds.length) % kinds.length]!);
+    onKindChange(
+      kinds[
+        (kinds.findIndex((value) => value === kind) + direction + kinds.length) % kinds.length
+      ]!,
+    );
   };
   return (
     <Popover open={open} onOpenChange={onOpenChange}>

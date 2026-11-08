@@ -18,3 +18,13 @@ test("malformed and unsupported references are rejected", () => {
   ])
     expect(() => messageReferences(body)).toThrow("Invalid reference");
 });
+
+test("channel and thread references retain distinct structured identities", () => {
+  expect(
+    messageReferences(`See #general @[channel:${id}] @[thread:${id}] @[channel:${id}]`),
+  ).toEqual([
+    { kind: "channel", id },
+    { kind: "thread", id },
+  ]);
+  expect(() => messageReferences(`@[message:${id}]`)).toThrow("Invalid reference");
+});

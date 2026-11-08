@@ -4,6 +4,7 @@ import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { tasks } from "../tasks/tasks.schema";
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   check,
   foreignKey,
   index,
@@ -72,5 +73,55 @@ export const sourceTaskRequests = pgTable(
       columns: [table.organizationId, table.taskEntityId],
       foreignColumns: [tasks.organizationId, tasks.entityId],
     }),
+  ],
+);
+
+export const messageMessagingReferences = pgTable(
+  "message_messaging_references",
+  {
+    organizationId: text("organization_id").notNull(),
+    conversationId: uuid("conversation_id").notNull(),
+    messageId: uuid("message_id").notNull(),
+    kind: text("kind").$type<"channel" | "thread">().notNull(),
+    targetId: uuid("target_id").notNull(),
+    targetConversationId: uuid("target_conversation_id").notNull(),
+    targetThreadId: uuid("target_thread_id"),
+    threadRoot: boolean("thread_root").default(true).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.messageId, table.kind, table.targetId] }),
+    foreignKey({
+      columns: [table.organizationId, table.conversationId],
+      foreignColumns: [messagingConversations.organizationId, messagingConversations.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.conversationId, table.messageId],
+      foreignColumns: [messagingMessages.conversationId, messagingMessages.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.organizationId, table.targetConversationId],
+      foreignColumns: [messagingConversations.organizationId, messagingConversations.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.targetConversationId, table.targetThreadId, table.threadRoot],
+      foreignColumns: [
+        messagingMessages.conversationId,
+        messagingMessages.id,
+        messagingMessages.isRoot,
+      ],
+    }).onDelete("cascade"),
+    check(
+      "messaging_reference_target_check",
+      sql`
+      (${table.kind} = 'channel' AND ${table.targetId} = ${table.targetConversationId} AND ${table.targetThreadId} IS NULL)
+      OR (${table.kind} = 'thread' AND ${table.targetThreadId} IS NOT NULL AND ${table.targetId} = ${table.targetThreadId})
+    `,
+    ),
+    check("messaging_reference_root_check", sql`${table.threadRoot}`),
+    index("messaging_reference_target_idx").on(
+      table.organizationId,
+      table.targetConversationId,
+      table.targetThreadId,
+    ),
   ],
 );

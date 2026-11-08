@@ -16,7 +16,6 @@ export function LinkedMessage({
       ref={target}
       tabIndex={highlighted ? -1 : undefined}
       aria-label={highlighted ? "Linked message" : undefined}
-      className={highlighted ? "rounded border-2 border-ring" : undefined}
     >
       {children}
     </div>

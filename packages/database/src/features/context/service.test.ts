@@ -479,10 +479,10 @@ test("page context deduplicates requested IDs in order and keeps people tokens w
     .where(eq(messagingMessages.id, hidden.id));
   const result = await context().messagePage([hidden.id, alice.id, bob.id, alice.id, empty.id]);
   expect(result).toEqual([
-    { messageId: hidden.id, links: [], people: [] },
-    { messageId: alice.id, links: [], people: [{ id: f.alice, name: "Alice" }] },
-    { messageId: bob.id, links: [], people: [{ id: f.bob, name: "Bob" }] },
-    { messageId: empty.id, links: [], people: [] },
+    { messageId: hidden.id, links: [], people: [], messaging: [] },
+    { messageId: alice.id, links: [], people: [{ id: f.alice, name: "Alice" }], messaging: [] },
+    { messageId: bob.id, links: [], people: [{ id: f.bob, name: "Bob" }], messaging: [] },
+    { messageId: empty.id, links: [], people: [], messaging: [] },
   ]);
 });
 

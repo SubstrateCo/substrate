@@ -19,7 +19,7 @@ function ReferenceNodeView({ node, editor, getPos }: NodeViewProps) {
     <NodeViewWrapper
       as="span"
       contentEditable={false}
-      className="inline-block max-w-full align-baseline"
+      className="inline-block max-w-full align-baseline [&>span]:max-w-64"
       data-reference-chip
       onMouseDown={(event: MouseEvent<HTMLSpanElement>) => {
         event.preventDefault();

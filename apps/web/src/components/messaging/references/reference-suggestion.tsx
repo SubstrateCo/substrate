@@ -1,13 +1,23 @@
 import type { ReferenceSuggestion as Suggestion } from "@/components/messaging/references/reference-popover/reference-results";
 import { cva } from "class-variance-authority";
-import { CircleCheck, FolderKanban, UserRound } from "lucide-react";
+import { CircleCheck, FolderKanban, UserRound, Hash, MessagesSquare } from "lucide-react";
 
 const optionVariants = cva("flex cursor-pointer items-center gap-3 rounded-md px-2 py-2", {
   variants: { selected: { true: "bg-accent text-accent-foreground", false: "" } },
 });
 const iconVariants = cva(
   "flex size-8 shrink-0 items-center justify-center bg-muted text-muted-foreground",
-  { variants: { kind: { person: "rounded-full", task: "rounded-md", project: "rounded-md" } } },
+  {
+    variants: {
+      kind: {
+        person: "rounded-full",
+        task: "rounded-md",
+        project: "rounded-md",
+        channel: "rounded-md",
+        thread: "rounded-md",
+      },
+    },
+  },
 );
 
 export function ReferenceSuggestion({
@@ -23,7 +33,13 @@ export function ReferenceSuggestion({
   onHighlight: () => void;
   onSelect: () => void;
 }) {
-  const Icon = { person: UserRound, task: CircleCheck, project: FolderKanban }[item.kind];
+  const Icon = {
+    person: UserRound,
+    task: CircleCheck,
+    project: FolderKanban,
+    channel: Hash,
+    thread: MessagesSquare,
+  }[item.kind];
   return (
     <div
       id={id}
@@ -44,7 +60,15 @@ export function ReferenceSuggestion({
         )}
       </span>
       <span className="shrink-0 text-xs text-muted-foreground">
-        {{ person: "User", task: "Task", project: "Project" }[item.kind]}
+        {
+          {
+            person: "User",
+            task: "Task",
+            project: "Project",
+            channel: "Channel",
+            thread: "Thread",
+          }[item.kind]
+        }
       </span>
     </div>
   );
