@@ -18,7 +18,7 @@ const chat = (userId: string, organizationId = f.orgA) =>
 const listed = async (userId: string, organizationId = f.orgA) =>
   (await chat(userId, organizationId).listConversations()).map((row) => ({
     id: row.id,
-    left: row.left,
+    joined: row.joined,
   }));
 
 async function verified() {
@@ -46,7 +46,7 @@ test("leaving a private conversation removes access until the owner adds the mem
     before.id,
   ]);
   expect(await chat("alice").addMembers(channel.id, ["bob@example.com"])).toEqual({ added: 1 });
-  expect(await listed("bob")).toEqual([{ id: channel.id, left: false }]);
+  expect(await listed("bob")).toEqual([{ id: channel.id, joined: true }]);
 });
 
 test("leaving a public channel hides it and stops reply alerts, while posting rejoins", async () => {
@@ -54,7 +54,7 @@ test("leaving a public channel hides it and stops reply alerts, while posting re
   const channel = await chat("alice").createConversation({ kind: "channel", name: "general" });
   const root = await chat("bob").sendMessage(channel.id, "root");
   await chat("bob").leaveConversation(channel.id);
-  expect(await listed("bob")).toEqual([{ id: channel.id, left: true }]);
+  expect(await listed("bob")).toEqual([{ id: channel.id, joined: false }]);
   expect(await chat("bob").listMessages(channel.id)).toHaveLength(1);
   const feed = createFeedService(f.db, { userId: "bob", organizationId: f.orgA });
   await chat("alice").sendMessage(channel.id, "reply", root.id);
@@ -62,16 +62,18 @@ test("leaving a public channel hides it and stops reply alerts, while posting re
   await chat("alice").sendMessage(channel.id, `@[person:${f.bob}]`, root.id);
   expect((await feed.list()).map((item) => item.kind)).toEqual(["mention"]);
   await chat("bob").sendMessage(channel.id, "back");
-  expect(await listed("bob")).toEqual([{ id: channel.id, left: false }]);
+  expect(await listed("bob")).toEqual([{ id: channel.id, joined: true }]);
 });
 
-test("a person can leave a public channel they never joined", async () => {
+test("public channels are listed as joined only for active members", async () => {
   await verified();
   const channel = await chat("alice").createConversation({ kind: "channel", name: "general" });
+  expect(await listed("alice")).toEqual([{ id: channel.id, joined: true }]);
+  expect(await listed("bob")).toEqual([{ id: channel.id, joined: false }]);
   await chat("bob").leaveConversation(channel.id);
-  expect(await listed("bob")).toEqual([{ id: channel.id, left: true }]);
+  expect(await listed("bob")).toEqual([{ id: channel.id, joined: false }]);
   await chat("bob").joinConversation(channel.id);
-  expect(await listed("bob")).toEqual([{ id: channel.id, left: false }]);
+  expect(await listed("bob")).toEqual([{ id: channel.id, joined: true }]);
 });
 
 test("owners pass ownership before leaving, and the last member must delete instead", async () => {

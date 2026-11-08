@@ -105,7 +105,7 @@ export function ConversationPane({
             )}
             {!blocked && (
               <div className="mt-auto shrink-0">
-                {conversation.left && leftNotice}
+                {!conversation.joined && leftNotice}
                 {composer}
               </div>
             )}

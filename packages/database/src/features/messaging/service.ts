@@ -311,23 +311,6 @@ export function createMessagingService(
           .orderBy(asc(messagingConversations.createdAt), asc(messagingConversations.id));
         const ids = rows.map((row) => row.id);
         const byConversation = await activeMembers(tx, ids);
-        // Only public channels stay visible after leaving. The sidebar hides them; links still open.
-        const left = new Set(
-          ids.length
-            ? (
-                await tx
-                  .select({ id: messagingParticipants.conversationId })
-                  .from(messagingParticipants)
-                  .where(
-                    and(
-                      inArray(messagingParticipants.conversationId, ids),
-                      eq(messagingParticipants.userId, scope.userId),
-                      isNotNull(messagingParticipants.leftAt),
-                    ),
-                  )
-              ).map((row) => row.id)
-            : [],
-        );
         const admin =
           !scope.actorEntityId &&
           (await isOrganizationAdmin(tx, scope.userId, scope.organizationId));
@@ -346,7 +329,9 @@ export function createMessagingService(
                 .join(", ") ||
                 null),
             members: members.map(({ userId, name }) => ({ userId, name })),
-            left: left.has(row.id),
+            // The sidebar lists joined conversations. Public channels the person never joined or
+            // left are still returned, so links and search can open them.
+            joined: members.some((participant) => participant.userId === scope.userId),
             canManage:
               !scope.actorEntityId &&
               row.kind !== "dm" &&

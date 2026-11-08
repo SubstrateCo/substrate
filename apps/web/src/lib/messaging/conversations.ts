@@ -6,8 +6,8 @@ export type Conversation = {
   partner?: boolean;
   createdBy?: string;
   members?: { userId: string; name: string }[];
-  // The person left this public channel. It stays readable but leaves the sidebar.
-  left?: boolean;
+  // Active member. Public channels the person never joined or left stay readable but leave the sidebar.
+  joined?: boolean;
   canManage?: boolean;
 };
 

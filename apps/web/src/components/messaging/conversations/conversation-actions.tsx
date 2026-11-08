@@ -33,10 +33,7 @@ export function ConversationActions({
   const name = conversationName(conversation);
   const owner = !!userId && conversation.createdBy === userId;
   const others = (conversation.members ?? []).filter((person) => person.userId !== userId);
-  const member =
-    !!userId && (conversation.members ?? []).some((person) => person.userId === userId);
-  const canLeave =
-    conversation.kind !== "dm" && !conversation.left && (member || !conversation.private);
+  const canLeave = conversation.kind !== "dm" && !!conversation.joined;
   const close = () => setDialog(undefined);
 
   return (

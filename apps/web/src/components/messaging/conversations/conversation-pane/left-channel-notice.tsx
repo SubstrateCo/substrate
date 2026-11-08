@@ -14,7 +14,7 @@ export function LeftChannelNotice({
       role="status"
       className="flex flex-wrap items-center justify-between gap-2 border-t px-4 py-2 text-sm text-muted-foreground"
     >
-      <span>You left this channel. Posting or joining adds it back to your sidebar.</span>
+      <span>You're not in this channel. Join or post to add it to your sidebar.</span>
       {error && (
         <span role="alert" className="text-destructive">
           {error.message}

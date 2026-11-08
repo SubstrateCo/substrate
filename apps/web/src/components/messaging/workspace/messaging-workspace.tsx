@@ -29,8 +29,8 @@ export function MessagingWorkspace({ organizationId }: { organizationId: string 
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const visibleConversations = isAccessFailure(conversations.error) ? [] : conversations.data || [];
-  // Public channels the person left stay reachable by link but leave the sidebar.
-  const sidebarConversations = visibleConversations.filter((conversation) => !conversation.left);
+  // The sidebar lists joined conversations. Other public channels stay reachable by link and search.
+  const sidebarConversations = visibleConversations.filter((conversation) => conversation.joined);
   const selected = search.conversationId
     ? visibleConversations.find((conversation) => conversation.id === search.conversationId)
     : sidebarConversations[0];
