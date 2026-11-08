@@ -1,5 +1,5 @@
 {
-  "id": "24e7e2f4-a0ac-4053-84fa-e2d281c23afd",
+  "id": "97b3ace6-7cfb-4cb3-b338-e0510abf4d80",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1004,6 +1004,12 @@
           "notNull": true,
           "default": true
         },
+        "home_device_id": {
+          "name": "home_device_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "deleted_at": {
           "name": "deleted_at",
           "type": "timestamp with time zone",
@@ -1024,6 +1030,21 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "user_agent_home_device_owner_fk": {
+          "name": "user_agent_home_device_owner_fk",
+          "tableFrom": "user_agents",
+          "tableTo": "desktop_devices",
+          "columnsFrom": [
+            "user_id",
+            "home_device_id"
+          ],
+          "columnsTo": [
+            "user_id",
+            "id"
+          ],
+          "onDelete": "no action",
           "onUpdate": "no action"
         },
         "user_agent_picture_file_owner_fk": {
@@ -1060,6 +1081,104 @@
         "user_agent_picture_purpose": {
           "name": "user_agent_picture_purpose",
           "value": "\"user_agents\".\"picture_purpose\" = 'avatar'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.desktop_devices": {
+      "name": "desktop_devices",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "installation_id": {
+          "name": "installation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "platform": {
+          "name": "platform",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "last_seen_at": {
+          "name": "last_seen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "desktop_devices_user_id_user_id_fk": {
+          "name": "desktop_devices_user_id_user_id_fk",
+          "tableFrom": "desktop_devices",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "desktop_devices_user_installation_unique": {
+          "name": "desktop_devices_user_installation_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "user_id",
+            "installation_id"
+          ]
+        },
+        "desktop_devices_user_id_unique": {
+          "name": "desktop_devices_user_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "user_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "desktop_devices_name_check": {
+          "name": "desktop_devices_name_check",
+          "value": "length(trim(\"desktop_devices\".\"name\")) BETWEEN 1 AND 200"
+        },
+        "desktop_devices_platform_check": {
+          "name": "desktop_devices_platform_check",
+          "value": "length(\"desktop_devices\".\"platform\") BETWEEN 1 AND 40"
         }
       },
       "isRLSEnabled": false
@@ -1769,88 +1888,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.organization_pictures": {
-      "name": "organization_pictures",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "organization_id": {
-          "name": "organization_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "file_id": {
-          "name": "file_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "purpose": {
-          "name": "purpose",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'organization-logo'"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "organization_pictures_organization_id_organization_id_fk": {
-          "name": "organization_pictures_organization_id_organization_id_fk",
-          "tableFrom": "organization_pictures",
-          "tableTo": "organization",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "organization_picture_file_owner_fk": {
-          "name": "organization_picture_file_owner_fk",
-          "tableFrom": "organization_pictures",
-          "tableTo": "stored_files",
-          "columnsFrom": [
-            "file_id",
-            "organization_id",
-            "purpose"
-          ],
-          "columnsTo": [
-            "id",
-            "organization_id",
-            "purpose"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "organization_pictures_organization_id_unique": {
-          "name": "organization_pictures_organization_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "organization_id"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {
-        "organization_picture_purpose": {
-          "name": "organization_picture_purpose",
-          "value": "\"organization_pictures\".\"purpose\" = 'organization-logo'"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.storage_candidates": {
       "name": "storage_candidates",
       "schema": "",
@@ -2036,171 +2073,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.user_pictures": {
-      "name": "user_pictures",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "file_id": {
-          "name": "file_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "purpose": {
-          "name": "purpose",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'avatar'"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "user_pictures_user_id_user_id_fk": {
-          "name": "user_pictures_user_id_user_id_fk",
-          "tableFrom": "user_pictures",
-          "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "user_picture_file_owner_fk": {
-          "name": "user_picture_file_owner_fk",
-          "tableFrom": "user_pictures",
-          "tableTo": "stored_files",
-          "columnsFrom": [
-            "file_id",
-            "user_id",
-            "purpose"
-          ],
-          "columnsTo": [
-            "id",
-            "owner_user_id",
-            "purpose"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "user_pictures_user_id_unique": {
-          "name": "user_pictures_user_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "user_id"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {
-        "user_picture_purpose": {
-          "name": "user_picture_purpose",
-          "value": "\"user_pictures\".\"purpose\" = 'avatar'"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.messaging_agent_participants": {
-      "name": "messaging_agent_participants",
-      "schema": "",
-      "columns": {
-        "conversation_id": {
-          "name": "conversation_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "organization_id": {
-          "name": "organization_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "actor_entity_id": {
-          "name": "actor_entity_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "actor_type": {
-          "name": "actor_type",
-          "type": "actor_type",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "generated": {
-            "as": "'agent'::actor_type",
-            "type": "stored"
-          }
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "messaging_agent_participants_organization_id_conversation_id_messaging_conversations_organization_id_id_fk": {
-          "name": "messaging_agent_participants_organization_id_conversation_id_messaging_conversations_organization_id_id_fk",
-          "tableFrom": "messaging_agent_participants",
-          "tableTo": "messaging_conversations",
-          "columnsFrom": [
-            "organization_id",
-            "conversation_id"
-          ],
-          "columnsTo": [
-            "organization_id",
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "messaging_agent_participants_organization_id_actor_entity_id_actor_type_actors_organization_id_entity_id_type_fk": {
-          "name": "messaging_agent_participants_organization_id_actor_entity_id_actor_type_actors_organization_id_entity_id_type_fk",
-          "tableFrom": "messaging_agent_participants",
-          "tableTo": "actors",
-          "columnsFrom": [
-            "organization_id",
-            "actor_entity_id",
-            "actor_type"
-          ],
-          "columnsTo": [
-            "organization_id",
-            "entity_id",
-            "type"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "messaging_agent_participants_conversation_id_actor_entity_id_pk": {
-          "name": "messaging_agent_participants_conversation_id_actor_entity_id_pk",
-          "columns": [
-            "conversation_id",
-            "actor_entity_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.messaging_conversations": {
       "name": "messaging_conversations",
       "schema": "",
@@ -2335,23 +2207,13 @@
           "name": "author_actor_entity_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "author_organization_id": {
           "name": "author_organization_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
-        },
-        "agent_author_entity_id": {
-          "name": "agent_author_entity_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false,
-          "generated": {
-            "as": "case when author_id is null then author_actor_entity_id else null end",
-            "type": "stored"
-          }
+          "notNull": true
         },
         "body": {
           "name": "body",
@@ -2454,32 +2316,17 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "messaging_messages_conversation_id_agent_author_entity_id_messaging_agent_participants_conversation_id_actor_entity_id_fk": {
-          "name": "messaging_messages_conversation_id_agent_author_entity_id_messaging_agent_participants_conversation_id_actor_entity_id_fk",
-          "tableFrom": "messaging_messages",
-          "tableTo": "messaging_agent_participants",
-          "columnsFrom": [
-            "conversation_id",
-            "agent_author_entity_id"
-          ],
-          "columnsTo": [
-            "conversation_id",
-            "actor_entity_id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "messaging_messages_conversation_id_author_id_messaging_participants_conversation_id_user_id_fk": {
-          "name": "messaging_messages_conversation_id_author_id_messaging_participants_conversation_id_user_id_fk",
+        "messaging_messages_conversation_id_author_actor_entity_id_messaging_participants_conversation_id_actor_entity_id_fk": {
+          "name": "messaging_messages_conversation_id_author_actor_entity_id_messaging_participants_conversation_id_actor_entity_id_fk",
           "tableFrom": "messaging_messages",
           "tableTo": "messaging_participants",
           "columnsFrom": [
             "conversation_id",
-            "author_id"
+            "author_actor_entity_id"
           ],
           "columnsTo": [
             "conversation_id",
-            "user_id"
+            "actor_entity_id"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -2565,15 +2412,22 @@
           "primaryKey": false,
           "notNull": true
         },
-        "user_id": {
-          "name": "user_id",
+        "organization_id": {
+          "name": "organization_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "organization_id": {
-          "name": "organization_id",
-          "type": "text",
+        "actor_entity_id": {
+          "name": "actor_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_type": {
+          "name": "actor_type",
+          "type": "actor_type",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
         },
@@ -2585,11 +2439,11 @@
         }
       },
       "indexes": {
-        "messaging_participants_user_idx": {
-          "name": "messaging_participants_user_idx",
+        "messaging_participants_actor_idx": {
+          "name": "messaging_participants_actor_idx",
           "columns": [
             {
-              "expression": "user_id",
+              "expression": "actor_entity_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2615,19 +2469,6 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "messaging_participants_user_id_user_id_fk": {
-          "name": "messaging_participants_user_id_user_id_fk",
-          "tableFrom": "messaging_participants",
-          "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
         "messaging_participants_organization_id_organization_id_fk": {
           "name": "messaging_participants_organization_id_organization_id_fk",
           "tableFrom": "messaging_participants",
@@ -2640,14 +2481,31 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "messaging_participants_organization_id_actor_entity_id_actor_type_actors_organization_id_entity_id_type_fk": {
+          "name": "messaging_participants_organization_id_actor_entity_id_actor_type_actors_organization_id_entity_id_type_fk",
+          "tableFrom": "messaging_participants",
+          "tableTo": "actors",
+          "columnsFrom": [
+            "organization_id",
+            "actor_entity_id",
+            "actor_type"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id",
+            "type"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
-        "messaging_participants_conversation_id_user_id_pk": {
-          "name": "messaging_participants_conversation_id_user_id_pk",
+        "messaging_participants_conversation_id_actor_entity_id_pk": {
+          "name": "messaging_participants_conversation_id_actor_entity_id_pk",
           "columns": [
             "conversation_id",
-            "user_id"
+            "actor_entity_id"
           ]
         }
       },
@@ -2672,9 +2530,9 @@
           "primaryKey": false,
           "notNull": true
         },
-        "user_id": {
-          "name": "user_id",
-          "type": "text",
+        "actor_entity_id": {
+          "name": "actor_entity_id",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -2702,28 +2560,28 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "messaging_reactions_conversation_id_user_id_messaging_participants_conversation_id_user_id_fk": {
-          "name": "messaging_reactions_conversation_id_user_id_messaging_participants_conversation_id_user_id_fk",
+        "messaging_reactions_conversation_id_actor_entity_id_messaging_participants_conversation_id_actor_entity_id_fk": {
+          "name": "messaging_reactions_conversation_id_actor_entity_id_messaging_participants_conversation_id_actor_entity_id_fk",
           "tableFrom": "messaging_reactions",
           "tableTo": "messaging_participants",
           "columnsFrom": [
             "conversation_id",
-            "user_id"
+            "actor_entity_id"
           ],
           "columnsTo": [
             "conversation_id",
-            "user_id"
+            "actor_entity_id"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
-        "messaging_reactions_message_id_user_id_emoji_pk": {
-          "name": "messaging_reactions_message_id_user_id_emoji_pk",
+        "messaging_reactions_message_id_actor_entity_id_emoji_pk": {
+          "name": "messaging_reactions_message_id_actor_entity_id_emoji_pk",
           "columns": [
             "message_id",
-            "user_id",
+            "actor_entity_id",
             "emoji"
           ]
         }
@@ -3959,6 +3817,695 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.user_agent_triggers": {
+      "name": "user_agent_triggers",
+      "schema": "",
+      "columns": {
+        "user_agent_id": {
+          "name": "user_agent_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "enabled": {
+          "name": "enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "prompt": {
+          "name": "prompt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "user_agent_triggers_user_agent_id_user_agents_id_fk": {
+          "name": "user_agent_triggers_user_agent_id_user_agents_id_fk",
+          "tableFrom": "user_agent_triggers",
+          "tableTo": "user_agents",
+          "columnsFrom": [
+            "user_agent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "user_agent_triggers_user_agent_id_kind_pk": {
+          "name": "user_agent_triggers_user_agent_id_kind_pk",
+          "columns": [
+            "user_agent_id",
+            "kind"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "user_agent_trigger_kind_check": {
+          "name": "user_agent_trigger_kind_check",
+          "value": "\"user_agent_triggers\".\"kind\" IN ('direct_message', 'mention', 'thread_reply')"
+        },
+        "user_agent_trigger_prompt_check": {
+          "name": "user_agent_trigger_prompt_check",
+          "value": "\"user_agent_triggers\".\"prompt\" IS NULL OR length(trim(\"user_agent_triggers\".\"prompt\")) BETWEEN 1 AND 20000"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.agent_run_events": {
+      "name": "agent_run_events",
+      "schema": "",
+      "columns": {
+        "run_id": {
+          "name": "run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sequence": {
+          "name": "sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "text": {
+          "name": "text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "agent_run_events_run_id_agent_runs_id_fk": {
+          "name": "agent_run_events_run_id_agent_runs_id_fk",
+          "tableFrom": "agent_run_events",
+          "tableTo": "agent_runs",
+          "columnsFrom": [
+            "run_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "agent_run_events_run_id_sequence_pk": {
+          "name": "agent_run_events_run_id_sequence_pk",
+          "columns": [
+            "run_id",
+            "sequence"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "agent_run_event_kind_check": {
+          "name": "agent_run_event_kind_check",
+          "value": "\"agent_run_events\".\"kind\" IN ('text', 'activity', 'error')"
+        },
+        "agent_run_event_text_check": {
+          "name": "agent_run_event_text_check",
+          "value": "length(\"agent_run_events\".\"text\") <= 20000"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.agent_run_requests": {
+      "name": "agent_run_requests",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "run_id": {
+          "name": "run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "native_request_id": {
+          "name": "native_request_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "response": {
+          "name": "response",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resolved_by_user_id": {
+          "name": "resolved_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "resolved_at": {
+          "name": "resolved_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "delivered_at": {
+          "name": "delivered_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "agent_run_requests_run_id_agent_runs_id_fk": {
+          "name": "agent_run_requests_run_id_agent_runs_id_fk",
+          "tableFrom": "agent_run_requests",
+          "tableTo": "agent_runs",
+          "columnsFrom": [
+            "run_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "agent_run_requests_resolved_by_user_id_user_id_fk": {
+          "name": "agent_run_requests_resolved_by_user_id_user_id_fk",
+          "tableFrom": "agent_run_requests",
+          "tableTo": "user",
+          "columnsFrom": [
+            "resolved_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "agent_run_requests_native_unique": {
+          "name": "agent_run_requests_native_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "run_id",
+            "native_request_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "agent_run_request_status_check": {
+          "name": "agent_run_request_status_check",
+          "value": "\"agent_run_requests\".\"status\" IN ('pending', 'resolved', 'cancelled', 'expired')"
+        },
+        "agent_run_request_response_check": {
+          "name": "agent_run_request_response_check",
+          "value": "(\"agent_run_requests\".\"status\" = 'resolved') = (\"agent_run_requests\".\"response\" IS NOT NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.agent_run_triggers": {
+      "name": "agent_run_triggers",
+      "schema": "",
+      "columns": {
+        "run_id": {
+          "name": "run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "conversation_id": {
+          "name": "conversation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "message_id": {
+          "name": "message_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "agent_run_triggers_message_idx": {
+          "name": "agent_run_triggers_message_idx",
+          "columns": [
+            {
+              "expression": "message_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "agent_run_triggers_run_id_agent_runs_id_fk": {
+          "name": "agent_run_triggers_run_id_agent_runs_id_fk",
+          "tableFrom": "agent_run_triggers",
+          "tableTo": "agent_runs",
+          "columnsFrom": [
+            "run_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "agent_run_triggers_conversation_id_message_id_messaging_messages_conversation_id_id_fk": {
+          "name": "agent_run_triggers_conversation_id_message_id_messaging_messages_conversation_id_id_fk",
+          "tableFrom": "agent_run_triggers",
+          "tableTo": "messaging_messages",
+          "columnsFrom": [
+            "conversation_id",
+            "message_id"
+          ],
+          "columnsTo": [
+            "conversation_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "agent_run_triggers_run_id_message_id_pk": {
+          "name": "agent_run_triggers_run_id_message_id_pk",
+          "columns": [
+            "run_id",
+            "message_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "agent_run_trigger_kind_check": {
+          "name": "agent_run_trigger_kind_check",
+          "value": "\"agent_run_triggers\".\"kind\" IN ('direct_message', 'mention', 'thread_reply')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.agent_runs": {
+      "name": "agent_runs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agent_actor_entity_id": {
+          "name": "agent_actor_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_agent_id": {
+          "name": "user_agent_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "owner_user_id": {
+          "name": "owner_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "conversation_id": {
+          "name": "conversation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "thread_id": {
+          "name": "thread_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "trigger_kind": {
+          "name": "trigger_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'queued'"
+        },
+        "device_id": {
+          "name": "device_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lease_expires_at": {
+          "name": "lease_expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "harness_session_id": {
+          "name": "harness_session_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "activity": {
+          "name": "activity",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "error": {
+          "name": "error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "finished_at": {
+          "name": "finished_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now() + interval '24 hours'"
+        }
+      },
+      "indexes": {
+        "agent_runs_queued_thread_unique": {
+          "name": "agent_runs_queued_thread_unique",
+          "columns": [
+            {
+              "expression": "agent_actor_entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "thread_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"agent_runs\".\"status\" = 'queued'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "agent_runs_owner_status_idx": {
+          "name": "agent_runs_owner_status_idx",
+          "columns": [
+            {
+              "expression": "owner_user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "agent_runs_conversation_idx": {
+          "name": "agent_runs_conversation_idx",
+          "columns": [
+            {
+              "expression": "conversation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "agent_runs_thread_idx": {
+          "name": "agent_runs_thread_idx",
+          "columns": [
+            {
+              "expression": "agent_actor_entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "thread_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "agent_runs_user_agent_id_user_agents_id_fk": {
+          "name": "agent_runs_user_agent_id_user_agents_id_fk",
+          "tableFrom": "agent_runs",
+          "tableTo": "user_agents",
+          "columnsFrom": [
+            "user_agent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "agent_runs_owner_user_id_user_id_fk": {
+          "name": "agent_runs_owner_user_id_user_id_fk",
+          "tableFrom": "agent_runs",
+          "tableTo": "user",
+          "columnsFrom": [
+            "owner_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "agent_runs_conversation_id_messaging_conversations_id_fk": {
+          "name": "agent_runs_conversation_id_messaging_conversations_id_fk",
+          "tableFrom": "agent_runs",
+          "tableTo": "messaging_conversations",
+          "columnsFrom": [
+            "conversation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "agent_runs_organization_id_agent_actor_entity_id_actors_organization_id_entity_id_fk": {
+          "name": "agent_runs_organization_id_agent_actor_entity_id_actors_organization_id_entity_id_fk",
+          "tableFrom": "agent_runs",
+          "tableTo": "actors",
+          "columnsFrom": [
+            "organization_id",
+            "agent_actor_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "agent_runs_conversation_id_thread_id_messaging_messages_conversation_id_id_fk": {
+          "name": "agent_runs_conversation_id_thread_id_messaging_messages_conversation_id_id_fk",
+          "tableFrom": "agent_runs",
+          "tableTo": "messaging_messages",
+          "columnsFrom": [
+            "conversation_id",
+            "thread_id"
+          ],
+          "columnsTo": [
+            "conversation_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "agent_runs_owner_user_id_device_id_desktop_devices_user_id_id_fk": {
+          "name": "agent_runs_owner_user_id_device_id_desktop_devices_user_id_id_fk",
+          "tableFrom": "agent_runs",
+          "tableTo": "desktop_devices",
+          "columnsFrom": [
+            "owner_user_id",
+            "device_id"
+          ],
+          "columnsTo": [
+            "user_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "agent_run_status_check": {
+          "name": "agent_run_status_check",
+          "value": "\"agent_runs\".\"status\" IN ('queued', 'running', 'completed', 'failed', 'cancelled', 'expired')"
+        },
+        "agent_run_trigger_check": {
+          "name": "agent_run_trigger_check",
+          "value": "\"agent_runs\".\"trigger_kind\" IN ('direct_message', 'mention', 'thread_reply')"
+        },
+        "agent_run_lease_check": {
+          "name": "agent_run_lease_check",
+          "value": "\"agent_runs\".\"status\" <> 'running' OR (\"agent_runs\".\"device_id\" IS NOT NULL AND \"agent_runs\".\"lease_expires_at\" IS NOT NULL)"
+        }
+      },
       "isRLSEnabled": false
     }
   },

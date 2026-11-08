@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1794165683262,
+      "when": 1794170438128,
       "tag": "0000_initial",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1794167613926,
-      "tag": "0001_actor_participants_agent_runs",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1794169900000,
-      "tag": "0002_simplify_profile_pictures",
       "breakpoints": true
     }
   ]

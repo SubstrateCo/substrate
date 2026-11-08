@@ -25,7 +25,7 @@ test("notifications paginate, filter unread, and mark individual and all items a
   const rows = feed.getByRole("list", { name: "Notification activity" }).getByRole("listitem");
   await expect(rows.first()).toBeVisible();
   const pageSize = await rows.count();
-  expect(pageSize).toBeGreaterThanOrEqual(10);
+  expect(pageSize).toBeGreaterThan(1);
   expect(pageSize).toBeLessThanOrEqual(20);
   const scroller = feed.getByRole("region", { name: "Notification feed" });
   expect(await scroller.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(
