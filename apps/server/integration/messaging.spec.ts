@@ -3,20 +3,24 @@ import type { ServiceResult } from "@startup-os/contracts/result";
 
 import { provisionVerifiedAccount } from "./test-support/auth";
 import { Mailpit } from "./test-support/mailpit";
-import { provisionWorkspaceSession } from "./test-support/organizations";
+import { provisionWorkspaceSession, type WorkspaceAccount } from "./test-support/organizations";
 import { expect, test as base, type APIRequestContext } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import type { z } from "zod";
 
 const origin = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000").origin;
-type Actor = { request: APIRequestContext; organizationId: string; email: string };
 
 const test = base.extend<{
-  actors: { owner: Actor; member: Actor; outsider: Actor; recipient: Actor };
+  actors: {
+    owner: WorkspaceAccount;
+    member: WorkspaceAccount;
+    outsider: WorkspaceAccount;
+    recipient: WorkspaceAccount;
+  };
 }>({
   actors: async ({ playwright }, use) => {
     const contexts: APIRequestContext[] = [];
-    const account = async (kind: string): Promise<Actor> => {
+    const account = async (kind: string): Promise<WorkspaceAccount> => {
       const request = await playwright.request.newContext({ baseURL: origin });
       contexts.push(request);
       const suffix = randomUUID();
@@ -70,7 +74,11 @@ type Mutation =
   | Omit<z.input<typeof conversationInput>, "organizationId">
   | Omit<z.input<typeof messageInput>, "organizationId">;
 
-async function post<T>(actor: Actor, endpoint: "conversations" | "messages", input: Mutation) {
+async function post<T>(
+  actor: WorkspaceAccount,
+  endpoint: "conversations" | "messages",
+  input: Mutation,
+) {
   const response = await actor.request.post(`/api/v1/messaging/${endpoint}`, {
     headers: { origin },
     data: { organizationId: actor.organizationId, ...input },

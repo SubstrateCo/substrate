@@ -15,11 +15,13 @@ test("messaging validates each route before calling services", async () => {
     sendMessage: mock(services.sendMessage),
     toggleReaction: mock(services.toggleReaction),
     addMembers: mock(services.addMembers),
+    getProfile: mock(services.getProfile),
   };
   const app = createMessagingRoutes(spies);
   for (const [method, path, body] of [
     ["GET", "/conversations", undefined],
     ["GET", "/messages?organizationId=org", undefined],
+    ["GET", `/profiles?organizationId=org&conversationId=${conversationId}&actorId=x`, undefined],
     ["POST", "/conversations", { organizationId: "org", kind: "dm", emails: ["invalid"] }],
     ["POST", "/messages", { organizationId: "org", conversationId, body: " " }],
     ["POST", "/reactions", { organizationId: "org", messageId: conversationId, emoji: "" }],

@@ -3,6 +3,7 @@ import type {
   membersInput,
   messageInput,
   messageListInput,
+  profileInput,
   reactionInput,
   workspaceInput,
 } from "@startup-os/contracts/messaging/input";
@@ -25,5 +26,7 @@ export const toggleReaction = ({ data, signal }: ApiInput<z.input<typeof reactio
   readResult(api.messaging.reactions.$post({ json: data }, { init: { signal } }));
 export const addMembers = ({ data, signal }: ApiInput<z.input<typeof membersInput>>) =>
   readResult(api.messaging.members.$post({ json: data }, { init: { signal } }));
+export const getProfile = ({ data, signal }: ApiInput<z.input<typeof profileInput>>) =>
+  readResult(api.messaging.profiles.$get({ query: data }, { init: { signal } }));
 export const listAvailableAgents = ({ data, signal }: ApiInput<z.input<typeof workspaceInput>>) =>
   readResult(api.messaging.agents.$get({ query: data }, { init: { signal } }));

@@ -13,6 +13,7 @@ import { applyMessageEffects } from "../context/message-effects";
 import { visibleConversations, type MessagingIdentity } from "./access";
 import { messageAuthorColumns } from "./message-authors";
 import { messageSummaries } from "./message-summaries";
+import { messagingProfile } from "./profiles";
 import {
   messagingConversations,
   messagingMessages,
@@ -412,6 +413,12 @@ export function createMessagingService(
           authorType,
           ...summaries.get(message.id)!,
         }));
+      });
+    },
+    async getProfile(conversationId: string, actorEntityId: string) {
+      return db.transaction(async (tx) => {
+        const { actor } = await authenticate(tx);
+        return messagingProfile(tx, scope, actor.entityId, conversationId, actorEntityId);
       });
     },
     async sendMessage(conversationId: string, body: string, threadId?: string, requestId?: string) {

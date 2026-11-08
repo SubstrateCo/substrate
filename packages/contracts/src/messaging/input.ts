@@ -24,6 +24,10 @@ export const reactionInput = workspaceInput.extend({
   messageId: id,
   emoji: z.string().min(1).max(32),
 });
+export const profileInput = workspaceInput.extend({
+  conversationId: id,
+  actorId: id,
+});
 export const membersInput = workspaceInput.extend({
   conversationId: id,
   emails: emails.default([]),

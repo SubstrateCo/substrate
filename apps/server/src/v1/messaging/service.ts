@@ -5,6 +5,7 @@ import type {
   messageInput,
   reactionInput,
   membersInput,
+  profileInput,
 } from "@startup-os/contracts/messaging/input";
 import { realtimeKeys } from "@startup-os/contracts/realtime";
 import { createMessagingService } from "@startup-os/database/messaging";
@@ -38,6 +39,13 @@ export function listMessages(headers: Headers, input: z.output<typeof messageLis
   return serviceResult(async () => {
     const service = await serviceForSession(headers, input.organizationId);
     return service.listMessages(input.conversationId, input.threadId, input);
+  });
+}
+
+export function getProfile(headers: Headers, input: z.output<typeof profileInput>) {
+  return serviceResult(async () => {
+    const service = await serviceForSession(headers, input.organizationId);
+    return service.getProfile(input.conversationId, input.actorId);
   });
 }
 

@@ -5,6 +5,7 @@ import {
   messageInput,
   reactionInput,
   membersInput,
+  profileInput,
 } from "@startup-os/contracts/messaging/input";
 
 import { respond, validationHook } from "../../shared/http";
@@ -22,6 +23,9 @@ export function createMessagingRoutes(services = defaultServices) {
     )
     .post("/conversations", zValidator("json", conversationInput, validationHook), async (c) =>
       respond(c, await services.createConversation(c.req.raw.headers, c.req.valid("json"))),
+    )
+    .get("/profiles", zValidator("query", profileInput, validationHook), async (c) =>
+      respond(c, await services.getProfile(c.req.raw.headers, c.req.valid("query"))),
     )
     .get("/messages", zValidator("query", messageListInput, validationHook), async (c) =>
       respond(c, await services.listMessages(c.req.raw.headers, c.req.valid("query"))),

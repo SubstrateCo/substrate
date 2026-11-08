@@ -3,6 +3,7 @@ export type Message = {
   body: string;
   authorName: string;
   authorId: string | null;
+  authorActorEntityId?: string | null;
   authorType?: "human" | "agent";
   authorExternal: boolean;
   createdAt: string | Date;
