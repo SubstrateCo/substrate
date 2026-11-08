@@ -1,11 +1,7 @@
 import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
-import {
-  getMessagePage,
-  getRelatedContext,
-  getMessageTarget,
-} from "@/api/context/links";
+import { getMessagePage, getRelatedContext, getMessageTarget } from "@/api/context/links";
 
 export const messagePageOptions = (
   organizationId: string,

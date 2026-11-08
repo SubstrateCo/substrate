@@ -6,7 +6,7 @@ import { Input } from "../ui/input";
 import { Spinner } from "../ui/spinner";
 import { validateFiles } from "./file-validation";
 
-export interface FileUploadProps {
+interface FileUploadProps {
   accept?: string;
   maxSize?: number;
   disabled?: boolean;
