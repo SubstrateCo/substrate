@@ -145,7 +145,9 @@ export async function visit(
     })
     .toBe(true);
   await expect(
-    client.page.getByText(/Reconnecting to live updates|Live updates disconnected/),
+    client.page.getByText(
+      /Reconnecting to live updates|Live updates disconnected|some data failed to refresh/,
+    ),
   ).toHaveCount(0);
 }
 

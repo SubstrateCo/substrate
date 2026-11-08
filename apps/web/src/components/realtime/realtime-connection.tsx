@@ -23,7 +23,8 @@ export function RealtimeConnection({
 }) {
   const queryClient = useQueryClient();
   const router = useRouter();
-  const [status, setStatus] = useState<RealtimeStatus>("connecting");
+  // "stale" means the socket is up but the cache resync after it failed.
+  const [status, setStatus] = useState<RealtimeStatus | "stale">("connecting");
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   useEffect(() => {
     const bridge = window.startupOSRealtime ?? createBrowserRealtime();
@@ -46,7 +47,7 @@ export function RealtimeConnection({
           ready = received;
         }
         void received.catch(() => {
-          if (active) setStatus("disconnected");
+          if (active) setStatus("stale");
         });
       } else if (event.status === "connected") {
         const epoch = ++statusEpoch;
@@ -55,7 +56,7 @@ export function RealtimeConnection({
             if (active && epoch === statusEpoch) setStatus("connected");
           },
           () => {
-            if (active && epoch === statusEpoch) setStatus("disconnected");
+            if (active && epoch === statusEpoch) setStatus("stale");
           },
         );
       } else {
@@ -77,6 +78,7 @@ export function RealtimeConnection({
   let statusText = "Live updates disconnected.";
   if (status === "connecting") statusText = "Reconnecting to live updates…";
   if (status === "forbidden") statusText = "Live updates unavailable. Check workspace access.";
+  if (status === "stale") statusText = "Live updates connected, but some data failed to refresh.";
   const notification = (
     <div
       className={`${container ? "absolute" : "fixed"} pointer-events-none bottom-3 z-50 flex justify-center`}
