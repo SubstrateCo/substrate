@@ -48,6 +48,22 @@ services:
       interval: 2s
       timeout: 3s
       retries: 30
+  postgres-e2e:
+    image: postgres:17-alpine
+    profiles: [test]
+    environment:
+      POSTGRES_USER: startup_os_e2e
+      POSTGRES_PASSWORD: startup_os_e2e
+      POSTGRES_DB: startup_os_e2e_test
+    ports:
+      - "127.0.0.1:5434:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U startup_os_e2e -d startup_os_e2e_test"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
   postgres-test:
     image: postgres:17-alpine
     profiles: [test]

@@ -5,8 +5,9 @@ Startup OS is an Electron workspace for email, messages, docs, tasks, agents, an
 ## Desktop-first product
 
 - Design for the Electron desktop app. The web app is its renderer, not a standalone browser product.
-- Validate application UI workflows manually through the real Electron app, including native authentication, session isolation, navigation, and permissions.
-- Keep non-UI logic in unit tests and request-only HTTP checks in server integration tests. There is no automated end-to-end suite.
+- Automate shared renderer workflows against the real backend with headless Playwright in `apps/web/e2e`. Browser tests do not validate Electron bridges or native behavior.
+- Validate native authentication, session isolation, desktop navigation, and permissions manually through the real Electron app.
+- Keep non-UI logic in unit tests and request-only HTTP checks in server integration tests.
 
 ## Connected workspace
 

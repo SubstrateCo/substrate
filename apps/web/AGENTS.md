@@ -12,13 +12,13 @@
 - Do not use dynamic imports to bypass dependency injection, server-only boundaries, or import configuration. Fix the underlying issue.
 - Group connected containers in `src/components/<domain>/`. Use one file per container. Loading, error, empty, pending, and unavailable views belong in UI and receive their state from the container.
 - Add or change UI primitives in `src/components/ui`, using the shadcn CLI. Do not hand-write replacements.
-- Do not add Storybook or presentation package boundary tests. Validate UI workflows through the Electron app.
+- Do not add Storybook or presentation package boundary tests. Automate shared renderer workflows in `e2e`; validate desktop-specific workflows through Electron.
 - Put reusable TanStack Query option factories in `src/queries/<domain>/`. Use the shared query-key factory. Include the organization ID in organization-scoped keys.
 - Use TanStack Query for fetched application state. Invalidate affected queries after mutations and clear private state on sign-out.
 - Use Better Auth client APIs for authentication and organization actions. The server owns session and membership checks.
 - Require verified email for workspace access and invitation acceptance. Only organization owners may invite members.
 - Test application policies and complete workflows. Do not test Better Auth internals or third-party guarantees.
-- Validate UI behavior, accessibility, and layout manually in Electron. Do not assert against rendered HTML strings or HTML snapshots, including markup substring checks.
+- Use headless Playwright for shared renderer behavior and responsive layout checks. Keep manual Electron checks for native behavior, accessibility, and desktop rendering. Do not assert against rendered HTML strings or HTML snapshots, including markup substring checks.
 
 ## Test placement
 

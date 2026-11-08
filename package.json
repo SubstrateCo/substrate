@@ -16,6 +16,8 @@
     "build:desktop:dir": "bun run --filter @startup-os/desktop build:dir",
     "package:desktop": "bun run --filter @startup-os/desktop package",
     "test:integration": "bun run --filter @startup-os/server test:integration",
+    "test:e2e": "bun run --filter @startup-os/web test:e2e",
+    "test:e2e:services": "docker compose --profile test up -d --wait postgres-e2e mailpit",
     "services:up": "docker compose up -d postgres mailpit s3 s3-init",
     "lint": "oxlint --type-aware --fix",
     "format": "oxfmt --write .",
