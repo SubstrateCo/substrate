@@ -1,39 +1,44 @@
 import { useRef } from "react";
 
-import { Button } from "../../ui/button";
 import { CommandItem, CommandShortcut } from "../../ui/command";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { plainReferenceText } from "@/components/messaging/references/reference-token";
-import { ArrowUpLeft, CircleCheck, FolderKanban, Hash, MessageSquare } from "lucide-react";
+import { Hash, LockKeyhole, MessageCircle, Users } from "lucide-react";
 
 export type SearchResultItem = {
   id: string;
   kind: string;
   title: string;
   href: string;
-  // Channel results only.
+  // Conversation results only.
+  conversationKind?: "dm" | "group" | "channel";
+  // Conversation and channel results only.
   private?: boolean;
+  // Channel results only.
   membership?: "joined" | "left" | "none";
   memberCount?: number;
 };
 
-export function SearchResult({
-  item,
-  onRelated,
-}: {
-  item: SearchResultItem;
-  onRelated: () => void;
-}) {
+// Only conversations get an icon, because it tells their type apart.
+function ConversationIcon({ item }: { item: SearchResultItem }) {
+  const className = "size-4 text-muted-foreground";
+  if (item.conversationKind === "dm")
+    return <MessageCircle className={className} aria-hidden="true" />;
+  if (item.conversationKind === "group") return <Users className={className} aria-hidden="true" />;
+  if (item.conversationKind !== "channel") return null;
+  return item.private ? (
+    <LockKeyhole className={className} aria-hidden="true" />
+  ) : (
+    <Hash className={className} aria-hidden="true" />
+  );
+}
+
+export function SearchResult({ item, showKind }: { item: SearchResultItem; showKind: boolean }) {
   const link = useRef<HTMLAnchorElement>(null);
-  const Icon =
-    { task: CircleCheck, project: FolderKanban, message: MessageSquare, conversation: Hash }[
-      item.kind
-    ] ?? Hash;
   const title = plainReferenceText(item.title);
   return (
-    <div className="group/result flex items-center gap-1 px-1">
-      <CommandItem value={item.id} onSelect={() => link.current?.click()} className="flex-1">
-        <Icon className="size-4 text-muted-foreground" aria-hidden="true" />
+    <div className="px-1">
+      <CommandItem value={item.id} onSelect={() => link.current?.click()}>
+        <ConversationIcon item={item} />
         <a
           ref={link}
           className="min-w-0 flex-1 truncate outline-none focus-visible:underline"
@@ -43,21 +48,8 @@ export function SearchResult({
         >
           {title}
         </a>
-        <CommandShortcut>{item.kind}</CommandShortcut>
+        {showKind && <CommandShortcut>{item.kind}</CommandShortcut>}
       </CommandItem>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            aria-label={`Find related records for ${title}`}
-            onClick={onRelated}
-          >
-            <ArrowUpLeft />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Find related records</TooltipContent>
-      </Tooltip>
     </div>
   );
 }

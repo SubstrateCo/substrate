@@ -237,6 +237,22 @@ test("search finds each supported domain without leaking private work, and curso
   expect(await context.search({ query: "Launch", kind: "task" })).toEqual([]);
 });
 
+test("conversation results report the conversation type and privacy", async () => {
+  await f.db.update(user).set({ emailVerified: true });
+  const alice = createMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
+  const open = await alice.createConversation({ kind: "channel", name: "open" });
+  const locked = await alice.createConversation({ kind: "channel", name: "locked", private: true });
+  const direct = await alice.createConversation({ kind: "dm", emails: ["bob@example.com"] });
+  const results = await createContextService(f.db, {
+    userId: "alice",
+    organizationId: f.orgA,
+  }).search({ query: "", kind: "conversation" });
+  const types = new Map(results.map((row) => [row.id, [row.conversationKind, row.private]]));
+  expect(types.get(open.id)).toEqual(["channel", false]);
+  expect(types.get(locked.id)).toEqual(["channel", true]);
+  expect(types.get(direct.id)).toEqual(["dm", true]);
+});
+
 test("related search is one-hop, bidirectional, and includes structural membership without storing links", async () => {
   await f.db.update(user).set({ emailVerified: true });
   const alice = f.forActor(f.alice);

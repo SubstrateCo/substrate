@@ -1,17 +1,37 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { Button } from "../../ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import type { SearchResultItem } from "./search-result";
 import { SearchResults } from "@/components/context/search/workspace-search/search-results";
-import { SearchShortcuts } from "@/components/context/search/workspace-search/search-shortcuts";
 
 // "channel" lists channels only, with membership. DMs and group messages appear under "all".
 export type SearchKind = "all" | "task" | "project" | "message" | "channel";
 
+const kinds = ["all", "task", "project", "message", "channel"] as const;
+const kindLabels = {
+  all: "All",
+  task: "Tasks",
+  project: "Projects",
+  message: "Messages",
+  channel: "Channels",
+} satisfies Record<SearchKind, string>;
+
+// Left and Right switch tabs. In the search input they do so only when the caret is
+// already at that edge of the text, so normal caret movement keeps working.
+// A focused tab handles the arrow keys itself.
+function tabStep(event: KeyboardEvent) {
+  if ([event.altKey, event.ctrlKey, event.metaKey, event.shiftKey].some(Boolean)) return 0;
+  if (event.target instanceof Element && event.target.closest("[role=tablist]")) return 0;
+  const step = { ArrowLeft: -1, ArrowRight: 1 }[event.key] ?? 0;
+  const target = event.target;
+  if (!step || !(target instanceof HTMLInputElement)) return step;
+  const edge = step < 0 ? 0 : target.value.length;
+  return target.selectionStart === edge && target.selectionEnd === edge ? step : 0;
+}
+
 export function WorkspaceSearch({
   query,
   kind,
-  related,
   results,
   loading,
   error,
@@ -19,16 +39,12 @@ export function WorkspaceSearch({
   loadingMore,
   joiningId,
   onKindChange,
-  onRelated,
-  onClearRelated,
   onJoin,
   onMore,
   onRetry,
-  onFocusInput,
 }: {
   query: string;
   kind: SearchKind;
-  related: boolean;
   results: SearchResultItem[];
   loading: boolean;
   error?: Error | null;
@@ -36,12 +52,9 @@ export function WorkspaceSearch({
   loadingMore: boolean;
   joiningId?: string;
   onKindChange: (kind: SearchKind) => void;
-  onRelated: (id: string) => void;
-  onClearRelated: () => void;
   onJoin: (conversationId: string) => void;
   onMore: () => void;
   onRetry: () => void;
-  onFocusInput: () => void;
 }) {
   const panel = useRef<HTMLElement>(null);
   const [panelTop, setPanelTop] = useState(0);
@@ -51,6 +64,19 @@ export function WorkspaceSearch({
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, []);
+  useEffect(() => {
+    const handle = (event: KeyboardEvent) => {
+      // The search input sits outside this panel, in the same search container.
+      const container = panel.current?.closest("[data-workspace-search]");
+      if (!(event.target instanceof Node) || !container?.contains(event.target)) return;
+      const step = tabStep(event);
+      if (!step) return;
+      event.preventDefault();
+      onKindChange(kinds[(kinds.indexOf(kind) + step + kinds.length) % kinds.length]!);
+    };
+    document.addEventListener("keydown", handle);
+    return () => document.removeEventListener("keydown", handle);
+  }, [kind, onKindChange]);
   return (
     <section
       ref={panel}
@@ -66,57 +92,39 @@ export function WorkspaceSearch({
           event.stopPropagation();
       }}
     >
-      {related && (
-        <div className="flex shrink-0 items-center gap-2 px-3 pt-2">
-          <span className="text-sm text-muted-foreground">Related records</span>
-          <Button variant="ghost" size="xs" onClick={onClearRelated}>
-            Search all records
-          </Button>
-        </div>
-      )}
-      <div
-        role="group"
-        aria-label="Search type"
-        className="flex shrink-0 flex-wrap gap-1 border-b px-2 py-2"
-      >
-        {(["all", "task", "project", "message", "channel"] as const).map((type) => (
-          <Button
-            key={type}
-            size="xs"
-            variant={kind === type ? "secondary" : "ghost"}
-            aria-pressed={kind === type}
-            onClick={() => onKindChange(type)}
-          >
-            {
-              {
-                all: "All",
-                task: "Tasks",
-                project: "Projects",
-                message: "Messages",
-                channel: "Channels",
-              }[type]
-            }
-          </Button>
-        ))}
-      </div>
-      <SearchResults
-        query={query}
-        browsing={kind === "channel" && !query.trim() && !related}
-        joiningId={joiningId}
-        onJoin={onJoin}
-        results={results}
-        loading={loading}
-        error={error}
-        onRetry={onRetry}
-        onRelated={(id) => {
-          onRelated(id);
-          onFocusInput();
+      <Tabs
+        value={kind}
+        onValueChange={(value) => {
+          const next = kinds.find((type) => type === value);
+          if (next) onKindChange(next);
         }}
-        hasMore={hasMore}
-        loadingMore={loadingMore}
-        onMore={onMore}
-      />
-      <SearchShortcuts />
+        className="min-h-0"
+      >
+        <div className="shrink-0 px-2 pt-1.5">
+          <TabsList variant="line" aria-label="Search type">
+            {kinds.map((type) => (
+              <TabsTrigger key={type} value={type} className="flex-none">
+                {kindLabels[type]}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
+        <TabsContent value={kind} className="flex min-h-0 flex-col">
+          <SearchResults
+            query={query}
+            browsing={kind === "channel" && !query.trim()}
+            joiningId={joiningId}
+            onJoin={onJoin}
+            results={results}
+            loading={loading}
+            error={error}
+            onRetry={onRetry}
+            hasMore={hasMore}
+            loadingMore={loadingMore}
+            onMore={onMore}
+          />
+        </TabsContent>
+      </Tabs>
     </section>
   );
 }

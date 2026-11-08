@@ -11,11 +11,7 @@ export function WorkspaceTools({
   locationKey: string;
   /** A new value opens the panel with an empty query and focuses the input. */
   openRequest?: number;
-  renderSearch: (
-    query: string,
-    onQueryChange: (query: string) => void,
-    focusInput: () => void,
-  ) => ReactNode;
+  renderSearch: (query: string) => ReactNode;
 }) {
   const [panel, setPanel] = useState({ locationKey, open: false });
   const open = panel.locationKey === locationKey && panel.open;
@@ -37,7 +33,6 @@ export function WorkspaceTools({
   const container = useRef<HTMLDivElement>(null);
   const desktop = !!window.startupOSWindow;
   const isMac = window.startupOSWindow?.platform === "darwin";
-  const focusInput = useCallback(() => setFocusRequest((value) => value + 1), []);
   const close = useCallback(() => {
     setOpen(false);
     setFocusRequest((value) => value + 1);
@@ -121,7 +116,7 @@ export function WorkspaceTools({
               }
               style={desktop ? { width: "min(32rem, calc(100vw - 24px))" } : undefined}
             >
-              {renderSearch(query, setQuery, focusInput)}
+              {renderSearch(query)}
             </div>
           )}
         </Command>

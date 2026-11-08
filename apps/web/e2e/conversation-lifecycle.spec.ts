@@ -78,8 +78,8 @@ test("members browse public channels in search and join from the list or the cha
 
   await page.getByRole("button", { name: "Browse channels", exact: true }).first().click();
   const search = page.getByRole("region", { name: "Workspace search", exact: true });
-  await expect(search.getByRole("button", { name: "Channels", exact: true })).toHaveAttribute(
-    "aria-pressed",
+  await expect(search.getByRole("tab", { name: "Channels", exact: true })).toHaveAttribute(
+    "aria-selected",
     "true",
   );
   await expect(search.getByText("Browse channels", { exact: true })).toBeVisible();

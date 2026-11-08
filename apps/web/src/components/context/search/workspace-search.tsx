@@ -16,32 +16,22 @@ export function WorkspaceSearch({
   organizationId,
   initialKind = "all",
   query,
-  onQueryChange,
-  onFocusInput,
 }: {
   organizationId: string;
   initialKind?: SearchKind;
   query: string;
-  onQueryChange: (query: string) => void;
-  onFocusInput: () => void;
 }) {
   const [kind, setKind] = useState<SearchKind>(initialKind);
   const { join } = useConversationManagement(organizationId);
-  const [relatedToEntityId, setRelatedToEntityId] = useState<string>();
-  const search = useSearchDebounce(
-    query,
-    JSON.stringify([organizationId, kind, relatedToEntityId]),
-  );
+  const search = useSearchDebounce(query, JSON.stringify([organizationId, kind]));
   const results = useInfiniteQuery({
-    ...searchPagesOptions({ organizationId, query: search.query, kind, relatedToEntityId }),
+    ...searchPagesOptions({ organizationId, query: search.query, kind }),
     enabled: !search.pending,
   });
   return (
     <WorkspaceSearchView
       query={query}
-      onFocusInput={onFocusInput}
       kind={kind}
-      related={!!relatedToEntityId}
       results={(search.pending ? [] : (results.data?.pages.flat() ?? [])).map((item) => ({
         ...item,
         href: item.conversationId
@@ -62,14 +52,6 @@ export function WorkspaceSearch({
       loadingMore={results.isFetchingNextPage}
       onKindChange={(value) => {
         setKind(value);
-      }}
-      onRelated={(id) => {
-        setRelatedToEntityId(id);
-        onQueryChange("");
-        setKind("all");
-      }}
-      onClearRelated={() => {
-        setRelatedToEntityId(undefined);
       }}
       joiningId={join.isPending ? join.variables : undefined}
       onJoin={(conversationId) =>

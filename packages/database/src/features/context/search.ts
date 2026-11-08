@@ -38,7 +38,9 @@ interface SearchResult {
   conversationId?: string;
   threadId?: string | null;
   conversationName?: string;
-  // Channel results only.
+  // Conversation results only.
+  conversationKind?: "dm" | "group" | "channel";
+  // Conversation and channel results only.
   private?: boolean;
   membership?: ChannelMembership;
   memberCount?: number;
@@ -261,6 +263,8 @@ export async function contextSearch(
       .select({
         id: messagingConversations.id,
         title: sql<string>`coalesce(${messagingConversations.name}, 'Direct conversation')`,
+        conversationKind: messagingConversations.kind,
+        private: messagingConversations.private,
       })
       .from(messagingConversations)
       .where(

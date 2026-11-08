@@ -13,15 +13,13 @@ export function WorkspaceTools({ organizationId }: { organizationId: string }) {
       <WorkspaceToolsView
         locationKey={locationKey}
         openRequest={request?.id}
-        renderSearch={(query, onQueryChange, focusInput) => (
+        renderSearch={(query) => (
           <WorkspaceSearch
             // A new request starts a fresh search with the requested filter.
             key={request?.id ?? 0}
             organizationId={organizationId}
             initialKind={request?.kind}
             query={query}
-            onQueryChange={onQueryChange}
-            onFocusInput={focusInput}
           />
         )}
       />
