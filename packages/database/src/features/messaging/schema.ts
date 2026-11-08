@@ -54,6 +54,8 @@ export const messagingParticipants = pgTable(
     organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id),
+    // Set when the member leaves. The row stays because messages and reactions reference it.
+    leftAt: timestamp("left_at", { withTimezone: true }),
   },
   (table) => [
     primaryKey({ columns: [table.conversationId, table.userId] }),

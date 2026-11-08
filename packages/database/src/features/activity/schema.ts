@@ -11,8 +11,9 @@ export const taskActivity = pgTable(
     taskEntityId: uuid("task_entity_id").notNull(),
     actorEntityId: uuid("actor_entity_id").notNull(),
     action: text("action").notNull(),
+    // Task history outlives a deleted conversation. The row stays without its message link.
     sourceMessageId: uuid("source_message_id").references(() => messagingMessages.id, {
-      onDelete: "cascade",
+      onDelete: "set null",
     }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },

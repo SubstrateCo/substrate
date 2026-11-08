@@ -8,7 +8,7 @@ import { user } from "../../core/authentication/schema";
 import { member } from "../../core/organizations/schema";
 import { messagingMessages, messagingParticipants } from "../messaging/schema";
 import { notifications } from "../notifications/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 export async function profileRefreshHints(
@@ -98,6 +98,43 @@ export async function invitationRefreshHints(
     ...users.map(({ id }) => ({
       audience: realtimeKeys.user(id),
       domain: "organization" as const,
+    })),
+  ];
+}
+
+// Call before the conversation is deleted. Conversation audiences check the live row, so they
+// cannot reach anyone afterwards; these hints use user, organization, and actor audiences instead.
+export async function conversationRemovalHints(
+  db: DatabaseExecutor,
+  conversation: { id: string; organizationId: string },
+): Promise<RealtimeHint[]> {
+  const participants = await db
+    .select({ userId: messagingParticipants.userId })
+    .from(messagingParticipants)
+    .where(
+      and(
+        eq(messagingParticipants.conversationId, conversation.id),
+        isNull(messagingParticipants.leftAt),
+      ),
+    );
+  const recipients = await db
+    .selectDistinct({
+      organizationId: notifications.organizationId,
+      actorId: notifications.recipientActorEntityId,
+    })
+    .from(notifications)
+    .innerJoin(messagingMessages, eq(messagingMessages.id, notifications.messageId))
+    .where(eq(messagingMessages.conversationId, conversation.id));
+  return [
+    ...participants.map(({ userId }) => ({
+      audience: realtimeKeys.user(userId),
+      domain: "messaging" as const,
+    })),
+    { audience: realtimeKeys.organization(conversation.organizationId), domain: "messaging" },
+    { audience: realtimeKeys.organization(conversation.organizationId), domain: "context" },
+    ...recipients.map(({ organizationId, actorId }) => ({
+      audience: realtimeKeys.actor(organizationId, actorId),
+      domain: "notifications" as const,
     })),
   ];
 }

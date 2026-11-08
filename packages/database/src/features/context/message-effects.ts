@@ -93,9 +93,17 @@ export async function applyMessageEffects(
       .onConflictDoNothing();
   }
   if (message.threadId) {
+    // Members who left get mention alerts only.
     const authors = await db
       .selectDistinct({ userId: messagingMessages.authorId })
       .from(messagingMessages)
+      .innerJoin(
+        messagingParticipants,
+        and(
+          eq(messagingParticipants.conversationId, messagingMessages.conversationId),
+          eq(messagingParticipants.userId, messagingMessages.authorId),
+        ),
+      )
       .where(
         and(
           eq(messagingMessages.conversationId, message.conversationId),
@@ -103,6 +111,7 @@ export async function applyMessageEffects(
             eq(messagingMessages.id, message.threadId),
             eq(messagingMessages.threadId, message.threadId),
           ),
+          isNull(messagingParticipants.leftAt),
         ),
       );
     for (const author of authors)

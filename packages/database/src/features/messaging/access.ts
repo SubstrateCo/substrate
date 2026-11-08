@@ -1,7 +1,7 @@
 import type { DatabaseExecutor } from "../../client";
 import { AccessDeniedError } from "../../errors";
 import { messagingConversations, messagingMessages, messagingParticipants } from "./schema";
-import { and, eq, inArray, or, type SQLWrapper } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, type SQLWrapper } from "drizzle-orm";
 
 export interface MessagingIdentity {
   userId: string;
@@ -29,6 +29,7 @@ export function visibleConversations(
           and(
             eq(messagingParticipants.userId, scope.userId),
             eq(messagingParticipants.organizationId, scope.organizationId),
+            isNull(messagingParticipants.leftAt),
           ),
         ),
     ),

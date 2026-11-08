@@ -1,11 +1,14 @@
 import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
+import { isOrganizationAdmin } from "../../core/organizations/roles";
 import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { workspaceContext } from "../context/access";
 import { applyMessageEffects } from "../context/message-effects";
+import { messageEntityReferences } from "../context/schema";
+import { conversationRemovalHints } from "../realtime/routing";
 import { visibleConversations, type MessagingIdentity } from "./access";
 import { messageAuthorColumns } from "./message-authors";
 import { messageSummaries } from "./message-summaries";
@@ -17,7 +20,19 @@ import {
   messagingReactions,
   messagingAgentParticipants,
 } from "./schema";
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  countDistinct,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
 
 export interface CreateConversationInput {
   kind: "dm" | "group" | "channel";
@@ -54,10 +69,75 @@ async function joinConversation(
       .onConflictDoNothing();
     return;
   }
+  // Posting rejoins a public channel the person left. Private conversations are not visible
+  // after leaving, so the caller's access check fails first.
   await tx
     .insert(messagingParticipants)
     .values({ conversationId, userId: scope.userId, organizationId: scope.organizationId })
-    .onConflictDoNothing();
+    .onConflictDoUpdate({
+      target: [messagingParticipants.conversationId, messagingParticipants.userId],
+      set: { leftAt: null },
+      setWhere: isNotNull(messagingParticipants.leftAt),
+    });
+}
+
+async function activeMembers(tx: DatabaseExecutor, conversationIds: string[]) {
+  const rows = conversationIds.length
+    ? await tx
+        .select({
+          conversationId: messagingParticipants.conversationId,
+          userId: user.id,
+          name: user.name,
+          organizationId: messagingParticipants.organizationId,
+        })
+        .from(messagingParticipants)
+        .innerJoin(user, eq(user.id, messagingParticipants.userId))
+        .where(
+          and(
+            inArray(messagingParticipants.conversationId, conversationIds),
+            isNull(messagingParticipants.leftAt),
+          ),
+        )
+        .orderBy(asc(user.name), asc(user.id))
+    : [];
+  const byConversation = new Map<string, typeof rows>();
+  for (const row of rows) {
+    const group = byConversation.get(row.conversationId) ?? [];
+    group.push(row);
+    byConversation.set(row.conversationId, group);
+  }
+  return byConversation;
+}
+
+// The new owner must be a current member with a verified account and live membership.
+async function setOwner(
+  tx: DatabaseExecutor,
+  conversation: typeof messagingConversations.$inferSelect,
+  userId: string,
+) {
+  const [candidate] = await tx
+    .select({ userId: messagingParticipants.userId })
+    .from(messagingParticipants)
+    .innerJoin(user, and(eq(user.id, messagingParticipants.userId), eq(user.emailVerified, true)))
+    .innerJoin(
+      member,
+      and(
+        eq(member.userId, messagingParticipants.userId),
+        eq(member.organizationId, messagingParticipants.organizationId),
+      ),
+    )
+    .where(
+      and(
+        eq(messagingParticipants.conversationId, conversation.id),
+        eq(messagingParticipants.userId, userId),
+        isNull(messagingParticipants.leftAt),
+      ),
+    );
+  if (!candidate) throw new ValidationError("The new owner must be a current member.");
+  await tx
+    .update(messagingConversations)
+    .set({ createdBy: userId })
+    .where(eq(messagingConversations.id, conversation.id));
 }
 
 async function requireThreadRoot(tx: DatabaseExecutor, conversationId: string, threadId: string) {
@@ -151,6 +231,33 @@ export function createMessagingService(
 
   const requireConversation = (tx: DatabaseExecutor, id: string) => lockConversation(tx, scope, id);
 
+  // Owners manage their conversation. Owners and admins of the owning organization manage any of
+  // its conversations except 1:1 DMs, without gaining read access. Agents never manage.
+  async function requireManaged(tx: DatabaseExecutor, id: string) {
+    if (scope.actorEntityId) throw new AccessDeniedError();
+    const admin = await isOrganizationAdmin(tx, scope.userId, scope.organizationId);
+    const [conversation] = await tx
+      .select()
+      .from(messagingConversations)
+      .where(
+        and(
+          eq(messagingConversations.id, id),
+          admin
+            ? or(
+                visibleConversations(tx, scope),
+                eq(messagingConversations.organizationId, scope.organizationId),
+              )
+            : visibleConversations(tx, scope),
+        ),
+      )
+      .for("update");
+    if (!conversation || conversation.kind === "dm") throw new AccessDeniedError();
+    const owner = conversation.createdBy === scope.userId;
+    if (!owner && !(admin && conversation.organizationId === scope.organizationId))
+      throw new AccessDeniedError();
+    return conversation;
+  }
+
   function normalizeEmail(email: string) {
     const normalized = email.trim().toLowerCase();
     if (!normalized || !normalized.includes("@"))
@@ -202,43 +309,51 @@ export function createMessagingService(
           .from(messagingConversations)
           .where(visibleConversations(tx, scope))
           .orderBy(asc(messagingConversations.createdAt), asc(messagingConversations.id));
-        const names = rows.length
-          ? await tx
-              .select({
-                conversationId: messagingParticipants.conversationId,
-                userId: user.id,
-                name: user.name,
-                organizationId: messagingParticipants.organizationId,
-              })
-              .from(messagingParticipants)
-              .innerJoin(user, eq(user.id, messagingParticipants.userId))
-              .where(
-                inArray(
-                  messagingParticipants.conversationId,
-                  rows.map((row) => row.id),
-                ),
-              )
-              .orderBy(asc(user.name), asc(user.id))
-          : [];
-        const byConversation = new Map<string, typeof names>();
-        for (const participant of names) {
-          const group = byConversation.get(participant.conversationId) ?? [];
-          group.push(participant);
-          byConversation.set(participant.conversationId, group);
-        }
-        return rows.map((row) => ({
-          ...row,
-          partner: (byConversation.get(row.id) ?? []).some(
-            (participant) => participant.organizationId !== scope.organizationId,
-          ),
-          name:
-            row.name ??
-            ((byConversation.get(row.id) ?? [])
-              .filter((participant) => participant.userId !== scope.userId)
-              .map((participant) => participant.name)
-              .join(", ") ||
-              null),
-        }));
+        const ids = rows.map((row) => row.id);
+        const byConversation = await activeMembers(tx, ids);
+        // Only public channels stay visible after leaving. The sidebar hides them; links still open.
+        const left = new Set(
+          ids.length
+            ? (
+                await tx
+                  .select({ id: messagingParticipants.conversationId })
+                  .from(messagingParticipants)
+                  .where(
+                    and(
+                      inArray(messagingParticipants.conversationId, ids),
+                      eq(messagingParticipants.userId, scope.userId),
+                      isNotNull(messagingParticipants.leftAt),
+                    ),
+                  )
+              ).map((row) => row.id)
+            : [],
+        );
+        const admin =
+          !scope.actorEntityId &&
+          (await isOrganizationAdmin(tx, scope.userId, scope.organizationId));
+        return rows.map((row) => {
+          const members = byConversation.get(row.id) ?? [];
+          return {
+            ...row,
+            partner: members.some(
+              (participant) => participant.organizationId !== scope.organizationId,
+            ),
+            name:
+              row.name ??
+              (members
+                .filter((participant) => participant.userId !== scope.userId)
+                .map((participant) => participant.name)
+                .join(", ") ||
+                null),
+            members: members.map(({ userId, name }) => ({ userId, name })),
+            left: left.has(row.id),
+            canManage:
+              !scope.actorEntityId &&
+              row.kind !== "dm" &&
+              (row.createdBy === scope.userId ||
+                (admin && row.organizationId === scope.organizationId)),
+          };
+        });
       });
     },
 
@@ -282,11 +397,10 @@ export function createMessagingService(
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
         await authenticate(tx);
-        const conversation = await requireConversation(tx, conversationId);
-        if (conversation.kind === "dm" || conversation.createdBy !== scope.userId)
-          throw new AccessDeniedError();
+        await requireManaged(tx, conversationId);
         const selected = await recipients(tx, emails);
         if (!selected.length) return { added: 0 };
+        // Adding someone who left brings them back.
         const added = await tx
           .insert(messagingParticipants)
           .values(
@@ -296,9 +410,144 @@ export function createMessagingService(
               organizationId: recipient.organizationId,
             })),
           )
-          .onConflictDoNothing()
+          .onConflictDoUpdate({
+            target: [messagingParticipants.conversationId, messagingParticipants.userId],
+            set: { leftAt: null },
+            setWhere: isNotNull(messagingParticipants.leftAt),
+          })
           .returning();
         return { added: added.length };
+      });
+    },
+
+    async joinConversation(conversationId: string) {
+      if (scope.actorEntityId) throw new AccessDeniedError();
+      return db.transaction(async (tx) => {
+        await authenticate(tx);
+        await requireConversation(tx, conversationId);
+        await joinConversation(tx, scope, conversationId);
+        return { joined: true };
+      });
+    },
+
+    // The owner names a new owner in the same call. The last member deletes instead.
+    async leaveConversation(conversationId: string, newOwnerUserId?: string) {
+      if (scope.actorEntityId) throw new AccessDeniedError();
+      return db.transaction(async (tx) => {
+        await authenticate(tx);
+        const conversation = await requireConversation(tx, conversationId);
+        if (conversation.kind === "dm") throw new AccessDeniedError();
+        if (conversation.createdBy === scope.userId) {
+          if (newOwnerUserId && newOwnerUserId !== scope.userId)
+            await setOwner(tx, conversation, newOwnerUserId);
+          else {
+            const others = (await activeMembers(tx, [conversationId])).get(conversationId) ?? [];
+            throw new ConflictError(
+              others.some((person) => person.userId !== scope.userId)
+                ? "Choose a new owner before leaving."
+                : "You are the last member. Delete the conversation instead.",
+            );
+          }
+        }
+        // A public channel member may never have posted, so the row may not exist yet.
+        await tx
+          .insert(messagingParticipants)
+          .values({
+            conversationId,
+            userId: scope.userId,
+            organizationId: scope.organizationId,
+            leftAt: new Date(),
+          })
+          .onConflictDoUpdate({
+            target: [messagingParticipants.conversationId, messagingParticipants.userId],
+            set: { leftAt: new Date() },
+          });
+        return { left: true };
+      });
+    },
+
+    async transferOwnership(conversationId: string, userId: string) {
+      return db.transaction(async (tx) => {
+        await authenticate(tx);
+        const conversation = await requireManaged(tx, conversationId);
+        await setOwner(tx, conversation, userId);
+        return { ownerUserId: userId };
+      });
+    },
+
+    // Counts only linked work the caller can read, so the warning leaks nothing.
+    async deleteImpact(conversationId: string) {
+      return db.transaction(async (tx) => {
+        const { context } = await authenticate(tx);
+        await requireManaged(tx, conversationId);
+        const [row] = await tx
+          .select({ linkedWork: countDistinct(messageEntityReferences.entityId) })
+          .from(messageEntityReferences)
+          .where(
+            and(
+              eq(messageEntityReferences.conversationId, conversationId),
+              inArray(messageEntityReferences.entityId, context.readableEntities()),
+            ),
+          );
+        return { linkedWork: row?.linkedWork ?? 0 };
+      });
+    },
+
+    // Foreign keys remove messages, members, reactions, references and alerts. Task history keeps
+    // its rows without the message link. Hints are collected first because the rows go away.
+    async deleteConversation(conversationId: string) {
+      return db.transaction(async (tx) => {
+        await authenticate(tx);
+        const conversation = await requireManaged(tx, conversationId);
+        const hints = await conversationRemovalHints(tx, conversation);
+        await tx
+          .delete(messagingConversations)
+          .where(eq(messagingConversations.id, conversationId));
+        return { hints };
+      });
+    },
+
+    // Admin view: names and members only, never messages.
+    async listManagedConversations() {
+      if (scope.actorEntityId) throw new AccessDeniedError();
+      return db.transaction(async (tx) => {
+        await authenticate(tx);
+        if (!(await isOrganizationAdmin(tx, scope.userId, scope.organizationId)))
+          throw new AccessDeniedError();
+        const rows = await tx
+          .select({
+            id: messagingConversations.id,
+            kind: messagingConversations.kind,
+            name: messagingConversations.name,
+            private: messagingConversations.private,
+            createdAt: messagingConversations.createdAt,
+            ownerUserId: messagingConversations.createdBy,
+            ownerName: user.name,
+          })
+          .from(messagingConversations)
+          .innerJoin(user, eq(user.id, messagingConversations.createdBy))
+          .where(
+            and(
+              eq(messagingConversations.organizationId, scope.organizationId),
+              ne(messagingConversations.kind, "dm"),
+            ),
+          )
+          .orderBy(asc(messagingConversations.createdAt), asc(messagingConversations.id));
+        const byConversation = await activeMembers(
+          tx,
+          rows.map((row) => row.id),
+        );
+        return rows.map((row) => {
+          const members = (byConversation.get(row.id) ?? []).map(({ userId, name }) => ({
+            userId,
+            name,
+          }));
+          return {
+            ...row,
+            name: row.name ?? (members.map((person) => person.name).join(", ") || null),
+            members,
+          };
+        });
       });
     },
     async listMessages(
