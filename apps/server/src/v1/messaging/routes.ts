@@ -9,6 +9,8 @@ import {
   conversationTargetInput,
   leaveInput,
   ownerInput,
+  addAgentInput,
+  removeAgentInput,
 } from "@startup-os/contracts/messaging/input";
 
 import { respond, validationHook } from "../../shared/http";
@@ -38,6 +40,12 @@ export function createMessagingRoutes(services = defaultServices) {
     )
     .post("/members", zValidator("json", membersInput, validationHook), async (c) =>
       respond(c, await services.addMembers(c.req.raw.headers, c.req.valid("json"))),
+    )
+    .post("/agents/add", zValidator("json", addAgentInput, validationHook), async (c) =>
+      respond(c, await services.addAgent(c.req.raw.headers, c.req.valid("json"))),
+    )
+    .post("/agents/remove", zValidator("json", removeAgentInput, validationHook), async (c) =>
+      respond(c, await services.removeAgent(c.req.raw.headers, c.req.valid("json"))),
     )
     .get("/conversations/managed", zValidator("query", workspaceInput, validationHook), async (c) =>
       respond(c, await services.listManagedConversations(c.req.raw.headers, c.req.valid("query"))),

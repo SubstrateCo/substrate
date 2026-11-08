@@ -1,4 +1,5 @@
 import type {
+  addAgentInput,
   conversationInput,
   conversationTargetInput,
   leaveInput,
@@ -8,6 +9,7 @@ import type {
   messageListInput,
   profileInput,
   reactionInput,
+  removeAgentInput,
   workspaceInput,
 } from "@startup-os/contracts/messaging/input";
 
@@ -29,6 +31,10 @@ export const toggleReaction = ({ data, signal }: ApiInput<z.input<typeof reactio
   readResult(api.messaging.reactions.$post({ json: data }, { init: { signal } }));
 export const addMembers = ({ data, signal }: ApiInput<z.input<typeof membersInput>>) =>
   readResult(api.messaging.members.$post({ json: data }, { init: { signal } }));
+export const addAgent = ({ data, signal }: ApiInput<z.input<typeof addAgentInput>>) =>
+  readResult(api.messaging.agents.add.$post({ json: data }, { init: { signal } }));
+export const removeAgent = ({ data, signal }: ApiInput<z.input<typeof removeAgentInput>>) =>
+  readResult(api.messaging.agents.remove.$post({ json: data }, { init: { signal } }));
 export const getProfile = ({ data, signal }: ApiInput<z.input<typeof profileInput>>) =>
   readResult(api.messaging.profiles.$get({ query: data }, { init: { signal } }));
 

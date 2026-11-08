@@ -82,10 +82,12 @@ async function requireProfileContext(
 async function directConversationId(
   tx: DatabaseExecutor,
   scope: MessagingIdentity,
+  viewerActorEntityId: string,
   userId: string,
 ) {
   const viewer = alias(messagingParticipants, "viewer");
   const target = alias(messagingParticipants, "target");
+  const targetActor = alias(actors, "target_actor");
   const [row] = await tx
     .select({ id: messagingConversations.id })
     .from(messagingConversations)
@@ -93,13 +95,13 @@ async function directConversationId(
       viewer,
       and(
         eq(viewer.conversationId, messagingConversations.id),
-        eq(viewer.userId, scope.userId),
-        eq(viewer.organizationId, scope.organizationId),
+        eq(viewer.actorEntityId, viewerActorEntityId),
       ),
     )
+    .innerJoin(target, eq(target.conversationId, messagingConversations.id))
     .innerJoin(
-      target,
-      and(eq(target.conversationId, messagingConversations.id), eq(target.userId, userId)),
+      targetActor,
+      and(eq(targetActor.entityId, target.actorEntityId), eq(targetActor.userId, userId)),
     )
     .where(
       and(
@@ -145,7 +147,7 @@ export async function messagingProfile(
       role: person?.role ?? null,
       directConversationId:
         person && !self && !scope.actorEntityId
-          ? await directConversationId(tx, scope, actor.userId!)
+          ? await directConversationId(tx, scope, viewerActorEntityId, actor.userId!)
           : null,
       agent: null,
     };

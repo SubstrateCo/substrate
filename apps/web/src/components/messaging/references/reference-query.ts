@@ -20,12 +20,13 @@ export function referenceQuery(draft: string, caret: number): ReferenceQuery | n
   if (!match) return null;
   const trigger = match[1] === "#" ? "#" : "@";
   const text = match[2]!;
-  const prefix = (trigger === "#" ? /^(channel|thread)s?:/i : /^(user|task|project)s?:/i).exec(
-    text,
-  );
+  const prefix = (
+    trigger === "#" ? /^(channel|thread)s?:/i : /^(user|agent|task|project)s?:/i
+  ).exec(text);
   let kind: ReferenceQuery["kind"] = trigger === "#" ? "channel" : "all";
   if (prefix) {
     if (prefix[1]!.toLowerCase() === "user") kind = "person";
+    if (prefix[1]!.toLowerCase() === "agent") kind = "agent";
     if (prefix[1]!.toLowerCase() === "task") kind = "task";
     if (prefix[1]!.toLowerCase() === "project") kind = "project";
     if (prefix[1]!.toLowerCase() === "channel") kind = "channel";

@@ -1,6 +1,10 @@
 import { createHarnessController } from "./harness-controller.ts";
 
-export function fixture(beforeScan?: () => Promise<void>, nativeMcpServers: unknown[] = []) {
+export function fixture(
+  beforeScan?: () => Promise<void>,
+  nativeMcpServers: unknown[] = [],
+  options: { failExecute?: boolean } = {},
+) {
   let session = {
     user: { id: "user-1", emailVerified: true },
     session: { activeOrganizationId: "org-1" },
@@ -32,6 +36,7 @@ export function fixture(beforeScan?: () => Promise<void>, nativeMcpServers: unkn
       return {
         request: async (method, value) => {
           calls.push({ method, value });
+          if (method === "execute" && options.failExecute) throw new Error("Native failure.");
           if (method === "listModels")
             return {
               harness: "codex",

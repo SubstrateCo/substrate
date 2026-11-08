@@ -1,3 +1,4 @@
+import type { SaveAgentTriggersInput } from "@startup-os/contracts/agent-runs";
 import type { SaveAgentInput } from "@startup-os/contracts/agents";
 
 import { api } from "../client";
@@ -10,6 +11,11 @@ export const saveAgent = (json: SaveAgentInput) =>
   readResult(api.agents.actors.save.$post({ json }));
 export const deleteAgent = (id: string) =>
   readResult(api.agents.actors.delete.$post({ json: { id } }));
+export const saveAgentTriggers = (json: SaveAgentTriggersInput) =>
+  readResult(api.agents.actors.triggers.$post({ json }));
+// The server reads the calling desktop from the request. Other clients cannot become a home.
+export const setAgentHomeDevice = (id: string) =>
+  readResult(api.agents.actors.home.$post({ json: { id } }));
 
 export const setAgentPicture = (id: string, fileId: string | null) =>
   readResult(api.agents.actors.picture.$post({ json: { id, fileId } }));

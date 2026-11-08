@@ -28,6 +28,7 @@ export const realtimeDomain = z.enum([
   "organization",
   "session",
   "agents",
+  "agent-runs",
   "profile",
 ]);
 export type RealtimeDomain = z.infer<typeof realtimeDomain>;

@@ -8,7 +8,7 @@ import { user } from "../../core/authentication/schema";
 import { member } from "../../core/organizations/schema";
 import { messagingMessages, messagingParticipants } from "../messaging/schema";
 import { notifications } from "../notifications/schema";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 export async function profileRefreshHints(
@@ -22,7 +22,8 @@ export async function profileRefreshHints(
   const conversations = await db
     .selectDistinct({ id: messagingParticipants.conversationId })
     .from(messagingParticipants)
-    .where(eq(messagingParticipants.userId, userId));
+    .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
+    .where(eq(actors.userId, userId));
   return [
     { audience: realtimeKeys.user(userId), domain: "profile" },
     ...organizations.map(({ id }) => ({
@@ -109,12 +110,14 @@ export async function conversationRemovalHints(
   conversation: { id: string; organizationId: string },
 ): Promise<RealtimeHint[]> {
   const participants = await db
-    .select({ userId: messagingParticipants.userId })
+    .select({ userId: sql<string>`${actors.userId}` })
     .from(messagingParticipants)
+    .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
     .where(
       and(
         eq(messagingParticipants.conversationId, conversation.id),
         isNull(messagingParticipants.leftAt),
+        isNotNull(actors.userId),
       ),
     );
   const recipients = await db

@@ -18,6 +18,8 @@ test("message windows paginate equal timestamps without gaps and reject anchors 
       Array.from({ length: 65 }, (_, index) => ({
         conversationId: conversation.id,
         authorId: "alice",
+        authorActorEntityId: f.alice,
+        authorOrganizationId: f.orgA,
         body: `Message ${index}`,
         createdAt: date,
       })),

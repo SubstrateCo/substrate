@@ -24,8 +24,18 @@ test("profile changes refresh shared conversation labels across workspace bounda
     .returning();
   if (!conversation) throw new Error("Missing conversation");
   await fixture.db.insert(messagingParticipants).values([
-    { conversationId: conversation.id, userId: "alice", organizationId: fixture.orgA },
-    { conversationId: conversation.id, userId: "outsider", organizationId: fixture.orgB },
+    {
+      conversationId: conversation.id,
+      actorEntityId: fixture.alice,
+      actorType: "human",
+      organizationId: fixture.orgA,
+    },
+    {
+      conversationId: conversation.id,
+      actorEntityId: fixture.outsider,
+      actorType: "human",
+      organizationId: fixture.orgB,
+    },
   ]);
   const hints = await profileRefreshHints(fixture.db, "alice");
   expect(hints).toContainEqual({ audience: realtimeKeys.user("alice"), domain: "profile" });

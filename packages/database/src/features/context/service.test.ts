@@ -76,7 +76,8 @@ test("five person mentions and five task references resolve in set-based stateme
     userId: "alice",
     organizationId: f.orgA,
   }).sendMessage(channel.id, body);
-  expect(queries).toHaveLength(8);
+  // Includes the lookup for the author's own agents that the message may trigger.
+  expect(queries).toHaveLength(9);
   expect(
     (
       await f.db
@@ -128,7 +129,11 @@ test("notification recipients use one conflict-safe insert-select for one or man
     );
     return {
       sent,
-      reads: queries.slice(authors + 1).filter((query) => /^\s*(select|with)/i.test(query)).length,
+      // The agent-trigger lookup is not part of notification delivery.
+      reads: queries
+        .slice(authors + 1)
+        .filter((query) => /^\s*(select|with)/i.test(query) && !query.includes('"user_agents"'))
+        .length,
       inserts: queries.filter((query) => /^\s*insert into "notifications"/i.test(query)).length,
     };
   };
@@ -146,10 +151,17 @@ test("notification recipients use one conflict-safe insert-select for one or man
     root.id,
   );
   // A partner membership alone must not receive notifications outside the home workspace.
-  await f.db
-    .update(messagingParticipants)
-    .set({ organizationId: f.orgB })
-    .where(eq(messagingParticipants.userId, "bob"));
+  await f.db.insert(messagingParticipants).values({
+    conversationId: channel.id,
+    organizationId: f.orgB,
+    actorEntityId: bobB.entityId,
+    actorType: "human",
+  });
+  await createMessagingService(f.db, { userId: "bob", organizationId: f.orgB }).sendMessage(
+    channel.id,
+    "bob in B",
+    root.id,
+  );
   const many = await send();
   expect(many.reads).toBe(0);
   expect(many.inserts).toBe(1);
@@ -188,6 +200,11 @@ test("notification recipients use one conflict-safe insert-select for one or man
     .update(messagingConversations)
     .set({ private: true })
     .where(eq(messagingConversations.id, channel.id));
+  // Bob keeps only his workspace B membership.
+  await f.db
+    .update(messagingParticipants)
+    .set({ leftAt: new Date() })
+    .where(eq(messagingParticipants.actorEntityId, f.bob));
   const privateReply = await send();
   expect(
     (
@@ -228,8 +245,8 @@ for (const invalid of ["disabled", "deleted", "unverified", "removed", "hidden"]
     if (invalid === "hidden")
       await f.db
         .update(messagingParticipants)
-        .set({ organizationId: f.orgB })
-        .where(eq(messagingParticipants.userId, "bob"));
+        .set({ leftAt: new Date() })
+        .where(eq(messagingParticipants.actorEntityId, f.bob));
     const reply = await chat.sendMessage(channel.id, "reply", root.id);
     expect(
       await f.db.select().from(notifications).where(eq(notifications.messageId, reply.id)),
@@ -507,7 +524,7 @@ test("page people resolve parsed tokens in sets and clear inactive, deleted and 
   await f.db.update(entities).set({ deletedAt: new Date() }).where(eq(entities.entityId, f.bob));
   expect((await checkedPage([rows[0]!.id]))[0]!.people).toEqual([]);
   await f.db.update(entities).set({ deletedAt: null }).where(eq(entities.entityId, f.bob));
-  await f.db.delete(messagingParticipants).where(eq(messagingParticipants.userId, "bob"));
+  await f.db.delete(messagingParticipants).where(eq(messagingParticipants.actorEntityId, f.bob));
   expect((await checkedPage([rows[0]!.id]))[0]!.people).toEqual([]);
   const publicConversation = await chat.createConversation({
     kind: "channel",
@@ -662,7 +679,7 @@ test("both endpoints are required, membership revocation hides context, and link
   await expect(context("outsider", f.orgB).attach(reply.id, task.entityId)).rejects.toBeInstanceOf(
     AccessDeniedError,
   );
-  await f.db.delete(messagingParticipants).where(eq(messagingParticipants.userId, "bob"));
+  await f.db.delete(messagingParticipants).where(eq(messagingParticipants.actorEntityId, f.bob));
   expect(await context("bob").related(task.entityId)).toEqual([]);
   await repos.permissions.revoke({ entityId: project.entityId, actorEntityId: f.bob });
   expect(await context("bob").search({ query: "Private", kind: "task" })).toEqual([]);

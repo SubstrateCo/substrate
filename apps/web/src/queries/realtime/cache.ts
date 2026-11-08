@@ -45,6 +45,9 @@ export function realtimeQueryTargets(
     case "agents":
       targets.push({ queryKey: queryKeys.agents(userId) });
       break;
+    case "agent-runs":
+      targets.push({ queryKey: queryKeys.agentRuns(userId, organizationId ?? undefined) });
+      break;
     case "organization":
     case "access":
       targets.push({ queryKey: queryKeys.organizations }, { queryKey: queryKeys.userInvitations });

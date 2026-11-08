@@ -1,4 +1,4 @@
-import { desktopOrigin } from "@startup-os/contracts/desktop/links";
+import { desktopInstallationHeader, desktopOrigin } from "@startup-os/contracts/desktop/links";
 
 /** Remove session credentials before returning auth responses to the renderer. */
 /** @param {unknown} value @returns {unknown} */
@@ -17,16 +17,24 @@ function publicAuthData(value) {
 
 /**
  * @typedef {{ method?: string, headers: Record<string, string>, body?: string, redirect: "manual", signal?: AbortSignal | null, onResponse: (context: { response: Response }) => Promise<void> }} AuthFetchOptions
- * @param {{ getCookie: () => string, authFetch: (path: string, options: AuthFetchOptions) => Promise<unknown>, fetchUpstream?: (url: string, init: RequestInit) => Promise<Response> }} options
+ * @param {{ getCookie: () => string, authFetch: (path: string, options: AuthFetchOptions) => Promise<unknown>, fetchUpstream?: (url: string, init: RequestInit) => Promise<Response>, installationId?: string }} options
  */
-export function desktopAPITransport({ getCookie, authFetch, fetchUpstream = fetch }) {
+export function desktopAPITransport({
+  getCookie,
+  authFetch,
+  fetchUpstream = fetch,
+  installationId,
+}) {
   /** @param {string} value @param {RequestInit} init */
   return async (value, init) => {
     const url = new URL(value);
     const headers = new Headers(init.headers);
     headers.delete("cookie");
     headers.delete("authorization");
+    headers.delete(desktopInstallationHeader);
     headers.set("origin", desktopOrigin);
+    // Main names its installation; the renderer cannot choose another device.
+    if (installationId) headers.set(desktopInstallationHeader, installationId);
     if (url.pathname.startsWith("/api/auth/")) {
       const path = url.pathname.slice("/api/auth".length);
       const profileUpdate = path === "/update-user" && init.method === "POST";

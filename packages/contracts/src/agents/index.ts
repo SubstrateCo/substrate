@@ -14,4 +14,5 @@ export type {
   SaveMcpServerInput,
   AgentConfiguration,
   AgentCatalog,
+  AgentRunSettings,
 } from "./input";

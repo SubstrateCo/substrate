@@ -21,6 +21,8 @@ describe("reference query", () => {
     ["@PROJECTS:launch", "project", "launch"],
     ["@tasks:onboarding", "task", "onboarding"],
     ["@users:alex", "person", "alex"],
+    ["@agent:helper", "agent", "helper"],
+    ["@AGENTS:", "agent", ""],
   ] as const)("parses %s", (draft, kind, query) => {
     expect(referenceQuery(draft, draft.length)).toEqual({
       start: 0,

@@ -1,6 +1,9 @@
 import { desktopScheme, resolveDesktopLink } from "@startup-os/contracts/desktop/links";
+import { desktopSettingsChannel } from "@startup-os/contracts/desktop/window";
 import { realtimeChannel, realtimeEventChannel } from "@startup-os/contracts/realtime";
 
+import { createAgentRunner } from "./agents/agent-runner.ts";
+import { installationId } from "./agents/installation.ts";
 import { createDesktopAuthClient } from "./auth/auth-client.js";
 import { harnessChannel, harnessEventChannel } from "./harness/bridge/harness-bridge.ts";
 import { createHarnessController } from "./harness/controller/harness-controller.ts";
@@ -13,10 +16,12 @@ import { backendURL, bundledRenderer } from "./transport/bundled-renderer.js";
 import { createRealtimeController } from "./transport/realtime-controller.ts";
 import { emitToRenderer } from "./transport/realtime-events.ts";
 import { storageOrigins, storageRequest } from "./transport/storage.js";
-import { app, BrowserWindow, ipcMain, Menu, net, session, shell } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, net, session, shell, Tray } from "electron";
 import { readFileSync } from "node:fs";
+import { hostname } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { z } from "zod";
 
 const bundled = app.isPackaged || app.commandLine.hasSwitch("bundled-renderer");
 const rendererURL = bundled ? bundledApplicationURL : applicationURL;
@@ -53,18 +58,31 @@ const allowedStorageOrigins = storageOrigins(
 let harness;
 /** @type {ReturnType<typeof createRealtimeController> | undefined} */
 let realtime;
+/** @type {ReturnType<typeof createAgentRunner> | undefined} */
+let runner;
+/** @type {Tray | undefined} */
+let tray;
+const smokeTest = app.commandLine.hasSwitch("desktop-smoke-test");
+// Closing the window hides it so agents keep running. Quit from the tray or the app menu.
+let quitting = false;
+// A login launch starts in the tray.
+const loginArguments = ["--hidden"];
+const startHidden = process.argv.includes("--hidden");
 const { authClient, handleAuthLink } = createDesktopAuthClient(
   backend,
   process.env.STARTUP_OS_WEB_URL ?? publicConfig.webURL ?? applicationURL,
   app.commandLine.hasSwitch("desktop-smoke-test"),
   () => mainWindow,
   () => {
+    runner?.stop();
     harness?.disconnect();
     realtime?.disconnect();
   },
   () => {
+    runner?.stop();
     harness?.disconnect();
     realtime?.disconnect();
+    runner?.start();
     const contents = mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : undefined;
     if (contents && !contents.isDestroyed() && target(contents.getURL()) === "internal")
       contents.reload();
@@ -139,7 +157,15 @@ function createWindow() {
   mainWindow = window;
   attachTitleBar(window, rendererURL);
   window.setMenuBarVisibility(false);
-  window.once("ready-to-show", () => window.show());
+  window.once("ready-to-show", () => {
+    if (!startHidden || smokeTest) window.show();
+  });
+  // The hidden window keeps the renderer and its realtime connection alive for agent runs.
+  window.on("close", (event) => {
+    if (quitting || smokeTest) return;
+    event.preventDefault();
+    window.hide();
+  });
   window.on("closed", () => {
     realtime?.disconnect();
     harness?.disconnect();
@@ -180,6 +206,28 @@ function createWindow() {
   else void window.loadURL(rendererURL).catch(console.error);
 }
 
+function showWindow() {
+  if (!mainWindow) createWindow();
+  if (mainWindow?.isMinimized()) mainWindow.restore();
+  mainWindow?.show();
+  mainWindow?.focus();
+}
+
+// The tray keeps the app reachable while its window is hidden and agents run.
+async function createTray() {
+  const icon = await app.getFileIcon(process.execPath, { size: "small" });
+  tray = new Tray(icon);
+  tray.setToolTip("Startup OS");
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: "Open Startup OS", click: showWindow },
+      { type: "separator" },
+      { label: "Quit", click: () => app.quit() },
+    ]),
+  );
+  tray.on("click", showWindow);
+}
+
 if (!app.requestSingleInstanceLock()) {
   console.log("Startup OS is already running. Focusing the existing window.");
   app.quit();
@@ -195,21 +243,27 @@ if (!app.requestSingleInstanceLock()) {
   }
   app.on("second-instance", (_event, argv) => {
     acceptLinks(argv);
-    if (mainWindow?.isMinimized()) mainWindow.restore();
-    mainWindow?.show();
-    mainWindow?.focus();
+    showWindow();
   });
   app.on("window-all-closed", () => {
     if (process.platform !== "darwin") app.quit();
+  });
+  app.on("before-quit", () => {
+    quitting = true;
+    runner?.stop();
   });
   void app
     .whenReady()
     .then(() => {
       const desktopSession = session.fromPartition(sessionPartition);
+      const installation = installationId(app.getPath("userData"));
       realtime = createRealtimeController({
         backend,
         getCookie: () => authClient.getCookie(),
-        emit: (event) => emitToRenderer(mainWindow, realtimeEventChannel, event, rendererURL),
+        emit: (event) => {
+          emitToRenderer(mainWindow, realtimeEventChannel, event, rendererURL);
+          runner?.onRealtime(event);
+        },
       });
       ipcMain.handle(realtimeChannel, (event, method, value) => {
         if (!trustedSender(event, mainWindow?.webContents, rendererURL))
@@ -222,6 +276,7 @@ if (!app.requestSingleInstanceLock()) {
       const fetchAPI = desktopAPITransport({
         getCookie: () => authClient.getCookie(),
         authFetch: (path, options) => authClient.$fetch(path, options),
+        installationId: installation,
       });
       harness = createHarnessController({
         backend,
@@ -236,9 +291,32 @@ if (!app.requestSingleInstanceLock()) {
               ),
             ),
             directory,
-            (event) => emitToRenderer(mainWindow, harnessEventChannel, event, rendererURL),
+            (event) => {
+              emitToRenderer(mainWindow, harnessEventChannel, event, rendererURL);
+              runner?.onHarnessEvent(event);
+            },
             proxy,
           ),
+      });
+      const controller = harness;
+      runner = createAgentRunner({
+        backend,
+        installationId: installation,
+        device: { name: hostname(), platform: process.platform },
+        fetchAPI,
+        harness: { run: (method, value) => controller.run(method, value) },
+        log: (message) => console.warn(message),
+      });
+      if (!smokeTest) runner.start();
+      ipcMain.handle(desktopSettingsChannel, (event, method, value) => {
+        if (!trustedSender(event, mainWindow?.webContents, rendererURL))
+          throw new Error("Settings unavailable.");
+        const enabled = z.boolean().safeParse(value);
+        if (method === "setLaunchAtLogin" && enabled.success)
+          app.setLoginItemSettings({ openAtLogin: enabled.data, args: loginArguments });
+        else if (method !== "get" || value !== undefined)
+          throw new Error("Invalid settings operation.");
+        return { launchAtLogin: app.getLoginItemSettings({ args: loginArguments }).openAtLogin };
       });
       ipcMain.handle(harnessChannel, (event, method, value) => {
         if (!trustedSender(event, mainWindow?.webContents, rendererURL))
@@ -323,7 +401,9 @@ if (!app.requestSingleInstanceLock()) {
       createWindow();
       app.on("activate", () => {
         if (BrowserWindow.getAllWindows().length === 0) createWindow();
+        else mainWindow?.show();
       });
+      if (!smokeTest) void createTray().catch(console.error);
     })
     .catch((error) => {
       console.error(error);

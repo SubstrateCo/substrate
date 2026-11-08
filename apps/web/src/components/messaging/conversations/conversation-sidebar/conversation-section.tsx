@@ -4,6 +4,7 @@ import { LoadingState } from "@/components/feedback/loading-state";
 import { ConversationSidebarItem } from "@/components/messaging/conversations/conversation-sidebar-item";
 import {
   ConversationCreateMenu,
+  type DirectMessageAgent,
   type DirectMessagePerson,
 } from "@/components/messaging/conversations/conversation-sidebar/conversation-create-menu";
 import { Button } from "@/components/ui/button";
@@ -23,16 +24,20 @@ export function ConversationSection({
   selectedId,
   loading,
   people,
+  agents,
   onSelect,
   onCreate,
+  onMessageAgent,
 }: {
   section: keyof typeof sectionLabels;
   conversations: Conversation[];
   selectedId?: string;
   loading: boolean;
   people?: DirectMessagePerson[];
+  agents?: DirectMessageAgent[];
   onSelect: (id: string) => void;
   onCreate: (kind: Conversation["kind"], recipient?: string) => void;
+  onMessageAgent?: (agent: DirectMessageAgent) => void;
 }) {
   const items = conversations.filter((conversation) =>
     section === "dm"
@@ -76,7 +81,13 @@ export function ConversationSection({
           )}
         </h2>
         {section !== "partner" && (
-          <ConversationCreateMenu section={section} people={people} onCreate={onCreate} />
+          <ConversationCreateMenu
+            section={section}
+            people={people}
+            agents={agents}
+            onCreate={onCreate}
+            onMessageAgent={onMessageAgent}
+          />
         )}
       </div>
       {loading && conversations.length === 0 && (

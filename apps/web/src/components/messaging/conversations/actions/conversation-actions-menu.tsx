@@ -6,18 +6,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Crown, Ellipsis, LogOut, Trash2 } from "lucide-react";
+import { Bot, Crown, Ellipsis, LogOut, Trash2 } from "lucide-react";
 
 export function ConversationActionsMenu({
+  onAgents,
   onLeave,
   onTransfer,
   onDelete,
 }: {
+  onAgents?: () => void;
   onLeave?: () => void;
   onTransfer?: () => void;
   onDelete?: () => void;
 }) {
-  if (!onLeave && !onTransfer && !onDelete) return null;
+  const hasActions = [onAgents, onLeave, onTransfer, onDelete].some(Boolean);
+  if (!hasActions) return null;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -26,6 +29,12 @@ export function ConversationActionsMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        {onAgents && (
+          <DropdownMenuItem onSelect={onAgents}>
+            <Bot />
+            Your agents
+          </DropdownMenuItem>
+        )}
         {onLeave && (
           <DropdownMenuItem onSelect={onLeave}>
             <LogOut />
@@ -40,7 +49,7 @@ export function ConversationActionsMenu({
         )}
         {onDelete && (
           <>
-            {(onLeave || onTransfer) && <DropdownMenuSeparator />}
+            {(onAgents || onLeave || onTransfer) && <DropdownMenuSeparator />}
             <DropdownMenuItem variant="destructive" onSelect={onDelete}>
               <Trash2 />
               Delete

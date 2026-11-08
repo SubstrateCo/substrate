@@ -2,6 +2,8 @@ import { z } from "zod";
 
 export const desktopOrigin = "https://desktop.startup-os.local";
 export const desktopScheme = "startupos";
+// Desktop main adds this to API requests. It names the installation; it is not a credential.
+export const desktopInstallationHeader = "x-startup-os-installation";
 
 export const desktopPath = z
   .string()

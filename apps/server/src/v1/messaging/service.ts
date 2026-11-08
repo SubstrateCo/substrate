@@ -9,6 +9,8 @@ import type {
   conversationTargetInput,
   leaveInput,
   ownerInput,
+  addAgentInput,
+  removeAgentInput,
 } from "@startup-os/contracts/messaging/input";
 import { realtimeKeys } from "@startup-os/contracts/realtime";
 import { createMessagingService } from "@startup-os/database/messaging";
@@ -68,13 +70,42 @@ export function sendMessage(headers: Headers, input: z.output<typeof messageInpu
       input.threadId,
       input.requestId,
     );
+    const { agentRunsQueued, ...sent } = message;
     await publishRefresh(
       messageRefreshHints(db, message.id).then((hints) => [
         ...hints,
         { audience: realtimeKeys.organization(input.organizationId), domain: "context" },
+        // Wakes the author's desktops so the agent's home device claims the run.
+        ...(agentRunsQueued
+          ? [{ audience: realtimeKeys.user(message.authorId!), domain: "agent-runs" as const }]
+          : []),
       ]),
     );
-    return message;
+    return sent;
+  });
+}
+
+export function addAgent(headers: Headers, input: z.output<typeof addAgentInput>) {
+  return serviceResult(async () => {
+    requireOrigin(headers);
+    const service = await serviceForSession(headers, input.organizationId);
+    const result = await service.addAgent(input.conversationId, input.agentId);
+    await publishRefresh([
+      { audience: realtimeKeys.conversation(input.conversationId), domain: "messaging" },
+    ]);
+    return result;
+  });
+}
+
+export function removeAgent(headers: Headers, input: z.output<typeof removeAgentInput>) {
+  return serviceResult(async () => {
+    requireOrigin(headers);
+    const service = await serviceForSession(headers, input.organizationId);
+    const result = await service.removeAgent(input.conversationId, input.actorId);
+    await publishRefresh([
+      { audience: realtimeKeys.conversation(input.conversationId), domain: "messaging" },
+    ]);
+    return result;
   });
 }
 

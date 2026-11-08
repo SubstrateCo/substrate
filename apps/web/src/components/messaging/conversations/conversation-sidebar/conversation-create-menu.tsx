@@ -13,7 +13,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Conversation } from "@/lib/messaging/conversations";
-import { AtSign, Compass, Plus, Users } from "lucide-react";
+import { AtSign, Bot, Compass, Plus, Users } from "lucide-react";
 
 export type DirectMessagePerson = {
   id: string;
@@ -22,19 +22,26 @@ export type DirectMessagePerson = {
   image?: string | null;
 };
 
+export type DirectMessageAgent = { id: string; name: string; image: string | null };
+
 export function ConversationCreateMenu({
   section,
   people = [],
+  agents = [],
   onCreate,
+  onMessageAgent,
 }: {
   section: "channel" | "dm";
   people?: DirectMessagePerson[];
+  agents?: DirectMessageAgent[];
   onCreate: (kind: Conversation["kind"], recipient?: string) => void;
+  onMessageAgent?: (agent: DirectMessageAgent) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const { openSearch } = useWorkspaceSearch();
   const creatingFromMenu = useRef<{ kind: Conversation["kind"]; recipient?: string } | null>(null);
+  const messagingAgent = useRef<DirectMessageAgent | null>(null);
   if (section === "channel") {
     return (
       <span className="flex items-center">
@@ -75,6 +82,9 @@ export function ConversationCreateMenu({
       person.name.toLowerCase().includes(search) ||
       person.email.toLowerCase().includes(search),
   );
+  const agentMatches = onMessageAgent
+    ? agents.filter((agent) => !search || agent.name.toLowerCase().includes(search))
+    : [];
   const choose = (kind: Conversation["kind"], recipient?: string) => {
     creatingFromMenu.current = { kind, recipient };
     setOpen(false);
@@ -108,10 +118,15 @@ export function ConversationCreateMenu({
         className="w-80"
         onCloseAutoFocus={(event) => {
           const pending = creatingFromMenu.current;
+          const agent = messagingAgent.current;
           if (pending) {
             event.preventDefault();
             creatingFromMenu.current = null;
             onCreate(pending.kind, pending.recipient);
+          } else if (agent) {
+            event.preventDefault();
+            messagingAgent.current = null;
+            onMessageAgent?.(agent);
           }
         }}
       >
@@ -155,6 +170,35 @@ export function ConversationCreateMenu({
                   </p>
                 )}
               </CommandGroup>
+              {agentMatches.length > 0 && (
+                <div className="border-t">
+                  <CommandGroup heading="Your agents">
+                    {agentMatches.map((agent) => (
+                      <CommandItem
+                        key={agent.id}
+                        value={`agent-${agent.id}`}
+                        onSelect={() => {
+                          messagingAgent.current = agent;
+                          setOpen(false);
+                        }}
+                      >
+                        <Avatar aria-hidden="true" variant="user">
+                          {agent.image && <AvatarImage src={agent.image} alt="" />}
+                          <AvatarFallback>
+                            <Bot />
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-medium">{agent.name}</span>
+                          <span className="block truncate text-xs text-muted-foreground">
+                            Runs on your desktop
+                          </span>
+                        </span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </div>
+              )}
               <div className="border-t">
                 <CommandGroup heading="More options">
                   <CommandItem value="new-direct-message" onSelect={() => choose("dm")}>

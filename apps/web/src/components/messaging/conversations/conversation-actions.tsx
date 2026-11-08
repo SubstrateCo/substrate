@@ -6,12 +6,13 @@ import { ConversationActionsMenu } from "./actions/conversation-actions-menu";
 import { DeleteConversationDialog } from "./actions/delete-conversation-dialog";
 import { LeaveConversationDialog } from "./actions/leave-conversation-dialog";
 import { OwnerDialog } from "./actions/owner-dialog";
-import { conversationName, type Conversation } from "@/lib/messaging/conversations";
+import { ConversationAgents } from "./conversation-agents";
+import { conversationName, humanMembers, type Conversation } from "@/lib/messaging/conversations";
 import { useConversationManagement } from "@/queries/messaging/management";
 import { deleteImpactQueryOptions } from "@/queries/messaging/options";
 import { toast } from "sonner";
 
-type Dialog = "leave" | "transfer" | "delete";
+type Dialog = "agents" | "leave" | "transfer" | "delete";
 
 export function ConversationActions({
   organizationId,
@@ -32,17 +33,28 @@ export function ConversationActions({
   });
   const name = conversationName(conversation);
   const owner = !!userId && conversation.createdBy === userId;
-  const others = (conversation.members ?? []).filter((person) => person.userId !== userId);
+  const people = humanMembers(conversation.members);
+  const others = people.filter((person) => person.userId !== userId);
   const canLeave = conversation.kind !== "dm" && !!conversation.joined;
   const close = () => setDialog(undefined);
 
   return (
     <>
       <ConversationActionsMenu
+        onAgents={canLeave && userId ? () => setDialog("agents") : undefined}
         onLeave={canLeave ? () => setDialog("leave") : undefined}
         onTransfer={conversation.canManage ? () => setDialog("transfer") : undefined}
         onDelete={conversation.canManage ? () => setDialog("delete") : undefined}
       />
+      {dialog === "agents" && userId && (
+        <ConversationAgents
+          userId={userId}
+          organizationId={organizationId}
+          conversationId={conversation.id}
+          name={name}
+          onClose={close}
+        />
+      )}
       {dialog === "leave" && owner && others.length > 0 && (
         <OwnerDialog
           mode="leave"
@@ -79,9 +91,7 @@ export function ConversationActions({
         <OwnerDialog
           mode="transfer"
           name={name}
-          candidates={(conversation.members ?? []).filter(
-            (person) => person.userId !== conversation.createdBy,
-          )}
+          candidates={people.filter((person) => person.userId !== conversation.createdBy)}
           pending={transfer.isPending}
           error={transfer.error}
           onClose={close}

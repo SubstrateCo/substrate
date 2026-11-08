@@ -1,6 +1,7 @@
 import type {
   AgentCatalog as AgentCatalogData,
   AgentConfiguration,
+  AgentRunSettings,
   SaveAgentInput,
 } from "@startup-os/contracts/agents";
 import type { HarnessKind } from "@startup-os/contracts/harness";
@@ -25,6 +26,7 @@ export function AgentSettingsView({
   onSaveAgent,
   renderAgentPicture,
   renderAgentConfiguration,
+  renderRunSettings,
   onDelete,
 }: {
   userId: string;
@@ -42,9 +44,17 @@ export function AgentSettingsView({
     defaults: boolean,
     agentId?: string,
   ) => ReactNode;
+  renderRunSettings: (
+    agent: AgentConfiguration,
+    settings: AgentRunSettings,
+    onClose: () => void,
+  ) => ReactNode;
   onDelete: (id: string) => Promise<void>;
 }) {
   const [editor, setEditor] = useState<Editor>();
+  const [runSettingsFor, setRunSettingsFor] = useState<string>();
+  const runAgent = catalog?.agents.find((agent) => agent.id === runSettingsFor);
+  const runSettings = catalog?.runSettings.find((item) => item.agentId === runSettingsFor);
   const [deleting, setDeleting] = useState<{ id: string; name: string }>();
   const close = () => setEditor(undefined);
   const editedAgent = catalog?.agents.find((agent) => agent.id === editor?.id);
@@ -66,9 +76,11 @@ export function AgentSettingsView({
       {(catalog || loading) && (
         <AgentCatalog
           agents={catalog?.agents}
+          runSettings={catalog?.runSettings}
           loading={loading}
           pending={pending}
           onCreate={() => setEditor({})}
+          onRunSettings={(agent) => setRunSettingsFor(agent.id)}
           onEdit={(agent) => setEditor({ id: agent.id })}
           onDelete={(agent) => setDeleting({ id: agent.id, name: agent.name })}
         />
@@ -88,6 +100,9 @@ export function AgentSettingsView({
           }}
         />
       )}
+      {runAgent &&
+        runSettings &&
+        renderRunSettings(runAgent, runSettings, () => setRunSettingsFor(undefined))}
       {deleting && (
         <DeleteDefinitionDialog
           name={deleting.name}

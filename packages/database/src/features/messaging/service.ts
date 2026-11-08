@@ -1,10 +1,13 @@
 import type { DatabaseExecutor } from "../../client";
+import { ensureHumanActor, ensureUserAgentActor } from "../../core/actors/provisioning";
 import { actors } from "../../core/actors/schema";
+import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { isOrganizationAdmin } from "../../core/organizations/roles";
 import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
+import { queueAgentTriggers } from "../agent-runs/triggers";
 import { workspaceContext } from "../context/access";
 import { applyMessageEffects } from "../context/message-effects";
 import { messageEntityReferences } from "../context/schema";
@@ -18,7 +21,6 @@ import {
   messagingMessages,
   messagingParticipants,
   messagingReactions,
-  messagingAgentParticipants,
 } from "./schema";
 import {
   and,
@@ -39,6 +41,8 @@ export interface CreateConversationInput {
   name?: string;
   private?: boolean;
   emails?: string[];
+  /** The caller's own agent definitions. */
+  agentIds?: string[];
 }
 
 async function lockConversation(tx: DatabaseExecutor, scope: MessagingIdentity, id: string) {
@@ -51,54 +55,92 @@ async function lockConversation(tx: DatabaseExecutor, scope: MessagingIdentity, 
   return conversation;
 }
 
+type MemberActor = { entityId: string; type: "human" | "agent" };
+
+// Adds or restores members. Rows of members who left stay for authorship and come back here.
+async function upsertMembers(
+  tx: DatabaseExecutor,
+  conversationId: string,
+  members: (MemberActor & { organizationId: string })[],
+) {
+  if (!members.length) return [];
+  return tx
+    .insert(messagingParticipants)
+    .values(
+      members.map((member) => ({
+        conversationId,
+        organizationId: member.organizationId,
+        actorEntityId: member.entityId,
+        actorType: member.type,
+      })),
+    )
+    .onConflictDoUpdate({
+      target: [messagingParticipants.conversationId, messagingParticipants.actorEntityId],
+      set: { leftAt: null },
+      setWhere: isNotNull(messagingParticipants.leftAt),
+    })
+    .returning();
+}
+
+// Posting rejoins a public channel the person left. Private conversations are not visible
+// after leaving, so the caller's access check fails first.
 async function joinConversation(
   tx: DatabaseExecutor,
   scope: MessagingIdentity,
+  actor: MemberActor,
   conversationId: string,
 ) {
-  // An agent uses its owner's conversation access. Its participant row only records authorship,
-  // which the agent-message foreign key requires.
-  if (scope.actorEntityId) {
-    await tx
-      .insert(messagingAgentParticipants)
-      .values({
-        conversationId,
-        organizationId: scope.organizationId,
-        actorEntityId: scope.actorEntityId,
-      })
-      .onConflictDoNothing();
-    return;
-  }
-  // Posting rejoins a public channel the person left. Private conversations are not visible
-  // after leaving, so the caller's access check fails first.
-  await tx
-    .insert(messagingParticipants)
-    .values({ conversationId, userId: scope.userId, organizationId: scope.organizationId })
-    .onConflictDoUpdate({
-      target: [messagingParticipants.conversationId, messagingParticipants.userId],
-      set: { leftAt: null },
-      setWhere: isNotNull(messagingParticipants.leftAt),
-    });
+  await upsertMembers(tx, conversationId, [{ ...actor, organizationId: scope.organizationId }]);
 }
 
-async function activeMembers(tx: DatabaseExecutor, conversationIds: string[]) {
+// An agent writes with its owner's access. Posting records authorship, which the message foreign
+// key requires, but never changes membership: only its owner adds or removes it.
+async function recordAgentAuthor(
+  tx: DatabaseExecutor,
+  scope: MessagingIdentity,
+  actorEntityId: string,
+  conversationId: string,
+) {
+  await tx
+    .insert(messagingParticipants)
+    .values({
+      conversationId,
+      organizationId: scope.organizationId,
+      actorEntityId,
+      actorType: "agent",
+      leftAt: new Date(),
+    })
+    .onConflictDoNothing();
+}
+
+// `agentId` names the agent definition only for its owner, the viewer. Other agents stay private.
+async function activeMembers(tx: DatabaseExecutor, conversationIds: string[], viewerId = "") {
   const rows = conversationIds.length
     ? await tx
         .select({
           conversationId: messagingParticipants.conversationId,
-          userId: user.id,
-          name: user.name,
+          actorId: actors.entityId,
+          type: actors.type,
+          userId: actors.userId,
+          agentId: sql<string | null>`(select ${userAgents.id} from ${userAgents}
+            where ${userAgents.id} = ${actors.userAgentId} and ${userAgents.userId} = ${viewerId})`,
+          name: sql<string>`coalesce(${user.name}, ${actors.name})`,
           organizationId: messagingParticipants.organizationId,
         })
         .from(messagingParticipants)
-        .innerJoin(user, eq(user.id, messagingParticipants.userId))
+        .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
+        .leftJoin(user, eq(user.id, actors.userId))
         .where(
           and(
             inArray(messagingParticipants.conversationId, conversationIds),
             isNull(messagingParticipants.leftAt),
           ),
         )
-        .orderBy(asc(user.name), asc(user.id))
+        .orderBy(
+          asc(actors.type),
+          sql`coalesce(${user.name}, ${actors.name})`,
+          asc(actors.entityId),
+        )
     : [];
   const byConversation = new Map<string, typeof rows>();
   for (const row of rows) {
@@ -116,20 +158,21 @@ async function setOwner(
   userId: string,
 ) {
   const [candidate] = await tx
-    .select({ userId: messagingParticipants.userId })
+    .select({ userId: user.id })
     .from(messagingParticipants)
-    .innerJoin(user, and(eq(user.id, messagingParticipants.userId), eq(user.emailVerified, true)))
+    .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
+    .innerJoin(user, and(eq(user.id, actors.userId), eq(user.emailVerified, true)))
     .innerJoin(
       member,
       and(
-        eq(member.userId, messagingParticipants.userId),
+        eq(member.userId, user.id),
         eq(member.organizationId, messagingParticipants.organizationId),
       ),
     )
     .where(
       and(
         eq(messagingParticipants.conversationId, conversation.id),
-        eq(messagingParticipants.userId, userId),
+        eq(actors.userId, userId),
         isNull(messagingParticipants.leftAt),
       ),
     );
@@ -185,11 +228,19 @@ export async function sendMessageAs(
       )
         throw new ConflictError("This request was already used for another message.");
       const reactions: { emoji: string; count: number; reacted: boolean }[] = [];
-      return { ...existing, authorName, authorType: actor.type, reactions, replyCount: 0 };
+      return {
+        ...existing,
+        authorName,
+        authorType: actor.type,
+        reactions,
+        replyCount: 0,
+        agentRunsQueued: 0,
+      };
     }
   }
   if (threadId) await requireThreadRoot(tx, conversationId, threadId);
-  await joinConversation(tx, scope, conversationId);
+  if (actor.type === "agent") await recordAgentAuthor(tx, scope, actor.entityId, conversationId);
+  else await joinConversation(tx, scope, actor, conversationId);
   const [created] = await tx
     .insert(messagingMessages)
     .values({
@@ -203,6 +254,7 @@ export async function sendMessageAs(
     })
     .returning();
   await applyMessageEffects(ctx, scope, created!, conversation.organizationId);
+  const agentRunsQueued = await queueAgentTriggers(tx, scope, created!, conversation.kind);
   const initialReactions: { emoji: string; count: number; reacted: boolean }[] = [];
   return {
     ...created!,
@@ -210,6 +262,7 @@ export async function sendMessageAs(
     authorType: actor.type,
     replyCount: 0,
     reactions: initialReactions,
+    agentRunsQueued,
   };
 }
 
@@ -272,6 +325,7 @@ export function createMessagingService(
     const matches = await tx
       .select({
         userId: user.id,
+        name: user.name,
         organizationId: member.organizationId,
         email: sql<string>`lower(${user.email})`,
       })
@@ -285,7 +339,7 @@ export function createMessagingService(
       group.push(match);
       byEmail.set(match.email, group);
     }
-    const result = new Map<string, { userId: string; organizationId: string }>();
+    const result = new Map<string, { userId: string; name: string; organizationId: string }>();
     for (const email of normalized) {
       const candidates = byEmail.get(email) ?? [];
       const recipient =
@@ -297,7 +351,32 @@ export function createMessagingService(
         );
       if (recipient.userId !== scope.userId) result.set(recipient.userId, recipient);
     }
-    return [...result.values()];
+    // Each person joins through their human actor in the organization that matched.
+    const people = [];
+    for (const recipient of result.values()) {
+      const actor = await ensureHumanActor(tx, recipient);
+      people.push({ entityId: actor.entityId, type: "human" as const, ...recipient });
+    }
+    return people;
+  }
+
+  // Only the owner can add their agent, and only an enabled agent of this organization.
+  async function ownedAgents(tx: DatabaseExecutor, agentIds: string[]) {
+    if (agentIds.length > 20) throw new ValidationError("At most 20 agents are allowed.");
+    const result = [];
+    for (const userAgentId of new Set(agentIds)) {
+      const actor = await ensureUserAgentActor(tx, {
+        organizationId: scope.organizationId,
+        userId: scope.userId,
+        userAgentId,
+      });
+      result.push({
+        entityId: actor.entityId,
+        type: "agent" as const,
+        organizationId: scope.organizationId,
+      });
+    }
+    return result;
   }
 
   return {
@@ -310,7 +389,7 @@ export function createMessagingService(
           .where(visibleConversations(tx, scope))
           .orderBy(asc(messagingConversations.createdAt), asc(messagingConversations.id));
         const ids = rows.map((row) => row.id);
-        const byConversation = await activeMembers(tx, ids);
+        const byConversation = await activeMembers(tx, ids, scope.userId);
         const admin =
           !scope.actorEntityId &&
           (await isOrganizationAdmin(tx, scope.userId, scope.organizationId));
@@ -328,7 +407,13 @@ export function createMessagingService(
                 .map((participant) => participant.name)
                 .join(", ") ||
                 null),
-            members: members.map(({ userId, name }) => ({ userId, name })),
+            members: members.map(({ actorId, type, userId, agentId, name }) => ({
+              actorId,
+              type,
+              userId,
+              agentId,
+              name,
+            })),
             // The sidebar lists joined conversations. Public channels the person never joined or
             // left are still returned, so links and search can open them.
             joined: members.some((participant) => participant.userId === scope.userId),
@@ -345,10 +430,13 @@ export function createMessagingService(
     async createConversation(input: CreateConversationInput) {
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
-        await authenticate(tx);
+        const { actor } = await authenticate(tx);
         if (!["dm", "group", "channel"].includes(input.kind))
           throw new ValidationError("Invalid conversation kind.");
-        const selected = await recipients(tx, input.emails ?? []);
+        const selected = [
+          ...(await recipients(tx, input.emails ?? [])),
+          ...(await ownedAgents(tx, input.agentIds ?? [])),
+        ];
         if (input.kind === "dm" && selected.length !== 1)
           throw new ValidationError("A DM requires exactly one recipient.");
         if (input.kind === "group" && selected.length < 2)
@@ -366,13 +454,9 @@ export function createMessagingService(
             private: input.kind === "channel" ? (input.private ?? false) : true,
           })
           .returning();
-        await tx.insert(messagingParticipants).values([
-          { conversationId: conversation!.id, ...scope },
-          ...selected.map((recipient) => ({
-            conversationId: conversation!.id,
-            userId: recipient.userId,
-            organizationId: recipient.organizationId,
-          })),
+        await upsertMembers(tx, conversation!.id, [
+          { ...actor, organizationId: scope.organizationId },
+          ...selected,
         ]);
         return conversation!;
       });
@@ -384,33 +468,65 @@ export function createMessagingService(
         await authenticate(tx);
         await requireManaged(tx, conversationId);
         const selected = await recipients(tx, emails);
-        if (!selected.length) return { added: 0 };
         // Adding someone who left brings them back.
-        const added = await tx
-          .insert(messagingParticipants)
-          .values(
-            selected.map((recipient) => ({
-              conversationId,
-              userId: recipient.userId,
-              organizationId: recipient.organizationId,
-            })),
-          )
-          .onConflictDoUpdate({
-            target: [messagingParticipants.conversationId, messagingParticipants.userId],
-            set: { leftAt: null },
-            setWhere: isNotNull(messagingParticipants.leftAt),
-          })
-          .returning();
+        const added = await upsertMembers(tx, conversationId, selected);
         return { added: added.length };
+      });
+    },
+
+    // A member adds their own agent so they can address it here. This is not management:
+    // the agent reads with its owner's access, so it gains nothing the owner cannot see.
+    async addAgent(conversationId: string, agentId: string) {
+      if (scope.actorEntityId) throw new AccessDeniedError();
+      return db.transaction(async (tx) => {
+        await authenticate(tx);
+        const conversation = await requireConversation(tx, conversationId);
+        if (conversation.kind === "dm")
+          throw new ValidationError("Start a direct conversation with the agent instead.");
+        const [agent] = await ownedAgents(tx, [agentId]);
+        await upsertMembers(tx, conversationId, [agent!]);
+        return { actorId: agent!.entityId };
+      });
+    },
+
+    // Only the agent's owner removes it. Its rows stay for authorship history.
+    async removeAgent(conversationId: string, agentActorId: string) {
+      if (scope.actorEntityId) throw new AccessDeniedError();
+      return db.transaction(async (tx) => {
+        await authenticate(tx);
+        const conversation = await requireConversation(tx, conversationId);
+        if (conversation.kind === "dm") throw new AccessDeniedError();
+        const removed = await tx
+          .update(messagingParticipants)
+          .set({ leftAt: new Date() })
+          .where(
+            and(
+              eq(messagingParticipants.conversationId, conversationId),
+              eq(messagingParticipants.actorEntityId, agentActorId),
+              eq(messagingParticipants.actorType, "agent"),
+              isNull(messagingParticipants.leftAt),
+              inArray(
+                messagingParticipants.actorEntityId,
+                tx
+                  .select({ id: actors.entityId })
+                  .from(actors)
+                  .innerJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+                  .where(eq(userAgents.userId, scope.userId)),
+              ),
+            ),
+          )
+          .returning();
+        if (!removed.length) throw new AccessDeniedError();
+        return { removed: true };
       });
     },
 
     async joinConversation(conversationId: string) {
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
-        await authenticate(tx);
+        const { actor } = await authenticate(tx);
         await requireConversation(tx, conversationId);
-        await joinConversation(tx, scope, conversationId);
+        await joinConversation(tx, scope, actor, conversationId);
         return { joined: true };
       });
     },
@@ -419,7 +535,7 @@ export function createMessagingService(
     async leaveConversation(conversationId: string, newOwnerUserId?: string) {
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
-        await authenticate(tx);
+        const { actor } = await authenticate(tx);
         const conversation = await requireConversation(tx, conversationId);
         if (conversation.kind === "dm") throw new AccessDeniedError();
         if (conversation.createdBy === scope.userId) {
@@ -427,8 +543,9 @@ export function createMessagingService(
             await setOwner(tx, conversation, newOwnerUserId);
           else {
             const others = (await activeMembers(tx, [conversationId])).get(conversationId) ?? [];
+            // Agents cannot own conversations, so only people count here.
             throw new ConflictError(
-              others.some((person) => person.userId !== scope.userId)
+              others.some((person) => person.userId && person.userId !== scope.userId)
                 ? "Choose a new owner before leaving."
                 : "You are the last member. Delete the conversation instead.",
             );
@@ -439,12 +556,13 @@ export function createMessagingService(
           .insert(messagingParticipants)
           .values({
             conversationId,
-            userId: scope.userId,
             organizationId: scope.organizationId,
+            actorEntityId: actor.entityId,
+            actorType: actor.type,
             leftAt: new Date(),
           })
           .onConflictDoUpdate({
-            target: [messagingParticipants.conversationId, messagingParticipants.userId],
+            target: [messagingParticipants.conversationId, messagingParticipants.actorEntityId],
             set: { leftAt: new Date() },
           });
         return { left: true };
@@ -523,10 +641,9 @@ export function createMessagingService(
           rows.map((row) => row.id),
         );
         return rows.map((row) => {
-          const members = (byConversation.get(row.id) ?? []).map(({ userId, name }) => ({
-            userId,
-            name,
-          }));
+          const members = (byConversation.get(row.id) ?? []).map(
+            ({ actorId, type, userId, name }) => ({ actorId, type, userId, name }),
+          );
           return {
             ...row,
             name: row.name ?? (members.map((person) => person.name).join(", ") || null),
@@ -541,7 +658,7 @@ export function createMessagingService(
       options: { beforeMessageId?: string; aroundMessageId?: string } = {},
     ) {
       return db.transaction(async (tx) => {
-        await authenticate(tx);
+        const { actor } = await authenticate(tx);
         await requireConversation(tx, conversationId);
         if (threadId) await requireThreadRoot(tx, conversationId, threadId);
         let boundary;
@@ -583,7 +700,7 @@ export function createMessagingService(
         rows.reverse();
         const summaries = await messageSummaries(
           tx,
-          scope.userId,
+          actor.entityId,
           conversationId,
           rows.map((row) => row.message),
         );
@@ -611,7 +728,7 @@ export function createMessagingService(
     async toggleReaction(messageId: string, emoji: string) {
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
-        await authenticate(tx);
+        const { actor } = await authenticate(tx);
         if (!emoji.trim() || emoji.length > 64)
           throw new ValidationError("Reaction must contain 1 to 64 characters.");
         const [message] = await tx
@@ -620,10 +737,10 @@ export function createMessagingService(
           .where(eq(messagingMessages.id, messageId));
         if (!message) throw new AccessDeniedError();
         await requireConversation(tx, message.conversationId);
-        await joinConversation(tx, scope, message.conversationId);
+        await joinConversation(tx, scope, actor, message.conversationId);
         const key = and(
           eq(messagingReactions.messageId, messageId),
-          eq(messagingReactions.userId, scope.userId),
+          eq(messagingReactions.actorEntityId, actor.entityId),
           eq(messagingReactions.emoji, emoji),
         );
         const removed = await tx.delete(messagingReactions).where(key).returning();
@@ -631,7 +748,7 @@ export function createMessagingService(
         await tx.insert(messagingReactions).values({
           conversationId: message.conversationId,
           messageId,
-          userId: scope.userId,
+          actorEntityId: actor.entityId,
           emoji,
         });
         return { active: true };

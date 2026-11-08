@@ -38,7 +38,8 @@ test("send and replay reuse authenticated identity and the locked conversation",
     queries.filter((query) => query.includes('from "member"') && query.includes("for update"));
   expect(redundant()).toEqual([]);
   expect(provisioning()).toEqual([]);
-  expect(queries).toHaveLength(5);
+  // Includes the lookup for the author's own agents that the message may trigger.
+  expect(queries).toHaveLength(6);
   queries.length = 0;
   expect(await chat.sendMessage(channel.id, "hello", undefined, requestId)).toEqual(sent);
   expect(redundant()).toEqual([]);
@@ -237,19 +238,39 @@ test("threads stay in their conversation and reference only roots, including raw
   await expect(
     fixture.db
       .insert(messagingMessages)
-      .values({ conversationId: b.id, authorId: "alice", body: "bad", threadId: root.id })
+      .values({
+        conversationId: b.id,
+        authorId: "alice",
+        authorActorEntityId: fixture.alice,
+        authorOrganizationId: fixture.orgA,
+        body: "bad",
+        threadId: root.id,
+      })
       .execute(),
   ).rejects.toMatchObject({ cause: { code: "23503" } });
   await expect(
     fixture.db
       .insert(messagingMessages)
-      .values({ conversationId: a.id, authorId: "alice", body: "bad", threadId: reply.id })
+      .values({
+        conversationId: a.id,
+        authorId: "alice",
+        authorActorEntityId: fixture.alice,
+        authorOrganizationId: fixture.orgA,
+        body: "bad",
+        threadId: reply.id,
+      })
       .execute(),
   ).rejects.toMatchObject({ cause: { code: "23503" } });
   await expect(
     fixture.db
       .insert(messagingMessages)
-      .values({ conversationId: a.id, authorId: "outsider", body: "bad" })
+      .values({
+        conversationId: a.id,
+        authorId: "outsider",
+        authorActorEntityId: fixture.outsider,
+        authorOrganizationId: fixture.orgB,
+        body: "bad",
+      })
       .execute(),
   ).rejects.toMatchObject({ cause: { code: "23503" } });
 });
@@ -276,7 +297,7 @@ test("reactions aggregate per emoji, toggle per user and reject inaccessible mes
       .values({
         conversationId: crypto.randomUUID(),
         messageId: message.id,
-        userId: "alice",
+        actorEntityId: fixture.alice,
         emoji: "👍",
       })
       .execute(),
@@ -329,13 +350,13 @@ test("group DMs support multiple recipients and caller transactions roll back al
   expect(
     (
       await fixture.db
-        .select({ userId: messagingParticipants.userId })
+        .select({ actorEntityId: messagingParticipants.actorEntityId })
         .from(messagingParticipants)
         .where(eq(messagingParticipants.conversationId, group.id))
     )
-      .map((row) => row.userId)
+      .map((row) => row.actorEntityId)
       .sort(),
-  ).toEqual(["alice", "bob", "outsider"]);
+  ).toEqual([fixture.alice, fixture.bob, fixture.outsider].sort());
 });
 
 test("participant access is bound to the recipient organization and departure preserves history but revokes access", async () => {

@@ -6,6 +6,7 @@ import { ManagedConversations as ManagedConversationsView } from "./managed-conv
 import { DeleteConversationDialog } from "@/components/messaging/conversations/actions/delete-conversation-dialog";
 import { OwnerDialog } from "@/components/messaging/conversations/actions/owner-dialog";
 import { AddMembersForm } from "@/components/messaging/conversations/add-members-form";
+import { humanMembers } from "@/lib/messaging/conversations";
 import { useConversationManagement } from "@/queries/messaging/management";
 import {
   deleteImpactQueryOptions,
@@ -53,7 +54,9 @@ export function ManagedConversations({ organizationId }: { organizationId: strin
         <OwnerDialog
           mode="transfer"
           name={name}
-          candidates={target.members.filter((person) => person.userId !== target.ownerUserId)}
+          candidates={humanMembers(target.members).filter(
+            (person) => person.userId !== target.ownerUserId,
+          )}
           pending={transfer.isPending}
           error={transfer.error}
           onClose={close}

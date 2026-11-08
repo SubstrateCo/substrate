@@ -12,7 +12,17 @@ export const contextLink = contextMessage.extend({ entityId: z.uuid() });
 export const contextSearch = contextWorkspace.extend({
   query: z.string().max(200),
   kind: z
-    .enum(["all", "task", "project", "message", "conversation", "person", "channel", "thread"])
+    .enum([
+      "all",
+      "task",
+      "project",
+      "message",
+      "conversation",
+      "person",
+      "agent",
+      "channel",
+      "thread",
+    ])
     .optional(),
   after: z.uuid().optional(),
   limit: z.number().int().min(1).max(100).optional(),

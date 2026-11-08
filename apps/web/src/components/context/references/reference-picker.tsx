@@ -48,7 +48,9 @@ export function ReferencePicker({
     <ReferencePickerView
       query={query}
       kind={kind}
-      kinds={parsed.trigger === "#" ? ["channel", "thread"] : ["task", "project", "person"]}
+      kinds={
+        parsed.trigger === "#" ? ["channel", "thread"] : ["task", "project", "person", "agent"]
+      }
       results={debounced.pending ? [] : (results.data ?? [])}
       loading={debounced.pending || results.isPending}
       error={debounced.pending ? null : results.error}

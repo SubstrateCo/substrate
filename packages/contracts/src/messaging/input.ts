@@ -15,6 +15,8 @@ export const conversationInput = workspaceInput.extend({
   name: z.string().trim().min(1).max(80).optional(),
   private: z.boolean().optional(),
   emails: emails.optional(),
+  /** Agent definition IDs owned by the caller. */
+  agentIds: z.array(id).max(20).optional(),
 });
 export const messageInput = messageListInput.extend({
   body: z.string().trim().min(1).max(20_000),
@@ -33,6 +35,8 @@ export const membersInput = workspaceInput.extend({
   emails: emails.default([]),
 });
 export const conversationTargetInput = workspaceInput.extend({ conversationId: id });
+export const addAgentInput = conversationTargetInput.extend({ agentId: id });
+export const removeAgentInput = conversationTargetInput.extend({ actorId: id });
 export const leaveInput = conversationTargetInput.extend({
   newOwnerUserId: z.string().min(1).max(200).optional(),
 });

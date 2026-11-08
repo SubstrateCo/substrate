@@ -4,7 +4,7 @@ import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
-import { AccessDeniedError } from "../../errors";
+import { AccessDeniedError, ValidationError } from "../../errors";
 import { visibleConversations, type MessagingIdentity } from "../messaging/access";
 import {
   messagingConversations,
@@ -27,6 +27,7 @@ export async function applyMessageEffects(
   const { db } = ctx;
   const recipients = new Map<string, "mention" | "reply">();
   const personIds: string[] = [];
+  const agentIds: string[] = [];
   const workReferences: { id: string; kind: "task" | "project" }[] = [];
   for (const reference of messageReferences(message.body)) {
     if (reference.kind === "channel" || reference.kind === "thread") {
@@ -35,7 +36,35 @@ export async function applyMessageEffects(
         kind: reference.kind,
       });
     } else if (reference.kind === "person") personIds.push(reference.id);
+    else if (reference.kind === "agent") agentIds.push(reference.id);
     else workReferences.push({ id: reference.id, kind: reference.kind });
+  }
+  if (agentIds.length) {
+    // A mentioned agent must be an active member of this conversation. Mentions notify nobody;
+    // only the owner's mention can start a run, which the trigger evaluator decides.
+    const members = await db
+      .select({ id: messagingParticipants.actorEntityId })
+      .from(messagingParticipants)
+      .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
+      .innerJoin(
+        entities,
+        and(
+          eq(entities.entityId, actors.entityId),
+          eq(entities.organizationId, actors.organizationId),
+        ),
+      )
+      .where(
+        and(
+          eq(messagingParticipants.conversationId, message.conversationId),
+          inArray(messagingParticipants.actorEntityId, agentIds),
+          eq(messagingParticipants.actorType, "agent"),
+          isNull(messagingParticipants.leftAt),
+          activeActorCondition(),
+          isNull(entities.deletedAt),
+        ),
+      );
+    if (members.length !== agentIds.length)
+      throw new ValidationError("Add the agent to this conversation before you mention it.");
   }
   if (personIds.length) {
     // Every mentioned person must be an active workspace member who can see this conversation.
@@ -101,7 +130,7 @@ export async function applyMessageEffects(
         messagingParticipants,
         and(
           eq(messagingParticipants.conversationId, messagingMessages.conversationId),
-          eq(messagingParticipants.userId, messagingMessages.authorId),
+          eq(messagingParticipants.actorEntityId, messagingMessages.authorActorEntityId),
         ),
       )
       .where(
@@ -134,10 +163,9 @@ export async function applyMessageEffects(
       JOIN ${messagingConversations} ON ${messagingConversations.id} = ${message.conversationId}::uuid
         AND ${visibleConversations(db, { userId: actors.userId, organizationId: actors.organizationId })}
       LEFT JOIN ${messagingParticipants} ON ${messagingParticipants.conversationId} = ${messagingConversations.id}
-        AND ${messagingParticipants.userId} = ${actors.userId}
-        AND ${messagingParticipants.organizationId} = ${actors.organizationId}
+        AND ${messagingParticipants.actorEntityId} = ${actors.entityId}
       WHERE ${actors.disabledAt} IS NULL
-        AND (${actors.organizationId} = ${conversationOrganizationId} OR ${messagingParticipants.userId} IS NOT NULL)
+        AND (${actors.organizationId} = ${conversationOrganizationId} OR ${messagingParticipants.actorEntityId} IS NOT NULL)
       ON CONFLICT DO NOTHING
     `);
   }

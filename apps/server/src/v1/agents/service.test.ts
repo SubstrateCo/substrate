@@ -63,7 +63,7 @@ test("all mutations enforce origin and do not reach persistence on failure", asy
 });
 
 test("derives user identity without requiring an active organization", async () => {
-  const catalog = { agents: [] };
+  const catalog = { agents: [], runSettings: [] };
   const repository = {
     list: async () => catalog,
     saveAgent: async () => {
@@ -73,6 +73,8 @@ test("derives user identity without requiring an active organization", async () 
     setPicture: async () => {
       throw new Error("Unexpected picture update.");
     },
+    setHomeDevice: async () => null,
+    saveTriggers: async () => null,
   };
   const forUser = mock(() => repository);
   const service = createAgentService({
@@ -82,7 +84,7 @@ test("derives user identity without requiring an active organization", async () 
     requireOrigin: () => {},
   });
   expect(await service.listAgents(headers)).toEqual({ success: true, data: catalog });
-  expect(forUser).toHaveBeenCalledWith("solo");
+  expect(forUser).toHaveBeenCalledWith("solo", undefined);
 });
 
 test("picture updates use the verified session owner and return the updated configuration", async () => {
@@ -96,7 +98,9 @@ test("picture updates use the verified session owner and return the updated conf
   };
   const setPicture = mock(async () => configuration);
   const forUser = mock(() => ({
-    list: async () => ({ agents: [] }),
+    list: async () => ({ agents: [], runSettings: [] }),
+    setHomeDevice: async () => null,
+    saveTriggers: async () => null,
     saveAgent: async () => configuration,
     deleteAgent: async () => null,
     setPicture,
@@ -111,7 +115,7 @@ test("picture updates use the verified session owner and return the updated conf
     success: true,
     data: configuration,
   });
-  expect(forUser).toHaveBeenCalledWith("alice");
+  expect(forUser).toHaveBeenCalledWith("alice", undefined);
   expect(setPicture).toHaveBeenCalledWith(id, fileId);
 });
 
@@ -126,7 +130,9 @@ test("publishes only after persistence succeeds, never for a rolled-back mutatio
       published.push(userId);
     },
     forUser: () => ({
-      list: async () => ({ agents: [] }),
+      list: async () => ({ agents: [], runSettings: [] }),
+      setHomeDevice: async () => null,
+      saveTriggers: async () => null,
       saveAgent: () => commit.promise,
       setPicture: async () => saved,
       deleteAgent: async () => {

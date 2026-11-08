@@ -38,8 +38,18 @@ test("private and public external channels require a participant in the viewer w
       .returning();
     if (!conversation) throw new Error("Missing conversation");
     await fixture.db.insert(messagingParticipants).values([
-      { conversationId: conversation.id, userId: "alice", organizationId: fixture.orgA },
-      { conversationId: conversation.id, userId: "outsider", organizationId: fixture.orgB },
+      {
+        conversationId: conversation.id,
+        actorEntityId: fixture.alice,
+        actorType: "human",
+        organizationId: fixture.orgA,
+      },
+      {
+        conversationId: conversation.id,
+        actorEntityId: fixture.outsider,
+        actorType: "human",
+        organizationId: fixture.orgB,
+      },
     ]);
     const audience = realtimeKeys.conversation(conversation.id);
     expect(await canReceiveChange(fixture.db, external, audience)).toBe(true);
@@ -50,8 +60,8 @@ test("private and public external channels require a participant in the viewer w
     ).toBe(false);
     await fixture.db
       .update(messagingParticipants)
-      .set({ organizationId: fixture.orgA })
-      .where(eq(messagingParticipants.userId, "outsider"));
+      .set({ leftAt: new Date() })
+      .where(eq(messagingParticipants.actorEntityId, fixture.outsider));
     expect(await canReceiveChange(fixture.db, external, audience)).toBe(false);
   }
 });
@@ -100,8 +110,18 @@ test("a partner with membership in both organizations receives private channel e
     .returning();
   if (!conversation) throw new Error("Missing conversation");
   await fixture.db.insert(messagingParticipants).values([
-    { conversationId: conversation.id, userId: "alice", organizationId: fixture.orgA },
-    { conversationId: conversation.id, userId: "outsider", organizationId: fixture.orgB },
+    {
+      conversationId: conversation.id,
+      actorEntityId: fixture.alice,
+      actorType: "human",
+      organizationId: fixture.orgA,
+    },
+    {
+      conversationId: conversation.id,
+      actorEntityId: fixture.outsider,
+      actorType: "human",
+      organizationId: fixture.orgB,
+    },
   ]);
   const audience = realtimeKeys.conversation(conversation.id);
   expect(await canReceiveChange(fixture.db, external, audience)).toBe(true);
@@ -116,9 +136,12 @@ test("a delivery resolves the receiver once and checks only conversation audienc
     .values({ organizationId: fixture.orgA, kind: "channel", name: "Counted", createdBy: "alice" })
     .returning();
   if (!conversation) throw new Error("Missing conversation");
-  await fixture.db
-    .insert(messagingParticipants)
-    .values({ conversationId: conversation.id, userId: "alice", organizationId: fixture.orgA });
+  await fixture.db.insert(messagingParticipants).values({
+    conversationId: conversation.id,
+    actorEntityId: fixture.alice,
+    actorType: "human",
+    organizationId: fixture.orgA,
+  });
   const statements: string[] = [];
   const db = drizzle(fixture.db.$client, {
     schema,

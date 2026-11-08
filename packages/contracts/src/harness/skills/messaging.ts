@@ -4,7 +4,7 @@ export const messagingSkill: HarnessSkill = {
   id: "startup-os-messaging",
   name: "startup-os-messaging",
   description:
-    "Use when writing or replying to a Startup OS message with send_message, or reading message text that contains @[...] tokens. Covers Markdown, mentions of people, tasks, projects, channels and threads, thread etiquette, and writing as an agent.",
+    "Use when writing or replying to a Startup OS message with send_message, or reading message text that contains @[...] tokens. Covers Markdown, mentions of people, agents, tasks, projects, channels and threads, thread etiquette, answering the message that started a run, and writing as an agent.",
   content: `# Startup OS messaging
 
 ## Format
@@ -21,7 +21,8 @@ A mention is a token in the message text. It shows as a link and connects the me
 | --- | --- | --- |
 | Task | \`@[task:<id>]\` | Task ID |
 | Project | \`@[project:<id>]\` | Project ID |
-| Person | \`@[person:<id>]\` | A person's actor ID, from \`list_assignees\` or the owner in \`get_me\`. Agents cannot be mentioned. |
+| Person | \`@[person:<id>]\` | A person's actor ID, from \`list_assignees\` or the owner in \`get_me\`. |
+| Agent | \`@[agent:<id>]\` | An agent's actor ID. Only agents that are members of the conversation. Do not mention agents to start their work: only their owner can do that. |
 | Channel | \`@[channel:<id>]\` | Conversation ID |
 | Thread | \`@[thread:<id>]\` | Root message ID |
 
@@ -47,6 +48,14 @@ When you read messages, the same tokens appear in the text. Use the ID in a toke
 - Post at the top level only for a new topic or an announcement.
 - To continue a discussion, reply in its thread. Do not start a new one.
 - A thread reply notifies the people already in the thread.
+
+## Answering a request from a message
+
+When a run starts from a message, the prompt names a conversationId and a threadId.
+
+- Your owner sees only what you send. Text you write in the run is not posted. Use send_message with that conversationId and threadId for every answer, question or result.
+- Send one reply when you finish. For long work, send a short note first, then the result.
+- If you need a decision, ask in the thread and end your turn. Your owner's reply starts your next turn in the same session.
 
 ## Writing as an agent
 

@@ -6,7 +6,10 @@ import { Button } from "../../ui/button";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "../../ui/resizable";
 import { ComposerDraftProvider } from "../composer/composer-drafts";
 import { ConversationSidebar } from "../conversations/conversation-sidebar";
-import type { DirectMessagePerson } from "@/components/messaging/conversations/conversation-sidebar/conversation-create-menu";
+import type {
+  DirectMessageAgent,
+  DirectMessagePerson,
+} from "@/components/messaging/conversations/conversation-sidebar/conversation-create-menu";
 import { useConversationCreation } from "@/components/messaging/workspace/messaging-workspace/use-conversation-creation";
 import { WorkspaceEmpty } from "@/components/messaging/workspace/messaging-workspace/workspace-empty";
 import type { Conversation } from "@/lib/messaging/conversations";
@@ -19,6 +22,8 @@ export function MessagingWorkspace({
   onSidebarOpenChange,
   onSelect,
   people,
+  agents,
+  onMessageAgent,
   renderCreate,
   initialCreating,
   loading = false,
@@ -33,6 +38,8 @@ export function MessagingWorkspace({
   onSidebarOpenChange: (open: boolean) => void;
   onSelect: (id: string) => void;
   people?: DirectMessagePerson[];
+  agents?: DirectMessageAgent[];
+  onMessageAgent?: (agent: DirectMessageAgent) => void;
   renderCreate: (
     kind: Conversation["kind"],
     actions: { onCancel: () => void; onComplete: () => void; recipient?: string },
@@ -82,6 +89,14 @@ export function MessagingWorkspace({
               conversations={conversations}
               selectedId={creating ? undefined : selectedId}
               people={people}
+              agents={agents}
+              onMessageAgent={
+                onMessageAgent &&
+                ((agent) => {
+                  setCreating(undefined);
+                  onMessageAgent(agent);
+                })
+              }
               onSelect={(id) => {
                 setCreating(undefined);
                 onSelect(id);

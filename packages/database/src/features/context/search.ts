@@ -1,5 +1,6 @@
 import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
+import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import { entityLinks } from "../../core/links/schema";
@@ -27,6 +28,7 @@ export type SearchKind =
   | "message"
   | "conversation"
   | "person"
+  | "agent"
   | "channel"
   | "thread";
 export type ChannelMembership = "joined" | "left" | "none";
@@ -40,6 +42,8 @@ interface SearchResult {
   conversationName?: string;
   // Conversation results only.
   conversationKind?: "dm" | "group" | "channel";
+  // Agent results only: the viewer's own agent definition.
+  agentId?: string;
   // Conversation and channel results only.
   private?: boolean;
   membership?: ChannelMembership;
@@ -62,9 +66,17 @@ export async function contextSearch(
   const limit = pageSize(input.limit ?? 30);
   if (
     input.query.length > 200 ||
-    !["all", "task", "project", "message", "conversation", "person", "channel", "thread"].includes(
-      input.kind ?? "all",
-    )
+    ![
+      "all",
+      "task",
+      "project",
+      "message",
+      "conversation",
+      "person",
+      "agent",
+      "channel",
+      "thread",
+    ].includes(input.kind ?? "all")
   )
     throw new ValidationError("Invalid search.");
   const query = input.query.trim();
@@ -290,7 +302,7 @@ export async function contextSearch(
         id: messagingConversations.id,
         title: sql<string>`${messagingConversations.name}`,
         private: messagingConversations.private,
-        membership: sql<ChannelMembership>`case when ${me.userId} is null then 'none'
+        membership: sql<ChannelMembership>`case when ${me.actorEntityId} is null then 'none'
           when ${me.leftAt} is null then 'joined' else 'left' end`,
         memberCount: sql<number>`(select count(*)::int from ${messagingParticipants}
           where ${messagingParticipants.conversationId} = ${messagingConversations.id}
@@ -299,7 +311,16 @@ export async function contextSearch(
       .from(messagingConversations)
       .leftJoin(
         me,
-        and(eq(me.conversationId, messagingConversations.id), eq(me.userId, scope.userId)),
+        and(
+          eq(me.conversationId, messagingConversations.id),
+          inArray(
+            me.actorEntityId,
+            db
+              .select({ id: actors.entityId })
+              .from(actors)
+              .where(and(eq(actors.userId, scope.userId), eq(actors.type, "human"))),
+          ),
+        ),
       )
       .where(
         and(
@@ -425,6 +446,37 @@ export async function contextSearch(
       .orderBy(asc(actors.entityId))
       .limit(limit);
     results.push(...rows.map((row) => ({ ...row, kind: "person" as const })));
+  }
+  // Mention picker: only the caller's own agents that are members here. Other people's agents
+  // stay private and cannot be addressed.
+  if (kind === "agent" && input.conversationId) {
+    const rows = await db
+      .select({ id: actors.entityId, title: actors.name, agentId: userAgents.id })
+      .from(messagingParticipants)
+      .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
+      .innerJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+      .innerJoin(
+        messagingConversations,
+        and(
+          eq(messagingConversations.id, messagingParticipants.conversationId),
+          visibleConversations(db, scope),
+        ),
+      )
+      .where(
+        and(
+          eq(messagingParticipants.conversationId, input.conversationId),
+          eq(messagingParticipants.actorType, "agent"),
+          isNull(messagingParticipants.leftAt),
+          eq(userAgents.userId, scope.userId),
+          isNull(userAgents.deletedAt),
+          eq(userAgents.enabled, true),
+          query ? match(actors.name) : undefined,
+          input.after ? gt(actors.entityId, input.after) : undefined,
+        ),
+      )
+      .orderBy(asc(actors.entityId))
+      .limit(limit);
+    results.push(...rows.map((row) => ({ ...row, kind: "agent" as const })));
   }
   return results.sort((a, b) => a.id.localeCompare(b.id)).slice(0, limit);
 }

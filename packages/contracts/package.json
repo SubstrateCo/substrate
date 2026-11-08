@@ -9,6 +9,7 @@
     "./harness/mcp": "./src/harness/mcp.ts",
     "./harness/tools": "./src/harness/tools/index.ts",
     "./agents": "./src/agents/index.ts",
+    "./agent-runs": "./src/agent-runs/index.ts",
     "./files/input": "./src/files/input.ts",
     "./files/pictures": "./src/files/pictures.ts",
     "./tasks": "./src/tasks/status.ts",

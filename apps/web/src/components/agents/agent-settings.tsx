@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AgentConfiguration } from "./device/agent-configuration";
 import { AgentPicture } from "./editors/agent-picture";
+import { AgentRunSettings } from "./run-settings/agent-run-settings";
 import { saveAgent, deleteAgent } from "@/api/agents/requests";
 import { AgentSettingsView } from "@/components/agents/agent-settings-view";
 import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
@@ -52,6 +53,15 @@ export function AgentSettings({
           harness={harness}
           section={section}
           defaults={defaults}
+        />
+      )}
+      renderRunSettings={(agent, settings, onClose) => (
+        <AgentRunSettings
+          key={agent.id}
+          userId={userId}
+          name={agent.name}
+          settings={settings}
+          onClose={onClose}
         />
       )}
       onRetry={() => void catalog.refetch()}

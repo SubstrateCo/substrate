@@ -29,6 +29,9 @@ export interface HarnessWorker {
 const methodSchema = z.enum(harnessMethods);
 const localMethodSchema = z.enum(localHarnessMethods);
 
+/** A native command failed after authorization passed. Other sessions keep running. */
+class CommandFailure extends Error {}
+
 /** Main-only authority. Never accepts an account path or a catalog from IPC. */
 export function createHarnessController(options: {
   backend: string;
@@ -113,7 +116,12 @@ export function createHarnessController(options: {
       }
       if (!worker || identity !== auth.identity) return { connected: false };
       const current = generation;
-      const result = await worker.request(method === "status" ? "inspect" : "execute", value);
+      const result =
+        method === "status"
+          ? await worker.request("inspect")
+          : await worker.request("execute", value).catch(() => {
+              throw new CommandFailure();
+            });
       if (current !== generation || identity !== auth.identity) throw new Error("Session changed.");
       if (method === "status")
         return {
@@ -122,9 +130,10 @@ export function createHarnessController(options: {
           harnesses: z.array(harnessInspectionSchema).parse(result),
         };
       return result;
-    } catch {
-      disconnect();
+    } catch (error) {
       // Do not reveal account IDs, backend errors, or local file paths to the renderer.
+      if (error instanceof CommandFailure) throw new Error("Harness command failed.");
+      disconnect();
       throw new Error("Harness unavailable. Verify your session and synchronize again.");
     }
   }

@@ -241,7 +241,7 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
         .limit(100);
     },
     async messageTarget(conversationId: string, messageId: string) {
-      await workspaceContext(db, scope);
+      const { actor } = await workspaceContext(db, scope);
       const author = messageAuthorColumns(scope.organizationId);
       // Reads the message and its thread root together; each row must be visible.
       const rows = await db
@@ -275,7 +275,7 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
       if (!root) throw new AccessDeniedError();
       const summaries = await messageSummaries(
         db,
-        scope.userId,
+        actor.entityId,
         conversationId,
         target === root ? [target.message] : [target.message, root.message],
       );

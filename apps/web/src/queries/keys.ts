@@ -11,6 +11,13 @@ export const queryKeys = {
     agentId: string,
     harness: string,
   ) => ["users", userId, "local-agent-configuration", organizationId, agentId, harness] as const,
+  // Runs are private to the agent's owner, so they live under the user.
+  agentRuns: (userId: string, organizationId?: string) =>
+    ["users", userId, "agent-runs", ...(organizationId ? [organizationId] : [])] as const,
+  conversationAgentRuns: (userId: string, organizationId: string, conversationId: string) =>
+    [...queryKeys.agentRuns(userId, organizationId), "conversation", conversationId] as const,
+  agentRun: (userId: string, organizationId: string, runId: string) =>
+    [...queryKeys.agentRuns(userId, organizationId), "run", runId] as const,
   context: (organizationId: string) =>
     [...queryKeys.organization(organizationId), "context"] as const,
   messageTargets: (organizationId: string, conversationId?: string) =>

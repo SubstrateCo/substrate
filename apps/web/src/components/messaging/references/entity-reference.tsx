@@ -3,7 +3,15 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import type { ReferenceKind } from "./reference-picker";
 import { plainReferenceText } from "./reference-token";
 import { PersonCardTarget, useHasPersonCard } from "@/components/messaging/people/person-card-slot";
-import { AtSign, CircleCheck, FolderKanban, LockKeyhole, Hash, MessagesSquare } from "lucide-react";
+import {
+  AtSign,
+  Bot,
+  CircleCheck,
+  FolderKanban,
+  LockKeyhole,
+  Hash,
+  MessagesSquare,
+} from "lucide-react";
 
 export type WorkspaceReference = {
   id: string;
@@ -21,6 +29,7 @@ export function EntityReference({
 }) {
   const icons = {
     person: AtSign,
+    agent: Bot,
     task: CircleCheck,
     project: FolderKanban,
     channel: Hash,
@@ -54,7 +63,11 @@ export function EntityReference({
       </span>
     );
   const label = plainReferenceText(reference.label);
-  if (!reference.href && reference.kind === "person" && hasPersonCard)
+  if (
+    !reference.href &&
+    (reference.kind === "person" || reference.kind === "agent") &&
+    hasPersonCard
+  )
     return (
       <PersonCardTarget actorId={reference.id} name={label}>
         <span className={`${className} hover:bg-accent/80`}>{content}</span>

@@ -4,7 +4,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 
 export async function messageSummaries(
   db: DatabaseExecutor,
-  userId: string,
+  viewerActorEntityId: string,
   conversationId: string,
   rows: { id: string; threadId: string | null }[],
 ) {
@@ -14,7 +14,7 @@ export async function messageSummaries(
           messageId: messagingReactions.messageId,
           emoji: messagingReactions.emoji,
           count: sql<number>`count(*)::int`,
-          reacted: sql<boolean>`bool_or(${messagingReactions.userId} = ${userId})`,
+          reacted: sql<boolean>`bool_or(${messagingReactions.actorEntityId} = ${viewerActorEntityId})`,
         })
         .from(messagingReactions)
         .where(

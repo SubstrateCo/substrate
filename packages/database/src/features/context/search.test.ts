@@ -363,7 +363,7 @@ test("related search traverses message references in both directions and checks 
   await expect(
     outsider.search({ query: "", relatedToEntityId: project.entityId }),
   ).rejects.toBeInstanceOf(AccessDeniedError);
-  await f.db.delete(messagingParticipants).where(eq(messagingParticipants.userId, "bob"));
+  await f.db.delete(messagingParticipants).where(eq(messagingParticipants.actorEntityId, f.bob));
   await expect(bob.search({ query: "", relatedToEntityId: channel.id })).rejects.toBeInstanceOf(
     AccessDeniedError,
   );

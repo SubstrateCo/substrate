@@ -3,12 +3,13 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { PencilIcon, Trash2Icon } from "lucide-react";
+import { PencilIcon, Settings2Icon, Trash2Icon } from "lucide-react";
 
 export function CatalogRow({
   name,
   detail,
   picture,
+  onSettings,
   onEdit,
   onDelete,
   disabled,
@@ -16,6 +17,7 @@ export function CatalogRow({
   name: string;
   detail: string;
   picture?: ReactNode;
+  onSettings?: () => void;
   onEdit: () => void;
   onDelete: () => void;
   disabled: boolean;
@@ -30,6 +32,22 @@ export function CatalogRow({
         </div>
       </div>
       <ButtonGroup aria-label={`Actions for ${name}`}>
+        {onSettings && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                disabled={disabled}
+                aria-label={`Run settings for ${name}`}
+                onClick={onSettings}
+              >
+                <Settings2Icon />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Run settings for {name}</TooltipContent>
+          </Tooltip>
+        )}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

@@ -1,5 +1,5 @@
 import { AccessDeniedError, ValidationError } from "../../errors";
-import { member, organization, user } from "../../schema";
+import { actors, member, organization, user } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { messagingConversations, messagingParticipants } from "./schema";
@@ -42,10 +42,11 @@ test("100 unique recipients use one lookup for creation and member addition", as
   expect(
     await fixture.db
       .select({
-        userId: messagingParticipants.userId,
+        userId: actors.userId,
         organizationId: messagingParticipants.organizationId,
       })
       .from(messagingParticipants)
+      .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
       .where(eq(messagingParticipants.conversationId, group.id)),
   ).toEqual(
     expect.arrayContaining([
@@ -89,12 +90,13 @@ test("recipient normalization deduplicates emails and users, excludes sender and
   expect(
     await fixture.db
       .select({
-        userId: messagingParticipants.userId,
+        userId: actors.userId,
         organizationId: messagingParticipants.organizationId,
       })
       .from(messagingParticipants)
+      .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
       .where(eq(messagingParticipants.conversationId, group.id))
-      .orderBy(messagingParticipants.userId),
+      .orderBy(actors.userId),
   ).toEqual([
     { userId: "alice", organizationId: fixture.orgA },
     { userId: "bob", organizationId: fixture.orgA },
@@ -139,7 +141,7 @@ test.each(["missing", "unverified", "no-membership"])(
     await expect(chat.addMembers(channel.id, emails)).rejects.toBeInstanceOf(ValidationError);
     expect(await fixture.db.select().from(messagingConversations)).toHaveLength(1);
     expect(await fixture.db.select().from(messagingParticipants)).toMatchObject([
-      { userId: "alice" },
+      { actorEntityId: fixture.alice, actorType: "human" },
     ]);
   },
 );
@@ -162,6 +164,6 @@ test("empty, invalid and oversized lists skip recipient lookup", async () => {
   expect(lookups()).toEqual([]);
   expect(await fixture.db.select().from(messagingConversations)).toHaveLength(1);
   expect(await fixture.db.select().from(messagingParticipants)).toMatchObject([
-    { userId: "alice" },
+    { actorEntityId: fixture.alice, actorType: "human" },
   ]);
 });

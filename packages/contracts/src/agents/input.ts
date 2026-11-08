@@ -1,3 +1,4 @@
+import type { AgentTriggerSetting } from "../agent-runs/triggers.ts";
 import { harnessKinds } from "../harness/kinds.ts";
 import { z } from "zod";
 
@@ -102,6 +103,13 @@ export type AgentConfiguration = Omit<z.output<typeof saveAgentInput>, "id"> & {
   id: string;
   image: string | null;
 };
+/** Where and when an agent runs. Kept apart from the editable configuration. */
+export interface AgentRunSettings {
+  agentId: string;
+  homeDevice: { id: string; name: string; online: boolean; current: boolean } | null;
+  triggers: AgentTriggerSetting[];
+}
 export interface AgentCatalog {
   agents: AgentConfiguration[];
+  runSettings: AgentRunSettings[];
 }

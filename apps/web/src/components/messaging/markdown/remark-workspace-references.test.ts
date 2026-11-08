@@ -47,7 +47,7 @@ describe("workspace references in message Markdown", () => {
     expect(tree.children).toEqual([{ type: "text", value }]);
   });
 
-  test.each(["channel", "thread"])(
+  test.each(["agent", "channel", "thread"])(
     "renders a structured %s reference, not plain hashtags",
     (kind) => {
       const tree: Parameters<ReturnType<typeof remarkWorkspaceReferences>>[0] = {

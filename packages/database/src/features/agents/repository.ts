@@ -1,4 +1,9 @@
 import {
+  agentTriggerKinds,
+  saveAgentTriggersInput,
+  type SaveAgentTriggersInput,
+} from "@startup-os/contracts/agent-runs";
+import {
   saveAgentInput,
   type AgentCatalog,
   type AgentConfiguration,
@@ -8,9 +13,12 @@ import { managedPicturePath } from "@startup-os/contracts/files/pictures";
 
 import type { Database } from "../../client";
 import { userAgents } from "../../core/actors/user-agents.schema";
+import { deviceOnline, findDevice } from "../../core/devices/repository";
+import { desktopDevices } from "../../core/devices/schema";
 import { storedFiles } from "../../core/storage/schema";
-import { AccessDeniedError } from "../../errors";
-import { and, eq, isNull } from "drizzle-orm";
+import { AccessDeniedError, ValidationError } from "../../errors";
+import { userAgentTriggers } from "./triggers.schema";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 
 function configuration(row: typeof userAgents.$inferSelect): AgentConfiguration {
   const result: AgentConfiguration = {
@@ -26,18 +34,53 @@ function configuration(row: typeof userAgents.$inferSelect): AgentConfiguration 
   return result;
 }
 
-export function createAgentRepository(db: Database, userId: string) {
+/** `installationId` names the calling desktop, when the request came from one. */
+export function createAgentRepository(db: Database, userId: string, installationId?: string) {
+  async function currentDevice() {
+    return installationId ? findDevice(db, userId, installationId) : null;
+  }
   return {
     async list(): Promise<AgentCatalog> {
       const rows = await db
-        .select()
+        .select({
+          agent: userAgents,
+          device: { id: desktopDevices.id, name: desktopDevices.name, online: deviceOnline },
+        })
         .from(userAgents)
+        .leftJoin(
+          desktopDevices,
+          and(
+            eq(desktopDevices.id, userAgents.homeDeviceId),
+            eq(desktopDevices.userId, userAgents.userId),
+          ),
+        )
         .where(and(eq(userAgents.userId, userId), isNull(userAgents.deletedAt)));
-      return { agents: rows.map(configuration) };
+      const ids = rows.map((row) => row.agent.id);
+      const overrides = ids.length
+        ? await db
+            .select()
+            .from(userAgentTriggers)
+            .where(inArray(userAgentTriggers.userAgentId, ids))
+        : [];
+      const current = await currentDevice();
+      return {
+        agents: rows.map((row) => configuration(row.agent)),
+        runSettings: rows.map(({ agent, device }) => ({
+          agentId: agent.id,
+          homeDevice: device?.id ? { ...device, current: device.id === current?.id } : null,
+          triggers: agentTriggerKinds.map((kind) => {
+            const row = overrides.find(
+              (override) => override.userAgentId === agent.id && override.kind === kind,
+            );
+            return { kind, enabled: row?.enabled ?? true, prompt: row?.prompt ?? null };
+          }),
+        })),
+      };
     },
     async saveAgent(raw: SaveAgentInput): Promise<AgentConfiguration> {
       const { id, model, ...fields } = saveAgentInput.parse(raw);
       const values = { ...fields, model: model ?? null };
+      // A new local agent lives on the desktop that created it.
       const [row] = id
         ? await db
             .update(userAgents)
@@ -52,10 +95,50 @@ export function createAgentRepository(db: Database, userId: string) {
             .returning()
         : await db
             .insert(userAgents)
-            .values({ ...values, userId })
+            .values({ ...values, userId, homeDeviceId: (await currentDevice())?.id ?? null })
             .returning();
       if (!row) throw new AccessDeniedError();
       return configuration(row);
+    },
+    /** Moves the agent to the calling desktop. Its folder on the old device is not copied. */
+    async setHomeDevice(id: string): Promise<null> {
+      const device = await currentDevice();
+      if (!device) throw new ValidationError("Open Startup OS on the desktop that should run it.");
+      const [row] = await db
+        .update(userAgents)
+        .set({ homeDeviceId: device.id })
+        .where(
+          and(eq(userAgents.id, id), eq(userAgents.userId, userId), isNull(userAgents.deletedAt)),
+        )
+        .returning({ id: userAgents.id });
+      if (!row) throw new AccessDeniedError();
+      return null;
+    },
+    async saveTriggers(raw: SaveAgentTriggersInput): Promise<null> {
+      const input = saveAgentTriggersInput.parse(raw);
+      return db.transaction(async (tx) => {
+        const [agent] = await tx
+          .select({ id: userAgents.id })
+          .from(userAgents)
+          .where(
+            and(
+              eq(userAgents.id, input.agentId),
+              eq(userAgents.userId, userId),
+              isNull(userAgents.deletedAt),
+            ),
+          )
+          .for("update");
+        if (!agent) throw new AccessDeniedError();
+        for (const trigger of input.triggers)
+          await tx
+            .insert(userAgentTriggers)
+            .values({ userAgentId: agent.id, ...trigger })
+            .onConflictDoUpdate({
+              target: [userAgentTriggers.userAgentId, userAgentTriggers.kind],
+              set: { enabled: trigger.enabled, prompt: trigger.prompt, updatedAt: new Date() },
+            });
+        return null;
+      });
     },
     async setPicture(id: string, fileId: string | null): Promise<AgentConfiguration> {
       return db.transaction(async (tx) => {

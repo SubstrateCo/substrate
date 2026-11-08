@@ -1,16 +1,23 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { useState } from "react";
 
 import { ConversationPane } from "../conversations/conversation-pane";
 import { CreateConversationForm } from "../conversations/create-conversation-form";
+import { createConversation } from "@/api/messaging/requests";
+import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { isAccessFailure } from "@/components/feedback/request-failure";
+import type { DirectMessageAgent } from "@/components/messaging/conversations/conversation-sidebar/conversation-create-menu";
 import { ConversationUnavailable } from "@/components/messaging/conversations/conversation-unavailable";
 import { MessagingWorkspace as MessagingWorkspaceView } from "@/components/messaging/workspace/messaging-workspace-view";
+import { agentDirectMessage } from "@/lib/messaging/conversations";
+import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
 import { sessionQueryOptions } from "@/queries/auth/session";
+import { queryKeys } from "@/queries/keys";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
 import { organizationQueryOptions } from "@/queries/organizations/options";
+import { toast } from "sonner";
 
 export function MessagingWorkspace({ organizationId }: { organizationId: string }) {
   const conversations = useQuery(conversationsQueryOptions(organizationId));
@@ -25,9 +32,37 @@ export function MessagingWorkspace({ organizationId }: { organizationId: string 
       image: member.user.image,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
+  const userId = session.data?.user.id;
+  const catalog = useQuery({ ...agentCatalogQueryOptions(userId ?? ""), enabled: !!userId });
+  const agents = (catalog.data?.agents ?? [])
+    .filter((agent) => agent.enabled)
+    .map((agent) => ({ id: agent.id, name: agent.name, image: agent.image }));
   const search = useSearch({ strict: false });
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const open = (id: string) => {
+    void navigate({
+      to: "/dashboard",
+      search: { workspaceId: organizationId, conversationId: id },
+    });
+    setSidebarOpen(false);
+  };
+  const messageAgent = useMutation({
+    mutationFn: async (agent: DirectMessageAgent) =>
+      agentDirectMessage(conversations.data ?? [], agent.id)?.id ??
+      (
+        await createConversation({
+          data: { organizationId, kind: "dm", private: true, agentIds: [agent.id] },
+        })
+      ).id,
+    onSuccess: async (id) => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.conversations(organizationId) });
+      open(id);
+    },
+    onError: (error) =>
+      toast.error(actionErrorMessage(error, "We couldn’t open this conversation. Try again.")),
+  });
   const visibleConversations = isAccessFailure(conversations.error) ? [] : conversations.data || [];
   // The sidebar lists joined conversations. Other public channels stay reachable by link and search.
   const sidebarConversations = visibleConversations.filter((conversation) => conversation.joined);
@@ -52,6 +87,10 @@ export function MessagingWorkspace({ organizationId }: { organizationId: string 
       error={conversations.error}
       onRetry={() => void conversations.refetch()}
       people={people}
+      agents={agents}
+      onMessageAgent={(agent) => {
+        if (!messageAgent.isPending) messageAgent.mutate(agent);
+      }}
       renderCreate={(kind, { onCancel, onComplete, recipient }) => (
         <CreateConversationForm
           key={`${kind}:${recipient ?? ""}`}

@@ -165,6 +165,26 @@ test("messaging targets all thread variants of one conversation, not another", (
   ]);
 });
 
+test("agent run hints refresh only the owner's runs in that workspace", () => {
+  const [target] = realtimeQueryTargets(change("agent-runs"), "user");
+  expect(target).toEqual({ queryKey: queryKeys.agentRuns("user", "org") });
+  const client = new QueryClient();
+  const keys = [
+    queryKeys.conversationAgentRuns("user", "org", "conversation"),
+    queryKeys.agentRun("user", "org", "run"),
+    queryKeys.conversationAgentRuns("user", "other", "conversation"),
+    queryKeys.conversationAgentRuns("other", "org", "conversation"),
+  ];
+  for (const key of keys) client.setQueryData(key, []);
+  expect(
+    client
+      .getQueryCache()
+      .findAll({ queryKey: target!.queryKey })
+      .map((query) => query.queryKey),
+  ).toEqual(keys.slice(0, 2));
+  client.clear();
+});
+
 test("conversation hints refresh root and reply targets without crossing conversation or workspace boundaries", async () => {
   const client = new QueryClient();
   const scopes = [

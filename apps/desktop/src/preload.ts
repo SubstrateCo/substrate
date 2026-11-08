@@ -1,6 +1,8 @@
 import {
+  desktopSettingsChannel,
   fullscreenChannel,
   windowChannel,
+  type DesktopSettingsAPI,
   type DesktopWindowAPI,
 } from "@startup-os/contracts/desktop/window";
 import type { HarnessEvent } from "@startup-os/contracts/harness";
@@ -44,6 +46,12 @@ if (process.isMainFrame && window.location.origin === origin) {
     },
   };
   contextBridge.exposeInMainWorld("startupOSWindow", windowAPI);
+  const settings: DesktopSettingsAPI = {
+    get: () => ipcRenderer.invoke(desktopSettingsChannel, "get"),
+    setLaunchAtLogin: (enabled) =>
+      ipcRenderer.invoke(desktopSettingsChannel, "setLaunchAtLogin", enabled),
+  };
+  contextBridge.exposeInMainWorld("startupOSDesktopSettings", settings);
   const api: HarnessAPI = {
     status: () => ipcRenderer.invoke(harnessChannel, "status"),
     listModels: (input) => ipcRenderer.invoke(harnessChannel, "listModels", input),

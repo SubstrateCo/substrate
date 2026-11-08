@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { ConversationMember } from "@/lib/messaging/conversations";
 import { Hash, LockKeyhole, UserPlus, Users } from "lucide-react";
 
 export interface ManagedConversationRow {
@@ -19,7 +20,7 @@ export interface ManagedConversationRow {
   name: string | null;
   private: boolean;
   ownerName: string;
-  members: { userId: string; name: string }[];
+  members: ConversationMember[];
 }
 
 function KindIcon({ row }: { row: ManagedConversationRow }) {
@@ -87,7 +88,11 @@ export function ManagedConversations({
               <TableCell>{row.ownerName}</TableCell>
               <TableCell>
                 <span className="block max-w-48 truncate">
-                  {row.members.map((person) => person.name).join(", ")}
+                  {row.members
+                    .map((person) =>
+                      person.type === "agent" ? `${person.name} (agent)` : person.name,
+                    )
+                    .join(", ")}
                 </span>
               </TableCell>
               <TableCell>

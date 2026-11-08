@@ -93,11 +93,11 @@ test("references save atomically, resolve with live access, and expose safe rela
   // Preserve authorship history while revoking visibility in this workspace.
   await f.db
     .update(messagingParticipants)
-    .set({ organizationId: f.orgB })
+    .set({ leftAt: new Date() })
     .where(
       and(
         eq(messagingParticipants.conversationId, target.id),
-        eq(messagingParticipants.userId, "alice"),
+        eq(messagingParticipants.actorEntityId, f.alice),
       ),
     );
   expect((await context.messagePage([sent.id]))[0]?.messaging).toEqual([]);

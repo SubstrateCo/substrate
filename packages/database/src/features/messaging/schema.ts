@@ -42,25 +42,31 @@ export const messagingConversations = pgTable(
   ],
 );
 
+// People and agents are members through their actor. The actor's organization is the member's
+// organization, so partner members keep their own workspace identity. An agent's membership makes
+// it addressable in the conversation; it reads with its owner's access, never through this row.
 export const messagingParticipants = pgTable(
   "messaging_participants",
   {
     conversationId: uuid("conversation_id")
       .notNull()
       .references(() => messagingConversations.id, { onDelete: "cascade" }),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id),
     organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id),
+    actorEntityId: uuid("actor_entity_id").notNull(),
+    actorType: actorType("actor_type").notNull(),
     // Set when the member leaves. The row stays because messages and reactions reference it.
     leftAt: timestamp("left_at", { withTimezone: true }),
   },
   (table) => [
-    primaryKey({ columns: [table.conversationId, table.userId] }),
+    primaryKey({ columns: [table.conversationId, table.actorEntityId] }),
+    foreignKey({
+      columns: [table.organizationId, table.actorEntityId, table.actorType],
+      foreignColumns: [actors.organizationId, actors.entityId, actors.type],
+    }),
     // Keep authorship history after departure. The facade checks live membership on every call.
-    index("messaging_participants_user_idx").on(table.userId),
+    index("messaging_participants_actor_idx").on(table.actorEntityId),
   ],
 );
 
@@ -72,11 +78,9 @@ export const messagingMessages = pgTable(
       .notNull()
       .references(() => messagingConversations.id, { onDelete: "cascade" }),
     authorId: text("author_id"),
-    authorActorEntityId: uuid("author_actor_entity_id"),
-    authorOrganizationId: text("author_organization_id"),
-    agentAuthorEntityId: uuid("agent_author_entity_id").generatedAlwaysAs(
-      sql`case when author_id is null then author_actor_entity_id else null end`,
-    ),
+    // A person also keeps author_id. Membership is checked through the author's actor.
+    authorActorEntityId: uuid("author_actor_entity_id").notNull(),
+    authorOrganizationId: text("author_organization_id").notNull(),
     body: text("body").notNull(),
     requestId: uuid("request_id"),
     threadId: uuid("thread_id"),
@@ -92,21 +96,14 @@ export const messagingMessages = pgTable(
       columns: [table.authorOrganizationId, table.authorActorEntityId],
       foreignColumns: [actors.organizationId, actors.entityId],
     }),
-    foreignKey({
-      columns: [table.conversationId, table.agentAuthorEntityId],
-      foreignColumns: [
-        messagingAgentParticipants.conversationId,
-        messagingAgentParticipants.actorEntityId,
-      ],
-    }),
     check(
       "messaging_author_check",
       sql`(${table.authorId} IS NOT NULL OR ${table.authorActorEntityId} IS NOT NULL) AND ((${table.authorActorEntityId} IS NULL) = (${table.authorOrganizationId} IS NULL))`,
     ),
     unique("messaging_message_root_unique").on(table.conversationId, table.id, table.isRoot),
     foreignKey({
-      columns: [table.conversationId, table.authorId],
-      foreignColumns: [messagingParticipants.conversationId, messagingParticipants.userId],
+      columns: [table.conversationId, table.authorActorEntityId],
+      foreignColumns: [messagingParticipants.conversationId, messagingParticipants.actorEntityId],
     }),
     foreignKey({
       name: "messaging_thread_root_fk",
@@ -119,47 +116,23 @@ export const messagingMessages = pgTable(
   ],
 );
 
-// Agents that wrote in a conversation. This does not grant access: agents use their owner's access.
-export const messagingAgentParticipants = pgTable(
-  "messaging_agent_participants",
-  {
-    conversationId: uuid("conversation_id").notNull(),
-    organizationId: text("organization_id").notNull(),
-    actorEntityId: uuid("actor_entity_id").notNull(),
-    actorType: actorType("actor_type")
-      .generatedAlwaysAs(sql`'agent'::actor_type`)
-      .notNull(),
-  },
-  (table) => [
-    primaryKey({ columns: [table.conversationId, table.actorEntityId] }),
-    foreignKey({
-      columns: [table.organizationId, table.conversationId],
-      foreignColumns: [messagingConversations.organizationId, messagingConversations.id],
-    }).onDelete("cascade"),
-    foreignKey({
-      columns: [table.organizationId, table.actorEntityId, table.actorType],
-      foreignColumns: [actors.organizationId, actors.entityId, actors.type],
-    }),
-  ],
-);
-
 export const messagingReactions = pgTable(
   "messaging_reactions",
   {
     conversationId: uuid("conversation_id").notNull(),
     messageId: uuid("message_id").notNull(),
-    userId: text("user_id").notNull(),
+    actorEntityId: uuid("actor_entity_id").notNull(),
     emoji: text("emoji").notNull(),
   },
   (table) => [
-    primaryKey({ columns: [table.messageId, table.userId, table.emoji] }),
+    primaryKey({ columns: [table.messageId, table.actorEntityId, table.emoji] }),
     foreignKey({
       columns: [table.conversationId, table.messageId],
       foreignColumns: [messagingMessages.conversationId, messagingMessages.id],
     }).onDelete("cascade"),
     foreignKey({
-      columns: [table.conversationId, table.userId],
-      foreignColumns: [messagingParticipants.conversationId, messagingParticipants.userId],
+      columns: [table.conversationId, table.actorEntityId],
+      foreignColumns: [messagingParticipants.conversationId, messagingParticipants.actorEntityId],
     }),
     check("messaging_emoji_check", sql`length(trim(${table.emoji})) BETWEEN 1 AND 64`),
   ],

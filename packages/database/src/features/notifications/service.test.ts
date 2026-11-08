@@ -119,7 +119,7 @@ test("feed batches repeated and distinct current work and message targets withou
   ]);
   const next = await service.list(mixed.result[1]!.id);
   expect(next.map((row) => row.id)).toEqual(mixed.result.slice(2).map((row) => row.id));
-  await f.db.delete(messagingParticipants).where(eq(messagingParticipants.userId, "bob"));
+  await f.db.delete(messagingParticipants).where(eq(messagingParticipants.actorEntityId, f.bob));
   expect((await service.list()).map((row) => row.title)).toEqual([
     "First",
     "Second",
@@ -158,12 +158,23 @@ test("partner feeds use the selected workspace and current conversation access, 
   expect(await partner.list()).toMatchObject([{ messageId: reply.id, conversationId: channel.id }]);
   expect(queries.filter((query) => query.includes('from "messaging_messages"'))).toHaveLength(1);
   await f.db.insert(member).values({ id: "outside-a", userId: "outsider", organizationId: f.orgA });
-  await ensureHumanActor(f.db, { userId: "outsider", organizationId: f.orgA, name: "Outside A" });
+  const outsiderA = await ensureHumanActor(f.db, {
+    userId: "outsider",
+    organizationId: f.orgA,
+    name: "Outside A",
+  });
   expect(await feed("outsider").list()).toEqual([]);
+  // The partner's membership moves from its workspace B actor to its workspace A actor.
   await f.db
     .update(messagingParticipants)
-    .set({ organizationId: f.orgA })
-    .where(eq(messagingParticipants.userId, "outsider"));
+    .set({ leftAt: new Date() })
+    .where(eq(messagingParticipants.actorEntityId, f.outsider));
+  await f.db.insert(messagingParticipants).values({
+    conversationId: channel.id,
+    organizationId: f.orgA,
+    actorEntityId: outsiderA.entityId,
+    actorType: "human",
+  });
   expect(await partner.list()).toEqual([]);
   expect(
     await f.db.select().from(notifications).where(eq(notifications.messageId, reply.id)),
@@ -221,7 +232,7 @@ test("activity batches repeated and distinct source visibility and rechecks it a
   const service = createFeedService(db, { userId: "bob", organizationId: f.orgA });
   expect(await service.activity(task.entityId)).toHaveLength(91);
   expect(queries.filter((query) => query.includes('from "messaging_messages"'))).toHaveLength(1);
-  await f.db.delete(messagingParticipants).where(eq(messagingParticipants.userId, "bob"));
+  await f.db.delete(messagingParticipants).where(eq(messagingParticipants.actorEntityId, f.bob));
   expect((await service.activity(task.entityId)).map((row) => row.action)).toEqual([
     "Task created",
   ]);

@@ -85,12 +85,12 @@ test("picture endpoint returns configurations, accepts clearing, and maps owners
 });
 
 test("list uses POST without a body and mutations map ownership errors", async () => {
-  const listAgents = mock(async () => success({ agents: [] }));
+  const listAgents = mock(async () => success({ agents: [], runSettings: [] }));
   const deleteAgent = mock(async () => failure("NOT_FOUND", "Item not found or access denied."));
   const app = createAgentsRoutes({ ...services, listAgents, deleteAgent });
   const response = await app.request("/list", { method: "POST" });
   expect(response.status).toBe(200);
-  expect(await response.json()).toEqual(success({ agents: [] }));
+  expect(await response.json()).toEqual(success({ agents: [], runSettings: [] }));
   const id = crypto.randomUUID();
   const deleted = await app.request("/actors/delete", {
     method: "POST",

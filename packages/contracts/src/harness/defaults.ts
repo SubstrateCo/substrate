@@ -30,6 +30,7 @@ Use the Startup OS MCP server for workspace records:
 3. Open any message with read_thread.
 4. When work comes from a message, set sourceMessageId on create_task.
 5. Generate a new requestId for each new write. Reuse it only to retry the same call.
+6. When a message starts your run, reply with send_message in the conversation and thread the prompt names. Your owner does not see anything you do not send.
 
 The MCP credential sets your identity and organization, so do not put them in tool inputs. If the workspace changes, start a new run. Never move work to another organization.
 

@@ -1,8 +1,10 @@
+import type { saveAgentTriggersInput } from "@startup-os/contracts/agent-runs";
 import type {
   saveAgentInput,
   deleteAgentInput,
   setAgentPictureInput,
 } from "@startup-os/contracts/agents";
+import { desktopInstallationHeader } from "@startup-os/contracts/desktop/links";
 import { createAgentRepository } from "@startup-os/database/agents";
 import { agentRefreshHints } from "@startup-os/database/realtime";
 
@@ -11,16 +13,18 @@ import { auth } from "../../auth/server";
 import { ServiceError, serviceResult } from "../../shared/service-result";
 import { requireOrigin } from "../../shared/workspace";
 import { publishRefresh } from "../realtime/publisher";
-import type { z } from "zod";
+import { z } from "zod";
 
 interface Dependencies {
   getSession: (input: {
     headers: Headers;
   }) => Promise<{ user: { id: string; emailVerified: boolean } } | null>;
-  forUser: (userId: string) => ReturnType<typeof createAgentRepository>;
+  forUser: (userId: string, installationId?: string) => ReturnType<typeof createAgentRepository>;
   requireOrigin: (headers: Headers) => void;
   changed: (userId: string) => Promise<void>;
 }
+
+const installation = z.uuid();
 
 export function createAgentService(dependencies: Dependencies) {
   async function repositories(headers: Headers, mutation = false) {
@@ -29,7 +33,12 @@ export function createAgentService(dependencies: Dependencies) {
     if (!session) throw new ServiceError("UNAUTHENTICATED", "Sign in to continue.");
     if (!session.user.emailVerified)
       throw new ServiceError("FORBIDDEN", "Verify your email to continue.");
-    return { repository: dependencies.forUser(session.user.id), userId: session.user.id };
+    // The desktop main process adds its installation ID. It names a device of this user only.
+    const installationId = installation.safeParse(headers.get(desktopInstallationHeader)).data;
+    return {
+      repository: dependencies.forUser(session.user.id, installationId),
+      userId: session.user.id,
+    };
   }
 
   return {
@@ -61,12 +70,39 @@ export function createAgentService(dependencies: Dependencies) {
         return result;
       });
     },
+    saveAgentTriggers(
+      this: void,
+      headers: Headers,
+      input: z.output<typeof saveAgentTriggersInput>,
+    ) {
+      return serviceResult(async () => {
+        const { repository, userId } = await repositories(headers, true);
+        const result = await repository.saveTriggers(input);
+        await dependencies.changed(userId);
+        return result;
+      });
+    },
+    setAgentHomeDevice(this: void, headers: Headers, input: z.output<typeof deleteAgentInput>) {
+      return serviceResult(async () => {
+        const { repository, userId } = await repositories(headers, true);
+        const result = await repository.setHomeDevice(input.id);
+        await dependencies.changed(userId);
+        return result;
+      });
+    },
   };
 }
 
-export const { listAgents, saveAgent, deleteAgent, setAgentPicture } = createAgentService({
+export const {
+  listAgents,
+  saveAgent,
+  deleteAgent,
+  setAgentPicture,
+  saveAgentTriggers,
+  setAgentHomeDevice,
+} = createAgentService({
   getSession: (input) => auth.api.getSession(input),
-  forUser: (userId) => createAgentRepository(db, userId),
+  forUser: (userId, installationId) => createAgentRepository(db, userId, installationId),
   requireOrigin,
   changed: (userId) => publishRefresh(agentRefreshHints(db, userId)),
 });

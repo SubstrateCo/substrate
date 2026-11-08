@@ -10,7 +10,7 @@ import type { WorkspaceReference } from "./entity-reference";
 import { ReferencePickerOption } from "./reference-picker-option";
 import { X } from "lucide-react";
 
-export type ReferenceKind = "task" | "project" | "person" | "channel" | "thread";
+export type ReferenceKind = "task" | "project" | "person" | "agent" | "channel" | "thread";
 
 export function ReferencePicker({
   query,

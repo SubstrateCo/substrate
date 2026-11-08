@@ -142,6 +142,19 @@ describe("desktop harness authority", () => {
     expect(f.disposed()).toBe(1);
     expect(f.calls.length).toBe(1);
   });
+  test("a failed native command keeps the worker and its other sessions", async () => {
+    const f = fixture(undefined, [], { failExecute: true });
+    await f.controller.run("synchronize");
+    expect(
+      f.controller.run("execute", {
+        type: "resume",
+        organizationId: "org-1",
+        sessionId: "missing",
+      }),
+    ).rejects.toThrow("Harness command failed");
+    expect(f.disposed()).toBe(0);
+    expect(f.calls.map((call) => call.method)).toEqual(["configure", "execute"]);
+  });
   test("membership revocation closes the host before any local file operation", async () => {
     const f = fixture();
     await f.controller.run("synchronize");

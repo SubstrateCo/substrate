@@ -28,8 +28,10 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: MessagingI
       // Unnamed DMs and groups are named after the other people in them.
       const others = sql<
         string | null
-      >`(select string_agg(u.name, ', ' order by u.name) from ${messagingParticipants} p join ${user} u on u.id = p.user_id
-        where p.conversation_id = ${messagingConversations.id} and p.left_at is null and p.user_id <> ${identity.userId})`;
+      >`(select string_agg(coalesce(u.name, a.name), ', ' order by coalesce(u.name, a.name)) from ${messagingParticipants} p
+        join ${actors} a on a.entity_id = p.actor_entity_id left join ${user} u on u.id = a.user_id
+        where p.conversation_id = ${messagingConversations.id} and p.left_at is null
+          and a.user_id is distinct from ${identity.userId} and a.entity_id <> ${scope.actorEntityId}::uuid)`;
       const rows = await db
         .select({
           id: messagingConversations.id,

@@ -1,7 +1,7 @@
 import { Button } from "../../ui/button";
 import type { ReferenceKind } from "./reference-picker";
 import { plainReferenceText } from "./reference-token";
-import { CircleCheck, FolderKanban, UserRound, Hash, MessagesSquare } from "lucide-react";
+import { Bot, CircleCheck, FolderKanban, UserRound, Hash, MessagesSquare } from "lucide-react";
 
 export function ReferencePickerOption({
   id,
@@ -22,6 +22,7 @@ export function ReferencePickerOption({
     task: CircleCheck,
     project: FolderKanban,
     person: UserRound,
+    agent: Bot,
     channel: Hash,
     thread: MessagesSquare,
   }[kind];
