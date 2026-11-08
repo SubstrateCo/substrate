@@ -1,6 +1,7 @@
 import { Mailpit } from "../../server/integration/test-support/mailpit";
 import { provisionWorkspaceSession } from "../../server/integration/test-support/organizations";
 import { conversation, expect, post, test, visit } from "./test-support/fixtures";
+import { pauseClock, searches } from "./test-support/search";
 
 test("switching workspaces clears private messages and reconnects in the selected organization", async ({
   account,
@@ -34,7 +35,13 @@ test("switching workspaces clears private messages and reconnects in the selecte
   const reconnect = user.page.waitForEvent("websocket", {
     predicate: (socket) => new URL(socket.url()).searchParams.get("organizationId") === second.id,
   });
+  await pauseClock(user.page);
+  const requests = searches(user.page);
+  await user.page
+    .getByRole("combobox", { name: "Search workspace", exact: true })
+    .fill("discard on workspace switch");
   await user.page.getByRole("button", { name: `${account.name} ▾`, exact: true }).click();
+  await user.page.clock.resume();
   await Promise.all([reconnect, user.page.getByRole("menuitem", { name, exact: true }).click()]);
   await expect(user.page.getByText(secondBody, { exact: true })).toBeVisible();
   await expect(user.page.getByText(privateBody, { exact: true })).toHaveCount(0);
@@ -44,6 +51,7 @@ test("switching workspaces clears private messages and reconnects in the selecte
     .toBeGreaterThan(readyBefore);
   const response = await user.page.request.get("/api/v1/session");
   expect((await response.json()).data.session.activeOrganizationId).toBe(second.id);
+  expect(requests.some((request) => request.query === "discard on workspace switch")).toBe(false);
   await user.page.reload();
   await expect(user.page.getByText(secondBody, { exact: true })).toBeVisible();
 });

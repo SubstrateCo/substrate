@@ -8,6 +8,7 @@ import {
   type ReferenceKind,
 } from "@/components/messaging/references/reference-picker";
 import type { ReferenceQuery } from "@/components/messaging/references/reference-query";
+import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { searchOptions } from "@/queries/context/search";
 
 export function ReferencePicker({
@@ -35,19 +36,30 @@ export function ReferencePicker({
   const prefixKind = parsed.kind === "all" ? "task" : parsed.kind;
   const kind = selection.prefix === parsed.kind ? selection.kind : prefixKind;
   if (selection.prefix !== parsed.kind) setSelection({ prefix: parsed.kind, kind });
-  const results = useQuery(searchOptions({ organizationId, conversationId, query, kind }));
+  const debounced = useSearchDebounce(
+    query,
+    JSON.stringify([organizationId, conversationId, kind]),
+  );
+  const results = useQuery({
+    ...searchOptions({ organizationId, conversationId, query: debounced.query, kind }),
+    enabled: !debounced.pending,
+  });
   return (
     <ReferencePickerView
       query={query}
       kind={kind}
       kinds={parsed.trigger === "#" ? ["channel", "thread"] : ["task", "project", "person"]}
-      results={results.data ?? []}
-      loading={results.isPending}
-      error={results.error}
+      results={debounced.pending ? [] : (results.data ?? [])}
+      loading={debounced.pending || results.isPending}
+      error={debounced.pending ? null : results.error}
       onQueryChange={(query) => setSearch({ source, query })}
       onKindChange={(kind) => setSelection({ prefix: parsed.kind, kind })}
-      onRetry={() => void results.refetch()}
-      onInsert={onInsert}
+      onRetry={() => {
+        if (!debounced.pending) void results.refetch();
+      }}
+      onInsert={(token, reference) => {
+        if (!debounced.pending) onInsert(token, reference);
+      }}
       onClose={onClose}
     />
   );

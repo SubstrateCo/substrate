@@ -6,6 +6,7 @@ import {
   WorkspaceSearch as WorkspaceSearchView,
   type SearchKind,
 } from "@/components/context/search/workspace-search-view";
+import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { messageHref, workHref } from "@/lib/navigation/record-links";
 import { searchPagesOptions } from "@/queries/context/search";
 
@@ -22,16 +23,21 @@ export function WorkspaceSearch({
 }) {
   const [kind, setKind] = useState<SearchKind>("all");
   const [relatedToEntityId, setRelatedToEntityId] = useState<string>();
-  const results = useInfiniteQuery(
-    searchPagesOptions({ organizationId, query, kind, relatedToEntityId }),
+  const search = useSearchDebounce(
+    query,
+    JSON.stringify([organizationId, kind, relatedToEntityId]),
   );
+  const results = useInfiniteQuery({
+    ...searchPagesOptions({ organizationId, query: search.query, kind, relatedToEntityId }),
+    enabled: !search.pending,
+  });
   return (
     <WorkspaceSearchView
       query={query}
       onFocusInput={onFocusInput}
       kind={kind}
       related={!!relatedToEntityId}
-      results={(results.data?.pages.flat() ?? []).map((item) => ({
+      results={(search.pending ? [] : (results.data?.pages.flat() ?? [])).map((item) => ({
         ...item,
         href: item.conversationId
           ? messageHref(
@@ -45,9 +51,9 @@ export function WorkspaceSearch({
               item.kind === "task" ? item.id : undefined,
             ),
       }))}
-      loading={results.isPending}
-      error={results.error}
-      hasMore={results.hasNextPage}
+      loading={search.pending || results.isPending}
+      error={search.pending ? null : results.error}
+      hasMore={!search.pending && results.hasNextPage}
       loadingMore={results.isFetchingNextPage}
       onKindChange={(value) => {
         setKind(value);
@@ -61,11 +67,12 @@ export function WorkspaceSearch({
         setRelatedToEntityId(undefined);
       }}
       onMore={() => {
-        if (!results.isFetching) void results.fetchNextPage();
+        if (!search.pending && !results.isFetching) void results.fetchNextPage();
       }}
-      onRetry={() =>
-        void (results.isFetchNextPageError ? results.fetchNextPage() : results.refetch())
-      }
+      onRetry={() => {
+        if (!search.pending)
+          void (results.isFetchNextPageError ? results.fetchNextPage() : results.refetch());
+      }}
     />
   );
 }

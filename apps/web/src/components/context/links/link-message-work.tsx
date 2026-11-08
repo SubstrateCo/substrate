@@ -5,6 +5,7 @@ import { useState } from "react";
 import { attachWork } from "@/api/context/links";
 import { LinkMessageWork as LinkMessageWorkView } from "@/components/context/links/link-message-work-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
+import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { invalidateMessageWork } from "@/queries/context/mutations";
 import { searchOptions } from "@/queries/context/search";
 import { toast } from "sonner";
@@ -20,7 +21,11 @@ export function LinkMessageWork({
 }) {
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<"task" | "project">("task");
-  const results = useQuery(searchOptions({ organizationId, query, kind, editable: true }));
+  const search = useSearchDebounce(query, JSON.stringify([organizationId, kind]));
+  const results = useQuery({
+    ...searchOptions({ organizationId, query: search.query, kind, editable: true }),
+    enabled: !search.pending,
+  });
   const client = useQueryClient();
   const attach = useMutation({
     mutationFn: ({ entityId }: { entityId: string; projectEntityId: string }) =>
@@ -38,14 +43,17 @@ export function LinkMessageWork({
     <LinkMessageWorkView
       query={query}
       kind={kind}
-      results={results.data ?? []}
-      loading={results.isPending}
-      error={results.error}
+      results={search.pending ? [] : (results.data ?? [])}
+      loading={search.pending || results.isPending}
+      error={search.pending ? null : results.error}
       pendingId={attach.isPending ? attach.variables.entityId : undefined}
       onQueryChange={setQuery}
       onKindChange={setKind}
-      onRetry={() => void results.refetch()}
+      onRetry={() => {
+        if (!search.pending) void results.refetch();
+      }}
       onLink={(entityId) => {
+        if (search.pending) return;
         const work = results.data?.find((item) => item.id === entityId);
         if (work) attach.mutate({ entityId, projectEntityId: work.projectEntityId ?? entityId });
       }}
