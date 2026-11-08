@@ -52,8 +52,8 @@ export async function bundleHarnessWorker(
     throw new AggregateError(result.logs, "Desktop harness worker bundle failed.");
   await writeHarnessWorkerLoader(outdir);
   await cp(
-    fileURLToPath(new URL("../../../packages/harness-runtime/migrations/", import.meta.url)),
-    join(outdir, "harness-migrations"),
+    fileURLToPath(new URL("../../../packages/client-storage/migrations/", import.meta.url)),
+    join(outdir, "client-storage-migrations"),
     { recursive: true },
   );
   const developmentDirectory = fileURLToPath(new URL("../.runtime/", import.meta.url));

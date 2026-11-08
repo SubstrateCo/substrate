@@ -1,4 +1,5 @@
 import { createHarnessHost } from "./host.ts";
+import { createMemoryStorage } from "./test-support.ts";
 import { expect, test } from "bun:test";
 import { mkdir, mkdtemp, readdir, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -7,7 +8,7 @@ import { join } from "node:path";
 test("agents in the same organization have separate working folders and native configuration", async () => {
   await mkdir(join(tmpdir(), "opencode"), { recursive: true });
   const root = await mkdtemp(join(tmpdir(), "opencode", "agent-directory-test-"));
-  const host = await createHarnessHost({ accountDirectory: root });
+  const host = await createHarnessHost({ accountDirectory: root, storage: createMemoryStorage() });
   const agent = {
     id: "agent-a",
     name: "Agent",

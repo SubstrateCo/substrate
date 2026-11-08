@@ -7,7 +7,7 @@ import { drizzle } from "drizzle-orm/sqlite-proxy";
 import { migrate } from "drizzle-orm/sqlite-proxy/migrator";
 import { fileURLToPath } from "node:url";
 
-export class MetadataStore {
+export class HarnessStore {
   private constructor(
     private readonly database: SqliteRemoteDatabase,
     private readonly closeDatabase: () => void,
@@ -16,7 +16,7 @@ export class MetadataStore {
   static async open(
     path: string,
     migrationsDirectory = fileURLToPath(new URL("../migrations/", import.meta.url)),
-  ): Promise<MetadataStore> {
+  ): Promise<HarnessStore> {
     let execute: RemoteCallback;
     let close: () => void;
     if (typeof Bun !== "undefined") {
@@ -63,7 +63,7 @@ export class MetadataStore {
         },
         { migrationsFolder: migrationsDirectory },
       );
-      return new MetadataStore(database, close);
+      return new HarnessStore(database, close);
     } catch (error) {
       close();
       throw error;

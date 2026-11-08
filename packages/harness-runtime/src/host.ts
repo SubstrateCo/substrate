@@ -23,14 +23,14 @@ import {
 } from "./native-config.ts";
 import { agentDirectory, safeId, safePath } from "./paths.ts";
 import { antigravityAcpAvailable, binaryVersion, resolveExecutable } from "./process.ts";
-import { MetadataStore } from "./store.ts";
+import type { HarnessStorage } from "./storage.ts";
 import { randomUUID } from "node:crypto";
 import { mkdir, realpath } from "node:fs/promises";
 import { join } from "node:path";
 
 export interface HarnessHostOptions {
   accountDirectory: string;
-  migrationsDirectory?: string;
+  storage: HarnessStorage;
   /** Trusted main-process configuration only. Never accept executable paths from renderer commands. */
   executables?: Partial<Record<HarnessKind, string>>;
   workspaceProxy?: WorkspaceApiProxy;
@@ -39,10 +39,7 @@ export interface HarnessHostOptions {
 export async function createHarnessHost(options: HarnessHostOptions): Promise<HarnessHost> {
   await mkdir(options.accountDirectory, { recursive: true });
   const accountDirectory = await realpath(options.accountDirectory);
-  const store = await MetadataStore.open(
-    await safePath(accountDirectory, ".startup-os/harness-metadata.sqlite", false, true),
-    options.migrationsDirectory,
-  );
+  const store = options.storage;
   const mcp = await createStartupMcp(options.workspaceProxy);
   const listeners = new Set<(event: HarnessEvent) => void>();
   const sessions = new Map<
@@ -341,7 +338,6 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ha
       sessions.clear();
       listeners.clear();
       await mcp.close();
-      store.close();
       const failure = results.find((entry) => entry.status === "rejected");
       if (failure?.status === "rejected") throw failure.reason;
     },

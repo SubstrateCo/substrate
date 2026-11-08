@@ -10,8 +10,8 @@ import type {
   HarnessLocalConfiguration,
   HarnessModelCatalog,
 } from "@startup-os/contracts/harness";
-import { createHarnessHost } from "@startup-os/harness-runtime";
 
+import { createDesktopHarnessHost } from "./desktop-harness-host.ts";
 import { createWorkspaceProxy, type WorkspaceApiResponse } from "./workspace-proxy.ts";
 import { fileURLToPath } from "node:url";
 
@@ -65,9 +65,11 @@ port.on("message", ({ data }: { data: Request | WorkspaceApiResponse }) => {
     try {
       let result: Result = undefined;
       if (data.method === "initialize") {
-        const initialized: HarnessHost = await createHarnessHost({
+        const initialized: HarnessHost = await createDesktopHarnessHost({
           accountDirectory: data.value,
-          migrationsDirectory: fileURLToPath(new URL("./harness-migrations/", import.meta.url)),
+          migrationsDirectory: fileURLToPath(
+            new URL("./client-storage-migrations/", import.meta.url),
+          ),
           workspaceProxy: workspaceProxy.request,
         });
         host = initialized;

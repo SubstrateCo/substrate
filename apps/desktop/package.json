@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@better-auth/electron": "^1.7.18",
+    "@startup-os/client-storage": "workspace:*",
     "@startup-os/contracts": "workspace:*",
     "@startup-os/harness-runtime": "workspace:*",
     "better-auth": "^1.7.18",
@@ -44,7 +45,7 @@
     "asar": true,
     "asarUnpack": [
       "harness-worker-entry.mjs",
-      "harness-migrations/**",
+      "client-storage-migrations/**",
       "node_modules/**/*"
     ],
     "npmRebuild": false,

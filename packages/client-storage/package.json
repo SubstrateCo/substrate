@@ -1,0 +1,22 @@
+{
+  "name": "@startup-os/client-storage",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test src"
+  },
+  "dependencies": {
+    "@startup-os/contracts": "workspace:*",
+    "drizzle-orm": "^0.45.4"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "drizzle-kit": "^0.31.11",
+    "typescript": "^7.0.2"
+  }
+}

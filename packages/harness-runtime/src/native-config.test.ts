@@ -9,6 +9,7 @@ import {
   scanNativeSkills,
 } from "./native-config.ts";
 import { agentDirectory, organizationDirectory, safePath } from "./paths.ts";
+import { createMemoryStorage } from "./test-support.ts";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -41,7 +42,10 @@ const config = (): HarnessConfiguration => ({
 
 describe("native skill files", () => {
   test("skills-only discovery does not read unrelated MCP configuration", async () => {
-    const host = await createHarnessHost({ accountDirectory: root });
+    const host = await createHarnessHost({
+      accountDirectory: root,
+      storage: createMemoryStorage(),
+    });
     try {
       await host.configure(config());
       const directory = await agentDirectory(root, "org-a", "agent-a");
@@ -234,7 +238,7 @@ describe("native MCP files", () => {
 });
 
 test("host scopes local file operations to a safe organization ID", async () => {
-  const host = await createHarnessHost({ accountDirectory: root });
+  const host = await createHarnessHost({ accountDirectory: root, storage: createMemoryStorage() });
   try {
     await host.configure(config());
     await expect(
@@ -276,8 +280,9 @@ test("rejects a junction that redirects managed writes outside the organization"
   expect(await readdir(other)).toEqual([]);
 });
 
-test("reopens metadata and synchronizes edited actors without replacing local native files", async () => {
-  const first = await createHarnessHost({ accountDirectory: root });
+test("recreates the host and synchronizes edited actors without replacing local native files", async () => {
+  const storage = createMemoryStorage();
+  const first = await createHarnessHost({ accountDirectory: root, storage });
   const configuration: HarnessConfiguration = {
     organizationId: "restart-org",
     agents: [
@@ -330,7 +335,7 @@ test("reopens metadata and synchronizes edited actors without replacing local na
   } finally {
     await first.dispose();
   }
-  const second = await createHarnessHost({ accountDirectory: root });
+  const second = await createHarnessHost({ accountDirectory: root, storage });
   try {
     await second.configure(configuration);
     const local = await second.scanConfiguration(scope);

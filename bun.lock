@@ -19,6 +19,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@better-auth/electron": "^1.7.18",
+        "@startup-os/client-storage": "workspace:*",
         "@startup-os/contracts": "workspace:*",
         "@startup-os/harness-runtime": "workspace:*",
         "better-auth": "^1.7.18",
@@ -107,6 +108,18 @@
         "vite": "^8.3.6",
       },
     },
+    "packages/client-storage": {
+      "name": "@startup-os/client-storage",
+      "dependencies": {
+        "@startup-os/contracts": "workspace:*",
+        "drizzle-orm": "^0.45.4",
+      },
+      "devDependencies": {
+        "@types/node": "24.19.2",
+        "drizzle-kit": "^0.31.11",
+        "typescript": "^7.0.2",
+      },
+    },
     "packages/contracts": {
       "name": "@startup-os/contracts",
       "dependencies": {
@@ -137,7 +150,6 @@
         "@modelcontextprotocol/sdk": "^1.32.2",
         "@opencode/client": "^2.2.5",
         "@startup-os/contracts": "workspace:*",
-        "drizzle-orm": "^0.45.4",
         "jsonc-parser": "^3.3.1",
         "smol-toml": "^1.9.1",
         "yaml": "^2.9.1",
@@ -145,7 +157,6 @@
       },
       "devDependencies": {
         "@types/node": "24.19.2",
-        "drizzle-kit": "^0.31.11",
         "typescript": "^7.0.2",
       },
     },
@@ -834,6 +845,8 @@
     "@stablelib/base64": ["@stablelib/base64@1.0.1", "", {}, "sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ=="],
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
+
+    "@startup-os/client-storage": ["@startup-os/client-storage@workspace:packages/client-storage"],
 
     "@startup-os/contracts": ["@startup-os/contracts@workspace:packages/contracts"],
 
