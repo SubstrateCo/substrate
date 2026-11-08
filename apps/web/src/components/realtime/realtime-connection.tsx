@@ -4,7 +4,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
+import { RealtimeContainerContext } from "@/components/realtime/realtime-container-context";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import "@/lib/desktop/realtime";
 import { createBrowserRealtime } from "@/lib/realtime/browser";
@@ -22,6 +24,7 @@ export function RealtimeConnection({
   const queryClient = useQueryClient();
   const router = useRouter();
   const [status, setStatus] = useState<RealtimeStatus>("connecting");
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
   useEffect(() => {
     const bridge = window.startupOSRealtime ?? createBrowserRealtime();
     let active = true;
@@ -70,14 +73,19 @@ export function RealtimeConnection({
   let statusText = "Live updates disconnected.";
   if (status === "connecting") statusText = "Reconnecting to live updates…";
   if (status === "forbidden") statusText = "Live updates unavailable. Check workspace access.";
+  const notification = (
+    <div
+      className={`${container ? "absolute" : "fixed"} pointer-events-none inset-x-3 bottom-3 z-50 flex justify-center`}
+    >
+      <Alert role="status" className="pointer-events-auto w-max max-w-full">
+        <AlertDescription>{statusText}</AlertDescription>
+      </Alert>
+    </div>
+  );
   return (
-    <>
-      {status !== "connected" && (
-        <Alert role="status" className="fixed bottom-3 left-1/2 z-50 w-auto -translate-x-1/2">
-          <AlertDescription>{statusText}</AlertDescription>
-        </Alert>
-      )}
+    <RealtimeContainerContext value={setContainer}>
+      {status !== "connected" && (container ? createPortal(notification, container) : notification)}
       {children}
-    </>
+    </RealtimeContainerContext>
   );
 }

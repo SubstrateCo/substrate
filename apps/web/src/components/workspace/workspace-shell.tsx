@@ -1,10 +1,11 @@
-import type { ReactNode } from "react";
+import { useContext, type ReactNode } from "react";
 
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
 import { isAccessFailure } from "../feedback/request-failure";
 import { TooltipProvider } from "../ui/tooltip";
 import { UserMenu } from "./user-menu";
+import { RealtimeContainerContext } from "@/components/realtime/realtime-container-context";
 import { WorkspaceAppButton } from "@/components/workspace/workspace-shell/workspace-app-button";
 import { Bell, ListTodo, MessageSquare } from "lucide-react";
 
@@ -39,6 +40,7 @@ export function WorkspaceShell({
   onRetry?: () => void;
   children: ReactNode;
 }) {
+  const realtimeContainerRef = useContext(RealtimeContainerContext);
   return (
     <main data-workspace-shell className="flex h-(--app-height) min-h-0 overflow-hidden bg-rail">
       <TooltipProvider delayDuration={350}>
@@ -78,7 +80,10 @@ export function WorkspaceShell({
             />
           </div>
         </nav>
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-tl-2xl bg-surface">
+        <div
+          ref={realtimeContainerRef}
+          className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-tl-2xl bg-surface"
+        >
           {loading && (
             <div className="border-b p-3">
               <LoadingState label="Loading workspace details…" variant="compact" rows={1} />
