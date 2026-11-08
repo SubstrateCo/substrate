@@ -29,6 +29,7 @@ async function assistant() {
 }
 
 test("agents use their owner's live access, not grants of their own", async () => {
+  await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "alice"));
   const { repositories: agent, actor } = await assistant();
   const contact = await f.forActor(f.bob).contacts.create({ displayName: "Shared" });
   await expect(agent.contacts.get(contact.entityId)).rejects.toBeInstanceOf(AccessDeniedError);

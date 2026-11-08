@@ -8,7 +8,7 @@
 - Load shared session and application data in the highest common layout and reuse its route context. Do not repeat those loads or session checks; keep resource-specific access checks.
 - Use the Hono `hc` RPC client in `src/api/` for same-origin backend calls. Import the server's `AppType` as a type only. Better Auth uses its native client protocol under `/api/auth`.
 - Keep runtime server code, secrets, database access, setup, and actor provisioning out of the renderer. Share browser-safe contracts through `@startup-os/contracts`.
-- The server validates untrusted input and derives identity and actor scope. Organization roles do not bypass entity grants.
+- The server validates untrusted input and derives identity and actor scope. Organization owners and admins are super users for their organization's records and conversation management; other roles do not bypass entity grants.
 - Do not use dynamic imports to bypass dependency injection, server-only boundaries, or import configuration. Fix the underlying issue.
 - Group connected containers in `src/components/<domain>/`. Use one file per container. Loading, error, empty, pending, and unavailable views belong in UI and receive their state from the container.
 - Add or change UI primitives in `src/components/ui`, using the shadcn CLI. Do not hand-write replacements.

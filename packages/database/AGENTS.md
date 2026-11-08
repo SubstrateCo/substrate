@@ -16,6 +16,7 @@
 - Establish access inheritance when creating child entities. Reparenting must check cycles and update structural references; do not expose raw parent-table edits.
 - Repositories take `RepositoryContext`, whitelist writable fields, check actor access, and participate in caller transactions.
 - Derive actor scope from authenticated server context, not request-supplied identity fields.
+- Organization owners and admins get owner access to their organization's shared record types through `visibilityCte`. Read the role on each query; do not store admin grants. People and personal mailbox or calendar records are excluded. In messaging, admins manage conversations but do not read private messages.
 - Raw database access and actor provisioning are trusted server-only APIs. Do not expose them as agent tools.
 - Keep integration tables feature-specific. Store connection and sync state together per mailbox or calendar; do not introduce generic integration or separate sync-state tables without a concrete need.
 - Store credential references, not secrets, in feature integration records. Restrict management reads and writes to resource owners.

@@ -10,7 +10,7 @@
 - Send desktop email links through the public `/desktop/open` handoff. Use the shared desktop destination validator; never accept arbitrary redirects or forward session credentials to another origin.
 - Keep Better Auth configuration, hooks, mail, and session infrastructure in `src/auth/`. The renderer uses Better Auth client APIs, never server imports.
 - Keep persistence in `packages/database`. Share services and repositories across API versions; version adapters and contracts, not the database layer.
-- Derive user identity, active organization, and actor scope from the authenticated session. Require verified email and membership. Organization roles do not bypass entity grants.
+- Derive user identity, active organization, and actor scope from the authenticated session. Require verified email and membership. Organization owners and admins are super users: the database grants them owner access to their organization's records and lets them manage its conversations without reading private messages. Other roles do not bypass entity grants.
 - Validate mutation origins against explicit trusted frontend origins. Never use wildcard credentialed CORS or disable Electron web security.
 - Preserve structured source references, relationship permissions, and organization boundaries in connected workflows.
 - Preserve compatibility with supported installed desktop clients. Prefer additive contracts and coordinate breaking API and database changes.

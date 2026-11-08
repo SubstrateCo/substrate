@@ -4,6 +4,7 @@ import { mcpTools, type McpToolName } from "@startup-os/contracts/harness/tools"
 import { ensureUserAgentActor } from "../../core/actors/provisioning";
 import { AccessDeniedError, ConflictError } from "../../errors";
 import {
+  member,
   user,
   userAgents,
   taskActivity,
@@ -42,6 +43,7 @@ async function fixture() {
 
 test("task tools use the owner's access, attribute writes and preserve source links across retries", async () => {
   const { actor, human, call } = await fixture();
+  await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "alice"));
   const project = await f.forActor(f.bob).projects.create({ name: "Shared" });
   await expect(call("get_project", { projectId: project.entityId })).rejects.toBeInstanceOf(
     AccessDeniedError,

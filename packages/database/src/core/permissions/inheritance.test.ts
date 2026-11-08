@@ -2,6 +2,7 @@ import { AccessDeniedError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
 import { contacts } from "../contacts/schema";
 import { entities } from "../entities/schema";
+import { member } from "../organizations/schema";
 import { entityAccessParents } from "./access-parents";
 import { entityGrants } from "./schema";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
@@ -11,6 +12,7 @@ import { eq } from "drizzle-orm";
 const f = setupDatabase();
 
 test("inherited access applies to reads, lists, edits, and revocations", async () => {
+  await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "alice"));
   const owner = f.forActor(f.alice);
   const parent = await owner.contacts.create({ displayName: "Parent" });
   const [entity] = await f.db

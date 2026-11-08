@@ -171,6 +171,7 @@ describe("actor provisioning", () => {
     });
     expect(actor.entityId).toBe(f.alice);
     expect(await f.db.select().from(entities)).toHaveLength(before.length);
+    await f.db.update(member).set({ role: "member" }).where(eq(member.id, "alice-a"));
     const privateContact = await f.forActor(f.bob).contacts.create({ displayName: "Private" });
     await expect(
       f.forActor(actor.entityId).contacts.get(privateContact.entityId),

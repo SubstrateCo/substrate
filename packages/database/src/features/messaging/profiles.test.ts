@@ -29,7 +29,7 @@ test("person profiles show contact details only to workspace members who share t
     external: false,
     email: "bob@example.com",
     image: null,
-    role: "admin",
+    role: "member",
     directConversationId: dm.id,
     agent: null,
   });

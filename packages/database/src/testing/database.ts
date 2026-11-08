@@ -30,7 +30,7 @@ export function setupDatabase() {
       ]);
       await tx.insert(schema.member).values([
         { id: "alice-a", userId: "alice", organizationId: fixture.orgA, role: "owner" },
-        { id: "bob-a", userId: "bob", organizationId: fixture.orgA, role: "admin" },
+        { id: "bob-a", userId: "bob", organizationId: fixture.orgA, role: "member" },
         { id: "outsider-b", userId: "outsider", organizationId: fixture.orgB, role: "owner" },
       ]);
       const actors = [
