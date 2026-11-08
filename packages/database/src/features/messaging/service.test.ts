@@ -393,6 +393,35 @@ test("participant access is bound to the recipient organization and departure pr
   ]);
 });
 
+test("starting a DM with the same person returns the existing DM", async () => {
+  await verified();
+  // Both people start the DM at the same moment.
+  const [dm, reverse] = await Promise.all([
+    service("alice").createConversation({ kind: "dm", emails: ["bob@example.com"] }),
+    service("bob").createConversation({ kind: "dm", emails: ["alice@example.com"] }),
+  ]);
+  expect(reverse.id).toBe(dm.id);
+  expect(
+    (await service("alice").createConversation({ kind: "dm", emails: ["bob@example.com"] })).id,
+  ).toBe(dm.id);
+  const partner = await service("alice").createConversation({
+    kind: "dm",
+    emails: ["outside@example.com"],
+  });
+  expect(partner.id).not.toBe(dm.id);
+  const group = await service("alice").createConversation({
+    kind: "group",
+    emails: ["bob@example.com", "outside@example.com"],
+  });
+  expect(group.id).not.toBe(dm.id);
+  expect(
+    await fixture.db
+      .select()
+      .from(messagingConversations)
+      .where(eq(messagingConversations.kind, "dm")),
+  ).toHaveLength(2);
+});
+
 test("unnamed DMs and groups have participant display names", async () => {
   await verified();
   const dm = await service("alice").createConversation({ kind: "dm", emails: ["bob@example.com"] });

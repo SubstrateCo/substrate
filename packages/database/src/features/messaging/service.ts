@@ -379,6 +379,35 @@ export function createMessagingService(
     return result;
   }
 
+  // A pair has one DM per organization. The lock serializes concurrent starts by either person,
+  // so the lookup and the insert that follows act as one step.
+  async function existingDirectMessage(tx: DatabaseExecutor, actorIds: [string, string]) {
+    const key = `messaging-dm:${scope.organizationId}:${[...actorIds].sort().join(":")}`;
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${key}, 0))`);
+    const member = (actorEntityId: string) =>
+      inArray(
+        messagingConversations.id,
+        tx
+          .select({ id: messagingParticipants.conversationId })
+          .from(messagingParticipants)
+          .where(eq(messagingParticipants.actorEntityId, actorEntityId)),
+      );
+    const [existing] = await tx
+      .select()
+      .from(messagingConversations)
+      .where(
+        and(
+          eq(messagingConversations.kind, "dm"),
+          eq(messagingConversations.organizationId, scope.organizationId),
+          member(actorIds[0]),
+          member(actorIds[1]),
+        ),
+      )
+      .orderBy(desc(messagingConversations.createdAt))
+      .limit(1);
+    return existing;
+  }
+
   return {
     async listConversations() {
       return db.transaction(async (tx) => {
@@ -439,6 +468,10 @@ export function createMessagingService(
         ];
         if (input.kind === "dm" && selected.length !== 1)
           throw new ValidationError("A DM requires exactly one recipient.");
+        if (input.kind === "dm") {
+          const existing = await existingDirectMessage(tx, [actor.entityId, selected[0]!.entityId]);
+          if (existing) return existing;
+        }
         if (input.kind === "group" && selected.length < 2)
           throw new ValidationError("A group DM requires at least two recipients.");
         const name = input.name?.trim() || null;
