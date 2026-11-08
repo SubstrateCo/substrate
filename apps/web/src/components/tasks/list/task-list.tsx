@@ -69,7 +69,7 @@ export function TaskList({
                   }
                 >
                   <TaskStatusIcon status={status} />
-                  <span className="font-semibold tracking-wide uppercase">
+                  <span className="w-24 shrink-0 text-left font-semibold tracking-wide uppercase">
                     {taskStatusLabels[status]}
                   </span>{" "}
                   <span className="rounded bg-muted px-1.5 py-0.5 font-normal text-muted-foreground tabular-nums">

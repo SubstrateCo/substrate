@@ -104,7 +104,7 @@ export function ProjectPane({
             {detail.project.description}
           </p>
         </header>
-        <div className="shrink-0 border-b pb-2">
+        <div className="shrink-0 pb-2">
           <TabsList variant="line">
             <TabsTrigger value="tasks" className="flex-none">
               Tasks
