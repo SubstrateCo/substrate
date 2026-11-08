@@ -1,10 +1,10 @@
-import { ErrorState } from "../../feedback/error-state";
 import { isAccessFailure } from "../../feedback/request-failure";
 import {
   PageSidebar,
   PageSidebarContent,
   PageSidebarHeader,
 } from "@/components/layout/page-layout";
+import { PageSidebarErrorState } from "@/components/layout/page-sidebar-error-state";
 import type { DirectMessagePerson } from "@/components/messaging/conversations/conversation-sidebar/conversation-create-menu";
 import { ConversationSection } from "@/components/messaging/conversations/conversation-sidebar/conversation-section";
 import type { Conversation } from "@/lib/messaging/conversations";
@@ -31,6 +31,10 @@ export function ConversationSidebar({
   error?: Error | null;
   onRetry?: () => void;
 }) {
+  const errorState = error && (
+    <PageSidebarErrorState title="Couldn’t load conversations" error={error} onRetry={onRetry} />
+  );
+  const showList = !isAccessFailure(error) && (!error || conversations.length > 0);
   return (
     <PageSidebar
       id="conversation-sidebar"
@@ -40,18 +44,10 @@ export function ConversationSidebar({
       className={cn("flex-1 max-md:h-auto", !mobileOpen && "hidden md:flex")}
     >
       <PageSidebarHeader title="Messages" />
-      <PageSidebarContent className="pt-0">
-        {error && (
-          <ErrorState
-            compact
-            title="Couldn’t load conversations"
-            description="Try again to update your channels and messages."
-            onRetry={onRetry}
-          />
-        )}
-        {!isAccessFailure(error) &&
-          (!error || conversations.length > 0) &&
-          (["channel", "partner", "dm"] as const).map((section) => (
+      {showList ? (
+        <PageSidebarContent className="pt-0">
+          {errorState}
+          {(["channel", "partner", "dm"] as const).map((section) => (
             <ConversationSection
               key={section}
               section={section}
@@ -63,7 +59,10 @@ export function ConversationSidebar({
               onCreate={onCreate}
             />
           ))}
-      </PageSidebarContent>
+        </PageSidebarContent>
+      ) : (
+        errorState
+      )}
     </PageSidebar>
   );
 }
