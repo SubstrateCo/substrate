@@ -251,7 +251,7 @@ test("task activity and related context refresh while task/message search become
 test("access clears private organization and harness data before revalidation, preserving other workspaces", async () => {
   const client = new QueryClient();
   const privateKey = queryKeys.project("org", "project");
-  const harnessKey = queryKeys.localAgentConfiguration("user", "org", "local");
+  const harnessKey = queryKeys.localAgentConfiguration("user", "org", "agent", "local");
   const otherKey = queryKeys.project("other", "project");
   client.setQueryData(privateKey, "private");
   client.setQueryData(harnessKey, "private config");

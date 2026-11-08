@@ -5,16 +5,17 @@ import type { LocalConfigurationController } from "@/lib/desktop/agents/local-co
 
 export function desktopLocalConfiguration(
   harness: HarnessKind,
+  agentId: string | undefined,
 ): LocalConfigurationController | undefined {
   const bridge = window.startupOSHarness;
-  if (!bridge) return undefined;
+  if (!bridge || !agentId) return undefined;
   return {
     async scan() {
       await bridge.synchronize();
-      const { skills, mcpServers } = await bridge.scanConfiguration({ harness });
+      const { skills, mcpServers } = await bridge.scanConfiguration({ harness, agentId });
       return { skills, mcpServers };
     },
-    saveSkill: (skill) => bridge.saveSkill({ ...skill, harness }),
-    deleteSkill: (id) => bridge.deleteSkill({ id, harness }),
+    saveSkill: (skill) => bridge.saveSkill({ ...skill, harness, agentId }),
+    deleteSkill: (id) => bridge.deleteSkill({ id, harness, agentId }),
   };
 }

@@ -2,16 +2,16 @@ import type { HarnessConfiguration, HarnessSkill } from "@startup-os/contracts/h
 
 import { HarnessError } from "./errors.ts";
 import { saveNativeSkill } from "./native-config.ts";
-import { organizationDirectory, safeId, safePath } from "./paths.ts";
+import { agentDirectory, organizationDirectory, safeId, safePath } from "./paths.ts";
 import { createHash } from "node:crypto";
 import { readFile, unlink, writeFile } from "node:fs/promises";
 
 export const startupSkill: HarnessSkill = {
   id: "startup-os-default",
   name: "startup-os-default",
-  description: "Work safely inside a Startup OS organization folder.",
+  description: "Work safely inside a Startup OS agent folder.",
   content:
-    "Work in the current organization folder. Keep organization boundaries explicit. Do not infer access or identity from matching IDs. The Startup OS MCP currently exposes only hello_world; it does not provide workspace records or delegation. Never claim that you read or changed app data through it.",
+    "Work in the current agent folder, scoped to its organization and agent IDs. Other agents have separate working folders and local configuration. Keep organization boundaries explicit. Do not infer access or identity from matching IDs. The Startup OS MCP currently exposes only hello_world; it does not provide workspace records or delegation. Never claim that you read or changed app data through it.",
 };
 
 export function nativeName(id: string): string {
@@ -32,11 +32,12 @@ export async function materialize(
     ids.add(agent.id);
     if (!["opencode", "antigravity", "claude", "codex"].includes(agent.harness))
       throw new HarnessError("invalid-harness", "Unknown harness kind.");
+    const agentRoot = await agentDirectory(accountDirectory, config.organizationId, agent.id);
     if (!agent.enabled) continue;
     if (agent.useStartupDefaults)
-      await saveNativeSkill(directory, agent.harness, startupSkill, true);
+      await saveNativeSkill(agentRoot, agent.harness, startupSkill, true);
     // This file is app-owned. Native credentials and local skill/MCP files are never copied here.
-    files[`.startup-os/harness/${safeId(agent.id)}/agent.json`] =
+    files[`${agent.id}/.startup-os/harness/${agent.id}/agent.json`] =
       JSON.stringify(
         {
           id: agent.id,
@@ -51,7 +52,7 @@ export async function materialize(
         2,
       ) + "\n";
     if (agent.harness === "antigravity")
-      files[`.agents/agents/${nativeName(agent.id)}.md`] =
+      files[`${agent.id}/.agents/agents/${nativeName(agent.id)}.md`] =
         `---\nname: ${JSON.stringify(nativeName(agent.id))}\ndescription: ${JSON.stringify(agent.name)}\n---\n\n${agent.instructions}\n`;
   }
   const manifest = await safePath(directory, ".startup-os/harness/owned-files.json", false, true);
@@ -60,8 +61,8 @@ export async function materialize(
   const targets = new Map<string, string>();
   for (const path of Object.keys({ ...previous, ...files })) {
     if (
-      !/^\.startup-os\/harness\/[a-zA-Z0-9_-]+\/agent\.json$/.test(path) &&
-      !/^\.agents\/agents\/startup-os-[a-z0-9_-]+-[a-f0-9]{8}\.md$/.test(path)
+      !/^[a-zA-Z0-9_-]+\/\.startup-os\/harness\/[a-zA-Z0-9_-]+\/agent\.json$/.test(path) &&
+      !/^[a-zA-Z0-9_-]+\/\.agents\/agents\/startup-os-[a-z0-9_-]+-[a-f0-9]{8}\.md$/.test(path)
     )
       throw new HarnessError("invalid-manifest", "Ownership manifest contains an unexpected path.");
     const target = await safePath(directory, path, false, true);

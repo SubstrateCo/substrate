@@ -8,7 +8,7 @@ import {
   scanNativeServers,
   scanNativeSkills,
 } from "./native-config.ts";
-import { organizationDirectory, safePath } from "./paths.ts";
+import { agentDirectory, organizationDirectory, safePath } from "./paths.ts";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -43,9 +43,11 @@ describe("native skill files", () => {
   test("skills-only discovery does not read unrelated MCP configuration", async () => {
     const host = await createHarnessHost({ accountDirectory: root });
     try {
-      const { directory } = await host.configure({ organizationId: "org-a", agents: [] });
+      await host.configure(config());
+      const directory = await agentDirectory(root, "org-a", "agent-a");
       await host.saveSkill({
         organizationId: "org-a",
+        agentId: "agent-a",
         harness: "opencode",
         skill: {
           id: "review",
@@ -55,7 +57,11 @@ describe("native skill files", () => {
         },
       });
       await writeFile(join(directory, "opencode.json"), "{invalid native MCP configuration");
-      const result = await host.scanSkills({ organizationId: "org-a", harness: "opencode" });
+      const result = await host.scanSkills({
+        organizationId: "org-a",
+        agentId: "agent-a",
+        harness: "opencode",
+      });
       expect(result.skills.map((skill) => skill.name)).toEqual(["review"]);
       expect(await readFile(join(directory, "opencode.json"), "utf8")).toBe(
         "{invalid native MCP configuration",
@@ -86,7 +92,7 @@ describe("native skill files", () => {
   });
 
   test("defaults do not replace a colliding native skill", async () => {
-    const directory = await organizationDirectory(root, "org-a");
+    const directory = await agentDirectory(root, "org-a", "agent-a");
     await saveNativeSkill(directory, "antigravity", { ...startupSkill, content: "User-owned" });
     await expect(materialize(root, config())).rejects.toMatchObject({
       code: "configuration-conflict",
@@ -96,7 +102,8 @@ describe("native skill files", () => {
 
   test("sync removes only owned inactive agent profiles, not native history", async () => {
     const configuration = config();
-    const directory = await materialize(root, configuration);
+    await materialize(root, configuration);
+    const directory = await agentDirectory(root, "org-a", "agent-a");
     await materialize(root, configuration);
     await writeFile(
       await safePath(directory, ".agents/agents/user.md", false, true),
@@ -118,7 +125,8 @@ describe("native skill files", () => {
 
   test("modified owned profiles are never overwritten or deleted", async () => {
     const configuration = config();
-    const directory = await materialize(root, configuration);
+    await materialize(root, configuration);
+    const directory = await agentDirectory(root, "org-a", "agent-a");
     const path = join(directory, ".agents", "agents", `${nativeName("agent-a")}.md`);
     await writeFile(path, "User changed this profile");
     await expect(materialize(root, { ...configuration, agents: [] })).rejects.toMatchObject({
@@ -230,11 +238,12 @@ test("host scopes local file operations to a safe organization ID", async () => 
   try {
     await host.configure(config());
     await expect(
-      host.scanConfiguration({ organizationId: "../org-a", harness: "claude" }),
+      host.scanConfiguration({ organizationId: "../org-a", agentId: "agent-a", harness: "claude" }),
     ).rejects.toMatchObject({ code: "invalid-id" });
     await expect(
       host.saveSkill({
         organizationId: "org-a",
+        agentId: "agent-a",
         harness: "claude",
         skill: { id: "../escape", name: "Escape", description: "", content: "unsafe" },
       }),
@@ -290,7 +299,11 @@ test("reopens metadata and synchronizes edited actors without replacing local na
       },
     ],
   };
-  const scope = { organizationId: configuration.organizationId, harness: "opencode" as const };
+  const scope = {
+    organizationId: configuration.organizationId,
+    agentId: "opencode-agent",
+    harness: "opencode" as const,
+  };
   try {
     await first.configure(configuration);
     await first.saveSkill({
@@ -332,7 +345,16 @@ test("reopens metadata and synchronizes edited actors without replacing local na
     );
     expect(
       await readFile(
-        join(local.directory, ".startup-os", "harness", "claude-agent", "agent.json"),
+        join(
+          root,
+          "orgs",
+          configuration.organizationId,
+          "claude-agent",
+          ".startup-os",
+          "harness",
+          "claude-agent",
+          "agent.json",
+        ),
         "utf8",
       ),
     ).toContain("Edited Claude instructions");

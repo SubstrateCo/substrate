@@ -26,7 +26,7 @@ type Request = { id: number } & (
   | { method: "dispose" }
   | { method: "execute"; value: HarnessCommand }
   | { method: "scanConfiguration"; value: HarnessLocalScope }
-  | { method: "listModels"; value: HarnessLocalScope }
+  | { method: "listModels"; value: Omit<HarnessLocalScope, "agentId"> & { agentId?: string } }
   | { method: "scanSkills"; value: HarnessLocalScope }
   | { method: "saveSkill"; value: HarnessLocalScope & { skill: HarnessSkill } }
   | { method: "saveMcpServer"; value: HarnessLocalScope & { server: HarnessMcpServer } }
@@ -38,7 +38,7 @@ type Result =
   | HarnessSessionRef
   | HarnessLocalConfiguration
   | HarnessModelCatalog
-  | Pick<HarnessLocalConfiguration, "organizationId" | "harness" | "skills">
+  | Pick<HarnessLocalConfiguration, "organizationId" | "agentId" | "harness" | "skills">
   | void;
 // This dedicated process receives messages only from the trusted main-process controller.
 const port = process.parentPort;

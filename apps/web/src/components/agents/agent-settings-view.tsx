@@ -41,6 +41,7 @@ export function AgentSettingsView({
     harness: HarnessKind,
     section: AgentSection,
     defaults: boolean,
+    agentId?: string,
   ) => ReactNode;
   onDelete: (id: string) => Promise<void>;
 }) {

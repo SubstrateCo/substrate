@@ -9,9 +9,10 @@ export const harnessModelsQueryOptions = (
   userId: string,
   organizationId: string,
   harness: HarnessKind,
+  agentId?: string,
 ) =>
   queryOptions({
-    queryKey: queryKeys.harnessModels(userId, organizationId, harness),
+    queryKey: queryKeys.harnessModels(userId, organizationId, harness, agentId),
     staleTime: 60_000,
     retry: false,
     queryFn: async () => {
@@ -20,6 +21,6 @@ export const harnessModelsQueryOptions = (
       const session = await bridge.synchronize();
       if (session.organizationId !== organizationId)
         throw new Error("Workspace changed. Reopen the picker.");
-      return bridge.listModels({ harness });
+      return bridge.listModels({ harness, agentId });
     },
   });

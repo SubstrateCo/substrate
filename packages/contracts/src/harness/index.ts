@@ -40,6 +40,7 @@ export interface HarnessConfiguration {
 
 export interface HarnessLocalConfiguration {
   organizationId: string;
+  agentId: string;
   harness: HarnessKind;
   directory: string;
   skills: HarnessSkill[];
@@ -48,6 +49,7 @@ export interface HarnessLocalConfiguration {
 
 export interface HarnessLocalScope {
   organizationId: string;
+  agentId: string;
   harness: HarnessKind;
 }
 
@@ -97,12 +99,14 @@ export interface HarnessInspection {
 }
 
 export interface HarnessHost {
-  listModels(scope: HarnessLocalScope): Promise<HarnessModelCatalog>;
+  listModels(
+    scope: Omit<HarnessLocalScope, "agentId"> & { agentId?: string },
+  ): Promise<HarnessModelCatalog>;
   configure(configuration: HarnessConfiguration): Promise<{ directory: string }>;
   scanConfiguration(scope: HarnessLocalScope): Promise<HarnessLocalConfiguration>;
   scanSkills(
     scope: HarnessLocalScope,
-  ): Promise<Pick<HarnessLocalConfiguration, "organizationId" | "harness" | "skills">>;
+  ): Promise<Pick<HarnessLocalConfiguration, "organizationId" | "agentId" | "harness" | "skills">>;
   saveSkill(input: HarnessLocalScope & { skill: HarnessSkill }): Promise<void>;
   deleteSkill(input: HarnessLocalScope & { id: string }): Promise<void>;
   saveMcpServer(input: HarnessLocalScope & { server: HarnessMcpServer }): Promise<void>;

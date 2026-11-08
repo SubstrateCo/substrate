@@ -28,6 +28,7 @@ type Choice = HarnessModel & { harness: HarnessKind; saved?: boolean };
 export function ModelPicker({
   userId,
   organizationId,
+  agentId,
   harness,
   model,
   disabled,
@@ -35,6 +36,7 @@ export function ModelPicker({
 }: {
   userId: string;
   organizationId?: string | null;
+  agentId?: string;
   harness: HarnessKind;
   model?: string;
   disabled: boolean;
@@ -47,7 +49,7 @@ export function ModelPicker({
   const query = search.trim();
   const catalogs = useQueries({
     queries: harnessOptions.map((option) => ({
-      ...harnessModelsQueryOptions(userId, organizationId ?? "", option.value),
+      ...harnessModelsQueryOptions(userId, organizationId ?? "", option.value, agentId),
       enabled: open && available && (!!query || option.value === selectedHarness),
     })),
   });

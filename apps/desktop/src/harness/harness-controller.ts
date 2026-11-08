@@ -48,6 +48,7 @@ const catalogSchema = z.object({
 });
 const localResultSchema = z.object({
   organizationId: z.string(),
+  agentId: z.string(),
   harness: z.enum(harnessKinds),
   skills: z.array(skillSchema.strip()),
   mcpServers: z.array(
@@ -74,17 +75,19 @@ const localMethodSchema = z.enum(localHarnessMethods);
 
 function prepareLocalInput(method: LocalHarnessMethod, value: unknown, organizationId: string) {
   if (method === "saveSkill") {
-    const { harness, ...skill } = rendererLocalSchemas.saveSkill.parse(value);
+    const { harness, agentId, ...skill } = rendererLocalSchemas.saveSkill.parse(value);
     return parseLocalConfiguration(method, {
       organizationId,
+      agentId,
       harness,
       skill: { ...skill, id: skill.id ?? skill.name },
     });
   }
   if (method === "saveMcpServer") {
-    const { harness, ...server } = rendererLocalSchemas.saveMcpServer.parse(value);
+    const { harness, agentId, ...server } = rendererLocalSchemas.saveMcpServer.parse(value);
     return parseLocalConfiguration(method, {
       organizationId,
+      agentId,
       harness,
       server: { ...server, id: server.id ?? server.name },
     });

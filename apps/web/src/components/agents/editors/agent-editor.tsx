@@ -56,6 +56,7 @@ export function AgentEditor({
     harness: HarnessKind,
     section: AgentSection,
     defaults: boolean,
+    agentId?: string,
   ) => ReactNode;
 }) {
   const [error, setError] = useState<string>();
@@ -228,7 +229,12 @@ export function AgentEditor({
                                   }
                                 >
                                   {([harness, defaults]) =>
-                                    renderConfiguration(harness, section, defaults ?? true)
+                                    renderConfiguration(
+                                      harness,
+                                      section,
+                                      defaults ?? true,
+                                      agent?.id,
+                                    )
                                   }
                                 </form.Subscribe>
                               </TabsContent>
@@ -253,6 +259,7 @@ export function AgentEditor({
                                   key={`${userId}/${organizationId}`}
                                   userId={userId}
                                   organizationId={organizationId}
+                                  agentId={agent?.id}
                                   harness={harness}
                                   model={model}
                                   disabled={busy}

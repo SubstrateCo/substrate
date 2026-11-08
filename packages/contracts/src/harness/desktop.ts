@@ -19,28 +19,32 @@ export interface HarnessAPI {
     harnesses?: Omit<HarnessInspection, "executable" | "error">[];
   }>;
   status(): ReturnType<HarnessAPI["inspect"]>;
-  listModels(input: { harness: HarnessKind }): Promise<HarnessModelCatalog>;
-  scanConfiguration(input: { harness: HarnessKind }): Promise<{
+  listModels(input: { harness: HarnessKind; agentId?: string }): Promise<HarnessModelCatalog>;
+  scanConfiguration(input: { harness: HarnessKind; agentId: string }): Promise<{
     organizationId: string;
+    agentId: string;
     harness: HarnessKind;
     skills: HarnessSkill[];
     mcpServers: HarnessMcpServer[];
   }>;
-  scanSkills(input: { harness: HarnessKind }): Promise<{
+  scanSkills(input: { harness: HarnessKind; agentId: string }): Promise<{
     organizationId: string;
+    agentId: string;
     harness: HarnessKind;
     skills: HarnessSkill[];
   }>;
   saveSkill(input: {
     harness: HarnessKind;
+    agentId: string;
     id?: string;
     name: string;
     description: string;
     content: string;
   }): Promise<void>;
-  deleteSkill(input: { harness: HarnessKind; id: string }): Promise<void>;
+  deleteSkill(input: { harness: HarnessKind; agentId: string; id: string }): Promise<void>;
   saveMcpServer(input: {
     harness: HarnessKind;
+    agentId: string;
     id?: string;
     name: string;
     transport: "stdio" | "http";
@@ -49,7 +53,7 @@ export interface HarnessAPI {
     url?: string;
     environment?: Record<string, string>;
   }): Promise<void>;
-  deleteMcpServer(input: { harness: HarnessKind; id: string }): Promise<void>;
+  deleteMcpServer(input: { harness: HarnessKind; agentId: string; id: string }): Promise<void>;
   execute(command: HarnessCommand): Promise<HarnessSessionRef | void>;
   disconnect(): Promise<void>;
   reset(): Promise<void>;

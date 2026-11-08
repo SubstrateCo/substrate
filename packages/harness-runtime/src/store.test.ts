@@ -25,6 +25,7 @@ test("metadata stores agent configuration only, not native skill/MCP catalogs or
     await host.configure({ organizationId: "org-a", agents: [agent] });
     await host.saveSkill({
       organizationId: "org-a",
+      agentId: "agent-a",
       harness: "opencode",
       skill: {
         id: "local-only",
@@ -35,6 +36,7 @@ test("metadata stores agent configuration only, not native skill/MCP catalogs or
     });
     await host.saveMcpServer({
       organizationId: "org-a",
+      agentId: "agent-a",
       harness: "opencode",
       server: {
         id: "local-server",

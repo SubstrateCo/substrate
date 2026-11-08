@@ -18,19 +18,26 @@ import { toast } from "sonner";
 export function AgentConfiguration({
   userId,
   organizationId,
+  agentId,
   harness,
   section,
   defaults,
 }: {
   userId: string;
   organizationId?: string | null;
+  agentId?: string;
   harness: HarnessKind;
   section: AgentSection;
   defaults: boolean;
 }) {
-  const controller = desktopLocalConfiguration(harness);
+  const controller = desktopLocalConfiguration(harness, agentId);
   const client = useQueryClient();
-  const key = queryKeys.localAgentConfiguration(userId, organizationId ?? "", harness);
+  const key = queryKeys.localAgentConfiguration(
+    userId,
+    organizationId ?? "",
+    agentId ?? "",
+    harness,
+  );
   const available = !!controller && !!organizationId;
   const [editing, setEditing] = useState<{ id?: string }>();
   const [deleting, setDeleting] = useState<{ id: string; name: string }>();
@@ -106,7 +113,11 @@ export function AgentConfiguration({
       <div className="space-y-3">
         <h4 className="text-xs font-medium text-muted-foreground">Native configuration</h4>
         {!available && (
-          <p className="text-sm text-muted-foreground">Select a workspace in the desktop app.</p>
+          <p className="text-sm text-muted-foreground">
+            {agentId
+              ? "Select a workspace in the desktop app."
+              : "Save this agent to edit its local configuration."}
+          </p>
         )}
         {available && configuration.isPending && (
           <LoadingState label="Loading native configuration" variant="compact" />

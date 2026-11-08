@@ -43,11 +43,12 @@ export function AgentSettings({
       renderAgentPicture={(agent) => (
         <AgentPicture userId={userId} agentId={agent.id} image={agent.image} />
       )}
-      renderAgentConfiguration={(harness, section, defaults) => (
+      renderAgentConfiguration={(harness, section, defaults, agentId) => (
         <AgentConfiguration
           key={`${harness}/${section}`}
           userId={userId}
           organizationId={organizationId}
+          agentId={agentId}
           harness={harness}
           section={section}
           defaults={defaults}

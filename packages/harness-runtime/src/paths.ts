@@ -46,3 +46,15 @@ export async function organizationDirectory(
   await mkdir(accountDirectory, { recursive: true });
   return safePath(accountDirectory, join("orgs", safeId(organizationId)), true);
 }
+
+export async function agentDirectory(
+  accountDirectory: string,
+  organizationId: string,
+  agentId: string,
+): Promise<string> {
+  return safePath(
+    await organizationDirectory(accountDirectory, organizationId),
+    safeId(agentId),
+    true,
+  );
+}

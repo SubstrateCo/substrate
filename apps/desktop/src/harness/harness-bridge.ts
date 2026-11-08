@@ -18,7 +18,7 @@ export type LocalHarnessMethod = (typeof localHarnessMethods)[number];
 export type HarnessMethod = "status" | "synchronize" | "execute" | LocalHarnessMethod;
 const id = z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$/);
 const name = z.string().trim().min(1).max(200);
-const scope = { organizationId: id, harness: z.enum(harnessKinds) };
+const scope = { organizationId: id, agentId: id, harness: z.enum(harnessKinds) };
 export const skillSchema = z.strictObject({
   id,
   name,
@@ -72,7 +72,7 @@ export const serverSchema = z.discriminatedUnion("transport", [
   }),
 ]);
 const localSchemas = {
-  listModels: z.strictObject(scope),
+  listModels: z.strictObject({ ...scope, agentId: id.optional() }),
   scanConfiguration: z.strictObject(scope),
   scanSkills: z.strictObject(scope),
   saveSkill: z.strictObject({ ...scope, skill: skillSchema }),
@@ -84,17 +84,17 @@ export function parseLocalConfiguration(method: LocalHarnessMethod, value: unkno
   return localSchemas[method].parse(value);
 }
 export const rendererLocalSchemas = {
-  listModels: z.strictObject({ harness: scope.harness }),
-  scanConfiguration: z.strictObject({ harness: scope.harness }),
-  scanSkills: z.strictObject({ harness: scope.harness }),
-  saveSkill: skillSchema.extend({ harness: scope.harness, id: id.optional() }),
-  deleteSkill: z.strictObject({ harness: scope.harness, id }),
+  listModels: z.strictObject({ harness: scope.harness, agentId: id.optional() }),
+  scanConfiguration: z.strictObject({ harness: scope.harness, agentId: id }),
+  scanSkills: z.strictObject({ harness: scope.harness, agentId: id }),
+  saveSkill: skillSchema.extend({ harness: scope.harness, agentId: id, id: id.optional() }),
+  deleteSkill: z.strictObject({ harness: scope.harness, agentId: id, id }),
   saveMcpServer: z.union(
     serverSchema.options.map((schema) =>
-      schema.extend({ harness: scope.harness, id: id.optional() }),
+      schema.extend({ harness: scope.harness, agentId: id, id: id.optional() }),
     ),
   ),
-  deleteMcpServer: z.strictObject({ harness: scope.harness, id }),
+  deleteMcpServer: z.strictObject({ harness: scope.harness, agentId: id, id }),
 };
 const commandSchema = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("start"), organizationId: id, agentId: id }),

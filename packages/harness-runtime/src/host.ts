@@ -21,7 +21,7 @@ import {
   scanNativeServers,
   scanNativeSkills,
 } from "./native-config.ts";
-import { organizationDirectory, safeId, safePath } from "./paths.ts";
+import { agentDirectory, safeId, safePath } from "./paths.ts";
 import { antigravityAcpAvailable, binaryVersion, resolveExecutable } from "./process.ts";
 import { MetadataStore } from "./store.ts";
 import { randomUUID } from "node:crypto";
@@ -73,10 +73,18 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ha
     assertOpen();
     if (!["opencode", "antigravity", "claude", "codex"].includes(scope.harness))
       throw new HarnessError("invalid-harness", "Unknown harness.");
-    // Scan must not create a missing organization or a missing native config directory.
-    const path = await safePath(accountDirectory, join("orgs", safeId(scope.organizationId)));
+    safeId(scope.organizationId);
+    safeId(scope.agentId);
+    const configuration = await store.configuration(scope.organizationId);
+    if (!configuration?.agents.some((agent) => agent.id === scope.agentId))
+      throw new HarnessError("agent-not-found", "Agent is not configured in this organization.");
+    // Scan must not create a missing agent or a missing native config directory.
+    const path = await safePath(
+      accountDirectory,
+      join("orgs", scope.organizationId, scope.agentId),
+    );
     if ((await realpath(path)) !== path)
-      throw new HarnessError("unsafe-path", "Organization folder is not canonical.");
+      throw new HarnessError("unsafe-path", "Agent folder is not canonical.");
     return path;
   }
   async function connect(
@@ -98,7 +106,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ha
       const context: AdapterContext = {
         configuration,
         agent,
-        directory: await organizationDirectory(accountDirectory, ref.organizationId),
+        directory: await agentDirectory(accountDirectory, ref.organizationId, agent.id),
         executable: await resolveExecutable(agent.harness, options.executables?.[agent.harness]),
         lease,
         emit: (event) => emit(ref, event),
@@ -138,9 +146,10 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ha
   }
   return {
     async listModels(scope) {
+      assertOpen();
       return discoverModels(
         scope.harness,
-        await directory(scope),
+        scope.agentId ? await directory({ ...scope, agentId: scope.agentId }) : accountDirectory,
         options.executables?.[scope.harness],
         modelDiscovery.signal,
       );

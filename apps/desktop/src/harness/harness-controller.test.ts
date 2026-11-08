@@ -42,6 +42,7 @@ function fixture(beforeScan?: () => Promise<void>, nativeMcpServers: unknown[] =
             await beforeScan?.();
             return {
               organizationId: "org-1",
+              agentId: "agent-1",
               harness: "codex",
               skills: [],
               mcpServers: nativeMcpServers,
@@ -168,9 +169,9 @@ describe("desktop harness authority", () => {
     const f = fixture();
     await f.controller.run("synchronize");
     f.revokeMembership();
-    expect(f.controller.run("scanConfiguration", { harness: "codex" })).rejects.toThrow(
-      "Harness unavailable",
-    );
+    expect(
+      f.controller.run("scanConfiguration", { harness: "codex", agentId: "agent-1" }),
+    ).rejects.toThrow("Harness unavailable");
     expect(f.disposed()).toBe(1);
     expect(f.calls.map((call) => call.method)).toEqual(["configure"]);
   });
@@ -179,6 +180,7 @@ describe("desktop harness authority", () => {
     await f.controller.run("synchronize");
     const input = {
       harness: "codex",
+      agentId: "agent-1",
       id: "notes",
       name: "Notes",
       description: "",
@@ -189,6 +191,7 @@ describe("desktop harness authority", () => {
       method: "saveSkill",
       value: {
         organizationId: "org-1",
+        agentId: "agent-1",
         harness: "codex",
         skill: { id: "notes", name: "Notes", description: "", content: "Keep notes." },
       },
@@ -196,6 +199,7 @@ describe("desktop harness authority", () => {
     expect(
       f.controller.run("deleteSkill", {
         organizationId: "other-org",
+        agentId: "agent-1",
         harness: "codex",
         id: "notes",
       }),
@@ -207,6 +211,7 @@ describe("desktop harness authority", () => {
     await f.controller.run("synchronize");
     await f.controller.run("saveSkill", {
       harness: "opencode",
+      agentId: "agent-1",
       name: "review-context",
       description: "Review context.",
       content: "Read the sources.",
@@ -214,6 +219,7 @@ describe("desktop harness authority", () => {
     expect(f.calls.at(-1)?.value).toMatchObject({ skill: { id: "review-context" } });
     await f.controller.run("saveMcpServer", {
       harness: "opencode",
+      agentId: "agent-1",
       name: "local-helper",
       transport: "stdio",
       command: "node",
@@ -234,8 +240,11 @@ describe("desktop harness authority", () => {
       },
     ]);
     await f.controller.run("synchronize");
-    expect(await f.controller.run("scanConfiguration", { harness: "codex" })).toEqual({
+    expect(
+      await f.controller.run("scanConfiguration", { harness: "codex", agentId: "agent-1" }),
+    ).toEqual({
       organizationId: "org-1",
+      agentId: "agent-1",
       harness: "codex",
       skills: [],
       mcpServers: [
@@ -263,7 +272,7 @@ describe("desktop harness authority", () => {
       await gate;
     });
     await f.controller.run("synchronize");
-    const result = f.controller.run("scanConfiguration", { harness: "codex" });
+    const result = f.controller.run("scanConfiguration", { harness: "codex", agentId: "agent-1" });
     await scanning;
     f.controller.disconnect();
     release();
@@ -358,8 +367,22 @@ test("commands cannot smuggle paths or catalog configuration", () => {
 
 test("local configuration rejects paths, traversal, and embedded credentials", () => {
   expect(() =>
+    parseLocalConfiguration("scanConfiguration", {
+      organizationId: "org",
+      harness: "codex",
+    }),
+  ).toThrow();
+  expect(() =>
+    parseLocalConfiguration("scanConfiguration", {
+      organizationId: "org",
+      agentId: "../agent",
+      harness: "codex",
+    }),
+  ).toThrow();
+  expect(() =>
     parseLocalConfiguration("deleteSkill", {
       organizationId: "org",
+      agentId: "agent-1",
       harness: "codex",
       id: "../notes",
     }),
@@ -367,6 +390,7 @@ test("local configuration rejects paths, traversal, and embedded credentials", (
   expect(() =>
     parseLocalConfiguration("scanConfiguration", {
       organizationId: "org",
+      agentId: "agent-1",
       harness: "codex",
       directory: "C:/other",
     }),
@@ -374,6 +398,7 @@ test("local configuration rejects paths, traversal, and embedded credentials", (
   expect(() =>
     parseLocalConfiguration("saveMcpServer", {
       organizationId: "org",
+      agentId: "agent-1",
       harness: "codex",
       server: {
         id: "server",
@@ -387,6 +412,7 @@ test("local configuration rejects paths, traversal, and embedded credentials", (
   expect(() =>
     parseLocalConfiguration("saveMcpServer", {
       organizationId: "org",
+      agentId: "agent-1",
       harness: "codex",
       server: {
         id: "server",

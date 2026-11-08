@@ -1,10 +1,14 @@
 export const queryKeys = {
   session: ["auth", "session"] as const,
   agents: (userId: string) => ["users", userId, "agents"] as const,
-  harnessModels: (userId: string, organizationId: string, harness: string) =>
-    ["users", userId, "harness-models", organizationId, harness] as const,
-  localAgentConfiguration: (userId: string, organizationId: string, harness: string) =>
-    ["users", userId, "local-agent-configuration", organizationId, harness] as const,
+  harnessModels: (userId: string, organizationId: string, harness: string, agentId?: string) =>
+    ["users", userId, "harness-models", organizationId, harness, agentId ?? ""] as const,
+  localAgentConfiguration: (
+    userId: string,
+    organizationId: string,
+    agentId: string,
+    harness: string,
+  ) => ["users", userId, "local-agent-configuration", organizationId, agentId, harness] as const,
   context: (organizationId: string) =>
     [...queryKeys.organization(organizationId), "context"] as const,
   organizations: ["organizations", "list"] as const,
