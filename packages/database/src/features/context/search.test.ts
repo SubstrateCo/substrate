@@ -11,6 +11,54 @@ import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 const f = setupDatabase();
 
+test("channel browse lists readable channels by name with membership and live member counts", async () => {
+  await f.db.update(user).set({ emailVerified: true });
+  const alice = createMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
+  const bob = createMessagingService(f.db, { userId: "bob", organizationId: f.orgA });
+  const zeta = await alice.createConversation({ kind: "channel", name: "zeta" });
+  const alpha = await alice.createConversation({
+    kind: "channel",
+    name: "Alpha",
+    emails: ["bob@example.com"],
+  });
+  const mid = await alice.createConversation({ kind: "channel", name: "mid" });
+  await alice.createConversation({ kind: "channel", name: "hidden", private: true });
+  await alice.createConversation({
+    kind: "group",
+    emails: ["bob@example.com", "outside@example.com"],
+  });
+  await createMessagingService(f.db, {
+    userId: "outsider",
+    organizationId: f.orgB,
+  }).createConversation({ kind: "channel", name: "foreign" });
+  await bob.sendMessage(mid.id, "hello");
+  await bob.leaveConversation(mid.id);
+  const browse = (after?: string) =>
+    createContextService(f.db, { userId: "bob", organizationId: f.orgA }).search({
+      kind: "channel",
+      query: "",
+      limit: 2,
+      after,
+    });
+  const channel = (
+    row: { id: string; name: string | null },
+    membership: "joined" | "left" | "none",
+    memberCount: number,
+  ) => ({
+    id: row.id,
+    kind: "channel" as const,
+    title: row.name!,
+    conversationId: row.id,
+    private: false,
+    membership,
+    memberCount,
+  });
+  // Case-insensitive name order; the page boundary continues by name, not by ID.
+  const first = await browse();
+  expect(first).toEqual([channel(alpha, "joined", 2), channel(mid, "left", 1)]);
+  expect(await browse(first[1]!.id)).toEqual([channel(zeta, "none", 1)]);
+});
+
 test("30-task search and project search each project authorized output in one statement", async () => {
   await f.db.update(user).set({ emailVerified: true });
   const alice = f.forActor(f.alice);

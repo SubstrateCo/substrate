@@ -8,12 +8,17 @@ import { visibilityCte } from "../../core/permissions/visibility";
 import { pageSize } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { visibleConversations, type MessagingIdentity } from "../messaging/access";
-import { messagingConversations, messagingMessages } from "../messaging/schema";
+import {
+  messagingConversations,
+  messagingMessages,
+  messagingParticipants,
+} from "../messaging/schema";
 import { projects } from "../projects/schema";
 import { tasks } from "../tasks/tasks.schema";
 import { workspaceContext, requireWork } from "./access";
 import { messageEntityReferences, messageMessagingReferences } from "./schema";
 import { and, asc, eq, gt, inArray, isNull, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 export type SearchKind =
   | "all"
@@ -24,6 +29,7 @@ export type SearchKind =
   | "person"
   | "channel"
   | "thread";
+export type ChannelMembership = "joined" | "left" | "none";
 interface SearchResult {
   id: string;
   kind: Exclude<SearchKind, "all">;
@@ -32,6 +38,10 @@ interface SearchResult {
   conversationId?: string;
   threadId?: string | null;
   conversationName?: string;
+  // Channel results only.
+  private?: boolean;
+  membership?: ChannelMembership;
+  memberCount?: number;
 }
 export async function contextSearch(
   db: DatabaseExecutor,
@@ -45,7 +55,7 @@ export async function contextSearch(
     editable?: boolean;
     relatedToEntityId?: string;
   },
-) {
+): Promise<SearchResult[]> {
   const { context: ctx } = await workspaceContext(db, scope);
   const limit = pageSize(input.limit ?? 30);
   if (
@@ -246,7 +256,7 @@ export async function contextSearch(
       results.push(...rows.map((row) => ({ ...row, kind: type })));
     }
   }
-  if (kind === "all" || kind === "conversation" || kind === "channel") {
+  if (kind === "all" || kind === "conversation") {
     const rows = await db
       .select({
         id: messagingConversations.id,
@@ -256,12 +266,6 @@ export async function contextSearch(
       .where(
         and(
           visibleConversations(db, scope),
-          kind === "channel"
-            ? and(
-                eq(messagingConversations.kind, "channel"),
-                eq(messagingConversations.organizationId, scope.organizationId),
-              )
-            : undefined,
           relatedConversations,
           query ? match(messagingConversations.name) : undefined,
           input.after ? gt(messagingConversations.id, input.after) : undefined,
@@ -270,12 +274,44 @@ export async function contextSearch(
       .orderBy(asc(messagingConversations.id))
       .limit(limit);
     results.push(
-      ...rows.map((row) => ({
-        ...row,
-        kind: kind === "channel" ? ("channel" as const) : ("conversation" as const),
-        conversationId: row.id,
-      })),
+      ...rows.map((row) => ({ ...row, kind: "conversation" as const, conversationId: row.id })),
     );
+  }
+  // Channel browse and the channel reference picker. Ordered by name; the cursor is the last ID.
+  if (kind === "channel") {
+    const me = alias(messagingParticipants, "me");
+    const nameKey = sql`(lower(${messagingConversations.name}), ${messagingConversations.id})`;
+    const rows = await db
+      .select({
+        id: messagingConversations.id,
+        title: sql<string>`${messagingConversations.name}`,
+        private: messagingConversations.private,
+        membership: sql<ChannelMembership>`case when ${me.userId} is null then 'none'
+          when ${me.leftAt} is null then 'joined' else 'left' end`,
+        memberCount: sql<number>`(select count(*)::int from ${messagingParticipants}
+          where ${messagingParticipants.conversationId} = ${messagingConversations.id}
+            and ${messagingParticipants.leftAt} is null)`,
+      })
+      .from(messagingConversations)
+      .leftJoin(
+        me,
+        and(eq(me.conversationId, messagingConversations.id), eq(me.userId, scope.userId)),
+      )
+      .where(
+        and(
+          visibleConversations(db, scope),
+          eq(messagingConversations.kind, "channel"),
+          eq(messagingConversations.organizationId, scope.organizationId),
+          relatedConversations,
+          query ? match(messagingConversations.name) : undefined,
+          input.after
+            ? sql`${nameKey} > (select lower(a.name), a.id from ${messagingConversations} a where a.id = ${input.after}::uuid)`
+            : undefined,
+        ),
+      )
+      .orderBy(sql`lower(${messagingConversations.name})`, asc(messagingConversations.id))
+      .limit(limit);
+    return rows.map((row) => ({ ...row, kind: "channel" as const, conversationId: row.id }));
   }
   if (kind === "thread") {
     const rows = await db
