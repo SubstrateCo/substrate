@@ -4,7 +4,6 @@ import type {
   contextMessagePage,
   contextTarget,
   contextLink,
-  contextSourceTask,
 } from "@startup-os/contracts/context/input";
 
 import { api, type ApiInput } from "../client";
@@ -22,11 +21,6 @@ export const getRelatedContext = ({ data, signal }: ApiInput<z.input<typeof cont
   readResult(api.context.related.$get({ query: data }, { init: { signal } }));
 export const getMessageTarget = ({ data, signal }: ApiInput<z.input<typeof contextTarget>>) =>
   readResult(api.context["message-target"].$get({ query: data }, { init: { signal } }));
-export const createTaskFromMessage = ({
-  data,
-  signal,
-}: ApiInput<z.input<typeof contextSourceTask>>) =>
-  readResult(api.context["source-tasks"].$post({ json: data }, { init: { signal } }));
 export const attachWork = ({ data, signal }: ApiInput<z.input<typeof contextLink>>) =>
   readResult(api.context.links.$post({ json: data }, { init: { signal } }));
 export const detachWork = ({ data, signal }: ApiInput<z.input<typeof contextLink>>) =>

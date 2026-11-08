@@ -1,8 +1,8 @@
 import { conversation, expect, post, test, visit } from "./test-support/fixtures";
 import { pauseClock, searches, visibleWithClock } from "./test-support/search";
-import { project, select } from "./test-support/tasks";
+import { project } from "./test-support/tasks";
 
-test("create a task from a message, follow both links, and find the task in search", async ({
+test("follow existing message-task links without task creation actions and find the task in search", async ({
   actors,
   client,
 }) => {
@@ -15,8 +15,21 @@ test("create a task from a message, follow both links, and find the task in sear
     conversationId: channel.id,
     body: source,
   });
+  const title = `Follow up ${channel.id}`;
+  await post(actors.sender, "context/source-tasks", {
+    organizationId: actors.sender.organizationId,
+    projectEntityId: created.entityId,
+    messageId: message.id,
+    requestId: crypto.randomUUID(),
+    title,
+  });
   const sender = await client(actors.sender);
   await visit(sender, channel.id);
+  const sourceMessage = sender.page.getByRole("article").filter({ hasText: source });
+  await expect(sourceMessage).toBeVisible();
+  await expect(sourceMessage.getByRole("button", { name: "Create task", exact: true })).toHaveCount(
+    0,
+  );
   await pauseClock(sender.page);
   const requests = searches(sender.page);
 
@@ -53,16 +66,6 @@ test("create a task from a message, follow both links, and find the task in sear
   expect(requests.some((request) => request.query === "unsettled reference lookup")).toBe(false);
   await editor.fill("");
   await sender.page.clock.resume();
-  await sender.page
-    .getByRole("article")
-    .filter({ hasText: source })
-    .getByRole("button", { name: "Create task", exact: true })
-    .click();
-  await select(sender.page, "Destination project", created.name);
-  const form = sender.page.getByRole("region", { name: "Create task from message", exact: true });
-  const title = `Follow up ${channel.id}`;
-  await form.getByLabel("Task title", { exact: true }).fill(title);
-  await form.getByRole("button", { name: "Create task", exact: false }).click();
   const linkedTask = sender.page
     .getByRole("article")
     .filter({ hasText: source })
@@ -80,6 +83,11 @@ test("create a task from a message, follow both links, and find the task in sear
       .getByText(source, { exact: true }),
   ).toBeVisible();
   expect(new URL(sender.page.url()).searchParams.get("messageId")).toBe(message.id);
+  const thread = sender.page.getByRole("complementary", { name: "Thread", exact: true });
+  await expect(thread.getByRole("button", { name: "Create task", exact: true })).toHaveCount(0);
+  await expect(
+    thread.getByRole("button", { name: "Link existing work", exact: true }),
+  ).toBeVisible();
   await expect(
     sender.page
       .getByRole("complementary", { name: "Thread", exact: true })

@@ -7,7 +7,6 @@ import { CopyLink } from "../../context/links/copy-link";
 import { LinkMessageWork } from "../../context/links/link-message-work";
 import { MessageContext, type MessageContextState } from "../../context/references/message-context";
 import { ReferencedMessageBody } from "../../context/references/referenced-message-body";
-import { CreateSourceTask } from "../../context/source-task/create-source-task";
 import { toggleReaction } from "@/api/messaging/requests";
 import type { Message } from "@/api/messaging/requests";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
@@ -32,7 +31,7 @@ export function MessageItem({
   const queryClient = useQueryClient();
   const search = useSearch({ strict: false });
   const highlighted = search.messageId === message.id;
-  const [action, setAction] = useState<"create" | "link" | null>(null);
+  const [linking, setLinking] = useState(false);
   const reaction = useMutation({
     onError: (error) =>
       toast.error(
@@ -62,10 +61,7 @@ export function MessageItem({
               label="Copy message link"
               href={messageHref(organizationId, message.conversationId, message.id)}
             />
-            <MessageWorkActions
-              onCreate={() => setAction("create")}
-              onLink={() => setAction("link")}
-            />
+            <MessageWorkActions onLink={() => setLinking(true)} />
           </>
         }
         onThread={onThread}
@@ -73,19 +69,11 @@ export function MessageItem({
         pending={reaction.isPending}
       >
         <MessageContext organizationId={organizationId} messageId={message.id} context={context} />
-        {action === "create" && (
-          <CreateSourceTask
-            organizationId={organizationId}
-            messageId={message.id}
-            body={message.body}
-            onClose={() => setAction(null)}
-          />
-        )}
-        {action === "link" && (
+        {linking && (
           <LinkMessageWork
             organizationId={organizationId}
             messageId={message.id}
-            onClose={() => setAction(null)}
+            onClose={() => setLinking(false)}
           />
         )}
       </MessageItemView>

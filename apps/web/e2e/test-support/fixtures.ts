@@ -1,3 +1,4 @@
+import type { contextSourceTask } from "@startup-os/contracts/context/input";
 import type { conversationInput, messageInput } from "@startup-os/contracts/messaging/input";
 import { realtimeEvent, type RealtimeEvent } from "@startup-os/contracts/realtime";
 import type { ServiceResult } from "@startup-os/contracts/result";
@@ -162,8 +163,12 @@ type MessagingInput =
 
 export async function post<T>(
   actor: Actor,
-  path: "messaging/conversations" | "messaging/messages" | "tasks/mutations",
-  data: MessagingInput | TasksWrite,
+  path:
+    | "messaging/conversations"
+    | "messaging/messages"
+    | "tasks/mutations"
+    | "context/source-tasks",
+  data: MessagingInput | TasksWrite | z.input<typeof contextSourceTask>,
 ) {
   const response = await actor.request.post(`/api/v1/${path}`, {
     headers: { origin: process.env.PLAYWRIGHT_BASE_URL! },
