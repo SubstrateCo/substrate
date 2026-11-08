@@ -1,9 +1,48 @@
+import type { WorkspaceApiRequest } from "@startup-os/contracts/harness/mcp";
+
 import { createStartupMcp } from "./mcp.ts";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { expect, test } from "bun:test";
 
 /* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous despite their assertion return declarations. */
+
+test("the internal API proxy requires a live lease and does not add MCP tools", async () => {
+  const calls: unknown[] = [];
+  const host = await createStartupMcp(async (call) => {
+    calls.push(call);
+    return { success: true, data: ["project"] };
+  });
+  const lease = host.issue("org-a", "agent-a");
+  const client = new Client({ name: "proxy-test", version: "1" });
+  try {
+    await client.connect(
+      new StreamableHTTPClientTransport(new URL(lease.url), {
+        requestInit: { headers: { Authorization: `Bearer ${lease.token}` } },
+      }),
+    );
+    expect((await client.listTools()).tools.map((tool) => tool.name)).toEqual(["hello_world"]);
+    expect((await client.callTool({ name: "hello_world", arguments: {} })).content).toEqual([
+      { type: "text", text: "Hello, world!" },
+    ]);
+    expect(calls).toEqual([]);
+    const request: WorkspaceApiRequest = {
+      method: "GET",
+      path: "/api/v1/tasks/projects",
+      input: {},
+    };
+    expect(await host.requestApi(lease.token, request)).toEqual({
+      success: true,
+      data: ["project"],
+    });
+    lease.revoke();
+    await expect(host.requestApi(lease.token, request)).rejects.toThrow("Credential revoked");
+    expect(calls).toEqual([request]);
+  } finally {
+    await client.close();
+    await host.close();
+  }
+});
 
 test("loopback MCP exposes only hello_world and rejects revoked or browser requests", async () => {
   const host = await createStartupMcp();

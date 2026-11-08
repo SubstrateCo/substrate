@@ -80,6 +80,24 @@ function fixture(beforeScan?: () => Promise<void>, nativeMcpServers: unknown[] =
 }
 
 describe("desktop harness authority", () => {
+  test("workspace switches keep the account's local MCP worker alive", async () => {
+    const f = fixture();
+    await f.controller.run("synchronize");
+    f.setSession({
+      user: { id: "user-1", emailVerified: true },
+      session: { activeOrganizationId: "org-2" },
+    });
+    expect(await f.controller.run("synchronize")).toEqual({
+      connected: true,
+      organizationId: "org-2",
+    });
+    expect(f.disposed()).toBe(0);
+    expect(f.directories).toHaveLength(1);
+    expect(f.calls.at(-1)).toEqual({
+      method: "configure",
+      value: { organizationId: "org-2", agents: [] },
+    });
+  });
   test("model discovery uses verified organization scope and returns only catalog metadata", async () => {
     const f = fixture();
     await f.controller.run("synchronize");

@@ -231,7 +231,7 @@ if (!app.requestSingleInstanceLock()) {
         backend,
         accountsDirectory: join(app.getPath("userData"), "accounts"),
         fetchAPI,
-        createWorker: (directory) =>
+        createWorker: (directory, proxy) =>
           createHarnessProcess(
             fileURLToPath(
               new URL(
@@ -245,6 +245,7 @@ if (!app.requestSingleInstanceLock()) {
               if (contents && target(contents.getURL()) === "internal")
                 contents.send(harnessEventChannel, event);
             },
+            proxy,
           ),
       });
       ipcMain.handle(harnessChannel, (event, method, value) => {

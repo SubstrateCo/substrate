@@ -1,4 +1,5 @@
 import { harnessKinds, harnessModelCatalogSchema } from "@startup-os/contracts/harness";
+import type { WorkspaceApiProxy } from "@startup-os/contracts/harness/mcp";
 
 import {
   localHarnessMethods,
@@ -9,6 +10,7 @@ import {
   serverSchema,
 } from "./harness-bridge.ts";
 import type { HarnessMethod, LocalHarnessMethod } from "./harness-bridge.ts";
+import { createMcpApiProxy } from "./mcp-api-proxy.ts";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 /* oxlint-disable deslop/no-unknown-parameters, deslop/no-unknown-returns -- Main parses IPC and worker response payloads at this boundary. The injected transport carries structured-clone values. */
@@ -98,7 +100,7 @@ export function createHarnessController(options: {
   backend: string;
   accountsDirectory: string;
   fetchAPI: (url: string, init: RequestInit) => Promise<Response>;
-  createWorker: (accountDirectory: string) => HarnessWorker;
+  createWorker: (accountDirectory: string, proxy: WorkspaceApiProxy) => HarnessWorker;
 }) {
   let worker: HarnessWorker | undefined;
   let identity: string | undefined;
@@ -134,7 +136,7 @@ export function createHarnessController(options: {
     const accountKey = createHash("sha256")
       .update(JSON.stringify([new URL(options.backend).origin, data.user.id]))
       .digest("hex");
-    return { accountKey, organizationId, identity: `${accountKey}:${organizationId}` };
+    return { accountKey, organizationId, userId: data.user.id, identity: accountKey };
   }
 
   async function perform(method: HarnessMethod, value?: unknown) {
@@ -161,7 +163,15 @@ export function createHarnessController(options: {
         const latest = await verified();
         if (current !== generation || latest.identity !== auth.identity)
           throw new Error("Session changed.");
-        worker ??= options.createWorker(join(options.accountsDirectory, auth.accountKey));
+        worker ??= options.createWorker(
+          join(options.accountsDirectory, auth.accountKey),
+          createMcpApiProxy({
+            backend: options.backend,
+            userId: auth.userId,
+            fetchAPI: options.fetchAPI,
+            isActive: () => current === generation,
+          }),
+        );
         identity = auth.identity;
         await worker.request("configure", {
           agents: result.data.agents,

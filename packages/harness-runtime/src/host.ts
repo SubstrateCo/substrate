@@ -7,6 +7,7 @@ import type {
   HarnessLocalScope,
   HarnessSessionRef,
 } from "@startup-os/contracts/harness";
+import type { WorkspaceApiProxy } from "@startup-os/contracts/harness/mcp";
 
 import type { AdapterContext, NativeAdapter } from "./adapters/types.ts";
 import { materialize } from "./config.ts";
@@ -32,6 +33,7 @@ export interface HarnessHostOptions {
   migrationsDirectory?: string;
   /** Trusted main-process configuration only. Never accept executable paths from renderer commands. */
   executables?: Partial<Record<HarnessKind, string>>;
+  workspaceProxy?: WorkspaceApiProxy;
 }
 
 export async function createHarnessHost(options: HarnessHostOptions): Promise<HarnessHost> {
@@ -41,7 +43,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ha
     await safePath(accountDirectory, ".startup-os/harness-metadata.sqlite", false, true),
     options.migrationsDirectory,
   );
-  const mcp = await createStartupMcp();
+  const mcp = await createStartupMcp(options.workspaceProxy);
   const listeners = new Set<(event: HarnessEvent) => void>();
   const sessions = new Map<
     string,
