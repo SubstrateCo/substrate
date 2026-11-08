@@ -43,6 +43,46 @@ test("tools inject lease identity and return structured API results", async () =
   }
 });
 
+test("API failures reach the agent with their message and a next step; writes declare their risk", async () => {
+  const host = await createStartupMcp(async () => ({
+    success: false,
+    error: {
+      code: "FORBIDDEN",
+      message: "Workspace changed. Start a new agent run in this workspace.",
+    },
+  }));
+  const lease = host.issue("org-a", "agent-a");
+  const client = new Client({ name: "proxy-test", version: "1" });
+  try {
+    await client.connect(
+      new StreamableHTTPClientTransport(new URL(lease.url), {
+        requestInit: { headers: { Authorization: `Bearer ${lease.token}` } },
+      }),
+    );
+    const result = await client.callTool({ name: "list_projects", arguments: {} });
+    expect(result.isError).toBe(true);
+    // SAFETY: this server returns failures as a single text content block.
+    const [content] = result.content as { type: "text"; text: string }[];
+    expect(JSON.parse(content!.text)).toMatchObject({
+      code: "FORBIDDEN",
+      message: "Workspace changed. Start a new agent run in this workspace.",
+      hint: expect.stringContaining("start a new run"),
+    });
+    const tools = new Map((await client.listTools()).tools.map((tool) => [tool.name, tool]));
+    expect(tools.get("update_task")?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: true,
+    });
+    expect(tools.get("send_message")?.annotations).toMatchObject({
+      destructiveHint: false,
+      idempotentHint: true,
+    });
+  } finally {
+    await client.close();
+    await host.close();
+  }
+});
+
 test("loopback MCP rejects revoked, browser and rebound requests", async () => {
   const host = await createStartupMcp();
   const lease = host.issue("org-a", "agent-a");

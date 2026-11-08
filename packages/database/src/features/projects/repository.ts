@@ -84,6 +84,12 @@ export function projectRepository(context: RepositoryContext) {
   }
   return {
     get,
+    /** Actors the caller may assign in this project, under the same policy as getDetail. */
+    async assignableActors(projectEntityId: string) {
+      await get(projectEntityId);
+      const rows = await availableActors(projectEntityId);
+      return rows.filter((row) => row.assignable);
+    },
     async getDetail(projectEntityId: string) {
       const { level } = await context.requireAccess(projectEntityId, "view");
       const [project] = await db.select().from(projects).where(projectWhere(projectEntityId));

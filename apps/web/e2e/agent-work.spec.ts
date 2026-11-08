@@ -68,7 +68,7 @@ test("agents receive explicit access and their messages, comments and activity a
         requestId: crypto.randomUUID(),
         projectId: created.entityId,
         title: "Agent follow-up",
-        source: { type: "message", conversationId: channel.id, messageId: message.messageId },
+        sourceMessageId: message.id,
       },
     },
   });
@@ -82,13 +82,13 @@ test("agents receive explicit access and their messages, comments and activity a
       tool: "add_task_comment",
       input: {
         requestId: crypto.randomUUID(),
-        taskId: task.taskId,
+        taskId: task.id,
         body: "Agent investigation notes",
       },
     },
   });
   expect(commentResponse.ok()).toBe(true);
-  await visit(user, undefined, "/tasks", { projectId: created.entityId, taskId: task.taskId });
+  await visit(user, undefined, "/tasks", { projectId: created.entityId, taskId: task.id });
   const comment = user.page.getByRole("article").filter({ hasText: "Agent investigation notes" });
   await expect(comment.getByText(name, { exact: true })).toBeVisible();
   await expect(comment.getByText("Agent", { exact: true })).toBeVisible();

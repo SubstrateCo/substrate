@@ -1,4 +1,4 @@
-import type { HarnessKind } from "@startup-os/contracts/harness";
+import { startupSkillIds, type HarnessKind } from "@startup-os/contracts/harness";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -71,10 +71,11 @@ export function AgentConfiguration({
       await client.invalidateQueries({ queryKey: key });
     },
   });
-  const skills =
-    configuration.data?.skills.filter((skill) => skill.id !== "startup-os-default") ?? [];
+  // Startup OS rewrites its own skills on every sync, so they are not listed as editable.
+  const isStartupSkill = (id: string) => startupSkillIds.includes(id);
+  const skills = configuration.data?.skills.filter((skill) => !isStartupSkill(skill.id)) ?? [];
   const nativeDefault =
-    configuration.data?.skills.some((skill) => skill.id === "startup-os-default") ?? false;
+    configuration.data?.skills.some((skill) => isStartupSkill(skill.id)) ?? false;
   const servers = configuration.data?.mcpServers ?? [];
   const skill = skills.find((item) => item.id === editing?.id);
   return (

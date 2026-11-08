@@ -1,5 +1,9 @@
 import type { WorkspaceApiRequest, WorkspaceApiProxy } from "@startup-os/contracts/harness/mcp";
-import { mcpTools, type McpToolName } from "@startup-os/contracts/harness/tools";
+import {
+  mcpTools,
+  type McpToolName,
+  type ToolDefinition,
+} from "@startup-os/contracts/harness/tools";
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -15,6 +19,23 @@ export interface McpLease {
   organizationId: string;
   agentId: string;
   revoke(): void;
+}
+
+/** What an agent should do next for each workspace API error code. */
+function errorHint(code: string) {
+  switch (code) {
+    case "NOT_FOUND":
+      return "The record does not exist or you cannot access it. Find IDs with search or a list tool; do not guess IDs.";
+    case "INVALID_INPUT":
+      return "Correct the input as the message says, then retry.";
+    case "CONFLICT":
+      return "This requestId was already used with different input. Use a new requestId for a new action.";
+    case "UNAUTHENTICATED":
+    case "FORBIDDEN":
+      return "Stop. Tell your owner to sign in to Startup OS in this workspace and start a new run.";
+    default:
+      return "Retry once. If it fails again, stop and report the error to your owner.";
+  }
 }
 
 export async function createStartupMcp(proxy?: WorkspaceApiProxy) {
@@ -73,15 +94,19 @@ export async function createStartupMcp(proxy?: WorkspaceApiProxy) {
     // SAFETY: Object.keys reads the statically defined tool registry, not external input.
     for (const name of Object.keys(mcpTools) as McpToolName[]) {
       const tool = mcpTools[name];
+      const hints: ToolDefinition = tool;
       mcp.registerTool(
         name,
         {
+          title: tool.title,
           description: tool.description,
           inputSchema: tool.input,
           outputSchema: tool.output,
           annotations: {
-            readOnlyHint: tool.readOnly,
-            destructiveHint: name === "remove_reference",
+            title: tool.title,
+            readOnlyHint: hints.readOnly,
+            destructiveHint: hints.destructive ?? false,
+            idempotentHint: hints.readOnly || (hints.idempotent ?? false),
             openWorldHint: false,
           },
         },
@@ -101,7 +126,12 @@ export async function createStartupMcp(proxy?: WorkspaceApiProxy) {
             if (!result.success)
               return {
                 isError: true,
-                content: [{ type: "text" as const, text: JSON.stringify(result.error) }],
+                content: [
+                  {
+                    type: "text" as const,
+                    text: JSON.stringify({ ...result.error, hint: errorHint(result.error.code) }),
+                  },
+                ],
               };
             const data = tool.output.parse(result.data);
             return {

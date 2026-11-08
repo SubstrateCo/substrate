@@ -33,7 +33,7 @@ export function callAgentTool(headers: Headers, call: z.output<typeof mcpCall>) 
         { audience, domain: "context" },
       ];
       if (execution.tool === "send_message")
-        hints.push(...(await messageRefreshHints(db, execution.output.messageId)));
+        hints.push(...(await messageRefreshHints(db, execution.output.id)));
       let assignee;
       if (execution.tool === "create_task") assignee = execution.input.assigneeActorId;
       if (execution.tool === "update_task") assignee = execution.input.changes.assigneeActorId;

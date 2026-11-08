@@ -1,8 +1,11 @@
 import type { McpInput, McpOutput } from "@startup-os/contracts/harness/tools";
+import type { TaskStatus } from "@startup-os/contracts/tasks";
 
 import { actors } from "../../core/actors/schema";
+import { entities } from "../../core/entities/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import { taskActivity } from "../activity/schema";
+import { messageEntityReferences } from "../context/schema";
 import { visibleConversations, type MessagingIdentity } from "../messaging/access";
 import { messagingMessages, messagingConversations } from "../messaging/schema";
 import { projectRepository } from "../projects/repository";
@@ -10,30 +13,37 @@ import { projects } from "../projects/schema";
 import { taskComments } from "../tasks/comments.schema";
 import { taskRepository } from "../tasks/repository";
 import { tasks } from "../tasks/tasks.schema";
+import { iso, messageRef } from "./formatting";
 import { pagination } from "./pagination";
-import { and, asc, desc, eq, gte, inArray, isNull, lt, or } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  countDistinct,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNull,
+  lt,
+  or,
+} from "drizzle-orm";
 
 export const actorSelection = { id: actors.entityId, name: actors.name, type: actors.type };
 
-function taskResult(
-  row: typeof tasks.$inferSelect,
-  assignee: { id: string; name: string; type: "human" | "agent" } | null,
-) {
-  return {
-    id: row.entityId,
-    projectId: row.projectEntityId,
-    parentTaskId: row.parentTaskEntityId,
-    title: row.title,
-    description: row.description,
-    status: row.status,
-    priority: row.priority,
-    assignee,
-    dueDate: row.dueDate,
-  };
-}
-
 export function mcpTaskQueries(ctx: RepositoryContext, identity: MessagingIdentity) {
   const { db, scope } = ctx;
+  const inOrganization = eq(tasks.organizationId, scope.organizationId);
+  const readableTask = inArray(tasks.entityId, ctx.readableEntities());
+  const assigneeJoin = and(
+    eq(actors.entityId, tasks.assigneeActorEntityId),
+    eq(actors.organizationId, scope.organizationId),
+  );
+  const visibleConversationIds = db
+    .select({ id: messagingConversations.id })
+    .from(messagingConversations)
+    .where(visibleConversations(db, identity));
+
   return {
     async listProjects(input: McpInput<"list_projects">) {
       const p = pagination(scope, "list_projects", input);
@@ -51,63 +61,137 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: MessagingIdenti
         .limit(p.take);
       return p.page(rows);
     },
-    async getProject(input: McpInput<"get_project">) {
+    async getProject(input: McpInput<"get_project">): Promise<McpOutput<"get_project">> {
       const project = await projectRepository(ctx).get(input.projectId);
-      const p = pagination(scope, "get_project", input);
-      let parentFilter;
-      if (input.parentTaskId === null) parentFilter = isNull(tasks.parentTaskEntityId);
-      else if (input.parentTaskId) parentFilter = eq(tasks.parentTaskEntityId, input.parentTaskId);
       const rows = await db
-        .select({ task: tasks, assignee: actorSelection })
+        .select({ status: tasks.status, total: count() })
         .from(tasks)
-        .leftJoin(
-          actors,
-          and(
-            eq(actors.entityId, tasks.assigneeActorEntityId),
-            eq(actors.organizationId, scope.organizationId),
-          ),
-        )
-        .where(
-          and(
-            eq(tasks.organizationId, scope.organizationId),
-            eq(tasks.projectEntityId, input.projectId),
-            inArray(tasks.entityId, ctx.readableEntities()),
-            input.statuses ? inArray(tasks.status, input.statuses) : undefined,
-            input.assigneeActorId
-              ? eq(tasks.assigneeActorEntityId, input.assigneeActorId)
-              : undefined,
-            parentFilter,
-          ),
-        )
-        .orderBy(asc(tasks.entityId))
-        .offset(p.offset)
-        .limit(p.take);
+        .where(and(inOrganization, eq(tasks.projectEntityId, input.projectId), readableTask))
+        .groupBy(tasks.status);
+      const taskCounts: Record<TaskStatus, number> = {
+        not_started: 0,
+        in_progress: 0,
+        in_review: 0,
+        completed: 0,
+        canceled: 0,
+      };
+      for (const row of rows) taskCounts[row.status] = row.total;
       return {
         id: project.entityId,
         name: project.name,
         description: project.description,
-        tasks: p.page(
-          rows.map(({ task, assignee }) => {
-            const { projectId: _, description: __, ...summary } = taskResult(task, assignee);
-            return summary;
-          }),
-        ),
+        taskCounts,
       };
     },
-    async getTask(taskId: string) {
+    async listTasks(input: McpInput<"list_tasks">) {
+      await projectRepository(ctx).get(input.projectId);
+      const p = pagination(scope, "list_tasks", input);
+      const assignee = input.assigneeActorId === "me" ? scope.actorEntityId : input.assigneeActorId;
+      let parentFilter;
+      if (input.parentTaskId === null) parentFilter = isNull(tasks.parentTaskEntityId);
+      else if (input.parentTaskId) parentFilter = eq(tasks.parentTaskEntityId, input.parentTaskId);
+      const rows = await db
+        .select({ task: tasks, assignee: actorSelection, updatedAt: entities.updatedAt })
+        .from(tasks)
+        .innerJoin(entities, eq(entities.entityId, tasks.entityId))
+        .leftJoin(actors, assigneeJoin)
+        .where(
+          and(
+            inOrganization,
+            eq(tasks.projectEntityId, input.projectId),
+            readableTask,
+            input.statuses ? inArray(tasks.status, input.statuses) : undefined,
+            assignee ? eq(tasks.assigneeActorEntityId, assignee) : undefined,
+            parentFilter,
+          ),
+        )
+        .orderBy(desc(entities.updatedAt), desc(tasks.entityId))
+        .offset(p.offset)
+        .limit(p.take);
+      return p.page(
+        rows.map(({ task, assignee, updatedAt }) => ({
+          id: task.entityId,
+          title: task.title,
+          status: task.status,
+          priority: task.priority,
+          assignee,
+          dueDate: task.dueDate,
+          parentTaskId: task.parentTaskEntityId,
+          updatedAt: iso(updatedAt),
+        })),
+      );
+    },
+    async getTask(taskId: string): Promise<McpOutput<"get_task">> {
       const task = await taskRepository(ctx).get(taskId);
-      const [assignee] = task.assigneeActorEntityId
+      const [detail] = await db
+        .select({
+          assignee: actorSelection,
+          projectName: projects.name,
+          createdAt: entities.createdAt,
+          updatedAt: entities.updatedAt,
+        })
+        .from(tasks)
+        .innerJoin(entities, eq(entities.entityId, tasks.entityId))
+        .innerJoin(projects, eq(projects.entityId, tasks.projectEntityId))
+        .leftJoin(actors, assigneeJoin)
+        .where(and(inOrganization, eq(tasks.entityId, taskId)));
+      const [parent] = task.parentTaskEntityId
         ? await db
-            .select(actorSelection)
-            .from(actors)
-            .where(
-              and(
-                eq(actors.entityId, task.assigneeActorEntityId),
-                eq(actors.organizationId, scope.organizationId),
-              ),
-            )
+            .select({ id: tasks.entityId, title: tasks.title })
+            .from(tasks)
+            .where(and(inOrganization, eq(tasks.entityId, task.parentTaskEntityId), readableTask))
         : [];
-      return taskResult(task, assignee ?? null);
+      const [subtasks] = await db
+        .select({ total: count() })
+        .from(tasks)
+        .where(and(inOrganization, eq(tasks.parentTaskEntityId, taskId), readableTask));
+      const [comments] = await db
+        .select({ total: count() })
+        .from(taskComments)
+        .where(
+          and(
+            eq(taskComments.organizationId, scope.organizationId),
+            eq(taskComments.taskEntityId, taskId),
+          ),
+        );
+      // Only messages in conversations the caller can see are counted or shown.
+      const references = and(
+        eq(messageEntityReferences.organizationId, scope.organizationId),
+        eq(messageEntityReferences.entityId, taskId),
+        inArray(messageEntityReferences.conversationId, visibleConversationIds),
+      );
+      const [linked] = await db
+        .select({ total: countDistinct(messageEntityReferences.messageId) })
+        .from(messageEntityReferences)
+        .where(references);
+      const [source] = await db
+        .select({
+          id: messagingMessages.id,
+          conversationId: messagingMessages.conversationId,
+          threadId: messagingMessages.threadId,
+        })
+        .from(messageEntityReferences)
+        .innerJoin(messagingMessages, eq(messagingMessages.id, messageEntityReferences.messageId))
+        .where(and(references, eq(messageEntityReferences.purpose, "source")))
+        .orderBy(asc(messageEntityReferences.createdAt))
+        .limit(1);
+      return {
+        id: task.entityId,
+        title: task.title,
+        description: task.description,
+        status: task.status,
+        priority: task.priority,
+        assignee: detail!.assignee,
+        dueDate: task.dueDate,
+        project: { id: task.projectEntityId, name: detail!.projectName },
+        parent: parent ?? null,
+        subtaskCount: subtasks!.total,
+        source: source ? messageRef(source) : null,
+        commentCount: comments!.total,
+        linkedMessageCount: linked!.total,
+        createdAt: iso(detail!.createdAt),
+        updatedAt: iso(detail!.updatedAt),
+      };
     },
     async listComments(input: McpInput<"list_task_comments">) {
       await taskRepository(ctx).get(input.taskId);
@@ -132,11 +216,11 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: MessagingIdenti
         .orderBy(desc(taskComments.createdAt), desc(taskComments.id))
         .offset(p.offset)
         .limit(p.take);
-      return p.page(rows);
+      return p.page(rows.map((row) => ({ ...row, createdAt: iso(row.createdAt) })));
     },
-    async listActivity(input: McpInput<"list_activity">) {
+    async listActivity(input: McpInput<"list_task_activity">) {
       await taskRepository(ctx).get(input.taskId);
-      const p = pagination(scope, "list_activity", input);
+      const p = pagination(scope, "list_task_activity", input);
       const rows = await db
         .select({
           id: taskActivity.id,
@@ -145,6 +229,7 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: MessagingIdenti
           createdAt: taskActivity.createdAt,
           sourceMessageId: messagingMessages.id,
           conversationId: messagingConversations.id,
+          threadId: messagingMessages.threadId,
         })
         .from(taskActivity)
         .innerJoin(actors, eq(actors.entityId, taskActivity.actorEntityId))
@@ -166,15 +251,14 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: MessagingIdenti
         .offset(p.offset)
         .limit(p.take);
       return p.page(
-        rows.map(({ sourceMessageId, conversationId, ...event }) => {
-          const item: McpOutput<"list_activity">["items"][number] = {
-            ...event,
-            createdAt: event.createdAt.toISOString(),
-          };
-          if (sourceMessageId && conversationId)
-            item.source = { type: "message", messageId: sourceMessageId, conversationId };
-          return item;
-        }),
+        rows.map(({ sourceMessageId, conversationId, threadId, ...event }) => ({
+          ...event,
+          createdAt: iso(event.createdAt),
+          source:
+            sourceMessageId && conversationId
+              ? messageRef({ id: sourceMessageId, conversationId, threadId })
+              : null,
+        })),
       );
     },
   };

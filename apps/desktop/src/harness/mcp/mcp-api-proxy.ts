@@ -24,8 +24,15 @@ export function createMcpApiProxy(options: {
     const request = workspaceApiRequest.parse(raw);
     mcpTools[request.tool].input.parse(request.input);
     const organizationId = await scope();
+    // Returned, not thrown, so the agent receives this message instead of a generic failure.
     if (organizationId !== request.organizationId)
-      throw new Error("Workspace changed. Start a new agent run in this workspace.");
+      return {
+        success: false,
+        error: {
+          code: "FORBIDDEN",
+          message: "Workspace changed. Start a new agent run in this workspace.",
+        },
+      };
     const url = new URL("/api/v1/mcp/call", options.backend);
     const init: RequestInit = {
       method: "POST",

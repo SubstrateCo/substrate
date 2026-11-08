@@ -11,7 +11,7 @@ import {
 import type { WorkspaceApiProxy } from "@startup-os/contracts/harness/mcp";
 
 import type { AdapterContext, NativeAdapter } from "./adapters/types.ts";
-import { materialize, writeDefaultFiles } from "./config.ts";
+import { materialize, writeDefaultFiles, writeStartupSkills } from "./config.ts";
 import { HarnessError } from "./errors.ts";
 import { createStartupMcp } from "./mcp.ts";
 import { discoverModels } from "./models/discover.ts";
@@ -101,10 +101,13 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ha
     if (sessions.has(ref.id)) return ref;
     const lease = agent.useStartupDefaults ? mcp.issue(ref.organizationId, agent.id) : undefined;
     try {
+      const root = await agentDirectory(accountDirectory, ref.organizationId, agent.id);
+      // Refresh Startup OS skills before each run so they match this build's MCP tools.
+      await writeStartupSkills(root, agent);
       const context: AdapterContext = {
         configuration,
         agent,
-        directory: await agentDirectory(accountDirectory, ref.organizationId, agent.id),
+        directory: root,
         executable: await resolveExecutable(agent.harness, options.executables?.[agent.harness]),
         lease,
         emit: (event) => emit(ref, event),

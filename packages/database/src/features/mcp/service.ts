@@ -16,7 +16,8 @@ import type { MessagingIdentity } from "../messaging/access";
 import { requireMessage } from "../messaging/access";
 import { sendMessageAs } from "../messaging/service";
 import { taskRepository } from "../tasks/repository";
-import { relatedContext } from "./context";
+import { mcpContextQueries } from "./context";
+import { listLinks } from "./links";
 import { mcpMessagingQueries } from "./messaging";
 import { agentToolRequests } from "./schema";
 import { mcpTaskQueries } from "./tasks";
@@ -31,7 +32,7 @@ type ToolPayload = object;
 type ToolHandlers = { [K in McpToolName]: (input: McpInput<K>) => Promise<ToolPayload> };
 // Every tool that accepts requestId can replay a stored result, so each one must recheck access.
 type ReplayableTool = {
-  [K in McpToolName]: "requestId" extends keyof McpInput<K> ? K : never;
+  [K in McpToolName]: McpInput<K> extends { requestId: string } ? K : never;
 }[McpToolName];
 type ReplayChecks = {
   [K in ReplayableTool]: (input: McpInput<K>, output: McpOutput<K>) => Promise<void>;
@@ -51,31 +52,38 @@ export async function executeAgentTool<K extends McpToolName>(
   // SAFETY: `definition` is the registry entry for `tool`, so its schema produces McpInput<K>.
   const input = definition.input.parse(raw) as McpInput<K>;
   const output = await db.transaction(async (tx) => {
-    const { context: ctx, actor: agent } = await workspaceContext(tx, identity, {
+    const {
+      context: ctx,
+      actor: agent,
+      userName,
+    } = await workspaceContext(tx, identity, {
       lockActor: true,
     });
     const actor = { id: agent.entityId, name: agent.name, type: agent.type };
     const author = { actor: agent, authorName: agent.name };
     const tasks = taskRepository(ctx);
+    const context = mcpContextQueries(ctx, identity);
     const queries = mcpTaskQueries(ctx, identity);
     const messaging = mcpMessagingQueries(ctx, identity);
     const handlers: ToolHandlers = {
+      get_me: () => context.getMe(actor, userName),
+      search: (value) => context.search(value),
+      list_assignees: (value) => context.listAssignees(value),
       list_projects: (value) => queries.listProjects(value),
       get_project: (value) => queries.getProject(value),
+      list_tasks: (value) => queries.listTasks(value),
       get_task: (value) => queries.getTask(value.taskId),
-      list_activity: (value) => queries.listActivity(value),
+      list_task_activity: (value) => queries.listActivity(value),
       list_task_comments: (value) => queries.listComments(value),
       list_conversations: (value) => messaging.listConversations(value),
-      list_messages: (value) => messaging.listMessages(value),
-      get_related_context: (value) => relatedContext(ctx, identity, value),
-      async create_task(value) {
+      read_conversation: (value) => messaging.readConversation(value),
+      read_thread: (value) => messaging.readThread(value),
+      list_links: (value) => listLinks(ctx, identity, value),
+      async create_task({ sourceMessageId, ...value }) {
         let source;
-        if (value.source) {
-          source = await requireMessage(tx, identity, value.source.messageId);
-          if (
-            source.message.conversationId !== value.source.conversationId ||
-            source.conversation.organizationId !== identity.organizationId
-          )
+        if (sourceMessageId) {
+          source = await requireMessage(tx, identity, sourceMessageId);
+          if (source.conversation.organizationId !== identity.organizationId)
             throw new AccessDeniedError();
         }
         const task = await tasks.create({
@@ -101,51 +109,43 @@ export async function executeAgentTool<K extends McpToolName>(
             source.message.id,
           );
         }
-        return { taskId: task.entityId, createdBy: actor, source: value.source ?? null };
+        return queries.getTask(task.entityId);
       },
       async update_task({ taskId, changes }) {
         await tasks.update(taskId, { ...changes, assigneeActorEntityId: changes.assigneeActorId });
-        return { taskId, updatedBy: actor };
+        return queries.getTask(taskId);
       },
       async add_task_comment(value) {
         const comment = await tasks.addComment(value.taskId, value.body);
-        return {
-          commentId: comment.id,
-          taskId: value.taskId,
-          author: actor,
-          createdAt: comment.createdAt,
-        };
+        return { id: comment.id, taskId: value.taskId, createdAt: comment.createdAt };
       },
       async send_message(value) {
         const message = await sendMessageAs(ctx, identity, author, value);
         return {
-          messageId: message.id,
+          id: message.id,
           conversationId: message.conversationId,
           threadId: message.threadId,
-          author: actor,
           createdAt: message.createdAt,
         };
       },
-      async attach_reference(value) {
-        const changed = await attachReference(ctx, identity, value.message, value.target);
-        return { attached: true, changed, actedBy: actor };
+      async attach_message(value) {
+        return { changed: await attachReference(ctx, identity, value, value.target) };
       },
-      async remove_reference(value) {
-        const changed = await detachReference(ctx, identity, value.message, value.target);
-        return { attached: false, changed, actedBy: actor };
+      async detach_message(value) {
+        return { changed: await detachReference(ctx, identity, value, value.target) };
       },
     };
     // Recheck access before returning a previously created record's identifiers.
     const replayChecks: ReplayChecks = {
       async create_task(value, previous) {
-        await tasks.get(previous.taskId);
-        if (value.source) await requireMessage(tx, identity, value.source.messageId);
+        await tasks.get(previous.id);
+        if (value.sourceMessageId) await requireMessage(tx, identity, value.sourceMessageId);
       },
       async add_task_comment(value) {
         await tasks.get(value.taskId);
       },
       async send_message(_, previous) {
-        await requireMessage(tx, identity, previous.messageId);
+        await requireMessage(tx, identity, previous.id);
       },
     };
     const requestId = requestIdOf(input);

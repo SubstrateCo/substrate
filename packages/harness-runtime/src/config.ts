@@ -1,12 +1,9 @@
 import {
   harnessKinds,
   startupInstructions,
-  startupSkillContent,
-  startupSkillDescription,
-  startupSkillId,
+  startupSkills,
   type HarnessAgent,
   type HarnessConfiguration,
-  type HarnessKind,
   type HarnessSkill,
 } from "@startup-os/contracts/harness";
 
@@ -15,36 +12,36 @@ import { harnessLayouts } from "./harness-layout.ts";
 import { organizationDirectory, safeId, safePath } from "./paths.ts";
 import { writeFile } from "node:fs/promises";
 
-export function startupSkill(harness: HarnessKind): HarnessSkill {
-  return {
-    id: startupSkillId,
-    name: startupSkillId,
-    description: startupSkillDescription,
-    content: startupSkillContent(harness),
-  };
+function skillFile(skill: HarnessSkill) {
+  return `---\nname: ${skill.name}\ndescription: ${JSON.stringify(skill.description)}\n---\n\n${skill.content}`;
 }
 
 /** Files Startup OS provides for an agent, relative to its folder. The user owns them once written. */
 export function defaultFiles(organizationId: string, agent: HarnessAgent) {
-  const layout = harnessLayouts[agent.harness];
-  const skill = startupSkill(agent.harness);
-  const files = new Map([
+  return new Map([
     [
-      layout.instructions,
+      harnessLayouts[agent.harness].instructions,
       agent.useStartupDefaults
         ? `${startupInstructions({ ...agent, organizationId })}${agent.instructions}\n`
         : `${agent.instructions}\n`,
     ],
   ]);
-  if (agent.useStartupDefaults)
-    files.set(
-      `${layout.skills}/${skill.id}/SKILL.md`,
-      `---\nname: ${skill.name}\ndescription: ${JSON.stringify(skill.description)}\n---\n\n${skill.content}`,
-    );
-  return files;
 }
 
-/** Writes missing default files. With `reset`, replaces existing ones too. Never deletes files. */
+/** Startup OS owns these skills: each write replaces them so they match the current MCP tools. */
+export async function writeStartupSkills(agentRoot: string, agent: HarnessAgent): Promise<void> {
+  if (!agent.useStartupDefaults) return;
+  for (const skill of startupSkills) {
+    const path = `${harnessLayouts[agent.harness].skills}/${skill.id}/SKILL.md`;
+    const target = await safePath(agentRoot, path, false, true);
+    await writeFile(target, skillFile(skill), { mode: 0o600 });
+  }
+}
+
+/**
+ * Writes missing default files. With `reset`, replaces existing ones too. Startup OS skills are
+ * always replaced. Never deletes files.
+ */
 export async function writeDefaultFiles(
   agentRoot: string,
   organizationId: string,
@@ -59,6 +56,7 @@ export async function writeDefaultFiles(
       },
     );
   }
+  await writeStartupSkills(agentRoot, agent);
 }
 
 export async function materialize(

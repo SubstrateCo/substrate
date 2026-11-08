@@ -1,10 +1,9 @@
 import {
-  startupSkillId,
+  startupSkills,
   type HarnessConfiguration,
   type HarnessKind,
 } from "@startup-os/contracts/harness";
 
-import { startupSkill } from "./config.ts";
 import { createHarnessHost } from "./host.ts";
 import {
   editNativeServer,
@@ -298,9 +297,8 @@ test("recreates the host and synchronizes edited actors without replacing local 
     expect(local.mcpServers.find((server) => server.id === "local-tools")?.args).toEqual([
       "--read-only",
     ]);
-    expect(local.skills.find((skill) => skill.id === startupSkillId)?.content).toBe(
-      startupSkill("opencode").content,
-    );
+    for (const skill of startupSkills)
+      expect(local.skills.find((item) => item.id === skill.id)?.content).toBe(skill.content);
     const claudePrompt = join(
       root,
       "orgs",

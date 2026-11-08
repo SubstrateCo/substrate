@@ -1,10 +1,12 @@
-import type {
-  HarnessAgent,
-  HarnessConfiguration,
-  HarnessKind,
+import {
+  startupSkills,
+  type HarnessAgent,
+  type HarnessConfiguration,
+  type HarnessKind,
+  type HarnessSkill,
 } from "@startup-os/contracts/harness";
 
-import { materialize, startupSkill, writeDefaultFiles } from "./config.ts";
+import { materialize, writeDefaultFiles } from "./config.ts";
 import { harnessLayouts } from "./harness-layout.ts";
 import { scanNativeSkills, saveNativeSkill } from "./native-config.ts";
 import { agentDirectory } from "./paths.ts";
@@ -31,6 +33,7 @@ const configuration = (...agents: HarnessAgent[]): HarnessConfiguration => ({
 });
 const read = (directory: string, path: string) => readFile(join(directory, path), "utf8");
 const exists = (directory: string, path: string) => Bun.file(join(directory, path)).exists();
+const byId = (skills: HarnessSkill[]) => skills.toSorted((a, b) => a.id.localeCompare(b.id));
 
 beforeEach(async () => {
   await mkdir(join(tmpdir(), "opencode"), { recursive: true });
@@ -50,21 +53,22 @@ for (const harness of ["opencode", "claude", "antigravity", "codex"] satisfies H
     expect(prompt).toContain("Review only.");
     for (const other of ["AGENTS.md", "CLAUDE.md"].filter((name) => name !== instructions))
       expect(await exists(directory, other)).toBe(false);
-    expect(await scanNativeSkills(directory, harness)).toEqual([startupSkill(harness)]);
-    expect(startupSkill(harness).content).toStartWith(`Read ${instructions} `);
+    expect(byId(await scanNativeSkills(directory, harness))).toEqual(byId(startupSkills));
   });
 }
 
-test("sync never replaces existing files and restores missing ones", async () => {
+test("sync keeps the user's instructions but rewrites edited or missing Startup OS skills", async () => {
   const config = configuration(agent("antigravity"));
   await materialize(root, config);
   const directory = await agentDirectory(root, "org-a", "agent-a");
+  const [edited, removed] = startupSkills;
   await writeFile(join(directory, "AGENTS.md"), "User prompt");
-  await unlink(join(directory, `.agents/skills/${startupSkill("antigravity").id}/SKILL.md`));
+  await saveNativeSkill(directory, "antigravity", { ...edited!, content: "Stale tool names." });
+  await unlink(join(directory, `.agents/skills/${removed!.id}/SKILL.md`));
   config.agents[0].instructions = "Check linked source records.";
   await materialize(root, config);
   expect(await read(directory, "AGENTS.md")).toBe("User prompt");
-  expect(await scanNativeSkills(directory, "antigravity")).toEqual([startupSkill("antigravity")]);
+  expect(byId(await scanNativeSkills(directory, "antigravity"))).toEqual(byId(startupSkills));
 });
 
 test("disabling or removing an agent leaves its files in place", async () => {

@@ -1,4 +1,4 @@
-import { mcpCall } from "./tools.ts";
+import { mcpCall } from "./tools/index.ts";
 import { z } from "zod";
 
 // The host supplies agent and organization scope from a live MCP lease, not tool input.

@@ -1,25 +1,40 @@
 import type { McpInput, McpOutput } from "@startup-os/contracts/harness/tools";
 
 import { actors } from "../../core/actors/schema";
+import { user } from "../../core/authentication/schema";
 import type { RepositoryContext } from "../../core/repository-context";
-import { AccessDeniedError, ValidationError } from "../../errors";
+import { AccessDeniedError } from "../../errors";
 import { requireMessage, visibleConversations, type MessagingIdentity } from "../messaging/access";
-import { messagingConversations, messagingMessages } from "../messaging/schema";
+import {
+  messagingConversations,
+  messagingMessages,
+  messagingParticipants,
+} from "../messaging/schema";
+import { excerpt, iso } from "./formatting";
 import { pagination } from "./pagination";
 import { actorSelection } from "./tasks";
-import { and, desc, eq, gte, isNotNull, isNull, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql, type SQL } from "drizzle-orm";
 
 export function mcpMessagingQueries(ctx: RepositoryContext, identity: MessagingIdentity) {
   const { db, scope } = ctx;
+  const replies = (rest: SQL = sql``) =>
+    sql`from ${messagingMessages} r where r.conversation_id = ${messagingMessages.conversationId} and r.thread_id = ${messagingMessages.id} ${rest}`;
+  const replyCount = sql<number>`(select count(*)::int ${replies()})`;
+  const lastReplyAt = sql<string | null>`(select max(r.created_at)::text ${replies()})`;
   return {
     async listConversations(input: McpInput<"list_conversations">) {
       const p = pagination(scope, "list_conversations", input);
       const lastActivity = sql<Date | null>`(select max(m.created_at) from ${messagingMessages} m where m.conversation_id = ${messagingConversations.id})`;
+      // Unnamed DMs and groups are named after the other people in them.
+      const others = sql<
+        string | null
+      >`(select string_agg(u.name, ', ' order by u.name) from ${messagingParticipants} p join ${user} u on u.id = p.user_id
+        where p.conversation_id = ${messagingConversations.id} and p.left_at is null and p.user_id <> ${identity.userId})`;
       const rows = await db
         .select({
           id: messagingConversations.id,
           kind: messagingConversations.kind,
-          name: sql<string>`coalesce(${messagingConversations.name}, 'Conversation')`,
+          name: sql<string>`coalesce(${messagingConversations.name}, ${others}, 'Direct conversation')`,
           lastActivityAt: lastActivity,
         })
         .from(messagingConversations)
@@ -32,12 +47,17 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: MessagingI
               : undefined,
           ),
         )
-        .orderBy(desc(messagingConversations.createdAt), desc(messagingConversations.id))
+        .orderBy(sql`${lastActivity} desc nulls last`, desc(messagingConversations.id))
         .offset(p.offset)
         .limit(p.take);
-      return p.page(rows);
+      return p.page(
+        rows.map((row) => ({
+          ...row,
+          lastActivityAt: row.lastActivityAt ? iso(row.lastActivityAt) : null,
+        })),
+      );
     },
-    async listMessages(input: McpInput<"list_messages">) {
+    async readConversation(input: McpInput<"read_conversation">) {
       const [conversation] = await db
         .select({ id: messagingConversations.id })
         .from(messagingConversations)
@@ -48,84 +68,89 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: MessagingI
           ),
         );
       if (!conversation) throw new AccessDeniedError();
-      if (input.threadId) {
-        const { message } = await requireMessage(db, identity, input.threadId);
-        if (message.conversationId !== input.conversationId || message.threadId)
-          throw new ValidationError("Thread must be a root message in this conversation.");
-      }
-      const p = pagination(scope, "list_messages", input);
-      const window = [
-        input.since ? gte(messagingMessages.createdAt, new Date(input.since)) : undefined,
-        input.until ? lt(messagingMessages.createdAt, new Date(input.until)) : undefined,
-      ];
+      const p = pagination(scope, "read_conversation", input);
+      const bounds = (column: SQL) =>
+        sql.join(
+          [
+            input.since ? sql`${column} >= ${input.since}::timestamptz` : undefined,
+            input.until ? sql`${column} < ${input.until}::timestamptz` : undefined,
+          ].filter((part) => part !== undefined),
+          sql` and `,
+        );
+      const windowed = Boolean(input.since || input.until);
+      const posted = windowed ? bounds(sql`${messagingMessages.createdAt}`) : sql`true`;
+      const replyInWindow = sql<
+        string | null
+      >`(select max(r.created_at) ${replies(windowed ? sql`and ${bounds(sql`r.created_at`)}` : sql``)})`;
+      // A root is shown when it was posted in the window or its thread got a reply in the window.
+      const activity = windowed
+        ? sql`greatest(case when ${posted} then ${messagingMessages.createdAt} end, ${replyInWindow}::timestamptz)`
+        : sql`greatest(${messagingMessages.createdAt}, ${lastReplyAt}::timestamptz)`;
       const rows = await db
         .select({
           id: messagingMessages.id,
           author: actorSelection,
           body: messagingMessages.body,
           createdAt: messagingMessages.createdAt,
-          replyCount: sql<number>`(select count(*)::int from ${messagingMessages} r where r.conversation_id = ${messagingMessages.conversationId} and r.thread_id = ${messagingMessages.id})`,
-          lastReplyAt: sql<
-            string | null
-          >`(select max(r.created_at)::text from ${messagingMessages} r where r.conversation_id = ${messagingMessages.conversationId} and r.thread_id = ${messagingMessages.id})`,
+          replyCount,
+          lastReplyAt,
+          posted: sql<boolean>`${posted}`,
         })
         .from(messagingMessages)
         .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
         .where(
           and(
             eq(messagingMessages.conversationId, input.conversationId),
-            input.threadId
-              ? eq(messagingMessages.threadId, input.threadId)
-              : isNull(messagingMessages.threadId),
-            ...window,
+            sql`${messagingMessages.threadId} is null`,
+            windowed ? sql`(${posted} or ${replyInWindow} is not null)` : undefined,
           ),
         )
-        .orderBy(desc(messagingMessages.createdAt), desc(messagingMessages.id))
+        .orderBy(sql`${activity} desc`, desc(messagingMessages.id))
         .offset(p.offset)
         .limit(p.take);
-      const items = rows.map(({ replyCount, lastReplyAt, ...message }) => {
-        const item: McpOutput<"list_messages">["messages"]["items"][number] = {
-          ...message,
-          createdAt: message.createdAt.toISOString(),
-        };
-        if (!input.threadId && replyCount && lastReplyAt)
-          item.thread = {
-            id: message.id,
-            replyCount,
-            lastReplyAt: new Date(lastReplyAt).toISOString(),
-          };
-        return item;
-      });
-      if (input.threadId) return { messages: p.page(items) };
-      const threads = await db
-        .select({
-          threadId: sql<string>`${messagingMessages.threadId}`,
-          rootMessageId: sql<string>`${messagingMessages.threadId}`,
-          replyCountInWindow: sql<number>`count(*)::int`,
-          lastReplyAt: sql<string>`max(${messagingMessages.createdAt})::text`,
-        })
+      return p.page(
+        rows.map(({ body, posted, ...row }): McpOutput<"read_conversation">["items"][number] => ({
+          ...row,
+          ...excerpt(body),
+          createdAt: iso(row.createdAt),
+          lastReplyAt: row.lastReplyAt ? iso(row.lastReplyAt) : null,
+          includedBecause: posted ? "posted" : "thread_activity",
+        })),
+      );
+    },
+    async readThread(input: McpInput<"read_thread">): Promise<McpOutput<"read_thread">> {
+      const { message } = await requireMessage(db, identity, input.messageId);
+      const rootId = message.threadId ?? message.id;
+      // A reply and its root open the same thread, so either one continues the same cursor.
+      const thread = { ...input, messageId: rootId };
+      const p = pagination(scope, "read_thread", thread);
+      const columns = {
+        id: messagingMessages.id,
+        author: actorSelection,
+        body: messagingMessages.body,
+        createdAt: messagingMessages.createdAt,
+      };
+      const author = eq(actors.entityId, messagingMessages.authorActorEntityId);
+      const inConversation = eq(messagingMessages.conversationId, message.conversationId);
+      const [root] = await db
+        .select(columns)
         .from(messagingMessages)
-        .where(
-          and(
-            eq(messagingMessages.conversationId, input.conversationId),
-            isNotNull(messagingMessages.threadId),
-            ...window,
-          ),
-        )
-        .groupBy(messagingMessages.threadId)
-        .orderBy(desc(sql`max(${messagingMessages.createdAt})`), desc(messagingMessages.threadId))
+        .innerJoin(actors, author)
+        .where(and(inConversation, eq(messagingMessages.id, rootId)));
+      if (!root) throw new AccessDeniedError();
+      const rows = await db
+        .select(columns)
+        .from(messagingMessages)
+        .innerJoin(actors, author)
+        .where(and(inConversation, eq(messagingMessages.threadId, rootId)))
+        .orderBy(asc(messagingMessages.createdAt), asc(messagingMessages.id))
         .offset(p.offset)
         .limit(p.take);
-      const more = rows.length > input.limit || threads.length > input.limit;
+      const format = (row: typeof root) => ({ ...row, createdAt: iso(row.createdAt) });
       return {
-        messages: p.page(items, more),
-        activeThreads: p.page(
-          threads.map((thread) => ({
-            ...thread,
-            lastReplyAt: new Date(thread.lastReplyAt).toISOString(),
-          })),
-          more,
-        ),
+        conversationId: message.conversationId,
+        root: format(root),
+        replies: p.page(rows.map(format)),
       };
     },
   };

@@ -71,7 +71,10 @@ test("MCP binds calls to the launch workspace instead of following workspace swi
   const f = fixture();
   expect(await f.proxy(projects)).toEqual({ success: true, data: ["project"] });
   f.switchWorkspace();
-  await expect(f.proxy(projects)).rejects.toThrow("Workspace changed");
+  expect(await f.proxy(projects)).toMatchObject({
+    success: false,
+    error: { message: expect.stringContaining("Workspace changed") },
+  });
   expect(f.requests.map(({ url }) => url)).toEqual(["https://api.example.com/api/v1/mcp/call"]);
 });
 

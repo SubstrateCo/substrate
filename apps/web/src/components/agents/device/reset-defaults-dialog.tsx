@@ -41,8 +41,8 @@ export function ResetDefaultsDialog({
         <DialogHeader>
           <DialogTitle>Reset Startup OS defaults?</DialogTitle>
           <DialogDescription>
-            This replaces the agent's instructions file and Startup OS skill on this device with the
-            saved agent settings. Local edits to those files are lost. Your other skills and MCP
+            This replaces the agent's instructions file and Startup OS skills on this device with
+            the saved agent settings. Local edits to those files are lost. Your other skills and MCP
             servers are not changed.
           </DialogDescription>
         </DialogHeader>
