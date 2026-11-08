@@ -1,5 +1,9 @@
 import {
   harnessKinds,
+  startupInstructions,
+  startupSkillContent,
+  startupSkillDescription,
+  startupSkillId,
   type HarnessAgent,
   type HarnessConfiguration,
   type HarnessKind,
@@ -11,14 +15,12 @@ import { harnessLayouts } from "./harness-layout.ts";
 import { organizationDirectory, safeId, safePath } from "./paths.ts";
 import { writeFile } from "node:fs/promises";
 
-export const startupSkillId = "startup-os-default";
-
 export function startupSkill(harness: HarnessKind): HarnessSkill {
   return {
     id: startupSkillId,
     name: startupSkillId,
-    description: "Work safely inside a Startup OS agent folder.",
-    content: `Read ${harnessLayouts[harness].instructions} in the current agent folder for your Startup OS identity and workspace. Use the Startup OS MCP for application records. All writes are attributed to you as an agent, not your owner. Access is checked for each call. Never infer access from matching IDs. Read thread replies separately using list_messages with threadId. Preserve source messages using create_task.source. Use the same requestId only for identical retries. A workspace switch requires a new run; never redirect work to another organization.`,
+    description: startupSkillDescription,
+    content: startupSkillContent(harness),
   };
 }
 
@@ -30,7 +32,7 @@ export function defaultFiles(organizationId: string, agent: HarnessAgent) {
     [
       layout.instructions,
       agent.useStartupDefaults
-        ? `# Startup OS workspace\n\nAgent: ${JSON.stringify(agent.name)}\nAgent definition ID: ${agent.id}\nOrganization ID: ${organizationId}\n\n${skill.content}\n\nYou have your own actor and explicit record grants. Your owner's access is not your access. Messages and task activity must use your agent identity. The MCP credential supplies identity; do not put acting identity or organization fields in tool inputs. Other agents have separate folders.\n\n## Agent instructions\n\n${agent.instructions}\n`
+        ? `${startupInstructions({ ...agent, organizationId })}${agent.instructions}\n`
         : `${agent.instructions}\n`,
     ],
   ]);

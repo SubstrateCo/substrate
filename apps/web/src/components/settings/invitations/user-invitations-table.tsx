@@ -5,6 +5,7 @@ import { AppTable, createAppColumnHelper, dateTimeColumn, useAppTable } from "..
 import { Button } from "../../ui/button";
 import { ButtonGroup } from "../../ui/button-group";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../ui/tooltip";
+import { useDelayedLoading } from "../use-delayed-loading";
 import { ArrowUpRight } from "lucide-react";
 
 type UserInvitation = {
@@ -89,37 +90,40 @@ export function UserInvitationsTable({
     getRowId: (row) => row.id,
     autoResetPageIndex: false,
   });
+  const showLoading = useDelayedLoading(loading);
   return (
     <TooltipProvider>
-      <AppTable
-        table={table}
-        name="Your invitations"
-        loading={loading}
-        loadingMessage="Loading your invitations…"
-        error={error}
-        errorTitle="Couldn’t load your invitations"
-        errorDescription="Your invitations are unavailable. Please try again."
-        onRetry={onRetry}
-        emptyMessage="You have no pending invitations."
-        renderMobileRow={(invitation) => (
-          <>
-            <p className="font-medium wrap-anywhere">
-              {invitation.organizationName || "Organization"}
-            </p>
-            <dl className="grid grid-cols-3 gap-x-3 gap-y-2 text-sm">
-              <dt className="text-muted-foreground">Role</dt>
-              <dd className="col-span-2">{invitation.role}</dd>
-              <dt className="text-muted-foreground">Status</dt>
-              <dd className="col-span-2">{invitation.expired ? "expired" : "pending"}</dd>
-              <dt className="text-muted-foreground">Expires</dt>
-              <dd className="col-span-2">
-                <DateTimeDisplay value={invitation.expiresAt} />
-              </dd>
-            </dl>
-            {!invitation.expired && <ReviewInvitationAction href={invitation.href} />}
-          </>
-        )}
-      />
+      <div className={loading && !showLoading ? "invisible" : undefined}>
+        <AppTable
+          table={table}
+          name="Your invitations"
+          loading={loading}
+          loadingMessage="Loading your invitations…"
+          error={error}
+          errorTitle="Couldn’t load your invitations"
+          errorDescription="Your invitations are unavailable. Please try again."
+          onRetry={onRetry}
+          emptyMessage="You have no pending invitations."
+          renderMobileRow={(invitation) => (
+            <>
+              <p className="font-medium wrap-anywhere">
+                {invitation.organizationName || "Organization"}
+              </p>
+              <dl className="grid grid-cols-3 gap-x-3 gap-y-2 text-sm">
+                <dt className="text-muted-foreground">Role</dt>
+                <dd className="col-span-2">{invitation.role}</dd>
+                <dt className="text-muted-foreground">Status</dt>
+                <dd className="col-span-2">{invitation.expired ? "expired" : "pending"}</dd>
+                <dt className="text-muted-foreground">Expires</dt>
+                <dd className="col-span-2">
+                  <DateTimeDisplay value={invitation.expiresAt} />
+                </dd>
+              </dl>
+              {!invitation.expired && <ReviewInvitationAction href={invitation.href} />}
+            </>
+          )}
+        />
+      </div>
     </TooltipProvider>
   );
 }

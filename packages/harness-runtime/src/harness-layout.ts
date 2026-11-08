@@ -1,4 +1,4 @@
-import type { HarnessKind } from "@startup-os/contracts/harness";
+import { harnessInstructionsFiles, type HarnessKind } from "@startup-os/contracts/harness";
 
 /** Native file locations inside an agent folder, relative to that folder. */
 export interface HarnessLayout {
@@ -14,7 +14,7 @@ export interface HarnessLayout {
 
 export const harnessLayouts: Record<HarnessKind, HarnessLayout> = {
   opencode: {
-    instructions: "AGENTS.md",
+    instructions: harnessInstructionsFiles.opencode,
     skills: ".opencode/skills",
     mcpFiles: [
       "opencode.json",
@@ -25,19 +25,19 @@ export const harnessLayouts: Record<HarnessKind, HarnessLayout> = {
     mcpKeys: ["mcp", "servers"],
   },
   claude: {
-    instructions: "CLAUDE.md",
+    instructions: harnessInstructionsFiles.claude,
     skills: ".claude/skills",
     mcpFiles: [".mcp.json"],
     mcpKeys: ["mcpServers"],
   },
   antigravity: {
-    instructions: "AGENTS.md",
+    instructions: harnessInstructionsFiles.antigravity,
     skills: ".agents/skills",
     mcpFiles: [".agents/mcp_config.json"],
     mcpKeys: ["mcpServers"],
   },
   codex: {
-    instructions: "AGENTS.md",
+    instructions: harnessInstructionsFiles.codex,
     skills: ".agents/skills",
     mcpFiles: [".codex/config.toml"],
     mcpKeys: ["mcp_servers"],

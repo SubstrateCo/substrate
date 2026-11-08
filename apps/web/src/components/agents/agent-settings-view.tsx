@@ -10,7 +10,6 @@ import { useState, type ReactNode } from "react";
 import { AgentCatalog } from "./catalog/agent-catalog";
 import { DeleteDefinitionDialog } from "./catalog/delete-definition-dialog";
 import { AgentEditor, type AgentSection } from "./editors/agent-editor";
-import { LoadingState } from "@/components/feedback/loading-state";
 import { Button } from "@/components/ui/button";
 
 type Editor = { id?: string };
@@ -56,7 +55,6 @@ export function AgentSettingsView({
           Agents
         </h2>
       </div>
-      {loading && <LoadingState label="Loading agent settings" />}
       {error && (
         <div role="alert">
           <p>{error.message}</p>
@@ -65,31 +63,30 @@ export function AgentSettingsView({
           </Button>
         </div>
       )}
-      {catalog && (
-        <>
-          <AgentCatalog
-            agents={catalog.agents}
-            pending={pending}
-            onCreate={() => setEditor({})}
-            onEdit={(agent) => setEditor({ id: agent.id })}
-            onDelete={(agent) => setDeleting({ id: agent.id, name: agent.name })}
-          />
-          {editor && (
-            <AgentEditor
-              userId={userId}
-              organizationId={organizationId}
-              agent={editedAgent}
-              picture={editedAgent && renderAgentPicture(editedAgent)}
-              renderConfiguration={renderAgentConfiguration}
-              pending={pending}
-              onClose={close}
-              onSave={async (input) => {
-                await onSaveAgent(input);
-                close();
-              }}
-            />
-          )}
-        </>
+      {(catalog || loading) && (
+        <AgentCatalog
+          agents={catalog?.agents}
+          loading={loading}
+          pending={pending}
+          onCreate={() => setEditor({})}
+          onEdit={(agent) => setEditor({ id: agent.id })}
+          onDelete={(agent) => setDeleting({ id: agent.id, name: agent.name })}
+        />
+      )}
+      {catalog && editor && (
+        <AgentEditor
+          userId={userId}
+          organizationId={organizationId}
+          agent={editedAgent}
+          picture={editedAgent && renderAgentPicture(editedAgent)}
+          renderConfiguration={renderAgentConfiguration}
+          pending={pending}
+          onClose={close}
+          onSave={async (input) => {
+            await onSaveAgent(input);
+            close();
+          }}
+        />
       )}
       {deleting && (
         <DeleteDefinitionDialog

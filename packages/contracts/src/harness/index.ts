@@ -9,6 +9,13 @@ import type { HarnessModelCatalog } from "./models.ts";
 
 export { harnessKinds, type HarnessKind } from "./kinds.ts";
 export {
+  harnessInstructionsFiles,
+  startupInstructions,
+  startupSkillContent,
+  startupSkillDescription,
+  startupSkillId,
+} from "./defaults.ts";
+export {
   harnessIdSchema,
   harnessInspectionSchema,
   harnessLocalConfigurationSchema,

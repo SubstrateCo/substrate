@@ -87,26 +87,32 @@ export function ModelPicker({
         if (value) chooseHarness(harness);
       }}
     >
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          size="selection"
-          disabled={disabled}
-          aria-label={`Harness & model: ${label} · ${modelName}`}
-          title={`${label} · ${modelName}`}
-          className="min-h-16 w-full justify-start text-left"
-        >
-          <span className="mr-1 flex size-6 shrink-0 items-center justify-center">
-            <HarnessIcon harness={harness} />
-          </span>
-          <span className="grid min-w-0 flex-1 gap-1">
-            <span className="truncate">{modelName}</span>
-            <span className="text-xs font-normal text-muted-foreground">{label}</span>
-          </span>
-          <ChevronsUpDown className="size-3.5 text-muted-foreground" />
-        </Button>
-      </PopoverTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="selection"
+              disabled={disabled}
+              aria-label={`Harness & model: ${label} · ${modelName}`}
+              className="min-h-16 w-full justify-start text-left"
+            >
+              <span className="mr-1 flex size-6 shrink-0 items-center justify-center">
+                <HarnessIcon harness={harness} />
+              </span>
+              <span className="grid min-w-0 flex-1 gap-1">
+                <span className="truncate">{modelName}</span>
+                <span className="text-xs font-normal text-muted-foreground">{label}</span>
+              </span>
+              <ChevronsUpDown className="size-3.5 text-muted-foreground" />
+            </Button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent>
+          {label} · {modelName}
+        </TooltipContent>
+      </Tooltip>
       <PopoverContent
         variant="reference"
         align="end"
@@ -178,33 +184,38 @@ export function ModelPicker({
                       </CommandItem>
                     )}
                     {models.map((choice) => (
-                      <CommandItem
-                        key={key(choice)}
-                        aria-label={choice.name}
-                        value={key(choice)}
-                        keywords={[choice.name, choice.provider ?? "", option.label]}
-                        onSelect={() => select(choice.harness, choice.id)}
-                        title={choice.description}
-                      >
-                        <Check
-                          className={`size-3.5 ${harness === choice.harness && model === choice.id ? "text-primary" : "invisible"}`}
-                        />
-                        <span className="grid min-w-0 flex-1 gap-0.5">
-                          <span className="truncate">{choice.name}</span>
-                          <span className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
-                            <HarnessIcon harness={choice.harness} compact />
-                            <span className="truncate">
-                              {option.label}
-                              {choice.provider && choice.provider !== option.label
-                                ? ` · ${choice.provider}`
-                                : ""}
+                      <Tooltip key={key(choice)}>
+                        <TooltipTrigger asChild>
+                          <CommandItem
+                            aria-label={choice.name}
+                            value={key(choice)}
+                            keywords={[choice.name, choice.provider ?? "", option.label]}
+                            onSelect={() => select(choice.harness, choice.id)}
+                          >
+                            <Check
+                              className={`size-3.5 ${harness === choice.harness && model === choice.id ? "text-primary" : "invisible"}`}
+                            />
+                            <span className="grid min-w-0 flex-1 gap-0.5">
+                              <span className="truncate">{choice.name}</span>
+                              <span className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                                <HarnessIcon harness={choice.harness} compact />
+                                <span className="truncate">
+                                  {option.label}
+                                  {choice.provider && choice.provider !== option.label
+                                    ? ` · ${choice.provider}`
+                                    : ""}
+                                </span>
+                              </span>
                             </span>
-                          </span>
-                        </span>
-                        {choice.saved && (
-                          <span className="text-xs text-muted-foreground">Saved</span>
+                            {choice.saved && (
+                              <span className="text-xs text-muted-foreground">Saved</span>
+                            )}
+                          </CommandItem>
+                        </TooltipTrigger>
+                        {choice.description && (
+                          <TooltipContent side="right">{choice.description}</TooltipContent>
                         )}
-                      </CommandItem>
+                      </Tooltip>
                     ))}
                   </CommandGroup>
                 );

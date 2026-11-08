@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { PencilIcon, Trash2Icon } from "lucide-react";
 
 export function CatalogRow({
@@ -29,26 +30,34 @@ export function CatalogRow({
         </div>
       </div>
       <ButtonGroup aria-label={`Actions for ${name}`}>
-        <Button
-          variant="outline"
-          size="icon-sm"
-          disabled={disabled}
-          aria-label={`Edit ${name}`}
-          title={`Edit ${name}`}
-          onClick={onEdit}
-        >
-          <PencilIcon />
-        </Button>
-        <Button
-          variant="destructive"
-          size="icon-sm"
-          disabled={disabled}
-          aria-label={`Delete ${name}`}
-          title={`Delete ${name}`}
-          onClick={onDelete}
-        >
-          <Trash2Icon />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              disabled={disabled}
+              aria-label={`Edit ${name}`}
+              onClick={onEdit}
+            >
+              <PencilIcon />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Edit {name}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="destructive"
+              size="icon-sm"
+              disabled={disabled}
+              aria-label={`Delete ${name}`}
+              onClick={onDelete}
+            >
+              <Trash2Icon />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Delete {name}</TooltipContent>
+        </Tooltip>
       </ButtonGroup>
     </li>
   );

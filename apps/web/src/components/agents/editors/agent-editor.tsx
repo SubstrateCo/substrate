@@ -8,6 +8,7 @@ import { useId, useState, type ReactNode } from "react";
 
 import { HarnessAvailability } from "../model-picker/harness-availability";
 import { ModelPicker } from "../model-picker/model-picker";
+import { StartupInstructions } from "./startup-instructions";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -20,10 +21,8 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowUpRight, LockKeyhole } from "lucide-react";
 import { z } from "zod";
 
 const agentFields = saveAgentInput.extend({
@@ -177,7 +176,7 @@ export function AgentEditor({
                             </form.Field>
                           </div>
                           <Tabs value={tab} onValueChange={setTab} className="min-w-0">
-                            <div className="min-w-0 overflow-x-auto border-b pb-1.5">
+                            <div className="min-w-0 overflow-x-auto pb-1.5">
                               <TabsList variant="line" className="h-9">
                                 <TabsTrigger value="instructions">Instructions</TabsTrigger>
                                 <TabsTrigger value="skills">Skills</TabsTrigger>
@@ -185,42 +184,64 @@ export function AgentEditor({
                               </TabsList>
                             </div>
                             <TabsContent value="instructions" className="mt-3 md:min-h-80">
-                              <form.Field name="instructions">
-                                {(field) => {
-                                  const invalid = !field.state.meta.isValid;
-                                  return (
-                                    <Field data-invalid={invalid}>
-                                      <FieldLabel htmlFor="agent-instructions">
-                                        Instructions
-                                      </FieldLabel>
-                                      <Textarea
-                                        id="agent-instructions"
-                                        placeholder="What should this agent do?"
-                                        rows={12}
-                                        maxLength={100000}
-                                        className="min-h-64 resize-y md:min-h-80"
-                                        value={field.state.value}
-                                        onBlur={field.handleBlur}
-                                        onChange={(event) => {
-                                          field.handleChange(event.target.value);
-                                          if (!field.state.meta.isValid)
-                                            void field.validate("blur");
-                                        }}
-                                        aria-invalid={invalid}
-                                        aria-describedby={
-                                          invalid ? "agent-instructions-error" : undefined
-                                        }
+                              <div className="space-y-4">
+                                <form.Subscribe
+                                  selector={(state) =>
+                                    [
+                                      state.values.harness,
+                                      state.values.name,
+                                      state.values.useStartupDefaults,
+                                    ] as const
+                                  }
+                                >
+                                  {([harness, name, defaults]) =>
+                                    (defaults ?? true) && (
+                                      <StartupInstructions
+                                        harness={harness}
+                                        name={name}
+                                        agentId={agent?.id}
+                                        organizationId={organizationId}
                                       />
-                                      {invalid && (
-                                        <FieldError
-                                          id="agent-instructions-error"
-                                          errors={field.state.meta.errors}
+                                    )
+                                  }
+                                </form.Subscribe>
+                                <form.Field name="instructions">
+                                  {(field) => {
+                                    const invalid = !field.state.meta.isValid;
+                                    return (
+                                      <Field data-invalid={invalid}>
+                                        <FieldLabel htmlFor="agent-instructions">
+                                          Instructions
+                                        </FieldLabel>
+                                        <Textarea
+                                          id="agent-instructions"
+                                          placeholder="What should this agent do?"
+                                          rows={12}
+                                          maxLength={100000}
+                                          className="min-h-64 resize-y md:min-h-80"
+                                          value={field.state.value}
+                                          onBlur={field.handleBlur}
+                                          onChange={(event) => {
+                                            field.handleChange(event.target.value);
+                                            if (!field.state.meta.isValid)
+                                              void field.validate("blur");
+                                          }}
+                                          aria-invalid={invalid}
+                                          aria-describedby={
+                                            invalid ? "agent-instructions-error" : undefined
+                                          }
                                         />
-                                      )}
-                                    </Field>
-                                  );
-                                }}
-                              </form.Field>
+                                        {invalid && (
+                                          <FieldError
+                                            id="agent-instructions-error"
+                                            errors={field.state.meta.errors}
+                                          />
+                                        )}
+                                      </Field>
+                                    );
+                                  }}
+                                </form.Field>
+                              </div>
                             </TabsContent>
                             {(["skills", "mcps"] as const).map((section) => (
                               <TabsContent
@@ -283,35 +304,6 @@ export function AgentEditor({
                               )}
                             </form.Subscribe>
                           </div>
-                          <form.Field name="enabled">
-                            {(field) => (
-                              <div className="flex items-center justify-between gap-3 border-t pt-5">
-                                <FieldLabel htmlFor="agent-enabled">Enabled</FieldLabel>
-                                <Switch
-                                  id="agent-enabled"
-                                  checked={field.state.value}
-                                  onCheckedChange={field.handleChange}
-                                />
-                              </div>
-                            )}
-                          </form.Field>
-                          <div className="border-t pt-3">
-                            {[
-                              { value: "skills", label: "Skills" },
-                              { value: "mcps", label: "MCP servers" },
-                            ].map((section) => (
-                              <Button
-                                key={section.value}
-                                type="button"
-                                variant="ghost"
-                                onClick={() => setTab(section.value)}
-                                className="w-full justify-between"
-                              >
-                                {section.label}
-                                <ArrowUpRight className="size-3.5 text-muted-foreground" />
-                              </Button>
-                            ))}
-                          </div>
                           {picture && <div className="border-t pt-5">{picture}</div>}
                         </aside>
                       </div>
@@ -323,10 +315,6 @@ export function AgentEditor({
                     </p>
                   )}
                   <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t bg-card px-4 py-3 sm:px-7">
-                    <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <LockKeyhole className="size-3.5" />
-                      Personal agent
-                    </span>
                     <div className="ml-auto flex gap-2">
                       <Button type="button" variant="outline" disabled={busy} onClick={onClose}>
                         Cancel

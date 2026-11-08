@@ -1,6 +1,10 @@
-import type { HarnessConfiguration, HarnessKind } from "@startup-os/contracts/harness";
+import {
+  startupSkillId,
+  type HarnessConfiguration,
+  type HarnessKind,
+} from "@startup-os/contracts/harness";
 
-import { startupSkill, startupSkillId } from "./config.ts";
+import { startupSkill } from "./config.ts";
 import { createHarnessHost } from "./host.ts";
 import {
   editNativeServer,
