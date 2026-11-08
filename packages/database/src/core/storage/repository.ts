@@ -14,7 +14,8 @@ import {
   userPictures,
   organizationPictures,
 } from "./schema";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 // Trusted server-only identity scope. Personal files deliberately do not require an actor.
 export interface StorageScope {
@@ -154,18 +155,27 @@ export function createStorageRepository(db: Database) {
       if (!file) return null;
       if (file.purpose === "avatar") {
         if (file.ownerUserId === scope.userId) return file;
-        const [picture] = await db.select().from(userPictures).where(eq(userPictures.fileId, id));
-        if (!picture || !scope.organizationId) return null;
-        const shared = await db
-          .select({ userId: member.userId })
-          .from(member)
-          .where(
+        if (!scope.organizationId) return null;
+        // Another user's profile picture is readable only by a member of a shared organization.
+        const owner = alias(member, "owner");
+        const viewer = alias(member, "viewer");
+        const [shared] = await db
+          .select({ id: userPictures.id })
+          .from(userPictures)
+          .innerJoin(
+            owner,
             and(
-              eq(member.organizationId, scope.organizationId),
-              inArray(member.userId, [scope.userId, picture.userId]),
+              eq(owner.userId, userPictures.userId),
+              eq(owner.organizationId, scope.organizationId),
             ),
-          );
-        return shared.length === 2 ? file : null;
+          )
+          .innerJoin(
+            viewer,
+            and(eq(viewer.userId, scope.userId), eq(viewer.organizationId, scope.organizationId)),
+          )
+          .where(eq(userPictures.fileId, id))
+          .limit(1);
+        return shared ? file : null;
       }
       if (file.organizationId !== scope.organizationId) return null;
       try {
@@ -204,19 +214,13 @@ export function createStorageRepository(db: Database) {
         )
           throw new AccessDeniedError();
         await requireScope(tx, scope, file.purpose, false);
-        const [avatar] = await tx
-          .select({ id: userPictures.id })
-          .from(userPictures)
-          .where(eq(userPictures.fileId, id));
-        const [logo] = await tx
-          .select({ id: organizationPictures.id })
-          .from(organizationPictures)
-          .where(eq(organizationPictures.fileId, id));
-        const [agent] = await tx
-          .select({ id: userAgents.id })
-          .from(userAgents)
-          .where(eq(userAgents.imageFileId, id));
-        if (avatar || logo || agent)
+        const [usage] = await tx.execute<{ referenced: boolean }>(sql`
+          SELECT EXISTS (SELECT 1 FROM ${userPictures} WHERE ${userPictures.fileId} = ${id})
+            OR EXISTS (SELECT 1 FROM ${organizationPictures} WHERE ${organizationPictures.fileId} = ${id})
+            OR EXISTS (SELECT 1 FROM ${userAgents} WHERE ${userAgents.imageFileId} = ${id})
+            AS referenced
+        `);
+        if (usage?.referenced)
           throw new ConflictError("Remove the picture before deleting this file.");
         await tx
           .insert(storageCandidates)

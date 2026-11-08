@@ -26,7 +26,7 @@ function fixture(options: Parameters<typeof createRealtimeHub>[1] = {}) {
     {
       authenticate: async (headers, organizationId) =>
         active && headers.get("cookie") === "session=test"
-          ? { userId: "user", organizationId }
+          ? { userId: "user", organizationId, actorId: organizationId && "actor" }
           : null,
       canReceive: async (_identity, audience) => audience[1] !== "forbidden-conversation",
       reportFailure: () => {

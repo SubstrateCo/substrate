@@ -1,5 +1,6 @@
 import { realtimeKeys } from "@startup-os/contracts/realtime";
 
+import * as schema from "../../schema";
 import {
   actors,
   entities,
@@ -10,9 +11,10 @@ import {
 } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { ensureHumanActor } from "../actors/provisioning";
-import { canReceiveChange } from "./audience";
+import { canReceiveAudience, canReceiveChange, resolveReceiver } from "./audience";
 import { beforeEach, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/postgres-js";
 
 const fixture = setupDatabase();
 beforeEach(async () => {
@@ -106,6 +108,35 @@ test("a partner with membership in both organizations receives private channel e
   expect(
     await canReceiveChange(fixture.db, { ...external, organizationId: fixture.orgA }, audience),
   ).toBe(false);
+});
+
+test("a delivery resolves the receiver once and checks only conversation audiences in SQL", async () => {
+  const [conversation] = await fixture.db
+    .insert(messagingConversations)
+    .values({ organizationId: fixture.orgA, kind: "channel", name: "Counted", createdBy: "alice" })
+    .returning();
+  if (!conversation) throw new Error("Missing conversation");
+  await fixture.db
+    .insert(messagingParticipants)
+    .values({ conversationId: conversation.id, userId: "alice", organizationId: fixture.orgA });
+  const statements: string[] = [];
+  const db = drizzle(fixture.db.$client, {
+    schema,
+    logger: { logQuery: (query) => statements.push(query) },
+  });
+  const counts: Record<string, number> = {};
+  for (const audience of [
+    realtimeKeys.organization(fixture.orgA),
+    realtimeKeys.actor(fixture.orgA, fixture.alice),
+    realtimeKeys.conversation(conversation.id),
+  ]) {
+    statements.length = 0;
+    const receiver = await resolveReceiver(db, alice);
+    expect(receiver).toEqual({ ...alice, actorId: fixture.alice });
+    expect(await canReceiveAudience(db, receiver!, audience)).toBe(true);
+    counts[audience[0]] = statements.length;
+  }
+  expect(counts).toEqual({ organization: 1, actor: 1, conversation: 2 });
 });
 
 test("disabled, deleted, revoked and unverified viewers lose scoped delivery", async () => {

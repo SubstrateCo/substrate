@@ -1,4 +1,4 @@
-import {
+import type {
   contextWorkspace,
   contextEntity,
   contextMessage,
@@ -28,52 +28,45 @@ async function sessionServices(headers: Headers, organizationId: string) {
     userId: session.user.id,
   };
 }
-export function getMessageLinks(headers: Headers, raw: z.input<typeof contextMessage>) {
+export function getMessageLinks(headers: Headers, input: z.output<typeof contextMessage>) {
   return serviceResult(async () => {
-    const input = contextMessage.parse(raw);
     const { context } = await sessionServices(headers, input.organizationId);
     return context.messageLinks(input.messageId);
   });
 }
-export function getMessagePage(headers: Headers, raw: z.input<typeof contextMessagePage>) {
+export function getMessagePage(headers: Headers, input: z.output<typeof contextMessagePage>) {
   return serviceResult(async () => {
-    const input = contextMessagePage.parse(raw);
     const { context } = await sessionServices(headers, input.organizationId);
     return context.messagePage(input.messageIds);
   });
 }
-export function getMessagePeople(headers: Headers, raw: z.input<typeof contextMessage>) {
+export function getMessagePeople(headers: Headers, input: z.output<typeof contextMessage>) {
   return serviceResult(async () => {
-    const input = contextMessage.parse(raw);
     const { context } = await sessionServices(headers, input.organizationId);
     return context.messagePeople(input.messageId);
   });
 }
-export function getRelatedContext(headers: Headers, raw: z.input<typeof contextEntity>) {
+export function getRelatedContext(headers: Headers, input: z.output<typeof contextEntity>) {
   return serviceResult(async () => {
-    const input = contextEntity.parse(raw);
     const { context } = await sessionServices(headers, input.organizationId);
     return context.related(input.entityId);
   });
 }
-export function getMessageTarget(headers: Headers, raw: z.input<typeof contextTarget>) {
+export function getMessageTarget(headers: Headers, input: z.output<typeof contextTarget>) {
   return serviceResult(async () => {
-    const input = contextTarget.parse(raw);
     const { context } = await sessionServices(headers, input.organizationId);
     return context.messageTarget(input.conversationId, input.messageId);
   });
 }
-export function searchContext(headers: Headers, raw: z.input<typeof contextSearch>) {
+export function searchContext(headers: Headers, input: z.output<typeof contextSearch>) {
   return serviceResult(async () => {
-    const input = contextSearch.parse(raw);
     const { context } = await sessionServices(headers, input.organizationId);
     return context.search(input);
   });
 }
-export function createTaskFromMessage(headers: Headers, raw: z.input<typeof contextSourceTask>) {
+export function createTaskFromMessage(headers: Headers, input: z.output<typeof contextSourceTask>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const input = contextSourceTask.parse(raw);
     const { context } = await sessionServices(headers, input.organizationId);
     const task = await context.createTaskFromMessage(input);
     const hints: RealtimeHint[] = [
@@ -89,10 +82,9 @@ export function createTaskFromMessage(headers: Headers, raw: z.input<typeof cont
     return task;
   });
 }
-export function attachWork(headers: Headers, raw: z.input<typeof contextLink>) {
+export function attachWork(headers: Headers, input: z.output<typeof contextLink>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const input = contextLink.parse(raw);
     const { context } = await sessionServices(headers, input.organizationId);
     await context.attach(input.messageId, input.entityId);
     await publishRefresh([
@@ -101,10 +93,9 @@ export function attachWork(headers: Headers, raw: z.input<typeof contextLink>) {
     return null;
   });
 }
-export function detachWork(headers: Headers, raw: z.input<typeof contextLink>) {
+export function detachWork(headers: Headers, input: z.output<typeof contextLink>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const input = contextLink.parse(raw);
     const { context } = await sessionServices(headers, input.organizationId);
     await context.detach(input.messageId, input.entityId);
     await publishRefresh([
@@ -113,34 +104,30 @@ export function detachWork(headers: Headers, raw: z.input<typeof contextLink>) {
     return null;
   });
 }
-export function getActivity(headers: Headers, raw: z.input<typeof contextEntity>) {
+export function getActivity(headers: Headers, input: z.output<typeof contextEntity>) {
   return serviceResult(async () => {
-    const input = contextEntity.parse(raw);
     const { feed } = await sessionServices(headers, input.organizationId);
     return feed.activity(input.entityId);
   });
 }
-export function getNotifications(headers: Headers, raw: z.input<typeof contextWorkspace>) {
+export function getNotifications(headers: Headers, input: z.output<typeof contextWorkspace>) {
   return serviceResult(async () => {
-    const input = contextWorkspace.parse(raw);
     const { feed } = await sessionServices(headers, input.organizationId);
     return feed.list();
   });
 }
-export function markRead(headers: Headers, raw: z.input<typeof contextNotification>) {
+export function markRead(headers: Headers, input: z.output<typeof contextNotification>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const input = contextNotification.parse(raw);
     const { feed, userId } = await sessionServices(headers, input.organizationId);
     await feed.markRead(input.id);
     await publishRefresh([{ audience: realtimeKeys.user(userId), domain: "notifications" }]);
     return null;
   });
 }
-export function markAllRead(headers: Headers, raw: z.input<typeof contextWorkspace>) {
+export function markAllRead(headers: Headers, input: z.output<typeof contextWorkspace>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const input = contextWorkspace.parse(raw);
     const { feed, userId } = await sessionServices(headers, input.organizationId);
     await feed.markAllRead();
     await publishRefresh([{ audience: realtimeKeys.user(userId), domain: "notifications" }]);

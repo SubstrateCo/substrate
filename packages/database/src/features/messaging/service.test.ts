@@ -283,14 +283,12 @@ test("reactions aggregate per emoji, toggle per user and reject inaccessible mes
   ).rejects.toMatchObject({ cause: { code: "23503" } });
 });
 
-test("exact email discovery requires verified accounts and org membership; invalid recipients roll back", async () => {
+test("recipients require verified accounts and org membership; invalid recipients roll back", async () => {
   await verified();
   await fixture.db.update(user).set({ emailVerified: false }).where(eq(user.id, "bob"));
-  expect(await service("alice").discoverMembers("bob@example.com")).toEqual([]);
-  await expect(service("alice").discoverMembers("outside")).rejects.toBeInstanceOf(ValidationError);
-  expect(await service("alice").discoverMembers(" OUTSIDE@example.com ")).toMatchObject([
-    { userId: "outsider" },
-  ]);
+  await expect(
+    service("alice").createConversation({ kind: "dm", emails: ["outside"] }),
+  ).rejects.toBeInstanceOf(ValidationError);
   await expect(
     service("alice").createConversation({
       kind: "group",
@@ -300,7 +298,10 @@ test("exact email discovery requires verified accounts and org membership; inval
   expect(await fixture.db.select().from(messagingConversations)).toEqual([]);
   expect(await fixture.db.select().from(messagingParticipants)).toEqual([]);
   await fixture.db.delete(member).where(eq(member.userId, "outsider"));
-  expect(await service("alice").discoverMembers("outside@example.com")).toEqual([]);
+  await expect(
+    service("alice").createConversation({ kind: "dm", emails: [" OUTSIDE@example.com "] }),
+  ).rejects.toBeInstanceOf(ValidationError);
+  expect(await fixture.db.select().from(messagingConversations)).toEqual([]);
 });
 
 test("group DMs support multiple recipients and caller transactions roll back all records", async () => {
@@ -324,8 +325,16 @@ test("group DMs support multiple recipients and caller transactions roll back al
     kind: "group",
     emails: ["bob@example.com", "outside@example.com"],
   });
+  expect(await service("outsider", fixture.orgB).listMessages(group.id)).toEqual([]);
   expect(
-    (await service("outsider", fixture.orgB).listMembers(group.id)).map((row) => row.userId).sort(),
+    (
+      await fixture.db
+        .select({ userId: messagingParticipants.userId })
+        .from(messagingParticipants)
+        .where(eq(messagingParticipants.conversationId, group.id))
+    )
+      .map((row) => row.userId)
+      .sort(),
   ).toEqual(["alice", "bob", "outsider"]);
 });
 

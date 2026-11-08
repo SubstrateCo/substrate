@@ -9,14 +9,19 @@ import { tasks } from "../tasks/tasks.schema";
 import { and, eq, inArray, sql } from "drizzle-orm";
 
 export async function readableWorkTargets(ctx: RepositoryContext, ids: string[]) {
-  if (!ids.length) return new Map<string, { title: string; projectEntityId: string }>();
+  if (!ids.length)
+    return new Map<
+      string,
+      { entityType: "task" | "project"; title: string; projectEntityId: string }
+    >();
   const rows = await ctx.db.execute<{
     entityId: string;
+    entityType: "task" | "project";
     title: string;
     projectEntityId: string;
   }>(sql`
     ${visibilityCte(ctx.scope)}
-    SELECT ${tasks.entityId} AS "entityId", ${tasks.title} AS title,
+    SELECT ${tasks.entityId} AS "entityId", 'task' AS "entityType", ${tasks.title} AS title,
       ${tasks.projectEntityId} AS "projectEntityId"
     FROM ${tasks}
     JOIN ${entities} e ON e.entity_id = ${tasks.entityId} AND e.organization_id = ${tasks.organizationId}
@@ -27,7 +32,7 @@ export async function readableWorkTargets(ctx: RepositoryContext, ids: string[])
       AND ${tasks.entityId} IN (SELECT entity_id FROM visible_entities)
       AND ${tasks.projectEntityId} IN (SELECT entity_id FROM visible_entities)
     UNION ALL
-    SELECT ${projects.entityId} AS "entityId", ${projects.name} AS title,
+    SELECT ${projects.entityId} AS "entityId", 'project' AS "entityType", ${projects.name} AS title,
       ${projects.entityId} AS "projectEntityId"
     FROM ${projects}
     JOIN ${entities} e ON e.entity_id = ${projects.entityId} AND e.organization_id = ${projects.organizationId}

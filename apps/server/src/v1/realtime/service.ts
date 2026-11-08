@@ -1,5 +1,5 @@
 import { desktopOrigin } from "@startup-os/contracts/desktop/links";
-import { canReceiveChange } from "@startup-os/database/realtime";
+import { canReceiveAudience, resolveReceiver } from "@startup-os/database/realtime";
 
 import { db } from "../../auth/database";
 import { authEnvironment } from "../../auth/environment";
@@ -12,10 +12,10 @@ import { createRealtimeSubscription } from "./subscription";
 export function createRealtimeService() {
   let failures = 0;
   const hub = createRealtimeHub({
-    authenticate: createRealtimeAuthenticator(auth.api, (identity, audience) =>
-      canReceiveChange(db, identity, audience),
+    authenticate: createRealtimeAuthenticator(auth.api, (identity) =>
+      resolveReceiver(db, identity),
     ),
-    canReceive: (identity, audience) => canReceiveChange(db, identity, audience),
+    canReceive: (identity, audience) => canReceiveAudience(db, identity, audience),
     reportFailure: () => {
       failures++;
       console.warn("Realtime operation failed; client resync required", { failures });

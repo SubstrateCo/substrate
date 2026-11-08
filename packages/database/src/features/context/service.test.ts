@@ -41,6 +41,59 @@ async function checkedPage(messageIds: string[], userId = "alice", organizationI
   return page;
 }
 
+test("five person mentions and five task references resolve in set-based statements", async () => {
+  const people = ["one", "two", "three", "four"];
+  await f.db
+    .insert(user)
+    .values(people.map((id) => ({ id, name: id, email: `${id}@example.com` })));
+  await f.db
+    .insert(member)
+    .values(people.map((id) => ({ id: `${id}-a`, userId: id, organizationId: f.orgA })));
+  await f.db.update(user).set({ emailVerified: true });
+  const mentioned = [f.bob];
+  for (const id of people)
+    mentioned.push(
+      (await ensureHumanActor(f.db, { userId: id, organizationId: f.orgA, name: id })).entityId,
+    );
+  const alice = f.forActor(f.alice);
+  const project = await alice.projects.create({ name: "Referenced" });
+  const taskIds: string[] = [];
+  for (let index = 0; index < 5; index++)
+    taskIds.push(
+      (await alice.tasks.create({ projectEntityId: project.entityId, title: `Task ${index}` }))
+        .entityId,
+    );
+  const channel = await createMessagingService(f.db, {
+    userId: "alice",
+    organizationId: f.orgA,
+  }).createConversation({ kind: "channel", name: "References" });
+  const { db, queries } = recordQueries();
+  const body = [
+    ...mentioned.map((id) => `@[person:${id}]`),
+    ...taskIds.map((id) => `@[task:${id}]`),
+  ].join(" ");
+  const sent = await createMessagingService(db, {
+    userId: "alice",
+    organizationId: f.orgA,
+  }).sendMessage(channel.id, body);
+  expect(queries).toHaveLength(8);
+  expect(
+    (
+      await f.db
+        .select()
+        .from(messageEntityReferences)
+        .where(eq(messageEntityReferences.messageId, sent.id))
+    )
+      .map((row) => row.entityId)
+      .sort(),
+  ).toEqual(taskIds.sort());
+  expect(
+    (await f.db.select().from(notifications).where(eq(notifications.messageId, sent.id)))
+      .map((row) => `${row.recipientActorEntityId}:${row.kind}`)
+      .sort(),
+  ).toEqual(mentioned.map((id) => `${id}:mention`).sort());
+});
+
 test("notification recipients use one conflict-safe insert-select for one or many workspaces, with exact participant workspace selection", async () => {
   await f.db.update(user).set({ emailVerified: true });
   await f.db.insert(member).values([
@@ -579,6 +632,13 @@ test("source creation is atomic, concurrent-idempotent, and preserves the exact 
   await expect(
     context().createTaskFromMessage({ ...input, status: "completed" }),
   ).rejects.toBeInstanceOf(ConflictError);
+  const { db, queries } = recordQueries();
+  await createContextService(db, { userId: "alice", organizationId: f.orgA }).createTaskFromMessage(
+    { ...input, requestId: crypto.randomUUID() },
+  );
+  // The project lock taken for idempotency also covers the task insert.
+  expect(queries.filter((query) => query.includes("FOR UPDATE"))).toHaveLength(1);
+  expect(queries).toHaveLength(13);
 });
 
 test("both endpoints are required, membership revocation hides context, and linking never shares", async () => {
@@ -705,9 +765,8 @@ test("message targets retain timeline reaction and reply summaries for roots and
         (query) => query.includes('from "messaging_messages"') && query.includes("count(*)"),
       ),
     ).toHaveLength(1);
-    console.info(
-      `message target ${message.threadId ? "reply" : "root"}: ${queries.length} statements, 2 summary reads`,
-    );
+    // Workspace context, message with root and authors, then the two summary reads.
+    expect(queries).toHaveLength(4);
   }
   await chat.toggleReaction(root.id, "👍");
   await bob.sendMessage(conversation.id, "Another reply", root.id);

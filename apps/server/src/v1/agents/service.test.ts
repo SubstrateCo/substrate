@@ -2,7 +2,13 @@ import { ServiceError } from "../../shared/service-result";
 import { createAgentService } from "./service";
 import { expect, mock, test } from "bun:test";
 
-const input = { name: "Helper", instructions: "Help", harness: "opencode" as const, enabled: true };
+const input = {
+  name: "Helper",
+  instructions: "Help",
+  harness: "opencode" as const,
+  enabled: true,
+  useStartupDefaults: true,
+};
 const headers = new Headers();
 
 test("requires an authenticated verified user for reads and writes", async () => {

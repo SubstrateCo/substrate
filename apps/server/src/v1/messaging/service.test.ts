@@ -1,17 +1,7 @@
 import { failure } from "@startup-os/contracts/result";
 
-import { listConversations, listMessages, sendMessage } from "./service";
+import { sendMessage } from "./service";
 import { expect, test } from "bun:test";
-
-test("messaging reads validate input inside the result boundary", async () => {
-  const headers = new Headers();
-  expect(await listConversations(headers, { organizationId: "" })).toEqual(
-    failure("INVALID_INPUT", "Invalid request input."),
-  );
-  expect(await listMessages(headers, { organizationId: "org", conversationId: "invalid" })).toEqual(
-    failure("INVALID_INPUT", "Invalid request input."),
-  );
-});
 
 test("message writes reject missing origins as service failures", async () => {
   expect(

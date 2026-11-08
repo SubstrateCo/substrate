@@ -1,5 +1,3 @@
-import { realtimeKeys } from "@startup-os/contracts/realtime";
-
 import { createRealtimeAuthenticator } from "./session";
 import { expect, test } from "bun:test";
 
@@ -21,10 +19,14 @@ test("requires a fresh verified session with exact active-organization scope", a
         return current;
       },
     },
-    async () => true,
+    async (identity) => ({ ...identity, actorId: "actor" }),
   );
   const headers = new Headers({ cookie: "session" });
-  expect(await authenticate(headers, "org")).toEqual({ userId: "user", organizationId: "org" });
+  expect(await authenticate(headers, "org")).toEqual({
+    userId: "user",
+    organizationId: "org",
+    actorId: "actor",
+  });
   expect(await authenticate(headers, null)).toBeNull();
   expect(await authenticate(headers, "other")).toBeNull();
   current.user.emailVerified = false;
@@ -34,10 +36,10 @@ test("requires a fresh verified session with exact active-organization scope", a
   expect(queries).toEqual(Array.from({ length: 5 }, () => ({ disableCookieCache: true })));
 });
 
-test("connect permission uses the database's membership/actor resolver and supports account scope", async () => {
+test("connect permission uses the database receiver resolver and supports account scope", async () => {
   let organizationId: string | null = "org";
   let allowed = false;
-  const audiences: unknown[] = [];
+  const identities: unknown[] = [];
   const authenticate = createRealtimeAuthenticator(
     {
       getSession: async () => ({
@@ -45,9 +47,9 @@ test("connect permission uses the database's membership/actor resolver and suppo
         session: { activeOrganizationId: organizationId },
       }),
     },
-    async (identity, audience) => {
-      audiences.push({ identity, audience });
-      return allowed;
+    async (identity) => {
+      identities.push(identity);
+      return allowed ? { ...identity, actorId: identity.organizationId && "actor" } : null;
     },
   );
   expect(await authenticate(new Headers(), "org")).toBeNull();
@@ -55,18 +57,17 @@ test("connect permission uses the database's membership/actor resolver and suppo
   expect(await authenticate(new Headers(), "org")).toEqual({
     userId: "user",
     organizationId: "org",
+    actorId: "actor",
   });
   organizationId = null;
-  expect(await authenticate(new Headers(), null)).toEqual({ userId: "user", organizationId: null });
-  expect(audiences).toEqual([
-    {
-      identity: { userId: "user", organizationId: "org" },
-      audience: realtimeKeys.organization("org"),
-    },
-    {
-      identity: { userId: "user", organizationId: "org" },
-      audience: realtimeKeys.organization("org"),
-    },
-    { identity: { userId: "user", organizationId: null }, audience: realtimeKeys.user("user") },
+  expect(await authenticate(new Headers(), null)).toEqual({
+    userId: "user",
+    organizationId: null,
+    actorId: null,
+  });
+  expect(identities).toEqual([
+    { userId: "user", organizationId: "org" },
+    { userId: "user", organizationId: "org" },
+    { userId: "user", organizationId: null },
   ]);
 });

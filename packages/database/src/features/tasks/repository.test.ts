@@ -254,6 +254,57 @@ describe("projects and tasks", () => {
   });
 });
 
+test("task create locks the project once and update batches activity with one assignment notification", async () => {
+  const alice = fixture.forActor(fixture.alice);
+  const project = await alice.projects.create({ name: "Counted" });
+  await alice.permissions.grant({
+    entityId: project.entityId,
+    actorEntityId: fixture.bob,
+    level: "view",
+  });
+  const statements: string[] = [];
+  const db = drizzle(fixture.db.$client, {
+    schema,
+    logger: { logQuery: (query) => statements.push(query) },
+  });
+  const repos = createRepositories(db).forActor({
+    organizationId: fixture.orgA,
+    actorEntityId: fixture.alice,
+  });
+  const task = await repos.tasks.create({ projectEntityId: project.entityId, title: "Count" });
+  expect(statements.filter((query) => query.includes("FOR UPDATE"))).toHaveLength(1);
+  expect(statements).toHaveLength(7);
+  statements.length = 0;
+  await repos.tasks.update(task.entityId, {
+    title: "Counted",
+    status: "in_progress",
+    priority: "high",
+    assigneeActorEntityId: fixture.bob,
+  });
+  expect(statements).toHaveLength(12);
+  const activity = await fixture.db
+    .select()
+    .from(schema.taskActivity)
+    .where(eq(schema.taskActivity.taskEntityId, task.entityId));
+  expect(activity.map((event) => event.action).sort()).toEqual(
+    [
+      "Assignee changed",
+      "Priority changed",
+      "Status changed",
+      "Task created",
+      "Title changed",
+    ].sort(),
+  );
+  const assigned = activity.find((event) => event.action === "Assignee changed")!;
+  expect(
+    (await fixture.db.select().from(schema.notifications)).map((row) => ({
+      recipient: row.recipientActorEntityId,
+      kind: row.kind,
+      eventKey: row.eventKey,
+    })),
+  ).toEqual([{ recipient: fixture.bob, kind: "assignment", eventKey: assigned.id }]);
+});
+
 test("task comments require their actual project and use four repository statements", async () => {
   const alice = fixture.forActor(fixture.alice);
   const project = await alice.projects.create({ name: "Comments" });

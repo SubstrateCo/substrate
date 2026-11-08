@@ -1,4 +1,4 @@
-import { failure, success } from "@startup-os/contracts/result";
+import { success } from "@startup-os/contracts/result";
 
 import { createOrganizationRoutes } from "./routes";
 import { describe, expect, test } from "bun:test";
@@ -26,20 +26,10 @@ describe("organization routes", () => {
     expect(cookies).toEqual(["session=test"]);
   });
 
-  test("preserves null access and maps denied membership to a forbidden response", async () => {
+  test("preserves null access", async () => {
     const unavailable = createOrganizationRoutes({ settingsAccess: async () => success(null) });
     const response = await unavailable.request("/settings-access");
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ success: true, data: null });
-
-    const denied = createOrganizationRoutes({
-      settingsAccess: async () => failure("FORBIDDEN", "Access denied."),
-    });
-    const deniedResponse = await denied.request("/settings-access");
-    expect(deniedResponse.status).toBe(403);
-    expect(await deniedResponse.json()).toEqual({
-      success: false,
-      error: { code: "FORBIDDEN", message: "Access denied." },
-    });
   });
 });

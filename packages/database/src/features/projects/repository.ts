@@ -131,13 +131,5 @@ export function projectRepository(context: RepositoryContext) {
         return project;
       });
     },
-    async listMembers(projectEntityId: string) {
-      await get(projectEntityId);
-      return members(projectEntityId);
-    },
-    async availableActors(projectEntityId: string) {
-      await get(projectEntityId);
-      return availableActors();
-    },
   };
 }

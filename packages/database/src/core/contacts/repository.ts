@@ -1,5 +1,4 @@
 import { AccessDeniedError } from "../../errors";
-import { entities } from "../entities/schema";
 import { RepositoryContext, pageSize } from "../repository-context";
 import { contacts } from "./schema";
 import { and, asc, eq, gt, inArray } from "drizzle-orm";
@@ -52,7 +51,8 @@ export function contactRepository(context: RepositoryContext) {
 
     async update(entityId: string, input: { displayName: string }) {
       return db.transaction(async (tx) => {
-        await new RepositoryContext(tx, scope).requireAccess(entityId, "edit", true);
+        const ctx = new RepositoryContext(tx, scope);
+        await ctx.requireAccess(entityId, "edit", true);
         const [contact] = await tx
           .update(contacts)
           .set({ displayName: input.displayName })
@@ -61,12 +61,7 @@ export function contactRepository(context: RepositoryContext) {
           )
           .returning();
         if (!contact) throw new AccessDeniedError();
-        await tx
-          .update(entities)
-          .set({ updatedAt: new Date() })
-          .where(
-            and(eq(entities.organizationId, scope.organizationId), eq(entities.entityId, entityId)),
-          );
+        await ctx.touch(entityId);
         return contact;
       });
     },

@@ -1,11 +1,10 @@
 import { realtimeKeys } from "@startup-os/contracts/realtime";
 import type { RealtimeHint } from "@startup-os/contracts/realtime";
-import {
+import type {
   projectRequest,
   taskRequest,
   tasksWorkspace,
   tasksWrite,
-  type TasksWrite,
 } from "@startup-os/contracts/tasks/input";
 import { createRepositories } from "@startup-os/database";
 import { ensureOwnedAgentActors, resolveHumanActor } from "@startup-os/database/provisioning";
@@ -14,6 +13,7 @@ import { db } from "../../auth/database";
 import { serviceResult } from "../../shared/service-result";
 import { requireOrigin, workspaceSession } from "../../shared/workspace";
 import { publishRefresh } from "../realtime/publisher";
+import type { z } from "zod";
 
 async function repositoriesForSession(headers: Headers, expectedOrganizationId: string) {
   return repositoriesForWorkspace(await workspaceSession(headers, expectedOrganizationId));
@@ -31,20 +31,15 @@ async function repositoriesForWorkspace({
   return createRepositories(db).forActor({ organizationId, actorEntityId: actor.entityId });
 }
 
-export function listProjects(headers: Headers, raw: { organizationId: string }) {
+export function listProjects(headers: Headers, input: z.output<typeof tasksWorkspace>) {
   return serviceResult(async () => {
-    const input = tasksWorkspace.parse(raw);
     const repositories = await repositoriesForSession(headers, input.organizationId);
     return repositories.projects.list();
   });
 }
 
-export function getProject(
-  headers: Headers,
-  raw: { organizationId: string; projectEntityId: string },
-) {
+export function getProject(headers: Headers, input: z.output<typeof projectRequest>) {
   return serviceResult(async () => {
-    const input = projectRequest.parse(raw);
     const workspace = await workspaceSession(headers, input.organizationId);
     await ensureOwnedAgentActors(db, {
       organizationId: workspace.organizationId,
@@ -55,21 +50,16 @@ export function getProject(
   });
 }
 
-export function listTaskComments(
-  headers: Headers,
-  raw: { organizationId: string; projectEntityId: string; taskEntityId: string },
-) {
+export function listTaskComments(headers: Headers, input: z.output<typeof taskRequest>) {
   return serviceResult(async () => {
-    const input = taskRequest.parse(raw);
     const repositories = await repositoriesForSession(headers, input.organizationId);
     return repositories.tasks.listComments(input.taskEntityId, input.projectEntityId);
   });
 }
 
-export function mutateTasks(headers: Headers, raw: TasksWrite) {
+export function mutateTasks(headers: Headers, input: z.output<typeof tasksWrite>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const input = tasksWrite.parse(raw);
     const repositories = await repositoriesForSession(headers, input.organizationId);
     const result = await repositories.transaction(async (repos) => {
       switch (input.action) {

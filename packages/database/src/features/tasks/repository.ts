@@ -3,12 +3,77 @@ import { taskStatusValues } from "@startup-os/contracts/tasks";
 import { actors } from "../../core/actors/schema";
 import { RepositoryContext, type PermissionLevel } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
-import { notifyAssignment, recordTaskActivity } from "../activity/events";
+import { notifyAssignment, recordTaskActivities, recordTaskActivity } from "../activity/events";
 import { projectRepository, requiredText } from "../projects/repository";
 import { taskComments } from "./comments.schema";
 import type { CreateTaskInput, TaskFields } from "./contracts";
 import { tasks } from "./tasks.schema";
 import { and, asc, eq, inArray } from "drizzle-orm";
+
+// Pure field checks run before the assignee query.
+async function validate(
+  ctx: RepositoryContext,
+  projectEntityId: string,
+  input: Partial<TaskFields>,
+) {
+  if (input.title !== undefined) requiredText(input.title, 300);
+  if (
+    input.priority !== undefined &&
+    !["none", "low", "medium", "high", "urgent"].includes(input.priority)
+  )
+    throw new ValidationError("Invalid priority.");
+  if (
+    input.dueDate != null &&
+    (!/^\d{4}-\d{2}-\d{2}$/.test(input.dueDate) ||
+      Number.isNaN(Date.parse(input.dueDate)) ||
+      new Date(input.dueDate).toISOString().slice(0, 10) !== input.dueDate)
+  )
+    throw new ValidationError("Enter a valid due date.");
+  if (input.status !== undefined && !taskStatusValues.includes(input.status))
+    throw new ValidationError("Select a standard task status.");
+  if (input.assigneeActorEntityId) {
+    await new RepositoryContext(ctx.db, {
+      organizationId: ctx.scope.organizationId,
+      actorEntityId: input.assigneeActorEntityId,
+    }).requireAccess(projectEntityId, "view");
+  }
+}
+
+// The caller must hold `project` from requireAccess(input.projectEntityId, "edit", true)
+// in the current transaction. Locking first keeps the assignee check from revealing projects.
+export async function createTaskInLockedProject(
+  ctx: RepositoryContext,
+  project: { entity: { entityId: string; entityType: string } },
+  input: CreateTaskInput,
+) {
+  if (project.entity.entityType !== "project" || project.entity.entityId !== input.projectEntityId)
+    throw new AccessDeniedError();
+  await validate(ctx, input.projectEntityId, input);
+  if (input.parentTaskEntityId) {
+    const parent = await taskRepository(ctx).get(input.parentTaskEntityId);
+    if (parent.projectEntityId !== input.projectEntityId)
+      throw new ValidationError("Subtasks must belong to their parent's project.");
+  }
+  const entity = await ctx.createChildEntity("task", input.projectEntityId);
+  const [task] = await ctx.db
+    .insert(tasks)
+    .values({
+      organizationId: ctx.scope.organizationId,
+      entityId: entity.entityId,
+      projectEntityId: input.projectEntityId,
+      parentTaskEntityId: input.parentTaskEntityId,
+      title: requiredText(input.title, 300),
+      description: input.description ?? "",
+      status: input.status ?? "not_started",
+      priority: input.priority ?? "none",
+      assigneeActorEntityId: input.assigneeActorEntityId,
+      dueDate: input.dueDate,
+    })
+    .returning();
+  const event = await recordTaskActivity(ctx, task!.entityId, "Task created");
+  await notifyAssignment(ctx, task!.entityId, task!.assigneeActorEntityId, event.id);
+  return task!;
+}
 
 export function taskRepository(context: RepositoryContext) {
   const { db, scope } = context;
@@ -23,66 +88,13 @@ export function taskRepository(context: RepositoryContext) {
     return task;
   }
 
-  async function validate(
-    ctx: RepositoryContext,
-    projectEntityId: string,
-    input: Partial<TaskFields>,
-  ) {
-    if (input.title !== undefined) requiredText(input.title, 300);
-    if (
-      input.priority !== undefined &&
-      !["none", "low", "medium", "high", "urgent"].includes(input.priority)
-    )
-      throw new ValidationError("Invalid priority.");
-    if (
-      input.dueDate != null &&
-      (!/^\d{4}-\d{2}-\d{2}$/.test(input.dueDate) ||
-        Number.isNaN(Date.parse(input.dueDate)) ||
-        new Date(input.dueDate).toISOString().slice(0, 10) !== input.dueDate)
-    )
-      throw new ValidationError("Enter a valid due date.");
-    if (input.assigneeActorEntityId) {
-      await new RepositoryContext(ctx.db, {
-        organizationId: scope.organizationId,
-        actorEntityId: input.assigneeActorEntityId,
-      }).requireAccess(projectEntityId, "view");
-    }
-    if (input.status !== undefined && !taskStatusValues.includes(input.status))
-      throw new ValidationError("Select a standard task status.");
-  }
-
   return {
     get: requireTask,
     async create(input: CreateTaskInput) {
       return db.transaction(async (tx) => {
         const ctx = new RepositoryContext(tx, scope);
         const project = await ctx.requireAccess(input.projectEntityId, "edit", true);
-        if (project.entity.entityType !== "project") throw new AccessDeniedError();
-        await validate(ctx, input.projectEntityId, input);
-        if (input.parentTaskEntityId) {
-          const parent = await taskRepository(ctx).get(input.parentTaskEntityId);
-          if (parent.projectEntityId !== input.projectEntityId)
-            throw new ValidationError("Subtasks must belong to their parent's project.");
-        }
-        const entity = await ctx.createEntity("task", input.projectEntityId);
-        const [task] = await tx
-          .insert(tasks)
-          .values({
-            organizationId: scope.organizationId,
-            entityId: entity.entityId,
-            projectEntityId: input.projectEntityId,
-            parentTaskEntityId: input.parentTaskEntityId,
-            title: requiredText(input.title, 300),
-            description: input.description ?? "",
-            status: input.status ?? "not_started",
-            priority: input.priority ?? "none",
-            assigneeActorEntityId: input.assigneeActorEntityId,
-            dueDate: input.dueDate,
-          })
-          .returning();
-        const event = await recordTaskActivity(ctx, task!.entityId, "Task created");
-        await notifyAssignment(ctx, task!.entityId, task!.assigneeActorEntityId, event.id);
-        return task!;
+        return createTaskInLockedProject(ctx, project, input);
       });
     },
     async list(projectEntityId: string) {
@@ -135,11 +147,10 @@ export function taskRepository(context: RepositoryContext) {
           .where(taskWhere(entityId))
           .returning();
         await ctx.touch(entityId);
-        for (const action of changes) {
-          const event = await recordTaskActivity(ctx, entityId, action);
-          if (action === "Assignee changed")
-            await notifyAssignment(ctx, entityId, input.assigneeActorEntityId, event.id);
-        }
+        const events = await recordTaskActivities(ctx, entityId, changes);
+        const assignment = events.find((event) => event.action === "Assignee changed");
+        if (assignment)
+          await notifyAssignment(ctx, entityId, input.assigneeActorEntityId, assignment.id);
         return updated!;
       });
     },

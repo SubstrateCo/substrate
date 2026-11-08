@@ -102,26 +102,38 @@ export class RepositoryContext {
   }
 
   async createEntity(entityType: typeof entities.$inferInsert.entityType, parentEntityId?: string) {
-    if (parentEntityId) await this.requireAccess(parentEntityId, "edit", true);
-    else await this.requireActiveActor();
+    if (parentEntityId) {
+      await this.requireAccess(parentEntityId, "edit", true);
+      return this.createChildEntity(entityType, parentEntityId);
+    }
+    await this.requireActiveActor();
     const [entity] = await this.db
       .insert(entities)
       .values({ organizationId: this.scope.organizationId, entityType })
       .returning();
-    if (parentEntityId) {
-      await this.db.insert(entityAccessParents).values({
-        organizationId: this.scope.organizationId,
-        entityId: entity!.entityId,
-        parentEntityId,
-      });
-    } else {
-      await this.db.insert(entityGrants).values({
-        organizationId: this.scope.organizationId,
-        entityId: entity!.entityId,
-        actorEntityId: permissionActorEntityId(this.scope),
-        level: "owner",
-      });
-    }
+    await this.db.insert(entityGrants).values({
+      organizationId: this.scope.organizationId,
+      entityId: entity!.entityId,
+      actorEntityId: permissionActorEntityId(this.scope),
+      level: "owner",
+    });
+    return entity!;
+  }
+
+  // The caller must already hold requireAccess(parentEntityId, "edit", true) in this transaction.
+  async createChildEntity(
+    entityType: typeof entities.$inferInsert.entityType,
+    parentEntityId: string,
+  ) {
+    const [entity] = await this.db
+      .insert(entities)
+      .values({ organizationId: this.scope.organizationId, entityType })
+      .returning();
+    await this.db.insert(entityAccessParents).values({
+      organizationId: this.scope.organizationId,
+      entityId: entity!.entityId,
+      parentEntityId,
+    });
     return entity!;
   }
 

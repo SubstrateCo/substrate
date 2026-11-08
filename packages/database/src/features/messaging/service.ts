@@ -1,14 +1,17 @@
 import type { DatabaseExecutor } from "../../client";
+import { activeActorCondition } from "../../core/actors/access";
 import { ensureOwnedAgentActors } from "../../core/actors/provisioning";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
+import { entities } from "../../core/entities/schema";
 import { member } from "../../core/organizations/schema";
-import { RepositoryContext } from "../../core/repository-context";
+import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { workspaceContext } from "../context/access";
 import { applyMessageEffects } from "../context/message-effects";
 import { visibleConversations, type MessagingIdentity } from "./access";
+import { messageAuthorColumns } from "./message-authors";
 import { messageSummaries } from "./message-summaries";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 export type { MessagingIdentity as MessagingScope } from "./access";
@@ -59,6 +62,20 @@ async function joinConversation(
     .onConflictDoNothing();
 }
 
+async function requireThreadRoot(tx: DatabaseExecutor, conversationId: string, threadId: string) {
+  const [root] = await tx
+    .select({ id: messages.id })
+    .from(messages)
+    .where(
+      and(
+        eq(messages.conversationId, conversationId),
+        eq(messages.id, threadId),
+        isNull(messages.threadId),
+      ),
+    );
+  if (!root) throw new ValidationError("Thread must be a root message in this conversation.");
+}
+
 // Trusted callers pass the context and author already resolved by workspaceContext.
 export async function sendMessageAs(
   ctx: RepositoryContext,
@@ -90,19 +107,7 @@ export async function sendMessageAs(
       return { ...existing, authorName, authorType: actor.type, reactions, replyCount: 0 };
     }
   }
-  if (threadId) {
-    const [root] = await tx
-      .select()
-      .from(messages)
-      .where(
-        and(
-          eq(messages.conversationId, conversationId),
-          eq(messages.id, threadId),
-          isNull(messages.threadId),
-        ),
-      );
-    if (!root) throw new ValidationError("Thread must be a root message in this conversation.");
-  }
+  if (threadId) await requireThreadRoot(tx, conversationId, threadId);
   await joinConversation(tx, scope, conversationId);
   const [created] = await tx
     .insert(messages)
@@ -150,21 +155,6 @@ export function createMessagingService(
     if (!normalized || !normalized.includes("@"))
       throw new ValidationError("An exact email address is required.");
     return normalized;
-  }
-
-  async function discover(tx: DatabaseExecutor, email: string) {
-    const normalized = normalizeEmail(email);
-    return tx
-      .select({
-        userId: user.id,
-        name: user.name,
-        email: user.email,
-        organizationId: member.organizationId,
-      })
-      .from(user)
-      .innerJoin(member, eq(member.userId, user.id))
-      .where(and(sql`lower(${user.email}) = ${normalized}`, eq(user.emailVerified, true)))
-      .orderBy(asc(member.organizationId));
   }
 
   async function recipients(tx: DatabaseExecutor, emails: string[]) {
@@ -250,12 +240,7 @@ export function createMessagingService(
         }));
       });
     },
-    async discoverMembers(email: string) {
-      return db.transaction(async (tx) => {
-        await authenticate(tx);
-        return discover(tx, email);
-      });
-    },
+
     async createConversation(input: CreateConversationInput) {
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
@@ -291,23 +276,7 @@ export function createMessagingService(
         return conversation!;
       });
     },
-    async listMembers(conversationId: string) {
-      return db.transaction(async (tx) => {
-        await authenticate(tx);
-        await requireConversation(tx, conversationId);
-        return tx
-          .select({
-            userId: user.id,
-            name: user.name,
-            email: user.email,
-            organizationId: participants.organizationId,
-          })
-          .from(participants)
-          .innerJoin(user, eq(user.id, participants.userId))
-          .where(eq(participants.conversationId, conversationId))
-          .orderBy(asc(user.name), asc(user.id));
-      });
-    },
+
     async listAvailableAgents() {
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
@@ -327,35 +296,44 @@ export function createMessagingService(
           throw new AccessDeniedError();
         if (agentActorIds.length > 30) throw new ValidationError("At most 30 agents are allowed.");
         let agentsAdded = 0;
-        for (const actorId of new Set(agentActorIds)) {
-          await new RepositoryContext(tx, {
-            organizationId: scope.organizationId,
-            actorEntityId: actorId,
-          }).requireActiveActor();
-          const [agent] = await tx
+        const agentIds = [...new Set(agentActorIds)];
+        if (agentIds.length) {
+          if (conversation.organizationId !== scope.organizationId) throw new AccessDeniedError();
+          // Every agent must be active, undeleted, and owned by the session user.
+          const agents = await tx
             .select({ id: actors.entityId })
             .from(actors)
+            .innerJoin(
+              entities,
+              and(
+                eq(entities.entityId, actors.entityId),
+                eq(entities.organizationId, actors.organizationId),
+              ),
+            )
             .innerJoin(userAgents, eq(userAgents.id, actors.userAgentId))
             .where(
               and(
-                eq(actors.entityId, actorId),
+                inArray(actors.entityId, agentIds),
                 eq(actors.organizationId, scope.organizationId),
                 eq(actors.type, "agent"),
                 eq(userAgents.userId, scope.userId),
+                activeActorCondition(),
+                isNull(entities.deletedAt),
               ),
             );
-          if (!agent || conversation.organizationId !== scope.organizationId)
-            throw new AccessDeniedError();
+          if (agents.length !== agentIds.length) throw new AccessDeniedError();
           const added = await tx
             .insert(agentParticipants)
-            .values({
-              conversationId,
-              organizationId: scope.organizationId,
-              actorEntityId: actorId,
-            })
+            .values(
+              agentIds.map((actorEntityId) => ({
+                conversationId,
+                organizationId: scope.organizationId,
+                actorEntityId,
+              })),
+            )
             .onConflictDoNothing()
             .returning();
-          agentsAdded += added.length;
+          agentsAdded = added.length;
         }
         const selected = await recipients(tx, emails);
         if (!selected.length) return { added: agentsAdded };
@@ -381,25 +359,12 @@ export function createMessagingService(
       return db.transaction(async (tx) => {
         await authenticate(tx);
         await requireConversation(tx, conversationId);
-        if (threadId) {
-          const [root] = await tx
-            .select()
-            .from(messages)
-            .where(
-              and(
-                eq(messages.conversationId, conversationId),
-                eq(messages.id, threadId),
-                isNull(messages.threadId),
-              ),
-            );
-          if (!root)
-            throw new ValidationError("Thread must be a root message in this conversation.");
-        }
+        if (threadId) await requireThreadRoot(tx, conversationId, threadId);
         let boundary;
         const anchorId = options.beforeMessageId ?? options.aroundMessageId;
         if (anchorId) {
           const [anchor] = await tx
-            .select()
+            .select({ id: messages.id })
             .from(messages)
             .where(
               and(
@@ -414,16 +379,7 @@ export function createMessagingService(
             : sql`(${messages.createdAt}, ${messages.id}) <= (select anchor.created_at, anchor.id from ${messages} anchor where anchor.id = ${anchor.id}::uuid)`;
         }
         const rows = await tx
-          .select({
-            message: messages,
-            authorName: sql<string>`case when ${actors.type} = 'agent' then ${actors.name} else ${user.name} end`,
-            authorType: sql<"human" | "agent">`coalesce(${actors.type}, 'human')`,
-            authorExternal: sql<boolean>`coalesce(${actors.type}, 'human') <> 'agent' AND not exists (
-              select 1 from ${member}
-              where ${member.userId} = ${messages.authorId}
-                and ${member.organizationId} = ${scope.organizationId}
-            )`,
-          })
+          .select({ message: messages, ...messageAuthorColumns(scope.organizationId) })
           .from(messages)
           .leftJoin(user, eq(user.id, messages.authorId))
           .leftJoin(actors, eq(actors.entityId, messages.authorActorEntityId))

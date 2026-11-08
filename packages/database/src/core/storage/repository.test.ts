@@ -259,6 +259,35 @@ describe("stored file relationships", () => {
     expect((await f.db.select().from(user).where(eq(user.id, "alice")))[0]!.image).toBeNull();
   });
 
+  test("shared avatar reads and delete reference checks use one statement each", async () => {
+    const avatar = file();
+    await f.db.insert(storedFiles).values(avatar);
+    await repositoryWithAuthWrites().setPicture(
+      { userId: "alice", organizationId: f.orgA },
+      "avatar",
+      avatar.id,
+    );
+    const { db, queries } = recordQueries();
+    const repo = createStorageRepository(db);
+    queries.length = 0;
+    expect((await repo.getReadable({ userId: "bob", organizationId: f.orgA }, avatar.id))?.id).toBe(
+      avatar.id,
+    );
+    expect(queries).toHaveLength(2);
+    expect(
+      await repo.getReadable({ userId: "outsider", organizationId: f.orgA }, avatar.id),
+    ).toBeNull();
+    await expect(
+      repo.deleteFile({ userId: "alice", organizationId: null }, avatar.id),
+    ).rejects.toBeInstanceOf(ConflictError);
+    const generic = file("file", f.orgA);
+    await f.db.insert(storedFiles).values(generic);
+    queries.length = 0;
+    await repo.deleteFile({ userId: "alice", organizationId: f.orgA }, generic.id);
+    expect(queries).toHaveLength(6);
+    expect(await f.db.select().from(storedFiles).where(eq(storedFiles.id, generic.id))).toEqual([]);
+  });
+
   test("generic files are uploader-only, even within the organization", async () => {
     const generic = file("file", f.orgA);
     await f.db.insert(storedFiles).values({ ...generic, contentType: "application/pdf" });

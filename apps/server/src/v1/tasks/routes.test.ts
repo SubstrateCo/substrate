@@ -7,12 +7,22 @@ import { expect, mock, test } from "bun:test";
 const projectEntityId = "00000000-0000-4000-8000-000000000001";
 
 test("task routes reject invalid requests before calling a service", async () => {
-  const calls = mock(services.listProjects);
-  const app = createTasksRoutes({ ...services, listProjects: calls });
-  const response = await app.request("/projects");
-  expect(response.status).toBe(400);
-  expect(await response.json()).toEqual(failure("INVALID_INPUT", "Invalid request input."));
-  expect(calls).not.toHaveBeenCalled();
+  const reads = {
+    listProjects: mock(services.listProjects),
+    getProject: mock(services.getProject),
+    listTaskComments: mock(services.listTaskComments),
+  };
+  const app = createTasksRoutes({ ...services, ...reads });
+  for (const path of [
+    "/projects",
+    "/project?organizationId=org&projectEntityId=invalid",
+    "/comments?organizationId=org&projectEntityId=invalid&taskEntityId=invalid",
+  ]) {
+    const response = await app.request(path);
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual(failure("INVALID_INPUT", "Invalid request input."));
+  }
+  for (const read of Object.values(reads)) expect(read).not.toHaveBeenCalled();
 
   const mutateTasks = mock(services.mutateTasks);
   const mutations = createTasksRoutes({ ...services, mutateTasks });

@@ -65,7 +65,12 @@ test("100 unique recipients use one lookup for creation and member addition", as
     added: 100,
   });
   expect(lookups()).toHaveLength(1);
-  expect(await chat.listMembers(group.id)).toHaveLength(101);
+  expect(
+    await fixture.db
+      .select()
+      .from(messagingParticipants)
+      .where(eq(messagingParticipants.conversationId, group.id)),
+  ).toHaveLength(101);
 });
 
 test("recipient normalization deduplicates emails and users, excludes sender and preserves membership preference", async () => {
@@ -105,7 +110,7 @@ test("recipient normalization deduplicates emails and users, excludes sender and
     createMessagingService(fixture.db, {
       userId: "outsider",
       organizationId: fixture.orgB,
-    }).listMembers(group.id),
+    }).listMessages(group.id),
   ).rejects.toBeInstanceOf(AccessDeniedError);
 });
 

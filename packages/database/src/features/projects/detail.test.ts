@@ -32,18 +32,11 @@ test("project detail preserves protected output with five SELECT statements", as
     logger: { logQuery: (query) => statements.push(query) },
   });
   const repos = createRepositories(db).forActor({ organizationId: f.orgA, actorEntityId: f.alice });
-  const expected = await repos.transaction(async (repos) => ({
-    project: await repos.projects.get(project.entityId),
-    level: await repos.permissions.getEffectiveLevel(project.entityId),
-    members: await repos.projects.listMembers(project.entityId),
-    actors: await repos.projects.availableActors(project.entityId),
-    tasks: await repos.tasks.list(project.entityId),
-  }));
-  // Each of the five access checks reads the entity, permission and active actor in one statement.
-  expect(statements.filter((query) => /^(select|with)\b/i.test(query))).toHaveLength(12);
-  statements.length = 0;
   const actual = await repos.transaction((tx) => tx.projects.getDetail(project.entityId));
-  expect(actual).toEqual(expected);
+  // Detail performs one access check, reducing its budget from six reads to five.
+  expect(statements.filter((query) => /^(select|with)\b/i.test(query))).toHaveLength(5);
+  expect(actual.project).toEqual(await alice.projects.get(project.entityId));
+  expect(actual.level).toBe("owner");
   expect(actual.tasks.map((task) => task.entityId)).toEqual(
     [visible.entityId, child.entityId].sort(),
   );
@@ -51,8 +44,6 @@ test("project detail preserves protected output with five SELECT statements", as
   expect(actual.members).toEqual([
     { actorEntityId: f.alice, name: "Alice", type: "human", level: "owner" },
   ]);
-  // Detail performs one access check, reducing its budget from six reads to five.
-  expect(statements.filter((query) => /^(select|with)\b/i.test(query))).toHaveLength(5);
 });
 
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
@@ -76,8 +67,6 @@ test("project detail denies revoked, deleted, foreign and inactive access", asyn
   await expect(bob.projects.getDetail(project.entityId)).rejects.toBeInstanceOf(AccessDeniedError);
   for (const read of [
     () => bob.projects.get(project.entityId),
-    () => bob.projects.listMembers(project.entityId),
-    () => bob.projects.availableActors(project.entityId),
     () => bob.tasks.list(project.entityId),
   ]) {
     await expect(read()).rejects.toBeInstanceOf(AccessDeniedError);

@@ -1,13 +1,14 @@
 import { realtimeKeys } from "@startup-os/contracts/realtime";
 import type { RealtimeEvent } from "@startup-os/contracts/realtime";
+import type { RealtimeReceiver } from "@startup-os/database/realtime";
 
 import { createRealtimeHub } from "./hub";
-import type { Change, HubDependencies, Identity, Transport } from "./hub";
+import type { Change, HubDependencies, Transport } from "./hub";
 /* oxlint-disable typescript/await-thenable -- Bun's rejection matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 
 function fixture(options: Parameters<typeof createRealtimeHub>[1] = {}) {
-  const sessions = new Map<string, Identity>();
+  const sessions = new Map<string, RealtimeReceiver>();
   let failures = 0;
   const deps: HubDependencies = {
     authenticate: async (headers, organizationId) => {
@@ -22,7 +23,7 @@ function fixture(options: Parameters<typeof createRealtimeHub>[1] = {}) {
   const hub = createRealtimeHub(deps, options);
   async function connect(userId = "user", organizationId: string | null = "org") {
     const cookie = `${userId}-${organizationId}`;
-    sessions.set(cookie, { userId, organizationId });
+    sessions.set(cookie, { userId, organizationId, actorId: organizationId && `${userId}-actor` });
     const connection = await hub.reserve(new Headers({ cookie }), organizationId);
     if (!connection) throw new Error("Reservation rejected");
     const events: RealtimeEvent[] = [];
@@ -111,10 +112,21 @@ test("revocation and workspace drift block delivery between heartbeats", async (
   const f = fixture();
   const revoked = await f.connect("revoked");
   const moved = await f.connect("moved");
+  const recreated = await f.connect("recreated");
   f.sessions.delete(revoked.cookie);
-  f.sessions.set(moved.cookie, { userId: "moved", organizationId: "other" });
+  f.sessions.set(moved.cookie, {
+    userId: "moved",
+    organizationId: "other",
+    actorId: "moved-actor",
+  });
+  // A replaced workspace actor must not inherit the old connection's actor audience.
+  f.sessions.set(recreated.cookie, {
+    userId: "recreated",
+    organizationId: "org",
+    actorId: "replacement-actor",
+  });
   await f.publish(realtimeKeys.organization("org"));
-  for (const peer of [revoked, moved]) {
+  for (const peer of [revoked, moved, recreated]) {
     expect(peer.events).toEqual([{ version: 1, type: "ready" }]);
     expect(peer.closed).toEqual([1008]);
   }
@@ -145,7 +157,7 @@ test("bounds reservations and expires abandoned upgrades", async () => {
   await expect(f.hub.reserve(new Headers({ cookie: live.cookie }), "org")).rejects.toThrow(
     "Realtime capacity reached",
   );
-  f.sessions.set("pending", { userId: "pending", organizationId: null });
+  f.sessions.set("pending", { userId: "pending", organizationId: null, actorId: null });
   const pending = await f.hub.reserve(new Headers({ cookie: "pending" }), null);
   expect(pending).not.toBeNull();
   const atCapacity = f.hub.reserve(new Headers({ cookie: "pending" }), null);

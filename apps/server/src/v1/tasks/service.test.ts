@@ -4,7 +4,7 @@ import * as provisioning from "@startup-os/database/provisioning";
 
 import { db } from "../../auth/database";
 import { auth } from "../../auth/server";
-import { listProjects, getProject, listTaskComments, mutateTasks } from "./service";
+import { getProject, listTaskComments, mutateTasks } from "./service";
 import { APIError } from "better-auth/api";
 import { afterEach, expect, mock, spyOn, test } from "bun:test";
 
@@ -119,20 +119,6 @@ test("task comments pass the expected project to the repository without fetching
   expect(await listTaskComments(new Headers(), { ...fixture.input, taskEntityId })).toEqual(
     failure("NOT_FOUND", "Item not found or access denied."),
   );
-});
-
-test("task services return invalid-input results before authentication", async () => {
-  const headers = new Headers();
-  for (const result of await Promise.all([
-    listProjects(headers, { organizationId: "" }),
-    getProject(headers, { organizationId: "org", projectEntityId: "invalid" }),
-    listTaskComments(headers, {
-      organizationId: "org",
-      projectEntityId: "invalid",
-      taskEntityId: "invalid",
-    }),
-  ]))
-    expect(result).toEqual(failure("INVALID_INPUT", "Invalid request input."));
 });
 
 test("task writes return a typed origin failure rather than throwing", async () => {

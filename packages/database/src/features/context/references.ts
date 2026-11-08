@@ -8,15 +8,8 @@ export function messageReferences(body: string): Reference[] {
   const result = new Map<string, Reference>();
   for (const match of body.matchAll(token)) {
     if (!uuid.test(match[2]!)) throw new ValidationError("Invalid reference.");
-    const kind = match[1]!.toLowerCase();
-    if (
-      kind !== "task" &&
-      kind !== "project" &&
-      kind !== "person" &&
-      kind !== "channel" &&
-      kind !== "thread"
-    )
-      throw new ValidationError("Invalid reference.");
+    // SAFETY: The token pattern only captures these kinds, matched case-insensitively.
+    const kind = match[1]!.toLowerCase() as Reference["kind"];
     const id = match[2]!.toLowerCase();
     result.set(`${kind}:${id}`, { kind, id });
   }

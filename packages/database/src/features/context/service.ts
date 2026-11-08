@@ -1,16 +1,16 @@
 import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
-import { member } from "../../core/organizations/schema";
 import { visibilityCte } from "../../core/permissions/visibility";
 import type { RepositoryContext } from "../../core/repository-context";
 import { ConflictError, AccessDeniedError } from "../../errors";
 import { recordTaskActivity } from "../activity/events";
 import { requireMessage, visibleConversations, type MessagingIdentity } from "../messaging/access";
+import { messageAuthorColumns } from "../messaging/message-authors";
 import { messageSummaries } from "../messaging/message-summaries";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import type { CreateTaskInput } from "../tasks/contracts";
-import { taskRepository } from "../tasks/repository";
+import { createTaskInLockedProject, taskRepository } from "../tasks/repository";
 import { tasks } from "../tasks/tasks.schema";
 import { workspaceContext, requireWork } from "./access";
 import { messagePeople, messageWorkLinks } from "./message-metadata";
@@ -115,7 +115,7 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
         const { context: ctx } = await workspaceContext(tx, scope);
         const { conversation } = await requireMessage(tx, scope, input.messageId);
         if (conversation.organizationId !== scope.organizationId) throw new AccessDeniedError();
-        await ctx.requireAccess(input.projectEntityId, "edit", true);
+        const project = await ctx.requireAccess(input.projectEntityId, "edit", true);
         // Project access locking serializes retries, including simultaneous submissions.
         const fingerprint = JSON.stringify({
           messageId: input.messageId,
@@ -143,7 +143,7 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
             throw new ConflictError("This request was already used for different task details.");
           return taskRepository(ctx).get(existing.taskEntityId);
         }
-        const task = await taskRepository(ctx).create(input);
+        const task = await createTaskInLockedProject(ctx, project, input);
         await tx.insert(messageEntityReferences).values({
           organizationId: scope.organizationId,
           conversationId: conversation.id,
@@ -242,49 +242,52 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
     },
     async messageTarget(conversationId: string, messageId: string) {
       await workspaceContext(db, scope);
-      const { message } = await requireMessage(db, scope, messageId);
-      if (message.conversationId !== conversationId) throw new AccessDeniedError();
-      const root = message.threadId
-        ? (await requireMessage(db, scope, message.threadId)).message
-        : message;
+      const author = messageAuthorColumns(scope.organizationId);
+      // Reads the message and its thread root together; each row must be visible.
+      const rows = await db
+        .select({
+          message: messagingMessages,
+          ...author,
+          authorName: sql<string>`coalesce(${author.authorName}, 'Member')`,
+        })
+        .from(messagingMessages)
+        .innerJoin(
+          messagingConversations,
+          eq(messagingConversations.id, messagingMessages.conversationId),
+        )
+        .leftJoin(user, eq(user.id, messagingMessages.authorId))
+        .leftJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
+        .where(
+          and(
+            or(
+              eq(messagingMessages.id, messageId),
+              sql`${messagingMessages.id} = (select thread.thread_id from ${messagingMessages} thread where thread.id = ${messageId}::uuid)`,
+            ),
+            visibleConversations(db, scope),
+          ),
+        );
+      const target = rows.find((row) => row.message.id === messageId);
+      if (!target || target.message.conversationId !== conversationId)
+        throw new AccessDeniedError();
+      const root = target.message.threadId
+        ? rows.find((row) => row.message.id === target.message.threadId)
+        : target;
+      if (!root) throw new AccessDeniedError();
       const summaries = await messageSummaries(
         db,
         scope.userId,
         conversationId,
-        message.id === root.id ? [message] : [message, root],
+        target === root ? [target.message] : [target.message, root.message],
       );
-      const decorate = async (row: typeof message) => {
-        const [author] = row.authorId
-          ? await db
-              .select({
-                name: user.name,
-                external: sql<boolean>`not exists (
-              select 1 from ${member}
-              where ${member.userId} = ${row.authorId}
-                and ${member.organizationId} = ${scope.organizationId}
-            )`,
-              })
-              .from(user)
-              .where(eq(user.id, row.authorId))
-          : [];
-        const [agentAuthor] = row.authorActorEntityId
-          ? await db
-              .select({ name: actors.name, type: actors.type })
-              .from(actors)
-              .where(eq(actors.entityId, row.authorActorEntityId))
-          : [];
-        return {
-          ...row,
-          authorName: agentAuthor?.type === "agent" ? agentAuthor.name : (author?.name ?? "Member"),
-          authorType: agentAuthor?.type ?? ("human" as const),
-          authorExternal: agentAuthor?.type === "agent" ? false : (author?.external ?? true),
-          ...summaries.get(row.id)!,
-        };
-      };
-      const decoratedMessage = await decorate(message);
+      const decorate = ({ message, ...authorFields }: typeof target) => ({
+        ...message,
+        ...authorFields,
+        ...summaries.get(message.id)!,
+      });
+      const decoratedMessage = decorate(target);
       return {
         message: decoratedMessage,
-        root: message.id === root.id ? decoratedMessage : await decorate(root),
+        root: target === root ? decoratedMessage : decorate(root),
       };
     },
     search: (input: Parameters<typeof contextSearch>[2]) => contextSearch(db, scope, input),

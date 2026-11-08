@@ -13,12 +13,8 @@ test("delivery failure does not turn a committed operation into an error", async
       failures++;
     },
   );
-  const result = await (async () => {
-    const committed = { id: "saved" };
-    await publish([{ audience: realtimeKeys.organization("org"), domain: "tasks" }]);
-    return committed;
-  })();
-  expect(result).toEqual({ id: "saved" });
+  // A rejection here would fail the test; resolving keeps the committed operation successful.
+  await publish([{ audience: realtimeKeys.organization("org"), domain: "tasks" }]);
   expect(failures).toBe(1);
 });
 

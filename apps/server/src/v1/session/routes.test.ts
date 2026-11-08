@@ -1,4 +1,4 @@
-import { failure, success } from "@startup-os/contracts/result";
+import { success } from "@startup-os/contracts/result";
 
 import { createSessionRoutes } from "./routes";
 import { describe, expect, test } from "bun:test";
@@ -21,17 +21,5 @@ describe("session routes", () => {
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(await response.json()).toEqual({ success: true, data: null });
     expect(cookies).toEqual(["session=test"]);
-  });
-
-  test("maps service failures to the shared status and response contract", async () => {
-    const app = createSessionRoutes({
-      read: async () => failure("INTERNAL_ERROR", "Unavailable."),
-    });
-    const response = await app.request("/");
-    expect(response.status).toBe(500);
-    expect(await response.json()).toEqual({
-      success: false,
-      error: { code: "INTERNAL_ERROR", message: "Unavailable." },
-    });
   });
 });

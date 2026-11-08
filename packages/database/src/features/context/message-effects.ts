@@ -1,3 +1,4 @@
+import { activeActorCondition } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
@@ -11,11 +12,11 @@ import {
   messagingParticipants,
 } from "../messaging/schema";
 import { notifications } from "../notifications/schema";
-import { requireWork } from "./access";
+import { readableWorkTargets } from "../notifications/targets";
 import { saveMessagingReference } from "./messaging-references";
 import { messageReferences } from "./references";
 import { messageEntityReferences } from "./schema";
-import { and, eq, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 
 export async function applyMessageEffects(
   ctx: RepositoryContext,
@@ -25,55 +26,71 @@ export async function applyMessageEffects(
 ) {
   const { db } = ctx;
   const recipients = new Map<string, "mention" | "reply">();
-  const references = messageReferences(message.body);
-  for (const reference of references) {
+  const personIds: string[] = [];
+  const workReferences: { id: string; kind: "task" | "project" }[] = [];
+  for (const reference of messageReferences(message.body)) {
     if (reference.kind === "channel" || reference.kind === "thread") {
       await saveMessagingReference(db, scope, message, conversationOrganizationId, {
         ...reference,
         kind: reference.kind,
       });
-      continue;
-    }
-    if (reference.kind !== "person") {
-      if (conversationOrganizationId !== scope.organizationId) throw new AccessDeniedError();
-      const work = await requireWork(ctx, reference.id);
-      if (work.entityType !== reference.kind) throw new AccessDeniedError();
-      await db
-        .insert(messageEntityReferences)
-        .values({
+    } else if (reference.kind === "person") personIds.push(reference.id);
+    else workReferences.push({ id: reference.id, kind: reference.kind });
+  }
+  if (personIds.length) {
+    // Every mentioned person must be an active workspace member who can see this conversation.
+    const people = await db
+      .select({ userId: sql<string>`${actors.userId}` })
+      .from(actors)
+      .innerJoin(
+        entities,
+        and(
+          eq(entities.entityId, actors.entityId),
+          eq(entities.organizationId, actors.organizationId),
+        ),
+      )
+      .innerJoin(
+        messagingConversations,
+        and(
+          eq(messagingConversations.id, message.conversationId),
+          visibleConversations(db, { userId: actors.userId, organizationId: scope.organizationId }),
+        ),
+      )
+      .where(
+        and(
+          inArray(actors.entityId, personIds),
+          eq(actors.organizationId, scope.organizationId),
+          isNotNull(actors.userId),
+          activeActorCondition(),
+          isNull(entities.deletedAt),
+        ),
+      );
+    if (people.length !== personIds.length) throw new AccessDeniedError();
+    for (const person of people) recipients.set(person.userId, "mention");
+  }
+  if (workReferences.length) {
+    if (conversationOrganizationId !== scope.organizationId) throw new AccessDeniedError();
+    // The caller has verified the active actor; this applies view access to the task and its project.
+    const targets = await readableWorkTargets(
+      ctx,
+      workReferences.map((reference) => reference.id),
+    );
+    for (const reference of workReferences)
+      if (targets.get(reference.id)?.entityType !== reference.kind) throw new AccessDeniedError();
+    await db
+      .insert(messageEntityReferences)
+      .values(
+        workReferences.map((reference) => ({
           organizationId: scope.organizationId,
           conversationId: message.conversationId,
           messageId: message.id,
           entityId: reference.id,
-          entityType: work.entityType,
-          purpose: "mention",
+          entityType: reference.kind,
+          purpose: "mention" as const,
           createdByActorEntityId: ctx.scope.actorEntityId,
-        })
-        .onConflictDoNothing();
-    } else {
-      const [actor] = await db
-        .select()
-        .from(actors)
-        .where(
-          and(eq(actors.entityId, reference.id), eq(actors.organizationId, scope.organizationId)),
-        );
-      if (!actor?.userId) throw new AccessDeniedError();
-      await ctx.requireActiveActor(reference.id);
-      const [visible] = await db
-        .select({ id: messagingConversations.id })
-        .from(messagingConversations)
-        .where(
-          and(
-            eq(messagingConversations.id, message.conversationId),
-            visibleConversations(db, {
-              userId: actor.userId,
-              organizationId: scope.organizationId,
-            }),
-          ),
-        );
-      if (!visible) throw new AccessDeniedError();
-      recipients.set(actor.userId, "mention");
-    }
+        })),
+      )
+      .onConflictDoNothing();
   }
   if (message.threadId) {
     const authors = await db

@@ -112,7 +112,7 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
           });
         }
       }
-      return result.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      return result;
     },
     async markAllRead() {
       const { context: ctx } = await workspaceContext(db, scope);

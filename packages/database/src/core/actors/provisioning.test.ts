@@ -1,5 +1,4 @@
 import { AccessDeniedError } from "../../errors";
-import { createRepositories } from "../../repositories";
 import { actors, entities, member, userAgents } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { createActor, ensureHumanActor, ensureUserAgentActor } from "./provisioning";
@@ -121,9 +120,8 @@ describe("actor provisioning", () => {
         harness: "opencode",
       })
       .returning();
-    const repositories = createRepositories(f.db);
     const input = { organizationId: f.orgA, userId: "alice", userAgentId: agent!.id };
-    const assistant = await repositories.forUserAgent(input);
+    const assistant = f.forActor((await ensureUserAgentActor(f.db, input)).entityId);
     const contact = await f.forActor(f.alice).contacts.create({ displayName: "Private" });
     await expect(assistant.contacts.get(contact.entityId)).rejects.toBeInstanceOf(
       AccessDeniedError,
@@ -154,19 +152,19 @@ describe("actor provisioning", () => {
     expect(
       (await assistant.contacts.update(contact.entityId, { displayName: "Changed" })).displayName,
     ).toBe("Changed");
-    await repositories.forUserAgent(input);
+    await ensureUserAgentActor(f.db, input);
     expect(await f.db.select().from(actors).where(eq(actors.userAgentId, agent!.id))).toHaveLength(
       1,
     );
-    await expect(repositories.forUserAgent({ ...input, userId: "bob" })).rejects.toBeInstanceOf(
+    await expect(ensureUserAgentActor(f.db, { ...input, userId: "bob" })).rejects.toBeInstanceOf(
       AccessDeniedError,
     );
     await expect(
-      repositories.forUserAgent({ ...input, organizationId: f.orgB }),
+      ensureUserAgentActor(f.db, { ...input, organizationId: f.orgB }),
     ).rejects.toBeInstanceOf(AccessDeniedError);
     await f.db.update(userAgents).set({ enabled: false }).where(eq(userAgents.id, agent!.id));
     expect(
-      (await f.forActor(f.alice).projects.availableActors(project.entityId)).map(
+      (await f.forActor(f.alice).projects.getDetail(project.entityId)).actors.map(
         (candidate) => candidate.entityId,
       ),
     ).not.toContain(actor!.entityId);
@@ -178,7 +176,7 @@ describe("actor provisioning", () => {
       }),
     ).rejects.toBeInstanceOf(AccessDeniedError);
     await expect(assistant.contacts.list()).rejects.toBeInstanceOf(AccessDeniedError);
-    await expect(repositories.forUserAgent(input)).rejects.toBeInstanceOf(AccessDeniedError);
+    await expect(ensureUserAgentActor(f.db, input)).rejects.toBeInstanceOf(AccessDeniedError);
     await f.db
       .update(userAgents)
       .set({ enabled: true, deletedAt: new Date() })

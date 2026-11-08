@@ -58,7 +58,7 @@ test("project editors can update projects but viewers and organization admins ha
     await bob.projects.update(project.entityId, { name: "Renamed", description: "Review" }),
   ).toMatchObject({ name: "Renamed", description: "Review" });
   expect(
-    (await bob.projects.availableActors(project.entityId)).map((actor) => actor.entityId).sort(),
+    (await bob.projects.getDetail(project.entityId)).actors.map((actor) => actor.entityId).sort(),
   ).toEqual([f.alice, f.bob].sort());
 });
 

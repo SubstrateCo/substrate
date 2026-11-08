@@ -2,7 +2,7 @@ import { ValidationError } from "../../errors";
 import { RepositoryContext, type PermissionLevel } from "../repository-context";
 import { entityGrants, permissionLevel } from "./schema";
 import { inheritedOwnerQuery } from "./visibility";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 export function permissionRepository(context: RepositoryContext) {
   const { scope, db } = context;
@@ -25,20 +25,16 @@ export function permissionRepository(context: RepositoryContext) {
       );
       const [existing] = await tx.select().from(entityGrants).where(target);
       if (existing?.level === "owner" && input.level !== "owner") {
-        const owners = await tx
-          .select()
-          .from(entityGrants)
-          .where(
-            and(
-              eq(entityGrants.organizationId, scope.organizationId),
-              eq(entityGrants.entityId, input.entityId),
-              eq(entityGrants.level, "owner"),
-            ),
-          );
-        const [inheritedOwner] = await tx.execute<{ present: number }>(
-          inheritedOwnerQuery(scope, input.entityId),
-        );
-        if (owners.length === 1 && !inheritedOwner)
+        const [owners] = await tx.execute<{ remaining: boolean }>(sql`
+          SELECT EXISTS (
+            SELECT 1 FROM ${entityGrants}
+            WHERE ${entityGrants.organizationId} = ${scope.organizationId}
+              AND ${entityGrants.entityId} = ${input.entityId}
+              AND ${entityGrants.level} = 'owner'
+              AND ${entityGrants.actorEntityId} <> ${input.actorEntityId}
+          ) OR EXISTS (${inheritedOwnerQuery(scope, input.entityId)}) AS remaining
+        `);
+        if (!owners?.remaining)
           throw new ValidationError("Cannot remove or downgrade the last owner.");
       }
       if (input.level) {

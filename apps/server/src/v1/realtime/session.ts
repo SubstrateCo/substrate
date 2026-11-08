@@ -1,6 +1,4 @@
-import { realtimeKeys } from "@startup-os/contracts/realtime";
-
-import type { HubDependencies } from "./hub";
+import type { RealtimeReceiver } from "@startup-os/database/realtime";
 
 interface SessionAPI {
   getSession(input: { headers: Headers; query: { disableCookieCache: true } }): Promise<{
@@ -11,7 +9,10 @@ interface SessionAPI {
 
 export function createRealtimeAuthenticator(
   api: SessionAPI,
-  canReceive: HubDependencies["canReceive"],
+  resolveReceiver: (identity: {
+    userId: string;
+    organizationId: string | null;
+  }) => Promise<RealtimeReceiver | null>,
 ) {
   return async (headers: Headers, organizationId: string | null) => {
     // Never trust a cached cookie snapshot for revocation or active-workspace scope.
@@ -22,11 +23,6 @@ export function createRealtimeAuthenticator(
       (session.session.activeOrganizationId ?? null) !== organizationId
     )
       return null;
-    const identity = { userId: session.user.id, organizationId };
-    const audience =
-      organizationId === null
-        ? realtimeKeys.user(identity.userId)
-        : realtimeKeys.organization(organizationId);
-    return (await canReceive(identity, audience)) ? identity : null;
+    return resolveReceiver({ userId: session.user.id, organizationId });
   };
 }

@@ -4,9 +4,7 @@ import type {
   RealtimeDomain,
   RealtimeEvent,
 } from "@startup-os/contracts/realtime";
-import type { canReceiveChange } from "@startup-os/database/realtime";
-
-export type Identity = Parameters<typeof canReceiveChange>[1];
+import type { RealtimeReceiver } from "@startup-os/database/realtime";
 
 export interface Change {
   id: string;
@@ -23,13 +21,14 @@ export interface Transport {
 }
 
 export interface HubDependencies {
-  authenticate(headers: Headers, organizationId: string | null): Promise<Identity | null>;
-  canReceive(identity: Identity, audience: Readonly<RealtimeAudience>): Promise<boolean>;
+  authenticate(headers: Headers, organizationId: string | null): Promise<RealtimeReceiver | null>;
+  // Checks only the audience; the hub authenticates the identity before each delivery.
+  canReceive(identity: RealtimeReceiver, audience: Readonly<RealtimeAudience>): Promise<boolean>;
   reportFailure(): void;
 }
 
 interface Connection {
-  identity: Identity;
+  identity: RealtimeReceiver;
   headers: Headers;
   transport?: Transport;
   expiresAt: number;
@@ -38,7 +37,7 @@ interface Connection {
 }
 
 // These keys select candidates only. The database resolver authorizes every delivery.
-function relevant(identity: Identity, audience: Readonly<RealtimeAudience>) {
+function relevant(identity: RealtimeReceiver, audience: Readonly<RealtimeAudience>) {
   switch (audience[0]) {
     case "user":
       return audience[1] === realtimeKeys.user(identity.userId)[1];
@@ -93,11 +92,12 @@ export function createRealtimeHub(
       connection.identity.organizationId,
     );
     if (isStopped() || !connections.has(connection)) return false;
-    if (
-      !identity ||
-      identity.userId !== connection.identity.userId ||
-      identity.organizationId !== connection.identity.organizationId
-    ) {
+    const current = connection.identity;
+    const unchanged =
+      identity?.userId === current.userId &&
+      identity.organizationId === current.organizationId &&
+      identity.actorId === current.actorId;
+    if (!unchanged) {
       remove(connection);
       return false;
     }

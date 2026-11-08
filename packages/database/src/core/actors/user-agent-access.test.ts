@@ -1,8 +1,8 @@
 import { AccessDeniedError } from "../../errors";
 import { taskActivity } from "../../features/activity/schema";
-import { createRepositories } from "../../repositories";
 import { actors, entities, entityGrants, member, userAgents } from "../../schema";
 import { setupDatabase } from "../../testing/database";
+import { ensureUserAgentActor } from "./provisioning";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
@@ -18,11 +18,12 @@ async function assistant() {
       harness: "opencode",
     })
     .returning();
-  const repositories = await createRepositories(f.db).forUserAgent({
+  const provisioned = await ensureUserAgentActor(f.db, {
     userId: "alice",
     userAgentId: agent!.id,
     organizationId: f.orgA,
   });
+  const repositories = f.forActor(provisioned.entityId);
   const [actor] = await f.db.select().from(actors).where(eq(actors.userAgentId, agent!.id));
   return { repositories, actor: actor!, agent: agent! };
 }
@@ -66,12 +67,9 @@ test("agent-created records retain agent ownership and activity attribution", as
     .from(entityGrants)
     .where(eq(entityGrants.entityId, project.entityId));
   expect(grants.map((grant) => grant.actorEntityId)).toEqual([actor.entityId]);
-  expect(
-    (await agent.projects.listMembers(project.entityId)).map((item) => item.actorEntityId),
-  ).toEqual([actor.entityId]);
-  expect(
-    (await agent.projects.availableActors(project.entityId)).map((item) => item.entityId),
-  ).toContain(actor.entityId);
+  const detail = await agent.projects.getDetail(project.entityId);
+  expect(detail.members.map((item) => item.actorEntityId)).toEqual([actor.entityId]);
+  expect(detail.actors.map((item) => item.entityId)).toContain(actor.entityId);
   const task = await agent.tasks.create({
     projectEntityId: project.entityId,
     title: "Assigned",

@@ -8,7 +8,7 @@ import { expect, test } from "bun:test";
 test("publishes without polling and isolates a failed recipient", async () => {
   const failures: boolean[] = [];
   const hub = createRealtimeHub({
-    authenticate: async () => ({ userId: "user", organizationId: "org" }),
+    authenticate: async () => ({ userId: "user", organizationId: "org", actorId: "actor" }),
     canReceive: async () => true,
     reportFailure: () => failures.push(true),
   });

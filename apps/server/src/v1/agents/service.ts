@@ -1,9 +1,7 @@
-import {
+import type {
   saveAgentInput,
   deleteAgentInput,
   setAgentPictureInput,
-  type SetAgentPictureInput,
-  type SaveAgentInput,
 } from "@startup-os/contracts/agents";
 import { createAgentRepository } from "@startup-os/database/agents";
 import { agentRefreshHints } from "@startup-os/database/realtime";
@@ -13,6 +11,7 @@ import { auth } from "../../auth/server";
 import { ServiceError, serviceResult } from "../../shared/service-result";
 import { requireOrigin } from "../../shared/workspace";
 import { publishRefresh } from "../realtime/publisher";
+import type { z } from "zod";
 
 interface Dependencies {
   getSession: (input: {
@@ -37,27 +36,27 @@ export function createAgentService(dependencies: Dependencies) {
     listAgents(this: void, headers: Headers) {
       return serviceResult(async () => (await repositories(headers)).repository.list());
     },
-    saveAgent(this: void, headers: Headers, raw: SaveAgentInput) {
+    saveAgent(this: void, headers: Headers, input: z.output<typeof saveAgentInput>) {
       return serviceResult(async () => {
         const { repository, userId } = await repositories(headers, true);
-        const result = await repository.saveAgent(saveAgentInput.parse(raw));
+        const result = await repository.saveAgent(input);
         await dependencies.changed(userId);
         return result;
       });
     },
-    setAgentPicture(this: void, headers: Headers, raw: SetAgentPictureInput) {
+    setAgentPicture(this: void, headers: Headers, input: z.output<typeof setAgentPictureInput>) {
       return serviceResult(async () => {
         const { repository, userId } = await repositories(headers, true);
-        const { id, fileId } = setAgentPictureInput.parse(raw);
+        const { id, fileId } = input;
         const result = await repository.setPicture(id, fileId);
         await dependencies.changed(userId);
         return result;
       });
     },
-    deleteAgent(this: void, headers: Headers, raw: { id: string }) {
+    deleteAgent(this: void, headers: Headers, input: z.output<typeof deleteAgentInput>) {
       return serviceResult(async () => {
         const { repository, userId } = await repositories(headers, true);
-        const result = await repository.deleteAgent(deleteAgentInput.parse(raw).id);
+        const result = await repository.deleteAgent(input.id);
         await dependencies.changed(userId);
         return result;
       });

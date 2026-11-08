@@ -51,7 +51,11 @@ describe("development seed", () => {
     const shared = (await alice.listConversations()).find((row) => row.name === "Partner launch");
     expect(shared).toBeDefined();
     expect((await dana.listConversations()).some((row) => row.id === shared!.id)).toBe(true);
-    expect(new Set((await alice.listMembers(shared!.id)).map((row) => row.organizationId))).toEqual(
+    const participants = await fixture.db
+      .select({ organizationId: schema.messagingParticipants.organizationId })
+      .from(schema.messagingParticipants)
+      .where(eq(schema.messagingParticipants.conversationId, shared!.id));
+    expect(new Set(participants.map((row) => row.organizationId))).toEqual(
       new Set(["dev-northstar", "dev-orbit"]),
     );
     const messages = await dana.listMessages(shared!.id);
