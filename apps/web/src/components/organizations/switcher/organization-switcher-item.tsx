@@ -1,5 +1,6 @@
 import { DropdownMenuItem } from "../../ui/dropdown-menu";
 import { PicturePreview } from "../../upload/picture-preview";
+import { initials } from "./initials";
 import { Check } from "lucide-react";
 
 export function OrganizationSwitcherItem({
@@ -25,13 +26,7 @@ export function OrganizationSwitcherItem({
         <PicturePreview
           src={organization.logo}
           className="size-full rounded-lg object-contain"
-          fallback={organization.name
-            .split(/\s+/)
-            .filter(Boolean)
-            .slice(0, 2)
-            .map((word) => word[0])
-            .join("")
-            .toUpperCase()}
+          fallback={initials(organization.name)}
         />
       </span>
       <span className="min-w-0 flex-1 truncate">{organization.name}</span>

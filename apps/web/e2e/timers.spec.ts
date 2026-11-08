@@ -1,6 +1,7 @@
-import { conversation, expect, post, test, visit } from "./test-support/fixtures";
+import { conversation, post, test, visit } from "./test-support/fixtures";
 import { pauseClock, searches, visibleWithClock } from "./test-support/search";
 import { project } from "./test-support/tasks";
+import { expect } from "@playwright/test";
 
 test("search waits for the last input and hides results immediately when the kind changes", async ({
   actors,

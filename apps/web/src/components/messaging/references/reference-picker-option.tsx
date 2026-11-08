@@ -1,5 +1,6 @@
 import { Button } from "../../ui/button";
 import type { ReferenceKind } from "./reference-picker";
+import { plainReferenceText } from "./reference-token";
 import { CircleCheck, FolderKanban, UserRound, Hash, MessagesSquare } from "lucide-react";
 
 export function ReferencePickerOption({
@@ -37,7 +38,7 @@ export function ReferencePickerOption({
     >
       <Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
       <span className="min-w-0 text-left">
-        <span className="block truncate">{title.replace(/@\[[^\]]+\]/g, "[Reference]")}</span>
+        <span className="block truncate">{plainReferenceText(title)}</span>
         {description && (
           <span className="block truncate text-xs text-muted-foreground">{description}</span>
         )}

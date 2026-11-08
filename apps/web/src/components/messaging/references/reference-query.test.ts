@@ -1,4 +1,4 @@
-import { referencePrefix, referenceQuery } from "./reference-query";
+import { referenceQuery } from "./reference-query";
 import { describe, expect, test } from "bun:test";
 
 describe("reference query", () => {
@@ -36,11 +36,6 @@ describe("reference query", () => {
     (draft) => expect(referenceQuery(draft, draft.length)).toBeNull(),
   );
 
-  test("uses user-facing user syntax without changing person reference identity", () => {
-    expect(referencePrefix("person")).toBe("@user:");
-    expect(referencePrefix("all")).toBe("@");
-  });
-
   test.each([
     ["#", "channel", ""],
     ["#prod", "channel", "prod"],
@@ -60,9 +55,4 @@ describe("reference query", () => {
     "does not open a hashtag picker for %s",
     (draft) => expect(referenceQuery(draft, draft.length)).toBeNull(),
   );
-
-  test("uses hashtag prefixes for channels and threads", () => {
-    expect(referencePrefix("channel")).toBe("#channel:");
-    expect(referencePrefix("thread")).toBe("#thread:");
-  });
 });

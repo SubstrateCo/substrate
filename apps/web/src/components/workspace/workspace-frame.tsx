@@ -76,7 +76,6 @@ export function WorkspaceFrame({
             organizationId={organizationId}
             name={organization.data?.name || "Workspace"}
             logo={organization.data?.logo}
-            compact
           />
         ) : (
           <WorkspaceHomeLink href="/organizations" />

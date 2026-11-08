@@ -1,7 +1,8 @@
 import { mcpTools } from "@startup-os/contracts/harness/tools";
 
-import { conversation, expect, test, visit } from "./test-support/fixtures";
-import { project, visitProject } from "./test-support/tasks";
+import { conversation, test, visit } from "./test-support/fixtures";
+import { project } from "./test-support/tasks";
+import { expect } from "@playwright/test";
 
 test("agents receive explicit access and their messages, comments and activity are labelled", async ({
   actors,
@@ -45,7 +46,7 @@ test("agents receive explicit access and their messages, comments and activity a
   await expect(article.getByText(name, { exact: true })).toBeVisible();
   await expect(article.getByText("Agent", { exact: true })).toBeVisible();
   await expect(article.getByText("External", { exact: true })).toHaveCount(0);
-  await visitProject(user, created.entityId);
+  await visit(user, undefined, "/tasks", { projectId: created.entityId });
   await user.page.getByRole("tab", { name: "Settings", exact: true }).click();
   await user.page.getByRole("button", { name: "Add access", exact: true }).click();
   const agentOption = user.page.getByRole("option", { name: new RegExp(name) });
@@ -87,7 +88,7 @@ test("agents receive explicit access and their messages, comments and activity a
     },
   });
   expect(commentResponse.ok()).toBe(true);
-  await visitProject(user, created.entityId, task.taskId);
+  await visit(user, undefined, "/tasks", { projectId: created.entityId, taskId: task.taskId });
   const comment = user.page.getByRole("article").filter({ hasText: "Agent investigation notes" });
   await expect(comment.getByText(name, { exact: true })).toBeVisible();
   await expect(comment.getByText("Agent", { exact: true })).toBeVisible();

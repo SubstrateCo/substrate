@@ -16,7 +16,8 @@ export function OrganizationSwitcher({
   organizationId,
   name,
   logo,
-  compact = false,
+  open,
+  onOpenChange,
   organizations,
   pending = false,
   loading = false,
@@ -28,7 +29,8 @@ export function OrganizationSwitcher({
   organizationId: string;
   name: string;
   logo?: string | null;
-  compact?: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   organizations: { id: string; name: string; logo?: string | null }[];
   pending?: boolean;
   loading?: boolean;
@@ -38,15 +40,10 @@ export function OrganizationSwitcher({
   manageHref: string;
 }) {
   return (
-    <div className={compact ? "relative" : "space-y-2"}>
-      <DropdownMenu>
-        <SwitcherTrigger name={name} logo={logo} compact={compact} pending={pending} />
-        <DropdownMenuContent
-          align="start"
-          side={compact ? "right" : "bottom"}
-          sideOffset={12}
-          className="w-64"
-        >
+    <div className="relative">
+      <DropdownMenu open={open} onOpenChange={onOpenChange}>
+        <SwitcherTrigger name={name} logo={logo} pending={pending} />
+        <DropdownMenuContent align="start" side="right" sideOffset={12} className="w-64">
           <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
           {loading && !organizations.length && !isAccessFailure(loadError) && (
             <LoadingState label="Loading workspaces…" variant="compact" />

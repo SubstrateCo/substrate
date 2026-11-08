@@ -1,4 +1,5 @@
 import type { WorkspaceReference } from "../references/entity-reference";
+import { referenceKey } from "../references/reference-token";
 import { remarkWorkspaceReferences } from "./remark-workspace-references";
 import { MarkdownReference } from "@/components/messaging/markdown/message-markdown/markdown-reference";
 import ReactMarkdown from "react-markdown";
@@ -14,6 +15,9 @@ export function MessageMarkdown({
   references?: WorkspaceReference[];
   referencesLoading?: boolean;
 }) {
+  const referencesByKey =
+    references &&
+    new Map(references.map((item) => [referenceKey(item.kind, item.id), item] as const));
   return (
     <div className="message-markdown mt-0.5 text-sm leading-relaxed">
       <ReactMarkdown
@@ -21,7 +25,7 @@ export function MessageMarkdown({
         skipHtml
         components={{
           span: ({ node, children }) => (
-            <MarkdownReference node={node} references={references} loading={referencesLoading}>
+            <MarkdownReference node={node} references={referencesByKey} loading={referencesLoading}>
               {children}
             </MarkdownReference>
           ),

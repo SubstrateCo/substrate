@@ -4,6 +4,7 @@ import {
   EntityReference,
   type WorkspaceReference,
 } from "@/components/messaging/references/entity-reference";
+import { referenceKey } from "@/components/messaging/references/reference-token";
 import type { ExtraProps } from "react-markdown";
 
 export function MarkdownReference({
@@ -13,14 +14,14 @@ export function MarkdownReference({
   loading,
 }: ExtraProps & {
   children?: ReactNode;
-  references?: WorkspaceReference[];
+  references?: Map<string, WorkspaceReference>;
   loading: boolean;
 }) {
   const id = node?.properties["data-reference-id"];
   const kind = node?.properties["data-reference-kind"];
   return id ? (
     <EntityReference
-      reference={references?.find((item) => item.id === id && item.kind === kind)}
+      reference={references?.get(referenceKey(String(kind), String(id)))}
       loading={loading}
     />
   ) : (

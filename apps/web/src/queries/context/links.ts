@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/react-query";
+import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
 import {
@@ -15,6 +15,8 @@ export const messagePageOptions = (
   queryOptions({
     queryKey: [...queryKeys.context(organizationId), "message-pages", conversationId, messageIds],
     queryFn: ({ signal }) => getMessagePage({ data: { organizationId, messageIds }, signal }),
+    // Each new message changes the key. Keep visible rows' context while the new page loads.
+    placeholderData: keepPreviousData,
     enabled: messageIds.length > 0,
     retry: false,
   });

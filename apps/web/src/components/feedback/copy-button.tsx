@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, type ComponentProps } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { cn } from "cn";
 import { Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 

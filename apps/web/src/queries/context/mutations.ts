@@ -41,10 +41,9 @@ export function invalidateMessageWork(
     client.invalidateQueries({
       queryKey: context,
       predicate: ({ queryKey }) =>
-        (queryKey[3] === "message" && queryKey[4] === messageId) ||
-        (queryKey[3] === "message-pages" &&
-          Array.isArray(queryKey[5]) &&
-          queryKey[5].includes(messageId)),
+        queryKey[3] === "message-pages" &&
+        Array.isArray(queryKey[5]) &&
+        queryKey[5].includes(messageId),
     }),
     ...[...new Set([entityId, projectEntityId])].map((id) =>
       client.invalidateQueries({ queryKey: [...context, "related", id] }),
@@ -66,8 +65,6 @@ export function invalidateWorkLabels(
     predicate: ({ queryKey }) => {
       const matches = (links: MessagePageContext["links"]) =>
         links.some((link) => entityIds.includes(link.entityId));
-      if (queryKey[3] === "message")
-        return matches(client.getQueryData<MessagePageContext["links"]>(queryKey) ?? []);
       if (queryKey[3] === "message-pages")
         return (client.getQueryData<MessagePageContext[]>(queryKey) ?? []).some((item) =>
           matches(item.links),

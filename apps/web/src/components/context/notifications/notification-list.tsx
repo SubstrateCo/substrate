@@ -5,7 +5,7 @@ import { markAllRead, markRead } from "@/api/context/notifications";
 import { NotificationList as NotificationListView } from "@/components/context/notifications/notification-list-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { messageHref, workHref } from "@/lib/navigation/record-links";
-import { notificationsOptions } from "@/queries/context/notifications";
+import { markNotificationsRead, notificationsOptions } from "@/queries/context/notifications";
 import { toast } from "sonner";
 
 export function NotificationList({
@@ -21,11 +21,7 @@ export function NotificationList({
   const read = useMutation({
     mutationFn: (id: string | null) =>
       id ? markRead({ data: { organizationId, id } }) : markAllRead({ data: { organizationId } }),
-    onSuccess: () =>
-      client.invalidateQueries({
-        queryKey: notificationsOptions(organizationId).queryKey,
-        exact: true,
-      }),
+    onSuccess: (_, id) => markNotificationsRead(client, organizationId, id),
     onError: (error) =>
       toast.error(actionErrorMessage(error, "Couldn't update notifications. Try again.")),
   });

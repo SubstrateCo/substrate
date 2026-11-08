@@ -1,4 +1,5 @@
-import { conversation, expect, expectChange, send, test, visit } from "./test-support/fixtures";
+import { conversation, expectChange, send, test, visit } from "./test-support/fixtures";
+import { expect } from "@playwright/test";
 
 test("a sent channel message reaches another member over the real socket", async ({
   actors,

@@ -29,8 +29,10 @@ export function MessageItem({
   context: MessageContextState;
 }) {
   const queryClient = useQueryClient();
-  const search = useSearch({ strict: false });
-  const highlighted = search.messageId === message.id;
+  const highlighted = useSearch({
+    strict: false,
+    select: (search) => search.messageId === message.id,
+  });
   const [linking, setLinking] = useState(false);
   const reaction = useMutation({
     onError: (error) =>

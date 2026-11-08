@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export function WorkspaceSettings({
+export function SettingsPage({
   children,
   title = "Organization settings",
 }: {

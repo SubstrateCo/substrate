@@ -1,4 +1,5 @@
-import { conversation, expect, expectChange, post, test } from "./test-support/fixtures";
+import { conversation, expectChange, post, test } from "./test-support/fixtures";
+import { expect } from "@playwright/test";
 
 for (const target of ["root", "reply"] as const) {
   test(`${target} permalink retains root reactions outside the timeline and refreshes local and remote changes`, async ({
@@ -24,11 +25,14 @@ for (const target of ["root", "reply"] as const) {
       expect(response.ok()).toBe(true);
     };
     await react();
-    for (let index = 0; index < 51; index++)
-      await post(actors.sender, "messaging/messages", {
-        conversationId: channel.id,
-        body: `Later message ${index}`,
-      });
+    await Promise.all(
+      Array.from({ length: 51 }, (_, index) =>
+        post(actors.sender, "messaging/messages", {
+          conversationId: channel.id,
+          body: `Later message ${index}`,
+        }),
+      ),
+    );
     const viewer = await client(actors.sender);
     let live = false;
     // Suppress change hints first: the local mutation must refresh the target itself.

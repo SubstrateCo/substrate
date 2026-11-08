@@ -22,6 +22,9 @@ for (const kind of ["avatar", "organization-logo"] as const) {
         organizationKey,
         otherOrganizationKey,
         queryKeys.organizations,
+        queryKeys.projects("active"),
+        queryKeys.conversations("active"),
+        queryKeys.invitations("active"),
       ]) {
         queryClient.setQueryData(key, { picture: "old" });
       }
@@ -65,6 +68,13 @@ for (const kind of ["avatar", "organization-logo"] as const) {
         kind === "organization-logo",
       );
       expect(queryClient.getQueryState(otherOrganizationKey)?.isInvalidated).toBe(false);
+      // Logos appear only in organization detail and the organization list.
+      for (const key of [
+        queryKeys.projects("active"),
+        queryKeys.conversations("active"),
+        queryKeys.invitations("active"),
+      ])
+        expect(queryClient.getQueryState(key)?.isInvalidated).toBe(false);
       queryClient.clear();
     });
   }

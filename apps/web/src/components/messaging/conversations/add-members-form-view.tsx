@@ -17,7 +17,7 @@ export function AddMembersForm({
   agents = [],
   agentsError,
 }: {
-  onSubmit: (emails: string, agentActorIds: string[]) => void;
+  onSubmit: (emails: string[], agentActorIds: string[]) => void;
   agents?: { id: string; name: string }[];
   agentsError?: Error | null;
   pending?: boolean;
@@ -37,8 +37,10 @@ export function AddMembersForm({
       onSubmit={(event) => {
         event.preventDefault();
         if (pending) return;
+        let recipients: string[];
         try {
-          if (!parseRecipientEmails(emails).length && !selectedAgents.length) {
+          recipients = parseRecipientEmails(emails);
+          if (!recipients.length && !selectedAgents.length) {
             setEmailError("Enter an email address or choose an agent.");
             event.currentTarget.querySelector<HTMLInputElement>("#add-member-emails")?.focus();
             return;
@@ -48,7 +50,7 @@ export function AddMembersForm({
           event.currentTarget.querySelector<HTMLInputElement>("#add-member-emails")?.focus();
           return;
         }
-        onSubmit(emails, selectedAgents);
+        onSubmit(recipients, selectedAgents);
       }}
     >
       <Field data-invalid={Boolean(fieldError)}>

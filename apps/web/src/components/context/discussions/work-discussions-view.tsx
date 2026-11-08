@@ -22,6 +22,13 @@ export function WorkDiscussions({
   children?: ReactNode;
 }) {
   const rows = isAccessFailure(error) ? [] : items;
+  const seen = new Set<string>();
+  const uniqueRows = rows.filter((item) => {
+    const key = `${item.messageId}:${item.purpose}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
   return (
     <section aria-label={label} className="space-y-4">
       <h3 className="text-sm font-semibold">{label}</h3>
@@ -35,17 +42,9 @@ export function WorkDiscussions({
           <EmptyDescription>No accessible discussions linked yet.</EmptyDescription>
         </Empty>
       )}
-      {rows
-        .filter(
-          (item, index) =>
-            rows.findIndex(
-              (candidate) =>
-                candidate.messageId === item.messageId && candidate.purpose === item.purpose,
-            ) === index,
-        )
-        .map((item) => (
-          <DiscussionItem key={`${item.messageId}:${item.purpose}`} item={item} />
-        ))}
+      {uniqueRows.map((item) => (
+        <DiscussionItem key={`${item.messageId}:${item.purpose}`} item={item} />
+      ))}
     </section>
   );
 }

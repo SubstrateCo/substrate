@@ -7,17 +7,18 @@ import type { ProjectDetail, Task } from "../types";
 import { CornerDownRight, UserRound } from "lucide-react";
 
 export function TaskListItem({
-  detail,
   task,
+  assignee,
+  parentTitle,
   selected,
   onSelect,
 }: {
-  detail: ProjectDetail;
   task: Task;
+  assignee?: ProjectDetail["actors"][number];
+  parentTitle?: string;
   selected: boolean;
   onSelect: () => void;
 }) {
-  const assignee = detail.actors.find((actor) => actor.entityId === task.assigneeActorEntityId);
   return (
     <li>
       <Button
@@ -38,9 +39,7 @@ export function TaskListItem({
               {task.parentTaskEntityId && (
                 <span className="flex items-center gap-1 truncate text-xs text-muted-foreground">
                   <CornerDownRight aria-hidden="true" className="size-3 shrink-0" />
-                  Subtask of{" "}
-                  {detail.tasks.find((parent) => parent.entityId === task.parentTaskEntityId)
-                    ?.title ?? "archived task"}
+                  Subtask of {parentTitle ?? "archived task"}
                 </span>
               )}
             </span>

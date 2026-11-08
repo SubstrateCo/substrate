@@ -9,7 +9,6 @@ const inputVariants = cva(
     variants: {
       variant: {
         default: "",
-        compact: "h-7 border-border px-2 text-xs md:text-xs",
         surface: "border-border bg-surface dark:bg-surface",
       },
     },

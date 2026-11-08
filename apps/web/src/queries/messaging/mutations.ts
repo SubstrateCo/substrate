@@ -4,6 +4,7 @@ import { staleSearches } from "../context/mutations";
 import { queryKeys } from "../keys";
 import type { getRelatedContext } from "@/api/context/links";
 import type { getProject } from "@/api/tasks/requests";
+import { referenceTokenPattern } from "@/components/messaging/references/reference-token";
 
 export function invalidateSentMessage(
   client: QueryClient,
@@ -13,9 +14,7 @@ export function invalidateSentMessage(
   threadId?: string,
 ) {
   const context = queryKeys.context(organizationId);
-  const referencedIds = [
-    ...body.matchAll(/@\[(task|project|channel|thread):([0-9a-f-]{36})\]/gi),
-  ].map((match) => match[2]!);
+  const referencedIds = [...body.matchAll(referenceTokenPattern)].map((match) => match[2]!);
   const relatedIds = new Set<unknown>(referencedIds);
   // Project discussion feeds include references to their tasks, even when the feed is empty.
   for (const [key, detail] of client.getQueriesData<Awaited<ReturnType<typeof getProject>>>({
@@ -44,5 +43,18 @@ export function invalidateSentMessage(
           )),
     }),
     staleSearches(client, organizationId),
+  ]);
+}
+
+export function invalidateAddedMembers(
+  client: QueryClient,
+  organizationId: string,
+  conversationId: string,
+) {
+  return Promise.all([
+    client.invalidateQueries({ queryKey: queryKeys.conversations(organizationId) }),
+    client.invalidateQueries({
+      queryKey: queryKeys.messages(organizationId, conversationId).slice(0, -1),
+    }),
   ]);
 }

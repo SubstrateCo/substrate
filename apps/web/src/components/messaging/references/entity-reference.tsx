@@ -1,5 +1,6 @@
 import { Spinner } from "../../ui/spinner";
 import type { ReferenceKind } from "./reference-picker";
+import { plainReferenceText } from "./reference-token";
 import { AtSign, CircleCheck, FolderKanban, LockKeyhole, Hash, MessagesSquare } from "lucide-react";
 
 export type WorkspaceReference = {
@@ -32,7 +33,7 @@ export function EntityReference({
         <Icon aria-hidden="true" className="inline size-3.5 shrink-0 align-text-bottom" />
       )}{" "}
       <span className="truncate">
-        {reference?.label.replace(/@\[[^\]]+\]/g, "[Reference]") ??
+        {(reference && plainReferenceText(reference.label)) ??
           (loading ? "Loading reference…" : "Unavailable reference")}
       </span>
     </>

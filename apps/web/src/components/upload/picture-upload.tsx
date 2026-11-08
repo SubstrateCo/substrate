@@ -75,7 +75,6 @@ export function PictureUpload({
       <div className="grid min-w-0 flex-1 gap-2">
         <FileUpload
           chooseButtonRef={chooseButton}
-          compact
           accept={pictureAccept}
           maxSize={pictureMaxSize}
           disabled={disabled || removing || !!source}
@@ -146,5 +145,3 @@ export function PictureUpload({
     </section>
   );
 }
-
-export type { PictureUploadContext } from "./image-crop-dialog";

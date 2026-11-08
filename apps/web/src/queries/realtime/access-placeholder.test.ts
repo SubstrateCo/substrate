@@ -1,5 +1,6 @@
 import { QueryClient, QueryObserver, type QueryKey } from "@tanstack/react-query";
 
+import { messagePageOptions } from "../context/links";
 import { queryKeys } from "../keys";
 import { createRealtimeCache } from "./cache";
 import { expect, test } from "bun:test";
@@ -52,6 +53,55 @@ test("access reset clears the previous history page used as message placeholder 
   } finally {
     older.resolve([]);
     authorized.resolve([]);
+    cache.dispose();
+    unsubscribe();
+    client.clear();
+  }
+});
+
+test("access reset clears a previous message context page kept as placeholder data", async () => {
+  const client = new QueryClient();
+  type Page = Awaited<ReturnType<NonNullable<ReturnType<typeof messagePageOptions>["queryFn"]>>>;
+  const page = (messageId: string): Page[number] => ({
+    messageId,
+    messaging: [],
+    links: [],
+    people: [],
+  });
+  const loading = Promise.withResolvers<Page>();
+  const observer = new QueryObserver(client, {
+    ...messagePageOptions("org", "conversation", ["one"]),
+    queryFn: async () => [page("one")],
+  });
+  const unsubscribe = observer.subscribe(() => {});
+  const cache = createRealtimeCache({
+    queryClient: client,
+    userId: "user",
+    organizationId: "org",
+    revalidate: async () => {},
+  });
+  try {
+    await observer.refetch();
+    // A new message changes the key; the visible page stays as placeholder data.
+    observer.setOptions({
+      ...messagePageOptions("org", "conversation", ["one", "two"]),
+      queryFn: () => loading.promise,
+    });
+    expect(observer.getCurrentResult().data).toEqual([page("one")]);
+    expect(observer.getCurrentResult().isPlaceholderData).toBe(true);
+    const reset = cache.receive({
+      version: 1,
+      type: "change",
+      id: crypto.randomUUID(),
+      organizationId: "org",
+      domain: "access",
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(observer.getCurrentResult().data).toBeUndefined();
+    loading.resolve([]);
+    await reset;
+  } finally {
+    loading.resolve([]);
     cache.dispose();
     unsubscribe();
     client.clear();

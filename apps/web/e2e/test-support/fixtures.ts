@@ -33,18 +33,24 @@ export interface Client {
 }
 type Actors = { sender: Actor; member: Actor; partner: Actor };
 
-async function provisionActor(request: APIRequestContext, name: string): Promise<Actor> {
+async function provisionActor(
+  request: APIRequestContext,
+  name: string,
+  { workspace = true }: { workspace?: boolean } = {},
+): Promise<Actor> {
   const id = randomUUID();
   const email = `e2e-${id}@example.test`;
   const password = `E2E-${id}!`;
   await provisionVerifiedAccount({ request }, new Mailpit(request), { name, email, password });
-  const organization = await provisionWorkspaceSession(request, name, `e2e-${id}`);
+  const organization = workspace
+    ? await provisionWorkspaceSession(request, name, `e2e-${id}`)
+    : undefined;
   return {
     request,
     name,
     email,
     password,
-    organizationId: organization.id,
+    organizationId: organization?.id ?? "",
     state: await request.storageState(),
   };
 }
@@ -57,31 +63,13 @@ export const test = base.extend<
     async ({ playwright }, use, workerInfo) => {
       const origin = process.env.PLAYWRIGHT_BASE_URL!;
       const requests: APIRequestContext[] = [];
-      const account = async (role: string): Promise<Actor> => {
-        const id = randomUUID();
-        const name = `E2E ${role} ${workerInfo.parallelIndex}`;
-        const email = `${role}-${id}@example.test`;
-        const password = `E2E-${id}!`;
+      const account = async (role: string) => {
         const request = await playwright.request.newContext({ baseURL: origin });
         requests.push(request);
-        await provisionVerifiedAccount({ request }, new Mailpit(request), {
-          name,
-          email,
-          password,
-        });
         // The member joins the sender's organization below, rather than creating another one.
-        const organization =
-          role === "member"
-            ? undefined
-            : await provisionWorkspaceSession(request, name, `e2e-${id}`);
-        return {
-          request,
-          name,
-          email,
-          password,
-          organizationId: organization?.id ?? "",
-          state: await request.storageState(),
-        };
+        return provisionActor(request, `E2E ${role} ${workerInfo.parallelIndex}`, {
+          workspace: role !== "member",
+        });
       };
       try {
         const [sender, member, partner] = await Promise.all([
@@ -141,11 +129,15 @@ export const test = base.extend<
   },
 });
 
-export { expect } from "@playwright/test";
-
-export async function visit(client: Client, conversationId?: string, pathname = "/dashboard") {
+export async function visit(
+  client: Client,
+  conversationId?: string,
+  pathname = "/dashboard",
+  params: Record<string, string | undefined> = {},
+) {
   const search = new URLSearchParams({ workspaceId: client.actor.organizationId });
-  if (conversationId) search.set("conversationId", conversationId);
+  for (const [key, value] of Object.entries({ conversationId, ...params }))
+    if (value) search.set(key, value);
   await client.page.goto(`${pathname}?${search}`);
   await expect
     .poll(() => client.events.some((event) => event.type === "ready"), {

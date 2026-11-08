@@ -5,16 +5,15 @@ import {
   type WorkspaceReference,
 } from "@/components/messaging/references/entity-reference";
 import { referenceToken } from "@/components/messaging/references/reference-editor-document";
+import { referenceKey } from "@/components/messaging/references/reference-token";
 import { Node } from "@tiptap/core";
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from "@tiptap/react";
 
-export const ReferencesContext = createContext<WorkspaceReference[]>([]);
+export const ReferencesContext = createContext(new Map<string, WorkspaceReference>());
 
 function ReferenceNodeView({ node, editor, getPos }: NodeViewProps) {
   const references = useContext(ReferencesContext);
-  const reference = references.find(
-    (item) => item.id === node.attrs.id && item.kind === node.attrs.kind,
-  );
+  const reference = references.get(referenceKey(node.attrs.kind, node.attrs.id));
   return (
     <NodeViewWrapper
       as="span"

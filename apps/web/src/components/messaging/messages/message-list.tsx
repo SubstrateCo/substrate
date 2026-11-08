@@ -23,6 +23,7 @@ export function MessageList({
       messages.map((message) => message.id),
     ),
   );
+  const contextById = new Map(context.data?.map((row) => [row.messageId, row]));
   return (
     <MessageListView lastId={messages.at(-1)?.id}>
       {messages.map((message) => (
@@ -32,7 +33,7 @@ export function MessageList({
           organizationId={organizationId}
           onThread={onThread}
           context={{
-            data: context.data?.find((row) => row.messageId === message.id),
+            data: contextById.get(message.id),
             loading: context.isPending,
             error: context.error,
             onRetry: () => void context.refetch(),

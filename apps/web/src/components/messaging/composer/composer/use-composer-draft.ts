@@ -43,7 +43,8 @@ export function useComposerDraft({
   const requestFocus = (caret = 0) =>
     setFocusRequest((previous) => ({ id: previous.id + 1, caret }));
   const submit = () => {
-    if (!draft.trim() || draft.length > 20000 || pending || composing.current) return;
+    const sendable = draft.trim() !== "" && draft.length <= 20000;
+    if (!sendable || pending || composing.current) return;
     onSend(draft.trim(), () => {
       drafts.clear(draftKey, draft);
       if (currentDestination.current === draftKey) requestFocus();

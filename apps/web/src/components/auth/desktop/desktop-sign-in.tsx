@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 
 import { useEffect, useState } from "react";
 
@@ -7,7 +7,6 @@ import { safeRedirect } from "@/lib/auth/navigation";
 import "@/lib/desktop/auth";
 
 export function DesktopSignIn({ redirect }: { redirect: string }) {
-  const queryClient = useQueryClient();
   const [waiting, setWaiting] = useState(false);
   const [authError, setAuthError] = useState<Error | null>(null);
   const request = useMutation({
@@ -19,7 +18,6 @@ export function DesktopSignIn({ redirect }: { redirect: string }) {
   });
   useEffect(() => {
     const authenticated = window.onAuthenticated!(() => {
-      queryClient.clear();
       window.location.assign(safeRedirect(redirect));
     });
     const failed = window.onAuthError!(() => {
@@ -30,7 +28,7 @@ export function DesktopSignIn({ redirect }: { redirect: string }) {
       authenticated();
       failed();
     };
-  }, [queryClient, redirect]);
+  }, [redirect]);
   return (
     <DesktopSignInView
       pending={request.isPending}

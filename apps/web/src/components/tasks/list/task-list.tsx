@@ -22,6 +22,8 @@ export function TaskList({
 }) {
   const listId = useId();
   const [collapsed, setCollapsed] = useState<Partial<Record<TaskStatus, boolean>>>({});
+  const actorsById = new Map(detail.actors.map((actor) => [actor.entityId, actor] as const));
+  const tasksById = new Map(detail.tasks.map((task) => [task.entityId, task] as const));
   return (
     <section
       aria-label="Project tasks"
@@ -99,8 +101,17 @@ export function TaskList({
               {rows.map((task) => (
                 <TaskListItem
                   key={task.entityId}
-                  detail={detail}
                   task={task}
+                  assignee={
+                    task.assigneeActorEntityId
+                      ? actorsById.get(task.assigneeActorEntityId)
+                      : undefined
+                  }
+                  parentTitle={
+                    task.parentTaskEntityId
+                      ? tasksById.get(task.parentTaskEntityId)?.title
+                      : undefined
+                  }
                   selected={task.entityId === selectedId}
                   onSelect={() => onSelect(task.entityId)}
                 />

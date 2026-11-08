@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from "react";
 
 import type { ProjectDetail } from "../types";
-import { ProjectSettings } from "./pane/project-settings";
 import { ProjectTaskPanel, type TaskPanelRenderers } from "./pane/project-task-panel";
 import { TaskCreationDialog } from "./pane/task-creation-dialog";
 import { useTaskPanel } from "./pane/use-task-panel";
@@ -129,12 +128,10 @@ export function ProjectPane({
           hidden={tab !== "settings"}
           className="mt-3 min-h-0 overflow-y-auto"
         >
-          <ProjectSettings
-            detail={detail}
-            canEdit={canEdit}
-            renderEditor={renderProjectEditor}
-            renderSettings={renderSettings}
-          />
+          <div className="w-full min-w-0 space-y-6">
+            {canEdit && renderProjectEditor(detail)}
+            {renderSettings(detail)}
+          </div>
         </TabsContent>
         <TabsContent value="discussions" className="mt-3 min-h-0 overflow-y-auto">
           {context}

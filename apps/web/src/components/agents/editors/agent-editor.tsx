@@ -2,7 +2,7 @@ import type { AgentConfiguration, SaveAgentInput } from "@startup-os/contracts/a
 import { saveAgentInput } from "@startup-os/contracts/agents";
 import type { HarnessKind } from "@startup-os/contracts/harness";
 
-import { useForm } from "@tanstack/react-form";
+import { revalidateLogic, useForm } from "@tanstack/react-form";
 
 import { useId, useState, type ReactNode } from "react";
 
@@ -82,7 +82,8 @@ export function AgentEditor({
       };
   const form = useForm({
     defaultValues,
-    validators: { onChange: agentFields, onBlur: agentFields, onSubmit: agentFields },
+    validationLogic: revalidateLogic({ mode: "blur", modeAfterSubmission: "change" }),
+    validators: { onDynamic: agentFields },
     onSubmit: async ({ value }) => {
       if (pending) return;
       setError(undefined);
@@ -94,8 +95,8 @@ export function AgentEditor({
     },
   });
   return (
-    <form.Subscribe selector={(state) => [state.isSubmitting, state.submissionAttempts] as const}>
-      {([isSubmitting, submissionAttempts]) => {
+    <form.Subscribe selector={(state) => state.isSubmitting}>
+      {(isSubmitting) => {
         const busy = pending || isSubmitting;
         return (
           <Dialog
@@ -144,9 +145,7 @@ export function AgentEditor({
                             </form.Subscribe>
                             <form.Field name="name">
                               {(field) => {
-                                const invalid =
-                                  (field.state.meta.isBlurred || submissionAttempts > 0) &&
-                                  !field.state.meta.isValid;
+                                const invalid = !field.state.meta.isValid;
                                 return (
                                   <Field data-invalid={invalid} className="min-w-0 flex-1">
                                     <FieldLabel htmlFor="agent-name">Agent name</FieldLabel>
@@ -158,7 +157,10 @@ export function AgentEditor({
                                       placeholder="Name your agent"
                                       value={field.state.value}
                                       onBlur={field.handleBlur}
-                                      onChange={(event) => field.handleChange(event.target.value)}
+                                      onChange={(event) => {
+                                        field.handleChange(event.target.value);
+                                        if (!field.state.meta.isValid) void field.validate("blur");
+                                      }}
                                       aria-invalid={invalid}
                                       aria-describedby={invalid ? "agent-name-error" : undefined}
                                     />
@@ -184,9 +186,7 @@ export function AgentEditor({
                             <TabsContent value="instructions" className="mt-3 md:min-h-80">
                               <form.Field name="instructions">
                                 {(field) => {
-                                  const invalid =
-                                    (field.state.meta.isBlurred || submissionAttempts > 0) &&
-                                    !field.state.meta.isValid;
+                                  const invalid = !field.state.meta.isValid;
                                   return (
                                     <Field data-invalid={invalid}>
                                       <FieldLabel htmlFor="agent-instructions">
@@ -200,7 +200,11 @@ export function AgentEditor({
                                         className="min-h-64 resize-y md:min-h-80"
                                         value={field.state.value}
                                         onBlur={field.handleBlur}
-                                        onChange={(event) => field.handleChange(event.target.value)}
+                                        onChange={(event) => {
+                                          field.handleChange(event.target.value);
+                                          if (!field.state.meta.isValid)
+                                            void field.validate("blur");
+                                        }}
                                         aria-invalid={invalid}
                                         aria-describedby={
                                           invalid ? "agent-instructions-error" : undefined

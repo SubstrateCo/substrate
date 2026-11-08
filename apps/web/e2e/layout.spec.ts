@@ -1,5 +1,5 @@
-import { conversation, expect, post, send, test, visit } from "./test-support/fixtures";
-import { pauseClock } from "./test-support/search";
+import { conversation, post, send, test, visit } from "./test-support/fixtures";
+import { expect } from "@playwright/test";
 
 for (const width of [640, 1440]) {
   test(`messages and thread controls remain usable at ${width}px`, async ({ actors, client }) => {
@@ -34,20 +34,5 @@ for (const width of [640, 1440]) {
     expect(
       await sender.page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true);
-    if (width === 1440) {
-      await pauseClock(sender.page);
-      await sender.page.evaluate(() => {
-        document.querySelector("main")!.dispatchEvent(new Event("scroll"));
-      });
-      const main = sender.page.locator("main");
-      await expect(main).toHaveAttribute("data-scrolling", "");
-      await sender.page.clock.runFor(400);
-      await sender.page.evaluate(() => document.body.dispatchEvent(new Event("scroll")));
-      await sender.page.clock.runFor(350);
-      await expect(main).not.toHaveAttribute("data-scrolling");
-      await expect(sender.page.locator("body")).toHaveAttribute("data-scrolling", "");
-      await sender.page.clock.runFor(400);
-      await expect(sender.page.locator("body")).not.toHaveAttribute("data-scrolling");
-    }
   });
 }

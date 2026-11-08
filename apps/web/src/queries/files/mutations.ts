@@ -20,7 +20,7 @@ export function pictureMutationOptions(
     } else {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.organizations }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.organization(organizationId!) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.organizationDetail(organizationId!) }),
       ]);
     }
   };

@@ -1,5 +1,5 @@
-import { expect } from "./fixtures";
-import type { Locator, Page } from "@playwright/test";
+import {} from "./fixtures";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 export async function pauseClock(page: Page) {
   const time = new Date("2026-11-07T12:00:00Z");

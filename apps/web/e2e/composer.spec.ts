@@ -1,4 +1,5 @@
-import { conversation, expect, post, test, visit } from "./test-support/fixtures";
+import { conversation, post, test, visit } from "./test-support/fixtures";
+import { expect } from "@playwright/test";
 
 test("channel and thread drafts stay isolated and restore reference labels", async ({
   actors,

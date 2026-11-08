@@ -1,12 +1,5 @@
-import {
-  conversation,
-  expect,
-  expectChange,
-  post,
-  send,
-  test,
-  visit,
-} from "./test-support/fixtures";
+import { conversation, expectChange, post, send, test, visit } from "./test-support/fixtures";
+import { expect } from "@playwright/test";
 
 for (const scope of ["same organization", "cross organization"] as const) {
   test(`thread replies deliver live notifications in the ${scope}`, async ({ actors, client }) => {

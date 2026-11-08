@@ -332,7 +332,7 @@ test("context changes refetch known context families only, leaving both search f
   const client = new QueryClient();
   const context = queryKeys.context("org");
   const keys = [
-    ...["activity", "related", "message", "message-pages", "people", "target"].map((kind) => [
+    ...["activity", "related", "message-pages", "target"].map((kind) => [
       ...context,
       kind,
       "record",
@@ -342,7 +342,7 @@ test("context changes refetch known context families only, leaving both search f
     [...context, "search-pages", "term"],
     [...context, "unknown"],
     [...context, "notifications", "unrelated"],
-    [...queryKeys.context("other"), "message", "record"],
+    [...queryKeys.context("other"), "related", "record"],
     queryKeys.projects("org"),
     queryKeys.conversations("org"),
   ];
@@ -368,13 +368,13 @@ test("context changes refetch known context families only, leaving both search f
   });
   try {
     await client.invalidateQueries({ queryKey: context });
-    expect(reads.reduce((sum, count) => sum + count, 0)).toBe(11);
+    expect(reads.reduce((sum, count) => sum + count, 0)).toBe(9);
     reads.fill(0);
     await cache.receive(change("context"));
     await Bun.sleep(80);
-    expect(reads).toEqual([1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0]);
-    expect(client.getQueryState(keys[7]!)?.isInvalidated).toBe(true);
-    expect(client.getQueryState(keys[8]!)?.isInvalidated).toBe(true);
+    expect(reads).toEqual([1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0]);
+    expect(client.getQueryState(keys[5]!)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(keys[6]!)?.isInvalidated).toBe(true);
   } finally {
     cache.dispose();
     unsubscribes.forEach((unsubscribe) => unsubscribe());
@@ -385,7 +385,6 @@ test("context changes refetch known context families only, leaving both search f
 test("task edits refresh titles shown by message links and existing notifications", async () => {
   const client = new QueryClient();
   const keys = [
-    [...queryKeys.context("org"), "message", "message"],
     [...queryKeys.context("org"), "message-pages", "conversation", ["message"]],
     [...queryKeys.context("org"), "notifications"],
   ];
@@ -534,3 +533,47 @@ test("changes during a slow refresh share one follow-up snapshot", async () => {
     client.clear();
   }
 });
+
+for (const scenario of ["after", "settled", "before", "none"] as const) {
+  test(`an own mutation's realtime echo reuses a read started after the event (${scenario})`, async () => {
+    const client = new QueryClient();
+    const key = queryKeys.conversations("org");
+    const blocked = Promise.withResolvers<void>();
+    let reads = 0;
+    const observer = new QueryObserver(client, {
+      queryKey: key,
+      initialData: "old",
+      staleTime: Infinity,
+      queryFn: async () => {
+        reads++;
+        if (scenario !== "settled") await blocked.promise;
+        return "fresh";
+      },
+    });
+    const unsubscribe = observer.subscribe(() => {});
+    const cache = createRealtimeCache({
+      queryClient: client,
+      organizationId: "org",
+      userId: "user",
+      revalidate: async () => {},
+    });
+    // The local mutation invalidation starts a read before or after its realtime echo arrives.
+    const localRead = () => void client.invalidateQueries({ queryKey: key });
+    try {
+      if (scenario === "before") localRead();
+      await cache.receive(change("messaging"));
+      if (scenario === "after" || scenario === "settled") localRead();
+      await Bun.sleep(80);
+      blocked.resolve();
+      await Bun.sleep(20);
+      expect(reads).toBe(scenario === "before" ? 2 : 1);
+      expect(client.getQueryData(key)).toBe("fresh");
+      expect(client.getQueryState(key)?.isInvalidated).toBe(false);
+    } finally {
+      blocked.resolve();
+      cache.dispose();
+      unsubscribe();
+      client.clear();
+    }
+  });
+}

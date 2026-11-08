@@ -1,4 +1,5 @@
-import { expect, test, visit } from "./test-support/fixtures";
+import { test, visit } from "./test-support/fixtures";
+import { expect } from "@playwright/test";
 
 test("agent definitions can be created, edited, persisted and deleted without running a provider", async ({
   actors,

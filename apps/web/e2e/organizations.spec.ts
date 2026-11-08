@@ -1,7 +1,8 @@
 import { Mailpit } from "../../server/integration/test-support/mailpit";
 import { provisionWorkspaceSession } from "../../server/integration/test-support/organizations";
-import { conversation, expect, post, test, visit } from "./test-support/fixtures";
+import { conversation, post, test, visit } from "./test-support/fixtures";
 import { pauseClock, searches } from "./test-support/search";
+import { expect } from "@playwright/test";
 
 test("switching workspaces clears private messages and reconnects in the selected organization", async ({
   account,

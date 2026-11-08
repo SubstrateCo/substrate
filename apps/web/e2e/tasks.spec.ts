@@ -1,5 +1,6 @@
-import { expect, expectChange, post, test, visit } from "./test-support/fixtures";
-import { detail, project, select, share, visitProject } from "./test-support/tasks";
+import { expectChange, post, test, visit } from "./test-support/fixtures";
+import { detail, project, select, share } from "./test-support/tasks";
+import { expect } from "@playwright/test";
 
 test("create a project, task and subtask, then edit and reload the task", async ({
   actors,
@@ -57,7 +58,7 @@ test("assignment notifies a project member, whose comment reaches the owner live
   await share(actors.sender, created.entityId, actors.member.name, "edit");
   const [sender, member] = await Promise.all([client(actors.sender), client(actors.member)]);
   await Promise.all([
-    visitProject(sender, created.entityId),
+    visit(sender, undefined, "/tasks", { projectId: created.entityId }),
     visit(member, undefined, "/notifications"),
   ]);
   const since = member.events.length;
@@ -96,7 +97,10 @@ test("project sharing needs confirmation and revocation removes cached private c
     title,
   });
   const [sender, member] = await Promise.all([client(actors.sender), client(actors.member)]);
-  await Promise.all([visitProject(sender, created.entityId), visit(member, undefined, "/tasks")]);
+  await Promise.all([
+    visit(sender, undefined, "/tasks", { projectId: created.entityId }),
+    visit(member, undefined, "/tasks"),
+  ]);
   await expect(member.page.getByRole("button", { name: created.name, exact: true })).toHaveCount(0);
   await sender.page.getByRole("tab", { name: "Settings", exact: true }).click();
   await sender.page.getByRole("button", { name: "Add access", exact: true }).click();
@@ -111,7 +115,7 @@ test("project sharing needs confirmation and revocation removes cached private c
   ).not.toContain(actors.member.name);
   await sender.page.getByRole("button", { name: "Confirm access", exact: true }).click();
   await member.page.getByRole("button", { name: created.name, exact: true }).click();
-  await visitProject(member, created.entityId, task.id);
+  await visit(member, undefined, "/tasks", { projectId: created.entityId, taskId: task.id });
   await expect(
     member.page
       .getByRole("region", { name: "Task details", exact: true })
@@ -154,7 +158,7 @@ test("a background task creation does not discard an open task draft", async ({
     title: "Existing task",
   });
   const user = await client(actors.sender);
-  await visitProject(user, created.entityId, task.id);
+  await visit(user, undefined, "/tasks", { projectId: created.entityId, taskId: task.id });
   await expect.poll(() => user.events.some((event) => event.type === "ready")).toBe(true);
   await user.page.getByRole("button", { name: "Edit task", exact: true }).click();
   const editor = user.page.getByRole("textbox", { name: "Task title", exact: true });

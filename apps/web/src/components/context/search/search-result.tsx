@@ -2,6 +2,7 @@ import { useRef } from "react";
 
 import { Button } from "../../ui/button";
 import { CommandItem, CommandShortcut } from "../../ui/command";
+import { plainReferenceText } from "@/components/messaging/references/reference-token";
 import { ArrowUpLeft, CircleCheck, FolderKanban, Hash, MessageSquare } from "lucide-react";
 
 export type SearchResultItem = { id: string; kind: string; title: string; href: string };
@@ -18,7 +19,7 @@ export function SearchResult({
     { task: CircleCheck, project: FolderKanban, message: MessageSquare, conversation: Hash }[
       item.kind
     ] ?? Hash;
-  const title = item.title.replace(/@\[[^\]]+\]/g, "[Reference]");
+  const title = plainReferenceText(item.title);
   return (
     <div className="group/result flex items-center gap-1 px-1">
       <CommandItem value={item.id} onSelect={() => link.current?.click()} className="flex-1">

@@ -2,9 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { addMembers } from "@/api/messaging/requests";
 import { AddMembersForm as AddMembersFormView } from "@/components/messaging/conversations/add-members-form-view";
-import { parseRecipientEmails } from "@/lib/messaging/recipients";
-import { queryKeys } from "@/queries/keys";
 import { messagingAgentsOptions } from "@/queries/messaging/agents";
+import { invalidateAddedMembers } from "@/queries/messaging/mutations";
 
 export function AddMembersForm({
   organizationId,
@@ -18,15 +17,9 @@ export function AddMembersForm({
   const queryClient = useQueryClient();
   const agents = useQuery(messagingAgentsOptions(organizationId));
   const add = useMutation({
-    mutationFn: async ({ emails, agentActorIds }: { emails: string; agentActorIds: string[] }) => {
-      const recipients = parseRecipientEmails(emails);
-      if (!recipients.length && !agentActorIds.length) throw new Error("Choose a person or agent.");
-      return addMembers({
-        data: { organizationId, conversationId, emails: recipients, agentActorIds },
-      });
-    },
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: queryKeys.messaging(organizationId) }),
+    mutationFn: ({ emails, agentActorIds }: { emails: string[]; agentActorIds: string[] }) =>
+      addMembers({ data: { organizationId, conversationId, emails, agentActorIds } }),
+    onSuccess: () => invalidateAddedMembers(queryClient, organizationId, conversationId),
   });
   return (
     <AddMembersFormView

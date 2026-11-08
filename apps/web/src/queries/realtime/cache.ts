@@ -2,6 +2,7 @@ import { realtimeEvent, type RealtimeEvent } from "@startup-os/contracts/realtim
 
 import {
   matchQuery,
+  type Query,
   type QueryClient,
   type QueryFilters,
   type QueryKey,
@@ -75,7 +76,6 @@ export function realtimeQueryTargets(
           { queryKey: queryKeys.tasks(organizationId) },
           { queryKey: [...queryKeys.context(organizationId), "activity"] },
           { queryKey: [...queryKeys.context(organizationId), "related"] },
-          { queryKey: [...queryKeys.context(organizationId), "message"] },
           { queryKey: [...queryKeys.context(organizationId), "message-pages"] },
           { queryKey: [...queryKeys.context(organizationId), "notifications"], exact: true },
           ...searchTargets(organizationId),
@@ -84,9 +84,9 @@ export function realtimeQueryTargets(
     case "context":
       if (organizationId)
         targets.push(
-          ...["activity", "related", "message", "message-pages", "people", "target"].map(
-            (kind) => ({ queryKey: [...queryKeys.context(organizationId), kind] }),
-          ),
+          ...["activity", "related", "message-pages", "target"].map((kind) => ({
+            queryKey: [...queryKeys.context(organizationId), kind],
+          })),
           { queryKey: [...queryKeys.context(organizationId), "notifications"], exact: true },
           ...searchTargets(organizationId),
         );
@@ -124,6 +124,15 @@ export function createRealtimeCache({
   let routePending = false;
   let accessWork = Promise.resolve();
   let resyncWork: Promise<void> | undefined;
+  // One counter orders fetch starts and event receipt. A fetch that starts after an event
+  // arrived reads the committed change, so that event needs no second read for it.
+  let clock = 0;
+  let pendingSince: number | undefined;
+  const fetchStarts = new WeakMap<Query, number>();
+  const unsubscribeCache = queryClient.getQueryCache().subscribe((event) => {
+    if (event.type === "updated" && event.action.type === "fetch")
+      fetchStarts.set(event.query, ++clock);
+  });
   const privateFilter = {
     predicate: (query: { queryKey: QueryKey }) =>
       (organizationId !== null &&
@@ -135,11 +144,18 @@ export function createRealtimeCache({
   };
   function resetPrivate(filter: QueryFilters) {
     const queries = queryClient.getQueryCache().findAll(filter);
-    const messages = organizationId ? [...queryKeys.messaging(organizationId), "messages"] : [];
-    // History placeholders can hold a previous page outside the cache. Replace their
-    // visible value before resetting, so access checks never display that old page.
+    const placeholders = organizationId
+      ? [
+          [...queryKeys.messaging(organizationId), "messages"],
+          [...queryKeys.context(organizationId), "message-pages"],
+        ]
+      : [];
+    // History and message context placeholders can hold a previous page outside the cache.
+    // Replace their visible value before resetting, so access checks never display that old page.
     for (const query of queries) {
-      if (messages.length && messages.every((part, index) => query.queryKey[index] === part))
+      if (
+        placeholders.some((prefix) => prefix.every((part, index) => query.queryKey[index] === part))
+      )
         queryClient.setQueryData(query.queryKey, []);
     }
     for (const query of queries) {
@@ -187,14 +203,16 @@ export function createRealtimeCache({
     accessWork = accessWork.then(finish, finish);
     return accessWork;
   }
-  async function refresh(targets: RealtimeQueryTarget[]) {
+  async function refresh(targets: RealtimeQueryTarget[], since?: number) {
     const epoch = generation;
+    const fetchedSince = (query: Query) =>
+      since !== undefined && (fetchStarts.get(query) ?? 0) > since;
     const inflight = new Map(
       targets
         .flatMap((target) =>
           queryClient.getQueryCache().findAll({
             ...target,
-            predicate: (query) => query.state.fetchStatus !== "idle",
+            predicate: (query) => query.state.fetchStatus !== "idle" && !fetchedSince(query),
           }),
         )
         .map((query) => [query.queryHash, query]),
@@ -206,11 +224,14 @@ export function createRealtimeCache({
     }));
     // Observers can share a request with imperative route loaders. Never cancel ordinary refreshes.
     const invalidations = targets.map((target) =>
-      queryClient.invalidateQueries(target, { cancelRefetch: false }),
+      queryClient.invalidateQueries(
+        { ...target, predicate: (query) => !fetchedSince(query) },
+        { cancelRefetch: false },
+      ),
     );
     const deferred = loads.map(async ({ query, promise, refetch }) => {
       await promise;
-      if (!isCurrent(epoch)) return;
+      if (!isCurrent(epoch) || fetchedSince(query)) return;
       // Mark stale after the original snapshot commits, so its success cannot erase the event.
       await queryClient.invalidateQueries(
         { queryKey: query.queryKey, exact: true, refetchType: "none" },
@@ -228,9 +249,11 @@ export function createRealtimeCache({
     pending.clear();
     const route = routePending;
     routePending = false;
+    const since = pendingSince;
+    pendingSince = undefined;
     const epoch = generation;
     try {
-      await refresh(targets);
+      await refresh(targets, since);
       if (isCurrent(epoch) && route) await revalidate();
     } finally {
       flushing = false;
@@ -274,6 +297,8 @@ export function createRealtimeCache({
       if (isDisposed()) return;
       for (const target of realtimeQueryTargets(event, userId))
         pending.set(JSON.stringify(target), target);
+      // The latest event bounds the batch: only fetches started after every event may skip it.
+      pendingSince = ++clock;
       routePending ||=
         event.domain === "session" ||
         event.domain === "profile" ||
@@ -286,6 +311,7 @@ export function createRealtimeCache({
       generation++;
       clearTimeout(timer);
       pending.clear();
+      unsubscribeCache();
       void queryClient.cancelQueries(privateFilter);
       void queryClient.cancelQueries({ queryKey: queryKeys.session });
       void queryClient.cancelQueries({ queryKey: queryKeys.agents(userId) });

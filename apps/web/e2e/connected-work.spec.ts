@@ -1,8 +1,9 @@
-import { conversation, expect, post, test, visit } from "./test-support/fixtures";
+import { conversation, post, test, visit } from "./test-support/fixtures";
 import { pauseClock, searches, visibleWithClock } from "./test-support/search";
 import { project } from "./test-support/tasks";
+import { expect } from "@playwright/test";
 
-test("follow existing message-task links without task creation actions and find the task in search", async ({
+test("follow existing message-task links and find the task in search", async ({
   actors,
   client,
 }) => {
@@ -27,9 +28,6 @@ test("follow existing message-task links without task creation actions and find 
   await visit(sender, channel.id);
   const sourceMessage = sender.page.getByRole("article").filter({ hasText: source });
   await expect(sourceMessage).toBeVisible();
-  await expect(sourceMessage.getByRole("button", { name: "Create task", exact: true })).toHaveCount(
-    0,
-  );
   await pauseClock(sender.page);
   const requests = searches(sender.page);
 
@@ -84,7 +82,6 @@ test("follow existing message-task links without task creation actions and find 
   ).toBeVisible();
   expect(new URL(sender.page.url()).searchParams.get("messageId")).toBe(message.id);
   const thread = sender.page.getByRole("complementary", { name: "Thread", exact: true });
-  await expect(thread.getByRole("button", { name: "Create task", exact: true })).toHaveCount(0);
   await expect(
     thread.getByRole("button", { name: "Link existing work", exact: true }),
   ).toBeVisible();

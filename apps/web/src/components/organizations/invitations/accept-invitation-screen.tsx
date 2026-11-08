@@ -1,26 +1,21 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { SignOutButton } from "@/components/auth/sign-out/sign-out-button";
 import { isInvitationUnavailable } from "@/components/feedback/request-failure";
 import { AcceptInvitationScreen as AcceptInvitationScreenView } from "@/components/organizations/invitations/accept-invitation-screen-view";
-import { useCurrentTime } from "@/hooks/use-current-time";
+import { useExpiryTime } from "@/hooks/use-expiry-time";
 import { authClient } from "@/lib/auth/client";
+import { activateOrganization } from "@/lib/auth/organization";
 import { unwrap } from "@/lib/auth/result";
 import { invitationQueryOptions } from "@/queries/organizations/invitations";
 
 export function AcceptInvitationScreen({ invitationId }: { invitationId: string }) {
-  const now = useCurrentTime();
   const invitation = useQuery(invitationQueryOptions(invitationId));
-  const queryClient = useQueryClient();
+  const now = useExpiryTime(invitation.data ? [invitation.data.expiresAt] : undefined);
   const accept = useMutation({
     mutationFn: async () => {
       const result = unwrap(await authClient.organization.acceptInvitation({ invitationId }));
-      unwrap(
-        await authClient.organization.setActive({ organizationId: result.member.organizationId }),
-      );
-      await queryClient.cancelQueries();
-      queryClient.clear();
-      window.location.assign("/dashboard");
+      await activateOrganization(result.member.organizationId);
     },
   });
   const available =

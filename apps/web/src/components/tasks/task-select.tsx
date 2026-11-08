@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from "react";
+import { useId } from "react";
 
 import { Field, FieldError, FieldLabel } from "../ui/field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
@@ -13,7 +13,6 @@ export function TaskSelect<T extends string>({
   onBlur,
   errors = [],
   compact = false,
-  icon,
   placeholder,
 }: {
   label: string;
@@ -24,7 +23,6 @@ export function TaskSelect<T extends string>({
   onBlur?: () => void;
   errors?: ({ message?: string } | undefined)[];
   compact?: boolean;
-  icon?: ReactNode;
   placeholder?: string;
 }) {
   const id = useId();
@@ -52,7 +50,6 @@ export function TaskSelect<T extends string>({
           aria-invalid={errors.length > 0}
           aria-describedby={errors.length > 0 ? `${id}-error` : undefined}
         >
-          {icon}
           <SelectValue className="min-w-0" placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent

@@ -1,13 +1,5 @@
-import {
-  conversation,
-  expect,
-  expectChange,
-  post,
-  send,
-  test,
-  visit,
-} from "./test-support/fixtures";
-import type { WebSocketRoute } from "@playwright/test";
+import { conversation, expectChange, post, send, test, visit } from "./test-support/fixtures";
+import { expect, type WebSocketRoute } from "@playwright/test";
 
 test("reconnect resyncs messages missed while the socket was disconnected", async ({
   actors,

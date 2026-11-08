@@ -7,7 +7,6 @@ import { TaskDetail } from "../detail/task-detail";
 import { TaskForm } from "../editor/task-form";
 import { ProjectForm } from "./editor/project-form";
 import { ProjectSharing } from "./sharing/project-sharing";
-import { ProjectDiscussions } from "@/components/context/discussions/project-discussions";
 import { ProjectPane as ProjectPaneView } from "@/components/tasks/projects/project-pane-view";
 import { workHref } from "@/lib/navigation/record-links";
 import { projectQueryOptions } from "@/queries/tasks/options";
@@ -46,13 +45,13 @@ export function ProjectPane({
       context={
         project.data &&
         !project.error && (
-          <ProjectDiscussions>
+          <div className="space-y-4">
             <WorkDiscussions
               organizationId={organizationId}
               entityId={projectEntityId}
               label="Project discussions"
             />
-          </ProjectDiscussions>
+          </div>
         )
       }
       loading={project.isPending}

@@ -9,23 +9,18 @@ import {
 import { useTheme } from "./theme-provider";
 import { Monitor, Moon, Sun } from "lucide-react";
 
-export function ThemeSwitcher({ compact = false }: { compact?: boolean }) {
+export function ThemeSwitcher() {
   const { theme, setTheme } = useTheme();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant={compact ? "rail" : "ghost"}
-          size={compact ? "icon" : "default"}
-          aria-label="Color theme"
-          title="Color theme"
-        >
+        <Button variant="ghost" aria-label="Color theme" title="Color theme">
           <Sun className="size-4 dark:hidden" />
           <Moon className="hidden size-4 dark:block" />
-          {!compact && "Appearance"}
+          Appearance
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" side={compact ? "right" : "bottom"}>
+      <DropdownMenuContent align="end" side="bottom">
         <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
           <DropdownMenuRadioItem value="light">
             <Sun />

@@ -1,3 +1,5 @@
+import { referenceTokenPattern } from "../references/reference-token";
+
 type MarkdownNode = {
   type: string;
   value?: string;
@@ -23,9 +25,7 @@ export function remarkWorkspaceReferences() {
         }
         const nodes: MarkdownNode[] = [];
         let start = 0;
-        for (const match of child.value.matchAll(
-          /@\[(task|project|person|channel|thread):([0-9a-f-]{36})\]/gi,
-        )) {
+        for (const match of child.value.matchAll(referenceTokenPattern)) {
           if (match.index > start)
             nodes.push({ type: "text", value: child.value.slice(start, match.index) });
           nodes.push({

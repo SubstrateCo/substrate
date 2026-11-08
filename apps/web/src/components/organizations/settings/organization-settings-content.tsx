@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
-import { WorkspaceSettings } from "./organization-settings-view";
+import { SettingsPage } from "./organization-settings-view";
 
 export function OrganizationSettings({
   picture,
@@ -13,7 +13,7 @@ export function OrganizationSettings({
   isOwner: boolean;
 }) {
   return (
-    <WorkspaceSettings>
+    <SettingsPage>
       <Tabs defaultValue="general">
         <TabsList variant="line" aria-label="Organization settings">
           <TabsTrigger value="general">General</TabsTrigger>
@@ -32,6 +32,6 @@ export function OrganizationSettings({
           )}
         </TabsContent>
       </Tabs>
-    </WorkspaceSettings>
+    </SettingsPage>
   );
 }

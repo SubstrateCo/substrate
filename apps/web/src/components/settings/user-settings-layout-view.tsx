@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { WorkspaceSettings } from "../organizations/settings/organization-settings-view";
+import { SettingsPage } from "../organizations/settings/organization-settings-view";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 
 export function UserSettingsLayout({
@@ -13,7 +13,7 @@ export function UserSettingsLayout({
   onTabChange: (tab: "profile" | "invitations" | "agents") => void;
 }) {
   return (
-    <WorkspaceSettings title="User settings">
+    <SettingsPage title="User settings">
       <Tabs
         value={active}
         onValueChange={(value) => {
@@ -36,6 +36,6 @@ export function UserSettingsLayout({
           {active === "agents" && children}
         </TabsContent>
       </Tabs>
-    </WorkspaceSettings>
+    </SettingsPage>
   );
 }

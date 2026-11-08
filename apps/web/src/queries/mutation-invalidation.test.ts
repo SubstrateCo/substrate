@@ -2,7 +2,7 @@ import { QueryClient, QueryObserver, type QueryKey } from "@tanstack/react-query
 
 import { staleSearches } from "./context/mutations";
 import { queryKeys } from "./keys";
-import { invalidateSentMessage } from "./messaging/mutations";
+import { invalidateAddedMembers, invalidateSentMessage } from "./messaging/mutations";
 import { invalidateTasksWrite } from "./tasks/mutations";
 import { expect, test } from "bun:test";
 
@@ -268,8 +268,14 @@ test("project permission writes refresh child capabilities and comments without 
     catalog: { key: queryKeys.projects("org") },
     comments: { key: queryKeys.taskComments("org", "project", taskId) },
     otherComments: { key: queryKeys.taskComments("org", "other", "other") },
-    labels: { key: [...context, "message", "message"], data: [{ entityId: taskId }] },
-    otherLabels: { key: [...context, "message", "other"], data: [{ entityId: "other" }] },
+    labels: {
+      key: [...context, "message-pages", "conversation", ["message"]],
+      data: [{ links: [{ entityId: taskId }] }],
+    },
+    otherLabels: {
+      key: [...context, "message-pages", "conversation", ["other"]],
+      data: [{ links: [{ entityId: "other" }] }],
+    },
     related: { key: [...context, "related", taskId] },
     projectRelated: { key: [...context, "related", "project"] },
     otherRelated: { key: [...context, "related", "other"] },
@@ -299,6 +305,30 @@ test("project permission writes refresh child capabilities and comments without 
       otherRelated: 0,
       activity: 1,
       notifications: 1,
+    });
+  } finally {
+    fixture.close();
+  }
+});
+
+test("adding members refreshes conversations and that conversation's messages, not other messaging data", async () => {
+  const fixture = mount({
+    conversations: { key: queryKeys.conversations("org") },
+    channel: { key: queryKeys.messages("org", "conversation") },
+    thread: { key: queryKeys.messages("org", "conversation", "root") },
+    otherConversation: { key: queryKeys.messages("org", "other") },
+    agents: { key: [...queryKeys.messaging("org"), "available-agents"] },
+    otherWorkspace: { key: queryKeys.conversations("other") },
+  });
+  try {
+    await invalidateAddedMembers(fixture.client, "org", "conversation");
+    expect(fixture.reads).toEqual({
+      conversations: 1,
+      channel: 1,
+      thread: 1,
+      otherConversation: 0,
+      agents: 0,
+      otherWorkspace: 0,
     });
   } finally {
     fixture.close();

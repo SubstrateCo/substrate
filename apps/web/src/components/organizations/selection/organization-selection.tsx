@@ -1,25 +1,18 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { CreateOrganizationForm } from "./create-organization-form";
 import { SignOutButton } from "@/components/auth/sign-out/sign-out-button";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { OrganizationSelectionActions } from "@/components/organizations/selection/organization-selection-actions";
 import { OrganizationSelection as OrganizationSelectionView } from "@/components/organizations/selection/organization-selection-view";
-import { authClient } from "@/lib/auth/client";
-import { unwrap } from "@/lib/auth/result";
+import { activateOrganization } from "@/lib/auth/organization";
 import { organizationsQueryOptions } from "@/queries/organizations/options";
 import { toast } from "sonner";
 
 export function OrganizationSelection() {
   const organizations = useQuery(organizationsQueryOptions());
-  const queryClient = useQueryClient();
   const select = useMutation({
-    mutationFn: async (organizationId: string) => {
-      unwrap(await authClient.organization.setActive({ organizationId }));
-      await queryClient.cancelQueries();
-      queryClient.clear();
-      window.location.assign("/dashboard");
-    },
+    mutationFn: (organizationId: string) => activateOrganization(organizationId),
     onError: (error) =>
       toast.error(
         actionErrorMessage(error, "We couldn’t open this workspace. Try selecting it again."),

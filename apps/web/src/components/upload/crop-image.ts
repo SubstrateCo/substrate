@@ -5,14 +5,9 @@ const maxImagePixels = 32_000_000;
 const maxImageDimension = 8192;
 
 export function checkImageDimensions(width: number, height: number) {
-  if (
-    !Number.isFinite(width + height) ||
-    width < 1 ||
-    height < 1 ||
-    width > maxImageDimension ||
-    height > maxImageDimension ||
-    width * height > maxImagePixels
-  ) {
+  const hasValidSize = Number.isFinite(width + height) && width >= 1 && height >= 1;
+  const withinDimensions = width <= maxImageDimension && height <= maxImageDimension;
+  if (!hasValidSize || !withinDimensions || width * height > maxImagePixels) {
     throw new Error("Choose an image up to 8192 pixels per side and 32 megapixels.");
   }
 }
@@ -57,13 +52,10 @@ export async function cropImage(
       scale = 512 / Math.max(width, height);
       context.translate(256, 256);
     } else {
-      if (
-        !area ||
-        !Number.isFinite(area.x + area.y + area.width + area.height) ||
-        area.width <= 0 ||
-        area.height <= 0
-      )
-        throw new Error("Adjust the crop and try again.");
+      const finiteArea =
+        area !== null && Number.isFinite(area.x + area.y + area.width + area.height);
+      const validArea = finiteArea && area.width > 0 && area.height > 0;
+      if (!validArea) throw new Error("Adjust the crop and try again.");
       scale = 512 / area.width;
       context.translate((width / 2 - area.x) * scale, (height / 2 - area.y) * scale);
     }

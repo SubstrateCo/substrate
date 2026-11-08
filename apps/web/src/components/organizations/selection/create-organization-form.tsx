@@ -1,12 +1,12 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 
 import { formText } from "@/components/auth/form-values";
 import { CreateOrganizationForm as CreateOrganizationFormView } from "@/components/organizations/selection/create-organization-form-view";
 import { authClient } from "@/lib/auth/client";
+import { activateOrganization } from "@/lib/auth/organization";
 import { unwrap } from "@/lib/auth/result";
 
 export function CreateOrganizationForm() {
-  const queryClient = useQueryClient();
   const create = useMutation({
     mutationFn: async (form: FormData) => {
       const organization = unwrap(
@@ -15,10 +15,7 @@ export function CreateOrganizationForm() {
           slug: formText(form, "slug").trim(),
         }),
       );
-      unwrap(await authClient.organization.setActive({ organizationId: organization.id }));
-      await queryClient.cancelQueries();
-      queryClient.clear();
-      window.location.assign("/dashboard");
+      await activateOrganization(organization.id);
     },
   });
   return (

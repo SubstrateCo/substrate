@@ -7,18 +7,18 @@ import {
   InvitationManager as InvitationManagerView,
   type InvitationRole,
 } from "@/components/organizations/invitations/invitation-manager-view";
-import { useCurrentTime } from "@/hooks/use-current-time";
+import { useExpiryTime } from "@/hooks/use-expiry-time";
 import { authClient } from "@/lib/auth/client";
 import { queryKeys } from "@/queries/keys";
 import { invitationsQueryOptions } from "@/queries/organizations/invitations";
 import { toast } from "sonner";
 
 export function InvitationManager({ organizationId }: { organizationId: string }) {
-  const now = useCurrentTime();
   const invitations = useQuery(invitationsQueryOptions(organizationId));
+  const now = useExpiryTime(invitations.data?.map((invitation) => invitation.expiresAt));
   const queryClient = useQueryClient();
   const refresh = () =>
-    queryClient.invalidateQueries({ queryKey: queryKeys.organization(organizationId) });
+    queryClient.invalidateQueries({ queryKey: queryKeys.invitations(organizationId) });
   const invite = useMutation({
     mutationFn: async ({
       email,

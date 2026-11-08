@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { WorkspaceSettings } from "@/components/organizations/settings/organization-settings";
+import { InvitationManager } from "@/components/organizations/invitations/invitation-manager";
+import { OrganizationPicture } from "@/components/organizations/settings/organization-picture";
+import { OrganizationSettings } from "@/components/organizations/settings/organization-settings-content";
 
 export const Route = createFileRoute("/_authenticated/_workspace/settings/organization/")({
   component: OrganizationSettingsRoute,
@@ -9,9 +11,10 @@ export const Route = createFileRoute("/_authenticated/_workspace/settings/organi
 function OrganizationSettingsRoute() {
   const { organizationSettings } = Route.useRouteContext();
   return (
-    <WorkspaceSettings
-      organizationId={organizationSettings.organizationId}
+    <OrganizationSettings
       isOwner={organizationSettings.isOwner}
+      picture={<OrganizationPicture organizationId={organizationSettings.organizationId} />}
+      invitations={<InvitationManager organizationId={organizationSettings.organizationId} />}
     />
   );
 }

@@ -2,7 +2,7 @@ import type { SaveSkillInput } from "@startup-os/contracts/agents";
 import { saveSkillInput } from "@startup-os/contracts/agents";
 import type { HarnessSkill } from "@startup-os/contracts/harness";
 
-import { useForm } from "@tanstack/react-form";
+import { revalidateLogic, useForm } from "@tanstack/react-form";
 
 import { useState } from "react";
 
@@ -42,7 +42,8 @@ export function SkillEditor({
       description: skill?.description ?? "",
       content: skill?.content ?? "",
     },
-    validators: { onChange: skillFields, onBlur: skillFields, onSubmit: skillFields },
+    validationLogic: revalidateLogic({ mode: "blur", modeAfterSubmission: "change" }),
+    validators: { onDynamic: skillFields },
     onSubmit: async ({ value }) => {
       if (pending) return;
       setError(undefined);
@@ -55,8 +56,8 @@ export function SkillEditor({
     },
   });
   return (
-    <form.Subscribe selector={(state) => [state.isSubmitting, state.submissionAttempts] as const}>
-      {([isSubmitting, submissionAttempts]) => (
+    <form.Subscribe selector={(state) => state.isSubmitting}>
+      {(isSubmitting) => (
         <EditorDialog
           title={skill ? "Edit skill" : "Create skill"}
           saveLabel="Save skill"
@@ -68,8 +69,7 @@ export function SkillEditor({
         >
           <form.Field name="name">
             {(field) => {
-              const invalid =
-                (field.state.meta.isBlurred || submissionAttempts > 0) && !field.state.meta.isValid;
+              const invalid = !field.state.meta.isValid;
               return (
                 <Field data-invalid={invalid}>
                   <FieldLabel htmlFor="skill-name">Skill name</FieldLabel>
@@ -80,7 +80,10 @@ export function SkillEditor({
                     pattern="[a-z0-9]+(-[a-z0-9]+)*"
                     value={field.state.value}
                     onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      if (!field.state.meta.isValid) void field.validate("blur");
+                    }}
                     aria-invalid={invalid}
                     aria-describedby={invalid ? "skill-name-error" : undefined}
                   />
@@ -91,8 +94,7 @@ export function SkillEditor({
           </form.Field>
           <form.Field name="description">
             {(field) => {
-              const invalid =
-                (field.state.meta.isBlurred || submissionAttempts > 0) && !field.state.meta.isValid;
+              const invalid = !field.state.meta.isValid;
               return (
                 <Field data-invalid={invalid}>
                   <FieldLabel htmlFor="skill-description">Description</FieldLabel>
@@ -101,7 +103,10 @@ export function SkillEditor({
                     maxLength={2000}
                     value={field.state.value}
                     onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      if (!field.state.meta.isValid) void field.validate("blur");
+                    }}
                     aria-invalid={invalid}
                     aria-describedby={invalid ? "skill-description-error" : undefined}
                   />
@@ -114,8 +119,7 @@ export function SkillEditor({
           </form.Field>
           <form.Field name="content">
             {(field) => {
-              const invalid =
-                (field.state.meta.isBlurred || submissionAttempts > 0) && !field.state.meta.isValid;
+              const invalid = !field.state.meta.isValid;
               return (
                 <Field data-invalid={invalid}>
                   <FieldLabel htmlFor="skill-content">Skill content</FieldLabel>
@@ -125,7 +129,10 @@ export function SkillEditor({
                     maxLength={100000}
                     value={field.state.value}
                     onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      if (!field.state.meta.isValid) void field.validate("blur");
+                    }}
                     aria-invalid={invalid}
                     aria-describedby={invalid ? "skill-content-error" : undefined}
                   />

@@ -17,8 +17,6 @@ export function ResetPasswordForm({
   const queryClient = useQueryClient();
   const reset = useMutation({
     mutationFn: async (form: FormData) => {
-      if (formText(form, "password") !== formText(form, "confirm"))
-        throw new Error("The passwords do not match.");
       const result = await authClient.resetPassword({
         token,
         newPassword: formText(form, "password"),

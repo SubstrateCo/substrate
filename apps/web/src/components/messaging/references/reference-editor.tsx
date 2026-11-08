@@ -5,6 +5,7 @@ import {
   referenceDraftText,
   referenceEditorPosition,
 } from "./reference-editor-document";
+import { referenceKey } from "./reference-token";
 import type { WorkspaceReference } from "@/components/messaging/references/entity-reference";
 import {
   ReferencesContext,
@@ -78,13 +79,9 @@ export function ReferenceEditor({
       },
       handleKeyDown: (view, event) => {
         onKeyDown(event);
-        if (
-          !event.defaultPrevented &&
-          !event.isComposing &&
-          event.ctrlKey &&
-          !event.altKey &&
-          (event.key === "Home" || event.key === "End")
-        ) {
+        const ctrlOnly = event.ctrlKey && !event.altKey && !event.isComposing;
+        const boundaryKey = event.key === "Home" || event.key === "End";
+        if (!event.defaultPrevented && ctrlOnly && boundaryKey) {
           // Native Home selection can be mistaken for a browser reset just after focus.
           const { doc, selection, tr } = view.state;
           const target = event.key === "Home" ? Selection.atStart(doc) : Selection.atEnd(doc);
@@ -130,6 +127,10 @@ export function ReferenceEditor({
     editor.setEditable(!disabled, false);
   }, [editor, disabled]);
 
+  const referencesByKey = new Map(
+    references.map((item) => [referenceKey(item.kind, item.id), item] as const),
+  );
+
   useImperativeHandle(
     ref,
     () => ({
@@ -153,7 +154,7 @@ export function ReferenceEditor({
   );
 
   return (
-    <ReferencesContext value={references}>
+    <ReferencesContext value={referencesByKey}>
       <EditorContent editor={editor} />
     </ReferencesContext>
   );

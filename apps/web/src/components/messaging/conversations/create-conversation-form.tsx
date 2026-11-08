@@ -23,21 +23,13 @@ export function CreateConversationForm({
   const queryClient = useQueryClient();
   const create = useMutation({
     mutationFn: async ({ name, emails, isPrivate }: ConversationDraft) => {
-      const recipients = parseRecipientEmails(emails);
-      if (kind !== "channel" && !recipients.length)
-        throw new Error("Enter at least one recipient email address.");
-      if (kind === "dm" && recipients.length !== 1)
-        throw new Error("Use a group message for more than one recipient.");
-      if (kind === "group" && recipients.length < 2)
-        throw new Error("Enter at least two recipients for a group message.");
-      if (kind === "channel" && !name.trim()) throw new Error("Enter a channel name.");
       return createConversation({
         data: {
           organizationId,
           kind,
           name: name.trim() || undefined,
           private: kind !== "channel" || isPrivate,
-          emails: recipients,
+          emails: parseRecipientEmails(emails),
         },
       });
     },

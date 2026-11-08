@@ -1,6 +1,6 @@
 import { Mailpit } from "../../server/integration/test-support/mailpit";
-import { conversation, expect, post, test, visit } from "./test-support/fixtures";
-import type { Page } from "@playwright/test";
+import { conversation, post, test, visit } from "./test-support/fixtures";
+import { expect, type Page } from "@playwright/test";
 
 async function login(page: Page, email: string, password: string) {
   await page.getByLabel("Email", { exact: true }).fill(email);

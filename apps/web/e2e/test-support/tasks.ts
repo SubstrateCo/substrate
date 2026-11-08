@@ -1,6 +1,6 @@
 import type { ProjectDetail } from "../../src/components/tasks/types";
-import { expect, post, type Actor, type Client } from "./fixtures";
-import type { Page } from "@playwright/test";
+import { post, type Actor } from "./fixtures";
+import { expect, type Page } from "@playwright/test";
 
 export async function project(actor: Actor) {
   const name = `Project ${crypto.randomUUID()}`;
@@ -36,16 +36,6 @@ export async function share(
     actorEntityId: target.entityId,
     level,
   });
-}
-
-export async function visitProject(client: Client, projectId: string, taskId?: string) {
-  const search = new URLSearchParams({ workspaceId: client.actor.organizationId, projectId });
-  if (taskId) search.set("taskId", taskId);
-  await client.page.goto(`/tasks?${search}`);
-  await expect.poll(() => client.events.some((event) => event.type === "ready")).toBe(true);
-  await expect(
-    client.page.getByText(/Reconnecting to live updates|Live updates disconnected/),
-  ).toHaveCount(0);
 }
 
 export async function select(page: Page, label: string, option: string) {

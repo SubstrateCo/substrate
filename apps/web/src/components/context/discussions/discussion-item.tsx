@@ -1,5 +1,6 @@
 import { Item, ItemContent, ItemDescription } from "../../ui/item";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../ui/tooltip";
+import { plainReferenceText } from "@/components/messaging/references/reference-token";
 
 export type Discussion = {
   messageId: string;
@@ -49,7 +50,7 @@ export function DiscussionItem({ item }: { item: Discussion }) {
             </ItemDescription>
           </div>
           <p className="line-clamp-3 text-sm leading-relaxed wrap-anywhere whitespace-pre-wrap">
-            {item.body.replace(/@\[[^\]]+\]/g, "[Reference]")}
+            {plainReferenceText(item.body)}
           </p>
           {item.replyCount !== undefined && (
             <p className="text-xs text-muted-foreground">

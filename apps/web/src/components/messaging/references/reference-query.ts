@@ -39,8 +39,3 @@ export function referenceQuery(draft: string, caret: number): ReferenceQuery | n
     query: prefix ? text.slice(prefix[0].length) : text,
   };
 }
-
-export function referencePrefix(kind: ReferenceQuery["kind"]): string {
-  if (kind === "channel" || kind === "thread") return `#${kind}:`;
-  return kind === "all" ? "@" : `@${kind === "person" ? "user" : kind}:`;
-}

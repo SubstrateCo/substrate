@@ -9,19 +9,17 @@ test("link changes refresh only the affected message pages, links, work and proj
   const context = queryKeys.context("org");
   const keys = [
     [...context, "message-pages", "conversation", ["message"]],
-    [...context, "message", "message"],
     [...context, "related", "task"],
     [...context, "related", "project"],
     [...context, "activity", "task"],
     [...context, "message-pages", "conversation", ["other"]],
-    [...context, "message", "other"],
     [...context, "related", "other"],
     [...context, "notifications"],
     queryKeys.projects("org"),
     queryKeys.conversations("org"),
     [...context, "search", "term"],
     [...context, "search-pages", "term"],
-    [...queryKeys.context("other"), "message", "message"],
+    [...queryKeys.context("other"), "message-pages", "conversation", ["message"]],
   ];
   const reads = keys.map(() => 0);
   const observers = keys.map(
@@ -39,13 +37,13 @@ test("link changes refresh only the affected message pages, links, work and proj
   const unsubscribes = observers.map((observer) => observer.subscribe(() => {}));
   try {
     await client.invalidateQueries({ queryKey: queryKeys.organization("org") });
-    expect(reads.reduce((sum, count) => sum + count, 0)).toBe(13);
+    expect(reads.reduce((sum, count) => sum + count, 0)).toBe(11);
     reads.fill(0);
     await invalidateMessageWork(client, "org", "message", "task", "project");
-    expect(reads).toEqual([1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    expect(reads).toEqual([1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0]);
     expect(observers[0]!.getCurrentResult().data).toEqual(["fresh"]);
-    expect(client.getQueryState(keys[11]!)?.isInvalidated).toBe(true);
-    expect(client.getQueryState(keys[12]!)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(keys[9]!)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(keys[10]!)?.isInvalidated).toBe(true);
   } finally {
     unsubscribes.forEach((unsubscribe) => unsubscribe());
     client.clear();

@@ -30,7 +30,6 @@ export function RealtimeConnection({
     let active = true;
     let statusEpoch = 0;
     let ready: Promise<void> = Promise.resolve();
-    let connected = false;
     let hasReady = false;
     const cache = createRealtimeCache({
       queryClient,
@@ -50,7 +49,6 @@ export function RealtimeConnection({
           if (active) setStatus("disconnected");
         });
       } else if (event.status === "connected") {
-        connected = true;
         const epoch = ++statusEpoch;
         void ready.then(
           () => {
@@ -61,7 +59,6 @@ export function RealtimeConnection({
           },
         );
       } else {
-        connected = false;
         statusEpoch++;
         setStatus(event.status);
         if (event.status === "forbidden") void cache.forbidden().catch(() => {});
@@ -70,27 +67,8 @@ export function RealtimeConnection({
     void bridge.connect({ organizationId }).catch(() => {
       if (active) setStatus("disconnected");
     });
-    function refresh() {
-      if (!active || !connected || document.visibilityState !== "visible") return;
-      const epoch = statusEpoch;
-      // Ordinary safety refreshes keep drafts mounted. Reconnects clear private caches above.
-      void cache.receive({ version: 1, type: "ready" }).then(
-        () => {
-          if (active && connected && epoch === statusEpoch) setStatus("connected");
-        },
-        () => {
-          if (active && connected && epoch === statusEpoch) setStatus("disconnected");
-        },
-      );
-    }
-    const refreshTimer = setInterval(refresh, 60_000);
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", refresh);
     return () => {
       active = false;
-      clearInterval(refreshTimer);
-      window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", refresh);
       unsubscribe();
       cache.dispose();
       void bridge.disconnect().catch(() => {});

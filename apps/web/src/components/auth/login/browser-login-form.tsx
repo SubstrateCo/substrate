@@ -1,17 +1,19 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { BrowserElectronReturn } from "../desktop/browser-electron-return";
 import { formText } from "../form-values";
-import { LoginForm as LoginFormView } from "@/components/auth/login/login-form-view";
+import { LoginForm } from "@/components/auth/login/login-form-view";
 import { authHref } from "@/lib/auth/browser-links";
 import { authClient } from "@/lib/auth/client";
 import { safeRedirect } from "@/lib/auth/navigation";
 import { electronQuery } from "@/lib/desktop/authorization-query";
+import { sessionQueryOptions } from "@/queries/auth/session";
 
 export function BrowserLoginForm({ redirect, email }: { redirect: string; email: string }) {
   const queryClient = useQueryClient();
   const query = electronQuery(window.location.search);
-  const session = authClient.useSession();
+  // Only the desktop handoff returns early for an existing browser session.
+  const session = useQuery({ ...sessionQueryOptions(), enabled: !!query });
   const login = useMutation({
     mutationFn: async (form: FormData) => {
       const email = formText(form, "email");
@@ -36,7 +38,7 @@ export function BrowserLoginForm({ redirect, email }: { redirect: string; email:
   if (query && (login.isSuccess || session.data?.user.emailVerified))
     return <BrowserElectronReturn />;
   return (
-    <LoginFormView
+    <LoginForm
       email={email}
       pending={login.isPending}
       error={login.error}
