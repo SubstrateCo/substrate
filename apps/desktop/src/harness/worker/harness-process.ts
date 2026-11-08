@@ -2,7 +2,7 @@
 import type { HarnessEvent } from "@startup-os/contracts/harness";
 import type { WorkspaceApiRequest, WorkspaceApiProxy } from "@startup-os/contracts/harness/mcp";
 
-import type { HarnessWorker } from "./harness-controller.ts";
+import type { HarnessWorker } from "../controller/harness-controller.ts";
 import { utilityProcess } from "electron";
 
 export function createHarnessProcess(

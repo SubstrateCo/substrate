@@ -7,9 +7,9 @@ import {
   harnessEventChannel,
   localHarnessMethods,
   trustedHarnessSender,
-} from "./harness/harness-bridge.ts";
-import { createHarnessController } from "./harness/harness-controller.ts";
-import { createHarnessProcess } from "./harness/harness-process.ts";
+} from "./harness/bridge/harness-bridge.ts";
+import { createHarnessController } from "./harness/controller/harness-controller.ts";
+import { createHarnessProcess } from "./harness/worker/harness-process.ts";
 import { applicationURL, bundledApplicationURL, navigationTarget } from "./shell/navigation.js";
 import { attachTitleBar, titleBarOptions } from "./shell/title-bar.ts";
 import { desktopAPITransport } from "./transport/api-transport.js";

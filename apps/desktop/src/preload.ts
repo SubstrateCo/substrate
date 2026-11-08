@@ -11,8 +11,8 @@ import {
   type RealtimeUpdate,
 } from "@startup-os/contracts/realtime";
 
-import type { HarnessAPI } from "./harness/harness-api.ts";
-import { harnessChannel, harnessEventChannel } from "./harness/harness-bridge.ts";
+import type { HarnessAPI } from "./harness/bridge/harness-api.ts";
+import { harnessChannel, harnessEventChannel } from "./harness/bridge/harness-bridge.ts";
 import { setupRenderer } from "@better-auth/electron/preload";
 import { contextBridge, ipcRenderer } from "electron";
 
