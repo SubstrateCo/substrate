@@ -6,6 +6,9 @@ import type {
   reactionInput,
   membersInput,
   profileInput,
+  conversationTargetInput,
+  leaveInput,
+  ownerInput,
 } from "@startup-os/contracts/messaging/input";
 import { realtimeKeys } from "@startup-os/contracts/realtime";
 import { createMessagingService } from "@startup-os/database/messaging";
@@ -85,14 +88,91 @@ export function toggleReaction(headers: Headers, input: z.output<typeof reaction
   });
 }
 
+// Admins may manage conversations they cannot read, so the organization audience also gets the
+// change. It carries no conversation ID or content.
+function managementHints(input: { organizationId: string; conversationId: string }) {
+  return [
+    { audience: realtimeKeys.conversation(input.conversationId), domain: "messaging" as const },
+    { audience: realtimeKeys.organization(input.organizationId), domain: "messaging" as const },
+  ];
+}
+
 export function addMembers(headers: Headers, input: z.output<typeof membersInput>) {
   return serviceResult(async () => {
     requireOrigin(headers);
     const service = await serviceForSession(headers, input.organizationId);
     const result = await service.addMembers(input.conversationId, input.emails);
+    await publishRefresh(managementHints(input));
+    return result;
+  });
+}
+
+export function listManagedConversations(headers: Headers, input: z.output<typeof workspaceInput>) {
+  return serviceResult(async () => {
+    const service = await serviceForSession(headers, input.organizationId);
+    return service.listManagedConversations();
+  });
+}
+
+export function joinConversation(
+  headers: Headers,
+  input: z.output<typeof conversationTargetInput>,
+) {
+  return serviceResult(async () => {
+    requireOrigin(headers);
+    const service = await serviceForSession(headers, input.organizationId);
+    const result = await service.joinConversation(input.conversationId);
     await publishRefresh([
       { audience: realtimeKeys.conversation(input.conversationId), domain: "messaging" },
     ]);
     return result;
+  });
+}
+
+export function leaveConversation(headers: Headers, input: z.output<typeof leaveInput>) {
+  return serviceResult(async () => {
+    requireOrigin(headers);
+    const { session } = await workspaceSession(headers, input.organizationId);
+    const service = createMessagingService(db, {
+      userId: session.user.id,
+      organizationId: input.organizationId,
+    });
+    const result = await service.leaveConversation(input.conversationId, input.newOwnerUserId);
+    // The leaver may no longer pass the conversation audience check.
+    await publishRefresh([
+      ...managementHints(input),
+      { audience: realtimeKeys.user(session.user.id), domain: "messaging" },
+    ]);
+    return result;
+  });
+}
+
+export function transferOwnership(headers: Headers, input: z.output<typeof ownerInput>) {
+  return serviceResult(async () => {
+    requireOrigin(headers);
+    const service = await serviceForSession(headers, input.organizationId);
+    const result = await service.transferOwnership(input.conversationId, input.userId);
+    await publishRefresh(managementHints(input));
+    return result;
+  });
+}
+
+export function deleteImpact(headers: Headers, input: z.output<typeof conversationTargetInput>) {
+  return serviceResult(async () => {
+    const service = await serviceForSession(headers, input.organizationId);
+    return service.deleteImpact(input.conversationId);
+  });
+}
+
+export function deleteConversation(
+  headers: Headers,
+  input: z.output<typeof conversationTargetInput>,
+) {
+  return serviceResult(async () => {
+    requireOrigin(headers);
+    const service = await serviceForSession(headers, input.organizationId);
+    const { hints } = await service.deleteConversation(input.conversationId);
+    await publishRefresh(hints);
+    return { deleted: true };
   });
 }

@@ -195,6 +195,62 @@ test("messaging writes reject missing, foreign and opaque origins without persis
   expect((await messages.json()).data).toEqual([]);
 });
 
+test("conversation management checks origin, ownership, and the owning organization's admins", async ({
+  actors: { owner, member, outsider },
+}) => {
+  const manage = (
+    actor: WorkspaceAccount,
+    action: "delete" | "leave",
+    conversationId: string,
+    headers: Record<string, string> = { origin },
+  ) =>
+    actor.request.post(`/api/v1/messaging/conversations/${action}`, {
+      headers,
+      data: { organizationId: actor.organizationId, conversationId },
+    });
+  const own = await post<{ id: string }>(owner, "conversations", {
+    kind: "channel",
+    name: "owner-channel",
+  });
+  const secret = await post<{ id: string }>(member, "conversations", {
+    kind: "channel",
+    name: "member-secret",
+    private: true,
+  });
+  await post(member, "messages", { conversationId: secret.id, body: "Private words" });
+
+  for (const action of ["delete", "leave"] as const) {
+    const response = await manage(member, action, own.id, {});
+    expect(response.status()).toBe(403);
+  }
+  const notOwner = await manage(member, "delete", own.id);
+  expect(notOwner.status()).toBe(404);
+  const foreign = await manage(outsider, "delete", secret.id);
+  expect(foreign.status()).toBe(404);
+  const memberManaged = await member.request.get("/api/v1/messaging/conversations/managed", {
+    params: { organizationId: member.organizationId },
+  });
+  expect(memberManaged.status()).toBe(404);
+
+  // The organization owner manages the member's private channel without reading it.
+  const managed = await owner.request.get("/api/v1/messaging/conversations/managed", {
+    params: { organizationId: owner.organizationId },
+  });
+  expect((await managed.json()).data.map((item: { id: string }) => item.id).sort()).toEqual(
+    [own.id, secret.id].sort(),
+  );
+  const read = await owner.request.get("/api/v1/messaging/messages", {
+    params: { organizationId: owner.organizationId, conversationId: secret.id },
+  });
+  expect(read.status()).toBe(404);
+  const deleted = await manage(owner, "delete", secret.id);
+  expect(await deleted.json()).toEqual({ success: true, data: { deleted: true } });
+  const listed = await member.request.get("/api/v1/messaging/conversations", {
+    params: { organizationId: member.organizationId },
+  });
+  expect((await listed.json()).data.map((item: { id: string }) => item.id)).toEqual([own.id]);
+});
+
 for (const kind of ["channel", "dm", "group"] as const) {
   test(`nonparticipants cannot read or mutate a private ${kind}`, async ({
     actors: { owner, member, outsider, recipient },

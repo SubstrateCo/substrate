@@ -32,3 +32,10 @@ export const membersInput = workspaceInput.extend({
   conversationId: id,
   emails: emails.default([]),
 });
+export const conversationTargetInput = workspaceInput.extend({ conversationId: id });
+export const leaveInput = conversationTargetInput.extend({
+  newOwnerUserId: z.string().min(1).max(200).optional(),
+});
+export const ownerInput = conversationTargetInput.extend({
+  userId: z.string().min(1).max(200),
+});

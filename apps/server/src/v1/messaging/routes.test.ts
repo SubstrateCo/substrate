@@ -15,6 +15,12 @@ test("messaging validates each route before calling services", async () => {
     toggleReaction: mock(services.toggleReaction),
     addMembers: mock(services.addMembers),
     getProfile: mock(services.getProfile),
+    listManagedConversations: mock(services.listManagedConversations),
+    deleteImpact: mock(services.deleteImpact),
+    joinConversation: mock(services.joinConversation),
+    leaveConversation: mock(services.leaveConversation),
+    transferOwnership: mock(services.transferOwnership),
+    deleteConversation: mock(services.deleteConversation),
   };
   const app = createMessagingRoutes(spies);
   for (const [method, path, body] of [
@@ -29,6 +35,12 @@ test("messaging validates each route before calling services", async () => {
       "/members",
       { organizationId: "org", conversationId, emails: Array(31).fill("person@example.test") },
     ],
+    ["GET", "/conversations/managed", undefined],
+    ["GET", "/conversations/delete-impact?organizationId=org&conversationId=x", undefined],
+    ["POST", "/conversations/join", { organizationId: "org" }],
+    ["POST", "/conversations/leave", { organizationId: "org", conversationId, newOwnerUserId: "" }],
+    ["POST", "/conversations/owner", { organizationId: "org", conversationId }],
+    ["POST", "/conversations/delete", { organizationId: "org", conversationId: "x" }],
   ] as const) {
     const response = await app.request(path, {
       method,

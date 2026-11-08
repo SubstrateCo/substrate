@@ -6,6 +6,9 @@ import {
   reactionInput,
   membersInput,
   profileInput,
+  conversationTargetInput,
+  leaveInput,
+  ownerInput,
 } from "@startup-os/contracts/messaging/input";
 
 import { respond, validationHook } from "../../shared/http";
@@ -35,5 +38,31 @@ export function createMessagingRoutes(services = defaultServices) {
     )
     .post("/members", zValidator("json", membersInput, validationHook), async (c) =>
       respond(c, await services.addMembers(c.req.raw.headers, c.req.valid("json"))),
+    )
+    .get("/conversations/managed", zValidator("query", workspaceInput, validationHook), async (c) =>
+      respond(c, await services.listManagedConversations(c.req.raw.headers, c.req.valid("query"))),
+    )
+    .get(
+      "/conversations/delete-impact",
+      zValidator("query", conversationTargetInput, validationHook),
+      async (c) => respond(c, await services.deleteImpact(c.req.raw.headers, c.req.valid("query"))),
+    )
+    .post(
+      "/conversations/join",
+      zValidator("json", conversationTargetInput, validationHook),
+      async (c) =>
+        respond(c, await services.joinConversation(c.req.raw.headers, c.req.valid("json"))),
+    )
+    .post("/conversations/leave", zValidator("json", leaveInput, validationHook), async (c) =>
+      respond(c, await services.leaveConversation(c.req.raw.headers, c.req.valid("json"))),
+    )
+    .post("/conversations/owner", zValidator("json", ownerInput, validationHook), async (c) =>
+      respond(c, await services.transferOwnership(c.req.raw.headers, c.req.valid("json"))),
+    )
+    .post(
+      "/conversations/delete",
+      zValidator("json", conversationTargetInput, validationHook),
+      async (c) =>
+        respond(c, await services.deleteConversation(c.req.raw.headers, c.req.valid("json"))),
     );
 }
