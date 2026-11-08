@@ -1,4 +1,4 @@
-import { AccessDeniedError, ValidationError } from "../../errors";
+import { AccessDeniedError } from "../../errors";
 import { taskActivity } from "../../features/activity/schema";
 import { createRepositories } from "../../repositories";
 import { actors, entities, entityGrants, member, userAgents } from "../../schema";
@@ -27,14 +27,14 @@ async function assistant() {
   return { repositories, actor: actor!, agent: agent! };
 }
 
-test("agents use their owner's live permission levels, not independent grants", async () => {
-  const { repositories: agent } = await assistant();
+test("agents use explicit live permission levels, not their owner's grants", async () => {
+  const { repositories: agent, actor } = await assistant();
   const contact = await f.forActor(f.bob).contacts.create({ displayName: "Shared" });
   await expect(agent.contacts.get(contact.entityId)).rejects.toBeInstanceOf(AccessDeniedError);
   for (const level of ["view", "comment", "edit", "owner"] as const) {
     await f
       .forActor(f.bob)
-      .permissions.grant({ entityId: contact.entityId, actorEntityId: f.alice, level });
+      .permissions.grant({ entityId: contact.entityId, actorEntityId: actor.entityId, level });
     expect(await agent.permissions.getEffectiveLevel(contact.entityId)).toBe(level);
     expect((await agent.contacts.list()).map((item) => item.entityId)).toContain(contact.entityId);
     if (level === "view" || level === "comment") {
@@ -49,32 +49,26 @@ test("agents use their owner's live permission levels, not independent grants", 
   }
   await f
     .forActor(f.bob)
-    .permissions.revoke({ entityId: contact.entityId, actorEntityId: f.alice });
+    .permissions.revoke({ entityId: contact.entityId, actorEntityId: actor.entityId });
   expect(await agent.contacts.list()).toEqual([]);
   await expect(agent.contacts.get(contact.entityId)).rejects.toBeInstanceOf(AccessDeniedError);
 });
 
-test("agent-created records belong to the user and cannot receive agent grants", async () => {
+test("agent-created records retain agent ownership and activity attribution", async () => {
   const { repositories: agent, actor } = await assistant();
   const project = await agent.projects.create({ name: "Agent work" });
-  expect(await f.forActor(f.alice).permissions.getEffectiveLevel(project.entityId)).toBe("owner");
+  expect(await agent.permissions.getEffectiveLevel(project.entityId)).toBe("owner");
+  await expect(f.forActor(f.alice).projects.get(project.entityId)).rejects.toBeInstanceOf(
+    AccessDeniedError,
+  );
   const grants = await f.db
     .select()
     .from(entityGrants)
     .where(eq(entityGrants.entityId, project.entityId));
-  expect(grants.map((grant) => grant.actorEntityId)).toEqual([f.alice]);
-  await expect(
-    f
-      .forActor(f.alice)
-      .permissions.grant({
-        entityId: project.entityId,
-        actorEntityId: actor.entityId,
-        level: "view",
-      }),
-  ).rejects.toBeInstanceOf(ValidationError);
+  expect(grants.map((grant) => grant.actorEntityId)).toEqual([actor.entityId]);
   expect(
     (await agent.projects.listMembers(project.entityId)).map((item) => item.actorEntityId),
-  ).toEqual([f.alice]);
+  ).toEqual([actor.entityId]);
   expect(
     (await agent.projects.availableActors(project.entityId)).map((item) => item.entityId),
   ).toContain(actor.entityId);
@@ -83,9 +77,7 @@ test("agent-created records belong to the user and cannot receive agent grants",
     title: "Assigned",
     assigneeActorEntityId: actor.entityId,
   });
-  expect((await f.forActor(f.alice).tasks.get(task.entityId)).assigneeActorEntityId).toBe(
-    actor.entityId,
-  );
+  expect((await agent.tasks.get(task.entityId)).assigneeActorEntityId).toBe(actor.entityId);
   const [event] = await f.db
     .select()
     .from(taskActivity)
@@ -93,14 +85,14 @@ test("agent-created records belong to the user and cannot receive agent grants",
   expect(event?.actorEntityId).toBe(actor.entityId);
 });
 
-test("the database rejects independent grants to agents", async () => {
+test("the database rejects cross-organization grants to agents", async () => {
   const { actor } = await assistant();
-  const project = await f.forActor(f.alice).projects.create({ name: "Owned" });
+  const project = await f.forActor(f.outsider, f.orgB).projects.create({ name: "Owned" });
   await expect(
     f.db
       .insert(entityGrants)
       .values({
-        organizationId: f.orgA,
+        organizationId: f.orgB,
         entityId: project.entityId,
         actorEntityId: actor.entityId,
         level: "owner",

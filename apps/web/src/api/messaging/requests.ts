@@ -25,3 +25,5 @@ export const toggleReaction = ({ data, signal }: ApiInput<z.input<typeof reactio
   readResult(api.messaging.reactions.$post({ json: data }, { init: { signal } }));
 export const addMembers = ({ data, signal }: ApiInput<z.input<typeof membersInput>>) =>
   readResult(api.messaging.members.$post({ json: data }, { init: { signal } }));
+export const listAvailableAgents = ({ data, signal }: ApiInput<z.input<typeof workspaceInput>>) =>
+  readResult(api.messaging.agents.$get({ query: data }, { init: { signal } }));

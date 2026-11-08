@@ -3,6 +3,7 @@ import {
   workspaceApiRequest,
   type WorkspaceApiProxy,
 } from "@startup-os/contracts/harness/mcp";
+import { mcpTools } from "@startup-os/contracts/harness/tools";
 
 import { z } from "zod";
 
@@ -34,25 +35,17 @@ export function createMcpApiProxy(options: {
 
   return async (raw) => {
     const request = workspaceApiRequest.parse(raw);
+    mcpTools[request.tool].input.parse(request.input);
     const organizationId = await scope();
-    const payload = { ...request.input, organizationId };
-    const url = new URL(request.path, options.backend);
-    if (request.method === "GET") {
-      for (const [key, value] of Object.entries(payload)) {
-        url.searchParams.set(
-          key,
-          String(z.union([z.string(), z.number(), z.boolean()]).parse(value)),
-        );
-      }
-    }
+    if (organizationId !== request.organizationId)
+      throw new Error("Workspace changed. Start a new agent run in this workspace.");
+    const url = new URL("/api/v1/mcp/call", options.backend);
     const init: RequestInit = {
-      method: request.method,
+      method: "POST",
       redirect: "error",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(request),
     };
-    if (request.method !== "GET") {
-      init.headers = { "content-type": "application/json" };
-      init.body = JSON.stringify(payload);
-    }
     const response = await options.fetchAPI(url.href, init);
     const result = workspaceApiResult.parse(await response.json());
     // Never replay a mutation in a different workspace or expose a stale result.

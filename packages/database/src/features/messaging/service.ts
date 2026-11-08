@@ -1,9 +1,12 @@
 import type { DatabaseExecutor } from "../../client";
-import { ensureHumanActor } from "../../core/actors/provisioning";
+import { ensureHumanActor, ensureOwnedAgentActors } from "../../core/actors/provisioning";
+import { actors } from "../../core/actors/schema";
+import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { member } from "../../core/organizations/schema";
 import { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
+import { workspaceContext } from "../context/access";
 import { applyMessageEffects } from "../context/message-effects";
 import { visibleConversations, type MessagingIdentity } from "./access";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
@@ -13,6 +16,7 @@ import {
   messagingMessages as messages,
   messagingParticipants as participants,
   messagingReactions as reactions,
+  messagingAgentParticipants as agentParticipants,
 } from "./schema";
 
 export interface CreateConversationInput {
@@ -30,9 +34,19 @@ export function createMessagingService(
   const scope = Object.freeze({
     userId: authenticatedScope.userId,
     organizationId: authenticatedScope.organizationId,
+    actorEntityId: authenticatedScope.actorEntityId,
   });
 
   async function authenticate(tx: DatabaseExecutor) {
+    if (scope.actorEntityId) {
+      await workspaceContext(tx, scope);
+      const [actor] = await tx
+        .select()
+        .from(actors)
+        .where(eq(actors.entityId, scope.actorEntityId));
+      if (!actor) throw new AccessDeniedError();
+      return { actor, authorName: actor.name };
+    }
     const [identity] = await tx
       .select()
       .from(user)
@@ -64,6 +78,17 @@ export function createMessagingService(
   }
 
   async function join(tx: DatabaseExecutor, conversationId: string) {
+    if (scope.actorEntityId) {
+      await tx
+        .insert(agentParticipants)
+        .values({
+          conversationId,
+          organizationId: scope.organizationId,
+          actorEntityId: scope.actorEntityId,
+        })
+        .onConflictDoNothing();
+      return;
+    }
     await tx
       .insert(participants)
       .values({ conversationId, ...scope })
@@ -159,6 +184,7 @@ export function createMessagingService(
       });
     },
     async createConversation(input: CreateConversationInput) {
+      if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
         await authenticate(tx);
         if (!["dm", "group", "channel"].includes(input.kind))
@@ -209,14 +235,57 @@ export function createMessagingService(
           .orderBy(asc(user.name), asc(user.id));
       });
     },
-    async addMembers(conversationId: string, emails: string[]) {
+    async listAvailableAgents() {
+      if (scope.actorEntityId) throw new AccessDeniedError();
+      return db.transaction(async (tx) => {
+        await authenticate(tx);
+        return (await ensureOwnedAgentActors(tx, scope)).map((actor) => ({
+          id: actor.entityId,
+          name: actor.name,
+        }));
+      });
+    },
+    async addMembers(conversationId: string, emails: string[], agentActorIds: string[] = []) {
+      if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
         await authenticate(tx);
         const conversation = await requireConversation(tx, conversationId);
         if (conversation.kind === "dm" || conversation.createdBy !== scope.userId)
           throw new AccessDeniedError();
+        if (agentActorIds.length > 30) throw new ValidationError("At most 30 agents are allowed.");
+        let agentsAdded = 0;
+        for (const actorId of new Set(agentActorIds)) {
+          await new RepositoryContext(tx, {
+            organizationId: scope.organizationId,
+            actorEntityId: actorId,
+          }).requireActiveActor();
+          const [agent] = await tx
+            .select({ id: actors.entityId })
+            .from(actors)
+            .innerJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+            .where(
+              and(
+                eq(actors.entityId, actorId),
+                eq(actors.organizationId, scope.organizationId),
+                eq(actors.type, "agent"),
+                eq(userAgents.userId, scope.userId),
+              ),
+            );
+          if (!agent || conversation.organizationId !== scope.organizationId)
+            throw new AccessDeniedError();
+          const added = await tx
+            .insert(agentParticipants)
+            .values({
+              conversationId,
+              organizationId: scope.organizationId,
+              actorEntityId: actorId,
+            })
+            .onConflictDoNothing()
+            .returning();
+          agentsAdded += added.length;
+        }
         const selected = await recipients(tx, emails);
-        if (!selected.length) return { added: 0 };
+        if (!selected.length) return { added: agentsAdded };
         const added = await tx
           .insert(participants)
           .values(
@@ -228,7 +297,7 @@ export function createMessagingService(
           )
           .onConflictDoNothing()
           .returning();
-        return { added: added.length };
+        return { added: added.length + agentsAdded };
       });
     },
     async listMessages(
@@ -274,15 +343,17 @@ export function createMessagingService(
         const rows = await tx
           .select({
             message: messages,
-            authorName: user.name,
-            authorExternal: sql<boolean>`not exists (
+            authorName: sql<string>`coalesce(${actors.name}, ${user.name})`,
+            authorType: sql<"human" | "agent">`coalesce(${actors.type}, 'human')`,
+            authorExternal: sql<boolean>`coalesce(${actors.type}, 'human') <> 'agent' AND not exists (
               select 1 from ${member}
               where ${member.userId} = ${messages.authorId}
                 and ${member.organizationId} = ${scope.organizationId}
             )`,
           })
           .from(messages)
-          .innerJoin(user, eq(user.id, messages.authorId))
+          .leftJoin(user, eq(user.id, messages.authorId))
+          .leftJoin(actors, eq(actors.entityId, messages.authorActorEntityId))
           .where(
             and(
               eq(messages.conversationId, conversationId),
@@ -327,10 +398,11 @@ export function createMessagingService(
           group.push(reaction);
           byMessage.set(messageId, group);
         }
-        return rows.map(({ message, authorName, authorExternal }) => ({
+        return rows.map(({ message, authorName, authorExternal, authorType }) => ({
           ...message,
           authorName,
           authorExternal,
+          authorType,
           replyCount: replyCounts.get(message.id) ?? 0,
           reactions: byMessage.get(message.id) ?? [],
         }));
@@ -346,7 +418,12 @@ export function createMessagingService(
           const [existing] = await tx
             .select()
             .from(messages)
-            .where(and(eq(messages.authorId, scope.userId), eq(messages.requestId, requestId)));
+            .where(
+              and(
+                eq(messages.authorActorEntityId, actor.entityId),
+                eq(messages.requestId, requestId),
+              ),
+            );
           if (existing) {
             if (
               existing.conversationId !== conversationId ||
@@ -355,7 +432,7 @@ export function createMessagingService(
             )
               throw new ConflictError("This request was already used for another message.");
             const reactions: { emoji: string; count: number; reacted: boolean }[] = [];
-            return { ...existing, authorName, reactions, replyCount: 0 };
+            return { ...existing, authorName, authorType: actor.type, reactions, replyCount: 0 };
           }
         }
         if (threadId) {
@@ -375,7 +452,15 @@ export function createMessagingService(
         await join(tx, conversationId);
         const [message] = await tx
           .insert(messages)
-          .values({ conversationId, authorId: scope.userId, body, threadId, requestId })
+          .values({
+            conversationId,
+            authorId: scope.actorEntityId ? null : scope.userId,
+            authorActorEntityId: actor.entityId,
+            authorOrganizationId: scope.organizationId,
+            body,
+            threadId,
+            requestId,
+          })
           .returning();
         await applyMessageEffects(
           new RepositoryContext(tx, {
@@ -390,12 +475,14 @@ export function createMessagingService(
         return {
           ...message!,
           authorName,
+          authorType: actor.type,
           replyCount: 0,
           reactions: initialReactions,
         };
       });
     },
     async toggleReaction(messageId: string, emoji: string) {
+      if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
         await authenticate(tx);
         if (!emoji.trim() || emoji.length > 64)

@@ -7,6 +7,7 @@ export type Discussion = {
   href: string;
   conversationName: string | null;
   authorName: string | null;
+  authorType?: "human" | "agent";
   createdAt: string;
   body: string;
   replyCount?: number;
@@ -38,8 +39,13 @@ export function DiscussionItem({ item }: { item: Discussion }) {
               </Tooltip>
             </TooltipProvider>
             <ItemDescription className="wrap-anywhere">
-              {item.authorName} ·{" "}
-              <time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString()}</time>
+              {item.authorName}
+              {item.authorType === "agent" && (
+                <span className="mx-1 rounded border px-1.5 py-0.5 text-xs text-muted-foreground">
+                  Agent
+                </span>
+              )}{" "}
+              · <time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString()}</time>
             </ItemDescription>
           </div>
           <p className="line-clamp-3 text-sm leading-relaxed wrap-anywhere whitespace-pre-wrap">

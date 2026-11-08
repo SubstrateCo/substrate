@@ -1,4 +1,5 @@
 import type { WorkspaceApiRequest } from "@startup-os/contracts/harness/mcp";
+import { mcpTools } from "@startup-os/contracts/harness/tools";
 
 import { createStartupMcp } from "./mcp.ts";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -7,11 +8,11 @@ import { expect, test } from "bun:test";
 
 /* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous despite their assertion return declarations. */
 
-test("the internal API proxy requires a live lease and does not add MCP tools", async () => {
+test("tools inject lease identity and return structured API results", async () => {
   const calls: unknown[] = [];
   const host = await createStartupMcp(async (call) => {
     calls.push(call);
-    return { success: true, data: ["project"] };
+    return { success: true, data: { items: [], nextCursor: null } };
   });
   const lease = host.issue("org-a", "agent-a");
   const client = new Client({ name: "proxy-test", version: "1" });
@@ -21,22 +22,20 @@ test("the internal API proxy requires a live lease and does not add MCP tools", 
         requestInit: { headers: { Authorization: `Bearer ${lease.token}` } },
       }),
     );
-    expect((await client.listTools()).tools.map((tool) => tool.name)).toEqual(["hello_world"]);
-    expect((await client.callTool({ name: "hello_world", arguments: {} })).content).toEqual([
-      { type: "text", text: "Hello, world!" },
-    ]);
-    expect(calls).toEqual([]);
+    expect((await client.listTools()).tools.map((tool) => tool.name)).toEqual(
+      Object.keys(mcpTools),
+    );
+    expect(
+      (await client.callTool({ name: "list_projects", arguments: {} })).structuredContent,
+    ).toEqual({ items: [], nextCursor: null });
     const request: WorkspaceApiRequest = {
-      method: "GET",
-      path: "/api/v1/tasks/projects",
-      input: {},
+      tool: "list_projects",
+      organizationId: "org-a",
+      agentId: "agent-a",
+      input: { limit: 25 },
     };
-    expect(await host.requestApi(lease.token, request)).toEqual({
-      success: true,
-      data: ["project"],
-    });
     lease.revoke();
-    await expect(host.requestApi(lease.token, request)).rejects.toThrow("Credential revoked");
+    await expect(client.callTool({ name: "list_projects", arguments: {} })).rejects.toThrow();
     expect(calls).toEqual([request]);
   } finally {
     await client.close();
@@ -44,7 +43,7 @@ test("the internal API proxy requires a live lease and does not add MCP tools", 
   }
 });
 
-test("loopback MCP exposes only hello_world and rejects revoked or browser requests", async () => {
+test("loopback MCP rejects revoked, browser and rebound requests", async () => {
   const host = await createStartupMcp();
   const lease = host.issue("org-a", "agent-a");
   const client = new Client({ name: "runtime-test", version: "1.0.0" });
@@ -53,10 +52,10 @@ test("loopback MCP exposes only hello_world and rejects revoked or browser reque
     await client.connect(
       new StreamableHTTPClientTransport(new URL(lease.url), { requestInit: { headers } }),
     );
-    expect((await client.listTools()).tools.map((tool) => tool.name)).toEqual(["hello_world"]);
-    expect((await client.callTool({ name: "hello_world", arguments: {} })).content).toEqual([
-      { type: "text", text: "Hello, world!" },
-    ]);
+    expect((await client.listTools()).tools.map((tool) => tool.name)).toEqual(
+      Object.keys(mcpTools),
+    );
+    expect((await client.callTool({ name: "list_projects", arguments: {} })).isError).toBe(true);
     const forbidden = await fetch(lease.url, {
       method: "POST",
       headers: { ...headers, Origin: "https://evil.example" },
@@ -74,7 +73,7 @@ test("loopback MCP exposes only hello_world and rejects revoked or browser reque
     lease.revoke();
     const revoked = await fetch(lease.url, { method: "POST", headers, body: "{}" });
     expect(revoked.status).toBe(401);
-    await expect(client.callTool({ name: "hello_world", arguments: {} })).rejects.toThrow();
+    await expect(client.callTool({ name: "list_projects", arguments: {} })).rejects.toThrow();
   } finally {
     await client.close();
     await host.close();

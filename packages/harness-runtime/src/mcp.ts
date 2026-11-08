@@ -1,4 +1,5 @@
 import type { WorkspaceApiRequest, WorkspaceApiProxy } from "@startup-os/contracts/harness/mcp";
+import { mcpTools, type McpToolName } from "@startup-os/contracts/harness/tools";
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -10,7 +11,7 @@ import { createServer } from "node:http";
 export interface McpLease {
   url: string;
   token: string;
-  /** Native session launch workspace; API calls resolve the user's current workspace. */
+  /** Both workspace and agent identity are bound to this launch. */
   organizationId: string;
   agentId: string;
   revoke(): void;
@@ -69,19 +70,58 @@ export async function createStartupMcp(proxy?: WorkspaceApiProxy) {
       return;
     }
     const mcp = new McpServer({ name: "startup-os", version: "1.0.0" });
-    mcp.registerTool(
-      "hello_world",
-      {
-        description: "Return a greeting. No Startup OS app data is exposed.",
-        inputSchema: {},
-        annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-      },
-      async () => {
-        if (!token || !leases.has(token) || lease.expires <= Date.now())
-          throw new Error("Credential revoked or expired");
-        return { content: [{ type: "text" as const, text: "Hello, world!" }] };
-      },
-    );
+    // SAFETY: Object.keys reads the statically defined tool registry, not external input.
+    for (const name of Object.keys(mcpTools) as McpToolName[]) {
+      const tool = mcpTools[name];
+      mcp.registerTool(
+        name,
+        {
+          description: tool.description,
+          inputSchema: tool.input,
+          outputSchema: tool.output,
+          annotations: {
+            readOnlyHint: tool.readOnly,
+            destructiveHint: name === "remove_reference",
+            openWorldHint: false,
+          },
+        },
+        async (input: WorkspaceApiRequest["input"]) => {
+          try {
+            if (!token || !leases.has(token) || lease.expires <= Date.now())
+              throw new Error("Credential revoked or expired");
+            if (!proxy) throw new Error("Workspace API unavailable");
+            const result = await proxy({
+              organizationId: lease.organizationId,
+              agentId: lease.agentId,
+              tool: name,
+              input: JSON.parse(JSON.stringify(input)),
+            });
+            if (!leases.has(token) || lease.expires <= Date.now())
+              throw new Error("Credential revoked or expired");
+            if (!result.success)
+              return {
+                isError: true,
+                content: [{ type: "text" as const, text: JSON.stringify(result.error) }],
+              };
+            const data = tool.output.parse(result.data);
+            return {
+              structuredContent: data,
+              content: [{ type: "text" as const, text: JSON.stringify(data) }],
+            };
+          } catch {
+            return {
+              isError: true,
+              content: [
+                {
+                  type: "text" as const,
+                  text: "Workspace operation unavailable. Check the session, workspace and agent access before retrying.",
+                },
+              ],
+            };
+          }
+        },
+      );
+    }
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,
@@ -114,16 +154,6 @@ export async function createStartupMcp(proxy?: WorkspaceApiProxy) {
   if (!address || typeof address === "string") throw new Error("MCP loopback listener failed");
   authority = `127.0.0.1:${address.port}`;
   return {
-    // Internal proxy entry point for future tools. Not exposed as an MCP tool or HTTP route.
-    async requestApi(token: string, request: WorkspaceApiRequest) {
-      const lease = leases.get(token);
-      if (!lease || lease.expires <= Date.now()) throw new Error("Credential revoked or expired");
-      if (!proxy) throw new Error("Workspace API unavailable");
-      const result = await proxy(request);
-      if (!leases.has(token) || lease.expires <= Date.now())
-        throw new Error("Credential revoked or expired");
-      return result;
-    },
     issue(organizationId: string, agentId: string): McpLease {
       const token = randomBytes(32).toString("hex");
       leases.set(token, { organizationId, agentId, expires: Date.now() + 24 * 60 * 60 * 1000 });

@@ -7,6 +7,7 @@ import { respond } from "./shared/http";
 import { createAgentsRoutes } from "./v1/agents/routes";
 import { createContextRoutes } from "./v1/context/routes";
 import { createFilesRoutes } from "./v1/files/routes";
+import { createMcpRoutes } from "./v1/mcp/routes";
 import { createMessagingRoutes } from "./v1/messaging/routes";
 import { createOrganizationRoutes } from "./v1/organizations/routes";
 import { createSessionRoutes } from "./v1/session/routes";
@@ -47,6 +48,7 @@ export function createApp() {
     .route("/api/v1/files", createFilesRoutes())
     .route("/api/v1/tasks", createTasksRoutes())
     .route("/api/v1/messaging", createMessagingRoutes())
+    .route("/api/v1/mcp", createMcpRoutes())
     .route("/api/v1/context", createContextRoutes())
     .route("/api/v1/agents", createAgentsRoutes())
     .notFound((c) => respond(c, failure("NOT_FOUND", "Endpoint not found.")))

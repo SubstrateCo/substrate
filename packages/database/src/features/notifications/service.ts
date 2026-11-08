@@ -19,6 +19,7 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
           id: taskActivity.id,
           action: taskActivity.action,
           actorName: actors.name,
+          actorType: actors.type,
           createdAt: taskActivity.createdAt,
           sourceMessageId: taskActivity.sourceMessageId,
         })
@@ -41,6 +42,7 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
           id: row.id,
           action: row.action,
           actorName: row.actorName,
+          actorType: row.actorType,
           createdAt: row.createdAt,
         }));
     },

@@ -24,4 +24,8 @@ export const reactionInput = workspaceInput.extend({
   messageId: id,
   emoji: z.string().min(1).max(32),
 });
-export const membersInput = workspaceInput.extend({ conversationId: id, emails });
+export const membersInput = workspaceInput.extend({
+  conversationId: id,
+  emails: emails.default([]),
+  agentActorIds: z.array(id).max(30).default([]),
+});

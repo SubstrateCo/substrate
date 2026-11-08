@@ -8,7 +8,7 @@ import {
   type TasksWrite,
 } from "@startup-os/contracts/tasks/input";
 import { AccessDeniedError, createRepositories } from "@startup-os/database";
-import { ensureHumanActor } from "@startup-os/database/provisioning";
+import { ensureHumanActor, ensureOwnedAgentActors } from "@startup-os/database/provisioning";
 
 import { db } from "../../auth/database";
 import { serviceResult } from "../../shared/service-result";
@@ -39,6 +39,11 @@ export function getProject(
 ) {
   return serviceResult(async () => {
     const input = projectRequest.parse(raw);
+    const { session } = await workspaceSession(headers, input.organizationId);
+    await ensureOwnedAgentActors(db, {
+      organizationId: input.organizationId,
+      userId: session.user.id,
+    });
     const repositories = await repositoriesForSession(headers, input.organizationId);
     return repositories.transaction((repos) => repos.projects.getDetail(input.projectEntityId));
   });

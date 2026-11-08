@@ -5,11 +5,16 @@ import { expect, test } from "bun:test";
 
 /* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous. */
 
-const projects: WorkspaceApiRequest = { method: "GET", path: "/api/v1/tasks/projects", input: {} };
+const projects: WorkspaceApiRequest = {
+  tool: "list_projects",
+  organizationId: "org-a",
+  agentId: "ad4f709e-b80e-40f5-80ee-588e1db066e5",
+  input: {},
+};
 const createProject: WorkspaceApiRequest = {
-  method: "POST",
-  path: "/api/v1/tasks/mutations",
-  input: { action: "createProject", name: "Launch" },
+  ...projects,
+  tool: "create_task",
+  input: { requestId: crypto.randomUUID(), projectId: crypto.randomUUID(), title: "Launch" },
 };
 
 function fixture() {
@@ -58,26 +63,21 @@ function fixture() {
   };
 }
 
-test("MCP uses the shared API transport and resolves the active organization on every request", async () => {
+test("MCP binds calls to the launch workspace instead of following workspace switches", async () => {
   const f = fixture();
   expect(await f.proxy(projects)).toEqual({ success: true, data: ["project"] });
   f.switchWorkspace();
-  await f.proxy(projects);
-  expect(f.requests.map(({ url }) => url)).toEqual([
-    "https://api.example.com/api/v1/tasks/projects?organizationId=org-a",
-    "https://api.example.com/api/v1/tasks/projects?organizationId=org-b",
-  ]);
+  await expect(f.proxy(projects)).rejects.toThrow("Workspace changed");
+  expect(f.requests.map(({ url }) => url)).toEqual(["https://api.example.com/api/v1/mcp/call"]);
 });
 
-test("mutations use the existing endpoint and inject organization into the JSON body", async () => {
+test("mutations use the agent endpoint with lease-bound scope", async () => {
   const f = fixture();
   await f.proxy(createProject);
-  expect(f.requests[0]?.url).toBe("https://api.example.com/api/v1/tasks/mutations");
+  expect(f.requests[0]?.url).toBe("https://api.example.com/api/v1/mcp/call");
   expect(f.requests[0]?.init.method).toBe("POST");
   expect(await new Response(f.requests[0]?.init.body).json()).toEqual({
-    organizationId: "org-a",
-    action: "createProject",
-    name: "Launch",
+    ...createProject,
   });
 });
 
@@ -90,7 +90,8 @@ test("callers cannot select an organization or escape the workspace API", async 
     "/api/v1/tasks/../agents/list",
     "/api/v1/tasks/projects?organizationId=org-b",
   ]) {
-    await expect(f.proxy({ ...projects, path })).rejects.toThrow();
+    const invalid = { ...projects, path };
+    await expect(f.proxy(invalid)).rejects.toThrow();
   }
   expect(f.requests).toEqual([]);
 });

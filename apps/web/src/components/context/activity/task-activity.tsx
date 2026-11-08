@@ -10,7 +10,7 @@ export function TaskActivity({
   error,
   onRetry,
 }: {
-  items: { id: string; action: string; actorName: string | null }[];
+  items: { id: string; action: string; actorName: string | null; actorType?: "human" | "agent" }[];
   loading: boolean;
   error?: Error | null;
   onRetry: () => void;
@@ -30,6 +30,11 @@ export function TaskActivity({
         <Item key={event.id} size="xs">
           <ItemContent className="min-w-0 wrap-anywhere">
             {event.action} · {event.actorName}
+            {event.actorType === "agent" && (
+              <span className="ml-1 rounded border px-1.5 py-0.5 text-xs text-muted-foreground">
+                Agent
+              </span>
+            )}
           </ItemContent>
         </Item>
       ))}

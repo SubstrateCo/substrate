@@ -34,6 +34,7 @@ export function TaskDetail({
     wasEditing.current = editing;
   }, [editing]);
   const canEdit = detail.level === "edit" || detail.level === "owner";
+  const assignee = detail.actors.find((actor) => actor.entityId === task.assigneeActorEntityId);
   return (
     <section
       aria-label="Task details"
@@ -50,10 +51,8 @@ export function TaskDetail({
       ) : (
         <TaskMetadata
           task={task}
-          assigneeName={
-            detail.actors.find((actor) => actor.entityId === task.assigneeActorEntityId)?.name ??
-            "Unassigned"
-          }
+          assigneeName={assignee?.name ?? "Unassigned"}
+          assigneeType={assignee?.type}
         />
       )}
       <ButtonGroup aria-label="Task actions">

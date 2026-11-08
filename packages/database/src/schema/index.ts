@@ -15,3 +15,4 @@ export * from "../features/tasks/comments.schema";
 export * from "../features/context/schema";
 export * from "../features/activity/schema";
 export * from "../features/notifications/schema";
+export * from "../features/mcp/schema";

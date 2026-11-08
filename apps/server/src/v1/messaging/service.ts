@@ -29,6 +29,13 @@ export function listConversations(headers: Headers, raw: z.input<typeof workspac
   });
 }
 
+export function listAvailableAgents(headers: Headers, raw: z.input<typeof workspaceInput>) {
+  return serviceResult(async () => {
+    const input = workspaceInput.parse(raw);
+    return (await serviceForSession(headers, input.organizationId)).listAvailableAgents();
+  });
+}
+
 export function listMessages(headers: Headers, raw: z.input<typeof messageListInput>) {
   return serviceResult(async () => {
     const input = messageListInput.parse(raw);
@@ -87,7 +94,11 @@ export function addMembers(headers: Headers, raw: z.input<typeof membersInput>) 
     requireOrigin(headers);
     const input = membersInput.parse(raw);
     const service = await serviceForSession(headers, input.organizationId);
-    const result = await service.addMembers(input.conversationId, input.emails);
+    const result = await service.addMembers(
+      input.conversationId,
+      input.emails,
+      input.agentActorIds,
+    );
     await publishRefresh([
       { audience: realtimeKeys.conversation(input.conversationId), domain: "messaging" },
     ]);

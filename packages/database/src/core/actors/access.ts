@@ -28,9 +28,5 @@ export function activeActorCondition() {
 }
 
 export function permissionActorEntityId(scope: ActorScope) {
-  return sql`(SELECT h.entity_id FROM ${actors} a
-    LEFT JOIN ${userAgents} ua ON ua.id = a.user_agent_id
-    JOIN ${actors} h ON h.organization_id = a.organization_id AND h.type = 'human'
-      AND h.user_id = CASE WHEN a.type = 'human' THEN a.user_id ELSE ua.user_id END
-    WHERE a.organization_id = ${scope.organizationId} AND a.entity_id = ${scope.actorEntityId})`;
+  return sql`${scope.actorEntityId}::uuid`;
 }

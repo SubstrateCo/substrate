@@ -1,5 +1,4 @@
 import { ValidationError } from "../../errors";
-import { actors } from "../actors/schema";
 import { RepositoryContext, type PermissionLevel } from "../repository-context";
 import { entityGrants, permissionLevel } from "./schema";
 import { inheritedOwnerQuery } from "./visibility";
@@ -18,17 +17,6 @@ export function permissionRepository(context: RepositoryContext) {
       await ctx.requireAccess(input.entityId, "owner", true);
       if (input.level) {
         await ctx.requireActiveActor(input.actorEntityId);
-        const [targetActor] = await tx
-          .select({ type: actors.type })
-          .from(actors)
-          .where(
-            and(
-              eq(actors.organizationId, scope.organizationId),
-              eq(actors.entityId, input.actorEntityId),
-            ),
-          );
-        if (targetActor?.type === "agent")
-          throw new ValidationError("Agents use their owner's permissions.");
       }
       const target = and(
         eq(entityGrants.organizationId, scope.organizationId),

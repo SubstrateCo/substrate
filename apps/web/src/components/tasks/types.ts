@@ -33,6 +33,7 @@ export interface ProjectDetail {
 export interface TaskComment {
   id: string;
   authorName: string;
+  authorType?: "human" | "agent";
   body: string;
   createdAt: Date | string;
 }

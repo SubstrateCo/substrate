@@ -7,6 +7,7 @@
     "./harness": "./src/harness/index.ts",
     "./harness/desktop": "./src/harness/desktop.ts",
     "./harness/mcp": "./src/harness/mcp.ts",
+    "./harness/tools": "./src/harness/tools.ts",
     "./agents": "./src/agents/index.ts",
     "./files/input": "./src/files/input.ts",
     "./files/pictures": "./src/files/pictures.ts",

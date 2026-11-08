@@ -29,7 +29,9 @@ export function ProjectMemberRow({
         <UserRound className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
         <div className="min-w-0">
           <p className="text-sm font-medium wrap-anywhere">{member.name}</p>
-          <p className="text-xs text-muted-foreground">Person · Direct access</p>
+          <p className="text-xs text-muted-foreground">
+            {member.type === "agent" ? "Agent" : "Person"} · Direct access
+          </p>
         </div>
       </div>
       {canManage ? (

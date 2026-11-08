@@ -121,3 +121,23 @@ export function ensureHumanActor(
     return existing ?? createActor(tx, { ...input, type: "human" });
   });
 }
+
+export async function ensureOwnedAgentActors(
+  db: DatabaseExecutor,
+  input: { organizationId: string; userId: string },
+) {
+  const agents = await db
+    .select({ id: userAgents.id })
+    .from(userAgents)
+    .where(
+      and(
+        eq(userAgents.userId, input.userId),
+        eq(userAgents.enabled, true),
+        isNull(userAgents.deletedAt),
+      ),
+    );
+  const result = [];
+  for (const agent of agents)
+    result.push(await ensureUserAgentActor(db, { ...input, userAgentId: agent.id }));
+  return result;
+}

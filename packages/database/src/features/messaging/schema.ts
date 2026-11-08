@@ -1,3 +1,4 @@
+import { actors, actorType } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
 import { organization } from "../../core/organizations/schema";
 import { sql } from "drizzle-orm";
@@ -68,7 +69,12 @@ export const messagingMessages = pgTable(
     conversationId: uuid("conversation_id")
       .notNull()
       .references(() => messagingConversations.id, { onDelete: "cascade" }),
-    authorId: text("author_id").notNull(),
+    authorId: text("author_id"),
+    authorActorEntityId: uuid("author_actor_entity_id"),
+    authorOrganizationId: text("author_organization_id"),
+    agentAuthorEntityId: uuid("agent_author_entity_id").generatedAlwaysAs(
+      sql`case when author_id is null then author_actor_entity_id else null end`,
+    ),
     body: text("body").notNull(),
     requestId: uuid("request_id"),
     threadId: uuid("thread_id"),
@@ -79,6 +85,22 @@ export const messagingMessages = pgTable(
   (table) => [
     unique("messaging_message_conversation_unique").on(table.conversationId, table.id),
     unique("messaging_message_request_unique").on(table.authorId, table.requestId),
+    unique("messaging_actor_message_request_unique").on(table.authorActorEntityId, table.requestId),
+    foreignKey({
+      columns: [table.authorOrganizationId, table.authorActorEntityId],
+      foreignColumns: [actors.organizationId, actors.entityId],
+    }),
+    foreignKey({
+      columns: [table.conversationId, table.agentAuthorEntityId],
+      foreignColumns: [
+        messagingAgentParticipants.conversationId,
+        messagingAgentParticipants.actorEntityId,
+      ],
+    }),
+    check(
+      "messaging_author_check",
+      sql`(${table.authorId} IS NOT NULL OR ${table.authorActorEntityId} IS NOT NULL) AND ((${table.authorActorEntityId} IS NULL) = (${table.authorOrganizationId} IS NULL))`,
+    ),
     unique("messaging_message_root_unique").on(table.conversationId, table.id, table.isRoot),
     foreignKey({
       columns: [table.conversationId, table.authorId],
@@ -92,6 +114,30 @@ export const messagingMessages = pgTable(
     check("messaging_thread_root_check", sql`${table.threadRoot}`),
     check("messaging_body_check", sql`length(trim(${table.body})) BETWEEN 1 AND 20000`),
     index("messaging_message_timeline_idx").on(table.conversationId, table.createdAt, table.id),
+  ],
+);
+
+// Explicit agent membership. Owning an agent does not give it the owner's private conversations.
+export const messagingAgentParticipants = pgTable(
+  "messaging_agent_participants",
+  {
+    conversationId: uuid("conversation_id").notNull(),
+    organizationId: text("organization_id").notNull(),
+    actorEntityId: uuid("actor_entity_id").notNull(),
+    actorType: actorType("actor_type")
+      .generatedAlwaysAs(sql`'agent'::actor_type`)
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.conversationId, table.actorEntityId] }),
+    foreignKey({
+      columns: [table.organizationId, table.conversationId],
+      foreignColumns: [messagingConversations.organizationId, messagingConversations.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.organizationId, table.actorEntityId, table.actorType],
+      foreignColumns: [actors.organizationId, actors.entityId, actors.type],
+    }),
   ],
 );
 

@@ -166,6 +166,7 @@ export function taskRepository(context: RepositoryContext) {
           body: taskComments.body,
           createdAt: taskComments.createdAt,
           authorName: actors.name,
+          authorType: actors.type,
         })
         .from(taskComments)
         .innerJoin(

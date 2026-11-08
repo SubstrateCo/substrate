@@ -2,7 +2,8 @@ export type Message = {
   id: string;
   body: string;
   authorName: string;
-  authorId: string;
+  authorId: string | null;
+  authorType?: "human" | "agent";
   authorExternal: boolean;
   createdAt: string | Date;
   threadId: string | null;

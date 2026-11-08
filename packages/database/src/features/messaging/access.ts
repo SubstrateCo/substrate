@@ -4,17 +4,23 @@ import {
   messagingConversations as conversations,
   messagingMessages as messages,
   messagingParticipants as participants,
+  messagingAgentParticipants as agentParticipants,
 } from "./schema";
 import { and, eq, inArray, or, type SQLWrapper } from "drizzle-orm";
 
 export interface MessagingIdentity {
   userId: string;
   organizationId: string;
+  actorEntityId?: string;
 }
 
 export function visibleConversations(
   db: DatabaseExecutor,
-  scope: { userId: string | SQLWrapper; organizationId: string | SQLWrapper },
+  scope: {
+    userId: string | SQLWrapper;
+    organizationId: string | SQLWrapper;
+    actorEntityId?: string;
+  },
 ) {
   return or(
     and(
@@ -24,15 +30,25 @@ export function visibleConversations(
     ),
     inArray(
       conversations.id,
-      db
-        .select({ id: participants.conversationId })
-        .from(participants)
-        .where(
-          and(
-            eq(participants.userId, scope.userId),
-            eq(participants.organizationId, scope.organizationId),
-          ),
-        ),
+      scope.actorEntityId
+        ? db
+            .select({ id: agentParticipants.conversationId })
+            .from(agentParticipants)
+            .where(
+              and(
+                eq(agentParticipants.actorEntityId, scope.actorEntityId),
+                eq(agentParticipants.organizationId, scope.organizationId),
+              ),
+            )
+        : db
+            .select({ id: participants.conversationId })
+            .from(participants)
+            .where(
+              and(
+                eq(participants.userId, scope.userId),
+                eq(participants.organizationId, scope.organizationId),
+              ),
+            ),
     ),
   );
 }

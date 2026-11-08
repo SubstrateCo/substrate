@@ -37,10 +37,24 @@ describe("actor provisioning", () => {
     const otherContact = await f
       .forActor(otherOwner.entityId, f.orgB)
       .contacts.create({ displayName: "Other workspace" });
+    await f
+      .forActor(otherOwner.entityId, f.orgB)
+      .permissions.grant({
+        entityId: otherContact.entityId,
+        actorEntityId: other.entityId,
+        level: "view",
+      });
     expect(
       (await f.forActor(other.entityId, f.orgB).contacts.list()).map((item) => item.entityId),
     ).toEqual([otherContact.entityId]);
     const contact = await f.forActor(f.alice).contacts.create({ displayName: "Private" });
+    await f
+      .forActor(f.alice)
+      .permissions.grant({
+        entityId: contact.entityId,
+        actorEntityId: first.entityId,
+        level: "edit",
+      });
     await f
       .forActor(first.entityId)
       .contacts.update(contact.entityId, { displayName: "Agent edit" });
@@ -97,7 +111,7 @@ describe("actor provisioning", () => {
     ).rejects.toMatchObject({ cause: { code: "23514" } });
   });
 
-  test("user agents inherit owner access, retain assignment identity, and lose access when inactive", async () => {
+  test("user agents need explicit access, retain assignment identity, and lose access when inactive", async () => {
     const [agent] = await f.db
       .insert(userAgents)
       .values({
@@ -111,9 +125,25 @@ describe("actor provisioning", () => {
     const input = { organizationId: f.orgA, userId: "alice", userAgentId: agent!.id };
     const assistant = await repositories.forUserAgent(input);
     const contact = await f.forActor(f.alice).contacts.create({ displayName: "Private" });
-    expect((await assistant.contacts.get(contact.entityId)).displayName).toBe("Private");
+    await expect(assistant.contacts.get(contact.entityId)).rejects.toBeInstanceOf(
+      AccessDeniedError,
+    );
     const [actor] = await f.db.select().from(actors).where(eq(actors.userAgentId, agent!.id));
     const project = await f.forActor(f.alice).projects.create({ name: "Agent work" });
+    await f
+      .forActor(f.alice)
+      .permissions.grant({
+        entityId: project.entityId,
+        actorEntityId: actor!.entityId,
+        level: "edit",
+      });
+    await f
+      .forActor(f.alice)
+      .permissions.grant({
+        entityId: contact.entityId,
+        actorEntityId: actor!.entityId,
+        level: "edit",
+      });
     const task = await f.forActor(f.alice).tasks.create({
       projectEntityId: project.entityId,
       title: "Assigned",

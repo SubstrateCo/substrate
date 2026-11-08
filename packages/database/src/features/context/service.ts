@@ -95,6 +95,7 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
           .returning();
         if (rows.length && work.entityType === "task")
           await recordTaskActivity(ctx, entityId, "Discussion linked", messageId);
+        return rows.length > 0;
       });
     },
     async detach(messageId: string, entityId: string) {
@@ -113,7 +114,7 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
               eq(messageEntityReferences.purpose, "association"),
             ),
           );
-        if (!reference) return;
+        if (!reference) return false;
         if (reference.createdByActorEntityId !== ctx.scope.actorEntityId)
           await requireWork(ctx, entityId, "owner");
         const rows = await tx
@@ -128,6 +129,7 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
           .returning();
         if (rows.length && work.entityType === "task")
           await recordTaskActivity(ctx, entityId, "Discussion unlinked", messageId);
+        return rows.length > 0;
       });
     },
     async messageLinks(messageId: string) {
@@ -221,7 +223,10 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
           conversationName: messagingConversations.name,
           body: messagingMessages.body,
           threadId: messagingMessages.threadId,
-          authorName: sql<string>`(select name from "user" where id = ${messagingMessages.authorId})`,
+          authorName: sql<string>`coalesce((select name from ${actors} where entity_id = ${messagingMessages.authorActorEntityId}), (select name from "user" where id = ${messagingMessages.authorId}))`,
+          authorType: sql<
+            "human" | "agent"
+          >`coalesce((select type from ${actors} where entity_id = ${messagingMessages.authorActorEntityId}), 'human')`,
           createdAt: messagingMessages.createdAt,
           purpose: messageEntityReferences.purpose,
           replyCount: sql<number>`(select count(*)::int from ${messagingMessages} replies where replies.conversation_id = ${messagingMessages.conversationId} and replies.thread_id = coalesce(${messagingMessages.threadId}, ${messagingMessages.id}))`,
@@ -253,21 +258,30 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
         ? (await requireMessage(db, scope, message.threadId)).message
         : message;
       const decorate = async (row: typeof message) => {
-        const [author] = await db
-          .select({
-            name: user.name,
-            external: sql<boolean>`not exists (
+        const [author] = row.authorId
+          ? await db
+              .select({
+                name: user.name,
+                external: sql<boolean>`not exists (
               select 1 from ${member}
               where ${member.userId} = ${row.authorId}
                 and ${member.organizationId} = ${scope.organizationId}
             )`,
-          })
-          .from(user)
-          .where(eq(user.id, row.authorId));
+              })
+              .from(user)
+              .where(eq(user.id, row.authorId))
+          : [];
+        const [agentAuthor] = row.authorActorEntityId
+          ? await db
+              .select({ name: actors.name, type: actors.type })
+              .from(actors)
+              .where(eq(actors.entityId, row.authorActorEntityId))
+          : [];
         return {
           ...row,
-          authorName: author?.name ?? "Member",
-          authorExternal: author?.external ?? true,
+          authorName: agentAuthor?.name ?? author?.name ?? "Member",
+          authorType: agentAuthor?.type ?? ("human" as const),
+          authorExternal: agentAuthor?.type === "agent" ? false : (author?.external ?? true),
           reactions: [],
           replyCount: 0,
         };

@@ -2,6 +2,8 @@ import { taskStatusLabels } from "@startup-os/contracts/tasks";
 
 import type { DatabaseExecutor } from "../../client";
 import { ensureHumanActor } from "../../core/actors/provisioning";
+import { actors } from "../../core/actors/schema";
+import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { member } from "../../core/organizations/schema";
 import { RepositoryContext } from "../../core/repository-context";
@@ -24,7 +26,22 @@ export async function workspaceContext(db: DatabaseExecutor, scope: MessagingIde
       ),
     );
   if (!identity) throw new AccessDeniedError();
-  const actor = await ensureHumanActor(db, { ...scope, name: identity.name });
+  let actor;
+  if (scope.actorEntityId) {
+    [actor] = await db
+      .select({ entityId: actors.entityId })
+      .from(actors)
+      .innerJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+      .where(
+        and(
+          eq(actors.entityId, scope.actorEntityId),
+          eq(actors.organizationId, scope.organizationId),
+          eq(actors.type, "agent"),
+          eq(userAgents.userId, scope.userId),
+        ),
+      );
+    if (!actor) throw new AccessDeniedError();
+  } else actor = await ensureHumanActor(db, { ...scope, name: identity.name });
   const context = new RepositoryContext(db, {
     organizationId: scope.organizationId,
     actorEntityId: actor.entityId,

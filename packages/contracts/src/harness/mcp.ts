@@ -1,19 +1,9 @@
+import { mcpCall } from "./tools.ts";
 import { z } from "zod";
 
-export const workspaceApiRequest = z
-  .object({
-    method: z.enum(["GET", "POST", "DELETE"]),
-    path: z.string().regex(/^\/api\/v1\/(tasks|messaging|context)\/[a-z-]+$/),
-    input: z
-      .record(z.string(), z.json())
-      .refine(
-        (input) => !Object.hasOwn(input, "organizationId"),
-        "The desktop supplies the active organization.",
-      ),
-  })
-  .strict();
+// The host supplies agent and organization scope from a live MCP lease, not tool input.
+export const workspaceApiRequest = mcpCall;
 export type WorkspaceApiRequest = z.infer<typeof workspaceApiRequest>;
-
 export const workspaceApiResult = z.discriminatedUnion("success", [
   z.object({ success: z.literal(true), data: z.json() }),
   z.object({

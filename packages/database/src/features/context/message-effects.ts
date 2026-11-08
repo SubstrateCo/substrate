@@ -89,9 +89,9 @@ export async function applyMessageEffects(
         ),
       );
     for (const author of authors)
-      if (!recipients.has(author.userId)) recipients.set(author.userId, "reply");
+      if (author.userId && !recipients.has(author.userId)) recipients.set(author.userId, "reply");
   }
-  recipients.delete(scope.userId);
+  if (!scope.actorEntityId) recipients.delete(scope.userId);
   if (recipients.size) {
     await db.execute(sql`
       INSERT INTO ${notifications} (organization_id, recipient_actor_entity_id, kind, event_key, message_id)

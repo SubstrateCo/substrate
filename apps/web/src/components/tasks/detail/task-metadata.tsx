@@ -4,7 +4,15 @@ import { TaskPriorityIcon } from "../task-cues/task-priority-icon";
 import { TaskStatusIcon } from "../task-cues/task-status-icon";
 import type { Task } from "../types";
 
-export function TaskMetadata({ task, assigneeName }: { task: Task; assigneeName: string }) {
+export function TaskMetadata({
+  task,
+  assigneeName,
+  assigneeType,
+}: {
+  task: Task;
+  assigneeName: string;
+  assigneeType?: "human" | "agent";
+}) {
   return (
     <>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-lg bg-muted/40 p-3 text-sm wrap-anywhere [&_dt]:mb-1 [&_dt]:text-xs">
@@ -24,7 +32,14 @@ export function TaskMetadata({ task, assigneeName }: { task: Task; assigneeName:
         </div>
         <div>
           <dt className="text-muted-foreground">Assignee</dt>
-          <dd>{assigneeName}</dd>
+          <dd className="flex flex-wrap items-center gap-1.5">
+            {assigneeName}
+            {assigneeType === "agent" && (
+              <span className="rounded border px-1.5 py-0.5 text-xs text-muted-foreground">
+                Agent
+              </span>
+            )}
+          </dd>
         </div>
         <div>
           <dt className="text-muted-foreground">Due date</dt>

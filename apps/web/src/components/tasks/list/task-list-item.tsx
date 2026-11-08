@@ -17,6 +17,7 @@ export function TaskListItem({
   selected: boolean;
   onSelect: () => void;
 }) {
+  const assignee = detail.actors.find((actor) => actor.entityId === task.assigneeActorEntityId);
   return (
     <li>
       <Button
@@ -54,11 +55,13 @@ export function TaskListItem({
           <span className="hidden w-32 min-w-0 shrink-0 items-center gap-1.5 text-xs text-muted-foreground @xl:flex">
             <UserRound aria-hidden="true" className="size-3.5 shrink-0" />
             <span className="truncate">
-              {task.assigneeActorEntityId
-                ? (detail.actors.find((actor) => actor.entityId === task.assigneeActorEntityId)
-                    ?.name ?? "Former member")
-                : "Unassigned"}
+              {task.assigneeActorEntityId ? (assignee?.name ?? "Former member") : "Unassigned"}
             </span>
+            {assignee?.type === "agent" && (
+              <span className="rounded border px-1.5 py-0.5 text-xs text-muted-foreground">
+                Agent
+              </span>
+            )}
           </span>
           <span className="hidden w-24 shrink-0 text-xs text-muted-foreground tabular-nums @xl:block">
             {task.dueDate ? <time dateTime={task.dueDate}>{task.dueDate}</time> : "No due date"}

@@ -11,7 +11,7 @@ export const startupSkill: HarnessSkill = {
   name: "startup-os-default",
   description: "Work safely inside a Startup OS agent folder.",
   content:
-    "Work in the current agent folder, scoped to its organization and agent IDs. Other agents have separate working folders and local configuration. Keep organization boundaries explicit. Do not infer access or identity from matching IDs. The Startup OS MCP currently exposes only hello_world; it does not provide workspace records or delegation. Never claim that you read or changed app data through it.",
+    "Read AGENTS.md in the current agent folder for your Startup OS identity and workspace. Use the Startup OS MCP for application records. All writes are attributed to you as an agent, not your owner. Access is checked for each call. Never infer access from matching IDs. Read thread replies separately using list_messages with threadId. Preserve source messages using create_task.source. Use the same requestId only for identical retries. A workspace switch requires a new run; never redirect work to another organization.",
 };
 
 export function nativeName(id: string): string {
@@ -36,6 +36,9 @@ export async function materialize(
     if (!agent.enabled) continue;
     if (agent.useStartupDefaults)
       await saveNativeSkill(agentRoot, agent.harness, startupSkill, true);
+    if (agent.useStartupDefaults)
+      files[`${agent.id}/AGENTS.md`] =
+        `# Startup OS workspace\n\nAgent: ${JSON.stringify(agent.name)}\nAgent definition ID: ${agent.id}\nOrganization ID: ${config.organizationId}\n\n${startupSkill.content}\n\nYou have your own actor and explicit record grants. Your owner's access is not your access. Messages and task activity must use your agent identity. The MCP credential supplies identity; do not put acting identity or organization fields in tool inputs. Other agents have separate folders.\n\n## Agent instructions\n\n${agent.instructions}\n`;
     // This file is app-owned. Native credentials and local skill/MCP files are never copied here.
     files[`${agent.id}/.startup-os/harness/${agent.id}/agent.json`] =
       JSON.stringify(
@@ -62,6 +65,7 @@ export async function materialize(
   for (const path of Object.keys({ ...previous, ...files })) {
     if (
       !/^[a-zA-Z0-9_-]+\/\.startup-os\/harness\/[a-zA-Z0-9_-]+\/agent\.json$/.test(path) &&
+      !/^[a-zA-Z0-9_-]+\/AGENTS\.md$/.test(path) &&
       !/^[a-zA-Z0-9_-]+\/\.agents\/agents\/startup-os-[a-z0-9_-]+-[a-f0-9]{8}\.md$/.test(path)
     )
       throw new HarnessError("invalid-manifest", "Ownership manifest contains an unexpected path.");
