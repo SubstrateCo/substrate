@@ -1,8 +1,16 @@
+import { AccessDeniedError, ConflictError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
+import { recordQueries } from "../../testing/queries";
 import { user } from "../authentication/schema";
 import { member, organization } from "../organizations/schema";
 import { createStorageRepository, type StorageScope } from "./repository";
-import { storedFiles, storageCandidates, userPictures, organizationPictures } from "./schema";
+import {
+  fileUploads,
+  storedFiles,
+  storageCandidates,
+  userPictures,
+  organizationPictures,
+} from "./schema";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
@@ -44,6 +52,123 @@ const file = (purpose = "avatar", organizationId: string | null = null) => ({
 });
 
 describe("stored file relationships", () => {
+  test.each(["avatar", "file"] as const)(
+    "authorized %s lookup includes completion without a separate query, including expired replays",
+    async (purpose) => {
+      const { db, queries } = recordQueries();
+      const repo = createStorageRepository(db);
+      const scope = { userId: "alice", organizationId: purpose === "avatar" ? null : f.orgA };
+      const id = crypto.randomUUID();
+      const upload = await repo.createUpload(
+        scope,
+        { purpose, filename: "a.webp", contentType: "image/webp", size: 5 },
+        id,
+        new Date(Date.now() + 60_000),
+      );
+      queries.length = 0;
+      expect(await repo.getUpload(scope, id)).toEqual({ upload, completed: null });
+      expect(queries).toHaveLength(purpose === "avatar" ? 1 : 2);
+      const completed = await repo.complete(scope, id, {
+        objectKey: `objects/${id}/hash`,
+        contentType: "image/webp",
+        size: 5,
+        sha256: "a".repeat(64),
+      });
+      await db
+        .update(fileUploads)
+        .set({ expiresAt: new Date(0) })
+        .where(eq(fileUploads.id, id));
+      queries.length = 0;
+      expect(await repo.getUpload(scope, id)).toEqual({
+        upload: { ...upload, expiresAt: new Date(0) },
+        completed,
+      });
+      expect(queries).toHaveLength(purpose === "avatar" ? 1 : 2);
+      expect(
+        await repo.complete(scope, id, {
+          objectKey: `objects/${id}/late`,
+          contentType: "image/webp",
+          size: 5,
+          sha256: "b".repeat(64),
+        }),
+      ).toEqual(completed);
+    },
+  );
+
+  test("completion state does not bypass uploader, organization, membership, role, or deletion gates", async () => {
+    const repo = createStorageRepository(f.db);
+    const scope = { userId: "alice", organizationId: f.orgA };
+    const id = crypto.randomUUID();
+    await repo.createUpload(
+      scope,
+      { purpose: "organization-logo", filename: "a.webp", contentType: "image/webp", size: 5 },
+      id,
+      new Date(Date.now() + 60_000),
+    );
+    await repo.complete(scope, id, {
+      objectKey: `objects/${id}/hash`,
+      contentType: "image/webp",
+      size: 5,
+      sha256: "a".repeat(64),
+    });
+    await expect(repo.getUpload({ ...scope, userId: "bob" }, id)).rejects.toBeInstanceOf(
+      AccessDeniedError,
+    );
+    await expect(repo.getUpload({ ...scope, organizationId: f.orgB }, id)).rejects.toBeInstanceOf(
+      AccessDeniedError,
+    );
+    await f.db.update(member).set({ role: "member" }).where(eq(member.id, "alice-a"));
+    await expect(repo.getUpload(scope, id)).rejects.toBeInstanceOf(AccessDeniedError);
+    await f.db.delete(member).where(eq(member.id, "alice-a"));
+    await expect(repo.getUpload(scope, id)).rejects.toBeInstanceOf(AccessDeniedError);
+    await f.db
+      .insert(member)
+      .values({ id: "alice-a", userId: "alice", organizationId: f.orgA, role: "owner" });
+    await f.db.update(fileUploads).set({ deletedAt: new Date() }).where(eq(fileUploads.id, id));
+    // Even an inconsistent surviving completed row cannot override the deletion marker.
+    await expect(repo.getUpload(scope, id)).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  test("completion rechecks membership, deletion, and expiry after the initial authorized read", async () => {
+    const repo = createStorageRepository(f.db);
+    const scope = { userId: "alice", organizationId: f.orgA };
+    const id = crypto.randomUUID();
+    await repo.createUpload(
+      scope,
+      { purpose: "file", filename: "a.txt", contentType: "text/plain", size: 5 },
+      id,
+      new Date(Date.now() + 60_000),
+    );
+    await repo.getUpload(scope, id);
+    const verified = {
+      objectKey: `objects/${id}/hash`,
+      contentType: "text/plain",
+      size: 5,
+      sha256: "a".repeat(64),
+    };
+    await f.db.delete(member).where(eq(member.id, "alice-a"));
+    await expect(repo.complete(scope, id, verified)).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(await f.db.select().from(storedFiles).where(eq(storedFiles.id, id))).toEqual([]);
+    await f.db
+      .insert(member)
+      .values({ id: "alice-a", userId: "alice", organizationId: f.orgA, role: "owner" });
+    await f.db
+      .update(fileUploads)
+      .set({ expiresAt: new Date(0) })
+      .where(eq(fileUploads.id, id));
+    await expect(repo.complete(scope, id, verified)).rejects.toThrow("Upload expired");
+    expect(await f.db.select().from(storedFiles).where(eq(storedFiles.id, id))).toEqual([]);
+    await f.db
+      .update(fileUploads)
+      .set({ expiresAt: new Date(Date.now() + 60_000) })
+      .where(eq(fileUploads.id, id));
+    await repo.complete(scope, id, verified);
+    await repo.getUpload(scope, id);
+    await repo.deleteFile(scope, id);
+    await expect(repo.complete(scope, id, verified)).rejects.toBeInstanceOf(ConflictError);
+    expect(await f.db.select().from(storedFiles).where(eq(storedFiles.id, id))).toEqual([]);
+  });
+
   test("upload and completion whitelist input fields instead of accepting extra persistence fields", async () => {
     const repo = createStorageRepository(f.db);
     const scope = { userId: "alice", organizationId: f.orgA };
@@ -212,9 +337,8 @@ describe("stored file relationships", () => {
     await f.db.insert(storedFiles).values([unattached, attached, generic]);
     await repo.setPicture({ userId: "alice", organizationId: f.orgA }, "avatar", attached.id);
     await repo.pruneUnusedFiles(new Date());
-    expect(await repo.getCompleted(unattached.id)).toBeNull();
-    expect((await repo.getCompleted(attached.id))?.id).toBe(attached.id);
-    expect((await repo.getCompleted(generic.id))?.id).toBe(generic.id);
+    const remaining = await f.db.select({ id: storedFiles.id }).from(storedFiles);
+    expect(remaining.map((row) => row.id).sort()).toEqual([attached.id, generic.id].sort());
   });
 
   test("organization deletion preserves final-object cleanup intent", async () => {
@@ -230,7 +354,7 @@ describe("stored file relationships", () => {
       logo.id,
     );
     await f.db.delete(organization).where(eq(organization.id, f.orgA));
-    expect(await repo.getCompleted(logo.id)).toBeNull();
+    expect(await f.db.select().from(storedFiles).where(eq(storedFiles.id, logo.id))).toEqual([]);
     expect((await repo.cleanupCandidates(new Date())).map((row) => row.objectKey)).toContain(
       logo.objectKey,
     );
@@ -272,8 +396,8 @@ describe("stored file relationships", () => {
     expect((await repo.getReadable({ userId: "bob", organizationId: f.orgA }, logo.id))?.id).toBe(
       logo.id,
     );
-    expect(await repo.getCompleted(generic.id)).toBeNull();
-    expect(await repo.getCompleted(avatar.id)).toBeNull();
+    expect(await f.db.select().from(storedFiles).where(eq(storedFiles.id, generic.id))).toEqual([]);
+    expect(await f.db.select().from(storedFiles).where(eq(storedFiles.id, avatar.id))).toEqual([]);
     const candidates = (await repo.cleanupCandidates(new Date())).map((row) => row.objectKey);
     expect(candidates).toContain(generic.objectKey);
     expect(candidates).toContain(avatar.objectKey);

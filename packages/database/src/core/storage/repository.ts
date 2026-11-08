@@ -71,22 +71,21 @@ export function createStorageRepository(db: Database) {
       return upload!;
     },
     async getUpload(scope: StorageScope, id: string) {
-      const [upload] = await db
-        .select()
+      const [result] = await db
+        .select({ upload: fileUploads, completed: storedFiles })
         .from(fileUploads)
+        .leftJoin(storedFiles, eq(storedFiles.id, fileUploads.id))
         .where(and(eq(fileUploads.id, id), eq(fileUploads.uploadedBy, scope.userId)));
       if (
-        !upload ||
-        (upload.organizationId !== null && upload.organizationId !== scope.organizationId)
+        !result ||
+        (result.upload.organizationId !== null &&
+          result.upload.organizationId !== scope.organizationId)
       )
         throw new AccessDeniedError();
+      const { upload } = result;
       await requireScope(db, scope, upload.purpose);
       if (upload.deletedAt) throw new ConflictError("File was deleted. Start a new upload.");
-      return upload;
-    },
-    async getCompleted(id: string): Promise<typeof storedFiles.$inferSelect | null> {
-      const [file] = await db.select().from(storedFiles).where(eq(storedFiles.id, id));
-      return file ?? null;
+      return result;
     },
     async addCandidate(key: string) {
       await db.insert(storageCandidates).values({ objectKey: key }).onConflictDoNothing();

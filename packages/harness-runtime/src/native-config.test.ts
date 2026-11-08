@@ -350,16 +350,7 @@ test("recreates the host and synchronizes edited actors without replacing local 
     );
     expect(
       await readFile(
-        join(
-          root,
-          "orgs",
-          configuration.organizationId,
-          "claude-agent",
-          ".startup-os",
-          "harness",
-          "claude-agent",
-          "agent.json",
-        ),
+        join(root, "orgs", configuration.organizationId, "claude-agent", "AGENTS.md"),
         "utf8",
       ),
     ).toContain("Edited Claude instructions");

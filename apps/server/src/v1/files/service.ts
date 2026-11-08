@@ -4,9 +4,9 @@ import {
   type StorageRepository,
   type StorageScope,
 } from "@startup-os/database/storage";
-import type { ObjectStorage } from "../../storage/types";
 
 import { ServiceError, serviceResult } from "../../shared/service-result";
+import type { ObjectStorage } from "../../storage/types";
 import { normalizePicture } from "./image";
 import { createHash } from "node:crypto";
 
@@ -46,9 +46,8 @@ export function createFileService(deps: FileServiceDependencies) {
     completeUpload(headers: Headers, id: string) {
       return serviceResult(async () => {
         const scope = await mutationScope(headers);
-        const upload = await repository.getUpload(scope, id);
-        const existing = await repository.getCompleted(id);
-        if (existing) return { fileId: existing.id };
+        const { upload, completed } = await repository.getUpload(scope, id);
+        if (completed) return { fileId: completed.id };
         if (upload.expiresAt <= new Date())
           throw new ServiceError("CONFLICT", "Upload expired. Start a new upload.");
         let bytes: Uint8Array;

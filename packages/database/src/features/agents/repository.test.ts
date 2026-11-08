@@ -71,7 +71,7 @@ test("agent avatars survive cleanup and cannot be deleted until cleared or agent
   expect(await storage.getReadable(scope, picture.id)).toMatchObject({ id: picture.id });
   await owner.setPicture(saved.id, null);
   await storage.deleteFile(scope, picture.id);
-  expect(await storage.getCompleted(picture.id)).toBeNull();
+  expect(await f.db.select().from(storedFiles).where(eq(storedFiles.id, picture.id))).toEqual([]);
   const next = avatar();
   await f.db.insert(storedFiles).values(next);
   await owner.setPicture(saved.id, next.id);
@@ -79,7 +79,7 @@ test("agent avatars survive cleanup and cannot be deleted until cleared or agent
   const [row] = await f.db.select().from(userAgents).where(eq(userAgents.id, saved.id));
   expect(row?.imageFileId).toBeNull();
   await storage.pruneUnusedFiles(new Date(Date.now() + 60000));
-  expect(await storage.getCompleted(next.id)).toBeNull();
+  expect(await f.db.select().from(storedFiles).where(eq(storedFiles.id, next.id))).toEqual([]);
 });
 
 test("PostgreSQL enforces agent picture owner and fixed purpose", async () => {

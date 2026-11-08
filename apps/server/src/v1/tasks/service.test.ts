@@ -84,8 +84,39 @@ function projectFixture() {
     ensureOwnedAgentActors,
     getDetail,
     forActor,
+    repositories,
   };
 }
+
+test("task comments pass the expected project to the repository without fetching the task twice", async () => {
+  const fixture = projectFixture();
+  const taskEntityId = crypto.randomUUID();
+  const comments = [
+    {
+      id: crypto.randomUUID(),
+      body: "Ready",
+      createdAt: new Date(),
+      authorName: "Alice",
+      authorType: "human" as const,
+    },
+  ];
+  const get = spyOn(fixture.repositories.tasks, "get").mockRejectedValue(
+    new Error("Duplicate task read"),
+  );
+  const listComments = spyOn(fixture.repositories.tasks, "listComments").mockResolvedValue(
+    comments,
+  );
+  expect(await listTaskComments(new Headers(), { ...fixture.input, taskEntityId })).toEqual({
+    success: true,
+    data: comments,
+  });
+  expect(listComments).toHaveBeenCalledWith(taskEntityId, fixture.input.projectEntityId);
+  expect(get).not.toHaveBeenCalled();
+  listComments.mockRejectedValue(new database.AccessDeniedError());
+  expect(await listTaskComments(new Headers(), { ...fixture.input, taskEntityId })).toEqual(
+    failure("NOT_FOUND", "Item not found or access denied."),
+  );
+});
 
 test("task services return invalid-input results before authentication", async () => {
   const headers = new Headers();

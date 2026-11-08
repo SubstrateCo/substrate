@@ -42,7 +42,6 @@ export function taskRepository(context: RepositoryContext) {
     )
       throw new ValidationError("Enter a valid due date.");
     if (input.assigneeActorEntityId) {
-      await ctx.requireActiveActor(input.assigneeActorEntityId);
       await new RepositoryContext(ctx.db, {
         organizationId: scope.organizationId,
         actorEntityId: input.assigneeActorEntityId,
@@ -158,8 +157,9 @@ export function taskRepository(context: RepositoryContext) {
         return comment!;
       });
     },
-    async listComments(entityId: string) {
-      await requireTask(entityId);
+    async listComments(entityId: string, projectEntityId: string) {
+      const task = await requireTask(entityId);
+      if (task.projectEntityId !== projectEntityId) throw new AccessDeniedError();
       return db
         .select({
           id: taskComments.id,

@@ -62,9 +62,7 @@ export function listTaskComments(
   return serviceResult(async () => {
     const input = taskRequest.parse(raw);
     const repositories = await repositoriesForSession(headers, input.organizationId);
-    const task = await repositories.tasks.get(input.taskEntityId);
-    if (task.projectEntityId !== input.projectEntityId) throw new AccessDeniedError();
-    return repositories.tasks.listComments(task.entityId);
+    return repositories.tasks.listComments(input.taskEntityId, input.projectEntityId);
   });
 }
 

@@ -3,6 +3,48 @@ import { fixture } from "./test-support.ts";
 import { describe, expect, test } from "bun:test";
 
 describe("desktop harness authority", () => {
+  test("rejects a same-account organization switch during catalog loading before worker creation", async () => {
+    const catalogStarted = Promise.withResolvers<void>();
+    const catalogGate = Promise.withResolvers<void>();
+    let organizationId = "org-1";
+    let created = 0;
+    const calls: string[] = [];
+    const controller = createHarnessController({
+      backend: "https://api.example.com",
+      accountsDirectory: "accounts",
+      fetchAPI: async (url) => {
+        if (url.endsWith("/session"))
+          return Response.json({
+            success: true,
+            data: {
+              user: { id: "user-1", emailVerified: true },
+              session: { activeOrganizationId: organizationId },
+            },
+          });
+        if (url.includes("get-active-member-role")) return Response.json({ role: "member" });
+        catalogStarted.resolve();
+        await catalogGate.promise;
+        return Response.json({ success: true, data: { agents: [] } });
+      },
+      createWorker: () => {
+        created++;
+        return {
+          request: async (method) => {
+            calls.push(method);
+          },
+          dispose: () => {},
+        };
+      },
+    });
+    const pending = controller.run("synchronize");
+    await catalogStarted.promise;
+    organizationId = "org-2";
+    catalogGate.resolve();
+    expect(pending).rejects.toThrow("Harness unavailable");
+    await pending.catch(() => undefined);
+    expect(created).toBe(0);
+    expect(calls).toEqual([]);
+  });
   test("workspace switches keep the account's local MCP worker alive", async () => {
     const f = fixture();
     await f.controller.run("synchronize");

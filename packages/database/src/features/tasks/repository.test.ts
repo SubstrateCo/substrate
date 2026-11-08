@@ -1,13 +1,17 @@
 import { entities } from "../../core/entities/schema";
 import { entityLinks } from "../../core/links/schema";
+import { member } from "../../core/organizations/schema";
 import { entityAccessParents } from "../../core/permissions/access-parents";
 import { AccessDeniedError, ValidationError } from "../../errors";
+import { createRepositories } from "../../repositories";
+import * as schema from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { taskComments } from "./comments.schema";
 import { tasks } from "./tasks.schema";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/postgres-js";
 
 const fixture = setupDatabase();
 
@@ -87,7 +91,9 @@ describe("projects and tasks", () => {
     expect((await bob.tasks.update(task.entityId, { title: "Changed" })).title).toBe("Changed");
     await alice.permissions.revoke({ entityId: project.entityId, actorEntityId: fixture.bob });
     await expect(bob.tasks.get(child.entityId)).rejects.toBeInstanceOf(AccessDeniedError);
-    await expect(bob.tasks.listComments(child.entityId)).rejects.toBeInstanceOf(AccessDeniedError);
+    await expect(bob.tasks.listComments(child.entityId, project.entityId)).rejects.toBeInstanceOf(
+      AccessDeniedError,
+    );
   });
 
   test("subtasks belong to one project and assignees require project access", async () => {
@@ -226,7 +232,7 @@ describe("projects and tasks", () => {
         throw new Error("abort comment");
       }),
     ).rejects.toThrow("abort comment");
-    expect(await alice.tasks.listComments(task.entityId)).toEqual([]);
+    expect(await alice.tasks.listComments(task.entityId, project.entityId)).toEqual([]);
     await expect(
       fixture.db
         .insert(taskComments)
@@ -246,4 +252,95 @@ describe("projects and tasks", () => {
       }),
     ).rejects.toBeInstanceOf(AccessDeniedError);
   });
+});
+
+test("task comments require their actual project and use six repository statements", async () => {
+  const alice = fixture.forActor(fixture.alice);
+  const project = await alice.projects.create({ name: "Comments" });
+  const other = await alice.projects.create({ name: "Other accessible project" });
+  const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "Ship" });
+  const comment = await alice.tasks.addComment(task.entityId, "Ready");
+  const statements: string[] = [];
+  const db = drizzle(fixture.db.$client, {
+    schema,
+    logger: { logQuery: (query) => statements.push(query) },
+  });
+  const repos = createRepositories(db).forActor({
+    organizationId: fixture.orgA,
+    actorEntityId: fixture.alice,
+  });
+  const previousTask = await repos.tasks.get(task.entityId);
+  const previousComments = await repos.tasks.listComments(previousTask.entityId, project.entityId);
+  expect(statements).toHaveLength(11);
+  statements.length = 0;
+  expect(await repos.tasks.listComments(task.entityId, project.entityId)).toEqual([
+    {
+      id: comment.id,
+      body: "Ready",
+      createdAt: comment.createdAt,
+      authorName: "Alice",
+      authorType: "human",
+    },
+  ]);
+  expect(previousComments.map((row) => row.id)).toEqual([comment.id]);
+  expect(statements).toHaveLength(6);
+  await expect(alice.tasks.listComments(task.entityId, other.entityId)).rejects.toBeInstanceOf(
+    AccessDeniedError,
+  );
+  await expect(alice.tasks.listComments(other.entityId, other.entityId)).rejects.toBeInstanceOf(
+    AccessDeniedError,
+  );
+  await expect(
+    fixture
+      .forActor(fixture.outsider, fixture.orgB)
+      .tasks.listComments(task.entityId, project.entityId),
+  ).rejects.toBeInstanceOf(AccessDeniedError);
+});
+
+test("task comments retain task and actual project grants, deletion and membership checks", async () => {
+  const alice = fixture.forActor(fixture.alice);
+  const bob = fixture.forActor(fixture.bob);
+  const project = await alice.projects.create({ name: "Private" });
+  const other = await bob.projects.create({ name: "Accessible decoy" });
+  const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "Secret" });
+  await alice.tasks.addComment(task.entityId, "Private comment");
+  await expect(bob.tasks.listComments(task.entityId, project.entityId)).rejects.toBeInstanceOf(
+    AccessDeniedError,
+  );
+  await alice.permissions.grant({
+    entityId: task.entityId,
+    actorEntityId: fixture.bob,
+    level: "view",
+  });
+  await expect(bob.tasks.listComments(task.entityId, project.entityId)).rejects.toBeInstanceOf(
+    AccessDeniedError,
+  );
+  await expect(bob.tasks.listComments(task.entityId, other.entityId)).rejects.toBeInstanceOf(
+    AccessDeniedError,
+  );
+  await alice.permissions.grant({
+    entityId: project.entityId,
+    actorEntityId: fixture.bob,
+    level: "view",
+  });
+  expect(
+    (await bob.tasks.listComments(task.entityId, project.entityId)).map((row) => row.body),
+  ).toEqual(["Private comment"]);
+  for (const entityId of [task.entityId, project.entityId]) {
+    await fixture.db
+      .update(entities)
+      .set({ deletedAt: new Date() })
+      .where(eq(entities.entityId, entityId));
+    await expect(bob.tasks.listComments(task.entityId, project.entityId)).rejects.toBeInstanceOf(
+      AccessDeniedError,
+    );
+    await fixture.db
+      .update(entities)
+      .set({ deletedAt: null })
+      .where(eq(entities.entityId, entityId));
+  }
+  await fixture.db.delete(member).where(eq(member.id, "bob-a"));
+  await expect(bob.tasks.listComments(task.entityId, project.entityId)).rejects.toBeInstanceOf(
+    AccessDeniedError,
+  );
 });

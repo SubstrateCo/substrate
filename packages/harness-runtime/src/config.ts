@@ -39,29 +39,15 @@ export async function materialize(
     if (agent.useStartupDefaults)
       files[`${agent.id}/AGENTS.md`] =
         `# Startup OS workspace\n\nAgent: ${JSON.stringify(agent.name)}\nAgent definition ID: ${agent.id}\nOrganization ID: ${config.organizationId}\n\n${startupSkill.content}\n\nYou have your own actor and explicit record grants. Your owner's access is not your access. Messages and task activity must use your agent identity. The MCP credential supplies identity; do not put acting identity or organization fields in tool inputs. Other agents have separate folders.\n\n## Agent instructions\n\n${agent.instructions}\n`;
-    // This file is app-owned. Native credentials and local skill/MCP files are never copied here.
-    files[`${agent.id}/.startup-os/harness/${agent.id}/agent.json`] =
-      JSON.stringify(
-        {
-          id: agent.id,
-          name: agent.name,
-          harness: agent.harness,
-          instructions: agent.instructions,
-          model: agent.model,
-          enabled: agent.enabled,
-          useStartupDefaults: agent.useStartupDefaults,
-        },
-        null,
-        2,
-      ) + "\n";
     if (agent.harness === "antigravity")
       files[`${agent.id}/.agents/agents/${nativeName(agent.id)}.md`] =
         `---\nname: ${JSON.stringify(nativeName(agent.id))}\ndescription: ${JSON.stringify(agent.name)}\n---\n\n${agent.instructions}\n`;
   }
   const manifest = await safePath(directory, ".startup-os/harness/owned-files.json", false, true);
+  const previousManifest = await readOptional(manifest);
   // SAFETY: every manifest key is checked against the owned-file allowlist before it is used as a path; values are only compared with file text.
-  const previous = JSON.parse((await readOptional(manifest)) ?? "{}") as Record<string, string>;
-  const targets = new Map<string, string>();
+  const previous = JSON.parse(previousManifest ?? "{}") as Record<string, string>;
+  const targets = new Map<string, { target: string; existing: string | undefined }>();
   for (const path of Object.keys({ ...previous, ...files })) {
     if (
       !/^[a-zA-Z0-9_-]+\/\.startup-os\/harness\/[a-zA-Z0-9_-]+\/agent\.json$/.test(path) &&
@@ -76,16 +62,18 @@ export async function materialize(
         "configuration-conflict",
         `An app-owned file has local changes: ${path}`,
       );
-    targets.set(path, target);
+    targets.set(path, { target, existing });
   }
-  for (const [path, target] of targets) {
-    if (path in files) await writeFile(target, files[path], { mode: 0o600 });
-    else
+  for (const [path, { target, existing }] of targets) {
+    if (path in files) {
+      if (existing !== files[path]) await writeFile(target, files[path], { mode: 0o600 });
+    } else
       await unlink(target).catch((error: NodeJS.ErrnoException) => {
         if (error.code !== "ENOENT") throw error;
       });
   }
-  await writeFile(manifest, JSON.stringify(files), { mode: 0o600 });
+  const serialized = JSON.stringify(files);
+  if (previousManifest !== serialized) await writeFile(manifest, serialized, { mode: 0o600 });
   return directory;
 }
 

@@ -1,8 +1,9 @@
 import type { StorageRepository } from "@startup-os/database/storage";
-import type { ObjectStorage } from "../../storage/types";
 
 import { ServiceError } from "../../shared/service-result";
+import type { ObjectStorage } from "../../storage/types";
 import { createFileService } from "./service";
+/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { describe, expect, test } from "bun:test";
 import sharp from "sharp";
 
@@ -23,15 +24,17 @@ function fixture() {
     deletedAt: null,
     createdAt: new Date(),
   };
-  let completed: Awaited<ReturnType<StorageRepository["getCompleted"]>> = null;
+  let completed: Awaited<ReturnType<StorageRepository["getUpload"]>>["completed"] = null;
   const objects = new Map<string, Uint8Array>([
     [upload.temporaryKey, new TextEncoder().encode("hello")],
   ]);
-  const removed: string[] = [];
+  const candidates = new Set(["orphan"]);
+  const expiredUploads = new Map<string, { id: string; temporaryKey: string }>([
+    [id, { id, temporaryKey: upload.temporaryKey }],
+  ]);
   const repository: StorageRepository = {
     createUpload: async () => upload,
-    getUpload: async () => upload,
-    getCompleted: async () => completed,
+    getUpload: async () => ({ upload, completed }),
     addCandidate: async () => {},
     complete: async (_scope, _id, data) => (completed ??= { ...upload, ...data }),
     validatePicture: async () => {},
@@ -39,11 +42,15 @@ function fixture() {
     deleteFile: async () => {
       completed = null;
     },
-    cleanupCandidates: async () => [{ objectKey: "orphan" }],
+    cleanupCandidates: async () => [...candidates].map((objectKey) => ({ objectKey })),
     pruneUnusedFiles: async () => {},
-    forgetCandidate: async () => {},
-    expiredUploads: async () => [{ id, temporaryKey: upload.temporaryKey }],
-    forgetUpload: async () => {},
+    forgetCandidate: async (key) => {
+      candidates.delete(key);
+    },
+    expiredUploads: async () => [...expiredUploads.values()],
+    forgetUpload: async (uploadId) => {
+      expiredUploads.delete(uploadId);
+    },
   };
   const storage: ObjectStorage = {
     signUpload: async () => ({
@@ -56,7 +63,6 @@ function fixture() {
     },
     signDownload: async (_key, disposition) => `https://s3.test/content?disposition=${disposition}`,
     remove: async (key) => {
-      removed.push(key);
       objects.delete(key);
     },
   };
@@ -83,7 +89,8 @@ function fixture() {
     repository,
     storage,
     service,
-    removed,
+    candidates,
+    expiredUploads,
     headers: new Headers({ cookie: "session=1", origin: "https://app.test" }),
   };
 }
@@ -94,8 +101,15 @@ describe("file workflow", () => {
     const first = await f.service.completeUpload(f.headers, f.id);
     expect(first).toEqual({ success: true, data: { fileId: f.id } });
     f.objects.set(f.upload.temporaryKey, new TextEncoder().encode("other"));
+    f.upload.expiresAt = new Date(0);
+    f.storage.read = async () => {
+      throw new Error("Completed replay must not read temporary bytes");
+    };
     expect(await f.service.completeUpload(f.headers, f.id)).toEqual(first);
-    const final = await f.repository.getCompleted(f.id);
+    const { completed: final } = await f.repository.getUpload(
+      { userId: "alice", organizationId: "org" },
+      f.id,
+    );
     expect(new TextDecoder().decode(f.objects.get(final!.objectKey))).toBe("hello");
     expect(final!.size).toBe(5);
     expect(final!.objectKey).not.toBe(f.upload.temporaryKey);
@@ -123,7 +137,9 @@ describe("file workflow", () => {
     f.upload.expiresAt = new Date(0);
     const expired = await f.service.completeUpload(f.headers, f.id);
     expect(!expired.success && expired.error.code).toBe("CONFLICT");
-    expect(await f.repository.getCompleted(f.id)).toBeNull();
+    expect(
+      (await f.repository.getUpload({ userId: "alice", organizationId: "org" }, f.id)).completed,
+    ).toBeNull();
   });
 
   test("pictures store only normalized pixels", async () => {
@@ -142,13 +158,16 @@ describe("file workflow", () => {
     });
     f.objects.set(f.upload.temporaryKey, bytes);
     expect((await f.service.completeUpload(f.headers, f.id)).success).toBe(true);
-    const final = await f.repository.getCompleted(f.id);
+    const { completed: final } = await f.repository.getUpload(
+      { userId: "alice", organizationId: "org" },
+      f.id,
+    );
     expect(final!.contentType).toBe("image/webp");
     expect(final!.objectKey).toBe(`objects/users/alice/avatar/${f.id}/${final!.sha256}.webp`);
     expect((await sharp(f.objects.get(final!.objectKey)).metadata()).format).toBe("webp");
   });
 
-  test("mutations require origin and authentication; cleanup retries durable deletions", async () => {
+  test("mutations require origin and authentication", async () => {
     const f = fixture();
     const origin = await f.service.completeUpload(new Headers({ cookie: "x" }), f.id);
     expect(!origin.success && origin.error.code).toBe("FORBIDDEN");
@@ -157,7 +176,28 @@ describe("file workflow", () => {
       f.id,
     );
     expect(!session.success && session.error.code).toBe("UNAUTHENTICATED");
-    await f.service.cleanup();
-    expect(f.removed).toEqual(["orphan", f.upload.temporaryKey]);
   });
+
+  test.each(["orphan", "temporary"])(
+    "cleanup retains failed %s deletion intent and retries it",
+    async (kind) => {
+      const f = fixture();
+      const key = kind === "orphan" ? "orphan" : f.upload.temporaryKey;
+      f.objects.set("orphan", new Uint8Array([1]));
+      const remove = f.storage.remove.bind(f.storage);
+      f.storage.remove = async (objectKey) => {
+        if (objectKey === key) throw new Error("Storage unavailable");
+        await remove(objectKey);
+      };
+      await expect(f.service.cleanup()).rejects.toThrow("Storage unavailable");
+      expect(f.objects.has(key)).toBe(true);
+      expect(kind === "orphan" ? f.candidates.has(key) : f.expiredUploads.has(f.id)).toBe(true);
+      f.storage.remove = remove;
+      await f.service.cleanup();
+      expect(f.objects.has("orphan")).toBe(false);
+      expect(f.objects.has(f.upload.temporaryKey)).toBe(false);
+      expect(f.candidates.size).toBe(0);
+      expect(f.expiredUploads.size).toBe(0);
+    },
+  );
 });

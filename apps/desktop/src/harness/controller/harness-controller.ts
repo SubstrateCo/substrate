@@ -53,7 +53,11 @@ export function createHarnessController(options: {
         const agents = await authority.catalog();
         // Recheck authority after the catalog request, including an organization switch.
         const latest = await authority.verify();
-        if (current !== generation || latest.identity !== auth.identity)
+        if (
+          current !== generation ||
+          latest.identity !== auth.identity ||
+          latest.organizationId !== auth.organizationId
+        )
           throw new Error("Session changed.");
         worker ??= options.createWorker(
           join(options.accountsDirectory, auth.accountKey),
