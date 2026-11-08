@@ -1,17 +1,19 @@
-import { configs as deslopConfigs } from "ai-deslop";
+import contracts from "./packages/contracts/package.json" with { type: "json" };
+import database from "./packages/database/package.json" with { type: "json" };
+import { configs } from "ai-deslop";
 import { defineConfig } from "oxlint";
 
 export default defineConfig({
   plugins: ["unicorn", "typescript", "oxc", "react"],
   jsPlugins: ["ai-deslop", "@shadcn/lint"],
-  options: deslopConfigs.recommended.options,
+  options: configs.recommended.options,
   settings: {
     shadcn: {
       ui: "@/components/ui",
     },
   },
   rules: {
-    ...deslopConfigs.recommended.rules,
+    ...configs.recommended.rules,
     "react/error-boundaries": "error",
     "react/globals": "error",
     "react/immutability": "error",
@@ -27,7 +29,29 @@ export default defineConfig({
     "react/void-use-memo": "error",
     "no-nested-ternary": "error",
     "deslop/canonical-class-names": ["error", { cssPath: "./apps/web/src/components/styles.css" }],
-    "deslop/no-duplicate-types": "error",
+    "deslop/no-duplicate-types": [
+      "error",
+      {
+        schemas: { libraries: ["zod"], matchTypes: true },
+        drizzle: { models: ["select", "insert"], matchTypes: true },
+      },
+    ],
+    "deslop/no-pass-through-schema": ["error", { libraries: ["zod"] }],
+    "deslop/no-renamed-imports": "error",
+    "deslop/no-reexports-outside-entrypoints": [
+      "error",
+      {
+        entrypoints: [
+          "**/index.ts",
+          "apps/server/src/app.ts",
+          ...Object.values(contracts.exports).map(
+            (entry) => `packages/contracts/${entry.slice(2)}`,
+          ),
+          ...Object.values(database.exports).map((entry) => `packages/database/${entry.slice(2)}`),
+        ],
+      },
+    ],
+    "deslop/max-boolean-conditions": ["error", { maxConditions: 3 }],
     "shadcn/no-restyle": ["error", { allow: ["layout"] }],
     "shadcn/no-raw-colors": "error",
     "shadcn/no-arbitrary-values": "error",
