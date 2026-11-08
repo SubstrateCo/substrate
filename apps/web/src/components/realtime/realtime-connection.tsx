@@ -79,7 +79,12 @@ export function RealtimeConnection({
   if (status === "forbidden") statusText = "Live updates unavailable. Check workspace access.";
   const notification = (
     <div
-      className={`${container ? "absolute" : "fixed"} pointer-events-none inset-x-3 bottom-3 z-50 flex justify-center`}
+      className={`${container ? "absolute" : "fixed"} pointer-events-none bottom-3 z-50 flex justify-center`}
+      // Center on the main page outlet when one is rendered; otherwise span the container.
+      style={{
+        left: "calc(anchor(--page-outlet left, 0px) + 0.75rem)",
+        right: "calc(anchor(--page-outlet right, 0px) + 0.75rem)",
+      }}
     >
       <Alert role="status" className="pointer-events-auto w-max max-w-full">
         <AlertDescription>{statusText}</AlertDescription>

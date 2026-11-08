@@ -92,6 +92,7 @@ export function PageContent({
   return (
     <div
       data-slot="page-content"
+      data-page-outlet
       className={cn(pageContentVariants({ padding }), className)}
       {...props}
     />

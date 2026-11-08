@@ -168,6 +168,10 @@
   [data-scrolling]::-webkit-scrollbar-thumb {
     background-color: color-mix(in oklch, var(--muted-foreground) 45%, transparent);
   }
+  /* Main page outlet beside any page sidebar. Overlays anchor to it to center on page content. */
+  [data-page-outlet] {
+    anchor-name: --page-outlet;
+  }
   body {
     @apply bg-background text-foreground;
     -webkit-font-smoothing: antialiased;
