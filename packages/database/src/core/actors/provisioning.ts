@@ -5,7 +5,7 @@ import { member } from "../organizations/schema";
 import { entityGrants } from "../permissions/schema";
 import { actors } from "./schema";
 import { userAgents } from "./user-agents.schema";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 
 type ActorInput = { organizationId: string; name: string } & (
   | { type: "human"; userId: string }
@@ -122,22 +122,55 @@ export function ensureHumanActor(
   });
 }
 
-export async function ensureOwnedAgentActors(
+export function ensureOwnedAgentActors(
   db: DatabaseExecutor,
   input: { organizationId: string; userId: string },
 ) {
-  const agents = await db
-    .select({ id: userAgents.id })
-    .from(userAgents)
-    .where(
-      and(
-        eq(userAgents.userId, input.userId),
-        eq(userAgents.enabled, true),
-        isNull(userAgents.deletedAt),
-      ),
-    );
-  const result = [];
-  for (const agent of agents)
-    result.push(await ensureUserAgentActor(db, { ...input, userAgentId: agent.id }));
-  return result;
+  return db.transaction(async (tx) => {
+    const [membership] = await tx
+      .select()
+      .from(member)
+      .where(and(eq(member.organizationId, input.organizationId), eq(member.userId, input.userId)))
+      .for("update");
+    if (!membership) throw new AccessDeniedError();
+    const agents = await tx
+      .select({ id: userAgents.id, name: userAgents.name })
+      .from(userAgents)
+      .where(
+        and(
+          eq(userAgents.userId, input.userId),
+          eq(userAgents.enabled, true),
+          isNull(userAgents.deletedAt),
+        ),
+      )
+      .orderBy(userAgents.id)
+      .for("update");
+    if (!agents.length) return [];
+    const existing = await tx
+      .select()
+      .from(actors)
+      .where(
+        and(
+          eq(actors.organizationId, input.organizationId),
+          inArray(
+            actors.userAgentId,
+            agents.map((agent) => agent.id),
+          ),
+        ),
+      );
+    const byAgent = new Map(existing.map((actor) => [actor.userAgentId, actor]));
+    const result = [];
+    for (const agent of agents) {
+      result.push(
+        byAgent.get(agent.id) ??
+          (await createActor(tx, {
+            organizationId: input.organizationId,
+            type: "agent",
+            userAgentId: agent.id,
+            name: agent.name,
+          })),
+      );
+    }
+    return result;
+  });
 }

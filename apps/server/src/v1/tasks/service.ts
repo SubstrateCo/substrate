@@ -16,7 +16,13 @@ import { requireOrigin, workspaceSession } from "../../shared/workspace";
 import { publishRefresh } from "../realtime/publisher";
 
 async function repositoriesForSession(headers: Headers, expectedOrganizationId: string) {
-  const { session, organizationId } = await workspaceSession(headers, expectedOrganizationId);
+  return repositoriesForWorkspace(await workspaceSession(headers, expectedOrganizationId));
+}
+
+async function repositoriesForWorkspace({
+  session,
+  organizationId,
+}: Awaited<ReturnType<typeof workspaceSession>>) {
   const actor = await ensureHumanActor(db, {
     organizationId,
     userId: session.user.id,
@@ -39,12 +45,12 @@ export function getProject(
 ) {
   return serviceResult(async () => {
     const input = projectRequest.parse(raw);
-    const { session } = await workspaceSession(headers, input.organizationId);
+    const workspace = await workspaceSession(headers, input.organizationId);
     await ensureOwnedAgentActors(db, {
-      organizationId: input.organizationId,
-      userId: session.user.id,
+      organizationId: workspace.organizationId,
+      userId: workspace.session.user.id,
     });
-    const repositories = await repositoriesForSession(headers, input.organizationId);
+    const repositories = await repositoriesForWorkspace(workspace);
     return repositories.transaction((repos) => repos.projects.getDetail(input.projectEntityId));
   });
 }

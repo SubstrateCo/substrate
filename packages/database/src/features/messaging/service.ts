@@ -95,10 +95,15 @@ export function createMessagingService(
       .onConflictDoNothing();
   }
 
-  async function discover(tx: DatabaseExecutor, email: string) {
+  function normalizeEmail(email: string) {
     const normalized = email.trim().toLowerCase();
     if (!normalized || !normalized.includes("@"))
       throw new ValidationError("An exact email address is required.");
+    return normalized;
+  }
+
+  async function discover(tx: DatabaseExecutor, email: string) {
+    const normalized = normalizeEmail(email);
     return tx
       .select({
         userId: user.id,
@@ -114,12 +119,30 @@ export function createMessagingService(
 
   async function recipients(tx: DatabaseExecutor, emails: string[]) {
     if (emails.length > 100) throw new ValidationError("At most 100 recipients are allowed.");
+    const normalized = [...new Set(emails.map(normalizeEmail))];
+    if (!normalized.length) return [];
+    const matches = await tx
+      .select({
+        userId: user.id,
+        organizationId: member.organizationId,
+        email: sql<string>`lower(${user.email})`,
+      })
+      .from(user)
+      .innerJoin(member, eq(member.userId, user.id))
+      .where(and(inArray(sql`lower(${user.email})`, normalized), eq(user.emailVerified, true)))
+      .orderBy(asc(member.organizationId));
+    const byEmail = new Map<string, typeof matches>();
+    for (const match of matches) {
+      const group = byEmail.get(match.email) ?? [];
+      group.push(match);
+      byEmail.set(match.email, group);
+    }
     const result = new Map<string, { userId: string; organizationId: string }>();
-    for (const email of emails) {
-      const matches = await discover(tx, email);
+    for (const email of normalized) {
+      const candidates = byEmail.get(email) ?? [];
       const recipient =
-        matches.find((candidate) => candidate.organizationId === scope.organizationId) ??
-        matches[0];
+        candidates.find((candidate) => candidate.organizationId === scope.organizationId) ??
+        candidates[0];
       if (!recipient)
         throw new ValidationError(
           "Recipient must have a verified account and organization membership.",

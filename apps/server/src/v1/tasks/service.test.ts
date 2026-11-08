@@ -1,7 +1,91 @@
 import { failure } from "@startup-os/contracts/result";
+import * as database from "@startup-os/database";
+import * as provisioning from "@startup-os/database/provisioning";
 
+import { db } from "../../auth/database";
+import { auth } from "../../auth/server";
 import { listProjects, getProject, listTaskComments, mutateTasks } from "./service";
-import { expect, test } from "bun:test";
+import { APIError } from "better-auth/api";
+import { afterEach, expect, mock, spyOn, test } from "bun:test";
+
+afterEach(() => mock.restore());
+
+function projectFixture() {
+  const input = { organizationId: "org", projectEntityId: crypto.randomUUID() };
+  const session = {
+    user: {
+      id: "alice",
+      name: "Alice",
+      email: "alice@example.test",
+      emailVerified: true,
+      image: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    session: {
+      id: "session",
+      userId: "alice",
+      token: "token",
+      activeOrganizationId: input.organizationId,
+      expiresAt: new Date(Date.now() + 60_000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      ipAddress: null,
+      userAgent: null,
+    },
+  };
+  const getSession = spyOn(auth.api, "getSession").mockResolvedValue(session);
+  const getRole = spyOn(auth.api, "getActiveMemberRole").mockResolvedValue({ role: "member" });
+  const actor = {
+    entityId: crypto.randomUUID(),
+    organizationId: input.organizationId,
+    entityType: "actor" as const,
+    name: session.user.name,
+    type: "human" as const,
+    userId: session.user.id,
+    userAgentId: null,
+    agentConfig: null,
+    disabledAt: null,
+  };
+  const ensureHumanActor = spyOn(provisioning, "ensureHumanActor").mockResolvedValue(actor);
+  const ensureOwnedAgentActors = spyOn(provisioning, "ensureOwnedAgentActors").mockResolvedValue(
+    [],
+  );
+  const factory = database.createRepositories(db);
+  const repositories = factory.forActor({
+    organizationId: input.organizationId,
+    actorEntityId: actor.entityId,
+  });
+  const detail: Awaited<ReturnType<typeof repositories.projects.getDetail>> = {
+    project: {
+      entityId: input.projectEntityId,
+      organizationId: input.organizationId,
+      entityType: "project",
+      name: "Launch",
+      description: "Ship the desktop app",
+    },
+    level: "view",
+    members: [{ actorEntityId: actor.entityId, name: actor.name, type: "human", level: "view" }],
+    actors: [{ entityId: actor.entityId, name: actor.name, type: "human" }],
+    tasks: [],
+  };
+  const getDetail = spyOn(repositories.projects, "getDetail").mockResolvedValue(detail);
+  spyOn(repositories, "transaction").mockImplementation(async (work) => work(repositories));
+  const forActor = spyOn(factory, "forActor").mockReturnValue(repositories);
+  spyOn(database, "createRepositories").mockReturnValue(factory);
+  return {
+    input,
+    session,
+    actor,
+    detail,
+    getSession,
+    getRole,
+    ensureHumanActor,
+    ensureOwnedAgentActors,
+    getDetail,
+    forActor,
+  };
+}
 
 test("task services return invalid-input results before authentication", async () => {
   const headers = new Headers();
@@ -25,4 +109,70 @@ test("task writes return a typed origin failure rather than throwing", async () 
       name: "Launch",
     }),
   ).toEqual(failure("FORBIDDEN", "Invalid request origin."));
+});
+
+test("project detail uses one authenticated workspace and retains provisioning and actor scope", async () => {
+  const fixture = projectFixture();
+  expect(await getProject(new Headers(), fixture.input)).toEqual({
+    success: true,
+    data: fixture.detail,
+  });
+  expect(fixture.getSession).toHaveBeenCalledTimes(1);
+  expect(fixture.getRole).toHaveBeenCalledTimes(1);
+  expect(fixture.ensureOwnedAgentActors).toHaveBeenCalledWith(db, {
+    organizationId: fixture.input.organizationId,
+    userId: fixture.session.user.id,
+  });
+  expect(fixture.ensureHumanActor).toHaveBeenCalledWith(db, {
+    organizationId: fixture.input.organizationId,
+    userId: fixture.session.user.id,
+    name: fixture.session.user.name,
+  });
+  expect(fixture.forActor).toHaveBeenCalledWith({
+    organizationId: fixture.input.organizationId,
+    actorEntityId: fixture.actor.entityId,
+  });
+  expect(fixture.getDetail).toHaveBeenCalledWith(fixture.input.projectEntityId);
+});
+
+for (const denial of ["signed out", "unverified", "workspace mismatch", "not a member"] as const) {
+  test(`project detail rejects ${denial} before provisioning or project access`, async () => {
+    const fixture = projectFixture();
+    let expected;
+    switch (denial) {
+      case "signed out":
+        fixture.getSession.mockResolvedValue(null);
+        expected = failure("UNAUTHENTICATED", "Sign in to continue.");
+        break;
+      case "unverified":
+        fixture.session.user.emailVerified = false;
+        expected = failure("FORBIDDEN", "Verify your email to continue.");
+        break;
+      case "workspace mismatch":
+        fixture.session.session.activeOrganizationId = "other-org";
+        expected = failure(
+          "FORBIDDEN",
+          "Your active workspace changed. Reload this page to continue.",
+        );
+        break;
+      case "not a member":
+        fixture.getRole.mockRejectedValue(new APIError("FORBIDDEN"));
+        expected = failure("FORBIDDEN", "Access denied.");
+        break;
+    }
+    expect(await getProject(new Headers(), fixture.input)).toEqual(expected);
+    expect(fixture.ensureHumanActor).not.toHaveBeenCalled();
+    expect(fixture.ensureOwnedAgentActors).not.toHaveBeenCalled();
+    expect(fixture.forActor).not.toHaveBeenCalled();
+    expect(fixture.getDetail).not.toHaveBeenCalled();
+  });
+}
+
+test("project detail hides missing or inaccessible projects even for an organization admin", async () => {
+  const fixture = projectFixture();
+  fixture.getRole.mockResolvedValue({ role: "admin" });
+  fixture.getDetail.mockRejectedValue(new database.AccessDeniedError());
+  expect(await getProject(new Headers(), fixture.input)).toEqual(
+    failure("NOT_FOUND", "Item not found or access denied."),
+  );
 });
