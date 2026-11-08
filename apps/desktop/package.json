@@ -13,9 +13,7 @@
     "build:dir": "bun run build && electron-builder --win --dir",
     "package": "bun run build && electron-builder --win nsis",
     "typecheck": "tsc --noEmit",
-    "test": "bun test src scripts",
-    "test:e2e": "bun run setup && bun scripts/preload.ts && playwright test",
-    "test:e2e:dev": "playwright test"
+    "test": "bun test src scripts"
   },
   "dependencies": {
     "@better-auth/electron": "^1.7.18",
@@ -27,7 +25,6 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@playwright/test": "^1.64.1",
     "@types/bun": "^1.4.4",
     "@types/ws": "^8.18.2",
     "electron": "^43.0.0",

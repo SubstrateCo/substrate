@@ -20,4 +20,4 @@
 ## Integration tests
 
 - Put request-only HTTP integration cases in `integration`, using API fixtures without browser pages or viewport matrices. Cover HTTP permission, origin, and isolation boundaries here; keep repository and transaction edge cases in database tests.
-- Keep a few Electron workflows to verify native transport, visible permission controls, and removal of cached private content. Do not repeat the full API policy matrix through the UI.
+- Manually check native transport, visible permission controls, and removal of cached private content in Electron. Do not repeat the full API policy matrix through the UI.

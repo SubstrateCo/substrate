@@ -6,7 +6,7 @@ export default defineConfig({
   workers: 4,
   timeout: 60_000,
   expect: { timeout: 15_000 },
-  reporter: "../desktop/e2e/test-support/errors-reporter.ts",
+  reporter: "./scripts/errors-reporter.ts",
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
     // Auth and signed storage URLs contain credentials.

@@ -1,4 +1,4 @@
-import ErrorsReporter from "../e2e/test-support/errors-reporter.js";
+import ErrorsReporter from "./errors-reporter.js";
 import type { TestCase } from "@playwright/test/reporter";
 import { afterEach, expect, mock, spyOn, test } from "bun:test";
 

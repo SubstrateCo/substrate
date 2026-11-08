@@ -1,9 +1,9 @@
 import type { conversationInput, messageInput } from "@startup-os/contracts/messaging/input";
 import type { ServiceResult } from "@startup-os/contracts/result";
 
-import { provisionVerifiedAccount } from "../../web/e2e/test-support/auth";
-import { Mailpit } from "../../web/e2e/test-support/mailpit";
-import { provisionWorkspaceSession } from "../../web/e2e/test-support/organizations";
+import { provisionVerifiedAccount } from "./test-support/auth";
+import { Mailpit } from "./test-support/mailpit";
+import { provisionWorkspaceSession } from "./test-support/organizations";
 import { expect, test as base, type APIRequestContext } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import type { z } from "zod";

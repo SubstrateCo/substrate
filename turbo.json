@@ -19,33 +19,13 @@
     },
     "test": {
       "outputLogs": "errors-only",
-      "env": [
-        "TEST_DATABASE_URL",
-        "TEST_DATABASE_SHARDS",
-        "DATABASE_URL",
-        "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"
-      ],
+      "env": ["TEST_DATABASE_URL", "TEST_DATABASE_SHARDS", "DATABASE_URL"],
       "cache": false,
       "outputs": []
     },
     "test:integration": {
       "outputLogs": "errors-only",
       "env": ["PLAYWRIGHT_BASE_URL", "MAILPIT_BASE_URL"],
-      "cache": false,
-      "outputs": []
-    },
-    "test:e2e": {
-      "outputLogs": "errors-only",
-      "env": [
-        "PLAYWRIGHT_BASE_URL",
-        "PLAYWRIGHT_API_URL",
-        "MAILPIT_BASE_URL",
-        "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH",
-        "STARTUP_OS_WEB_URL",
-        "STARTUP_OS_API_URL",
-        "DESKTOP_EXECUTABLE_PATH",
-        "DESKTOP_BUNDLED_RENDERER"
-      ],
       "cache": false,
       "outputs": []
     }

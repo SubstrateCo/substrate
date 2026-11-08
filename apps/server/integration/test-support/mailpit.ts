@@ -1,4 +1,4 @@
-import { expect, type APIRequestContext, type Page } from "@playwright/test";
+import { expect, type APIRequestContext } from "@playwright/test";
 
 interface MailpitMessage {
   ID: string;
@@ -52,14 +52,5 @@ export class Mailpit {
     const link = links.find((value) => new URL(value).pathname.startsWith(pathname));
     if (!link) throw new Error("The email did not contain the expected application link.");
     return link;
-  }
-}
-
-export async function openEmailLink(page: Page, link: string) {
-  // Keep credential-bearing links out of error output as well as traces.
-  try {
-    await page.goto(link);
-  } catch {
-    throw new Error("Could not open the application link from the test email.");
   }
 }
