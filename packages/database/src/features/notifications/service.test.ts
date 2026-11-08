@@ -16,6 +16,35 @@ import { eq } from "drizzle-orm";
 const f = setupDatabase();
 const feed = (userId: string) => createFeedService(f.db, { userId, organizationId: f.orgA });
 
+test("notification pages scan past inaccessible targets and filter unread before pagination", async () => {
+  const { alice, project } = await setup();
+  const hidden = await alice.tasks.create({ projectEntityId: project.entityId, title: "Hidden" });
+  const visible = await alice.tasks.create({ projectEntityId: project.entityId, title: "Visible" });
+  await f.db
+    .update(entities)
+    .set({ deletedAt: new Date() })
+    .where(eq(entities.entityId, hidden.entityId));
+  await f.db.insert(notifications).values(
+    Array.from({ length: 125 }, (_, index) => ({
+      organizationId: f.orgA,
+      recipientActorEntityId: f.bob,
+      kind: "assignment" as const,
+      entityId: index < 100 ? hidden.entityId : visible.entityId,
+      eventKey: `page-${index}`,
+      createdAt: new Date(1800000000000 - index * 1000),
+      readAt: index === 100 ? new Date() : null,
+    })),
+  );
+  const service = feed("bob");
+  const first = await service.list(undefined, { limit: 21, unread: true });
+  expect(first).toHaveLength(21);
+  expect(first.every((item) => item.title === "Visible" && item.readAt === null)).toBe(true);
+  const rest = await service.list(first[19]!.id, { limit: 21, unread: true });
+  expect(rest).toHaveLength(4);
+  expect(rest[0]!.id).toBe(first[20]!.id);
+  expect(new Set([...first.slice(0, 20), ...rest].map((item) => item.id)).size).toBe(24);
+});
+
 test("feed batches repeated and distinct current work and message targets without changing page order", async () => {
   const { alice, project, chat, channel } = await setup();
   const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "First" });
@@ -143,7 +172,7 @@ test("partner feeds use the selected workspace and current conversation access, 
   expect(await partner.list()).toEqual([]);
 });
 
-test("feed applies the page limit before hiding targets and keeps tied timestamp ID order", async () => {
+test("feed fills readable pages and keeps tied timestamp ID order across hidden targets", async () => {
   const { alice, project } = await setup();
   const hiddenProject = await alice.projects.create({ name: "Hidden" });
   const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "Visible" });
@@ -164,6 +193,7 @@ test("feed applies the page limit before hiding targets and keeps tied timestamp
   expect(page.map((row) => row.id)).toEqual([
     "00000000-0000-4000-8000-000000000100",
     "00000000-0000-4000-8000-000000000099",
+    "00000000-0000-4000-8000-000000000000",
   ]);
   expect(await feed("bob").list(page[1]!.id)).toMatchObject([
     { id: "00000000-0000-4000-8000-000000000000" },

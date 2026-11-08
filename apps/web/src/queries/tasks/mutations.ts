@@ -32,9 +32,7 @@ export function invalidateTasksWrite(client: QueryClient, input: TasksWrite, id:
   if (input.action === "updateTask" || input.action === "updateProject" || access)
     refreshes.push(invalidateWorkLabels(client, organizationId, entityIds));
   if (input.action !== "createProject")
-    refreshes.push(
-      client.invalidateQueries({ queryKey: [...context, "notifications"], exact: true }),
-    );
+    refreshes.push(client.invalidateQueries({ queryKey: [...context, "notifications"] }));
   if (access)
     refreshes.push(
       client.invalidateQueries({

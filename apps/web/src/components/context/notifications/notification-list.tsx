@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
+import { useCallback, useState } from "react";
+
 import { markAllRead, markRead } from "@/api/context/notifications";
 import { NotificationList as NotificationListView } from "@/components/context/notifications/notification-list-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { messageHref, workHref } from "@/lib/navigation/record-links";
-import { markNotificationsRead, notificationsOptions } from "@/queries/context/notifications";
+import { markNotificationsRead, notificationPageOptions } from "@/queries/context/notifications";
 import { toast } from "sonner";
 
 export function NotificationList({
@@ -15,7 +17,19 @@ export function NotificationList({
   organizationId: string;
   onClose?: () => void;
 }) {
-  const items = useQuery(notificationsOptions(organizationId));
+  const [filter, setFilter] = useState<"all" | "unread">("all");
+  const [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
+  const [pageSize, setPageSize] = useState(5);
+  const resizePage = useCallback(
+    (size: number) => {
+      if (size !== pageSize) {
+        setPageSize(size);
+        setCursors([undefined]);
+      }
+    },
+    [pageSize],
+  );
+  const items = useQuery(notificationPageOptions(organizationId, filter, cursors.at(-1), pageSize));
   const client = useQueryClient();
   const navigate = useNavigate();
   const read = useMutation({
@@ -27,7 +41,7 @@ export function NotificationList({
   });
   return (
     <NotificationListView
-      items={(items.data ?? []).map((item) => ({
+      items={(items.data?.items ?? []).map((item) => ({
         ...item,
         read: !!item.readAt,
         href: item.conversationId
@@ -35,6 +49,18 @@ export function NotificationList({
           : workHref(organizationId, item.projectEntityId!, item.entityId!),
       }))}
       loading={items.isPending}
+      filter={filter}
+      onFilter={(value) => {
+        setFilter(value);
+        setCursors([undefined]);
+      }}
+      page={cursors.length}
+      onPageSizeChange={resizePage}
+      hasNext={!!items.data?.nextCursor}
+      onPrevious={() => setCursors((pages) => pages.slice(0, -1))}
+      onNext={() => {
+        if (items.data?.nextCursor) setCursors((pages) => [...pages, items.data.nextCursor!]);
+      }}
       error={items.error}
       pendingId={read.isPending ? (read.variables ?? "all") : undefined}
       onRetry={() => void items.refetch()}

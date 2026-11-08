@@ -1,4 +1,4 @@
-import { useState, type MouseEvent } from "react";
+import { useEffect, useRef, type MouseEvent } from "react";
 
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
@@ -6,22 +6,23 @@ import { PendingButton } from "../../feedback/pending-button";
 import { isAccessFailure } from "../../feedback/request-failure";
 import { Button } from "../../ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../ui/empty";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "../../ui/tabs";
 import { NotificationItem, type Notification } from "./notification-item";
-import {
-  PageContent,
-  PageLayout,
-  PageSidebar,
-  PageSidebarContent,
-  PageSidebarHeader,
-} from "@/components/layout/page-layout";
-import { Bell, BellDot, CheckCheck, Inbox, X } from "lucide-react";
+import { PageContent, PageLayout } from "@/components/layout/page-layout";
+import { Bell, CheckCheck, ChevronLeft, ChevronRight, X } from "lucide-react";
 
 export function NotificationList({
   items,
   loading,
   error,
   pendingId,
+  filter,
+  onFilter,
+  page,
+  onPageSizeChange,
+  hasNext,
+  onPrevious,
+  onNext,
   onRetry,
   onRead,
   onReadAll,
@@ -32,6 +33,13 @@ export function NotificationList({
   loading: boolean;
   error?: Error | null;
   pendingId?: string;
+  filter: "all" | "unread";
+  onFilter: (filter: "all" | "unread") => void;
+  page: number;
+  onPageSizeChange: (size: number) => void;
+  hasNext: boolean;
+  onPrevious: () => void;
+  onNext: () => void;
   onRetry: () => void;
   onRead: (id: string) => void;
   onReadAll: () => void;
@@ -39,135 +47,181 @@ export function NotificationList({
   onClose?: () => void;
 }) {
   const visible = isAccessFailure(error) ? [] : items;
-  const [filter, setFilter] = useState<"all" | "unread">("all");
-  const filtered = filter === "unread" ? visible.filter((item) => !item.read) : visible;
-  const unread = visible.filter((item) => !item.read).length;
-  const filters = [
-    { value: "all", label: "All activity", icon: Inbox },
-    { value: "unread", label: "Unread", icon: BellDot, count: unread },
-  ] as const;
   const failed = !!error && !visible.length;
-  const empty = !failed && !loading && !filtered.length;
+  const empty = !failed && !loading && !visible.length;
+  let emptyTitle = "No notifications yet";
+  if (filter === "unread") emptyTitle = "You’re all caught up";
+  if (page > 1) emptyTitle = "No more notifications";
+  const scroll = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const element = scroll.current;
+    if (!element) return;
+    const observer = new ResizeObserver(() => {
+      const style = getComputedStyle(element);
+      const available =
+        element.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom) - 2;
+      const rowHeight = parseFloat(getComputedStyle(document.documentElement).fontSize) * 4;
+      onPageSizeChange(Math.max(1, Math.min(20, Math.floor(available / rowHeight))));
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [onPageSizeChange]);
+
   return (
     <PageLayout aria-label="Notifications">
-      <PageSidebar aria-label="Notification filters">
-        <PageSidebarHeader
-          title="Notifications"
-          actions={
-            onClose && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon-sm"
-                    aria-label="Close notifications"
-                    onClick={onClose}
-                  >
-                    <X aria-hidden="true" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Close notifications</TooltipContent>
-              </Tooltip>
-            )
-          }
-        />
-        <PageSidebarContent className="pt-0">
-          <div
-            role="group"
-            aria-label="Notification filter"
-            className="flex gap-0.5 overflow-x-auto md:flex-col"
-          >
-            {filters.map((item) => (
-              <Button
-                key={item.value}
-                variant="sidebar"
-                className="shrink-0 justify-start md:w-full"
-                aria-current={filter === item.value ? "page" : undefined}
-                onClick={() => setFilter(item.value)}
-              >
-                <item.icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-                <span className="truncate">{item.label}</span>
-                {"count" in item && (
-                  <span className="ml-auto rounded-full bg-muted px-2 text-xs">{item.count}</span>
-                )}
-              </Button>
-            ))}
-          </div>
-        </PageSidebarContent>
-      </PageSidebar>
-      <PageContent className="overflow-y-auto">
-        {failed && (
-          <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-6">
-            <ErrorState
-              title={
-                isAccessFailure(error) ? "Notifications unavailable" : "Couldn’t load notifications"
-              }
-              description={
-                isAccessFailure(error)
-                  ? "Check that you still have access to this workspace."
-                  : undefined
-              }
-              onRetry={onRetry}
-            />
-          </div>
-        )}
-        {empty && (
-          <Empty className="min-h-0 flex-1">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <Bell aria-hidden="true" />
-              </EmptyMedia>
-              <EmptyTitle>
-                <h2>{filter === "unread" ? "You’re all caught up" : "No notifications yet"}</h2>
-              </EmptyTitle>
-              <EmptyDescription>Mentions and task assignments will appear here.</EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        )}
-        {!failed && !empty && (
-          <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 p-4 sm:p-6">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold">
-                {filter === "unread" ? "Unread" : "All activity"}
-              </h2>
+      <Tabs
+        value={filter}
+        onValueChange={(value) => {
+          if (value === "all" || value === "unread") onFilter(value);
+        }}
+        asChild
+      >
+        <PageContent>
+          <header className="shrink-0 space-y-5 px-4 pt-5 sm:px-6 sm:pt-6">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <h1 className="text-xl font-semibold tracking-tight">Notifications</h1>
+                <p className="text-sm text-muted-foreground">
+                  Your mentions, replies, and task assignments.
+                </p>
+              </div>
+              {onClose && (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Close notifications"
+                  onClick={onClose}
+                >
+                  <X aria-hidden="true" />
+                </Button>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              <TabsList variant="line" aria-label="Notification filter">
+                {(
+                  [
+                    ["all", "All activity"],
+                    ["unread", "Unread"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <TabsTrigger key={value} value={value}>
+                    {label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
               <PendingButton
                 size="sm"
-                variant="ghost"
+                variant="outline"
                 pending={pendingId === "all"}
                 pendingLabel="Marking all as read…"
-                disabled={!!pendingId || unread === 0 || !!error}
+                disabled={!!pendingId || loading || !!error || !visible.some((item) => !item.read)}
                 onClick={onReadAll}
               >
-                <CheckCheck aria-hidden="true" />
-                Mark all as read
+                <CheckCheck aria-hidden="true" /> Mark all as read
               </PendingButton>
             </div>
-            {loading && !visible.length && (
-              <LoadingState label="Loading notifications" variant="compact" />
-            )}
-            {error && <ErrorState compact title="Couldn’t load notifications" onRetry={onRetry} />}
-            <ul className="space-y-2 empty:hidden">
-              {filtered.map((item) => (
-                <NotificationItem
-                  key={item.id}
-                  item={item}
-                  pending={pendingId === item.id}
-                  disabled={!!pendingId}
-                  onRead={() => {
-                    if (!pendingId) onRead(item.id);
-                  }}
-                  onOpen={(event) => onOpen(item, event)}
+          </header>
+          <TabsContent value={filter} className="flex min-h-0 flex-1 flex-col">
+            <div
+              ref={scroll}
+              role="region"
+              aria-label="Notification feed"
+              tabIndex={0}
+              className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4 sm:p-6"
+              aria-busy={loading}
+            >
+              {failed && (
+                <ErrorState
+                  title={
+                    isAccessFailure(error)
+                      ? "Notifications unavailable"
+                      : "Couldn’t load notifications"
+                  }
+                  description={
+                    isAccessFailure(error)
+                      ? "Check that you still have access to this workspace."
+                      : undefined
+                  }
+                  onRetry={onRetry}
                 />
-              ))}
-            </ul>
-            {!loading && !error && filtered.length > 0 && unread === 0 && (
-              <p className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
-                <CheckCheck className="size-4" /> You’re all caught up
-              </p>
-            )}
-          </div>
-        )}
-      </PageContent>
+              )}
+              {loading && <LoadingState label="Loading notifications" variant="compact" />}
+              {empty && (
+                <Empty className="min-h-0 flex-1">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <Bell aria-hidden="true" />
+                    </EmptyMedia>
+                    <EmptyTitle>
+                      <h2>{emptyTitle}</h2>
+                    </EmptyTitle>
+                    <EmptyDescription>
+                      {filter === "unread"
+                        ? "Nothing needs your attention. You can find past updates in All activity."
+                        : "Mentions, replies, and task assignments will appear here."}
+                    </EmptyDescription>
+                  </EmptyHeader>
+                  {filter === "unread" && (
+                    <Button variant="outline" size="sm" onClick={() => onFilter("all")}>
+                      View all activity
+                    </Button>
+                  )}
+                </Empty>
+              )}
+              {!failed && visible.length > 0 && (
+                <div className="shrink-0 overflow-hidden rounded-xl border bg-card shadow-xs">
+                  {error && (
+                    <ErrorState compact title="Couldn’t refresh notifications" onRetry={onRetry} />
+                  )}
+                  <ul aria-label="Notification activity" className="divide-y">
+                    {visible.map((item) => (
+                      <NotificationItem
+                        key={item.id}
+                        item={item}
+                        pending={pendingId === item.id}
+                        disabled={!!pendingId}
+                        showUnread={filter !== "unread"}
+                        onRead={() => {
+                          if (!pendingId) onRead(item.id);
+                        }}
+                        onOpen={(event) => onOpen(item, event)}
+                      />
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+          <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t px-4 py-3 sm:px-6">
+            <p
+              role="status"
+              aria-label="Notification page"
+              className="text-xs text-muted-foreground"
+            >
+              Page {page}
+              {!loading && !error && visible.length > 0 ? ` · ${visible.length} notifications` : ""}
+            </p>
+            <nav aria-label="Notification pagination" className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 1 || loading || !!pendingId}
+                onClick={onPrevious}
+              >
+                <ChevronLeft aria-hidden="true" /> Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!hasNext || loading || !!error || !!pendingId}
+                onClick={onNext}
+              >
+                Next <ChevronRight aria-hidden="true" />
+              </Button>
+            </nav>
+          </footer>
+        </PageContent>
+      </Tabs>
     </PageLayout>
   );
 }

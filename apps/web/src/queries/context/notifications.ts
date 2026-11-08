@@ -1,12 +1,25 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
-import { getNotifications } from "@/api/context/notifications";
+import { getNotifications, getNotificationPage } from "@/api/context/notifications";
 
 export const notificationsOptions = (organizationId: string) =>
   queryOptions({
     queryKey: [...queryKeys.context(organizationId), "notifications"],
     queryFn: ({ signal }) => getNotifications({ data: { organizationId }, signal }),
+    retry: false,
+  });
+
+export const notificationPageOptions = (
+  organizationId: string,
+  filter: "all" | "unread",
+  after?: string,
+  limit = 20,
+) =>
+  queryOptions({
+    queryKey: [...notificationsOptions(organizationId).queryKey, "page", filter, after, limit],
+    queryFn: ({ signal }) =>
+      getNotificationPage({ data: { organizationId, filter, after, limit }, signal }),
     retry: false,
   });
 
@@ -23,5 +36,15 @@ export function markNotificationsRead(
       id === null || item.id === id ? { ...item, readAt: item.readAt ?? readAt } : item,
     ),
   );
-  void client.invalidateQueries({ queryKey, exact: true });
+  client.setQueriesData<Awaited<ReturnType<typeof getNotificationPage>>>(
+    { queryKey: [...queryKey, "page"] },
+    (page) =>
+      page && {
+        ...page,
+        items: page.items.map((item) =>
+          id === null || item.id === id ? { ...item, readAt: item.readAt ?? readAt } : item,
+        ),
+      },
+  );
+  void client.invalidateQueries({ queryKey });
 }

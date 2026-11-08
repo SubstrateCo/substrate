@@ -8,6 +8,7 @@ import {
   contextSearch,
   contextSourceTask,
   contextNotification,
+  contextNotificationPage,
 } from "@startup-os/contracts/context/input";
 
 import { respond, validationHook } from "../../shared/http";
@@ -49,6 +50,12 @@ export function createContextRoutes(services = defaultServices) {
     )
     .get("/notifications", zValidator("query", contextWorkspace, validationHook), async (c) =>
       respond(c, await services.getNotifications(c.req.raw.headers, c.req.valid("query"))),
+    )
+    .get(
+      "/notifications/page",
+      zValidator("query", contextNotificationPage, validationHook),
+      async (c) =>
+        respond(c, await services.getNotificationPage(c.req.raw.headers, c.req.valid("query"))),
     )
     .post(
       "/notifications/read-all",

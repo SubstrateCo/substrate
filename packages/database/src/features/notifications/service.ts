@@ -6,7 +6,7 @@ import { workspaceContext, requireWork } from "../context/access";
 import type { MessagingIdentity } from "../messaging/access";
 import { notifications } from "./schema";
 import { readableWorkTargets, readableMessageTargets } from "./targets";
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql, type SQL } from "drizzle-orm";
 
 export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity) {
   return {
@@ -46,9 +46,12 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
           createdAt: row.createdAt,
         }));
     },
-    async list(after?: string) {
+    async list(
+      after?: string,
+      { limit = 100, unread = false }: { limit?: number; unread?: boolean } = {},
+    ) {
       const { context: ctx } = await workspaceContext(db, scope);
-      let boundary;
+      let boundary: SQL | undefined;
       if (after) {
         const [anchor] = await db
           .select()
@@ -56,63 +59,72 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
           .where(
             and(
               eq(notifications.id, after),
+              eq(notifications.organizationId, scope.organizationId),
               eq(notifications.recipientActorEntityId, ctx.scope.actorEntityId),
             ),
           );
         if (!anchor) throw new AccessDeniedError();
         boundary = sql`(${notifications.createdAt}, ${notifications.id}) < (select anchor.created_at, anchor.id from ${notifications} anchor where anchor.id = ${anchor.id}::uuid)`;
       }
-      const rows = await db
-        .select()
-        .from(notifications)
-        .where(
-          and(
-            eq(notifications.organizationId, scope.organizationId),
-            eq(notifications.recipientActorEntityId, ctx.scope.actorEntityId),
-            boundary,
-          ),
-        )
-        .orderBy(desc(notifications.createdAt), desc(notifications.id))
-        .limit(100);
       const result = [];
-      const workTargets = await readableWorkTargets(ctx, [
-        ...new Set(rows.flatMap((row) => (row.entityId ? [row.entityId] : []))),
-      ]);
-      const messageTargets = await readableMessageTargets(db, scope, [
-        ...new Set(rows.flatMap((row) => (!row.entityId && row.messageId ? [row.messageId] : []))),
-      ]);
-      for (const row of rows) {
-        if (row.entityId) {
-          const work = workTargets.get(row.entityId);
-          if (!work) continue;
-          result.push({
-            id: row.id,
-            kind: row.kind,
-            readAt: row.readAt,
-            createdAt: row.createdAt,
-            title: work.title,
-            entityId: row.entityId,
-            projectEntityId: work.projectEntityId,
-            conversationId: null,
-            messageId: null,
-          });
-        } else {
-          const message = messageTargets.get(row.messageId!);
-          if (!message) continue;
-          result.push({
-            id: row.id,
-            kind: row.kind,
-            readAt: row.readAt,
-            createdAt: row.createdAt,
-            title: row.kind === "mention" ? "You were mentioned" : "New thread reply",
-            entityId: null,
-            projectEntityId: null,
-            conversationId: message.conversationId,
-            messageId: message.id,
-          });
+      while (result.length < limit) {
+        const rows = await db
+          .select()
+          .from(notifications)
+          .where(
+            and(
+              eq(notifications.organizationId, scope.organizationId),
+              eq(notifications.recipientActorEntityId, ctx.scope.actorEntityId),
+              unread ? isNull(notifications.readAt) : undefined,
+              boundary,
+            ),
+          )
+          .orderBy(desc(notifications.createdAt), desc(notifications.id))
+          .limit(100);
+        const workTargets = await readableWorkTargets(ctx, [
+          ...new Set(rows.flatMap((row) => (row.entityId ? [row.entityId] : []))),
+        ]);
+        const messageTargets = await readableMessageTargets(db, scope, [
+          ...new Set(
+            rows.flatMap((row) => (!row.entityId && row.messageId ? [row.messageId] : [])),
+          ),
+        ]);
+        for (const row of rows) {
+          if (row.entityId) {
+            const work = workTargets.get(row.entityId);
+            if (!work) continue;
+            result.push({
+              id: row.id,
+              kind: row.kind,
+              readAt: row.readAt,
+              createdAt: row.createdAt,
+              title: work.title,
+              entityId: row.entityId,
+              projectEntityId: work.projectEntityId,
+              conversationId: null,
+              messageId: null,
+            });
+          } else {
+            const message = messageTargets.get(row.messageId!);
+            if (!message) continue;
+            result.push({
+              id: row.id,
+              kind: row.kind,
+              readAt: row.readAt,
+              createdAt: row.createdAt,
+              title: row.kind === "mention" ? "You were mentioned" : "New thread reply",
+              entityId: null,
+              projectEntityId: null,
+              conversationId: message.conversationId,
+              messageId: message.id,
+            });
+          }
         }
+        if (rows.length < 100 || result.length >= limit) break;
+        const last = rows.at(-1)!;
+        boundary = sql`(${notifications.createdAt}, ${notifications.id}) < (select anchor.created_at, anchor.id from ${notifications} anchor where anchor.id = ${last.id}::uuid)`;
       }
-      return result;
+      return result.slice(0, limit);
     },
     async markAllRead() {
       const { context: ctx } = await workspaceContext(db, scope);

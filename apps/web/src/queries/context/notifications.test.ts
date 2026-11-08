@@ -1,11 +1,38 @@
 import { QueryClient, QueryObserver } from "@tanstack/react-query";
 
-import { markNotificationsRead, notificationsOptions } from "./notifications";
+import {
+  markNotificationsRead,
+  notificationPageOptions,
+  notificationsOptions,
+} from "./notifications";
 import { expect, test } from "bun:test";
 
 type Notification = Awaited<
   ReturnType<NonNullable<ReturnType<typeof notificationsOptions>["queryFn"]>>
 >[number];
+
+test("read updates reach every cached notification page without crossing workspaces", () => {
+  const client = new QueryClient();
+  const keys = [
+    notificationPageOptions("org", "all").queryKey,
+    notificationPageOptions("org", "unread", "cursor").queryKey,
+    notificationPageOptions("other", "all").queryKey,
+  ];
+  // SAFETY: cache updates only use id and readAt from each notification.
+  const item = { id: "notice", readAt: null } as Notification;
+  for (const key of keys) client.setQueryData(key, { items: [item], nextCursor: "next" });
+  markNotificationsRead(client, "org", "notice");
+  const pages = keys.map((key) =>
+    client.getQueryData<{ items: Notification[]; nextCursor: string }>(key)!,
+  );
+  expect(pages[0]!.items[0]!.readAt).not.toBeNull();
+  expect(pages[1]!.items[0]!.readAt).toBe(pages[0]!.items[0]!.readAt);
+  expect(pages[2]!.items[0]!.readAt).toBeNull();
+  expect(pages[0]!.nextCursor).toBe("next");
+  expect(client.getQueryState(keys[1]!)!.isInvalidated).toBe(true);
+  expect(client.getQueryState(keys[2]!)!.isInvalidated).toBe(false);
+  client.clear();
+});
 
 for (const target of ["one", "all"] as const) {
   test(`marking ${target} read updates the list at once without waiting for its refresh`, () => {

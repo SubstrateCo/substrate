@@ -64,7 +64,7 @@ export function invalidateRemovedConversation(
     client.invalidateQueries({ queryKey: queryKeys.conversations(organizationId) }),
     client.invalidateQueries({ queryKey: [...context, "related"] }),
     client.invalidateQueries({ queryKey: [...context, "activity"] }),
-    client.invalidateQueries({ queryKey: [...context, "notifications"], exact: true }),
+    client.invalidateQueries({ queryKey: [...context, "notifications"] }),
     staleSearches(client, organizationId),
   ]);
 }

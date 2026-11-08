@@ -158,7 +158,7 @@ test("messaging targets all thread variants of one conversation, not another", (
     { queryKey: [...queryKeys.context("org"), "search-pages"], refetchType: "none" },
   ]);
   expect(realtimeQueryTargets(change("notifications"), "user")).toEqual([
-    { queryKey: [...queryKeys.context("org"), "notifications"], exact: true },
+    { queryKey: [...queryKeys.context("org"), "notifications"] },
   ]);
   expect(realtimeQueryTargets(change("agents", null), "user")).toEqual([
     { queryKey: queryKeys.agents("user") },
@@ -341,7 +341,7 @@ test("context changes refetch known context families only, leaving both search f
     [...context, "search", "term"],
     [...context, "search-pages", "term"],
     [...context, "unknown"],
-    [...context, "notifications", "unrelated"],
+    [...context, "notifications", "page", "unread", "cursor"],
     [...queryKeys.context("other"), "related", "record"],
     queryKeys.projects("org"),
     queryKeys.conversations("org"),
@@ -372,7 +372,7 @@ test("context changes refetch known context families only, leaving both search f
     reads.fill(0);
     await cache.receive(change("context"));
     await Bun.sleep(80);
-    expect(reads).toEqual([1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0]);
+    expect(reads).toEqual([1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0]);
     expect(client.getQueryState(keys[5]!)?.isInvalidated).toBe(true);
     expect(client.getQueryState(keys[6]!)?.isInvalidated).toBe(true);
   } finally {

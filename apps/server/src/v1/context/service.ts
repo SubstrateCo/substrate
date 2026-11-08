@@ -8,6 +8,7 @@ import type {
   contextSearch,
   contextSourceTask,
   contextNotification,
+  contextNotificationPage,
 } from "@startup-os/contracts/context/input";
 import { realtimeKeys } from "@startup-os/contracts/realtime";
 import type { RealtimeHint } from "@startup-os/contracts/realtime";
@@ -114,6 +115,20 @@ export function getNotifications(headers: Headers, input: z.output<typeof contex
   return serviceResult(async () => {
     const { feed } = await sessionServices(headers, input.organizationId);
     return feed.list();
+  });
+}
+export function getNotificationPage(
+  headers: Headers,
+  input: z.output<typeof contextNotificationPage>,
+) {
+  return serviceResult(async () => {
+    const { feed } = await sessionServices(headers, input.organizationId);
+    const rows = await feed.list(input.after, {
+      limit: input.limit + 1,
+      unread: input.filter === "unread",
+    });
+    const items = rows.slice(0, input.limit);
+    return { items, nextCursor: rows.length > input.limit ? items.at(-1)!.id : null };
   });
 }
 export function markRead(headers: Headers, input: z.output<typeof contextNotification>) {

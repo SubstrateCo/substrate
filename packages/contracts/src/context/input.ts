@@ -31,3 +31,8 @@ export const contextSourceTask = contextMessage.extend({
   dueDate: z.iso.date().nullable().optional(),
 });
 export const contextNotification = contextWorkspace.extend({ id: z.uuid() });
+export const contextNotificationPage = contextWorkspace.extend({
+  after: z.uuid().optional(),
+  filter: z.enum(["all", "unread"]).default("all"),
+  limit: z.coerce.number().int().min(1).max(20).default(20),
+});

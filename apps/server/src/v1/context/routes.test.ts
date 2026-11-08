@@ -6,6 +6,28 @@ import { expect, mock, test } from "bun:test";
 
 const id = "00000000-0000-4000-8000-000000000001";
 
+test("notification pages validate cursors and filters and preserve the workspace boundary", async () => {
+  const getNotificationPage = mock(async () =>
+    failure("NOT_FOUND", "Item not found or access denied."),
+  );
+  const app = createContextRoutes({ ...services, getNotificationPage });
+  for (const query of ["after=invalid", "filter=invalid", "limit=0", "limit=21", "limit=1.5"]) {
+    expect((await app.request(`/notifications/page?organizationId=org&${query}`)).status).toBe(400);
+  }
+  expect(getNotificationPage).not.toHaveBeenCalled();
+  const response = await app.request(
+    `/notifications/page?organizationId=org&after=${id}&filter=unread`,
+  );
+  expect(response.status).toBe(404);
+  expect(await response.json()).toEqual(failure("NOT_FOUND", "Item not found or access denied."));
+  expect(getNotificationPage).toHaveBeenCalledWith(expect.any(Headers), {
+    organizationId: "org",
+    after: id,
+    filter: "unread",
+    limit: 20,
+  });
+});
+
 test("context routes reject invalid input without invoking services", async () => {
   const spies = {
     getMessagePage: mock(services.getMessagePage),
@@ -19,6 +41,7 @@ test("context routes reject invalid input without invoking services", async () =
     detachWork: mock(services.detachWork),
     getActivity: mock(services.getActivity),
     getNotifications: mock(services.getNotifications),
+    getNotificationPage: mock(services.getNotificationPage),
     markRead: mock(services.markRead),
     markAllRead: mock(services.markAllRead),
   };
@@ -30,6 +53,7 @@ test("context routes reject invalid input without invoking services", async () =
     "/message-target",
     "/activity",
     "/notifications",
+    "/notifications/page",
   ]) {
     const response = await app.request(path);
     expect(response.status).toBe(400);

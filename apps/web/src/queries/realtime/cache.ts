@@ -77,7 +77,7 @@ export function realtimeQueryTargets(
           { queryKey: [...queryKeys.context(organizationId), "activity"] },
           { queryKey: [...queryKeys.context(organizationId), "related"] },
           { queryKey: [...queryKeys.context(organizationId), "message-pages"] },
-          { queryKey: [...queryKeys.context(organizationId), "notifications"], exact: true },
+          { queryKey: [...queryKeys.context(organizationId), "notifications"] },
           ...searchTargets(organizationId),
         );
       break;
@@ -87,7 +87,7 @@ export function realtimeQueryTargets(
           ...["activity", "related", "message-pages", "target"].map((kind) => ({
             queryKey: [...queryKeys.context(organizationId), kind],
           })),
-          { queryKey: [...queryKeys.context(organizationId), "notifications"], exact: true },
+          { queryKey: [...queryKeys.context(organizationId), "notifications"] },
           ...searchTargets(organizationId),
         );
       break;
@@ -95,7 +95,6 @@ export function realtimeQueryTargets(
       if (organizationId)
         targets.push({
           queryKey: [...queryKeys.context(organizationId), "notifications"],
-          exact: true,
         });
       break;
   }
