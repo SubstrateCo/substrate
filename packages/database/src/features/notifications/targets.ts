@@ -48,9 +48,17 @@ export async function readableMessageTargets(
   scope: MessagingIdentity,
   ids: string[],
 ) {
-  if (!ids.length) return new Map<string, { id: string; conversationId: string }>();
+  if (!ids.length)
+    return new Map<
+      string,
+      { id: string; conversationId: string; conversationName: string | null }
+    >();
   const rows = await db
-    .select({ id: messagingMessages.id, conversationId: messagingMessages.conversationId })
+    .select({
+      id: messagingMessages.id,
+      conversationId: messagingMessages.conversationId,
+      conversationName: messagingConversations.name,
+    })
     .from(messagingMessages)
     .innerJoin(
       messagingConversations,

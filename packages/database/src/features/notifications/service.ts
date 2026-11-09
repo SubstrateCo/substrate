@@ -36,15 +36,26 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
       const messages = await readableMessageTargets(db, scope, [
         ...new Set(rows.flatMap((row) => (row.sourceMessageId ? [row.sourceMessageId] : []))),
       ]);
-      return rows
-        .filter((row) => !row.sourceMessageId || messages.has(row.sourceMessageId))
-        .map((row) => ({
-          id: row.id,
-          action: row.action,
-          actorName: row.actorName,
-          actorType: row.actorType,
-          createdAt: row.createdAt,
-        }));
+      return rows.flatMap((row) => {
+        const message = row.sourceMessageId ? messages.get(row.sourceMessageId) : undefined;
+        if (row.sourceMessageId && !message) return [];
+        return [
+          {
+            id: row.id,
+            action: row.action,
+            actorName: row.actorName,
+            actorType: row.actorType,
+            createdAt: row.createdAt,
+            source: message
+              ? {
+                  messageId: message.id,
+                  conversationId: message.conversationId,
+                  conversationName: message.conversationName,
+                }
+              : null,
+          },
+        ];
+      });
     },
     async list(
       after?: string,

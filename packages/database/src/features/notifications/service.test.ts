@@ -319,8 +319,14 @@ test("private source activity is filtered independently from ordinary task activ
     projectEntityId: project.entityId,
     title: "Work",
   });
-  expect((await feed("alice").activity(task.entityId)).map((event) => event.action)).toContain(
-    "Created from a discussion",
+  expect(await feed("alice").activity(task.entityId)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        action: "Created from a discussion",
+        source: { messageId: source.id, conversationId: channel.id, conversationName: "Private" },
+      }),
+      expect.objectContaining({ action: "Task created", source: null }),
+    ]),
   );
   expect((await feed("bob").activity(task.entityId)).map((event) => event.action)).toEqual([
     "Task created",
