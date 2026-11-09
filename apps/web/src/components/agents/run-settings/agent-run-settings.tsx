@@ -2,7 +2,7 @@ import type { AgentRunSettings as AgentRunSettingsData } from "@startup-os/contr
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { AgentRunSettingsDialog } from "./agent-run-settings-dialog";
+import { AgentRunSettingsView } from "./agent-run-settings-view";
 import { saveAgentTriggers, setAgentHomeDevice } from "@/api/agents/requests";
 import { triggersInput } from "@/lib/agents/triggers";
 import { isDesktop } from "@/lib/desktop/auth";
@@ -13,12 +13,10 @@ export function AgentRunSettings({
   userId,
   name,
   settings,
-  onClose,
 }: {
   userId: string;
   name: string;
   settings: AgentRunSettingsData;
-  onClose: () => void;
 }) {
   const client = useQueryClient();
   const invalidate = () => client.invalidateQueries({ queryKey: queryKeys.agents(userId) });
@@ -34,11 +32,10 @@ export function AgentRunSettings({
     onSuccess: async () => {
       toast.success("Run settings saved.");
       await invalidate();
-      onClose();
     },
   });
   return (
-    <AgentRunSettingsDialog
+    <AgentRunSettingsView
       name={name}
       settings={settings}
       canRunHere={isDesktop()}
@@ -47,7 +44,6 @@ export function AgentRunSettings({
       error={home.error ?? triggers.error}
       onRunHere={() => home.mutate()}
       onSave={(next) => triggers.mutate(triggersInput(settings.agentId, next))}
-      onClose={onClose}
     />
   );
 }

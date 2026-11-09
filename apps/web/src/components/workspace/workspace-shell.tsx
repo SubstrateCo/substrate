@@ -70,15 +70,15 @@ export function WorkspaceShell({
             active={view === "tasks"}
             onClick={() => onViewChange("tasks")}
           />
-          <WorkspaceAppButton
-            label="Agents"
-            icon={Bot}
-            active={view === "agents"}
-            unread={agentsNeedYou}
-            unreadLabel="needs you"
-            onClick={() => onViewChange("agents")}
-          />
           <div className="mt-auto flex flex-col items-center gap-3">
+            <WorkspaceAppButton
+              label="Agents"
+              icon={Bot}
+              active={view === "agents"}
+              unread={agentsNeedYou}
+              unreadLabel="needs you"
+              onClick={() => onViewChange("agents")}
+            />
             <WorkspaceAppButton
               label="Notifications"
               icon={Bell}

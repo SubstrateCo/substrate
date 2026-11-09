@@ -1,10 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
+import { useState } from "react";
+
 import { ActivityTurnTranscript } from "../transcript/activity-turn-transcript";
 import { AgentActivity } from "./agent-activity";
 import { AgentsWorkspaceView } from "./agents-workspace-view";
 import { NeedsYou } from "./needs-you";
+import { AgentSettings } from "@/components/agents/agent-settings";
 import { PaneState } from "@/components/feedback/pane-state";
 import { needsYouCount } from "@/lib/agent-work/needs-you";
 import { agentStatus } from "@/lib/agent-work/status";
@@ -22,13 +25,16 @@ export function AgentsWorkspace({
   organizationId,
   agentId,
   turnId,
+  tab,
 }: {
   userId: string;
   organizationId: string;
   agentId?: string;
   turnId?: string;
+  tab?: "routines" | "settings";
 }) {
   const navigate = useNavigate();
+  const [creating, setCreating] = useState(false);
   const catalog = useQuery(agentCatalogQueryOptions(userId));
   const statuses = useQuery(agentStatusOptions(userId, organizationId));
   const needsYou = useQuery(needsYouOptions(userId, organizationId));
@@ -36,7 +42,7 @@ export function AgentsWorkspace({
     ...localAgentsOptions(userId, organizationId),
     enabled: hasAgentWorkBridge(),
   });
-  const go = (search: { agentId?: string; turnId?: string }) =>
+  const go = (search: { agentId?: string; turnId?: string; tab?: "routines" | "settings" }) =>
     void navigate({ to: "/agents", search: { workspaceId: organizationId, ...search } });
   const status = (id: string) => statuses.data?.find((entry) => entry.userAgentId === id);
   const agents = (catalog.data?.agents ?? []).map((agent) => {
@@ -73,6 +79,16 @@ export function AgentsWorkspace({
         homedHere={homedHere}
         status={status(agentId)}
         selectedTurnId={turnId}
+        tab={tab ?? "activity"}
+        onTabChange={(value) => go({ agentId, tab: value === "activity" ? undefined : value })}
+        settings={
+          <AgentSettings
+            userId={userId}
+            organizationId={organizationId}
+            agentId={agentId}
+            onClose={() => go({})}
+          />
+        }
         onTranscript={(id) => go({ agentId, turnId: id })}
       />
     );
@@ -82,10 +98,24 @@ export function AgentsWorkspace({
       needsYouCount={needsYouCount(needsYou.data)}
       selectedAgentId={agentId}
       onSelect={(id) => go({ agentId: id })}
-      settingsHref="/settings/user/agents"
+      onCreate={() => setCreating(true)}
+      editor={
+        creating && (
+          <AgentSettings
+            userId={userId}
+            organizationId={organizationId}
+            onClose={() => setCreating(false)}
+            onCreated={(id) => {
+              setCreating(false);
+              go({ agentId: id, tab: "settings" });
+            }}
+          />
+        )
+      }
       content={content}
       aside={
         agentId &&
+        !tab &&
         selected &&
         turnId && (
           <ActivityTurnTranscript

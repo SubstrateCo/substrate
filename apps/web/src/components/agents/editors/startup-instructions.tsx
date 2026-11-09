@@ -4,8 +4,6 @@ import {
   type HarnessKind,
 } from "@startup-os/contracts/harness";
 
-import { Sparkles } from "lucide-react";
-
 export function StartupInstructions({
   harness,
   name,
@@ -24,23 +22,17 @@ export function StartupInstructions({
     organizationId: organizationId ?? "Active workspace",
   }).trimEnd();
   return (
-    <section
-      aria-labelledby="startup-instructions-title"
-      className="space-y-2 rounded-lg border bg-muted/25 p-3"
-    >
-      <div className="flex items-start gap-2">
-        <Sparkles aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
-        <div className="min-w-0">
-          <h4 id="startup-instructions-title" className="text-sm font-medium">
-            Startup OS instructions
-          </h4>
-          <p className="text-xs text-muted-foreground">
-            Written to {harnessInstructionsFiles[harness]} before your instructions when the agent
-            folder is created. Use Reset defaults in Skills to write them again.
-          </p>
-        </div>
+    <section aria-labelledby="startup-instructions-title" className="grid gap-3">
+      <div className="space-y-1">
+        <h4 id="startup-instructions-title" className="sr-only">
+          Startup OS instructions
+        </h4>
+        <p className="text-xs text-muted-foreground">
+          Written to {harnessInstructionsFiles[harness]} before your additional instructions for new
+          sessions. Existing agent-folder files are kept; Reset defaults in Skills rewrites them.
+        </p>
       </div>
-      <pre className="max-h-40 overflow-y-auto font-mono text-xs wrap-anywhere whitespace-pre-wrap text-muted-foreground">
+      <pre className="max-h-64 overflow-y-auto rounded-lg bg-muted/50 p-3 font-mono text-xs leading-relaxed wrap-anywhere whitespace-pre-wrap text-muted-foreground">
         {text}
       </pre>
     </section>

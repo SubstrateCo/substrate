@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import type { WorkStatus } from "@/lib/agent-work/status";
 import { cn } from "cn";
-import { Bot, Hand, Settings } from "lucide-react";
+import { Bot, Hand, Plus } from "lucide-react";
 
 export type AgentListItem = { id: string; name: string; status?: WorkStatus };
 
@@ -45,7 +45,8 @@ export function AgentsWorkspaceView({
   needsYouCount,
   selectedAgentId,
   onSelect,
-  settingsHref,
+  onCreate,
+  editor,
   content,
   aside,
 }: {
@@ -53,64 +54,66 @@ export function AgentsWorkspaceView({
   needsYouCount: number;
   selectedAgentId?: string;
   onSelect: (agentId?: string) => void;
-  settingsHref: string;
+  onCreate: () => void;
+  editor?: ReactNode;
   content: ReactNode;
   aside?: ReactNode;
 }) {
   return (
-    <PageLayout
-      id="agents"
-      aria-label="Agents"
-      mobileView={selectedAgentId ? "content" : undefined}
-    >
-      <PageSidebar aria-label="Agents">
-        <PageSidebarHeader
-          title="Agents"
-          actions={
-            <Button asChild size="icon-sm" variant="ghost" aria-label="Agent settings">
-              <a href={settingsHref}>
-                <Settings aria-hidden="true" />
-              </a>
-            </Button>
-          }
-        />
-        <PageSidebarContent>
-          <nav aria-label="Agent views" className="grid gap-0.5">
-            <NavButton active={!selectedAgentId} onClick={() => onSelect()}>
-              <Hand aria-hidden="true" className="size-4 shrink-0" />
-              <span className="min-w-0 flex-1 truncate">Needs you</span>
-              {needsYouCount > 0 && (
-                <span className="rounded-full bg-destructive px-1.5 text-xs text-white tabular-nums">
-                  {needsYouCount}
-                </span>
-              )}
-            </NavButton>
-          </nav>
-          <section aria-label="Your agents" className="grid gap-0.5">
-            <h2 className="px-2 pb-1 text-xs font-medium text-muted-foreground">Your agents</h2>
-            {!agents.length && (
-              <p className="px-2 text-xs text-muted-foreground">You have no agents yet.</p>
-            )}
-            {agents.map((agent) => (
-              <NavButton
-                key={agent.id}
-                active={agent.id === selectedAgentId}
-                onClick={() => onSelect(agent.id)}
-              >
-                <span className="relative grid size-5 shrink-0 place-items-center rounded-md bg-accent text-accent-foreground">
-                  <Bot aria-hidden="true" className="size-3" />
-                  {agent.status && (
-                    <WorkIndicator tone={agent.status.tone} label={agent.status.label} />
-                  )}
-                </span>
-                <span className="min-w-0 flex-1 truncate">{agent.name}</span>
+    <>
+      <PageLayout
+        id="agents"
+        aria-label="Agents"
+        mobileView={selectedAgentId ? "content" : undefined}
+      >
+        <PageSidebar aria-label="Agents">
+          <PageSidebarHeader
+            title="Agents"
+            actions={
+              <Button size="icon-sm" variant="ghost" aria-label="Create agent" onClick={onCreate}>
+                <Plus aria-hidden="true" />
+              </Button>
+            }
+          />
+          <PageSidebarContent>
+            <nav aria-label="Agent views" className="grid gap-0.5">
+              <NavButton active={!selectedAgentId} onClick={() => onSelect()}>
+                <Hand aria-hidden="true" className="size-4 shrink-0" />
+                <span className="min-w-0 flex-1 truncate">Needs you</span>
+                {needsYouCount > 0 && (
+                  <span className="rounded-full bg-destructive px-1.5 text-xs text-white tabular-nums">
+                    {needsYouCount}
+                  </span>
+                )}
               </NavButton>
-            ))}
-          </section>
-        </PageSidebarContent>
-      </PageSidebar>
-      <PageContent>{content}</PageContent>
-      {aside}
-    </PageLayout>
+            </nav>
+            <section aria-label="Your agents" className="grid gap-0.5">
+              <h2 className="px-2 pb-1 text-xs font-medium text-muted-foreground">Your agents</h2>
+              {!agents.length && (
+                <p className="px-2 text-xs text-muted-foreground">You have no agents yet.</p>
+              )}
+              {agents.map((agent) => (
+                <NavButton
+                  key={agent.id}
+                  active={agent.id === selectedAgentId}
+                  onClick={() => onSelect(agent.id)}
+                >
+                  <span className="relative grid size-5 shrink-0 place-items-center rounded-md bg-accent text-accent-foreground">
+                    <Bot aria-hidden="true" className="size-3" />
+                    {agent.status && (
+                      <WorkIndicator tone={agent.status.tone} label={agent.status.label} />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{agent.name}</span>
+                </NavButton>
+              ))}
+            </section>
+          </PageSidebarContent>
+        </PageSidebar>
+        <PageContent>{content}</PageContent>
+        {aside}
+      </PageLayout>
+      {editor}
+    </>
   );
 }

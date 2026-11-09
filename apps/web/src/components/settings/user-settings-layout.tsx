@@ -7,8 +7,7 @@ import { UserSettingsLayout as UserSettingsLayoutView } from "@/components/setti
 export function UserSettingsLayout({ children }: { children: ReactNode }) {
   const pathname = useLocation({ select: (location) => location.pathname });
   const navigate = useNavigate();
-  let active: "agents" | "invitations" | "profile" = "profile";
-  if (pathname.endsWith("/agents")) active = "agents";
+  let active: "invitations" | "profile" = "profile";
   if (pathname.endsWith("/invitations")) active = "invitations";
   return (
     <UserSettingsLayoutView
@@ -16,7 +15,6 @@ export function UserSettingsLayout({ children }: { children: ReactNode }) {
       onTabChange={(tab) => {
         const targets = {
           profile: "/settings/user",
-          agents: "/settings/user/agents",
           invitations: "/settings/user/invitations",
         } as const;
         void navigate({ to: targets[tab] });

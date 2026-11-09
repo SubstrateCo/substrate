@@ -1,5 +1,5 @@
 import type {
-  AgentCatalog as AgentCatalogData,
+  AgentCatalog,
   AgentConfiguration,
   AgentRunSettings,
   SaveAgentInput,
@@ -8,16 +8,18 @@ import type { HarnessKind } from "@startup-os/contracts/harness";
 
 import { useState, type ReactNode } from "react";
 
-import { AgentCatalog } from "./catalog/agent-catalog";
 import { DeleteDefinitionDialog } from "./catalog/delete-definition-dialog";
-import { AgentEditor, type AgentSection } from "./editors/agent-editor";
+import { AgentEditor } from "./editors/agent-editor";
+import { AgentForm, type AgentSection } from "./editors/agent-form";
+import { SettingsCard } from "./layout/settings-section";
+import { LoadingState } from "@/components/feedback/loading-state";
 import { Button } from "@/components/ui/button";
-
-type Editor = { id?: string };
 
 export function AgentSettingsView({
   userId,
   organizationId,
+  agentId,
+  onClose,
   catalog,
   loading,
   error,
@@ -31,7 +33,9 @@ export function AgentSettingsView({
 }: {
   userId: string;
   organizationId?: string | null;
-  catalog?: AgentCatalogData;
+  agentId?: string;
+  onClose: () => void;
+  catalog?: AgentCatalog;
   loading: boolean;
   error: Error | null;
   pending: boolean;
@@ -44,27 +48,14 @@ export function AgentSettingsView({
     defaults: boolean,
     agentId?: string,
   ) => ReactNode;
-  renderRunSettings: (
-    agent: AgentConfiguration,
-    settings: AgentRunSettings,
-    onClose: () => void,
-  ) => ReactNode;
+  renderRunSettings: (agent: AgentConfiguration, settings: AgentRunSettings) => ReactNode;
   onDelete: (id: string) => Promise<void>;
 }) {
-  const [editor, setEditor] = useState<Editor>();
-  const [runSettingsFor, setRunSettingsFor] = useState<string>();
-  const runAgent = catalog?.agents.find((agent) => agent.id === runSettingsFor);
-  const runSettings = catalog?.runSettings.find((item) => item.agentId === runSettingsFor);
-  const [deleting, setDeleting] = useState<{ id: string; name: string }>();
-  const close = () => setEditor(undefined);
-  const editedAgent = catalog?.agents.find((agent) => agent.id === editor?.id);
+  const [deleting, setDeleting] = useState(false);
+  const agent = catalog?.agents.find((item) => item.id === agentId);
+  const runSettings = catalog?.runSettings.find((item) => item.agentId === agentId);
   return (
-    <section aria-labelledby="agents-title" className="grid gap-5">
-      <div>
-        <h2 id="agents-title" className="text-lg font-semibold">
-          Agents
-        </h2>
-      </div>
+    <section aria-label="Agent settings" className="grid gap-8">
       {error && (
         <div role="alert">
           <p>{error.message}</p>
@@ -73,42 +64,59 @@ export function AgentSettingsView({
           </Button>
         </div>
       )}
-      {(catalog || loading) && (
-        <AgentCatalog
-          agents={catalog?.agents}
-          runSettings={catalog?.runSettings}
-          loading={loading}
+      {agentId && loading && <LoadingState label="Loading agent settings" variant="compact" />}
+      {agent && (
+        <AgentForm
+          userId={userId}
+          organizationId={organizationId}
+          agent={agent}
+          picture={renderAgentPicture(agent)}
+          renderConfiguration={renderAgentConfiguration}
           pending={pending}
-          onCreate={() => setEditor({})}
-          onRunSettings={(agent) => setRunSettingsFor(agent.id)}
-          onEdit={(agent) => setEditor({ id: agent.id })}
-          onDelete={(agent) => setDeleting({ id: agent.id, name: agent.name })}
+          onSave={onSaveAgent}
+          runSettings={runSettings && renderRunSettings(agent, runSettings)}
+          deleteAction={
+            <SettingsCard label="Delete agent" tone="destructive" className="py-4">
+              <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <p className="text-sm font-medium">Delete agent</p>
+                  <p className="text-sm text-muted-foreground">
+                    Conversation history is kept when you delete this agent.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  disabled={pending}
+                  aria-label={`Delete ${agent.name}`}
+                  onClick={() => setDeleting(true)}
+                >
+                  Delete agent
+                </Button>
+              </div>
+            </SettingsCard>
+          }
         />
       )}
-      {catalog && editor && (
+      {!agentId && (
         <AgentEditor
           userId={userId}
           organizationId={organizationId}
-          agent={editedAgent}
-          picture={editedAgent && renderAgentPicture(editedAgent)}
           renderConfiguration={renderAgentConfiguration}
           pending={pending}
-          onClose={close}
+          onClose={onClose}
           onSave={async (input) => {
             await onSaveAgent(input);
-            close();
+            onClose();
           }}
         />
       )}
-      {runAgent &&
-        runSettings &&
-        renderRunSettings(runAgent, runSettings, () => setRunSettingsFor(undefined))}
-      {deleting && (
+      {agent && deleting && (
         <DeleteDefinitionDialog
-          name={deleting.name}
+          name={agent.name}
           pending={pending}
-          onClose={() => setDeleting(undefined)}
-          onDelete={() => onDelete(deleting.id)}
+          onClose={() => setDeleting(false)}
+          onDelete={() => onDelete(agent.id)}
         />
       )}
     </section>

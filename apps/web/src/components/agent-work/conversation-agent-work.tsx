@@ -132,7 +132,10 @@ export function ConversationAgentWork({
             agentName: agent.name,
             tone: "idle",
             label: noDesktopLabel,
-            link: { href: "/settings/user/agents", label: "Choose a desktop" },
+            link: {
+              href: `/agents?workspaceId=${organizationId}&agentId=${agent.agentId}&tab=settings`,
+              label: "Choose a desktop",
+            },
           });
         continue;
       }

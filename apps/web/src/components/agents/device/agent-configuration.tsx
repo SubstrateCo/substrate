@@ -1,4 +1,4 @@
-import { startupSkillIds, type HarnessKind } from "@startup-os/contracts/harness";
+import { startupSkillIds, startupSkills, type HarnessKind } from "@startup-os/contracts/harness";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -6,14 +6,16 @@ import { useState } from "react";
 
 import { CatalogRow } from "../catalog/catalog-row";
 import { DeleteDefinitionDialog } from "../catalog/delete-definition-dialog";
-import type { AgentSection } from "../editors/agent-editor";
+import type { AgentSection } from "../editors/agent-form";
 import { SkillEditor } from "../editors/skill-editor";
+import { SettingsList, SettingsNote, SettingsSection } from "../layout/settings-section";
 import { ResetDefaultsDialog } from "./reset-defaults-dialog";
+import { McpServerRow, StartupSkills } from "./startup-configuration";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { Button } from "@/components/ui/button";
 import { desktopLocalConfiguration } from "@/lib/desktop/agents/local-configuration";
 import { queryKeys } from "@/queries/keys";
-import { Blocks, RefreshCw, RotateCcw, Sparkles } from "lucide-react";
+import { Monitor, Plus, RefreshCw, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 export function AgentConfiguration({
@@ -74,88 +76,81 @@ export function AgentConfiguration({
   // Startup OS rewrites its own skills on every sync, so they are not listed as editable.
   const isStartupSkill = (id: string) => startupSkillIds.includes(id);
   const skills = configuration.data?.skills.filter((skill) => !isStartupSkill(skill.id)) ?? [];
-  const nativeDefault =
-    configuration.data?.skills.some((skill) => isStartupSkill(skill.id)) ?? false;
+  const defaultSkills = !available && defaults ? startupSkills : [];
+  const managedSkills = configuration.data
+    ? configuration.data.skills.filter((skill) => isStartupSkill(skill.id))
+    : defaultSkills;
   const servers = configuration.data?.mcpServers ?? [];
   const skill = skills.find((item) => item.id === editing?.id);
-  return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="font-medium">{section === "skills" ? "Skills" : "MCP servers"}</h3>
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            size="icon-sm"
-            variant="ghost"
-            aria-label="Refresh configuration"
-            disabled={!available || configuration.isFetching}
-            onClick={() => void configuration.refetch()}
-          >
-            <RefreshCw className={configuration.isFetching ? "animate-spin" : ""} />
-          </Button>
-          {section === "skills" && (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={!available || reset.isPending}
-                onClick={() => setResetting(true)}
-              >
-                <RotateCcw />
-                Reset defaults
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={!available || configuration.isFetching}
-                onClick={() => setEditing({})}
-              >
-                Create skill
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
-      {(defaults || (section === "skills" && nativeDefault)) && (
-        <div className="flex items-start gap-3 rounded-lg border p-4">
-          {section === "skills" ? (
-            <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
-          ) : (
-            <Blocks className="mt-0.5 size-4 shrink-0 text-primary" />
-          )}
-          <div className="min-w-0 flex-1">
-            <p className="font-medium">Startup OS</p>
-            {section === "mcps" && (
-              <p className="mt-1 text-xs text-muted-foreground">hello_world</p>
-            )}
-          </div>
-          <span className="rounded bg-accent px-2 py-0.5 text-xs text-muted-foreground">
-            {defaults ? "Built-in" : "Native"}
-          </span>
-        </div>
+  const refresh = (
+    <Button
+      type="button"
+      size="icon-sm"
+      variant="ghost"
+      aria-label="Refresh configuration"
+      disabled={!available || configuration.isFetching}
+      onClick={() => void configuration.refetch()}
+    >
+      <RefreshCw className={configuration.isFetching ? "animate-spin" : ""} />
+    </Button>
+  );
+  const status = (
+    <>
+      {!available && (
+        <SettingsNote icon={<Monitor />}>
+          {agentId
+            ? `Open this agent in the desktop app to see and edit the ${section === "skills" ? "skills" : "MCP servers"} in its local folder.`
+            : "Save this agent to edit its local configuration."}
+        </SettingsNote>
       )}
-      <div className="space-y-3">
-        <h4 className="text-xs font-medium text-muted-foreground">Native configuration</h4>
-        {!available && (
-          <p className="text-sm text-muted-foreground">
-            {agentId
-              ? "Select a workspace in the desktop app."
-              : "Save this agent to edit its local configuration."}
-          </p>
+      {available && configuration.isPending && (
+        <LoadingState label="Loading native configuration" variant="compact" />
+      )}
+      {configuration.error && (
+        <p role="alert" className="text-sm text-destructive">
+          {configuration.error.message}
+        </p>
+      )}
+    </>
+  );
+  const content =
+    section === "skills" ? (
+      <SettingsSection
+        title="Skills"
+        description="Focused how-tos this agent loads when a task needs them."
+        actions={
+          <>
+            {refresh}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={!available || reset.isPending}
+              onClick={() => setResetting(true)}
+            >
+              <RotateCcw />
+              Reset defaults
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={!available || configuration.isFetching}
+              onClick={() => setEditing({})}
+            >
+              <Plus />
+              Create skill
+            </Button>
+          </>
+        }
+      >
+        {status}
+        {managedSkills.length > 0 && (
+          <StartupSkills skills={managedSkills} scanned={!!configuration.data} />
         )}
-        {available && configuration.isPending && (
-          <LoadingState label="Loading native configuration" variant="compact" />
-        )}
-        {configuration.error && (
-          <p role="alert" className="text-sm text-destructive">
-            {configuration.error.message}
-          </p>
-        )}
-        {configuration.data &&
-          section === "skills" &&
-          (skills.length ? (
-            <ul className="grid gap-3">
-              {skills.map((item) => (
+        {configuration.data && (
+          <SettingsList title="Your skills">
+            {skills.length ? (
+              skills.map((item) => (
                 <CatalogRow
                   key={item.id}
                   name={item.name}
@@ -164,32 +159,40 @@ export function AgentConfiguration({
                   onEdit={() => setEditing({ id: item.id })}
                   onDelete={() => setDeleting({ id: item.id, name: item.name })}
                 />
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground">No custom skills.</p>
-          ))}
-        {configuration.data &&
-          section === "mcps" &&
-          (servers.length ? (
-            <ul className="divide-y rounded-lg border">
-              {servers.map((server) => (
-                <li key={server.id} className="flex min-w-0 flex-wrap items-start gap-3 p-4">
-                  <Blocks className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium wrap-anywhere">{server.name}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {server.transport === "http" ? "HTTP" : "Standard I/O"} · Native
-                      {server.readOnly ? " · Read-only" : ""}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground">No native MCP servers.</p>
-          ))}
-      </div>
+              ))
+            ) : (
+              <li className="px-4 py-3 text-sm text-muted-foreground">No custom skills.</li>
+            )}
+          </SettingsList>
+        )}
+      </SettingsSection>
+    ) : (
+      <SettingsSection
+        title="MCP servers"
+        description="Servers that give this agent extra tools."
+        actions={refresh}
+      >
+        {status}
+        {(defaults || configuration.data) && (
+          <SettingsList
+            description={
+              defaults ? "Startup OS provides the built-in server when this agent runs." : undefined
+            }
+          >
+            {defaults && <McpServerRow name="startup-os" builtIn />}
+            {servers.map((server) => (
+              <McpServerRow key={server.id} name={server.name} />
+            ))}
+            {configuration.data && !servers.length && !defaults && (
+              <li className="px-4 py-3 text-sm text-muted-foreground">No MCP servers.</li>
+            )}
+          </SettingsList>
+        )}
+      </SettingsSection>
+    );
+  return (
+    <div>
+      {content}
       {editing && (
         <SkillEditor
           skill={skill}

@@ -5,12 +5,16 @@ import { z } from "zod";
 
 export const Route = createFileRoute("/_authenticated/_workspace/agents")({
   component: AgentsRoute,
-  validateSearch: z.object({ agentId: z.uuid().optional(), turnId: z.uuid().optional() }),
+  validateSearch: z.object({
+    agentId: z.uuid().optional(),
+    turnId: z.uuid().optional(),
+    tab: z.enum(["routines", "settings"]).optional(),
+  }),
 });
 
 function AgentsRoute() {
   const { organizationId, session } = Route.useRouteContext();
-  const { agentId, turnId } = Route.useSearch();
+  const { agentId, turnId, tab } = Route.useSearch();
   return (
     <AgentsWorkspace
       key={organizationId}
@@ -18,6 +22,7 @@ function AgentsRoute() {
       organizationId={organizationId}
       agentId={agentId}
       turnId={turnId}
+      tab={tab}
     />
   );
 }

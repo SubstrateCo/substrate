@@ -12,9 +12,15 @@ import { toast } from "sonner";
 export function AgentSettings({
   userId,
   organizationId,
+  agentId,
+  onClose,
+  onCreated,
 }: {
   userId: string;
   organizationId?: string | null;
+  agentId?: string;
+  onClose: () => void;
+  onCreated?: (id: string) => void;
 }) {
   const client = useQueryClient();
   const catalog = useQuery(agentCatalogQueryOptions(userId));
@@ -37,6 +43,8 @@ export function AgentSettings({
     <AgentSettingsView
       userId={userId}
       organizationId={organizationId}
+      agentId={agentId}
+      onClose={onClose}
       catalog={catalog.data}
       loading={catalog.isPending}
       error={catalog.error}
@@ -55,21 +63,17 @@ export function AgentSettings({
           defaults={defaults}
         />
       )}
-      renderRunSettings={(agent, settings, onClose) => (
-        <AgentRunSettings
-          key={agent.id}
-          userId={userId}
-          name={agent.name}
-          settings={settings}
-          onClose={onClose}
-        />
+      renderRunSettings={(agent, settings) => (
+        <AgentRunSettings key={agent.id} userId={userId} name={agent.name} settings={settings} />
       )}
       onRetry={() => void catalog.refetch()}
       onSaveAgent={async (input) => {
-        await agent.mutateAsync(input);
+        const saved = await agent.mutateAsync(input);
+        if (!input.id) onCreated?.(saved.id);
       }}
       onDelete={async (id) => {
         await remove.mutateAsync(id);
+        onClose();
       }}
     />
   );

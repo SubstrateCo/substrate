@@ -3,6 +3,8 @@ import { liveTurnStatuses } from "@startup-os/contracts/agent-work";
 
 import { useInfiniteQuery } from "@tanstack/react-query";
 
+import type { ReactNode } from "react";
+
 import { NeedsAttention } from "../needs-attention";
 import { Routines } from "../routines/routines";
 import { AgentActivityView, type ActivityRow } from "./agent-activity-view";
@@ -25,6 +27,9 @@ export function AgentActivity({
   status,
   selectedTurnId,
   onTranscript,
+  tab,
+  onTabChange,
+  settings,
 }: {
   userId: string;
   organizationId: string;
@@ -34,6 +39,9 @@ export function AgentActivity({
   status?: AgentStatusView;
   selectedTurnId?: string;
   onTranscript: (turnId: string) => void;
+  tab: "activity" | "routines" | "settings";
+  onTabChange: (tab: "activity" | "routines" | "settings") => void;
+  settings: ReactNode;
 }) {
   const activity = useInfiniteQuery({
     ...agentActivityOptions(userId, organizationId, agentId),
@@ -71,6 +79,9 @@ export function AgentActivity({
   return (
     <AgentActivityView
       name={name}
+      tab={tab}
+      onTabChange={onTabChange}
+      settings={settings}
       status={status && agentStatus(status)}
       unavailable={unavailable}
       rows={rows}

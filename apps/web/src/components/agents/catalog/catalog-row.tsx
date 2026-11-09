@@ -23,12 +23,12 @@ export function CatalogRow({
   disabled: boolean;
 }) {
   return (
-    <li className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
+    <li className="flex items-center justify-between gap-3 px-4 py-3">
       <div className="flex min-w-0 items-center gap-3">
         {picture}
-        <div className="min-w-0">
-          <p className="font-medium wrap-anywhere">{name}</p>
-          <p className="text-sm wrap-anywhere text-muted-foreground">{detail}</p>
+        <div className="grid min-w-0 gap-1">
+          <p className="text-sm font-medium wrap-anywhere">{name}</p>
+          <p className="line-clamp-2 text-xs wrap-anywhere text-muted-foreground">{detail}</p>
         </div>
       </div>
       <ButtonGroup aria-label={`Actions for ${name}`}>
