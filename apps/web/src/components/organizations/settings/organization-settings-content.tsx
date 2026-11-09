@@ -15,7 +15,7 @@ export function OrganizationSettings({
   isOwner: boolean;
 }) {
   return (
-    <SettingsPage>
+    <SettingsPage id="organization-settings">
       <Tabs defaultValue="general">
         <TabsList variant="line" aria-label="Organization settings">
           <TabsTrigger value="general">General</TabsTrigger>

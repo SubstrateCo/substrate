@@ -3,8 +3,7 @@ import type { ReactNode } from "react";
 import { ContentNotice } from "../../feedback/content-notice";
 import { PaneState } from "../../feedback/pane-state";
 import { isAccessFailure } from "../../feedback/request-failure";
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "../../ui/resizable";
-import { useDesktopThread } from "../threads/use-desktop-thread";
+import { PageContent, PageLayout } from "@/components/layout/page-layout";
 import { ConversationHeader } from "@/components/messaging/conversations/conversation-pane/conversation-header";
 import { conversationName, type Conversation } from "@/lib/messaging/conversations";
 
@@ -42,7 +41,6 @@ export function ConversationPane({
     : conversationName(conversation);
   const blocked = !!error && (!hasLoaded || isAccessFailure(error));
   const initialLoading = loading && !hasLoaded;
-  const desktop = useDesktopThread();
   const showThread = !blocked && !initialLoading && !!thread;
   let channelIcon: "private" | "public" | undefined;
   if (!isAccessFailure(error) && conversation.kind === "channel") {
@@ -53,79 +51,52 @@ export function ConversationPane({
     }
   }
   return (
-    <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
-      <ResizablePanelGroup
-        orientation="horizontal"
-        className="min-h-0 min-w-0 flex-1 max-lg:contents! max-lg:*:data-panel:contents!"
-      >
-        <ResizablePanel
-          id="channel"
-          minSize={300}
-          className="flex min-h-0 min-w-0 flex-col max-lg:contents!"
-        >
-          <section
-            inert={showThread && !desktop}
-            aria-hidden={showThread && !desktop ? true : undefined}
-            aria-label={title}
-            className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface"
-          >
-            <ConversationHeader
-              title={title}
-              channelIcon={channelIcon}
-              addingMembers={addingMembers}
-              onToggleMembers={
-                !blocked && conversation.kind !== "dm" && conversation.canManage
-                  ? onToggleMembers
-                  : undefined
-              }
-              actions={!blocked && actions}
-            />
-            {!blocked && addingMembers && membersForm}
-            {error && !blocked && (
-              <p role="status" className="px-4 pt-3 text-xs text-muted-foreground">
-                Messages may be out of date.
-              </p>
-            )}
-            {blocked && (
-              <PaneState label="Conversation unavailable" error={error} onRetry={onRetry} />
-            )}
-            {!blocked && initialLoading && <PaneState label="Loading messages…" />}
-            {!blocked && !initialLoading && messages}
-            {!blocked && !initialLoading && !messages && (
-              <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center overflow-y-auto p-4 wrap-anywhere">
-                <ContentNotice
-                  title={
-                    conversation.kind === "channel"
-                      ? `Welcome to #${title}`
-                      : `Your conversation with ${title}`
-                  }
-                  description="No messages yet. Send the first message below."
-                />
-              </div>
-            )}
-            {!blocked && (
-              <div className="mt-auto shrink-0">
-                {!conversation.joined && leftNotice}
-                {composer}
-              </div>
-            )}
-          </section>
-        </ResizablePanel>
-        {showThread && (
-          <>
-            <ResizableHandle aria-label="Resize thread" className="max-lg:hidden" />
-            <ResizablePanel
-              id="thread"
-              defaultSize="40%"
-              minSize={300}
-              maxSize="65%"
-              className="flex min-h-0 min-w-0 flex-col max-lg:contents!"
-            >
-              {thread}
-            </ResizablePanel>
-          </>
-        )}
-      </ResizablePanelGroup>
-    </div>
+    <PageLayout id="conversation" aria-label="Conversation">
+      <PageContent>
+        <section aria-label={title} className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface">
+          <ConversationHeader
+            title={title}
+            channelIcon={channelIcon}
+            addingMembers={addingMembers}
+            onToggleMembers={
+              !blocked && conversation.kind !== "dm" && conversation.canManage
+                ? onToggleMembers
+                : undefined
+            }
+            actions={!blocked && actions}
+          />
+          {!blocked && addingMembers && membersForm}
+          {error && !blocked && (
+            <p role="status" className="px-4 pt-3 text-xs text-muted-foreground">
+              Messages may be out of date.
+            </p>
+          )}
+          {blocked && (
+            <PaneState label="Conversation unavailable" error={error} onRetry={onRetry} />
+          )}
+          {!blocked && initialLoading && <PaneState label="Loading messages…" />}
+          {!blocked && !initialLoading && messages}
+          {!blocked && !initialLoading && !messages && (
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center overflow-y-auto p-4 wrap-anywhere">
+              <ContentNotice
+                title={
+                  conversation.kind === "channel"
+                    ? `Welcome to #${title}`
+                    : `Your conversation with ${title}`
+                }
+                description="No messages yet. Send the first message below."
+              />
+            </div>
+          )}
+          {!blocked && (
+            <div className="mt-auto shrink-0">
+              {!conversation.joined && leftNotice}
+              {composer}
+            </div>
+          )}
+        </section>
+      </PageContent>
+      {showThread && thread}
+    </PageLayout>
   );
 }

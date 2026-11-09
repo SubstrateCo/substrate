@@ -11,7 +11,6 @@ import type {
 } from "@/components/messaging/conversations/conversation-sidebar/conversation-create-menu";
 import { ConversationSection } from "@/components/messaging/conversations/conversation-sidebar/conversation-section";
 import type { Conversation } from "@/lib/messaging/conversations";
-import { cn } from "cn";
 
 export function ConversationSidebar({
   conversations,
@@ -21,7 +20,6 @@ export function ConversationSidebar({
   onSelect,
   onCreate,
   onMessageAgent,
-  mobileOpen,
   loading = false,
   error,
   onRetry,
@@ -33,7 +31,6 @@ export function ConversationSidebar({
   onSelect: (id: string) => void;
   onCreate: (kind: Conversation["kind"], recipient?: string) => void;
   onMessageAgent?: (agent: DirectMessageAgent) => void;
-  mobileOpen: boolean;
   loading?: boolean;
   error?: Error | null;
   onRetry?: () => void;
@@ -43,13 +40,7 @@ export function ConversationSidebar({
   );
   const showList = !isAccessFailure(error) && (!error || conversations.length > 0);
   return (
-    <PageSidebar
-      id="conversation-sidebar"
-      aria-label="Conversations"
-      aria-busy={loading}
-      width="fill"
-      className={cn("flex-1 max-md:h-auto", !mobileOpen && "hidden md:flex")}
-    >
+    <PageSidebar id="conversation-sidebar" aria-label="Conversations" aria-busy={loading}>
       <PageSidebarHeader title="Messages" />
       {showList ? (
         <PageSidebarContent className="pt-0">

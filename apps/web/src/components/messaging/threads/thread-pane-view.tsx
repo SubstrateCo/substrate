@@ -4,6 +4,7 @@ import { PaneState } from "../../feedback/pane-state";
 import { isAccessFailure } from "../../feedback/request-failure";
 import { Button } from "../../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
+import { PageAside } from "@/components/layout/page-layout";
 import { X } from "lucide-react";
 
 export function ThreadPane({
@@ -39,10 +40,7 @@ export function ThreadPane({
     };
   }, []);
   return (
-    <aside
-      aria-label="Thread"
-      className="absolute inset-0 z-10 flex min-h-0 min-w-0 flex-col bg-surface shadow-raised lg:static lg:flex-1 lg:shadow-none"
-    >
+    <PageAside aria-label="Thread">
       <header className="flex h-12 shrink-0 items-center justify-between border-b bg-card/60 px-4">
         <h2 className="font-semibold">Thread</h2>
         <Tooltip>
@@ -74,6 +72,6 @@ export function ThreadPane({
         </>
       )}
       {!blocked && <div className="mt-auto shrink-0">{composer}</div>}
-    </aside>
+    </PageAside>
   );
 }

@@ -3,9 +3,9 @@ import { Children, type ReactNode } from "react";
 import { PaneState } from "../../feedback/pane-state";
 import { isAccessFailure } from "../../feedback/request-failure";
 import { Button } from "../../ui/button";
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "../../ui/resizable";
 import { ComposerDraftProvider } from "../composer/composer-drafts";
 import { ConversationSidebar } from "../conversations/conversation-sidebar";
+import { PageContent, PageLayout } from "@/components/layout/page-layout";
 import type {
   DirectMessageAgent,
   DirectMessagePerson,
@@ -70,47 +70,33 @@ export function MessagingWorkspace({
             {sidebarOpen ? "Back to messages" : "Show conversations"}
           </Button>
         </div>
-        <ResizablePanelGroup
-          orientation="horizontal"
-          className="min-h-0 min-w-0 flex-1 max-md:contents! max-md:*:data-panel:contents!"
+        <PageLayout
+          id="messages"
+          aria-label="Messages"
+          mobileView={sidebarOpen ? "sidebar" : "content"}
         >
-          <ResizablePanel
-            id="conversations"
-            defaultSize={240}
-            minSize={180}
-            maxSize={360}
-            className="max-md:contents!"
-          >
-            <ConversationSidebar
-              mobileOpen={sidebarOpen}
-              loading={loading}
-              error={blocked ? error : undefined}
-              onRetry={onRetry}
-              conversations={conversations}
-              selectedId={creating ? undefined : selectedId}
-              people={people}
-              agents={agents}
-              onMessageAgent={
-                onMessageAgent &&
-                ((agent) => {
-                  setCreating(undefined);
-                  onMessageAgent(agent);
-                })
-              }
-              onSelect={(id) => {
+          <ConversationSidebar
+            loading={loading}
+            error={blocked ? error : undefined}
+            onRetry={onRetry}
+            conversations={conversations}
+            selectedId={creating ? undefined : selectedId}
+            people={people}
+            agents={agents}
+            onMessageAgent={
+              onMessageAgent &&
+              ((agent) => {
                 setCreating(undefined);
-                onSelect(id);
-              }}
-              onCreate={(kind, nextRecipient) => beginCreate(kind, "sidebar", nextRecipient)}
-            />
-          </ResizablePanel>
-          <ResizableHandle aria-label="Resize conversations sidebar" className="max-md:hidden" />
-          <ResizablePanel
-            id="conversation"
-            minSize={320}
-            className={`${sidebarOpen ? "max-md:hidden!" : "flex"} min-h-0 min-w-0 flex-1 flex-col md:flex`}
-            data-page-outlet
-          >
+                onMessageAgent(agent);
+              })
+            }
+            onSelect={(id) => {
+              setCreating(undefined);
+              onSelect(id);
+            }}
+            onCreate={(kind, nextRecipient) => beginCreate(kind, "sidebar", nextRecipient)}
+          />
+          <PageContent>
             {blocked && <PaneState label="Workspace unavailable" error={error} onRetry={onRetry} />}
             {!blocked && error && (
               <p role="status" className="p-3 text-xs text-muted-foreground">
@@ -134,8 +120,8 @@ export function MessagingWorkspace({
             {!blocked && !hasContent && !loading && (
               <WorkspaceEmpty onCreate={(kind) => beginCreate(kind, "empty")} />
             )}
-          </ResizablePanel>
-        </ResizablePanelGroup>
+          </PageContent>
+        </PageLayout>
       </div>
     </ComposerDraftProvider>
   );

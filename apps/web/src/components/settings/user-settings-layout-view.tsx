@@ -13,7 +13,7 @@ export function UserSettingsLayout({
   onTabChange: (tab: "profile" | "invitations" | "agents") => void;
 }) {
   return (
-    <SettingsPage title="User settings">
+    <SettingsPage id="user-settings" title="User settings">
       <Tabs
         value={active}
         onValueChange={(value) => {

@@ -68,7 +68,7 @@ export function NotificationList({
   }, [onPageSizeChange]);
 
   return (
-    <PageLayout aria-label="Notifications">
+    <PageLayout id="notifications" aria-label="Notifications">
       <Tabs
         value={filter}
         onValueChange={(value) => {

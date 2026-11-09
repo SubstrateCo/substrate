@@ -59,7 +59,7 @@ export function TasksWorkspace({
     setCreating(false);
   };
   return (
-    <PageLayout aria-label="Tasks application">
+    <PageLayout id="tasks" aria-label="Tasks application">
       <ProjectSidebar
         projects={visible}
         selectedId={creating ? undefined : selectedProjectId}
