@@ -11,25 +11,27 @@ import { Bot } from "lucide-react";
 export function PendingReply({
   name,
   tone,
-  label,
+  status,
   children,
 }: {
   name: string;
   tone: WorkTone;
-  label: string;
+  /** The work's status, beside the name. */
+  status: ReactNode;
   children: ReactNode;
 }) {
   return (
     <section aria-label={`${name} reply`} className="mt-2 flex max-w-180 min-w-0 gap-2.5">
       <span className="relative mt-0.5 grid size-6 shrink-0 place-items-center rounded-md bg-accent text-accent-foreground">
         <Bot aria-hidden="true" className="size-3.5" />
-        <WorkIndicator tone={tone} label={label} />
+        <WorkIndicator tone={tone} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-sm">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 text-sm">
           <span className="font-semibold">{name}</span>
           <span className="text-xs text-muted-foreground">Only visible to you</span>
-        </p>
+          {status}
+        </div>
         {children}
       </div>
     </section>

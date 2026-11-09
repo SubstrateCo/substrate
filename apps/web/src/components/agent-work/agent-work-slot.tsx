@@ -3,6 +3,8 @@ import { createContext, useContext, type ReactNode } from "react";
 export type AgentWorkRenderer = {
   /** Work, waiting messages, and request cards under the message they belong to. */
   work: (message: { id: string; fromAgent: boolean }) => ReactNode;
+  /** The status of the work behind an agent's reply, in the reply's header. */
+  status: (messageId: string) => ReactNode;
   /** The work's status dot, on the avatar of the agent's reply. */
   badge: (messageId: string) => ReactNode;
   /** A line above the composer about the owner's agents here. Null threadId is the main pane. */
@@ -25,6 +27,10 @@ export function AgentWorkProvider({
 
 export function AgentWorkSlot({ messageId, fromAgent }: { messageId: string; fromAgent: boolean }) {
   return useContext(AgentWorkContext)?.work({ id: messageId, fromAgent }) ?? null;
+}
+
+export function AgentWorkStatus({ messageId }: { messageId: string }) {
+  return useContext(AgentWorkContext)?.status(messageId) ?? null;
 }
 
 export function AgentWorkBadge({ messageId }: { messageId: string }) {

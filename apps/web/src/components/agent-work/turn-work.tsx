@@ -1,95 +1,91 @@
 import type { AgentRequestView, AgentTurnView } from "@startup-os/contracts/agent-work";
 import { liveTurnStatuses } from "@startup-os/contracts/agent-work";
 
-import { useQuery } from "@tanstack/react-query";
-
-import { useState } from "react";
-
 import { NeedsAttention } from "./needs-attention";
 import { PendingReply } from "./pending-reply";
-import { MutedWorkLine, WorkLine } from "./work-line";
+import { MutedWorkLine, WorkStatus } from "./work-status";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useNow } from "@/hooks/use-now";
 import { turnStatus } from "@/lib/agent-work/status";
-import { workSteps } from "@/lib/agent-work/transcript";
-import { turnEventsOptions } from "@/queries/agent-work/local";
 import { useLocalWorkActions } from "@/queries/agent-work/mutations";
 import { toast } from "sonner";
 
-/**
- * One local turn, where it belongs: under the agent's reply, or as a pending reply under the
- * owner message that started it. Steps load only while they are open.
- */
-export function TurnWork({
-  userId,
-  organizationId,
-  turn,
-  agentName,
-  underReply,
-  openRequest,
-  uncertainItemIds,
-  onTranscript,
-}: {
+type TurnProps = {
   userId: string;
   organizationId: string;
   turn: AgentTurnView;
-  agentName: string;
-  /** The turn shows under the agent's own message, not under the owner's. */
-  underReply: boolean;
   openRequest?: AgentRequestView;
-  /** The turn's items that the desktop couldn't confirm the agent received. */
-  uncertainItemIds?: readonly string[];
   onTranscript: (turnId: string) => void;
-}) {
+};
+
+/** One local turn's status, for the header of the reply it belongs to. */
+export function TurnStatus({ userId, organizationId, turn, openRequest, onTranscript }: TurnProps) {
   const live = liveTurnStatuses.includes(turn.status);
-  const [chosen, setChosen] = useState<boolean>();
-  const open = chosen ?? live;
   const now = useNow(live);
   const status = turnStatus(turn, now, openRequest);
-  const events = useQuery({
-    ...turnEventsOptions(userId, organizationId, turn.id),
-    enabled: open,
-  });
   const actions = useLocalWorkActions(userId, organizationId);
-  const fail = (fallback: string) => (error: Error) =>
-    toast.error(actionErrorMessage(error, fallback));
-  if (status.tone === "muted") return <MutedWorkLine label={status.label} />;
-  const work = (
-    <WorkLine
+  if (status.tone === "muted") return null;
+  return (
+    <WorkStatus
       tone={status.tone}
       label={status.label}
       activity={turn.activity}
-      error={turn.status === "failed" ? turn.error : null}
-      open={open}
-      onOpenChange={setChosen}
-      steps={events.data && workSteps(events.data, live)}
-      stepsLoading={events.isPending}
-      stepsError={events.error}
-      onRetrySteps={() => void events.refetch()}
       onTranscript={() => onTranscript(turn.id)}
       onStop={
         live && turn.status !== "stopping"
-          ? () => actions.stop.mutate(turn.id, { onError: fail("We couldn’t stop this work.") })
+          ? () =>
+              actions.stop.mutate(turn.id, {
+                onError: (error) =>
+                  toast.error(actionErrorMessage(error, "We couldn’t stop this work.")),
+              })
           : undefined
       }
       stopping={actions.stop.isPending || turn.status === "stopping"}
-      attention={
-        turn.status === "needs_attention" && (
-          <NeedsAttention
-            userId={userId}
-            organizationId={organizationId}
-            turn={turn}
-            agentName={agentName}
-            uncertainItemIds={uncertainItemIds}
-          />
-        )
-      }
     />
   );
-  if (underReply) return work;
+}
+
+/**
+ * One local turn's body, where it belongs: its error and attention card under the agent's reply,
+ * whose header shows the status. Before the agent replies, a pending reply under the owner
+ * message that started it stands in, with the status in its own header.
+ */
+export function TurnWork({
+  agentName,
+  underReply,
+  uncertainItemIds,
+  ...props
+}: TurnProps & {
+  agentName: string;
+  /** The turn shows under the agent's own message, not under the owner's. */
+  underReply: boolean;
+  /** The turn's items that the desktop couldn't confirm the agent received. */
+  uncertainItemIds?: readonly string[];
+}) {
+  const { userId, organizationId, turn, openRequest } = props;
+  // The tone does not depend on the clock; the status shows the time.
+  const status = turnStatus(turn, 0, openRequest);
+  if (status.tone === "muted") return <MutedWorkLine label={status.label} />;
+  const body = (
+    <>
+      {turn.status === "failed" && turn.error && (
+        <p className="mt-1 max-w-180 text-xs wrap-anywhere text-destructive">{turn.error}</p>
+      )}
+      {turn.status === "needs_attention" && (
+        <NeedsAttention
+          userId={userId}
+          organizationId={organizationId}
+          turn={turn}
+          agentName={agentName}
+          uncertainItemIds={uncertainItemIds}
+        />
+      )}
+    </>
+  );
+  if (underReply) return body;
   return (
-    <PendingReply name={agentName} tone={status.tone} label={status.label}>
-      {work}
+    <PendingReply name={agentName} tone={status.tone} status={<TurnStatus {...props} />}>
+      {body}
     </PendingReply>
   );
 }

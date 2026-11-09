@@ -92,13 +92,3 @@ export function transcriptEntries(
     for (const step of tools.values()) if (step.state === "current") step.state = "error";
   return entries;
 }
-
-/** Steps and errors only, for the folded work line under a message. */
-export function workSteps(events: readonly TurnEventView[], working: boolean) {
-  return transcriptEntries(events, working).flatMap((entry) => {
-    if (entry.type === "step") return [{ key: entry.key, text: entry.text, state: entry.state }];
-    if (entry.type === "error")
-      return [{ key: entry.key, text: entry.text, state: "error" as const }];
-    return [];
-  });
-}

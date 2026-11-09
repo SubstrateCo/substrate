@@ -9,7 +9,11 @@ import { MessageContext, type MessageContextState } from "../../context/referenc
 import { ReferencedMessageBody } from "../../context/references/referenced-message-body";
 import { toggleReaction } from "@/api/messaging/requests";
 import type { Message } from "@/api/messaging/requests";
-import { AgentWorkBadge, AgentWorkSlot } from "@/components/agent-work/agent-work-slot";
+import {
+  AgentWorkBadge,
+  AgentWorkSlot,
+  AgentWorkStatus,
+} from "@/components/agent-work/agent-work-slot";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { LinkedMessage } from "@/components/messaging/messages/linked-message";
 import { MessageItem as MessageItemView } from "@/components/messaging/messages/message-item-view";
@@ -88,6 +92,9 @@ export function MessageItem({
             </>
           }
           avatarBadge={<AgentWorkBadge messageId={message.id} />}
+          status={
+            message.authorType === "agent" ? <AgentWorkStatus messageId={message.id} /> : undefined
+          }
           onThread={onThread}
           onReact={(emoji) => reaction.mutate(emoji)}
           pending={reaction.isPending}

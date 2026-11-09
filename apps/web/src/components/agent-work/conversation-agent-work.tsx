@@ -10,7 +10,7 @@ import { ComposerNotice, type ComposerNoticeLine } from "./composer-notice";
 import { InboxReceipt } from "./inbox-receipt";
 import { ProposalBacklink } from "./requests/proposal-backlink";
 import { RequestCard } from "./requests/request-card";
-import { TurnWork } from "./turn-work";
+import { TurnStatus, TurnWork } from "./turn-work";
 import { WorkIndicator } from "./work-indicator";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useNow } from "@/hooks/use-now";
@@ -228,10 +228,23 @@ export function ConversationAgentWork({
             </>
           );
         },
+        status: (messageId) =>
+          placements
+            .get(messageId)
+            ?.map((turn) => (
+              <TurnStatus
+                key={turn.id}
+                userId={user}
+                organizationId={organizationId}
+                turn={turn}
+                openRequest={openRequest(turn.id)}
+                onTranscript={onTranscript}
+              />
+            )),
         badge: (messageId) => {
           if (!outputs.has(messageId)) return null;
           const latest = placements.get(messageId)?.at(-1);
-          // The tone does not depend on the clock; the work line under the reply shows the time.
+          // The tone does not depend on the clock; the status in the reply's header shows the time.
           return latest ? (
             <WorkIndicator tone={turnStatus(latest, 0, openRequest(latest.id)).tone} />
           ) : null;

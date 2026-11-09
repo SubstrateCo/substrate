@@ -14,11 +14,14 @@ export function MessageItem({
   body,
   actions,
   avatarBadge,
+  status,
   children,
 }: {
   message: Message;
   /** A small status mark on the avatar, such as an agent run's state. */
   avatarBadge?: ReactNode;
+  /** A status after the time, such as the state of the work behind an agent's reply. */
+  status?: ReactNode;
   onReact: (emoji: string) => void;
   pending?: boolean;
   onThread?: (id: string) => void;
@@ -68,6 +71,7 @@ export function MessageItem({
               minute: "2-digit",
             })}
           </time>
+          {status && <span className="flex min-w-0 self-center">{status}</span>}
         </div>
         {body ?? <MessageMarkdown body={message.body} />}
         <MessageInteractions
