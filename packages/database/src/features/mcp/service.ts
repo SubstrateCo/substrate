@@ -1,53 +1,62 @@
-import type { WorkspaceApiRequest } from "@startup-os/contracts/harness/mcp";
+import type { TurnContext, WorkspaceApiRequest } from "@startup-os/contracts/harness/mcp";
 import {
   mcpTools,
   type McpInput,
   type McpOutput,
-  type McpToolName,
+  type ServerToolName,
 } from "@startup-os/contracts/harness/tools";
 
 import type { DatabaseExecutor } from "../../client";
-import { ConflictError, AccessDeniedError } from "../../errors";
-import { recordTaskActivity } from "../activity/events";
-import { recordRunReply } from "../agent-runs/replies";
+import { actors } from "../../core/actors/schema";
+import { userAgents } from "../../core/actors/user-agents.schema";
+import { findDevice } from "../../core/devices/repository";
+import { ConflictError, AccessDeniedError, ValidationError } from "../../errors";
+import { agentRequests } from "../agent-work/requests.schema";
 import { workspaceContext } from "../context/access";
-import { messageEntityReferences } from "../context/schema";
 import { attachReference, detachReference } from "../context/service";
 import type { MessagingIdentity } from "../messaging/access";
 import { requireMessage } from "../messaging/access";
-import { sendMessageAs } from "../messaging/service";
 import { taskRepository } from "../tasks/repository";
 import { mcpContextQueries } from "./context";
 import { listLinks } from "./links";
 import { mcpMessagingQueries } from "./messaging";
+import { publishingTools } from "./publishing";
 import { agentToolRequests } from "./schema";
 import { mcpTaskQueries } from "./tasks";
+import { proposeInstead, requireTurn } from "./turn";
+import { agentWrites } from "./writes";
 import { and, eq } from "drizzle-orm";
 
 type AgentToolExecution = {
-  [K in McpToolName]: { tool: K; input: McpInput<K>; output: McpOutput<K> };
-}[McpToolName];
+  [K in ServerToolName]: { tool: K; input: McpInput<K>; output: McpOutput<K> };
+}[ServerToolName];
 
 // Handler results are serialized to JSON, then parsed with the tool's output schema.
 type ToolPayload = object;
-type ToolHandlers = { [K in McpToolName]: (input: McpInput<K>) => Promise<ToolPayload> };
+type ToolHandlers = { [K in ServerToolName]: (input: McpInput<K>) => Promise<ToolPayload> };
 // Every tool that accepts requestId can replay a stored result, so each one must recheck access.
 type ReplayableTool = {
-  [K in McpToolName]: McpInput<K> extends { requestId: string } ? K : never;
-}[McpToolName];
+  [K in ServerToolName]: McpInput<K> extends { requestId: string } ? K : never;
+}[ServerToolName];
 type ReplayChecks = {
   [K in ReplayableTool]: (input: McpInput<K>, output: McpOutput<K>) => Promise<void>;
 };
 
-function requestIdOf(input: McpInput<McpToolName>) {
+// In background turns the agent may only publish to its own place or propose.
+const unattendedWrites: ReadonlySet<ServerToolName> = new Set(["reply", "propose"]);
+const handoffIsQuiet =
+  "A handoff turn saves its notes with save_handoff. It does not publish, propose or change records.";
+
+function requestIdOf(input: McpInput<ServerToolName>) {
   return "requestId" in input ? input.requestId : undefined;
 }
 
-export async function executeAgentTool<K extends McpToolName>(
+export async function executeAgentTool<K extends ServerToolName>(
   db: DatabaseExecutor,
   identity: MessagingIdentity & { actorEntityId: string },
   tool: K,
   raw: WorkspaceApiRequest["input"],
+  turn: TurnContext,
 ) {
   const definition = mcpTools[tool];
   // SAFETY: `definition` is the registry entry for `tool`, so its schema produces McpInput<K>.
@@ -61,11 +70,35 @@ export async function executeAgentTool<K extends McpToolName>(
       lockActor: true,
     });
     const actor = { id: agent.entityId, name: agent.name, type: agent.type };
-    const author = { actor: agent, authorName: agent.name };
+    // Writes use the turn context, so the turn is checked before any write runs.
+    let userAgentId: string | null = null;
+    if (!definition.readOnly) {
+      if (turn.purpose === "handoff") throw new ValidationError(handoffIsQuiet);
+      if (turn.kind === "unattended" && !unattendedWrites.has(tool))
+        throw new ValidationError(proposeInstead);
+      // Only the agent's home desktop runs its turns. The share lock keeps the agent from moving
+      // to another desktop until this write commits.
+      const [row] = await tx
+        .select({ userAgentId: userAgents.id, homeDeviceId: userAgents.homeDeviceId })
+        .from(actors)
+        .innerJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+        .where(and(eq(actors.entityId, agent.entityId), eq(userAgents.userId, identity.userId)))
+        .for("share", { of: userAgents });
+      if (!row?.homeDeviceId || !turn.installationId) throw new AccessDeniedError();
+      const device = await findDevice(tx, identity.userId, turn.installationId);
+      if (device?.id !== row.homeDeviceId) throw new AccessDeniedError();
+      userAgentId = row.userAgentId;
+      await requireTurn(tx, identity, { actorId: agent.entityId, userAgentId }, turn);
+    }
     const tasks = taskRepository(ctx);
+    const writes = agentWrites(ctx, identity, agent);
     const context = mcpContextQueries(ctx, identity);
     const queries = mcpTaskQueries(ctx, identity);
     const messaging = mcpMessagingQueries(ctx, identity);
+    const publishing = () => {
+      if (!userAgentId) throw new AccessDeniedError();
+      return publishingTools(ctx, identity, { ...agent, userAgentId }, turn);
+    };
     const handlers: ToolHandlers = {
       get_me: () => context.getMe(actor, userName),
       search: (value) => context.search(value),
@@ -80,60 +113,14 @@ export async function executeAgentTool<K extends McpToolName>(
       read_conversation: (value) => messaging.readConversation(value),
       read_thread: (value) => messaging.readThread(value),
       list_links: (value) => listLinks(ctx, identity, value),
-      async create_task({ sourceMessageId, ...value }) {
-        let source;
-        if (sourceMessageId) {
-          source = await requireMessage(tx, identity, sourceMessageId);
-          if (source.conversation.organizationId !== identity.organizationId)
-            throw new AccessDeniedError();
-        }
-        const task = await tasks.create({
-          ...value,
-          projectEntityId: value.projectId,
-          parentTaskEntityId: value.parentTaskId,
-          assigneeActorEntityId: value.assigneeActorId,
-        });
-        if (source) {
-          await tx.insert(messageEntityReferences).values({
-            organizationId: identity.organizationId,
-            conversationId: source.conversation.id,
-            messageId: source.message.id,
-            entityId: task.entityId,
-            entityType: "task",
-            purpose: "source",
-            createdByActorEntityId: actor.id,
-          });
-          await recordTaskActivity(
-            ctx,
-            task.entityId,
-            "Created from a discussion",
-            source.message.id,
-          );
-        }
-        return queries.getTask(task.entityId);
-      },
-      async update_task({ taskId, changes }) {
-        await tasks.update(taskId, { ...changes, assigneeActorEntityId: changes.assigneeActorId });
-        return queries.getTask(taskId);
-      },
+      create_task: (value) => writes.createTask(value),
+      update_task: (value) => writes.updateTask(value),
       async add_task_comment(value) {
         const comment = await tasks.addComment(value.taskId, value.body);
         return { id: comment.id, taskId: value.taskId, createdAt: comment.createdAt };
       },
-      async send_message(value) {
-        const message = await sendMessageAs(ctx, identity, author, value);
-        await recordRunReply(
-          tx,
-          { ...identity, agentActorEntityId: actor.id },
-          { id: message.id, conversationId: message.conversationId, threadId: message.threadId },
-        );
-        return {
-          id: message.id,
-          conversationId: message.conversationId,
-          threadId: message.threadId,
-          createdAt: message.createdAt,
-        };
-      },
+      reply: (value) => publishing().reply(value),
+      propose: (value) => publishing().propose(value),
       async attach_message(value) {
         return { changed: await attachReference(ctx, identity, value, value.target) };
       },
@@ -147,11 +134,26 @@ export async function executeAgentTool<K extends McpToolName>(
         await tasks.get(previous.id);
         if (value.sourceMessageId) await requireMessage(tx, identity, value.sourceMessageId);
       },
+      async update_task(value) {
+        await tasks.get(value.taskId);
+      },
       async add_task_comment(value) {
         await tasks.get(value.taskId);
       },
-      async send_message(_, previous) {
-        await requireMessage(tx, identity, previous.id);
+      async reply(_, previous) {
+        await requireMessage(tx, identity, previous.messageId);
+      },
+      async propose(_, previous) {
+        const [request] = await tx
+          .select({ id: agentRequests.id })
+          .from(agentRequests)
+          .where(
+            and(
+              eq(agentRequests.id, previous.proposalId),
+              eq(agentRequests.ownerUserId, identity.userId),
+            ),
+          );
+        if (!request) throw new AccessDeniedError();
       },
     };
     const requestId = requestIdOf(input);
@@ -176,7 +178,7 @@ export async function executeAgentTool<K extends McpToolName>(
       // SAFETY: a stored result exists only for a tool with requestId, and the check is keyed by that tool.
       const recheck = (
         replayChecks as Partial<
-          Record<McpToolName, (input: McpInput<K>, output: McpOutput<K>) => Promise<void>>
+          Record<ServerToolName, (input: McpInput<K>, output: McpOutput<K>) => Promise<void>>
         >
       )[tool];
       if (!recheck) throw new AccessDeniedError();
@@ -189,6 +191,8 @@ export async function executeAgentTool<K extends McpToolName>(
         requestId,
         fingerprint,
         result,
+        turnId: turn.turnId,
+        attempt: turn.attempt,
       });
     return result;
   });

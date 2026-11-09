@@ -1,0 +1,72 @@
+import { Button } from "@/components/ui/button";
+import type { WorkTone } from "@/lib/agent-work/status";
+import { cn } from "cn";
+import { Bot, RotateCcw } from "lucide-react";
+
+export type ComposerNoticeLine = {
+  key: string;
+  agentName: string;
+  tone: WorkTone;
+  label: string;
+  /** For example, a link to agent settings when no desktop runs the agent. */
+  link?: { href: string; label: string };
+};
+
+/**
+ * Above the composer: what the owner's agents here are doing. The composer stays editable; new
+ * messages join the current work or wait for it.
+ */
+export function ComposerNotice({
+  lines,
+  onNewTopic,
+  startingTopic,
+}: {
+  lines: ComposerNoticeLine[];
+  /** Direct messages with an agent on this desktop can start a new topic. */
+  onNewTopic?: () => void;
+  startingTopic: boolean;
+}) {
+  if (!lines.length && !onNewTopic) return null;
+  return (
+    <div
+      role="status"
+      aria-label="Agent status"
+      className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 px-4 pt-2 text-xs text-muted-foreground"
+    >
+      {lines.map((line) => (
+        <span key={line.key} className="flex min-w-0 items-center gap-1.5">
+          <Bot aria-hidden="true" className="size-3.5 shrink-0" />
+          <span className="font-medium text-foreground">{line.agentName}</span>
+          <span
+            className={cn(
+              "min-w-0 truncate tabular-nums",
+              line.tone === "attention" && "text-warning",
+              line.tone === "working" && "text-primary",
+            )}
+          >
+            {line.label}
+          </span>
+          {line.link && (
+            <a href={line.link.href} className="shrink-0 font-medium text-primary hover:underline">
+              {line.link.label}
+            </a>
+          )}
+        </span>
+      ))}
+      {onNewTopic && (
+        <Button
+          type="button"
+          size="xs"
+          variant="ghost"
+          className="ml-auto"
+          disabled={startingTopic}
+          title="The agent keeps its memory but starts this conversation with a clean slate"
+          onClick={onNewTopic}
+        >
+          <RotateCcw aria-hidden="true" />
+          New topic
+        </Button>
+      )}
+    </div>
+  );
+}

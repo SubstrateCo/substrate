@@ -31,7 +31,19 @@ test("MCP calls require a verified owner, active workspace, trusted origin and s
     });
     expect(saved.ok()).toBe(true);
     const agentId: string = (await saved.json()).data.id;
-    const data = { organizationId: workspace.id, agentId, tool: "list_projects", input: {} };
+    // The desktop host attaches the turn to every call. A routine turn has no source message.
+    const turn = {
+      turnId: crypto.randomUUID(),
+      attempt: 1,
+      sessionKey: `routine:${crypto.randomUUID()}`,
+      origin: null,
+      kind: "unattended",
+    };
+    const data = { organizationId: workspace.id, agentId, tool: "list_projects", input: {}, turn };
+    const { turn: _turn, ...withoutTurn } = data;
+    expect(
+      (await owner.post("/api/v1/mcp/call", { headers: { origin }, data: withoutTurn })).status(),
+    ).toBe(400);
     const valid = await owner.post("/api/v1/mcp/call", { headers: { origin }, data });
     expect(valid.ok()).toBe(true);
     expect(await valid.json()).toEqual({ success: true, data: { items: [], nextCursor: null } });

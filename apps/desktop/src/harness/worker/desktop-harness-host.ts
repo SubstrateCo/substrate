@@ -1,12 +1,16 @@
 import { HarnessStore } from "@startup-os/client-storage";
-import { createHarnessHost, type HarnessHostOptions } from "@startup-os/harness-runtime";
+import {
+  createHarnessHost,
+  type HarnessHostOptions,
+  type RuntimeHarnessHost,
+} from "@startup-os/harness-runtime";
 
 import { lstat, mkdir, realpath } from "node:fs/promises";
 import { join } from "node:path";
 
 export async function createDesktopHarnessHost(
   options: Omit<HarnessHostOptions, "storage"> & { migrationsDirectory?: string },
-) {
+): Promise<RuntimeHarnessHost> {
   await mkdir(options.accountDirectory, { recursive: true });
   const accountDirectory = await realpath(options.accountDirectory);
   const directory = join(accountDirectory, ".startup-os");

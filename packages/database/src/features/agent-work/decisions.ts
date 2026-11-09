@@ -1,0 +1,156 @@
+import {
+  proposalAction,
+  proposalActionHash,
+  responseMatchesPayload,
+  type AgentRequestResponse,
+  type ProposalOutcome,
+} from "@startup-os/contracts/agent-work";
+import type { RealtimeHint } from "@startup-os/contracts/realtime";
+
+import type { DatabaseExecutor } from "../../client";
+import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
+import { workspaceContext } from "../context/access";
+import { runProposalAction } from "../mcp/proposals";
+import type { OwnerIdentity } from "./device";
+import { answerableRequest, ownedRequests } from "./request-views";
+import { agentRequests } from "./requests.schema";
+import { wakeForRequest } from "./wakes";
+import { and, eq, inArray, sql } from "drizzle-orm";
+
+const closed = "This request was already answered or has closed.";
+
+async function requireOwnedRequest(
+  db: DatabaseExecutor,
+  identity: OwnerIdentity,
+  requestId: string,
+  kinds: ("permission" | "question" | "proposal")[],
+) {
+  const [request] = await db
+    .select()
+    .from(agentRequests)
+    .where(
+      and(
+        eq(agentRequests.id, requestId),
+        ownedRequests(identity),
+        inArray(agentRequests.kind, kinds),
+      ),
+    );
+  if (!request) throw new AccessDeniedError();
+  return request;
+}
+
+/**
+ * Records the owner's answer to a permission or question. The first answer wins: the update
+ * applies only while the request is still pending. A blocking answer waits for the home desktop
+ * to deliver it; an async answer wakes the agent in the request's session.
+ */
+export function respondToRequest(
+  db: DatabaseExecutor,
+  identity: OwnerIdentity,
+  requestId: string,
+  response: AgentRequestResponse,
+) {
+  return db.transaction(async (tx) => {
+    await workspaceContext(tx, identity);
+    const request = await requireOwnedRequest(tx, identity, requestId, ["permission", "question"]);
+    if (!responseMatchesPayload(request.payload, response))
+      throw new ValidationError("Choose one of the offered answers.");
+    const [resolved] = await tx
+      .update(agentRequests)
+      .set({
+        status: "resolved",
+        response,
+        resolvedAt: sql`now()`,
+        resolvedByUserId: identity.userId,
+      })
+      .where(and(eq(agentRequests.id, requestId), answerableRequest))
+      .returning();
+    if (!resolved) throw new ConflictError(closed);
+    if (resolved.mode === "async") await wakeForRequest(tx, resolved, "answer");
+    return { status: resolved.status };
+  });
+}
+
+/** Declines a proposal. Nothing runs; the agent learns the decision in its session. */
+export function declineProposal(db: DatabaseExecutor, identity: OwnerIdentity, requestId: string) {
+  return db.transaction(async (tx) => {
+    await workspaceContext(tx, identity);
+    await requireOwnedRequest(tx, identity, requestId, ["proposal"]);
+    const outcome: ProposalOutcome = { status: "declined" };
+    const [resolved] = await tx
+      .update(agentRequests)
+      .set({
+        status: "resolved",
+        outcome,
+        resolvedAt: sql`now()`,
+        resolvedByUserId: identity.userId,
+      })
+      .where(and(eq(agentRequests.id, requestId), answerableRequest))
+      .returning();
+    if (!resolved) throw new ConflictError(closed);
+    await wakeForRequest(tx, resolved, "approval_result");
+    return { status: resolved.status, outcome };
+  });
+}
+
+/**
+ * Approves a proposal and runs exactly the proposed action as the agent, once. The claim moves
+ * the request from pending to executing, so a second approval finds it closed. Access is checked
+ * again when the action runs, with its targets locked, and the action runs only while the targets
+ * are as they were proposed. A failed action is recorded and reported; it is not retried.
+ */
+export function approveProposal(db: DatabaseExecutor, identity: OwnerIdentity, requestId: string) {
+  return db.transaction(async (tx) => {
+    await workspaceContext(tx, identity);
+    await requireOwnedRequest(tx, identity, requestId, ["proposal"]);
+    const [claimed] = await tx
+      .update(agentRequests)
+      .set({ status: "executing", resolvedAt: sql`now()`, resolvedByUserId: identity.userId })
+      .where(and(eq(agentRequests.id, requestId), answerableRequest))
+      .returning();
+    if (!claimed) throw new ConflictError(closed);
+    let outcome: ProposalOutcome;
+    let hints: RealtimeHint[] = [];
+    const parsed = proposalAction.safeParse(claimed.proposedAction);
+    if (!parsed.success || (await proposalActionHash(parsed.data)) !== claimed.actionHash)
+      outcome = { status: "failed", error: "The proposed action changed after it was proposed." };
+    else {
+      const agent = {
+        organizationId: claimed.organizationId,
+        userId: claimed.ownerUserId,
+        actorEntityId: claimed.agentActorEntityId,
+      };
+      try {
+        // A savepoint, so a failed action leaves no partial writes but the decision is kept.
+        const result = await tx.transaction(async (sp) => {
+          const { context, actor } = await workspaceContext(sp, agent, { lockActor: true });
+          return runProposalAction(context, agent, actor, {
+            id: claimed.id,
+            turnId: claimed.turnId,
+            action: parsed.data,
+            targetBasis: claimed.targetBasis,
+          });
+        });
+        outcome = { status: "executed", receipt: result.receipt };
+        hints = result.hints;
+      } catch (error) {
+        // Only expected failures are recorded, with messages the owner can act on.
+        if (error instanceof AccessDeniedError)
+          outcome = {
+            status: "failed",
+            error: "The target no longer exists or is no longer available.",
+          };
+        else if (error instanceof ValidationError || error instanceof ConflictError)
+          outcome = { status: "failed", error: error.message };
+        else throw error;
+      }
+    }
+    const [finished] = await tx
+      .update(agentRequests)
+      .set({ status: outcome.status === "executed" ? "executed" : "failed", outcome })
+      .where(eq(agentRequests.id, requestId))
+      .returning();
+    await wakeForRequest(tx, finished!, "approval_result");
+    return { status: finished!.status, outcome, hints };
+  });
+}

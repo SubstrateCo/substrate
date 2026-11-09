@@ -1,5 +1,5 @@
-import type { AgentTriggerSetting } from "../agent-runs/triggers.ts";
 import { harnessKinds } from "../harness/kinds.ts";
+import type { AgentTriggerSetting } from "./triggers.ts";
 import { z } from "zod";
 
 const id = z.uuid();

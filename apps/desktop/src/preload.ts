@@ -1,11 +1,15 @@
 import {
+  agentWorkChangeChannel,
+  agentWorkChannel,
+  type AgentWorkChange,
+} from "@startup-os/contracts/agent-work/desktop";
+import {
   desktopSettingsChannel,
   fullscreenChannel,
   windowChannel,
   type DesktopSettingsAPI,
   type DesktopWindowAPI,
 } from "@startup-os/contracts/desktop/window";
-import type { HarnessEvent } from "@startup-os/contracts/harness";
 import type { HarnessAPI } from "@startup-os/contracts/harness/desktop";
 import {
   realtimeChannel,
@@ -14,7 +18,8 @@ import {
   type RealtimeUpdate,
 } from "@startup-os/contracts/realtime";
 
-import { harnessChannel, harnessEventChannel } from "./harness/bridge/harness-bridge.ts";
+import { agentWorkAPI } from "./agents/bridge/agent-work-api.ts";
+import { harnessChannel } from "./harness/bridge/harness-bridge.ts";
 import { setupRenderer } from "@better-auth/electron/preload";
 import { contextBridge, ipcRenderer } from "electron";
 
@@ -56,7 +61,6 @@ if (process.isMainFrame && window.location.origin === origin) {
     status: () => ipcRenderer.invoke(harnessChannel, "status"),
     listModels: (input) => ipcRenderer.invoke(harnessChannel, "listModels", input),
     synchronize: () => ipcRenderer.invoke(harnessChannel, "synchronize"),
-    execute: (command) => ipcRenderer.invoke(harnessChannel, "execute", command),
     disconnect: () => ipcRenderer.invoke(harnessChannel, "disconnect"),
     scanConfiguration: (input) => ipcRenderer.invoke(harnessChannel, "scanConfiguration", input),
     saveSkill: (input) => ipcRenderer.invoke(harnessChannel, "saveSkill", input),
@@ -64,11 +68,19 @@ if (process.isMainFrame && window.location.origin === origin) {
     resetDefaults: (input) => ipcRenderer.invoke(harnessChannel, "resetDefaults", input),
     saveMcpServer: (input) => ipcRenderer.invoke(harnessChannel, "saveMcpServer", input),
     deleteMcpServer: (input) => ipcRenderer.invoke(harnessChannel, "deleteMcpServer", input),
-    onEvent: (callback: (event: HarnessEvent) => void) => {
-      const listener = (_event: Electron.IpcRendererEvent, value: HarnessEvent) => callback(value);
-      ipcRenderer.on(harnessEventChannel, listener);
-      return () => ipcRenderer.removeListener(harnessEventChannel, listener);
-    },
   };
   contextBridge.exposeInMainWorld("startupOSHarness", api);
+  contextBridge.exposeInMainWorld(
+    "startupOSAgentWork",
+    agentWorkAPI(
+      // SAFETY: main returns the AgentWorkAPI result of each method; the API types each call.
+      (method, value) => ipcRenderer.invoke(agentWorkChannel, method, value) as Promise<never>,
+      (callback) => {
+        const listener = (_event: Electron.IpcRendererEvent, value: AgentWorkChange) =>
+          callback(value);
+        ipcRenderer.on(agentWorkChangeChannel, listener);
+        return () => ipcRenderer.removeListener(agentWorkChangeChannel, listener);
+      },
+    ),
+  );
 }

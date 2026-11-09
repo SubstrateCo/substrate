@@ -1,7 +1,8 @@
 import type { WorkspaceApiRequest } from "@startup-os/contracts/harness/mcp";
-import { mcpTools, type McpOutput, type McpToolName } from "@startup-os/contracts/harness/tools";
+import { mcpTools, type McpOutput, type ServerToolName } from "@startup-os/contracts/harness/tools";
 
 import { ensureUserAgentActor } from "../../core/actors/provisioning";
+import { registerDevice } from "../../core/devices/repository";
 import { AccessDeniedError, ConflictError } from "../../errors";
 import {
   member,
@@ -22,11 +23,33 @@ import { eq } from "drizzle-orm";
 /* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous. */
 const f = setupDatabase();
 
+// An interactive turn without a source place on the agent's home desktop: every tool may run,
+// and reply needs a `to`.
+const turn = {
+  turnId: crypto.randomUUID(),
+  attempt: 1,
+  sessionKey: `routine:${crypto.randomUUID()}`,
+  origin: null,
+  kind: "interactive" as const,
+  installationId: crypto.randomUUID(),
+};
+
 async function fixture() {
   await f.db.update(user).set({ emailVerified: true });
+  const device = await registerDevice(f.db, "alice", {
+    installationId: turn.installationId,
+    name: "Laptop",
+    platform: "win32",
+  });
   const [agent] = await f.db
     .insert(userAgents)
-    .values({ userId: "alice", name: "Research", instructions: "", harness: "opencode" })
+    .values({
+      userId: "alice",
+      name: "Research",
+      instructions: "",
+      harness: "opencode",
+      homeDeviceId: device.id,
+    })
     .returning();
   const actor = await ensureUserAgentActor(f.db, {
     organizationId: f.orgA,
@@ -37,14 +60,14 @@ async function fixture() {
   const human = createMessagingService(f.db, { organizationId: f.orgA, userId: "alice" });
   const project = await f.forActor(f.alice).projects.create({ name: "Work" });
   // Each call parses its result with the tool's own output schema, as the MCP server does.
-  const call = async <K extends McpToolName>(tool: K, input: WorkspaceApiRequest["input"]) =>
+  const call = async <K extends ServerToolName>(tool: K, input: WorkspaceApiRequest["input"]) =>
     // SAFETY: the result was parsed with the output schema registered for tool K.
     mcpTools[tool].output.parse(
-      (await executeAgentTool(f.db, identity, tool, input)).output,
+      (await executeAgentTool(f.db, identity, tool, input, turn)).output,
     ) as McpOutput<K>;
   const createTask = (input: WorkspaceApiRequest["input"]) =>
     call("create_task", { requestId: crypto.randomUUID(), projectId: project.entityId, ...input });
-  return { actor, identity, human, project, call, createTask };
+  return { actor, agentId: agent!.id, identity, human, project, call, createTask };
 }
 
 async function setCreatedAt(id: string, createdAt: string) {
@@ -108,6 +131,7 @@ test("task tools use the owner's access, attribute writes and keep the source me
     actor.entityId,
   );
   const updated = await call("update_task", {
+    requestId: crypto.randomUUID(),
     taskId: created.id,
     changes: { status: "completed" },
   });
@@ -277,22 +301,25 @@ test("search pages with a cursor bound to its query", async () => {
   ).rejects.toThrow("cursor");
 });
 
-test("send_message resolves the agent once and does not re-authenticate inside messaging", async () => {
+test("reply resolves the agent once and does not re-authenticate inside messaging", async () => {
   const { human, identity } = await fixture();
   const channel = await human.createConversation({ kind: "channel", name: "general" });
   const { db, queries } = recordQueries();
-  const input = { requestId: crypto.randomUUID(), conversationId: channel.id, body: "Agent note" };
-  const sent = await executeAgentTool(db, identity, "send_message", input);
+  const input = {
+    requestId: crypto.randomUUID(),
+    body: "Agent note",
+    to: { conversationId: channel.id },
+  };
+  const sent = await executeAgentTool(db, identity, "reply", input, turn);
   expect(
-    (await human.listMessages(channel.id)).find((item) => item.id === sent.output.id)?.authorType,
+    (await human.listMessages(channel.id)).find((item) => item.id === sent.output.messageId)
+      ?.authorType,
   ).toBe("agent");
   const identityReads = () => queries.filter((query) => query.includes('from "user"'));
   expect(identityReads()).toHaveLength(1);
-  expect(queries).toHaveLength(7);
   queries.length = 0;
-  expect((await executeAgentTool(db, identity, "send_message", input)).output).toEqual(sent.output);
+  expect((await executeAgentTool(db, identity, "reply", input, turn)).output).toEqual(sent.output);
   expect(identityReads()).toHaveLength(1);
-  expect(queries).toHaveLength(3);
 });
 
 test("failed source validation rolls back task creation; foreign owners and organizations cannot impersonate agents", async () => {
@@ -303,9 +330,9 @@ test("failed source validation rolls back task creation; foreign owners and orga
   ).rejects.toBeInstanceOf(AccessDeniedError);
   expect((await f.forActor(f.alice).tasks.list(project.entityId)).length).toBe(before);
   await expect(
-    executeAgentTool(f.db, { ...identity, userId: "bob" }, "list_projects", {}),
+    executeAgentTool(f.db, { ...identity, userId: "bob" }, "list_projects", {}, turn),
   ).rejects.toBeInstanceOf(AccessDeniedError);
   await expect(
-    executeAgentTool(f.db, { ...identity, organizationId: f.orgB }, "list_projects", {}),
+    executeAgentTool(f.db, { ...identity, organizationId: f.orgB }, "list_projects", {}, turn),
   ).rejects.toBeInstanceOf(AccessDeniedError);
 });

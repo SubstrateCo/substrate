@@ -1,9 +1,36 @@
+import type { LocalToolProxy } from "@startup-os/contracts/harness/mcp";
+
+import { HarnessWorkerError } from "../worker/protocol.ts";
 import { createHarnessController } from "./harness-controller.ts";
+
+/* oxlint-disable deslop/no-unknown-parameters -- The fake worker records structured-clone payloads. */
+
+export const sessionRef = {
+  id: "session-1",
+  organizationId: "org-1",
+  agentId: "agent-1",
+  harness: "codex",
+  nativeSessionId: "native-1",
+  folder: "main",
+  capabilities: {
+    steer: false,
+    steerEvidence: false,
+    compact: false,
+    usage: false,
+    noAskProfile: true,
+    interruptReceipt: false,
+  },
+  resumed: false,
+};
 
 export function fixture(
   beforeScan?: () => Promise<void>,
   nativeMcpServers: unknown[] = [],
-  options: { failExecute?: boolean } = {},
+  options: {
+    failExecute?: string;
+    /** Holds every execute command except interrupt until resolved. */
+    holdExecute?: Promise<void>;
+  } = {},
 ) {
   let session = {
     user: { id: "user-1", emailVerified: true },
@@ -15,10 +42,16 @@ export function fixture(
   const directories: string[] = [];
   let disposed = 0;
   let membership = true;
+  /** network: requests throw. server: the backend answers 503. */
+  let outage: "network" | "server" | undefined;
+  let catalogFails = false;
+  let localTools: LocalToolProxy | undefined;
   const controller = createHarnessController({
     backend: "https://api.example.com",
     accountsDirectory: "accounts",
     fetchAPI: async (url) => {
+      if (outage === "network") throw new TypeError("fetch failed");
+      if (outage === "server") return new Response(null, { status: 503 });
       if (url.endsWith("/session")) {
         requests.push("session");
         return Response.json({ success: true, data: session });
@@ -29,14 +62,24 @@ export function fixture(
       }
       requests.push("catalog");
       catalogRequests++;
+      if (catalogFails) return new Response("Bad gateway", { status: 502 });
       return Response.json({ success: true, data: { agents: [] } });
     },
-    createWorker: (directory) => {
+    createWorker: (directory, _proxy, local) => {
       directories.push(directory);
+      localTools = local;
       return {
         request: async (method, ...[value]) => {
           calls.push({ method, value });
-          if (method === "execute" && options.failExecute) throw new Error("Native failure.");
+          if (method === "execute") {
+            // SAFETY: execute values are parsed harness commands.
+            const command = value as { type: string };
+            if (options.failExecute) throw new HarnessWorkerError(options.failExecute);
+            if (command.type === "interrupt") return { stillQueuedInputIds: [] };
+            await options.holdExecute;
+            return command.type === "open" ? sessionRef : undefined;
+          }
+          if (method === "readProfile") return "- Owner prefers mornings.\n";
           if (method === "listModels")
             return {
               harness: "codex",
@@ -83,5 +126,12 @@ export function fixture(
     revokeMembership: () => {
       membership = false;
     },
+    setOutage: (value: typeof outage) => {
+      outage = value;
+    },
+    failCatalog: (value: boolean) => {
+      catalogFails = value;
+    },
+    localTools: () => localTools,
   };
 }

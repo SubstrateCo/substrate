@@ -15,6 +15,11 @@ interface HarnessDefinition {
   mcpFiles: [string, ...string[]];
   mcpKeys: [string, ...string[]];
   mcpFormat: "jsonc" | "toml";
+  /**
+   * The managed prefix goes at the start of the instructions file. Otherwise the adapter delivers
+   * it through a native channel (Claude systemPrompt append, OpenCode config instructions).
+   */
+  prefixInInstructions: boolean;
   encodeMcpServer(server: HarnessMcpServer): object;
   connect(context: AdapterContext, resumeId?: string): Promise<NativeAdapter>;
   discoverModels(
@@ -38,6 +43,7 @@ export const harnessDefinitions = {
     ],
     mcpKeys: ["mcp", "servers"],
     mcpFormat: "jsonc",
+    prefixInInstructions: false,
     encodeMcpServer: (server) =>
       server.transport === "http"
         ? { type: "remote", url: server.url }
@@ -58,6 +64,7 @@ export const harnessDefinitions = {
     mcpFiles: [".mcp.json"],
     mcpKeys: ["mcpServers"],
     mcpFormat: "jsonc",
+    prefixInInstructions: false,
     encodeMcpServer: (server) =>
       server.transport === "http"
         ? { type: "http", url: server.url }
@@ -74,6 +81,7 @@ export const harnessDefinitions = {
     mcpFiles: [".agents/mcp_config.json"],
     mcpKeys: ["mcpServers"],
     mcpFormat: "jsonc",
+    prefixInInstructions: true,
     encodeMcpServer: (server) =>
       server.transport === "http"
         ? { httpUrl: server.url }
@@ -96,6 +104,7 @@ export const harnessDefinitions = {
     mcpFiles: [".codex/config.toml"],
     mcpKeys: ["mcp_servers"],
     mcpFormat: "toml",
+    prefixInInstructions: true,
     encodeMcpServer: (server) =>
       server.transport === "http"
         ? { url: server.url }

@@ -51,31 +51,22 @@ test("metadata migrations run once and preserve organization-scoped records on r
       },
     ],
   };
-  const ref = {
-    id: "session-a",
-    organizationId: "org-a",
-    agentId: "agent-a",
-    harness: "opencode" as const,
-    nativeSessionId: "native-a",
-  };
   let store = await HarnessStore.open(path);
   try {
     await store.configure({ ...configuration, agents: [] });
-    await store.save(ref);
-    await store.save({ ...ref, nativeSessionId: "native-updated" });
     await store.configure(configuration);
     store.close();
     store = await HarnessStore.open(path);
     expect(await store.configuration("org-a")).toEqual(configuration);
     expect(await store.configuration("org-b")).toBeUndefined();
-    expect(await store.session("org-a", ref.id)).toEqual({
-      ...ref,
-      nativeSessionId: "native-updated",
-    });
-    expect(await store.session("org-b", ref.id)).toBeUndefined();
     const database = new Database(path, { readonly: true });
     try {
-      expect(database.query("SELECT hash FROM __drizzle_migrations").all()).toHaveLength(1);
+      const migrations = (
+        await readdir(fileURLToPath(new URL("../migrations/", import.meta.url)))
+      ).filter((name) => name.endsWith(".sql"));
+      expect(database.query("SELECT hash FROM __drizzle_migrations").all()).toHaveLength(
+        migrations.length,
+      );
     } finally {
       database.close();
     }

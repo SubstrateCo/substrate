@@ -1,0 +1,84 @@
+import type { AgentWorkStore } from "@startup-os/client-storage/agent-work";
+import type { AgentWorkChange } from "@startup-os/contracts/agent-work/desktop";
+import type {
+  AdapterCapabilities,
+  HarnessCommand,
+  HarnessKind,
+  Usage,
+} from "@startup-os/contracts/harness";
+
+import type { AgentWorkServer, CatalogAgent } from "../server/agent-work-server.ts";
+
+/* oxlint-disable deslop/no-unknown-returns -- Harness results cross the worker boundary unparsed; callers parse them. */
+
+/** The harness controller, as the runtime uses it. Main checks account and organization. */
+export interface HarnessPort {
+  /** Writes current agent folders before sessions open. */
+  synchronize(): Promise<void>;
+  execute(command: HarnessCommand): Promise<unknown>;
+  /**
+   * Interrupts and closes every native session of the organization, also when the controller
+   * already verified another one. Each live turn ends, then its session.closed event follows.
+   */
+  closeOrganization(organizationId: string): Promise<void>;
+  /** memory/profile.md of an agent in the active organization. */
+  readProfile(agentId: string): Promise<string>;
+}
+
+/** The owner's agents from the server catalog, cached. */
+export interface AgentDirectory {
+  get(userAgentId: string): Promise<CatalogAgent | undefined>;
+  all(): Promise<CatalogAgent[]>;
+  /** The next read fetches the catalog again. */
+  invalidate(): void;
+}
+
+/** Everything the runtime modules share. One context per account and active organization. */
+export interface RuntimeContext {
+  organizationId: string;
+  /** This desktop. The server accepts write tools only from the agent's home device. */
+  installationId: string;
+  store: AgentWorkStore;
+  server: AgentWorkServer;
+  harness: HarnessPort;
+  agents: AgentDirectory;
+  /** memory/profile.md of the agent folder, or empty. */
+  profile(agentId: string): Promise<string>;
+  now(): number;
+  log(message: string): void;
+  /** Local work changed: tell the renderer, publish status, and run the claim loop. */
+  changed(change: AgentWorkChange): void;
+  /** Runs callback once after milliseconds, unless the runtime stopped. Returns a cancel. */
+  later(callback: () => void, milliseconds: number): () => void;
+}
+
+/** A turn this process is running. The row in the store is the source of truth. */
+export interface LiveTurn {
+  turnId: string;
+  sessionId: string;
+  userAgentId: string;
+  folderKey: string;
+  harness: HarnessKind;
+  kind: "interactive" | "unattended";
+  generation: number;
+  epoch: number;
+  handoff: boolean;
+  startedAt: number;
+  capabilities: AdapterCapabilities;
+  /** Steered inputs an interrupt receipt reported as still queued. */
+  stillQueued: string[];
+  usage: Usage | null;
+  conversationId: string | null;
+  threadId: string | null;
+  /** Events of this turn are handled one at a time, in order. */
+  chain: Promise<void>;
+}
+
+export const noCapabilities: AdapterCapabilities = {
+  steer: false,
+  steerEvidence: false,
+  compact: false,
+  usage: false,
+  noAskProfile: false,
+  interruptReceipt: false,
+};

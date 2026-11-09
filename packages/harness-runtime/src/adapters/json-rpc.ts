@@ -4,7 +4,7 @@ import { stopProcess } from "../process.ts";
 
 /* oxlint-disable deslop/no-unknown-parameters, deslop/no-runtime-typeof -- This module is the native JSON-RPC framing boundary; method-specific payloads are validated by its owning adapter. */
 
-type RpcMessage = {
+export type RpcMessage = {
   id?: number | string;
   method?: string;
   params?: unknown;

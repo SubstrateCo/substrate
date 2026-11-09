@@ -1,14 +1,14 @@
 import type {
-  HarnessCommand,
-  HarnessEvent,
   HarnessInspection,
   HarnessKind,
   HarnessLocalConfiguration,
-  HarnessSessionRef,
   HarnessModelCatalog,
 } from "./index.ts";
 
-/** Main derives the account and organization for every desktop operation. */
+/**
+ * Main derives the account and organization for every desktop operation. The renderer only
+ * configures harnesses; agent work runs in main and is exposed through AgentWorkAPI.
+ */
 export interface HarnessAPI {
   synchronize(): Promise<{ connected: true; organizationId: string }>;
   status(): Promise<{
@@ -43,9 +43,7 @@ export interface HarnessAPI {
     environment?: Record<string, string>;
   }): Promise<void>;
   deleteMcpServer(input: { harness: HarnessKind; agentId: string; id: string }): Promise<void>;
-  execute(command: HarnessCommand): Promise<HarnessSessionRef | void>;
   disconnect(): Promise<void>;
-  onEvent(callback: (event: HarnessEvent) => void): () => void;
 }
 
 declare global {

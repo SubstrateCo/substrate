@@ -65,3 +65,20 @@ export async function agentDirectory(
     true,
   );
 }
+
+/**
+ * A helper's own folder: `orgs/<org>/_helpers/<agentId>/<helperId>`. The leading underscore
+ * cannot match an agent ID, so helper folders never collide with agent folders.
+ */
+export async function helperDirectory(
+  accountDirectory: string,
+  organizationId: string,
+  agentId: string,
+  helperId: string,
+): Promise<string> {
+  return safePath(
+    await organizationDirectory(accountDirectory, organizationId),
+    join("_helpers", safeId(agentId), safeId(helperId)),
+    true,
+  );
+}

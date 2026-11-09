@@ -4,7 +4,7 @@ import { authEnvironment } from "./auth/environment";
 import { auth } from "./auth/server";
 import { createDesktopRoutes } from "./desktop/routes";
 import { respond } from "./shared/http";
-import { createAgentRunsRoutes } from "./v1/agent-runs/routes";
+import { createAgentWorkRoutes } from "./v1/agent-work/routes";
 import { createAgentsRoutes } from "./v1/agents/routes";
 import { createContextRoutes } from "./v1/context/routes";
 import { createFilesRoutes } from "./v1/files/routes";
@@ -52,7 +52,7 @@ export function createApp() {
     .route("/api/v1/mcp", createMcpRoutes())
     .route("/api/v1/context", createContextRoutes())
     .route("/api/v1/agents", createAgentsRoutes())
-    .route("/api/v1/agent-runs", createAgentRunsRoutes())
+    .route("/api/v1/agent-work", createAgentWorkRoutes())
     .notFound((c) => respond(c, failure("NOT_FOUND", "Endpoint not found.")))
     .onError((error, c) => {
       if (error instanceof HTTPException && error.status === 400) {

@@ -59,6 +59,10 @@ When you change many tasks, first list the changes in your reply. Make the chang
 
 ## Retries
 
-Generate a new \`requestId\` for each new task or comment. Reuse it only to retry the same call after an error.
+Generate a new \`requestId\` for each new task, change or comment. Reuse it only to retry the same call after an error.
+
+## Background turns
+
+In background turns, such as routines, do not create or change tasks directly. Use \`propose\` with a \`create_task\` or \`update_task\` action, and your owner approves it.
 `,
 };

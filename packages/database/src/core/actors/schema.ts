@@ -47,6 +47,12 @@ export const actors = pgTable(
     ),
     unique("actors_organization_user_unique").on(table.organizationId, table.userId),
     unique("actors_organization_user_agent_unique").on(table.organizationId, table.userAgentId),
+    // Lets agent-work rows bind their actor to the user agent it represents.
+    unique("actors_organization_entity_user_agent_unique").on(
+      table.organizationId,
+      table.entityId,
+      table.userAgentId,
+    ),
     index("actors_user_idx").on(table.userId),
     check(
       "actors_identity_check",

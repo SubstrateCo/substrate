@@ -62,8 +62,10 @@ export function realtimeQueryTargets(
     case "agents":
       targets.push({ queryKey: queryKeys.agents(userId) });
       break;
-    case "agent-runs":
-      targets.push({ queryKey: queryKeys.agentRuns(userId, organizationId ?? undefined) });
+    case "agent-work":
+      // Hints are dataless and go only to the owner. They cover server requests and status, and
+      // local work that another device changed by answering.
+      targets.push({ queryKey: queryKeys.agentWork(userId, organizationId ?? undefined) });
       break;
     case "organization":
       // Organization details and invitations changed. Membership and role changes send "access".

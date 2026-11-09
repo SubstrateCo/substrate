@@ -1,13 +1,43 @@
 import { ensureUserAgentActor } from "../../core/actors/provisioning";
 import { AccessDeniedError } from "../../errors";
 import { user, userAgents, messagingMessages } from "../../schema";
+import { agentWorkFixture, threadTurn } from "../../testing/agent-work";
 import { setupDatabase } from "../../testing/database";
+import { createContextService } from "../context/service";
 import { createMessagingService } from "./service";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 /* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous. */
 const f = setupDatabase();
+
+test("only the agent's owner sees which turn published an agent reply", async () => {
+  const { alice, bob, call } = await agentWorkFixture(f);
+  const channel = await alice.createConversation({
+    kind: "channel",
+    name: "team",
+    emails: ["bob@example.com"],
+  });
+  const root = await alice.sendMessage(channel.id, "Status?");
+  const turn = threadTurn(channel.id, root.id);
+  const reply = await call("reply", { requestId: crypto.randomUUID(), body: "On track" }, turn);
+  const seen = async (reader: typeof alice) =>
+    (await reader.listMessages(channel.id, root.id)).find(
+      (message) => message.id === reply.messageId,
+    );
+  expect((await seen(alice))?.originTurnId).toBe(turn.turnId);
+  const member = await seen(bob);
+  expect(member?.body).toBe("On track");
+  expect(member?.originTurnId).toBeNull();
+  // The message link target is another view of the same row.
+  const target = (userId: string) =>
+    createContextService(f.db, { userId, organizationId: f.orgA }).messageTarget(
+      channel.id,
+      reply.messageId,
+    );
+  expect((await target("alice")).message.originTurnId).toBe(turn.turnId);
+  expect((await target("bob")).message.originTurnId).toBeNull();
+});
 
 test("agent messages retain agent authorship and use their owner's conversation access", async () => {
   await f.db.update(user).set({ emailVerified: true });

@@ -1,0 +1,143 @@
+import {
+  sessionKeys,
+  wakeDedupeKeys,
+  type AgentWakeMessageKind,
+} from "@startup-os/contracts/agent-work";
+import { realtimeKeys, type RealtimeHint } from "@startup-os/contracts/realtime";
+
+import type { DatabaseExecutor } from "../../client";
+import { activeActorCondition } from "../../core/actors/access";
+import { actors } from "../../core/actors/schema";
+import { userAgents } from "../../core/actors/user-agents.schema";
+import { userAgentTriggers } from "../agents/triggers.schema";
+import { messageReferences } from "../context/references";
+import type { MessagingIdentity } from "../messaging/access";
+import { messagingMessages, messagingParticipants } from "../messaging/schema";
+import { agentRequests } from "./requests.schema";
+import { agentWakes } from "./wakes.schema";
+import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+
+// Agents that already worked in this thread: they published a reply there or asked there.
+async function agentsThatWorked(
+  db: DatabaseExecutor,
+  message: typeof messagingMessages.$inferSelect,
+  agents: { actorId: string; userAgentId: string }[],
+) {
+  if (!message.threadId) return new Set<string>();
+  const replied = await db
+    .selectDistinct({ actorId: messagingMessages.authorActorEntityId })
+    .from(messagingMessages)
+    .where(
+      and(
+        eq(messagingMessages.conversationId, message.conversationId),
+        or(
+          eq(messagingMessages.id, message.threadId),
+          eq(messagingMessages.threadId, message.threadId),
+        ),
+        isNotNull(messagingMessages.originTurnId),
+        inArray(
+          messagingMessages.authorActorEntityId,
+          agents.map((agent) => agent.actorId),
+        ),
+      ),
+    );
+  const asked = await db
+    .selectDistinct({ actorId: agentRequests.agentActorEntityId })
+    .from(agentRequests)
+    .where(
+      and(
+        eq(agentRequests.conversationId, message.conversationId),
+        eq(agentRequests.threadId, message.threadId),
+        inArray(
+          agentRequests.userAgentId,
+          agents.map((agent) => agent.userAgentId),
+        ),
+      ),
+    );
+  return new Set([...replied, ...asked].map((row) => row.actorId));
+}
+
+/**
+ * Creates wakes for the author's own agents that this message addresses. Call in the transaction
+ * that inserts the message, so a committed message always has its wakes. Returns realtime hints
+ * to publish after commit.
+ *
+ * Only the agent's owner wakes it: the agent works on the owner's desktop with the owner's
+ * access. Agent-written messages never wake, which also stops agent-to-agent loops. Each agent
+ * gets at most one wake per message: mention, then DM, then a reply in a thread it worked in.
+ */
+export async function routeWake(
+  db: DatabaseExecutor,
+  scope: MessagingIdentity,
+  message: typeof messagingMessages.$inferSelect,
+  conversationKind: "dm" | "group" | "channel",
+): Promise<RealtimeHint[]> {
+  if (scope.actorEntityId || message.authorId !== scope.userId) return [];
+  const agents = await db
+    .select({
+      actorId: actors.entityId,
+      organizationId: actors.organizationId,
+      userAgentId: userAgents.id,
+      disabled: sql<AgentWakeMessageKind[]>`coalesce((
+        select array_agg(${userAgentTriggers.kind}) from ${userAgentTriggers}
+        where ${userAgentTriggers.userAgentId} = ${userAgents.id} and not ${userAgentTriggers.enabled}
+      ), '{}')`,
+    })
+    .from(messagingParticipants)
+    .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
+    .innerJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+    .where(
+      and(
+        eq(messagingParticipants.conversationId, message.conversationId),
+        eq(messagingParticipants.actorType, "agent"),
+        isNull(messagingParticipants.leftAt),
+        eq(userAgents.userId, scope.userId),
+        eq(actors.organizationId, scope.organizationId),
+        activeActorCondition(),
+      ),
+    );
+  if (!agents.length) return [];
+  const mentioned = new Set(
+    messageReferences(message.body)
+      .filter((reference) => reference.kind === "agent")
+      .map((reference) => reference.id),
+  );
+  const worked = await agentsThatWorked(db, message, agents);
+  const sessionKey =
+    conversationKind === "dm"
+      ? sessionKeys.dm(message.conversationId)
+      : sessionKeys.thread(message.threadId ?? message.id);
+  const wakes = agents.flatMap((agent) => {
+    let kind: AgentWakeMessageKind | undefined;
+    if (mentioned.has(agent.actorId)) kind = "mention";
+    else if (conversationKind === "dm") kind = "direct_message";
+    else if (worked.has(agent.actorId)) kind = "thread_reply";
+    if (!kind || agent.disabled.includes(kind)) return [];
+    return [
+      {
+        organizationId: agent.organizationId,
+        userAgentId: agent.userAgentId,
+        agentActorEntityId: agent.actorId,
+        ownerUserId: scope.userId,
+        source: "owner_message" as const,
+        sourceRef: {
+          messageId: message.id,
+          conversationId: message.conversationId,
+          threadId: message.threadId,
+          kind,
+        },
+        sessionKey,
+        dedupeKey: wakeDedupeKeys.message(message.id),
+      },
+    ];
+  });
+  if (!wakes.length) return [];
+  const created = await db
+    .insert(agentWakes)
+    .values(wakes)
+    .onConflictDoNothing()
+    .returning({ id: agentWakes.id });
+  return created.length
+    ? [{ audience: realtimeKeys.user(scope.userId), domain: "agent-work" }]
+    : [];
+}

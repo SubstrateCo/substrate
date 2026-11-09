@@ -208,15 +208,15 @@ test("workspace detail changes refresh organization details and invitations, not
   client.clear();
 });
 
-test("agent run hints refresh only the owner's runs in that workspace", () => {
-  const [target] = realtimeQueryTargets(change("agent-runs"), "user");
-  expect(target).toEqual({ queryKey: queryKeys.agentRuns("user", "org") });
+test("agent-work hints refresh only the owner's agent work in that workspace", () => {
+  const [target] = realtimeQueryTargets(change("agent-work"), "user");
+  expect(target).toEqual({ queryKey: queryKeys.agentWork("user", "org") });
   const client = new QueryClient();
   const keys = [
-    queryKeys.conversationAgentRuns("user", "org", "conversation"),
-    queryKeys.agentRun("user", "org", "run"),
-    queryKeys.conversationAgentRuns("user", "other", "conversation"),
-    queryKeys.conversationAgentRuns("other", "org", "conversation"),
+    queryKeys.agentWorkRequests("user", "org", "conversation"),
+    queryKeys.agentWorkConversation("user", "org", "conversation"),
+    queryKeys.agentWorkRequests("user", "other", "conversation"),
+    queryKeys.agentWorkNeedsYou("other", "org"),
   ];
   for (const key of keys) client.setQueryData(key, []);
   expect(
@@ -226,6 +226,29 @@ test("agent run hints refresh only the owner's runs in that workspace", () => {
       .map((query) => query.queryKey),
   ).toEqual(keys.slice(0, 2));
   client.clear();
+});
+
+test("an access change drops the owner's cached agent work for that workspace only", async () => {
+  const client = new QueryClient();
+  const here = queryKeys.agentWorkNeedsYou("user", "org");
+  const local = queryKeys.agentWorkConversation("user", "org", "conversation");
+  const elsewhere = queryKeys.agentWorkNeedsYou("user", "other");
+  for (const key of [here, local, elsewhere]) client.setQueryData(key, { requests: [] });
+  const cache = createRealtimeCache({
+    queryClient: client,
+    organizationId: "org",
+    userId: "user",
+    revalidate: async () => {},
+  });
+  try {
+    await cache.receive(change("access"));
+    expect(client.getQueryData(here)).toBeUndefined();
+    expect(client.getQueryData(local)).toBeUndefined();
+    expect(client.getQueryData(elsewhere)).toEqual({ requests: [] });
+  } finally {
+    cache.dispose();
+    client.clear();
+  }
 });
 
 test("conversation hints refresh root and reply targets without crossing conversation or workspace boundaries", async () => {

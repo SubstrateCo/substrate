@@ -9,6 +9,13 @@ const projects: WorkspaceApiRequest = {
   tool: "list_projects",
   organizationId: "org-a",
   agentId: "ad4f709e-b80e-40f5-80ee-588e1db066e5",
+  turn: {
+    turnId: "0d6f4c3e-8b4f-4c39-9d7e-3f1c2a5b6e71",
+    attempt: 1,
+    sessionKey: "dm:9b2c1d4e-5f60-4a71-8b92-c3d4e5f60718",
+    origin: { conversationId: "9b2c1d4e-5f60-4a71-8b92-c3d4e5f60718", threadId: null },
+    kind: "interactive",
+  },
   input: {},
 };
 const createProject: WorkspaceApiRequest = {
@@ -78,7 +85,15 @@ test("MCP binds calls to the launch workspace instead of following workspace swi
   expect(f.requests.map(({ url }) => url)).toEqual(["https://api.example.com/api/v1/mcp/call"]);
 });
 
-test("mutations use the agent endpoint with lease-bound scope", async () => {
+test("calls without a turn context are rejected before the network", async () => {
+  const f = fixture();
+  const { turn: _turn, ...withoutTurn } = projects;
+  // SAFETY: the test sends a request that lacks turn on purpose; the proxy must reject it.
+  await expect(f.proxy(withoutTurn as WorkspaceApiRequest)).rejects.toThrow();
+  expect(f.requests).toEqual([]);
+});
+
+test("mutations use the agent endpoint with lease-bound scope and the turn context", async () => {
   const f = fixture();
   await f.proxy(createProject);
   expect(f.requests[0]?.url).toBe("https://api.example.com/api/v1/mcp/call");

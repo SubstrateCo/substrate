@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./agent-work": "./src/agent-work/index.ts"
   },
   "scripts": {
     "db:generate": "drizzle-kit generate",

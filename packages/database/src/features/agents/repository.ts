@@ -2,8 +2,6 @@ import {
   agentTriggerKinds,
   saveAgentTriggersInput,
   type SaveAgentTriggersInput,
-} from "@startup-os/contracts/agent-runs";
-import {
   saveAgentInput,
   type AgentCatalog,
   type AgentConfiguration,
@@ -72,7 +70,7 @@ export function createAgentRepository(db: Database, userId: string, installation
             const row = overrides.find(
               (override) => override.userAgentId === agent.id && override.kind === kind,
             );
-            return { kind, enabled: row?.enabled ?? true, prompt: row?.prompt ?? null };
+            return { kind, enabled: row?.enabled ?? true };
           }),
         })),
       };
@@ -135,7 +133,7 @@ export function createAgentRepository(db: Database, userId: string, installation
             .values({ userAgentId: agent.id, ...trigger })
             .onConflictDoUpdate({
               target: [userAgentTriggers.userAgentId, userAgentTriggers.kind],
-              set: { enabled: trigger.enabled, prompt: trigger.prompt, updatedAt: new Date() },
+              set: { enabled: trigger.enabled, updatedAt: new Date() },
             });
         return null;
       });

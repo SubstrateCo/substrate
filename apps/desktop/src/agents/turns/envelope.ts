@@ -1,0 +1,181 @@
+import type { InboxRow } from "@startup-os/client-storage/agent-work";
+import type {
+  AgentSourceMessage,
+  AgentWakeRequestDetail,
+  EnvelopeItem,
+  EnvelopeResumeNote,
+  EnvelopeTurn,
+  ProposalOutcome,
+} from "@startup-os/contracts/agent-work";
+
+/** Escapes text so that no body or attribute can open or close an envelope tag. */
+function fence(value: string) {
+  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+function attribute(value: string) {
+  return fence(value).replaceAll('"', "&quot;");
+}
+function attributes(values: [string, string | number | null][]) {
+  return values
+    .flatMap(([name, value]) => (value === null ? [] : [` ${name}="${attribute(String(value))}"`]))
+    .join("");
+}
+
+function resume(note: EnvelopeResumeNote) {
+  const lines = [
+    "An earlier attempt of this turn stopped before it finished. Check what already happened before you repeat any write.",
+    ...note.completedTools.map((tool) => `Finished: ${tool}`),
+    ...note.outputs.map((output) => `Published: ${output}`),
+  ];
+  return `<resume${attributes([
+    ["turn", note.turnId],
+    ["previous_attempt", note.previousAttempt],
+  ])}>${fence(lines.join("\n"))}</resume>`;
+}
+
+/**
+ * Renders the turn input. The same input always gives the same bytes: items keep the order the
+ * caller sorted them in, attributes have a fixed order, and every body is escaped.
+ */
+export function renderEnvelope(turn: EnvelopeTurn) {
+  const parts = [
+    `<turn${attributes([
+      ["time", turn.time],
+      ["session", turn.session],
+      ["kind", turn.kind],
+      ["attempt", turn.attempt],
+    ])}>`,
+  ];
+  if (turn.changes.length) parts.push(`<changes>${fence(turn.changes.join("\n"))}</changes>`);
+  if (turn.resume) parts.push(resume(turn.resume));
+  for (const item of turn.items)
+    parts.push(
+      `<item${attributes([
+        ["id", item.id],
+        ["source", item.source],
+        ["author", item.author],
+        ["author_kind", item.authorKind],
+        ["conversation", item.conversationId],
+        ["thread", item.threadId],
+      ])}>${fence(item.body)}</item>`,
+    );
+  parts.push("</turn>");
+  return parts.join("\n");
+}
+
+function outcomeLine(outcome: ProposalOutcome | null) {
+  if (!outcome) return "Outcome: not known yet.";
+  switch (outcome.status) {
+    case "declined":
+      return "Outcome: declined. Nothing ran.";
+    case "failed":
+      return `Outcome: approved, but it failed: ${outcome.error}`;
+    case "executed": {
+      const { receipt } = outcome;
+      if (receipt.kind === "task")
+        return `Outcome: approved and done. Task ${receipt.id} in project ${receipt.projectId}.`;
+      const thread = receipt.threadId ? ` thread ${receipt.threadId}` : "";
+      return `Outcome: approved and done. Posted message ${receipt.id} in conversation ${receipt.conversationId}${thread}.`;
+    }
+  }
+}
+
+/** What the owner decided on a request, in a fixed order so the same detail gives the same text. */
+function decisionLines(source: "answer" | "approval_result", request: AgentWakeRequestDetail) {
+  const { payload } = request;
+  if (source === "approval_result")
+    return [
+      `Your owner decided on your proposal (request ${request.id}).`,
+      `Proposal: ${payload.type === "proposal" ? payload.summary : payload.title}`,
+      outcomeLine(request.outcome),
+    ];
+  const lines = [`Your owner answered your question (request ${request.id}).`];
+  const response = request.response;
+  if (payload.type === "questions")
+    for (const entry of payload.questions) {
+      lines.push(`Question: ${entry.question}`);
+      if (entry.options.length)
+        lines.push(`Options: ${entry.options.map((option) => option.label).join(" | ")}`);
+      const answer = response?.type === "questions" ? response.answers[entry.id] : undefined;
+      lines.push(`Answer: ${answer?.length ? answer.join(" | ") : "(no answer)"}`);
+    }
+  else if (payload.type === "approval" && response?.type === "approval") {
+    const chosen = payload.options.find((option) => option.id === response.optionId);
+    lines.push(`Question: ${payload.title}`, `Answer: ${chosen?.label ?? response.optionId}`);
+  }
+  return lines;
+}
+
+/** Inbox items in a stable order: oldest first, then by ID. */
+export function sortItems<T extends Pick<InboxRow, "createdAt" | "id">>(items: T[]) {
+  const byId = (a: string, b: string) => {
+    if (a === b) return 0;
+    return a < b ? -1 : 1;
+  };
+  return [...items].sort((a, b) => a.createdAt - b.createdAt || byId(a.id, b.id));
+}
+
+/**
+ * The envelope item for an inbox item, or null when its source message is not visible to the
+ * owner any more. Message bodies come only from device/sources.
+ */
+export function envelopeItem(
+  item: InboxRow,
+  context: { sessionKind: string; messages: Map<string, AgentSourceMessage> },
+): EnvelopeItem | null {
+  const ref = item.sourceRef;
+  const base = { id: item.id, source: item.source, conversationId: null, threadId: null };
+  switch (ref.source) {
+    case "owner_message": {
+      const message = context.messages.get(ref.messageId);
+      if (!message) return null;
+      return {
+        ...base,
+        author: message.author.name,
+        authorKind: message.author.kind,
+        conversationId: message.conversationId,
+        threadId: message.threadId,
+        body: message.body,
+      };
+    }
+    case "answer":
+    case "approval_result": {
+      const lines = ref.request
+        ? decisionLines(ref.source, ref.request)
+        : [
+            ref.source === "answer"
+              ? `Your owner answered request ${ref.requestId}. The answer is not available.`
+              : `Your owner decided on proposal ${ref.requestId}. The result is not available.`,
+          ];
+      if (item.body) lines.push(item.body);
+      return {
+        ...base,
+        // The answer is the owner's words; a proposal's outcome is reported by the system.
+        author: null,
+        authorKind: ref.source === "answer" ? "owner" : "system",
+        conversationId: ref.request?.conversationId ?? null,
+        threadId: ref.request?.threadId ?? null,
+        body: lines.join("\n"),
+      };
+    }
+    case "helper_task":
+      return { ...base, author: "Parent agent", authorKind: "agent", body: item.body ?? "" };
+    case "helper_result":
+      return {
+        ...base,
+        author: `Helper ${ref.helperId}`,
+        authorKind: "agent",
+        body: item.body ?? "",
+      };
+    case "routine":
+      return {
+        ...base,
+        author: null,
+        authorKind: "system",
+        body: `Routine ${ref.routineId} (scheduled ${ref.scheduledAt}):\n${item.body ?? ""}`,
+      };
+    case "recovery":
+    case "epoch":
+      return { ...base, author: null, authorKind: "system", body: item.body ?? "" };
+  }
+}

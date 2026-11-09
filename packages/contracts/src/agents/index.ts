@@ -7,6 +7,14 @@ export {
   saveMcpServerInput,
   deleteMcpServerInput,
 } from "./input";
+export {
+  agentTriggerKinds,
+  agentTriggers,
+  saveAgentTriggersInput,
+  type AgentTriggerKind,
+  type AgentTriggerSetting,
+  type SaveAgentTriggersInput,
+} from "./triggers";
 export type {
   SaveAgentInput,
   SetAgentPictureInput,

@@ -1,11 +1,13 @@
+import { agentWorkChangeChannel, agentWorkChannel } from "@startup-os/contracts/agent-work/desktop";
 import { desktopScheme, resolveDesktopLink } from "@startup-os/contracts/desktop/links";
 import { desktopSettingsChannel } from "@startup-os/contracts/desktop/window";
 import { realtimeChannel, realtimeEventChannel } from "@startup-os/contracts/realtime";
 
-import { createAgentRunner } from "./agents/agent-runner.ts";
 import { installationId } from "./agents/installation.ts";
+import { createAgentWorkService } from "./agents/service.ts";
+import { observeMcpCalls } from "./agents/turns/mcp-observer.ts";
 import { createDesktopAuthClient } from "./auth/auth-client.js";
-import { harnessChannel, harnessEventChannel } from "./harness/bridge/harness-bridge.ts";
+import { harnessChannel } from "./harness/bridge/harness-bridge.ts";
 import { createHarnessController } from "./harness/controller/harness-controller.ts";
 import { createHarnessProcess } from "./harness/worker/harness-process.ts";
 import { applicationURL, bundledApplicationURL, navigationTarget } from "./shell/navigation.js";
@@ -58,8 +60,8 @@ const allowedStorageOrigins = storageOrigins(
 let harness;
 /** @type {ReturnType<typeof createRealtimeController> | undefined} */
 let realtime;
-/** @type {ReturnType<typeof createAgentRunner> | undefined} */
-let runner;
+/** @type {ReturnType<typeof createAgentWorkService> | undefined} */
+let agentWork;
 /** @type {Tray | undefined} */
 let tray;
 const smokeTest = app.commandLine.hasSwitch("desktop-smoke-test");
@@ -74,15 +76,15 @@ const { authClient, handleAuthLink } = createDesktopAuthClient(
   app.commandLine.hasSwitch("desktop-smoke-test"),
   () => mainWindow,
   () => {
-    runner?.stop();
+    agentWork?.stop();
     harness?.disconnect();
     realtime?.disconnect();
   },
   () => {
-    runner?.stop();
+    agentWork?.stop();
     harness?.disconnect();
     realtime?.disconnect();
-    runner?.start();
+    if (!smokeTest) agentWork?.start();
     const contents = mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : undefined;
     if (contents && !contents.isDestroyed() && target(contents.getURL()) === "internal")
       contents.reload();
@@ -250,7 +252,7 @@ if (!app.requestSingleInstanceLock()) {
   });
   app.on("before-quit", () => {
     quitting = true;
-    runner?.stop();
+    agentWork?.stop();
   });
   void app
     .whenReady()
@@ -262,7 +264,14 @@ if (!app.requestSingleInstanceLock()) {
         getCookie: () => authClient.getCookie(),
         emit: (event) => {
           emitToRenderer(mainWindow, realtimeEventChannel, event, rendererURL);
-          runner?.onRealtime(event);
+          if (
+            event.type === "change" &&
+            (event.domain === "session" ||
+              event.domain === "access" ||
+              event.domain === "organization")
+          )
+            harness?.refreshAuthority();
+          agentWork?.onRealtime(event);
         },
       });
       ipcMain.handle(realtimeChannel, (event, method, value) => {
@@ -281,8 +290,11 @@ if (!app.requestSingleInstanceLock()) {
       harness = createHarnessController({
         backend,
         accountsDirectory: join(app.getPath("userData"), "accounts"),
-        fetchAPI,
-        createWorker: (directory, proxy) =>
+        // Main records what each server tool call published for the turn that made it.
+        fetchAPI: observeMcpCalls(fetchAPI, (request, result) =>
+          agentWork?.observeToolCall(request, result),
+        ),
+        createWorker: (directory, proxy, localTools) =>
           createHarnessProcess(
             fileURLToPath(
               new URL(
@@ -291,23 +303,41 @@ if (!app.requestSingleInstanceLock()) {
               ),
             ),
             directory,
-            (event) => {
-              emitToRenderer(mainWindow, harnessEventChannel, event, rendererURL);
-              runner?.onHarnessEvent(event);
-            },
+            // Harness events go to agent work, which writes them locally before anything else.
+            (event) => agentWork?.onHarnessEvent(event),
             proxy,
+            localTools,
           ),
       });
       const controller = harness;
-      runner = createAgentRunner({
+      agentWork = createAgentWorkService({
         backend,
         installationId: installation,
         device: { name: hostname(), platform: process.platform },
         fetchAPI,
-        harness: { run: (method, value) => controller.run(method, value) },
+        harness: {
+          synchronize: () => controller.run("synchronize").then(() => {}),
+          execute: (command) => controller.execute(command),
+          closeOrganization: (organizationId) => controller.closeOrganization(organizationId),
+          readProfile: (agentId) => controller.readProfile(agentId),
+        },
+        accountsDirectory: join(app.getPath("userData"), "accounts"),
+        migrationsDirectory: app.isPackaged
+          ? fileURLToPath(new URL("./client-storage-migrations/", import.meta.url))
+          : undefined,
+        notify: (change) => emitToRenderer(mainWindow, agentWorkChangeChannel, change, rendererURL),
         log: (message) => console.warn(message),
       });
-      if (!smokeTest) runner.start();
+      const service = agentWork;
+      // Local tools (save_handoff, helpers) run in agent work, not on the server.
+      controller.setLocalToolHandler((request) => service.handleLocalTool(request));
+      if (!smokeTest) agentWork.start();
+      ipcMain.handle(agentWorkChannel, (event, method, value) => {
+        if (!trustedSender(event, mainWindow?.webContents, rendererURL))
+          throw new Error("Agent work unavailable.");
+        if (!agentWork) throw new Error("Agent work unavailable.");
+        return agentWork.call(method, value);
+      });
       ipcMain.handle(desktopSettingsChannel, (event, method, value) => {
         if (!trustedSender(event, mainWindow?.webContents, rendererURL))
           throw new Error("Settings unavailable.");

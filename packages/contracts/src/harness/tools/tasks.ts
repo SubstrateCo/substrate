@@ -1,5 +1,15 @@
 import { taskPriorityValues, taskStatusValues } from "../../tasks/status.ts";
-import { actor, id, messageRef, page, pageInput, requestId, timed, timestamp } from "./shared.ts";
+import {
+  actor,
+  author,
+  id,
+  messageRef,
+  page,
+  pageInput,
+  requestId,
+  timed,
+  timestamp,
+} from "./shared.ts";
 import { z } from "zod";
 
 const status = z
@@ -26,7 +36,8 @@ const taskSummary = z.object({
   parentTaskId: id.nullable(),
   updatedAt: timestamp,
 });
-const task = z.object({
+/** What get_task, create_task and update_task return. */
+export const taskResult = z.object({
   id,
   title: z.string(),
   description: z.string(),
@@ -91,7 +102,7 @@ export const taskTools = {
       "Read a task in full: description, assignee, project, parent, subtask count, the message it was created from, and counts of comments and linked messages. Use list_task_comments, list_task_activity or list_links for more.",
     readOnly: true,
     input: z.object({ taskId: id }).strict(),
-    output: task,
+    output: taskResult,
   },
   create_task: {
     title: "Create task",
@@ -109,16 +120,18 @@ export const taskTools = {
         sourceMessageId: id.optional().describe("The message this work comes from."),
       })
       .strict(),
-    output: task,
+    output: taskResult,
   },
   update_task: {
     title: "Update task",
     description:
       "Change only the fields you supply. Null clears the assignee or due date. Cannot move a task to another project or parent. Returns the updated task.",
     readOnly: false,
+    idempotent: true,
     destructive: true,
     input: z
       .object({
+        requestId,
         taskId: id,
         changes: z
           .object(taskFields)
@@ -127,14 +140,14 @@ export const taskTools = {
           .refine((value) => Object.keys(value).length > 0, "Supply at least one change"),
       })
       .strict(),
-    output: task,
+    output: taskResult,
   },
   list_task_comments: {
     title: "List task comments",
     description: "List a task's comments, newest first.",
     readOnly: true,
     input: timed({ taskId: id, ...pageInput }),
-    output: page(z.object({ id, author: actor, body: z.string(), createdAt: timestamp })),
+    output: page(z.object({ id, author, body: z.string(), createdAt: timestamp })),
   },
   add_task_comment: {
     title: "Add task comment",

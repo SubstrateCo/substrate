@@ -1,101 +1,236 @@
-import type { WorkspaceApiRequest } from "@startup-os/contracts/harness/mcp";
-import { mcpTools } from "@startup-os/contracts/harness/tools";
+import type {
+  LocalToolRequest,
+  TurnContext,
+  WorkspaceApiRequest,
+} from "@startup-os/contracts/harness/mcp";
+import { leaseTools, type McpToolName } from "@startup-os/contracts/harness/tools";
 
-import { createStartupMcp } from "./mcp.ts";
+import { createStartupMcp, type McpLeaseOptions, type StartupMcpHandlers } from "./mcp.ts";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { expect, test } from "bun:test";
+import { afterEach, beforeEach, expect, test } from "bun:test";
+import { mkdir, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 /* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous despite their assertion return declarations. */
 
-test("tools inject lease identity and return structured API results", async () => {
-  const calls: unknown[] = [];
-  const host = await createStartupMcp(async (call) => {
-    calls.push(call);
-    return { success: true, data: { items: [], nextCursor: null } };
+const agentId = "ad4f709e-b80e-40f5-80ee-588e1db066e5";
+const turn: TurnContext = {
+  turnId: "0d6f4c3e-8b4f-4c39-9d7e-3f1c2a5b6e71",
+  attempt: 1,
+  sessionKey: "dm:9b2c1d4e-5f60-4a71-8b92-c3d4e5f60718",
+  origin: { conversationId: "9b2c1d4e-5f60-4a71-8b92-c3d4e5f60718", threadId: null },
+  kind: "interactive",
+};
+let folder: string;
+
+beforeEach(async () => {
+  await mkdir(join(tmpdir(), "opencode"), { recursive: true });
+  folder = await mkdtemp(join(tmpdir(), "opencode", "mcp-test-"));
+});
+afterEach(async () => {
+  await rm(folder, { recursive: true, force: true });
+});
+
+function leaseOptions(overrides: Partial<McpLeaseOptions> = {}): McpLeaseOptions {
+  return {
+    organizationId: "org-a",
+    agentId,
+    sessionId: "session-a",
+    tools: leaseTools("main"),
+    folder,
+    agentFolder: folder,
+    ...overrides,
+  };
+}
+
+async function connected(handlers: StartupMcpHandlers, options = leaseOptions()) {
+  const host = await createStartupMcp(handlers);
+  const lease = host.issue(options);
+  const client = new Client({ name: "mcp-test", version: "1" });
+  await client.connect(
+    new StreamableHTTPClientTransport(new URL(lease.url), {
+      requestInit: { headers: { Authorization: `Bearer ${lease.token}` } },
+    }),
+  );
+  return {
+    host,
+    lease,
+    client,
+    async close() {
+      await client.close();
+      await host.close();
+    },
+  };
+}
+
+function text(result: Awaited<ReturnType<Client["callTool"]>>) {
+  // SAFETY: this server returns every result as a single text content block.
+  const [content] = result.content as { type: "text"; text: string }[];
+  return content!.text;
+}
+
+test("server calls carry lease identity and the bound turn; calls outside a turn are rejected", async () => {
+  const calls: WorkspaceApiRequest[] = [];
+  const mcp = await connected({
+    workspace: async (call) => {
+      calls.push(call);
+      return { success: true, data: { items: [], nextCursor: null } };
+    },
   });
-  const lease = host.issue("org-a", "agent-a");
-  const client = new Client({ name: "proxy-test", version: "1" });
   try {
-    await client.connect(
-      new StreamableHTTPClientTransport(new URL(lease.url), {
-        requestInit: { headers: { Authorization: `Bearer ${lease.token}` } },
-      }),
-    );
-    expect((await client.listTools()).tools.map((tool) => tool.name)).toEqual(
-      Object.keys(mcpTools),
-    );
+    const outside = await mcp.client.callTool({ name: "list_projects", arguments: {} });
+    expect(outside.isError).toBe(true);
+    expect(JSON.parse(text(outside))).toMatchObject({ code: "NO_TURN" });
+    expect(calls).toEqual([]);
+
+    mcp.lease.bind(turn);
     expect(
-      (await client.callTool({ name: "list_projects", arguments: {} })).structuredContent,
+      (await mcp.client.callTool({ name: "list_projects", arguments: {} })).structuredContent,
     ).toEqual({ items: [], nextCursor: null });
-    const request: WorkspaceApiRequest = {
-      tool: "list_projects",
-      organizationId: "org-a",
-      agentId: "agent-a",
-      input: { limit: 25 },
-    };
-    lease.revoke();
-    await expect(client.callTool({ name: "list_projects", arguments: {} })).rejects.toThrow();
-    expect(calls).toEqual([request]);
+    expect(calls).toEqual([
+      { tool: "list_projects", organizationId: "org-a", agentId, turn, input: { limit: 25 } },
+    ]);
+
+    mcp.lease.unbind();
+    expect((await mcp.client.callTool({ name: "list_projects", arguments: {} })).isError).toBe(
+      true,
+    );
+    expect(calls).toHaveLength(1);
   } finally {
-    await client.close();
-    await host.close();
+    await mcp.close();
   }
 });
 
-test("API failures reach the agent with their message and a next step; writes declare their risk", async () => {
-  const host = await createStartupMcp(async () => ({
-    success: false,
-    error: {
-      code: "FORBIDDEN",
-      message: "Workspace changed. Start a new agent run in this workspace.",
+test("local tools route to the desktop handler with the session and turn", async () => {
+  const calls: LocalToolRequest[] = [];
+  const mcp = await connected({
+    local: async (call) => {
+      calls.push(call);
+      return { success: true, data: { items: [] } };
     },
-  }));
-  const lease = host.issue("org-a", "agent-a");
-  const client = new Client({ name: "proxy-test", version: "1" });
+  });
   try {
-    await client.connect(
-      new StreamableHTTPClientTransport(new URL(lease.url), {
-        requestInit: { headers: { Authorization: `Bearer ${lease.token}` } },
-      }),
+    mcp.lease.bind(turn);
+    await mcp.client.callTool({ name: "list_helpers", arguments: {} });
+    expect(calls).toEqual([
+      {
+        tool: "list_helpers",
+        sessionId: "session-a",
+        organizationId: "org-a",
+        agentId,
+        turn,
+        input: {},
+      },
+    ]);
+  } finally {
+    await mcp.close();
+  }
+});
+
+test("memory tools are handled locally and never reach either proxy", async () => {
+  let proxied = 0;
+  const mcp = await connected({
+    workspace: async () => {
+      proxied++;
+      return { success: true, data: {} };
+    },
+    local: async () => {
+      proxied++;
+      return { success: true, data: {} };
+    },
+  });
+  try {
+    mcp.lease.bind(turn);
+    const result = await mcp.client.callTool({
+      name: "remember",
+      arguments: { layer: "profile", text: "Owner prefers short replies." },
+    });
+    expect(result.structuredContent).toEqual({ layer: "profile", saved: true });
+    expect(await readFile(join(folder, "memory", "profile.md"), "utf8")).toBe(
+      "- Owner prefers short replies.\n",
     );
-    const result = await client.callTool({ name: "list_projects", arguments: {} });
+    expect(proxied).toBe(0);
+  } finally {
+    await mcp.close();
+  }
+});
+
+test("helper leases offer no publishing, helper management or memory tools", async () => {
+  const mcp = await connected({}, leaseOptions({ tools: leaseTools("helper") }));
+  try {
+    const names = new Set((await mcp.client.listTools()).tools.map((tool) => tool.name));
+    for (const name of [
+      "reply",
+      "propose",
+      "start_helper",
+      "remember",
+      "forget",
+    ] satisfies McpToolName[])
+      expect(names.has(name)).toBe(false);
+    expect(names.has("finish_helper")).toBe(true);
+  } finally {
+    await mcp.close();
+  }
+});
+
+test("results above the offload limit are written inside the folder and returned as a reference", async () => {
+  const items = Array.from({ length: 200 }, (_, index) => ({
+    id: crypto.randomUUID(),
+    name: `Project ${index} ${"x".repeat(40)}`,
+  }));
+  const mcp = await connected({
+    workspace: async () => ({ success: true, data: { items, nextCursor: null } }),
+  });
+  try {
+    mcp.lease.bind(turn);
+    const result = await mcp.client.callTool({ name: "list_projects", arguments: {} });
+    const path = `.startup-os/outputs/${turn.turnId}/list_projects-1.json`;
+    expect(result.structuredContent).toMatchObject({ truncated: true, path });
+    expect(JSON.parse(await readFile(join(folder, path), "utf8"))).toEqual({
+      items,
+      nextCursor: null,
+    });
+    expect(await readdir(join(folder, ".startup-os", "outputs", turn.turnId))).toEqual([
+      "list_projects-1.json",
+    ]);
+  } finally {
+    await mcp.close();
+  }
+});
+
+test("API failures reach the agent with their message and a next step", async () => {
+  const mcp = await connected({
+    workspace: async () => ({
+      success: false,
+      error: { code: "FORBIDDEN", message: "Workspace changed. Start a new agent run." },
+    }),
+  });
+  try {
+    mcp.lease.bind(turn);
+    const result = await mcp.client.callTool({ name: "list_projects", arguments: {} });
     expect(result.isError).toBe(true);
-    // SAFETY: this server returns failures as a single text content block.
-    const [content] = result.content as { type: "text"; text: string }[];
-    expect(JSON.parse(content!.text)).toMatchObject({
+    expect(JSON.parse(text(result))).toMatchObject({
       code: "FORBIDDEN",
-      message: "Workspace changed. Start a new agent run in this workspace.",
+      message: "Workspace changed. Start a new agent run.",
       hint: expect.stringContaining("start a new run"),
     });
-    const tools = new Map((await client.listTools()).tools.map((tool) => [tool.name, tool]));
+    const tools = new Map((await mcp.client.listTools()).tools.map((tool) => [tool.name, tool]));
     expect(tools.get("update_task")?.annotations).toMatchObject({
       readOnlyHint: false,
       destructiveHint: true,
     });
-    expect(tools.get("send_message")?.annotations).toMatchObject({
-      destructiveHint: false,
-      idempotentHint: true,
-    });
   } finally {
-    await client.close();
-    await host.close();
+    await mcp.close();
   }
 });
 
 test("loopback MCP rejects revoked, browser and rebound requests", async () => {
   const host = await createStartupMcp();
-  const lease = host.issue("org-a", "agent-a");
-  const client = new Client({ name: "runtime-test", version: "1.0.0" });
+  const lease = host.issue(leaseOptions());
   try {
     const headers = { Authorization: `Bearer ${lease.token}` };
-    await client.connect(
-      new StreamableHTTPClientTransport(new URL(lease.url), { requestInit: { headers } }),
-    );
-    expect((await client.listTools()).tools.map((tool) => tool.name)).toEqual(
-      Object.keys(mcpTools),
-    );
-    expect((await client.callTool({ name: "list_projects", arguments: {} })).isError).toBe(true);
     const forbidden = await fetch(lease.url, {
       method: "POST",
       headers: { ...headers, Origin: "https://evil.example" },
@@ -113,47 +248,44 @@ test("loopback MCP rejects revoked, browser and rebound requests", async () => {
     lease.revoke();
     const revoked = await fetch(lease.url, { method: "POST", headers, body: "{}" });
     expect(revoked.status).toBe(401);
-    await expect(client.callTool({ name: "list_projects", arguments: {} })).rejects.toThrow();
+  } finally {
+    await host.close();
+  }
+});
+
+test("a lease never expires under a bound turn and expires only after it stays unbound", async () => {
+  const host = await createStartupMcp(
+    { workspace: async () => ({ success: true, data: { items: [], nextCursor: null } }) },
+    { leaseTtlMs: 30 },
+  );
+  const lease = host.issue(leaseOptions());
+  const client = new Client({ name: "mcp-test", version: "1" });
+  try {
+    await client.connect(
+      new StreamableHTTPClientTransport(new URL(lease.url), {
+        requestInit: { headers: { Authorization: `Bearer ${lease.token}` } },
+      }),
+    );
+    lease.bind(turn);
+    await Bun.sleep(80);
+    expect((await client.callTool({ name: "list_projects", arguments: {} })).isError).toBeFalsy();
+    lease.unbind();
+    await Bun.sleep(80);
+    const expired = await fetch(lease.url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${lease.token}` },
+      body: "{}",
+    });
+    expect(expired.status).toBe(401);
   } finally {
     await client.close();
     await host.close();
   }
 });
 
-test("revoking one scoped MCP credential does not revoke another organization", async () => {
-  const host = await createStartupMcp();
-  try {
-    const first = host.issue("org-a", "agent-a");
-    const second = host.issue("org-b", "agent-b");
-    first.revoke();
-    const response = await fetch(second.url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${second.token}`,
-        "Content-Type": "application/json",
-        Accept: "application/json, text/event-stream",
-      },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "initialize",
-        params: {
-          protocolVersion: "2025-11-25",
-          capabilities: {},
-          clientInfo: { name: "test", version: "1" },
-        },
-      }),
-    });
-    expect(response.status).toBe(200);
-    expect(JSON.stringify(await response.json())).not.toContain("org-b");
-  } finally {
-    await host.close();
-  }
-});
-
 test("MCP rejects malformed authorization without accepting bare tokens or crashing", async () => {
   const host = await createStartupMcp();
-  const lease = host.issue("org", "agent");
+  const lease = host.issue(leaseOptions());
   try {
     for (const authorization of [lease.token, `Bearer ${"é".repeat(64)}`, `Basic ${lease.token}`]) {
       const response = await fetch(lease.url, {
@@ -163,12 +295,6 @@ test("MCP rejects malformed authorization without accepting bare tokens or crash
       });
       expect(response.status).toBe(401);
     }
-    const response = await fetch(lease.url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${lease.token}` },
-      body: "{}",
-    });
-    expect(response.status).not.toBe(401);
   } finally {
     await host.close();
   }

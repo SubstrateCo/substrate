@@ -10,8 +10,9 @@ import { ThreadPane } from "../threads/thread-pane";
 import { AddMembersForm } from "./add-members-form";
 import { ConversationActions } from "./conversation-actions";
 import { LeftChannelNotice } from "./conversation-pane/left-channel-notice";
-import { AgentRunTranscript } from "@/components/agent-runs/agent-run-transcript";
-import { ConversationAgentRuns } from "@/components/agent-runs/conversation-agent-runs";
+import { AgentWorkNotice } from "@/components/agent-work/agent-work-slot";
+import { ConversationAgentWork } from "@/components/agent-work/conversation-agent-work";
+import { ConversationTurnTranscript } from "@/components/agent-work/transcript/conversation-turn-transcript";
 import { ConversationPane as ConversationPaneView } from "@/components/messaging/conversations/conversation-pane-view";
 import { MessageHistory } from "@/components/messaging/messages/message-history";
 import { MessageUnavailable } from "@/components/messaging/messages/message-unavailable";
@@ -70,24 +71,25 @@ export function ConversationPane({
       </MessageHistory>
     );
   // The transcript keeps the open thread in the URL, so closing it returns to that thread.
-  const transcript = (runId?: string) =>
+  const transcript = (turnId?: string) =>
     void navigate({
       to: "/dashboard",
       search: {
         workspaceId: organizationId,
         conversationId: conversation.id,
         messageId: search.messageId,
-        agentRunId: runId,
+        turnId,
       },
     });
   let aside;
-  if (search.agentRunId && userId)
+  if (search.turnId && userId)
     aside = (
-      <AgentRunTranscript
-        key={search.agentRunId}
+      <ConversationTurnTranscript
+        key={search.turnId}
         userId={userId}
         organizationId={organizationId}
-        runId={search.agentRunId}
+        conversation={conversation}
+        turnId={search.turnId}
         onClose={() => transcript()}
       />
     );
@@ -110,11 +112,10 @@ export function ConversationPane({
       />
     );
   return (
-    <ConversationAgentRuns
+    <ConversationAgentWork
       userId={userId}
       organizationId={organizationId}
-      conversationId={conversation.id}
-      enabled={conversation.members?.some((member) => member.type === "agent") ?? true}
+      conversation={conversation}
       onTranscript={transcript}
     >
       <ConversationPaneView
@@ -151,14 +152,17 @@ export function ConversationPane({
           />
         }
         composer={
-          <Composer
-            organizationId={organizationId}
-            conversationId={conversation.id}
-            label={`Message ${conversation.kind === "channel" ? "#" : ""}${conversationName(conversation)}`}
-          />
+          <>
+            <AgentWorkNotice threadId={null} />
+            <Composer
+              organizationId={organizationId}
+              conversationId={conversation.id}
+              label={`Message ${conversation.kind === "channel" ? "#" : ""}${conversationName(conversation)}`}
+            />
+          </>
         }
         thread={aside}
       />
-    </ConversationAgentRuns>
+    </ConversationAgentWork>
   );
 }

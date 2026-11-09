@@ -69,14 +69,9 @@ export function sendMessage(headers: Headers, input: z.output<typeof messageInpu
       input.threadId,
       input.requestId,
     );
-    const { agentRunsQueued, hints, ...sent } = message;
-    await publishRefresh([
-      ...hints,
-      // Wakes the author's desktops so the agent's home device claims the run.
-      ...(agentRunsQueued
-        ? [{ audience: realtimeKeys.user(message.authorId!), domain: "agent-runs" as const }]
-        : []),
-    ]);
+    // Hints include an agent-work hint to the author's desktops when the message woke an agent.
+    const { hints, ...sent } = message;
+    await publishRefresh(hints);
     return sent;
   });
 }

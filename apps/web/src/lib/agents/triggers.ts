@@ -1,17 +1,12 @@
-import type { AgentTriggerSetting, SaveAgentTriggersInput } from "@startup-os/contracts/agent-runs";
+import type { AgentTriggerSetting, SaveAgentTriggersInput } from "@startup-os/contracts/agents";
 
-/** A blank custom prompt means the default prompt. */
 export function triggersInput(
   agentId: string,
   triggers: readonly AgentTriggerSetting[],
 ): SaveAgentTriggersInput {
   return {
     agentId,
-    triggers: triggers.map((trigger) => ({
-      kind: trigger.kind,
-      enabled: trigger.enabled,
-      prompt: trigger.prompt?.trim() || null,
-    })),
+    triggers: triggers.map((trigger) => ({ kind: trigger.kind, enabled: trigger.enabled })),
   };
 }
 

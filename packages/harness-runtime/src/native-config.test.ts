@@ -230,7 +230,15 @@ test("host scopes local file operations to a safe organization ID", async () => 
     ).rejects.toMatchObject({ code: "invalid-id" });
     await host.configure({ organizationId: "org-a", agents: [] });
     await expect(
-      host.execute({ type: "start", organizationId: "org-a", agentId: "agent-a" }),
+      host.execute({
+        type: "open",
+        organizationId: "org-a",
+        sessionId: "session-a",
+        agentId: "agent-a",
+        epoch: 0,
+        folder: "main",
+        prefix: "",
+      }),
     ).rejects.toMatchObject({ code: "agent-not-found" });
   } finally {
     await host.dispose();

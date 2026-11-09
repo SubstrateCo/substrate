@@ -1,8 +1,21 @@
-import { actor, excerpt, id, page, pageInput, requestId, timed, timestamp } from "./shared.ts";
+import { proposalAction, proposalSummary } from "../../agent-work/proposals.ts";
+import { agentAsk } from "../../agent-work/requests.ts";
+import { author, excerpt, id, page, pageInput, requestId, timed, timestamp } from "./shared.ts";
 import { z } from "zod";
 
 const kind = z.enum(["dm", "group", "channel"]);
-const message = z.object({ id, author: actor, body: z.string(), createdAt: timestamp });
+const message = z.object({ id, author, body: z.string(), createdAt: timestamp });
+
+/** What reply returns. The place is always the posted message's own conversation and thread. */
+export const replyResult = z.object({
+  messageId: id,
+  conversationId: id,
+  threadId: id.nullable(),
+  questionId: id.nullable().describe("The question request, when you set ask."),
+  createdAt: timestamp,
+});
+/** What propose returns: the pending proposal request. */
+export const proposeResult = z.object({ proposalId: id, status: z.literal("pending") });
 
 export const messagingTools = {
   list_conversations: {
@@ -30,7 +43,7 @@ export const messagingTools = {
     output: page(
       z.object({
         id,
-        author: actor,
+        author,
         ...excerpt,
         createdAt: timestamp,
         replyCount: z.number().int(),
@@ -53,25 +66,47 @@ export const messagingTools = {
       .strict(),
     output: z.object({ conversationId: id, root: message, replies: page(message) }),
   },
-  send_message: {
-    title: "Send message",
+  reply: {
+    title: "Reply",
     description:
-      "Send a message as yourself. To reply in a thread, set threadId to the root message ID. Use list_conversations or search to find the conversation.",
+      "Publish your result to your owner. By default it posts where the turn's work came from: top level in a direct message conversation, or in the turn's thread. Set ask to ask your owner one question; the answer arrives in a later turn, so end your turn after asking. In interactive turns only, set to to post in another conversation you can access; background turns must use propose for that.",
     readOnly: false,
     idempotent: true,
     input: z
       .object({
         requestId,
-        conversationId: id,
-        threadId: id.optional().describe("The root message ID of the thread to reply in."),
         body: z
           .string()
           .trim()
           .min(1)
           .max(20000)
           .describe("Markdown. Mention records only with @[kind:uuid] tokens."),
+        ask: agentAsk.optional().describe("One question for your owner, shown under the reply."),
+        to: z
+          .object({
+            conversationId: id,
+            threadId: id.optional().describe("The root message ID of the thread to reply in."),
+          })
+          .strict()
+          .optional()
+          .describe("Interactive turns only. Post here instead of the turn's own place."),
       })
       .strict(),
-    output: z.object({ id, conversationId: id, threadId: id.nullable(), createdAt: timestamp }),
+    output: replyResult,
+  },
+  propose: {
+    title: "Propose an action",
+    description:
+      "Ask your owner to approve one exact action: reply_elsewhere (post in another conversation or thread), create_task or update_task. Your owner approves or declines exactly this action, and approval runs it as you. The result arrives in a later turn, so end your turn after proposing.",
+    readOnly: false,
+    idempotent: true,
+    input: z
+      .object({
+        requestId,
+        summary: proposalSummary.describe("One or two sentences: what and why."),
+        action: proposalAction,
+      })
+      .strict(),
+    output: proposeResult,
   },
 } as const;

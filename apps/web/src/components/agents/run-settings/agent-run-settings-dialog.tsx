@@ -1,9 +1,8 @@
 import {
-  agentPromptVariables,
   agentTriggers,
+  type AgentRunSettings,
   type AgentTriggerSetting,
-} from "@startup-os/contracts/agent-runs";
-import type { AgentRunSettings } from "@startup-os/contracts/agents";
+} from "@startup-os/contracts/agents";
 
 import { useState } from "react";
 
@@ -19,7 +18,6 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldContent, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import { homeDeviceLabel } from "@/lib/agents/triggers";
 import { Monitor } from "lucide-react";
 
@@ -92,26 +90,14 @@ export function AgentRunSettingsDialog({
             )}
           </section>
           <section aria-labelledby="agent-triggers-title" className="space-y-4">
-            <div className="space-y-1">
-              <h3 id="agent-triggers-title" className="text-sm font-medium">
-                Triggers
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                Prompts can use{" "}
-                {agentPromptVariables.map((variable, index) => (
-                  <span key={variable}>
-                    {index > 0 && ", "}
-                    <code className="rounded bg-muted px-1 font-mono">{`{{${variable}}}`}</code>
-                  </span>
-                ))}
-                .
-              </p>
-            </div>
+            <h3 id="agent-triggers-title" className="text-sm font-medium">
+              Triggers
+            </h3>
             {triggers.map((trigger) => {
               const meta = agentTriggers[trigger.kind];
               const id = `agent-trigger-${trigger.kind}`;
               return (
-                <div key={trigger.kind} className="space-y-2 border-t pt-4">
+                <div key={trigger.kind} className="border-t pt-4">
                   <Field orientation="horizontal">
                     <Switch
                       id={id}
@@ -124,40 +110,6 @@ export function AgentRunSettingsDialog({
                       <FieldDescription>{meta.description}</FieldDescription>
                     </FieldContent>
                   </Field>
-                  {trigger.enabled && (
-                    <Field>
-                      <div className="flex items-center justify-between gap-2">
-                        <FieldLabel htmlFor={`${id}-prompt`}>Prompt</FieldLabel>
-                        {trigger.prompt !== null && (
-                          <Button
-                            type="button"
-                            size="xs"
-                            variant="ghost"
-                            disabled={saving}
-                            onClick={() => update(trigger.kind, { prompt: null })}
-                          >
-                            Use default
-                          </Button>
-                        )}
-                      </div>
-                      <Textarea
-                        id={`${id}-prompt`}
-                        rows={5}
-                        maxLength={20000}
-                        placeholder={meta.defaultPrompt}
-                        value={trigger.prompt ?? ""}
-                        disabled={saving}
-                        onChange={(event) =>
-                          update(trigger.kind, { prompt: event.target.value || null })
-                        }
-                      />
-                      <FieldDescription>
-                        {trigger.prompt === null
-                          ? "Uses the default prompt shown above. Type to replace it."
-                          : "Uses your prompt."}
-                      </FieldDescription>
-                    </Field>
-                  )}
                 </div>
               );
             })}

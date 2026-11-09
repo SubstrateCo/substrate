@@ -1,11 +1,9 @@
-import type { HarnessConfiguration, HarnessSessionRef } from "@startup-os/contracts/harness";
+import type { HarnessConfiguration } from "@startup-os/contracts/harness";
 
-import { configurationState, nativeSessionRefs } from "./schema.ts";
-import { and, eq, sql } from "drizzle-orm";
-import type { RemoteCallback, SqliteRemoteDatabase } from "drizzle-orm/sqlite-proxy";
-import { drizzle } from "drizzle-orm/sqlite-proxy";
-import { migrate } from "drizzle-orm/sqlite-proxy/migrator";
-import { fileURLToPath } from "node:url";
+import { openLocalDatabase } from "./database.ts";
+import { configurationState } from "./schema/index.ts";
+import { eq } from "drizzle-orm";
+import type { SqliteRemoteDatabase } from "drizzle-orm/sqlite-proxy";
 
 export class HarnessStore {
   private constructor(
@@ -13,61 +11,9 @@ export class HarnessStore {
     private readonly closeDatabase: () => void,
   ) {}
 
-  static async open(
-    path: string,
-    migrationsDirectory = fileURLToPath(new URL("../migrations/", import.meta.url)),
-  ): Promise<HarnessStore> {
-    let execute: RemoteCallback;
-    let close: () => void;
-    if (typeof Bun !== "undefined") {
-      const database = new (await import("bun:sqlite")).Database(path);
-      close = () => database.close();
-      execute = async (query, params, method) => {
-        // Cached queries are finalized on close, releasing Windows file locks.
-        const statement = database.query(query);
-        if (method === "run") {
-          statement.run(...params);
-          return { rows: [] };
-        }
-        const rows = statement.values(...params);
-        // The proxy get contract expects one row (or undefined), not a nested array.
-        return { rows: method === "get" ? rows[0]! : rows };
-      };
-    } else {
-      const database = new (await import("node:sqlite")).DatabaseSync(path);
-      close = () => database.close();
-      execute = async (query, params, method) => {
-        const statement = database.prepare(query);
-        if (method === "run") {
-          statement.run(...params);
-          return { rows: [] };
-        }
-        statement.setReturnArrays(true);
-        // SAFETY: Node's types still describe object rows after setReturnArrays(true).
-        return {
-          rows: (method === "get"
-            ? statement.get(...params)
-            : statement.all(...params)) as unknown[],
-        };
-      };
-    }
-    const database = drizzle(execute);
-    try {
-      await database.run(sql`PRAGMA journal_mode = WAL`);
-      await migrate(
-        database,
-        async (queries) => {
-          await database.transaction(async (tx) => {
-            for (const query of queries) await tx.run(sql.raw(query));
-          });
-        },
-        { migrationsFolder: migrationsDirectory },
-      );
-      return new HarnessStore(database, close);
-    } catch (error) {
-      close();
-      throw error;
-    }
+  static async open(path: string, migrationsDirectory?: string): Promise<HarnessStore> {
+    const { database, close } = await openLocalDatabase(path, migrationsDirectory);
+    return new HarnessStore(database, close);
   }
 
   async configure(configuration: HarnessConfiguration): Promise<void> {
@@ -84,25 +30,6 @@ export class HarnessStore {
       .where(eq(configurationState.organizationId, organizationId))
       .get();
     return row?.configuration;
-  }
-
-  async save(ref: HarnessSessionRef): Promise<void> {
-    const { id, organizationId, agentId, harness, nativeSessionId } = ref;
-    const values = { id, organizationId, agentId, harness, nativeSessionId };
-    await this.database
-      .insert(nativeSessionRefs)
-      .values(values)
-      .onConflictDoUpdate({ target: nativeSessionRefs.id, set: values });
-  }
-
-  async session(organizationId: string, id: string): Promise<HarnessSessionRef | undefined> {
-    return this.database
-      .select()
-      .from(nativeSessionRefs)
-      .where(
-        and(eq(nativeSessionRefs.id, id), eq(nativeSessionRefs.organizationId, organizationId)),
-      )
-      .get();
   }
 
   close(): void {

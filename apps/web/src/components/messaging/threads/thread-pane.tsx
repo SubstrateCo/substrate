@@ -5,6 +5,7 @@ import { MessageItem } from "../messages/message-item";
 import { MessageList } from "../messages/message-list";
 import { useMessageHistory } from "../messages/use-message-history";
 import type { Message } from "@/api/messaging/requests";
+import { AgentWorkNotice } from "@/components/agent-work/agent-work-slot";
 import { MessageHistory } from "@/components/messaging/messages/message-history";
 import { ThreadPane as ThreadPaneView } from "@/components/messaging/threads/thread-pane-view";
 import { messagePageOptions } from "@/queries/context/links";
@@ -79,12 +80,15 @@ export function ThreadPane({
         )
       }
       composer={
-        <Composer
-          organizationId={organizationId}
-          conversationId={conversationId}
-          threadId={threadId}
-          label="Reply in thread…"
-        />
+        <>
+          <AgentWorkNotice threadId={threadId} />
+          <Composer
+            organizationId={organizationId}
+            conversationId={conversationId}
+            threadId={threadId}
+            label="Reply in thread…"
+          />
+        </>
       }
     />
   );

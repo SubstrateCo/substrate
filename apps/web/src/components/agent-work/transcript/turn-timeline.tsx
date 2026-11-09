@@ -1,0 +1,118 @@
+import type { ReactNode } from "react";
+
+import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
+import type { TranscriptEntry } from "@/lib/agent-work/transcript";
+import { Bot, Check, CornerDownRight, Hand, MessageSquarePlus, RotateCcw, X } from "lucide-react";
+
+const outputLabels = { message: "Posted a message", task: "Changed a task", request: "Asked you" };
+
+/** The turn's canonical events, in order. Requests render through the container. */
+export function TurnTimeline({
+  entries,
+  renderRequest,
+  outputHref,
+}: {
+  entries: TranscriptEntry[];
+  renderRequest: (requestId: string, kind: string) => ReactNode;
+  outputHref: (entry: Extract<TranscriptEntry, { type: "output" }>) => string | undefined;
+}) {
+  if (!entries.length)
+    return <p className="px-5 py-4 text-sm text-muted-foreground">Nothing has happened yet.</p>;
+  return (
+    <ol className="grid gap-3 px-5 py-4">
+      {entries.map((entry) => {
+        switch (entry.type) {
+          case "text":
+            return (
+              <li key={entry.key} className="flex min-w-0 gap-2.5">
+                <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-md bg-accent text-accent-foreground">
+                  <Bot aria-hidden="true" className="size-3" />
+                </span>
+                <div className="min-w-0 flex-1 text-sm">
+                  <MessageMarkdown body={entry.text} />
+                </div>
+              </li>
+            );
+          case "step":
+            return (
+              <li
+                key={entry.key}
+                className="flex min-w-0 items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs"
+              >
+                {entry.state === "current" && (
+                  <span aria-hidden="true" className="grid size-3.5 shrink-0 place-items-center">
+                    <span className="size-1.5 rounded-full bg-primary motion-safe:animate-pulse" />
+                  </span>
+                )}
+                {entry.state === "done" && (
+                  <Check aria-hidden="true" className="size-3.5 shrink-0 text-success" />
+                )}
+                {entry.state === "error" && (
+                  <X aria-hidden="true" className="size-3.5 shrink-0 text-destructive" />
+                )}
+                <span className="min-w-0 font-mono wrap-anywhere">{entry.text}</span>
+              </li>
+            );
+          case "request":
+            return (
+              <li key={entry.key} className="min-w-0 text-xs text-muted-foreground">
+                <span className="flex items-center gap-2">
+                  <Hand aria-hidden="true" className="size-3.5 shrink-0" />
+                  {entry.kind === "proposal" ? "Proposed an action" : "Asked you"}
+                </span>
+                {renderRequest(entry.requestId, entry.kind)}
+              </li>
+            );
+          case "output": {
+            const href = outputHref(entry);
+            return (
+              <li key={entry.key} className="flex items-center gap-2 text-xs text-muted-foreground">
+                <CornerDownRight aria-hidden="true" className="size-3.5 shrink-0" />
+                {href ? (
+                  <a href={href} className="font-medium text-primary hover:underline">
+                    {outputLabels[entry.output.kind]}
+                  </a>
+                ) : (
+                  outputLabels[entry.output.kind]
+                )}
+              </li>
+            );
+          }
+          case "input":
+            return (
+              <li key={entry.key} className="flex items-center gap-2 text-xs text-muted-foreground">
+                <MessageSquarePlus aria-hidden="true" className="size-3.5 shrink-0" />
+                Your new message was added to this work
+              </li>
+            );
+          case "note":
+            return (
+              <li key={entry.key} className="text-xs wrap-anywhere text-muted-foreground">
+                {entry.text}
+              </li>
+            );
+          case "error":
+            return (
+              <li
+                key={entry.key}
+                className="flex min-w-0 gap-2 text-xs wrap-anywhere text-destructive"
+              >
+                <X aria-hidden="true" className="mt-px size-3.5 shrink-0" />
+                {entry.text}
+              </li>
+            );
+          case "attempt":
+            return (
+              <li
+                key={entry.key}
+                className="flex items-center gap-2 border-t pt-3 text-xs font-medium text-muted-foreground"
+              >
+                <RotateCcw aria-hidden="true" className="size-3.5 shrink-0" />
+                Resumed after interruption · attempt {entry.attempt}
+              </li>
+            );
+        }
+      })}
+    </ol>
+  );
+}

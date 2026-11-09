@@ -27,9 +27,20 @@ import {
   isNull,
   lt,
   or,
+  sql,
 } from "drizzle-orm";
 
 export const actorSelection = { id: actors.entityId, name: actors.name, type: actors.type };
+/** An actor that wrote quoted text, labeled owner, member or agent for the reading agent. */
+export function authorSelection(ownerUserId: string) {
+  return {
+    ...actorSelection,
+    kind: sql<"owner" | "member" | "agent">`case
+      when ${actors.type} = 'agent' then 'agent'
+      when ${actors.userId} = ${ownerUserId} then 'owner'
+      else 'member' end`,
+  };
+}
 
 export function mcpTaskQueries(ctx: RepositoryContext, identity: MessagingIdentity) {
   const { db, scope } = ctx;
@@ -200,7 +211,7 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: MessagingIdenti
         .select({
           id: taskComments.id,
           body: taskComments.body,
-          author: actorSelection,
+          author: authorSelection(identity.userId),
           createdAt: taskComments.createdAt,
         })
         .from(taskComments)

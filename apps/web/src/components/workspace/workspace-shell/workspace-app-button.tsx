@@ -7,12 +7,15 @@ export function WorkspaceAppButton({
   icon: Icon,
   active,
   unread = false,
+  unreadLabel = "unread notifications",
   onClick,
 }: {
   label: string;
   icon: LucideIcon;
   active: boolean;
   unread?: boolean;
+  /** What the dot means, read after the label. */
+  unreadLabel?: string;
   onClick: () => void;
 }) {
   return (
@@ -22,7 +25,7 @@ export function WorkspaceAppButton({
           variant="rail"
           size="icon-lg"
           className="relative"
-          aria-label={unread ? `${label}, unread notifications` : label}
+          aria-label={unread ? `${label}, ${unreadLabel}` : label}
           aria-current={active ? "page" : undefined}
           onClick={onClick}
         >

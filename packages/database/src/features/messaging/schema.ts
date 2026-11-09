@@ -86,6 +86,8 @@ export const messagingMessages = pgTable(
     threadId: uuid("thread_id"),
     isRoot: boolean("is_root").generatedAlwaysAs(sql`thread_id IS NULL`),
     threadRoot: boolean("thread_root").default(true).notNull(),
+    // The local agent turn that published this reply. Provenance only; it grants no access.
+    originTurnId: uuid("origin_turn_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
@@ -120,6 +122,9 @@ export const messagingMessages = pgTable(
       table.createdAt,
       table.id,
     ),
+    index("messaging_message_origin_turn_idx")
+      .on(table.originTurnId)
+      .where(sql`${table.originTurnId} IS NOT NULL`),
   ],
 );
 

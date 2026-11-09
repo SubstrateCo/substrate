@@ -1,5 +1,6 @@
 import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
+import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { visibilityCte } from "../../core/permissions/visibility";
 import type { RepositoryContext } from "../../core/repository-context";
@@ -249,6 +250,7 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
           message: messagingMessages,
           ...author,
           authorName: sql<string>`coalesce(${author.authorName}, 'Member')`,
+          authorOwnerUserId: userAgents.userId,
         })
         .from(messagingMessages)
         .innerJoin(
@@ -257,6 +259,7 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
         )
         .leftJoin(user, eq(user.id, messagingMessages.authorId))
         .leftJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
+        .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
         .where(
           and(
             or(
@@ -279,8 +282,10 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
         conversationId,
         target === root ? [target.message] : [target.message, root.message],
       );
-      const decorate = ({ message, ...authorFields }: typeof target) => ({
+      const decorate = ({ message, authorOwnerUserId, ...authorFields }: typeof target) => ({
         ...message,
+        // Which agent turn published a reply is private to the agent's owner.
+        originTurnId: authorOwnerUserId === scope.userId ? message.originTurnId : null,
         ...authorFields,
         ...summaries.get(message.id)!,
       });

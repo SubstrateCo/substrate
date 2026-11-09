@@ -1,4 +1,4 @@
-import { saveAgentTriggersInput } from "@startup-os/contracts/agent-runs";
+import { saveAgentTriggersInput } from "@startup-os/contracts/agents";
 import {
   saveAgentInput,
   deleteAgentInput,

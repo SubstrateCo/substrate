@@ -1,4 +1,6 @@
 import type {
+  LocalToolProxy,
+  LocalToolRequest,
   WorkspaceApiRequest,
   WorkspaceApiResult,
   WorkspaceApiProxy,
@@ -9,12 +11,16 @@ export type WorkspaceApiResponse = { apiResponse: number } & (
   | { result: WorkspaceApiResult; error?: undefined }
   | { error: string }
 );
+/** The answer to a local tool call, from main's agent-work handler. */
+export type LocalToolResponse = { localResponse: number } & (
+  | { result: WorkspaceApiResult; error?: undefined }
+  | { error: string }
+);
 
-export function createWorkspaceProxy(
-  postMessage: (message: { id: number; api: WorkspaceApiRequest }) => void,
-) {
-  let nextApiID = 0;
-  const pendingApi = new Map<
+/** Requests the worker sends to main and waits for. */
+function outbound<Request>(post: (id: number, request: Request) => void) {
+  let nextID = 0;
+  const pending = new Map<
     number,
     {
       resolve: (value: WorkspaceApiResult) => void;
@@ -22,33 +28,56 @@ export function createWorkspaceProxy(
       timer: ReturnType<typeof setTimeout>;
     }
   >();
-  const request: WorkspaceApiProxy = (request) =>
-    new Promise((resolve, reject) => {
-      const id = ++nextApiID;
+  const request = (value: Request) =>
+    new Promise<WorkspaceApiResult>((resolve, reject) => {
+      const id = ++nextID;
       const timer = setTimeout(() => {
-        pendingApi.delete(id);
-        reject(new Error("Workspace request timed out."));
+        pending.delete(id);
+        reject(new Error("Request timed out."));
       }, 30_000);
-      pendingApi.set(id, { resolve, reject, timer });
-      postMessage({ id, api: request });
+      pending.set(id, { resolve, reject, timer });
+      post(id, value);
     });
-
   return {
     request,
-    receive(data: WorkspaceApiResponse) {
-      const pending = pendingApi.get(data.apiResponse);
-      if (!pending) return;
-      pendingApi.delete(data.apiResponse);
-      clearTimeout(pending.timer);
-      if (data.error !== undefined) pending.reject(new Error(data.error));
-      else pending.resolve(data.result);
+    receive: (id: number, data: { result?: WorkspaceApiResult; error?: string }) => {
+      const entry = pending.get(id);
+      if (!entry) return;
+      pending.delete(id);
+      clearTimeout(entry.timer);
+      if (data.error !== undefined || !data.result) entry.reject(new Error(data.error));
+      else entry.resolve(data.result);
     },
-    dispose() {
-      for (const pending of pendingApi.values()) {
-        clearTimeout(pending.timer);
-        pending.reject(new Error("Harness shutdown."));
+    dispose: () => {
+      for (const entry of pending.values()) {
+        clearTimeout(entry.timer);
+        entry.reject(new Error("Harness shutdown."));
       }
-      pendingApi.clear();
+      pending.clear();
     },
+  };
+}
+
+export function createWorkspaceProxy(
+  postMessage: (message: { id: number; api: WorkspaceApiRequest }) => void,
+) {
+  const proxy = outbound<WorkspaceApiRequest>((id, api) => postMessage({ id, api }));
+  const request: WorkspaceApiProxy = proxy.request;
+  return {
+    request,
+    receive: (data: WorkspaceApiResponse) => proxy.receive(data.apiResponse, data),
+    dispose: proxy.dispose,
+  };
+}
+
+export function createLocalToolProxy(
+  postMessage: (message: { id: number; local: LocalToolRequest }) => void,
+) {
+  const proxy = outbound<LocalToolRequest>((id, local) => postMessage({ id, local }));
+  const request: LocalToolProxy = proxy.request;
+  return {
+    request,
+    receive: (data: LocalToolResponse) => proxy.receive(data.localResponse, data),
+    dispose: proxy.dispose,
   };
 }

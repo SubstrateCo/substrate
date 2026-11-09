@@ -18,4 +18,6 @@ export * from "../features/activity/schema";
 export * from "../features/notifications/schema";
 export * from "../features/mcp/schema";
 export * from "../features/agents/triggers.schema";
-export * from "../features/agent-runs/schema";
+export * from "../features/agent-work/wakes.schema";
+export * from "../features/agent-work/requests.schema";
+export * from "../features/agent-work/status.schema";

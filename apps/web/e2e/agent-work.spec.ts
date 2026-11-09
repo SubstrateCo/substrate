@@ -1,8 +1,15 @@
-import { mcpTools } from "@startup-os/contracts/harness/tools";
-
-import { conversation, test, visit } from "./test-support/fixtures";
+import { addAgent, callTool, createAgent, threadTurn } from "./test-support/agent-work";
+import { conversation, post, test, visit } from "./test-support/fixtures";
 import { project } from "./test-support/tasks";
 import { expect } from "@playwright/test";
+
+async function ownerMessage(
+  actor: Parameters<typeof conversation>[0],
+  conversationId: string,
+  body: string,
+) {
+  return post<{ id: string }>(actor, "messaging/messages", { conversationId, body });
+}
 
 test("agents act with their owner's access and their messages, comments and activity are labelled", async ({
   actors,
@@ -10,69 +17,33 @@ test("agents act with their owner's access and their messages, comments and acti
 }) => {
   test.setTimeout(30_000);
   const owner = actors.sender;
-  const origin = process.env.PLAYWRIGHT_BASE_URL!;
-  const name = `Research ${crypto.randomUUID()}`;
-  const saved = await owner.request.post("/api/v1/agents/actors/save", {
-    headers: { origin },
-    data: { name, instructions: "Help with work", harness: "opencode", enabled: true },
-  });
-  expect(saved.ok()).toBe(true);
-  const agentId: string = (await saved.json()).data.id;
+  const agent = await createAgent(owner);
   const [channel, created] = await Promise.all([conversation(owner), project(owner)]);
+  const root = await ownerMessage(owner, channel.id, "Please report progress");
+  const turn = threadTurn(channel.id, root.id, agent.installationId);
   const user = await client(owner);
   await visit(user, channel.id);
-  const sent = await owner.request.post("/api/v1/mcp/call", {
-    headers: { origin },
-    data: {
-      organizationId: owner.organizationId,
-      agentId,
-      tool: "send_message",
-      input: {
-        requestId: crypto.randomUUID(),
-        conversationId: channel.id,
-        body: "Agent progress report",
-      },
-    },
+  // Interactive turns may post at the top level of the conversation they came from.
+  const reply = await callTool(owner, agent.id, turn, "reply", {
+    body: "Agent progress report",
+    to: { conversationId: channel.id },
   });
-  expect(sent.ok(), await sent.text()).toBe(true);
-  const message = mcpTools.send_message.output.parse((await sent.json()).data);
   const article = user.page.getByRole("article").filter({ hasText: "Agent progress report" });
-  await expect(article.getByText(name, { exact: true })).toBeVisible();
+  await expect(article.getByText(agent.name, { exact: true })).toBeVisible();
   await expect(article.getByText("Agent", { exact: true })).toBeVisible();
   await expect(article.getByText("External", { exact: true })).toHaveCount(0);
-  const taskResponse = await owner.request.post("/api/v1/mcp/call", {
-    headers: { origin },
-    data: {
-      organizationId: owner.organizationId,
-      agentId,
-      tool: "create_task",
-      input: {
-        requestId: crypto.randomUUID(),
-        projectId: created.entityId,
-        title: "Agent follow-up",
-        sourceMessageId: message.id,
-      },
-    },
+  const task = await callTool(owner, agent.id, turn, "create_task", {
+    projectId: created.entityId,
+    title: "Agent follow-up",
+    sourceMessageId: reply.messageId,
   });
-  expect(taskResponse.ok(), await taskResponse.text()).toBe(true);
-  const task = mcpTools.create_task.output.parse((await taskResponse.json()).data);
-  const commentResponse = await owner.request.post("/api/v1/mcp/call", {
-    headers: { origin },
-    data: {
-      organizationId: owner.organizationId,
-      agentId,
-      tool: "add_task_comment",
-      input: {
-        requestId: crypto.randomUUID(),
-        taskId: task.id,
-        body: "Agent investigation notes",
-      },
-    },
+  await callTool(owner, agent.id, turn, "add_task_comment", {
+    taskId: task.id,
+    body: "Agent investigation notes",
   });
-  expect(commentResponse.ok()).toBe(true);
   await visit(user, undefined, "/tasks", { projectId: created.entityId, taskId: task.id });
   const comment = user.page.getByRole("article").filter({ hasText: "Agent investigation notes" });
-  await expect(comment.getByText(name, { exact: true })).toBeVisible();
+  await expect(comment.getByText(agent.name, { exact: true })).toBeVisible();
   await expect(comment.getByText("Agent", { exact: true })).toBeVisible();
   const activity = user.page.getByRole("region", { name: "Task activity", exact: true });
   await expect(activity.getByText("Agent", { exact: true }).first()).toBeVisible();
@@ -82,4 +53,142 @@ test("agents act with their owner's access and their messages, comments and acti
       exact: true,
     }),
   ).toBeVisible();
+});
+
+test("the owner answers an agent's question from another window; members see only the reply", async ({
+  actors,
+  client,
+}) => {
+  test.setTimeout(30_000);
+  const owner = actors.sender;
+  const agent = await createAgent(owner);
+  const channel = await conversation(owner, [actors.member.email]);
+  await addAgent(owner, channel.id, agent.id);
+  const root = await ownerMessage(owner, channel.id, "Which color should the launch use?");
+  const reply = await callTool(
+    owner,
+    agent.id,
+    threadTurn(channel.id, root.id, agent.installationId),
+    "reply",
+    {
+      body: "I need one detail first.",
+      ask: { question: "Blue or green?", options: [{ label: "Blue" }, { label: "Green" }] },
+    },
+  );
+  expect(reply.questionId).not.toBeNull();
+
+  // The first window shows the question under the agent's reply in the thread.
+  const thread = await client(owner);
+  await visit(thread, channel.id, "/dashboard", { messageId: reply.messageId });
+  const pane = thread.page.getByRole("complementary", { name: "Thread" });
+  const card = pane.getByRole("region", { name: "The agent has a question" });
+  await expect(card.getByText("Blue or green?")).toBeVisible();
+  // Async questions wait for the owner; they show no deadline.
+  await expect(card.getByText(/Expires in/)).toHaveCount(0);
+
+  // The second window answers from Needs you, which reads only the server.
+  const inbox = await client(owner);
+  await visit(inbox, undefined, "/agents");
+  await expect(inbox.page.getByRole("button", { name: "Agents, needs you" })).toBeVisible();
+  const needsYou = inbox.page.getByRole("list", { name: "Needs you" });
+  await expect(needsYou.getByRole("link", { name: `In ${channel.name}` })).toBeVisible();
+  await needsYou.getByRole("radio", { name: /Blue/ }).click();
+  await needsYou.getByRole("button", { name: "Submit" }).click();
+  await expect(inbox.page.getByRole("heading", { name: "Nothing needs you" })).toBeVisible();
+  await expect(inbox.page.getByRole("button", { name: "Agents", exact: true })).toBeVisible();
+
+  // The first window updates through the realtime hint.
+  await expect(pane.getByText("Answered: Blue")).toBeVisible();
+  await expect(card).toHaveCount(0);
+
+  // A member sees the agent's published reply and nothing of the owner's agent work.
+  const member = await client(actors.member);
+  await visit(member, channel.id, "/dashboard", { messageId: reply.messageId });
+  const memberPane = member.page.getByRole("complementary", { name: "Thread" });
+  await expect(memberPane.getByText("I need one detail first.")).toBeVisible();
+  await expect(memberPane.getByText("Blue or green?")).toHaveCount(0);
+  await expect(memberPane.getByText(/Answered:/)).toHaveCount(0);
+  await visit(member, undefined, "/agents");
+  await expect(member.page.getByRole("heading", { name: "Nothing needs you" })).toBeVisible();
+  await expect(member.page.getByRole("button", { name: "Agents", exact: true })).toBeVisible();
+});
+
+test("the owner approves the exact proposed message and it posts as the agent", async ({
+  actors,
+  client,
+}) => {
+  test.setTimeout(30_000);
+  const owner = actors.sender;
+  const agent = await createAgent(owner);
+  const [origin, target] = await Promise.all([conversation(owner), conversation(owner)]);
+  const root = await ownerMessage(owner, origin.id, "Share the update with the team");
+  const body = `Launch moves to **Friday** ${crypto.randomUUID()}`;
+  await callTool(owner, agent.id, threadTurn(origin.id, root.id, agent.installationId), "propose", {
+    summary: "Post the launch date in the team channel.",
+    action: { type: "reply_elsewhere", input: { conversationId: target.id, body } },
+  });
+
+  const watcher = await client(owner);
+  await visit(watcher, target.id);
+  const approver = await client(owner);
+  await visit(approver, undefined, "/agents");
+  const proposal = approver.page.getByRole("region", { name: `${agent.name} proposes` });
+  await expect(proposal.getByText("Post the launch date in the team channel.")).toBeVisible();
+  // The preview names the target and renders the exact body.
+  await expect(proposal.getByText(target.name, { exact: true })).toBeVisible();
+  await expect(proposal.getByText("Friday", { exact: true })).toBeVisible();
+  await proposal.getByRole("button", { name: "Approve" }).click();
+  await expect(approver.page.getByRole("heading", { name: "Nothing needs you" })).toBeVisible();
+
+  const posted = watcher.page
+    .getByRole("article")
+    .filter({ hasText: body.replace("**Friday**", "Friday") });
+  await expect(posted.getByText(agent.name, { exact: true })).toBeVisible();
+  await expect(posted.getByText("Agent", { exact: true })).toBeVisible();
+});
+
+test("a message an approved proposal created links back to where it was approved", async ({
+  actors,
+  client,
+}) => {
+  const owner = actors.sender;
+  const agent = await createAgent(owner);
+  const [origin, target] = await Promise.all([conversation(owner), conversation(owner)]);
+  await addAgent(owner, target.id, agent.id);
+  const root = await ownerMessage(owner, origin.id, "Share the update");
+  const body = `Approved update ${crypto.randomUUID()}`;
+  await callTool(owner, agent.id, threadTurn(origin.id, root.id, agent.installationId), "propose", {
+    summary: "Post the update.",
+    action: { type: "reply_elsewhere", input: { conversationId: target.id, body } },
+  });
+  const user = await client(owner);
+  await visit(user, undefined, "/agents");
+  await user.page
+    .getByRole("region", { name: `${agent.name} proposes` })
+    .getByRole("button", { name: "Approve" })
+    .click();
+  await expect(user.page.getByRole("heading", { name: "Nothing needs you" })).toBeVisible();
+  await visit(user, target.id);
+  const posted = user.page.getByRole("article").filter({ hasText: body });
+  await expect(posted.getByText("You approved this")).toBeVisible();
+  await expect(posted.getByRole("link", { name: `from ${origin.name}` })).toBeVisible();
+});
+
+test("a declined proposal changes nothing", async ({ actors, client }) => {
+  const owner = actors.sender;
+  const agent = await createAgent(owner);
+  const [origin, created] = await Promise.all([conversation(owner), project(owner)]);
+  const root = await ownerMessage(owner, origin.id, "Track this");
+  await callTool(owner, agent.id, threadTurn(origin.id, root.id, agent.installationId), "propose", {
+    summary: "Create a follow-up task.",
+    action: { type: "create_task", input: { projectId: created.entityId, title: "Never created" } },
+  });
+  const user = await client(owner);
+  await visit(user, undefined, "/agents");
+  const proposal = user.page.getByRole("region", { name: `${agent.name} proposes` });
+  await expect(proposal.getByText("Never created")).toBeVisible();
+  await proposal.getByRole("button", { name: "Decline" }).click();
+  await expect(user.page.getByRole("heading", { name: "Nothing needs you" })).toBeVisible();
+  await visit(user, undefined, "/tasks", { projectId: created.entityId });
+  await expect(user.page.getByText("Never created")).toHaveCount(0);
 });

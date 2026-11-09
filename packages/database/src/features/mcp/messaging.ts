@@ -12,7 +12,7 @@ import {
 } from "../messaging/schema";
 import { excerpt, iso } from "./formatting";
 import { pagination } from "./pagination";
-import { actorSelection } from "./tasks";
+import { authorSelection } from "./tasks";
 import { and, asc, desc, eq, sql, type SQL } from "drizzle-orm";
 
 export function mcpMessagingQueries(ctx: RepositoryContext, identity: MessagingIdentity) {
@@ -91,7 +91,7 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: MessagingI
       const rows = await db
         .select({
           id: messagingMessages.id,
-          author: actorSelection,
+          author: authorSelection(identity.userId),
           body: messagingMessages.body,
           createdAt: messagingMessages.createdAt,
           replyCount,
@@ -128,7 +128,7 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: MessagingI
       const p = pagination(scope, "read_thread", thread);
       const columns = {
         id: messagingMessages.id,
-        author: actorSelection,
+        author: authorSelection(identity.userId),
         body: messagingMessages.body,
         createdAt: messagingMessages.createdAt,
       };

@@ -7,7 +7,7 @@ import { isOrganizationAdmin } from "../../core/organizations/roles";
 import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
-import { queueAgentTriggers } from "../agent-runs/triggers";
+import { routeWake } from "../agent-work/router";
 import { workspaceContext } from "../context/access";
 import { applyMessageEffects } from "../context/message-effects";
 import { messageEntityReferences } from "../context/schema";
@@ -213,11 +213,20 @@ export async function sendMessageAs(
   ctx: RepositoryContext,
   scope: MessagingIdentity,
   author: { actor: { entityId: string; type: "human" | "agent" }; authorName: string },
-  message: { conversationId: string; body: string; threadId?: string; requestId?: string },
+  message: {
+    conversationId: string;
+    body: string;
+    threadId?: string;
+    requestId?: string;
+    /** The agent turn that published this reply. Agents only. */
+    originTurnId?: string;
+  },
 ) {
   const { db: tx } = ctx;
   const { actor, authorName } = author;
-  const { conversationId, body, threadId, requestId } = message;
+  const { conversationId, body, threadId, requestId, originTurnId } = message;
+  if (originTurnId && actor.type !== "agent")
+    throw new ValidationError("Only agent replies record a turn.");
   const conversation = await lockConversation(tx, scope, conversationId, "share");
   if (!body.trim() || body.length > 20000)
     throw new ValidationError("Message must contain 1 to 20000 characters.");
@@ -245,7 +254,6 @@ export async function sendMessageAs(
         authorType: actor.type,
         reactions,
         replyCount: 0,
-        agentRunsQueued: 0,
         // A replay changes nothing. The hint still lets viewers recover from a lost first publish.
         hints: messageChangeHints(
           { conversationId, organizationId: scope.organizationId },
@@ -268,10 +276,11 @@ export async function sendMessageAs(
       body,
       threadId,
       requestId,
+      originTurnId,
     })
     .returning();
   const effects = await applyMessageEffects(ctx, scope, created!, conversation.organizationId);
-  const agentRunsQueued = await queueAgentTriggers(tx, scope, created!, conversation.kind);
+  const wakeHints = await routeWake(tx, scope, created!, conversation.kind);
   const initialReactions: { emoji: string; count: number; reacted: boolean }[] = [];
   return {
     ...created!,
@@ -279,12 +288,14 @@ export async function sendMessageAs(
     authorType: actor.type,
     replyCount: 0,
     reactions: initialReactions,
-    agentRunsQueued,
-    // Publish only after the caller's transaction commits.
-    hints: messageChangeHints(
-      { conversationId, organizationId: scope.organizationId },
-      { joined, ...effects },
-    ),
+    // Publish only after the caller's transaction commits. Wake hints reach the author's desktops.
+    hints: [
+      ...messageChangeHints(
+        { conversationId, organizationId: scope.organizationId },
+        { joined, ...effects },
+      ),
+      ...wakeHints,
+    ],
   };
 }
 
@@ -741,10 +752,15 @@ export function createMessagingService(
             : sql`(${messagingMessages.createdAt}, ${messagingMessages.id}) <= (select anchor.created_at, anchor.id from ${messagingMessages} anchor where anchor.id = ${anchor.id}::uuid)`;
         }
         const rows = await tx
-          .select({ message: messagingMessages, ...messageAuthorColumns(scope.organizationId) })
+          .select({
+            message: messagingMessages,
+            ...messageAuthorColumns(scope.organizationId),
+            authorOwnerUserId: userAgents.userId,
+          })
           .from(messagingMessages)
           .leftJoin(user, eq(user.id, messagingMessages.authorId))
           .leftJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
+          .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
           .where(
             and(
               eq(messagingMessages.conversationId, conversationId),
@@ -763,13 +779,17 @@ export function createMessagingService(
           conversationId,
           rows.map((row) => row.message),
         );
-        return rows.map(({ message, authorName, authorExternal, authorType }) => ({
-          ...message,
-          authorName,
-          authorExternal,
-          authorType,
-          ...summaries.get(message.id)!,
-        }));
+        return rows.map(
+          ({ message, authorName, authorExternal, authorType, authorOwnerUserId }) => ({
+            ...message,
+            // Which agent turn published a reply is private to the agent's owner.
+            originTurnId: authorOwnerUserId === scope.userId ? message.originTurnId : null,
+            authorName,
+            authorExternal,
+            authorType,
+            ...summaries.get(message.id)!,
+          }),
+        );
       });
     },
     async getProfile(conversationId: string, actorEntityId: string) {

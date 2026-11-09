@@ -8,7 +8,7 @@ export const Route = createFileRoute("/_authenticated/_workspace/dashboard")({
   validateSearch: z.object({
     conversationId: z.uuid().optional(),
     messageId: z.uuid().optional(),
-    agentRunId: z.uuid().optional(),
+    turnId: z.uuid().optional(),
   }),
 });
 function DashboardRoute() {

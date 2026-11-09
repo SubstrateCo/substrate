@@ -1,0 +1,1 @@
+ALTER TABLE "agent_status" ALTER COLUMN "version" SET DATA TYPE bigint;

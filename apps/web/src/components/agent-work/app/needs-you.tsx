@@ -1,0 +1,66 @@
+import type { AgentRequestPlace } from "@startup-os/contracts/agent-work";
+
+import { useQuery } from "@tanstack/react-query";
+
+import { hiddenConversation } from "../requests/proposal-preview";
+import { RequestCard } from "../requests/request-card";
+import { NeedsYouView, type NeedsYouEntry } from "./needs-you-view";
+import { needsYouItems } from "@/lib/agent-work/needs-you";
+import { agentStatus } from "@/lib/agent-work/status";
+import { messageHref } from "@/lib/navigation/record-links";
+import { needsYouOptions } from "@/queries/agent-work/server";
+
+function Place({ organizationId, place }: { organizationId: string; place: AgentRequestPlace }) {
+  if (place.access === "hidden") return <span>{hiddenConversation}</span>;
+  if (place.access === "none") return <span>Background work</span>;
+  return (
+    <a
+      href={messageHref(organizationId, place.conversationId, place.anchorMessageId ?? undefined)}
+      className="min-w-0 truncate font-medium text-primary hover:underline"
+    >
+      In {place.conversationName}
+    </a>
+  );
+}
+
+export function NeedsYou({
+  userId,
+  organizationId,
+  onOpenAgent,
+}: {
+  userId: string;
+  organizationId: string;
+  onOpenAgent: (agentId: string) => void;
+}) {
+  const needsYou = useQuery(needsYouOptions(userId, organizationId));
+  const { requests, agents } = needsYouItems(needsYou.data);
+  const entries: NeedsYouEntry[] = [
+    ...requests.map((request) => ({
+      key: request.id,
+      agentName: request.agent.name,
+      place: <Place organizationId={organizationId} place={request.place} />,
+      body: <RequestCard userId={userId} organizationId={organizationId} request={request} />,
+    })),
+    // Agents that need a decision with no request, such as work that stopped.
+    ...agents.map((status) => ({
+      key: `agent:${status.userAgentId}`,
+      agentName: status.agent.name,
+      place: <span>{agentStatus(status).label}</span>,
+      body: (
+        <p className="mt-1 text-sm text-muted-foreground">
+          Work stopped and needs you to retry, start fresh, or dismiss it
+          {status.device ? ` on ${status.device.name}` : ""}.
+        </p>
+      ),
+      onOpenAgent: () => onOpenAgent(status.userAgentId),
+    })),
+  ];
+  return (
+    <NeedsYouView
+      entries={entries}
+      loading={needsYou.isPending}
+      error={needsYou.error}
+      onRetry={() => void needsYou.refetch()}
+    />
+  );
+}

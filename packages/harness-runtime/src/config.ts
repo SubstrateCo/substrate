@@ -59,6 +59,26 @@ export async function writeDefaultFiles(
   await writeStartupSkills(agentRoot, agent);
 }
 
+/**
+ * Rewrites the instructions file and Startup OS skills in a session folder when a session opens,
+ * so they match the current agent. With managedPrefix, the instructions file starts with it: the
+ * managed policy channel for harnesses that load no other instruction source.
+ */
+export async function writeSessionFiles(
+  folder: string,
+  organizationId: string,
+  agent: HarnessAgent,
+  managedPrefix?: string,
+): Promise<void> {
+  for (const [path, content] of defaultFiles(organizationId, agent)) {
+    const target = await safePath(folder, path, false, true);
+    await writeFile(target, managedPrefix ? `${managedPrefix}\n${content}` : content, {
+      mode: 0o600,
+    });
+  }
+  await writeStartupSkills(folder, agent);
+}
+
 export async function materialize(
   accountDirectory: string,
   config: HarnessConfiguration,

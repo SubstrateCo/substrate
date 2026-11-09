@@ -18,6 +18,7 @@ import { Route as PublicGuestRouteRouteImport } from './routes/_public/_guest/ro
 import { Route as PublicForgotPasswordRouteImport } from './routes/_public/forgot-password'
 import { Route as PublicResetPasswordRouteImport } from './routes/_public/reset-password'
 import { Route as PublicVerifyEmailRouteImport } from './routes/_public/verify-email'
+import { Route as AuthenticatedWorkspaceAgentsRouteImport } from './routes/_authenticated/_workspace/agents'
 import { Route as AuthenticatedWorkspaceDashboardRouteImport } from './routes/_authenticated/_workspace/dashboard'
 import { Route as AuthenticatedWorkspaceNotificationsRouteImport } from './routes/_authenticated/_workspace/notifications'
 import { Route as AuthenticatedAcceptInvitationInvitationIdRouteImport } from './routes/_authenticated/accept-invitation/$invitationId'
@@ -74,6 +75,12 @@ const PublicVerifyEmailRoute = PublicVerifyEmailRouteImport.update({
   path: '/verify-email',
   getParentRoute: () => PublicRouteRoute,
 } as any)
+const AuthenticatedWorkspaceAgentsRoute =
+  AuthenticatedWorkspaceAgentsRouteImport.update({
+    id: '/agents',
+    path: '/agents',
+    getParentRoute: () => AuthenticatedWorkspaceRouteRoute,
+  } as any)
 const AuthenticatedWorkspaceDashboardRoute =
   AuthenticatedWorkspaceDashboardRouteImport.update({
     id: '/dashboard',
@@ -152,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof PublicResetPasswordRoute
   '/verify-email': typeof PublicVerifyEmailRoute
   '/settings/user': typeof AuthenticatedSettingsUserRouteRouteWithChildren
+  '/agents': typeof AuthenticatedWorkspaceAgentsRoute
   '/dashboard': typeof AuthenticatedWorkspaceDashboardRoute
   '/notifications': typeof AuthenticatedWorkspaceNotificationsRoute
   '/accept-invitation/$invitationId': typeof AuthenticatedAcceptInvitationInvitationIdRoute
@@ -170,6 +178,7 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof PublicForgotPasswordRoute
   '/reset-password': typeof PublicResetPasswordRoute
   '/verify-email': typeof PublicVerifyEmailRoute
+  '/agents': typeof AuthenticatedWorkspaceAgentsRoute
   '/dashboard': typeof AuthenticatedWorkspaceDashboardRoute
   '/notifications': typeof AuthenticatedWorkspaceNotificationsRoute
   '/accept-invitation/$invitationId': typeof AuthenticatedAcceptInvitationInvitationIdRoute
@@ -193,6 +202,7 @@ export interface FileRoutesById {
   '/_public/reset-password': typeof PublicResetPasswordRoute
   '/_public/verify-email': typeof PublicVerifyEmailRoute
   '/_authenticated/settings/user': typeof AuthenticatedSettingsUserRouteRouteWithChildren
+  '/_authenticated/_workspace/agents': typeof AuthenticatedWorkspaceAgentsRoute
   '/_authenticated/_workspace/dashboard': typeof AuthenticatedWorkspaceDashboardRoute
   '/_authenticated/_workspace/notifications': typeof AuthenticatedWorkspaceNotificationsRoute
   '/_authenticated/accept-invitation/$invitationId': typeof AuthenticatedAcceptInvitationInvitationIdRoute
@@ -214,6 +224,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/verify-email'
     | '/settings/user'
+    | '/agents'
     | '/dashboard'
     | '/notifications'
     | '/accept-invitation/$invitationId'
@@ -232,6 +243,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/reset-password'
     | '/verify-email'
+    | '/agents'
     | '/dashboard'
     | '/notifications'
     | '/accept-invitation/$invitationId'
@@ -254,6 +266,7 @@ export interface FileRouteTypes {
     | '/_public/reset-password'
     | '/_public/verify-email'
     | '/_authenticated/settings/user'
+    | '/_authenticated/_workspace/agents'
     | '/_authenticated/_workspace/dashboard'
     | '/_authenticated/_workspace/notifications'
     | '/_authenticated/accept-invitation/$invitationId'
@@ -337,6 +350,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/verify-email'
       preLoaderRoute: typeof PublicVerifyEmailRouteImport
       parentRoute: typeof PublicRouteRoute
+    }
+    '/_authenticated/_workspace/agents': {
+      id: '/_authenticated/_workspace/agents'
+      path: '/agents'
+      fullPath: '/agents'
+      preLoaderRoute: typeof AuthenticatedWorkspaceAgentsRouteImport
+      parentRoute: typeof AuthenticatedWorkspaceRouteRoute
     }
     '/_authenticated/_workspace/dashboard': {
       id: '/_authenticated/_workspace/dashboard'
@@ -441,6 +461,7 @@ const AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren =
   )
 
 interface AuthenticatedWorkspaceRouteRouteChildren {
+  AuthenticatedWorkspaceAgentsRoute: typeof AuthenticatedWorkspaceAgentsRoute
   AuthenticatedWorkspaceDashboardRoute: typeof AuthenticatedWorkspaceDashboardRoute
   AuthenticatedWorkspaceNotificationsRoute: typeof AuthenticatedWorkspaceNotificationsRoute
   AuthenticatedWorkspaceSettingsOrganizationRouteRoute: typeof AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren
@@ -449,6 +470,7 @@ interface AuthenticatedWorkspaceRouteRouteChildren {
 
 const AuthenticatedWorkspaceRouteRouteChildren: AuthenticatedWorkspaceRouteRouteChildren =
   {
+    AuthenticatedWorkspaceAgentsRoute: AuthenticatedWorkspaceAgentsRoute,
     AuthenticatedWorkspaceDashboardRoute: AuthenticatedWorkspaceDashboardRoute,
     AuthenticatedWorkspaceNotificationsRoute:
       AuthenticatedWorkspaceNotificationsRoute,

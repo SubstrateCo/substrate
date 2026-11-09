@@ -7,7 +7,15 @@ import { TooltipProvider } from "../ui/tooltip";
 import { UserMenu } from "./user-menu";
 import { RealtimeContainerContext } from "@/components/realtime/realtime-container-context";
 import { WorkspaceAppButton } from "@/components/workspace/workspace-shell/workspace-app-button";
-import { Bell, ListTodo, MessageSquare } from "lucide-react";
+import { Bell, Bot, ListTodo, MessageSquare } from "lucide-react";
+
+export type WorkspaceView =
+  | "messages"
+  | "tasks"
+  | "agents"
+  | "notifications"
+  | "user-settings"
+  | "organization-settings";
 
 export function WorkspaceShell({
   name,
@@ -23,14 +31,15 @@ export function WorkspaceShell({
   onRetry,
   children,
   hasUnreadNotifications = false,
+  agentsNeedYou = false,
 }: {
   name: string;
   image?: string | null;
-  view: "messages" | "tasks" | "notifications" | "user-settings" | "organization-settings";
-  onViewChange: (
-    view: "messages" | "tasks" | "notifications" | "user-settings" | "organization-settings",
-  ) => void;
+  view: WorkspaceView;
+  onViewChange: (view: WorkspaceView) => void;
   hasUnreadNotifications?: boolean;
+  /** One of the viewer's agents waits for an answer, an approval, or a decision. */
+  agentsNeedYou?: boolean;
   showOrganizationSettings: boolean;
   organizationName?: string;
   switcher: ReactNode;
@@ -60,6 +69,14 @@ export function WorkspaceShell({
             icon={ListTodo}
             active={view === "tasks"}
             onClick={() => onViewChange("tasks")}
+          />
+          <WorkspaceAppButton
+            label="Agents"
+            icon={Bot}
+            active={view === "agents"}
+            unread={agentsNeedYou}
+            unreadLabel="needs you"
+            onClick={() => onViewChange("agents")}
           />
           <div className="mt-auto flex flex-col items-center gap-3">
             <WorkspaceAppButton

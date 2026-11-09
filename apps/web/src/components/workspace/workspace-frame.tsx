@@ -10,7 +10,10 @@ import { WorkspaceSearchProvider } from "@/components/context/search/workspace-s
 import { WorkspaceTools } from "@/components/context/search/workspace-tools";
 import { OrganizationSwitcher } from "@/components/organizations/switcher/organization-switcher";
 import { WorkspaceHomeLink } from "@/components/workspace/workspace-home-link";
-import { WorkspaceShell } from "@/components/workspace/workspace-shell";
+import { WorkspaceShell, type WorkspaceView } from "@/components/workspace/workspace-shell";
+import { needsYouCount } from "@/lib/agent-work/needs-you";
+import { needsYouOptions } from "@/queries/agent-work/server";
+import { useAgentWorkBridgeSync } from "@/queries/agent-work/sync";
 import { sessionQueryOptions } from "@/queries/auth/session";
 import { notificationPageOptions } from "@/queries/context/notifications";
 import {
@@ -43,14 +46,22 @@ export function WorkspaceFrame({
     ...notificationPageOptions(organizationId ?? "", "unread", undefined, 1),
     enabled: !!organizationId,
   });
+  const userId = session.data?.user.id ?? "";
+  // Agent notifications are only for work that needs the owner. The server returns nothing for
+  // people without agents, so the dot never shows for them.
+  const needsYou = useQuery({
+    ...needsYouOptions(userId, organizationId ?? ""),
+    enabled: !!userId && !!organizationId,
+  });
+  useAgentWorkBridgeSync(session.data?.user.id, organizationId);
   const access = organizationSettingsAccess(
     member.data?.organizationId === organizationId ? member.data?.role : undefined,
   );
-  let view: "user-settings" | "organization-settings" | "tasks" | "messages" | "notifications" =
-    "messages";
+  let view: WorkspaceView = "messages";
   if (pathname.startsWith("/settings/user")) view = "user-settings";
   else if (pathname.startsWith("/settings/organization")) view = "organization-settings";
   else if (pathname.startsWith("/tasks")) view = "tasks";
+  else if (pathname.startsWith("/agents")) view = "agents";
   else if (pathname.startsWith("/notifications")) view = "notifications";
   return (
     <WorkspaceSearchProvider>
@@ -61,10 +72,12 @@ export function WorkspaceFrame({
         hasUnreadNotifications={
           !notifications.error && notifications.data?.items.some((item) => !item.readAt)
         }
+        agentsNeedYou={!needsYou.error && needsYouCount(needsYou.data) > 0}
         onViewChange={(nextView) => {
           const to = {
             messages: "/dashboard",
             tasks: "/tasks",
+            agents: "/agents",
             notifications: "/notifications",
             "user-settings": "/settings/user",
             "organization-settings": "/settings/organization",
