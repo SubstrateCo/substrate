@@ -1,3 +1,4 @@
+import type { HarnessConfiguration } from "./agent.ts";
 import type { HarnessKind } from "./kinds.ts";
 import type {
   HarnessInspection,
@@ -7,8 +8,14 @@ import type {
 } from "./local.ts";
 import type { HarnessModelCatalog } from "./models.ts";
 
-export { harnessKinds, type HarnessKind } from "./kinds.ts";
-export { harnessInstructionsFiles, startupInstructions } from "./defaults.ts";
+export { harnessInstructionsFiles, harnessKinds, type HarnessKind } from "./kinds.ts";
+export { startupInstructions } from "./defaults.ts";
+export {
+  harnessAgentSchema,
+  harnessConfigurationSchema,
+  type HarnessAgent,
+  type HarnessConfiguration,
+} from "./agent.ts";
 export { startupSkillIds, startupSkills } from "./skills/index.ts";
 export {
   harnessIdSchema,
@@ -21,21 +28,6 @@ export {
   type HarnessMcpServer,
   type HarnessSkill,
 } from "./local.ts";
-
-export interface HarnessAgent {
-  id: string;
-  name: string;
-  instructions: string;
-  harness: HarnessKind;
-  model?: string;
-  enabled: boolean;
-  useStartupDefaults: boolean;
-}
-
-export interface HarnessConfiguration {
-  organizationId: string;
-  agents: HarnessAgent[];
-}
 
 export interface HarnessLocalScope {
   organizationId: string;

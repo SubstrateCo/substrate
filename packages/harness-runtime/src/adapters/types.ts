@@ -1,8 +1,4 @@
-import type {
-  HarnessAgent,
-  HarnessConfiguration,
-  HarnessEvent,
-} from "@startup-os/contracts/harness";
+import type { HarnessAgent, HarnessEvent } from "@startup-os/contracts/harness";
 
 import type { McpLease } from "../mcp.ts";
 
@@ -14,8 +10,7 @@ type AdapterEvent = HarnessEvent extends infer E
     : never
   : never;
 export interface AdapterContext {
-  configuration: HarnessConfiguration;
-  agent: HarnessAgent;
+  model?: HarnessAgent["model"];
   directory: string;
   executable: string;
   lease?: McpLease;

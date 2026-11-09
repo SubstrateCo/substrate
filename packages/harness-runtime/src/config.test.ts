@@ -1,5 +1,6 @@
 import {
   startupSkills,
+  harnessKinds,
   type HarnessAgent,
   type HarnessConfiguration,
   type HarnessKind,
@@ -7,9 +8,9 @@ import {
 } from "@startup-os/contracts/harness";
 
 import { materialize, writeDefaultFiles } from "./config.ts";
-import { harnessLayouts } from "./harness-layout.ts";
 import { scanNativeSkills, saveNativeSkill } from "./native-config.ts";
 import { agentDirectory } from "./paths.ts";
+import { harnessDefinitions } from "./registry.ts";
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import { mkdir, mkdtemp, readFile, rm, symlink, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -43,11 +44,11 @@ afterEach(async () => {
   await rm(root, { recursive: true, force: true });
 });
 
-for (const harness of ["opencode", "claude", "antigravity", "codex"] satisfies HarnessKind[]) {
+for (const harness of harnessKinds) {
   test(`${harness} gets its own instructions file and a scannable default skill`, async () => {
     await materialize(root, configuration(agent(harness)));
     const directory = await agentDirectory(root, "org-a", "agent-a");
-    const { instructions } = harnessLayouts[harness];
+    const { instructions } = harnessDefinitions[harness];
     const prompt = await read(directory, instructions);
     expect(prompt).toContain("Organization ID: org-a");
     expect(prompt).toContain("Review only.");

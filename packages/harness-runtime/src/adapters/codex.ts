@@ -110,7 +110,7 @@ export async function connectCodex(
       params.threadId = resumeId;
       params.excludeTurns = true;
     }
-    if (context.agent.model) params.model = context.agent.model;
+    if (context.model) params.model = context.model;
     const result = await rpc.request<{ thread: { id: string } }>(
       resumeId ? "thread/resume" : "thread/start",
       params,

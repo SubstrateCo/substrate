@@ -34,7 +34,7 @@ export function fixture(
     createWorker: (directory) => {
       directories.push(directory);
       return {
-        request: async (method, value) => {
+        request: async (method, ...[value]) => {
           calls.push({ method, value });
           if (method === "execute" && options.failExecute) throw new Error("Native failure.");
           if (method === "listModels")

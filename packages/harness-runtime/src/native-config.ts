@@ -1,8 +1,8 @@
 import type { HarnessKind, HarnessMcpServer, HarnessSkill } from "@startup-os/contracts/harness";
 
 import { HarnessError } from "./errors.ts";
-import { harnessLayouts } from "./harness-layout.ts";
 import { readOptional, safeId, safePath } from "./paths.ts";
+import { harnessDefinitions } from "./registry.ts";
 import { applyEdits, modify, parse, type ParseError } from "jsonc-parser";
 import { readdir, unlink, writeFile } from "node:fs/promises";
 import { parse as parseToml, stringify } from "smol-toml";
@@ -55,7 +55,7 @@ export async function scanNativeSkills(
   directory: string,
   harness: HarnessKind,
 ): Promise<HarnessSkill[]> {
-  const root = await safePath(directory, harnessLayouts[harness].skills);
+  const root = await safePath(directory, harnessDefinitions[harness].skills);
   const skills: HarnessSkill[] = [];
   for (const entry of await readdir(root, { withFileTypes: true }).catch(
     (error: NodeJS.ErrnoException) => {
@@ -66,7 +66,7 @@ export async function scanNativeSkills(
     if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
     const path = await safePath(
       directory,
-      `${harnessLayouts[harness].skills}/${safeId(entry.name)}/SKILL.md`,
+      `${harnessDefinitions[harness].skills}/${safeId(entry.name)}/SKILL.md`,
     );
     const text = await readOptional(path);
     if (!text) continue;
@@ -107,7 +107,7 @@ export async function saveNativeSkill(
     );
   const path = await safePath(
     directory,
-    `${harnessLayouts[harness].skills}/${safeId(skill.id)}/SKILL.md`,
+    `${harnessDefinitions[harness].skills}/${safeId(skill.id)}/SKILL.md`,
     false,
     true,
   );
@@ -133,13 +133,13 @@ export async function deleteNativeSkill(
   id: string,
 ): Promise<void> {
   await unlink(
-    await safePath(directory, `${harnessLayouts[harness].skills}/${safeId(id)}/SKILL.md`),
+    await safePath(directory, `${harnessDefinitions[harness].skills}/${safeId(id)}/SKILL.md`),
   );
 }
 
 /** Reads each candidate once, in precedence order. A missing configuration yields the default file. */
 async function loadMcpDocuments(directory: string, harness: HarnessKind) {
-  const candidates = harnessLayouts[harness].mcpFiles;
+  const candidates = harnessDefinitions[harness].mcpFiles;
   const documents: ReturnType<typeof mcpDocument>[] = [];
   for (const name of candidates) {
     const path = await safePath(directory, name);
@@ -149,7 +149,12 @@ async function loadMcpDocuments(directory: string, harness: HarnessKind) {
   if (documents.length) return documents;
   const name = candidates[0];
   return [
-    mcpDocument(harness, name, await safePath(directory, name), harness === "codex" ? "" : "{}\n"),
+    mcpDocument(
+      harness,
+      name,
+      await safePath(directory, name),
+      harnessDefinitions[harness].mcpFormat === "toml" ? "" : "{}\n",
+    ),
   ];
 }
 
@@ -158,7 +163,9 @@ function mcpDocument(harness: HarnessKind, name: string, path: string, text: str
   let parsed: unknown;
   try {
     parsed =
-      harness === "codex" ? parseToml(text) : parse(text, errors, { allowTrailingComma: true });
+      harnessDefinitions[harness].mcpFormat === "toml"
+        ? parseToml(text)
+        : parse(text, errors, { allowTrailingComma: true });
   } catch {
     throw new HarnessError("invalid-config", `Invalid native configuration: ${name}`);
   }
@@ -166,29 +173,10 @@ function mcpDocument(harness: HarnessKind, name: string, path: string, text: str
     throw new HarnessError("invalid-config", `Invalid native configuration: ${name}`);
   const document = nativeObject(parsed, `Invalid native configuration: ${name}`);
   let servers: Record<string, unknown> = document;
-  for (const key of harnessLayouts[harness].mcpKeys) {
+  for (const key of harnessDefinitions[harness].mcpKeys) {
     servers = nativeObject(servers[key] ?? {}, `Invalid MCP configuration in ${name}`);
   }
   return { name, path, text, document, servers };
-}
-
-function encodeServer(harness: HarnessKind, server: HarnessMcpServer) {
-  if (harness === "opencode")
-    return server.transport === "http"
-      ? { type: "remote", url: server.url }
-      : {
-          type: "local",
-          command: [server.command, ...(server.args ?? [])],
-          environment: server.environment,
-        };
-  if (harness === "codex")
-    return server.transport === "http"
-      ? { url: server.url }
-      : { command: server.command, args: server.args ?? [], env: server.environment ?? {} };
-  if (server.transport === "stdio")
-    return { command: server.command, args: server.args ?? [], env: server.environment ?? {} };
-  if (harness === "claude") return { type: "http", url: server.url };
-  return { httpUrl: server.url };
 }
 
 function describeServer(id: string, raw: unknown): HarnessMcpServer {
@@ -278,13 +266,14 @@ export async function editNativeServer(
   // Remove transport-specific fields, but keep unrelated timeout and harness options.
   for (const key of ["type", "command", "args", "url", "httpUrl", "env", "environment"])
     delete replacement[key];
-  if (server) Object.assign(replacement, encodeServer(harness, server));
-  if (harness !== "codex") {
+  const definition = harnessDefinitions[harness];
+  if (server) Object.assign(replacement, definition.encodeMcpServer(server));
+  if (definition.mcpFormat !== "toml") {
     await writeFile(
       path,
       applyEdits(
         text,
-        modify(text, [...harnessLayouts[harness].mcpKeys, id], server ? replacement : undefined, {
+        modify(text, [...definition.mcpKeys, id], server ? replacement : undefined, {
           formattingOptions: { insertSpaces: true, tabSize: 2 },
         }),
       ),

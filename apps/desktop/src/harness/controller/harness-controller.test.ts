@@ -29,7 +29,7 @@ describe("desktop harness authority", () => {
       createWorker: () => {
         created++;
         return {
-          request: async (method) => {
+          request: async (method, ..._args) => {
             calls.push(method);
           },
           dispose: () => {},

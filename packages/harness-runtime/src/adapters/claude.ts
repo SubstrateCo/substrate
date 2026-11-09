@@ -26,7 +26,7 @@ export async function connectClaude(
     pathToClaudeCodeExecutable: context.executable,
     settingSources: ["user", "project", "local"],
     systemPrompt: { type: "preset", preset: "claude_code" },
-    model: context.agent.model,
+    model: context.model,
     mcpServers,
     includePartialMessages: true,
     persistSession: true,

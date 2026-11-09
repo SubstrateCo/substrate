@@ -5,17 +5,7 @@ import {
 } from "@startup-os/contracts/harness";
 
 import { resolveExecutable } from "../process.ts";
-import { discoverAntigravityModels } from "./antigravity.ts";
-import { discoverClaudeModels } from "./claude.ts";
-import { discoverCodexModels } from "./codex.ts";
-import { discoverOpenCodeModels } from "./opencode.ts";
-
-const probes = {
-  opencode: discoverOpenCodeModels,
-  claude: discoverClaudeModels,
-  codex: discoverCodexModels,
-  antigravity: discoverAntigravityModels,
-};
+import { harnessDefinitions } from "../registry.ts";
 
 export async function discoverModels(
   harness: HarnessKind,
@@ -25,7 +15,7 @@ export async function discoverModels(
 ): Promise<HarnessModelCatalog> {
   try {
     const executable = await resolveExecutable(harness, executableOverride);
-    const models = await probes[harness](
+    const models = await harnessDefinitions[harness].discoverModels(
       executable,
       directory,
       AbortSignal.any([signal, AbortSignal.timeout(30_000)]),

@@ -10,21 +10,14 @@ import {
   localHarnessMethods,
   parseHarnessCommand,
 } from "../bridge/harness-bridge.ts";
-import type { HarnessMethod, LocalHarnessMethod } from "../bridge/harness-bridge.ts";
+import type { HarnessMethod } from "../bridge/harness-bridge.ts";
 import { createMcpApiProxy } from "../mcp/mcp-api-proxy.ts";
+import type { HarnessWorker } from "../worker/protocol.ts";
 import { createHarnessAuthority, readVerifiedSession } from "./harness-authority.ts";
 import { prepareLocalInput } from "./local-configuration.ts";
 import { join } from "node:path";
 /* oxlint-disable deslop/no-unknown-parameters, deslop/no-unknown-returns -- Main parses IPC and worker response payloads at this boundary. The injected transport carries structured-clone values. */
 import { z } from "zod";
-
-export interface HarnessWorker {
-  request(
-    method: "configure" | "inspect" | "execute" | LocalHarnessMethod,
-    value?: unknown,
-  ): Promise<unknown>;
-  dispose(): void;
-}
 
 const methodSchema = z.enum(harnessMethods);
 const localMethodSchema = z.enum(localHarnessMethods);
@@ -90,12 +83,9 @@ export function createHarnessController(options: {
           throw new Error("Session changed.");
         return { connected: true, organizationId: auth.organizationId };
       }
-      if (method === "execute") {
-        const command = parseHarnessCommand(value);
-        if (command.organizationId !== auth.organizationId)
-          throw new Error("Organization unavailable.");
-        value = command;
-      }
+      const command = method === "execute" ? parseHarnessCommand(value) : undefined;
+      if (command && command.organizationId !== auth.organizationId)
+        throw new Error("Organization unavailable.");
       const localMethod = localMethodSchema.safeParse(method);
       if (localMethod.success) {
         const input = prepareLocalInput(localMethod.data, value, auth.organizationId);
@@ -116,12 +106,11 @@ export function createHarnessController(options: {
       }
       if (!worker || identity !== auth.identity) return { connected: false };
       const current = generation;
-      const result =
-        method === "status"
-          ? await worker.request("inspect")
-          : await worker.request("execute", value).catch(() => {
-              throw new CommandFailure();
-            });
+      const result = command
+        ? await worker.request("execute", command).catch(() => {
+            throw new CommandFailure();
+          })
+        : await worker.request("inspect");
       if (current !== generation || identity !== auth.identity) throw new Error("Session changed.");
       if (method === "status")
         return {

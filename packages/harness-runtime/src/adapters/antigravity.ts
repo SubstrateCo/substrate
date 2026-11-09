@@ -105,10 +105,10 @@ export async function connectAntigravity(
       );
       nativeSessionId = session.sessionId;
     }
-    if (context.agent.model)
+    if (context.model)
       await connection.agent.request(
         "session/set_config_option",
-        { sessionId: nativeSessionId, configId: "model", value: context.agent.model },
+        { sessionId: nativeSessionId, configId: "model", value: context.model },
         { cancellationSignal: AbortSignal.timeout(30_000), stopWaitingOnCancel: true },
       );
     return {

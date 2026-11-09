@@ -1,5 +1,6 @@
 import {
   harnessKinds,
+  harnessConfigurationSchema,
   type HarnessAgent,
   type HarnessConfiguration,
   type HarnessEvent,
@@ -23,7 +24,8 @@ import {
   scanNativeSkills,
 } from "./native-config.ts";
 import { agentDirectory, safeId, safePath } from "./paths.ts";
-import { antigravityAcpAvailable, binaryVersion, resolveExecutable } from "./process.ts";
+import { binaryVersion, resolveExecutable } from "./process.ts";
+import { harnessDefinitions } from "./registry.ts";
 import type { HarnessStorage } from "./storage.ts";
 import { randomUUID } from "node:crypto";
 import { mkdir, realpath } from "node:fs/promises";
@@ -105,36 +107,16 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ha
       // Refresh Startup OS skills before each run so they match this build's MCP tools.
       await writeStartupSkills(root, agent);
       const context: AdapterContext = {
-        configuration,
-        agent,
+        model: agent.model,
         directory: root,
         executable: await resolveExecutable(agent.harness, options.executables?.[agent.harness]),
         lease,
         emit: (event) => emit(ref, event),
       };
-      let adapter: NativeAdapter;
-      switch (agent.harness) {
-        case "opencode":
-          adapter = await (
-            await import("./adapters/opencode.ts")
-          ).connectOpenCode(context, existing?.nativeSessionId);
-          break;
-        case "antigravity":
-          adapter = await (
-            await import("./adapters/antigravity.ts")
-          ).connectAntigravity(context, existing?.nativeSessionId);
-          break;
-        case "claude":
-          adapter = await (
-            await import("./adapters/claude.ts")
-          ).connectClaude(context, existing?.nativeSessionId);
-          break;
-        case "codex":
-          adapter = await (
-            await import("./adapters/codex.ts")
-          ).connectCodex(context, existing?.nativeSessionId);
-          break;
-      }
+      const adapter = await harnessDefinitions[agent.harness].connect(
+        context,
+        existing?.nativeSessionId,
+      );
       ref.nativeSessionId = adapter.nativeSessionId;
       await store.save(ref);
       sessions.set(ref.id, { ref, adapter, revoke: () => lease?.revoke(), busy: false });
@@ -157,20 +139,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ha
     },
     async configure(input) {
       assertOpen();
-      const configuration: HarnessConfiguration = {
-        organizationId: input.organizationId,
-        agents: input.agents.map(
-          ({ id, name, instructions, harness, model, enabled, useStartupDefaults }) => ({
-            id,
-            name,
-            instructions,
-            harness,
-            model,
-            enabled,
-            useStartupDefaults,
-          }),
-        ),
-      };
+      const configuration = harnessConfigurationSchema.parse(input);
       const previous = await store.configuration(configuration.organizationId);
       for (const session of sessions.values()) {
         if (session.ref.organizationId !== configuration.organizationId) continue;
@@ -227,9 +196,9 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ha
           try {
             const executable = await resolveExecutable(harness, options.executables?.[harness]);
             const version = await binaryVersion(executable);
-            // Installed agy without ACP --process-per-session is unavailable until updated.
+            const definition = harnessDefinitions[harness];
             const available =
-              harness !== "antigravity" || (await antigravityAcpAvailable(executable));
+              !("available" in definition) || (await definition.available(executable));
             return { harness, available, version };
           } catch {
             return { harness, available: false };

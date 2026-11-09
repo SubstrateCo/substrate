@@ -1,4 +1,4 @@
-import { harnessKinds } from "@startup-os/contracts/harness";
+import { harnessAgentSchema } from "@startup-os/contracts/harness";
 
 import { createHash } from "node:crypto";
 import { z } from "zod";
@@ -12,17 +12,7 @@ const verifiedSessionSchema = z.object({
 const catalogSchema = z.object({
   success: z.literal(true),
   data: z.object({
-    agents: z.array(
-      z.object({
-        id: z.string(),
-        name: z.string(),
-        instructions: z.string(),
-        harness: z.enum(harnessKinds),
-        model: z.string().optional(),
-        enabled: z.boolean(),
-        useStartupDefaults: z.boolean(),
-      }),
-    ),
+    agents: z.array(harnessAgentSchema),
   }),
 });
 

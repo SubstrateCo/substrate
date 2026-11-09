@@ -8,8 +8,8 @@ import {
 } from "@startup-os/contracts/harness";
 
 import { HarnessError } from "./errors.ts";
-import { harnessLayouts } from "./harness-layout.ts";
 import { organizationDirectory, safeId, safePath } from "./paths.ts";
+import { harnessDefinitions } from "./registry.ts";
 import { writeFile } from "node:fs/promises";
 
 function skillFile(skill: HarnessSkill) {
@@ -20,7 +20,7 @@ function skillFile(skill: HarnessSkill) {
 export function defaultFiles(organizationId: string, agent: HarnessAgent) {
   return new Map([
     [
-      harnessLayouts[agent.harness].instructions,
+      harnessDefinitions[agent.harness].instructions,
       agent.useStartupDefaults
         ? `${startupInstructions({ ...agent, organizationId })}${agent.instructions}\n`
         : `${agent.instructions}\n`,
@@ -32,7 +32,7 @@ export function defaultFiles(organizationId: string, agent: HarnessAgent) {
 export async function writeStartupSkills(agentRoot: string, agent: HarnessAgent): Promise<void> {
   if (!agent.useStartupDefaults) return;
   for (const skill of startupSkills) {
-    const path = `${harnessLayouts[agent.harness].skills}/${skill.id}/SKILL.md`;
+    const path = `${harnessDefinitions[agent.harness].skills}/${skill.id}/SKILL.md`;
     const target = await safePath(agentRoot, path, false, true);
     await writeFile(target, skillFile(skill), { mode: 0o600 });
   }

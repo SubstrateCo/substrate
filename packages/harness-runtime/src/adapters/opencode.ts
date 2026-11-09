@@ -48,7 +48,7 @@ export async function connectOpenCode(
       ? await client.session.get({ sessionID: resumeId })
       : await client.session.create({
           location: { directory: context.directory },
-          model: openCodeModel(context.agent.model),
+          model: openCodeModel(context.model),
         });
     if (session.location.directory !== context.directory)
       throw new HarnessError(

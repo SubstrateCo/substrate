@@ -1,7 +1,7 @@
 import {
   startupSkills,
+  harnessKinds,
   type HarnessConfiguration,
-  type HarnessKind,
 } from "@startup-os/contracts/harness";
 
 import { createHarnessHost } from "./host.ts";
@@ -18,6 +18,7 @@ import * as fs from "node:fs/promises";
 import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { parse } from "smol-toml";
 
 /* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous despite their assertion return declarations. */
 
@@ -68,7 +69,7 @@ describe("native skill files", () => {
 });
 
 describe("native MCP files", () => {
-  for (const harness of ["opencode", "antigravity", "claude", "codex"] satisfies HarnessKind[]) {
+  for (const harness of harnessKinds) {
     test(`${harness} writes actual native configuration and round-trips without a catalog`, async () => {
       const directory = await organizationDirectory(root, "org-a");
       await editNativeServer(directory, harness, "local-tools", {
@@ -100,6 +101,29 @@ describe("native MCP files", () => {
       expect(await scanNativeServers(directory, harness)).toEqual([]);
     });
   }
+
+  test("HTTP MCP servers use each harness's native transport fields", async () => {
+    const directory = await organizationDirectory(root, "org-a");
+    for (const harness of harnessKinds)
+      await editNativeServer(directory, harness, "tools", {
+        id: "tools",
+        name: "Tools",
+        transport: "http",
+        url: "https://tools.example/mcp",
+      });
+    expect(JSON.parse(await readFile(join(directory, "opencode.json"), "utf8"))).toEqual({
+      mcp: { servers: { tools: { type: "remote", url: "https://tools.example/mcp" } } },
+    });
+    expect(JSON.parse(await readFile(join(directory, ".mcp.json"), "utf8"))).toEqual({
+      mcpServers: { tools: { type: "http", url: "https://tools.example/mcp" } },
+    });
+    expect(JSON.parse(await readFile(join(directory, ".agents/mcp_config.json"), "utf8"))).toEqual({
+      mcpServers: { tools: { httpUrl: "https://tools.example/mcp" } },
+    });
+    expect(parse(await readFile(join(directory, ".codex/config.toml"), "utf8"))).toEqual({
+      mcp_servers: { tools: { url: "https://tools.example/mcp" } },
+    });
+  });
 
   test("JSONC comments and unrelated credentials survive another server edit", async () => {
     const directory = await organizationDirectory(root, "org-a");

@@ -1,18 +1,12 @@
 import type { HarnessKind } from "@startup-os/contracts/harness";
 
 import { HarnessError } from "./errors.ts";
+import { harnessDefinitions } from "./registry.ts";
 import { spawn } from "node:child_process";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import type { EventEmitter } from "node:events";
 import { access, realpath } from "node:fs/promises";
 import { delimiter, extname, isAbsolute, join } from "node:path";
-
-const binaries: Record<HarnessKind, string> = {
-  opencode: "opencode",
-  antigravity: "agy",
-  claude: "claude",
-  codex: "codex",
-};
 
 // Node 24 and Bun expose the same process events, but their ambient ChildProcess
 // declarations disagree when a consumer loads both sets of types.
@@ -33,7 +27,7 @@ export async function resolveExecutable(kind: HarnessKind, override?: string): P
         .filter(Boolean)
         .flatMap((directory) =>
           (process.platform === "win32" ? [".exe", ".com", ""] : [""]).map((extension) =>
-            join(directory, binaries[kind] + extension),
+            join(directory, harnessDefinitions[kind].executable + extension),
           ),
         );
   for (const candidate of candidates) {
@@ -58,7 +52,7 @@ export async function resolveExecutable(kind: HarnessKind, override?: string): P
   }
   throw new HarnessError(
     "binary-not-found",
-    `Install ${binaries[kind]} and sign in with its native CLI. Windows requires a native executable, not a .cmd shim.`,
+    `Install ${harnessDefinitions[kind].executable} and sign in with its native CLI. Windows requires a native executable, not a .cmd shim.`,
   );
 }
 

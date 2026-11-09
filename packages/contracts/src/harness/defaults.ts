@@ -1,13 +1,5 @@
 import type { HarnessKind } from "./kinds.ts";
 
-/** Project instructions file each harness loads from its agent folder. */
-export const harnessInstructionsFiles: Record<HarnessKind, string> = {
-  opencode: "AGENTS.md",
-  claude: "CLAUDE.md",
-  antigravity: "AGENTS.md",
-  codex: "AGENTS.md",
-};
-
 /** Startup OS instructions written before the agent's own instructions. Ends with their heading. */
 export function startupInstructions(agent: {
   id: string;

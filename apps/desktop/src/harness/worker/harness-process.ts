@@ -2,7 +2,7 @@
 import type { HarnessEvent } from "@startup-os/contracts/harness";
 import type { WorkspaceApiRequest, WorkspaceApiProxy } from "@startup-os/contracts/harness/mcp";
 
-import type { HarnessWorker } from "../controller/harness-controller.ts";
+import type { HarnessWorker } from "./protocol.ts";
 import { utilityProcess } from "electron";
 
 export function createHarnessProcess(
@@ -103,7 +103,7 @@ export function createHarnessProcess(
   // Attach a handler immediately; the first request still receives initialization failure.
   void ready.catch(() => {});
   return {
-    request: async (method, value) => {
+    request: async (method, ...[value]) => {
       await ready;
       return request(method, value);
     },

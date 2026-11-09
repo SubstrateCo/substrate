@@ -17,3 +17,30 @@ test("host uses caller-owned storage without creating a database", async () => {
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("configuration keeps native model selection and strips unrelated backend fields", async () => {
+  await mkdir(join(tmpdir(), "opencode"), { recursive: true });
+  const root = await mkdtemp(join(tmpdir(), "opencode", "harness-configuration-test-"));
+  const storage = createMemoryStorage();
+  const host = await createHarnessHost({ accountDirectory: root, storage });
+  const agent = {
+    id: "agent-a",
+    name: "Agent",
+    instructions: "Work locally",
+    harness: "codex" as const,
+    model: "native-model",
+    enabled: true,
+    useStartupDefaults: false,
+  };
+  try {
+    const input = { organizationId: "org-a", agents: [{ ...agent, actorId: "private" }] };
+    await host.configure(input);
+    expect(await storage.configuration("org-a")).toEqual({
+      organizationId: "org-a",
+      agents: [agent],
+    });
+  } finally {
+    await host.dispose();
+    await rm(root, { recursive: true, force: true });
+  }
+});
