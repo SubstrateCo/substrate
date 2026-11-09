@@ -74,25 +74,19 @@ export function ProjectSidebar({
           )}
           <div className="flex gap-0.5 overflow-x-auto md:flex-col">
             {visible.map((project) => (
-              <Tooltip key={project.entityId}>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="sidebar"
-                    className="max-w-full min-w-0 shrink-0 justify-start md:w-full"
-                    aria-current={selectedId === project.entityId ? "page" : undefined}
-                    onClick={() => onSelect(project.entityId)}
-                  >
-                    <FolderKanban
-                      aria-hidden="true"
-                      className="size-4 shrink-0 text-muted-foreground"
-                    />
-                    <span className="truncate">{project.name}</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="wrap-anywhere">
-                  {project.name}
-                </TooltipContent>
-              </Tooltip>
+              <Button
+                key={project.entityId}
+                variant="sidebar"
+                className="max-w-full min-w-0 shrink-0 justify-start md:w-full"
+                aria-current={selectedId === project.entityId ? "page" : undefined}
+                onClick={() => onSelect(project.entityId)}
+              >
+                <FolderKanban
+                  aria-hidden="true"
+                  className="size-4 shrink-0 text-muted-foreground"
+                />
+                <span className="truncate">{project.name}</span>
+              </Button>
             ))}
           </div>
         </PageSidebarContent>
