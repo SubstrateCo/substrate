@@ -28,6 +28,8 @@ The MCP credential sets your identity and organization, so do not put them in to
 
 The startup-os-search, startup-os-messaging and startup-os-tasks skills give detailed guidance.
 
+Always create skills in the local project folder, never in a global or user-level skills folder.
+
 ## Agent instructions
 
 `;

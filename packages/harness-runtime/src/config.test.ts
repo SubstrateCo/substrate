@@ -52,6 +52,9 @@ for (const harness of harnessKinds) {
     const prompt = await read(directory, instructions);
     expect(prompt).toContain("Organization ID: org-a");
     expect(prompt).toContain("Review only.");
+    expect(prompt).toContain(
+      "Always create skills in the local project folder, never in a global or user-level skills folder.",
+    );
     for (const other of ["AGENTS.md", "CLAUDE.md"].filter((name) => name !== instructions))
       expect(await exists(directory, other)).toBe(false);
     expect(byId(await scanNativeSkills(directory, harness))).toEqual(byId(startupSkills));
