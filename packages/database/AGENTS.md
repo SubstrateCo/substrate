@@ -34,6 +34,14 @@
 - Define relationship behavior for deletion, restoration, membership changes, and reparenting when implementing those operations.
 - An entity-type enum value alone does not constitute an implemented domain. Do not create placeholder entities for unsupported feature types.
 
+## Agent work
+
+- Route wakes with `routeWake` inside the transaction that inserts the message. Wakes hold references, not message bodies; the home desktop reads bodies through the visibility-checked sources query.
+- Answer requests with compare-and-set: the first answer wins.
+- Execute a proposal exactly once. Bind it to its action hash and the target state recorded when it was proposed, and check both under the target's locks.
+- Bind agent provenance with composite foreign keys: the actor must belong to the user agent and organization.
+- Redact request and status views once the owner loses access to their conversation. Return `origin_turn_id` only to the agent's owner.
+
 ## Tests and migrations
 
 - Test repositories and constraints against real PostgreSQL. `TEST_DATABASE_URL` must name a dedicated database ending in `_test`.

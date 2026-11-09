@@ -17,6 +17,12 @@
 - Export the Hono application type for the renderer's typed RPC client. Client imports of server types must be type-only.
 - Test application contracts, status/error mapping, validation boundaries, access policies, and workflows. Do not test Hono or Better Auth internals. Keep unit tests beside their domain.
 
+## Agent work
+
+- Agent-work device routes require a verified session, a trusted origin, and a registered device.
+- MCP calls require a `TurnContext`. Write tools also require the agent's home device, named by `TurnContext.installationId`.
+- Publish agent-work hints without data, only to the owner's audience.
+
 ## Integration tests
 
 - Put request-only HTTP integration cases in `integration`, using API fixtures without browser pages or viewport matrices. Cover HTTP permission, origin, and isolation boundaries here; keep repository and transaction edge cases in database tests.

@@ -18,6 +18,14 @@ Startup OS is an Electron workspace for email, messages, docs, tasks, agents, an
 - Keep cross-organization boundaries explicit. Users, actors, and contacts are distinct; matching identifiers do not establish identity or access.
 - If a required connection is out of scope, report the gap and decision needed. Do not build a disconnected substitute or unrelated features.
 
+## Agent work
+
+- Agents run on their owner's home desktop. The server keeps shared records and only what other devices need: wakes, requests, and agent status. The desktop keeps sessions, turns, transcripts, routines, and helpers in local SQLite. The native harness only executes turns.
+- Only the owner wakes their agent: owner messages, owner answers and approvals, owner-approved routines, and the agent's own helpers. Agent-written messages never wake an agent.
+- Agents publish only through `reply` and `propose`. Assistant text outside tools is the owner-only transcript. A turn with nothing useful to say ends quietly.
+- The desktop host attaches a `TurnContext` to every MCP call. The model never supplies it, and the server checks it before using any field.
+- Runtime rules for agents live in `packages/contracts/src/harness/policy.ts`. Bump `POLICY_VERSION` with every change to that text; the bump rotates every session's context.
+
 ## Code organization
 
 - `apps/web` owns renderer presentation and application integration, including routing, data loading, auth/session access, resource policies, mutations, cache updates, and Electron wiring.

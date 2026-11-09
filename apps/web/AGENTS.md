@@ -32,3 +32,11 @@
 - Confirm actions that expand access, especially across organizations.
 - Do not leak inaccessible metadata through labels, previews, autocomplete, backlinks, or counts.
 - After mutations, invalidate affected relationship and detail queries, not just the originating feature's list.
+
+## Agent work
+
+- Show agent work only to the agent's owner. Other members see only published messages.
+- Read local work through the `startupOSAgentWork` bridge on the home desktop. Elsewhere, fall back to server status and requests.
+- Place work under its outputs, then under its newest accessible source message. Work without an anchor appears only in the Agents app.
+- Notify only for Needs-you items. Do not notify for working, finished, quiet, or routine progress.
+- Show records the viewer cannot open as placeholders, such as "A conversation you can't open". Never show their names.
