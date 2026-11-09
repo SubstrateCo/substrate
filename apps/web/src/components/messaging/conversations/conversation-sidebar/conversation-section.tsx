@@ -48,8 +48,7 @@ export function ConversationSection({
   const listId = useId();
   const collapsible = items.length > 1;
   const isCollapsed = collapsible && collapsed;
-  // A collapsed section keeps the open conversation visible.
-  const shown = isCollapsed ? items.filter((item) => item.id === selectedId) : items;
+  const shown = isCollapsed ? [] : items;
   return (
     <section aria-label={sectionLabels[section]}>
       <div className="mb-1 flex items-center justify-between px-2">

@@ -1,6 +1,35 @@
 import { conversation, expectChange, send, test, visit } from "./test-support/fixtures";
 import { expect } from "@playwright/test";
 
+test("collapsing channels hides the selected channel without closing it", async ({
+  account,
+  client,
+}) => {
+  const selected = await conversation(account);
+  const other = await conversation(account);
+  const viewer = await client(account);
+  await visit(viewer, selected.id);
+  const section = viewer.page.getByRole("region", { name: "Channels", exact: true });
+  const toggle = section.getByRole("button", { name: /^Channels/ });
+  const selectedRow = section.getByRole("button", { name: selected.name, exact: true });
+  const otherRow = section.getByRole("button", { name: other.name, exact: true });
+  await expect(selectedRow).toBeVisible();
+  await expect(otherRow).toBeVisible();
+
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(selectedRow).toBeHidden();
+  await expect(otherRow).toBeHidden();
+  await expect(
+    viewer.page.getByRole("heading", { level: 1, name: selected.name, exact: true }),
+  ).toBeVisible();
+
+  await toggle.click();
+  await expect(selectedRow).toBeVisible();
+  await expect(selectedRow).toHaveAttribute("aria-current", "page");
+  await expect(otherRow).toBeVisible();
+});
+
 test("a sent channel message reaches another member over the real socket", async ({
   actors,
   client,
