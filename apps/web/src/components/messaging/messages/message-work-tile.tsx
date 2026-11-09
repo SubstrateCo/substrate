@@ -1,5 +1,6 @@
 import { Button } from "../../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
+import { MessageCardRow } from "./message-card";
 import type { MessageWorkLink } from "./message-work";
 import { CircleCheck, FolderKanban, Unlink } from "lucide-react";
 
@@ -14,14 +15,16 @@ export function MessageWorkTile({
 }) {
   const Icon = link.entityType === "task" ? CircleCheck : FolderKanban;
   return (
-    <li className="group/work flex min-w-0 items-center gap-2 px-2 py-1 hover:bg-muted/50">
+    <MessageCardRow className="group/work pl-1.5 hover:bg-muted/50">
       <a
         href={link.href}
         aria-label={`Open ${link.title}`}
-        className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-1.5 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       >
         <Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-        <span className="line-clamp-2 min-w-0 text-sm font-medium wrap-anywhere">{link.title}</span>
+        <span title={link.title} className="min-w-0 truncate font-medium">
+          {link.title}
+        </span>
         {link.purpose === "source" && (
           <span className="shrink-0 text-xs text-muted-foreground">Created here</span>
         )}
@@ -51,6 +54,6 @@ export function MessageWorkTile({
           </Tooltip>
         </span>
       )}
-    </li>
+    </MessageCardRow>
   );
 }

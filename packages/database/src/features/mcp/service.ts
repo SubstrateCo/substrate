@@ -9,6 +9,7 @@ import {
 import type { DatabaseExecutor } from "../../client";
 import { ConflictError, AccessDeniedError } from "../../errors";
 import { recordTaskActivity } from "../activity/events";
+import { recordRunReply } from "../agent-runs/replies";
 import { workspaceContext } from "../context/access";
 import { messageEntityReferences } from "../context/schema";
 import { attachReference, detachReference } from "../context/service";
@@ -121,6 +122,11 @@ export async function executeAgentTool<K extends McpToolName>(
       },
       async send_message(value) {
         const message = await sendMessageAs(ctx, identity, author, value);
+        await recordRunReply(
+          tx,
+          { ...identity, agentActorEntityId: actor.id },
+          { id: message.id, conversationId: message.conversationId, threadId: message.threadId },
+        );
         return {
           id: message.id,
           conversationId: message.conversationId,

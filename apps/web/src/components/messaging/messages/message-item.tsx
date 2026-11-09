@@ -9,7 +9,7 @@ import { MessageContext, type MessageContextState } from "../../context/referenc
 import { ReferencedMessageBody } from "../../context/references/referenced-message-body";
 import { toggleReaction } from "@/api/messaging/requests";
 import type { Message } from "@/api/messaging/requests";
-import { AgentRunSlot } from "@/components/agent-runs/agent-run-slot";
+import { AgentRunBadge, AgentRunSlot } from "@/components/agent-runs/agent-run-slot";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { LinkedMessage } from "@/components/messaging/messages/linked-message";
 import { MessageItem as MessageItemView } from "@/components/messaging/messages/message-item-view";
@@ -87,6 +87,7 @@ export function MessageItem({
               <MessageWorkActions onLink={() => setLinking(true)} />
             </>
           }
+          avatarBadge={<AgentRunBadge messageId={message.id} />}
           onThread={onThread}
           onReact={(emoji) => reaction.mutate(emoji)}
           pending={reaction.isPending}

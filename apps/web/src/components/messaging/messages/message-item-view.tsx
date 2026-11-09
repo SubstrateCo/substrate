@@ -13,9 +13,12 @@ export function MessageItem({
   onThread,
   body,
   actions,
+  avatarBadge,
   children,
 }: {
   message: Message;
+  /** A small status mark on the avatar, such as an agent run's state. */
+  avatarBadge?: ReactNode;
   onReact: (emoji: string) => void;
   pending?: boolean;
   onThread?: (id: string) => void;
@@ -26,9 +29,12 @@ export function MessageItem({
   const hasPersonCard = useHasPersonCard();
   return (
     <article className="group flex gap-2.5 px-4 py-2 hover:bg-muted/40">
-      <Avatar aria-hidden="true" variant="message" className="size-9">
-        <AvatarFallback>{(message.authorName || "?").slice(0, 2).toUpperCase()}</AvatarFallback>
-      </Avatar>
+      <span className="relative h-fit shrink-0">
+        <Avatar aria-hidden="true" variant="message" className="size-9">
+          <AvatarFallback>{(message.authorName || "?").slice(0, 2).toUpperCase()}</AvatarFallback>
+        </Avatar>
+        {avatarBadge}
+      </span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-2">
           <PersonCardTarget

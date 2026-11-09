@@ -15,6 +15,13 @@
       "when": 1794172398851,
       "tag": "0001_brainy_sway",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794184496882,
+      "tag": "0002_famous_toxin",
+      "breakpoints": true
     }
   ]
 }

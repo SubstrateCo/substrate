@@ -104,6 +104,8 @@ export interface AgentRunView {
   status: AgentRunStatus;
   triggerKind: AgentTriggerKind;
   triggerMessageIds: string[];
+  /** Messages the agent sent in the run's thread while it ran, oldest first. */
+  replyMessageIds: string[];
   /** The latest activity line, for the status card. */
   activity: string | null;
   error: string | null;

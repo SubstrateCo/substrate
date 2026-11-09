@@ -27,9 +27,9 @@ export function ApprovalRequest({
   ];
   const primary = styled.length ? styled : payload.options.slice(0, 2);
   const more = payload.options.filter((option) => !primary.includes(option));
+  // The card around this shows the title.
   return (
-    <div className="grid gap-2">
-      <p className="font-medium">{payload.title}</p>
+    <div className="grid gap-2.5">
       {payload.detail && (
         <pre className="max-h-48 overflow-auto rounded-md bg-muted p-2 font-mono text-xs wrap-anywhere whitespace-pre-wrap">
           {payload.detail}

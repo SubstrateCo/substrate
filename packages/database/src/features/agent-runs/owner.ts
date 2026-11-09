@@ -14,7 +14,13 @@ import { workspaceContext } from "../context/access";
 import { visibleConversations } from "../messaging/access";
 import { messagingConversations } from "../messaging/schema";
 import { cancelOpenRequests, sweepRuns } from "./lifecycle";
-import { agentRunEvents, agentRunRequests, agentRunTriggers, agentRuns } from "./schema";
+import {
+  agentRunEvents,
+  agentRunReplies,
+  agentRunRequests,
+  agentRunTriggers,
+  agentRuns,
+} from "./schema";
 import { and, asc, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 
 export interface OwnerIdentity {
@@ -57,7 +63,7 @@ async function views(db: DatabaseExecutor, where: SQL | undefined) {
     .orderBy(desc(agentRuns.createdAt), desc(agentRuns.id))
     .limit(100);
   const ids = rows.map((row) => row.run.id);
-  const [triggers, requests] = ids.length
+  const [triggers, replies, requests] = ids.length
     ? await Promise.all([
         db
           .select({ runId: agentRunTriggers.runId, messageId: agentRunTriggers.messageId })
@@ -65,12 +71,17 @@ async function views(db: DatabaseExecutor, where: SQL | undefined) {
           .where(inArray(agentRunTriggers.runId, ids))
           .orderBy(asc(agentRunTriggers.createdAt)),
         db
+          .select({ runId: agentRunReplies.runId, messageId: agentRunReplies.messageId })
+          .from(agentRunReplies)
+          .where(inArray(agentRunReplies.runId, ids))
+          .orderBy(asc(agentRunReplies.createdAt), asc(agentRunReplies.messageId)),
+        db
           .select()
           .from(agentRunRequests)
           .where(inArray(agentRunRequests.runId, ids))
           .orderBy(asc(agentRunRequests.createdAt)),
       ])
-    : [[], []];
+    : [[], [], []];
   return rows.map(({ run, agentName, device }): AgentRunView => ({
     id: run.id,
     agent: { actorId: run.agentActorEntityId, agentId: run.userAgentId, name: agentName },
@@ -79,6 +90,7 @@ async function views(db: DatabaseExecutor, where: SQL | undefined) {
     status: run.status,
     triggerKind: run.triggerKind,
     triggerMessageIds: triggers.filter((row) => row.runId === run.id).map((row) => row.messageId),
+    replyMessageIds: replies.filter((row) => row.runId === run.id).map((row) => row.messageId),
     activity: run.activity,
     error: run.error,
     device: device?.id ? device : null,

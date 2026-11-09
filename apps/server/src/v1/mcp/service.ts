@@ -33,7 +33,11 @@ export function callAgentTool(headers: Headers, call: z.output<typeof mcpCall>) 
         { audience, domain: "context" },
       ];
       if (execution.tool === "send_message")
-        hints.push(...(await messageRefreshHints(db, execution.output.id)));
+        hints.push(
+          ...(await messageRefreshHints(db, execution.output.id)),
+          // The reply may now belong to a run, which moves the run's view under it.
+          { audience: realtimeKeys.user(session.user.id), domain: "agent-runs" },
+        );
       let assignee;
       if (execution.tool === "create_task") assignee = execution.input.assigneeActorId;
       if (execution.tool === "update_task") assignee = execution.input.changes.assigneeActorId;

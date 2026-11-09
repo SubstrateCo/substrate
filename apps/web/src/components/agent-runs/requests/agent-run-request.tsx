@@ -5,8 +5,10 @@ import type {
 
 import { ApprovalRequest } from "./approval-request";
 import { QuestionsRequest } from "./questions-request";
+import { MessageCard, MessageCardBody } from "@/components/messaging/messages/message-card";
 import { useNow } from "@/hooks/use-now";
 import { formatDuration, requestExpiresAt } from "@/lib/agent-runs/runs";
+import { Hand } from "lucide-react";
 
 /** One line that says how a request ended. Used in the card and the transcript. */
 export function requestOutcome(request: AgentRunRequestView) {
@@ -39,29 +41,33 @@ export function AgentRunRequest({
   const remaining = requestExpiresAt(request) - now;
   if (!open || remaining <= 0)
     return (
-      <p className="text-xs text-muted-foreground">
+      <p className="mt-1 text-xs text-muted-foreground">
         {request.payload.title} · {open ? "Expired without an answer" : requestOutcome(request)}
       </p>
     );
   return (
-    <div className="grid gap-1.5 rounded-md border bg-background p-2.5">
-      {request.payload.type === "approval" ? (
-        <ApprovalRequest
-          payload={request.payload}
-          pending={pending}
-          onRespond={(optionId) => onRespond({ type: "approval", optionId })}
-        />
-      ) : (
-        <QuestionsRequest
-          key={request.id}
-          payload={request.payload}
-          pending={pending}
-          onSubmit={onRespond}
-        />
-      )}
-      <p className="text-xs text-muted-foreground tabular-nums">
-        Expires in {formatDuration(remaining)}
-      </p>
-    </div>
+    <MessageCard
+      icon={Hand}
+      tone="attention"
+      title={request.payload.title}
+      meta={`Expires in ${formatDuration(remaining)}`}
+    >
+      <MessageCardBody>
+        {request.payload.type === "approval" ? (
+          <ApprovalRequest
+            payload={request.payload}
+            pending={pending}
+            onRespond={(optionId) => onRespond({ type: "approval", optionId })}
+          />
+        ) : (
+          <QuestionsRequest
+            key={request.id}
+            payload={request.payload}
+            pending={pending}
+            onSubmit={onRespond}
+          />
+        )}
+      </MessageCardBody>
+    </MessageCard>
   );
 }

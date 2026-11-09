@@ -10,6 +10,7 @@ import { ThreadPane } from "../threads/thread-pane";
 import { AddMembersForm } from "./add-members-form";
 import { ConversationActions } from "./conversation-actions";
 import { LeftChannelNotice } from "./conversation-pane/left-channel-notice";
+import { AgentRunTranscript } from "@/components/agent-runs/agent-run-transcript";
 import { ConversationAgentRuns } from "@/components/agent-runs/conversation-agent-runs";
 import { ConversationPane as ConversationPaneView } from "@/components/messaging/conversations/conversation-pane-view";
 import { MessageHistory } from "@/components/messaging/messages/message-history";
@@ -68,12 +69,53 @@ export function ConversationPane({
         />
       </MessageHistory>
     );
+  // The transcript keeps the open thread in the URL, so closing it returns to that thread.
+  const transcript = (runId?: string) =>
+    void navigate({
+      to: "/dashboard",
+      search: {
+        workspaceId: organizationId,
+        conversationId: conversation.id,
+        messageId: search.messageId,
+        agentRunId: runId,
+      },
+    });
+  let aside;
+  if (search.agentRunId && userId)
+    aside = (
+      <AgentRunTranscript
+        key={search.agentRunId}
+        userId={userId}
+        organizationId={organizationId}
+        runId={search.agentRunId}
+        onClose={() => transcript()}
+      />
+    );
+  else if (activeThreadId && !target.error)
+    aside = (
+      <ThreadPane
+        key={activeThreadId}
+        organizationId={organizationId}
+        conversationId={conversation.id}
+        threadId={activeThreadId}
+        contextMessageIds={timeline.map((message) => message.id)}
+        root={target.data?.root ?? messages.data?.find((message) => message.id === activeThreadId)}
+        targetMessage={target.data?.message}
+        onClose={() => {
+          void navigate({
+            to: "/dashboard",
+            search: { workspaceId: organizationId, conversationId: conversation.id },
+          });
+        }}
+      />
+    );
   return (
     <ConversationAgentRuns
       userId={userId}
       organizationId={organizationId}
       conversationId={conversation.id}
       enabled={conversation.members?.some((member) => member.type === "agent") ?? true}
+      onTranscript={transcript}
     >
       <ConversationPaneView
         conversation={conversation}
@@ -115,28 +157,7 @@ export function ConversationPane({
             label={`Message ${conversation.kind === "channel" ? "#" : ""}${conversationName(conversation)}`}
           />
         }
-        thread={
-          activeThreadId &&
-          !target.error && (
-            <ThreadPane
-              key={activeThreadId}
-              organizationId={organizationId}
-              conversationId={conversation.id}
-              threadId={activeThreadId}
-              contextMessageIds={timeline.map((message) => message.id)}
-              root={
-                target.data?.root ?? messages.data?.find((message) => message.id === activeThreadId)
-              }
-              targetMessage={target.data?.message}
-              onClose={() => {
-                void navigate({
-                  to: "/dashboard",
-                  search: { workspaceId: organizationId, conversationId: conversation.id },
-                });
-              }}
-            />
-          )
-        }
+        thread={aside}
       />
     </ConversationAgentRuns>
   );

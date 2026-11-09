@@ -86,15 +86,13 @@ export function QuestionsRequest({
   }, []);
   const selected = drafts[question.id]?.selected ?? [];
   return (
+    // The card around this shows the title.
     <div className="grid gap-2">
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="font-medium">{payload.title}</p>
-        {payload.questions.length > 1 && (
-          <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-            {step + 1}/{payload.questions.length}
-          </span>
-        )}
-      </div>
+      {payload.questions.length > 1 && (
+        <span className="text-xs text-muted-foreground tabular-nums">
+          Question {step + 1} of {payload.questions.length}
+        </span>
+      )}
       <fieldset className="grid gap-1.5" aria-describedby={`${id}-question`}>
         {question.header && (
           <legend className="text-xs font-medium text-muted-foreground uppercase">

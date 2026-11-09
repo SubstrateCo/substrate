@@ -1,4 +1,5 @@
 import type {
+  AgentRunEventView,
   AgentRunRequestPayload,
   AgentRunRequestResponse,
   AgentRunRequestView,
@@ -8,23 +9,95 @@ import type {
 // The server cancels a request it has not received an answer for after this time.
 const requestTimeoutMs = 10 * 60_000;
 
+export type RunPlacement = { run: AgentRunView; kind: "reply" | "pending" };
+
 /**
- * The latest run for each message. A batched run lists several trigger messages; its card goes
- * under the last one only, so its controls appear once.
+ * Where each run shows. A run that replied shows under its latest reply. A run without a reply
+ * yet shows as a pending reply under its last trigger message; when several runs share that
+ * message, only the latest one shows there, so its controls appear once.
  */
-export function latestRunByMessage(runs: readonly AgentRunView[]) {
-  const latest = new Map<string, AgentRunView>();
+export function runPlacements(runs: readonly AgentRunView[]) {
+  const placements = new Map<string, RunPlacement>();
+  const pending = new Map<string, AgentRunView>();
   for (const run of runs) {
-    const messageId = run.triggerMessageIds.at(-1);
-    if (!messageId) continue;
-    const current = latest.get(messageId);
+    const reply = run.replyMessageIds.at(-1);
+    if (reply) {
+      placements.set(reply, { run, kind: "reply" });
+      continue;
+    }
+    const trigger = run.triggerMessageIds.at(-1);
+    if (!trigger) continue;
+    const current = pending.get(trigger);
     if (!current || Date.parse(run.createdAt) > Date.parse(current.createdAt))
-      latest.set(messageId, run);
+      pending.set(trigger, run);
   }
-  return latest;
+  for (const [messageId, run] of pending)
+    if (!placements.has(messageId)) placements.set(messageId, { run, kind: "pending" });
+  return placements;
 }
 
-export function pendingRequest(run: AgentRunView): AgentRunRequestView | undefined {
+export type RunTone = "idle" | "working" | "attention" | "done" | "failed";
+export type RunStatus = { tone: RunTone; label: string };
+
+/** The run's state as one tone and one short line, such as "Working for 1m 05s". */
+export function runStatus(run: AgentRunView, now: number): RunStatus {
+  const request = pendingRequest(run);
+  if (request)
+    return {
+      tone: "attention",
+      label: request.payload.type === "approval" ? "Needs your approval" : "Needs your answer",
+    };
+  const started = Date.parse(run.startedAt ?? run.createdAt);
+  const ran = () => formatDuration((run.finishedAt ? Date.parse(run.finishedAt) : now) - started);
+  switch (run.status) {
+    case "queued":
+      if (!run.device) return { tone: "idle", label: "Queued · no desktop is set to run it" };
+      return {
+        tone: "idle",
+        label: run.device.online
+          ? `Queued · waiting for ${run.device.name}`
+          : `Queued · ${run.device.name} is offline`,
+      };
+    case "running":
+      return { tone: "working", label: `Working for ${ran()}` };
+    case "completed":
+      return { tone: "done", label: `Worked for ${ran()}` };
+    case "failed":
+      return { tone: "failed", label: run.startedAt ? `Failed after ${ran()}` : "Failed" };
+    case "cancelled":
+      return { tone: "idle", label: "Stopped" };
+    case "expired":
+      return { tone: "idle", label: "Expired before it ran" };
+  }
+}
+
+export type RunStep = { key: string; text: string; state: "done" | "current" | "error" };
+
+// The desktop runner records this marker when a turn starts. It is not a step.
+const startMarker = "Working";
+
+/** Tool activity and errors as steps. The last activity is current while the run works. */
+export function runSteps(
+  events: readonly Pick<AgentRunEventView, "sequence" | "kind" | "text">[],
+  working: boolean,
+): RunStep[] {
+  const steps = events.flatMap((event): RunStep[] =>
+    event.kind === "text" || event.text === startMarker
+      ? []
+      : [
+          {
+            key: String(event.sequence),
+            text: event.text,
+            state: event.kind === "error" ? "error" : "done",
+          },
+        ],
+  );
+  const last = steps.at(-1);
+  if (working && last?.state === "done") last.state = "current";
+  return steps;
+}
+
+function pendingRequest(run: AgentRunView): AgentRunRequestView | undefined {
   return run.requests.find((request) => request.status === "pending");
 }
 

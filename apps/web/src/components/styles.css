@@ -43,6 +43,7 @@
   --color-background: var(--background);
   --color-surface: var(--surface);
   --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-rail: var(--rail);
   --color-rail-foreground: var(--rail-foreground);
   --shadow-surface: var(--elevation-surface);
@@ -95,6 +96,7 @@
   --sidebar-ring: var(--ring);
   --surface: oklch(0.994 0.002 275);
   --success: oklch(0.43 0.1 165);
+  --warning: oklch(0.6 0.15 62);
   --rail: oklch(0.94 0.012 275);
   --rail-foreground: oklch(0.38 0.025 275);
   --surface-highlight: oklch(1 0 0 / 25%);
@@ -139,6 +141,7 @@
   --sidebar-ring: var(--ring);
   --surface: oklch(0.215 0.014 275);
   --success: oklch(0.76 0.12 165);
+  --warning: oklch(0.82 0.14 80);
   --rail: oklch(0.155 0.017 275);
   --rail-foreground: oklch(0.94 0.014 280);
   --surface-highlight: oklch(1 0 0 / 2%);

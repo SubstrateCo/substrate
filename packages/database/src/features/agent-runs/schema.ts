@@ -119,6 +119,28 @@ export const agentRunTriggers = pgTable(
   ],
 );
 
+// Messages the agent sent in the run's thread while the run was running. Provenance only: the
+// owner's views use it to show the run under its reply; it grants no access.
+export const agentRunReplies = pgTable(
+  "agent_run_replies",
+  {
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => agentRuns.id, { onDelete: "cascade" }),
+    conversationId: uuid("conversation_id").notNull(),
+    messageId: uuid("message_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.runId, table.messageId] }),
+    foreignKey({
+      columns: [table.conversationId, table.messageId],
+      foreignColumns: [messagingMessages.conversationId, messagingMessages.id],
+    }).onDelete("cascade"),
+    uniqueIndex("agent_run_replies_message_unique").on(table.messageId),
+  ],
+);
+
 // Approvals and questions from the harness. The waiting callback lives only in the desktop's
 // harness process, so the server resolves the record first and the desktop delivers it after.
 export const agentRunRequests = pgTable(
