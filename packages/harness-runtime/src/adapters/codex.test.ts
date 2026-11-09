@@ -81,7 +81,7 @@ test("tool items keep native IDs and the turn reports its whole input as consume
   const f = setup();
   const done = f.adapter.turn({ inputIds: ["a", "b"], text: "Turn" }, { mode: "interactive" });
   await Promise.resolve();
-  const item = { id: "item-1", type: "commandExecution" };
+  const item = { id: "item-1", type: "commandExecution", command: "bun test" };
   f.session.handle({
     method: "item/started",
     params: { threadId: "thread-1", turnId: "turn-1", item },
@@ -99,7 +99,7 @@ test("tool items keep native IDs and the turn reports its whole input as consume
       type: "item.started",
       itemId: "item-1",
       itemType: "commandExecution",
-      title: "commandExecution",
+      title: "Run · bun test",
     },
     { type: "item.completed", itemId: "item-1", status: "failed" },
   ]);

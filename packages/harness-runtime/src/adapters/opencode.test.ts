@@ -63,6 +63,23 @@ test("steer prompts with delivery steer, and delivery marks the input consumed",
   expect(await done).toMatchObject({ status: "completed", consumedInputIds: ["a", "b"] });
 });
 
+test("a tool step starts with its input, so its label says what it does", () => {
+  const f = setup();
+  f.session.handle(event("session.tool.input.started", { id: "t1", name: "skill" }));
+  expect(f.events).toEqual([]);
+  f.session.handle(event("session.tool.called", { id: "t1", input: { name: "tasks" } }));
+  f.session.handle(event("session.tool.success", { id: "t1" }));
+  // Failed before its call: the step still shows, by its tool name.
+  f.session.handle(event("session.tool.input.started", { id: "t2", name: "read" }));
+  f.session.handle(event("session.tool.failed", { id: "t2" }));
+  expect(f.events).toEqual([
+    { type: "item.started", itemId: "t1", itemType: "tool", title: "Use skill · tasks" },
+    { type: "item.completed", itemId: "t1", status: "completed" },
+    { type: "item.started", itemId: "t2", itemType: "tool", title: "Read" },
+    { type: "item.completed", itemId: "t2", status: "failed" },
+  ]);
+});
+
 test("an execution that ends before our input is delivered does not end our turn", async () => {
   const f = setup();
   let finished = false;

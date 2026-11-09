@@ -8,6 +8,7 @@ import type {
 import { HarnessError } from "../errors.ts";
 import { InputQueue } from "./input-queue.ts";
 import { PendingRequests } from "./requests.ts";
+import { toolInput, toolLabel } from "./tool-label.ts";
 import {
   unattendedDenial,
   type AdapterContext,
@@ -263,7 +264,12 @@ export class ClaudeSession {
           this.context.emit({ type: "text", text: block.text }, scope);
         else if (block.type === "tool_use")
           this.context.emit(
-            { type: "item.started", itemId: block.id, itemType: "tool", title: block.name },
+            {
+              type: "item.started",
+              itemId: block.id,
+              itemType: "tool",
+              title: toolLabel(block.name, toolInput.parse(block.input)),
+            },
             scope,
           );
       }

@@ -3,6 +3,7 @@ import type { AdapterCapabilities, TurnResult } from "@startup-os/contracts/harn
 import { HarnessError } from "../errors.ts";
 import { launch, stopProcess } from "../process.ts";
 import { JsonLineRpc, type RpcMessage } from "./json-rpc.ts";
+import { toolInput, toolLabel } from "./tool-label.ts";
 import {
   unattendedDenial,
   type AdapterContext,
@@ -68,6 +69,27 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item: unknown) => typeof item === "string");
 }
 
+interface CodexItem {
+  id?: unknown;
+  type?: unknown;
+  text?: unknown;
+  status?: unknown;
+  tool?: unknown;
+  arguments?: unknown;
+  command?: unknown;
+  query?: unknown;
+}
+
+/** A readable step label for a Codex tool item. */
+function codexItemLabel(item: CodexItem, type: string) {
+  if (typeof item.tool === "string") return toolLabel(item.tool, toolInput.parse(item.arguments));
+  if (type === "commandExecution")
+    return toolLabel("shell", toolInput.parse({ command: item.command }));
+  if (type === "webSearch") return toolLabel("websearch", toolInput.parse({ query: item.query }));
+  if (type === "fileChange") return "Edit files";
+  return toolLabel(type);
+}
+
 interface LiveTurn {
   nativeTurnId?: string;
   inputIds: string[];
@@ -94,7 +116,7 @@ export class CodexSession {
       threadId?: string;
       turnId?: string;
       turn?: { id: string; status: string };
-      item?: { id?: unknown; type?: unknown; text?: unknown; status?: unknown; tool?: unknown };
+      item?: CodexItem;
       [key: string]: unknown;
     };
     if (params.threadId && params.threadId !== this.nativeSessionId) return;
@@ -134,7 +156,7 @@ export class CodexSession {
             type: "item.started",
             itemId: item.id,
             itemType: item.type,
-            title: typeof item.tool === "string" ? item.tool : item.type,
+            title: codexItemLabel(item, item.type),
           },
           scope,
         );

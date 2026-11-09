@@ -8,6 +8,7 @@ import type {
 import { HarnessError } from "../errors.ts";
 import { safePath } from "../paths.ts";
 import { startOpenCode } from "./opencode-client.ts";
+import { toolInput, toolLabel, type ToolInput } from "./tool-label.ts";
 import {
   unattendedDenial,
   type AdapterContext,
@@ -97,6 +98,8 @@ export class OpenCodeSession {
   private readonly requests = new Map<string, "permission" | "input">();
   /** Native message ID → our input IDs. */
   private readonly groups = new Map<string, string[]>();
+  /** Native tool call ID → tool name, until the call's step starts. */
+  private readonly tools = new Map<string, string>();
   private turnState: LiveTurn | undefined;
   private readonly context: AdapterContext;
   private readonly client: OpenCodeApi;
@@ -111,6 +114,20 @@ export class OpenCodeSession {
   /** Output before our input was delivered belongs to earlier native work. */
   private scope(): EventScope {
     return this.turnState?.delivered ? "turn" : "session";
+  }
+
+  /**
+   * A tool's step starts once its input is known, so its label can say what it does. Input
+   * streams after session.tool.input.started and is complete at session.tool.called.
+   */
+  private startTool(id: string, input?: ToolInput) {
+    const name = this.tools.get(id);
+    if (name === undefined) return;
+    this.tools.delete(id);
+    this.context.emit(
+      { type: "item.started", itemId: id, itemType: "tool", title: toolLabel(name, input) },
+      this.scope(),
+    );
   }
 
   handle(event: OpenCodeEvent): void {
@@ -169,11 +186,12 @@ export class OpenCodeSession {
       if (event.data.text.trim())
         this.context.emit({ type: "text", text: event.data.text }, this.scope());
     } else if (type === "session.tool.input.started") {
-      this.context.emit(
-        { type: "item.started", itemId: event.data.id, itemType: "tool", title: event.data.name },
-        this.scope(),
-      );
+      this.tools.set(event.data.id, event.data.name);
+    } else if (type === "session.tool.called") {
+      this.startTool(event.data.id, toolInput.parse(event.data.input));
     } else if (type === "session.tool.success" || type === "session.tool.failed") {
+      // A tool that failed before its call, such as on invalid input, still shows as a step.
+      this.startTool(event.data.id);
       this.context.emit(
         {
           type: "item.completed",
