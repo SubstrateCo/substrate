@@ -6,12 +6,10 @@ import { FormMessage } from "../../auth/form-message";
 import { PendingButton } from "../../feedback/pending-button";
 import { Button } from "../../ui/button";
 import { DialogFooter } from "../../ui/dialog";
-import { Field, FieldError, FieldLabel } from "../../ui/field";
-import { Input } from "../../ui/input";
-import { Textarea } from "../../ui/textarea";
 import type { ProjectDetail, Task, TaskDraft } from "../types";
 import { taskFormSchema } from "./task-form-validation";
 import { TaskScheduleFields } from "./task-schedule-fields";
+import { FormTextField } from "@/components/forms/form-text-field";
 
 function useTaskForm({
   task,
@@ -107,45 +105,26 @@ export function TaskForm({
         <h3 className="font-semibold">{titleLabel}</h3>
         <form.Field name="title">
           {(field) => (
-            <Field data-invalid={!field.state.meta.isValid}>
-              <FieldLabel htmlFor={`${id}-title`}>Task title</FieldLabel>
-              <Input
-                variant="surface"
-                id={`${id}-title`}
-                value={field.state.value}
-                onChange={(event) => {
-                  field.handleChange(event.target.value);
-                  if (!field.state.meta.isValid) void field.validate("blur");
-                }}
-                onBlur={field.handleBlur}
-                aria-required
-                aria-invalid={!field.state.meta.isValid}
-                aria-describedby={!field.state.meta.isValid ? `${id}-title-error` : undefined}
-                maxLength={300}
-              />
-              <FieldError id={`${id}-title-error`} errors={field.state.meta.errors} />
-            </Field>
+            <FormTextField
+              field={field}
+              id={`${id}-title`}
+              label="Task title"
+              variant="surface"
+              aria-required
+              maxLength={300}
+            />
           )}
         </form.Field>
         <form.Field name="description">
           {(field) => (
-            <Field data-invalid={!field.state.meta.isValid}>
-              <FieldLabel htmlFor={`${id}-description`}>Task description</FieldLabel>
-              <Textarea
-                id={`${id}-description`}
-                value={field.state.value}
-                variant="surface"
-                onChange={(event) => {
-                  field.handleChange(event.target.value);
-                  if (!field.state.meta.isValid) void field.validate("blur");
-                }}
-                onBlur={field.handleBlur}
-                aria-invalid={!field.state.meta.isValid}
-                aria-describedby={!field.state.meta.isValid ? `${id}-description-error` : undefined}
-                maxLength={20000}
-              />
-              <FieldError id={`${id}-description-error`} errors={field.state.meta.errors} />
-            </Field>
+            <FormTextField
+              field={field}
+              id={`${id}-description`}
+              label="Task description"
+              multiline
+              variant="surface"
+              maxLength={20000}
+            />
           )}
         </form.Field>
         <TaskScheduleFields form={form} assignees={assignees} />

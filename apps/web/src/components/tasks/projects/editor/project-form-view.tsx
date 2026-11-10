@@ -5,11 +5,9 @@ import { useId } from "react";
 import { FormMessage } from "../../../auth/form-message";
 import { PendingButton } from "../../../feedback/pending-button";
 import { Button } from "../../../ui/button";
-import { Field, FieldError, FieldLabel } from "../../../ui/field";
-import { Input } from "../../../ui/input";
-import { Textarea } from "../../../ui/textarea";
 import { projectFormSchema } from "../../editor/task-form-validation";
 import type { Project } from "../../types";
+import { FormTextField } from "@/components/forms/form-text-field";
 
 export function ProjectForm({
   project,
@@ -59,54 +57,31 @@ export function ProjectForm({
         </p>
         <form.Field name="name">
           {(field) => (
-            <Field
-              data-invalid={!field.state.meta.isValid}
-              className={project ? "sm:grid sm:grid-cols-3 sm:items-start" : undefined}
-            >
-              <FieldLabel htmlFor={`${id}-name`}>Project name</FieldLabel>
-              <Input
-                variant="surface"
-                id={`${id}-name`}
-                autoFocus={!project}
-                className={project ? "sm:col-span-2" : undefined}
-                value={field.state.value}
-                onChange={(event) => {
-                  field.handleChange(event.target.value);
-                  if (!field.state.meta.isValid) void field.validate("blur");
-                }}
-                onBlur={field.handleBlur}
-                aria-required
-                aria-invalid={!field.state.meta.isValid}
-                aria-describedby={!field.state.meta.isValid ? `${id}-name-error` : undefined}
-                maxLength={200}
-              />
-              <FieldError id={`${id}-name-error`} errors={field.state.meta.errors} />
-            </Field>
+            <FormTextField
+              field={field}
+              id={`${id}-name`}
+              label="Project name"
+              fieldClassName={project ? "sm:grid sm:grid-cols-3 sm:items-start" : undefined}
+              variant="surface"
+              autoFocus={!project}
+              className={project ? "sm:col-span-2" : undefined}
+              aria-required
+              maxLength={200}
+            />
           )}
         </form.Field>
         <form.Field name="description">
           {(field) => (
-            <Field
-              data-invalid={!field.state.meta.isValid}
-              className={project ? "sm:grid sm:grid-cols-3 sm:items-start" : undefined}
-            >
-              <FieldLabel htmlFor={`${id}-description`}>Project description</FieldLabel>
-              <Textarea
-                variant="surface"
-                id={`${id}-description`}
-                className={project ? "sm:col-span-2" : undefined}
-                value={field.state.value}
-                onChange={(event) => {
-                  field.handleChange(event.target.value);
-                  if (!field.state.meta.isValid) void field.validate("blur");
-                }}
-                onBlur={field.handleBlur}
-                aria-invalid={!field.state.meta.isValid}
-                aria-describedby={!field.state.meta.isValid ? `${id}-description-error` : undefined}
-                maxLength={20000}
-              />
-              <FieldError id={`${id}-description-error`} errors={field.state.meta.errors} />
-            </Field>
+            <FormTextField
+              field={field}
+              id={`${id}-description`}
+              label="Project description"
+              multiline
+              fieldClassName={project ? "sm:grid sm:grid-cols-3 sm:items-start" : undefined}
+              variant="surface"
+              className={project ? "sm:col-span-2" : undefined}
+              maxLength={20000}
+            />
           )}
         </form.Field>
         <FormMessage error={error} />

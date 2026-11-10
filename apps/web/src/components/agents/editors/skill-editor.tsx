@@ -7,9 +7,7 @@ import { revalidateLogic, useForm } from "@tanstack/react-form";
 import { useState } from "react";
 
 import { EditorDialog } from "./editor-dialog";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { FormTextField } from "@/components/forms/form-text-field";
 import { z } from "zod";
 
 const skillFields = saveSkillInput.omit({ id: true }).extend({
@@ -65,80 +63,39 @@ export function SkillEditor({
           error={error}
         >
           <form.Field name="name">
-            {(field) => {
-              const invalid = !field.state.meta.isValid;
-              return (
-                <Field data-invalid={invalid}>
-                  <FieldLabel htmlFor="skill-name">Skill name</FieldLabel>
-                  <Input
-                    id="skill-name"
-                    required
-                    maxLength={64}
-                    pattern="[a-z0-9]+(-[a-z0-9]+)*"
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(event) => {
-                      field.handleChange(event.target.value);
-                      if (!field.state.meta.isValid) void field.validate("blur");
-                    }}
-                    aria-invalid={invalid}
-                    aria-describedby={invalid ? "skill-name-error" : undefined}
-                  />
-                  {invalid && <FieldError id="skill-name-error" errors={field.state.meta.errors} />}
-                </Field>
-              );
-            }}
+            {(field) => (
+              <FormTextField
+                field={field}
+                id="skill-name"
+                label="Skill name"
+                required
+                maxLength={64}
+                pattern="[a-z0-9]+(-[a-z0-9]+)*"
+              />
+            )}
           </form.Field>
           <form.Field name="description">
-            {(field) => {
-              const invalid = !field.state.meta.isValid;
-              return (
-                <Field data-invalid={invalid}>
-                  <FieldLabel htmlFor="skill-description">Description</FieldLabel>
-                  <Textarea
-                    id="skill-description"
-                    maxLength={2000}
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(event) => {
-                      field.handleChange(event.target.value);
-                      if (!field.state.meta.isValid) void field.validate("blur");
-                    }}
-                    aria-invalid={invalid}
-                    aria-describedby={invalid ? "skill-description-error" : undefined}
-                  />
-                  {invalid && (
-                    <FieldError id="skill-description-error" errors={field.state.meta.errors} />
-                  )}
-                </Field>
-              );
-            }}
+            {(field) => (
+              <FormTextField
+                field={field}
+                id="skill-description"
+                label="Description"
+                multiline
+                maxLength={2000}
+              />
+            )}
           </form.Field>
           <form.Field name="content">
-            {(field) => {
-              const invalid = !field.state.meta.isValid;
-              return (
-                <Field data-invalid={invalid}>
-                  <FieldLabel htmlFor="skill-content">Skill content</FieldLabel>
-                  <Textarea
-                    id="skill-content"
-                    rows={10}
-                    maxLength={100000}
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(event) => {
-                      field.handleChange(event.target.value);
-                      if (!field.state.meta.isValid) void field.validate("blur");
-                    }}
-                    aria-invalid={invalid}
-                    aria-describedby={invalid ? "skill-content-error" : undefined}
-                  />
-                  {invalid && (
-                    <FieldError id="skill-content-error" errors={field.state.meta.errors} />
-                  )}
-                </Field>
-              );
-            }}
+            {(field) => (
+              <FormTextField
+                field={field}
+                id="skill-content"
+                label="Skill content"
+                multiline
+                rows={10}
+                maxLength={100000}
+              />
+            )}
           </form.Field>
         </EditorDialog>
       )}

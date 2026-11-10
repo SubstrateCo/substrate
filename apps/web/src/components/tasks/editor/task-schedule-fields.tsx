@@ -5,8 +5,7 @@ import { useId } from "react";
 import { TaskSelect } from "../task-select";
 import type { ProjectDetail, Task } from "../types";
 import type { TaskEditorForm } from "./task-form-view";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import { FormTextField } from "@/components/forms/form-text-field";
 
 const priorities: Task["priority"][] = ["none", "low", "medium", "high", "urgent"];
 
@@ -85,22 +84,13 @@ export function TaskScheduleFields({
       </form.Field>
       <form.Field name="dueDate">
         {(field) => (
-          <Field className="min-w-0" data-invalid={!field.state.meta.isValid}>
-            <FieldLabel htmlFor={`${id}-due`}>Due date</FieldLabel>
-            <Input
-              id={`${id}-due`}
-              type="date"
-              value={field.state.value}
-              onChange={(event) => {
-                field.handleChange(event.target.value);
-                if (!field.state.meta.isValid) void field.validate("blur");
-              }}
-              onBlur={field.handleBlur}
-              aria-invalid={!field.state.meta.isValid}
-              aria-describedby={!field.state.meta.isValid ? `${id}-due-error` : undefined}
-            />
-            <FieldError id={`${id}-due-error`} errors={field.state.meta.errors} />
-          </Field>
+          <FormTextField
+            field={field}
+            id={`${id}-due`}
+            label="Due date"
+            fieldClassName="min-w-0"
+            type="date"
+          />
         )}
       </form.Field>
     </div>

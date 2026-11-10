@@ -17,9 +17,8 @@ import { HarnessAvailability } from "../model-picker/harness-availability";
 import { ModelPicker } from "../model-picker/model-picker";
 import { AgentInstructions } from "./agent-instructions";
 import { PendingButton } from "@/components/feedback/pending-button";
+import { FormTextField } from "@/components/forms/form-text-field";
 import { Button } from "@/components/ui/button";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { Blocks, ScrollText, SlidersHorizontal, Sparkles, Zap } from "lucide-react";
 import { z } from "zod";
 
@@ -123,32 +122,18 @@ export function AgentForm({
         const busy = pending || isSubmitting;
         const nameField = (
           <form.Field name="name">
-            {(field) => {
-              const invalid = !field.state.meta.isValid;
-              return (
-                <Field data-invalid={invalid} className="min-w-0">
-                  <FieldLabel htmlFor={`${formId}-name`}>Agent name</FieldLabel>
-                  <Input
-                    form={formId}
-                    id={`${formId}-name`}
-                    required
-                    maxLength={200}
-                    placeholder="For example: Release helper"
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(event) => {
-                      field.handleChange(event.target.value);
-                      if (!field.state.meta.isValid) void field.validate("blur");
-                    }}
-                    aria-invalid={invalid}
-                    aria-describedby={invalid ? `${formId}-name-error` : undefined}
-                  />
-                  {invalid && (
-                    <FieldError id={`${formId}-name-error`} errors={field.state.meta.errors} />
-                  )}
-                </Field>
-              );
-            }}
+            {(field) => (
+              <FormTextField
+                field={field}
+                id={`${formId}-name`}
+                label="Agent name"
+                fieldClassName="min-w-0"
+                form={formId}
+                required
+                maxLength={200}
+                placeholder="For example: Release helper"
+              />
+            )}
           </form.Field>
         );
         const modelField = (

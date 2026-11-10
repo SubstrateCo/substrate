@@ -1,7 +1,5 @@
 import { PendingButton } from "../../feedback/pending-button";
-import { useNativeValidation } from "../../forms/use-native-validation";
-import { Field, FieldError, FieldLabel } from "../../ui/field";
-import { Input } from "../../ui/input";
+import { EmailField, NativeField, NativeForm } from "../../forms/native-form";
 import { AuthFrame } from "../auth-frame";
 import { FormMessage } from "../form-message";
 
@@ -20,44 +18,18 @@ export function LoginForm({
   forgotPasswordHref: string;
   signupHref: string;
 }) {
-  const validation = useNativeValidation();
   return (
     <AuthFrame title="Welcome back" description="Sign in to your workspace.">
-      <form
-        className="space-y-4"
-        onInvalidCapture={validation.onInvalid}
-        onInputCapture={validation.onInput}
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (pending) return;
-          onSubmit(new FormData(event.currentTarget));
-        }}
-      >
-        <Field data-invalid={Boolean(validation.errors.email)}>
-          <FieldLabel htmlFor="email">Email</FieldLabel>
-          <Input
-            {...validation.inputProps("email")}
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            defaultValue={email}
-            required
-          />
-          <FieldError id="email-error">{validation.errors.email}</FieldError>
-        </Field>
-        <Field data-invalid={Boolean(validation.errors.password)}>
-          <FieldLabel htmlFor="password">Password</FieldLabel>
-          <Input
-            {...validation.inputProps("password")}
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-          />
-          <FieldError id="password-error">{validation.errors.password}</FieldError>
-        </Field>
+      <NativeForm pending={pending} onSubmit={onSubmit}>
+        <EmailField defaultValue={email} />
+        <NativeField
+          id="password"
+          name="password"
+          label="Password"
+          type="password"
+          autoComplete="current-password"
+          required
+        />
         <PendingButton className="w-full" pending={pending} pendingLabel="Signing in…">
           Sign in
         </PendingButton>
@@ -65,7 +37,7 @@ export function LoginForm({
           error={error}
           errorDescription="We couldn’t sign you in. Check your details and try again."
         />
-      </form>
+      </NativeForm>
       <div className="flex justify-between gap-4 text-sm">
         <a className="underline" href={forgotPasswordHref}>
           Forgot password?

@@ -6,10 +6,10 @@ import { FormMessage } from "../../auth/form-message";
 import { PendingButton } from "../../feedback/pending-button";
 import { Button } from "../../ui/button";
 import { Checkbox } from "../../ui/checkbox";
-import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from "../../ui/field";
-import { Input } from "../../ui/input";
+import { Field, FieldContent, FieldError, FieldLabel } from "../../ui/field";
 import { createConversationDraftSchema } from "./create-conversation-validation";
 import { ShareHistoryField } from "./share-history-field";
+import { FormTextField } from "@/components/forms/form-text-field";
 import type { Conversation } from "@/lib/messaging/conversations";
 
 export type ConversationDraft = {
@@ -83,74 +83,31 @@ export function CreateConversationForm({
             >
               {kind !== "dm" && (
                 <form.Field name="name">
-                  {(field) => {
-                    const invalid = !field.state.meta.isValid;
-                    return (
-                      <Field data-invalid={invalid}>
-                        <FieldLabel htmlFor="conversation-name">
-                          {kind === "channel" ? "Channel name" : "Group name (optional)"}
-                        </FieldLabel>
-                        <Input
-                          id="conversation-name"
-                          value={field.state.value}
-                          onChange={(event) => {
-                            field.handleChange(event.target.value);
-                            if (!field.state.meta.isValid) void field.validate("blur");
-                          }}
-                          onBlur={field.handleBlur}
-                          aria-invalid={invalid}
-                          aria-describedby={invalid ? "conversation-name-error" : undefined}
-                          placeholder={
-                            kind === "channel" ? "e.g. product-updates" : "e.g. Launch team"
-                          }
-                          maxLength={80}
-                          disabled={busy}
-                          required={kind === "channel"}
-                        />
-                        {invalid && (
-                          <FieldError
-                            id="conversation-name-error"
-                            errors={field.state.meta.errors}
-                          />
-                        )}
-                      </Field>
-                    );
-                  }}
+                  {(field) => (
+                    <FormTextField
+                      field={field}
+                      id="conversation-name"
+                      label={kind === "channel" ? "Channel name" : "Group name (optional)"}
+                      placeholder={kind === "channel" ? "e.g. product-updates" : "e.g. Launch team"}
+                      maxLength={80}
+                      disabled={busy}
+                      required={kind === "channel"}
+                    />
+                  )}
                 </form.Field>
               )}
               <form.Field name="emails">
-                {(field) => {
-                  const invalid = !field.state.meta.isValid;
-                  return (
-                    <Field data-invalid={invalid}>
-                      <FieldLabel htmlFor="recipient-emails">
-                        {kind === "channel" ? "Add people (optional)" : "To"}
-                      </FieldLabel>
-                      <Input
-                        id="recipient-emails"
-                        value={field.state.value}
-                        onChange={(event) => {
-                          field.handleChange(event.target.value);
-                          if (!field.state.meta.isValid) void field.validate("blur");
-                        }}
-                        onBlur={field.handleBlur}
-                        placeholder="alex@company.com, sam@partner.com"
-                        disabled={busy}
-                        required={kind !== "channel"}
-                        aria-invalid={invalid}
-                        aria-describedby={`recipient-help${invalid ? " recipient-emails-error" : ""}`}
-                      />
-                      {invalid && (
-                        <FieldError id="recipient-emails-error" errors={field.state.meta.errors} />
-                      )}
-                      <FieldDescription id="recipient-help">
-                        Enter exact email addresses, separated by commas. People outside this
-                        workspace receive an invitation and must consent. They can create an account
-                        first. Partner channels also require organization approval.
-                      </FieldDescription>
-                    </Field>
-                  );
-                }}
+                {(field) => (
+                  <FormTextField
+                    field={field}
+                    id="recipient-emails"
+                    label={kind === "channel" ? "Add people (optional)" : "To"}
+                    description="Enter exact email addresses, separated by commas. People outside this workspace receive an invitation and must consent. They can create an account first. Partner channels also require organization approval."
+                    placeholder="alex@company.com, sam@partner.com"
+                    disabled={busy}
+                    required={kind !== "channel"}
+                  />
+                )}
               </form.Field>
               {children}
               <ShareHistoryField
