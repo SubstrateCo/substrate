@@ -36,7 +36,13 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 }
 
 /** A named record, as a link when the viewer can open it. */
-function RecordName({ record, kind }: { record: ProposalRecord; kind: keyof typeof hiddenText }) {
+export function RecordName({
+  record,
+  kind,
+}: {
+  record: ProposalRecord;
+  kind: keyof typeof hiddenText;
+}) {
   if (record.access === "loading") return <span className="text-muted-foreground">Loading…</span>;
   if (record.access === "hidden")
     return <span className="text-muted-foreground">{hiddenText[kind]}</span>;

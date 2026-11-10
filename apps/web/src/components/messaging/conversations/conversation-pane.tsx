@@ -13,9 +13,9 @@ import { LeftChannelNotice } from "./left-channel-notice";
 import { AgentWorkNotice } from "@/components/agent-work/agent-work-slot";
 import { ConversationAgentWork } from "@/components/agent-work/conversation-agent-work";
 import { ConversationTurnTranscript } from "@/components/agent-work/transcript/conversation-turn-transcript";
+import { ErrorState } from "@/components/feedback/error-state";
 import { ConversationPane as ConversationPaneView } from "@/components/messaging/conversations/conversation-pane-view";
 import { MessageHistory } from "@/components/messaging/messages/message-history";
-import { MessageUnavailable } from "@/components/messaging/messages/message-unavailable";
 import { conversationName, type Conversation } from "@/lib/messaging/conversations";
 import { messageTargetOptions } from "@/queries/context/links";
 import { useConversationManagement } from "@/queries/messaging/management";
@@ -49,7 +49,10 @@ export function ConversationPane({
   });
   const timeline = messages.data ?? [];
   let messageContent;
-  if (target.error) messageContent = <MessageUnavailable onRetry={() => void target.refetch()} />;
+  if (target.error)
+    messageContent = (
+      <ErrorState compact title="Message unavailable" onRetry={() => void target.refetch()} />
+    );
   else if (timeline.length > 0)
     messageContent = (
       <MessageHistory {...history} onOlder={() => loadOlder(messages.data?.[0]?.id)}>

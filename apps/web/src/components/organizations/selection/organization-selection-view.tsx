@@ -4,9 +4,10 @@ import { ContentNotice } from "../../feedback/content-notice";
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
 import { isAccessFailure } from "../../feedback/request-failure";
+import { Button } from "../../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card";
 import { Separator } from "../../ui/separator";
-import { OrganizationSelectionItem } from "./organization-selection-item";
+import { Spinner } from "../../ui/spinner";
 
 export function OrganizationSelection({
   organizations,
@@ -42,7 +43,12 @@ export function OrganizationSelection({
     <main className="fixed inset-0 mx-auto flex max-w-2xl flex-col gap-6 px-4 pt-20 pb-6 sm:px-6 sm:pt-6">
       <header className="flex shrink-0 flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold tracking-tight">Your workspaces</h1>
-        {signOut}
+        <div className="flex flex-wrap items-center gap-4">
+          <a href="/settings/user/invitations" className="text-sm underline">
+            Your invitations
+          </a>
+          {signOut}
+        </div>
       </header>
       <Card className="min-h-0 overflow-y-auto">
         <CardHeader>
@@ -76,13 +82,28 @@ export function OrganizationSelection({
                 {!isAccessFailure(loadError) &&
                   (!loadError || organizations !== undefined) &&
                   organizations?.map((organization, index) => (
-                    <OrganizationSelectionItem
+                    <Button
                       key={organization.id}
-                      buttonRef={index === 0 ? firstChoice : undefined}
-                      name={organization.name}
-                      pending={pending}
-                      onSelect={() => onSelect(organization.id)}
-                    />
+                      ref={index === 0 ? firstChoice : undefined}
+                      variant="outline"
+                      size="selection"
+                      className="max-w-full min-w-0 justify-start text-left whitespace-normal"
+                      disabled={pending}
+                      aria-busy={pending}
+                      onClick={() => onSelect(organization.id)}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="mr-2 flex size-8 shrink-0 items-center justify-center rounded-md bg-accent text-xs font-semibold text-accent-foreground"
+                      >
+                        {pending ? (
+                          <Spinner aria-hidden="true" role="presentation" />
+                        ) : (
+                          organization.name.slice(0, 2).toUpperCase()
+                        )}
+                      </span>
+                      <span className="min-w-0 wrap-anywhere">{organization.name}</span>
+                    </Button>
                   ))}
               </div>
             </div>

@@ -7,9 +7,9 @@ import { ConversationPane } from "../conversations/conversation-pane";
 import { CreateConversationForm } from "../conversations/create-conversation-form";
 import { createConversation } from "@/api/messaging/requests";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { isAccessFailure } from "@/components/feedback/request-failure";
 import type { DirectMessageAgent } from "@/components/messaging/conversations/conversation-create-menu";
-import { ConversationUnavailable } from "@/components/messaging/conversations/conversation-unavailable";
 import { MessagingWorkspace as MessagingWorkspaceView } from "@/components/messaging/workspace/messaging-workspace-view";
 import { agentDirectMessage } from "@/lib/messaging/conversations";
 import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
@@ -117,7 +117,10 @@ export function MessagingWorkspace({ organizationId }: { organizationId: string 
         />
       )}
       {search.conversationId && !selected && !conversations.isPending && (
-        <ConversationUnavailable />
+        <ContentNotice
+          title="Conversation unavailable or access denied."
+          description="Check that you are in the right workspace and still have access."
+        />
       )}
     </MessagingWorkspaceView>
   );

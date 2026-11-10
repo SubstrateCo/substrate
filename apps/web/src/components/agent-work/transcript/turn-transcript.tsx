@@ -3,9 +3,9 @@ import { liveTurnStatuses } from "@startup-os/contracts/agent-work";
 
 import { useQuery } from "@tanstack/react-query";
 
+import { RecordName } from "../requests/proposal-preview";
 import { RequestCard } from "../requests/request-card";
 import { RequestResult } from "../requests/request-card-view";
-import { RecordLink } from "./record-link";
 import { TurnTimeline } from "./turn-timeline";
 import { TurnTranscriptView } from "./turn-transcript-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
@@ -74,20 +74,33 @@ export function TurnTranscript({
       requests.find((entry) => entry.turnId === turn.id && isOpenRequest(entry)),
     );
   const sources = turn?.sourceMessages.map((source) => (
-    <RecordLink
+    <RecordName
       key={source.messageId}
-      label="The message"
-      href={
+      kind="conversation"
+      record={
         open(source.conversationId)
-          ? messageHref(organizationId, source.conversationId, source.messageId)
-          : undefined
+          ? {
+              access: "visible",
+              label: "The message",
+              href: messageHref(organizationId, source.conversationId, source.messageId),
+            }
+          : { access: "hidden" }
       }
     />
   ));
   const outputs = turn?.outputs.flatMap((entry) => {
     if (entry.kind !== "message") return [];
-    const href = open(entry.conversationId) ? outputLink(organizationId, entry) : undefined;
-    return [<RecordLink key={entry.id} label="The reply" href={href} />];
+    return [
+      <RecordName
+        key={entry.id}
+        kind="conversation"
+        record={
+          open(entry.conversationId)
+            ? { access: "visible", label: "The reply", href: outputLink(organizationId, entry) }
+            : { access: "hidden" }
+        }
+      />,
+    ];
   });
   return (
     <TurnTranscriptView

@@ -9,7 +9,6 @@ import { SignOutButton } from "@/components/auth/sign-out/sign-out-button";
 import { WorkspaceSearchProvider } from "@/components/context/search/workspace-search-context";
 import { WorkspaceTools } from "@/components/context/search/workspace-tools";
 import { OrganizationSwitcher } from "@/components/organizations/switcher/organization-switcher";
-import { WorkspaceHomeLink } from "@/components/workspace/workspace-home-link";
 import { WorkspaceShell, type WorkspaceView } from "@/components/workspace/workspace-shell";
 import { needsYouCount } from "@/lib/agent-work/needs-you";
 import { needsYouOptions } from "@/queries/agent-work/server";
@@ -94,7 +93,9 @@ export function WorkspaceFrame({
               logo={organization.data?.logo}
             />
           ) : (
-            <WorkspaceHomeLink href="/organizations" />
+            <a href="/organizations" aria-label="Your workspaces">
+              OS
+            </a>
           )
         }
         signOut={<SignOutButton />}

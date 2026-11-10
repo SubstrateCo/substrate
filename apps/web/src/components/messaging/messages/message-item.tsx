@@ -17,11 +17,13 @@ import {
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { LinkedMessage } from "@/components/messaging/messages/linked-message";
 import { MessageItem as MessageItemView } from "@/components/messaging/messages/message-item-view";
-import { MessageWorkActions } from "@/components/messaging/messages/message-work-actions";
 import { PersonCardProvider } from "@/components/messaging/people/person-card-slot";
 import { PersonHoverCard } from "@/components/messaging/people/person-hover-card";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { messageHref } from "@/lib/navigation/record-links";
 import { queryKeys } from "@/queries/keys";
+import { Link2 } from "lucide-react";
 import { toast } from "sonner";
 
 export function MessageItem({
@@ -88,7 +90,20 @@ export function MessageItem({
                 label="Copy message link"
                 href={messageHref(organizationId, message.conversationId, message.id)}
               />
-              <MessageWorkActions onLink={() => setLinking(true)} />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    size="icon-xs"
+                    variant="ghost"
+                    aria-label="Link existing work"
+                    onClick={() => setLinking(true)}
+                  >
+                    <Link2 aria-hidden="true" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Link existing work</TooltipContent>
+              </Tooltip>
             </>
           }
           avatarBadge={<AgentWorkBadge messageId={message.id} />}
