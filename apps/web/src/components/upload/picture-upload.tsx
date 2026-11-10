@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { openPicture } from "./crop-image";
 import { FileUpload } from "./file-upload";
 import { pictureAccept, pictureMaxSize } from "./file-validation";
@@ -82,28 +82,26 @@ export function PictureUpload({
           description="JPEG, PNG, or WebP. Up to 5 MB. Drop an image here."
           actions={
             value && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="icon"
-                      disabled={disabled || !!source || removing}
-                      aria-busy={removing}
-                      aria-label={removing ? "Removing picture…" : "Remove picture"}
-                      onClick={() => void remove()}
-                    >
-                      {removing ? (
-                        <Spinner aria-hidden="true" role="presentation" />
-                      ) : (
-                        <Trash2 aria-hidden="true" />
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Remove picture</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    disabled={disabled || !!source || removing}
+                    aria-busy={removing}
+                    aria-label={removing ? "Removing picture…" : "Remove picture"}
+                    onClick={() => void remove()}
+                  >
+                    {removing ? (
+                      <Spinner aria-hidden="true" role="presentation" />
+                    ) : (
+                      <Trash2 aria-hidden="true" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Remove picture</TooltipContent>
+              </Tooltip>
             )
           }
           onFiles={async ([file]) => {

@@ -4,7 +4,7 @@ import { DateTimeDisplay } from "../../table/date-time-cell";
 import { AppTable, createAppColumnHelper, dateTimeColumn, useAppTable } from "../../table/index";
 import { Button } from "../../ui/button";
 import { ButtonGroup } from "../../ui/button-group";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import type { InvitationListItem } from "./invitation-manager-view";
 import { MailX, Send } from "lucide-react";
 
@@ -117,42 +117,40 @@ export function InvitationTable({
     autoResetPageIndex: false,
   });
   return (
-    <TooltipProvider>
-      <AppTable
-        table={table}
-        name="Invitations"
-        loading={loading}
-        loadingMessage="Loading invitations…"
-        error={error}
-        errorTitle="Couldn’t load invitations"
-        errorDescription="Your team’s invitations are unavailable. Please try again."
-        onRetry={onRetry}
-        emptyMessage="No invitations yet."
-        renderMobileRow={(invitation) => (
-          <>
-            <p className="font-medium wrap-anywhere">{invitation.email}</p>
-            <dl className="grid grid-cols-3 gap-x-3 gap-y-2 text-sm">
-              <dt className="text-muted-foreground">Role</dt>
-              <dd className="col-span-2">{invitation.role}</dd>
-              <dt className="text-muted-foreground">Status</dt>
-              <dd className="col-span-2">
-                {invitation.status}
-                {invitation.expired ? " · expired" : ""}
-              </dd>
-              <dt className="text-muted-foreground">Expires</dt>
-              <dd className="col-span-2">
-                <DateTimeDisplay value={invitation.expiresAt} />
-              </dd>
-            </dl>
-            <InvitationActions
-              invitation={invitation}
-              busy={busy}
-              onInvite={onInvite}
-              onCancel={onCancel}
-            />
-          </>
-        )}
-      />
-    </TooltipProvider>
+    <AppTable
+      table={table}
+      name="Invitations"
+      loading={loading}
+      loadingMessage="Loading invitations…"
+      error={error}
+      errorTitle="Couldn’t load invitations"
+      errorDescription="Your team’s invitations are unavailable. Please try again."
+      onRetry={onRetry}
+      emptyMessage="No invitations yet."
+      renderMobileRow={(invitation) => (
+        <>
+          <p className="font-medium wrap-anywhere">{invitation.email}</p>
+          <dl className="grid grid-cols-3 gap-x-3 gap-y-2 text-sm">
+            <dt className="text-muted-foreground">Role</dt>
+            <dd className="col-span-2">{invitation.role}</dd>
+            <dt className="text-muted-foreground">Status</dt>
+            <dd className="col-span-2">
+              {invitation.status}
+              {invitation.expired ? " · expired" : ""}
+            </dd>
+            <dt className="text-muted-foreground">Expires</dt>
+            <dd className="col-span-2">
+              <DateTimeDisplay value={invitation.expiresAt} />
+            </dd>
+          </dl>
+          <InvitationActions
+            invitation={invitation}
+            busy={busy}
+            onInvite={onInvite}
+            onCancel={onCancel}
+          />
+        </>
+      )}
+    />
   );
 }

@@ -2,7 +2,7 @@ import type { MouseEvent } from "react";
 
 import { Button } from "../../ui/button";
 import { Spinner } from "../../ui/spinner";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { AtSign, Check, ListTodo, MessageSquare } from "lucide-react";
 
 export type Notification = {
@@ -44,39 +44,37 @@ export function NotificationItem({
       >
         <Icon className="size-4" />
       </span>
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <a
-              className="min-w-0 flex-1 rounded-sm hover:underline focus-visible:outline-ring"
-              href={item.href}
-              onClick={onOpen}
-            >
-              <span className={`block truncate ${item.read ? "" : "font-semibold"}`}>
-                {item.title}
-              </span>
-              <span className="mt-1 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-                <span className="truncate">{label}</span>
-                <span aria-hidden="true">·</span>
-                <time
-                  dateTime={item.createdAt}
-                  title={createdAt.toLocaleString()}
-                  className="truncate"
-                >
-                  {createdAt.toLocaleDateString(undefined, {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                  <span aria-hidden="true"> · </span>
-                  {createdAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
-                </time>
-              </span>
-            </a>
-          </TooltipTrigger>
-          <TooltipContent className="wrap-anywhere">{item.title}</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <a
+            className="min-w-0 flex-1 rounded-sm hover:underline focus-visible:outline-ring"
+            href={item.href}
+            onClick={onOpen}
+          >
+            <span className={`block truncate ${item.read ? "" : "font-semibold"}`}>
+              {item.title}
+            </span>
+            <span className="mt-1 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+              <span className="truncate">{label}</span>
+              <span aria-hidden="true">·</span>
+              <time
+                dateTime={item.createdAt}
+                title={createdAt.toLocaleString()}
+                className="truncate"
+              >
+                {createdAt.toLocaleDateString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+                <span aria-hidden="true"> · </span>
+                {createdAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+              </time>
+            </span>
+          </a>
+        </TooltipTrigger>
+        <TooltipContent className="wrap-anywhere">{item.title}</TooltipContent>
+      </Tooltip>
       <div className="flex shrink-0 items-center gap-3">
         {(item.read || showUnread) && (
           <span className="text-xs text-muted-foreground">
@@ -91,27 +89,25 @@ export function NotificationItem({
           </span>
         )}
         {!item.read && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="icon-sm"
-                  variant="outline"
-                  aria-label="Mark as read"
-                  aria-busy={pending}
-                  disabled={disabled || pending}
-                  onClick={onRead}
-                >
-                  {pending ? (
-                    <Spinner aria-hidden="true" role="presentation" />
-                  ) : (
-                    <Check aria-hidden="true" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Mark as read</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon-sm"
+                variant="outline"
+                aria-label="Mark as read"
+                aria-busy={pending}
+                disabled={disabled || pending}
+                onClick={onRead}
+              >
+                {pending ? (
+                  <Spinner aria-hidden="true" role="presentation" />
+                ) : (
+                  <Check aria-hidden="true" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Mark as read</TooltipContent>
+          </Tooltip>
         )}
       </div>
     </li>
