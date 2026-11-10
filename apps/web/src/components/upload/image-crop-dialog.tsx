@@ -1,3 +1,5 @@
+import type { PictureKind } from "@startup-os/contracts/files/pictures";
+
 import { useEffect, useState } from "react";
 
 import { Button } from "../ui/button";
@@ -17,7 +19,7 @@ import { usePictureUpload } from "@/components/upload/use-picture-upload";
 
 export interface ImageCropDialogProps {
   file: File;
-  kind: "avatar" | "organization-logo";
+  kind: PictureKind;
   onConfirm: (blob: Blob, context: PictureUploadContext) => Promise<void>;
   onCancel: () => void;
   onRestoreFocus?: () => void;
@@ -33,6 +35,8 @@ export interface PictureUploadContext {
 function cropDescription(kind: ImageCropDialogProps["kind"], mode: "fit" | "fill") {
   if (kind === "avatar")
     return "Drag or use the arrow keys to position it. People see it in a circle.";
+  if (kind === "project-icon")
+    return "Drag or use the arrow keys to position it. The icon fills the square.";
   if (mode === "fit") return "The whole logo fits in a square, with clear space around it.";
   return "Drag or use the arrow keys to position it. The logo fills the square.";
 }
@@ -95,7 +99,13 @@ export function ImageCropDialog({
       >
         <DialogHeader>
           <DialogTitle>
-            {kind === "avatar" ? "Edit profile picture" : "Edit organization logo"}
+            {
+              {
+                avatar: "Edit profile picture",
+                "organization-logo": "Edit organization logo",
+                "project-icon": "Edit project icon",
+              }[kind]
+            }
           </DialogTitle>
           <DialogDescription>{cropDescription(kind, mode)}</DialogDescription>
         </DialogHeader>

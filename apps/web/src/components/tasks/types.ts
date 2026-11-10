@@ -18,6 +18,7 @@ export interface Project {
   entityId: string;
   name: string;
   description: string;
+  image?: string | null;
 }
 export interface Task {
   entityId: string;

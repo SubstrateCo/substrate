@@ -61,6 +61,7 @@ function projectFixture() {
       entityType: "project",
       name: "Launch",
       description: "Ship the desktop app",
+      image: null,
     },
     level: "view",
     members: [

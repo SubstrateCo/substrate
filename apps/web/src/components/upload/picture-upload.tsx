@@ -1,3 +1,5 @@
+import type { PictureKind } from "@startup-os/contracts/files/pictures";
+
 import { useRef, useState } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
@@ -15,7 +17,7 @@ import { toast } from "sonner";
 
 export interface PictureUploadProps {
   value?: string | null;
-  kind: "avatar" | "organization-logo";
+  kind: PictureKind;
   /** Receives a 512 × 512 PNG; reject to preserve the crop for retry. */
   onUpload: (file: File, context: PictureUploadContext) => Promise<void>;
   onRemove: () => Promise<void>;
@@ -36,7 +38,11 @@ export function PictureUpload({
   const chooseButton = useRef<HTMLButtonElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
-  const name = kind === "avatar" ? "Profile picture" : "Organization logo";
+  const name = {
+    avatar: "Profile picture",
+    "organization-logo": "Organization logo",
+    "project-icon": "Project icon",
+  }[kind];
   async function remove() {
     if (removing) return;
     setRemoving(true);
@@ -129,7 +135,7 @@ export function PictureUpload({
           onCancel={() => setSource(null)}
           onConfirm={async (blob, context) => {
             await onUpload(
-              new File([blob], kind === "avatar" ? "avatar.png" : "organization-logo.png", {
+              new File([blob], `${kind}.png`, {
                 type: "image/png",
               }),
               context,

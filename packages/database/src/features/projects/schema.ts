@@ -10,6 +10,7 @@ export const projects = pgTable(
     ...entityIdentity("project"),
     name: text("name").notNull(),
     description: text("description").default("").notNull(),
+    image: text("image"),
   },
   (table) => [
     foreignKey({
@@ -18,6 +19,10 @@ export const projects = pgTable(
     }).onDelete("cascade"),
     unique("projects_organization_entity_unique").on(table.organizationId, table.entityId),
     check("projects_name_check", sql`length(trim(${table.name})) BETWEEN 1 AND 200`),
+    check(
+      "projects_image_check",
+      sql`${table.image} IS NULL OR ${table.image} ~ ('^/api/v1/files/pictures/project-icon/' || ${table.entityId}::text || '[?]v=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')`,
+    ),
     index("projects_search_idx").using("gin", searchDocument(table.name, table.description)),
     index("projects_name_trgm_idx").using("gin", sql`${trigramKey(table.name)} gin_trgm_ops`),
   ],

@@ -4,6 +4,7 @@ import { db } from "../../auth/database";
 import { auth } from "../../auth/server";
 import { requireOrigin, requireVerified } from "../../shared/workspace";
 import { createS3Storage } from "../../storage/s3";
+import { projectPictureAccess } from "../tasks/picture-access";
 import { createPictureService } from "./pictures";
 import { createFileService } from "./service";
 
@@ -21,4 +22,17 @@ const dependencies = {
 };
 
 export const defaultFileService = createFileService(dependencies);
-export const defaultPictureService = createPictureService(dependencies);
+const projectPictures = projectPictureAccess(db);
+export const defaultPictureService = createPictureService({
+  ...dependencies,
+  repository: {
+    async requirePictureAccess(scope, purpose, ownerId) {
+      if (purpose === "project-icon") return projectPictures.requireEdit(scope, ownerId!);
+      return dependencies.repository.requirePictureAccess(scope, purpose);
+    },
+    async canReadPicture(scope, purpose, ownerId) {
+      if (purpose === "project-icon") return projectPictures.canRead(scope, ownerId);
+      return dependencies.repository.canReadPicture(scope, purpose, ownerId);
+    },
+  },
+});

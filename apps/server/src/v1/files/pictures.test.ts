@@ -104,3 +104,50 @@ test("picture reads require access before issuing a download URL", async () => {
   const denied = await f.service.content(new Headers(), "avatar", "bob");
   expect(!denied.success && denied.error.code).toBe("NOT_FOUND");
 });
+
+test("project icons reuse the picture upload pipeline with a project-specific object key", async () => {
+  const f = await fixture();
+  const id = crypto.randomUUID();
+  const uploaded = await f.service.upload(
+    new Headers(),
+    "project-icon",
+    await f.image("red"),
+    "org",
+    id,
+  );
+  expect(uploaded.success && uploaded.data.url).toStartWith(
+    `/api/v1/files/pictures/project-icon/${id}?v=`,
+  );
+  const key = `pictures/project-icon/${id}.webp`;
+  const previous = f.objects.get(key)!.slice();
+  f.deny();
+  const denied = await f.service.upload(
+    new Headers(),
+    "project-icon",
+    await f.image("blue"),
+    "org",
+    id,
+  );
+  expect(denied.success).toBe(false);
+  expect(f.objects.get(key)).toEqual(previous);
+});
+
+test("project icons require a target project and cannot cross the active workspace", async () => {
+  const f = await fixture();
+  const missing = await f.service.upload(
+    new Headers(),
+    "project-icon",
+    await f.image("red"),
+    "org",
+  );
+  expect(!missing.success && missing.error.code).toBe("INVALID_INPUT");
+  const foreign = await f.service.upload(
+    new Headers(),
+    "project-icon",
+    await f.image("red"),
+    "other",
+    crypto.randomUUID(),
+  );
+  expect(!foreign.success && foreign.error.code).toBe("FORBIDDEN");
+  expect(f.objects.size).toBe(0);
+});

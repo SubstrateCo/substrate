@@ -1,3 +1,5 @@
+import type { PictureKind } from "@startup-os/contracts/files/pictures";
+
 import type { ReactNode } from "react";
 
 import { SegmentedControl } from "../forms/segmented-control";
@@ -75,7 +77,7 @@ export function ImageCropControls({
   onRotate,
   onReset,
 }: {
-  kind: "avatar" | "organization-logo";
+  kind: PictureKind;
   mode: "fit" | "fill";
   zoom: number;
   onModeChange: (mode: "fit" | "fill") => void;

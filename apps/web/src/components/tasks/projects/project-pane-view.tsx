@@ -7,6 +7,7 @@ import { TaskList } from "../list/task-list";
 import type { ProjectDetail, Task } from "../types";
 import { TaskCreationDialog } from "./pane/task-creation-dialog";
 import { useTaskPanel } from "./pane/use-task-panel";
+import { ProjectIcon } from "./project-icon";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
@@ -119,7 +120,12 @@ export function ProjectPane({
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="shrink-0 border-b px-6 pt-5">
               <PageHeader
-                title={detail.project.name}
+                title={
+                  <span className="inline-flex items-center gap-2">
+                    <ProjectIcon image={detail.project.image} className="size-6" />
+                    <span>{detail.project.name}</span>
+                  </span>
+                }
                 description={
                   detail.project.description && (
                     <span

@@ -29,6 +29,7 @@ export function createPictureRoutes(service: PictureService) {
             c.req.valid("param").purpose,
             c.req.valid("form").file,
             c.req.valid("form").organizationId,
+            c.req.valid("form").projectEntityId,
           ),
         ),
     )

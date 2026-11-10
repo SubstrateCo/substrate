@@ -6,6 +6,7 @@ import type {
 } from "@startup-os/contracts/tasks/input";
 
 import { api, type ApiInput } from "../client";
+import { uploadPictureBytes } from "../files/pictures";
 import { readResult } from "../result";
 import type { z } from "zod";
 
@@ -17,3 +18,28 @@ export const listTaskComments = ({ data, signal }: ApiInput<z.input<typeof taskR
   readResult(api.tasks.comments.$get({ query: data }, { init: { signal } }));
 export const mutateTasks = ({ data, signal }: ApiInput<TasksWrite>) =>
   readResult(api.tasks.mutations.$post({ json: data }, { init: { signal } }));
+
+export const setProjectPicture = (
+  organizationId: string,
+  projectEntityId: string,
+  image: string | null,
+) => mutateTasks({ data: { action: "setProjectPicture", organizationId, projectEntityId, image } });
+
+export async function uploadProjectPicture(
+  organizationId: string,
+  projectEntityId: string,
+  file: File,
+  signal?: AbortSignal,
+  onCommit?: () => void,
+) {
+  const { url } = await uploadPictureBytes(
+    file,
+    "project-icon",
+    signal,
+    organizationId,
+    projectEntityId,
+  );
+  signal?.throwIfAborted();
+  onCommit?.();
+  return setProjectPicture(organizationId, projectEntityId, url);
+}

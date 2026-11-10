@@ -1,3 +1,4 @@
+import { projectIcon } from "../files/pictures";
 import { organizationId } from "../workspace";
 import { permissionLevels, taskPriorityValues, taskStatusValues } from "./status";
 import { z } from "zod";
@@ -38,6 +39,7 @@ export const tasksWrite = z.discriminatedUnion("action", [
     level: z.enum(permissionLevels),
   }),
   projectRequest.extend({ action: z.literal("revoke"), actorEntityId: z.uuid() }),
+  projectRequest.extend({ action: z.literal("setProjectPicture"), image: projectIcon }),
 ]);
 
 export type TasksWrite = z.input<typeof tasksWrite>;

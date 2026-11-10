@@ -3,10 +3,11 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { FormMessage } from "../../auth/form-message";
 import { Button } from "../../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
+import { ProjectIcon } from "../projects/project-icon";
 import type { ProjectDetail, Task, TaskDraft } from "../types";
 import { TaskProperties } from "./task-properties";
 import { TaskSubtasks } from "./task-subtasks";
-import { ChevronRight, FolderKanban, Pencil, X } from "lucide-react";
+import { ChevronRight, Pencil, X } from "lucide-react";
 
 /**
  * The task inspector: a fixed header with the task's place and tools, then one scrolling column
@@ -56,7 +57,7 @@ export function TaskDetail({
           aria-label="Task location"
           className="flex min-w-0 flex-1 items-center gap-1 text-xs text-muted-foreground"
         >
-          <FolderKanban aria-hidden="true" className="size-3.5 shrink-0" />
+          <ProjectIcon image={detail.project.image} className="size-3.5" />
           <span className="truncate" title={detail.project.name}>
             {detail.project.name}
           </span>

@@ -6,6 +6,7 @@ import { CopyLink } from "../../context/links/copy-link";
 import { TaskDetail } from "../detail/task-detail";
 import { TaskForm } from "../editor/task-form";
 import { ProjectForm } from "./editor/project-form";
+import { ProjectPicture } from "./editor/project-picture";
 import { ProjectSharing } from "./sharing/project-sharing";
 import { ProjectPane as ProjectPaneView } from "@/components/tasks/projects/project-pane-view";
 import { workHref } from "@/lib/navigation/record-links";
@@ -75,7 +76,10 @@ export function ProjectPane({
       onRetry={() => void project.refetch()}
       editor={
         project.data && (
-          <ProjectForm organizationId={organizationId} project={project.data.project} />
+          <>
+            <ProjectPicture organizationId={organizationId} project={project.data.project} />
+            <ProjectForm organizationId={organizationId} project={project.data.project} />
+          </>
         )
       }
       sharing={

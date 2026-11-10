@@ -1,4 +1,7 @@
-import type { PictureUploadInput } from "@startup-os/contracts/files/pictures";
+import type {
+  PictureUploadInput,
+  PictureKind as ManagedPictureKind,
+} from "@startup-os/contracts/files/pictures";
 
 import { api } from "../client";
 import { readResult } from "../result";
@@ -10,6 +13,21 @@ type PictureAuthClient = Pick<typeof authClient, "updateUser"> & {
   organization: Pick<typeof authClient.organization, "update">;
 };
 
+export async function uploadPictureBytes(
+  file: File,
+  purpose: ManagedPictureKind,
+  signal?: AbortSignal,
+  organizationId?: string,
+  projectEntityId?: string,
+) {
+  const form: PictureUploadInput = { file };
+  if (purpose !== "avatar" && organizationId) form.organizationId = organizationId;
+  if (projectEntityId) form.projectEntityId = projectEntityId;
+  return readResult(
+    api.files.pictures[":purpose"].$post({ param: { purpose }, form }, { init: { signal } }),
+  );
+}
+
 export function createPictureApi(client: PictureAuthClient) {
   async function uploadPicture(
     file: File,
@@ -18,17 +36,7 @@ export function createPictureApi(client: PictureAuthClient) {
     onCommit?: () => void,
     organizationId?: string,
   ) {
-    const form: PictureUploadInput = { file };
-    if (purpose === "organization-logo" && organizationId) form.organizationId = organizationId;
-    const { url } = await readResult(
-      api.files.pictures[":purpose"].$post(
-        {
-          param: { purpose },
-          form,
-        },
-        { init: { signal } },
-      ),
-    );
+    const { url } = await uploadPictureBytes(file, purpose, signal, organizationId);
     signal?.throwIfAborted();
     onCommit?.();
     // Do not cancel the Better Auth save once it starts.

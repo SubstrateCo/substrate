@@ -1,10 +1,12 @@
+import type { PictureKind } from "@startup-os/contracts/files/pictures";
+
 import type { CropArea } from "./crop-image";
 import "react-easy-crop/react-easy-crop.css";
 import Cropper from "react-easy-crop";
 
 export interface ImageCropperProps {
   src: string;
-  kind: "avatar" | "organization-logo";
+  kind: PictureKind;
   crop: { x: number; y: number };
   zoom: number;
   rotation: number;

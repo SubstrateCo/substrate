@@ -4,6 +4,7 @@ import { LoadingState } from "../../feedback/loading-state";
 import { isAccessFailure } from "../../feedback/request-failure";
 import { Button } from "../../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
+import { ProjectIcon } from "../projects/project-icon";
 import type { Project } from "../types";
 import {
   PageSidebar,
@@ -11,7 +12,7 @@ import {
   PageSidebarHeader,
 } from "@/components/layout/page-layout";
 import { PageSidebarErrorState } from "@/components/layout/page-sidebar-error-state";
-import { FolderKanban, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 
 export function ProjectSidebar({
   projects,
@@ -81,10 +82,7 @@ export function ProjectSidebar({
                 aria-current={selectedId === project.entityId ? "page" : undefined}
                 onClick={() => onSelect(project.entityId)}
               >
-                <FolderKanban
-                  aria-hidden="true"
-                  className="size-4 shrink-0 text-muted-foreground"
-                />
+                <ProjectIcon image={project.image} />
                 <span className="truncate">{project.name}</span>
               </Button>
             ))}

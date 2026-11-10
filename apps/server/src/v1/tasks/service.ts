@@ -68,6 +68,9 @@ export function mutateTasks(headers: Headers, input: z.output<typeof tasksWrite>
         case "updateProject":
           await repos.projects.update(input.projectEntityId, input);
           break;
+        case "setProjectPicture":
+          await repos.projects.setPicture(input.projectEntityId, input.image);
+          break;
         case "createTask":
           return { id: (await repos.tasks.create(input)).entityId };
         case "updateTask":

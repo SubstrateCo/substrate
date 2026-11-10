@@ -1,3 +1,5 @@
+import { profilePicturePath, projectIcon } from "@startup-os/contracts/files/pictures";
+
 import { activeActorCondition, visibleActorCondition } from "../../core/actors/access";
 import { actorDisplayName } from "../../core/actors/display-name";
 import { actorPicture } from "../../core/actors/picture";
@@ -92,6 +94,35 @@ export function projectRepository(context: RepositoryContext) {
   }
   return {
     get,
+    async getPicture(entityId: string, minimum: "view" | "edit" = "view") {
+      await context.requireAccess(entityId, minimum);
+      const [project] = await db
+        .select({ image: projects.image })
+        .from(projects)
+        .where(projectWhere(entityId));
+      if (!project) throw new AccessDeniedError();
+      return project.image;
+    },
+    async setPicture(entityId: string, image: string | null) {
+      const parsed = projectIcon.safeParse(image);
+      if (
+        !parsed.success ||
+        (image !== null && !image.startsWith(`${profilePicturePath("project-icon", entityId)}?v=`))
+      )
+        throw new ValidationError("Use an uploaded icon for this project.");
+      return db.transaction(async (tx) => {
+        const ctx = new RepositoryContext(tx, scope);
+        await ctx.requireAccess(entityId, "edit", true);
+        const [project] = await tx
+          .update(projects)
+          .set({ image })
+          .where(projectWhere(entityId))
+          .returning();
+        if (!project) throw new AccessDeniedError();
+        await ctx.touch(entityId);
+        return project;
+      });
+    },
     /** Actors the caller may assign in this project, under the same policy as getDetail. */
     async assignableActors(projectEntityId: string) {
       await get(projectEntityId);
