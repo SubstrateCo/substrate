@@ -4,9 +4,10 @@ import { actors } from "../../core/actors/schema";
 import { entityIdentity } from "../../core/entities/identity";
 import { entities } from "../../core/entities/schema";
 import { entityAccessParents } from "../../core/permissions/access-parents";
+import { searchDocument, trigramKey } from "../../core/search/indexing";
 import { projects } from "../projects/schema";
 import { sql } from "drizzle-orm";
-import { check, date, foreignKey, pgTable, text, unique, uuid } from "drizzle-orm/pg-core";
+import { check, date, foreignKey, index, pgTable, text, unique, uuid } from "drizzle-orm/pg-core";
 
 export const tasks = pgTable(
   "tasks",
@@ -65,5 +66,7 @@ export const tasks = pgTable(
       sql`${table.priority} IN ('none', 'low', 'medium', 'high', 'urgent')`,
     ),
     check("tasks_parent_check", sql`${table.entityId} <> ${table.parentTaskEntityId}`),
+    index("tasks_search_idx").using("gin", searchDocument(table.title, table.description)),
+    index("tasks_title_trgm_idx").using("gin", sql`${trigramKey(table.title)} gin_trgm_ops`),
   ],
 );

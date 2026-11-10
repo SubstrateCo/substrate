@@ -77,7 +77,7 @@ test("channel browse lists readable channels by name with membership and live me
   expect(await browse(first[1]!.id)).toEqual([channel(zeta, "none", 1)]);
 });
 
-test("30-task search and project search each project authorized output in one statement", async () => {
+test("task, project and combined work search each run one statement with one visibility CTE", async () => {
   await f.db.update(user).set({ emailVerified: true });
   const alice = f.forActor(f.alice);
   const project = await alice.projects.create({ name: "Search project" });
@@ -88,36 +88,65 @@ test("30-task search and project search each project authorized output in one st
     );
   const { db, queries } = recordQueries();
   const context = createContextService(db, { userId: "alice", organizationId: f.orgA });
-  const results = await context.search({ query: "Search", kind: "task" });
-  expect(queries.slice(queries.findIndex((query) => query.includes('from "tasks"')))).toHaveLength(
-    1,
-  );
-  expect(results).toEqual(
-    tasks
-      .sort((a, b) => a.entityId.localeCompare(b.entityId))
-      .map((task) => ({
-        id: task.entityId,
-        title: task.title,
-        kind: "task",
-        projectEntityId: project.entityId,
-      })),
-  );
-  expect(queries.filter((query) => query.includes('from "tasks"'))).toHaveLength(1);
-  expect(queries.filter((query) => query.includes('from "projects"'))).toHaveLength(0);
-  expect(maxRecursiveCtes(queries)).toBe(1);
-  queries.length = 0;
-  expect(await context.search({ query: "Search", kind: "project" })).toEqual([
-    {
-      id: project.entityId,
-      title: project.name,
-      kind: "project",
+  const work = (query: string) => /FROM "(tasks|projects)"/.test(query);
+  const taskRows = tasks
+    .sort((a, b) => a.entityId.localeCompare(b.entityId))
+    .map((task) => ({
+      id: task.entityId,
+      title: task.title,
+      kind: "task" as const,
       projectEntityId: project.entityId,
-    },
-  ]);
-  expect(queries.filter((query) => query.includes('from "projects"'))).toHaveLength(1);
-  expect(
-    queries.slice(queries.findIndex((query) => query.includes('from "projects"'))),
-  ).toHaveLength(1);
+    }));
+  const projectRow = {
+    id: project.entityId,
+    title: project.name,
+    kind: "project" as const,
+    projectEntityId: project.entityId,
+  };
+  // The workspace check, then one work statement.
+  expect(await context.search({ query: "Search", kind: "task" })).toEqual(taskRows);
+  expect(queries).toHaveLength(2);
+  expect(queries[1]).not.toContain('FROM "projects"');
+  queries.length = 0;
+  expect(await context.search({ query: "Search", kind: "project" })).toEqual([projectRow]);
+  expect(queries).toHaveLength(2);
+  expect(queries[1]).not.toContain('FROM "tasks"');
+  queries.length = 0;
+  const all = await context.search({ query: "Search", limit: 100 });
+  expect(all.filter((row) => row.kind === "task" || row.kind === "project")).toEqual(
+    [...taskRows, projectRow].sort((a, b) => a.id.localeCompare(b.id)),
+  );
+  const workQueries = queries.filter(work);
+  expect(workQueries).toHaveLength(1);
+  expect(workQueries[0]).toContain('FROM "tasks"');
+  expect(workQueries[0]).toContain('FROM "projects"');
+  expect(maxRecursiveCtes(queries)).toBe(1);
+});
+
+test("short fields match substrings, and words match by prefix", async () => {
+  await f.db.update(user).set({ emailVerified: true });
+  const alice = f.forActor(f.alice);
+  const project = await alice.projects.create({
+    name: "Quarterly 100% plan_v2",
+    description: "Budget review",
+  });
+  const chat = createAcceptedMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
+  const channel = await chat.createConversation({ kind: "channel", name: "Marketing" });
+  const message = await chat.sendMessage(channel.id, "Shipping the dashboard redesign");
+  const context = createContextService(f.db, { userId: "alice", organizationId: f.orgA });
+  const ids = async (query: string, kind: "project" | "conversation" | "message") =>
+    (await context.search({ query, kind })).map((row) => row.id);
+  // Substrings of names, including LIKE wildcards taken literally and one-character queries.
+  for (const query of ["terl", "100%", "N_V2", "Q"])
+    expect(await ids(query, "project")).toEqual([project.entityId]);
+  expect(await ids("0_%", "project")).toEqual([]);
+  expect(await ids("ARKET", "conversation")).toEqual([channel.id]);
+  // Descriptions and message bodies match words and word prefixes, not inner substrings.
+  expect(await ids("budg rev", "project")).toEqual([project.entityId]);
+  expect(await ids("udget", "project")).toEqual([]);
+  expect(await ids("dash, ship!", "message")).toEqual([message.id]);
+  expect(await ids("board", "message")).toEqual([]);
+  expect(await ids("?!", "message")).toEqual([]);
 });
 
 test("person search filters conversation access before paging and keeps organization boundaries", async () => {

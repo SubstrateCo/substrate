@@ -1,6 +1,7 @@
 import { actors, actorType } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
 import { organization } from "../../core/organizations/schema";
+import { searchDocument, trigramKey } from "../../core/search/indexing";
 import { sql } from "drizzle-orm";
 import {
   boolean,
@@ -38,6 +39,10 @@ export const messagingConversations = pgTable(
     check(
       "messaging_channel_name_check",
       sql`${table.kind} <> 'channel' OR length(trim(${table.name})) > 0 AND ${table.name} IS NOT NULL`,
+    ),
+    index("messaging_conversations_name_trgm_idx").using(
+      "gin",
+      sql`${trigramKey(table.name)} gin_trgm_ops`,
     ),
   ],
 );
@@ -110,6 +115,8 @@ export const messagingMessages = pgTable(
     }),
     check("messaging_thread_root_check", sql`${table.threadRoot}`),
     check("messaging_body_check", sql`length(trim(${table.body})) BETWEEN 1 AND 20000`),
+    // Message search matches words and word prefixes, not substrings inside words.
+    index("messaging_messages_search_idx").using("gin", searchDocument(table.body)),
     // Root and thread pages, and the thread root foreign key on root deletion.
     index("messaging_message_thread_idx").on(
       table.conversationId,

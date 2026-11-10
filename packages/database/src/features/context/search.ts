@@ -4,7 +4,9 @@ import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import { entityLinks } from "../../core/links/schema";
+import { adminOwnsCondition, visibilityCte } from "../../core/permissions/visibility";
 import { pageSize } from "../../core/repository-context";
+import { searchDocument, trigramKey } from "../../core/search/indexing";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import {
   approvedParticipant,
@@ -55,6 +57,28 @@ interface SearchResult {
   membership?: ChannelMembership;
   memberCount?: number;
 }
+
+// Case-insensitive substring match for short fields such as names and titles. Three or more
+// characters can use the trigram index on lower(column); shorter queries scan.
+export function containsText(column: SQLWrapper, query: string) {
+  if (query.length < 3) return sql`strpos(${trigramKey(column)}, lower(${query})) > 0`;
+  const pattern = `%${query.replace(/[\\%_]/g, "\\$&")}%`;
+  return sql`${trigramKey(column)} LIKE lower(${pattern})`;
+}
+
+// Every word of the query as a word prefix, for the word indexes. Punctuation separates words.
+export function wordPrefixQuery(query: string) {
+  const words = query.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+  return words
+    .slice(0, 16)
+    .map((word) => `${word}:*`)
+    .join(" & ");
+}
+
+function matchesWords(document: SQL, words: string) {
+  return words ? sql`${document} @@ to_tsquery('simple', ${words})` : sql`false`;
+}
+
 export async function contextSearch(
   db: DatabaseExecutor,
   scope: MessagingIdentity,
@@ -243,39 +267,45 @@ export async function contextSearch(
       );
     }
   }
-  const match = (column: SQLWrapper) =>
-    sql`(to_tsvector('simple', ${column}) @@ plainto_tsquery('simple', ${query}) OR strpos(lower(coalesce(${column}, '')), lower(${query})) > 0)`;
-  const accessibleWork = (entityId: SQLWrapper) =>
-    ctx.readable(entityId, input.editable ? "edit" : "view");
+  const words = wordPrefixQuery(query);
   const results: SearchResult[] = [];
   if (kind === "all" || kind === "task" || kind === "project") {
-    for (const type of ["task", "project"] as const) {
-      if (kind !== "all" && kind !== type) continue;
+    // Tasks and projects in one statement with one visibility CTE. A task is readable when its
+    // project is and the task is not deleted.
+    const minimum = input.editable ? "edit" : "view";
+    const readableProject = (entityId: SQLWrapper) =>
+      sql`(${entityId} IN (SELECT entity_id FROM visible_entities WHERE level >= ${minimum}::permission_level)
+        OR ${adminOwnsCondition(ctx.scope, entityId)})`;
+    const types = kind === "all" ? (["task", "project"] as const) : [kind];
+    const branches = types.map((type) => {
       const table = type === "task" ? tasks : projects;
       const column = type === "task" ? tasks.title : projects.name;
-      const rows = await db
-        .select({
-          id: table.entityId,
-          title: column,
-          projectEntityId: type === "task" ? tasks.projectEntityId : projects.entityId,
-        })
-        .from(table)
-        .where(
-          and(
-            eq(table.organizationId, scope.organizationId),
-            type === "task"
-              ? and(accessibleWork(tasks.projectEntityId), liveTask())
-              : accessibleWork(projects.entityId),
-            anchorId ? inArray(table.entityId, relatedEntities) : undefined,
-            anchorId ? sql`${table.entityId} <> ${anchorId}` : undefined,
-            query ? match(sql`${column} || ' ' || ${table.description}`) : undefined,
-            input.after ? gt(table.entityId, input.after) : undefined,
-          ),
-        )
-        .orderBy(asc(table.entityId))
-        .limit(limit);
-      results.push(...rows.map((row) => ({ ...row, kind: type })));
-    }
+      const projectEntityId = type === "task" ? tasks.projectEntityId : projects.entityId;
+      const where = and(
+        eq(table.organizationId, scope.organizationId),
+        readableProject(projectEntityId),
+        type === "task" ? liveTask() : undefined,
+        anchorId ? inArray(table.entityId, relatedEntities) : undefined,
+        anchorId ? sql`${table.entityId} <> ${anchorId}` : undefined,
+        query
+          ? or(
+              containsText(column, query),
+              matchesWords(searchDocument(column, table.description), words),
+            )
+          : undefined,
+        input.after ? gt(table.entityId, input.after) : undefined,
+      );
+      return sql`(SELECT ${table.entityId} AS id, ${column} AS title,
+          ${projectEntityId} AS "projectEntityId", ${type} AS kind
+          FROM ${table} WHERE ${where} ORDER BY ${table.entityId} LIMIT ${limit})`;
+    });
+    const rows = await db.execute<{
+      id: string;
+      title: string;
+      projectEntityId: string;
+      kind: "task" | "project";
+    }>(sql`${visibilityCte(ctx.scope)} ${sql.join(branches, sql` UNION ALL `)}`);
+    results.push(...rows);
   }
   if (kind === "all" || kind === "conversation") {
     const rows = await db
@@ -290,7 +320,7 @@ export async function contextSearch(
         and(
           visibleConversations(db, scope),
           relatedConversations,
-          query ? match(messagingConversations.name) : undefined,
+          query ? containsText(messagingConversations.name, query) : undefined,
           input.after ? gt(messagingConversations.id, input.after) : undefined,
         ),
       )
@@ -336,7 +366,7 @@ export async function contextSearch(
           eq(messagingConversations.kind, "channel"),
           eq(messagingConversations.organizationId, scope.organizationId),
           relatedConversations,
-          query ? match(messagingConversations.name) : undefined,
+          query ? containsText(messagingConversations.name, query) : undefined,
           input.after
             ? sql`${nameKey} > (select lower(a.name), a.id from ${messagingConversations} a where a.id = ${input.after}::uuid)`
             : undefined,
@@ -369,11 +399,11 @@ export async function contextSearch(
           relatedMessages,
           query
             ? or(
-                match(messagingMessages.body),
-                match(messagingConversations.name),
+                matchesWords(searchDocument(messagingMessages.body), words),
+                containsText(messagingConversations.name, query),
                 sql`exists (
           select 1 from messaging_messages replies where replies.conversation_id = ${messagingMessages.conversationId}
-            and replies.thread_id = ${messagingMessages.id} and ${match(sql`replies.body`)}
+            and replies.thread_id = ${messagingMessages.id} and ${matchesWords(searchDocument(sql`replies.body`), words)}
         )`,
               )
             : undefined,
@@ -408,7 +438,7 @@ export async function contextSearch(
         and(
           visibleConversations(db, scope),
           relatedMessages,
-          query ? match(messagingMessages.body) : undefined,
+          query ? matchesWords(searchDocument(messagingMessages.body), words) : undefined,
           input.after ? gt(messagingMessages.id, input.after) : undefined,
         ),
       )
@@ -434,7 +464,7 @@ export async function contextSearch(
           anchorId ? inArray(actors.entityId, relatedEntities) : undefined,
           anchorId ? ctx.readable(actors.entityId) : undefined,
           eq(user.emailVerified, true),
-          query ? match(user.name) : undefined,
+          query ? containsText(user.name, query) : undefined,
           input.after ? gt(actors.entityId, input.after) : undefined,
         ),
       )
@@ -461,7 +491,7 @@ export async function contextSearch(
         and(
           liveAgentMember(input.conversationId),
           eq(userAgents.userId, scope.userId),
-          query ? match(userAgents.name) : undefined,
+          query ? containsText(userAgents.name, query) : undefined,
           input.after ? gt(actors.entityId, input.after) : undefined,
         ),
       )

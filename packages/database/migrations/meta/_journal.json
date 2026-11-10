@@ -99,6 +99,13 @@
       "when": 1794276171407,
       "tag": "0013_partial_pending_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794276326060,
+      "tag": "0014_search_indexes",
+      "breakpoints": true
     }
   ]
 }
