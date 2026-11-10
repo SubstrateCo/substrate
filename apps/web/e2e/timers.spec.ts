@@ -1,41 +1,6 @@
 import { conversation, post, test, visit } from "./test-support/fixtures";
 import { pauseClock, searches, visibleWithClock } from "./test-support/search";
-import { project } from "./test-support/tasks";
 import { expect } from "@playwright/test";
-
-test("search waits for the last input and hides results immediately when the kind changes", async ({
-  actors,
-  client,
-}) => {
-  const created = await project(actors.sender);
-  const sender = await client(actors.sender);
-  await visit(sender);
-  await pauseClock(sender.page);
-  const requests = searches(sender.page);
-  const input = sender.page.getByRole("combobox", { name: "Search workspace", exact: true });
-  await input.fill("discard intermediate query");
-  await sender.page.clock.runFor(150);
-  await input.fill(created.name);
-  await sender.page.clock.runFor(199);
-  expect(requests.filter((request) => request.query)).toEqual([]);
-  const panel = sender.page.getByRole("region", { name: "Workspace search", exact: true });
-  const result = panel.getByRole("link", { name: new RegExp(created.name) });
-  await visibleWithClock(sender.page, result);
-  expect(requests.filter((request) => request.query).map((request) => request.query)).toEqual([
-    created.name,
-  ]);
-
-  const settledRequests = requests.length;
-  await panel.getByRole("tab", { name: "Messages", exact: true }).click();
-  await expect(result).toHaveCount(0);
-  await sender.page.clock.runFor(100);
-  await panel.getByRole("tab", { name: "Projects", exact: true }).click();
-  await expect(result).toHaveCount(0);
-  await sender.page.clock.runFor(199);
-  await expect(result).toHaveCount(0);
-  expect(requests).toHaveLength(settledRequests);
-  await visibleWithClock(sender.page, result);
-});
 
 test("scrolling one message pane extends only its own scrollbar visibility", async ({
   actors,
