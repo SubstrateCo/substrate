@@ -1,4 +1,4 @@
-import { realtimeKeys } from "@startup-os/contracts/realtime";
+import { realtimeKeys, type RealtimeHint } from "@startup-os/contracts/realtime";
 
 import { ensureUserAgentActor } from "../../core/actors/provisioning";
 import { messagingConversations, messagingParticipants, user, userAgents } from "../../schema";
@@ -145,7 +145,7 @@ test("removing a conversation with an agent request refreshes the owner's agent 
   const { dm, call } = await agentWorkFixture(fixture);
   const removal = (id: string) =>
     conversationRemovalHints(fixture.db, [{ id, organizationId: fixture.orgA }]);
-  const agentWork = { audience: realtimeKeys.user("alice"), domain: "agent-work" };
+  const agentWork: RealtimeHint = { audience: realtimeKeys.user("alice"), domain: "agent-work" };
   expect(await removal(dm.id)).not.toContainEqual(agentWork);
   await call(
     "reply",
