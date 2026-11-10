@@ -433,6 +433,26 @@ test("a burst of agent-work hints pulls once, and pulls answers only while a req
   expect(f.commands.at(-1)).toMatchObject({ type: "respond", requestId: "n1", response: "allow" });
 });
 
+test("the tick pulls from the server while realtime is down, and only as a slow safety net while it is up", async () => {
+  const f = await started();
+  const pulls = () => f.posts.filter((post) => post.method === "pullWakes").length;
+  let before = pulls();
+  await f.tick();
+  expect(pulls()).toBe(before + 1);
+
+  f.realtime.connected = true;
+  before = pulls();
+  await f.advance(30_000);
+  await f.tick();
+  await f.advance(30_000);
+  await f.tick();
+  expect(pulls()).toBe(before);
+
+  await f.advance(5 * 60_000);
+  await f.tick();
+  expect(pulls()).toBe(before + 1);
+});
+
 test("a helper runs in its own folder and its finish wakes the parent with the report", async () => {
   const f = await started();
   f.ownerMessage();

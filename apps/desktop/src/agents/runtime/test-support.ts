@@ -126,6 +126,10 @@ export async function runtimeFixture(
   /** The sessions open in the fake host. */
   const native = new Map<string, FakeNativeSession>();
   const closedOrganizations: string[] = [];
+  /** The realtime connection main reports to agent work. */
+  const realtime = { connected: false };
+  /** The runtime's periodic tick, run by the test. */
+  let tick = () => {};
   const record = (method: string, body: unknown) => {
     posts.push({ method, body });
   };
@@ -353,7 +357,13 @@ export async function runtimeFixture(
       {
         device: { name: "Laptop", platform: "win32" },
         notify: () => {},
-        every: () => () => {},
+        realtimeConnected: () => realtime.connected,
+        every(callback) {
+          tick = callback;
+          return () => {
+            tick = () => {};
+          };
+        },
         later,
       },
     );
@@ -440,6 +450,12 @@ export async function runtimeFixture(
     },
     /** Sessions open in the fake host. */
     nativeSessions: () => [...native.keys()],
+    realtime,
+    /** Runs the runtime's periodic tick once. */
+    async tick() {
+      tick();
+      await settle();
+    },
     closedOrganizations,
     posts,
     commands,

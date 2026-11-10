@@ -14,8 +14,6 @@ import { join } from "node:path";
 
 /* oxlint-disable deslop/no-unknown-parameters -- IPC values, MCP bodies and local tool calls are parsed by the modules this service calls. */
 
-const catalogTtlMs = 60_000;
-
 interface Active {
   identity: string;
   organizationId: string;
@@ -39,11 +37,14 @@ async function storePath(accountDirectory: string) {
 function agentDirectory(
   server: ReturnType<typeof createAgentWorkServer>,
 ): AgentDirectory & { invalidate(): void } {
-  let cache: { at: number; agents: CatalogAgent[] } | undefined;
-  async function all() {
-    if (!cache || Date.now() - cache.at > catalogTtlMs)
-      cache = { at: Date.now(), agents: await server.catalog() };
-    return cache.agents;
+  /** Kept until an agents hint or a realtime reconnect, which may follow missed hints. */
+  let cache: Promise<CatalogAgent[]> | undefined;
+  function all() {
+    const pending = (cache ??= server.catalog());
+    pending.catch(() => {
+      if (cache === pending) cache = undefined;
+    });
+    return pending;
   }
   return {
     all,
@@ -86,6 +87,7 @@ export function createAgentWorkService(options: {
   let active: Active | undefined;
   let ensuring: Promise<Active | undefined> | undefined;
   let stopped = true;
+  let realtimeConnected = false;
 
   /** The app stops: the harness process stops with it, and the next start recovers the turns. */
   function shutdown() {
@@ -133,6 +135,7 @@ export function createAgentWorkService(options: {
       {
         notify: (change) => options.notify(change),
         device: options.device,
+        realtimeConnected: () => realtimeConnected,
         every(callback, milliseconds) {
           const timer = setInterval(callback, milliseconds);
           return () => clearInterval(timer);
@@ -183,9 +186,11 @@ export function createAgentWorkService(options: {
       shutdown();
     },
     onRealtime(event: RealtimeUpdate) {
+      if (event.type === "status") realtimeConnected = event.status === "connected";
       if (stopped) return;
       if (event.type === "ready") {
         sessionChanged();
+        agents.invalidate();
         void ensure().then((current) => current?.runtime.sync());
       }
       if (event.type !== "change") return;

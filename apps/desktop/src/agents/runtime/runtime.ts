@@ -28,6 +28,8 @@ import { createTurnExecutor } from "./turn-executor.ts";
 /* oxlint-disable deslop/no-unknown-parameters -- MCP bodies and results are parsed in toolOutputs. */
 
 const syncIntervalMs = 30_000;
+/** While realtime is connected, hints drive pulls; the tick still pulls this often. */
+const safetyPullMs = 5 * 60_000;
 /** Realtime hints within this window become one pull. */
 const hintWindowMs = 300;
 const activityPageSize = 30;
@@ -47,6 +49,8 @@ export function createAgentWorkRuntime(
   options: RuntimeTimers & {
     notify(change: AgentWorkChange): void;
     device: { name: string; platform: string };
+    /** The renderer's realtime connection is up, so wakes and answers arrive as hints. */
+    realtimeConnected(): boolean;
   },
 ) {
   let stopped = false;
@@ -56,6 +60,7 @@ export function createAgentWorkRuntime(
   let pumping: Promise<void> | undefined;
   let again = false;
   let hinted: (() => void) | undefined;
+  let pulledAt = Number.NEGATIVE_INFINITY;
 
   const context: RuntimeContext = {
     ...base,
@@ -157,6 +162,7 @@ export function createAgentWorkRuntime(
    * Answers for callbacks that are gone are orphaned by the full pulls.
    */
   async function sync(answers: "always" | "waiting" = "always") {
+    if (answers === "always") pulledAt = context.now();
     status.refreshOpenRequests();
     const created = await pullWakes(context).catch(() => {
       context.log("Could not pull agent wakes.");
@@ -181,8 +187,9 @@ export function createAgentWorkRuntime(
     }, hintWindowMs);
   }
 
+  /** Local work runs every tick. The server is polled while realtime is down. */
   async function tick() {
-    await sync();
+    if (!options.realtimeConnected() || context.now() - pulledAt >= safetyPullMs) await sync();
     await reconcileHome().catch(() => context.log("Could not check where agents run."));
     await routines.tick().catch(() => context.log("Could not run routines."));
     await steering.enforceBudget().catch(() => {});
