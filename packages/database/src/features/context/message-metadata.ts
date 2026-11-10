@@ -3,7 +3,6 @@ import { taskStatusLabels } from "@startup-os/contracts/tasks";
 import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { entities } from "../../core/entities/schema";
-import { visibilityCte } from "../../core/permissions/visibility";
 import type { RepositoryContext } from "../../core/repository-context";
 import { mentionablePerson, type MessagingIdentity } from "../messaging/access";
 import { messagingConversations } from "../messaging/schema";
@@ -16,18 +15,21 @@ import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
 // Callers authorize every message before resolving its metadata.
 export async function messageWorkLinks(ctx: RepositoryContext, messageIds: string[]) {
+  // A task is readable when its project is and the task is not deleted, and the project's level
+  // decides removal rights.
+  const projectEntityId = sql`coalesce(${tasks.projectEntityId}, ${projects.entityId})`;
   const work = await ctx.db
     .select({
       messageId: messageEntityReferences.messageId,
       entityId: messageEntityReferences.entityId,
       entityType: sql<"task" | "project">`${messageEntityReferences.entityType}`,
       title: sql<string>`coalesce(${tasks.title}, ${projects.name})`,
-      projectEntityId: sql<string>`coalesce(${tasks.projectEntityId}, ${projects.entityId})`,
+      projectEntityId: sql<string>`${projectEntityId}`,
       status: tasks.status,
       purpose: messageEntityReferences.purpose,
       canRemove: sql<boolean>`${messageEntityReferences.purpose} = 'association' AND (
         ${messageEntityReferences.createdByActorEntityId} = ${ctx.scope.actorEntityId} OR
-        coalesce(${tasks.projectEntityId}, ${projects.entityId}) IN (${visibilityCte(ctx.scope)} SELECT entity_id FROM visible_entities WHERE level = 'owner')
+        work_access.level = 'owner'
       )`,
     })
     .from(messageEntityReferences)
@@ -49,16 +51,12 @@ export async function messageWorkLinks(ctx: RepositoryContext, messageIds: strin
         eq(messageEntityReferences.entityType, "project"),
       ),
     )
+    .innerJoin(ctx.visibleLevels("work_access"), sql`work_access.entity_id = ${projectEntityId}`)
     .where(
       and(
         inArray(messageEntityReferences.messageId, messageIds),
         eq(messageEntityReferences.organizationId, ctx.scope.organizationId),
         eq(messagingConversations.organizationId, ctx.scope.organizationId),
-        // A task is readable when its project is and the task is not deleted.
-        inArray(
-          sql`coalesce(${tasks.projectEntityId}, ${projects.entityId})`,
-          ctx.readableEntities(),
-        ),
         or(isNull(tasks.entityId), liveTask()),
       ),
     )

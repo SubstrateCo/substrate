@@ -144,6 +144,13 @@ export class RepositoryContext {
     return sql`(${visibilityCte(this.scope)} SELECT DISTINCT entity_id FROM visible_entities)`;
   }
 
+  // The strongest level per visible entity, for statements that need both the readable set and
+  // a level. Join it once so the statement runs the visibility CTE once.
+  visibleLevels(alias: string) {
+    return sql`(${visibilityCte(this.scope)}
+      SELECT entity_id, max(level) AS level FROM visible_entities GROUP BY entity_id) ${sql.identifier(alias)}`;
+  }
+
   async touch(entityId: string) {
     await this.db
       .update(entities)

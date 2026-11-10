@@ -1,6 +1,6 @@
 import { RepositoryContext, pageSize } from "../repository-context";
 import { entityLinks } from "./schema";
-import { and, asc, eq, inArray, or } from "drizzle-orm";
+import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 
 type LinkInput = Pick<
   typeof entityLinks.$inferInsert,
@@ -38,8 +38,12 @@ export function linkRepository(context: RepositoryContext) {
           and(
             eq(entityLinks.organizationId, scope.organizationId),
             or(eq(entityLinks.sourceEntityId, entityId), eq(entityLinks.targetEntityId, entityId)),
-            inArray(entityLinks.sourceEntityId, context.readableEntities()),
-            inArray(entityLinks.targetEntityId, context.readableEntities()),
+            // The requested endpoint is checked above; check the other one.
+            inArray(
+              sql`CASE WHEN ${entityLinks.sourceEntityId} = ${entityId}
+                THEN ${entityLinks.targetEntityId} ELSE ${entityLinks.sourceEntityId} END`,
+              context.readableEntities(),
+            ),
           ),
         )
         .orderBy(

@@ -17,7 +17,7 @@ import {
   approveFixtureParticipants,
   createAcceptedMessagingService,
 } from "../../testing/messaging";
-import { recordQueries } from "../../testing/queries";
+import { maxRecursiveCtes, recordQueries } from "../../testing/queries";
 import {
   messagingConversations,
   messagingMessages,
@@ -395,6 +395,7 @@ test("page context uses constant reads for one or fifty messages, including empt
   expect(page.result.every((row) => row.links[0]?.title === "Launch")).toBe(true);
   expect(page.count).toBe(one.count);
   expect(page.count).toBe(3);
+  expect(maxRecursiveCtes(queries)).toBe(1);
   queries.length = 0;
   for (const row of rows) await service.messageLinks(row.id);
   expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(150);

@@ -1,5 +1,7 @@
 import { AccessDeniedError } from "../../index";
+import { createRepositories } from "../../repositories";
 import { setupDatabase } from "../../testing/database";
+import { maxRecursiveCtes, recordQueries } from "../../testing/queries";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { describe, expect, test } from "bun:test";
 
@@ -33,8 +35,11 @@ describe("links", () => {
       actorEntityId: f.bob,
       level: "view",
     });
-    expect(await f.forActor(f.bob).links.list(shared.entityId)).toHaveLength(1);
-    expect(await f.forActor(f.bob).links.list(privateContact.entityId)).toHaveLength(1);
+    const { db, queries } = recordQueries();
+    const bob = createRepositories(db).forActor({ organizationId: f.orgA, actorEntityId: f.bob });
+    expect(await bob.links.list(shared.entityId)).toHaveLength(1);
+    expect(await bob.links.list(privateContact.entityId)).toHaveLength(1);
+    expect(maxRecursiveCtes(queries)).toBe(1);
     await repo.permissions.revoke({ entityId: shared.entityId, actorEntityId: f.bob });
     expect(await f.forActor(f.bob).links.list(privateContact.entityId)).toEqual([]);
   });

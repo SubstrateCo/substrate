@@ -3,7 +3,7 @@ import { entityLinks } from "../../core/links/schema";
 import { AccessDeniedError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
 import { createAcceptedMessagingService } from "../../testing/messaging";
-import { recordQueries } from "../../testing/queries";
+import { maxRecursiveCtes, recordQueries } from "../../testing/queries";
 import { messagingParticipants } from "../messaging/schema";
 import { createContextService } from "./service";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
@@ -104,6 +104,7 @@ test("30-task search and project search each project authorized output in one st
   );
   expect(queries.filter((query) => query.includes('from "tasks"'))).toHaveLength(1);
   expect(queries.filter((query) => query.includes('from "projects"'))).toHaveLength(0);
+  expect(maxRecursiveCtes(queries)).toBe(1);
   queries.length = 0;
   expect(await context.search({ query: "Search", kind: "project" })).toEqual([
     {
