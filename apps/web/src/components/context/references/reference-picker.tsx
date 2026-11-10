@@ -49,6 +49,7 @@ export function ReferencePicker({
         conversationId,
         query: debounced.query,
         kind: searchKind,
+        limit: kind === "all" ? mixedLimit : undefined,
       }),
       enabled: !debounced.pending,
     })),

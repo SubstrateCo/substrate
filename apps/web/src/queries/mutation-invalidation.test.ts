@@ -79,7 +79,8 @@ test("sending a work reference refreshes its project discussions, not other conv
       thread: 1,
       history: 1,
       otherConversation: 0,
-      page: 1,
+      // A new message cannot change the context of loaded messages; it gets its own page.
+      page: 0,
       otherPage: 0,
       relatedTask: 1,
       relatedProject: 1,

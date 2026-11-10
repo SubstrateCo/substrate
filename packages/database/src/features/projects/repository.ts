@@ -97,12 +97,10 @@ export function projectRepository(context: RepositoryContext) {
     },
     async getDetail(projectEntityId: string) {
       const { project, level } = await getWithLevel(projectEntityId);
-      return {
-        project,
-        level,
-        members: await members(projectEntityId),
-        actors: await availableActors(projectEntityId),
-        tasks: await db
+      const [projectMembers, projectActors, projectTasks] = await Promise.all([
+        members(projectEntityId),
+        availableActors(projectEntityId),
+        db
           .select()
           .from(tasks)
           .where(
@@ -113,6 +111,13 @@ export function projectRepository(context: RepositoryContext) {
             ),
           )
           .orderBy(asc(tasks.entityId)),
+      ]);
+      return {
+        project,
+        level,
+        members: projectMembers,
+        actors: projectActors,
+        tasks: projectTasks,
       };
     },
     async create(input: { name: string; description?: string }) {

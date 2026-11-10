@@ -265,6 +265,8 @@ export async function contextSearch(
   const results: SearchResult[] = [];
   // Full message bodies by result ID, for excerpts.
   const bodies = new Map<string, string>();
+  // Branches of kind "all" start here and run concurrently; their rows join `results` in order.
+  const branchRows: Promise<SearchResult[]>[] = [];
   if (kind === "all" || kind === "task" || kind === "project") {
     // Tasks and projects in one statement with one visibility CTE. A task is readable when its
     // project is and the task is not deleted.
@@ -305,24 +307,27 @@ export async function contextSearch(
           ${projectEntityId} AS "projectEntityId", ${type} AS kind, ${context}
           FROM ${table} ${parent} WHERE ${where} ORDER BY ${table.entityId} LIMIT ${limit})`;
     });
-    const rows = await db.execute<{
-      id: string;
-      title: string;
-      projectEntityId: string;
-      kind: "task" | "project";
-      projectName: string | null;
-      status: TaskStatus | null;
-    }>(sql`${visibilityCte(ctx.scope)} ${sql.join(branches, sql` UNION ALL `)}`);
-    results.push(
-      ...rows.map(({ projectName, status, ...row }) =>
-        row.kind === "task"
-          ? { ...row, projectName: projectName ?? undefined, status: status ?? undefined }
-          : row,
-      ),
+    branchRows.push(
+      db
+        .execute<{
+          id: string;
+          title: string;
+          projectEntityId: string;
+          kind: "task" | "project";
+          projectName: string | null;
+          status: TaskStatus | null;
+        }>(sql`${visibilityCte(ctx.scope)} ${sql.join(branches, sql` UNION ALL `)}`)
+        .then((rows) =>
+          rows.map(({ projectName, status, ...row }) =>
+            row.kind === "task"
+              ? { ...row, projectName: projectName ?? undefined, status: status ?? undefined }
+              : row,
+          ),
+        ),
     );
   }
   if (kind === "all" || kind === "conversation") {
-    const rows = await db
+    const pending = db
       .select({
         id: messagingConversations.id,
         title: conversationDisplayName(db, scope),
@@ -340,8 +345,10 @@ export async function contextSearch(
       )
       .orderBy(asc(messagingConversations.id))
       .limit(limit);
-    results.push(
-      ...rows.map((row) => ({ ...row, kind: "conversation" as const, conversationId: row.id })),
+    branchRows.push(
+      pending.then((rows) =>
+        rows.map((row) => ({ ...row, kind: "conversation" as const, conversationId: row.id })),
+      ),
     );
   }
   // Channel browse and the channel reference picker. Ordered by name; the cursor is the last ID.
@@ -442,7 +449,7 @@ export async function contextSearch(
     );
   }
   if (kind === "all" || kind === "message") {
-    const rows = await db
+    const pending = db
       .select({
         id: messagingMessages.id,
         title: messagingMessages.body,
@@ -470,11 +477,18 @@ export async function contextSearch(
       )
       .orderBy(asc(messagingMessages.id))
       .limit(limit);
-    for (const row of rows) bodies.set(row.id, row.title);
-    results.push(
-      ...rows.map((row) => ({ ...row, title: row.title.slice(0, 160), kind: "message" as const })),
+    branchRows.push(
+      pending.then((rows) => {
+        for (const row of rows) bodies.set(row.id, row.title);
+        return rows.map((row) => ({
+          ...row,
+          title: row.title.slice(0, 160),
+          kind: "message" as const,
+        }));
+      }),
     );
   }
+  for (const rows of await Promise.all(branchRows)) results.push(...rows);
   if (kind === "person" && input.conversationId) {
     const rows = await db
       .select({ id: actors.entityId, title: user.name })

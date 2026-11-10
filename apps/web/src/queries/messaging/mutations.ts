@@ -30,9 +30,8 @@ export function invalidateSentMessage(
     client.invalidateQueries({
       queryKey: queryKeys.messageTargets(organizationId, conversationId),
     }),
-    client.invalidateQueries({
-      queryKey: queryKeys.messagePages(organizationId, conversationId),
-    }),
+    // Context pages stay valid: a new message cannot change the context of loaded messages and
+    // gets its own page. Reference changes arrive as realtime context hints.
     client.invalidateQueries({
       queryKey: queryKeys.related(organizationId),
       predicate: ({ queryKey }) =>

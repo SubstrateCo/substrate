@@ -55,7 +55,7 @@ function useLocalWorkAction<T>(
   mutationFn: (id: string) => Promise<T>,
 ) {
   const refresh = useRefresh(userId, organizationId);
-  return useMutation({ mutationFn, onSettled: () => refresh({ kind: "agent-work" }) });
+  return useMutation({ mutationFn, onSettled: () => refresh({ kind: "local" }) });
 }
 
 export const useSendNow = (userId: string, organizationId: string) =>

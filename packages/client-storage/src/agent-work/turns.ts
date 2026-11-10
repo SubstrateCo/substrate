@@ -500,10 +500,11 @@ export function turnRepository(run: RunTransaction) {
           .where(and(eq(turns.status, "assigned"), eq(turns.organizationId, organizationId)))
           .all(),
       ),
+    /** Only the IDs: callers count and list these turns, and the full rows hold the envelope. */
     needsAttention: (organizationId: string) =>
       run((tx) =>
         tx
-          .select()
+          .select({ id: turns.id, userAgentId: turns.userAgentId })
           .from(turns)
           .where(and(eq(turns.status, "needs_attention"), eq(turns.organizationId, organizationId)))
           .all(),

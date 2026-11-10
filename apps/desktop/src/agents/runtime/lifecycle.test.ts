@@ -397,7 +397,7 @@ test("a failure without a known code stops retrying after 6 backoffs and needs t
   }
   expect(commandsOf(f, "open")).toHaveLength(7);
   const [attention] = await f.store.turns.needsAttention(organizationId);
-  expect(attention).toMatchObject({ attentionReason: "failed" });
+  expect(await f.store.turns.get(attention!.id)).toMatchObject({ attentionReason: "failed" });
   await f.advance(outageBackoffMaxMs);
   expect(commandsOf(f, "open")).toHaveLength(7);
 });

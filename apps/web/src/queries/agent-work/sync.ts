@@ -37,15 +37,56 @@ export function bridgeChangeTargets(
   return keys;
 }
 
+function startsWith(key: QueryKey, prefix: QueryKey) {
+  return prefix.length < key.length && prefix.every((part, index) => part === key[index]);
+}
+
+/**
+ * Collects the keys of bridge change hints for a short window, then invalidates each distinct
+ * key once. The desktop sends several hints within milliseconds, each naming the agent list.
+ * A key that another pending key covers, such as any local read under the all-local key, is
+ * dropped.
+ */
+export function createBridgeChangeBatcher(
+  userId: string,
+  organizationId: string,
+  invalidate: (queryKey: QueryKey) => void,
+) {
+  const pending = new Map<string, QueryKey>();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  function flush() {
+    timer = undefined;
+    const keys = [...pending.values()];
+    pending.clear();
+    for (const key of keys) if (!keys.some((other) => startsWith(key, other))) invalidate(key);
+  }
+  return {
+    receive(change: AgentWorkChange) {
+      for (const key of bridgeChangeTargets(userId, organizationId, change))
+        pending.set(JSON.stringify(key), key);
+      timer ??= setTimeout(flush, 50);
+    },
+    dispose() {
+      clearTimeout(timer);
+      timer = undefined;
+      pending.clear();
+    },
+  };
+}
+
 /** Keeps local agent work fresh on the home desktop. Mount once in the workspace frame. */
 export function useAgentWorkBridgeSync(userId: string | undefined, organizationId?: string | null) {
   const client = useQueryClient();
   useEffect(() => {
     const bridge = window.startupOSAgentWork;
     if (!bridge || !userId || !organizationId) return;
-    return bridge.onChange((change) => {
-      for (const queryKey of bridgeChangeTargets(userId, organizationId, change))
-        void client.invalidateQueries({ queryKey });
+    const batcher = createBridgeChangeBatcher(userId, organizationId, (queryKey) => {
+      void client.invalidateQueries({ queryKey });
     });
+    const unsubscribe = bridge.onChange((change) => batcher.receive(change));
+    return () => {
+      unsubscribe();
+      batcher.dispose();
+    };
   }, [client, userId, organizationId]);
 }

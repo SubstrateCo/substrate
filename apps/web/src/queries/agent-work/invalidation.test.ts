@@ -42,6 +42,22 @@ describe("agent-work mutation invalidation", () => {
     );
   });
 
+  test("a local action refreshes only local work, not the server status, needs-you, or requests", () => {
+    const local = [
+      queryKeys.agentWorkConversation("user", "org", "c1"),
+      queryKeys.agentWorkTurnEvents("user", "org", "t1"),
+      queryKeys.agentWorkAgents("user", "org"),
+    ];
+    const server = [
+      queryKeys.agentWorkStatus("user", "org"),
+      queryKeys.agentWorkNeedsYou("user", "org"),
+      queryKeys.agentWorkRequests("user", "org", "c1"),
+    ];
+    const keys = agentWorkInvalidations("user", "org", { kind: "local" });
+    expect(keys).toEqual([queryKeys.agentWorkLocal("user", "org")]);
+    expect(matched([...local, ...server], keys)).toEqual(local);
+  });
+
   test("an approved reply also refreshes the target conversation's messages", () => {
     const keys = agentWorkInvalidations("user", "org", {
       kind: "approved",

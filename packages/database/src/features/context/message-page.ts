@@ -30,17 +30,19 @@ export async function messagePage(
     .where(and(inArray(messagingMessages.id, ids), visibleConversations(db, scope)));
   // Reject the whole page before resolving any metadata if even one message is unavailable.
   if (messages.length !== ids.length) throw new AccessDeniedError();
-  const messaging = messages.some((message) => /@\[(channel|thread):/i.test(message.body))
-    ? await messagingReferencePage(db, scope, ids)
-    : [];
+  const [messaging, work, people] = await Promise.all([
+    messages.some((message) => /@\[(channel|thread):/i.test(message.body))
+      ? messagingReferencePage(db, scope, ids)
+      : [],
+    messageWorkLinks(ctx, ids),
+    messagePeople(db, scope, messages),
+  ]);
   const messagingByMessage = new Map<string, typeof messaging>();
   for (const reference of messaging) {
     const items = messagingByMessage.get(reference.messageId) ?? [];
     items.push(reference);
     messagingByMessage.set(reference.messageId, items);
   }
-  const work = await messageWorkLinks(ctx, ids);
-  const people = await messagePeople(db, scope, messages);
   return ids.map((id) => ({
     messageId: id,
     messaging: (messagingByMessage.get(id) ?? []).map((reference) => ({
