@@ -1,11 +1,25 @@
+import pluginQuery from "@tanstack/eslint-plugin-query";
+import pluginRouter from "@tanstack/eslint-plugin-router";
+
 import contracts from "./packages/contracts/package.json" with { type: "json" };
 import database from "./packages/database/package.json" with { type: "json" };
 import { configs } from "ai-deslop";
 import { defineConfig } from "oxlint";
 
+const tanstackRecommendedRules = Object.fromEntries(
+  [pluginQuery, pluginRouter]
+    .flatMap((plugin) => Object.keys(plugin.configs["flat/recommended"][0]?.rules ?? {}))
+    .map((rule) => [rule, "error" as const]),
+);
+
 export default defineConfig({
   plugins: ["unicorn", "typescript", "oxc", "react"],
-  jsPlugins: ["ai-deslop", "@shadcn/lint"],
+  jsPlugins: [
+    "ai-deslop",
+    "@shadcn/lint",
+    "@tanstack/eslint-plugin-query",
+    "@tanstack/eslint-plugin-router",
+  ],
   options: configs.recommended.options,
   settings: {
     shadcn: {
@@ -14,6 +28,7 @@ export default defineConfig({
   },
   rules: {
     ...configs.recommended.rules,
+    ...tanstackRecommendedRules,
     "react/error-boundaries": "error",
     "react/globals": "error",
     "react/immutability": "error",
