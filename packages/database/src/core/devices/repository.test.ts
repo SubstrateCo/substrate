@@ -1,0 +1,54 @@
+import { AccessDeniedError } from "../../errors";
+import { setupDatabase } from "../../testing/database";
+import { recordQueries } from "../../testing/queries";
+import { registerDevice, touchDevice } from "./repository";
+import { desktopDevices } from "./schema";
+import { expect, test } from "bun:test";
+import { eq, sql } from "drizzle-orm";
+
+/* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous. */
+const f = setupDatabase();
+
+async function seenAgo(id: string, seconds: number) {
+  const [row] = await f.db
+    .update(desktopDevices)
+    .set({ lastSeenAt: sql`now() - make_interval(secs => ${seconds})` })
+    .where(eq(desktopDevices.id, id))
+    .returning();
+  return row!.lastSeenAt;
+}
+
+test("device calls write last_seen_at at most every 30 seconds", async () => {
+  const installationId = crypto.randomUUID();
+  const device = await registerDevice(f.db, "alice", {
+    installationId,
+    name: "Mac",
+    platform: "darwin",
+  });
+  const recent = await seenAgo(device.id, 10);
+  const { db, queries } = recordQueries();
+  expect((await touchDevice(db, "alice", installationId)).id).toBe(device.id);
+  expect(queries.filter((query) => query.startsWith("update"))).toEqual([]);
+  const [unchanged] = await f.db
+    .select()
+    .from(desktopDevices)
+    .where(eq(desktopDevices.id, device.id));
+  expect(unchanged!.lastSeenAt).toEqual(recent);
+
+  const stale = await seenAgo(device.id, 40);
+  await touchDevice(f.db, "alice", installationId);
+  const [touched] = await f.db
+    .select()
+    .from(desktopDevices)
+    .where(eq(desktopDevices.id, device.id));
+  expect(touched!.lastSeenAt.getTime()).toBeGreaterThan(stale.getTime() + 30_000);
+});
+
+test("only the registering user's device resolves", async () => {
+  const installationId = crypto.randomUUID();
+  await registerDevice(f.db, "alice", { installationId, name: "Mac", platform: "darwin" });
+  await expect(touchDevice(f.db, "bob", installationId)).rejects.toBeInstanceOf(AccessDeniedError);
+  await expect(touchDevice(f.db, "alice", crypto.randomUUID())).rejects.toBeInstanceOf(
+    AccessDeniedError,
+  );
+});

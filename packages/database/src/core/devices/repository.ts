@@ -23,17 +23,28 @@ export async function registerDevice(
   return device!;
 }
 
-/** Resolves and marks the device as seen. A device must register before it acts. */
+/**
+ * Resolves and marks the device as seen. A device must register before it acts. Devices poll
+ * several times a minute, so the write happens at most every 30 seconds, well inside the
+ * online window.
+ */
 export async function touchDevice(db: DatabaseExecutor, userId: string, installationId: string) {
-  const [device] = await db
-    .update(desktopDevices)
-    .set({ lastSeenAt: sql`now()` })
+  const [row] = await db
+    .select({
+      device: desktopDevices,
+      stale: sql<boolean>`${desktopDevices.lastSeenAt} < now() - interval '30 seconds'`,
+    })
+    .from(desktopDevices)
     .where(
       and(eq(desktopDevices.userId, userId), eq(desktopDevices.installationId, installationId)),
-    )
-    .returning();
-  if (!device) throw new AccessDeniedError();
-  return device;
+    );
+  if (!row) throw new AccessDeniedError();
+  if (row.stale)
+    await db
+      .update(desktopDevices)
+      .set({ lastSeenAt: sql`now()` })
+      .where(eq(desktopDevices.id, row.device.id));
+  return row.device;
 }
 
 export async function findDevice(db: DatabaseExecutor, userId: string, installationId: string) {
