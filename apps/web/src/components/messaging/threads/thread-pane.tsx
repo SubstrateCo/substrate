@@ -13,6 +13,7 @@ import { messagePageOptions } from "@/queries/context/links";
 export function ThreadPane({
   organizationId,
   conversationId,
+  conversationLabel,
   threadId,
   root,
   contextMessageIds,
@@ -21,6 +22,7 @@ export function ThreadPane({
 }: {
   organizationId: string;
   conversationId: string;
+  conversationLabel: string;
   threadId: string;
   root?: Message;
   contextMessageIds: string[];
@@ -50,6 +52,7 @@ export function ThreadPane({
   });
   return (
     <ThreadPaneView
+      conversationLabel={conversationLabel}
       loading={replies.isPending}
       error={replies.error}
       onRetry={() => void replies.refetch()}
@@ -75,7 +78,20 @@ export function ThreadPane({
             messages={rows.filter((message) => message.id !== threadId)}
             organizationId={organizationId}
             conversationId={conversationId}
-            header={<OlderMessages replies {...history} onOlder={() => loadOlder(rows[0]!.id)} />}
+            previousDate={root?.createdAt}
+            header={
+              <>
+                {root && (
+                  <div className="flex items-center gap-3 px-4 pb-2 text-xs font-medium text-muted-foreground">
+                    <span>
+                      {root.replyCount} {root.replyCount === 1 ? "reply" : "replies"}
+                    </span>
+                    <span className="h-px flex-1 bg-border" />
+                  </div>
+                )}
+                <OlderMessages replies {...history} onOlder={() => loadOlder(rows[0]?.id)} />
+              </>
+            }
             footer={<JumpToLatest replies {...history} />}
           />
         )

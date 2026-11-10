@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { WorkDiscussions as WorkDiscussionsView } from "@/components/context/discussions/work-discussions-view";
 import { messageHref } from "@/lib/navigation/record-links";
 import { relatedContextOptions } from "@/queries/context/links";
+import { conversationsQueryOptions } from "@/queries/messaging/options";
 
 export function WorkDiscussions({
   organizationId,
@@ -25,12 +26,21 @@ export function WorkDiscussions({
     ...relatedContextOptions(organizationId, entityId),
     enabled: visible,
   });
+  const conversations = useQuery({
+    ...conversationsQueryOptions(organizationId),
+    enabled: visible,
+  });
   return (
     <WorkDiscussionsView
-      items={(related.data ?? []).map((item) => ({
-        ...item,
-        href: messageHref(organizationId, item.conversationId, item.messageId),
-      }))}
+      items={(related.data ?? []).map((item) => {
+        const conversation = conversations.data?.find((entry) => entry.id === item.conversationId);
+        return {
+          ...item,
+          conversationKind: conversation?.kind,
+          private: conversation?.private,
+          href: messageHref(organizationId, item.conversationId, item.messageId),
+        };
+      })}
       loading={related.isPending}
       error={related.error}
       onRetry={() => void related.refetch()}

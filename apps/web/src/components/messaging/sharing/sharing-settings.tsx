@@ -4,21 +4,27 @@ import { useState } from "react";
 
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
-import { PageHeader } from "@/components/layout/page-header";
+import {
+  SettingsCard,
+  SettingsList,
+  SettingsNote,
+  SettingsSection,
+} from "@/components/layout/settings-section";
+import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
 import { SharingManager } from "@/components/messaging/sharing/sharing-manager";
 import { Button } from "@/components/ui/button";
 import { sharingConversationOptions, sharingInboxOptions } from "@/queries/messaging/sharing";
+import { Globe } from "lucide-react";
 
 export function SharingSettings({ organizationId }: { organizationId: string }) {
   const conversations = useQuery(sharingConversationOptions(organizationId));
   const inbox = useQuery(sharingInboxOptions(organizationId));
   const [selected, setSelected] = useState<string>();
   return (
-    <section className="space-y-6">
-      <PageHeader
-        title="External collaboration"
-        description="Approve partner channels, manage invitations, or disconnect organizations. Existing external participants need reapproval."
-      />
+    <SettingsSection
+      title="External collaboration"
+      description="Approve partner channels, manage invitations, or disconnect organizations."
+    >
       {(conversations.isPending || inbox.isPending) && (
         <LoadingState label="Loading collaboration…" rows={2} />
       )}
@@ -31,33 +37,49 @@ export function SharingSettings({ organizationId }: { organizationId: string }) 
           }}
         />
       )}
-      <section className="space-y-3">
-        <h3 className="font-medium">Incoming invitations and approval requests</h3>
-        {inbox.data?.length === 0 && (
-          <p className="text-sm text-muted-foreground">No pending invitations.</p>
-        )}
+      <SettingsCard title="Requests">
+        {inbox.data?.length === 0 && <SettingsNote>No pending requests.</SettingsNote>}
         {inbox.data?.map((invite) => (
           <div key={invite.id} className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm wrap-anywhere">
               {invite.name ?? "Conversation"} · {invite.email}
             </p>
             <Button asChild variant="outline">
-              <a href={`/accept-sharing/${invite.id}`}>Review invitation</a>
+              <a href={`/accept-sharing/${invite.id}`}>Review</a>
             </Button>
           </div>
         ))}
-      </section>
-      <section className="space-y-3">
-        <h3 className="font-medium">Manage conversation sharing</h3>
-        {conversations.data?.map((conversation) => (
-          <div key={conversation.id} className="flex flex-wrap items-center justify-between gap-3">
-            <span className="text-sm">{conversation.name ?? "Direct message"}</span>
-            <Button variant="outline" onClick={() => setSelected(conversation.id)}>
-              Manage sharing
-            </Button>
-          </div>
-        ))}
-      </section>
+      </SettingsCard>
+      <SettingsCard title="Shared conversations">
+        {conversations.data?.length === 0 && (
+          <SettingsNote>No conversations to manage.</SettingsNote>
+        )}
+        {!!conversations.data?.length && (
+          <SettingsList>
+            {conversations.data.map((conversation) => (
+              <li
+                key={conversation.id}
+                className="flex flex-wrap items-center justify-between gap-3 px-4 py-2"
+              >
+                <span className="flex min-w-0 items-center gap-2 text-sm">
+                  {conversation.kind === "channel" ? (
+                    <Globe aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+                  ) : (
+                    <ConversationKindIcon
+                      kind={conversation.kind}
+                      className="size-4 shrink-0 text-muted-foreground"
+                    />
+                  )}
+                  {conversation.name ?? "Direct message"}
+                </span>
+                <Button variant="ghost" onClick={() => setSelected(conversation.id)}>
+                  Manage
+                </Button>
+              </li>
+            ))}
+          </SettingsList>
+        )}
+      </SettingsCard>
       {selected && (
         <SharingManager
           organizationId={organizationId}
@@ -65,6 +87,6 @@ export function SharingSettings({ organizationId }: { organizationId: string }) 
           onClose={() => setSelected(undefined)}
         />
       )}
-    </section>
+    </SettingsSection>
   );
 }

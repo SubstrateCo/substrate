@@ -36,14 +36,19 @@ test("work notices take the current work title and project, and hide unreadable 
 });
 
 test("message notices are titled by kind, carry their place and excerpt, and hide without a visible conversation", () => {
-  const conversation = { name: "launch", kind: "channel" as const, excerpt: "Ready?" };
+  const conversation = {
+    name: "launch",
+    kind: "channel" as const,
+    private: false,
+    excerpt: "Ready?",
+  };
   const message = { ...base, messageId: "m1", conversationId: "c1", conversation };
   expect(toFeedItem({ ...message, kind: "mention" })).toMatchObject({
     title: "You were mentioned",
     conversationId: "c1",
     messageId: "m1",
     entityId: null,
-    source: { kind: "channel", name: "launch" },
+    source: { kind: "channel", name: "launch", private: false },
     excerpt: "Ready?",
   });
   expect(toFeedItem({ ...message, kind: "reply" })?.title).toBe("New thread reply");

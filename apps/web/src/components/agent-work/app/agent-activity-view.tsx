@@ -2,14 +2,17 @@ import type { HelperStatus } from "@startup-os/contracts/agent-work";
 
 import type { ReactNode } from "react";
 
-import { WorkIndicator } from "../work-indicator";
+import { WorkStatusTag } from "../work-status-tag";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { PendingButton } from "@/components/feedback/pending-button";
+import { Tag } from "@/components/feedback/tag";
 import { SettingsSection } from "@/components/layout/settings-section";
+import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
+import { Timestamp } from "@/components/time/timestamp";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { WorkStatus } from "@/lib/agent-work/status";
-import { formatDateTime, formatFullTimestamp } from "@/lib/format/date";
 import { cn } from "cn";
 import { Activity, ChevronRight } from "lucide-react";
 
@@ -26,6 +29,8 @@ export type ActivityRow = {
   status: WorkStatus;
   createdAt: string;
   selected: boolean;
+  /** One reviewed line for work that failed, since the row has no card. */
+  note?: string;
   /** For example, the needs-attention card. */
   attention?: ReactNode;
 };
@@ -87,42 +92,35 @@ export function AgentActivityView({
                   aria-current={row.selected ? "true" : undefined}
                   onClick={() => onTranscript(row.id)}
                   className={cn(
-                    "flex w-full min-w-0 items-start gap-3 px-4 py-2.5 text-left transition-colors hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset",
+                    "grid w-full min-w-0 gap-1 px-4 py-2.5 text-left transition-colors hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset",
                     row.selected && "bg-row-selected hover:bg-row-selected",
                   )}
                 >
-                  <span className="relative mt-1 size-3 shrink-0">
-                    <WorkIndicator tone={row.status.tone} label={row.status.label} />
-                  </span>
-                  <span className="grid min-w-0 flex-1 gap-0.5">
+                  <span className="flex min-w-0 items-baseline gap-3">
                     <span
                       className={cn(
-                        "truncate text-sm",
+                        "min-w-0 flex-1 truncate text-sm",
                         row.selected && "font-medium text-row-selected-foreground",
                       )}
                     >
                       {row.summary}
                     </span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {[
-                        row.kind,
-                        row.unattended && "background",
-                        row.place,
-                        row.status.label !== row.summary && row.status.label,
-                      ]
+                    <Timestamp
+                      value={row.createdAt}
+                      className="shrink-0 text-xs text-muted-foreground"
+                    />
+                  </span>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <WorkStatusTag status={row.status} />
+                    <span className="min-w-0 truncate text-xs text-muted-foreground">
+                      {[row.kind, row.unattended && "background", row.place]
                         .filter(Boolean)
                         .join(" · ")}
                     </span>
                   </span>
-                  <time
-                    dateTime={row.createdAt}
-                    title={formatFullTimestamp(row.createdAt)}
-                    className="mt-0.5 shrink-0 text-xs text-muted-foreground tabular-nums"
-                  >
-                    {formatDateTime(row.createdAt)}
-                  </time>
+                  {row.note && <span className="text-xs text-muted-foreground">{row.note}</span>}
                 </button>
-                {row.attention && <div className="px-4 pb-3">{row.attention}</div>}
+                {row.attention}
               </li>
             ))}
           </ul>
@@ -149,31 +147,41 @@ export function AgentActivityView({
           <ul aria-label="Helpers" className="divide-y overflow-hidden rounded-xl border bg-card">
             {helpers.map((helper) => (
               <li key={helper.id} className="text-sm">
-                {helper.report ? (
-                  <details className="group">
-                    <summary className="flex min-w-0 cursor-pointer list-none items-center gap-2 px-4 py-2.5 hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset [&::-webkit-details-marker]:hidden">
+                <Collapsible className="group/helper">
+                  <CollapsibleTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex w-full min-w-0 items-center gap-2 px-4 py-2.5 text-left transition-colors hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset"
+                    >
                       <ChevronRight
                         aria-hidden="true"
-                        className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 ease-out group-open:rotate-90 motion-reduce:transition-none"
+                        className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 ease-out group-data-[state=open]/helper:rotate-90 motion-reduce:transition-none"
                       />
                       <span className="min-w-0 flex-1 truncate">{helper.task}</span>
-                      <span className="shrink-0 text-xs text-muted-foreground">
-                        {helperStatusLabels[helper.status]}
-                      </span>
-                    </summary>
-                    <div className="grid gap-1 border-t bg-muted/30 px-4 py-3 pl-10">
-                      <p className="text-xs font-medium text-muted-foreground">Report</p>
-                      <p className="text-sm wrap-anywhere whitespace-pre-wrap">{helper.report}</p>
+                      <Tag className="shrink-0">{helperStatusLabels[helper.status]}</Tag>
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="grid gap-3 border-t bg-muted/30 px-4 py-3 pl-10">
+                      <div className="grid gap-1">
+                        <p className="text-xs font-medium text-muted-foreground">Task</p>
+                        <p className="text-sm wrap-anywhere whitespace-pre-wrap">{helper.task}</p>
+                      </div>
+                      <div className="grid gap-1">
+                        <p className="text-xs font-medium text-muted-foreground">Report</p>
+                        {helper.report ? (
+                          <MessageMarkdown body={helper.report} />
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            {helper.status === "running"
+                              ? "No report yet."
+                              : "This helper left no report."}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </details>
-                ) : (
-                  <div className="flex min-w-0 items-center gap-2 px-4 py-2.5 pl-10">
-                    <span className="min-w-0 flex-1 truncate">{helper.task}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {helperStatusLabels[helper.status]}
-                    </span>
-                  </div>
-                )}
+                  </CollapsibleContent>
+                </Collapsible>
               </li>
             ))}
           </ul>

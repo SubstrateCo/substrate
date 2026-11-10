@@ -2,6 +2,49 @@ import { expectChange, post, test, visit } from "./test-support/fixtures";
 import { detail, project, select, share } from "./test-support/tasks";
 import { expect } from "@playwright/test";
 
+test("task drafts ask before navigation and project drafts stay with their project", async ({
+  actors,
+  client,
+}) => {
+  const first = await project(actors.sender);
+  const second = await project(actors.sender);
+  const task = await post<{ id: string }>(actors.sender, "tasks/mutations", {
+    action: "createTask",
+    organizationId: actors.sender.organizationId,
+    projectEntityId: first.entityId,
+    title: "Draft target",
+  });
+  await post(actors.sender, "tasks/mutations", {
+    action: "createTask",
+    organizationId: actors.sender.organizationId,
+    projectEntityId: first.entityId,
+    title: "Other task",
+  });
+  const sender = await client(actors.sender);
+  await visit(sender, undefined, "/tasks", { projectId: first.entityId, taskId: task.id });
+  await sender.page.getByRole("button", { name: "Edit task" }).click();
+  await sender.page.getByLabel("Task title").fill("Unsaved task title");
+  await sender.page.getByRole("button", { name: /^Not started: Other task/ }).click();
+  await sender.page.getByRole("button", { name: "Keep editing" }).click();
+  await expect(sender.page.getByLabel("Task title")).toHaveValue("Unsaved task title");
+  await sender.page.getByLabel("Add a comment").fill("A comment draft");
+  await sender.page.getByRole("button", { name: "Close task" }).click();
+  await expect(sender.page.getByRole("dialog", { name: "Discard unsaved changes?" })).toBeVisible();
+  await sender.page.getByRole("button", { name: "Keep editing" }).click();
+  await expect(sender.page.getByLabel("Add a comment")).toHaveValue("A comment draft");
+  await sender.page.getByRole("tab", { name: "Settings" }).click();
+  await sender.page.getByRole("button", { name: "Discard changes" }).click();
+  // The task inspector keeps its draft guard until its exit animation ends.
+  await expect(sender.page.getByRole("complementary", { name: "Task", exact: true })).toHaveCount(
+    0,
+  );
+  await sender.page.getByLabel("Project name", { exact: true }).fill("Unsaved project name");
+  await sender.page.getByRole("button", { name: second.name, exact: true }).click();
+  await sender.page.getByRole("button", { name: "Discard changes" }).click();
+  await sender.page.getByRole("tab", { name: "Settings" }).click();
+  await expect(sender.page.getByLabel("Project name", { exact: true })).toHaveValue(second.name);
+});
+
 test("create a project, task and subtask, then edit and reload the task", async ({
   actors,
   client,
@@ -13,8 +56,9 @@ test("create a project, task and subtask, then edit and reload the task", async 
     .getByRole("complementary", { name: "Projects", exact: true })
     .getByRole("button", { name: "New project", exact: true })
     .click();
-  await sender.page.getByLabel("Project name", { exact: true }).fill(name);
-  await sender.page
+  const newProject = sender.page.getByRole("dialog", { name: "New project" });
+  await newProject.getByLabel("Project name", { exact: true }).fill(name);
+  await newProject
     .getByLabel("Project description", { exact: true })
     .fill("Release regression coverage");
   await sender.page.getByRole("button", { name: "Create project", exact: true }).click();

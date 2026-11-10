@@ -1,11 +1,12 @@
 import type { TaskStatus } from "@startup-os/contracts/tasks";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { TaskList } from "../list/task-list";
 import type { ProjectDetail, Task } from "../types";
 import { TaskCreationDialog } from "./pane/task-creation-dialog";
 import { useTaskPanel } from "./pane/use-task-panel";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { isAccessFailure } from "@/components/feedback/request-failure";
@@ -57,6 +58,7 @@ export function ProjectPane({
     onClose: () => void,
     onSubtask: () => void,
     onSelectTask: (id: string) => void,
+    onDirtyChange: (dirty: boolean) => void,
   ) => ReactNode;
   selectedTaskId: string | null;
   onSelectTask: (id: string | null) => void;
@@ -65,6 +67,8 @@ export function ProjectPane({
   context?: ReactNode;
 }) {
   const [tab, setTab] = useState("tasks");
+  const [taskDirty, setTaskDirty] = useState(false);
+  const [pendingTab, setPendingTab] = useState<string | null>(null);
   const detail = isAccessFailure(error) ? undefined : data;
   const { panel, inspector, newTaskButton, restoreFocus } = useTaskPanel({
     selectedTaskId,
@@ -85,7 +89,7 @@ export function ProjectPane({
                   ? "This project was removed or you no longer have access."
                   : undefined
               }
-              onRetry={onRetry}
+              onRetry={isAccessFailure(error) ? undefined : onRetry}
             />
           </div>
         )}
@@ -99,7 +103,14 @@ export function ProjectPane({
   return (
     <>
       <PageContent>
-        <Tabs value={tab} onValueChange={setTab} className="min-h-0 min-w-0 flex-1">
+        <Tabs
+          value={tab}
+          onValueChange={(next) => {
+            if (tab === "tasks" && next !== "tasks" && taskDirty) setPendingTab(next);
+            else setTab(next);
+          }}
+          className="min-h-0 min-w-0 flex-1"
+        >
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="shrink-0 border-b px-6 pt-5">
               <PageHeader
@@ -177,7 +188,13 @@ export function ProjectPane({
             <TabsContent value="discussions" className="min-h-0 overflow-y-auto">
               <div className="max-w-3xl p-6">{context}</div>
             </TabsContent>
-            <TabsContent value="settings" className="min-h-0 overflow-y-auto">
+            {/* Stays mounted so an unsaved project name or description survives a tab change. */}
+            <TabsContent
+              value="settings"
+              forceMount
+              hidden={tab !== "settings"}
+              className="min-h-0 overflow-y-auto"
+            >
               <div className="grid max-w-3xl min-w-0 gap-6 p-6">
                 {canEdit && editor}
                 {sharing}
@@ -186,42 +203,41 @@ export function ProjectPane({
           </div>
         </Tabs>
       </PageContent>
-      {openTaskId && tab === "tasks" && (
-        <PageAside ref={inspector} tabIndex={-1} aria-label="Task" className="outline-none">
-          {selected ? (
-            renderTaskDetail(
-              detail,
-              selected,
-              panel.close,
-              () => panel.createSubtask(selected.entityId),
-              panel.select,
-            )
-          ) : (
-            <>
-              <header className="flex h-12 shrink-0 items-center justify-end border-b px-4">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label="Close task"
-                      onClick={panel.close}
-                    >
-                      <X aria-hidden="true" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Close task</TooltipContent>
-                </Tooltip>
-              </header>
-              <ContentNotice
-                icon={Unlink}
-                title="Task unavailable"
-                description="This task was removed or you no longer have access. Choose another task."
-              />
-            </>
-          )}
-        </PageAside>
-      )}
+      <TaskAside open={Boolean(openTaskId && tab === "tasks")} inspector={inspector}>
+        {selected ? (
+          renderTaskDetail(
+            detail,
+            selected,
+            panel.close,
+            () => panel.createSubtask(selected.entityId),
+            panel.select,
+            setTaskDirty,
+          )
+        ) : (
+          <>
+            <header className="flex h-12 shrink-0 items-center justify-end border-b px-4">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Close task"
+                    onClick={panel.close}
+                  >
+                    <X aria-hidden="true" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Close task</TooltipContent>
+              </Tooltip>
+            </header>
+            <ContentNotice
+              icon={Unlink}
+              title="Task unavailable"
+              description="This task was removed or you no longer have access. Choose another task."
+            />
+          </>
+        )}
+      </TaskAside>
       {panel.creating && canEdit && (
         <TaskCreationDialog
           subtask={!!creatingParent}
@@ -242,6 +258,64 @@ export function ProjectPane({
           )}
         </TaskCreationDialog>
       )}
+      {pendingTab && (
+        <ConfirmDialog
+          title="Discard unsaved changes?"
+          description="Your task edits or comment haven't been saved."
+          confirmLabel="Discard changes"
+          cancelLabel="Keep editing"
+          pendingLabel="Discarding…"
+          destructive
+          onClose={() => setPendingTab(null)}
+          onConfirm={() => {
+            setTaskDirty(false);
+            setTab(pendingTab);
+            setPendingTab(null);
+          }}
+        />
+      )}
     </>
+  );
+}
+
+function TaskAside({
+  open,
+  inspector,
+  children,
+}: {
+  open: boolean;
+  inspector: RefObject<HTMLElement | null>;
+  children: ReactNode;
+}) {
+  const [present, setPresent] = useState(open);
+  const lastContent = useRef(children);
+  // Keep the last inspector visible for the exit animation after its selection is cleared.
+  // oxlint-disable-next-line react/refs -- The snapshot is used only for the short exit state.
+  if (open) lastContent.current = children;
+  useEffect(() => {
+    if (open) {
+      // oxlint-disable-next-line react/set-state-in-effect -- Re-arm exit presence after reopening.
+      setPresent(true);
+      return;
+    }
+    const timer = window.setTimeout(() => setPresent(false), 150);
+    return () => window.clearTimeout(timer);
+  }, [open]);
+  if (!open && !present) return null;
+  return (
+    <PageAside
+      ref={inspector}
+      tabIndex={-1}
+      aria-label="Task"
+      inert={!open}
+      className={
+        open
+          ? "outline-none"
+          : "pointer-events-none duration-150 outline-none motion-safe:animate-out motion-safe:fade-out-0 motion-safe:slide-out-to-right-2"
+      }
+    >
+      {/* oxlint-disable-next-line react/refs -- Exit content is an inert snapshot. */}
+      {open ? children : lastContent.current}
+    </PageAside>
   );
 }

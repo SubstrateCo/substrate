@@ -7,6 +7,7 @@ import type { Message } from "@/api/messaging/requests";
 import { DayDivider } from "@/components/messaging/messages/day-divider";
 import { messageRows } from "@/components/messaging/messages/message-grouping";
 import { MessageList as MessageListView } from "@/components/messaging/messages/message-list-view";
+import { isSameDay } from "@/lib/format/date";
 import { messagePageOptions } from "@/queries/context/links";
 
 export function MessageList({
@@ -16,6 +17,7 @@ export function MessageList({
   onThread,
   header,
   footer,
+  previousDate,
 }: {
   messages: Message[];
   organizationId: string;
@@ -25,6 +27,7 @@ export function MessageList({
   header?: ReactNode;
   /** Floats over the bottom of the list, such as a jump to the latest messages. */
   footer?: ReactNode;
+  previousDate?: Message["createdAt"];
 }) {
   const context = useQuery(
     messagePageOptions(
@@ -36,9 +39,12 @@ export function MessageList({
   const contextById = new Map(context.data?.map((row) => [row.messageId, row]));
   return (
     <MessageListView lastId={messages.at(-1)?.id} header={header} footer={footer}>
-      {messageRows(messages).map(({ message, newDay, grouped }) => (
+      {messageRows(messages).map(({ message, newDay, grouped }, index) => (
         <Fragment key={message.id}>
-          {newDay && <DayDivider date={message.createdAt} />}
+          {newDay &&
+            !(index === 0 && previousDate && isSameDay(previousDate, message.createdAt)) && (
+              <DayDivider date={message.createdAt} />
+            )}
           <MessageItem
             message={message}
             grouped={grouped}

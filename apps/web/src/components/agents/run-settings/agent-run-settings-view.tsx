@@ -4,7 +4,7 @@ import {
   type AgentTriggerSetting,
 } from "@startup-os/contracts/agents";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { PendingButton } from "@/components/feedback/pending-button";
@@ -13,7 +13,6 @@ import {
   SettingsFooter,
   SettingsSection,
 } from "@/components/layout/settings-section";
-import { Button } from "@/components/ui/button";
 import { Field, FieldContent, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import { homeDeviceLabel } from "@/lib/agents/triggers";
@@ -28,6 +27,7 @@ export function AgentRunSettingsView({
   error,
   onRunHere,
   onSave,
+  onDirtyChange,
 }: {
   name: string;
   settings: AgentRunSettings;
@@ -38,6 +38,7 @@ export function AgentRunSettingsView({
   error?: Error | null;
   onRunHere: () => void;
   onSave: (triggers: AgentTriggerSetting[]) => void;
+  onDirtyChange: (dirty: boolean) => void;
 }) {
   const [triggers, setTriggers] = useState(settings.triggers);
   const update = (kind: AgentTriggerSetting["kind"], change: Partial<AgentTriggerSetting>) =>
@@ -49,6 +50,10 @@ export function AgentRunSettingsView({
     (trigger) =>
       settings.triggers.find((saved) => saved.kind === trigger.kind)?.enabled !== trigger.enabled,
   );
+  useEffect(() => {
+    onDirtyChange(dirty);
+    return () => onDirtyChange(false);
+  }, [dirty, onDirtyChange]);
   return (
     <SettingsSection
       title="Run settings"
@@ -86,32 +91,12 @@ export function AgentRunSettingsView({
         description="Messages that start this agent."
         footer={
           <SettingsFooter
-            status={
-              error ? (
-                <p role="alert" className="text-destructive">
-                  {actionErrorMessage(error, "We couldn’t save run settings. Try again.")}
-                </p>
-              ) : (
-                dirty && <p className="text-muted-foreground">You have unsaved changes.</p>
-              )
-            }
-          >
-            <Button
-              variant="outline"
-              disabled={saving || !dirty}
-              onClick={() => setTriggers(settings.triggers)}
-            >
-              Discard changes
-            </Button>
-            <PendingButton
-              pending={saving}
-              disabled={!dirty}
-              pendingLabel="Saving…"
-              onClick={() => onSave(triggers)}
-            >
-              Save run settings
-            </PendingButton>
-          </SettingsFooter>
+            dirty={dirty}
+            pending={saving}
+            error={error && actionErrorMessage(error, "We couldn’t save run settings. Try again.")}
+            onDiscard={() => setTriggers(settings.triggers)}
+            onSave={() => onSave(triggers)}
+          />
         }
       >
         <ul className="-mx-5 -mb-5 divide-y border-t">

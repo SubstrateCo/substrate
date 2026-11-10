@@ -44,6 +44,7 @@ type AgentFormProps = {
   onSectionChange?: (section: AgentSettingsSection) => void;
   picture?: ReactNode;
   runSettings?: ReactNode;
+  runSettingsDirty?: boolean;
   deleteAction?: ReactNode;
   pending: boolean;
   onCancel?: () => void;
@@ -68,6 +69,7 @@ export function AgentForm({
   onSectionChange,
   picture,
   runSettings,
+  runSettingsDirty = false,
   deleteAction,
   pending,
   onCancel,
@@ -199,44 +201,33 @@ export function AgentForm({
             )}
           </form.Subscribe>
         );
-        const footerWith = (unsaved: string) => (
+        const footer = (
           <SettingsFooter
-            status={
-              error ? (
-                <p role="alert" className="text-destructive">
-                  {error}
-                </p>
-              ) : (
-                agent && dirty && <p className="text-muted-foreground">{unsaved}</p>
-              )
-            }
-          >
-            <Button
-              type="button"
-              variant="outline"
-              disabled={busy || (!onCancel && !dirty)}
-              onClick={() => {
-                if (onCancel) onCancel();
-                else {
-                  form.reset();
-                  setError(undefined);
-                }
-              }}
-            >
-              {onCancel ? "Cancel" : "Discard changes"}
-            </Button>
-            <PendingButton
-              type="submit"
-              form={formId}
-              pending={busy}
-              disabled={!!agent && !dirty}
-              pendingLabel={agent ? "Saving…" : "Creating…"}
-            >
-              {agent ? "Save changes" : "Create agent"}
-            </PendingButton>
-          </SettingsFooter>
+            dirty={dirty}
+            pending={busy}
+            error={error}
+            form={formId}
+            onDiscard={() => {
+              form.reset();
+              setError(undefined);
+            }}
+          />
         );
-        const footer = footerWith("You have unsaved changes.");
+        const createFooter = (
+          <>
+            {error && (
+              <p role="alert" className="mr-auto text-sm text-destructive">
+                {error}
+              </p>
+            )}
+            <Button type="button" variant="outline" disabled={busy} onClick={onCancel}>
+              Cancel
+            </Button>
+            <PendingButton type="submit" form={formId} pending={busy} pendingLabel="Creating…">
+              Create agent
+            </PendingButton>
+          </>
+        );
         const formElement = (
           <form
             id={formId}
@@ -266,7 +257,7 @@ export function AgentForm({
                   {instructionsField}
                 </fieldset>
               </DialogBody>
-              <DialogFooter>{footer}</DialogFooter>
+              <DialogFooter>{createFooter}</DialogFooter>
             </>
           );
 
@@ -278,13 +269,18 @@ export function AgentForm({
             aria-label="Unsaved agent changes"
             className="sticky bottom-0 z-10 mt-6 rounded-xl border bg-card px-5 py-3 shadow-sm"
           >
-            {footerWith("Unsaved changes to the name, model, or instructions.")}
+            {footer}
           </div>
         );
         return (
           <div className="min-w-0">
             {formElement}
-            <UnsavedChangesGuard dirty={dirty} agentId={agent.id} />
+            <UnsavedChangesGuard
+              dirty={dirty || runSettingsDirty}
+              agentId={agent.id}
+              definitionDirty={dirty}
+              runSettingsDirty={runSettingsDirty}
+            />
             {section === "general" && (
               <SettingsSection
                 title="General"
@@ -328,17 +324,25 @@ export function AgentForm({
               </SettingsSection>
             )}
             {(section === "skills" || section === "mcps") && (
-              <form.Subscribe
-                selector={(state) =>
-                  [state.values.harness, state.values.useStartupDefaults] as const
-                }
-              >
-                {([harness, defaults]) =>
-                  renderConfiguration(harness, section, defaults ?? true, agent.id)
-                }
-              </form.Subscribe>
+              <>
+                <form.Subscribe selector={(state) => state.values.harness !== agent.harness}>
+                  {(runtimeChanged) =>
+                    runtimeChanged && (
+                      <p className="mb-4 text-sm text-muted-foreground">
+                        These files use the saved runtime. Save the model change to switch runtimes.
+                      </p>
+                    )
+                  }
+                </form.Subscribe>
+                {renderConfiguration(agent.harness, section, agent.useStartupDefaults, agent.id)}
+              </>
             )}
-            {section === "run" && runSettings}
+            <div hidden={section !== "run"}>{runSettings}</div>
+            {runSettingsDirty && section !== "run" && (
+              <p className="mt-4 text-sm text-muted-foreground">
+                Run settings have unsaved changes. Return to Run settings to save or discard them.
+              </p>
+            )}
             {draftBar}
           </div>
         );

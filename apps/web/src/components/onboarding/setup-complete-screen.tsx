@@ -21,7 +21,6 @@ export function SetupCompleteScreen({
   const destination = `/dashboard?${search}`;
   return (
     <AuthFrame
-      size="wide"
       title="Your workspace is ready"
       description={
         <>

@@ -2,18 +2,21 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import { Avatar, AvatarFallback } from "../../ui/avatar";
 import { Tag } from "@/components/feedback/tag";
+import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
 import { plainReferenceText } from "@/components/messaging/references/reference-token";
 import { Timestamp } from "@/components/time/timestamp";
 import { initials } from "@/lib/people/initials";
 import { cn } from "cn";
-import { Hash, MessageSquare, MessageSquareReply } from "lucide-react";
+import { MessageCircle, MessageSquareReply } from "lucide-react";
 
 export type Discussion = {
   messageId: string;
   purpose: "source" | "mention" | "association";
   href: string;
   conversationName: string | null;
+  conversationKind?: "channel" | "dm" | "group";
+  private?: boolean;
   authorName: string | null;
   authorType?: "human" | "agent";
   createdAt: string;
@@ -23,14 +26,15 @@ export type Discussion = {
 
 export function DiscussionItem({ item }: { item: Discussion }) {
   const descriptionId = useId();
-  const conversation = item.conversationName ?? "Direct conversation";
+  const conversation =
+    item.conversationName ??
+    (item.conversationKind === "group" ? "Group message" : "Direct message");
   const title = `${item.purpose === "source" ? "Created from a discussion" : "Related discussion"} · ${conversation}`;
   const relationship = {
     source: "Created from this discussion",
     mention: "Linked through a reference",
     association: "Linked work",
   }[item.purpose];
-  const ConversationIcon = item.conversationName ? Hash : MessageSquare;
   const author = item.authorName ?? "Unknown author";
   return (
     <li className="relative flex min-w-0 gap-3 rounded-lg border bg-card p-3 transition-colors hover:border-foreground/15 hover:bg-muted/50">
@@ -39,7 +43,15 @@ export function DiscussionItem({ item }: { item: Discussion }) {
       </Avatar>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-          <ConversationIcon aria-hidden="true" className="size-3.5 shrink-0" />
+          {item.conversationKind ? (
+            <ConversationKindIcon
+              kind={item.conversationKind}
+              private={item.private}
+              className="size-3.5 shrink-0"
+            />
+          ) : (
+            <MessageCircle aria-hidden="true" className="size-3.5 shrink-0" />
+          )}
           {/* Stretch the link over the card. A card-wide <a> would nest Markdown links. */}
           <a
             href={item.href}

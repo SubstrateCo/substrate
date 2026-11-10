@@ -34,7 +34,7 @@ export function InboxReceiptView({
       <Clock aria-hidden="true" className="size-3.5 shrink-0" />
       <span
         role="status"
-        className={cn("tabular-nums", tone === "attention" && "font-medium text-warning")}
+        className={cn("tabular-nums", tone === "attention" && "font-medium text-warning-text")}
       >
         {label}
       </span>

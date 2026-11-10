@@ -25,6 +25,7 @@
   --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
   --color-input: var(--input);
+  --color-control-border: var(--control-border);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
@@ -44,6 +45,7 @@
   --color-surface: var(--surface);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-warning-text: var(--warning-text);
   --color-rail: var(--rail);
   --color-rail-foreground: var(--rail-foreground);
   --color-destructive-solid: var(--destructive-solid);
@@ -53,6 +55,8 @@
   /* Motion: strong ease-out for every enter, exit, and press. See apps/web/DESIGN.md § 6. */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --animate-collapsible-down: collapsible-down 180ms var(--ease-out);
+  --animate-collapsible-up: collapsible-up 150ms var(--ease-out);
   --shadow-surface: var(--elevation-surface);
   --shadow-raised: var(--elevation-raised);
   --shadow-floating: var(--elevation-floating);
@@ -89,7 +93,9 @@
   --accent-foreground: oklch(0.42 0.15 280);
   --destructive: oklch(0.52 0.22 27.325);
   --border: oklch(0.9 0.009 275);
-  --input: oklch(0.62 0.012 275);
+  /* Field boundary: clear against the page. Outline buttons use the quieter control border. */
+  --input: oklch(0.64 0.012 275);
+  --control-border: oklch(0.82 0.01 275);
   --ring: oklch(0.6 0.16 280);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -108,6 +114,7 @@
   --surface: oklch(0.994 0.002 275);
   --success: oklch(0.43 0.1 165);
   --warning: oklch(0.6 0.15 62);
+  --warning-text: oklch(0.5 0.12 60);
   --rail: oklch(0.94 0.012 275);
   --rail-foreground: oklch(0.38 0.025 275);
   --destructive-solid: oklch(0.54 0.21 27);
@@ -139,8 +146,14 @@
   --accent-foreground: oklch(0.96 0.015 280);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 9%);
-  --input: oklch(0.64 0.014 275);
+  --input: oklch(0.52 0.016 275);
+  --control-border: oklch(0.4 0.014 275);
   --ring: oklch(0.7 0.12 280);
+  /* Light text on a dark ground looks heavier, so every weight steps down a little. */
+  --font-weight-normal: 380;
+  --font-weight-medium: 460;
+  --font-weight-semibold: 570;
+  --font-weight-bold: 660;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -157,6 +170,7 @@
   --surface: oklch(0.215 0.014 275);
   --success: oklch(0.76 0.12 165);
   --warning: oklch(0.82 0.14 80);
+  --warning-text: oklch(0.82 0.14 80);
   --rail: oklch(0.155 0.017 275);
   --rail-foreground: oklch(0.94 0.014 280);
   --destructive-solid: oklch(0.56 0.2 25);
@@ -196,12 +210,37 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-weight: var(--font-weight-normal, 400);
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   html {
     @apply font-sans;
     font-optical-sizing: auto;
     color-scheme: light;
+  }
+}
+
+/* Disclosures open and close with their measured height; Radix sets the variable. */
+@keyframes collapsible-down {
+  from {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+}
+
+@keyframes collapsible-up {
+  from {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+  to {
+    height: 0;
+    opacity: 0;
   }
 }
 

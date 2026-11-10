@@ -16,7 +16,6 @@ export function TaskSubtasks({
   onSelect: (id: string) => void;
   onCreate?: () => void;
 }) {
-  if (!subtasks.length && !onCreate) return null;
   const done = subtasks.filter((task) => task.status === "completed").length;
   return (
     <section aria-label="Subtasks" className="space-y-1">
@@ -46,6 +45,7 @@ export function TaskSubtasks({
           </Tooltip>
         )}
       </div>
+      {!subtasks.length && <p className="text-sm text-muted-foreground">No subtasks.</p>}
       {!!subtasks.length && (
         <ul className="-mx-2 grid gap-px">
           {subtasks.map((task) => (

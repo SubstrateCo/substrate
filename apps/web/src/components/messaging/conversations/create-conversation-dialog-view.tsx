@@ -23,6 +23,7 @@ import { PeoplePicker } from "@/components/people/people-picker";
 import type { Conversation } from "@/lib/messaging/conversations";
 import {
   invitedRecipients,
+  unfinishedRecipientMessage,
   type PickedRecipient,
   type PickerPerson,
 } from "@/lib/people/people-picker";
@@ -69,6 +70,9 @@ export function CreateConversationDialog({
   error?: Error | null;
 }) {
   const [shareHistory, setShareHistory] = useState(false);
+  // Text left in the people field. A submit with text left is refused, so nothing typed is dropped.
+  const [pendingText, setPendingText] = useState("");
+  const [refused, setRefused] = useState(false);
   const recipients: PickedRecipient[] = [];
   const form = useForm({
     defaultValues: { name: "", recipients, isPrivate: false },
@@ -109,6 +113,13 @@ export function CreateConversationDialog({
           noValidate
           onSubmit={(event) => {
             event.preventDefault();
+            if (unfinishedRecipientMessage(pendingText)) {
+              setRefused(true);
+              event.currentTarget
+                .querySelector<HTMLInputElement>("#conversation-recipients")
+                ?.focus();
+              return;
+            }
             void form.handleSubmit();
           }}
         >
@@ -120,7 +131,8 @@ export function CreateConversationDialog({
             {kind === "channel" && nameField}
             <form.Field name="recipients">
               {(field) => {
-                const invalid = !field.state.meta.isValid;
+                const unfinished = refused ? unfinishedRecipientMessage(pendingText) : undefined;
+                const invalid = !field.state.meta.isValid || !!unfinished;
                 const invited = invitedRecipients(field.state.value).length;
                 return (
                   <>
@@ -142,13 +154,21 @@ export function CreateConversationDialog({
                         invalid={invalid}
                         describedBy={invalid ? "conversation-recipients-error" : undefined}
                         onValueChange={field.handleChange}
+                        onPendingTextChange={(text) => {
+                          setPendingText(text);
+                          setRefused(false);
+                        }}
                         onBlur={field.handleBlur}
                       />
-                      {invalid && (
-                        <FieldError
-                          id="conversation-recipients-error"
-                          errors={field.state.meta.errors}
-                        />
+                      {unfinished ? (
+                        <FieldError id="conversation-recipients-error">{unfinished}</FieldError>
+                      ) : (
+                        invalid && (
+                          <FieldError
+                            id="conversation-recipients-error"
+                            errors={field.state.meta.errors}
+                          />
+                        )
                       )}
                     </Field>
                     {invited > 0 && (

@@ -9,6 +9,7 @@ import { FileUpload } from "./file-upload";
 import { pictureAccept, pictureMaxSize } from "./file-validation";
 import { ImageCropDialog, type PictureUploadContext } from "./image-crop-dialog";
 import { PicturePreview } from "./picture-preview";
+import { initials } from "@/lib/people/initials";
 import { ImageIcon, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -19,6 +20,8 @@ export interface PictureUploadProps {
   onUpload: (file: File, context: PictureUploadContext) => Promise<void>;
   onRemove: () => Promise<void>;
   disabled?: boolean;
+  /** Whose picture this is. Without a picture, the preview shows the initials people see elsewhere. */
+  name?: string;
 }
 
 export function PictureUpload({
@@ -27,6 +30,7 @@ export function PictureUpload({
   onUpload,
   onRemove,
   disabled = false,
+  name: owner,
 }: PictureUploadProps) {
   const [source, setSource] = useState<File | null>(null);
   const chooseButton = useRef<HTMLButtonElement | null>(null);
@@ -45,7 +49,9 @@ export function PictureUpload({
       setRemoving(false);
     }
   }
-  const fallback = (
+  const fallback = owner?.trim() ? (
+    <span className="text-lg font-medium text-muted-foreground">{initials(owner)}</span>
+  ) : (
     <ImageIcon
       className="size-7 text-muted-foreground"
       aria-label={value ? `${name} unavailable` : `No ${name.toLowerCase()}`}

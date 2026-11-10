@@ -3,6 +3,7 @@ import { useId, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { formatShortDate } from "@/lib/format/date";
 
 // A calendar date as YYYY-MM-DD in local time, the format tasks store.
 const dateOnly = (date: Date) =>
@@ -27,29 +28,39 @@ export function TaskDueDatePicker({
 }) {
   const id = useId();
   const [open, setOpen] = useState(false);
+  const [today, setToday] = useState(() => new Date());
   const choose = (next: string | null) => {
     setOpen(false);
     if (next !== value) onChange(next);
   };
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        if (next) setToday(new Date());
+        setOpen(next);
+      }}
+    >
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent variant="menu" align="start" className="w-56">
-        {quick.map((option) => (
-          <Button
-            key={option.label}
-            type="button"
-            variant="property"
-            size="sm"
-            onClick={() => {
-              const date = new Date();
-              date.setDate(date.getDate() + option.days(date));
-              choose(dateOnly(date));
-            }}
-          >
-            {option.label}
-          </Button>
-        ))}
+        {quick.map((option) => {
+          const date = new Date(today);
+          date.setDate(date.getDate() + option.days(date));
+          return (
+            <Button
+              key={option.label}
+              type="button"
+              variant="property"
+              size="sm"
+              onClick={() => {
+                choose(dateOnly(date));
+              }}
+            >
+              {option.label}
+              <span className="ml-auto text-xs text-muted-foreground">{formatShortDate(date)}</span>
+            </Button>
+          );
+        })}
         <div className="mt-1 grid gap-1.5 border-t px-1 pt-2 pb-1">
           <label htmlFor={id} className="text-xs text-muted-foreground">
             Pick a date

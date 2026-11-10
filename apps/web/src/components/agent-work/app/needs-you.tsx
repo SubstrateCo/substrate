@@ -12,7 +12,7 @@ import { needsYouOptions } from "@/queries/agent-work/server";
 
 function Place({ organizationId, place }: { organizationId: string; place: AgentRequestPlace }) {
   if (place.access === "hidden") return <span>{hiddenConversation}</span>;
-  if (place.access === "none") return <span>Background work</span>;
+  if (place.access === "none") return <span>Not from a message</span>;
   return (
     <a
       href={messageHref(organizationId, place.conversationId, place.anchorMessageId ?? undefined)}
@@ -40,6 +40,7 @@ export function NeedsYou({
       agentName: request.agent.name,
       place: <Place organizationId={organizationId} place={request.place} />,
       body: <RequestCard userId={userId} organizationId={organizationId} request={request} />,
+      onOpenAgent: () => onOpenAgent(request.userAgentId),
     })),
     // Agents that need a decision with no request, such as work that stopped.
     ...agents.map((status) => ({
@@ -48,7 +49,7 @@ export function NeedsYou({
       place: <span>{agentStatus(status).label}</span>,
       body: (
         <p className="text-sm text-muted-foreground">
-          Work stopped and needs you to retry, start fresh, or dismiss it
+          Work stopped. Open the agent’s activity to retry, start fresh, or dismiss it
           {status.device ? ` on ${status.device.name}` : ""}.
         </p>
       ),

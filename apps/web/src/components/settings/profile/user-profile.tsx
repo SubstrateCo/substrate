@@ -23,6 +23,7 @@ export function UserProfile() {
         onRetry={() => void session.refetch()}
         kind="avatar"
         value={user?.image}
+        name={user?.name}
         disabled={session.isPending || upload.isPending || remove.isPending}
         onUpload={async (file, { signal, onCommit }) => {
           await upload.mutateAsync({ file, signal, onCommit });

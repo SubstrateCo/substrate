@@ -63,6 +63,48 @@ export function formatDateTime(value: DateInput, now: DateInput = Date.now()) {
   return date ? `${formatShortDate(date, now)}, ${plain(time.format(date))}` : "";
 }
 
+/** "Nov 8, 3:40 PM" read in a named IANA time zone instead of the viewer's. */
+export function formatDateTimeInZone(value: DateInput, zone: string, now: DateInput = Date.now()) {
+  const date = toDate(value);
+  if (!date) return "";
+  try {
+    const years = new Intl.DateTimeFormat(locale, { year: "numeric", timeZone: zone });
+    const sameYear = years.format(date) === years.format(toDate(now) ?? date);
+    const dayText = new Intl.DateTimeFormat(locale, {
+      month: "short",
+      day: "numeric",
+      year: sameYear ? undefined : "numeric",
+      timeZone: zone,
+    }).format(date);
+    const clock = new Intl.DateTimeFormat(locale, {
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: zone,
+    }).format(date);
+    return `${dayText}, ${plain(clock)}`;
+  } catch {
+    return formatDateTime(date, now);
+  }
+}
+
+/** "America / New York · UTC−5": a zone's name for reading, with its offset at the given time. */
+export function formatTimeZone(zone: string, at: DateInput = Date.now()) {
+  const name = zone.replaceAll("_", " ").replaceAll("/", " / ");
+  const date = toDate(at);
+  if (!date) return name;
+  try {
+    const offset = new Intl.DateTimeFormat(locale, { timeZone: zone, timeZoneName: "shortOffset" })
+      .formatToParts(date)
+      .find((part) => part.type === "timeZoneName")?.value;
+    if (!offset) return name;
+    const zero = /^GMT([+-]0+(:00)?)?$/.test(offset);
+    const label = zero ? "UTC" : offset.replace("GMT", "UTC").replace("-", "−");
+    return name === label ? name : `${name} · ${label}`;
+  } catch {
+    return name;
+  }
+}
+
 /** The unambiguous form for tooltips: "Sunday, November 8, 2026 at 3:40 PM". */
 export function formatFullTimestamp(value: DateInput) {
   const date = toDate(value);

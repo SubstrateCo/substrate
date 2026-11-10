@@ -1,5 +1,7 @@
 import { useId, type ReactNode } from "react";
 
+import { PendingButton } from "../feedback/pending-button";
+import { Button } from "../ui/button";
 import { cn } from "cn";
 
 /** One settings page or tab: a title, a short description, optional actions, then its groups. */
@@ -25,13 +27,18 @@ export function SettingsSection({
       className="grid min-w-0 gap-6"
     >
       <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-        <div className="min-w-0 space-y-1">
+        <div className="min-w-0 flex-1 basis-72 space-y-1">
           <h2 id={`${id}-title`} className="text-base font-semibold">
             {title}
           </h2>
           {description && <p className="text-sm text-muted-foreground">{description}</p>}
         </div>
-        {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+        {/* Always on the title row's right edge, even when it wraps below a long description. */}
+        {actions && (
+          <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
+            {actions}
+          </div>
+        )}
       </header>
       {children}
     </section>
@@ -172,12 +179,65 @@ export function SettingsNote({ icon, children }: { icon?: ReactNode; children: R
   );
 }
 
-/** Save and discard controls for one section. */
-export function SettingsFooter({ status, children }: { status?: ReactNode; children: ReactNode }) {
+/**
+ * The one save footer for a settings card, in every area. The status is on the left: the error, or
+ * "Unsaved changes" or "All changes saved". On the right, "Discard" (only when dirty) and a primary
+ * "Save" that is disabled while nothing changed. Submits its form unless `onSave` is passed.
+ */
+export function SettingsFooter({
+  dirty,
+  pending = false,
+  error,
+  form,
+  onSave,
+  onDiscard,
+}: {
+  dirty: boolean;
+  pending?: boolean;
+  /** Reviewed copy for a failed save; replaces the status. */
+  error?: ReactNode;
+  /** The id of the form to submit when the footer sits outside it. */
+  form?: string;
+  onSave?: () => void;
+  onDiscard: () => void;
+}) {
   return (
     <footer className="flex w-full flex-wrap items-center justify-end gap-x-3 gap-y-2">
-      {status && <div className="mr-auto min-w-0 text-sm">{status}</div>}
-      <div className="flex shrink-0 gap-2">{children}</div>
+      <div className="mr-auto min-w-0 text-sm">
+        {error ? (
+          <p role="alert" className="text-destructive">
+            {error}
+          </p>
+        ) : (
+          <p role="status" className="text-muted-foreground">
+            {dirty ? "Unsaved changes" : "All changes saved"}
+          </p>
+        )}
+      </div>
+      <div className="flex shrink-0 gap-2">
+        {dirty && (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={pending}
+            // Keeps focus where it is, so discarding does not validate the field it leaves.
+            onPointerDown={(event) => event.preventDefault()}
+            onClick={onDiscard}
+          >
+            Discard
+          </Button>
+        )}
+        <PendingButton
+          type={onSave ? "button" : "submit"}
+          form={form}
+          pending={pending}
+          pendingLabel="Saving"
+          disabled={!dirty}
+          onClick={onSave}
+        >
+          Save
+        </PendingButton>
+      </div>
     </footer>
   );
 }

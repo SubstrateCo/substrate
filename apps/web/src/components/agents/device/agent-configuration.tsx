@@ -7,7 +7,7 @@ import {
 
 import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { CatalogRow } from "../catalog/catalog-row";
 import type { AgentSection } from "../editors/agent-form";
@@ -57,6 +57,17 @@ export function AgentConfiguration({
   const available = !!controller && !!organizationId;
   const [editing, setEditing] = useState<{ id?: string }>();
   const [deleting, setDeleting] = useState<{ id: string; name: string }>();
+  const launcher = useRef<HTMLElement | null>(null);
+  const container = useRef<HTMLDivElement>(null);
+  const rememberLauncher = () => {
+    launcher.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  };
+  const restoreFocus = () => {
+    if (launcher.current?.isConnected && !launcher.current.matches(":disabled"))
+      launcher.current.focus();
+    else container.current?.focus();
+  };
   const configuration = useQuery({
     queryKey: key,
     queryFn: controller && organizationId ? () => controller.scan() : skipToken,
@@ -142,7 +153,10 @@ export function AgentConfiguration({
               size="sm"
               variant="outline"
               disabled={!available || reset.isPending}
-              onClick={() => setResetting(true)}
+              onClick={() => {
+                rememberLauncher();
+                setResetting(true);
+              }}
             >
               <RotateCcw />
               Reset defaults
@@ -151,7 +165,10 @@ export function AgentConfiguration({
               type="button"
               size="sm"
               disabled={!available || configuration.isFetching}
-              onClick={() => setEditing({})}
+              onClick={() => {
+                rememberLauncher();
+                setEditing({});
+              }}
             >
               <Plus />
               Create skill
@@ -172,8 +189,14 @@ export function AgentConfiguration({
                   name={item.name}
                   detail={item.description}
                   disabled={remove.isPending}
-                  onEdit={() => setEditing({ id: item.id })}
-                  onDelete={() => setDeleting({ id: item.id, name: item.name })}
+                  onEdit={() => {
+                    rememberLauncher();
+                    setEditing({ id: item.id });
+                  }}
+                  onDelete={() => {
+                    rememberLauncher();
+                    setDeleting({ id: item.id, name: item.name });
+                  }}
                 />
               ))
             ) : (
@@ -217,11 +240,12 @@ export function AgentConfiguration({
       </SettingsSection>
     );
   return (
-    <div>
+    <div ref={container} tabIndex={-1}>
       {content}
       {editing && (
         <SkillEditor
           skill={skill}
+          onRestoreFocus={restoreFocus}
           onClose={() => setEditing(undefined)}
           onSave={async (input) => {
             if (!controller || !organizationId)
@@ -243,6 +267,7 @@ export function AgentConfiguration({
           destructive
           pending={reset.isPending}
           error={reset.error}
+          onRestoreFocus={restoreFocus}
           onConfirm={() => reset.mutate(undefined, { onSuccess: () => setResetting(false) })}
           onClose={() => {
             setResetting(false);
@@ -260,6 +285,7 @@ export function AgentConfiguration({
           destructive
           pending={remove.isPending}
           error={remove.error}
+          onRestoreFocus={restoreFocus}
           onConfirm={() => remove.mutate(deleting.id, { onSuccess: () => setDeleting(undefined) })}
           onClose={() => {
             setDeleting(undefined);

@@ -40,7 +40,7 @@ export function ComposerNotice({
           <span
             className={cn(
               "min-w-0 truncate tabular-nums",
-              line.tone === "attention" && "text-warning",
+              line.tone === "attention" && "text-warning-text",
               line.tone === "working" && "text-primary",
             )}
           >

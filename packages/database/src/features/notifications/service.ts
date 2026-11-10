@@ -111,6 +111,7 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
             string | null
           >`CASE WHEN ${messagingConversations.id} IS NULL THEN NULL ELSE ${conversationDisplayName(db, scope)} END`,
           conversationKind: messagingConversations.kind,
+          conversationPrivate: messagingConversations.private,
           threadId: messagingMessages.threadId,
           body: messagingMessages.body,
           actorName: sql<string | null>`CASE WHEN ${actor.entityId} IS NULL THEN NULL
@@ -189,7 +190,15 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
         ),
       );
       return rows.flatMap(
-        ({ title, projectEntityId, projectName, conversationName, conversationKind, ...row }) =>
+        ({
+          title,
+          projectEntityId,
+          projectName,
+          conversationName,
+          conversationKind,
+          conversationPrivate,
+          ...row
+        }) =>
           toFeedItem({
             ...row,
             work:
@@ -201,6 +210,7 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
                 ? {
                     name: conversationName,
                     kind: conversationKind,
+                    private: conversationPrivate ?? true,
                     excerpt: excerpts.get(row.messageId!) ?? "",
                   }
                 : null,

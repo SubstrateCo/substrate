@@ -16,7 +16,11 @@ import { ConversationTurnTranscript } from "@/components/agent-work/transcript/c
 import { ErrorState } from "@/components/feedback/error-state";
 import { ConversationPane as ConversationPaneView } from "@/components/messaging/conversations/conversation-pane-view";
 import { JumpToLatest, OlderMessages } from "@/components/messaging/messages/message-history";
-import { conversationName, type Conversation } from "@/lib/messaging/conversations";
+import {
+  conversationLabel,
+  conversationName,
+  type Conversation,
+} from "@/lib/messaging/conversations";
 import { messageTargetOptions } from "@/queries/context/links";
 import { useConversationManagement } from "@/queries/messaging/management";
 
@@ -102,6 +106,10 @@ export function ConversationPane({
         key={activeThreadId}
         organizationId={organizationId}
         conversationId={conversation.id}
+        conversationLabel={conversationLabel({
+          ...conversation,
+          name: conversationName(conversation),
+        })}
         threadId={activeThreadId}
         contextMessageIds={timeline.map((message) => message.id)}
         root={target.data?.root ?? messages.data?.find((message) => message.id === activeThreadId)}
@@ -161,7 +169,7 @@ export function ConversationPane({
             <Composer
               organizationId={organizationId}
               conversationId={conversation.id}
-              label={`Message ${conversation.kind === "channel" ? "#" : ""}${conversationName(conversation)}`}
+              label={`Message ${conversationLabel({ ...conversation, name: conversationName(conversation) })}`}
             />
           </>
         }

@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { formatTimeZone } from "@/lib/format/date";
 
 const fieldOrder: readonly RoutineField[] = ["name", "prompt", "cron", "timezone"];
 
@@ -66,6 +67,7 @@ export function RoutineEditor({
   error,
   onSave,
   onCancel,
+  onRestoreFocus,
 }: {
   agentName: string;
   /** The routine's current name, when editing. */
@@ -76,6 +78,8 @@ export function RoutineEditor({
   error?: string | null;
   onSave: (draft: RoutineDraft) => void;
   onCancel: () => void;
+  /** Focus the control that opened the editor, because no trigger wraps this dialog. */
+  onRestoreFocus: () => void;
 }) {
   const id = useId();
   const formRef = useRef<HTMLFormElement>(null);
@@ -120,7 +124,9 @@ export function RoutineEditor({
     onSave(current);
   };
   const summary =
-    schedule.frequency === "custom" ? null : `${describeSchedule(cron)}, ${draft.timezone} time.`;
+    schedule.frequency === "custom"
+      ? null
+      : `${describeSchedule(cron)}, ${formatTimeZone(draft.timezone)}.`;
   return (
     <Dialog
       open
@@ -128,7 +134,13 @@ export function RoutineEditor({
         if (!open && !pending) onCancel();
       }}
     >
-      <DialogContent size="lg">
+      <DialogContent
+        size="lg"
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          onRestoreFocus();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{editing ? `Edit ${editing}` : "New routine"}</DialogTitle>
           <DialogDescription>

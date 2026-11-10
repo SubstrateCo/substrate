@@ -1,4 +1,9 @@
-import { addTypedRecipients, matchPeople, recipientFor } from "./people-picker";
+import {
+  addTypedRecipients,
+  matchPeople,
+  recipientFor,
+  unfinishedRecipientMessage,
+} from "./people-picker";
 import { expect, test } from "bun:test";
 
 const ada = { id: "u1", name: "Ada Lovelace", email: "ada@northstar.test" };
@@ -33,6 +38,13 @@ test("pasted addresses are added once, and unusable text is kept for correction"
     "sam@partner.test",
   ]);
   expect(rest).toBe("not-an-email");
+});
+
+test("text left in the picker is reported by name, and blank text is not", () => {
+  expect(unfinishedRecipientMessage("  sam@  ")).toBe(
+    "“sam@” isn’t a complete email address. Finish it or clear it.",
+  );
+  expect(unfinishedRecipientMessage("   ")).toBeUndefined();
 });
 
 test("addresses past the limit stay as text", () => {

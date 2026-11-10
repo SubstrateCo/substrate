@@ -33,11 +33,13 @@ function Header({
   image,
   secondary,
   action,
+  tags,
 }: {
   name: string;
   image?: string | null;
   secondary: ReactNode;
   action?: ReactNode;
+  tags?: ReactNode;
 }) {
   return (
     <div className="flex min-w-0 items-center gap-3">
@@ -46,7 +48,10 @@ function Header({
         <AvatarFallback>{initials(name)}</AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
-        <p className="truncate font-semibold">{name}</p>
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          <p className="min-w-0 truncate font-semibold">{name}</p>
+          {tags}
+        </div>
         {secondary}
       </div>
       {action && <div className="shrink-0">{action}</div>}
@@ -111,11 +116,11 @@ export function PersonCard({
         name={profile.name}
         image={profile.image}
         action={action}
+        tags={tags}
         secondary={
           secondary && <p className="truncate text-xs text-muted-foreground">{secondary}</p>
         }
       />
-      {tags.length > 0 && <div className="flex flex-wrap items-center gap-1.5">{tags}</div>}
       {profile.agent?.ownerName && (
         <p className="truncate text-xs text-muted-foreground">
           Owned by <span className="font-medium text-foreground">{profile.agent.ownerName}</span>

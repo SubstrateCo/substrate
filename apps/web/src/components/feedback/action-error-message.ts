@@ -38,9 +38,20 @@ reviewedMessages.set(
   "This person is already a member of this workspace.",
 );
 
+/** Failures that need a different next step than "try again", found by code, never by message. */
+function situationMessage(error: Error): string | undefined {
+  const status = "status" in error ? error.status : undefined;
+  const code = "code" in error ? error.code : undefined;
+  // `fetch` rejects with a TypeError when the request never reached the server.
+  if (error instanceof TypeError) return "You’re offline. Check your connection and try again.";
+  if (status === 429) return "Too many attempts. Wait a minute and try again.";
+  if (code === "UNAUTHENTICATED") return "Your session ended. Sign in again.";
+  return undefined;
+}
+
 export function actionErrorMessage(
   error: Error,
   fallback = "We couldn’t complete this action. Please try again.",
 ): string {
-  return reviewedMessages.get(normalize(error.message)) ?? fallback;
+  return reviewedMessages.get(normalize(error.message)) ?? situationMessage(error) ?? fallback;
 }

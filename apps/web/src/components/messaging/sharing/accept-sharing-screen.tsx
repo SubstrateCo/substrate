@@ -8,7 +8,6 @@ import { AuthFrame } from "@/components/auth/auth-frame";
 import { AuthNavLink } from "@/components/auth/auth-link";
 import { FormMessage } from "@/components/auth/form-message";
 import { SignOutButton } from "@/components/auth/sign-out/sign-out-button";
-import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { PendingButton } from "@/components/feedback/pending-button";
@@ -19,7 +18,7 @@ import { activateOrganization } from "@/lib/auth/organization";
 import { isDesktop } from "@/lib/desktop/auth";
 import { sharingInvitationOptions } from "@/queries/messaging/sharing";
 import { organizationsQueryOptions } from "@/queries/organizations/options";
-import { MailX, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 
 /** A 4xx other than a timeout or rate limit will not change on retry. */
 function isPermanentFailure(error: Error | null) {
@@ -68,12 +67,16 @@ export function AcceptSharingScreen({ invitationId }: { invitationId: string }) 
       organizationId: invite.data.targetOrganizationId,
       conversationId: invite.data.conversationId,
     };
+  const missing =
+    !invite.isPending &&
+    !accepted &&
+    !decline.isSuccess &&
+    ((!!invite.error && isPermanentFailure(invite.error)) ||
+      (!!invite.data && !available && accept.data?.status !== "approval-required"));
   const unavailableNotice = (
-    <ContentNotice
-      icon={MailX}
-      title="Invitation unavailable"
-      description="It may have expired or been sent to another email. Sign in with the invited email, or ask the sender for a new invitation."
-    />
+    <Button asChild className="w-full" size="lg">
+      <a href="/onboarding">Go to your workspaces</a>
+    </Button>
   );
   let content: ReactNode;
   if (decline.isSuccess)
@@ -125,8 +128,12 @@ export function AcceptSharingScreen({ invitationId }: { invitationId: string }) 
   else if (invite.data) content = unavailableNotice;
   return (
     <AuthFrame
-      title="External collaboration invitation"
-      description="Join from your own organization. You won't become a member of the inviting workspace."
+      title={missing ? "This invitation isn't available" : "External collaboration invitation"}
+      description={
+        missing
+          ? "It may have expired or been sent to another email. Sign in with the invited email, or ask the sender for a new invitation."
+          : "Join from your own organization. You won't become a member of the inviting workspace."
+      }
       actions={
         <>
           <AuthNavLink href="/onboarding">Your workspaces</AuthNavLink>

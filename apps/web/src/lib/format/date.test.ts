@@ -1,15 +1,29 @@
 import {
   formatDateTime,
+  formatDateTimeInZone,
   formatDayLabel,
   formatDueDate,
   formatRelativeTime,
   formatShortDate,
+  formatTimeZone,
   parseDateOnly,
 } from "./date";
 import { expect, test } from "bun:test";
 
 const now = new Date(2026, 10, 8, 12, 0).getTime();
 const ago = (ms: number) => new Date(now - ms).toISOString();
+
+test("a schedule's next run reads in the schedule's own zone", () => {
+  const instant = "2026-11-10T14:00:00.000Z";
+  expect(formatDateTimeInZone(instant, "America/New_York", now)).toBe("Nov 10, 9:00 AM");
+  expect(formatDateTimeInZone(instant, "Europe/Berlin", now)).toBe("Nov 10, 3:00 PM");
+});
+
+test("a time zone label has a readable name and its UTC offset", () => {
+  const winter = "2026-11-10T14:00:00.000Z";
+  expect(formatTimeZone("America/New_York", winter)).toBe("America / New York · UTC−5");
+  expect(formatTimeZone("UTC", winter)).toBe("UTC");
+});
 
 test("recent events use compact relative units", () => {
   expect(formatRelativeTime(ago(30_000), now)).toBe("now");

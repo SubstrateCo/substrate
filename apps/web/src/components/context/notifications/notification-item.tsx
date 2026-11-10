@@ -4,9 +4,10 @@ import { Avatar, AvatarFallback } from "../../ui/avatar";
 import { Button } from "../../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { formatFullTimestamp, formatRelativeTime } from "@/lib/format/date";
+import { conversationLabel } from "@/lib/messaging/conversations";
 import { initials } from "@/lib/people/initials";
 import { cn } from "cn";
-import { AtSign, Check, ListTodo, MessageSquare } from "lucide-react";
+import { AtSign, Check, ListTodo, LockKeyhole, MessageSquare } from "lucide-react";
 
 export type Notification = {
   id: string;
@@ -16,7 +17,7 @@ export type Notification = {
   /** Who acted, or null when the server could not name them. */
   actorName: string | null;
   /** Where it happened, as the reader sees it. */
-  source: { kind: "project" | "channel" | "dm" | "group"; name: string };
+  source: { kind: "project" | "channel" | "dm" | "group"; name: string; private?: boolean };
   /** One line of the message, with references the reader cannot open left unnamed. */
   excerpt: string | null;
   href: string;
@@ -26,10 +27,11 @@ export type Notification = {
 
 const kindIcons = { assignment: ListTodo, reply: MessageSquare, mention: AtSign };
 
+/** Where it happened: "#launch", a private channel by its bare name, a group, or "a direct message". */
 function place(source: Notification["source"]) {
-  if (source.kind === "channel") return `#${source.name}`;
   if (source.kind === "dm") return "a direct message";
-  return source.name;
+  if (source.kind === "project") return source.name;
+  return conversationLabel({ ...source, kind: source.kind });
 }
 
 /** "Alice replied to a thread in #launch", as plain parts so the names can stand out. */
@@ -37,6 +39,18 @@ function sentence(item: Notification) {
   if (item.kind === "assignment") return { verb: "assigned you", object: item.title };
   if (item.kind === "mention") return { verb: "mentioned you in", object: place(item.source) };
   return { verb: "replied to a thread in", object: place(item.source) };
+}
+
+/** A lock before the name of a private channel, which has no "#". */
+function LockedPlace({ item, object }: { item: Notification; object: string }) {
+  if (item.kind === "assignment" || item.source.kind !== "channel" || !item.source.private)
+    return object;
+  return (
+    <>
+      <LockKeyhole aria-hidden="true" className="mr-1 inline size-3 -translate-y-px" />
+      {object}
+    </>
+  );
 }
 
 export function NotificationItem({
@@ -65,8 +79,8 @@ export function NotificationItem({
         <Avatar variant="user" className="size-8">
           <AvatarFallback>{initials(actor)}</AvatarFallback>
         </Avatar>
-        <span className="absolute -right-1 -bottom-1 flex size-4 items-center justify-center rounded-full bg-surface text-muted-foreground ring-2 ring-surface group-hover/notice:bg-row-hover group-hover/notice:ring-row-hover">
-          <Icon className="size-3" />
+        <span className="absolute -right-1.5 -bottom-1.5 flex size-3.5 items-center justify-center rounded-full bg-surface text-muted-foreground ring-2 ring-surface group-hover/notice:bg-row-hover group-hover/notice:ring-row-hover">
+          <Icon className="size-2.5" />
         </span>
       </span>
       <div className="min-w-0 flex-1">
@@ -81,7 +95,9 @@ export function NotificationItem({
           >
             <span className={cn(item.read ? "font-medium" : "font-semibold")}>{actor}</span>{" "}
             <span className="text-muted-foreground">{verb}</span>{" "}
-            <span className={cn(item.read ? "font-medium" : "font-semibold")}>{object}</span>
+            <span className={cn(item.read ? "font-medium" : "font-semibold")}>
+              <LockedPlace item={item} object={object} />
+            </span>
           </a>
           <time
             dateTime={item.createdAt}

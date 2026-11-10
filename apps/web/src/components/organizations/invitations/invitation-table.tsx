@@ -1,9 +1,8 @@
 import { useMemo } from "react";
 
+import { RowAction, RowActions } from "../../layout/row-actions";
 import { DateTimeDisplay } from "../../table/date-time-cell";
 import { AppTable, createAppColumnHelper, dateTimeColumn, useAppTable } from "../../table/index";
-import { Button } from "../../ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import type { InvitationListItem } from "./invitation-manager-view";
 import { InvitationStatus, invitationState } from "./invitation-status";
 import { roleLabel } from "@/lib/organizations/member-policy";
@@ -25,36 +24,23 @@ function InvitationActions({
 }) {
   if (invitation.status !== "pending") return null;
   return (
-    <div role="group" aria-label="Invitation actions" className="flex items-center gap-0.5">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            size="icon-sm"
-            variant="ghost"
-            aria-label={`Resend invitation to ${invitation.email}`}
-            disabled={busy}
-            onClick={() => onInvite(invitation.email, invitation.role, true)}
-          >
-            <Send aria-hidden="true" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Resend invitation</TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            size="icon-sm"
-            variant="destructive-ghost"
-            aria-label={`Cancel invitation to ${invitation.email}`}
-            disabled={busy}
-            onClick={() => onCancel(invitation.id)}
-          >
-            <MailX aria-hidden="true" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Cancel invitation</TooltipContent>
-      </Tooltip>
-    </div>
+    <RowActions label="Invitation actions">
+      <RowAction
+        label={`Resend invitation to ${invitation.email}`}
+        disabled={busy}
+        onClick={() => onInvite(invitation.email, invitation.role, true)}
+      >
+        <Send aria-hidden="true" />
+      </RowAction>
+      <RowAction
+        destructive
+        label={`Cancel invitation to ${invitation.email}`}
+        disabled={busy}
+        onClick={() => onCancel(invitation.id)}
+      >
+        <MailX aria-hidden="true" />
+      </RowAction>
+    </RowActions>
   );
 }
 

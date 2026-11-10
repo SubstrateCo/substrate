@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "cn";
 import type { LucideIcon } from "lucide-react";
 
 export function WorkspaceAppButton({
@@ -10,6 +11,7 @@ export function WorkspaceAppButton({
   shortcut,
   unread = false,
   unreadLabel = "unread notifications",
+  dotTone = "primary",
   onClick,
 }: {
   label: string;
@@ -20,6 +22,8 @@ export function WorkspaceAppButton({
   unread?: boolean;
   /** What the dot means, read after the label. */
   unreadLabel?: string;
+  /** Primary for unread notifications; warning for work that needs the person. Red is for errors. */
+  dotTone?: "primary" | "warning";
   onClick: () => void;
 }) {
   return (
@@ -38,7 +42,10 @@ export function WorkspaceAppButton({
           {unread && (
             <span
               aria-hidden="true"
-              className="absolute top-2 right-2 size-2 rounded-full bg-destructive ring-2 ring-rail"
+              className={cn(
+                "absolute top-2 right-2 size-2 rounded-full ring-2 ring-rail",
+                dotTone === "warning" ? "bg-warning" : "bg-primary",
+              )}
             />
           )}
         </Button>

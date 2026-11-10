@@ -7,7 +7,7 @@ import {
   type ProjectDetail,
   type ProjectPermission,
 } from "../../types";
-import { Button } from "@/components/ui/button";
+import { RowAction, RowActions } from "@/components/layout/row-actions";
 import {
   Select,
   SelectContent,
@@ -15,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { UserMinus } from "lucide-react";
 
 /**
@@ -40,7 +39,7 @@ export function ProjectMemberRow({
   const labelId = useId();
   const editable = canManage && !lastOwner;
   return (
-    <li className="group/member flex min-h-12 items-center gap-3 px-5 py-2">
+    <li className="group/row flex min-h-12 items-center gap-3 px-5 py-2">
       <TaskAssigneeAvatar name={member.name} type={member.type} className="size-7" />
       <div className="min-w-0 flex-1">
         <p id={labelId} className="truncate text-sm font-medium">
@@ -72,23 +71,16 @@ export function ProjectMemberRow({
               ))}
             </SelectContent>
           </Select>
-          <span className="opacity-0 transition-opacity duration-150 group-hover/member:opacity-100 has-focus-visible:opacity-100 has-aria-expanded:opacity-100 max-md:opacity-100">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  size="icon-sm"
-                  variant="destructive-ghost"
-                  aria-label={`Remove ${member.name}’s access`}
-                  disabled={pending}
-                  onClick={onRemove}
-                >
-                  <UserMinus aria-hidden="true" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Remove access</TooltipContent>
-            </Tooltip>
-          </span>
+          <RowActions label={`Actions for ${member.name}`}>
+            <RowAction
+              label={`Remove ${member.name}’s access`}
+              destructive
+              disabled={pending}
+              onClick={onRemove}
+            >
+              <UserMinus aria-hidden="true" />
+            </RowAction>
+          </RowActions>
         </div>
       ) : (
         <span className="shrink-0 pr-2 text-sm text-muted-foreground">

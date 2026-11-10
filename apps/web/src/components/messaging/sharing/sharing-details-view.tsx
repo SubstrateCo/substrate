@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 
 import type { SharingDetails } from "@/api/messaging/sharing";
+import { Tag } from "@/components/feedback/tag";
+import { RowAction, RowActions } from "@/components/layout/row-actions";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Building2, Mail, RotateCcw, TriangleAlert, UserMinus, X } from "lucide-react";
 
 type Invitation = SharingDetails["invitations"][number];
@@ -30,10 +31,25 @@ function pendingStatus(invite: Invitation, now: number) {
   };
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({
+  title,
+  note,
+  children,
+}: {
+  title: string;
+  /** One warning for the whole list, so the rows need not repeat it. */
+  note?: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <section className="grid gap-1">
       <h3 className="text-xs font-medium text-muted-foreground">{title}</h3>
+      {note && (
+        <p className="flex items-start gap-1.5 text-xs font-medium text-warning">
+          <TriangleAlert aria-hidden="true" className="mt-px size-3.5 shrink-0" />
+          {note}
+        </p>
+      )}
       <ul className="grid gap-0.5">{children}</ul>
     </section>
   );
@@ -68,39 +84,8 @@ function Row({
           {status}
         </span>
       </span>
-      {actions && <span className="flex shrink-0 items-center gap-0.5">{actions}</span>}
+      {actions}
     </li>
-  );
-}
-
-function RowAction({
-  label,
-  destructive = false,
-  disabled,
-  onClick,
-  children,
-}: {
-  label: string;
-  destructive?: boolean;
-  disabled: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          size="icon-sm"
-          variant={destructive ? "destructive-ghost" : "ghost"}
-          aria-label={label}
-          disabled={disabled}
-          onClick={onClick}
-        >
-          {children}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
-    </Tooltip>
   );
 }
 
@@ -129,6 +114,7 @@ export function SharingDetailsView({
   const organizationName = (id: string) =>
     details.connections.find((connection) => connection.organizationId === id)?.name;
   const invitations = details.invitations.filter((invite) => invite.status === "pending");
+  const waiting = details.participants.filter((person) => !person.consentedAt).length;
   const sections = [details.connections, details.participants, invitations, details.events];
   if (sections.every((rows) => rows.length === 0))
     return (
@@ -167,29 +153,39 @@ export function SharingDetailsView({
         </Section>
       )}
       {details.participants.length > 0 && (
-        <Section title="People">
+        <Section
+          title="People"
+          note={
+            waiting > 0 &&
+            `${waiting === 1 ? "1 person needs" : `${waiting} people need`} to accept again before they can read new messages.`
+          }
+        >
           {details.participants.map((person) => {
             const from = organizationName(person.organizationId);
             return (
               <Row
                 key={person.actorId}
                 icon={<PersonAvatar name={person.name} />}
-                title={person.name}
-                warning={!person.consentedAt}
-                status={
-                  person.consentedAt
-                    ? (from ?? "External")
-                    : "Needs to accept again before they can read new messages"
+                title={
+                  <>
+                    {person.name}
+                    {!person.consentedAt && (
+                      <Tag className="ml-2 align-middle">Needs to accept</Tag>
+                    )}
+                  </>
                 }
+                status={from ?? "External"}
                 actions={
-                  <RowAction
-                    label={`Remove ${person.name}`}
-                    destructive
-                    disabled={pending}
-                    onClick={() => onRemove(person.actorId)}
-                  >
-                    <UserMinus />
-                  </RowAction>
+                  <RowActions label={`Actions for ${person.name}`}>
+                    <RowAction
+                      label={`Remove ${person.name}`}
+                      destructive
+                      disabled={pending}
+                      onClick={() => onRemove(person.actorId)}
+                    >
+                      <UserMinus />
+                    </RowAction>
+                  </RowActions>
                 }
               />
             );
@@ -212,7 +208,7 @@ export function SharingDetailsView({
                 status={status.text}
                 warning={status.warning}
                 actions={
-                  <>
+                  <RowActions label={`Actions for ${invite.email}`}>
                     {invite.senderOrganizationId === organizationId && (
                       <RowAction
                         label="Resend invitation"
@@ -230,7 +226,7 @@ export function SharingDetailsView({
                     >
                       <X />
                     </RowAction>
-                  </>
+                  </RowActions>
                 }
               />
             );

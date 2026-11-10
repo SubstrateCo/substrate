@@ -1,5 +1,6 @@
+import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
 import { Timestamp } from "@/components/time/timestamp";
-import { Bot, CircleDot, Plus, Hash, Link2, MessageSquare, Unlink } from "lucide-react";
+import { Bot, CircleDot, Link2, MessageCircle, MessageSquare, Unlink } from "lucide-react";
 
 export type ActivityEvent = {
   id: string;
@@ -7,12 +8,17 @@ export type ActivityEvent = {
   actorName: string | null;
   actorType?: "human" | "agent";
   createdAt: string;
-  source: { href: string; conversationName: string | null } | null;
+  source: {
+    href: string;
+    conversationName: string | null;
+    conversationKind?: "channel" | "dm" | "group";
+    private?: boolean;
+  } | null;
 };
 
 // Known server actions read as a verb phrase after the actor's name.
 const phrasing = new Map([
-  ["Task created", { icon: Plus, verb: "created the task" }],
+  ["Task created", { icon: CircleDot, verb: "created the task" }],
   ["Created from a discussion", { icon: MessageSquare, verb: "created this from" }],
   ["Discussion linked", { icon: Link2, verb: "linked" }],
   ["Discussion unlinked", { icon: Unlink, verb: "unlinked" }],
@@ -21,7 +27,6 @@ const phrasing = new Map([
 export function ActivityRow({ event }: { event: ActivityEvent }) {
   const known = phrasing.get(event.action);
   const Icon = known?.icon ?? CircleDot;
-  const SourceIcon = event.source?.conversationName ? Hash : MessageSquare;
   return (
     <li className="-mx-2 flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-row-hover">
       <Icon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
@@ -39,8 +44,19 @@ export function ActivityRow({ event }: { event: ActivityEvent }) {
             href={event.source.href}
             className="inline-flex min-w-0 items-center gap-0.5 rounded-sm bg-muted px-1 font-medium outline-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <SourceIcon aria-hidden="true" className="size-3 shrink-0 text-muted-foreground" />
-            <span className="truncate">{event.source.conversationName ?? "Direct message"}</span>
+            {event.source.conversationKind ? (
+              <ConversationKindIcon
+                kind={event.source.conversationKind}
+                private={event.source.private}
+                className="size-3 shrink-0 text-muted-foreground"
+              />
+            ) : (
+              <MessageCircle aria-hidden="true" className="size-3 shrink-0 text-muted-foreground" />
+            )}
+            <span className="truncate">
+              {event.source.conversationName ??
+                (event.source.conversationKind === "group" ? "Group message" : "Direct message")}
+            </span>
           </a>
         )}
       </span>

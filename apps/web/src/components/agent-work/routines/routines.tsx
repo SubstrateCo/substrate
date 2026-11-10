@@ -3,7 +3,7 @@ import { createRoutineInput, updateRoutineInput } from "@startup-os/contracts/ag
 
 import { useQuery } from "@tanstack/react-query";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type { RoutineDraft } from "./routine-draft";
 import { RoutineEditor } from "./routine-editor";
@@ -43,6 +43,19 @@ export function Routines({
   const [deleting, setDeleting] = useState<AgentRoutineView>();
   const [error, setError] = useState<string | null>(null);
   const editing = routines.data?.find((routine) => routine.id === editingId);
+  // Dialogs here are mounted from state, so they cannot find their launcher. Remember it, and
+  // fall back to the section when the launcher is gone, such as after a delete.
+  const region = useRef<HTMLDivElement>(null);
+  const launcher = useRef<HTMLElement | null>(null);
+  const remember = () => {
+    launcher.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  };
+  const restoreFocus = () => {
+    const target = launcher.current?.isConnected ? launcher.current : region.current;
+    target?.focus();
+    launcher.current = null;
+  };
   const close = () => {
     setEditingId(undefined);
     setError(null);
@@ -66,7 +79,7 @@ export function Routines({
     }
   };
   return (
-    <>
+    <div ref={region} tabIndex={-1} className="outline-none">
       <RoutineListView
         name={name}
         routines={routines.data ?? []}
@@ -74,8 +87,14 @@ export function Routines({
         error={routines.error}
         onRetry={() => void routines.refetch()}
         approvingId={actions.approve.isPending ? actions.approve.variables.routineId : undefined}
-        onAdd={() => setEditingId("new")}
-        onEdit={setEditingId}
+        onAdd={() => {
+          remember();
+          setEditingId("new");
+        }}
+        onEdit={(routineId) => {
+          remember();
+          setEditingId(routineId);
+        }}
         onApprove={(routine) =>
           actions.approve.mutate(
             { routineId: routine.id, revision: routine.revision },
@@ -86,7 +105,10 @@ export function Routines({
             },
           )
         }
-        onDelete={setDeleting}
+        onDelete={(routine) => {
+          remember();
+          setDeleting(routine);
+        }}
       />
       {editingId && (
         <RoutineEditor
@@ -108,6 +130,7 @@ export function Routines({
           error={error}
           onSave={save}
           onCancel={close}
+          onRestoreFocus={restoreFocus}
         />
       )}
       {deleting && (
@@ -132,8 +155,9 @@ export function Routines({
             setDeleting(undefined);
             actions.remove.reset();
           }}
+          onRestoreFocus={restoreFocus}
         />
       )}
-    </>
+    </div>
   );
 }

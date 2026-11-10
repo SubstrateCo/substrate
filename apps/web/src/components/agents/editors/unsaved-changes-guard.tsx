@@ -9,7 +9,17 @@ const agentsRoute = "/_authenticated/_frame/_workspace/agents";
  * Asks before leaving an agent's settings with an unsaved draft. Moving between the agent's
  * settings sections keeps the draft, so it does not ask.
  */
-export function UnsavedChangesGuard({ dirty, agentId }: { dirty: boolean; agentId: string }) {
+export function UnsavedChangesGuard({
+  dirty,
+  agentId,
+  definitionDirty,
+  runSettingsDirty,
+}: {
+  dirty: boolean;
+  agentId: string;
+  definitionDirty: boolean;
+  runSettingsDirty: boolean;
+}) {
   const blocker = useBlocker({
     shouldBlockFn: ({ next }) => {
       if (next.routeId !== agentsRoute) return true;
@@ -21,10 +31,14 @@ export function UnsavedChangesGuard({ dirty, agentId }: { dirty: boolean; agentI
     withResolver: true,
   });
   if (blocker.status !== "blocked") return null;
+  let description = "Your changes to this agent’s name, model, or instructions aren’t saved.";
+  if (definitionDirty && runSettingsDirty)
+    description = "Your agent and run settings changes aren’t saved.";
+  else if (runSettingsDirty) description = "Your run settings changes aren’t saved.";
   return (
     <ConfirmDialog
       title="Discard unsaved changes?"
-      description="Your changes to this agent’s name, model, or instructions aren’t saved."
+      description={description}
       confirmLabel="Discard changes"
       pendingLabel="Discarding…"
       cancelLabel="Keep editing"

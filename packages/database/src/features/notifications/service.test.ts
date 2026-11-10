@@ -324,7 +324,7 @@ test("notices name the actor and place, and excerpts name only references the re
     kind: "mention",
     messageId: message.id,
     actorName: "Alice",
-    source: { kind: "channel", name: "Private" },
+    source: { kind: "channel", name: "Private", private: true },
     excerpt: "@Bob see a task and Ship",
   });
   expect(assignment).toMatchObject({

@@ -86,7 +86,7 @@ export function Composer({
   const nearLimit = draft.length > messageMaxLength - 1000;
   return (
     <form
-      className="@container relative p-3 pt-1"
+      className="@container relative w-full max-w-3xl p-3 pt-1"
       onSubmit={(event) => {
         event.preventDefault();
         submit();

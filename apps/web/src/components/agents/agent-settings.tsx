@@ -3,7 +3,7 @@ import type { HarnessKind } from "@startup-os/contracts/harness";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { AgentConfiguration } from "./device/agent-configuration";
 import { AgentForm, type AgentSection } from "./editors/agent-form";
@@ -66,6 +66,11 @@ export function AgentSettings({
     },
   });
   const [deleting, setDeleting] = useState(false);
+  const deleteLauncher = useRef<HTMLButtonElement>(null);
+  const createLauncher = useRef(
+    document.activeElement instanceof HTMLElement ? document.activeElement : null,
+  );
+  const [runSettingsDirty, setRunSettingsDirty] = useState(false);
   const pending = save.isPending || remove.isPending;
   const agent = catalog.data?.agents.find((item) => item.id === agentId);
   const runSettings = catalog.data?.runSettings.find((item) => item.agentId === agentId);
@@ -103,6 +108,7 @@ export function AgentSettings({
       )}
       {agent && (
         <AgentForm
+          key={agent.id}
           userId={userId}
           organizationId={organizationId}
           agent={agent}
@@ -112,6 +118,7 @@ export function AgentSettings({
           renderConfiguration={renderConfiguration}
           pending={pending}
           onSave={onSave}
+          runSettingsDirty={runSettingsDirty}
           runSettings={
             runSettings && (
               <AgentRunSettings
@@ -119,6 +126,7 @@ export function AgentSettings({
                 userId={userId}
                 name={agent.name}
                 settings={runSettings}
+                onDirtyChange={setRunSettingsDirty}
               />
             )
           }
@@ -132,6 +140,7 @@ export function AgentSettings({
                   </p>
                 </div>
                 <Button
+                  ref={deleteLauncher}
                   size="sm"
                   variant="destructive-ghost"
                   disabled={pending}
@@ -152,7 +161,15 @@ export function AgentSettings({
             if (!open && !pending) onClose();
           }}
         >
-          <DialogContent size="lg">
+          <DialogContent
+            size="lg"
+            onCloseAutoFocus={(event) => {
+              if (createLauncher.current?.isConnected) {
+                event.preventDefault();
+                createLauncher.current.focus();
+              }
+            }}
+          >
             <DialogHeader>
               <DialogTitle>Create agent</DialogTitle>
               <DialogDescription>
@@ -184,6 +201,13 @@ export function AgentSettings({
           pending={pending}
           error={remove.error}
           errorDescription="We couldn’t delete this agent. Try again."
+          onRestoreFocus={() => {
+            if (deleteLauncher.current?.isConnected) deleteLauncher.current.focus();
+            else
+              document
+                .querySelector<HTMLButtonElement>('button[aria-label="Create agent"]')
+                ?.focus();
+          }}
           onConfirm={() =>
             remove.mutate(agent.id, {
               onSuccess: () => {

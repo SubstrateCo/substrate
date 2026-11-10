@@ -79,7 +79,7 @@ export function ProjectSharing({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <GroupTitle
           title="Project access"
-          description="Only these people can open this project. Their agents use the same access."
+          description="These people have direct access, as do their agents. Organization owners and admins and their agents can also access this project."
         />
         {canManage && canAdd && (
           <Dialog
@@ -145,12 +145,14 @@ export function ProjectSharing({
       {review && canManage && (
         <ConfirmDialog
           title={
-            review.level ? `Give ${review.name} more access?` : `Remove ${review.name}’s access?`
+            review.level
+              ? `Give ${review.name} more access?`
+              : `Remove ${review.name}’s direct access?`
           }
           description={
             review.level
               ? `${review.name} will be able to ${grantVerbs[review.level]} ${project}.`
-              : `${review.name} will no longer be able to open ${project}.`
+              : `Remove ${review.name}’s direct access to ${project}? Organization owners and admins keep access through their role.`
           }
           confirmLabel={review.level ? "Change access" : "Remove access"}
           pendingLabel="Updating access."
@@ -175,7 +177,7 @@ export function ProjectSharing({
           <p className="text-sm">
             {review.level
               ? "This applies to every task, subtask, and comment in this project."
-              : "They lose access to every task, subtask, and comment in this project. Linked messages keep their own permissions."}
+              : "This removes the direct grant for the project and its tasks, subtasks, and comments. Access through an organization owner or admin role remains. Linked messages keep their own permissions."}
           </p>
         </ConfirmDialog>
       )}

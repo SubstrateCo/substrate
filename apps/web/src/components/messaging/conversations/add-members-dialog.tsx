@@ -10,24 +10,31 @@ import { workspacePeopleQueryOptions } from "@/queries/organizations/people";
 
 /**
  * Adds people to a conversation the viewer manages. Admins may manage conversations they cannot
- * read: pass the `name` from their managed list, and every workspace member is suggested.
+ * read: pass the `name` and the `memberUserIds` from their managed list, so current members are
+ * not suggested.
  */
 export function AddMembersDialog({
   organizationId,
   conversationId,
   name,
+  memberUserIds,
   onClose,
 }: {
   organizationId: string;
   conversationId: string;
   name?: string;
+  /** Current members, when the viewer cannot read the conversation to tell. */
+  memberUserIds?: readonly string[];
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
   const conversation = useQuery(conversationsQueryOptions(organizationId)).data?.find(
     (row) => row.id === conversationId,
   );
-  const members = new Set(humanMembers(conversation?.members).map((member) => member.userId));
+  const members = new Set([
+    ...humanMembers(conversation?.members).map((member) => member.userId),
+    ...(memberUserIds ?? []),
+  ]);
   const people = (useQuery(workspacePeopleQueryOptions(organizationId)).data ?? []).filter(
     (person) => !members.has(person.id),
   );

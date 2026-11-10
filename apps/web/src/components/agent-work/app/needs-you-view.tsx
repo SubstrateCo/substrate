@@ -49,14 +49,23 @@ export function NeedsYouView({
           <ul aria-label="Needs you" className="grid gap-5">
             {entries.map((entry) => (
               <li key={entry.key} className="grid min-w-0 gap-1.5">
-                <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-                  <span className="font-semibold text-foreground">{entry.agentName}</span>
-                  {entry.place}
-                  {entry.onOpenAgent && (
-                    <Button type="button" size="xs" variant="link" onClick={entry.onOpenAgent}>
-                      Open activity
+                <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+                  {entry.onOpenAgent ? (
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant="link"
+                      className="-mx-2"
+                      aria-label={`${entry.agentName}, open activity`}
+                      onClick={entry.onOpenAgent}
+                    >
+                      {entry.agentName}
                     </Button>
+                  ) : (
+                    <span className="font-semibold text-foreground">{entry.agentName}</span>
                   )}
+                  <span aria-hidden="true">·</span>
+                  {entry.place}
                 </p>
                 {entry.body}
               </li>

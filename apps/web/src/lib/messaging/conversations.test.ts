@@ -1,5 +1,19 @@
-import { agentDirectMessage, conversationAgentOptions, humanMembers } from "./conversations";
+import {
+  agentDirectMessage,
+  conversationAgentOptions,
+  conversationLabel,
+  humanMembers,
+} from "./conversations";
 import { expect, test } from "bun:test";
+
+test("only a public channel is written with a hash", () => {
+  expect(conversationLabel({ kind: "channel", private: false, name: "launch" })).toBe("#launch");
+  expect(conversationLabel({ kind: "channel", private: true, name: "Partner launch" })).toBe(
+    "Partner launch",
+  );
+  expect(conversationLabel({ kind: "group", private: true, name: "Ada, Bob" })).toBe("Ada, Bob");
+  expect(conversationLabel({ kind: "dm", name: "Ada" })).toBe("Ada");
+});
 
 test("only people with accounts can be chosen as owners", () => {
   expect(

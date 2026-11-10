@@ -32,7 +32,7 @@ export function DesktopInstallView({
     </Button>
   );
   const continueInBrowser = (primary: boolean) => (
-    <Button asChild size="lg" variant={primary ? "default" : "ghost"}>
+    <Button asChild size="lg" variant={primary ? "default" : "outline"}>
       <a href={browserHref}>Continue in browser</a>
     </Button>
   );
@@ -72,7 +72,7 @@ export function DesktopInstallView({
           onRetry={onRetry}
         />
       )}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-2">
         {windowsAvailable ? (
           <Button asChild size="lg">
             <a href="/desktop/download" rel="noreferrer">

@@ -36,7 +36,8 @@ export function PageAside({
           data-slot="page-aside"
           aria-label={label}
           className={cn(
-            "absolute inset-0 z-10 flex min-h-0 min-w-0 flex-col bg-surface shadow-raised lg:static lg:flex-1 lg:shadow-none",
+            // The pane's content eases in from the right; the pane's width itself does not animate.
+            "absolute inset-0 z-10 flex min-h-0 min-w-0 flex-col bg-surface shadow-raised duration-200 ease-out motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-right-2 lg:static lg:flex-1 lg:shadow-none",
             className,
           )}
           {...props}

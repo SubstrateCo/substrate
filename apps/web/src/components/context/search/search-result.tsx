@@ -3,16 +3,16 @@ import { taskStatusLabels, type TaskStatus } from "@startup-os/contracts/tasks";
 import { useRef, type ReactNode } from "react";
 
 import { CommandItem } from "../../ui/command";
+import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
 import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
 import { formatFullTimestamp, formatRelativeTime } from "@/lib/format/date";
+import { conversationLabel } from "@/lib/messaging/conversations";
+import { cn } from "cn";
 import {
   FolderKanban,
-  Hash,
   ListTodo,
   LockKeyhole,
-  MessageCircle,
   MessageSquareText,
-  Users,
   type LucideIcon,
 } from "lucide-react";
 
@@ -37,22 +37,23 @@ export type SearchResultItem = {
   memberCount?: number;
 };
 
-function conversationIcon(kind?: SearchResultItem["conversationKind"], locked?: boolean) {
-  if (kind === "dm") return MessageCircle;
-  if (kind === "group") return Users;
-  return locked ? LockKeyhole : Hash;
-}
-
 function conversationNoun(item: SearchResultItem) {
   if (item.conversationKind === "dm") return "Direct message";
   if (item.conversationKind === "group") return "Group";
   return item.private ? "Private channel" : "Channel";
 }
 
-/** Where a message was sent: "#launch", or the DM or group name. */
-function place(item: SearchResultItem) {
+/** Where a message was sent: "#launch", a lock and the private channel's name, or the DM or group name. */
+function Place({ item }: { item: SearchResultItem }) {
   const name = item.conversationName ?? "a conversation";
-  return item.conversationKind === "channel" ? `#${name}` : name;
+  if (!item.conversationKind) return name;
+  const locked = item.conversationKind === "channel" && item.private;
+  return (
+    <>
+      {locked && <LockKeyhole aria-hidden="true" className="mr-1 inline size-3 -translate-y-px" />}
+      {conversationLabel({ kind: item.conversationKind, private: item.private, name })}
+    </>
+  );
 }
 
 /** The query's matches in bold, case-insensitively. */
@@ -97,7 +98,8 @@ function describe(item: SearchResultItem) {
       kind: "Message",
       detail: (
         <>
-          {[place(item), item.authorName].filter(Boolean).join(" · ")}
+          <Place item={item} />
+          {item.authorName && ` · ${item.authorName}`}
           {item.createdAt && (
             <>
               {" · "}
@@ -111,7 +113,13 @@ function describe(item: SearchResultItem) {
     };
   const noun = conversationNoun(item);
   return {
-    icon: icon(conversationIcon(item.conversationKind, item.private)),
+    icon: (
+      <ConversationKindIcon
+        kind={item.conversationKind ?? "channel"}
+        private={item.private}
+        className="size-4 text-muted-foreground"
+      />
+    ),
     title: item.title,
     kind: noun,
     detail: noun,
@@ -128,7 +136,11 @@ export function SearchResult({ item, query }: { item: SearchResultItem; query: s
         <span className="min-w-0 flex-1">
           <a
             ref={link}
-            className="block truncate outline-none focus-visible:underline"
+            // A message excerpt gets two lines, so a long one still reads past its first words.
+            className={cn(
+              "block outline-none focus-visible:underline",
+              item.kind === "message" ? "line-clamp-2 wrap-anywhere" : "truncate",
+            )}
             href={item.href}
             aria-label={`${kind}: ${title}`}
             onClick={(event) => event.stopPropagation()}

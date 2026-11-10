@@ -24,7 +24,10 @@ export function NeedsAttention({
   turn,
   agentName,
   uncertainItemIds = [],
+  inline = false,
 }: {
+  /** Render without a card header, inside a row that names the state. */
+  inline?: boolean;
   userId: string;
   organizationId: string;
   turn: AgentTurnView;
@@ -63,6 +66,7 @@ export function NeedsAttention({
   const uncertain = turn.attentionReason === "uncertain_input" && uncertainItemIds.length > 0;
   return (
     <NeedsAttentionCard
+      inline={inline}
       text={attentionReasonText(turn.attentionReason, agentName)}
       error={turn.error}
       pending={pending}

@@ -1,4 +1,5 @@
 import { revalidateLogic, useForm } from "@tanstack/react-form";
+import { useBlocker } from "@tanstack/react-router";
 
 import { useId } from "react";
 
@@ -7,6 +8,7 @@ import { PendingButton } from "../../../feedback/pending-button";
 import { Button } from "../../../ui/button";
 import { projectFormSchema } from "../../editor/task-form-validation";
 import type { Project } from "../../types";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { FormTextField } from "@/components/forms/form-text-field";
 import { SettingsCard, SettingsFooter } from "@/components/layout/settings-section";
 import { DialogBody, DialogFooter } from "@/components/ui/dialog";
@@ -91,41 +93,59 @@ export function ProjectForm({
         {(values) => {
           const dirty = values.name !== project.name || values.description !== project.description;
           return (
-            <SettingsCard
-              title="Project details"
-              description="The name and description everyone with access sees."
-              footer={
-                <SettingsFooter
-                  status={
-                    <span className="text-muted-foreground">
-                      {dirty ? "Unsaved changes" : "All changes saved"}
-                    </span>
-                  }
-                >
-                  {dirty && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={pending}
-                      onPointerDown={(event) => event.preventDefault()}
-                      onClick={() =>
-                        form.reset({ name: project.name, description: project.description })
-                      }
-                    >
-                      Discard
-                    </Button>
-                  )}
-                  <PendingButton pending={pending} pendingLabel="Saving." disabled={!dirty}>
-                    Save changes
-                  </PendingButton>
-                </SettingsFooter>
-              }
-            >
-              {fields}
-            </SettingsCard>
+            <>
+              <ProjectDraftGuard dirty={dirty} projectId={project.entityId} />
+              <SettingsCard
+                title="Project details"
+                description="The name and description everyone with access sees."
+                footer={
+                  <SettingsFooter
+                    dirty={dirty}
+                    pending={pending}
+                    onDiscard={() =>
+                      form.reset({ name: project.name, description: project.description })
+                    }
+                  />
+                }
+              >
+                {fields}
+              </SettingsCard>
+            </>
           );
         }}
       </form.Subscribe>
     </form>
+  );
+}
+
+function ProjectDraftGuard({ dirty, projectId }: { dirty: boolean; projectId: string }) {
+  const blocker = useBlocker({
+    shouldBlockFn: ({ next, current }) => {
+      if (
+        next.routeId !== "/_authenticated/_frame/_workspace/tasks/" ||
+        current.routeId !== "/_authenticated/_frame/_workspace/tasks/"
+      )
+        return true;
+      return (
+        (next.search.projectId ?? current.search.projectId) !== projectId ||
+        next.search.workspaceId !== current.search.workspaceId
+      );
+    },
+    disabled: !dirty,
+    enableBeforeUnload: false,
+    withResolver: true,
+  });
+  if (blocker.status !== "blocked") return null;
+  return (
+    <ConfirmDialog
+      title="Discard unsaved changes?"
+      description="Your project details haven't been saved."
+      confirmLabel="Discard changes"
+      cancelLabel="Keep editing"
+      pendingLabel="Discarding…"
+      destructive
+      onConfirm={blocker.proceed}
+      onClose={blocker.reset}
+    />
   );
 }

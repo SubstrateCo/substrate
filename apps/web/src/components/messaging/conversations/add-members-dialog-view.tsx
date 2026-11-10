@@ -17,6 +17,7 @@ import { ShareHistoryField } from "./share-history-field";
 import { PeoplePicker } from "@/components/people/people-picker";
 import {
   invitedRecipients,
+  unfinishedRecipientMessage,
   type PickedRecipient,
   type PickerPerson,
 } from "@/lib/people/people-picker";
@@ -43,9 +44,13 @@ export function AddMembersDialog({
   const [recipients, setRecipients] = useState<PickedRecipient[]>([]);
   const [missing, setMissing] = useState(false);
   const [shareHistory, setShareHistory] = useState(false);
+  const [pendingText, setPendingText] = useState("");
+  const [refused, setRefused] = useState(false);
   const invited = invitedRecipients(recipients).length;
+  const unfinished = refused ? unfinishedRecipientMessage(pendingText) : undefined;
+  const errorMessage = unfinished ?? (missing ? "Choose at least one person." : undefined);
   let title = "Add people";
-  if (name) title = channel ? `Add people to #${name}` : `Add people to ${name}`;
+  if (name) title = `Add people to ${name}`;
   return (
     <Dialog
       open
@@ -59,9 +64,16 @@ export function AddMembersDialog({
           onSubmit={(event) => {
             event.preventDefault();
             if (pending) return;
+            const field = event.currentTarget.querySelector<HTMLInputElement>("#add-member-people");
+            // Text left in the field is never dropped silently.
+            if (unfinishedRecipientMessage(pendingText)) {
+              setRefused(true);
+              field?.focus();
+              return;
+            }
             if (!recipients.length) {
               setMissing(true);
-              event.currentTarget.querySelector<HTMLInputElement>("#add-member-people")?.focus();
+              field?.focus();
               return;
             }
             onSubmit(recipients, invited > 0 && shareHistory);
@@ -74,7 +86,7 @@ export function AddMembersDialog({
             </DialogDescription>
           </DialogHeader>
           <DialogBody>
-            <Field data-invalid={missing}>
+            <Field data-invalid={!!errorMessage}>
               <FieldLabel htmlFor="add-member-people">People</FieldLabel>
               <PeoplePicker
                 id="add-member-people"
@@ -82,16 +94,18 @@ export function AddMembersDialog({
                 value={recipients}
                 placeholder="Search people, or type an email to invite"
                 disabled={pending}
-                invalid={missing}
-                describedBy={missing ? "add-member-people-error" : undefined}
+                invalid={!!errorMessage}
+                describedBy={errorMessage ? "add-member-people-error" : undefined}
                 onValueChange={(value) => {
                   setRecipients(value);
                   if (value.length) setMissing(false);
                 }}
+                onPendingTextChange={(text) => {
+                  setPendingText(text);
+                  setRefused(false);
+                }}
               />
-              {missing && (
-                <FieldError id="add-member-people-error">Choose at least one person.</FieldError>
-              )}
+              {errorMessage && <FieldError id="add-member-people-error">{errorMessage}</FieldError>}
             </Field>
             {invited > 0 && (
               <ShareHistoryField

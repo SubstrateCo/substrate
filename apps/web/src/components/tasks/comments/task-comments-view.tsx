@@ -14,6 +14,7 @@ export function TaskComments({
   actionError,
   onRetry,
   onSend,
+  onDirtyChange,
 }: {
   canComment: boolean;
   comments: Comment[];
@@ -23,6 +24,7 @@ export function TaskComments({
   actionError?: Error | null;
   onRetry: () => void;
   onSend: (body: string, onSuccess: () => void) => void;
+  onDirtyChange: (dirty: boolean) => void;
 }) {
   const unavailable = isAccessFailure(error);
   return (
@@ -52,7 +54,12 @@ export function TaskComments({
         <p className="text-sm text-muted-foreground">No comments yet.</p>
       )}
       {canComment && !unavailable && (
-        <TaskCommentForm pending={pending} error={actionError} onSend={onSend} />
+        <TaskCommentForm
+          pending={pending}
+          error={actionError}
+          onSend={onSend}
+          onDirtyChange={onDirtyChange}
+        />
       )}
     </section>
   );

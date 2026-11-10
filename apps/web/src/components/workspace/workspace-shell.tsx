@@ -79,6 +79,7 @@ export function WorkspaceShell({
           active={view === "agents"}
           unread={agentsNeedYou}
           unreadLabel="needs you"
+          dotTone="warning"
           onClick={() => onViewChange("agents")}
         />
         <div className="mt-auto flex flex-col items-center gap-3">

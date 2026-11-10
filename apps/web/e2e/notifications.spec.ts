@@ -31,13 +31,13 @@ test("notifications load older pages, filter unread, and mark individual and all
   await expect(rows).toHaveCount(20);
   // Each row names who acted and where, and quotes the reply.
   await expect(rows.first().getByRole("link")).toHaveAccessibleName(
-    `${actors.sender.name} replied to a thread in #${channel.name}, unread`,
+    `${actors.sender.name} replied to a thread in ${channel.name}, unread`,
   );
   await expect(rows.first()).toContainText("Page reply 20");
   await feed.getByRole("button", { name: "Show older", exact: true }).click();
   await expect(rows).toHaveCount(21);
   await expect(feed.getByRole("button", { name: "Show older", exact: true })).toHaveCount(0);
-  await feed.getByRole("tab", { name: "Unread", exact: true }).click();
+  await feed.getByRole("radio", { name: "Unread", exact: true }).click();
   await expect(rows).toHaveCount(20);
   const readHref = await rows.first().getByRole("link").getAttribute("href");
   await rows.first().getByRole("button", { name: "Mark as read", exact: true }).click();
@@ -78,7 +78,7 @@ for (const scope of ["same organization", "cross organization"] as const) {
       .filter({ has: recipient.page.locator(`a[href*="messageId=${sent.id}"]`) });
     const link = notice.getByRole("link");
     await expect(link).toHaveAccessibleName(
-      `${actors.sender.name} replied to a thread in #${channel.name}, unread`,
+      `${actors.sender.name} replied to a thread in ${channel.name}, unread`,
     );
     await expect(notice).toContainText(reply);
     await expectChange(recipient, since, "notifications");
@@ -90,7 +90,7 @@ for (const scope of ["same organization", "cross organization"] as const) {
     ).toBeVisible();
     await notice.getByRole("button", { name: "Mark as read", exact: true }).click();
     await expect(link).toHaveAccessibleName(
-      `${actors.sender.name} replied to a thread in #${channel.name}`,
+      `${actors.sender.name} replied to a thread in ${channel.name}`,
     );
     await expect(notice.getByRole("button", { name: "Mark as read", exact: true })).toHaveCount(0);
     await link.click();
@@ -103,7 +103,7 @@ for (const scope of ["same organization", "cross organization"] as const) {
     expect(new URL(recipient.page.url()).searchParams.get("messageId")).toBe(sent.id);
     await recipient.page.getByRole("button", { name: "Notifications", exact: true }).click();
     await expect(link).toHaveAccessibleName(
-      `${actors.sender.name} replied to a thread in #${channel.name}`,
+      `${actors.sender.name} replied to a thread in ${channel.name}`,
     );
   });
 }

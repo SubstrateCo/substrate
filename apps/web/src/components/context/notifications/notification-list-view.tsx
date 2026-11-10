@@ -1,17 +1,34 @@
-import type { MouseEvent } from "react";
+import { Fragment, type MouseEvent } from "react";
 
 import { ContentNotice } from "../../feedback/content-notice";
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
 import { PendingButton } from "../../feedback/pending-button";
 import { isAccessFailure } from "../../feedback/request-failure";
+import { SegmentedControl } from "../../forms/segmented-control";
 import { Button } from "../../ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { NotificationItem, type Notification } from "./notification-item";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageContent, PageLayout } from "@/components/layout/page-layout";
+import { formatDayLabel } from "@/lib/format/date";
 import { Bell, CheckCheck, X } from "lucide-react";
+
+const filterOptions = [
+  { value: "all", label: "All" },
+  { value: "unread", label: "Unread" },
+] as const;
+
+/** Newest first, so each run of rows from one day gets one label. */
+function dayLabeled(items: Notification[]) {
+  let previous = "";
+  return items.map((item) => {
+    const day = formatDayLabel(item.createdAt);
+    const label = day === previous ? null : day;
+    previous = day;
+    return { item, label };
+  });
+}
 
 export function NotificationList({
   items,
@@ -91,88 +108,86 @@ export function NotificationList({
                 </>
               }
             />
-            <Tabs
+            <SegmentedControl
+              aria-label="Notification filter"
               value={filter}
-              onValueChange={(value) => {
-                if (value === "all" || value === "unread") onFilter(value);
-              }}
-            >
-              <TabsList variant="line" aria-label="Notification filter">
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="unread">Unread</TabsTrigger>
-              </TabsList>
-              <TabsContent value={filter}>
-                <div className="flex flex-col gap-4 pt-2">
-                  {failed && (
-                    <ErrorState
-                      title={
-                        isAccessFailure(error)
-                          ? "Notifications unavailable"
-                          : "Couldn't load notifications"
-                      }
-                      description={
-                        isAccessFailure(error)
-                          ? "Check that you still have access to this workspace."
-                          : undefined
-                      }
-                      onRetry={isAccessFailure(error) ? undefined : onRetry}
-                    />
+              options={filterOptions}
+              onValueChange={onFilter}
+            />
+            <div className="flex flex-col gap-4">
+              {failed && (
+                <ErrorState
+                  title={
+                    isAccessFailure(error)
+                      ? "Notifications unavailable"
+                      : "Couldn't load notifications"
+                  }
+                  description={
+                    isAccessFailure(error)
+                      ? "Check that you still have access to this workspace."
+                      : undefined
+                  }
+                  onRetry={isAccessFailure(error) ? undefined : onRetry}
+                />
+              )}
+              {loading && <LoadingState label="Loading notifications" variant="compact" />}
+              {empty && (
+                <ContentNotice
+                  icon={Bell}
+                  title={filter === "unread" ? "You're all caught up" : "No notifications yet"}
+                  description={
+                    filter === "unread"
+                      ? "Nothing new since you last looked."
+                      : "Mentions, replies, and tasks assigned to you will show up here."
+                  }
+                  action={
+                    filter === "unread" && (
+                      <Button variant="outline" size="sm" onClick={() => onFilter("all")}>
+                        Show all
+                      </Button>
+                    )
+                  }
+                />
+              )}
+              {!failed && visible.length > 0 && (
+                <>
+                  {error && (
+                    <ErrorState compact title="Couldn't refresh notifications" onRetry={onRetry} />
                   )}
-                  {loading && <LoadingState label="Loading notifications" variant="compact" />}
-                  {empty && (
-                    <ContentNotice
-                      icon={Bell}
-                      title={filter === "unread" ? "You're all caught up" : "No notifications yet"}
-                      description={
-                        filter === "unread"
-                          ? "Nothing new since you last looked."
-                          : "Mentions, replies, and tasks assigned to you will show up here."
-                      }
-                      action={
-                        filter === "unread" && (
-                          <Button variant="outline" size="sm" onClick={() => onFilter("all")}>
-                            Show all
-                          </Button>
-                        )
-                      }
-                    />
-                  )}
-                  {!failed && visible.length > 0 && (
-                    <>
-                      {error && (
-                        <ErrorState
-                          compact
-                          title="Couldn't refresh notifications"
-                          onRetry={onRetry}
+                  <ul aria-label="Notification activity" className="-mx-3 flex flex-col gap-px">
+                    {dayLabeled(visible).map(({ item, label }) => (
+                      <Fragment key={item.id}>
+                        {label && (
+                          <li
+                            role="presentation"
+                            className="px-3 pt-4 pb-1 text-xs font-medium text-muted-foreground first:pt-0"
+                          >
+                            {label}
+                          </li>
+                        )}
+                        <NotificationItem
+                          item={item}
+                          onRead={() => onRead(item.id)}
+                          onOpen={(event) => onOpen(item, event)}
                         />
-                      )}
-                      <ul aria-label="Notification activity" className="-mx-3 flex flex-col gap-px">
-                        {visible.map((item) => (
-                          <NotificationItem
-                            key={item.id}
-                            item={item}
-                            onRead={() => onRead(item.id)}
-                            onOpen={(event) => onOpen(item, event)}
-                          />
-                        ))}
-                      </ul>
-                      {hasMore && (
-                        <PendingButton
-                          variant="ghost"
-                          size="sm"
-                          className="self-center"
-                          pending={loadingMore}
-                          pendingLabel="Loading older notifications."
-                          onClick={onMore}
-                        >
-                          Show older
-                        </PendingButton>
-                      )}
-                    </>
+                      </Fragment>
+                    ))}
+                  </ul>
+                  {hasMore && (
+                    <PendingButton
+                      variant="ghost"
+                      size="sm"
+                      className="self-center"
+                      pending={loadingMore}
+                      pendingLabel="Loading older notifications."
+                      onClick={onMore}
+                    >
+                      Show older
+                    </PendingButton>
                   )}
-                </div>
-              </TabsContent>
-            </Tabs>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </PageContent>

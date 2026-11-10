@@ -8,10 +8,11 @@ import {
   PageSidebarContent,
   PageSidebarHeader,
 } from "@/components/layout/page-layout";
+import { PersonAvatar } from "@/components/people/person-avatar";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { WorkStatus } from "@/lib/agent-work/status";
-import { Bot, Hand, Plus } from "lucide-react";
+import { Hand, Plus } from "lucide-react";
 
 export type AgentListItem = { id: string; name: string; status?: WorkStatus };
 
@@ -76,7 +77,7 @@ export function AgentsWorkspaceView({
                 <Hand aria-hidden="true" />
                 <span className="min-w-0 flex-1 truncate text-left">Needs you</span>
                 {needsYouCount > 0 && (
-                  <span className="rounded-full bg-warning/15 px-1.5 text-xs font-medium text-warning tabular-nums">
+                  <span className="rounded-full bg-warning/15 px-1.5 text-xs font-medium text-warning-text tabular-nums">
                     <span className="sr-only">, </span>
                     {needsYouCount}
                   </span>
@@ -97,8 +98,8 @@ export function AgentsWorkspaceView({
                   className="w-full justify-start"
                   onClick={() => onSelect(agent.id)}
                 >
-                  <span className="relative grid size-5 shrink-0 place-items-center rounded-md bg-accent text-accent-foreground">
-                    <Bot aria-hidden="true" className="size-3" />
+                  <span className="relative grid size-4 shrink-0 place-items-center [&_svg]:size-2.5">
+                    <PersonAvatar name={agent.name} agent size="xs" className="size-4" />
                     {agent.status && (
                       <WorkIndicator tone={agent.status.tone} label={agent.status.label} />
                     )}

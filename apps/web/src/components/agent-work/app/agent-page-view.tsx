@@ -55,7 +55,7 @@ export function AgentPageView({
           title={name}
           description={
             status && (
-              <span className={cn(status.tone === "attention" && "text-warning")}>
+              <span className={cn(status.tone === "attention" && "text-warning-text")}>
                 {status.label}
               </span>
             )

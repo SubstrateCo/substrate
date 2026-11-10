@@ -9,6 +9,7 @@ import { X } from "lucide-react";
 
 export function ThreadPane({
   root,
+  conversationLabel,
   onClose,
   loading = false,
   error,
@@ -17,6 +18,7 @@ export function ThreadPane({
   composer,
 }: {
   root?: ReactNode;
+  conversationLabel: string;
   onClose: () => void;
   loading?: boolean;
   error?: Error | null;
@@ -42,7 +44,12 @@ export function ThreadPane({
   return (
     <PageAside aria-label="Thread">
       <header className="flex h-12 shrink-0 items-center justify-between border-b bg-card/60 px-4">
-        <h2 className="text-sm font-semibold">Thread</h2>
+        <div className="flex min-w-0 items-baseline gap-2">
+          <h2 className="text-sm font-semibold">Thread</h2>
+          <Button variant="link" size="xs" className="min-w-0" onClick={onClose}>
+            <span className="truncate text-muted-foreground">{conversationLabel}</span>
+          </Button>
+        </div>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

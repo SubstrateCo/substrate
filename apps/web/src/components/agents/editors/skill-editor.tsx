@@ -17,8 +17,8 @@ const skillFields = saveSkillInput.omit({ id: true }).extend({
     .trim()
     .min(1, "Enter a skill name.")
     .max(64, "Use a skill name of 64 characters or fewer.")
-    .regex(
-      /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+    .refine(
+      (value) => !value || /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value),
       "Use lowercase words separated by hyphens for the skill name.",
     ),
 });
@@ -36,10 +36,12 @@ export function SkillEditor({
   skill,
   onClose,
   onSave,
+  onRestoreFocus,
 }: {
   skill?: HarnessSkill;
   onClose: () => void;
   onSave: (input: SaveSkillInput) => Promise<void>;
+  onRestoreFocus?: () => void;
 }) {
   const [error, setError] = useState<string>();
   const form = useForm({
@@ -72,6 +74,7 @@ export function SkillEditor({
           onClose={onClose}
           onSubmit={() => form.handleSubmit()}
           error={error}
+          onRestoreFocus={onRestoreFocus}
         >
           <form.Field name="name">
             {(field) => (
@@ -79,7 +82,11 @@ export function SkillEditor({
                 field={field}
                 id="skill-name"
                 label="Skill name"
-                description="Lowercase words joined by hyphens, like release-notes."
+                description={
+                  skill && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(skill.name)
+                    ? "Change this name to lowercase words joined by hyphens, like release-notes, before saving."
+                    : "Lowercase words joined by hyphens, like release-notes."
+                }
                 placeholder="release-notes"
                 required
                 maxLength={64}
@@ -113,7 +120,7 @@ export function SkillEditor({
                 }
                 multiline
                 rows={12}
-                className="font-mono text-xs"
+                className="field-sizing-fixed max-h-96 min-h-48 overflow-y-auto font-mono text-xs"
                 maxLength={contentLimit}
               />
             )}

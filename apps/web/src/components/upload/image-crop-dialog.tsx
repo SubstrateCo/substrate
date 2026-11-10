@@ -80,7 +80,6 @@ export function ImageCropDialog({
       }}
     >
       <DialogContent
-        showCloseButton={false}
         onCloseAutoFocus={(event) => {
           if (onRestoreFocus) {
             event.preventDefault();

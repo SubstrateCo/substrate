@@ -54,7 +54,7 @@ export function WorkStatus({
           className={cn(
             "shrink-0 tabular-nums",
             tone === "working" && "text-foreground",
-            tone === "attention" && "text-warning",
+            tone === "attention" && "text-warning-text",
             tone === "failed" && "text-destructive",
           )}
         >

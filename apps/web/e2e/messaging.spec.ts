@@ -8,7 +8,7 @@ import {
 } from "./test-support/fixtures";
 import { expect } from "@playwright/test";
 
-test("collapsing channels hides the selected channel without closing it", async ({
+test("collapsing channels keeps the open channel under the header and hides the rest", async ({
   account,
   client,
 }) => {
@@ -25,14 +25,18 @@ test("collapsing channels hides the selected channel without closing it", async 
 
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
-  await expect(selectedRow).toBeHidden();
   await expect(otherRow).toBeHidden();
+  // The open conversation stays reachable under the collapsed header, listed once.
+  await expect(selectedRow).toHaveCount(1);
+  await expect(selectedRow).toBeVisible();
+  await expect(selectedRow).toHaveAttribute("aria-current", "page");
   await expect(
     viewer.page.getByRole("heading", { level: 1, name: selected.name, exact: true }),
   ).toBeVisible();
 
   await toggle.click();
-  await expect(selectedRow).toBeVisible();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(selectedRow).toHaveCount(1);
   await expect(selectedRow).toHaveAttribute("aria-current", "page");
   await expect(otherRow).toBeVisible();
 });

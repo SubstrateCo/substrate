@@ -111,10 +111,10 @@ test("a member leaves a private channel and loses access to it", async ({ actors
   await visit(member, channel.id);
   await member.page.getByRole("button", { name: "Conversation actions", exact: true }).click();
   await expect(member.page.getByRole("menuitem", { name: "Delete", exact: true })).toHaveCount(0);
-  await member.page.getByRole("menuitem", { name: "Leave", exact: true }).click();
+  await member.page.getByRole("menuitem", { name: "Leave channel", exact: true }).click();
   await member.page
     .getByRole("dialog", { name: `Leave ${channel.name}?` })
-    .getByRole("button", { name: "Leave", exact: true })
+    .getByRole("button", { name: "Leave channel", exact: true })
     .click();
   await expect.poll(() => new URL(member.page.url()).searchParams.get("conversationId")).toBeNull();
   await expect(member.page.getByText(channel.name, { exact: true })).toHaveCount(0);

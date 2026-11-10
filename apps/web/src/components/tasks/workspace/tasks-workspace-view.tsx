@@ -90,7 +90,8 @@ export function TasksWorkspace({
           <DialogHeader>
             <DialogTitle>New project</DialogTitle>
             <DialogDescription>
-              Projects start private. Share one to give people access to all its tasks.
+              Organization owners and admins can access every project. Share this project to give
+              others access to its tasks.
             </DialogDescription>
           </DialogHeader>
           {creating && renderCreate(selectProject, () => setCreating(false))}

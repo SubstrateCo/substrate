@@ -58,7 +58,9 @@ function MembersButton({ members }: { members: HeaderMember[] }) {
               className="flex h-9 items-center gap-2 rounded-md px-2 text-sm"
             >
               <MemberAvatar member={member} />
-              <span className="min-w-0 flex-1 truncate">{member.name}</span>
+              <span className="min-w-0 flex-1 truncate" title={member.name} tabIndex={0}>
+                {member.name}
+              </span>
               {member.type === "agent" && <Tag>Agent</Tag>}
               {member.external && <Tag>External</Tag>}
             </li>

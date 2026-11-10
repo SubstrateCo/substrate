@@ -7,17 +7,28 @@ import { NeedsAttention } from "../needs-attention";
 import { hiddenConversation } from "../requests/proposal-preview";
 import { AgentActivityView, type ActivityRow } from "./agent-activity-view";
 import { useNow } from "@/hooks/use-now";
-import { sessionKindLabels, silentLabel, turnStatus } from "@/lib/agent-work/status";
+import { sessionKindLabels, turnStatus } from "@/lib/agent-work/status";
 import { conversationName } from "@/lib/messaging/conversations";
 import { agentActivityOptions } from "@/queries/agent-work/local";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
 
 const outcomeLabels: Record<TurnOutcome, string> = {
   replied: "Replied",
-  silent: silentLabel,
+  // The tag already says "Checked · nothing to report".
+  silent: "Checked in",
   asked: "Asked you a question",
   proposed: "Proposed an action",
 };
+
+/** The subject of work that has no activity line or outcome yet. The state shows in the tag. */
+const subjectFallbacks: Record<AgentTurnView["sessionKind"], string> = {
+  dm: "Work on your message",
+  thread: "Work in a thread",
+  routine: "Routine run",
+  helper: "Helper task",
+};
+
+const failedNote = "The work didn’t finish. Open it to see what happened.";
 
 /** The conversation a turn answered or wrote to: its output first, then its newest source. */
 function placeOf(turn: AgentTurnView) {
@@ -58,7 +69,10 @@ export function AgentActivity({
     return {
       id: turn.id,
       summary:
-        turn.activity ?? (turn.outcome ? outcomeLabels[turn.outcome] : undefined) ?? status.label,
+        turn.activity ??
+        (turn.outcome ? outcomeLabels[turn.outcome] : undefined) ??
+        subjectFallbacks[turn.sessionKind],
+      note: status.tone === "failed" ? failedNote : undefined,
       place: place(turn),
       kind: sessionKindLabels[turn.sessionKind],
       unattended: turn.kind === "unattended",
@@ -71,6 +85,7 @@ export function AgentActivity({
           organizationId={organizationId}
           turn={turn}
           agentName={name}
+          inline
         />
       ),
     };

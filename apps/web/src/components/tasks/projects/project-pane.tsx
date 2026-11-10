@@ -92,7 +92,7 @@ export function ProjectPane({
           variant="dialog"
         />
       )}
-      renderTaskDetail={(detail, task, onClose, onSubtask, onSelectTask) => (
+      renderTaskDetail={(detail, task, onClose, onSubtask, onSelectTask, onDirtyChange) => (
         <TaskDetail
           visible
           key={task.entityId}
@@ -102,6 +102,7 @@ export function ProjectPane({
           onClose={onClose}
           onSubtask={onSubtask}
           onSelectTask={onSelectTask}
+          onDirtyChange={onDirtyChange}
         />
       )}
     />

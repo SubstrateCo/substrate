@@ -3,12 +3,11 @@ import type { ReactNode } from "react";
 import { AuthFrame } from "../../auth/auth-frame";
 import { AuthNavLink } from "../../auth/auth-link";
 import { FormMessage } from "../../auth/form-message";
-import { ContentNotice } from "../../feedback/content-notice";
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
 import { PendingButton } from "../../feedback/pending-button";
+import { Button } from "../../ui/button";
 import { initials } from "@/lib/people/initials";
-import { MailX } from "lucide-react";
 
 /** "admin,member" -> "Admin, Member". */
 function roleLabel(role: string) {
@@ -44,15 +43,22 @@ export function AcceptInvitationScreen({
   signOut: ReactNode;
   workspacesHref: string;
 }) {
-  const ready = !loading && !failed && !unavailable && invitation;
+  const missing = !loading && (unavailable || (!!invitation && !available));
+  const ready = !loading && !failed && !missing && invitation;
+  let title = "Join your team";
+  let description = "Accept your invitation to open the workspace.";
+  if (ready) {
+    title = `Join ${ready.organizationName}`;
+    description = "You were invited to this workspace. Accept to open it.";
+  } else if (missing) {
+    title = "This invitation isn't available";
+    description =
+      "It may have expired, been canceled, or been sent to another email. Sign in with the invited email, or ask the owner for a new invitation.";
+  }
   return (
     <AuthFrame
-      title={ready ? `Join ${ready.organizationName}` : "Join your team"}
-      description={
-        ready
-          ? "You were invited to this workspace. Accept to open it."
-          : "Accept your invitation to open the workspace."
-      }
+      title={title}
+      description={description}
       actions={
         <>
           <AuthNavLink href={workspacesHref}>Your workspaces</AuthNavLink>
@@ -69,12 +75,10 @@ export function AcceptInvitationScreen({
           onRetry={onRetry}
         />
       )}
-      {!loading && unavailable && (
-        <ContentNotice
-          icon={MailX}
-          title="Invitation unavailable"
-          description="It may have expired, been canceled, or been sent to another email. Sign in with the invited email, or ask the owner for a new invitation."
-        />
+      {missing && (
+        <Button asChild className="w-full" size="lg">
+          <a href={workspacesHref}>Go to your workspaces</a>
+        </Button>
       )}
       {ready && (
         <>
@@ -95,29 +99,21 @@ export function AcceptInvitationScreen({
           <p className="text-sm wrap-anywhere text-muted-foreground">
             Invited email: {ready.email}
           </p>
-          {!available ? (
-            <ContentNotice
-              icon={MailX}
-              title="Invitation unavailable"
-              description="This invitation is no longer available. Ask the owner for a new invitation."
+          <>
+            <FormMessage
+              error={error}
+              errorDescription="We couldn't accept this invitation. Please try again."
             />
-          ) : (
-            <>
-              <FormMessage
-                error={error}
-                errorDescription="We couldn't accept this invitation. Please try again."
-              />
-              <PendingButton
-                className="w-full"
-                size="lg"
-                pending={pending}
-                pendingLabel="Joining."
-                onClick={onAccept}
-              >
-                Accept invitation
-              </PendingButton>
-            </>
-          )}
+            <PendingButton
+              className="w-full"
+              size="lg"
+              pending={pending}
+              pendingLabel="Joining."
+              onClick={onAccept}
+            >
+              Accept invitation
+            </PendingButton>
+          </>
         </>
       )}
     </AuthFrame>

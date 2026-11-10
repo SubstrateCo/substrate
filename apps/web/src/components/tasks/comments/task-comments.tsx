@@ -10,12 +10,14 @@ export function TaskComments({
   taskEntityId,
   canComment,
   visible,
+  onDirtyChange,
 }: {
   organizationId: string;
   projectEntityId: string;
   taskEntityId: string;
   canComment: boolean;
   visible: boolean;
+  onDirtyChange: (dirty: boolean) => void;
 }) {
   const comments = useQuery({
     ...taskCommentsQueryOptions(organizationId, projectEntityId, taskEntityId),
@@ -30,6 +32,7 @@ export function TaskComments({
       error={comments.error}
       pending={send.isPending}
       actionError={send.error}
+      onDirtyChange={onDirtyChange}
       onRetry={() => void comments.refetch()}
       onSend={(body, onSuccess) =>
         send.mutate(

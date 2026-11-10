@@ -10,10 +10,8 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { formatTimeZone } from "@/lib/format/date";
 import { Check, ChevronsUpDown } from "lucide-react";
-
-/** "America/New_York" as "America / New York", for reading. */
-const readable = (zone: string) => zone.replaceAll("_", " ").replaceAll("/", " / ");
 
 /** A searchable list of IANA time zones. */
 export function TimeZonePicker({
@@ -32,7 +30,10 @@ export function TimeZonePicker({
   onChange: (zone: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const zones = useMemo(() => timeZones(value), [value]);
+  const zones = useMemo(
+    () => timeZones(value).map((zone) => ({ zone, label: formatTimeZone(zone) })),
+    [value],
+  );
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -47,7 +48,7 @@ export function TimeZonePicker({
           disabled={disabled}
           className="w-full justify-between"
         >
-          <span className="truncate">{value ? readable(value) : "Choose a time zone"}</span>
+          <span className="truncate">{value ? formatTimeZone(value) : "Choose a time zone"}</span>
           <ChevronsUpDown aria-hidden="true" className="size-3.5 text-muted-foreground" />
         </Button>
       </PopoverTrigger>
@@ -60,11 +61,11 @@ export function TimeZonePicker({
           <CommandInput placeholder="Search time zones…" />
           <CommandList>
             <CommandEmpty>No time zones match.</CommandEmpty>
-            {zones.map((zone) => (
+            {zones.map(({ zone, label }) => (
               <CommandItem
                 key={zone}
                 value={zone}
-                keywords={[readable(zone)]}
+                keywords={[label]}
                 onSelect={() => {
                   onChange(zone);
                   setOpen(false);
@@ -74,7 +75,7 @@ export function TimeZonePicker({
                   aria-hidden="true"
                   className={`size-3.5 ${zone === value ? "text-primary" : "invisible"}`}
                 />
-                <span className="truncate">{readable(zone)}</span>
+                <span className="truncate">{label}</span>
               </CommandItem>
             ))}
           </CommandList>

@@ -1,6 +1,7 @@
 import { Button } from "../../ui/button";
+import { ConversationKindIcon } from "./conversation-kind-icon";
 import { conversationName, type Conversation } from "@/lib/messaging/conversations";
-import { Globe, Hash, LockKeyhole, MessageCircle, Users } from "lucide-react";
+import { Globe } from "lucide-react";
 
 export function ConversationSidebarItem({
   conversation,
@@ -11,8 +12,6 @@ export function ConversationSidebarItem({
   selected: boolean;
   onSelect: () => void;
 }) {
-  let Icon = conversation.kind === "group" ? Users : MessageCircle;
-  if (conversation.kind === "channel") Icon = conversation.private ? LockKeyhole : Hash;
   return (
     <Button
       variant="sidebar"
@@ -21,7 +20,11 @@ export function ConversationSidebarItem({
       title={conversation.partner ? "Includes people from another organization" : undefined}
       onClick={onSelect}
     >
-      <Icon aria-hidden="true" className="size-4 shrink-0" />
+      <ConversationKindIcon
+        kind={conversation.kind}
+        private={conversation.private}
+        className="size-4 shrink-0"
+      />
       <span className="truncate">{conversationName(conversation)}</span>
       {/* Channels already sit under "Partner channels"; DMs and groups need the cue here. */}
       {conversation.partner && conversation.kind !== "channel" && (

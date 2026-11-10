@@ -11,9 +11,9 @@ import { organizationRoles } from "@/lib/organizations/member-policy";
 
 // On wide screens the fields share one subgrid: labels, then controls, then errors and hints.
 // The button sits on the control row, so an error under the email never moves it.
-const subgridField = "min-w-0 lg:row-span-3 lg:grid lg:grid-rows-subgrid";
-const emailColumn = "lg:col-span-6";
-const roleColumn = "lg:col-span-3";
+const subgridField = "min-w-0 @lg:row-span-3 @lg:grid @lg:grid-rows-subgrid";
+const emailColumn = "@lg:col-span-6";
+const roleColumn = "@lg:col-span-3";
 
 export function InvitationForm({
   sending,
@@ -33,7 +33,7 @@ export function InvitationForm({
   return (
     <>
       <form
-        className="grid gap-4 lg:grid-cols-12 lg:gap-x-3 lg:gap-y-2"
+        className="grid gap-4 @lg:grid-cols-12 @lg:gap-x-3 @lg:gap-y-2"
         onInvalidCapture={validation.onInvalid}
         onInputCapture={validation.onInput}
         onSubmit={(event) => {
@@ -90,7 +90,7 @@ export function InvitationForm({
           </FieldDescription>
         </Field>
         <PendingButton
-          className="lg:col-span-3 lg:col-start-10 lg:row-start-2"
+          className="@lg:col-span-3 @lg:col-start-10 @lg:row-start-2"
           disabled={disabled}
           pending={sending}
           pendingLabel="Sending"

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { ManagedConversations as ManagedConversationsView } from "./managed-conversations-view";
+import { isAccessFailure } from "@/components/feedback/request-failure";
 import { SettingsPanel } from "@/components/layout/settings-page";
 import { DeleteConversationDialog } from "@/components/messaging/conversations/actions/delete-conversation-dialog";
 import { OwnerDialog } from "@/components/messaging/conversations/actions/owner-dialog";
@@ -23,7 +24,9 @@ export function ManagedConversations({ organizationId }: { organizationId: strin
     ...deleteImpactQueryOptions(organizationId, dialog?.id ?? ""),
     enabled: dialog?.kind === "delete",
   });
-  const target = list.data?.find((row) => row.id === dialog?.id);
+  const target = isAccessFailure(list.error)
+    ? undefined
+    : list.data?.find((row) => row.id === dialog?.id);
   const name = target?.name ?? "this group message";
   const close = () => setDialog(undefined);
   return (
@@ -45,6 +48,7 @@ export function ManagedConversations({ organizationId }: { organizationId: strin
           organizationId={organizationId}
           conversationId={target.id}
           name={target.name ?? undefined}
+          memberUserIds={humanMembers(target.members).map((member) => member.userId)}
           onClose={close}
         />
       )}

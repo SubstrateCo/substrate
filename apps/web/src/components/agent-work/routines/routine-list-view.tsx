@@ -1,52 +1,26 @@
 import type { AgentRoutineView } from "@startup-os/contracts/agent-work";
 
-import type { ReactNode } from "react";
-
 import { describeSchedule } from "./schedule";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { PendingButton } from "@/components/feedback/pending-button";
+import { Tag } from "@/components/feedback/tag";
+import { RowAction, RowActions } from "@/components/layout/row-actions";
 import { SettingsSection } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { formatDateTime } from "@/lib/format/date";
-import { CalendarClock, Pencil, Plus, Trash2 } from "lucide-react";
+import { formatDateTimeInZone, formatFullTimestamp, formatTimeZone } from "@/lib/format/date";
+import { CalendarClock, Hand, Pencil, Plus, Trash2 } from "lucide-react";
 
-function state(routine: AgentRoutineView) {
-  if (routine.approvedRevision !== routine.revision) return undefined;
-  if (!routine.enabled) return "Paused";
-  if (!routine.nextFireAt) return "Approved";
-  return `Next run ${formatDateTime(routine.nextFireAt)}`;
-}
-
-function RowAction({
-  label,
-  destructive = false,
-  onClick,
-  children,
-}: {
-  label: string;
-  destructive?: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          type="button"
-          size="icon-sm"
-          variant={destructive ? "destructive-ghost" : "ghost"}
-          aria-label={label}
-          onClick={onClick}
-        >
-          {children}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
-    </Tooltip>
-  );
+/** "Next run Nov 11, 9:00 AM": in the routine's own zone, so it matches the schedule beside it. */
+function nextRun(routine: AgentRoutineView) {
+  if (routine.approvedRevision !== routine.revision || !routine.enabled || !routine.nextFireAt)
+    return undefined;
+  return {
+    text: `Next run ${formatDateTimeInZone(routine.nextFireAt, routine.timezone)}`,
+    // The viewer's own clock, for a person in another zone than the schedule.
+    title: `${formatFullTimestamp(routine.nextFireAt)} in your time zone`,
+  };
 }
 
 export function RoutineListView({
@@ -101,18 +75,28 @@ export function RoutineListView({
         <ul aria-label="Routines" className="divide-y overflow-hidden rounded-xl border bg-card">
           {routines.map((routine) => {
             const needsApproval = routine.approvedRevision !== routine.revision;
+            const next = nextRun(routine);
             return (
-              <li key={routine.id} className="group flex min-w-0 items-start gap-3 px-4 py-3">
+              <li key={routine.id} className="group/row flex min-w-0 items-start gap-3 px-4 py-3">
                 <div className="grid min-w-0 flex-1 gap-0.5">
-                  <p className="truncate text-sm font-medium">{routine.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {describeSchedule(routine.cron)} · {routine.timezone.replaceAll("_", " ")}
-                    {state(routine) && ` · ${state(routine)}`}
+                  <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
+                    <span className="truncate">{routine.name}</span>
+                    {!needsApproval && !routine.enabled && <Tag>Paused</Tag>}
                   </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {describeSchedule(routine.cron)} ·{" "}
+                    {formatTimeZone(routine.timezone, routine.nextFireAt ?? undefined)}
+                  </p>
+                  {next && (
+                    <p className="truncate text-xs text-muted-foreground" title={next.title}>
+                      {next.text}
+                    </p>
+                  )}
                   <p className="line-clamp-2 text-xs text-muted-foreground">{routine.prompt}</p>
                   {needsApproval && (
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <span className="text-xs font-medium text-warning">
+                      <span className="flex items-center gap-1.5 text-xs font-medium text-warning-text">
+                        <Hand aria-hidden="true" className="size-3.5" />
                         {routine.approvedRevision === null
                           ? "Waiting for your approval to run"
                           : "Changed — waiting for your approval"}
@@ -130,11 +114,7 @@ export function RoutineListView({
                     </div>
                   )}
                 </div>
-                <div
-                  role="group"
-                  aria-label={`Actions for ${routine.name}`}
-                  className="flex shrink-0 gap-0.5"
-                >
+                <RowActions label={`Actions for ${routine.name}`}>
                   <RowAction label={`Edit ${routine.name}`} onClick={() => onEdit(routine.id)}>
                     <Pencil />
                   </RowAction>
@@ -145,7 +125,7 @@ export function RoutineListView({
                   >
                     <Trash2 />
                   </RowAction>
-                </div>
+                </RowActions>
               </li>
             );
           })}

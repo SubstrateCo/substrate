@@ -69,6 +69,16 @@ export function addTypedRecipients(
   return { value: next, rest: rest.join(", ") };
 }
 
+/**
+ * The field error for text still in the picker when the form is submitted. The picker adds
+ * complete addresses by itself, so any text left is not a usable recipient.
+ */
+export function unfinishedRecipientMessage(text: string) {
+  const unfinished = text.trim();
+  if (!unfinished) return undefined;
+  return `“${unfinished}” isn’t a complete email address. Finish it or clear it.`;
+}
+
 export function recipientEmails(value: readonly PickedRecipient[]) {
   return value.map((recipient) => recipient.email);
 }

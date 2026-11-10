@@ -7,6 +7,7 @@ import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
 import { isAccessFailure } from "../../feedback/request-failure";
 import { Button } from "../../ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
 import { Item } from "../../ui/item";
 import { Separator } from "../../ui/separator";
 import { Spinner } from "../../ui/spinner";
@@ -35,6 +36,7 @@ export function OrganizationSelection({
   const retryOrigin = useRef<Element | null>(null);
   const firstChoice = useRef<HTMLButtonElement | null>(null);
   const creationHeading = useRef<HTMLHeadingElement | null>(null);
+  const createTrigger = useRef<HTMLButtonElement | null>(null);
   const [selectedId, setSelectedId] = useState<string>();
   const [creating, setCreating] = useState(false);
   useEffect(() => {
@@ -125,35 +127,57 @@ export function OrganizationSelection({
           })}
         </ul>
       )}
-      {showCreate ? (
-        <>
-          {listed.length > 0 && <Separator />}
-          <section className="space-y-4" aria-labelledby="create-workspace-title">
-            <h2
-              id="create-workspace-title"
-              ref={creationHeading}
-              tabIndex={-1}
-              className="text-sm font-semibold outline-none"
+      <Collapsible
+        open={showCreate}
+        onOpenChange={(open) => {
+          setCreating(open);
+          if (open)
+            requestAnimationFrame(() => document.getElementById("organization-name")?.focus());
+        }}
+      >
+        {!showCreate && (
+          <CollapsibleTrigger asChild>
+            <Button
+              ref={createTrigger}
+              type="button"
+              variant="disclosure"
+              className="-ml-2.5 self-start"
             >
+              <Plus aria-hidden="true" />
               Create a workspace
-            </h2>
+            </Button>
+          </CollapsibleTrigger>
+        )}
+        <CollapsibleContent>
+          {listed.length > 0 && <Separator />}
+          <section className="space-y-4 pt-4" aria-labelledby="create-workspace-title">
+            <div className="flex items-center justify-between gap-2">
+              <h2
+                id="create-workspace-title"
+                ref={creationHeading}
+                tabIndex={-1}
+                className="text-sm font-semibold outline-none"
+              >
+                Create a workspace
+              </h2>
+              {listed.length > 0 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setCreating(false);
+                    requestAnimationFrame(() => createTrigger.current?.focus());
+                  }}
+                >
+                  Cancel
+                </Button>
+              )}
+            </div>
             {createForm}
           </section>
-        </>
-      ) : (
-        <Button
-          type="button"
-          variant="disclosure"
-          className="-ml-2.5 self-start"
-          onClick={() => {
-            setCreating(true);
-            requestAnimationFrame(() => document.getElementById("organization-name")?.focus());
-          }}
-        >
-          <Plus aria-hidden="true" />
-          Create a workspace
-        </Button>
-      )}
+        </CollapsibleContent>
+      </Collapsible>
     </AuthFrame>
   );
 }

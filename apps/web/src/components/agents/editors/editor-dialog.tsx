@@ -22,6 +22,7 @@ export function EditorDialog({
   onClose,
   onSubmit,
   error,
+  onRestoreFocus,
 }: {
   title: string;
   saveLabel: string;
@@ -31,6 +32,7 @@ export function EditorDialog({
   onClose: () => void;
   onSubmit: () => Promise<void>;
   error?: string;
+  onRestoreFocus?: () => void;
 }) {
   return (
     <Dialog
@@ -39,7 +41,17 @@ export function EditorDialog({
         if (!open && !pending) onClose();
       }}
     >
-      <DialogContent size="lg">
+      <DialogContent
+        size="lg"
+        onCloseAutoFocus={
+          onRestoreFocus
+            ? (event) => {
+                event.preventDefault();
+                onRestoreFocus();
+              }
+            : undefined
+        }
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>

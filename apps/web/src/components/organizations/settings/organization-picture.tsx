@@ -13,6 +13,7 @@ export function OrganizationPicture({ organizationId }: { organizationId: string
       description="Shown in the workspace switcher for everyone in it."
       kind="organization-logo"
       value={organization.data?.logo}
+      name={organization.data?.name}
       loading={organization.isPending}
       error={organization.error}
       onRetry={() => void organization.refetch()}

@@ -10,7 +10,12 @@ export interface FeedRow {
   /** Set when the message's conversation is visible now. */
   conversationId: string | null;
   /** The visible conversation, as the recipient sees it, and the message excerpt. */
-  conversation: { name: string; kind: "dm" | "group" | "channel"; excerpt: string } | null;
+  conversation: {
+    name: string;
+    kind: "dm" | "group" | "channel";
+    private: boolean;
+    excerpt: string;
+  } | null;
   /** The thread root of a reply, or null for a top-level message. */
   threadId: string | null;
   /** Who acted: the message author or the person who assigned the task. */
@@ -49,7 +54,11 @@ export function toFeedItem(row: FeedRow) {
     conversationId: row.conversationId,
     messageId: row.messageId,
     threadId: row.threadId,
-    source: { kind: row.conversation.kind, name: row.conversation.name },
+    source: {
+      kind: row.conversation.kind,
+      name: row.conversation.name,
+      private: row.conversation.private,
+    },
     excerpt: row.conversation.excerpt,
   };
 }

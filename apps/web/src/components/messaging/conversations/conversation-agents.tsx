@@ -14,6 +14,7 @@ export function ConversationAgents({
   members,
   name,
   onClose,
+  onRestoreFocus,
 }: {
   userId: string;
   organizationId: string;
@@ -21,6 +22,7 @@ export function ConversationAgents({
   members: readonly ConversationMember[];
   name: string;
   onClose: () => void;
+  onRestoreFocus?: () => void;
 }) {
   const catalog = useQuery(agentCatalogQueryOptions(userId));
   const navigate = useNavigate();
@@ -54,6 +56,7 @@ export function ConversationAgents({
       onRemove={(actorId) => remove.mutate(actorId)}
       onOpenAgents={() => void navigate({ to: "/agents", search: { workspaceId: organizationId } })}
       onClose={onClose}
+      onRestoreFocus={onRestoreFocus}
     />
   );
 }

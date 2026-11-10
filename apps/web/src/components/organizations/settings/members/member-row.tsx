@@ -1,6 +1,8 @@
+import { useRef } from "react";
+
+import { RowAction, RowActions } from "@/components/layout/row-actions";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -37,21 +39,35 @@ export function MemberRow({
 }: {
   member: MemberRowData;
   disabled: boolean;
-  onRoleChange: (role: OrganizationRole) => void;
-  onRemove: () => void;
+  onRoleChange: (role: OrganizationRole, launcher: HTMLElement | null) => void;
+  onRemove: (launcher: HTMLElement | null) => void;
 }) {
   const role = primaryRole(member.role);
+  const roleTrigger = useRef<HTMLButtonElement>(null);
   return (
-    <li className="group/member flex min-w-0 items-center gap-3 px-4 py-2.5 hover:bg-row-hover">
+    <li className="group/row flex min-w-0 items-center gap-3 px-4 py-2.5 hover:bg-row-hover">
       <PersonAvatar name={member.name} image={member.image} className="data-[size=sm]:size-8" />
 
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">
-          {member.name}
-          {member.self && <span className="font-normal text-muted-foreground"> (you)</span>}
-        </p>
-        <p className="truncate text-sm text-muted-foreground">{member.email}</p>
-      </div>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div
+            tabIndex={0}
+            className="min-w-0 flex-1 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            <p className="truncate text-sm font-medium" title={member.name}>
+              {member.name}
+              {member.self && <span className="font-normal text-muted-foreground"> (you)</span>}
+            </p>
+            <p className="truncate text-sm text-muted-foreground" title={member.email}>
+              {member.email}
+            </p>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <span className="block">{member.name}</span>
+          <span className="block">{member.email}</span>
+        </TooltipContent>
+      </Tooltip>
       <span className="hidden text-sm text-muted-foreground @lg:inline">
         Joined <Timestamp value={member.joinedAt} format="date" />
       </span>
@@ -61,10 +77,15 @@ export function MemberRow({
           disabled={disabled}
           onValueChange={(value) => {
             const option = organizationRoles.find((candidate) => candidate.value === value);
-            if (option && option.value !== role) onRoleChange(option.value);
+            if (option && option.value !== role) onRoleChange(option.value, roleTrigger.current);
           }}
         >
-          <SelectTrigger size="sm" className="w-28" aria-label={`Role for ${member.name}`}>
+          <SelectTrigger
+            ref={roleTrigger}
+            size="sm"
+            className="w-28"
+            aria-label={`Role for ${member.name}`}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -78,26 +99,23 @@ export function MemberRow({
       ) : (
         <span className="w-28 px-2.5 text-sm text-muted-foreground">{roleLabel(member.role)}</span>
       )}
-      {/* Remove stays hidden until the row is hovered or focused; touch screens always show it. */}
-      <div className="flex w-7 shrink-0 justify-end opacity-0 transition-opacity duration-150 group-focus-within/member:opacity-100 group-hover/member:opacity-100 pointer-coarse:opacity-100">
+      {/* The slot keeps its width so the columns line up when someone can't be removed. */}
+      <RowActions label={`Actions for ${member.name}`} className="w-7 justify-end">
         {member.canRemove && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="destructive-ghost"
-                size="icon-sm"
-                disabled={disabled}
-                aria-label={`Remove ${member.name}`}
-                onClick={onRemove}
-              >
-                <UserMinus aria-hidden="true" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Remove from organization</TooltipContent>
-          </Tooltip>
+          <RowAction
+            label={`Remove ${member.name}`}
+            destructive
+            disabled={disabled}
+            onClick={() =>
+              onRemove(
+                document.activeElement instanceof HTMLElement ? document.activeElement : null,
+              )
+            }
+          >
+            <UserMinus aria-hidden="true" />
+          </RowAction>
         )}
-      </div>
+      </RowActions>
     </li>
   );
 }

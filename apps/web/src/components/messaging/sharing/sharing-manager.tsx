@@ -16,6 +16,8 @@ import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { PendingButton } from "@/components/feedback/pending-button";
+import { isAccessFailure } from "@/components/feedback/request-failure";
+import { NativeField, NativeForm } from "@/components/forms/native-form";
 import { SharingDetailsView } from "@/components/messaging/sharing/sharing-details-view";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -28,8 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Separator } from "@/components/ui/separator";
 import { useExpiryTime } from "@/hooks/use-expiry-time";
 import { queryKeys } from "@/queries/keys";
@@ -75,14 +76,18 @@ export function SharingManager({
   organizationId,
   conversationId,
   onClose,
+  onRestoreFocus,
 }: {
   organizationId: string;
   conversationId: string;
   onClose: () => void;
+  /** Focus the control that opened the dialog, which a menu item no longer is once it closes. */
+  onRestoreFocus?: () => void;
 }) {
   const details = useQuery(sharingOptions(organizationId, conversationId));
   const now = useExpiryTime(details.data?.invitations.map((invite) => invite.expiresAt));
   const queryClient = useQueryClient();
+  const [email, setEmail] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [confirmation, setConfirmation] = useState<Confirmation>();
   const action = useMutation({
@@ -123,17 +128,25 @@ export function SharingManager({
           if (!open) onClose();
         }}
       >
-        <DialogContent size="lg">
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!confirmed || action.isPending) return;
-              const form = event.currentTarget;
+        <DialogContent
+          size="lg"
+          onCloseAutoFocus={(event) => {
+            if (!onRestoreFocus) return;
+            event.preventDefault();
+            onRestoreFocus();
+          }}
+        >
+          {/* Consent only enables Send. A missing or incomplete address gets inline copy. */}
+          <NativeForm
+            pending={action.isPending}
+            className=""
+            onSubmit={(form) => {
+              if (!confirmed) return;
               action.mutate(
-                { kind: "invite", email: formText(new FormData(form), "email") },
+                { kind: "invite", email: formText(form, "email") },
                 {
                   onSuccess: () => {
-                    form.reset();
+                    setEmail("");
                     setConfirmed(false);
                   },
                 },
@@ -153,27 +166,29 @@ export function SharingManager({
                 <ErrorState
                   title="Sharing unavailable"
                   description="Only the people who manage this conversation, and organization admins, can manage sharing."
-                  onRetry={() => void details.refetch()}
+                  // Missing permission does not change by asking again.
+                  onRetry={
+                    isAccessFailure(details.error) ? undefined : () => void details.refetch()
+                  }
                 />
               )}
               {data && (
                 <>
                   <div className="grid gap-4">
-                    <Field>
-                      <FieldLabel htmlFor="sharing-email">Invite by email</FieldLabel>
-                      <Input
-                        id="sharing-email"
-                        name="email"
-                        type="email"
-                        required
-                        placeholder="name@partner.com"
-                        disabled={action.isPending}
-                        aria-describedby="sharing-email-description"
-                      />
-                      <FieldDescription id="sharing-email-description">
-                        {inviteHint(data)}
-                      </FieldDescription>
-                    </Field>
+                    <NativeField
+                      id="sharing-email"
+                      name="email"
+                      type="email"
+                      label="Invite by email"
+                      required
+                      missingMessage="Enter an email address."
+                      placeholder="name@partner.com"
+                      autoComplete="off"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      disabled={action.isPending}
+                      description={inviteHint(data)}
+                    />
                     <Field orientation="horizontal">
                       <Checkbox
                         id="sharing-history"
@@ -233,7 +248,7 @@ export function SharingManager({
             </DialogBody>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={onClose}>
-                Close
+                Cancel
               </Button>
               {data && (
                 <PendingButton
@@ -246,7 +261,7 @@ export function SharingManager({
                 </PendingButton>
               )}
             </DialogFooter>
-          </form>
+          </NativeForm>
         </DialogContent>
       </Dialog>
       {confirmation && copy && (

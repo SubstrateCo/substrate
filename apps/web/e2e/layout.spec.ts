@@ -28,6 +28,32 @@ test("a resized sidebar keeps its width after reload", async ({ actors, client }
   await expect.poll(() => width(sender.page, "Conversations")).toBe(300);
 });
 
+test("every user settings section uses the same content column", async ({ actors, client }) => {
+  const sender = await client(actors.sender);
+  const columns: { x: number; width: number }[] = [];
+  for (const [path, title] of [
+    ["/settings/user", "Profile"],
+    ["/settings/user/preferences", "Preferences"],
+    ["/settings/user/invitations", "Your invitations"],
+  ]) {
+    await visit(sender, undefined, path);
+    await expect(
+      sender.page.getByRole("heading", { level: 1, name: title, exact: true }),
+    ).toBeVisible();
+    columns.push(
+      await sender.page
+        .locator("[data-slot='page-header']")
+        .first()
+        .evaluate((header) => {
+          const { x, width } = header.getBoundingClientRect();
+          return { x: Math.round(x), width: Math.round(width) };
+        }),
+    );
+  }
+  expect(new Set(columns.map(({ x }) => x)).size).toBe(1);
+  expect(new Set(columns.map(({ width }) => width)).size).toBe(1);
+});
+
 for (const width of [640, 1440]) {
   test(`messages and thread controls remain usable at ${width}px`, async ({ actors, client }) => {
     const channel = await conversation(actors.sender);

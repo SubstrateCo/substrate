@@ -14,6 +14,7 @@ export function DeleteConversationDialog({
   error,
   onConfirm,
   onClose,
+  onRestoreFocus,
 }: {
   name: string;
   linkedWork?: number;
@@ -21,6 +22,7 @@ export function DeleteConversationDialog({
   error?: Error | null;
   onConfirm: () => void;
   onClose: () => void;
+  onRestoreFocus?: () => void;
 }) {
   return (
     <ConfirmDialog
@@ -38,6 +40,7 @@ export function DeleteConversationDialog({
       error={error}
       onConfirm={onConfirm}
       onClose={onClose}
+      onRestoreFocus={onRestoreFocus}
     />
   );
 }

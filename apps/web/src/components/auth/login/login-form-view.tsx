@@ -38,15 +38,15 @@ export function LoginForm({
           type="password"
           autoComplete="current-password"
           required
-          labelAction={
-            <AuthLink
-              href={forgotPasswordHref}
-              className="text-sm font-normal text-muted-foreground hover:text-foreground"
-            >
-              Forgot password?
-            </AuthLink>
-          }
         />
+        <div className="text-right">
+          <AuthLink
+            href={forgotPasswordHref}
+            className="text-sm font-normal text-muted-foreground hover:text-foreground"
+          >
+            Forgot password?
+          </AuthLink>
+        </div>
         <FormMessage
           error={error}
           errorDescription="We couldn't sign you in. Check your details and try again."

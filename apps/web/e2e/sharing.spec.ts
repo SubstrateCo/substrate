@@ -59,6 +59,7 @@ test("a new partner signs up, creates their own org, and accepts a desktop chann
   await page.getByRole("link", { name: "Create an organization", exact: true }).click();
   const name = `Partner ${crypto.randomUUID()}`;
   await page.getByLabel("Workspace name", { exact: true }).fill(name);
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.getByLabel("Workspace slug", { exact: true }).fill(`partner-${crypto.randomUUID()}`);
   await page.getByRole("button", { name: "Create workspace", exact: true }).click();
   await expect(
@@ -110,7 +111,7 @@ test("an ordinary recipient requests org approval and an owner approves without 
     recipient.page.getByRole("status").filter({ hasText: "Approval requested" }),
   ).toBeVisible();
   await visit(approver, undefined, "/settings/organization/sharing");
-  await approver.page.getByRole("link", { name: "Review invitation", exact: true }).click();
+  await approver.page.getByRole("link", { name: "Review", exact: true }).click();
   await accept(approver.page);
   await expect(
     approver.page.getByRole("heading", { name: "Your workspace is ready", exact: true }),

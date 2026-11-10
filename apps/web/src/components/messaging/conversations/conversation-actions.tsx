@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { ConversationActionsMenu } from "./actions/conversation-actions-menu";
 import { DeleteConversationDialog } from "./actions/delete-conversation-dialog";
@@ -37,11 +37,23 @@ export function ConversationActions({
   const people = humanMembers(conversation.members);
   const others = people.filter((person) => person.userId !== userId);
   const canLeave = conversation.kind !== "dm" && !!conversation.joined;
+  const leaveLabel = conversation.kind === "channel" ? "Leave channel" : "Leave group";
+  const publicChannel = conversation.kind === "channel" && !conversation.private;
   const close = () => setDialog(undefined);
+  // The dialogs are mounted by state, so none has a trigger of its own. A menu item is gone once
+  // the menu closes; give focus back to the actions button instead. When the conversation is gone
+  // too, the sidebar is the nearest place left.
+  const trigger = useRef<HTMLButtonElement>(null);
+  const restoreFocus = () => {
+    if (trigger.current?.isConnected) trigger.current.focus();
+    else document.querySelector<HTMLElement>("#conversation-sidebar button")?.focus();
+  };
 
   return (
     <>
       <ConversationActionsMenu
+        triggerRef={trigger}
+        leaveLabel={leaveLabel}
         onSharing={conversation.canShare ? () => setDialog("sharing") : undefined}
         onAgents={canLeave && userId ? () => setDialog("agents") : undefined}
         onLeave={canLeave ? () => setDialog("leave") : undefined}
@@ -53,6 +65,7 @@ export function ConversationActions({
           organizationId={organizationId}
           conversationId={conversation.id}
           onClose={close}
+          onRestoreFocus={restoreFocus}
         />
       )}
       {dialog === "agents" && userId && (
@@ -63,16 +76,20 @@ export function ConversationActions({
           members={conversation.members}
           name={name}
           onClose={close}
+          onRestoreFocus={restoreFocus}
         />
       )}
       {dialog === "leave" && owner && others.length > 0 && (
         <OwnerDialog
           mode="leave"
           name={name}
+          leaveLabel={leaveLabel}
+          publicChannel={publicChannel}
           candidates={others}
           pending={leave.isPending}
           error={leave.error}
           onClose={close}
+          onRestoreFocus={restoreFocus}
           onConfirm={(newOwnerUserId) =>
             leave.mutate(
               { conversationId: conversation.id, newOwnerUserId },
@@ -84,11 +101,13 @@ export function ConversationActions({
       {dialog === "leave" && !(owner && others.length > 0) && (
         <LeaveConversationDialog
           name={name}
-          publicChannel={conversation.kind === "channel" && !conversation.private}
+          leaveLabel={leaveLabel}
+          publicChannel={publicChannel}
           lastMember={owner}
           pending={leave.isPending}
           error={leave.error}
           onClose={close}
+          onRestoreFocus={restoreFocus}
           onConfirm={() =>
             leave.mutate(
               { conversationId: conversation.id },
@@ -105,6 +124,7 @@ export function ConversationActions({
           pending={transfer.isPending}
           error={transfer.error}
           onClose={close}
+          onRestoreFocus={restoreFocus}
           onConfirm={(newOwner) =>
             transfer.mutate(
               { conversationId: conversation.id, userId: newOwner },
@@ -125,6 +145,7 @@ export function ConversationActions({
           pending={remove.isPending}
           error={remove.error ?? impact.error}
           onClose={close}
+          onRestoreFocus={restoreFocus}
           onConfirm={() =>
             remove.mutate(conversation.id, { onSuccess: () => toast.success(`${name} deleted`) })
           }

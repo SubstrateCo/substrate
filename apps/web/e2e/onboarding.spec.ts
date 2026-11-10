@@ -1,7 +1,44 @@
 import { Mailpit } from "../../server/integration/test-support/mailpit";
 import { signIn, signUp, verifyEmail } from "./test-support/auth";
-import { inviteMember, test } from "./test-support/fixtures";
+import { inviteMember, test, visit } from "./test-support/fixtures";
 import { expect } from "@playwright/test";
+
+test("workspace creation can be canceled and only asks for a name initially", async ({
+  account,
+  client,
+}) => {
+  const user = await client(account);
+  await user.page.goto("/onboarding");
+  const create = user.page.getByRole("button", { name: "Create a workspace", exact: true });
+  await create.click();
+  await user.page.getByRole("button", { name: "Create workspace", exact: true }).click();
+  await expect(user.page.getByText("Enter a workspace name.")).toBeVisible();
+  await expect(user.page.getByText("Enter a workspace slug.")).toHaveCount(0);
+  await user.page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(create).toBeFocused();
+  await expect(user.page.getByLabel("Workspace name")).toHaveCount(0);
+});
+
+test("login moves from email to password by keyboard", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByLabel("Email", { exact: true }).focus();
+  await page.keyboard.press("Tab");
+  await expect(page.getByLabel("Password", { exact: true })).toBeFocused();
+});
+
+test("the user menu shows the selected theme", async ({ account, client }) => {
+  const user = await client(account);
+  await visit(user);
+  await user.page.getByRole("button", { name: /^Signed in as / }).click();
+  const theme = user.page.locator('[data-slot="toggle-group"][aria-label="Theme"]');
+  await theme.getByRole("radio", { name: "Dark" }).click();
+  const selected = theme.getByRole("radio", { checked: true });
+  await expect(selected).toHaveCount(1);
+  await expect(selected).toHaveAttribute("aria-label", "Dark");
+  expect(await selected.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe(
+    "rgba(0, 0, 0, 0)",
+  );
+});
 
 test("a visitor creates an organization before installing and can resume setup", async ({
   page,
@@ -17,6 +54,7 @@ test("a visitor creates an organization before installing and can resume setup",
   await signIn(page, email, password);
   await expect(page).toHaveURL(/\/onboarding/);
   await page.getByLabel("Workspace name", { exact: true }).fill(`Public ${id}`);
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.getByLabel("Workspace slug", { exact: true }).fill(`public-${id}`);
   await page.getByRole("button", { name: "Create workspace", exact: true }).click();
   await expect(
@@ -138,6 +176,7 @@ test("retrying activation opens the organization that was already created", asyn
   });
   await user.page.getByRole("button", { name: "Create a workspace", exact: true }).click();
   await user.page.getByLabel("Workspace name", { exact: true }).fill(`Retry ${id}`);
+  await user.page.getByRole("button", { name: "Edit", exact: true }).click();
   await user.page.getByLabel("Workspace slug", { exact: true }).fill(`retry-${id}`);
   await user.page.getByRole("button", { name: "Create workspace", exact: true }).click();
   await expect(user.page.getByRole("alert")).toBeVisible();
@@ -157,7 +196,10 @@ test("switching accounts keeps the intended invitation", async ({ account, clien
   const user = await client(account);
   const destination = `/accept-invitation/${id}`;
   await user.page.goto(destination);
-  await expect(user.page.getByText("Invitation unavailable", { exact: true })).toBeVisible();
+  await expect(
+    user.page.getByRole("heading", { name: "This invitation isn't available" }),
+  ).toBeVisible();
+  await expect(user.page.getByRole("link", { name: "Go to your workspaces" })).toBeVisible();
   await expect(
     user.page.getByRole("button", { name: "Accept invitation", exact: true }),
   ).toHaveCount(0);
@@ -176,7 +218,10 @@ test("a canceled invitation cannot add membership", async ({ account, actors, cl
   expect(canceled.ok()).toBe(true);
   const user = await client(account);
   await user.page.goto(`/accept-invitation/${id}`);
-  await expect(user.page.getByText("Invitation unavailable", { exact: true })).toBeVisible();
+  await expect(
+    user.page.getByRole("heading", { name: "This invitation isn't available" }),
+  ).toBeVisible();
+  await expect(user.page.getByRole("link", { name: "Go to your workspaces" })).toBeVisible();
   await expect(
     user.page.getByRole("button", { name: "Accept invitation", exact: true }),
   ).toHaveCount(0);

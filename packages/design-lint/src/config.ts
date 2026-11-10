@@ -114,7 +114,7 @@ export const designConfig = {
             pattern: "^Tabs(List|Trigger)$",
             allow: ["layout"],
             message:
-              '"{{className}}" restyles line Tabs. Tabs are only for page sections; for a choice among 2–4 short options use SegmentedControl from "@/components/forms/segmented-control".',
+              '"{{className}}" restyles Tabs. Line Tabs are for page sections; inside a popover or palette use the default pill Tabs (no variant), and for a choice among 2–4 short options use SegmentedControl from "@/components/forms/segmented-control".',
           },
         ],
       },
@@ -142,6 +142,7 @@ export const designConfig = {
       files: [`${WEB}/**`],
       rules: {
         "design/canonical-icons": "error",
+        "design/conversation-label": "warn",
         "design/dialog-footer-order": "error",
         "design/dialog-structure": "warn",
         "design/icon-button-name": "error",
@@ -153,9 +154,15 @@ export const designConfig = {
         "design/no-raw-error-message": "warn",
         "design/no-raw-validation-text": "error",
         "design/no-solid-destructive": "error",
+        "design/no-tooltip-on-toggle-item": "error",
         "design/page-header": "warn",
         "design/sentence-case": "warn",
       },
+    },
+    {
+      // The helper builds the "#" name; its test checks it.
+      files: [`${WEB}/lib/messaging/conversations.ts`],
+      rules: { "design/conversation-label": "off" },
     },
     {
       // Vendored shadcn primitives define the treatments these rules point to.

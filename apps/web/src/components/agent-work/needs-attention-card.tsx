@@ -21,7 +21,10 @@ export function NeedsAttentionCard({
   onStartFresh,
   onResend,
   onDiscard,
+  inline = false,
 }: {
+  /** Inside an activity row that already names the state: no card, no header. */
+  inline?: boolean;
   text: string;
   /** What the runtime reported when the work stopped. */
   error: string | null;
@@ -55,30 +58,42 @@ export function NeedsAttentionCard({
       {label}
     </PendingButton>
   );
+  const content = (
+    <>
+      <p>{text}</p>
+      {error && <p className="text-xs wrap-anywhere text-muted-foreground">{error}</p>}
+      {failure && (
+        <p role="alert" className="flex items-start gap-1.5 text-xs text-destructive">
+          <CircleAlert aria-hidden="true" className="mt-px size-3.5 shrink-0" />
+          {failure}
+        </p>
+      )}
+      {onResend && onDiscard ? (
+        <div className="flex flex-wrap gap-2">
+          {button("resend", "Resend", "Resending…", onResend, "default")}
+          {button("discard", "Discard", "Discarding…", onDiscard)}
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {button("retry", "Retry", "Retrying…", onRetry, "default")}
+          {button("startFresh", "Start fresh", "Starting fresh…", onStartFresh)}
+          {button("dismiss", "Dismiss", "Dismissing…", onDismiss, "ghost")}
+        </div>
+      )}
+    </>
+  );
+  if (inline)
+    return (
+      <section
+        aria-label={stoppedNeedsYouLabel}
+        className="grid min-w-0 gap-2.5 border-t border-warning/30 bg-warning/5 px-4 py-3 text-sm"
+      >
+        {content}
+      </section>
+    );
   return (
     <MessageCard icon={TriangleAlert} tone="attention" title={stoppedNeedsYouLabel}>
-      <MessageCardBody>
-        <p>{text}</p>
-        {error && <p className="text-xs wrap-anywhere text-muted-foreground">{error}</p>}
-        {failure && (
-          <p role="alert" className="flex items-start gap-1.5 text-xs text-destructive">
-            <CircleAlert aria-hidden="true" className="mt-px size-3.5 shrink-0" />
-            {failure}
-          </p>
-        )}
-        {onResend && onDiscard ? (
-          <div className="flex flex-wrap gap-2">
-            {button("resend", "Resend", "Resending…", onResend, "default")}
-            {button("discard", "Discard", "Discarding…", onDiscard)}
-          </div>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {button("retry", "Retry", "Retrying…", onRetry, "default")}
-            {button("startFresh", "Start fresh", "Starting fresh…", onStartFresh)}
-            {button("dismiss", "Dismiss", "Dismissing…", onDismiss, "ghost")}
-          </div>
-        )}
-      </MessageCardBody>
+      <MessageCardBody>{content}</MessageCardBody>
     </MessageCard>
   );
 }

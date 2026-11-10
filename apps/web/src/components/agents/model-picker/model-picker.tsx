@@ -175,7 +175,7 @@ export function ModelPicker({
         align="start"
         side="bottom"
         collisionPadding={8}
-        className="max-h-(--radix-popover-content-available-height) w-(--radix-popover-trigger-width) min-w-96"
+        className="max-h-(--radix-popover-content-available-height) w-(--radix-popover-trigger-width) min-w-80"
         aria-label="Choose a model"
       >
         <div className="flex items-center gap-2 border-b p-2">

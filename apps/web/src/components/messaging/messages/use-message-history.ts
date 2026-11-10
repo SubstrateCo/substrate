@@ -46,6 +46,10 @@ export function useMessageHistory({
         ? previous
         : undefined,
   });
+  const latest = useQuery({
+    ...messagesQueryOptions(organizationId, conversationId, threadId),
+    enabled: !!current.beforeMessageId || !!current.aroundMessageId,
+  });
   if (current.target !== aroundMessageId) {
     // A thread selection is not a history cursor when its root is already loaded.
     // Consume it once so Back to latest can clear the cursor while the thread stays open.
@@ -68,7 +72,11 @@ export function useMessageHistory({
     history: {
       pending,
       hasOlder: messages.data?.length === 50,
-      hasPrevious: !!current.beforeMessageId || !!current.aroundMessageId || pending === "latest",
+      hasPrevious:
+        pending === "latest" ||
+        (!!latest.data?.length &&
+          !!messages.data &&
+          latest.data.at(-1)?.id !== messages.data.at(-1)?.id),
       onLatest: () => {
         void queryClient.invalidateQueries({
           queryKey: messagesQueryOptions(organizationId, conversationId, threadId).queryKey,

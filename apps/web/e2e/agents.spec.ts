@@ -34,13 +34,13 @@ test("agent definitions can be created, edited, persisted and deleted without ru
   const user = await client(account);
   const name = `Release helper ${crypto.randomUUID()}`;
   await createAgent(user, name);
-  const save = user.page.getByRole("button", { name: "Save changes", exact: true });
+  const save = user.page.getByRole("button", { name: "Save", exact: true });
   await expect(save).toBeInViewport();
   await expect(save).toBeDisabled();
   await user.page.getByLabel("Agent name", { exact: true }).fill("");
   await save.click();
   await expect(user.page.getByText("Enter an agent name.", { exact: true })).toBeVisible();
-  await user.page.getByRole("button", { name: "Discard changes", exact: true }).click();
+  await user.page.getByRole("button", { name: "Discard", exact: true }).click();
   await expect(user.page.getByLabel("Agent name", { exact: true })).toHaveValue(name);
   await expect(save).toBeDisabled();
   await section(user.page, "Skills").click();
@@ -74,7 +74,7 @@ test("agent definitions can be created, edited, persisted and deleted without ru
   await section(user.page, "Instructions").click();
   await expect(instructions(user.page)).toHaveValue("Summarize release risks only.");
   await instructions(user.page).fill("Unsaved draft");
-  await user.page.getByRole("button", { name: "Discard changes", exact: true }).click();
+  await user.page.getByRole("button", { name: "Discard", exact: true }).click();
   await expect(instructions(user.page)).toHaveValue("Summarize release risks only.");
 
   await section(user.page, "General").click();
@@ -109,7 +109,7 @@ test("agent run settings persist and the settings section survives back navigati
     user.page.waitForResponse(
       (response) => response.url().endsWith("/actors/triggers") && response.ok(),
     ),
-    user.page.getByRole("button", { name: "Save run settings", exact: true }).click(),
+    user.page.getByRole("button", { name: "Save", exact: true }).click(),
   ]);
   await user.page.reload();
   await section(user.page, "Run settings").click();
@@ -151,7 +151,11 @@ test("a member adds and removes their agent in a channel without an agent search
   const row = dialog.getByRole("listitem").filter({ hasText: agent.name });
   await row.getByRole("button", { name: "Add", exact: true }).click();
   await expect(row.getByText("In this conversation", { exact: true })).toBeVisible();
-  await row.getByRole("button", { name: "Remove", exact: true }).click();
+  await row.getByRole("button", { name: `Remove ${agent.name}`, exact: true }).click();
+  await user.page
+    .getByRole("dialog", { name: `Remove ${agent.name} from` })
+    .getByRole("button", { name: `Remove ${agent.name}`, exact: true })
+    .click();
   await expect(row.getByRole("button", { name: "Add", exact: true })).toBeVisible();
   await expect(row.getByText("In this conversation", { exact: true })).toHaveCount(0);
   expect(requests.filter((request) => "kind" in request && request.kind === "agent")).toEqual([]);

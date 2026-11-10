@@ -55,9 +55,13 @@ export function SegmentedControl<T extends string>({
           </ToggleGroupItem>
         );
         if (!iconOnly) return item;
+        // The tooltip trigger is a wrapper, not the item: a trigger that is the item overwrites
+        // the item's `data-state`, and the chosen option would lose its raised style.
         return (
           <Tooltip key={optionValue}>
-            <TooltipTrigger asChild>{item}</TooltipTrigger>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">{item}</span>
+            </TooltipTrigger>
             <TooltipContent>{optionLabel}</TooltipContent>
           </Tooltip>
         );

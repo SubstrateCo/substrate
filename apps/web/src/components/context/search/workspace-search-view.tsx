@@ -110,8 +110,8 @@ export function WorkspaceSearch({
         }}
         className="min-h-0"
       >
-        <div className="shrink-0 border-b px-2 pt-1.5">
-          <TabsList variant="line" aria-label="Search type" aria-keyshortcuts="Control+Tab">
+        <div className="shrink-0 border-b p-2">
+          <TabsList aria-label="Search type" aria-keyshortcuts="Control+Tab">
             {kinds.map((type) => (
               <TabsTrigger key={type} value={type} className="flex-none">
                 {kindLabels[type]}
@@ -140,8 +140,11 @@ export function WorkspaceSearch({
         aria-hidden="true"
         className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-t px-3 py-2 text-xs text-muted-foreground"
       >
-        <Hint keys={["↑", "↓"]} label="Navigate" />
-        <Hint keys={["↵"]} label="Open" />
+        {results.length > 0 && (
+          <>
+            <Hint keys={["↑", "↓"]} label="Navigate" /> <Hint keys={["↵"]} label="Open" />
+          </>
+        )}
         <Hint keys={[isMac ? "⌃" : "Ctrl", "Tab"]} label="Switch type" />
         <span className="ml-auto">
           <Hint keys={["Esc"]} label="Close" />

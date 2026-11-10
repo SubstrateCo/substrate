@@ -21,6 +21,25 @@ export function conversationName(conversation: Pick<Conversation, "name" | "kind
   return conversation.name || (conversation.kind === "channel" ? "Untitled channel" : "Only you");
 }
 
+export type ConversationVisibility = {
+  kind: "dm" | "group" | "channel";
+  /** Private channels, DMs, and groups are private. Only a public channel has a "#" name. */
+  private?: boolean;
+};
+
+/**
+ * A conversation's name in running text with no icon beside it ("Message #launch"). Only a public
+ * channel gets the "#"; a private channel, DM, or group reads as its bare name. Where the kind
+ * icon shows (`ConversationKindIcon`), use the bare name.
+ */
+export function conversationLabel({
+  name,
+  kind,
+  private: locked,
+}: ConversationVisibility & { name: string }): string {
+  return kind === "channel" && !locked ? `#${name}` : name;
+}
+
 /**
  * Joins the viewer's enabled agents with their agent members here, by agent definition ID.
  * Members that match no enabled agent stay removable.

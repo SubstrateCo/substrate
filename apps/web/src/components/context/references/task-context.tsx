@@ -4,6 +4,7 @@ import { WorkDiscussions } from "../discussions/work-discussions";
 import { TaskActivity } from "@/components/context/activity/task-activity";
 import { messageHref } from "@/lib/navigation/record-links";
 import { activityOptions } from "@/queries/context/activity";
+import { conversationsQueryOptions } from "@/queries/messaging/options";
 
 export function TaskContext({
   organizationId,
@@ -15,6 +16,10 @@ export function TaskContext({
   visible: boolean;
 }) {
   const activity = useQuery({ ...activityOptions(organizationId, taskEntityId), enabled: visible });
+  const conversations = useQuery({
+    ...conversationsQueryOptions(organizationId),
+    enabled: visible,
+  });
   return (
     <>
       <WorkDiscussions organizationId={organizationId} entityId={taskEntityId} visible={visible} />
@@ -24,6 +29,11 @@ export function TaskContext({
           source: source && {
             href: messageHref(organizationId, source.conversationId, source.messageId),
             conversationName: source.conversationName,
+            conversationKind: conversations.data?.find(
+              (entry) => entry.id === source.conversationId,
+            )?.kind,
+            private: conversations.data?.find((entry) => entry.id === source.conversationId)
+              ?.private,
           },
         }))}
         loading={activity.isPending}

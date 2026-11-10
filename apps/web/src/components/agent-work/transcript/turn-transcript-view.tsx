@@ -101,7 +101,7 @@ export function TurnTranscriptView({
             <p
               className={cn(
                 "truncate text-xs text-muted-foreground tabular-nums",
-                tone === "attention" && "text-warning",
+                tone === "attention" && "text-warning-text",
                 tone === "failed" && "text-destructive",
               )}
             >

@@ -49,13 +49,13 @@ export function InvitationManager({
   const busy = sending || canceling;
   const [confirming, setConfirming] = useState<InvitationListItem>();
   const form = (
-    <>
+    <div className="@container">
       <InvitationForm sending={sending} disabled={busy} onInvite={onInvite} />
       <FormMessage
         error={error}
         errorDescription="We couldn't update this invitation. Check the email and try again."
       />
-    </>
+    </div>
   );
   const sent = (
     <section aria-labelledby="sent-invitations-title" className="space-y-3">

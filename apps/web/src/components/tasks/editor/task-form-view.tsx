@@ -67,6 +67,7 @@ export function TaskForm({
   error,
   initialStatus,
   variant = "inline",
+  onDirtyChange,
 }: {
   detail: ProjectDetail;
   task?: Task;
@@ -78,6 +79,7 @@ export function TaskForm({
   initialStatus?: Task["status"];
   /** In a dialog, the form renders the dialog's body and its Cancel and submit footer. */
   variant?: "inline" | "dialog";
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
   const id = useId();
   const latest = useRef(task);
@@ -183,6 +185,14 @@ export function TaskForm({
       noValidate
       className="@container min-w-0 space-y-4"
       onKeyDown={onKeyDown}
+      onInputCapture={(event) => {
+        if (!task || !onDirtyChange) return;
+        const title = event.currentTarget.querySelector<HTMLInputElement>(`[id="${id}-title"]`);
+        const description = event.currentTarget.querySelector<HTMLTextAreaElement>(
+          `[id="${id}-description"]`,
+        );
+        onDirtyChange(title?.value !== task.title || description?.value !== task.description);
+      }}
       onSubmit={(event) => {
         event.preventDefault();
         submit();

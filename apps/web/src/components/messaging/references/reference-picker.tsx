@@ -31,7 +31,7 @@ function optionDescription(item: {
   projectName?: string;
   status?: TaskStatus;
 }) {
-  if (item.conversationName) return `# ${item.conversationName}`;
+  if (item.conversationName) return `In ${item.conversationName}`;
   const parts = [item.projectName, item.status && taskStatusLabels[item.status]];
   return parts.filter(Boolean).join(" · ") || undefined;
 }
@@ -105,7 +105,7 @@ export function ReferencePicker({
         className="flex max-h-96 min-h-0 flex-col gap-2 overflow-hidden p-2"
       >
         <div className="flex shrink-0 items-center gap-1">
-          <TabsList variant="line" aria-label="Reference type">
+          <TabsList aria-label="Reference type">
             {kinds.map((type) => (
               <TabsTrigger
                 key={type}
