@@ -4,15 +4,17 @@ import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import { entityLinks } from "../../core/links/schema";
-import { member } from "../../core/organizations/schema";
 import { visibilityCte } from "../../core/permissions/visibility";
 import { pageSize } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import {
   approvedParticipant,
+  liveAgentMember,
+  mentionablePerson,
   visibleConversations,
   type MessagingIdentity,
 } from "../messaging/access";
+import { conversationDisplayName } from "../messaging/display-name";
 import {
   messagingConversations,
   messagingMessages,
@@ -278,7 +280,7 @@ export async function contextSearch(
     const rows = await db
       .select({
         id: messagingConversations.id,
-        title: sql<string>`coalesce(${messagingConversations.name}, 'Direct conversation')`,
+        title: conversationDisplayName(db, scope),
         conversationKind: messagingConversations.kind,
         private: messagingConversations.private,
       })
@@ -422,27 +424,14 @@ export async function contextSearch(
       .innerJoin(user, eq(user.id, actors.userId))
       .innerJoin(entities, eq(entities.entityId, actors.entityId))
       .innerJoin(
-        member,
-        and(eq(member.userId, user.id), eq(member.organizationId, actors.organizationId)),
-      )
-      .innerJoin(
         messagingConversations,
-        and(
-          eq(messagingConversations.id, input.conversationId),
-          visibleConversations(db, scope),
-          visibleConversations(db, {
-            userId: actors.userId,
-            organizationId: scope.organizationId,
-          }),
-        ),
+        and(eq(messagingConversations.id, input.conversationId), visibleConversations(db, scope)),
       )
       .where(
         and(
-          eq(actors.organizationId, scope.organizationId),
+          mentionablePerson(db, scope.organizationId),
           anchorId ? inArray(actors.entityId, relatedEntities) : undefined,
           anchorId ? inArray(actors.entityId, ctx.readableEntities()) : undefined,
-          isNull(actors.disabledAt),
-          isNull(entities.deletedAt),
           eq(user.emailVerified, true),
           query ? match(actors.name) : undefined,
           input.after ? gt(actors.entityId, input.after) : undefined,
@@ -469,12 +458,8 @@ export async function contextSearch(
       )
       .where(
         and(
-          eq(messagingParticipants.conversationId, input.conversationId),
-          eq(messagingParticipants.actorType, "agent"),
-          isNull(messagingParticipants.leftAt),
+          liveAgentMember(input.conversationId),
           eq(userAgents.userId, scope.userId),
-          isNull(userAgents.deletedAt),
-          eq(userAgents.enabled, true),
           query ? match(actors.name) : undefined,
           input.after ? gt(actors.entityId, input.after) : undefined,
         ),

@@ -11,6 +11,24 @@ import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 const f = setupDatabase();
 
+test("unnamed conversation results are named after the other approved members", async () => {
+  await f.db.update(user).set({ emailVerified: true });
+  const alice = createAcceptedMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
+  const dm = await alice.createConversation({ kind: "dm", emails: ["bob@example.com"] });
+  await f.db.insert(messagingParticipants).values({
+    conversationId: dm.id,
+    organizationId: f.orgB,
+    actorEntityId: f.outsider,
+    actorType: "human",
+  });
+  expect(
+    await createContextService(f.db, { userId: "alice", organizationId: f.orgA }).search({
+      kind: "conversation",
+      query: "",
+    }),
+  ).toMatchObject([{ id: dm.id, title: "Bob" }]);
+});
+
 test("channel browse lists readable channels by name with membership and live member counts", async () => {
   await f.db.update(user).set({ emailVerified: true });
   const alice = createAcceptedMessagingService(f.db, { userId: "alice", organizationId: f.orgA });

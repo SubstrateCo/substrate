@@ -1,11 +1,15 @@
-import { activeActorCondition } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
-import { visibleConversations, type MessagingIdentity } from "../messaging/access";
+import {
+  liveAgentMember,
+  mentionablePerson,
+  visibleConversations,
+  type MessagingIdentity,
+} from "../messaging/access";
 import {
   messagingConversations,
   messagingMessages,
@@ -16,7 +20,7 @@ import { readableWorkTargets } from "../notifications/targets";
 import { saveMessagingReference } from "./messaging-references";
 import { messageReferences } from "./references";
 import { messageEntityReferences } from "./schema";
-import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
 // `referenced` reports saved work or messaging references. `notified` lists the alerts created.
 export async function applyMessageEffects(
@@ -58,11 +62,8 @@ export async function applyMessageEffects(
       )
       .where(
         and(
-          eq(messagingParticipants.conversationId, message.conversationId),
+          liveAgentMember(message.conversationId),
           inArray(messagingParticipants.actorEntityId, agentIds),
-          eq(messagingParticipants.actorType, "agent"),
-          isNull(messagingParticipants.leftAt),
-          activeActorCondition(),
           isNull(entities.deletedAt),
         ),
       );
@@ -81,22 +82,8 @@ export async function applyMessageEffects(
           eq(entities.organizationId, actors.organizationId),
         ),
       )
-      .innerJoin(
-        messagingConversations,
-        and(
-          eq(messagingConversations.id, message.conversationId),
-          visibleConversations(db, { userId: actors.userId, organizationId: scope.organizationId }),
-        ),
-      )
-      .where(
-        and(
-          inArray(actors.entityId, personIds),
-          eq(actors.organizationId, scope.organizationId),
-          isNotNull(actors.userId),
-          activeActorCondition(),
-          isNull(entities.deletedAt),
-        ),
-      );
+      .innerJoin(messagingConversations, eq(messagingConversations.id, message.conversationId))
+      .where(and(inArray(actors.entityId, personIds), mentionablePerson(db, scope.organizationId)));
     if (people.length !== personIds.length) throw new AccessDeniedError();
     for (const person of people) recipients.set(person.userId, "mention");
   }

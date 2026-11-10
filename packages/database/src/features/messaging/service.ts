@@ -12,6 +12,7 @@ import { conversationRemovalHints, messageChangeHints } from "../realtime/routin
 import {
   approvedParticipant,
   loadConversation,
+  requireThreadRoot,
   visibleConversations,
   type MessagingIdentity,
 } from "./access";
@@ -49,20 +50,6 @@ interface CreateConversationInput {
   shareHistory?: boolean;
   /** The caller's own agent definitions. */
   agentIds?: string[];
-}
-
-async function requireThreadRoot(tx: DatabaseExecutor, conversationId: string, threadId: string) {
-  const [root] = await tx
-    .select({ id: messagingMessages.id })
-    .from(messagingMessages)
-    .where(
-      and(
-        eq(messagingMessages.conversationId, conversationId),
-        eq(messagingMessages.id, threadId),
-        isNull(messagingMessages.threadId),
-      ),
-    );
-  if (!root) throw new ValidationError("Thread must be a root message in this conversation.");
 }
 
 // Trusted callers pass the context and author already resolved by workspaceContext.

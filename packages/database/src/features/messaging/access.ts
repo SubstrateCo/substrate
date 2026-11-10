@@ -1,8 +1,10 @@
 import type { DatabaseExecutor } from "../../client";
+import { activeActorCondition } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
+import { entities } from "../../core/entities/schema";
 import { member } from "../../core/organizations/schema";
-import { AccessDeniedError } from "../../errors";
+import { AccessDeniedError, ValidationError } from "../../errors";
 import { messagingConversations, messagingMessages, messagingParticipants } from "./schema";
 import { messagingConnections } from "./sharing.schema";
 import { and, eq, exists, inArray, isNotNull, isNull, lte, or, type SQLWrapper } from "drizzle-orm";
@@ -141,6 +143,55 @@ export function visibleConversations(
         ),
     ),
   );
+}
+
+/**
+ * An active person of the organization who can see the outer conversation, as mentions and the
+ * mention picker require. Needs `actors`, `entities` on the actor, and `messaging_conversations`
+ * in the outer query.
+ */
+export function mentionablePerson(db: DatabaseExecutor, organizationId: string) {
+  return and(
+    eq(actors.organizationId, organizationId),
+    isNotNull(actors.userId),
+    activeActorCondition(),
+    isNull(entities.deletedAt),
+    visibleConversations(db, { userId: actors.userId, organizationId }),
+  );
+}
+
+/**
+ * A live, active agent member of the conversation. Agent rows never grant access; callers add
+ * the owner when only the owner may address the agent. Needs `messaging_participants` and
+ * `actors` on the participant's actor in the outer query.
+ */
+export function liveAgentMember(conversationId: string) {
+  return and(
+    eq(messagingParticipants.conversationId, conversationId),
+    eq(messagingParticipants.actorType, "agent"),
+    isNull(messagingParticipants.leftAt),
+    activeActorCondition(),
+  );
+}
+
+/** Replies point to roots: a thread is a root message of this conversation. */
+export const threadRoot = (conversationId: string, threadId: string) =>
+  and(
+    eq(messagingMessages.conversationId, conversationId),
+    eq(messagingMessages.id, threadId),
+    isNull(messagingMessages.threadId),
+  );
+
+export async function requireThreadRoot(
+  db: DatabaseExecutor,
+  conversationId: string,
+  threadId: string,
+) {
+  const [root] = await db
+    .select({ id: messagingMessages.id })
+    .from(messagingMessages)
+    .where(threadRoot(conversationId, threadId));
+  if (!root) throw new ValidationError("Thread must be a root message in this conversation.");
 }
 
 export type Conversation = typeof messagingConversations.$inferSelect;

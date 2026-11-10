@@ -1,18 +1,17 @@
 import { taskStatusLabels } from "@startup-os/contracts/tasks";
 
 import type { DatabaseExecutor } from "../../client";
-import { activeActorCondition } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
 import { entities } from "../../core/entities/schema";
 import { visibilityCte } from "../../core/permissions/visibility";
 import type { RepositoryContext } from "../../core/repository-context";
-import { visibleConversations, type MessagingIdentity } from "../messaging/access";
+import { mentionablePerson, type MessagingIdentity } from "../messaging/access";
 import { messagingConversations } from "../messaging/schema";
 import { projects } from "../projects/schema";
 import { tasks } from "../tasks/tasks.schema";
 import { messageReferences } from "./references";
 import { messageEntityReferences } from "./schema";
-import { and, asc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
 
 // Callers authorize every message before resolving its metadata.
 export async function messageWorkLinks(ctx: RepositoryContext, messageIds: string[]) {
@@ -102,29 +101,16 @@ export async function messagePeople(
         .innerJoin(entities, eq(entities.entityId, actors.entityId))
         .innerJoin(
           messagingConversations,
-          and(
-            or(
-              ...[...conversationTokens].map(([conversationId, ids]) =>
-                and(
-                  eq(messagingConversations.id, conversationId),
-                  inArray(actors.entityId, [...ids]),
-                ),
+          or(
+            ...[...conversationTokens].map(([conversationId, ids]) =>
+              and(
+                eq(messagingConversations.id, conversationId),
+                inArray(actors.entityId, [...ids]),
               ),
             ),
-            visibleConversations(db, {
-              userId: actors.userId,
-              organizationId: scope.organizationId,
-            }),
           ),
         )
-        .where(
-          and(
-            eq(actors.organizationId, scope.organizationId),
-            isNotNull(actors.userId),
-            activeActorCondition(),
-            isNull(entities.deletedAt),
-          ),
-        )
+        .where(mentionablePerson(db, scope.organizationId))
     : [];
   const peopleByConversation = new Map<string, Map<string, (typeof people)[number]>>();
   for (const person of people) {

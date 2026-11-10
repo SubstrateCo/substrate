@@ -1,8 +1,12 @@
 import type { DatabaseExecutor } from "../../client";
 import { AccessDeniedError, ValidationError } from "../../errors";
-import { visibleConversations, type MessagingIdentity } from "../messaging/access";
+import {
+  requireThreadRoot,
+  visibleConversations,
+  type MessagingIdentity,
+} from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 export interface Place {
   conversationId: string | null;
@@ -40,19 +44,7 @@ export async function requirePlace(
       and(eq(messagingConversations.id, place.conversationId), visibleConversations(db, scope)),
     );
   if (!conversation) throw new AccessDeniedError();
-  if (place.threadId) {
-    const [root] = await db
-      .select({ id: messagingMessages.id })
-      .from(messagingMessages)
-      .where(
-        and(
-          eq(messagingMessages.conversationId, place.conversationId),
-          eq(messagingMessages.id, place.threadId),
-          isNull(messagingMessages.threadId),
-        ),
-      );
-    if (!root) throw new ValidationError("Thread must be a root message in this conversation.");
-  }
+  if (place.threadId) await requireThreadRoot(db, place.conversationId, place.threadId);
   if (place.anchorMessageId) {
     const [anchor] = await db
       .select({ id: messagingMessages.id })

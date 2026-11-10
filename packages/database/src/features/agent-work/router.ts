@@ -6,16 +6,15 @@ import {
 import { realtimeKeys, type RealtimeHint } from "@startup-os/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
-import { activeActorCondition } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { userAgentTriggers } from "../agents/triggers.schema";
 import { messageReferences } from "../context/references";
-import type { MessagingIdentity } from "../messaging/access";
+import { liveAgentMember, type MessagingIdentity } from "../messaging/access";
 import { messagingMessages, messagingParticipants } from "../messaging/schema";
 import { agentRequests } from "./requests.schema";
 import { agentWakes } from "./wakes.schema";
-import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
 
 // Agents that already worked in this thread: they published a reply there or asked there.
 async function agentsThatWorked(
@@ -88,12 +87,9 @@ export async function routeWake(
     .innerJoin(userAgents, eq(userAgents.id, actors.userAgentId))
     .where(
       and(
-        eq(messagingParticipants.conversationId, message.conversationId),
-        eq(messagingParticipants.actorType, "agent"),
-        isNull(messagingParticipants.leftAt),
+        liveAgentMember(message.conversationId),
         eq(userAgents.userId, scope.userId),
         eq(actors.organizationId, scope.organizationId),
-        activeActorCondition(),
       ),
     );
   if (!agents.length) return [];

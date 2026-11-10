@@ -6,7 +6,7 @@ import { userAgents } from "../../core/actors/user-agents.schema";
 import { deviceOnline } from "../../core/devices/repository";
 import { desktopDevices } from "../../core/devices/schema";
 import { workspaceContext } from "../context/access";
-import { visibleConversations } from "../messaging/access";
+import { threadRoot, visibleConversations } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import {
   requireDevice,
@@ -15,7 +15,7 @@ import {
   type OwnerIdentity,
 } from "./device";
 import { agentStatus } from "./status.schema";
-import { and, asc, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
+import { and, asc, eq, inArray, sql, type SQL } from "drizzle-orm";
 
 export interface PublishStatusInput {
   userAgentId: string;
@@ -61,13 +61,7 @@ export function publishStatus(
         ? await tx
             .select({ id: messagingMessages.id })
             .from(messagingMessages)
-            .where(
-              and(
-                eq(messagingMessages.conversationId, live.id),
-                eq(messagingMessages.id, input.liveThreadId),
-                isNull(messagingMessages.threadId),
-              ),
-            )
+            .where(threadRoot(live.id, input.liveThreadId))
         : [];
     const hidden = Boolean(input.liveConversationId) && !live;
     const values = {
