@@ -97,27 +97,13 @@ export function approvedParticipant(db: DatabaseExecutor) {
 // A person's membership is held by their human actor in their own organization. The alias keeps
 // callers' correlated columns, such as an outer actors.user_id, bound to the outer row.
 const participantActor = alias(actors, "participant_actor");
-function humanParticipant(
-  db: DatabaseExecutor,
-  scope: { userId: string | SQLWrapper; organizationId: string | SQLWrapper },
-) {
-  return inArray(
-    messagingParticipants.actorEntityId,
-    db
-      .select({ id: participantActor.entityId })
-      .from(participantActor)
-      .where(
-        and(
-          eq(participantActor.userId, scope.userId),
-          eq(participantActor.organizationId, scope.organizationId),
-          eq(participantActor.type, "human"),
-        ),
-      ),
-  );
-}
 
 // A local agent's scope carries its owner's user ID, so the agent sees what the owner sees.
 // Agent membership rows never grant access.
+//
+// The participant subquery joins its own conversation row, which approvedParticipant reads,
+// instead of the outer one. It is uncorrelated for a fixed scope, so PostgreSQL computes the
+// viewer's conversations once instead of once per conversation row.
 export function visibleConversations(
   db: DatabaseExecutor,
   scope: { userId: string | SQLWrapper; organizationId: string | SQLWrapper },
@@ -133,9 +119,21 @@ export function visibleConversations(
       db
         .select({ id: messagingParticipants.conversationId })
         .from(messagingParticipants)
+        .innerJoin(
+          participantActor,
+          and(
+            eq(participantActor.entityId, messagingParticipants.actorEntityId),
+            eq(participantActor.userId, scope.userId),
+            eq(participantActor.organizationId, scope.organizationId),
+            eq(participantActor.type, "human"),
+          ),
+        )
+        .innerJoin(
+          messagingConversations,
+          eq(messagingConversations.id, messagingParticipants.conversationId),
+        )
         .where(
           and(
-            humanParticipant(db, scope),
             eq(messagingParticipants.organizationId, scope.organizationId),
             isNull(messagingParticipants.leftAt),
             approvedParticipant(db),
