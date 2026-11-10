@@ -85,7 +85,6 @@ export function PersonHoverCard({
                 <PendingButton
                   size="sm"
                   variant="outline"
-                  className="w-full"
                   pending={directMessage.isPending}
                   pendingLabel="Opening conversation…"
                   onClick={() =>

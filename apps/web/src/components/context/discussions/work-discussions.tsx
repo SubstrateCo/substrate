@@ -9,13 +9,15 @@ import { relatedContextOptions } from "@/queries/context/links";
 export function WorkDiscussions({
   organizationId,
   entityId,
-  label = "Related context",
+  label,
+  variant,
   children,
   visible = true,
 }: {
   organizationId: string;
   entityId: string;
   label?: string;
+  variant?: "inspector" | "page";
   children?: ReactNode;
   visible?: boolean;
 }) {
@@ -33,6 +35,7 @@ export function WorkDiscussions({
       error={related.error}
       onRetry={() => void related.refetch()}
       label={label}
+      variant={variant}
     >
       {children}
     </WorkDiscussionsView>

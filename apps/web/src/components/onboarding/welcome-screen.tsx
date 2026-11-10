@@ -1,14 +1,16 @@
 import { AuthFrame } from "@/components/auth/auth-frame";
+import { AuthLink } from "@/components/auth/auth-link";
 import { Button } from "@/components/ui/button";
 import { authHref } from "@/lib/auth/navigation";
 
 export function WelcomeScreen() {
   return (
     <AuthFrame
-      title="Your team’s connected workspace"
-      description="Create your Startup OS account and organization in your browser. Install the desktop app when you’re ready to work."
+      title="Your team's connected workspace"
+      description="Create your account and organization in the browser. Install the desktop app when you're ready."
+      footer={<AuthLink href="/download">Download the desktop app</AuthLink>}
     >
-      <div className="grid gap-3">
+      <div className="grid gap-2">
         <Button asChild size="lg">
           <a href={authHref("/signup", "/onboarding")}>Create organization</a>
         </Button>
@@ -17,12 +19,9 @@ export function WelcomeScreen() {
         </Button>
       </div>
       <p className="text-sm text-muted-foreground">
-        Invited by a teammate? Open the invitation link in your email. You do not need to install
-        the app to join.
+        Invited by a teammate? Open the link in your invitation email. You don't need the app to
+        join.
       </p>
-      <a className="text-sm underline" href="/download">
-        Download the desktop app
-      </a>
     </AuthFrame>
   );
 }

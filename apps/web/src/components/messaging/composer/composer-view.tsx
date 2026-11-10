@@ -1,4 +1,4 @@
-import { useContext, useRef, useState } from "react";
+import { useContext, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import { FormMessage } from "../../auth/form-message";
@@ -11,9 +11,13 @@ import { ReferenceEditor } from "../references/reference-editor";
 import { referenceQuery } from "../references/reference-query";
 import type { ReferenceQuery } from "../references/reference-query";
 import { ComposerDraftReferences } from "./composer-drafts";
-import { ComposerToolbar } from "./composer-toolbar";
+import { ComposerToolbar, composerFormats } from "./composer-toolbar";
 import { EmojiPicker } from "./emoji-picker";
-import { useComposerDraft } from "@/components/messaging/composer/use-composer-draft";
+import {
+  messageMaxLength,
+  useComposerDraft,
+} from "@/components/messaging/composer/use-composer-draft";
+import { cn } from "cn";
 import { Send } from "lucide-react";
 
 export function Composer({
@@ -41,6 +45,7 @@ export function Composer({
       pending,
       onSend,
     });
+  const limitId = useId();
   const [references, setReferences] = useState(false);
   const [caret, setCaret] = useState(draft.length);
   const draftReferences = useContext(ComposerDraftReferences);
@@ -77,9 +82,11 @@ export function Composer({
     );
     closeReferences();
   };
+  const overBy = draft.length - messageMaxLength;
+  const nearLimit = draft.length > messageMaxLength - 1000;
   return (
     <form
-      className="relative space-y-2 p-3 pt-2"
+      className="@container relative p-3 pt-1"
       onSubmit={(event) => {
         event.preventDefault();
         submit();
@@ -87,18 +94,23 @@ export function Composer({
     >
       <Field>
         <Popover open={references && !!renderReferences} onOpenChange={setReferences}>
-          <InputGroup variant="composer" className="overflow-hidden">
-            <InputGroupAddon align="block-start" className="[&>div]:w-full">
-              <ComposerToolbar pending={pending} onInsert={insert} />
-            </InputGroupAddon>
+          <InputGroup variant="composer" className="group/composer overflow-hidden">
             <PopoverAnchor asChild>
               <div
                 ref={anchor}
                 data-slot="input-group-control"
-                className="w-full min-w-0"
+                className="relative w-full min-w-0"
                 onCompositionStart={() => setComposing(true)}
                 onCompositionEnd={() => setComposing(false)}
               >
+                {!draft && (
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-3 top-2 truncate text-sm text-muted-foreground"
+                  >
+                    {label}
+                  </span>
+                )}
                 <ReferenceEditor
                   ref={editor}
                   label={label}
@@ -129,6 +141,15 @@ export function Composer({
                           ?.focus();
                         return;
                       }
+                    }
+                    const shortcut =
+                      (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey
+                        ? composerFormats.find((format) => format.key === event.key.toLowerCase())
+                        : undefined;
+                    if (shortcut) {
+                      event.preventDefault();
+                      insert(shortcut.prefix, shortcut.suffix);
+                      return;
                     }
                     if (event.key === "Enter" && !event.shiftKey) {
                       event.preventDefault();
@@ -168,19 +189,46 @@ export function Composer({
                 })}
               </PopoverContent>
             )}
-            <InputGroupAddon align="block-end" className="justify-between">
-              <EmojiPicker onSelect={(emoji) => insert(emoji)} disabled={pending} />
-              <PendingButton
-                type="submit"
-                size="sm"
-                className="min-w-16"
-                disabled={!draft.trim() || draft.length > 20000}
-                pending={pending}
-                pendingLabel="Sending…"
-              >
-                <Send className="size-3.5" />
-                Send
-              </PendingButton>
+            <InputGroupAddon align="block-end">
+              <div className="-ml-1 flex w-full min-w-0 items-center gap-0.5">
+                <ComposerToolbar pending={pending} onInsert={insert} />
+                <EmojiPicker onSelect={(emoji) => insert(emoji)} disabled={pending} />
+                <span className="ml-auto flex min-w-0 items-center gap-3 pl-2">
+                  {nearLimit && (
+                    <span
+                      id={limitId}
+                      aria-live="polite"
+                      className={cn(
+                        "truncate text-xs font-normal tabular-nums",
+                        overBy > 0 ? "text-destructive" : "text-muted-foreground",
+                      )}
+                    >
+                      {overBy > 0
+                        ? `Remove ${overBy.toLocaleString("en-US")} ${overBy === 1 ? "character" : "characters"} to send`
+                        : `${(messageMaxLength - draft.length).toLocaleString("en-US")} characters left`}
+                    </span>
+                  )}
+                  {!nearLimit && (
+                    <span className="hidden truncate text-xs font-normal text-muted-foreground opacity-0 transition-opacity group-focus-within/composer:opacity-100 motion-reduce:transition-none @lg:inline">
+                      <strong className="font-medium">Enter</strong> to send ·{" "}
+                      <strong className="font-medium">Shift+Enter</strong> for a new line ·{" "}
+                      <strong className="font-medium">@</strong> to reference
+                    </span>
+                  )}
+                  <PendingButton
+                    type="submit"
+                    size="sm"
+                    className="min-w-16"
+                    aria-describedby={nearLimit ? limitId : undefined}
+                    disabled={!draft.trim() || overBy > 0}
+                    pending={pending}
+                    pendingLabel="Sending…"
+                  >
+                    <Send className="size-3.5" />
+                    Send
+                  </PendingButton>
+                </span>
+              </div>
             </InputGroupAddon>
           </InputGroup>
         </Popover>

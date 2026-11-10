@@ -9,13 +9,18 @@ import { useTaskPanel } from "./pane/use-task-panel";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { isAccessFailure } from "@/components/feedback/request-failure";
+import { PageHeader } from "@/components/layout/page-header";
+import { PageAside, PageContent } from "@/components/layout/page-layout";
 import { ProjectLoading } from "@/components/tasks/projects/project-loading";
 import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus } from "lucide-react";
+import { Plus, Unlink, X } from "lucide-react";
 
+/**
+ * A project page and, when a task is open, the task inspector beside it. It renders the page's
+ * content pane and aside, so it sits directly inside a PageLayout.
+ */
 export function ProjectPane({
   data,
   loading = false,
@@ -27,6 +32,7 @@ export function ProjectPane({
   renderTaskDetail,
   selectedTaskId,
   onSelectTask,
+  onTaskStatusChange,
   headerActions,
   context,
 }: {
@@ -50,163 +56,183 @@ export function ProjectPane({
     task: Task,
     onClose: () => void,
     onSubtask: () => void,
-    visible: boolean,
+    onSelectTask: (id: string) => void,
   ) => ReactNode;
   selectedTaskId: string | null;
   onSelectTask: (id: string | null) => void;
+  onTaskStatusChange: (task: Task, status: TaskStatus) => void;
   headerActions?: ReactNode;
   context?: ReactNode;
 }) {
   const [tab, setTab] = useState("tasks");
   const detail = isAccessFailure(error) ? undefined : data;
-  const { panel, inspector, viewport, newTaskButton, restoreFocus } = useTaskPanel({
+  const { panel, inspector, newTaskButton, restoreFocus } = useTaskPanel({
     selectedTaskId,
     onSelectTask,
     ready: !!detail,
   });
-  if (!detail) {
-    if (loading) return <ProjectLoading />;
+  if (!detail)
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-6">
-        <ErrorState
-          title={isAccessFailure(error) ? "Project unavailable" : "Couldn’t load project"}
-          description={
-            isAccessFailure(error)
-              ? "This project was removed or you no longer have access."
-              : undefined
-          }
-          onRetry={onRetry}
-        />
-      </div>
+      <PageContent>
+        {loading ? (
+          <ProjectLoading />
+        ) : (
+          <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-6">
+            <ErrorState
+              title={isAccessFailure(error) ? "Project unavailable" : "Couldn't load project"}
+              description={
+                isAccessFailure(error)
+                  ? "This project was removed or you no longer have access."
+                  : undefined
+              }
+              onRetry={onRetry}
+            />
+          </div>
+        )}
+      </PageContent>
     );
-  }
   const canEdit = detail.level === "edit" || detail.level === "owner";
   const { selectedTaskId: openTaskId } = panel;
   const selected = detail.tasks.find((task) => task.entityId === openTaskId);
+  const tasksById = new Map(detail.tasks.map((task) => [task.entityId, task] as const));
+  const creatingParent = panel.creating?.parentTaskEntityId;
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-4 sm:p-6">
-      <Tabs value={tab} onValueChange={setTab} className="min-h-0 min-w-0 flex-1">
-        <header className="mb-3 flex shrink-0 flex-wrap items-start gap-x-3 gap-y-1">
-          <div className="min-w-0 flex-1 basis-full sm:basis-auto">
-            <h1
-              className="line-clamp-2 text-xl font-semibold wrap-break-word"
-              title={detail.project.name}
+    <>
+      <PageContent>
+        <Tabs value={tab} onValueChange={setTab} className="min-h-0 min-w-0 flex-1">
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="shrink-0 border-b px-6 pt-5">
+              <PageHeader
+                title={detail.project.name}
+                description={
+                  detail.project.description && (
+                    <span
+                      className="line-clamp-2 wrap-break-word whitespace-pre-wrap"
+                      title={detail.project.description}
+                    >
+                      {detail.project.description}
+                    </span>
+                  )
+                }
+                actions={
+                  <div role="group" aria-label="Project actions" className="flex gap-0.5">
+                    {headerActions}
+                    {canEdit && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            ref={newTaskButton}
+                            size="icon-sm"
+                            variant="ghost"
+                            aria-label="New task"
+                            onClick={() => panel.create()}
+                          >
+                            <Plus aria-hidden="true" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>New task</TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
+                }
+              />
+              <TabsList variant="line" className="mt-3 -ml-1.5">
+                <TabsTrigger value="tasks" className="flex-none">
+                  Tasks
+                </TabsTrigger>
+                <TabsTrigger value="discussions" className="flex-none">
+                  Discussions
+                </TabsTrigger>
+                <TabsTrigger value="settings" className="flex-none">
+                  Settings
+                </TabsTrigger>
+              </TabsList>
+            </div>
+            {error && (
+              <p role="status" className="border-b px-6 py-2 text-xs text-muted-foreground">
+                This project may be out of date.
+              </p>
+            )}
+            <TabsContent
+              value="tasks"
+              forceMount
+              hidden={tab !== "tasks"}
+              className="flex min-h-0 flex-col"
             >
-              {detail.project.name}
-            </h1>
-          </div>
-          <ButtonGroup aria-label="Project actions" className="relative shrink-0">
-            {headerActions}
-            {canEdit && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    ref={newTaskButton}
-                    size="icon"
-                    variant="outline"
-                    aria-label="New task"
-                    onClick={() => {
-                      panel.create();
-                    }}
-                  >
-                    <Plus aria-hidden="true" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>New task</TooltipContent>
-              </Tooltip>
-            )}
-          </ButtonGroup>
-          <p
-            className="line-clamp-2 w-full text-sm wrap-break-word whitespace-pre-wrap text-muted-foreground"
-            title={detail.project.description}
-          >
-            {detail.project.description}
-          </p>
-        </header>
-        <div className="shrink-0 pb-2">
-          <TabsList variant="line">
-            <TabsTrigger value="tasks" className="flex-none">
-              Tasks
-            </TabsTrigger>
-            <TabsTrigger value="discussions" className="flex-none">
-              Discussions
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="flex-none">
-              Settings
-            </TabsTrigger>
-          </TabsList>
-        </div>
-        {error && (
-          <p role="status" className="py-2 text-xs text-muted-foreground">
-            Project may be out of date.
-          </p>
-        )}
-        <TabsContent
-          value="settings"
-          forceMount
-          hidden={tab !== "settings"}
-          className="mt-3 min-h-0 overflow-y-auto"
-        >
-          <div className="w-full min-w-0 space-y-6">
-            {canEdit && editor}
-            {sharing}
-          </div>
-        </TabsContent>
-        <TabsContent value="discussions" className="mt-3 min-h-0 overflow-y-auto">
-          {context}
-        </TabsContent>
-        <TabsContent
-          ref={viewport}
-          value="tasks"
-          forceMount
-          hidden={tab !== "tasks"}
-          className="mt-3 min-h-0 overflow-y-auto md:overflow-hidden"
-        >
-          <div
-            className={`grid min-h-0 min-w-0 grid-cols-1 items-start gap-5 md:h-full ${openTaskId ? "md:grid-cols-2" : ""}`}
-          >
-            <TaskList
-              detail={detail}
-              selectedId={openTaskId}
-              onSelect={panel.select}
-              onCreate={canEdit ? panel.create : undefined}
-            />
-            {openTaskId && (
-              <div
-                ref={inspector}
-                tabIndex={-1}
-                aria-label="Selected task panel"
-                className="order-first min-h-0 min-w-0 rounded-xl outline-none md:order-0 md:h-full md:overflow-y-auto"
-              >
-                {selected &&
-                  renderTaskDetail(
-                    detail,
-                    selected,
-                    panel.close,
-                    () => panel.createSubtask(selected.entityId),
-                    tab === "tasks",
-                  )}
-                {!selected && (
-                  <ContentNotice
-                    title="Task unavailable"
-                    description="This task was removed or you no longer have access. Choose another task to continue."
-                  />
-                )}
+              <TaskList
+                detail={detail}
+                selectedId={openTaskId}
+                onSelect={panel.select}
+                onCreate={canEdit ? panel.create : undefined}
+                onStatusChange={
+                  canEdit
+                    ? (taskId, status) => {
+                        const task = tasksById.get(taskId);
+                        if (task) onTaskStatusChange(task, status);
+                      }
+                    : undefined
+                }
+              />
+            </TabsContent>
+            <TabsContent value="discussions" className="min-h-0 overflow-y-auto">
+              <div className="max-w-3xl p-6">{context}</div>
+            </TabsContent>
+            <TabsContent value="settings" className="min-h-0 overflow-y-auto">
+              <div className="grid max-w-3xl min-w-0 gap-6 p-6">
+                {canEdit && editor}
+                {sharing}
               </div>
-            )}
+            </TabsContent>
           </div>
-        </TabsContent>
-      </Tabs>
+        </Tabs>
+      </PageContent>
+      {openTaskId && tab === "tasks" && (
+        <PageAside ref={inspector} tabIndex={-1} aria-label="Task" className="outline-none">
+          {selected ? (
+            renderTaskDetail(
+              detail,
+              selected,
+              panel.close,
+              () => panel.createSubtask(selected.entityId),
+              panel.select,
+            )
+          ) : (
+            <>
+              <header className="flex h-12 shrink-0 items-center justify-end border-b px-4">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Close task"
+                      onClick={panel.close}
+                    >
+                      <X aria-hidden="true" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Close task</TooltipContent>
+                </Tooltip>
+              </header>
+              <ContentNotice
+                icon={Unlink}
+                title="Task unavailable"
+                description="This task was removed or you no longer have access. Choose another task."
+              />
+            </>
+          )}
+        </PageAside>
+      )}
       {panel.creating && canEdit && (
         <TaskCreationDialog
-          subtask={!!panel.creating.parentTaskEntityId}
+          subtask={!!creatingParent}
           projectName={detail.project.name}
+          parentTitle={creatingParent ? tasksById.get(creatingParent)?.title : undefined}
           onCancel={panel.cancel}
           onRestoreFocus={restoreFocus}
         >
           {renderTaskForm(
             detail,
-            panel.creating.parentTaskEntityId,
+            creatingParent,
             (id) => {
               setTab("tasks");
               panel.saved(id);
@@ -216,6 +242,6 @@ export function ProjectPane({
           )}
         </TaskCreationDialog>
       )}
-    </div>
+    </>
   );
 }

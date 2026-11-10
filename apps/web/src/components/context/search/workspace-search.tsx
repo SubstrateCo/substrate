@@ -6,6 +6,7 @@ import {
   WorkspaceSearch as WorkspaceSearchView,
   type SearchKind,
 } from "@/components/context/search/workspace-search-view";
+import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { messageHref, workHref } from "@/lib/navigation/record-links";
 import { searchPagesOptions } from "@/queries/context/search";
@@ -69,7 +70,10 @@ export function WorkspaceSearch({
                   ),
                 },
             ),
-          onError: (error) => toast.error(error.message),
+          onError: (error) =>
+            toast.error(
+              actionErrorMessage(error, "We couldn't join the channel. Please try again."),
+            ),
         })
       }
       onMore={() => {

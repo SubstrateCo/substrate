@@ -13,7 +13,14 @@ import { queryKeys } from "@/queries/keys";
 import { invitationsQueryOptions } from "@/queries/organizations/invitations";
 import { toast } from "sonner";
 
-export function InvitationManager({ organizationId }: { organizationId: string }) {
+export function InvitationManager({
+  organizationId,
+  framed = false,
+}: {
+  organizationId: string;
+  /** Show the form in a settings card under the page header. */
+  framed?: boolean;
+}) {
   const invitations = useQuery(invitationsQueryOptions(organizationId));
   const now = useExpiryTime(invitations.data?.map((invitation) => invitation.expiresAt));
   const queryClient = useQueryClient();
@@ -80,6 +87,7 @@ export function InvitationManager({ organizationId }: { organizationId: string }
   );
   return (
     <InvitationManagerView
+      framed={framed}
       invitations={invitations.data?.map((invitation) => ({
         ...invitation,
         expired: new Date(invitation.expiresAt).getTime() < now,

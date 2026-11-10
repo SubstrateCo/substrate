@@ -662,7 +662,7 @@ test("source creation is atomic, concurrent-idempotent, and preserves the exact 
     { messageId: reply.id, threadId: root.id, purpose: "source" },
   ]);
   expect(await context().messageLinks(reply.id)).toMatchObject([
-    { entityId: a.entityId, title: "Ship request", status: "in_review", statusName: "In Review" },
+    { entityId: a.entityId, title: "Ship request", status: "in_review", statusName: "In review" },
   ]);
   expect(await f.db.select().from(entityGrants)).toEqual(before);
   expect(await f.db.select().from(sourceTaskRequests)).toHaveLength(1);

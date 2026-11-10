@@ -4,6 +4,7 @@ import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -38,33 +39,34 @@ export function EditorDialog({
         if (!open && !pending) onClose();
       }}
     >
-      <DialogContent>
+      <DialogContent size="lg">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          <DialogDescription className="sr-only">{description}</DialogDescription>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <form
           noValidate
-          className="grid gap-4"
           onSubmit={(event) => {
             event.preventDefault();
             if (pending) return;
             void onSubmit();
           }}
         >
-          <FieldSet disabled={pending} className="min-w-0">
-            {children}
-          </FieldSet>
-          {error && (
-            <p role="alert" className="text-sm text-destructive">
-              {error}
-            </p>
-          )}
+          <DialogBody>
+            <FieldSet disabled={pending} className="min-w-0">
+              {children}
+            </FieldSet>
+            {error && (
+              <p role="alert" className="text-sm text-destructive">
+                {error}
+              </p>
+            )}
+          </DialogBody>
           <DialogFooter>
             <Button type="button" variant="outline" disabled={pending} onClick={onClose}>
               Cancel
             </Button>
-            <PendingButton type="submit" pending={pending} pendingLabel={saveLabel}>
+            <PendingButton type="submit" pending={pending} pendingLabel="Saving…">
               {saveLabel}
             </PendingButton>
           </DialogFooter>

@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { RefreshCw } from "lucide-react";
 
 export type HarnessAvailabilityState =
@@ -49,16 +50,21 @@ export function HarnessAvailabilityView({
         {text}
       </span>
       {onRefresh && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-xs"
-          aria-label="Check harness availability"
-          disabled={refreshing}
-          onClick={onRefresh}
-        >
-          <RefreshCw className={refreshing ? "animate-spin" : ""} />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              aria-label="Check again"
+              disabled={refreshing}
+              onClick={onRefresh}
+            >
+              <RefreshCw className={refreshing ? "animate-spin" : ""} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Check again</TooltipContent>
+        </Tooltip>
       )}
     </div>
   );

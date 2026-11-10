@@ -302,6 +302,40 @@ test("mentions notify accessible recipients once, reply notifications are dedupl
   expect(await chat.listMessages(channel.id)).toEqual(before);
 });
 
+test("notices name the actor and place, and excerpts name only references the recipient can open", async () => {
+  const { alice, project, chat, channel } = await setup();
+  await chat.addMembers(channel.id, ["bob@example.com"]);
+  const hiddenProject = await alice.projects.create({ name: "Hidden" });
+  const secret = await alice.tasks.create({
+    projectEntityId: hiddenProject.entityId,
+    title: "Secret plan",
+  });
+  const shared = await alice.tasks.create({
+    projectEntityId: project.entityId,
+    title: "Ship",
+    assigneeActorEntityId: f.bob,
+  });
+  const message = await chat.sendMessage(
+    channel.id,
+    `@[person:${f.bob}] see **@[task:${secret.entityId}]** and @[task:${shared.entityId}]`,
+  );
+  const [mention, assignment] = await feed("bob").list();
+  expect(mention).toMatchObject({
+    kind: "mention",
+    messageId: message.id,
+    actorName: "Alice",
+    source: { kind: "channel", name: "Private" },
+    excerpt: "@Bob see a task and Ship",
+  });
+  expect(assignment).toMatchObject({
+    kind: "assignment",
+    entityId: shared.entityId,
+    actorName: "Alice",
+    source: { kind: "project", name: "Shared work" },
+    excerpt: null,
+  });
+});
+
 test("private source activity is filtered independently from ordinary task activity", async () => {
   const { project, chat, channel } = await setup();
   const source = await chat.sendMessage(channel.id, "Private evidence");

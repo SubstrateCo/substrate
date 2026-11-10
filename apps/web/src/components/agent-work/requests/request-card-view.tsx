@@ -3,8 +3,8 @@ import type { AgentRequestResponse, AgentRequestView } from "@startup-os/contrac
 import { ApprovalRequest } from "./approval-request";
 import { hiddenConversation, ProposalPreview } from "./proposal-preview";
 import { QuestionsRequest } from "./questions-request";
+import { PendingButton } from "@/components/feedback/pending-button";
 import { MessageCard, MessageCardBody } from "@/components/messaging/messages/message-card";
-import { Button } from "@/components/ui/button";
 import { useNow } from "@/hooks/use-now";
 import {
   proposalTargetHidden,
@@ -13,9 +13,16 @@ import {
 } from "@/lib/agent-work/proposal-target";
 import { requestDeadline, requestOutcome } from "@/lib/agent-work/requests";
 import { formatDuration } from "@/lib/agent-work/time";
-import { ArrowUpRight, Hand, Lightbulb } from "lucide-react";
+import { ArrowUpRight, CircleAlert, Hand, Lightbulb } from "lucide-react";
 
 export type RequestLink = { href: string; label: string };
+
+/** Which answer is being sent, so only that button says so. */
+export type RequestPending =
+  | { kind: "approve" }
+  | { kind: "decline" }
+  | { kind: "answer" }
+  | { kind: "option"; optionId: string };
 
 const hiddenRequestTitle = "A request you can't open";
 
@@ -55,6 +62,17 @@ function Deadline({ deadline }: { deadline: number }) {
   return remaining > 0 ? <>Expires in {formatDuration(remaining)}</> : <>Expired</>;
 }
 
+/** A failed answer, inside the card it belongs to. The draft stays so the owner can try again. */
+function RequestError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <p role="alert" className="flex items-start gap-1.5 text-xs text-destructive">
+      <CircleAlert aria-hidden="true" className="mt-px size-3.5 shrink-0" />
+      {message}
+    </p>
+  );
+}
+
 /**
  * An open request from the agent. Questions and proposals wait until the owner answers, from
  * any device. Blocking requests show the deadline the desktop enforces.
@@ -62,13 +80,16 @@ function Deadline({ deadline }: { deadline: number }) {
 export function RequestCardView({
   request,
   pending,
+  error,
   target,
   onRespond,
   onApprove,
   onDecline,
 }: {
   request: AgentRequestView;
-  pending: boolean;
+  pending?: RequestPending;
+  /** Reviewed copy for the last failed answer. */
+  error?: string;
   /** The records the proposal names, resolved for the viewer. Null for other requests. */
   target: ProposalTarget | null;
   onRespond: (response: AgentRequestResponse) => void;
@@ -77,6 +98,7 @@ export function RequestCardView({
 }) {
   const deadline = requestDeadline(request);
   const { payload } = request;
+  const busy = !!pending;
   // The server leaves out what a request says when its conversation is hidden from the viewer.
   if (!payload)
     return (
@@ -106,30 +128,35 @@ export function RequestCardView({
               You can’t open everything this changes, so you can’t approve it.
             </p>
           )}
+          <RequestError message={error} />
           <div className="flex flex-wrap gap-2">
-            <Button
+            <PendingButton
               type="button"
               size="sm"
               disabled={
-                pending ||
+                busy ||
                 !request.proposal ||
                 !target ||
                 proposalTargetLoading(target) ||
                 proposalTargetHidden(target)
               }
+              pending={pending?.kind === "approve"}
+              pendingLabel="Approving…"
               onClick={onApprove}
             >
               Approve
-            </Button>
-            <Button
+            </PendingButton>
+            <PendingButton
               type="button"
               size="sm"
               variant="outline"
-              disabled={pending}
+              disabled={busy}
+              pending={pending?.kind === "decline"}
+              pendingLabel="Declining…"
               onClick={onDecline}
             >
               Decline
-            </Button>
+            </PendingButton>
           </div>
         </MessageCardBody>
       </MessageCard>
@@ -145,17 +172,18 @@ export function RequestCardView({
         {payload.type === "approval" ? (
           <ApprovalRequest
             payload={payload}
-            pending={pending}
+            pendingOptionId={pending?.kind === "option" ? pending.optionId : undefined}
             onRespond={(optionId) => onRespond({ type: "approval", optionId })}
           />
         ) : (
           <QuestionsRequest
             key={request.id}
             payload={payload}
-            pending={pending}
+            pending={busy}
             onSubmit={onRespond}
           />
         )}
+        <RequestError message={error} />
       </MessageCardBody>
     </MessageCard>
   );

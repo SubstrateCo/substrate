@@ -3,9 +3,10 @@ import { useMemo } from "react";
 import { DateTimeDisplay } from "../../table/date-time-cell";
 import { AppTable, createAppColumnHelper, dateTimeColumn, useAppTable } from "../../table/index";
 import { Button } from "../../ui/button";
-import { ButtonGroup } from "../../ui/button-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import type { InvitationListItem } from "./invitation-manager-view";
+import { InvitationStatus, invitationState } from "./invitation-status";
+import { roleLabel } from "@/lib/organizations/member-policy";
 import { MailX, Send } from "lucide-react";
 
 const column = createAppColumnHelper<InvitationListItem>();
@@ -24,13 +25,13 @@ function InvitationActions({
 }) {
   if (invitation.status !== "pending") return null;
   return (
-    <ButtonGroup aria-label="Invitation actions">
+    <div role="group" aria-label="Invitation actions" className="flex items-center gap-0.5">
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
-            size="icon"
-            variant="outline"
-            aria-label="Resend"
+            size="icon-sm"
+            variant="ghost"
+            aria-label={`Resend invitation to ${invitation.email}`}
             disabled={busy}
             onClick={() => onInvite(invitation.email, invitation.role, true)}
           >
@@ -42,9 +43,9 @@ function InvitationActions({
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
-            size="icon"
-            variant="destructive"
-            aria-label="Cancel"
+            size="icon-sm"
+            variant="destructive-ghost"
+            aria-label={`Cancel invitation to ${invitation.email}`}
             disabled={busy}
             onClick={() => onCancel(invitation.id)}
           >
@@ -53,7 +54,7 @@ function InvitationActions({
         </TooltipTrigger>
         <TooltipContent>Cancel invitation</TooltipContent>
       </Tooltip>
-    </ButtonGroup>
+    </div>
   );
 }
 
@@ -85,11 +86,16 @@ export function InvitationTable({
             </span>
           ),
         }),
-        column.accessor("role", { header: "Role" }),
+        column.accessor((invitation) => roleLabel(invitation.role), { id: "role", header: "Role" }),
         column.accessor(
-          (invitation) =>
-            invitation.expired ? `${invitation.status} · expired` : invitation.status,
-          { id: "status", header: "Status" },
+          (invitation) => invitationState(invitation.status, invitation.expired).label,
+          {
+            id: "status",
+            header: "Status",
+            cell: ({ row }) => (
+              <InvitationStatus status={row.original.status} expired={row.original.expired} />
+            ),
+          },
         ),
         dateTimeColumn<InvitationListItem>((invitation) => invitation.expiresAt, {
           id: "expiresAt",
@@ -97,7 +103,7 @@ export function InvitationTable({
         }),
         column.display({
           id: "actions",
-          header: "Actions",
+          header: () => <span className="sr-only">Actions</span>,
           cell: ({ row }) => (
             <InvitationActions
               invitation={row.original}
@@ -126,17 +132,18 @@ export function InvitationTable({
       errorTitle="Couldn’t load invitations"
       errorDescription="Your team’s invitations are unavailable. Please try again."
       onRetry={onRetry}
-      emptyMessage="No invitations yet."
+      emptyMessage="No invitations yet"
+      emptyDescription="Invitations you send appear here until they are accepted."
+      emptyIcon={Send}
       renderMobileRow={(invitation) => (
         <>
           <p className="font-medium wrap-anywhere">{invitation.email}</p>
           <dl className="grid grid-cols-3 gap-x-3 gap-y-2 text-sm">
             <dt className="text-muted-foreground">Role</dt>
-            <dd className="col-span-2">{invitation.role}</dd>
+            <dd className="col-span-2">{roleLabel(invitation.role)}</dd>
             <dt className="text-muted-foreground">Status</dt>
             <dd className="col-span-2">
-              {invitation.status}
-              {invitation.expired ? " · expired" : ""}
+              <InvitationStatus status={invitation.status} expired={invitation.expired} />
             </dd>
             <dt className="text-muted-foreground">Expires</dt>
             <dd className="col-span-2">

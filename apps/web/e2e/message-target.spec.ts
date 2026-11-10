@@ -52,7 +52,10 @@ for (const target of ["root", "reply"] as const) {
       .getByRole("article")
       .filter({ hasText: `Reacted root ${channel.id}` });
     const reaction = (count: number) =>
-      rootArticle.getByRole("button", { name: `👍, ${count} reactions`, exact: true });
+      rootArticle.getByRole("button", {
+        name: `👍, ${count} ${count === 1 ? "reaction" : "reactions"}`,
+        exact: true,
+      });
     await expect(reaction(1)).toHaveAttribute("aria-pressed", "false");
     await viewer.page.getByRole("button", { name: "Back to latest", exact: true }).click();
     // Only the thread root remains; the latest timeline page cannot supply its summary.

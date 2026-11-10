@@ -2,115 +2,158 @@ import type { AgentRoutineView } from "@startup-os/contracts/agent-work";
 
 import type { ReactNode } from "react";
 
+import { describeSchedule } from "./schedule";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
+import { LoadingState } from "@/components/feedback/loading-state";
+import { PendingButton } from "@/components/feedback/pending-button";
+import { SettingsSection } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatDateTime } from "@/lib/format/date";
+import { CalendarClock, Pencil, Plus, Trash2 } from "lucide-react";
 
-function schedule(routine: AgentRoutineView) {
+function state(routine: AgentRoutineView) {
+  if (routine.approvedRevision !== routine.revision) return undefined;
   if (!routine.enabled) return "Paused";
   if (!routine.nextFireAt) return "Approved";
-  const at = new Date(routine.nextFireAt).toLocaleString([], {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-  return `Next run ${at}`;
+  return `Next run ${formatDateTime(routine.nextFireAt)}`;
+}
+
+function RowAction({
+  label,
+  destructive = false,
+  onClick,
+  children,
+}: {
+  label: string;
+  destructive?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant={destructive ? "destructive-ghost" : "ghost"}
+          aria-label={label}
+          onClick={onClick}
+        >
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
 }
 
 export function RoutineListView({
+  name,
   routines,
+  loading,
   error,
   onRetry,
-  editor,
-  editingId,
-  pending,
+  approvingId,
   onAdd,
   onEdit,
   onApprove,
   onDelete,
 }: {
+  name: string;
   routines: AgentRoutineView[];
+  loading: boolean;
   error: Error | null;
   onRetry: () => void;
-  /** The open editor. "new" shows it above the list. */
-  editor?: ReactNode;
-  editingId?: string;
-  pending: boolean;
+  /** The routine whose approval is being sent. */
+  approvingId?: string;
   onAdd: () => void;
   onEdit: (routineId: string) => void;
   onApprove: (routine: AgentRoutineView) => void;
-  onDelete: (routineId: string) => void;
+  onDelete: (routine: AgentRoutineView) => void;
 }) {
+  const add = (
+    <Button type="button" onClick={onAdd}>
+      <Plus aria-hidden="true" />
+      Add routine
+    </Button>
+  );
   return (
-    <section aria-label="Routines" className="grid gap-2">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold">Routines</h2>
-        <Button type="button" size="xs" variant="outline" disabled={!!editingId} onClick={onAdd}>
-          <Plus aria-hidden="true" />
-          Add routine
-        </Button>
-      </div>
-      {error && <ErrorState compact title="Couldn’t load routines" onRetry={onRetry} />}
-      {editingId === "new" && editor}
-      {!error && !routines.length && editingId !== "new" && (
-        <p className="text-sm text-muted-foreground">
-          Routines start background work on a schedule.
-        </p>
+    <SettingsSection
+      title="Routines"
+      description={`Work ${name} starts on a schedule. Each new or changed routine waits for your approval.`}
+      actions={routines.length > 0 && add}
+    >
+      {error && !routines.length && (
+        <ErrorState compact title="Couldn’t load routines" onRetry={onRetry} />
       )}
-      <ul className="grid gap-2">
-        {routines.map((routine) =>
-          editingId === routine.id ? (
-            <li key={routine.id}>{editor}</li>
-          ) : (
-            <li key={routine.id} className="grid gap-1 rounded-xl border bg-card px-3 py-2 text-sm">
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="min-w-0 flex-1 truncate font-medium">{routine.name}</span>
-                <code className="shrink-0 text-xs text-muted-foreground">
-                  {routine.cron} · {routine.timezone}
-                </code>
-              </div>
-              <p className="line-clamp-2 text-xs text-muted-foreground">{routine.prompt}</p>
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                {routine.approvedRevision !== routine.revision ? (
-                  <>
-                    <span className="font-medium text-warning">
-                      Needs your approval · revision {routine.revision}
-                    </span>
-                    <Button
-                      type="button"
-                      size="xs"
-                      disabled={pending}
-                      onClick={() => onApprove(routine)}
-                    >
-                      Approve
-                    </Button>
-                  </>
-                ) : (
-                  <span className="text-muted-foreground">{schedule(routine)}</span>
-                )}
-                <Button
-                  type="button"
-                  size="xs"
-                  variant="ghost"
-                  className="ml-auto"
-                  disabled={pending || !!editingId}
-                  onClick={() => onEdit(routine.id)}
+      {loading && <LoadingState label="Loading routines" variant="compact" rows={2} />}
+      {!loading && !error && !routines.length && (
+        <ContentNotice
+          icon={CalendarClock}
+          title="No routines yet"
+          description={`A routine asks ${name} to do something on a schedule, like a summary every weekday at 9:00 AM.`}
+          action={add}
+        />
+      )}
+      {routines.length > 0 && (
+        <ul aria-label="Routines" className="divide-y overflow-hidden rounded-xl border bg-card">
+          {routines.map((routine) => {
+            const needsApproval = routine.approvedRevision !== routine.revision;
+            return (
+              <li key={routine.id} className="group flex min-w-0 items-start gap-3 px-4 py-3">
+                <div className="grid min-w-0 flex-1 gap-0.5">
+                  <p className="truncate text-sm font-medium">{routine.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {describeSchedule(routine.cron)} · {routine.timezone.replaceAll("_", " ")}
+                    {state(routine) && ` · ${state(routine)}`}
+                  </p>
+                  <p className="line-clamp-2 text-xs text-muted-foreground">{routine.prompt}</p>
+                  {needsApproval && (
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-medium text-warning">
+                        {routine.approvedRevision === null
+                          ? "Waiting for your approval to run"
+                          : "Changed — waiting for your approval"}
+                      </span>
+                      <PendingButton
+                        type="button"
+                        size="xs"
+                        disabled={!!approvingId}
+                        pending={approvingId === routine.id}
+                        pendingLabel="Approving…"
+                        onClick={() => onApprove(routine)}
+                      >
+                        Approve
+                      </PendingButton>
+                    </div>
+                  )}
+                </div>
+                <div
+                  role="group"
+                  aria-label={`Actions for ${routine.name}`}
+                  className="flex shrink-0 gap-0.5"
                 >
-                  Edit
-                </Button>
-                <Button
-                  type="button"
-                  size="xs"
-                  variant="ghost"
-                  disabled={pending}
-                  onClick={() => onDelete(routine.id)}
-                >
-                  Delete
-                </Button>
-              </div>
-            </li>
-          ),
-        )}
-      </ul>
-    </section>
+                  <RowAction label={`Edit ${routine.name}`} onClick={() => onEdit(routine.id)}>
+                    <Pencil />
+                  </RowAction>
+                  <RowAction
+                    label={`Delete ${routine.name}`}
+                    destructive
+                    onClick={() => onDelete(routine)}
+                  >
+                    <Trash2 />
+                  </RowAction>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {error && routines.length > 0 && (
+        <ErrorState compact title="Couldn’t refresh routines" onRetry={onRetry} />
+      )}
+    </SettingsSection>
   );
 }

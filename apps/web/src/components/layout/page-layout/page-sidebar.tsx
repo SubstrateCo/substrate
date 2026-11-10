@@ -1,6 +1,7 @@
 import { useState, type ComponentProps, type ReactNode } from "react";
 
 import { ResizableHandle, ResizablePanel } from "../../ui/resizable";
+import { PageHeader } from "../page-header";
 import { panelId, usePageLayout } from "./page-layout-context";
 import { readPaneWidth } from "./pane-width";
 import { cn } from "cn";
@@ -55,14 +56,14 @@ export function PageSidebarHeader({
   actions?: ReactNode;
   className?: string;
 }) {
+  // The pane header without its border: the sidebar background already separates it.
   return (
-    <div
-      data-slot="page-sidebar-header"
-      className={cn("flex h-12 shrink-0 items-center justify-between gap-2 px-4", className)}
-    >
-      <h1 className="min-w-0 truncate text-sm font-semibold">{title}</h1>
-      {actions && <div className="flex shrink-0 items-center gap-1">{actions}</div>}
-    </div>
+    <PageHeader
+      variant="pane"
+      title={title}
+      actions={actions}
+      className={cn("border-b-0", className)}
+    />
   );
 }
 

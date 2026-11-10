@@ -20,17 +20,9 @@ export function DesktopSignIn({
       title="Welcome back"
       description="Sign in securely in your browser, then return to Startup OS."
     >
-      <PendingButton
-        className="w-full"
-        pending={pending}
-        pendingLabel="Opening browser…"
-        onClick={onSignIn}
-      >
-        Sign in with browser
-      </PendingButton>
       {waiting && (
         <p role="status" className="text-sm text-muted-foreground">
-          Complete sign-in in your browser. You can open it again if needed.
+          Finish signing in in your browser. You can open it again if you closed it.
         </p>
       )}
       <FormMessage
@@ -41,6 +33,15 @@ export function DesktopSignIn({
             : "Could not open sign-in. Please try again."
         }
       />
+      <PendingButton
+        className="w-full"
+        size="lg"
+        pending={pending}
+        pendingLabel="Opening browser."
+        onClick={onSignIn}
+      >
+        {waiting ? "Open browser again" : "Sign in with browser"}
+      </PendingButton>
     </AuthFrame>
   );
 }

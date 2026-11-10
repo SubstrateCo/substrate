@@ -1,11 +1,12 @@
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 
-import { useId } from "react";
+import { useEffect, useId, useRef, type KeyboardEvent } from "react";
 
 import { FormMessage } from "../../auth/form-message";
 import { PendingButton } from "../../feedback/pending-button";
 import { Button } from "../../ui/button";
-import { DialogFooter } from "../../ui/dialog";
+import { DialogBody, DialogFooter } from "../../ui/dialog";
+import { assignableActors } from "../assignee/assignable";
 import type { ProjectDetail, Task, TaskDraft } from "../types";
 import { taskFormSchema } from "./task-form-validation";
 import { TaskScheduleFields } from "./task-schedule-fields";
@@ -51,6 +52,11 @@ function useTaskForm({
 
 export type TaskEditorForm = ReturnType<typeof useTaskForm>;
 
+/**
+ * Creates a task in a dialog, or edits a task's title and description inline. Status, priority,
+ * assignee, and due date of an existing task are edited in place, so the inline form keeps their
+ * latest values when it saves.
+ */
 export function TaskForm({
   detail,
   task,
@@ -70,90 +76,129 @@ export function TaskForm({
   pending?: boolean;
   error?: Error | null;
   initialStatus?: Task["status"];
-  /** In a dialog, the dialog's close button cancels; the form only renders its submit action. */
+  /** In a dialog, the form renders the dialog's body and its Cancel and submit footer. */
   variant?: "inline" | "dialog";
 }) {
   const id = useId();
-  // People need direct project access. Your own agents use your access. Keep the current assignee.
-  const assignees = detail.actors.filter(
-    (actor) =>
-      actor.entityId === task?.assigneeActorEntityId ||
-      (actor.assignable &&
-        (actor.type === "agent" ||
-          detail.members.some((member) => member.actorEntityId === actor.entityId))),
-  );
-  const form = useTaskForm({ task, assignees, pending, onSubmit, initialStatus });
-  let titleLabel = parentTaskEntityId ? "New subtask" : "New task";
+  const latest = useRef(task);
+  useEffect(() => {
+    latest.current = task;
+  });
+  const assignees = assignableActors(detail, task?.assigneeActorEntityId);
+  const form = useTaskForm({
+    task,
+    assignees,
+    pending,
+    initialStatus,
+    onSubmit: (draft) => {
+      const current = latest.current;
+      onSubmit(
+        current && variant === "inline"
+          ? {
+              ...draft,
+              status: current.status,
+              priority: current.priority,
+              assigneeActorEntityId: current.assigneeActorEntityId,
+              dueDate: current.dueDate,
+            }
+          : draft,
+      );
+    },
+  });
+  let formLabel = parentTaskEntityId ? "New subtask" : "New task";
   let submitLabel = parentTaskEntityId ? "Create subtask" : "Create task";
   if (task) {
-    titleLabel = "Edit task";
+    formLabel = "Edit task";
     submitLabel = "Save task";
   }
+  const submit = () => {
+    if (!pending) void form.handleSubmit();
+  };
+  // Ctrl+Enter (Cmd+Enter on macOS) saves from any field. Escape cancels an inline edit.
+  const onKeyDown = (event: KeyboardEvent<HTMLFormElement>) => {
+    if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      submit();
+    } else if (event.key === "Escape" && variant === "inline" && !pending) {
+      event.preventDefault();
+      onCancel();
+    }
+  };
+  const fields = (
+    <fieldset disabled={pending} className="min-w-0 space-y-4">
+      <form.Field name="title">
+        {(field) => (
+          <FormTextField
+            field={field}
+            id={`${id}-title`}
+            label="Task title"
+            variant="surface"
+            autoFocus
+            aria-required
+            maxLength={300}
+          />
+        )}
+      </form.Field>
+      <form.Field name="description">
+        {(field) => (
+          <FormTextField
+            field={field}
+            id={`${id}-description`}
+            label="Task description"
+            multiline
+            variant="surface"
+            maxLength={20000}
+          />
+        )}
+      </form.Field>
+      {variant === "dialog" && (
+        <TaskScheduleFields form={form} assignees={assignees} actors={detail.actors} />
+      )}
+      <FormMessage
+        error={error}
+        errorDescription="Couldn't save this task. Check its fields and make sure the assignee still has project access."
+      />
+    </fieldset>
+  );
+  const actions = (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        disabled={pending}
+        onPointerDown={(event) => event.preventDefault()}
+        onClick={onCancel}
+      >
+        Cancel
+      </Button>
+      <PendingButton pending={pending} pendingLabel="Saving task.">
+        {submitLabel}
+      </PendingButton>
+    </>
+  );
   return (
     <form
-      aria-label={titleLabel}
+      aria-label={formLabel}
       aria-busy={pending}
       noValidate
       className="@container min-w-0 space-y-4"
+      onKeyDown={onKeyDown}
       onSubmit={(event) => {
         event.preventDefault();
-        if (pending) return;
-        void form.handleSubmit();
+        submit();
       }}
     >
-      <fieldset disabled={pending} className="min-w-0 space-y-4">
-        <h3 className="font-semibold">{titleLabel}</h3>
-        <form.Field name="title">
-          {(field) => (
-            <FormTextField
-              field={field}
-              id={`${id}-title`}
-              label="Task title"
-              variant="surface"
-              aria-required
-              maxLength={300}
-            />
-          )}
-        </form.Field>
-        <form.Field name="description">
-          {(field) => (
-            <FormTextField
-              field={field}
-              id={`${id}-description`}
-              label="Task description"
-              multiline
-              variant="surface"
-              maxLength={20000}
-            />
-          )}
-        </form.Field>
-        <TaskScheduleFields form={form} assignees={assignees} />
-        <FormMessage
-          error={error}
-          errorDescription="Couldn't save this task. Check its fields and make sure the assignee still has project access."
-        />
-        {variant === "dialog" ? (
-          <DialogFooter>
-            <PendingButton pending={pending} pendingLabel="Saving task.">
-              {submitLabel}
-            </PendingButton>
-          </DialogFooter>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            <PendingButton pending={pending} pendingLabel="Saving task.">
-              {submitLabel}
-            </PendingButton>
-            <Button
-              type="button"
-              variant="outline"
-              onPointerDown={(event) => event.preventDefault()}
-              onClick={onCancel}
-            >
-              Cancel
-            </Button>
-          </div>
-        )}
-      </fieldset>
+      {variant === "dialog" ? (
+        <>
+          <DialogBody className="@container">{fields}</DialogBody>
+          <DialogFooter>{actions}</DialogFooter>
+        </>
+      ) : (
+        <>
+          {fields}
+          <div className="flex justify-end gap-2">{actions}</div>
+        </>
+      )}
     </form>
   );
 }

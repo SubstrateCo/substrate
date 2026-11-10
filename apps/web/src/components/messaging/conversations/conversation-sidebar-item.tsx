@@ -1,6 +1,6 @@
 import { Button } from "../../ui/button";
 import { conversationName, type Conversation } from "@/lib/messaging/conversations";
-import { Hash, LockKeyhole, MessageCircle, Users } from "lucide-react";
+import { Globe, Hash, LockKeyhole, MessageCircle, Users } from "lucide-react";
 
 export function ConversationSidebarItem({
   conversation,
@@ -16,12 +16,17 @@ export function ConversationSidebarItem({
   return (
     <Button
       variant="sidebar"
-      className="mb-1 w-full justify-start"
+      className="w-full justify-start"
       aria-current={selected ? "page" : undefined}
+      title={conversation.partner ? "Includes people from another organization" : undefined}
       onClick={onSelect}
     >
-      <Icon className="size-4 shrink-0" />
+      <Icon aria-hidden="true" className="size-4 shrink-0" />
       <span className="truncate">{conversationName(conversation)}</span>
+      {/* Channels already sit under "Partner channels"; DMs and groups need the cue here. */}
+      {conversation.partner && conversation.kind !== "channel" && (
+        <Globe aria-hidden="true" className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
+      )}
     </Button>
   );
 }

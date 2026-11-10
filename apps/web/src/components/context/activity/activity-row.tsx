@@ -1,5 +1,5 @@
-import { shortActivityTime } from "./activity-time";
-import { Bot, CircleDot, CirclePlus, Hash, Link2, MessageSquare, Unlink } from "lucide-react";
+import { Timestamp } from "@/components/time/timestamp";
+import { Bot, CircleDot, Plus, Hash, Link2, MessageSquare, Unlink } from "lucide-react";
 
 export type ActivityEvent = {
   id: string;
@@ -12,7 +12,7 @@ export type ActivityEvent = {
 
 // Known server actions read as a verb phrase after the actor's name.
 const phrasing = new Map([
-  ["Task created", { icon: CirclePlus, verb: "created the task" }],
+  ["Task created", { icon: Plus, verb: "created the task" }],
   ["Created from a discussion", { icon: MessageSquare, verb: "created this from" }],
   ["Discussion linked", { icon: Link2, verb: "linked" }],
   ["Discussion unlinked", { icon: Unlink, verb: "unlinked" }],
@@ -23,7 +23,7 @@ export function ActivityRow({ event }: { event: ActivityEvent }) {
   const Icon = known?.icon ?? CircleDot;
   const SourceIcon = event.source?.conversationName ? Hash : MessageSquare;
   return (
-    <li className="-mx-2 flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50">
+    <li className="-mx-2 flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-row-hover">
       <Icon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
       <span className="flex min-w-0 flex-1 items-center gap-1.5">
         <span className="truncate font-medium">{event.actorName ?? "Unknown"}</span>
@@ -44,13 +44,7 @@ export function ActivityRow({ event }: { event: ActivityEvent }) {
           </a>
         )}
       </span>
-      <time
-        dateTime={event.createdAt}
-        title={new Date(event.createdAt).toLocaleString()}
-        className="shrink-0 text-xs text-muted-foreground tabular-nums"
-      >
-        {shortActivityTime(event.createdAt)}
-      </time>
+      <Timestamp value={event.createdAt} className="shrink-0 text-xs text-muted-foreground" />
     </li>
   );
 }

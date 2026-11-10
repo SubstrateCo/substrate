@@ -1,6 +1,7 @@
 import { PendingButton } from "../../feedback/pending-button";
 import { EmailField, NativeField, NativeForm } from "../../forms/native-form";
 import { AuthFrame } from "../auth-frame";
+import { AuthLink } from "../auth-link";
 import { FormMessage } from "../form-message";
 
 export function LoginForm({
@@ -19,7 +20,15 @@ export function LoginForm({
   signupHref: string;
 }) {
   return (
-    <AuthFrame title="Welcome back" description="Sign in to your workspace.">
+    <AuthFrame
+      title="Welcome back"
+      description="Sign in to your workspace."
+      footer={
+        <>
+          New to Startup OS? <AuthLink href={signupHref}>Create account</AuthLink>
+        </>
+      }
+    >
       <NativeForm pending={pending} onSubmit={onSubmit}>
         <EmailField defaultValue={email} />
         <NativeField
@@ -29,23 +38,23 @@ export function LoginForm({
           type="password"
           autoComplete="current-password"
           required
+          labelAction={
+            <AuthLink
+              href={forgotPasswordHref}
+              className="text-sm font-normal text-muted-foreground hover:text-foreground"
+            >
+              Forgot password?
+            </AuthLink>
+          }
         />
-        <PendingButton className="w-full" pending={pending} pendingLabel="Signing in…">
-          Sign in
-        </PendingButton>
         <FormMessage
           error={error}
-          errorDescription="We couldn’t sign you in. Check your details and try again."
+          errorDescription="We couldn't sign you in. Check your details and try again."
         />
+        <PendingButton className="w-full" size="lg" pending={pending} pendingLabel="Signing in.">
+          Sign in
+        </PendingButton>
       </NativeForm>
-      <div className="flex justify-between gap-4 text-sm">
-        <a className="underline" href={forgotPasswordHref}>
-          Forgot password?
-        </a>
-        <a className="underline" href={signupHref}>
-          Create account
-        </a>
-      </div>
     </AuthFrame>
   );
 }

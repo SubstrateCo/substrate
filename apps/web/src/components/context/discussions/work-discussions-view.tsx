@@ -1,18 +1,25 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
+import { ContentNotice } from "../../feedback/content-notice";
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
 import { isAccessFailure } from "../../feedback/request-failure";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../ui/empty";
+import { Button } from "../../ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
 import { DiscussionItem, type Discussion } from "./discussion-item";
-import { MessagesSquare } from "lucide-react";
+import { ChevronDown, MessagesSquare } from "lucide-react";
 
+/**
+ * Messages that link or reference a record. A page shows them as a list with a full empty state.
+ * An inspector shows a one-line section that opens when there is something to read.
+ */
 export function WorkDiscussions({
   items,
   loading,
   error,
   onRetry,
-  label = "Related context",
+  label = "Related discussions",
+  variant = "inspector",
   children,
 }: {
   items: Discussion[];
@@ -20,8 +27,10 @@ export function WorkDiscussions({
   error?: Error | null;
   onRetry: () => void;
   label?: string;
+  variant?: "inspector" | "page";
   children?: ReactNode;
 }) {
+  const [open, setOpen] = useState<boolean>();
   const rows = isAccessFailure(error) ? [] : items;
   const seen = new Set<string>();
   const uniqueRows = rows.filter((item) => {
@@ -30,36 +39,71 @@ export function WorkDiscussions({
     seen.add(key);
     return true;
   });
+  const list = !!uniqueRows.length && (
+    <ul className="space-y-2">
+      {uniqueRows.map((item) => (
+        <DiscussionItem key={`${item.messageId}:${item.purpose}`} item={item} />
+      ))}
+    </ul>
+  );
+  const failure = error && (
+    <ErrorState compact title="Couldn't load discussions" onRetry={onRetry} />
+  );
+  if (variant === "page")
+    return (
+      <section aria-label={label} className="space-y-3">
+        {children}
+        {loading && !rows.length && (
+          <LoadingState label="Loading discussions" variant="messages" rows={2} />
+        )}
+        {failure}
+        {!loading && !error && !rows.length && (
+          <ContentNotice
+            icon={MessagesSquare}
+            title="No discussions yet"
+            description="Messages that link or mention this project appear here."
+          />
+        )}
+        {list}
+      </section>
+    );
+  const empty = !loading && !error && !uniqueRows.length;
+  if (empty)
+    return (
+      <section aria-label={label}>
+        <h3 className="flex h-7 items-center gap-1.5 text-xs text-muted-foreground">
+          {label}
+          <span>None</span>
+        </h3>
+      </section>
+    );
+  const expanded = open ?? (uniqueRows.length > 0 || !!error);
   return (
-    <section aria-label={label} className="space-y-3">
-      <h3 className="text-sm font-semibold">{label}</h3>
-      {children}
-      {loading && !rows.length && (
-        <LoadingState label="Loading related context" variant="messages" rows={2} />
-      )}
-      {error && <ErrorState compact title="Couldn't load related context" onRetry={onRetry} />}
-      {!loading && !error && !rows.length && (
-        <div className="rounded-xl border border-dashed">
-          <Empty>
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <MessagesSquare aria-hidden="true" />
-              </EmptyMedia>
-              <EmptyTitle>No discussions yet</EmptyTitle>
-              <EmptyDescription>
-                Messages that link or reference this work will appear here.
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        </div>
-      )}
-      {!!uniqueRows.length && (
-        <ul className="space-y-2">
-          {uniqueRows.map((item) => (
-            <DiscussionItem key={`${item.messageId}:${item.purpose}`} item={item} />
-          ))}
-        </ul>
-      )}
-    </section>
+    <Collapsible asChild open={expanded} onOpenChange={setOpen}>
+      <section aria-label={label} className="group/discussions space-y-2">
+        <h3 className="flex h-7 items-center">
+          <CollapsibleTrigger asChild>
+            <Button type="button" variant="disclosure" size="xs" className="-ml-2">
+              {label}
+              {!!uniqueRows.length && <span className="tabular-nums">{uniqueRows.length}</span>}
+              <ChevronDown
+                aria-hidden="true"
+                className="transition-transform duration-150 ease-out group-data-[state=closed]/discussions:-rotate-90"
+              />
+            </Button>
+          </CollapsibleTrigger>
+        </h3>
+        <CollapsibleContent>
+          <div className="space-y-2">
+            {children}
+            {loading && !rows.length && (
+              <LoadingState label="Loading discussions" variant="compact" />
+            )}
+            {failure}
+            {list}
+          </div>
+        </CollapsibleContent>
+      </section>
+    </Collapsible>
   );
 }

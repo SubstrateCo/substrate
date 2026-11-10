@@ -1,7 +1,7 @@
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { PendingButton } from "@/components/feedback/pending-button";
+import { PersonAvatar } from "@/components/people/person-avatar";
 import { Spinner } from "@/components/ui/spinner";
-import { Bot } from "lucide-react";
 
 type ConversationAgentOption = {
   agentId: string;
@@ -18,6 +18,7 @@ export function AgentMembersDialog({
   busyId,
   onAdd,
   onRemove,
+  onOpenAgents,
   onClose,
 }: {
   name: string;
@@ -27,36 +28,47 @@ export function AgentMembersDialog({
   busyId?: string;
   onAdd: (agentId: string) => void;
   onRemove: (actorId: string) => void;
+  /** Opens the Agents app, where the person can create an agent. */
+  onOpenAgents: () => void;
   onClose: () => void;
 }) {
-  return (
-    <ConfirmDialog
-      title={`Your agents in ${name}`}
-      description="Add an agent so you can mention it here. It reads with your access and runs on your desktop."
-      error={error}
-      onClose={onClose}
-    >
-      {loading && <Spinner aria-label="Loading your agents" className="mx-auto" />}
-      {!loading && agents.length === 0 && (
+  const common = {
+    title: `Your agents in ${name}`,
+    description:
+      "Add an agent so you can mention it here. It reads with your access and runs on your desktop.",
+    error,
+    errorDescription: "We couldn’t update your agents here. Try again.",
+    onClose,
+  };
+  if (!loading && agents.length === 0)
+    return (
+      <ConfirmDialog
+        {...common}
+        confirmLabel="Open Agents"
+        pendingLabel="Opening…"
+        onConfirm={onOpenAgents}
+      >
         <p className="text-sm text-muted-foreground">
-          You have no enabled agents. Create one in your agent settings.
+          You don’t have an agent yet. Create one in Agents, then come back to add it here.
         </p>
-      )}
-      {!loading && agents.length > 0 && (
-        <ul className="grid gap-1">
+      </ConfirmDialog>
+    );
+  return (
+    <ConfirmDialog {...common}>
+      {loading && <Spinner aria-label="Loading your agents" className="mx-auto" />}
+      {!loading && (
+        <ul className="-mx-2 grid gap-0.5">
           {agents.map((agent) => (
-            <li key={agent.agentId} className="flex items-center gap-2 py-1">
-              <Bot aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium">{agent.name}</span>
-                {agent.actorId && (
-                  <span className="block text-xs text-muted-foreground">In this conversation</span>
-                )}
-              </span>
+            <li key={agent.agentId} className="flex h-10 items-center gap-2 rounded-md px-2">
+              <PersonAvatar name={agent.name} agent />
+              <span className="min-w-0 flex-1 truncate text-sm font-medium">{agent.name}</span>
+              {agent.actorId && (
+                <span className="text-xs text-muted-foreground">In this conversation</span>
+              )}
               {agent.actorId ? (
                 <PendingButton
                   size="sm"
-                  variant="outline"
+                  variant="destructive-ghost"
                   disabled={!!busyId}
                   pending={busyId === agent.agentId}
                   pendingLabel="Removing…"
@@ -67,6 +79,7 @@ export function AgentMembersDialog({
               ) : (
                 <PendingButton
                   size="sm"
+                  variant="outline"
                   disabled={!!busyId}
                   pending={busyId === agent.agentId}
                   pendingLabel="Adding…"

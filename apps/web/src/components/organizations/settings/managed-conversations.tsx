@@ -3,9 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { ManagedConversations as ManagedConversationsView } from "./managed-conversations-view";
+import { SettingsPanel } from "@/components/layout/settings-page";
 import { DeleteConversationDialog } from "@/components/messaging/conversations/actions/delete-conversation-dialog";
 import { OwnerDialog } from "@/components/messaging/conversations/actions/owner-dialog";
-import { AddMembersForm } from "@/components/messaging/conversations/add-members-form";
+import { AddMembersDialog } from "@/components/messaging/conversations/add-members-dialog";
 import { humanMembers } from "@/lib/messaging/conversations";
 import { useConversationManagement } from "@/queries/messaging/management";
 import {
@@ -26,30 +27,27 @@ export function ManagedConversations({ organizationId }: { organizationId: strin
   const name = target?.name ?? "this group message";
   const close = () => setDialog(undefined);
   return (
-    <>
+    <SettingsPanel
+      title="Conversations"
+      description="Every channel and group message in this organization. You see names and members, never messages."
+    >
       <ManagedConversationsView
         rows={list.data}
         loading={list.isPending}
         error={list.error}
         onRetry={() => void list.refetch()}
-        onAddMembers={(id) =>
-          setDialog(
-            dialog?.kind === "members" && dialog.id === id ? undefined : { kind: "members", id },
-          )
-        }
+        onAddMembers={(id) => setDialog({ kind: "members", id })}
         onTransfer={(id) => setDialog({ kind: "transfer", id })}
         onDelete={(id) => setDialog({ kind: "delete", id })}
-        addMembersFor={dialog?.kind === "members" ? dialog.id : undefined}
-        addMembersForm={
-          dialog?.kind === "members" && (
-            <AddMembersForm
-              organizationId={organizationId}
-              conversationId={dialog.id}
-              onClose={close}
-            />
-          )
-        }
       />
+      {dialog?.kind === "members" && target && (
+        <AddMembersDialog
+          organizationId={organizationId}
+          conversationId={target.id}
+          name={target.name ?? undefined}
+          onClose={close}
+        />
+      )}
       {dialog?.kind === "transfer" && target && (
         <OwnerDialog
           mode="transfer"
@@ -90,6 +88,6 @@ export function ManagedConversations({ organizationId }: { organizationId: strin
           }
         />
       )}
-    </>
+    </SettingsPanel>
   );
 }

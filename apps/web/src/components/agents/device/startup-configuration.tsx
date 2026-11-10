@@ -1,6 +1,6 @@
 import type { HarnessSkill } from "@startup-os/contracts/harness";
 
-import { SettingsList } from "../layout/settings-section";
+import { SettingsList } from "@/components/layout/settings-section";
 import { Blocks } from "lucide-react";
 
 function Tag({ children }: { children: string }) {
@@ -35,12 +35,23 @@ export function StartupSkills({ skills, scanned }: { skills: HarnessSkill[]; sca
   );
 }
 
-/** One MCP server, by name only. */
-export function McpServerRow({ name, builtIn }: { name: string; builtIn?: boolean }) {
+/** One MCP server: its name and how the agent reaches it. */
+export function McpServerRow({
+  name,
+  detail,
+  builtIn,
+}: {
+  name: string;
+  detail?: string;
+  builtIn?: boolean;
+}) {
   return (
     <li className="flex min-w-0 items-center gap-3 px-4 py-3">
       <Blocks aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-      <p className="min-w-0 flex-1 text-sm font-medium wrap-anywhere">{name}</p>
+      <div className="grid min-w-0 flex-1 gap-0.5">
+        <p className="text-sm font-medium wrap-anywhere">{name}</p>
+        {detail && <p className="truncate text-xs text-muted-foreground">{detail}</p>}
+      </div>
       {builtIn && <Tag>Built-in</Tag>}
     </li>
   );

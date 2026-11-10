@@ -1,9 +1,8 @@
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { PencilIcon, Settings2Icon, Trash2Icon } from "lucide-react";
+import { Pencil, Settings, Trash2 } from "lucide-react";
 
 export function CatalogRow({
   name,
@@ -31,18 +30,22 @@ export function CatalogRow({
           <p className="line-clamp-2 text-xs wrap-anywhere text-muted-foreground">{detail}</p>
         </div>
       </div>
-      <ButtonGroup aria-label={`Actions for ${name}`}>
+      <div
+        role="group"
+        aria-label={`Actions for ${name}`}
+        className="flex shrink-0 items-center gap-0.5"
+      >
         {onSettings && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant="outline"
+                variant="ghost"
                 size="icon-sm"
                 disabled={disabled}
                 aria-label={`Run settings for ${name}`}
                 onClick={onSettings}
               >
-                <Settings2Icon />
+                <Settings />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Run settings for {name}</TooltipContent>
@@ -51,13 +54,13 @@ export function CatalogRow({
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon-sm"
               disabled={disabled}
               aria-label={`Edit ${name}`}
               onClick={onEdit}
             >
-              <PencilIcon />
+              <Pencil />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Edit {name}</TooltipContent>
@@ -65,18 +68,18 @@ export function CatalogRow({
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant="destructive"
+              variant="destructive-ghost"
               size="icon-sm"
               disabled={disabled}
               aria-label={`Delete ${name}`}
               onClick={onDelete}
             >
-              <Trash2Icon />
+              <Trash2 />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Delete {name}</TooltipContent>
         </Tooltip>
-      </ButtonGroup>
+      </div>
     </li>
   );
 }

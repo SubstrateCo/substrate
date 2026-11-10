@@ -6,15 +6,19 @@ import type { listConversations } from "@/api/messaging/requests";
  */
 export type Conversation = Awaited<ReturnType<typeof listConversations>>[number];
 
-/** `agentId` names the agent definition only for the viewer's own agents. Admin lists omit it. */
-export type ConversationMember = Omit<Conversation["members"][number], "agentId"> & {
+/**
+ * `agentId` names the agent definition only for the viewer's own agents. `external` marks members
+ * from another organization. Admin lists omit both.
+ */
+export type ConversationMember = Omit<Conversation["members"][number], "agentId" | "external"> & {
   agentId?: string | null;
+  external?: boolean;
 };
 
+// The server names unnamed DMs and groups after their other members. With none yet, such as while
+// an invitation waits, only the viewer is in it.
 export function conversationName(conversation: Pick<Conversation, "name" | "kind">): string {
-  return (
-    conversation.name || (conversation.kind === "channel" ? "Untitled channel" : "Direct message")
-  );
+  return conversation.name || (conversation.kind === "channel" ? "Untitled channel" : "Only you");
 }
 
 /**

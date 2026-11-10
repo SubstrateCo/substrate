@@ -47,7 +47,7 @@ export function NeedsYou({
       agentName: status.agent.name,
       place: <span>{agentStatus(status).label}</span>,
       body: (
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Work stopped and needs you to retry, start fresh, or dismiss it
           {status.device ? ` on ${status.device.name}` : ""}.
         </p>

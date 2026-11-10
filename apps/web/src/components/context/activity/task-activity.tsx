@@ -5,7 +5,6 @@ import { LoadingState } from "../../feedback/loading-state";
 import { isAccessFailure } from "../../feedback/request-failure";
 import { Button } from "../../ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
-import { Empty, EmptyDescription } from "../../ui/empty";
 import { ActivityRow, type ActivityEvent } from "./activity-row";
 import { ChevronDown } from "lucide-react";
 
@@ -30,15 +29,17 @@ export function TaskActivity({
   const shown = expanded || hidden <= 0 ? visible : visible.slice(0, collapsedCount);
   return (
     <Collapsible asChild open={open} onOpenChange={setOpen}>
-      <section aria-label="Task activity" className="group/activity space-y-1 border-t pt-4">
-        <h3>
+      <section aria-label="Task activity" className="group/activity space-y-1">
+        <h3 className="flex h-7 items-center">
           <CollapsibleTrigger asChild>
-            <Button type="button" variant="disclosure" size="sm" className="-ml-2.5">
+            <Button type="button" variant="disclosure" size="xs" className="-ml-2">
               Activity
-              {visible.length > 0 && <span className="tabular-nums">· {visible.length}</span>}
+              {visible.length > 0 && (
+                <span className="font-normal tabular-nums">{visible.length}</span>
+              )}
               <ChevronDown
                 aria-hidden="true"
-                className="transition-transform group-data-[state=closed]/activity:-rotate-90"
+                className="transition-transform duration-150 ease-out group-data-[state=closed]/activity:-rotate-90"
               />
             </Button>
           </CollapsibleTrigger>
@@ -49,9 +50,7 @@ export function TaskActivity({
           )}
           {error && <ErrorState compact title="Couldn't load activity" onRetry={onRetry} />}
           {!loading && !error && !visible.length && (
-            <Empty>
-              <EmptyDescription>No activity yet.</EmptyDescription>
-            </Empty>
+            <p className="text-sm text-muted-foreground">No activity yet.</p>
           )}
           {shown.length > 0 && (
             <ul>

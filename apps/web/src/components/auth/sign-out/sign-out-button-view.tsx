@@ -9,14 +9,10 @@ export function SignOutButton({
   pending?: boolean;
   onSignOut: () => void;
 }) {
-  const label = pending ? "Signing out…" : "Sign out";
+  const label = pending ? "Signing out." : "Sign out";
   return (
     <Button variant="ghost" disabled={pending} aria-busy={pending} onClick={onSignOut}>
-      {pending ? (
-        <Spinner aria-hidden="true" role="presentation" />
-      ) : (
-        <LogOut aria-hidden="true" className="size-4" />
-      )}
+      {pending ? <Spinner aria-hidden="true" role="presentation" /> : <LogOut aria-hidden="true" />}
       {label}
     </Button>
   );

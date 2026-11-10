@@ -28,7 +28,7 @@ test("deleting a channel keeps its linked task and removes the channel for every
   await sender.page
     .getByRole("article")
     .filter({ hasText: body })
-    .getByRole("link", { name: `Open ${title}`, exact: true })
+    .getByRole("link", { name: `${title} Not started · Created here`, exact: true })
     .click();
   const task = sender.page.getByRole("region", { name: "Task details", exact: true });
   await expect(task.getByRole("heading", { name: title, exact: true })).toBeVisible();
@@ -40,13 +40,15 @@ test("deleting a channel keeps its linked task and removes the channel for every
   await sender.page.getByRole("menuitem", { name: "Delete", exact: true }).click();
   const dialog = sender.page.getByRole("dialog", { name: `Delete ${channel.name}?` });
   await expect(dialog.getByText(/1 task or project links to its messages/)).toBeVisible();
-  await dialog.getByRole("button", { name: "Delete", exact: true }).click();
+  await dialog.getByRole("button", { name: "Delete conversation", exact: true }).click();
 
   await expect(dialog).toHaveCount(0);
   await expect.poll(() => new URL(sender.page.url()).searchParams.get("conversationId")).toBeNull();
   await expect(sender.page.getByText(channel.name, { exact: true })).toHaveCount(0);
   await expectChange(member, since, "messaging");
-  await expect(member.page.getByText("Conversation unavailable or access denied.")).toBeVisible();
+  await expect(
+    member.page.getByRole("heading", { name: "Conversation unavailable", exact: true }),
+  ).toBeVisible();
   await expect(member.page.getByText(channel.name, { exact: true })).toHaveCount(0);
 
   await sender.page.goto(taskUrl);
@@ -92,10 +94,10 @@ test("members browse public channels in search and join from the list or the cha
 
   await page.getByRole("button", { name: "Browse channels", exact: true }).first().click();
   await page.getByLabel("Search workspace", { exact: true }).fill(opened.name);
-  await search.getByRole("link", { name: `channel · ${opened.name}`, exact: true }).click();
+  await search.getByRole("link", { name: `Channel: ${opened.name}`, exact: true }).click();
   await expect.poll(() => new URL(page.url()).searchParams.get("conversationId")).toBe(opened.id);
   const notice = page.getByText(
-    "You're not in this channel. Join or post to add it to your sidebar.",
+    "You're not in this channel. Join it, or post a message, to add it to your sidebar.",
   );
   await expect(notice).toBeVisible();
   await page.getByRole("button", { name: "Join channel", exact: true }).click();
@@ -117,5 +119,7 @@ test("a member leaves a private channel and loses access to it", async ({ actors
   await expect.poll(() => new URL(member.page.url()).searchParams.get("conversationId")).toBeNull();
   await expect(member.page.getByText(channel.name, { exact: true })).toHaveCount(0);
   await visit(member, channel.id);
-  await expect(member.page.getByText("Conversation unavailable or access denied.")).toBeVisible();
+  await expect(
+    member.page.getByRole("heading", { name: "Conversation unavailable", exact: true }),
+  ).toBeVisible();
 });

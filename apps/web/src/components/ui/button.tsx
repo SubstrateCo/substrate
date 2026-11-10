@@ -5,7 +5,7 @@ import { cn } from "cn";
 import { Slot } from "radix-ui";
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-md border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-colors duration-150 outline-none select-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 active:brightness-95 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-md border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition duration-150 ease-out outline-none select-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 active:scale-97 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 motion-reduce:active:scale-100 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -17,16 +17,25 @@ const buttonVariants = cva(
         ghost:
           "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground aria-pressed:bg-accent aria-pressed:text-accent-foreground dark:hover:bg-foreground/15 dark:aria-expanded:bg-foreground/15",
         avatar: "bg-accent text-xs font-semibold text-accent-foreground hover:bg-accent/80",
+        // Solid red. Only for the confirm button of a destructive ConfirmDialog.
         destructive:
-          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+          "bg-destructive-solid text-white hover:bg-destructive-solid/90 focus-visible:border-destructive focus-visible:ring-destructive/30 dark:focus-visible:ring-destructive/40",
+        // Quiet red. For row and section triggers that open a destructive confirm.
+        // Icon-only buttons stay muted until hovered or focused.
+        "destructive-ghost":
+          "text-destructive hover:bg-destructive/10 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 aria-expanded:bg-destructive/10 data-[size^=icon]:text-muted-foreground data-[size^=icon]:hover:text-destructive data-[size^=icon]:focus-visible:text-destructive data-[size^=icon]:aria-expanded:text-destructive dark:hover:bg-destructive/20 dark:focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",
         rail: "text-rail-foreground/70 hover:bg-rail-foreground/10 hover:text-rail-foreground aria-[current=page]:border-accent-foreground/15 aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground",
         workspace:
           "border-rail-foreground/20 bg-rail-foreground/10 text-rail-foreground hover:bg-rail-foreground/20",
+        // List rows: they do not scale on press. Hover and selected use separate tokens.
         sidebar:
-          "font-normal text-muted-foreground hover:bg-muted hover:text-foreground aria-[current=page]:bg-sidebar-accent aria-[current=page]:font-medium aria-[current=page]:text-sidebar-accent-foreground",
+          "font-normal text-muted-foreground hover:bg-row-hover hover:text-foreground active:scale-100 aria-[current=page]:bg-row-selected aria-[current=page]:font-medium aria-[current=page]:text-row-selected-foreground",
+        // A property value that opens a picker, such as a task's assignee. Reads as text at rest.
+        property:
+          "justify-start font-normal hover:bg-row-hover focus-visible:bg-row-hover active:scale-100 aria-expanded:bg-row-hover",
         // Expand/collapse headers: no fill when hovered, pressed, or expanded.
-        disclosure: "text-muted-foreground hover:text-foreground active:brightness-100",
+        disclosure: "text-muted-foreground hover:text-foreground active:scale-100",
         reaction:
           "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground aria-pressed:border-primary/30 aria-pressed:bg-accent aria-pressed:text-accent-foreground",
       },

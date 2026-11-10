@@ -6,7 +6,7 @@ import { MessageList } from "../messages/message-list";
 import { useMessageHistory } from "../messages/use-message-history";
 import type { Message } from "@/api/messaging/requests";
 import { AgentWorkNotice } from "@/components/agent-work/agent-work-slot";
-import { MessageHistory } from "@/components/messaging/messages/message-history";
+import { JumpToLatest, OlderMessages } from "@/components/messaging/messages/message-history";
 import { ThreadPane as ThreadPaneView } from "@/components/messaging/threads/thread-pane-view";
 import { messagePageOptions } from "@/queries/context/links";
 
@@ -56,6 +56,7 @@ export function ThreadPane({
       root={
         root && (
           <MessageItem
+            threadRoot
             message={root}
             organizationId={organizationId}
             context={{
@@ -70,13 +71,13 @@ export function ThreadPane({
       onClose={onClose}
       replies={
         replies.data && (
-          <MessageHistory replies {...history} onOlder={() => loadOlder(rows[0]!.id)}>
-            <MessageList
-              messages={rows.filter((message) => message.id !== threadId)}
-              organizationId={organizationId}
-              conversationId={conversationId}
-            />
-          </MessageHistory>
+          <MessageList
+            messages={rows.filter((message) => message.id !== threadId)}
+            organizationId={organizationId}
+            conversationId={conversationId}
+            header={<OlderMessages replies {...history} onOlder={() => loadOlder(rows[0]!.id)} />}
+            footer={<JumpToLatest replies {...history} />}
+          />
         )
       }
       composer={

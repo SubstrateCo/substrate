@@ -6,7 +6,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bot, Crown, Ellipsis, LogOut, Trash2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Bot, Crown, Ellipsis, Globe, LogOut, Trash2 } from "lucide-react";
 
 export function ConversationActionsMenu({
   onAgents,
@@ -25,14 +26,22 @@ export function ConversationActionsMenu({
   if (!hasActions) return null;
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon-sm" aria-label="Conversation actions">
-          <Ellipsis />
-        </Button>
-      </DropdownMenuTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon-sm" aria-label="Conversation actions">
+              <Ellipsis />
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Conversation actions</TooltipContent>
+      </Tooltip>
       <DropdownMenuContent align="end">
         {onSharing && (
-          <DropdownMenuItem onSelect={onSharing}>External collaboration</DropdownMenuItem>
+          <DropdownMenuItem onSelect={onSharing}>
+            <Globe />
+            External collaboration
+          </DropdownMenuItem>
         )}
         {onAgents && (
           <DropdownMenuItem onSelect={onAgents}>
@@ -54,7 +63,7 @@ export function ConversationActionsMenu({
         )}
         {onDelete && (
           <>
-            {(onAgents || onLeave || onTransfer) && <DropdownMenuSeparator />}
+            {(onSharing || onAgents || onLeave || onTransfer) && <DropdownMenuSeparator />}
             <DropdownMenuItem variant="destructive" onSelect={onDelete}>
               <Trash2 />
               Delete

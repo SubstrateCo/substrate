@@ -109,7 +109,10 @@ test("the owner answers an agent's question from another window; members see onl
   await expect(memberPane.getByText("Blue or green?")).toHaveCount(0);
   await expect(memberPane.getByText(/Answered:/)).toHaveCount(0);
   await visit(member, undefined, "/agents");
-  await expect(member.page.getByRole("heading", { name: "Nothing needs you" })).toBeVisible();
+  // Nothing of the owner's work shows here, whether or not the member has agents of their own.
+  await expect(
+    member.page.getByRole("heading", { name: /^(Nothing needs you|Create your first agent)$/ }),
+  ).toBeVisible();
   await expect(member.page.getByRole("button", { name: "Agents", exact: true })).toBeVisible();
 });
 

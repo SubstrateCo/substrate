@@ -1,9 +1,10 @@
 import { Button } from "../../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
-import { MessageCardRow } from "./message-card";
 import type { MessageWorkLink } from "./message-work";
-import { CircleCheck, FolderKanban, Unlink } from "lucide-react";
+import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
+import { FolderKanban, Unlink } from "lucide-react";
 
+/** One linked record: status or kind icon, title, status label, and unlink on hover. */
 export function MessageWorkTile({
   link,
   removing,
@@ -13,30 +14,29 @@ export function MessageWorkTile({
   removing: boolean;
   onRemove?: (id: string) => void;
 }) {
-  const Icon = link.entityType === "task" ? CircleCheck : FolderKanban;
+  const meta = [link.statusName, link.purpose === "source" ? "Created here" : null]
+    .filter(Boolean)
+    .join(" · ");
   return (
-    <MessageCardRow className="group/work pl-1.5 hover:bg-muted/50">
+    <li className="group/work flex h-8 min-w-0 items-center gap-1 rounded-md border bg-card pr-1 text-sm transition-colors hover:bg-row-hover">
       <a
         href={link.href}
-        aria-label={`Open ${link.title}`}
-        className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-1.5 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        className="flex h-full min-w-0 flex-1 items-center gap-2 rounded-md pl-2.5 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       >
-        <Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+        {link.entityType === "task" && link.status ? (
+          <TaskStatusIcon status={link.status} />
+        ) : (
+          <FolderKanban aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+        )}
         <span title={link.title} className="min-w-0 truncate font-medium">
           {link.title}
         </span>
-        {link.purpose === "source" && (
-          <span className="shrink-0 text-xs text-muted-foreground">Created here</span>
+        {meta && (
+          <span className="ml-auto shrink-0 pl-2 text-xs text-muted-foreground">{meta}</span>
         )}
       </a>
-      {link.statusName && (
-        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
-          <span aria-hidden="true" className="size-1.5 rounded-full bg-primary" />
-          {link.statusName}
-        </span>
-      )}
       {link.canRemove && onRemove && (
-        <span className="opacity-0 transition-opacity group-focus-within/work:opacity-100 group-hover/work:opacity-100">
+        <span className="flex opacity-0 group-focus-within/work:opacity-100 group-hover/work:opacity-100">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -54,6 +54,6 @@ export function MessageWorkTile({
           </Tooltip>
         </span>
       )}
-    </MessageCardRow>
+    </li>
   );
 }

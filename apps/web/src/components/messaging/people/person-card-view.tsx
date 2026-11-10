@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { harnessLabel } from "@/lib/agents/harness-meta";
 import { initials } from "@/lib/people/initials";
-import { Bot, LockKeyhole, User } from "lucide-react";
+import { Bot, LockKeyhole } from "lucide-react";
 
 export type PersonCardProfile = {
   name: string;
@@ -32,10 +32,12 @@ function Header({
   name,
   image,
   secondary,
+  action,
 }: {
   name: string;
   image?: string | null;
   secondary: ReactNode;
+  action?: ReactNode;
 }) {
   return (
     <div className="flex min-w-0 items-center gap-3">
@@ -47,6 +49,7 @@ function Header({
         <p className="truncate font-semibold">{name}</p>
         {secondary}
       </div>
+      {action && <div className="shrink-0">{action}</div>}
     </div>
   );
 }
@@ -91,31 +94,33 @@ export function PersonCard({
       />
     );
   const secondary = profile.agent ? agentLine(profile.agent) : profile.email;
-  const TypeIcon = profile.type === "agent" ? Bot : User;
+  const tags = [
+    profile.type === "agent" && (
+      <Tag key="agent" className="inline-flex items-center gap-1">
+        <Bot aria-hidden="true" className="size-3" />
+        Agent
+      </Tag>
+    ),
+    profile.role && <Tag key="role">{roleLabel(profile.role)}</Tag>,
+    profile.external && <Tag key="external">External</Tag>,
+    profile.self && <Tag key="self">You</Tag>,
+  ].filter(Boolean);
   return (
     <div className="space-y-3">
       <Header
         name={profile.name}
         image={profile.image}
+        action={action}
         secondary={
           secondary && <p className="truncate text-xs text-muted-foreground">{secondary}</p>
         }
       />
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Tag className="inline-flex items-center gap-1">
-          <TypeIcon aria-hidden="true" className="size-3" />
-          {profile.type === "agent" ? "Agent" : "Person"}
-        </Tag>
-        {profile.role && <Tag>{roleLabel(profile.role)}</Tag>}
-        {profile.external && <Tag>External</Tag>}
-        {profile.self && <Tag>You</Tag>}
-      </div>
+      {tags.length > 0 && <div className="flex flex-wrap items-center gap-1.5">{tags}</div>}
       {profile.agent?.ownerName && (
         <p className="truncate text-xs text-muted-foreground">
           Owned by <span className="font-medium text-foreground">{profile.agent.ownerName}</span>
         </p>
       )}
-      {action}
     </div>
   );
 }

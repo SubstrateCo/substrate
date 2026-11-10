@@ -3,6 +3,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { WorkIndicator } from "../work-indicator";
 import { PaneState } from "@/components/feedback/pane-state";
 import { PageAside } from "@/components/layout/page-layout";
+import { Timestamp } from "@/components/time/timestamp";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { WorkTone } from "@/lib/agent-work/status";
@@ -68,7 +69,7 @@ export function TurnTranscriptView({
         <dl className="grid gap-1.5 border-b px-5 py-3 text-xs">
           {startedAt && (
             <Detail label="Started">
-              {new Date(startedAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
+              <Timestamp value={startedAt} format="datetime" />
             </Detail>
           )}
           {session && <Detail label="Session">{session}</Detail>}
@@ -112,7 +113,7 @@ export function TurnTranscriptView({
           <Button
             type="button"
             size="sm"
-            variant="destructive"
+            variant="destructive-ghost"
             disabled={stopping}
             onClick={onStop}
           >

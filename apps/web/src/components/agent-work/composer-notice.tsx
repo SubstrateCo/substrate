@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import type { WorkTone } from "@/lib/agent-work/status";
 import { cn } from "cn";
-import { Bot, RotateCcw } from "lucide-react";
+import { Bot, MessageSquarePlus } from "lucide-react";
 
 export type ComposerNoticeLine = {
   key: string;
@@ -63,7 +63,7 @@ export function ComposerNotice({
           title="The agent keeps its memory but starts this conversation with a clean slate"
           onClick={onNewTopic}
         >
-          <RotateCcw aria-hidden="true" />
+          <MessageSquarePlus aria-hidden="true" />
           New topic
         </Button>
       )}

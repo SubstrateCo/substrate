@@ -1,15 +1,10 @@
 import type { ReactNode } from "react";
 
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
 import { CheckCheck } from "lucide-react";
 
 export type NeedsYouEntry = {
@@ -36,34 +31,24 @@ export function NeedsYouView({
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <header className="shrink-0 space-y-1 px-4 pt-5 sm:px-6 sm:pt-6">
-        <h1 className="text-xl font-semibold tracking-tight">Needs you</h1>
-        <p className="text-sm text-muted-foreground">
-          Questions, approvals, and stopped work from your agents.
-        </p>
-      </header>
-      <div className="grid gap-4 p-4 sm:p-6">
+      <div className="mx-auto grid w-full max-w-3xl gap-6 p-6">
+        <PageHeader
+          title="Needs you"
+          description="Questions, approvals, and stopped work from your agents."
+        />
         {error && <ErrorState title="Couldn’t load what needs you" onRetry={onRetry} />}
         {loading && <LoadingState label="Loading what needs you" variant="compact" />}
         {!loading && !error && !entries.length && (
-          <Empty>
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <CheckCheck aria-hidden="true" />
-              </EmptyMedia>
-              <EmptyTitle>
-                <h2>Nothing needs you</h2>
-              </EmptyTitle>
-              <EmptyDescription>
-                When an agent asks a question or proposes an action, it shows here.
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
+          <ContentNotice
+            icon={CheckCheck}
+            title="Nothing needs you"
+            description="When an agent asks a question or proposes an action, it shows here."
+          />
         )}
         {entries.length > 0 && (
-          <ul aria-label="Needs you" className="grid gap-4">
+          <ul aria-label="Needs you" className="grid gap-5">
             {entries.map((entry) => (
-              <li key={entry.key} className="min-w-0">
+              <li key={entry.key} className="grid min-w-0 gap-1.5">
                 <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
                   <span className="font-semibold text-foreground">{entry.agentName}</span>
                   {entry.place}

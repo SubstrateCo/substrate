@@ -1,7 +1,7 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
 import { useWorkspaceSearch } from "@/components/context/search/workspace-search-context";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PersonAvatar } from "@/components/people/person-avatar";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -13,81 +13,89 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Conversation } from "@/lib/messaging/conversations";
-import { initials } from "@/lib/people/initials";
-import { AtSign, Bot, Compass, Plus, Users } from "lucide-react";
-
-export type DirectMessagePerson = {
-  id: string;
-  name: string;
-  email: string;
-  image?: string | null;
-};
+import type { PickerPerson } from "@/lib/people/people-picker";
+import { Compass, MessageCircle, Plus, Users } from "lucide-react";
 
 export type DirectMessageAgent = { id: string; name: string; image: string | null };
+
+type Choice =
+  | { kind: "create"; conversation: Conversation["kind"] }
+  | { kind: "person"; person: PickerPerson }
+  | { kind: "agent"; agent: DirectMessageAgent };
+
+function SectionAction({
+  label,
+  onClick,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          size="icon-xs"
+          variant="ghost"
+          className="[&_svg:not([class*='size-'])]:size-3.5"
+          aria-label={label}
+          onClick={onClick}
+        >
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
 
 export function ConversationCreateMenu({
   section,
   people = [],
   agents = [],
   onCreate,
+  onMessagePerson,
   onMessageAgent,
 }: {
   section: "channel" | "dm";
-  people?: DirectMessagePerson[];
+  people?: PickerPerson[];
   agents?: DirectMessageAgent[];
-  onCreate: (kind: Conversation["kind"], recipient?: string) => void;
+  onCreate: (kind: Conversation["kind"]) => void;
+  onMessagePerson?: (person: PickerPerson) => void;
   onMessageAgent?: (agent: DirectMessageAgent) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const { openSearch } = useWorkspaceSearch();
-  const creatingFromMenu = useRef<{ kind: Conversation["kind"]; recipient?: string } | null>(null);
-  const messagingAgent = useRef<DirectMessageAgent | null>(null);
+  // Acts after the menu has returned focus to its trigger, so a dialog restores focus there.
+  const chosen = useRef<Choice | null>(null);
   if (section === "channel") {
     return (
-      <span className="flex items-center">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              size="icon-xs"
-              variant="ghost"
-              aria-label="Browse channels"
-              onClick={() => openSearch("channel")}
-            >
-              <Compass />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Browse channels</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              size="icon-xs"
-              variant="ghost"
-              aria-label="Create channel"
-              data-create-conversation="sidebar-channel"
-              onClick={() => onCreate("channel")}
-            >
-              <Plus />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Create channel</TooltipContent>
-        </Tooltip>
+      <span className="flex items-center gap-0.5">
+        <SectionAction label="Browse channels" onClick={() => openSearch("channel")}>
+          <Compass />
+        </SectionAction>
+        <SectionAction label="Create channel" onClick={() => onCreate("channel")}>
+          <Plus />
+        </SectionAction>
       </span>
     );
   }
   const search = query.trim().toLowerCase();
-  const matches = people.filter(
-    (person) =>
-      !search ||
-      person.name.toLowerCase().includes(search) ||
-      person.email.toLowerCase().includes(search),
-  );
+  const matches = onMessagePerson
+    ? people.filter(
+        (person) =>
+          !search ||
+          person.name.toLowerCase().includes(search) ||
+          person.email.toLowerCase().includes(search),
+      )
+    : [];
   const agentMatches = onMessageAgent
     ? agents.filter((agent) => !search || agent.name.toLowerCase().includes(search))
     : [];
-  const choose = (kind: Conversation["kind"], recipient?: string) => {
-    creatingFromMenu.current = { kind, recipient };
+  const choose = (choice: Choice) => {
+    chosen.current = choice;
     setOpen(false);
   };
   return (
@@ -104,8 +112,8 @@ export function ConversationCreateMenu({
             <Button
               size="icon-xs"
               variant="ghost"
+              className="[&_svg:not([class*='size-'])]:size-3.5"
               aria-label="New message"
-              data-create-conversation="sidebar-message"
             >
               <Plus />
             </Button>
@@ -117,113 +125,79 @@ export function ConversationCreateMenu({
         align="start"
         variant="reference"
         className="w-80"
-        onCloseAutoFocus={(event) => {
-          const pending = creatingFromMenu.current;
-          const agent = messagingAgent.current;
-          if (pending) {
-            event.preventDefault();
-            creatingFromMenu.current = null;
-            onCreate(pending.kind, pending.recipient);
-          } else if (agent) {
-            event.preventDefault();
-            messagingAgent.current = null;
-            onMessageAgent?.(agent);
-          }
+        onCloseAutoFocus={() => {
+          const choice = chosen.current;
+          chosen.current = null;
+          if (choice?.kind === "create") onCreate(choice.conversation);
+          else if (choice?.kind === "person") onMessagePerson?.(choice.person);
+          else if (choice?.kind === "agent") onMessageAgent?.(choice.agent);
         }}
       >
         <Command shouldFilter={false} loop>
           <div className="border-b p-2">
             <CommandInput
               aria-label="Search people"
-              placeholder="Search people…"
+              placeholder="Message someone…"
               value={query}
               onValueChange={setQuery}
             />
           </div>
           <CommandList aria-label="New message" className="max-h-80">
-            <div className="p-1">
-              <CommandGroup heading="People in this workspace">
-                {matches.map((person) => (
-                  <CommandItem
-                    key={person.id}
-                    value={`person-${person.id}`}
-                    onSelect={() => choose("dm", person.email)}
-                  >
-                    <Avatar aria-hidden="true" variant="user">
-                      {person.image && <AvatarImage src={person.image} alt="" />}
-                      <AvatarFallback>{initials(person.name)}</AvatarFallback>
-                    </Avatar>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">{person.name}</span>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {person.email}
-                      </span>
-                    </span>
-                  </CommandItem>
-                ))}
-                {!matches.length && (
-                  <p className="px-3 py-4 text-center text-sm text-muted-foreground">
-                    {search
-                      ? "No one in this workspace matches. Message them by email below."
-                      : "No other people in this workspace yet."}
-                  </p>
-                )}
-              </CommandGroup>
-              {agentMatches.length > 0 && (
-                <div className="border-t">
-                  <CommandGroup heading="Your agents">
-                    {agentMatches.map((agent) => (
-                      <CommandItem
-                        key={agent.id}
-                        value={`agent-${agent.id}`}
-                        onSelect={() => {
-                          messagingAgent.current = agent;
-                          setOpen(false);
-                        }}
-                      >
-                        <Avatar aria-hidden="true" variant="user">
-                          {agent.image && <AvatarImage src={agent.image} alt="" />}
-                          <AvatarFallback>
-                            <Bot />
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate font-medium">{agent.name}</span>
-                          <span className="block truncate text-xs text-muted-foreground">
-                            Runs on your desktop
-                          </span>
-                        </span>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </div>
+            <CommandGroup heading="People">
+              {matches.map((person) => (
+                <CommandItem
+                  key={person.id}
+                  value={`person-${person.id}`}
+                  onSelect={() => choose({ kind: "person", person })}
+                >
+                  <PersonAvatar name={person.name} image={person.image} />
+                  <span className="truncate font-medium">{person.name}</span>
+                  <span className="min-w-0 truncate text-muted-foreground">{person.email}</span>
+                </CommandItem>
+              ))}
+              {!matches.length && (
+                <p className="px-2 py-2 text-sm text-muted-foreground">
+                  {search ? "No one here matches." : "No one else is in this workspace yet."}
+                </p>
               )}
+            </CommandGroup>
+            {agentMatches.length > 0 && (
               <div className="border-t">
-                <CommandGroup heading="More options">
-                  <CommandItem value="new-direct-message" onSelect={() => choose("dm")}>
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                      <AtSign aria-hidden="true" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">New direct message</span>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        Message anyone by email
-                      </span>
-                    </span>
-                  </CommandItem>
-                  <CommandItem value="new-group-message" onSelect={() => choose("group")}>
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                      <Users aria-hidden="true" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">New group message</span>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        Start a conversation with several people
-                      </span>
-                    </span>
-                  </CommandItem>
+                <CommandGroup heading="Your agents">
+                  {agentMatches.map((agent) => (
+                    <CommandItem
+                      key={agent.id}
+                      value={`agent-${agent.id}`}
+                      onSelect={() => choose({ kind: "agent", agent })}
+                    >
+                      <PersonAvatar name={agent.name} image={agent.image} agent />
+                      <span className="truncate font-medium">{agent.name}</span>
+                    </CommandItem>
+                  ))}
                 </CommandGroup>
               </div>
+            )}
+            <div className="border-t">
+              <CommandGroup>
+                <CommandItem
+                  value="new-direct-message"
+                  onSelect={() => choose({ kind: "create", conversation: "dm" })}
+                >
+                  <span className="flex size-6 shrink-0 items-center justify-center text-muted-foreground">
+                    <MessageCircle aria-hidden="true" />
+                  </span>
+                  <span className="truncate">New direct message</span>
+                </CommandItem>
+                <CommandItem
+                  value="new-group-message"
+                  onSelect={() => choose({ kind: "create", conversation: "group" })}
+                >
+                  <span className="flex size-6 shrink-0 items-center justify-center text-muted-foreground">
+                    <Users aria-hidden="true" />
+                  </span>
+                  <span className="truncate">New group message</span>
+                </CommandItem>
+              </CommandGroup>
             </div>
           </CommandList>
         </Command>

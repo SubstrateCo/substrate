@@ -30,15 +30,13 @@ test("a new partner signs up, creates their own org, and accepts a desktop chann
   await sender.page.getByRole("button", { name: "Conversation actions", exact: true }).click();
   await sender.page.getByRole("menuitem", { name: "External collaboration", exact: true }).click();
   const email = `new-partner-${crypto.randomUUID()}@example.test`;
-  await sender.page.getByLabel("Invitation email", { exact: true }).fill(email);
+  await sender.page.getByLabel("Invite by email", { exact: true }).fill(email);
   await sender.page
     .getByRole("checkbox", {
-      name: /I approve sharing the full conversation history, including earlier messages/,
+      name: /Let invited people read the full conversation history, including earlier messages/,
     })
     .check();
-  await sender.page
-    .getByRole("button", { name: "Send collaboration invitation", exact: true })
-    .click();
+  await sender.page.getByRole("button", { name: "Send invitation", exact: true }).click();
   const link = await new Mailpit(request).link(
     email,
     `Collaborate with ${account.name} on Startup OS`,
@@ -111,8 +109,7 @@ test("an ordinary recipient requests org approval and an owner approves without 
   await expect(
     recipient.page.getByRole("status").filter({ hasText: "Approval requested" }),
   ).toBeVisible();
-  await visit(approver, undefined, "/settings/organization");
-  await approver.page.getByRole("tab", { name: "External collaboration", exact: true }).click();
+  await visit(approver, undefined, "/settings/organization/sharing");
   await approver.page.getByRole("link", { name: "Review invitation", exact: true }).click();
   await accept(approver.page);
   await expect(

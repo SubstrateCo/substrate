@@ -2,11 +2,18 @@ import type { TaskStatus } from "@startup-os/contracts/tasks";
 
 export type ProjectPermission = "view" | "comment" | "edit" | "owner";
 export const projectPermissionOptions: { value: ProjectPermission; label: string }[] = [
-  { value: "view", label: "View" },
-  { value: "comment", label: "Comment" },
-  { value: "edit", label: "Edit" },
+  { value: "view", label: "Can view" },
+  { value: "comment", label: "Can comment" },
+  { value: "edit", label: "Can edit" },
   { value: "owner", label: "Owner" },
 ];
+/** Display labels for permission levels, matching the options above. */
+export const projectPermissionLabels: Record<ProjectPermission, string> = {
+  view: "Can view",
+  comment: "Can comment",
+  edit: "Can edit",
+  owner: "Owner",
+};
 export interface Project {
   entityId: string;
   name: string;

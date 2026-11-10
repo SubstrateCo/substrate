@@ -20,6 +20,12 @@
 - Test application policies and complete workflows. Do not test Better Auth internals or third-party guarantees.
 - Use headless Playwright for shared renderer behavior and responsive layout checks. Keep manual Electron checks for native behavior, accessibility, and desktop rendering. Do not assert against rendered HTML strings or HTML snapshots, including markup substring checks.
 
+## Design
+
+- Follow `DESIGN.md`, the design contract for primitives, shared components, icons, dates, copy, spacing, and motion.
+- Fix `design/*` and `shadcn/*` lint errors and warnings in files you touch. Each message names the component or helper to use and the `DESIGN.md` section.
+- If a warning is wrong for a case, explain it in `// oxlint-disable-next-line <rule> -- <reason>`. Do not weaken a rule or a primitive to silence it.
+
 ## Test placement
 
 - Keep non-UI rules and cache logic in unit tests. Put HTTP security and permission matrices in `apps/server/integration`, not in long UI journeys or viewport loops.

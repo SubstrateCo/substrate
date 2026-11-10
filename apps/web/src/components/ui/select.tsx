@@ -34,14 +34,21 @@ const selectTriggerVariants = cva(
         sm: "h-7 rounded-md",
         compact: "h-7 rounded-md border-border bg-background px-2 text-xs",
       },
+      variant: {
+        default: "",
+        // A value that reads as text until hovered, such as a task's status in its inspector.
+        ghost:
+          "border-transparent bg-transparent hover:bg-row-hover aria-expanded:bg-row-hover dark:bg-transparent dark:hover:bg-row-hover",
+      },
     },
-    defaultVariants: { size: "default" },
+    defaultVariants: { size: "default", variant: "default" },
   },
 );
 
 function SelectTrigger({
   className,
   size = "default",
+  variant = "default",
   children,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Trigger> &
@@ -50,7 +57,8 @@ function SelectTrigger({
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
       data-size={size}
-      className={cn(selectTriggerVariants({ size }), className)}
+      data-variant={variant}
+      className={cn(selectTriggerVariants({ size, variant }), className)}
       {...props}
     >
       {children}
@@ -74,7 +82,7 @@ function SelectContent({
         data-slot="select-content"
         data-align-trigger={position === "item-aligned"}
         className={cn(
-          "relative z-50 max-h-(--radix-select-content-available-height) min-w-36 origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover text-popover-foreground shadow-floating ring-1 ring-foreground/10 duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "relative z-50 max-h-(--radix-select-content-available-height) min-w-36 origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover text-popover-foreground shadow-floating ring-1 ring-foreground/10 duration-150 ease-out data-[align-trigger=true]:animate-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-97 data-closed:animate-out data-closed:duration-100 data-closed:fade-out-0 data-closed:zoom-out-97",
           position === "popper" &&
             "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
           className,

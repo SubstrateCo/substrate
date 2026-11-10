@@ -31,7 +31,7 @@ export function PaneState({
       </div>
     );
   return (
-    <div className="min-h-0 flex-1 overflow-hidden p-5">
+    <div className="min-h-0 flex-1 overflow-hidden p-6">
       <LoadingState label={label} variant="messages" rows={4} />
     </div>
   );

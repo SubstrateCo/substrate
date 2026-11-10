@@ -5,7 +5,7 @@ import { expect, type Page } from "@playwright/test";
 
 const section = (page: Page, name: string) =>
   page
-    .getByRole("navigation", { name: "Agent settings sections", exact: true })
+    .getByRole("navigation", { name: "Agent sections", exact: true })
     .getByRole("button", { name, exact: true });
 
 const instructions = (page: Page) =>
@@ -14,9 +14,11 @@ const instructions = (page: Page) =>
 /** Creates an agent from the Agents app, which then opens its settings. */
 async function createAgent(user: Client, name: string) {
   await visit(user, undefined, "/agents");
-  await user.page.getByLabel("Create agent", { exact: true }).click();
+  await user.page.getByLabel("Create agent", { exact: true }).first().click();
   await user.page.getByLabel("Agent name", { exact: true }).fill(name);
-  await instructions(user.page).fill("Review release tasks. Do not contact external services.");
+  await user.page
+    .getByRole("textbox", { name: "What should it help with? (optional)", exact: true })
+    .fill("Review release tasks. Do not contact external services.");
   await user.page
     .getByRole("dialog")
     .getByRole("button", { name: "Create agent", exact: true })
@@ -77,15 +79,23 @@ test("agent definitions can be created, edited, persisted and deleted without ru
 
   await section(user.page, "General").click();
   await user.page.getByRole("button", { name: `Delete ${updatedName}`, exact: true }).click();
-  await user.page.getByRole("dialog").getByRole("button", { name: "Delete", exact: true }).click();
+  await user.page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Delete agent", exact: true })
+    .click();
   await expect(sidebar.getByRole("button", { name: updatedName, exact: true })).toHaveCount(0);
-  await expect(user.page.getByRole("heading", { name: "Needs you", exact: true })).toBeVisible();
+  // Without agents, the Agents app explains how to start instead of an empty Needs you list.
+  const firstAgent = user.page.getByRole("heading", {
+    name: "Create your first agent",
+    exact: true,
+  });
+  await expect(firstAgent).toBeVisible();
   await user.page.reload();
   await expect(sidebar.getByText("You have no agents yet.", { exact: true })).toBeVisible();
-  await expect(user.page.getByRole("heading", { name: "Needs you", exact: true })).toBeVisible();
+  await expect(firstAgent).toBeVisible();
 });
 
-test("agent run settings persist and the settings tab survives back navigation", async ({
+test("agent run settings persist and the settings section survives back navigation", async ({
   account,
   client,
 }) => {
@@ -107,10 +117,7 @@ test("agent run settings persist and the settings tab survives back navigation",
   await user.page.getByRole("button", { name: "Needs you", exact: true }).click();
   await expect(user.page.getByRole("heading", { name: "Needs you", exact: true })).toBeVisible();
   await user.page.goBack();
-  await expect(user.page.getByRole("tab", { name: "Settings", exact: true })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
+  await expect(section(user.page, "Run settings")).toHaveAttribute("aria-current", "page");
 });
 
 test("the Agents rail button is current in the Agents app", async ({ account, client }) => {
@@ -124,7 +131,9 @@ test("the Agents rail button is current in the Agents app", async ({ account, cl
   await expect(notifications).toHaveAttribute("aria-current", "page");
   await agents.click();
   await expect(agents).toHaveAttribute("aria-current", "page");
-  await expect(user.page.getByRole("heading", { name: "Needs you", exact: true })).toBeVisible();
+  await expect(
+    user.page.getByRole("heading", { name: "Create your first agent", exact: true }),
+  ).toBeVisible();
 });
 
 test("a member adds and removes their agent in a channel without an agent search", async ({

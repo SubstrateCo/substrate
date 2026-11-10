@@ -1,71 +1,121 @@
-import { useId } from "react";
+import type { ReactNode } from "react";
 
+import { SegmentedControl } from "../forms/segmented-control";
 import { Button } from "../ui/button";
-import { Field, FieldLabel } from "../ui/field";
 import { Slider } from "../ui/slider";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { RotateCcw, RotateCw, ZoomIn, ZoomOut } from "lucide-react";
 
+const sizingOptions = [
+  { value: "fit", label: "Fit whole logo" },
+  { value: "fill", label: "Fill square" },
+] as const;
+
+const minZoom = 1;
+const maxZoom = 3;
+const zoomStep = 0.25;
+
+/** Logos choose between keeping the whole image and filling the square. */
+export function ImageSizingControl({
+  mode,
+  onModeChange,
+}: {
+  mode: "fit" | "fill";
+  onModeChange: (mode: "fit" | "fill") => void;
+}) {
+  return (
+    <div className="flex justify-center">
+      <SegmentedControl
+        aria-label="Logo sizing"
+        value={mode}
+        options={sizingOptions}
+        onValueChange={onModeChange}
+      />
+    </div>
+  );
+}
+
+function ToolButton({
+  label,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label={label}
+          disabled={disabled}
+          onClick={onClick}
+        >
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+/** Zoom, rotate, and reset, on one row under the image. Fit mode has nothing to zoom. */
 export function ImageCropControls({
-  kind,
   mode,
   zoom,
-  onModeChange,
   onZoomChange,
   onRotate,
   onReset,
 }: {
-  kind: "avatar" | "organization-logo";
   mode: "fit" | "fill";
   zoom: number;
-  onModeChange: (mode: "fit" | "fill") => void;
   onZoomChange: (zoom: number) => void;
   onRotate: () => void;
   onReset: () => void;
 }) {
-  const id = useId();
   return (
-    <>
-      {kind === "organization-logo" && (
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Logo sizing">
-          <Button
-            type="button"
-            variant="outline"
-            aria-pressed={mode === "fit"}
-            onClick={() => onModeChange("fit")}
+    <div className="flex items-center gap-0.5">
+      {mode === "fill" && (
+        <>
+          <ToolButton
+            label="Zoom out"
+            disabled={zoom <= minZoom}
+            onClick={() => onZoomChange(Math.max(minZoom, zoom - zoomStep))}
           >
-            Fit whole logo
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            aria-pressed={mode === "fill"}
-            onClick={() => onModeChange("fill")}
+            <ZoomOut aria-hidden="true" />
+          </ToolButton>
+          <Slider
+            aria-label="Zoom"
+            className="mx-2 min-w-0 flex-1"
+            min={minZoom}
+            max={maxZoom}
+            step={0.01}
+            value={[zoom]}
+            onValueChange={(values) => onZoomChange(values[0]!)}
+          />
+          <ToolButton
+            label="Zoom in"
+            disabled={zoom >= maxZoom}
+            onClick={() => onZoomChange(Math.min(maxZoom, zoom + zoomStep))}
           >
-            Fill square
-          </Button>
-        </div>
+            <ZoomIn aria-hidden="true" />
+          </ToolButton>
+        </>
       )}
-      <Field orientation="horizontal">
-        <FieldLabel htmlFor={id}>Zoom</FieldLabel>
-        <Slider
-          id={id}
-          aria-label="Zoom"
-          className="min-w-0 flex-1"
-          min={1}
-          max={3}
-          step={0.01}
-          value={[zoom]}
-          disabled={mode === "fit"}
-          onValueChange={(values) => onZoomChange(values[0]!)}
-        />
-      </Field>
-      <div className="flex gap-2">
-        <Button type="button" variant="outline" onClick={onRotate}>
-          Rotate 90°
-        </Button>
-        <Button type="button" variant="ghost" onClick={onReset}>
-          Reset
-        </Button>
+      <div className="ml-auto flex items-center gap-0.5 pl-2">
+        <ToolButton label="Rotate 90°" onClick={onRotate}>
+          <RotateCw aria-hidden="true" />
+        </ToolButton>
+        <ToolButton label="Reset" onClick={onReset}>
+          <RotateCcw aria-hidden="true" />
+        </ToolButton>
       </div>
-    </>
+    </div>
   );
 }

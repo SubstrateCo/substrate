@@ -9,6 +9,7 @@ import { conversationName, type Conversation } from "@/lib/messaging/conversatio
 
 export function ConversationPane({
   conversation,
+  viewerId,
   loading = false,
   error,
   onRetry,
@@ -25,6 +26,8 @@ export function ConversationPane({
   actions?: ReactNode;
   leftNotice?: ReactNode;
   conversation: Conversation;
+  /** The signed-in user, so a DM header shows the other person. */
+  viewerId?: string;
   loading?: boolean;
   error?: Error | null;
   onRetry: () => void;
@@ -42,21 +45,25 @@ export function ConversationPane({
   const blocked = !!error && (!hasLoaded || isAccessFailure(error));
   const initialLoading = loading && !hasLoaded;
   const showThread = !blocked && !initialLoading && !!thread;
-  let channelIcon: "private" | "public" | undefined;
-  if (!isAccessFailure(error) && conversation.kind === "channel") {
-    if (conversation.private) {
-      channelIcon = "private";
-    } else {
-      channelIcon = "public";
-    }
-  }
+  const hidden = isAccessFailure(error);
+  let kind: "private" | "public" | "group" | "dm" | undefined;
+  if (!hidden && conversation.kind === "channel")
+    kind = conversation.private ? "private" : "public";
+  if (!hidden && conversation.kind !== "channel") kind = conversation.kind;
+  const members = hidden
+    ? []
+    : conversation.members.filter(
+        (member) => conversation.kind !== "dm" || !viewerId || member.userId !== viewerId,
+      );
   return (
     <PageLayout id="conversation" aria-label="Conversation">
       <PageContent>
         <section aria-label={title} className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface">
           <ConversationHeader
             title={title}
-            channelIcon={channelIcon}
+            kind={kind}
+            members={members}
+            partner={!hidden && conversation.partner}
             addingMembers={addingMembers}
             onToggleMembers={
               !blocked && conversation.kind !== "dm" && conversation.canManage

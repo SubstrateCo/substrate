@@ -18,35 +18,53 @@ export function TaskCommentForm({
   const id = useId();
   const [body, setBody] = useState("");
   const validation = useNativeValidation();
+  const send = () => {
+    if (!pending && body.trim())
+      onSend(body, () => setBody((current) => (current === body ? "" : current)));
+  };
   return (
     <form
-      className="space-y-2"
       onInvalidCapture={validation.onInvalid}
       onInputCapture={validation.onInput}
       onSubmit={(event) => {
         event.preventDefault();
-        if (!pending && body.trim())
-          onSend(body, () => setBody((current) => (current === body ? "" : current)));
+        send();
       }}
     >
       <fieldset disabled={pending} className="min-w-0 space-y-2">
         <Field data-invalid={Boolean(validation.errors[id])}>
-          <FieldLabel htmlFor={id}>Add a comment</FieldLabel>
+          <FieldLabel htmlFor={id} className="sr-only">
+            Add a comment
+          </FieldLabel>
           <Textarea
             {...validation.inputProps(id)}
             id={id}
             value={body}
             onChange={(event) => setBody(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+                event.preventDefault();
+                send();
+              }
+            }}
             required
             maxLength={20000}
-            placeholder="Write a comment…"
+            placeholder="Leave a comment…"
+            className="min-h-16"
           />
           <FieldError id={`${id}-error`}>{validation.errors[id]}</FieldError>
         </Field>
         <FormMessage error={error} />
-        <PendingButton disabled={!body.trim()} pending={pending} pendingLabel="Posting comment…">
-          Post comment
-        </PendingButton>
+        <div className="flex justify-end">
+          <PendingButton
+            size="sm"
+            disabled={!body.trim()}
+            pending={pending}
+            pendingLabel="Posting comment."
+          >
+            Post comment
+          </PendingButton>
+        </div>
       </fieldset>
     </form>
   );

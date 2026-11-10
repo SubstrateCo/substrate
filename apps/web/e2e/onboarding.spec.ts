@@ -136,6 +136,7 @@ test("retrying activation opens the organization that was already created", asyn
   await user.page.route("**/api/auth/organization/set-active", (route) => route.abort(), {
     times: 1,
   });
+  await user.page.getByRole("button", { name: "Create a workspace", exact: true }).click();
   await user.page.getByLabel("Workspace name", { exact: true }).fill(`Retry ${id}`);
   await user.page.getByLabel("Workspace slug", { exact: true }).fill(`retry-${id}`);
   await user.page.getByRole("button", { name: "Create workspace", exact: true }).click();

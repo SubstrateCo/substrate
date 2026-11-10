@@ -1,3 +1,5 @@
+import { taskStatusLabels, type TaskStatus } from "@startup-os/contracts/tasks";
+
 import { useEffect, useId, useRef, useState } from "react";
 
 import { ErrorState } from "../../feedback/error-state";
@@ -11,6 +13,28 @@ import { ReferencePickerOption } from "./reference-picker-option";
 import { X } from "lucide-react";
 
 export type ReferenceKind = "task" | "project" | "person" | "agent" | "channel" | "thread";
+/** A picker tab: one kind, or "all" for a mixed list. */
+export type ReferenceTab = ReferenceKind | "all";
+
+const kindLabels: Record<ReferenceTab, string> = {
+  all: "All",
+  person: "People",
+  agent: "Agents",
+  task: "Tasks",
+  project: "Projects",
+  channel: "Channels",
+  thread: "Threads",
+};
+
+function optionDescription(item: {
+  conversationName?: string;
+  projectName?: string;
+  status?: TaskStatus;
+}) {
+  if (item.conversationName) return `# ${item.conversationName}`;
+  const parts = [item.projectName, item.status && taskStatusLabels[item.status]];
+  return parts.filter(Boolean).join(" · ") || undefined;
+}
 
 export function ReferencePicker({
   query,
@@ -26,13 +50,21 @@ export function ReferencePicker({
   onClose,
 }: {
   query: string;
-  kind: ReferenceKind;
-  kinds: readonly ReferenceKind[];
-  results: { id: string; title: string; conversationName?: string }[];
+  kind: ReferenceTab;
+  kinds: readonly ReferenceTab[];
+  results: {
+    id: string;
+    kind: ReferenceKind;
+    title: string;
+    conversationName?: string;
+    /** Tasks only: tells tasks with the same title apart. */
+    projectName?: string;
+    status?: TaskStatus;
+  }[];
   loading?: boolean;
   error?: Error | null;
   onQueryChange: (query: string) => void;
-  onKindChange: (kind: ReferenceKind) => void;
+  onKindChange: (kind: ReferenceTab) => void;
   onRetry?: () => void;
   onInsert: (token: string, reference: WorkspaceReference) => void;
   onClose: () => void;
@@ -45,13 +77,17 @@ export function ReferencePicker({
   const list = useRef<HTMLDivElement>(null);
   const available = loading || error ? [] : results;
   const selectedIndex = Math.min(index, Math.max(0, available.length - 1));
-  const selectedId = available[selectedIndex]
-    ? `${listId}-${available[selectedIndex]!.id}`
-    : undefined;
-  const insert = (id: string) => {
-    const item = available.find((item) => item.id === id);
-    if (item) onInsert(`@[${kind}:${id}]`, { id, kind, label: item.title });
-  };
+  const optionId = (item: { id: string; kind: ReferenceKind }) =>
+    `${listId}-${item.kind}-${item.id}`;
+  const selected = available.at(selectedIndex);
+  const selectedId = selected ? optionId(selected) : undefined;
+  const insert = (item: (typeof results)[number]) =>
+    onInsert(`@[${item.kind}:${item.id}]`, {
+      id: item.id,
+      kind: item.kind,
+      label: item.title,
+      status: item.status && { value: item.status, label: taskStatusLabels[item.status] },
+    });
   useEffect(() => {
     list.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" });
   }, [selectedId, selectedIndex]);
@@ -76,7 +112,7 @@ export function ReferencePicker({
                 value={type}
                 focusStyle={type === "channel" || type === "thread" ? "none" : "ring"}
               >
-                {type === "person" ? "People" : `${type[0]!.toUpperCase()}${type.slice(1)}s`}
+                {kindLabels[type]}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -96,41 +132,42 @@ export function ReferencePicker({
             <TooltipContent>Close references</TooltipContent>
           </Tooltip>
         </div>
-        <Input
-          className="shrink-0"
-          aria-label="Search references"
-          value={query}
-          onChange={(e) => {
-            onQueryChange(e.target.value);
-          }}
-          role="combobox"
-          aria-expanded={true}
-          aria-controls={listId}
-          aria-autocomplete="list"
-          aria-activedescendant={selectedId}
-          onKeyDown={(e) => {
-            if (e.nativeEvent.isComposing) return;
-            if (e.key === "Escape") {
-              e.preventDefault();
-              e.stopPropagation();
-              onClose();
-            }
-            if (e.key === "ArrowDown") {
-              e.preventDefault();
-              setIndex(Math.min(selectedIndex + 1, Math.max(0, available.length - 1)));
-            }
-            if (e.key === "ArrowUp") {
-              e.preventDefault();
-              setIndex(Math.max(0, selectedIndex - 1));
-            }
-            if (e.key === "Enter") {
-              e.preventDefault();
-              e.stopPropagation();
-              const selected = available.at(selectedIndex);
-              if (selected) insert(selected.id);
-            }
-          }}
-        />
+        <div className="shrink-0">
+          <Input
+            aria-label="Search references"
+            placeholder={`Search ${kindLabels[kind].toLowerCase()}`}
+            value={query}
+            onChange={(e) => {
+              onQueryChange(e.target.value);
+            }}
+            role="combobox"
+            aria-expanded={true}
+            aria-controls={listId}
+            aria-autocomplete="list"
+            aria-activedescendant={selectedId}
+            onKeyDown={(e) => {
+              if (e.nativeEvent.isComposing) return;
+              if (e.key === "Escape") {
+                e.preventDefault();
+                e.stopPropagation();
+                onClose();
+              }
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setIndex(Math.min(selectedIndex + 1, Math.max(0, available.length - 1)));
+              }
+              if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setIndex(Math.max(0, selectedIndex - 1));
+              }
+              if (e.key === "Enter") {
+                e.preventDefault();
+                e.stopPropagation();
+                if (selected) insert(selected);
+              }
+            }}
+          />
+        </div>
         {kinds.map((type) => (
           <TabsContent key={type} value={type} forceMount hidden={type !== kind} asChild>
             <div ref={type === kind ? list : undefined} className="min-h-8 flex-1 overflow-y-auto">
@@ -141,20 +178,21 @@ export function ReferencePicker({
                     <ErrorState compact title="Couldn’t search references" onRetry={onRetry} />
                   )}
                   {!loading && !error && results.length === 0 && (
-                    <p className="text-sm text-muted-foreground">No accessible references found.</p>
+                    <p className="px-2 py-1.5 text-sm text-muted-foreground">
+                      No accessible references found.
+                    </p>
                   )}
                   <div id={listId} role="listbox" aria-label="References">
                     {available.map((item, itemIndex) => (
                       <ReferencePickerOption
-                        id={`${listId}-${item.id}`}
-                        key={item.id}
-                        kind={kind}
+                        id={optionId(item)}
+                        key={optionId(item)}
+                        kind={item.kind}
                         title={item.title}
-                        description={
-                          item.conversationName ? `# ${item.conversationName}` : undefined
-                        }
+                        status={item.status}
+                        description={optionDescription(item)}
                         selected={selectedIndex === itemIndex}
-                        onSelect={() => insert(item.id)}
+                        onSelect={() => insert(item)}
                       />
                     ))}
                   </div>

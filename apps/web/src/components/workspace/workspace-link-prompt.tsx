@@ -1,5 +1,6 @@
 import { FormMessage } from "../auth/form-message";
 import { PendingButton } from "../feedback/pending-button";
+import { PageHeader } from "@/components/layout/page-header";
 
 export function WorkspaceLinkPrompt({
   pending,
@@ -12,8 +13,10 @@ export function WorkspaceLinkPrompt({
 }) {
   return (
     <section className="space-y-4 p-6">
-      <h1 className="text-lg font-semibold">This link belongs to another workspace</h1>
-      <p>Switch to that workspace to open it. You must be a member.</p>
+      <PageHeader
+        title="This link belongs to another workspace"
+        description="Switch to that workspace to open it. You must be a member."
+      />
       <PendingButton pending={pending} pendingLabel="Switching workspace…" onClick={onSwitch}>
         Switch workspace to open link
       </PendingButton>

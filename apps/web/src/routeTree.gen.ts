@@ -35,7 +35,12 @@ import { Route as AuthenticatedFrameWorkspaceSettingsOrganizationRouteRouteImpor
 import { Route as AuthenticatedFrameWorkspaceTasksIndexRouteImport } from './routes/_authenticated/_frame/_workspace/tasks/index'
 import { Route as AuthenticatedFrameSettingsUserIndexRouteImport } from './routes/_authenticated/_frame/settings/user/index'
 import { Route as AuthenticatedFrameSettingsUserInvitationsRouteImport } from './routes/_authenticated/_frame/settings/user/invitations'
+import { Route as AuthenticatedFrameSettingsUserPreferencesRouteImport } from './routes/_authenticated/_frame/settings/user/preferences'
 import { Route as AuthenticatedFrameWorkspaceSettingsOrganizationIndexRouteImport } from './routes/_authenticated/_frame/_workspace/settings/organization/index'
+import { Route as AuthenticatedFrameWorkspaceSettingsOrganizationConversationsRouteImport } from './routes/_authenticated/_frame/_workspace/settings/organization/conversations'
+import { Route as AuthenticatedFrameWorkspaceSettingsOrganizationInvitationsRouteImport } from './routes/_authenticated/_frame/_workspace/settings/organization/invitations'
+import { Route as AuthenticatedFrameWorkspaceSettingsOrganizationMembersRouteImport } from './routes/_authenticated/_frame/_workspace/settings/organization/members'
+import { Route as AuthenticatedFrameWorkspaceSettingsOrganizationSharingRouteImport } from './routes/_authenticated/_frame/_workspace/settings/organization/sharing'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -176,10 +181,46 @@ const AuthenticatedFrameSettingsUserInvitationsRoute =
     path: '/invitations',
     getParentRoute: () => AuthenticatedFrameSettingsUserRouteRoute,
   } as any)
+const AuthenticatedFrameSettingsUserPreferencesRoute =
+  AuthenticatedFrameSettingsUserPreferencesRouteImport.update({
+    id: '/preferences',
+    path: '/preferences',
+    getParentRoute: () => AuthenticatedFrameSettingsUserRouteRoute,
+  } as any)
 const AuthenticatedFrameWorkspaceSettingsOrganizationIndexRoute =
   AuthenticatedFrameWorkspaceSettingsOrganizationIndexRouteImport.update({
     id: '/',
     path: '/',
+    getParentRoute: () =>
+      AuthenticatedFrameWorkspaceSettingsOrganizationRouteRoute,
+  } as any)
+const AuthenticatedFrameWorkspaceSettingsOrganizationConversationsRoute =
+  AuthenticatedFrameWorkspaceSettingsOrganizationConversationsRouteImport.update(
+    {
+      id: '/conversations',
+      path: '/conversations',
+      getParentRoute: () =>
+        AuthenticatedFrameWorkspaceSettingsOrganizationRouteRoute,
+    } as any,
+  )
+const AuthenticatedFrameWorkspaceSettingsOrganizationInvitationsRoute =
+  AuthenticatedFrameWorkspaceSettingsOrganizationInvitationsRouteImport.update({
+    id: '/invitations',
+    path: '/invitations',
+    getParentRoute: () =>
+      AuthenticatedFrameWorkspaceSettingsOrganizationRouteRoute,
+  } as any)
+const AuthenticatedFrameWorkspaceSettingsOrganizationMembersRoute =
+  AuthenticatedFrameWorkspaceSettingsOrganizationMembersRouteImport.update({
+    id: '/members',
+    path: '/members',
+    getParentRoute: () =>
+      AuthenticatedFrameWorkspaceSettingsOrganizationRouteRoute,
+  } as any)
+const AuthenticatedFrameWorkspaceSettingsOrganizationSharingRoute =
+  AuthenticatedFrameWorkspaceSettingsOrganizationSharingRouteImport.update({
+    id: '/sharing',
+    path: '/sharing',
     getParentRoute: () =>
       AuthenticatedFrameWorkspaceSettingsOrganizationRouteRoute,
   } as any)
@@ -203,8 +244,13 @@ export interface FileRoutesByFullPath {
   '/setup/complete': typeof AuthenticatedStandaloneSetupCompleteRoute
   '/settings/organization': typeof AuthenticatedFrameWorkspaceSettingsOrganizationRouteRouteWithChildren
   '/settings/user/invitations': typeof AuthenticatedFrameSettingsUserInvitationsRoute
+  '/settings/user/preferences': typeof AuthenticatedFrameSettingsUserPreferencesRoute
   '/tasks/': typeof AuthenticatedFrameWorkspaceTasksIndexRoute
   '/settings/user/': typeof AuthenticatedFrameSettingsUserIndexRoute
+  '/settings/organization/conversations': typeof AuthenticatedFrameWorkspaceSettingsOrganizationConversationsRoute
+  '/settings/organization/invitations': typeof AuthenticatedFrameWorkspaceSettingsOrganizationInvitationsRoute
+  '/settings/organization/members': typeof AuthenticatedFrameWorkspaceSettingsOrganizationMembersRoute
+  '/settings/organization/sharing': typeof AuthenticatedFrameWorkspaceSettingsOrganizationSharingRoute
   '/settings/organization/': typeof AuthenticatedFrameWorkspaceSettingsOrganizationIndexRoute
 }
 export interface FileRoutesByTo {
@@ -224,8 +270,13 @@ export interface FileRoutesByTo {
   '/accept-sharing/$invitationId': typeof AuthenticatedStandaloneAcceptSharingInvitationIdRoute
   '/setup/complete': typeof AuthenticatedStandaloneSetupCompleteRoute
   '/settings/user/invitations': typeof AuthenticatedFrameSettingsUserInvitationsRoute
+  '/settings/user/preferences': typeof AuthenticatedFrameSettingsUserPreferencesRoute
   '/tasks': typeof AuthenticatedFrameWorkspaceTasksIndexRoute
   '/settings/user': typeof AuthenticatedFrameSettingsUserIndexRoute
+  '/settings/organization/conversations': typeof AuthenticatedFrameWorkspaceSettingsOrganizationConversationsRoute
+  '/settings/organization/invitations': typeof AuthenticatedFrameWorkspaceSettingsOrganizationInvitationsRoute
+  '/settings/organization/members': typeof AuthenticatedFrameWorkspaceSettingsOrganizationMembersRoute
+  '/settings/organization/sharing': typeof AuthenticatedFrameWorkspaceSettingsOrganizationSharingRoute
   '/settings/organization': typeof AuthenticatedFrameWorkspaceSettingsOrganizationIndexRoute
 }
 export interface FileRoutesById {
@@ -254,8 +305,13 @@ export interface FileRoutesById {
   '/_authenticated/_standalone/setup/complete': typeof AuthenticatedStandaloneSetupCompleteRoute
   '/_authenticated/_frame/_workspace/settings/organization': typeof AuthenticatedFrameWorkspaceSettingsOrganizationRouteRouteWithChildren
   '/_authenticated/_frame/settings/user/invitations': typeof AuthenticatedFrameSettingsUserInvitationsRoute
+  '/_authenticated/_frame/settings/user/preferences': typeof AuthenticatedFrameSettingsUserPreferencesRoute
   '/_authenticated/_frame/_workspace/tasks/': typeof AuthenticatedFrameWorkspaceTasksIndexRoute
   '/_authenticated/_frame/settings/user/': typeof AuthenticatedFrameSettingsUserIndexRoute
+  '/_authenticated/_frame/_workspace/settings/organization/conversations': typeof AuthenticatedFrameWorkspaceSettingsOrganizationConversationsRoute
+  '/_authenticated/_frame/_workspace/settings/organization/invitations': typeof AuthenticatedFrameWorkspaceSettingsOrganizationInvitationsRoute
+  '/_authenticated/_frame/_workspace/settings/organization/members': typeof AuthenticatedFrameWorkspaceSettingsOrganizationMembersRoute
+  '/_authenticated/_frame/_workspace/settings/organization/sharing': typeof AuthenticatedFrameWorkspaceSettingsOrganizationSharingRoute
   '/_authenticated/_frame/_workspace/settings/organization/': typeof AuthenticatedFrameWorkspaceSettingsOrganizationIndexRoute
 }
 export interface FileRouteTypes {
@@ -279,8 +335,13 @@ export interface FileRouteTypes {
     | '/setup/complete'
     | '/settings/organization'
     | '/settings/user/invitations'
+    | '/settings/user/preferences'
     | '/tasks/'
     | '/settings/user/'
+    | '/settings/organization/conversations'
+    | '/settings/organization/invitations'
+    | '/settings/organization/members'
+    | '/settings/organization/sharing'
     | '/settings/organization/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -300,8 +361,13 @@ export interface FileRouteTypes {
     | '/accept-sharing/$invitationId'
     | '/setup/complete'
     | '/settings/user/invitations'
+    | '/settings/user/preferences'
     | '/tasks'
     | '/settings/user'
+    | '/settings/organization/conversations'
+    | '/settings/organization/invitations'
+    | '/settings/organization/members'
+    | '/settings/organization/sharing'
     | '/settings/organization'
   id:
     | '__root__'
@@ -329,8 +395,13 @@ export interface FileRouteTypes {
     | '/_authenticated/_standalone/setup/complete'
     | '/_authenticated/_frame/_workspace/settings/organization'
     | '/_authenticated/_frame/settings/user/invitations'
+    | '/_authenticated/_frame/settings/user/preferences'
     | '/_authenticated/_frame/_workspace/tasks/'
     | '/_authenticated/_frame/settings/user/'
+    | '/_authenticated/_frame/_workspace/settings/organization/conversations'
+    | '/_authenticated/_frame/_workspace/settings/organization/invitations'
+    | '/_authenticated/_frame/_workspace/settings/organization/members'
+    | '/_authenticated/_frame/_workspace/settings/organization/sharing'
     | '/_authenticated/_frame/_workspace/settings/organization/'
   fileRoutesById: FileRoutesById
 }
@@ -524,6 +595,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFrameSettingsUserInvitationsRouteImport
       parentRoute: typeof AuthenticatedFrameSettingsUserRouteRoute
     }
+    '/_authenticated/_frame/settings/user/preferences': {
+      id: '/_authenticated/_frame/settings/user/preferences'
+      path: '/preferences'
+      fullPath: '/settings/user/preferences'
+      preLoaderRoute: typeof AuthenticatedFrameSettingsUserPreferencesRouteImport
+      parentRoute: typeof AuthenticatedFrameSettingsUserRouteRoute
+    }
     '/_authenticated/_frame/_workspace/settings/organization/': {
       id: '/_authenticated/_frame/_workspace/settings/organization/'
       path: '/'
@@ -531,15 +609,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFrameWorkspaceSettingsOrganizationIndexRouteImport
       parentRoute: typeof AuthenticatedFrameWorkspaceSettingsOrganizationRouteRoute
     }
+    '/_authenticated/_frame/_workspace/settings/organization/conversations': {
+      id: '/_authenticated/_frame/_workspace/settings/organization/conversations'
+      path: '/conversations'
+      fullPath: '/settings/organization/conversations'
+      preLoaderRoute: typeof AuthenticatedFrameWorkspaceSettingsOrganizationConversationsRouteImport
+      parentRoute: typeof AuthenticatedFrameWorkspaceSettingsOrganizationRouteRoute
+    }
+    '/_authenticated/_frame/_workspace/settings/organization/invitations': {
+      id: '/_authenticated/_frame/_workspace/settings/organization/invitations'
+      path: '/invitations'
+      fullPath: '/settings/organization/invitations'
+      preLoaderRoute: typeof AuthenticatedFrameWorkspaceSettingsOrganizationInvitationsRouteImport
+      parentRoute: typeof AuthenticatedFrameWorkspaceSettingsOrganizationRouteRoute
+    }
+    '/_authenticated/_frame/_workspace/settings/organization/members': {
+      id: '/_authenticated/_frame/_workspace/settings/organization/members'
+      path: '/members'
+      fullPath: '/settings/organization/members'
+      preLoaderRoute: typeof AuthenticatedFrameWorkspaceSettingsOrganizationMembersRouteImport
+      parentRoute: typeof AuthenticatedFrameWorkspaceSettingsOrganizationRouteRoute
+    }
+    '/_authenticated/_frame/_workspace/settings/organization/sharing': {
+      id: '/_authenticated/_frame/_workspace/settings/organization/sharing'
+      path: '/sharing'
+      fullPath: '/settings/organization/sharing'
+      preLoaderRoute: typeof AuthenticatedFrameWorkspaceSettingsOrganizationSharingRouteImport
+      parentRoute: typeof AuthenticatedFrameWorkspaceSettingsOrganizationRouteRoute
+    }
   }
 }
 
 interface AuthenticatedFrameWorkspaceSettingsOrganizationRouteRouteChildren {
+  AuthenticatedFrameWorkspaceSettingsOrganizationConversationsRoute: typeof AuthenticatedFrameWorkspaceSettingsOrganizationConversationsRoute
+  AuthenticatedFrameWorkspaceSettingsOrganizationInvitationsRoute: typeof AuthenticatedFrameWorkspaceSettingsOrganizationInvitationsRoute
+  AuthenticatedFrameWorkspaceSettingsOrganizationMembersRoute: typeof AuthenticatedFrameWorkspaceSettingsOrganizationMembersRoute
+  AuthenticatedFrameWorkspaceSettingsOrganizationSharingRoute: typeof AuthenticatedFrameWorkspaceSettingsOrganizationSharingRoute
   AuthenticatedFrameWorkspaceSettingsOrganizationIndexRoute: typeof AuthenticatedFrameWorkspaceSettingsOrganizationIndexRoute
 }
 
 const AuthenticatedFrameWorkspaceSettingsOrganizationRouteRouteChildren: AuthenticatedFrameWorkspaceSettingsOrganizationRouteRouteChildren =
   {
+    AuthenticatedFrameWorkspaceSettingsOrganizationConversationsRoute:
+      AuthenticatedFrameWorkspaceSettingsOrganizationConversationsRoute,
+    AuthenticatedFrameWorkspaceSettingsOrganizationInvitationsRoute:
+      AuthenticatedFrameWorkspaceSettingsOrganizationInvitationsRoute,
+    AuthenticatedFrameWorkspaceSettingsOrganizationMembersRoute:
+      AuthenticatedFrameWorkspaceSettingsOrganizationMembersRoute,
+    AuthenticatedFrameWorkspaceSettingsOrganizationSharingRoute:
+      AuthenticatedFrameWorkspaceSettingsOrganizationSharingRoute,
     AuthenticatedFrameWorkspaceSettingsOrganizationIndexRoute:
       AuthenticatedFrameWorkspaceSettingsOrganizationIndexRoute,
   }
@@ -578,6 +696,7 @@ const AuthenticatedFrameWorkspaceRouteRouteWithChildren =
 
 interface AuthenticatedFrameSettingsUserRouteRouteChildren {
   AuthenticatedFrameSettingsUserInvitationsRoute: typeof AuthenticatedFrameSettingsUserInvitationsRoute
+  AuthenticatedFrameSettingsUserPreferencesRoute: typeof AuthenticatedFrameSettingsUserPreferencesRoute
   AuthenticatedFrameSettingsUserIndexRoute: typeof AuthenticatedFrameSettingsUserIndexRoute
 }
 
@@ -585,6 +704,8 @@ const AuthenticatedFrameSettingsUserRouteRouteChildren: AuthenticatedFrameSettin
   {
     AuthenticatedFrameSettingsUserInvitationsRoute:
       AuthenticatedFrameSettingsUserInvitationsRoute,
+    AuthenticatedFrameSettingsUserPreferencesRoute:
+      AuthenticatedFrameSettingsUserPreferencesRoute,
     AuthenticatedFrameSettingsUserIndexRoute:
       AuthenticatedFrameSettingsUserIndexRoute,
   }

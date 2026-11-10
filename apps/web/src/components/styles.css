@@ -46,11 +46,22 @@
   --color-warning: var(--warning);
   --color-rail: var(--rail);
   --color-rail-foreground: var(--rail-foreground);
+  --color-destructive-solid: var(--destructive-solid);
+  --color-row-hover: var(--row-hover);
+  --color-row-selected: var(--row-selected);
+  --color-row-selected-foreground: var(--row-selected-foreground);
+  /* Motion: strong ease-out for every enter, exit, and press. See apps/web/DESIGN.md § 6. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --shadow-surface: var(--elevation-surface);
   --shadow-raised: var(--elevation-raised);
   --shadow-floating: var(--elevation-floating);
   --spacing-overlay-width: calc(100% - 2rem);
   --spacing-overlay-height: calc(100dvh - 2rem);
+  /* The crop preview shrinks on short windows so the dialog footer stays visible. */
+  --spacing-crop-preview: min(20rem, max(5rem, calc(100dvh - 22rem)));
+  /* The desktop title-bar search results: 32rem, with a 12px margin on narrow windows. */
+  --spacing-search-panel: min(32rem, calc(100vw - 24px));
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -99,6 +110,10 @@
   --warning: oklch(0.6 0.15 62);
   --rail: oklch(0.94 0.012 275);
   --rail-foreground: oklch(0.38 0.025 275);
+  --destructive-solid: oklch(0.54 0.21 27);
+  --row-hover: oklch(0.25 0.03 275 / 5%);
+  --row-selected: oklch(0.92 0.035 280);
+  --row-selected-foreground: oklch(0.36 0.15 280);
   --surface-highlight: oklch(1 0 0 / 25%);
   --elevation-surface: 0 1px 2px oklch(0.2 0.03 275 / 5%);
   --elevation-raised: 0 1px 3px oklch(0.2 0.03 275 / 6%), 0 4px 12px -4px oklch(0.2 0.03 275 / 8%);
@@ -144,6 +159,10 @@
   --warning: oklch(0.82 0.14 80);
   --rail: oklch(0.155 0.017 275);
   --rail-foreground: oklch(0.94 0.014 280);
+  --destructive-solid: oklch(0.56 0.2 25);
+  --row-hover: oklch(1 0 0 / 5%);
+  --row-selected: oklch(0.34 0.06 280);
+  --row-selected-foreground: oklch(0.97 0.01 280);
   --surface-highlight: oklch(1 0 0 / 2%);
   --elevation-surface: 0 1px 2px oklch(0 0 0 / 12%);
   --elevation-raised: 0 2px 6px oklch(0 0 0 / 16%), 0 8px 20px -8px oklch(0 0 0 / 25%);
@@ -184,6 +203,12 @@
     font-optical-sizing: auto;
     color-scheme: light;
   }
+}
+
+/* Spans the main page outlet (or the container without one), with the 0.75rem page gutter. */
+@utility inset-x-page-outlet {
+  left: calc(anchor(--page-outlet left, 0px) + 0.75rem);
+  right: calc(anchor(--page-outlet right, 0px) + 0.75rem);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 
-import { UserSettingsLayout } from "@/components/settings/user-settings-layout";
+import { SettingsShell } from "@/components/settings/settings-shell";
 
 export const Route = createFileRoute("/_authenticated/_frame/settings/user")({
   component: UserSettingsRoute,
@@ -8,8 +8,8 @@ export const Route = createFileRoute("/_authenticated/_frame/settings/user")({
 
 function UserSettingsRoute() {
   return (
-    <UserSettingsLayout>
+    <SettingsShell>
       <Outlet />
-    </UserSettingsLayout>
+    </SettingsShell>
   );
 }

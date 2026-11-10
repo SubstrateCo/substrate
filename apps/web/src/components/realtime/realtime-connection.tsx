@@ -81,12 +81,8 @@ export function RealtimeConnection({
   if (status === "stale") statusText = "Live updates connected, but some data failed to refresh.";
   const notification = (
     <div
-      className={`${container ? "absolute" : "fixed"} pointer-events-none bottom-3 z-50 flex justify-center`}
       // Center on the main page outlet when one is rendered; otherwise span the container.
-      style={{
-        left: "calc(anchor(--page-outlet left, 0px) + 0.75rem)",
-        right: "calc(anchor(--page-outlet right, 0px) + 0.75rem)",
-      }}
+      className={`${container ? "absolute" : "fixed"} pointer-events-none inset-x-page-outlet bottom-3 z-50 flex justify-center`}
     >
       <Alert role="status" className="pointer-events-auto w-max max-w-full">
         <AlertDescription>{statusText}</AlertDescription>

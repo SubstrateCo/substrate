@@ -71,6 +71,8 @@ export function ReferenceEditor({
     editorProps: {
       attributes: {
         role: "textbox",
+        // Lets the surrounding InputGroup draw its focus ring.
+        "data-slot": "input-group-control",
         "aria-label": label,
         "aria-multiline": "true",
         "aria-autocomplete": "list",

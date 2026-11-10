@@ -69,15 +69,21 @@ for (const kind of ["dm", "channel"] as const) {
         .getByRole("button", { name: "Create channel", exact: true })
         .click();
       await sender.page.getByLabel("Channel name").fill(name);
-      await sender.page
-        .getByLabel("Add people (optional)", { exact: true })
-        .fill(actors.partner.email);
+      const people = sender.page.getByLabel("Members", { exact: true });
+      await people.fill(actors.partner.email);
+      await people.press("Enter");
       await sender.page.getByLabel("Make this channel private").check();
     } else {
       await sender.page.getByRole("button", { name: "New message", exact: true }).click();
       await sender.page.getByRole("option", { name: /^New direct message/ }).click();
-      await sender.page.getByLabel("To", { exact: true }).fill(actors.partner.email);
+      const to = sender.page.getByLabel("To", { exact: true });
+      await to.fill(actors.partner.email);
+      await to.press("Enter");
     }
+    // The partner is outside the workspace, so the picker offers "Invite <email>".
+    await expect(
+      sender.page.getByRole("button", { name: `Remove ${actors.partner.email}`, exact: true }),
+    ).toBeVisible();
     const created = sender.page.waitForResponse(
       (response) =>
         new URL(response.url()).pathname === "/api/v1/messaging/conversations" &&
@@ -85,7 +91,7 @@ for (const kind of ["dm", "channel"] as const) {
     );
     await sender.page
       .getByRole("checkbox", {
-        name: "For external invitations, I approve sharing the full conversation history.",
+        name: "Let invited people read the full conversation history",
         exact: true,
       })
       .check();

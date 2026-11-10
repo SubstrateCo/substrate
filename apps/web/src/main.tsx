@@ -9,7 +9,12 @@ import { DesktopFrame } from "@/components/desktop/desktop-frame";
 import { ScrollbarVisibility } from "@/components/scroll/scrollbar-visibility";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { schemaIssueMessage } from "@/lib/forms/validation-messages";
+import { z } from "zod";
 import "./styles.css";
+
+// Schema issues without their own message use product copy, never library text.
+z.config({ customError: schemaIssueMessage });
 
 const router = getRouter();
 

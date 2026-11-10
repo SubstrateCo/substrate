@@ -1,6 +1,6 @@
 import type { AgentRequestPayload } from "@startup-os/contracts/agent-work";
 
-import { Button } from "@/components/ui/button";
+import { PendingButton } from "@/components/feedback/pending-button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,13 +13,15 @@ type Approval = Extract<AgentRequestPayload, { type: "approval" }>;
 
 export function ApprovalRequest({
   payload,
-  pending,
+  pendingOptionId,
   onRespond,
 }: {
   payload: Approval;
-  pending: boolean;
+  /** The option being sent, if any. Every choice waits while one is sent. */
+  pendingOptionId?: string;
   onRespond: (optionId: string) => void;
 }) {
+  const pending = pendingOptionId !== undefined;
   // Approve and decline stay visible. Other choices, such as "Always allow", go in a menu.
   const styled = [
     ...payload.options.filter((option) => option.style === "approve"),
@@ -27,6 +29,7 @@ export function ApprovalRequest({
   ];
   const primary = styled.length ? styled : payload.options.slice(0, 2);
   const more = payload.options.filter((option) => !primary.includes(option));
+  const sendingMore = more.find((option) => option.id === pendingOptionId);
   // The card around this shows the title.
   return (
     <div className="grid gap-2.5">
@@ -37,24 +40,33 @@ export function ApprovalRequest({
       )}
       <div className="flex flex-wrap gap-2">
         {primary.map((option) => (
-          <Button
+          <PendingButton
             key={option.id}
             type="button"
             size="sm"
             variant={option.style === "approve" ? "default" : "outline"}
             disabled={pending}
+            pending={option.id === pendingOptionId}
+            pendingLabel="Sending…"
             onClick={() => onRespond(option.id)}
           >
             {option.label}
-          </Button>
+          </PendingButton>
         ))}
         {more.length > 0 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" size="sm" variant="ghost" disabled={pending}>
+              <PendingButton
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={pending}
+                pending={!!sendingMore}
+                pendingLabel={`Sending ${sendingMore?.label ?? ""}…`}
+              >
                 More
                 <ChevronDown aria-hidden="true" />
-              </Button>
+              </PendingButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
               {more.map((option) => (

@@ -1,69 +1,106 @@
-import { taskStatusLabels } from "@startup-os/contracts/tasks";
+import { taskStatusLabels, type TaskStatus } from "@startup-os/contracts/tasks";
 
-import { Button } from "../../ui/button";
+import { TaskAssigneeAvatar } from "../task-cues/task-assignee-avatar";
+import { taskPriorityLabels } from "../task-cues/task-labels";
 import { TaskPriorityIcon } from "../task-cues/task-priority-icon";
-import { TaskStatusIcon } from "../task-cues/task-status-icon";
 import type { ProjectDetail, Task } from "../types";
-import { Tag } from "@/components/feedback/tag";
-import { CornerDownRight, UserRound } from "lucide-react";
+import { TaskStatusMenu } from "./task-status-menu";
+import { DueDate } from "@/components/time/due-date";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "cn";
+import { CornerDownRight } from "lucide-react";
 
+/**
+ * One 36px task row: status (a menu for editors), title, parent, then priority, due date, and
+ * assignee in fixed columns so they line up down the list.
+ */
 export function TaskListItem({
   task,
   assignee,
   parentTitle,
   selected,
   onSelect,
+  onStatusChange,
 }: {
   task: Task;
   assignee?: ProjectDetail["actors"][number];
   parentTitle?: string;
   selected: boolean;
   onSelect: () => void;
+  onStatusChange?: (status: TaskStatus) => void;
 }) {
+  const closed = task.status === "completed" || task.status === "canceled";
+  const assigneeName = task.assigneeActorEntityId ? (assignee?.name ?? "Former member") : undefined;
   return (
-    <li>
-      <Button
-        variant="ghost"
-        size="selection"
-        className="relative w-full justify-start text-left whitespace-normal"
-        aria-pressed={selected}
+    <li
+      data-selected={selected || undefined}
+      className={cn(
+        "flex h-9 items-center gap-1 pr-6 pl-5 text-sm",
+        selected
+          ? "bg-row-selected text-row-selected-foreground"
+          : "hover:bg-row-hover has-focus-visible:bg-row-hover",
+      )}
+    >
+      <TaskStatusMenu status={task.status} title={task.title} onChange={onStatusChange} />
+      <button
+        type="button"
+        aria-current={selected || undefined}
         onClick={onSelect}
+        className="flex h-full min-w-0 flex-1 items-center gap-3 rounded-sm pl-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset"
       >
-        <span className="flex w-full min-w-0 items-center gap-3">
-          <span className="flex min-w-0 flex-1 items-center gap-2">
-            <span className="sr-only">{taskStatusLabels[task.status]}: </span>
-            <TaskStatusIcon status={task.status} />
-            <span className="min-w-0">
-              <span className="block truncate font-normal" title={task.title}>
-                {task.title}
-              </span>
-              {task.parentTaskEntityId && (
-                <span className="flex items-center gap-1 truncate text-xs text-muted-foreground">
-                  <CornerDownRight aria-hidden="true" className="size-3 shrink-0" />
-                  Subtask of {parentTitle ?? "archived task"}
-                </span>
-              )}
+        <span className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="sr-only">{taskStatusLabels[task.status]}: </span>
+          <span
+            className={cn(
+              "truncate",
+              selected && "font-medium",
+              closed && !selected && "text-muted-foreground",
+            )}
+            title={task.title}
+          >
+            {task.title}
+          </span>
+          {task.parentTaskEntityId && (
+            <span className="hidden min-w-0 shrink items-center gap-1 text-xs text-muted-foreground @md:flex">
+              <CornerDownRight aria-hidden="true" className="size-3 shrink-0" />
+              <span className="sr-only">, subtask of </span>
+              <span className="truncate">{parentTitle ?? "a task you can't open"}</span>
             </span>
-          </span>
-          <span className="flex w-20 shrink-0 items-center gap-1.5 text-xs whitespace-nowrap capitalize @xl:w-24">
-            <TaskPriorityIcon priority={task.priority} />
-            <span>
-              {task.priority === "none" ? "No priority" : task.priority}
-              <span className="sr-only"> priority</span>
-            </span>
-          </span>
-          <span className="hidden w-32 min-w-0 shrink-0 items-center gap-1.5 text-xs text-muted-foreground @xl:flex">
-            <UserRound aria-hidden="true" className="size-3.5 shrink-0" />
-            <span className="truncate">
-              {task.assigneeActorEntityId ? (assignee?.name ?? "Former member") : "Unassigned"}
-            </span>
-            {assignee?.type === "agent" && <Tag>Agent</Tag>}
-          </span>
-          <span className="hidden w-24 shrink-0 text-xs text-muted-foreground tabular-nums @xl:block">
-            {task.dueDate ? <time dateTime={task.dueDate}>{task.dueDate}</time> : "No due date"}
-          </span>
+          )}
         </span>
-      </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="flex size-5 shrink-0 items-center justify-center">
+              <TaskPriorityIcon priority={task.priority} />
+              <span className="sr-only">, {taskPriorityLabels[task.priority]}</span>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>{taskPriorityLabels[task.priority]}</TooltipContent>
+        </Tooltip>
+        <span className="hidden w-16 shrink-0 justify-end text-xs text-muted-foreground @sm:flex">
+          {task.dueDate && (
+            <>
+              <span className="sr-only">, due </span>
+              <DueDate value={task.dueDate} />
+            </>
+          )}
+        </span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="flex shrink-0">
+              <TaskAssigneeAvatar name={assigneeName} type={assignee?.type} />
+              <span className="sr-only">
+                , {assigneeName ? `assigned to ${assigneeName}` : "unassigned"}
+              </span>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            {assigneeName
+              ? `${assigneeName}${assignee?.type === "agent" ? " (agent)" : ""}`
+              : "Unassigned"}
+          </TooltipContent>
+        </Tooltip>
+      </button>
     </li>
   );
 }

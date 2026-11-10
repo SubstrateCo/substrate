@@ -1,22 +1,20 @@
 import { AuthFrame } from "@/components/auth/auth-frame";
+import { AuthLink } from "@/components/auth/auth-link";
 import { DesktopInstall } from "@/components/onboarding/desktop-install";
 import { authHref } from "@/lib/auth/navigation";
 
 export function DownloadScreen({ destination }: { destination: string }) {
   return (
     <AuthFrame
-      title="Get Startup OS"
-      description="Set up your workspace in the browser, then continue on Windows."
+      title="Startup OS for desktop"
+      description="Messages, docs, tasks, and agents for your team in one app."
+      footer={
+        <>
+          New to Startup OS? <AuthLink href="/">Create an organization</AuthLink>
+        </>
+      }
     >
-      <DesktopInstall destination={destination} />
-      <div className="flex flex-wrap gap-4 text-sm">
-        <a className="underline" href={authHref("/login", destination)}>
-          Continue setup in browser
-        </a>
-        <a className="underline" href="/">
-          Create an organization
-        </a>
-      </div>
+      <DesktopInstall destination={destination} browserHref={authHref("/login", destination)} />
     </AuthFrame>
   );
 }

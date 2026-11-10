@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Separator } from "../ui/separator";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { UserMenuTheme } from "./user-menu-theme";
 import { initials } from "@/lib/people/initials";
 import { Building2, Settings } from "lucide-react";
@@ -38,17 +39,21 @@ export function UserMenu({
   };
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="avatar"
-          size="icon"
-          className="overflow-hidden"
-          aria-label={`Signed in as ${name}`}
-          title={name}
-        >
-          {avatar}
-        </Button>
-      </PopoverTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <Button
+              variant="avatar"
+              size="icon"
+              className="overflow-hidden"
+              aria-label={`Signed in as ${name}`}
+            >
+              {avatar}
+            </Button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent side="right">{name}</TooltipContent>
+      </Tooltip>
       <PopoverContent
         aria-label="User actions"
         side="right"

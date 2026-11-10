@@ -11,7 +11,7 @@ export function CopyLink({
 }) {
   return (
     <CopyButton
-      size={grouped ? "icon" : "icon-xs"}
+      size={grouped ? "icon-sm" : "icon-xs"}
       grouped={grouped}
       label={label}
       onCopy={() => navigator.clipboard.writeText(new URL(href, window.location.origin).href)}

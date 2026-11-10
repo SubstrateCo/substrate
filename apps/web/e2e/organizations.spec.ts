@@ -62,8 +62,7 @@ test("an owner invites a teammate, who accepts without receiving project access 
   client,
 }) => {
   const [owner, invitee] = await Promise.all([client(actors.sender), client(account)]);
-  await visit(owner, undefined, "/settings/organization");
-  await owner.page.getByRole("tab", { name: "Invitations", exact: true }).click();
+  await visit(owner, undefined, "/settings/organization/invitations");
   await owner.page.getByLabel("Email", { exact: true }).fill(account.email);
   await owner.page.getByRole("button", { name: "Send invitation", exact: true }).click();
   const link = await new Mailpit(account.request).link(

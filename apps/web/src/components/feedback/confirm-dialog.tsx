@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
 
+import { FormMessage } from "@/components/auth/form-message";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -15,7 +17,10 @@ type ConfirmAction =
   | { confirmLabel?: undefined; pendingLabel?: undefined; onConfirm?: undefined }
   | { confirmLabel: string; pendingLabel: string; onConfirm: () => void };
 
-/** Without confirmLabel, the dialog only informs and offers Close. */
+/**
+ * Without confirmLabel, the dialog only informs and offers Close. A destructive confirm uses the
+ * solid red button; give it a specific verb, such as "Delete channel" or "Remove Bob".
+ */
 export function ConfirmDialog({
   title,
   description,
@@ -26,6 +31,7 @@ export function ConfirmDialog({
   confirmDisabled = false,
   pending = false,
   error,
+  errorDescription,
   onConfirm,
   onClose,
   onRestoreFocus,
@@ -38,6 +44,8 @@ export function ConfirmDialog({
   confirmDisabled?: boolean;
   pending?: boolean;
   error?: Error | null;
+  /** Shown when the error is not a reviewed, user-facing message. */
+  errorDescription?: string;
   onClose: () => void;
   /** Focus a specific element on close instead of the element that opened the dialog. */
   onRestoreFocus?: () => void;
@@ -61,11 +69,11 @@ export function ConfirmDialog({
           <DialogTitle className="wrap-anywhere">{title}</DialogTitle>
           <DialogDescription className="wrap-anywhere">{description}</DialogDescription>
         </DialogHeader>
-        {children}
-        {error && (
-          <p role="alert" className="text-sm text-destructive">
-            {error.message}
-          </p>
+        {(children || error) && (
+          <DialogBody>
+            {children}
+            <FormMessage error={error} errorDescription={errorDescription} />
+          </DialogBody>
         )}
         <DialogFooter>
           <Button variant="outline" disabled={pending} onClick={onClose}>

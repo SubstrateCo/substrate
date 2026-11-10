@@ -1,19 +1,19 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
+import { ContentNotice } from "../../feedback/content-notice";
 import { isAccessFailure } from "../../feedback/request-failure";
 import { Button } from "../../ui/button";
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "../../ui/empty";
 import type { Project } from "../types";
 import { ProjectSidebar } from "./project-sidebar";
 import { PageContent, PageLayout } from "@/components/layout/page-layout";
-import { FolderKanban } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { FolderKanban, Unlink } from "lucide-react";
 
 export function TasksWorkspace({
   projects,
@@ -30,7 +30,7 @@ export function TasksWorkspace({
   error?: Error | null;
   onRetry: () => void;
   renderCreate: (onSaved: (id: string) => void, onCancel: () => void) => ReactNode;
-  /** The selected project's pane. */
+  /** The selected project's content pane and task inspector. */
   project: ReactNode;
   selectedProjectId?: string;
   onSelectProject: (id: string) => void;
@@ -38,17 +38,6 @@ export function TasksWorkspace({
   const [creating, setCreating] = useState(false);
   const createTrigger = useRef<HTMLElement | null>(null);
   const createProjectButton = useRef<HTMLButtonElement>(null);
-  const emptyCreateButton = useRef<HTMLButtonElement>(null);
-  const wasCreating = useRef(false);
-  useEffect(() => {
-    if (wasCreating.current && !creating) {
-      (createTrigger.current?.isConnected
-        ? createTrigger.current
-        : (emptyCreateButton.current ?? createProjectButton.current)
-      )?.focus();
-    }
-    wasCreating.current = creating;
-  }, [creating]);
   const openCreate = () => {
     createTrigger.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -63,7 +52,7 @@ export function TasksWorkspace({
     <PageLayout id="tasks" aria-label="Tasks application">
       <ProjectSidebar
         projects={visible}
-        selectedId={creating ? undefined : selectedProjectId}
+        selectedId={selectedProjectId}
         loading={loading}
         error={error}
         onRetry={onRetry}
@@ -71,36 +60,42 @@ export function TasksWorkspace({
         createButtonRef={createProjectButton}
         onSelect={selectProject}
       />
-      <PageContent>
-        {creating && (
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {renderCreate(selectProject, () => setCreating(false))}
-          </div>
-        )}
-        {!creating && selectedProjectId && project}
-        {!creating && !selectedProjectId && !loading && !error && (
-          <Empty className="min-h-0 flex-1">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <FolderKanban aria-hidden="true" />
-              </EmptyMedia>
-              <EmptyTitle>
-                <h2>{!visible.length ? "No projects yet" : "Project unavailable"}</h2>
-              </EmptyTitle>
-              <EmptyDescription>
-                {!visible.length
-                  ? "Create a project to organize tasks, subtasks, and comments."
-                  : "This project was removed or you no longer have access. Choose another project or create one."}
-              </EmptyDescription>
-            </EmptyHeader>
-            <EmptyContent>
-              <Button ref={emptyCreateButton} onClick={openCreate}>
-                Create project
-              </Button>
-            </EmptyContent>
-          </Empty>
-        )}
-      </PageContent>
+      {selectedProjectId && project}
+      {!selectedProjectId && (
+        <PageContent>
+          {!loading && !error && (
+            <ContentNotice
+              icon={visible.length ? Unlink : FolderKanban}
+              title={visible.length ? "Project unavailable" : "No projects yet"}
+              description={
+                visible.length
+                  ? "This project was removed or you no longer have access. Choose another project."
+                  : "Create a project to plan work with tasks, subtasks, and comments."
+              }
+              action={!visible.length && <Button onClick={openCreate}>New project</Button>}
+            />
+          )}
+        </PageContent>
+      )}
+      <Dialog open={creating} onOpenChange={setCreating}>
+        <DialogContent
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            (createTrigger.current?.isConnected
+              ? createTrigger.current
+              : createProjectButton.current
+            )?.focus();
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>New project</DialogTitle>
+            <DialogDescription>
+              Projects start private. Share one to give people access to all its tasks.
+            </DialogDescription>
+          </DialogHeader>
+          {creating && renderCreate(selectProject, () => setCreating(false))}
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
 }

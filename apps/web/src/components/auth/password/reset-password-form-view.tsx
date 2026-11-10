@@ -1,11 +1,12 @@
 import { useState } from "react";
 
-import { ContentNotice } from "../../feedback/content-notice";
 import { PendingButton } from "../../feedback/pending-button";
 import { useNativeValidation } from "../../forms/use-native-validation";
+import { Button } from "../../ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "../../ui/field";
 import { Input } from "../../ui/input";
 import { AuthFrame } from "../auth-frame";
+import { AuthLink } from "../auth-link";
 import { FormMessage } from "../form-message";
 
 export function ResetPasswordForm({
@@ -27,90 +28,108 @@ export function ResetPasswordForm({
 }) {
   const validation = useNativeValidation();
   const [mismatch, setMismatch] = useState("");
+  const passwordError = validation.errors.password;
   const confirmError = validation.errors.confirm || mismatch;
+  const backToSignIn = <AuthLink href={loginHref}>Back to sign in</AuthLink>;
+
+  if (invalid)
+    return (
+      <AuthFrame
+        title="This reset link doesn't work"
+        description="It may have expired or already been used. Request a new one to choose a password."
+        footer={backToSignIn}
+      >
+        <Button asChild size="lg" className="w-full">
+          <a href={requestResetHref}>Request a new link</a>
+        </Button>
+      </AuthFrame>
+    );
+
+  if (success)
+    return (
+      <AuthFrame
+        title="Password changed"
+        description="Your password was changed. You can now sign in."
+      >
+        <Button asChild size="lg" className="w-full">
+          <a href={loginHref}>Sign in</a>
+        </Button>
+      </AuthFrame>
+    );
+
   return (
-    <AuthFrame title="Choose a new password" description="Use at least 8 characters.">
-      {invalid && (
-        <ContentNotice
-          title="Reset link unavailable"
-          description="This reset link is missing, invalid, or expired. Request a new link."
-        />
-      )}
-      {!invalid && success && (
+    <AuthFrame
+      title="Choose a new password"
+      description="Enter a new password for your account."
+      footer={
         <>
-          <FormMessage message="Your password was changed. You can now sign in." />
-          <a className="block underline" href={loginHref}>
-            Sign in
-          </a>
+          Link not working? <AuthLink href={requestResetHref}>Request a new link</AuthLink>
         </>
-      )}
-      {!invalid && !success && (
-        <form
-          className="space-y-4"
-          onInvalidCapture={validation.onInvalid}
-          onInputCapture={(event) => {
-            validation.onInput(event);
-            setMismatch("");
-          }}
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (pending) return;
-            const form = new FormData(event.currentTarget);
-            if (form.get("password") !== form.get("confirm")) {
-              setMismatch("The passwords do not match.");
-              event.currentTarget.querySelector<HTMLInputElement>("#confirm")?.focus();
-              return;
-            }
-            onSubmit(form);
-          }}
-        >
-          <Field data-invalid={Boolean(validation.errors.password)}>
-            <FieldLabel htmlFor="password">New password</FieldLabel>
-            <Input
-              {...validation.inputProps("password")}
-              aria-describedby={
-                validation.errors.password
-                  ? "password-description password-error"
-                  : "password-description"
-              }
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              minLength={8}
-              required
-            />
+      }
+    >
+      <form
+        className="space-y-4"
+        onInvalidCapture={validation.onInvalid}
+        onInputCapture={(event) => {
+          validation.onInput(event);
+          setMismatch("");
+        }}
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (pending) return;
+          const form = new FormData(event.currentTarget);
+          if (form.get("password") !== form.get("confirm")) {
+            setMismatch("The passwords don't match.");
+            event.currentTarget.querySelector<HTMLInputElement>("#confirm")?.focus();
+            return;
+          }
+          onSubmit(form);
+        }}
+      >
+        <Field data-invalid={Boolean(passwordError)}>
+          <FieldLabel htmlFor="password">New password</FieldLabel>
+          <Input
+            {...validation.inputProps("password")}
+            aria-describedby={passwordError ? "password-error" : "password-description"}
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="new-password"
+            minLength={8}
+            data-missing-message="Choose a new password."
+            required
+          />
+          {passwordError ? (
+            <FieldError id="password-error">{passwordError}</FieldError>
+          ) : (
             <FieldDescription id="password-description">
               Use at least 8 characters.
             </FieldDescription>
-            <FieldError id="password-error">{validation.errors.password}</FieldError>
-          </Field>
-          <Field data-invalid={Boolean(confirmError)}>
-            <FieldLabel htmlFor="confirm">Confirm password</FieldLabel>
-            <Input
-              aria-invalid={Boolean(confirmError)}
-              aria-describedby={confirmError ? "confirm-error" : undefined}
-              id="confirm"
-              name="confirm"
-              type="password"
-              autoComplete="new-password"
-              minLength={8}
-              required
-            />
-            <FieldError id="confirm-error">{confirmError}</FieldError>
-          </Field>
-          <PendingButton className="w-full" pending={pending} pendingLabel="Saving…">
-            Save new password
-          </PendingButton>
-          <FormMessage
-            error={error}
-            errorDescription="We couldn’t reset your password. Try again, or request a new reset link."
+          )}
+        </Field>
+        <Field data-invalid={Boolean(confirmError)}>
+          <FieldLabel htmlFor="confirm">Confirm password</FieldLabel>
+          <Input
+            aria-invalid={confirmError ? true : undefined}
+            aria-describedby={confirmError ? "confirm-error" : undefined}
+            id="confirm"
+            name="confirm"
+            type="password"
+            autoComplete="new-password"
+            minLength={8}
+            data-missing-message="Enter the new password again."
+            required
           />
-        </form>
-      )}
-      <a className="block text-sm underline" href={requestResetHref}>
-        Request a new reset link
-      </a>
+          <FieldError id="confirm-error">{confirmError}</FieldError>
+        </Field>
+        <FormMessage
+          error={error}
+          errorDescription="We couldn't reset your password. Try again, or request a new reset link."
+        />
+        <PendingButton className="w-full" size="lg" pending={pending} pendingLabel="Saving.">
+          Save new password
+        </PendingButton>
+      </form>
     </AuthFrame>
   );
 }

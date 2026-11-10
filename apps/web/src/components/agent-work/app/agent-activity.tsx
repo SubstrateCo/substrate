@@ -1,92 +1,83 @@
-import type { AgentStatusView } from "@startup-os/contracts/agent-work";
+import type { AgentTurnView, TurnOutcome } from "@startup-os/contracts/agent-work";
 import { liveTurnStatuses } from "@startup-os/contracts/agent-work";
 
-import { useInfiniteQuery } from "@tanstack/react-query";
-
-import type { ReactNode } from "react";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 import { NeedsAttention } from "../needs-attention";
-import { Routines } from "../routines/routines";
+import { hiddenConversation } from "../requests/proposal-preview";
 import { AgentActivityView, type ActivityRow } from "./agent-activity-view";
 import { useNow } from "@/hooks/use-now";
-import {
-  agentStatus,
-  noDesktopLabel,
-  sessionKindLabels,
-  turnStatus,
-} from "@/lib/agent-work/status";
+import { sessionKindLabels, silentLabel, turnStatus } from "@/lib/agent-work/status";
+import { conversationName } from "@/lib/messaging/conversations";
 import { agentActivityOptions } from "@/queries/agent-work/local";
+import { conversationsQueryOptions } from "@/queries/messaging/options";
 
-/**
- * One agent's activity. Local work is only on the agent's home desktop; other devices say where
- * to open it and show the status that desktop published.
- */
+const outcomeLabels: Record<TurnOutcome, string> = {
+  replied: "Replied",
+  silent: silentLabel,
+  asked: "Asked you a question",
+  proposed: "Proposed an action",
+};
+
+/** The conversation a turn answered or wrote to: its output first, then its newest source. */
+function placeOf(turn: AgentTurnView) {
+  const output = turn.outputs.filter((entry) => entry.kind === "message").at(-1);
+  if (output) return output.conversationId;
+  return turn.sourceMessages.at(-1)?.conversationId;
+}
+
+/** One agent's work on its home desktop, including silent, routine, and helper work. */
 export function AgentActivity({
   userId,
   organizationId,
   agentId,
   name,
-  homedHere,
-  status,
   selectedTurnId,
   onTranscript,
-  tab,
-  onTabChange,
-  settings,
 }: {
   userId: string;
   organizationId: string;
   agentId: string;
   name: string;
-  homedHere: boolean;
-  status?: AgentStatusView;
   selectedTurnId?: string;
   onTranscript: (turnId: string) => void;
-  tab: "activity" | "routines" | "settings";
-  onTabChange: (tab: "activity" | "routines" | "settings") => void;
-  settings: ReactNode;
 }) {
-  const activity = useInfiniteQuery({
-    ...agentActivityOptions(userId, organizationId, agentId),
-    enabled: homedHere,
-  });
+  const activity = useInfiniteQuery(agentActivityOptions(userId, organizationId, agentId));
+  const conversations = useQuery(conversationsQueryOptions(organizationId));
   const turns = activity.data?.pages.flatMap((page) => page.turns) ?? [];
   const now = useNow(turns.some((turn) => liveTurnStatuses.includes(turn.status)));
-  let unavailable: { title: string; description: string } | undefined;
-  if (!homedHere)
-    unavailable = status?.device
-      ? {
-          title: `Open on ${status.device.name}`,
-          description: `${name} runs on ${status.device.name}. Its activity, transcripts, and routines are stored there.`,
-        }
-      : {
-          title: noDesktopLabel,
-          description: "Choose a desktop in agent settings. Work waits until a desktop runs it.",
-        };
-  const rows: ActivityRow[] = turns.map((turn) => ({
-    id: turn.id,
-    kind: sessionKindLabels[turn.sessionKind],
-    unattended: turn.kind === "unattended",
-    status: turnStatus(turn, now),
-    createdAt: turn.createdAt,
-    selected: turn.id === selectedTurnId,
-    attention: turn.status === "needs_attention" && (
-      <NeedsAttention
-        userId={userId}
-        organizationId={organizationId}
-        turn={turn}
-        agentName={name}
-      />
-    ),
-  }));
+  // Name only conversations the viewer can open now. Others stay placeholders.
+  const place = (turn: AgentTurnView) => {
+    const conversationId = placeOf(turn);
+    if (!conversationId) return undefined;
+    const conversation = conversations.data?.find((entry) => entry.id === conversationId);
+    return conversation ? `In ${conversationName(conversation)}` : hiddenConversation;
+  };
+  const rows: ActivityRow[] = turns.map((turn) => {
+    const status = turnStatus(turn, now);
+    return {
+      id: turn.id,
+      summary:
+        turn.activity ?? (turn.outcome ? outcomeLabels[turn.outcome] : undefined) ?? status.label,
+      place: place(turn),
+      kind: sessionKindLabels[turn.sessionKind],
+      unattended: turn.kind === "unattended",
+      status,
+      createdAt: turn.createdAt,
+      selected: turn.id === selectedTurnId,
+      attention: turn.status === "needs_attention" && (
+        <NeedsAttention
+          userId={userId}
+          organizationId={organizationId}
+          turn={turn}
+          agentName={name}
+        />
+      ),
+    };
+  });
   return (
     <AgentActivityView
       name={name}
-      tab={tab}
-      onTabChange={onTabChange}
-      settings={settings}
-      status={status && agentStatus(status)}
-      unavailable={unavailable}
       rows={rows}
       helpers={(activity.data?.pages.flatMap((page) => page.helpers) ?? []).map((helper) => ({
         id: helper.id,
@@ -101,7 +92,6 @@ export function AgentActivity({
       loadingMore={activity.isFetchingNextPage}
       onMore={() => void activity.fetchNextPage()}
       onTranscript={onTranscript}
-      routines={<Routines userId={userId} organizationId={organizationId} agentId={agentId} />}
     />
   );
 }

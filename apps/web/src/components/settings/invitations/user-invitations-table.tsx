@@ -3,10 +3,10 @@ import { useMemo } from "react";
 import { DateTimeDisplay } from "../../table/date-time-cell";
 import { AppTable, createAppColumnHelper, dateTimeColumn, useAppTable } from "../../table/index";
 import { Button } from "../../ui/button";
-import { ButtonGroup } from "../../ui/button-group";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
+import { InvitationStatus } from "@/components/organizations/invitations/invitation-status";
 import { useDelayedLoading } from "@/hooks/use-delayed-loading";
-import { ArrowUpRight } from "lucide-react";
+import { roleLabel } from "@/lib/organizations/member-policy";
+import { ArrowUpRight, Mail } from "lucide-react";
 
 type UserInvitation = {
   id: string;
@@ -20,20 +20,14 @@ type InvitationRow = UserInvitation & { expired: boolean };
 const column = createAppColumnHelper<InvitationRow>();
 const emptyInvitations: UserInvitation[] = [];
 
-function ReviewInvitationAction({ href }: { href: string }) {
+function ReviewInvitationAction({ href, organization }: { href: string; organization: string }) {
   return (
-    <ButtonGroup aria-label="Invitation actions">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button asChild variant="outline" size="icon">
-            <a href={href} aria-label="Review invitation">
-              <ArrowUpRight aria-hidden="true" />
-            </a>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Review invitation</TooltipContent>
-      </Tooltip>
-    </ButtonGroup>
+    <Button asChild variant="outline" size="sm">
+      <a href={href} aria-label={`Review invitation to ${organization}`}>
+        Review
+        <ArrowUpRight aria-hidden="true" />
+      </a>
+    </Button>
   );
 }
 
@@ -47,10 +41,11 @@ const columns = column.columns([
       </span>
     ),
   }),
-  column.accessor("role", { header: "Role" }),
+  column.accessor((invitation) => roleLabel(invitation.role), { id: "role", header: "Role" }),
   column.accessor((invitation) => (invitation.expired ? "expired" : "pending"), {
     id: "status",
     header: "Status",
+    cell: ({ row }) => <InvitationStatus status="pending" expired={row.original.expired} />,
   }),
   dateTimeColumn<InvitationRow>((invitation) => invitation.expiresAt, {
     id: "expiresAt",
@@ -58,8 +53,16 @@ const columns = column.columns([
   }),
   column.display({
     id: "actions",
-    header: "Actions",
-    cell: ({ row }) => !row.original.expired && <ReviewInvitationAction href={row.original.href} />,
+    header: () => <span className="sr-only">Actions</span>,
+    cell: ({ row }) =>
+      !row.original.expired && (
+        <div className="flex justify-end">
+          <ReviewInvitationAction
+            href={row.original.href}
+            organization={row.original.organizationName || "this organization"}
+          />
+        </div>
+      ),
   }),
 ]);
 
@@ -102,7 +105,9 @@ export function UserInvitationsTable({
         errorTitle="Couldn’t load your invitations"
         errorDescription="Your invitations are unavailable. Please try again."
         onRetry={onRetry}
-        emptyMessage="You have no pending invitations."
+        emptyMessage="No pending invitations"
+        emptyDescription="When someone invites you to their workspace, you can review it here."
+        emptyIcon={Mail}
         renderMobileRow={(invitation) => (
           <>
             <p className="font-medium wrap-anywhere">
@@ -110,15 +115,22 @@ export function UserInvitationsTable({
             </p>
             <dl className="grid grid-cols-3 gap-x-3 gap-y-2 text-sm">
               <dt className="text-muted-foreground">Role</dt>
-              <dd className="col-span-2">{invitation.role}</dd>
+              <dd className="col-span-2">{roleLabel(invitation.role)}</dd>
               <dt className="text-muted-foreground">Status</dt>
-              <dd className="col-span-2">{invitation.expired ? "expired" : "pending"}</dd>
+              <dd className="col-span-2">
+                <InvitationStatus status="pending" expired={invitation.expired} />
+              </dd>
               <dt className="text-muted-foreground">Expires</dt>
               <dd className="col-span-2">
                 <DateTimeDisplay value={invitation.expiresAt} />
               </dd>
             </dl>
-            {!invitation.expired && <ReviewInvitationAction href={invitation.href} />}
+            {!invitation.expired && (
+              <ReviewInvitationAction
+                href={invitation.href}
+                organization={invitation.organizationName || "this organization"}
+              />
+            )}
           </>
         )}
       />

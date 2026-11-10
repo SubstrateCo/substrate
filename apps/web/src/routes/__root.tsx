@@ -7,7 +7,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: Root,
-  notFoundComponent: () => <NotFound homeLink={<Link to="/">Return home</Link>} />,
+  notFoundComponent: () => (
+    <NotFound homeLink={<Link to="/dashboard">Go to your workspace</Link>} />
+  ),
   errorComponent: RouteErrorScreen,
 });
 

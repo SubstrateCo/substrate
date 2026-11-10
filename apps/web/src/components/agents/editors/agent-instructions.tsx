@@ -14,7 +14,7 @@ export function AgentInstructions({
   agentId,
   organizationId,
   defaults,
-  tall = false,
+  creating = false,
   value,
   invalid,
   errors,
@@ -26,8 +26,8 @@ export function AgentInstructions({
   agentId?: string;
   organizationId?: string | null;
   defaults: boolean;
-  /** Settings pages have room for a taller editor than the create dialog. */
-  tall?: boolean;
+  /** The create dialog asks in plain words and leaves file details to settings. */
+  creating?: boolean;
   value: string;
   invalid: boolean;
   errors: ComponentProps<typeof FieldError>["errors"];
@@ -35,19 +35,27 @@ export function AgentInstructions({
   onChange: (value: string) => void;
 }) {
   const id = useId();
+  const file = harnessInstructionsFiles[harness];
+  let description;
+  if (creating)
+    description = defaults
+      ? "Its role, tone, and limits. Added after the built-in Startup OS rules."
+      : "Its role, tone, and limits.";
+  else
+    description = defaults
+      ? `Startup OS writes these to ${file} after the built-in rules. New sessions use them.`
+      : `Startup OS writes these to ${file}. New sessions use them.`;
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-3">
       <Field data-invalid={invalid}>
-        <FieldLabel htmlFor={id}>Additional instructions (optional)</FieldLabel>
-        <FieldDescription id={`${id}-description`}>
-          Written to {harnessInstructionsFiles[harness]}
-          {defaults ? " after the built-in Startup OS rules" : ""} for new sessions. Leave blank to
-          use {defaults ? "only the built-in rules" : "no custom instructions"}.
-        </FieldDescription>
+        <FieldLabel htmlFor={id}>
+          {creating ? "What should it help with? (optional)" : "Additional instructions (optional)"}
+        </FieldLabel>
+        <FieldDescription id={`${id}-description`}>{description}</FieldDescription>
         <Textarea
           id={id}
           placeholder="For example: Review releases and summarize risks."
-          className={cn("max-h-128", tall ? "min-h-56" : "min-h-24")}
+          className={cn("max-h-128", creating ? "min-h-24" : "min-h-56")}
           maxLength={100000}
           value={value}
           onBlur={onBlur}
@@ -58,15 +66,15 @@ export function AgentInstructions({
         {invalid && <FieldError id={`${id}-error`} errors={errors} />}
       </Field>
       {defaults && (
-        <details className="group rounded-xl border bg-card">
-          <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium select-none [&::-webkit-details-marker]:hidden">
+        <details className="group rounded-lg border">
+          <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground select-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none [&::-webkit-details-marker]:hidden">
             <ChevronRight
               aria-hidden="true"
-              className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90"
+              className="size-4 shrink-0 transition-transform duration-150 ease-out group-open:rotate-90 motion-reduce:transition-none"
             />
             View built-in Startup OS rules
           </summary>
-          <div className="border-t p-4">
+          <div className="max-h-64 overflow-y-auto border-t p-3">
             <StartupInstructions
               harness={harness}
               name={name}

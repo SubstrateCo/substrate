@@ -1,6 +1,8 @@
 import { PendingButton } from "../../feedback/pending-button";
 import { EmailField, NativeForm } from "../../forms/native-form";
+import { Button } from "../../ui/button";
 import { AuthFrame } from "../auth-frame";
+import { AuthLink } from "../auth-link";
 import { FormMessage } from "../form-message";
 
 export function ForgotPasswordForm({
@@ -8,33 +10,45 @@ export function ForgotPasswordForm({
   success = false,
   error,
   onSubmit,
+  onReset,
   loginHref,
 }: {
   pending?: boolean;
   success?: boolean;
   error?: Error | null;
   onSubmit: (form: FormData) => void;
+  onReset: () => void;
   loginHref: string;
 }) {
+  const footer = <AuthLink href={loginHref}>Back to sign in</AuthLink>;
+  if (success)
+    return (
+      <AuthFrame
+        title="Check your inbox"
+        description="If an account exists for that email, we sent a link to choose a new password."
+        footer={footer}
+      >
+        <Button type="button" variant="outline" className="w-full" onClick={onReset}>
+          Use a different email
+        </Button>
+      </AuthFrame>
+    );
   return (
     <AuthFrame
       title="Reset your password"
-      description="We will send a reset link if an account exists for this email."
+      description="Enter your account email. We'll send you a link to choose a new password."
+      footer={footer}
     >
       <NativeForm pending={pending} onSubmit={onSubmit}>
         <EmailField />
-        <PendingButton className="w-full" pending={pending} pendingLabel="Sending…">
-          Send reset link
-        </PendingButton>
         <FormMessage
           error={error}
-          errorDescription="We couldn’t send a reset link. Please try again."
-          message={success ? "Check your inbox for a password reset link." : undefined}
+          errorDescription="We couldn't send a reset link. Please try again."
         />
+        <PendingButton className="w-full" size="lg" pending={pending} pendingLabel="Sending.">
+          Send reset link
+        </PendingButton>
       </NativeForm>
-      <a className="block text-sm underline" href={loginHref}>
-        Back to sign in
-      </a>
     </AuthFrame>
   );
 }

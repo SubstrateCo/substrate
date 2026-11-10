@@ -145,6 +145,14 @@
         "zod": "^4.6.7",
       },
     },
+    "packages/design-lint": {
+      "name": "@startup-os/design-lint",
+      "devDependencies": {
+        "@types/node": "24.19.2",
+        "oxlint": "^1.91.0",
+        "typescript": "^7.0.2",
+      },
+    },
     "packages/harness-runtime": {
       "name": "@startup-os/harness-runtime",
       "dependencies": {
@@ -928,6 +936,8 @@
     "@startup-os/contracts": ["@startup-os/contracts@workspace:packages/contracts"],
 
     "@startup-os/database": ["@startup-os/database@workspace:packages/database"],
+
+    "@startup-os/design-lint": ["@startup-os/design-lint@workspace:packages/design-lint"],
 
     "@startup-os/desktop": ["@startup-os/desktop@workspace:apps/desktop"],
 

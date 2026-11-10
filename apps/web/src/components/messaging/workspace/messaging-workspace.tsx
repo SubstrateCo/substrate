@@ -4,19 +4,25 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { ConversationPane } from "../conversations/conversation-pane";
-import { CreateConversationForm } from "../conversations/create-conversation-form";
 import { createConversation } from "@/api/messaging/requests";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { isAccessFailure } from "@/components/feedback/request-failure";
 import type { DirectMessageAgent } from "@/components/messaging/conversations/conversation-create-menu";
+import { CreateConversationDialog } from "@/components/messaging/conversations/create-conversation-dialog";
 import { MessagingWorkspace as MessagingWorkspaceView } from "@/components/messaging/workspace/messaging-workspace-view";
 import { agentDirectMessage } from "@/lib/messaging/conversations";
+import type { PickerPerson } from "@/lib/people/people-picker";
 import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
 import { queryKeys } from "@/queries/keys";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
-import { organizationQueryOptions } from "@/queries/organizations/options";
+import { workspacePeopleQueryOptions } from "@/queries/organizations/people";
+import { Unlink } from "lucide-react";
 import { toast } from "sonner";
+
+type DirectMessageTarget =
+  | { kind: "person"; person: PickerPerson }
+  | { kind: "agent"; agent: DirectMessageAgent };
 
 export function MessagingWorkspace({
   organizationId,
@@ -26,16 +32,8 @@ export function MessagingWorkspace({
   userId: string;
 }) {
   const conversations = useQuery(conversationsQueryOptions(organizationId));
-  const organization = useQuery(organizationQueryOptions(organizationId));
-  const people = (organization.data?.members ?? [])
-    .filter((member) => member.userId !== userId)
-    .map((member) => ({
-      id: member.userId,
-      name: member.user.name,
-      email: member.user.email,
-      image: member.user.image,
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const workspacePeople = useQuery(workspacePeopleQueryOptions(organizationId));
+  const people = (workspacePeople.data ?? []).filter((person) => person.id !== userId);
   const catalog = useQuery(agentCatalogQueryOptions(userId));
   const agents = (catalog.data?.agents ?? [])
     .filter((agent) => agent.enabled)
@@ -51,14 +49,25 @@ export function MessagingWorkspace({
     });
     setSidebarOpen(false);
   };
-  const messageAgent = useMutation({
-    mutationFn: async (agent: DirectMessageAgent) =>
-      agentDirectMessage(conversations.data ?? [], agent.id)?.id ??
-      (
-        await createConversation({
-          data: { organizationId, kind: "dm", private: true, agentIds: [agent.id] },
-        })
-      ).id,
+  // The server returns an existing DM with the same person instead of creating another one.
+  const directMessage = useMutation({
+    mutationFn: async (target: DirectMessageTarget) => {
+      if (target.kind === "agent") {
+        const existing = agentDirectMessage(conversations.data ?? [], target.agent.id);
+        if (existing) return existing.id;
+      }
+      const created = await createConversation({
+        data: {
+          organizationId,
+          kind: "dm",
+          private: true,
+          ...(target.kind === "agent"
+            ? { agentIds: [target.agent.id] }
+            : { emails: [target.person.email] }),
+        },
+      });
+      return created.id;
+    },
     onSuccess: async (id) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.conversations(organizationId) });
       open(id);
@@ -78,35 +87,28 @@ export function MessagingWorkspace({
       selectedId={selected?.id}
       sidebarOpen={sidebarOpen}
       onSidebarOpenChange={setSidebarOpen}
-      onSelect={(id) => {
-        void navigate({
-          to: "/dashboard",
-          search: { workspaceId: organizationId, conversationId: id },
-        });
-        setSidebarOpen(false);
-      }}
+      onSelect={open}
       loading={conversations.isPending}
       hasLoaded={conversations.data !== undefined}
       error={conversations.error}
       onRetry={() => void conversations.refetch()}
       people={people}
       agents={agents}
-      onMessageAgent={(agent) => {
-        if (!messageAgent.isPending) messageAgent.mutate(agent);
+      onMessagePerson={(person) => {
+        if (!directMessage.isPending) directMessage.mutate({ kind: "person", person });
       }}
-      renderCreate={(kind, { onCancel, onComplete, recipient }) => (
-        <CreateConversationForm
-          key={`${kind}:${recipient ?? ""}`}
+      onMessageAgent={(agent) => {
+        if (!directMessage.isPending) directMessage.mutate({ kind: "agent", agent });
+      }}
+      renderCreate={(kind, onClose) => (
+        <CreateConversationDialog
           organizationId={organizationId}
           kind={kind}
-          initialEmails={recipient}
-          onCancel={onCancel}
+          people={people}
+          onClose={onClose}
           onCreated={(id) => {
-            void navigate({
-              to: "/dashboard",
-              search: { workspaceId: organizationId, conversationId: id },
-            });
-            onComplete();
+            open(id);
+            onClose();
           }}
         />
       )}
@@ -121,8 +123,9 @@ export function MessagingWorkspace({
       )}
       {search.conversationId && !selected && !conversations.isPending && (
         <ContentNotice
-          title="Conversation unavailable or access denied."
-          description="Check that you are in the right workspace and still have access."
+          icon={Unlink}
+          title="Conversation unavailable"
+          description="It may have been deleted, or you may no longer have access. Check that you’re in the right workspace."
         />
       )}
     </MessagingWorkspaceView>

@@ -1,9 +1,17 @@
 import { useEffect, useState } from "react";
 
 import { Button } from "../ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "../ui/dialog";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
 import type { CropArea } from "./crop-image";
-import { ImageCropControls } from "./image-crop-controls";
+import { ImageCropControls, ImageSizingControl } from "./image-crop-controls";
 import { ImageCropper } from "./image-cropper";
 import { usePictureUpload } from "@/components/upload/use-picture-upload";
 
@@ -19,6 +27,14 @@ export interface PictureUploadContext {
   signal: AbortSignal;
   /** Call immediately before the final, non-cancellable attachment request. */
   onCommit: () => void;
+}
+
+// Say what is saved and how it shows, so the round avatar mask and the square file agree.
+function cropDescription(kind: ImageCropDialogProps["kind"], mode: "fit" | "fill") {
+  if (kind === "avatar")
+    return "Drag or use the arrow keys to position it. People see it in a circle.";
+  if (mode === "fit") return "The whole logo fits in a square, with clear space around it.";
+  return "Drag or use the arrow keys to position it. The logo fills the square.";
 }
 
 /** Mount for one source file; unmount on cancel or successful confirmation. */
@@ -78,70 +94,74 @@ export function ImageCropDialog({
           if (busy.current) event.preventDefault();
         }}
       >
-        <DialogTitle>
-          {kind === "avatar" ? "Edit profile picture" : "Edit organization logo"}
-        </DialogTitle>
-        <DialogDescription>
-          {mode === "fit"
-            ? "Keep the whole logo with transparent space around it."
-            : "Drag the picture or use arrow keys to position it. Your saved image will be square."}
-        </DialogDescription>
-        <fieldset disabled={pending} className="min-w-0 space-y-3">
-          {src && (
-            <div inert={pending}>
-              <ImageCropper
-                src={src}
-                kind={kind}
-                crop={crop}
-                zoom={zoom}
-                rotation={rotation}
+        <DialogHeader>
+          <DialogTitle>
+            {kind === "avatar" ? "Edit profile picture" : "Edit organization logo"}
+          </DialogTitle>
+          <DialogDescription>{cropDescription(kind, mode)}</DialogDescription>
+        </DialogHeader>
+        <DialogBody>
+          <fieldset disabled={pending} className="min-w-0 space-y-3">
+            {kind === "organization-logo" && (
+              <ImageSizingControl
                 mode={mode}
-                onCropChange={setCrop}
-                onZoomChange={setZoom}
-                onCropComplete={setArea}
-                onError={() => {
-                  setMediaFailed(true);
-                  setError("This image could not be opened. Choose another image.");
+                onModeChange={(next) => {
+                  reset();
+                  setMode(next);
                 }}
               />
+            )}
+            {src && (
+              <div inert={pending}>
+                <ImageCropper
+                  src={src}
+                  kind={kind}
+                  crop={crop}
+                  zoom={zoom}
+                  rotation={rotation}
+                  mode={mode}
+                  onCropChange={setCrop}
+                  onZoomChange={setZoom}
+                  onCropComplete={setArea}
+                  onError={() => {
+                    setMediaFailed(true);
+                    setError("This image could not be opened. Choose another image.");
+                  }}
+                />
+              </div>
+            )}
+            <ImageCropControls
+              mode={mode}
+              zoom={zoom}
+              onZoomChange={(next) => {
+                setArea(null);
+                setZoom(next);
+              }}
+              onRotate={() => {
+                setArea(null);
+                setRotation((value) => (value + 90) % 360);
+              }}
+              onReset={reset}
+            />
+          </fieldset>
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
+          {pending && (
+            <div className="space-y-2">
+              <progress
+                aria-label={committing ? "Finishing picture" : "Uploading picture"}
+                className="w-full accent-primary"
+              />
+              <Button type="button" variant="outline" disabled={committing} onClick={cancelUpload}>
+                Cancel upload
+              </Button>
             </div>
           )}
-          <ImageCropControls
-            kind={kind}
-            mode={mode}
-            zoom={zoom}
-            onModeChange={(next) => {
-              reset();
-              setMode(next);
-            }}
-            onZoomChange={(next) => {
-              setArea(null);
-              setZoom(next);
-            }}
-            onRotate={() => {
-              setArea(null);
-              setRotation((value) => (value + 90) % 360);
-            }}
-            onReset={reset}
-          />
-        </fieldset>
-        {error && (
-          <p role="alert" className="text-sm text-destructive">
-            {error}
-          </p>
-        )}
-        {pending && (
-          <div className="space-y-2">
-            <progress
-              aria-label={committing ? "Finishing picture" : "Uploading picture"}
-              className="w-full accent-primary"
-            />
-            <Button type="button" variant="outline" disabled={committing} onClick={cancelUpload}>
-              Cancel upload
-            </Button>
-          </div>
-        )}
-        <div className="flex justify-end gap-2">
+        </DialogBody>
+        <DialogFooter>
           <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
             Cancel
           </Button>
@@ -153,7 +173,7 @@ export function ImageCropDialog({
           >
             Save picture
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

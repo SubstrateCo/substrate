@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQueries } from "@tanstack/react-query";
 
 import { useState } from "react";
 
@@ -6,10 +6,15 @@ import type { WorkspaceReference } from "@/components/messaging/references/entit
 import {
   ReferencePicker as ReferencePickerView,
   type ReferenceKind,
+  type ReferenceTab,
 } from "@/components/messaging/references/reference-picker";
 import type { ReferenceQuery } from "@/components/messaging/references/reference-query";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { searchOptions } from "@/queries/context/search";
+
+// "All" lists the best few of each kind, people first.
+const mixedKinds: ReferenceKind[] = ["person", "agent", "task", "project"];
+const mixedLimit = 5;
 
 export function ReferencePicker({
   organizationId,
@@ -29,35 +34,49 @@ export function ReferencePicker({
   const [search, setSearch] = useState({ source, query: parsed.query });
   const query = search.source === source ? search.query : parsed.query;
   if (search.source !== source) setSearch({ source, query: parsed.query });
-  const [selection, setSelection] = useState<{ prefix: string; kind: ReferenceKind }>({
+  const [selection, setSelection] = useState<{ prefix: string; kind: ReferenceTab }>({
     prefix: parsed.kind,
-    kind: parsed.kind === "all" ? "task" : parsed.kind,
+    kind: parsed.kind,
   });
-  const prefixKind = parsed.kind === "all" ? "task" : parsed.kind;
-  const kind = selection.prefix === parsed.kind ? selection.kind : prefixKind;
+  const kind = selection.prefix === parsed.kind ? selection.kind : parsed.kind;
   if (selection.prefix !== parsed.kind) setSelection({ prefix: parsed.kind, kind });
   const debounced = useSearchDebounce(
     query,
     JSON.stringify([organizationId, conversationId, kind]),
   );
-  const results = useQuery({
-    ...searchOptions({ organizationId, conversationId, query: debounced.query, kind }),
-    enabled: !debounced.pending,
+  const searchKinds = kind === "all" ? mixedKinds : [kind];
+  const results = useQueries({
+    queries: searchKinds.map((searchKind) => ({
+      ...searchOptions({
+        organizationId,
+        conversationId,
+        query: debounced.query,
+        kind: searchKind,
+      }),
+      enabled: !debounced.pending,
+    })),
   });
+  const rows = results.flatMap((result, index) =>
+    (result.data ?? [])
+      .slice(0, kind === "all" ? mixedLimit : undefined)
+      .map((row) => ({ ...row, kind: searchKinds[index]! })),
+  );
   return (
     <ReferencePickerView
       query={query}
       kind={kind}
       kinds={
-        parsed.trigger === "#" ? ["channel", "thread"] : ["task", "project", "person", "agent"]
+        parsed.trigger === "#"
+          ? ["channel", "thread"]
+          : ["all", "person", "agent", "task", "project"]
       }
-      results={debounced.pending ? [] : (results.data ?? [])}
-      loading={debounced.pending || results.isPending}
-      error={debounced.pending ? null : results.error}
+      results={debounced.pending ? [] : rows}
+      loading={debounced.pending || results.some((result) => result.isPending)}
+      error={debounced.pending ? null : (results.find((result) => result.error)?.error ?? null)}
       onQueryChange={(query) => setSearch({ source, query })}
       onKindChange={(kind) => setSelection({ prefix: parsed.kind, kind })}
       onRetry={() => {
-        if (!debounced.pending) void results.refetch();
+        if (!debounced.pending) for (const result of results) void result.refetch();
       }}
       onInsert={(token, reference) => {
         if (!debounced.pending) onInsert(token, reference);

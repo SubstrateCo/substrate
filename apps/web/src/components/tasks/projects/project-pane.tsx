@@ -9,7 +9,9 @@ import { ProjectForm } from "./editor/project-form";
 import { ProjectSharing } from "./sharing/project-sharing";
 import { ProjectPane as ProjectPaneView } from "@/components/tasks/projects/project-pane-view";
 import { workHref } from "@/lib/navigation/record-links";
+import { useTaskUpdate } from "@/queries/tasks/mutations";
 import { projectQueryOptions } from "@/queries/tasks/options";
+import { toast } from "sonner";
 
 export function ProjectPane({
   organizationId,
@@ -19,6 +21,7 @@ export function ProjectPane({
   projectEntityId: string;
 }) {
   const project = useQuery(projectQueryOptions(organizationId, projectEntityId));
+  const update = useTaskUpdate(organizationId, projectEntityId);
   const search = useSearch({ strict: false });
   const navigate = useNavigate();
   return (
@@ -35,6 +38,20 @@ export function ProjectPane({
           },
         })
       }
+      onTaskStatusChange={(task, status) =>
+        update.mutate(
+          {
+            taskEntityId: task.entityId,
+            title: task.title,
+            description: task.description,
+            status,
+            priority: task.priority,
+            assigneeActorEntityId: task.assigneeActorEntityId,
+            dueDate: task.dueDate,
+          },
+          { onError: () => toast.error("Couldn't change the status. It was set back.") },
+        )
+      }
       headerActions={
         <CopyLink
           grouped
@@ -49,6 +66,7 @@ export function ProjectPane({
             organizationId={organizationId}
             entityId={projectEntityId}
             label="Project discussions"
+            variant="page"
           />
         )
       }
@@ -74,15 +92,16 @@ export function ProjectPane({
           variant="dialog"
         />
       )}
-      renderTaskDetail={(detail, task, onClose, onSubtask, visible) => (
+      renderTaskDetail={(detail, task, onClose, onSubtask, onSelectTask) => (
         <TaskDetail
-          visible={visible}
+          visible
           key={task.entityId}
           organizationId={organizationId}
           detail={detail}
           task={task}
           onClose={onClose}
           onSubtask={onSubtask}
+          onSelectTask={onSelectTask}
         />
       )}
     />

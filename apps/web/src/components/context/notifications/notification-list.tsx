@@ -1,14 +1,17 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
-import { notificationListQuery } from "./notification-page";
 import { markAllRead, markRead } from "@/api/context/notifications";
 import { NotificationList as NotificationListView } from "@/components/context/notifications/notification-list-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { messageHref, workHref } from "@/lib/navigation/record-links";
-import { markNotificationsRead } from "@/queries/context/notifications";
+import {
+  markNotificationsRead,
+  notificationFeedOptions,
+  notificationsOptions,
+} from "@/queries/context/notifications";
 import { toast } from "sonner";
 
 export function NotificationList({
@@ -19,63 +22,59 @@ export function NotificationList({
   onClose?: () => void;
 }) {
   const [filter, setFilter] = useState<"all" | "unread">("all");
-  const [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
-  const [pageSize, setPageSize] = useState<number>();
-  const resizePage = useCallback(
-    (size: number) => {
-      if (size !== pageSize) {
-        setPageSize(size);
-        setCursors([undefined]);
-      }
-    },
-    [pageSize],
-  );
-  const items = useQuery(notificationListQuery(organizationId, filter, cursors.at(-1), pageSize));
+  const feed = useInfiniteQuery(notificationFeedOptions(organizationId, filter));
   const client = useQueryClient();
   const navigate = useNavigate();
+  // Read state changes at once. A failed write reloads the feed, so the row shows unread again.
   const read = useMutation({
     mutationFn: (id: string | null) =>
       id ? markRead({ data: { organizationId, id } }) : markAllRead({ data: { organizationId } }),
-    onSuccess: (_, id) => markNotificationsRead(client, organizationId, id),
-    onError: (error) =>
-      toast.error(actionErrorMessage(error, "Couldn't update notifications. Try again.")),
+    onMutate: (id) => markNotificationsRead(client, organizationId, id),
+    onError: (error) => {
+      toast.error(actionErrorMessage(error, "Couldn't mark notifications as read. Try again."));
+      void client.invalidateQueries({ queryKey: notificationsOptions(organizationId).queryKey });
+    },
   });
+  const items = (feed.data?.pages ?? []).flatMap((page) =>
+    page.items.map((item) => ({
+      id: item.id,
+      kind: item.kind,
+      title: item.title,
+      actorName: item.actorName,
+      source: item.source,
+      excerpt: item.excerpt,
+      createdAt: item.createdAt,
+      read: !!item.readAt,
+      href: item.conversationId
+        ? messageHref(organizationId, item.conversationId, item.messageId!)
+        : workHref(organizationId, item.projectEntityId!, item.entityId!),
+    })),
+  );
   return (
     <NotificationListView
-      items={(items.data?.items ?? []).map((item) => ({
-        ...item,
-        read: !!item.readAt,
-        href: item.conversationId
-          ? messageHref(organizationId, item.conversationId, item.messageId!)
-          : workHref(organizationId, item.projectEntityId!, item.entityId!),
-      }))}
-      loading={items.isPending}
+      items={items}
+      loading={feed.isPending}
+      error={feed.error}
       filter={filter}
-      onFilter={(value) => {
-        setFilter(value);
-        setCursors([undefined]);
+      onFilter={setFilter}
+      hasMore={feed.hasNextPage}
+      loadingMore={feed.isFetchingNextPage}
+      onMore={() => {
+        if (!feed.isFetching) void feed.fetchNextPage();
       }}
-      page={cursors.length}
-      onPageSizeChange={resizePage}
-      hasNext={!!items.data?.nextCursor}
-      onPrevious={() => setCursors((pages) => pages.slice(0, -1))}
-      onNext={() => {
-        if (items.data?.nextCursor) setCursors((pages) => [...pages, items.data.nextCursor!]);
-      }}
-      error={items.error}
-      pendingId={read.isPending ? (read.variables ?? "all") : undefined}
-      onRetry={() => void items.refetch()}
+      readingAll={read.isPending && read.variables === null}
+      onRetry={() => void (feed.isFetchNextPageError ? feed.fetchNextPage() : feed.refetch())}
       onRead={(id) => read.mutate(id)}
       onReadAll={() => read.mutate(null)}
       onOpen={(item, event) => {
+        // Opening never waits for read bookkeeping.
+        if (!item.read) read.mutate(item.id);
+        // Modified clicks keep the link's own behavior.
+        const modified = [event.metaKey, event.ctrlKey, event.shiftKey, event.altKey].some(Boolean);
+        if (event.button !== 0 || modified) return;
         event.preventDefault();
-        if (read.isPending) return;
-        const open = () => {
-          onClose?.();
-          void navigate({ to: item.href });
-        };
-        if (item.read) open();
-        else read.mutate(item.id, { onSuccess: open });
+        onClose?.();
+        void navigate({ to: item.href });
       }}
       onClose={onClose}
     />

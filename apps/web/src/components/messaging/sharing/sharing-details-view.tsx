@@ -1,14 +1,112 @@
-import type { SharingDetails } from "@/api/messaging/sharing";
-import { Button } from "@/components/ui/button";
+import type { ReactNode } from "react";
 
-function invitationLabel(invite: SharingDetails["invitations"][number], now: number) {
-  if (invite.status !== "pending") return invite.status;
-  if (new Date(invite.expiresAt).getTime() <= now) return "expired";
-  if (invite.deliveredAt) return "pending · email sent";
-  if (invite.deliveryAttempts >= 5) return "pending · email delivery failed";
-  return "pending · email queued";
+import type { SharingDetails } from "@/api/messaging/sharing";
+import { PersonAvatar } from "@/components/people/person-avatar";
+import { Timestamp } from "@/components/time/timestamp";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Building2, Mail, RotateCcw, TriangleAlert, UserMinus, X } from "lucide-react";
+
+type Invitation = SharingDetails["invitations"][number];
+
+const eventLabels: Record<SharingDetails["events"][number]["action"], string> = {
+  invited: "sent an invitation",
+  "approval-requested": "requested organization approval",
+  accepted: "accepted an invitation",
+  revoked: "revoked an invitation",
+  declined: "declined an invitation",
+  disconnected: "disconnected an organization",
+  removed: "removed a participant",
+};
+
+// Answered invitations show up as people and activity instead.
+function pendingStatus(invite: Invitation, now: number) {
+  if (new Date(invite.expiresAt).getTime() <= now) return { text: "Expired", warning: true };
+  if (invite.deliveryAttempts >= 5 && !invite.deliveredAt)
+    return { text: "Email couldn’t be delivered", warning: true };
+  return {
+    text: invite.deliveredAt ? "Waiting for a reply · email sent" : "Waiting · email queued",
+    warning: false,
+  };
 }
 
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="grid gap-1">
+      <h3 className="text-xs font-medium text-muted-foreground">{title}</h3>
+      <ul className="grid gap-0.5">{children}</ul>
+    </section>
+  );
+}
+
+function Row({
+  icon,
+  title,
+  status,
+  warning = false,
+  actions,
+}: {
+  icon: ReactNode;
+  title: ReactNode;
+  status: ReactNode;
+  warning?: boolean;
+  actions?: ReactNode;
+}) {
+  return (
+    <li className="group/row flex min-h-11 items-center gap-3 rounded-md py-1.5">
+      {icon}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium">{title}</span>
+        <span
+          className={
+            warning
+              ? "flex items-center gap-1 text-xs font-medium text-warning"
+              : "block truncate text-xs text-muted-foreground"
+          }
+        >
+          {warning && <TriangleAlert aria-hidden="true" className="size-3.5 shrink-0" />}
+          {status}
+        </span>
+      </span>
+      {actions && <span className="flex shrink-0 items-center gap-0.5">{actions}</span>}
+    </li>
+  );
+}
+
+function RowAction({
+  label,
+  destructive = false,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  destructive?: boolean;
+  disabled: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          size="icon-sm"
+          variant={destructive ? "destructive-ghost" : "ghost"}
+          aria-label={label}
+          disabled={disabled}
+          onClick={onClick}
+        >
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+const iconBox = "flex size-6 shrink-0 items-center justify-center rounded-md bg-muted";
+
+/** Who outside the organization has access, who is invited, and what changed. */
 export function SharingDetailsView({
   details,
   organizationId,
@@ -28,79 +126,137 @@ export function SharingDetailsView({
   onResend: (id: string) => void;
   onRevoke: (id: string) => void;
 }) {
+  const organizationName = (id: string) =>
+    details.connections.find((connection) => connection.organizationId === id)?.name;
+  const invitations = details.invitations.filter((invite) => invite.status === "pending");
+  const sections = [details.connections, details.participants, invitations, details.events];
+  if (sections.every((rows) => rows.length === 0))
+    return (
+      <p className="text-sm text-muted-foreground">
+        No one outside your organization has access yet.
+      </p>
+    );
   return (
-    <>
-      <section className="space-y-3">
-        <h3 className="font-medium">Connected organizations</h3>
-        {!details.connections.length && (
-          <p className="text-sm text-muted-foreground">No approved partner organizations yet.</p>
-        )}
-        {details.connections.map((connection) => (
-          <div
-            key={connection.organizationId}
-            className="flex flex-wrap items-center justify-between gap-3"
-          >
-            <span className="text-sm">
-              {connection.name} · {connection.disconnectedAt ? "disconnected" : "connected"}
-            </span>
-            {!connection.disconnectedAt && (
-              <Button
-                variant="destructive"
-                disabled={pending}
-                onClick={() => onDisconnect(connection.organizationId)}
-              >
-                Disconnect
-              </Button>
-            )}
-          </div>
-        ))}
-      </section>
-      <section className="space-y-3">
-        <h3 className="font-medium">External participants</h3>
-        {details.participants.map((person) => (
-          <div key={person.actorId} className="flex flex-wrap items-center justify-between gap-3">
-            <span className="text-sm">
-              {person.name} · {person.consentedAt ? "approved" : "reapproval required"}
-            </span>
-            <Button variant="outline" disabled={pending} onClick={() => onRemove(person.actorId)}>
-              Remove participant
-            </Button>
-          </div>
-        ))}
-      </section>
-      <section className="space-y-3">
-        <h3 className="font-medium">Invitations</h3>
-        {!details.invitations.length && (
-          <p className="text-sm text-muted-foreground">No invitations yet.</p>
-        )}
-        {details.invitations.map((invite) => (
-          <div key={invite.id} className="space-y-2">
-            <p className="text-sm wrap-anywhere">
-              {invite.email} · {invitationLabel(invite, now)}
-            </p>
-            {invite.status === "pending" && (
-              <div className="flex gap-2">
-                {invite.senderOrganizationId === organizationId && (
-                  <Button variant="outline" disabled={pending} onClick={() => onResend(invite.id)}>
-                    Resend
+    <div className="grid gap-5">
+      {details.connections.length > 0 && (
+        <Section title="Organizations">
+          {details.connections.map((connection) => (
+            <Row
+              key={connection.organizationId}
+              icon={
+                <span className={iconBox}>
+                  <Building2 aria-hidden="true" className="size-3.5 text-muted-foreground" />
+                </span>
+              }
+              title={connection.name}
+              status={connection.disconnectedAt ? "Disconnected" : "Connected"}
+              actions={
+                !connection.disconnectedAt && (
+                  <Button
+                    size="sm"
+                    variant="destructive-ghost"
+                    disabled={pending}
+                    onClick={() => onDisconnect(connection.organizationId)}
+                  >
+                    Disconnect
                   </Button>
-                )}
-                <Button variant="outline" disabled={pending} onClick={() => onRevoke(invite.id)}>
-                  Revoke
-                </Button>
-              </div>
-            )}
-          </div>
-        ))}
-      </section>
-      <section className="space-y-2">
-        <h3 className="font-medium">Sharing activity</h3>
-        {details.events.map((event) => (
-          <p key={event.id} className="text-sm text-muted-foreground">
-            {event.action} · {event.userName} · {new Date(event.createdAt).toLocaleString()}
-          </p>
-        ))}
-      </section>
-    </>
+                )
+              }
+            />
+          ))}
+        </Section>
+      )}
+      {details.participants.length > 0 && (
+        <Section title="People">
+          {details.participants.map((person) => {
+            const from = organizationName(person.organizationId);
+            return (
+              <Row
+                key={person.actorId}
+                icon={<PersonAvatar name={person.name} />}
+                title={person.name}
+                warning={!person.consentedAt}
+                status={
+                  person.consentedAt
+                    ? (from ?? "External")
+                    : "Needs to accept again before they can read new messages"
+                }
+                actions={
+                  <RowAction
+                    label={`Remove ${person.name}`}
+                    destructive
+                    disabled={pending}
+                    onClick={() => onRemove(person.actorId)}
+                  >
+                    <UserMinus />
+                  </RowAction>
+                }
+              />
+            );
+          })}
+        </Section>
+      )}
+      {invitations.length > 0 && (
+        <Section title="Invitations">
+          {invitations.map((invite) => {
+            const status = pendingStatus(invite, now);
+            return (
+              <Row
+                key={invite.id}
+                icon={
+                  <span className={iconBox}>
+                    <Mail aria-hidden="true" className="size-3.5 text-muted-foreground" />
+                  </span>
+                }
+                title={<span className="wrap-anywhere">{invite.email}</span>}
+                status={status.text}
+                warning={status.warning}
+                actions={
+                  <>
+                    {invite.senderOrganizationId === organizationId && (
+                      <RowAction
+                        label="Resend invitation"
+                        disabled={pending}
+                        onClick={() => onResend(invite.id)}
+                      >
+                        <RotateCcw />
+                      </RowAction>
+                    )}
+                    <RowAction
+                      label="Revoke invitation"
+                      destructive
+                      disabled={pending}
+                      onClick={() => onRevoke(invite.id)}
+                    >
+                      <X />
+                    </RowAction>
+                  </>
+                }
+              />
+            );
+          })}
+        </Section>
+      )}
+      {details.events.length > 0 && (
+        <section className="grid gap-1">
+          <h3 className="text-xs font-medium text-muted-foreground">Activity</h3>
+          <ul className="grid gap-1.5">
+            {details.events.map((event) => (
+              <li key={event.id} className="flex items-baseline gap-2 text-sm">
+                <span className="min-w-0 flex-1 truncate">
+                  <span className="font-medium">{event.userName}</span>{" "}
+                  <span className="text-muted-foreground">{eventLabels[event.action]}</span>
+                </span>
+                <Timestamp
+                  value={event.createdAt}
+                  format="relative"
+                  className="shrink-0 text-xs text-muted-foreground"
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
   );
 }

@@ -54,7 +54,7 @@ export function CopyButton({
     <Button
       type="button"
       size={size}
-      variant={grouped ? "outline" : "ghost"}
+      variant="ghost"
       className={className}
       aria-label={label}
       aria-busy={status === "pending"}
@@ -64,14 +64,14 @@ export function CopyButton({
         <Copy
           data-copy-icon="copy"
           className={cn(
-            "col-start-1 row-start-1 transition-all duration-200 ease-in-out motion-reduce:transition-none",
+            "col-start-1 row-start-1 transition duration-150 ease-out motion-reduce:transition-none",
             copied ? "scale-75 opacity-0" : "scale-100 opacity-100",
           )}
         />
         <Check
           data-copy-icon="check"
           className={cn(
-            "col-start-1 row-start-1 transition-all duration-200 ease-in-out motion-reduce:transition-none",
+            "col-start-1 row-start-1 transition duration-150 ease-out motion-reduce:transition-none",
             copied ? "scale-100 opacity-100" : "scale-75 opacity-0",
           )}
         />

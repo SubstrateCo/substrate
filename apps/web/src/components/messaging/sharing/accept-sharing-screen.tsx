@@ -3,9 +3,12 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 
 import { acceptSharingInvitation, declineSharingInvitation } from "@/api/messaging/sharing";
+import { ApiError } from "@/api/result";
 import { AuthFrame } from "@/components/auth/auth-frame";
+import { AuthNavLink } from "@/components/auth/auth-link";
 import { FormMessage } from "@/components/auth/form-message";
 import { SignOutButton } from "@/components/auth/sign-out/sign-out-button";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { PendingButton } from "@/components/feedback/pending-button";
@@ -16,6 +19,18 @@ import { activateOrganization } from "@/lib/auth/organization";
 import { isDesktop } from "@/lib/desktop/auth";
 import { sharingInvitationOptions } from "@/queries/messaging/sharing";
 import { organizationsQueryOptions } from "@/queries/organizations/options";
+import { MailX, RefreshCw } from "lucide-react";
+
+/** A 4xx other than a timeout or rate limit will not change on retry. */
+function isPermanentFailure(error: Error | null) {
+  return (
+    error instanceof ApiError &&
+    error.status >= 400 &&
+    error.status < 500 &&
+    error.status !== 408 &&
+    error.status !== 429
+  );
+}
 
 export function AcceptSharingScreen({ invitationId }: { invitationId: string }) {
   const invite = useQuery(sharingInvitationOptions(invitationId));
@@ -53,31 +68,44 @@ export function AcceptSharingScreen({ invitationId }: { invitationId: string }) 
       organizationId: invite.data.targetOrganizationId,
       conversationId: invite.data.conversationId,
     };
+  const unavailableNotice = (
+    <ContentNotice
+      icon={MailX}
+      title="Invitation unavailable"
+      description="It may have expired or been sent to another email. Sign in with the invited email, or ask the sender for a new invitation."
+    />
+  );
   let content: ReactNode;
-  if (decline.isSuccess) content = <p role="status">Invitation declined. No access was granted.</p>;
+  if (decline.isSuccess)
+    content = <FormMessage message="Invitation declined. No access was granted." />;
   else if (accepted) {
     const result = accepted;
     content = (
-      <div className="space-y-3">
-        <p>Invitation accepted. Your access is saved.</p>
+      <>
+        <FormMessage message="Invitation accepted. Your access is saved." />
         <PendingButton
+          className="w-full"
+          size="lg"
           pending={activate.isPending}
-          pendingLabel="Opening…"
+          pendingLabel="Opening."
           onClick={() => activate.mutate(result)}
         >
           Continue setup
         </PendingButton>
-      </div>
+      </>
     );
   } else if (accept.data?.status === "approval-required")
     content = (
-      <div className="space-y-3">
-        <p role="status">
+      <>
+        <p role="status" className="text-sm">
           Approval requested. An owner or admin of your organization must approve this connection in
           External collaboration settings. No access has been granted yet.
         </p>
-        <Button onClick={() => void invite.refetch()}>Check approval</Button>
-      </div>
+        <Button variant="outline" onClick={() => void invite.refetch()}>
+          <RefreshCw aria-hidden="true" />
+          Check approval
+        </Button>
+      </>
     );
   else if (invite.data && available)
     content = (
@@ -87,46 +115,48 @@ export function AcceptSharingScreen({ invitationId }: { invitationId: string }) 
         organizationId={organizationId}
         confirmed={confirmed}
         busy={busy}
+        error={accept.error ?? decline.error ?? activate.error}
         onOrganization={setSelected}
         onConfirmed={setConfirmed}
         onAccept={() => accept.mutate()}
         onDecline={() => decline.mutate()}
       />
     );
-  else if (invite.data)
-    content = (
-      <p role="status">
-        This invitation is no longer available. Ask the sender for a new invitation.
-      </p>
-    );
+  else if (invite.data) content = unavailableNotice;
   return (
     <AuthFrame
       title="External collaboration invitation"
-      description="Join from your own organization. You will not become a member of the inviting workspace."
+      description="Join from your own organization. You won't become a member of the inviting workspace."
+      actions={
+        <>
+          <AuthNavLink href="/onboarding">Your workspaces</AuthNavLink>
+          <SignOutButton destination={path} />
+        </>
+      }
     >
-      {invite.isPending && <LoadingState label="Loading invitation…" rows={2} />}
-      {invite.error && (
-        <ErrorState
-          title="Invitation unavailable"
-          description="Sign in with the invited email, or ask the sender for a new invitation."
-          onRetry={() => void invite.refetch()}
-        />
-      )}
+      {invite.isPending && <LoadingState label="Loading invitation." rows={2} />}
+      {invite.error &&
+        (isPermanentFailure(invite.error) ? (
+          unavailableNotice
+        ) : (
+          <ErrorState
+            compact
+            title="Couldn't load invitation"
+            description="We couldn't check this invitation. Please try again."
+            onRetry={() => void invite.refetch()}
+          />
+        ))}
       {organizations.error && (
         <ErrorState
           compact
-          title="Couldn’t load organizations"
+          title="Couldn't load organizations"
           onRetry={() => void organizations.refetch()}
         />
       )}
       {content}
-      <FormMessage error={accept.error ?? decline.error ?? activate.error} />
-      <div className="flex flex-wrap justify-between gap-3">
-        <a className="text-sm underline" href="/onboarding">
-          Your workspaces
-        </a>
-        <SignOutButton destination={path} />
-      </div>
+      {!(invite.data && available && !accepted && !decline.isSuccess) && (
+        <FormMessage error={accept.error ?? decline.error ?? activate.error} />
+      )}
     </AuthFrame>
   );
 }

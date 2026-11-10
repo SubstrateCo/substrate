@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 
 import { AgentMembersDialog } from "./actions/agent-members-dialog";
 import { conversationAgentOptions, type ConversationMember } from "@/lib/messaging/conversations";
@@ -22,6 +23,7 @@ export function ConversationAgents({
   onClose: () => void;
 }) {
   const catalog = useQuery(agentCatalogQueryOptions(userId));
+  const navigate = useNavigate();
   // The server sets agentId only for the viewer's own agents, so other people's agents stay out.
   const ownAgents = members.flatMap((member) =>
     member.type === "agent" && member.agentId
@@ -50,6 +52,7 @@ export function ConversationAgents({
         })
       }
       onRemove={(actorId) => remove.mutate(actorId)}
+      onOpenAgents={() => void navigate({ to: "/agents", search: { workspaceId: organizationId } })}
       onClose={onClose}
     />
   );

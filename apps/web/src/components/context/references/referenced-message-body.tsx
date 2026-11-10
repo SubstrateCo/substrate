@@ -49,6 +49,10 @@ export function ReferencedMessageBody({
           id: link.entityId,
           kind: link.entityType,
           label: link.title,
+          status:
+            link.status && link.statusName
+              ? { value: link.status, label: link.statusName }
+              : undefined,
           href: workHref(
             organizationId,
             link.projectEntityId,

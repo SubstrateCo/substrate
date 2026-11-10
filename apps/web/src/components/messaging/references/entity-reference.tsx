@@ -1,12 +1,17 @@
+import type { TaskStatus } from "@startup-os/contracts/tasks";
+
+import type { ReactNode } from "react";
+
 import { Spinner } from "../../ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import type { ReferenceKind } from "./reference-picker";
 import { plainReferenceText } from "./reference-token";
 import { PersonCardTarget, useHasPersonCard } from "@/components/messaging/people/person-card-slot";
+import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
 import {
   AtSign,
   Bot,
-  CircleCheck,
+  ListTodo,
   FolderKanban,
   LockKeyhole,
   Hash,
@@ -18,6 +23,8 @@ export type WorkspaceReference = {
   kind: ReferenceKind;
   label: string;
   href?: string;
+  /** Tasks only: shown as the chip's icon, with the label for screen readers. */
+  status?: { value: TaskStatus; label: string };
 };
 
 export function EntityReference({
@@ -30,24 +37,32 @@ export function EntityReference({
   const icons = {
     person: AtSign,
     agent: Bot,
-    task: CircleCheck,
+    task: ListTodo,
     project: FolderKanban,
     channel: Hash,
     thread: MessagesSquare,
   };
   const hasPersonCard = useHasPersonCard();
   const Icon = reference ? icons[reference.kind] : LockKeyhole;
+  let statusIcon: ReactNode;
+  if (loading && !reference)
+    statusIcon = <Spinner aria-hidden="true" className="size-3.5 shrink-0 self-center" />;
+  else if (reference?.status)
+    statusIcon = (
+      <span className="flex shrink-0 self-center [&>svg]:size-3.5">
+        <TaskStatusIcon status={reference.status.value} />
+      </span>
+    );
   const content = (
     <>
-      {loading && !reference ? (
-        <Spinner aria-hidden="true" className="size-3.5 shrink-0 self-center" />
-      ) : (
+      {statusIcon ?? (
         <Icon aria-hidden="true" className="size-3.5 shrink-0 self-center opacity-70" />
       )}
       <span className="truncate">
         {(reference && plainReferenceText(reference.label)) ??
           (loading ? "Loading reference…" : "Unavailable reference")}
       </span>
+      {reference?.status && <span className="sr-only">, {reference.status.label}</span>}
     </>
   );
   const className =
@@ -88,7 +103,9 @@ export function EntityReference({
           <span className={className}>{content}</span>
         )}
       </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
+      <TooltipContent>
+        {reference.status ? `${label} · ${reference.status.label}` : label}
+      </TooltipContent>
     </Tooltip>
   );
 }

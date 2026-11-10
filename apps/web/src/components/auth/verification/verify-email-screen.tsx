@@ -30,9 +30,10 @@ export function VerifyEmailScreen({
       email={email}
       invalid={Boolean(error)}
       pending={resend.isPending}
-      success={resend.isSuccess}
+      sentTo={resend.isSuccess ? formText(resend.variables, "email") : undefined}
       error={resend.error}
       onSubmit={(form) => resend.mutate(form)}
+      onReset={() => resend.reset()}
       loginHref={authHref("/login", redirect, email)}
     />
   );

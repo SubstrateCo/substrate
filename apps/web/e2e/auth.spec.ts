@@ -52,9 +52,7 @@ test("password recovery replaces the password and invalidates old sessions", asy
   await page.goto("/forgot-password?redirect=%2Fdashboard");
   await page.getByLabel("Email", { exact: true }).fill(account.email);
   await page.getByRole("button", { name: "Send reset link", exact: true }).click();
-  await expect(
-    page.getByText("Check your inbox for a password reset link.", { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Check your inbox", exact: true })).toBeVisible();
   const link = await new Mailpit(request).link(
     account.email,
     "Reset your Startup OS password",

@@ -1,45 +1,28 @@
-import { conversationInput } from "@startup-os/contracts/messaging/input";
+import { conversationInput, messagingLimits } from "@startup-os/contracts/messaging/input";
 
 import type { Conversation } from "@/lib/messaging/conversations";
-import { parseRecipientEmails } from "@/lib/messaging/recipients";
+import type { PickedRecipient } from "@/lib/people/people-picker";
 import { z } from "zod";
 
 export function createConversationDraftSchema(kind: Conversation["kind"]) {
   return z.object({
-    name: kind === "channel" ? conversationInput.shape.name.unwrap() : z.string().trim().max(80),
-    emails: z.string().superRefine((value, context) => {
-      let recipients: string[];
-      try {
-        recipients = parseRecipientEmails(value);
-      } catch {
-        context.addIssue({
-          code: "custom",
-          message: "Enter complete email addresses, separated by commas.",
-        });
-        return;
-      }
-      const result = conversationInput.shape.emails.safeParse(recipients);
-      if (!result.success) {
-        context.addIssue({
-          code: "custom",
-          message: "Enter no more than 30 recipient email addresses.",
-        });
-      } else if (kind !== "channel" && !recipients.length) {
-        context.addIssue({
-          code: "custom",
-          message: "Enter at least one recipient email address.",
-        });
-      } else if (kind === "dm" && recipients.length !== 1) {
-        context.addIssue({
-          code: "custom",
-          message: "Use a group message for more than one recipient.",
-        });
-      } else if (kind === "group" && recipients.length < 2) {
-        context.addIssue({
-          code: "custom",
-          message: "Enter at least two recipients for a group message.",
-        });
-      }
+    name:
+      kind === "channel"
+        ? z
+            .string()
+            .trim()
+            .min(1, "Enter a channel name.")
+            .max(80, "Use 80 characters or fewer.")
+            .pipe(conversationInput.shape.name.unwrap())
+        : z.string().trim().max(80, "Use 80 characters or fewer."),
+    recipients: z.custom<PickedRecipient[]>().superRefine((recipients, context) => {
+      let message: string | undefined;
+      if (recipients.length > messagingLimits.recipients)
+        message = `Add no more than ${messagingLimits.recipients} people.`;
+      else if (kind === "dm" && recipients.length !== 1) message = "Choose a person to message.";
+      else if (kind === "group" && recipients.length < 2)
+        message = "Choose at least two people for a group message.";
+      if (message) context.addIssue({ code: "custom", message });
     }),
     isPrivate: z.boolean(),
   });

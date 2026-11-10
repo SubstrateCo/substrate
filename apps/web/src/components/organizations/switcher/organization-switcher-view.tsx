@@ -10,7 +10,7 @@ import {
 } from "../../ui/dropdown-menu";
 import { OrganizationSwitcherItem } from "./organization-switcher-item";
 import { SwitcherTrigger } from "@/components/organizations/switcher/switcher-trigger";
-import { Settings2 } from "lucide-react";
+import { Settings } from "lucide-react";
 
 export function OrganizationSwitcher({
   organizationId,
@@ -43,7 +43,7 @@ export function OrganizationSwitcher({
     <div className="relative">
       <DropdownMenu open={open} onOpenChange={onOpenChange}>
         <SwitcherTrigger name={name} logo={logo} pending={pending} />
-        <DropdownMenuContent align="start" side="right" sideOffset={12} className="w-64">
+        <DropdownMenuContent align="start" side="right" sideOffset={12}>
           <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
           {loading && !organizations.length && !isAccessFailure(loadError) && (
             <LoadingState label="Loading workspaces…" variant="compact" />
@@ -68,7 +68,7 @@ export function OrganizationSwitcher({
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
             <a href={manageHref} className="gap-3 px-2 py-2">
-              <Settings2 />
+              <Settings />
               Manage workspaces
             </a>
           </DropdownMenuItem>

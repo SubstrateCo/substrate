@@ -9,14 +9,20 @@ test("create a project, task and subtask, then edit and reload the task", async 
   const sender = await client(actors.sender);
   await visit(sender, undefined, "/tasks");
   const name = `Project ${crypto.randomUUID()}`;
-  await sender.page.getByRole("button", { name: "New project", exact: true }).click();
+  await sender.page
+    .getByRole("complementary", { name: "Projects", exact: true })
+    .getByRole("button", { name: "New project", exact: true })
+    .click();
   await sender.page.getByLabel("Project name", { exact: true }).fill(name);
   await sender.page
     .getByLabel("Project description", { exact: true })
     .fill("Release regression coverage");
   await sender.page.getByRole("button", { name: "Create project", exact: true }).click();
   await expect(sender.page.getByRole("heading", { name, exact: true })).toBeVisible();
-  await sender.page.getByRole("button", { name: "New task", exact: true }).click();
+  await sender.page
+    .getByRole("group", { name: "Project actions", exact: true })
+    .getByRole("button", { name: "New task", exact: true })
+    .click();
   await sender.page.getByLabel("Task title", { exact: true }).fill("Ship release");
   await sender.page.getByRole("button", { name: "Create task", exact: true }).click();
   await expect(sender.page.getByRole("dialog")).toHaveCount(0);
@@ -27,7 +33,7 @@ test("create a project, task and subtask, then edit and reload the task", async 
   await expect(task.getByRole("heading", { name: "Ship release", exact: true })).toBeVisible();
   await task.getByRole("button", { name: "Edit task", exact: true }).click();
   await sender.page.getByLabel("Task title", { exact: true }).fill("Ship reviewed release");
-  await select(sender.page, "Status", "In Progress");
+  await select(sender.page, "Status", "In progress");
   await select(sender.page, "Priority", "High");
   await sender.page.getByRole("button", { name: "Save task", exact: true }).click();
   await expect(
@@ -41,8 +47,8 @@ test("create a project, task and subtask, then edit and reload the task", async 
   await expect(
     task.getByRole("heading", { name: "Ship reviewed release", exact: true }),
   ).toBeVisible();
-  await expect(task.getByText("In Progress", { exact: true })).toBeVisible();
-  await expect(task.getByText("high", { exact: true })).toBeVisible();
+  await expect(task.getByText("In progress", { exact: true })).toBeVisible();
+  await expect(task.getByText("High", { exact: true })).toBeVisible();
   const projectId = new URL(taskURL).searchParams.get("projectId")!;
   const persisted = await detail(actors.sender, projectId);
   expect(persisted.tasks.find((item) => item.title === "Verify release")?.parentTaskEntityId).toBe(
@@ -62,13 +68,18 @@ test("assignment notifies a project member, whose comment reaches the owner live
     visit(member, undefined, "/notifications"),
   ]);
   const since = member.events.length;
-  await sender.page.getByRole("button", { name: "New task", exact: true }).click();
+  await sender.page
+    .getByRole("group", { name: "Project actions", exact: true })
+    .getByRole("button", { name: "New task", exact: true })
+    .click();
   const title = `Assigned ${created.entityId}`;
   await sender.page.getByLabel("Task title", { exact: true }).fill(title);
   await select(sender.page, "Assignee", actors.member.name);
   await sender.page.getByRole("button", { name: "Create task", exact: true }).click();
   const notice = member.page.getByRole("listitem").filter({ hasText: title });
-  await expect(notice.getByText("Assigned to you", { exact: true })).toBeVisible();
+  await expect(notice.getByRole("link")).toHaveAccessibleName(
+    `${actors.sender.name} assigned you ${title}, unread`,
+  );
   await expectChange(member, since, "notifications");
   await notice.getByRole("link").click();
   await expect(
@@ -103,17 +114,16 @@ test("project sharing needs confirmation and revocation removes cached private c
   ]);
   await expect(member.page.getByRole("button", { name: created.name, exact: true })).toHaveCount(0);
   await sender.page.getByRole("tab", { name: "Settings", exact: true }).click();
-  await sender.page.getByRole("button", { name: "Add access", exact: true }).click();
-  await sender.page.getByRole("option", { name: new RegExp(actors.member.name) }).click();
-  await select(sender.page, "Permission", "View");
-  await sender.page.getByRole("button", { name: "Review access", exact: true }).click();
+  await sender.page.getByRole("button", { name: "Add people", exact: true }).click();
   await expect(
-    sender.page.getByRole("dialog", { name: "Review access change", exact: true }),
+    sender.page.getByRole("dialog", { name: `Share ${created.name}`, exact: true }),
   ).toBeVisible();
+  await sender.page.getByRole("option", { name: new RegExp(actors.member.name) }).click();
+  await select(sender.page, "Permission", "Can view");
   expect(
     (await detail(actors.sender, created.entityId)).members.map((item) => item.name),
   ).not.toContain(actors.member.name);
-  await sender.page.getByRole("button", { name: "Confirm access", exact: true }).click();
+  await sender.page.getByRole("button", { name: "Share project", exact: true }).click();
   await member.page.getByRole("button", { name: created.name, exact: true }).click();
   await visit(member, undefined, "/tasks", { projectId: created.entityId, taskId: task.id });
   await expect(
@@ -135,10 +145,8 @@ test("project sharing needs confirmation and revocation removes cached private c
   await expect(member.page.getByText(title, { exact: true })).toHaveCount(0);
   await expect(member.page.getByRole("button", { name: created.name, exact: true })).toHaveCount(0);
   await member.page.getByRole("combobox", { name: "Search workspace", exact: true }).fill(title);
-  await expect(
-    member.page.getByText("No accessible results found. Try another search.", { exact: true }),
-  ).toBeVisible();
-  await expect(member.page.getByRole("link", { name: `task · ${title}`, exact: true })).toHaveCount(
+  await expect(member.page.getByText(`No results for “${title}”`, { exact: true })).toBeVisible();
+  await expect(member.page.getByRole("link", { name: `Task: ${title}`, exact: true })).toHaveCount(
     0,
   );
 });

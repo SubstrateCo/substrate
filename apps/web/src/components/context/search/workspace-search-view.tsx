@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
+import { Kbd } from "../../ui/kbd";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import type { SearchResultItem } from "./search-result";
 import { SearchResults } from "@/components/context/search/search-results";
@@ -16,17 +17,24 @@ const kindLabels = {
   channel: "Channels",
 } satisfies Record<SearchKind, string>;
 
-// Left and Right switch tabs. In the search input they do so only when the caret is
-// already at that edge of the text, so normal caret movement keeps working.
-// A focused tab handles the arrow keys itself.
+// Ctrl+Tab and Ctrl+Shift+Tab switch the type, so plain arrows keep moving the caret.
 function tabStep(event: KeyboardEvent) {
-  if ([event.altKey, event.ctrlKey, event.metaKey, event.shiftKey].some(Boolean)) return 0;
-  if (event.target instanceof Element && event.target.closest("[role=tablist]")) return 0;
-  const step = { ArrowLeft: -1, ArrowRight: 1 }[event.key] ?? 0;
-  const target = event.target;
-  if (!step || !(target instanceof HTMLInputElement)) return step;
-  const edge = step < 0 ? 0 : target.value.length;
-  return target.selectionStart === edge && target.selectionEnd === edge ? step : 0;
+  const otherModifier = event.altKey || event.metaKey;
+  if (event.key !== "Tab" || !event.ctrlKey || otherModifier) return 0;
+  return event.shiftKey ? -1 : 1;
+}
+
+function Hint({ keys, label }: { keys: string[]; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="inline-flex gap-0.5">
+        {keys.map((key) => (
+          <Kbd key={key}>{key}</Kbd>
+        ))}
+      </span>
+      {label}
+    </span>
+  );
 }
 
 export function WorkspaceSearch({
@@ -58,6 +66,7 @@ export function WorkspaceSearch({
 }) {
   const panel = useRef<HTMLElement>(null);
   const [panelTop, setPanelTop] = useState(0);
+  const isMac = window.startupOSWindow?.platform === "darwin";
   useLayoutEffect(() => {
     const measure = () => setPanelTop(panel.current?.getBoundingClientRect().top ?? 0);
     measure();
@@ -81,8 +90,9 @@ export function WorkspaceSearch({
     <section
       ref={panel}
       aria-label="Workspace search"
-      className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-popover"
-      style={{ maxHeight: `calc(100dvh - ${panelTop}px - var(--spacing) * 2)` }}
+      className="flex max-h-(--panel-max-height) min-h-0 min-w-0 flex-col overflow-hidden bg-popover"
+      // The panel's measured top is known only at run time.
+      style={{ "--panel-max-height": `calc(100dvh - ${panelTop}px - var(--spacing) * 2)` }}
       onKeyDown={(event) => {
         if (
           event.key === "Enter" &&
@@ -100,8 +110,8 @@ export function WorkspaceSearch({
         }}
         className="min-h-0"
       >
-        <div className="shrink-0 px-2 pt-1.5">
-          <TabsList variant="line" aria-label="Search type">
+        <div className="shrink-0 border-b px-2 pt-1.5">
+          <TabsList variant="line" aria-label="Search type" aria-keyshortcuts="Control+Tab">
             {kinds.map((type) => (
               <TabsTrigger key={type} value={type} className="flex-none">
                 {kindLabels[type]}
@@ -113,6 +123,7 @@ export function WorkspaceSearch({
           <SearchResults
             query={query}
             browsing={kind === "channel" && !query.trim()}
+            filtered={kind !== "all"}
             joiningId={joiningId}
             onJoin={onJoin}
             results={results}
@@ -125,6 +136,17 @@ export function WorkspaceSearch({
           />
         </TabsContent>
       </Tabs>
+      <footer
+        aria-hidden="true"
+        className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-t px-3 py-2 text-xs text-muted-foreground"
+      >
+        <Hint keys={["↑", "↓"]} label="Navigate" />
+        <Hint keys={["↵"]} label="Open" />
+        <Hint keys={[isMac ? "⌃" : "Ctrl", "Tab"]} label="Switch type" />
+        <span className="ml-auto">
+          <Hint keys={["Esc"]} label="Close" />
+        </span>
+      </footer>
     </section>
   );
 }

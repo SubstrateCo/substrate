@@ -22,6 +22,7 @@ export function ForgotPasswordForm({ redirect }: { redirect: string }) {
       success={reset.isSuccess}
       error={reset.error}
       onSubmit={(form) => reset.mutate(form)}
+      onReset={() => reset.reset()}
       loginHref={authHref("/login", redirect)}
     />
   );

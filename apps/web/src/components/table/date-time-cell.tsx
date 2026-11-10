@@ -1,11 +1,6 @@
+import { Timestamp } from "../time/timestamp";
 import { dateTimeValue, type DateTimeInput } from "./date-time";
 import { useCellContext } from "./table";
-
-const formatter = new Intl.DateTimeFormat("en-US", {
-  dateStyle: "medium",
-  timeStyle: "short",
-  timeZone: "UTC",
-});
 
 export function DateTimeCell() {
   const cell = useCellContext<number | undefined>();
@@ -14,7 +9,11 @@ export function DateTimeCell() {
 
 export function DateTimeDisplay({ value }: { value: DateTimeInput }) {
   const timestamp = dateTimeValue(value);
-  if (timestamp === undefined) return <span aria-label="No date">—</span>;
-  const date = new Date(timestamp);
-  return <time dateTime={date.toISOString()}>{formatter.format(date)} UTC</time>;
+  if (timestamp === undefined)
+    return (
+      <span aria-label="No date" className="text-muted-foreground">
+        —
+      </span>
+    );
+  return <Timestamp value={timestamp} format="datetime" />;
 }

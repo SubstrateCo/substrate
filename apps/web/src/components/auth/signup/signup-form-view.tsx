@@ -1,6 +1,7 @@
 import { PendingButton } from "../../feedback/pending-button";
 import { EmailField, NativeField, NativeForm } from "../../forms/native-form";
 import { AuthFrame } from "../auth-frame";
+import { AuthLink } from "../auth-link";
 import { FormMessage } from "../form-message";
 
 export function SignupForm({
@@ -15,9 +16,24 @@ export function SignupForm({
   loginHref: string;
 }) {
   return (
-    <AuthFrame title="Create your account" description="A shared home for your team and its work.">
+    <AuthFrame
+      title="Create your account"
+      description="A shared home for your team and its work."
+      footer={
+        <>
+          Already have an account? <AuthLink href={loginHref}>Sign in</AuthLink>
+        </>
+      }
+    >
       <NativeForm pending={pending} onSubmit={onSubmit}>
-        <NativeField id="name" name="name" label="Name" autoComplete="name" required />
+        <NativeField
+          id="name"
+          name="name"
+          label="Name"
+          autoComplete="name"
+          missingMessage="Enter your name."
+          required
+        />
         <EmailField />
         <NativeField
           id="password"
@@ -27,22 +43,22 @@ export function SignupForm({
           type="password"
           autoComplete="new-password"
           minLength={8}
+          missingMessage="Choose a password."
           required
         />
-        <PendingButton className="w-full" pending={pending} pendingLabel="Creating account…">
-          Create account
-        </PendingButton>
         <FormMessage
           error={error}
-          errorDescription="We couldn’t create your account. Please try again."
+          errorDescription="We couldn't create your account. Please try again."
         />
+        <PendingButton
+          className="w-full"
+          size="lg"
+          pending={pending}
+          pendingLabel="Creating account."
+        >
+          Create account
+        </PendingButton>
       </NativeForm>
-      <p className="text-sm">
-        Already have an account?{" "}
-        <a className="underline" href={loginHref}>
-          Sign in
-        </a>
-      </p>
     </AuthFrame>
   );
 }

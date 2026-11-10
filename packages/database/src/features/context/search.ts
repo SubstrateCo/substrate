@@ -1,6 +1,8 @@
 import type { ContextSearchKind } from "@startup-os/contracts/context/input";
+import type { TaskStatus } from "@startup-os/contracts/tasks";
 
 import type { DatabaseExecutor } from "../../client";
+import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
@@ -27,6 +29,7 @@ import { projects } from "../projects/schema";
 import { liveTask } from "../tasks/access";
 import { tasks } from "../tasks/tasks.schema";
 import { workspaceContext, requireWork } from "./access";
+import { messageExcerpts } from "./message-excerpt";
 import { messageEntityReferences, messageMessagingReferences } from "./schema";
 import { and, asc, eq, gt, inArray, isNull, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -37,11 +40,20 @@ interface SearchResult {
   kind: Exclude<ContextSearchKind, "all">;
   title: string;
   projectEntityId?: string;
+  // Task results only: the readable parent project and the task's status, so pickers can tell
+  // tasks with the same title apart.
+  projectName?: string;
+  status?: TaskStatus;
   conversationId?: string;
   threadId?: string | null;
   conversationName?: string;
-  // Conversation results only.
+  // Conversation results, and message and thread results for their conversation.
   conversationKind?: "dm" | "group" | "channel";
+  // Message and thread results only: one line of plain text with references resolved for the
+  // viewer, the author's name, and when it was sent.
+  excerpt?: string;
+  authorName?: string;
+  createdAt?: Date;
   // Agent results only: the viewer's own agent definition.
   agentId?: string;
   // Conversation and channel results only.
@@ -247,6 +259,8 @@ export async function contextSearch(
   }
   const words = wordPrefixQuery(query);
   const results: SearchResult[] = [];
+  // Full message bodies by result ID, for excerpts.
+  const bodies = new Map<string, string>();
   if (kind === "all" || kind === "task" || kind === "project") {
     // Tasks and projects in one statement with one visibility CTE. A task is readable when its
     // project is and the task is not deleted.
@@ -255,6 +269,8 @@ export async function contextSearch(
       sql`(${entityId} IN (SELECT entity_id FROM visible_entities WHERE level >= ${minimum}::permission_level)
         OR ${adminOwnsCondition(ctx.scope, entityId)})`;
     const types = kind === "all" ? (["task", "project"] as const) : [kind];
+    // The task's project already passed the readable check, so its name is safe to show.
+    const taskProject = alias(projects, "task_project");
     const branches = types.map((type) => {
       const table = type === "task" ? tasks : projects;
       const column = type === "task" ? tasks.title : projects.name;
@@ -273,17 +289,33 @@ export async function contextSearch(
           : undefined,
         input.after ? gt(table.entityId, input.after) : undefined,
       );
+      const context =
+        type === "task"
+          ? sql`${taskProject.name} AS "projectName", ${tasks.status}::text AS status`
+          : sql`NULL::text AS "projectName", NULL::text AS status`;
+      const parent =
+        type === "task"
+          ? sql`LEFT JOIN ${projects} "task_project" ON ${taskProject.entityId} = ${tasks.projectEntityId}`
+          : sql``;
       return sql`(SELECT ${table.entityId} AS id, ${column} AS title,
-          ${projectEntityId} AS "projectEntityId", ${type} AS kind
-          FROM ${table} WHERE ${where} ORDER BY ${table.entityId} LIMIT ${limit})`;
+          ${projectEntityId} AS "projectEntityId", ${type} AS kind, ${context}
+          FROM ${table} ${parent} WHERE ${where} ORDER BY ${table.entityId} LIMIT ${limit})`;
     });
     const rows = await db.execute<{
       id: string;
       title: string;
       projectEntityId: string;
       kind: "task" | "project";
+      projectName: string | null;
+      status: TaskStatus | null;
     }>(sql`${visibilityCte(ctx.scope)} ${sql.join(branches, sql` UNION ALL `)}`);
-    results.push(...rows);
+    results.push(
+      ...rows.map(({ projectName, status, ...row }) =>
+        row.kind === "task"
+          ? { ...row, projectName: projectName ?? undefined, status: status ?? undefined }
+          : row,
+      ),
+    );
   }
   if (kind === "all" || kind === "conversation") {
     const rows = await db
@@ -361,12 +393,17 @@ export async function contextSearch(
         title: messagingMessages.body,
         conversationId: messagingMessages.conversationId,
         conversationName: sql<string>`${messagingConversations.name}`,
+        conversationKind: messagingConversations.kind,
+        private: messagingConversations.private,
+        authorName: actorDisplayName(),
+        createdAt: messagingMessages.createdAt,
       })
       .from(messagingMessages)
       .innerJoin(
         messagingConversations,
         eq(messagingConversations.id, messagingMessages.conversationId),
       )
+      .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
       .where(
         and(
           visibleConversations(db, scope),
@@ -390,6 +427,7 @@ export async function contextSearch(
       )
       .orderBy(asc(messagingMessages.id))
       .limit(limit);
+    for (const row of rows) bodies.set(row.id, row.title);
     results.push(
       ...rows.map((row) => ({
         ...row,
@@ -406,12 +444,18 @@ export async function contextSearch(
         title: messagingMessages.body,
         conversationId: messagingMessages.conversationId,
         threadId: messagingMessages.threadId,
+        conversationName: conversationDisplayName(db, scope),
+        conversationKind: messagingConversations.kind,
+        private: messagingConversations.private,
+        authorName: actorDisplayName(),
+        createdAt: messagingMessages.createdAt,
       })
       .from(messagingMessages)
       .innerJoin(
         messagingConversations,
         eq(messagingConversations.id, messagingMessages.conversationId),
       )
+      .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
       .where(
         and(
           visibleConversations(db, scope),
@@ -422,6 +466,7 @@ export async function contextSearch(
       )
       .orderBy(asc(messagingMessages.id))
       .limit(limit);
+    for (const row of rows) bodies.set(row.id, row.title);
     results.push(
       ...rows.map((row) => ({ ...row, title: row.title.slice(0, 160), kind: "message" as const })),
     );
@@ -477,5 +522,20 @@ export async function contextSearch(
       .limit(limit);
     results.push(...rows.map((row) => ({ ...row, kind: "agent" as const })));
   }
-  return results.sort((a, b) => a.id.localeCompare(b.id)).slice(0, limit);
+  const page = results.sort((a, b) => a.id.localeCompare(b.id)).slice(0, limit);
+  // Message rows passed the conversation check above, so their bodies may be quoted.
+  const excerpts = await messageExcerpts(
+    ctx,
+    db,
+    scope,
+    page.flatMap((row) =>
+      bodies.has(row.id)
+        ? [{ id: row.id, body: bodies.get(row.id)!, conversationId: row.conversationId! }]
+        : [],
+    ),
+  );
+  return page.map((row) => {
+    const excerpt = excerpts.get(row.id);
+    return excerpt === undefined ? row : { ...row, excerpt };
+  });
 }

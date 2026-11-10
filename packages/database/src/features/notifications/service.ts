@@ -4,7 +4,9 @@ import { actors } from "../../core/actors/schema";
 import { AccessDeniedError } from "../../errors";
 import { taskActivity } from "../activity/schema";
 import { workspaceContext, requireWork } from "../context/access";
+import { messageExcerpts } from "../context/message-excerpt";
 import { visibleConversations, type MessagingIdentity } from "../messaging/access";
+import { conversationDisplayName } from "../messaging/display-name";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { projects } from "../projects/schema";
 import { liveTask } from "../tasks/access";
@@ -13,6 +15,7 @@ import { toFeedItem } from "./feed-item";
 import { notifications } from "./schema";
 import { readableMessageTargets } from "./targets";
 import { and, desc, eq, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity) {
   return {
@@ -86,6 +89,8 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
       // One statement filters by the target's current access before LIMIT, so hidden targets
       // cost no extra round trips. A task is readable when its project is and it is not deleted.
       const projectEntityId = sql`coalesce(${tasks.projectEntityId}, ${projects.entityId})`;
+      // Who acted: the message author, or whoever recorded the assignment event.
+      const actor = alias(actors, "notice_actor");
       const rows = await db
         .select({
           id: notifications.id,
@@ -96,7 +101,20 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
           messageId: notifications.messageId,
           title: sql<string | null>`coalesce(${tasks.title}, ${projects.name})`,
           projectEntityId: sql<string | null>`${projectEntityId}`,
+          projectName: sql<
+            string | null
+          >`(SELECT notice_project.name FROM ${projects} notice_project
+            WHERE notice_project.organization_id = ${notifications.organizationId}
+              AND notice_project.entity_id = ${projectEntityId})`,
           conversationId: messagingConversations.id,
+          conversationName: sql<
+            string | null
+          >`CASE WHEN ${messagingConversations.id} IS NULL THEN NULL ELSE ${conversationDisplayName(db, scope)} END`,
+          conversationKind: messagingConversations.kind,
+          threadId: messagingMessages.threadId,
+          body: messagingMessages.body,
+          actorName: sql<string | null>`CASE WHEN ${actor.entityId} IS NULL THEN NULL
+            ELSE ${actorDisplayName(actor)} END`,
         })
         .from(notifications)
         .leftJoin(
@@ -121,6 +139,22 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
           messagingConversations,
           eq(messagingConversations.id, messagingMessages.conversationId),
         )
+        .leftJoin(
+          taskActivity,
+          and(
+            eq(notifications.kind, "assignment"),
+            eq(taskActivity.organizationId, notifications.organizationId),
+            eq(taskActivity.taskEntityId, notifications.entityId),
+            sql`${taskActivity.id}::text = ${notifications.eventKey}`,
+          ),
+        )
+        .leftJoin(
+          actor,
+          eq(
+            actor.entityId,
+            sql`coalesce(${messagingMessages.authorActorEntityId}, ${taskActivity.actorEntityId})`,
+          ),
+        )
         .where(
           and(
             eq(notifications.organizationId, scope.organizationId),
@@ -143,11 +177,33 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
         )
         .orderBy(desc(notifications.createdAt), desc(notifications.id))
         .limit(limit);
+      // The query above checked each message's conversation, so its body may be quoted.
+      const excerpts = await messageExcerpts(
+        ctx,
+        db,
+        scope,
+        rows.flatMap((row) =>
+          row.messageId && row.conversationId && row.body !== null
+            ? [{ id: row.messageId, body: row.body, conversationId: row.conversationId }]
+            : [],
+        ),
+      );
       return rows.flatMap(
-        ({ title, projectEntityId, ...row }) =>
+        ({ title, projectEntityId, projectName, conversationName, conversationKind, ...row }) =>
           toFeedItem({
             ...row,
-            work: title !== null && projectEntityId !== null ? { title, projectEntityId } : null,
+            work:
+              title !== null && projectEntityId !== null
+                ? { title, projectEntityId, projectName: projectName ?? title }
+                : null,
+            conversation:
+              row.conversationId && conversationName && conversationKind
+                ? {
+                    name: conversationName,
+                    kind: conversationKind,
+                    excerpt: excerpts.get(row.messageId!) ?? "",
+                  }
+                : null,
           }) ?? [],
       );
     },

@@ -28,20 +28,26 @@ import { toast } from "sonner";
 
 export function MessageItem({
   message,
+  grouped = false,
+  threadRoot = false,
   organizationId,
   onThread,
   context,
 }: {
   message: Message;
+  grouped?: boolean;
+  threadRoot?: boolean;
   organizationId: string;
   onThread?: (id: string) => void;
   context: MessageContextState;
 }) {
   const queryClient = useQueryClient();
-  const highlighted = useSearch({
+  const linked = useSearch({
     strict: false,
     select: (search) => search.messageId === message.id,
   });
+  // A thread's root heads its own pane, so it is not marked as the link target there.
+  const highlighted = linked && !threadRoot;
   const [linking, setLinking] = useState(false);
   const reaction = useMutation({
     onError: (error) =>
@@ -76,6 +82,8 @@ export function MessageItem({
       >
         <MessageItemView
           message={message}
+          grouped={grouped && !highlighted}
+          highlighted={highlighted}
           body={
             <ReferencedMessageBody
               organizationId={organizationId}
@@ -86,15 +94,11 @@ export function MessageItem({
           }
           actions={
             <>
-              <CopyLink
-                label="Copy message link"
-                href={messageHref(organizationId, message.conversationId, message.id)}
-              />
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     type="button"
-                    size="icon-xs"
+                    size="icon-sm"
                     variant="ghost"
                     aria-label="Link existing work"
                     onClick={() => setLinking(true)}
@@ -104,6 +108,11 @@ export function MessageItem({
                 </TooltipTrigger>
                 <TooltipContent>Link existing work</TooltipContent>
               </Tooltip>
+              <CopyLink
+                grouped
+                label="Copy message link"
+                href={messageHref(organizationId, message.conversationId, message.id)}
+              />
             </>
           }
           avatarBadge={<AgentWorkBadge messageId={message.id} />}

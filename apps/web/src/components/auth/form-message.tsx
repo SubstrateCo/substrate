@@ -5,17 +5,15 @@ import { CircleAlert, CircleCheck } from "lucide-react";
 export function FormMessage({
   error,
   message,
-  reserve = false,
   errorDescription,
 }: {
   error?: Error | null;
   message?: string;
-  reserve?: boolean;
   errorDescription?: string;
 }) {
-  if (!error && !message) return reserve ? <div aria-hidden="true" className="min-h-20" /> : null;
+  if (!error && !message) return null;
   const Icon = error ? CircleAlert : CircleCheck;
-  const feedback = (
+  return (
     <Alert
       variant={error ? "destructive" : "success"}
       presentation="inline"
@@ -27,5 +25,4 @@ export function FormMessage({
       </AlertDescription>
     </Alert>
   );
-  return reserve ? <div className="min-h-20">{feedback}</div> : feedback;
 }

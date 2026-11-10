@@ -69,10 +69,7 @@ export function DesktopFrame({ children }: { children: ReactNode }) {
           />
         </header>
         {/* Keep fixed auth screens and local overlays below the native controls. */}
-        <div
-          className="absolute inset-x-0 top-(--desktop-title-bar-height) bottom-0 overflow-auto"
-          style={{ contain: "layout" }}
-        >
+        <div className="absolute inset-x-0 top-(--desktop-title-bar-height) bottom-0 overflow-auto contain-layout">
           {children}
         </div>
       </div>

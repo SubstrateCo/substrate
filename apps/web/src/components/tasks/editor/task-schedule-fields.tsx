@@ -1,20 +1,24 @@
-import { taskStatusLabels, taskStatusValues } from "@startup-os/contracts/tasks";
-
 import { useId } from "react";
 
+import { assigneeLabel, AssigneePicker } from "../assignee/assignee-picker";
+import { TaskAssigneeAvatar } from "../task-cues/task-assignee-avatar";
+import { taskPriorityOptions, taskStatusOptions } from "../task-cues/task-options";
 import { TaskSelect } from "../task-select";
-import type { ProjectDetail, Task } from "../types";
+import type { ProjectDetail } from "../types";
 import type { TaskEditorForm } from "./task-form-view";
 import { FormTextField } from "@/components/forms/form-text-field";
-
-const priorities: Task["priority"][] = ["none", "low", "medium", "high", "urgent"];
+import { Button } from "@/components/ui/button";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { ChevronDown } from "lucide-react";
 
 export function TaskScheduleFields({
   form,
   assignees,
+  actors,
 }: {
   form: TaskEditorForm;
   assignees: ProjectDetail["actors"];
+  actors: ProjectDetail["actors"];
 }) {
   const id = useId();
   return (
@@ -30,7 +34,7 @@ export function TaskScheduleFields({
             }}
             onBlur={field.handleBlur}
             errors={field.state.meta.errors}
-            options={taskStatusValues.map((value) => ({ value, label: taskStatusLabels[value] }))}
+            options={taskStatusOptions}
           />
         )}
       </form.Field>
@@ -45,42 +49,51 @@ export function TaskScheduleFields({
             }}
             onBlur={field.handleBlur}
             errors={field.state.meta.errors}
-            options={priorities.map((value) => ({
-              value,
-              label: value[0]!.toUpperCase() + value.slice(1),
-            }))}
+            options={taskPriorityOptions}
           />
         )}
       </form.Field>
       <form.Field name="assignee">
-        {(field) => (
-          <TaskSelect
-            label="Assignee"
-            value={field.state.value}
-            onChange={(value) => {
-              field.handleChange(value);
-              if (!field.state.meta.isValid) void field.validate("blur");
-            }}
-            onBlur={field.handleBlur}
-            errors={field.state.meta.errors}
-            options={[
-              { value: "unassigned", label: "Unassigned" },
-              ...assignees.map((actor) => ({
-                value: actor.entityId,
-                label: `${actor.name}${actor.type === "agent" ? " (agent)" : ""}`,
-              })),
-              ...(field.state.value !== "unassigned" &&
-              !assignees.some((actor) => actor.entityId === field.state.value)
-                ? [
-                    {
-                      value: field.state.value,
-                      label: "Former project member - select a new assignee",
-                    },
-                  ]
-                : []),
-            ]}
-          />
-        )}
+        {(field) => {
+          const value = field.state.value === "unassigned" ? null : field.state.value;
+          const actor = actors.find((candidate) => candidate.entityId === value);
+          const invalid = field.state.meta.errors.length > 0;
+          return (
+            <Field className="min-w-0" data-invalid={invalid}>
+              <FieldLabel htmlFor={`${id}-assignee`}>Assignee</FieldLabel>
+              <AssigneePicker
+                value={value}
+                assignees={assignees}
+                onChange={(next) => {
+                  field.handleChange(next ?? "unassigned");
+                  void field.validate("blur");
+                }}
+              >
+                {() => (
+                  <Button
+                    id={`${id}-assignee`}
+                    type="button"
+                    role="combobox"
+                    variant="outline"
+                    className="w-full min-w-0"
+                    onBlur={field.handleBlur}
+                    aria-invalid={invalid}
+                    aria-describedby={invalid ? `${id}-assignee-error` : undefined}
+                  >
+                    <TaskAssigneeAvatar name={actor?.name} type={actor?.type} />
+                    <span className="min-w-0 flex-1 truncate text-left font-normal">
+                      {value && !actor
+                        ? "Former member. Choose someone else."
+                        : assigneeLabel(value, actors)}
+                    </span>
+                    <ChevronDown aria-hidden="true" className="text-muted-foreground" />
+                  </Button>
+                )}
+              </AssigneePicker>
+              <FieldError id={`${id}-assignee-error`} errors={field.state.meta.errors} />
+            </Field>
+          );
+        }}
       </form.Field>
       <form.Field name="dueDate">
         {(field) => (

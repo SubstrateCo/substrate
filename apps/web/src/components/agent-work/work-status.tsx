@@ -73,8 +73,7 @@ export function WorkStatus({
         <Button
           type="button"
           size="xs"
-          variant="destructive"
-          className="h-5"
+          variant="destructive-ghost"
           disabled={stopping}
           onClick={onStop}
         >

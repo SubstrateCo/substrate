@@ -1,7 +1,10 @@
 import { useState } from "react";
 
+import { TaskAssigneeAvatar } from "../../task-cues/task-assignee-avatar";
 import { TaskSelect } from "../../task-select";
 import { projectPermissionOptions, type ProjectDetail, type ProjectPermission } from "../../types";
+import { FormMessage } from "@/components/auth/form-message";
+import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -11,15 +14,21 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Check, UserRound } from "lucide-react";
+import { DialogBody, DialogFooter } from "@/components/ui/dialog";
+import { Check } from "lucide-react";
 
+/** Choose a workspace person and a level. Sharing happens only when the person confirms. */
 export function ProjectAccessForm({
   detail,
-  onReview,
+  pending,
+  error,
+  onShare,
   onCancel,
 }: {
   detail: ProjectDetail;
-  onReview: (actorEntityId: string, name: string, level: ProjectPermission) => void;
+  pending: boolean;
+  error?: Error | null;
+  onShare: (actorEntityId: string, name: string, level: ProjectPermission) => void;
   onCancel: () => void;
 }) {
   const [actorEntityId, setActorEntityId] = useState("");
@@ -33,48 +42,56 @@ export function ProjectAccessForm({
   const actor = available.find((candidate) => candidate.entityId === actorEntityId);
   return (
     <form
-      className="min-w-0 space-y-4"
       onSubmit={(event) => {
         event.preventDefault();
-        if (actor) onReview(actor.entityId, actor.name, level);
+        if (actor && !pending) onShare(actor.entityId, actor.name, level);
       }}
     >
-      <Command>
-        <CommandInput aria-label="Search people" placeholder="Search workspace people…" />
-        <CommandList>
-          <CommandEmpty>No other workspace people available.</CommandEmpty>
-          <CommandGroup heading="Available in this workspace">
-            {available.map((candidate) => (
-              <CommandItem
-                key={candidate.entityId}
-                value={`${candidate.name} ${candidate.entityId}`}
-                onSelect={() => setActorEntityId(candidate.entityId)}
-              >
-                <UserRound aria-hidden="true" />
-                <span className="min-w-0 flex-1 truncate">{candidate.name}</span>
-                {candidate.entityId === actorEntityId && <Check aria-hidden="true" />}
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        </CommandList>
-      </Command>
-      {actor && <p className="text-sm">Selected: {actor.name}</p>}
-      <TaskSelect
-        label="Permission"
-        value={level}
-        onChange={setLevel}
-        options={projectPermissionOptions}
-      />
-      <p className="text-xs text-muted-foreground">
-        Choose an existing workspace person. Their agents use the same access. This does not invite
-        external users or grant access across workspaces.
-      </p>
-      <div className="flex flex-wrap justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
+      <DialogBody>
+        <fieldset disabled={pending} className="grid min-w-0 gap-4">
+          <div className="overflow-hidden rounded-lg border">
+            <Command>
+              <CommandInput aria-label="Search people" placeholder="Search people" />
+              <CommandList className="max-h-56">
+                <CommandEmpty>No one else in this workspace.</CommandEmpty>
+                <CommandGroup>
+                  {available.map((candidate) => (
+                    <CommandItem
+                      key={candidate.entityId}
+                      value={`${candidate.name} ${candidate.entityId}`}
+                      onSelect={() => setActorEntityId(candidate.entityId)}
+                    >
+                      <TaskAssigneeAvatar name={candidate.name} />
+                      <span className="min-w-0 flex-1 truncate">{candidate.name}</span>
+                      {candidate.entityId === actorEntityId && <Check aria-hidden="true" />}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </div>
+          <TaskSelect
+            label="Permission"
+            value={level}
+            onChange={setLevel}
+            options={projectPermissionOptions}
+          />
+          <p className="text-sm text-muted-foreground">
+            {actor
+              ? `${actor.name} will see every task, subtask, and comment in ${detail.project.name}. Their agents get the same access.`
+              : "Choose a person in this workspace. Their agents get the same access."}
+          </p>
+          <FormMessage error={error} errorDescription="Couldn't share this project. Try again." />
+        </fieldset>
+      </DialogBody>
+      <DialogFooter>
+        <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
           Cancel
         </Button>
-        <Button disabled={!actor}>Review access</Button>
-      </div>
+        <PendingButton disabled={!actor} pending={pending} pendingLabel="Sharing.">
+          Share project
+        </PendingButton>
+      </DialogFooter>
     </form>
   );
 }

@@ -96,6 +96,8 @@ test("task, project and combined work search each run one statement with one vis
       title: task.title,
       kind: "task" as const,
       projectEntityId: project.entityId,
+      projectName: project.name,
+      status: "not_started" as const,
     }));
   const projectRow = {
     id: project.entityId,
@@ -282,6 +284,41 @@ test("search finds each supported domain without leaking private work, and curso
   ]);
   await alice.entities.softDelete(project.entityId);
   expect(await context.search({ query: "Launch", kind: "task" })).toEqual([]);
+});
+
+test("message results carry their place, author and an excerpt that names only readable references", async () => {
+  await f.db.update(user).set({ emailVerified: true });
+  const alice = f.forActor(f.alice);
+  const hidden = await alice.projects.create({ name: "Hidden" });
+  const secret = await alice.tasks.create({ projectEntityId: hidden.entityId, title: "Secret" });
+  const chat = createAcceptedMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
+  const channel = await chat.createConversation({
+    kind: "channel",
+    name: "launch",
+    emails: ["bob@example.com"],
+  });
+  const message = await chat.sendMessage(
+    channel.id,
+    `Rollout for @[task:${secret.entityId}] with @[person:${f.bob}]`,
+  );
+  const search = (userId: string) =>
+    createContextService(f.db, { userId, organizationId: f.orgA }).search({
+      query: "Rollout",
+      kind: "message",
+    });
+  const expected = {
+    id: message.id,
+    conversationName: "launch",
+    conversationKind: "channel",
+    private: false,
+    authorName: "Alice",
+  };
+  expect(await search("alice")).toMatchObject([
+    { ...expected, excerpt: "Rollout for Secret with @Bob" },
+  ]);
+  expect(await search("bob")).toMatchObject([
+    { ...expected, excerpt: "Rollout for a task with @Bob" },
+  ]);
 });
 
 test("conversation results report the conversation type and privacy", async () => {

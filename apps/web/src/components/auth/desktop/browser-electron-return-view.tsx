@@ -20,25 +20,27 @@ export function BrowserElectronReturn({
   return (
     <AuthFrame
       title="Return to Startup OS"
-      description="You are signed in. Continue in the desktop app."
+      description="You're signed in. Continue in the desktop app."
+      actions={signOut}
     >
-      {email && <p className="text-sm wrap-anywhere">Signed in as {email}</p>}
-      <PendingButton
-        className="w-full"
-        pending={pending}
-        pendingLabel="Returning…"
-        onClick={onContinue}
-      >
-        Continue to Startup OS
-      </PendingButton>
+      {email && (
+        <p className="rounded-md bg-muted px-3 py-2 text-sm wrap-anywhere text-muted-foreground">
+          Signed in as {email}
+        </p>
+      )}
       <FormMessage
         error={error}
         errorDescription="Could not return to Startup OS. Please try again."
       />
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">Need a different account?</p>
-        {signOut}
-      </div>
+      <PendingButton
+        className="w-full"
+        size="lg"
+        pending={pending}
+        pendingLabel="Returning."
+        onClick={onContinue}
+      >
+        Continue to Startup OS
+      </PendingButton>
     </AuthFrame>
   );
 }

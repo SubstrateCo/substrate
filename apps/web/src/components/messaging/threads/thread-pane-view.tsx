@@ -42,7 +42,7 @@ export function ThreadPane({
   return (
     <PageAside aria-label="Thread">
       <header className="flex h-12 shrink-0 items-center justify-between border-b bg-card/60 px-4">
-        <h2 className="font-semibold">Thread</h2>
+        <h2 className="text-sm font-semibold">Thread</h2>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -67,7 +67,9 @@ export function ThreadPane({
               Replies may be out of date.
             </p>
           )}
-          {root && <div className="max-h-7/20 shrink-0 overflow-y-auto border-b">{root}</div>}
+          {root && (
+            <div className="max-h-7/20 shrink-0 overflow-y-auto border-b pt-4 pb-2">{root}</div>
+          )}
           {loading && !replies ? <PaneState label="Loading replies…" /> : replies}
         </>
       )}

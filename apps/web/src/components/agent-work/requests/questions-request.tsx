@@ -1,11 +1,13 @@
 import type { AgentRequestPayload, AgentRequestResponse } from "@startup-os/contracts/agent-work";
 
-import { useEffect, useEffectEvent, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 
+import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   questionAnswer,
   questionsResponse,
@@ -13,12 +15,8 @@ import {
   toggleQuestionOption,
   type QuestionDraft,
 } from "@/lib/agent-work/questions";
-import { cn } from "cn";
 
 type Questions = Extract<AgentRequestPayload, { type: "questions" }>;
-
-// With several open panels, number keys go to the one that opened last.
-const panels: symbol[] = [];
 
 function typingTarget(target: EventTarget | null) {
   return (
@@ -27,7 +25,13 @@ function typingTarget(target: EventTarget | null) {
   );
 }
 
-// Mount one panel per request, keyed by request ID, so drafts belong to that request.
+const optionRow =
+  "flex cursor-pointer items-start gap-2.5 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-row-hover has-[[data-state=checked]]:border-primary/50 has-[[data-state=checked]]:bg-primary/5 has-disabled:cursor-default has-disabled:opacity-60";
+
+/**
+ * Mount one panel per request, keyed by request ID, so drafts belong to that request. Number
+ * keys choose an option only while focus is inside this panel, and the owner moves on with Next.
+ */
 export function QuestionsRequest({
   payload,
   pending,
@@ -39,142 +43,166 @@ export function QuestionsRequest({
 }) {
   const [step, setStep] = useState(0);
   const [drafts, setDrafts] = useState<Partial<Record<string, QuestionDraft>>>({});
-  const advance = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const token = useRef(Symbol("questions"));
   const id = useId();
+  const promptRef = useRef<HTMLParagraphElement>(null);
+  const moved = useRef(false);
   const question = payload.questions[step]!;
   const last = step === payload.questions.length - 1;
   const answered = questionAnswer(drafts[question.id]).length > 0;
+  const selected = drafts[question.id]?.selected ?? [];
+  const shortcuts = Math.min(question.options.length, 9);
+  // Move focus to the new question only after the owner changed steps, not on mount.
+  useEffect(() => {
+    if (moved.current) promptRef.current?.focus();
+  }, [step]);
+  const goTo = (next: number) => {
+    moved.current = true;
+    setStep(next);
+  };
   const update = (draft: QuestionDraft) =>
     setDrafts((previous) => ({ ...previous, [question.id]: draft }));
   const next = () => {
     if (!answered || pending) return;
     if (last) onSubmit(questionsResponse(payload.questions, drafts));
-    else setStep(step + 1);
+    else goTo(step + 1);
   };
   const choose = (label: string) => {
     if (pending) return;
-    clearTimeout(advance.current);
     update(toggleQuestionOption(drafts[question.id], label, question.multiSelect));
-    if (!question.multiSelect && !last)
-      advance.current = setTimeout(() => setStep((current) => current + 1), 200);
   };
-  const onKey = useEffectEvent((event: KeyboardEvent) => {
-    if (panels.at(-1) !== token.current) return;
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const modified = [event.altKey, event.ctrlKey, event.metaKey, event.shiftKey].some(Boolean);
     if (modified) return;
     if (typingTarget(event.target)) return;
     const index = Number(event.key) - 1;
-    const option = Number.isInteger(index) ? question.options[index] : undefined;
+    const option = Number.isInteger(index) && index >= 0 ? question.options[index] : undefined;
     if (!option) return;
     event.preventDefault();
     choose(option.label);
-  });
-  useEffect(() => {
-    const panel = token.current;
-    panels.push(panel);
-    const listener = (event: KeyboardEvent) => onKey(event);
-    window.addEventListener("keydown", listener);
-    return () => {
-      window.removeEventListener("keydown", listener);
-      panels.splice(panels.indexOf(panel), 1);
-      clearTimeout(advance.current);
-    };
-  }, []);
-  const selected = drafts[question.id]?.selected ?? [];
+  };
+  const optionText = (option: Questions["questions"][number]["options"][number]) => (
+    <span className="min-w-0 flex-1">
+      <span className="block">{option.label}</span>
+      {option.description && (
+        <span className="block text-xs text-muted-foreground">{option.description}</span>
+      )}
+    </span>
+  );
+  const shortcut = (index: number) =>
+    index < 9 && (
+      <span
+        aria-hidden="true"
+        className="mt-px opacity-0 transition-opacity duration-150 group-focus-within/question:opacity-100 motion-reduce:transition-none"
+      >
+        <Kbd>{index + 1}</Kbd>
+      </span>
+    );
   return (
     // The card around this shows the title.
-    <div className="grid gap-2">
-      {payload.questions.length > 1 && (
-        <span className="text-xs text-muted-foreground tabular-nums">
-          Question {step + 1} of {payload.questions.length}
-        </span>
-      )}
-      <fieldset className="grid gap-1.5" aria-describedby={`${id}-question`}>
-        {question.header && (
-          <legend className="text-xs font-medium text-muted-foreground uppercase">
-            {question.header}
-          </legend>
-        )}
-        <p id={`${id}-question`}>{question.question}</p>
-        <div
-          role={question.multiSelect ? "group" : "radiogroup"}
-          aria-label={question.question}
-          className="grid gap-1"
-        >
-          {question.options.map((option, index) => {
-            const checked = selected.includes(option.label);
-            return (
-              <button
-                key={option.label}
-                type="button"
-                role={question.multiSelect ? "checkbox" : "radio"}
-                aria-checked={checked}
-                disabled={pending}
-                onClick={() => choose(option.label)}
-                className={cn(
-                  "flex items-start gap-2 rounded-md border px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none disabled:opacity-50",
-                  checked && "border-primary bg-primary/5",
-                )}
-              >
-                {question.multiSelect ? (
-                  <Checkbox checked={checked} tabIndex={-1} aria-hidden="true" className="mt-0.5" />
-                ) : (
-                  index < 9 && <Kbd className="mt-px">{index + 1}</Kbd>
-                )}
-                <span className="min-w-0">
-                  <span className="block">{option.label}</span>
-                  {option.description && (
-                    <span className="block text-xs text-muted-foreground">
-                      {option.description}
-                    </span>
-                  )}
-                </span>
-                {question.multiSelect && index < 9 && (
-                  <Kbd className="mt-px ml-auto">{index + 1}</Kbd>
-                )}
-              </button>
-            );
-          })}
+    <div className="group/question grid gap-3" onKeyDown={onKeyDown}>
+      <div className="grid gap-1">
+        <div className="flex items-baseline justify-between gap-3">
+          {question.header && (
+            <span className="text-xs font-medium text-muted-foreground">{question.header}</span>
+          )}
+          {payload.questions.length > 1 && (
+            <span className="ml-auto text-xs text-muted-foreground tabular-nums">
+              Question {step + 1} of {payload.questions.length}
+            </span>
+          )}
         </div>
-        {question.allowCustom && (
-          <Input
-            aria-label="Type your own answer"
-            placeholder="Type your own answer"
-            value={drafts[question.id]?.custom ?? ""}
-            disabled={pending}
-            onChange={(event) =>
-              update(
-                setQuestionCustom(drafts[question.id], event.target.value, question.multiSelect),
-              )
+        <p
+          ref={promptRef}
+          id={`${id}-question`}
+          tabIndex={-1}
+          className="rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        >
+          {question.question}
+        </p>
+      </div>
+      {question.multiSelect ? (
+        <div role="group" aria-labelledby={`${id}-question`} className="grid gap-2">
+          {question.options.map((option, index) => (
+            <label key={option.label} htmlFor={`${id}-${step}-${index}`} className={optionRow}>
+              <Checkbox
+                id={`${id}-${step}-${index}`}
+                checked={selected.includes(option.label)}
+                disabled={pending}
+                onCheckedChange={() => choose(option.label)}
+                className="mt-0.5"
+              />
+              {optionText(option)}
+              {shortcut(index)}
+            </label>
+          ))}
+        </div>
+      ) : (
+        <RadioGroup
+          aria-labelledby={`${id}-question`}
+          value={selected[0] ?? ""}
+          disabled={pending}
+          onValueChange={choose}
+        >
+          {question.options.map((option, index) => (
+            <label key={option.label} htmlFor={`${id}-${step}-${index}`} className={optionRow}>
+              <RadioGroupItem
+                id={`${id}-${step}-${index}`}
+                value={option.label}
+                className="mt-0.5"
+              />
+              {optionText(option)}
+              {shortcut(index)}
+            </label>
+          ))}
+        </RadioGroup>
+      )}
+      {question.allowCustom && (
+        <Input
+          aria-label="Your own answer"
+          placeholder="Or type your own answer"
+          value={drafts[question.id]?.custom ?? ""}
+          disabled={pending}
+          onChange={(event) =>
+            update(setQuestionCustom(drafts[question.id], event.target.value, question.multiSelect))
+          }
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+              event.preventDefault();
+              next();
             }
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.nativeEvent.isComposing) {
-                event.preventDefault();
-                next();
-              }
-            }}
-          />
-        )}
-      </fieldset>
-      <div className="flex gap-2">
+          }}
+        />
+      )}
+      <div className="flex flex-wrap items-center gap-2">
         {step > 0 && (
           <Button
             type="button"
             size="sm"
             variant="ghost"
             disabled={pending}
-            onClick={() => {
-              clearTimeout(advance.current);
-              setStep(step - 1);
-            }}
+            onClick={() => goTo(step - 1)}
           >
             Back
           </Button>
         )}
-        <Button type="button" size="sm" disabled={!answered || pending} onClick={next}>
+        <PendingButton
+          type="button"
+          size="sm"
+          disabled={!answered}
+          pending={pending}
+          pendingLabel="Sending…"
+          onClick={next}
+        >
           {last ? "Submit" : "Next"}
-        </Button>
+        </PendingButton>
+        {shortcuts > 1 && (
+          <span
+            aria-hidden="true"
+            className="ml-auto hidden text-xs text-muted-foreground opacity-0 transition-opacity duration-150 group-focus-within/question:opacity-100 motion-reduce:transition-none sm:inline"
+          >
+            Press 1–{shortcuts} to choose
+          </span>
+        )}
       </div>
     </div>
   );

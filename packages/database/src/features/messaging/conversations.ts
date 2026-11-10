@@ -87,12 +87,14 @@ export function conversationOperations(db: DatabaseExecutor, scope: Readonly<Mes
                 .map((participant) => participant.name)
                 .join(", ") ||
                 null),
-            members: members.map(({ actorId, type, userId, agentId, name }) => ({
+            members: members.map(({ actorId, type, userId, agentId, name, organizationId }) => ({
               actorId,
               type,
               userId,
               agentId,
               name,
+              // Members from another organization. Their organization stays private here.
+              external: organizationId !== scope.organizationId,
             })),
             // The sidebar lists joined conversations. Public channels the person never joined or
             // left are still returned, so links and search can open them.

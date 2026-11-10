@@ -8,6 +8,7 @@ import {
   removeSharing,
   resendSharing,
   revokeSharing,
+  type SharingDetails,
 } from "@/api/messaging/sharing";
 import { FormMessage } from "@/components/auth/form-message";
 import { formText } from "@/components/auth/form-values";
@@ -16,16 +17,20 @@ import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { SharingDetailsView } from "@/components/messaging/sharing/sharing-details-view";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Field, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import { useExpiryTime } from "@/hooks/use-expiry-time";
 import { queryKeys } from "@/queries/keys";
 import { sharingOptions } from "@/queries/messaging/sharing";
@@ -33,6 +38,38 @@ import { sharingOptions } from "@/queries/messaging/sharing";
 type Action =
   | { kind: "invite"; email: string }
   | { kind: "resend" | "revoke" | "disconnect" | "remove"; id: string };
+
+type Confirmation = { kind: "revoke" | "disconnect" | "remove"; id: string; name: string };
+
+const confirmCopy = {
+  disconnect: {
+    title: (name: string) => `Disconnect ${name}?`,
+    description:
+      "Everyone from this organization loses access to messages, search, and agent sources here. Its pending invitations are revoked. Their earlier messages stay. A new invitation is needed to reconnect.",
+    confirm: "Remove access",
+    pending: "Removing…",
+  },
+  remove: {
+    title: (name: string) => `Remove ${name}?`,
+    description:
+      "They lose access to messages, search, and agent sources here. Their earlier messages stay. A new invitation is needed to add them again.",
+    confirm: "Remove access",
+    pending: "Removing…",
+  },
+  revoke: {
+    title: (name: string) => `Revoke the invitation to ${name}?`,
+    description: "The link in their email stops working. You can invite them again later.",
+    confirm: "Revoke invitation",
+    pending: "Revoking…",
+  },
+};
+
+function inviteHint(details: SharingDetails) {
+  if (!details.host) return "You can invite people from your own organization only.";
+  if (details.kind === "channel")
+    return "They accept from their own organization, and its admins must approve before they can read this channel.";
+  return "They accept from their own organization before they get access.";
+}
 
 export function SharingManager({
   organizationId,
@@ -47,7 +84,7 @@ export function SharingManager({
   const now = useExpiryTime(details.data?.invitations.map((invite) => invite.expiresAt));
   const queryClient = useQueryClient();
   const [confirmed, setConfirmed] = useState(false);
-  const [confirmation, setConfirmation] = useState<Action>();
+  const [confirmation, setConfirmation] = useState<Confirmation>();
   const action = useMutation({
     mutationFn: async (input: Action) => {
       const base = { organizationId, conversationId };
@@ -76,6 +113,8 @@ export function SharingManager({
       ]);
     },
   });
+  const data = details.data;
+  const copy = confirmation && confirmCopy[confirmation.kind];
   return (
     <>
       <Dialog
@@ -84,104 +123,144 @@ export function SharingManager({
           if (!open) onClose();
         }}
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>External collaboration</DialogTitle>
-            <DialogDescription>
-              Connect organizations without sharing workspace membership or linked private records.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="max-h-96 space-y-6 overflow-y-auto pr-1">
-            {details.isPending && <LoadingState label="Loading sharing…" rows={2} />}
-            {details.error && (
-              <ErrorState
-                title="Sharing unavailable"
-                description="Only authorized conversation managers or organization admins can manage sharing."
-                onRetry={() => void details.refetch()}
-              />
-            )}
-            {details.data && (
-              <>
-                <form
-                  className="space-y-4"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    if (!confirmed || action.isPending) return;
-                    action.mutate({
-                      kind: "invite",
-                      email: formText(new FormData(event.currentTarget), "email"),
-                    });
-                  }}
-                >
-                  <p className="text-sm">
-                    {details.data.kind === "channel" && details.data.host
-                      ? "Invite a partner contact. Their organization must approve before they can read this channel."
-                      : "Invite a person by email. They must accept from their own organization before they receive access."}
-                  </p>
-                  {!details.data.host && (
-                    <p className="text-sm">You can invite people from your organization only.</p>
-                  )}
-                  <Field>
-                    <FieldLabel htmlFor="sharing-email">Invitation email</FieldLabel>
-                    <Input
-                      id="sharing-email"
-                      name="email"
-                      type="email"
-                      required
-                      disabled={action.isPending}
-                    />
-                  </Field>
-                  <Field orientation="horizontal">
-                    <Checkbox
-                      id="sharing-history"
-                      checked={confirmed}
-                      onCheckedChange={(value) => setConfirmed(value === true)}
-                      disabled={action.isPending}
-                    />
-                    <FieldLabel htmlFor="sharing-history">
-                      I approve sharing the full conversation history, including earlier messages,
-                      with invited participants.
-                    </FieldLabel>
-                  </Field>
-                  <PendingButton
-                    type="submit"
-                    pending={action.isPending}
-                    pendingLabel="Saving…"
-                    disabled={!confirmed}
-                  >
-                    Send collaboration invitation
-                  </PendingButton>
-                </form>
-                <SharingDetailsView
-                  details={details.data}
-                  organizationId={organizationId}
-                  now={now}
-                  pending={action.isPending}
-                  onDisconnect={(id) => setConfirmation({ kind: "disconnect", id })}
-                  onRemove={(id) => setConfirmation({ kind: "remove", id })}
-                  onResend={(id) => action.mutate({ kind: "resend", id })}
-                  onRevoke={(id) => action.mutate({ kind: "revoke", id })}
+        <DialogContent size="lg">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!confirmed || action.isPending) return;
+              const form = event.currentTarget;
+              action.mutate(
+                { kind: "invite", email: formText(new FormData(form), "email") },
+                {
+                  onSuccess: () => {
+                    form.reset();
+                    setConfirmed(false);
+                  },
+                },
+              );
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle>External collaboration</DialogTitle>
+              <DialogDescription>
+                Work with people from other organizations. They see this conversation only, never
+                your workspace or its private records.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogBody>
+              {details.isPending && <LoadingState label="Loading sharing…" rows={2} />}
+              {details.error && (
+                <ErrorState
+                  title="Sharing unavailable"
+                  description="Only the people who manage this conversation, and organization admins, can manage sharing."
+                  onRetry={() => void details.refetch()}
                 />
-              </>
-            )}
-            <FormMessage error={action.error} />
-          </div>
+              )}
+              {data && (
+                <>
+                  <div className="grid gap-4">
+                    <Field>
+                      <FieldLabel htmlFor="sharing-email">Invite by email</FieldLabel>
+                      <Input
+                        id="sharing-email"
+                        name="email"
+                        type="email"
+                        required
+                        placeholder="name@partner.com"
+                        disabled={action.isPending}
+                        aria-describedby="sharing-email-description"
+                      />
+                      <FieldDescription id="sharing-email-description">
+                        {inviteHint(data)}
+                      </FieldDescription>
+                    </Field>
+                    <Field orientation="horizontal">
+                      <Checkbox
+                        id="sharing-history"
+                        checked={confirmed}
+                        onCheckedChange={(value) => setConfirmed(value === true)}
+                        disabled={action.isPending}
+                      />
+                      <FieldLabel htmlFor="sharing-history">
+                        Let invited people read the full conversation history, including earlier
+                        messages
+                      </FieldLabel>
+                    </Field>
+                  </div>
+                  <Separator />
+                  <SharingDetailsView
+                    details={data}
+                    organizationId={organizationId}
+                    now={now}
+                    pending={action.isPending}
+                    onDisconnect={(id) =>
+                      setConfirmation({
+                        kind: "disconnect",
+                        id,
+                        name:
+                          data.connections.find((connection) => connection.organizationId === id)
+                            ?.name ?? "this organization",
+                      })
+                    }
+                    onRemove={(id) =>
+                      setConfirmation({
+                        kind: "remove",
+                        id,
+                        name:
+                          data.participants.find((person) => person.actorId === id)?.name ??
+                          "this person",
+                      })
+                    }
+                    onResend={(id) => action.mutate({ kind: "resend", id })}
+                    onRevoke={(id) =>
+                      setConfirmation({
+                        kind: "revoke",
+                        id,
+                        name:
+                          data.invitations.find((invite) => invite.id === id)?.email ??
+                          "this person",
+                      })
+                    }
+                  />
+                </>
+              )}
+              {!confirmation && (
+                <FormMessage
+                  error={action.error}
+                  errorDescription="We couldn’t update sharing. Try again."
+                />
+              )}
+            </DialogBody>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={onClose}>
+                Close
+              </Button>
+              {data && (
+                <PendingButton
+                  type="submit"
+                  pending={action.isPending && action.variables.kind === "invite"}
+                  pendingLabel="Sending…"
+                  disabled={!confirmed}
+                >
+                  Send invitation
+                </PendingButton>
+              )}
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
-      {confirmation && (
+      {confirmation && copy && (
         <ConfirmDialog
-          title={
-            confirmation.kind === "disconnect"
-              ? "Disconnect this organization?"
-              : "Remove this participant?"
-          }
-          description="Access to messages, search, and agent sources will be removed. Disconnecting also revokes all pending invitations for this conversation. Message history and authorship are retained. A new invitation is required to restore access."
-          confirmLabel="Remove access"
-          pendingLabel="Removing…"
+          title={copy.title(confirmation.name)}
+          description={copy.description}
+          confirmLabel={copy.confirm}
+          pendingLabel={copy.pending}
+          destructive
           pending={action.isPending}
           error={action.error}
+          errorDescription="We couldn’t change access. Try again."
           onClose={() => setConfirmation(undefined)}
-          onConfirm={() => action.mutate(confirmation)}
+          onConfirm={() => action.mutate({ kind: confirmation.kind, id: confirmation.id })}
         />
       )}
     </>

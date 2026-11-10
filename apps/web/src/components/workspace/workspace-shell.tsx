@@ -3,6 +3,7 @@ import { useContext, type ReactNode } from "react";
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
 import { isAccessFailure } from "../feedback/request-failure";
+import { appShortcutKeys, useAppShortcuts } from "./use-app-shortcuts";
 import { UserMenu } from "./user-menu";
 import { RealtimeContainerContext } from "@/components/realtime/realtime-container-context";
 import { WorkspaceAppButton } from "@/components/workspace/workspace-app-button";
@@ -49,6 +50,7 @@ export function WorkspaceShell({
   children: ReactNode;
 }) {
   const realtimeContainerRef = useContext(RealtimeContainerContext);
+  useAppShortcuts(onViewChange);
   return (
     <main data-workspace-shell className="flex h-(--app-height) min-h-0 overflow-hidden bg-rail">
       <nav
@@ -59,27 +61,31 @@ export function WorkspaceShell({
         <WorkspaceAppButton
           label="Messages"
           icon={MessageSquare}
+          shortcut={appShortcutKeys.messages}
           active={view === "messages"}
           onClick={() => onViewChange("messages")}
         />
         <WorkspaceAppButton
           label="Tasks"
           icon={ListTodo}
+          shortcut={appShortcutKeys.tasks}
           active={view === "tasks"}
           onClick={() => onViewChange("tasks")}
         />
+        <WorkspaceAppButton
+          label="Agents"
+          icon={Bot}
+          shortcut={appShortcutKeys.agents}
+          active={view === "agents"}
+          unread={agentsNeedYou}
+          unreadLabel="needs you"
+          onClick={() => onViewChange("agents")}
+        />
         <div className="mt-auto flex flex-col items-center gap-3">
-          <WorkspaceAppButton
-            label="Agents"
-            icon={Bot}
-            active={view === "agents"}
-            unread={agentsNeedYou}
-            unreadLabel="needs you"
-            onClick={() => onViewChange("agents")}
-          />
           <WorkspaceAppButton
             label="Notifications"
             icon={Bell}
+            shortcut={appShortcutKeys.notifications}
             active={view === "notifications"}
             unread={hasUnreadNotifications}
             onClick={() => onViewChange("notifications")}

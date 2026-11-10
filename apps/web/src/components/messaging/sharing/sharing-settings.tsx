@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
+import { PageHeader } from "@/components/layout/page-header";
 import { SharingManager } from "@/components/messaging/sharing/sharing-manager";
 import { Button } from "@/components/ui/button";
 import { sharingConversationOptions, sharingInboxOptions } from "@/queries/messaging/sharing";
@@ -14,13 +15,10 @@ export function SharingSettings({ organizationId }: { organizationId: string }) 
   const [selected, setSelected] = useState<string>();
   return (
     <section className="space-y-6">
-      <header className="space-y-2">
-        <h2 className="text-lg font-semibold">External collaboration</h2>
-        <p className="text-sm text-muted-foreground">
-          Approve partner channels, manage invitations, or disconnect organizations. Existing
-          external participants need reapproval.
-        </p>
-      </header>
+      <PageHeader
+        title="External collaboration"
+        description="Approve partner channels, manage invitations, or disconnect organizations. Existing external participants need reapproval."
+      />
       {(conversations.isPending || inbox.isPending) && (
         <LoadingState label="Loading collaboration…" rows={2} />
       )}

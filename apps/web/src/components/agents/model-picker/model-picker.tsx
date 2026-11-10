@@ -2,9 +2,10 @@ import type { HarnessKind, HarnessModel } from "@startup-os/contracts/harness";
 
 import { useQueries } from "@tanstack/react-query";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { HarnessIcon } from "./harness-icon";
+import { SegmentedControl } from "@/components/forms/segmented-control";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -19,13 +20,37 @@ import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { harnessLabel, harnessOptions } from "@/lib/agents/harness-meta";
 import { harnessModelsQueryOptions } from "@/queries/agents/models";
-import { Check, ChevronsUpDown, RefreshCw } from "lucide-react";
+import { Check, ChevronsUpDown, CircleAlert, Laptop, RefreshCw } from "lucide-react";
 
 type Choice = HarnessModel & { harness: HarnessKind; saved?: boolean };
 
-// T3 Code's provider rail and grouped model rows, adapted to our native bridge and UI primitives.
+const defaultModelLabel = "Default model";
+
+/** A short state inside the picker body, such as "Open the desktop app". */
+function PickerNote({
+  icon,
+  children,
+  action,
+}: {
+  icon: ReactNode;
+  children: ReactNode;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-2.5 border-t px-3 py-3 text-xs text-muted-foreground [&>svg]:mt-px [&>svg]:size-4 [&>svg]:shrink-0">
+      {icon}
+      <div className="grid min-w-0 flex-1 gap-2">
+        <p>{children}</p>
+        {action}
+      </div>
+    </div>
+  );
+}
+
+// T3 Code's grouped model rows, adapted to our native bridge and UI primitives.
 // Source: pingdotgg/t3code/apps/web/src/components/chat (MIT, icons/LICENSE).
 export function ModelPicker({
+  id,
   userId,
   organizationId,
   agentId,
@@ -34,6 +59,7 @@ export function ModelPicker({
   disabled,
   onChange,
 }: {
+  id?: string;
   userId: string;
   organizationId?: string | null;
   agentId?: string;
@@ -59,14 +85,15 @@ export function ModelPicker({
   if (model && !choices.some((choice) => choice.harness === harness && choice.id === model))
     choices.push({ id: model, name: model, harness, saved: true });
   const activeModel = choices.find((choice) => choice.harness === harness && choice.id === model);
-  const modelName = activeModel?.name ?? "Harness default";
+  const modelName = activeModel?.name ?? defaultModelLabel;
   const label = harnessLabel(harness);
+  const selectedLabel = harnessLabel(selectedHarness);
   const selectedIndex = harnessOptions.findIndex((option) => option.value === selectedHarness);
   const selectedCatalog = catalogs[selectedIndex];
   const groups = harnessOptions.filter((option) => query || selectedHarness === option.value);
-  const customHarness = selectedHarness;
   const customAllowed =
-    query.length > 0 && (customHarness !== "opencode" || /^[^/\s]+\/\S+$/.test(query));
+    query.length > 0 && (selectedHarness !== "opencode" || /^[^/\s]+\/\S+$/.test(query));
+  const refreshing = catalogs.some((catalog) => catalog.isFetching);
   function key(choice: Choice) {
     return `${choice.harness}/${choice.id}`;
   }
@@ -78,7 +105,43 @@ export function ModelPicker({
     setSelectedHarness(value);
     setSearch("");
   }
-  const isLoading = selectedCatalog.isFetching;
+  function refresh() {
+    catalogs.forEach((catalog, index) => {
+      if (query || harnessOptions[index]!.value === selectedHarness) void catalog.refetch();
+    });
+  }
+  let note: ReactNode = null;
+  if (!available)
+    note = (
+      <PickerNote icon={<Laptop aria-hidden="true" />}>
+        Open Startup OS on your desktop to see {selectedLabel}’s models. Until then, the agent uses
+        the default model.
+      </PickerNote>
+    );
+  else if (selectedCatalog.error)
+    note = (
+      <PickerNote
+        icon={<CircleAlert aria-hidden="true" className="text-destructive" />}
+        action={
+          <Button type="button" size="xs" variant="outline" className="w-fit" onClick={refresh}>
+            <RefreshCw aria-hidden="true" />
+            Try again
+          </Button>
+        }
+      >
+        <span role="alert">We couldn’t load {selectedLabel}’s models.</span>
+      </PickerNote>
+    );
+  else if (selectedCatalog.data?.status === "unavailable")
+    note = (
+      <PickerNote icon={<Laptop aria-hidden="true" />}>
+        {selectedLabel} isn’t installed on this desktop. Install it, then refresh.
+      </PickerNote>
+    );
+  else if (selectedCatalog.isPending && selectedCatalog.fetchStatus === "fetching")
+    note = (
+      <PickerNote icon={<Spinner aria-hidden="true" />}>Loading {selectedLabel} models…</PickerNote>
+    );
   return (
     <Popover
       open={open}
@@ -87,179 +150,152 @@ export function ModelPicker({
         if (value) chooseHarness(harness);
       }}
     >
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <PopoverTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              size="selection"
-              disabled={disabled}
-              aria-label={`Harness & model: ${label} · ${modelName}`}
-              className="min-h-16 w-full justify-start text-left"
-            >
-              <span className="mr-1 flex size-6 shrink-0 items-center justify-center">
-                <HarnessIcon harness={harness} />
-              </span>
-              <span className="grid min-w-0 flex-1 gap-1">
-                <span className="truncate">{modelName}</span>
-                <span className="text-xs font-normal text-muted-foreground">{label}</span>
-              </span>
-              <ChevronsUpDown className="size-3.5 text-muted-foreground" />
-            </Button>
-          </PopoverTrigger>
-        </TooltipTrigger>
-        <TooltipContent>
-          {label} · {modelName}
-        </TooltipContent>
-      </Tooltip>
+      <PopoverTrigger asChild>
+        <Button
+          id={id}
+          type="button"
+          variant="outline"
+          size="selection"
+          disabled={disabled}
+          aria-label={`Model: ${modelName}, ${label}`}
+          className="w-full justify-start text-left"
+        >
+          <span className="mr-1 flex size-6 shrink-0 items-center justify-center">
+            <HarnessIcon harness={harness} />
+          </span>
+          <span className="grid min-w-0 flex-1 gap-0.5">
+            <span className="truncate">{modelName}</span>
+            <span className="truncate text-xs font-normal text-muted-foreground">{label}</span>
+          </span>
+          <ChevronsUpDown aria-hidden="true" className="size-3.5 text-muted-foreground" />
+        </Button>
+      </PopoverTrigger>
       <PopoverContent
         variant="reference"
-        align="end"
+        align="start"
+        side="bottom"
         collisionPadding={8}
-        className="h-80 max-h-(--radix-popover-content-available-height) w-96 flex-row"
-        aria-label="Harness and model picker"
+        className="max-h-(--radix-popover-content-available-height) w-(--radix-popover-trigger-width) min-w-96"
+        aria-label="Choose a model"
       >
-        <div
-          className="flex w-14 shrink-0 flex-col items-center gap-2 overflow-y-auto border-r bg-muted/30 py-3"
-          role="group"
-          aria-label="Harnesses"
-        >
-          {harnessOptions.map((option) => (
-            <Tooltip key={option.value}>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant={selectedHarness === option.value ? "secondary" : "ghost"}
-                  size="icon"
-                  aria-label={option.label}
-                  aria-pressed={selectedHarness === option.value}
-                  onClick={() => chooseHarness(option.value)}
-                >
-                  <HarnessIcon harness={option.value} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left">{option.label}</TooltipContent>
-            </Tooltip>
-          ))}
-        </div>
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <Command
-            key={`${open}/${selectedHarness}`}
-            className="min-h-0 flex-1"
-            defaultValue={`${selectedHarness}/${selectedHarness === harness && model ? model : "default"}`}
-          >
-            <CommandInput
-              placeholder="Search models…"
-              maxLength={500}
-              value={search}
-              onValueChange={setSearch}
+        <div className="flex items-center gap-2 border-b p-2">
+          <div className="min-w-0 flex-1 overflow-x-auto">
+            <SegmentedControl
+              aria-label="Runtime"
+              value={selectedHarness}
+              options={harnessOptions}
+              onValueChange={chooseHarness}
             />
-            <CommandList className="min-h-0 flex-1">
-              <CommandEmpty>No models found.</CommandEmpty>
-              {groups.map((option) => {
-                const nativeDefault = choices.find(
-                  (choice) => choice.harness === option.value && choice.isDefault,
-                );
-                const models = choices.filter((choice) => choice.harness === option.value);
-                return (
-                  <CommandGroup key={option.value} heading={option.label}>
-                    {!query && (
-                      <CommandItem
-                        aria-label="Harness default"
-                        value={`${option.value}/default`}
-                        onSelect={() => select(option.value, "")}
-                      >
-                        <Check
-                          className={`size-3.5 ${harness === option.value && !model ? "text-primary" : "invisible"}`}
-                        />
-                        <span className="grid min-w-0 gap-0.5">
-                          <span>Harness default</span>
-                          {nativeDefault && (
-                            <span className="truncate text-xs text-muted-foreground">
-                              {nativeDefault.name}
-                            </span>
-                          )}
-                        </span>
-                      </CommandItem>
-                    )}
-                    {models.map((choice) => (
-                      <Tooltip key={key(choice)}>
-                        <TooltipTrigger asChild>
-                          <CommandItem
-                            aria-label={choice.name}
-                            value={key(choice)}
-                            keywords={[choice.name, choice.provider ?? "", option.label]}
-                            onSelect={() => select(choice.harness, choice.id)}
-                          >
-                            <Check
-                              className={`size-3.5 ${harness === choice.harness && model === choice.id ? "text-primary" : "invisible"}`}
-                            />
-                            <span className="grid min-w-0 flex-1 gap-0.5">
-                              <span className="truncate">{choice.name}</span>
-                              <span className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
-                                <HarnessIcon harness={choice.harness} compact />
-                                <span className="truncate">
-                                  {option.label}
-                                  {choice.provider && choice.provider !== option.label
-                                    ? ` · ${choice.provider}`
-                                    : ""}
-                                </span>
-                              </span>
-                            </span>
-                            {choice.saved && (
-                              <span className="text-xs text-muted-foreground">Saved</span>
-                            )}
-                          </CommandItem>
-                        </TooltipTrigger>
-                        {choice.description && (
-                          <TooltipContent side="right">{choice.description}</TooltipContent>
-                        )}
-                      </Tooltip>
-                    ))}
-                  </CommandGroup>
-                );
-              })}
-              {customAllowed &&
-                !choices.some(
-                  (choice) => choice.harness === customHarness && choice.id === query,
-                ) && (
-                  <CommandGroup heading="Custom model">
-                    <CommandItem
-                      value={`Use ${query}`}
-                      onSelect={() => select(customHarness, query)}
-                    >
-                      <span className="truncate">Use “{query}”</span>
-                    </CommandItem>
-                  </CommandGroup>
-                )}
-            </CommandList>
-          </Command>
-          <div className="flex min-h-9 shrink-0 items-center justify-between gap-2 border-t px-3 py-1.5 text-xs text-muted-foreground">
-            {isLoading ? (
-              <Spinner aria-label="Loading models" />
-            ) : (
-              <span>{available ? "Native models" : "Desktop required"}</span>
-            )}
-            {selectedCatalog.data?.status === "unavailable" && <span>Unavailable</span>}
-            {selectedCatalog.error && <span role="alert">Couldn't load models</span>}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              aria-label="Refresh models"
-              disabled={!available || catalogs.some((catalog) => catalog.isFetching)}
-              onClick={() =>
-                catalogs.forEach((catalog, index) => {
-                  if (query || harnessOptions[index]!.value === selectedHarness)
-                    void catalog.refetch();
-                })
-              }
-            >
-              <RefreshCw />
-            </Button>
           </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Refresh models"
+                disabled={!available || refreshing}
+                onClick={refresh}
+              >
+                <RefreshCw className={refreshing ? "motion-safe:animate-spin" : ""} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Refresh models</TooltipContent>
+          </Tooltip>
         </div>
+        <Command
+          key={`${open}/${selectedHarness}`}
+          className="min-h-0 flex-1"
+          defaultValue={`${selectedHarness}/${selectedHarness === harness && model ? model : "default"}`}
+        >
+          <CommandInput
+            placeholder={`Search ${available ? "all models" : "models"}…`}
+            maxLength={500}
+            value={search}
+            onValueChange={setSearch}
+          />
+          <CommandList className="min-h-0 flex-1">
+            <CommandEmpty>No models match “{query}”.</CommandEmpty>
+            {groups.map((option) => {
+              const nativeDefault = choices.find(
+                (choice) => choice.harness === option.value && choice.isDefault,
+              );
+              const models = choices.filter((choice) => choice.harness === option.value);
+              return (
+                <CommandGroup key={option.value} heading={query ? option.label : undefined}>
+                  {!query && (
+                    <CommandItem
+                      aria-label={defaultModelLabel}
+                      value={`${option.value}/default`}
+                      onSelect={() => select(option.value, "")}
+                    >
+                      <Check
+                        aria-hidden="true"
+                        className={`size-3.5 ${harness === option.value && !model ? "text-primary" : "invisible"}`}
+                      />
+                      <span className="grid min-w-0 gap-0.5">
+                        <span>{defaultModelLabel}</span>
+                        <span className="truncate text-xs text-muted-foreground">
+                          {nativeDefault
+                            ? `Currently ${nativeDefault.name}`
+                            : `${option.label} picks its own default`}
+                        </span>
+                      </span>
+                    </CommandItem>
+                  )}
+                  {models.map((choice) => (
+                    <CommandItem
+                      key={key(choice)}
+                      aria-label={choice.name}
+                      value={key(choice)}
+                      keywords={[choice.name, choice.provider ?? "", option.label]}
+                      title={choice.description}
+                      onSelect={() => select(choice.harness, choice.id)}
+                    >
+                      <Check
+                        aria-hidden="true"
+                        className={`size-3.5 ${harness === choice.harness && model === choice.id ? "text-primary" : "invisible"}`}
+                      />
+                      <span className="grid min-w-0 flex-1 gap-0.5">
+                        <span className="truncate">{choice.name}</span>
+                        {(query || choice.provider) && (
+                          <span className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                            {query && <HarnessIcon harness={choice.harness} compact />}
+                            <span className="truncate">
+                              {[
+                                query && option.label,
+                                choice.provider !== option.label && choice.provider,
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </span>
+                          </span>
+                        )}
+                      </span>
+                      {choice.saved && (
+                        <span className="text-xs text-muted-foreground">Current</span>
+                      )}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              );
+            })}
+            {customAllowed &&
+              !choices.some(
+                (choice) => choice.harness === selectedHarness && choice.id === query,
+              ) && (
+                <CommandGroup heading="Custom model">
+                  <CommandItem
+                    value={`Use ${query}`}
+                    onSelect={() => select(selectedHarness, query)}
+                  >
+                    <span className="truncate">Use “{query}”</span>
+                  </CommandItem>
+                </CommandGroup>
+              )}
+          </CommandList>
+        </Command>
+        {note}
       </PopoverContent>
     </Popover>
   );

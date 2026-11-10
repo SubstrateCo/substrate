@@ -1,14 +1,17 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
+import { AuthFrame } from "../../auth/auth-frame";
+import { AuthNavLink } from "../../auth/auth-link";
 import { ContentNotice } from "../../feedback/content-notice";
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
 import { isAccessFailure } from "../../feedback/request-failure";
 import { Button } from "../../ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card";
+import { Item } from "../../ui/item";
 import { Separator } from "../../ui/separator";
 import { Spinner } from "../../ui/spinner";
 import { initials } from "@/lib/people/initials";
+import { Building2, ChevronRight, Plus } from "lucide-react";
 
 export function OrganizationSelection({
   organizations,
@@ -32,6 +35,8 @@ export function OrganizationSelection({
   const retryOrigin = useRef<Element | null>(null);
   const firstChoice = useRef<HTMLButtonElement | null>(null);
   const creationHeading = useRef<HTMLHeadingElement | null>(null);
+  const [selectedId, setSelectedId] = useState<string>();
+  const [creating, setCreating] = useState(false);
   useEffect(() => {
     const origin = retryOrigin.current;
     if (!origin || loading || loadError) return;
@@ -40,82 +45,115 @@ export function OrganizationSelection({
     }
     retryOrigin.current = null;
   }, [loading, loadError, organizations]);
+
+  const listed =
+    !isAccessFailure(loadError) && (!loadError || organizations !== undefined)
+      ? (organizations ?? [])
+      : [];
+  // With workspaces to open, creating another is a secondary, collapsed step.
+  const showCreate = creating || (!loading && listed.length === 0);
+
   return (
-    <main className="fixed inset-0 mx-auto flex max-w-2xl flex-col gap-6 px-4 pt-20 pb-6 sm:px-6 sm:pt-6">
-      <header className="flex shrink-0 flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Your workspaces</h1>
-        <div className="flex flex-wrap items-center gap-4">
-          <a href="/settings/user/invitations" className="text-sm underline">
-            Your invitations
-          </a>
+    <AuthFrame
+      title="Choose a workspace"
+      description="Open a workspace you belong to, or create one for your team."
+      actions={
+        <>
+          <AuthNavLink href="/settings/user/invitations">Your invitations</AuthNavLink>
           {signOut}
-        </div>
-      </header>
-      <Card className="min-h-0 overflow-y-auto">
-        <CardHeader>
-          <CardTitle>Choose a workspace</CardTitle>
-          <CardDescription>Open an existing workspace or create one for your team.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="h-44 space-y-3 overflow-y-auto">
-              {loading && !organizations?.length && !isAccessFailure(loadError) && (
-                <LoadingState label="Loading workspaces…" rows={2} />
-              )}
-              {loadError && (
-                <ErrorState
-                  compact
-                  title="Couldn’t load workspaces"
-                  description="Your workspace list is unavailable. Try again, or create a workspace below."
-                  onRetry={() => {
-                    retryOrigin.current = document.activeElement;
-                    onRetry();
-                  }}
-                />
-              )}
-              {!loading && !loadError && organizations?.length === 0 && (
-                <ContentNotice
-                  title="No workspaces yet"
-                  description="Create one below, or open an invitation link from your email."
-                />
-              )}
-              <div className="grid gap-2">
-                {!isAccessFailure(loadError) &&
-                  (!loadError || organizations !== undefined) &&
-                  organizations?.map((organization, index) => (
-                    <Button
-                      key={organization.id}
-                      ref={index === 0 ? firstChoice : undefined}
-                      variant="outline"
-                      size="selection"
-                      className="max-w-full min-w-0 justify-start text-left whitespace-normal"
-                      disabled={pending}
-                      aria-busy={pending}
-                      onClick={() => onSelect(organization.id)}
+        </>
+      }
+    >
+      {loading && !organizations?.length && !isAccessFailure(loadError) && (
+        <LoadingState label="Loading workspaces." rows={2} />
+      )}
+      {loadError && (
+        <ErrorState
+          compact
+          title="Couldn't load workspaces"
+          description="Your workspace list is unavailable. Try again, or create a workspace below."
+          onRetry={() => {
+            retryOrigin.current = document.activeElement;
+            onRetry();
+          }}
+        />
+      )}
+      {!loading && !loadError && organizations?.length === 0 && (
+        <ContentNotice
+          icon={Building2}
+          title="No workspaces yet"
+          description="Create one below, or open an invitation link from your email."
+        />
+      )}
+      {listed.length > 0 && (
+        <ul aria-label="Your workspaces" className="-mx-2.5 max-h-72 space-y-0.5 overflow-y-auto">
+          {listed.map((organization, index) => {
+            const opening = pending && selectedId === organization.id;
+            return (
+              <li key={organization.id}>
+                <Item asChild size="xs">
+                  <button
+                    ref={index === 0 ? firstChoice : undefined}
+                    type="button"
+                    className="flex-nowrap text-left font-medium hover:bg-row-hover disabled:pointer-events-none disabled:opacity-60 aria-busy:opacity-100"
+                    disabled={pending}
+                    aria-busy={opening}
+                    onClick={() => {
+                      setSelectedId(organization.id);
+                      onSelect(organization.id);
+                    }}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="flex size-8 shrink-0 items-center justify-center rounded-md bg-accent text-xs font-semibold text-accent-foreground"
                     >
-                      <span
-                        aria-hidden="true"
-                        className="mr-2 flex size-8 shrink-0 items-center justify-center rounded-md bg-accent text-xs font-semibold text-accent-foreground"
-                      >
-                        {pending ? (
-                          <Spinner aria-hidden="true" role="presentation" />
-                        ) : (
-                          initials(organization.name)
-                        )}
-                      </span>
-                      <span className="min-w-0 wrap-anywhere">{organization.name}</span>
-                    </Button>
-                  ))}
-              </div>
-            </div>
-            <Separator />
-            <h2 ref={creationHeading} tabIndex={-1} className="font-medium">
+                      {opening ? (
+                        <Spinner aria-hidden="true" role="presentation" />
+                      ) : (
+                        initials(organization.name)
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1 wrap-anywhere">{organization.name}</span>
+                    <ChevronRight
+                      aria-hidden="true"
+                      className="size-4 shrink-0 text-muted-foreground opacity-60 transition-opacity group-hover/item:opacity-100"
+                    />
+                  </button>
+                </Item>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {showCreate ? (
+        <>
+          {listed.length > 0 && <Separator />}
+          <section className="space-y-4" aria-labelledby="create-workspace-title">
+            <h2
+              id="create-workspace-title"
+              ref={creationHeading}
+              tabIndex={-1}
+              className="text-sm font-semibold outline-none"
+            >
               Create a workspace
             </h2>
             {createForm}
-          </div>
-        </CardContent>
-      </Card>
-    </main>
+          </section>
+        </>
+      ) : (
+        <Button
+          type="button"
+          variant="disclosure"
+          className="-ml-2.5 self-start"
+          onClick={() => {
+            setCreating(true);
+            requestAnimationFrame(() => document.getElementById("organization-name")?.focus());
+          }}
+        >
+          <Plus aria-hidden="true" />
+          Create a workspace
+        </Button>
+      )}
+    </AuthFrame>
   );
 }

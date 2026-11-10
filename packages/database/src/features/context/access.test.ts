@@ -120,7 +120,7 @@ test("task work uses two statements and reports the project's access", async () 
     entityType: "task",
     title: "Ship",
     projectEntityId: project.entityId,
-    statusName: "Not Started",
+    statusName: "Not started",
     level: "view",
   });
   expect(queries).toHaveLength(2);

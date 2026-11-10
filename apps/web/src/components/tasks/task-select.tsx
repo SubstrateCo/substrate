@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, type ReactNode } from "react";
 
 import { Field, FieldError, FieldLabel } from "../ui/field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
@@ -18,7 +18,7 @@ export function TaskSelect<T extends string>({
   label: string;
   value: T;
   onChange: (value: T) => void;
-  options: { value: NoInfer<T>; label: string }[];
+  options: { value: NoInfer<T>; label: string; icon?: ReactNode }[];
   disabled?: boolean;
   onBlur?: () => void;
   errors?: ({ message?: string } | undefined)[];
@@ -63,6 +63,7 @@ export function TaskSelect<T extends string>({
               value={option.value}
               className="wrap-anywhere whitespace-normal"
             >
+              {option.icon}
               {option.label}
             </SelectItem>
           ))}

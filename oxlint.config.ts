@@ -3,6 +3,7 @@ import pluginRouter from "@tanstack/eslint-plugin-router";
 
 import contracts from "./packages/contracts/package.json" with { type: "json" };
 import database from "./packages/database/package.json" with { type: "json" };
+import { designConfig } from "./packages/design-lint/src/config.ts";
 import { configs } from "ai-deslop";
 import { defineConfig } from "oxlint";
 
@@ -19,13 +20,10 @@ export default defineConfig({
     "@shadcn/lint",
     "@tanstack/eslint-plugin-query",
     "@tanstack/eslint-plugin-router",
+    ...designConfig.jsPlugins,
   ],
   options: configs.recommended.options,
-  settings: {
-    shadcn: {
-      ui: "@/components/ui",
-    },
-  },
+  settings: designConfig.settings,
   rules: {
     ...configs.recommended.rules,
     ...tanstackRecommendedRules,
@@ -67,9 +65,7 @@ export default defineConfig({
       },
     ],
     "deslop/max-boolean-conditions": ["error", { maxConditions: 3 }],
-    "shadcn/no-restyle": ["error", { allow: ["layout"] }],
-    "shadcn/no-raw-colors": "error",
-    "shadcn/no-arbitrary-values": "error",
+    ...designConfig.rules,
   },
   overrides: [
     {
@@ -118,5 +114,6 @@ export default defineConfig({
         "shadcn/no-arbitrary-values": ["error", { allow: ["max-h-[50dvh]"] }],
       },
     },
+    ...designConfig.overrides,
   ],
 });

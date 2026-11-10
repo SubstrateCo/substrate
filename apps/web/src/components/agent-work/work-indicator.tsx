@@ -19,9 +19,8 @@ const labels: Record<WorkTone, string> = {
   failed: "Agent work failed",
 };
 
-/** A small dot on the agent's avatar. Working and waiting work pulses softly. */
+/** A small dot on the agent's avatar. Working pulses softly; needing you is a steady dot. */
 export function WorkIndicator({ tone, label = labels[tone] }: { tone: WorkTone; label?: string }) {
-  const live = tone === "working" || tone === "attention";
   return (
     <span
       role="img"
@@ -30,14 +29,8 @@ export function WorkIndicator({ tone, label = labels[tone] }: { tone: WorkTone; 
       className={cn(
         "absolute -right-1 -bottom-1 size-3 rounded-full border-2 border-surface",
         tones[tone],
+        tone === "working" && "motion-safe:animate-pulse",
       )}
-    >
-      {live && (
-        <span
-          aria-hidden="true"
-          className="absolute inset-0 rounded-full bg-inherit opacity-60 motion-safe:animate-ping"
-        />
-      )}
-    </span>
+    />
   );
 }

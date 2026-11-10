@@ -5,12 +5,10 @@ import {
   PageSidebarHeader,
 } from "@/components/layout/page-layout";
 import { PageSidebarErrorState } from "@/components/layout/page-sidebar-error-state";
-import type {
-  DirectMessageAgent,
-  DirectMessagePerson,
-} from "@/components/messaging/conversations/conversation-create-menu";
+import type { DirectMessageAgent } from "@/components/messaging/conversations/conversation-create-menu";
 import { ConversationSection } from "@/components/messaging/conversations/conversation-section";
 import type { Conversation } from "@/lib/messaging/conversations";
+import type { PickerPerson } from "@/lib/people/people-picker";
 
 export function ConversationSidebar({
   conversations,
@@ -19,6 +17,7 @@ export function ConversationSidebar({
   agents,
   onSelect,
   onCreate,
+  onMessagePerson,
   onMessageAgent,
   loading = false,
   error,
@@ -26,10 +25,11 @@ export function ConversationSidebar({
 }: {
   conversations: Conversation[];
   selectedId?: string;
-  people?: DirectMessagePerson[];
+  people?: PickerPerson[];
   agents?: DirectMessageAgent[];
   onSelect: (id: string) => void;
-  onCreate: (kind: Conversation["kind"], recipient?: string) => void;
+  onCreate: (kind: Conversation["kind"]) => void;
+  onMessagePerson?: (person: PickerPerson) => void;
   onMessageAgent?: (agent: DirectMessageAgent) => void;
   loading?: boolean;
   error?: Error | null;
@@ -56,6 +56,7 @@ export function ConversationSidebar({
               agents={agents}
               onSelect={onSelect}
               onCreate={onCreate}
+              onMessagePerson={onMessagePerson}
               onMessageAgent={onMessageAgent}
             />
           ))}

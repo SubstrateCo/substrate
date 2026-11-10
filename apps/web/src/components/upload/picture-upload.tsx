@@ -45,84 +45,76 @@ export function PictureUpload({
       setRemoving(false);
     }
   }
+  const fallback = (
+    <ImageIcon
+      className="size-7 text-muted-foreground"
+      aria-label={value ? `${name} unavailable` : `No ${name.toLowerCase()}`}
+    />
+  );
   return (
-    <section aria-label={name} className="flex items-start gap-4">
-      {kind === "avatar" ? (
-        <Avatar variant="picture" className="size-16 shrink-0">
-          <AvatarImage src={value ?? undefined} alt={name} className="object-contain" />
-          <AvatarFallback>
-            <ImageIcon
-              className="size-7 text-muted-foreground"
-              aria-label={value ? `${name} unavailable` : `No ${name.toLowerCase()}`}
-            />
-          </AvatarFallback>
-        </Avatar>
-      ) : (
-        <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
-          <PicturePreview
-            src={value}
-            alt={name}
-            className="size-full object-contain"
-            fallback={
-              <ImageIcon
-                className="size-7 text-muted-foreground"
-                aria-label={value ? `${name} unavailable` : `No ${name.toLowerCase()}`}
+    <section aria-label={name} className="min-w-0">
+      <FileUpload
+        chooseButtonRef={chooseButton}
+        accept={pictureAccept}
+        maxSize={pictureMaxSize}
+        disabled={disabled || removing || !!source}
+        label={value ? "Replace picture" : "Choose picture"}
+        description="Drop an image here. JPEG, PNG, or WebP, up to 5 MB."
+        error={error}
+        preview={
+          kind === "avatar" ? (
+            <Avatar variant="picture" className="size-16 shrink-0">
+              <AvatarImage src={value ?? undefined} alt={name} className="object-contain" />
+              <AvatarFallback>{fallback}</AvatarFallback>
+            </Avatar>
+          ) : (
+            <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
+              <PicturePreview
+                src={value}
+                alt={name}
+                className="size-full object-contain"
+                fallback={fallback}
               />
-            }
-          />
-        </div>
-      )}
-      <div className="grid min-w-0 flex-1 gap-2">
-        <FileUpload
-          chooseButtonRef={chooseButton}
-          accept={pictureAccept}
-          maxSize={pictureMaxSize}
-          disabled={disabled || removing || !!source}
-          label={value ? "Replace picture" : "Choose picture"}
-          description="JPEG, PNG, or WebP. Up to 5 MB. Drop an image here."
-          actions={
-            value && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    disabled={disabled || !!source || removing}
-                    aria-busy={removing}
-                    aria-label={removing ? "Removing picture…" : "Remove picture"}
-                    onClick={() => void remove()}
-                  >
-                    {removing ? (
-                      <Spinner aria-hidden="true" role="presentation" />
-                    ) : (
-                      <Trash2 aria-hidden="true" />
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Remove picture</TooltipContent>
-              </Tooltip>
-            )
+            </div>
+          )
+        }
+        actions={
+          value && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="destructive-ghost"
+                  size="icon"
+                  disabled={disabled || !!source || removing}
+                  aria-busy={removing}
+                  aria-label={removing ? "Removing picture." : "Remove picture"}
+                  onClick={() => void remove()}
+                >
+                  {removing ? (
+                    <Spinner aria-hidden="true" role="presentation" />
+                  ) : (
+                    <Trash2 aria-hidden="true" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Remove picture</TooltipContent>
+            </Tooltip>
+          )
+        }
+        onFiles={async ([file]) => {
+          setError(null);
+          try {
+            const image = await openPicture(file);
+            image.close();
+            setSource(file);
+          } catch (failure) {
+            setError(
+              failure instanceof Error ? failure.message : "This image could not be opened.",
+            );
           }
-          onFiles={async ([file]) => {
-            setError(null);
-            try {
-              const image = await openPicture(file);
-              image.close();
-              setSource(file);
-            } catch (failure) {
-              setError(
-                failure instanceof Error ? failure.message : "This image could not be opened.",
-              );
-            }
-          }}
-        />
-        {error && (
-          <p role="alert" className="w-full text-sm text-destructive">
-            {error}
-          </p>
-        )}
-      </div>
+        }}
+      />
       {source && (
         <ImageCropDialog
           file={source}

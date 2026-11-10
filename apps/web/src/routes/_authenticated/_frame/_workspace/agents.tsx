@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import { agentPageSections } from "@/components/agent-work/app/agent-sections";
 import { AgentsWorkspace } from "@/components/agent-work/app/agents-workspace";
 import { z } from "zod";
 
@@ -8,13 +9,13 @@ export const Route = createFileRoute("/_authenticated/_frame/_workspace/agents")
   validateSearch: z.object({
     agentId: z.uuid().optional(),
     turnId: z.uuid().optional(),
-    tab: z.enum(["routines", "settings"]).optional(),
+    section: z.enum(agentPageSections).optional(),
   }),
 });
 
 function AgentsRoute() {
   const { organizationId, session } = Route.useRouteContext();
-  const { agentId, turnId, tab } = Route.useSearch();
+  const { agentId, turnId, section } = Route.useSearch();
   return (
     <AgentsWorkspace
       key={organizationId}
@@ -22,7 +23,7 @@ function AgentsRoute() {
       organizationId={organizationId}
       agentId={agentId}
       turnId={turnId}
-      tab={tab}
+      section={section ?? "activity"}
     />
   );
 }

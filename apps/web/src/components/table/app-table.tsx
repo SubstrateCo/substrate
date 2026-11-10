@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableRow } from "../ui/table";
 import { AppTableHeader } from "./app-table-header";
 import type { AppTableInstance } from "./table";
 import { TablePagination } from "./table-pagination";
+import type { LucideIcon } from "lucide-react";
 
 export function AppTable<TData extends RowData>({
   table,
@@ -19,6 +20,8 @@ export function AppTable<TData extends RowData>({
   error,
   onRetry,
   emptyMessage = "No results.",
+  emptyDescription = "",
+  emptyIcon,
   errorTitle = "Couldn’t load results",
   errorDescription = "Your results are unavailable. Please try again.",
   renderMobileRow,
@@ -30,14 +33,19 @@ export function AppTable<TData extends RowData>({
   error?: Error | null;
   onRetry?: () => void;
   emptyMessage?: string;
+  /** Where items come from or how to add one, such as "Invitations you send appear here." */
+  emptyDescription?: string;
+  emptyIcon?: LucideIcon;
   errorTitle?: string;
   errorDescription?: string;
   renderMobileRow?: (row: TData) => ReactNode;
 }) {
   const rows = table.getRowModel().rows;
   const blocked = isAccessFailure(error);
+  // With no rows, show only the notice: sortable headers over nothing are noise.
+  const empty = (blocked || rows.length === 0) && !loading;
   let emptyContent = (
-    <ContentNotice title={emptyMessage} description="New items will appear here." />
+    <ContentNotice title={emptyMessage} description={emptyDescription} icon={emptyIcon} />
   );
   if (error) {
     emptyContent = (
@@ -72,32 +80,40 @@ export function AppTable<TData extends RowData>({
             )}
           </div>
         )}
-        <div
-          className={`min-w-0 rounded-lg border${renderMobileRow ? " hidden @min-[40rem]:block" : ""}`}
-        >
-          <Table aria-label={name} aria-busy={loading && !blocked}>
-            <AppTableHeader table={table} />
-            <TableBody>
-              {blocked || rows.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={table.getAllLeafColumns().length}>{emptyContent}</TableCell>
-                </TableRow>
-              ) : (
-                rows.map((row) => (
-                  <TableRow key={row.id}>
-                    {row.getAllCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        <table.AppCell cell={cell}>
-                          {(boundCell) => <boundCell.FlexRender />}
-                        </table.AppCell>
-                      </TableCell>
-                    ))}
+        {empty ? (
+          <div
+            className={`min-w-0 rounded-lg border${renderMobileRow ? " hidden @min-[40rem]:block" : ""}`}
+          >
+            {emptyContent}
+          </div>
+        ) : (
+          <div
+            className={`min-w-0 rounded-lg border${renderMobileRow ? " hidden @min-[40rem]:block" : ""}`}
+          >
+            <Table aria-label={name} aria-busy={loading && !blocked}>
+              <AppTableHeader table={table} />
+              <TableBody>
+                {blocked || rows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={table.getAllLeafColumns().length}>{emptyContent}</TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                ) : (
+                  rows.map((row) => (
+                    <TableRow key={row.id}>
+                      {row.getAllCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          <table.AppCell cell={cell}>
+                            {(boundCell) => <boundCell.FlexRender />}
+                          </table.AppCell>
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
         {!blocked && rows.length > 0 && table.getPageCount() > 1 && (
           <TablePagination table={table} name={name} />
         )}

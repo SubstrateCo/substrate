@@ -7,6 +7,7 @@ import { revalidateLogic, useForm } from "@tanstack/react-form";
 import { useState } from "react";
 
 import { EditorDialog } from "./editor-dialog";
+import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { FormTextField } from "@/components/forms/form-text-field";
 import { z } from "zod";
 
@@ -21,6 +22,15 @@ const skillFields = saveSkillInput.omit({ id: true }).extend({
       "Use lowercase words separated by hyphens for the skill name.",
     ),
 });
+
+const contentLimit = 100_000;
+
+/** The format, and the length once it nears the limit. */
+function contentHint(length: number) {
+  const format = "Markdown: steps, examples, and links the agent should follow.";
+  if (length < contentLimit * 0.8) return format;
+  return `${format} ${length.toLocaleString("en-US")} of ${contentLimit.toLocaleString("en-US")} characters.`;
+}
 
 export function SkillEditor({
   skill,
@@ -46,7 +56,8 @@ export function SkillEditor({
       try {
         await onSave(skill?.id ? { ...parsed, id: skill.id } : parsed);
       } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Could not save changes.");
+        const fallback = "We couldn’t save this skill. Try again.";
+        setError(cause instanceof Error ? actionErrorMessage(cause, fallback) : fallback);
       }
     },
   });
@@ -54,9 +65,9 @@ export function SkillEditor({
     <form.Subscribe selector={(state) => state.isSubmitting}>
       {(isSubmitting) => (
         <EditorDialog
-          title={skill ? "Edit skill" : "Create skill"}
+          title={skill ? `Edit ${skill.name}` : "Create skill"}
           saveLabel="Save skill"
-          description="Native skill"
+          description="A skill is a short guide the agent opens when a task matches its description. It’s saved as a file in this agent’s folder on this desktop."
           pending={isSubmitting}
           onClose={onClose}
           onSubmit={() => form.handleSubmit()}
@@ -68,6 +79,8 @@ export function SkillEditor({
                 field={field}
                 id="skill-name"
                 label="Skill name"
+                description="Lowercase words joined by hyphens, like release-notes."
+                placeholder="release-notes"
                 required
                 maxLength={64}
                 pattern="[a-z0-9]+(-[a-z0-9]+)*"
@@ -79,8 +92,11 @@ export function SkillEditor({
               <FormTextField
                 field={field}
                 id="skill-description"
-                label="Description"
+                label="When to use it"
+                description="The agent reads this to decide when the skill applies. Name the task and the trigger."
+                placeholder="For example: Draft release notes from merged work when asked for a changelog."
                 multiline
+                rows={2}
                 maxLength={2000}
               />
             )}
@@ -90,10 +106,15 @@ export function SkillEditor({
               <FormTextField
                 field={field}
                 id="skill-content"
-                label="Skill content"
+                label="Instructions"
+                description={contentHint(field.state.value.length)}
+                placeholder={
+                  "# Release notes\n\n1. Collect merged work since the last release.\n2. Group changes by area."
+                }
                 multiline
-                rows={10}
-                maxLength={100000}
+                rows={12}
+                className="font-mono text-xs"
+                maxLength={contentLimit}
               />
             )}
           </form.Field>

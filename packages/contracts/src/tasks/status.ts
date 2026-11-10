@@ -15,9 +15,9 @@ export type TaskPriority = (typeof taskPriorityValues)[number];
 export const permissionLevels = ["view", "comment", "edit", "owner"] as const;
 
 export const taskStatusLabels: Record<TaskStatus, string> = {
-  not_started: "Not Started",
-  in_progress: "In Progress",
-  in_review: "In Review",
+  not_started: "Not started",
+  in_progress: "In progress",
+  in_review: "In review",
   completed: "Completed",
   canceled: "Canceled",
 };

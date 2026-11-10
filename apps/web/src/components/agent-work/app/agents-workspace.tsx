@@ -4,8 +4,10 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { ActivityTurnTranscript } from "../transcript/activity-turn-transcript";
-import { AgentActivity } from "./agent-activity";
+import { AgentPage } from "./agent-page";
+import type { AgentPageSection } from "./agent-sections";
 import { AgentsWorkspaceView } from "./agents-workspace-view";
+import { FirstAgentView } from "./first-agent-view";
 import { NeedsYou } from "./needs-you";
 import { AgentSettings } from "@/components/agents/agent-settings";
 import { PaneState } from "@/components/feedback/pane-state";
@@ -16,6 +18,8 @@ import { localAgentsOptions } from "@/queries/agent-work/local";
 import { agentStatusOptions, needsYouOptions } from "@/queries/agent-work/server";
 import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
 
+type AgentsSearch = { agentId?: string; turnId?: string; section?: AgentPageSection };
+
 /**
  * The Agents app. Needs you comes from the server, so it works on every device. Activity,
  * transcripts, and routines come from the agent's home desktop.
@@ -25,13 +29,13 @@ export function AgentsWorkspace({
   organizationId,
   agentId,
   turnId,
-  tab,
+  section,
 }: {
   userId: string;
   organizationId: string;
   agentId?: string;
   turnId?: string;
-  tab?: "routines" | "settings";
+  section: AgentPageSection;
 }) {
   const navigate = useNavigate();
   const [creating, setCreating] = useState(false);
@@ -42,8 +46,15 @@ export function AgentsWorkspace({
     ...localAgentsOptions(userId, organizationId),
     enabled: hasAgentWorkBridge(),
   });
-  const go = (search: { agentId?: string; turnId?: string; tab?: "routines" | "settings" }) =>
-    void navigate({ to: "/agents", search: { workspaceId: organizationId, ...search } });
+  const go = ({ section: next, ...search }: AgentsSearch) =>
+    void navigate({
+      to: "/agents",
+      search: {
+        workspaceId: organizationId,
+        ...search,
+        section: next === "activity" ? undefined : next,
+      },
+    });
   const status = (id: string) => statuses.data?.find((entry) => entry.userAgentId === id);
   const agents = (catalog.data?.agents ?? []).map((agent) => {
     const published = status(agent.id);
@@ -51,9 +62,12 @@ export function AgentsWorkspace({
   });
   const selected = agents.find((agent) => agent.id === agentId);
   const homedHere = !!agentId && !!local.data?.some((entry) => entry.userAgentId === agentId);
+  const firstAgent = catalog.isSuccess && !agents.length;
   let content;
   if (!agentId)
-    content = (
+    content = firstAgent ? (
+      <FirstAgentView onCreate={() => setCreating(true)} />
+    ) : (
       <NeedsYou
         userId={userId}
         organizationId={organizationId}
@@ -70,7 +84,7 @@ export function AgentsWorkspace({
     );
   else
     content = (
-      <AgentActivity
+      <AgentPage
         key={agentId}
         userId={userId}
         organizationId={organizationId}
@@ -78,23 +92,17 @@ export function AgentsWorkspace({
         name={selected.name}
         homedHere={homedHere}
         status={status(agentId)}
+        section={section}
         selectedTurnId={turnId}
-        tab={tab ?? "activity"}
-        onTabChange={(value) => go({ agentId, tab: value === "activity" ? undefined : value })}
-        settings={
-          <AgentSettings
-            userId={userId}
-            organizationId={organizationId}
-            agentId={agentId}
-            onClose={() => go({})}
-          />
-        }
+        onSectionChange={(next) => go({ agentId, section: next })}
         onTranscript={(id) => go({ agentId, turnId: id })}
+        onDeleted={() => go({})}
       />
     );
   return (
     <AgentsWorkspaceView
       agents={agents}
+      agentsLoaded={catalog.isSuccess}
       needsYouCount={needsYouCount(needsYou.data)}
       selectedAgentId={agentId}
       onSelect={(id) => go({ agentId: id })}
@@ -107,7 +115,7 @@ export function AgentsWorkspace({
             onClose={() => setCreating(false)}
             onCreated={(id) => {
               setCreating(false);
-              go({ agentId: id, tab: "settings" });
+              go({ agentId: id, section: "general" });
             }}
           />
         )
@@ -115,7 +123,7 @@ export function AgentsWorkspace({
       content={content}
       aside={
         agentId &&
-        !tab &&
+        section === "activity" &&
         selected &&
         turnId && (
           <ActivityTurnTranscript

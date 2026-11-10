@@ -1,6 +1,7 @@
+import { Checkbox } from "../../ui/checkbox";
 import { CommandItem } from "../../ui/command";
 import { cn } from "cn";
-import { Check, CircleCheck, FolderKanban } from "lucide-react";
+import { FolderKanban, ListTodo } from "lucide-react";
 
 export function LinkWorkItem({
   id,
@@ -21,7 +22,7 @@ export function LinkWorkItem({
   disabled: boolean;
   onChoose: () => void;
 }) {
-  const Icon = kind === "task" ? CircleCheck : FolderKanban;
+  const Icon = kind === "task" ? ListTodo : FolderKanban;
   const selected = chosen && !linked;
   let subtitle = "Project";
   if (kind === "task") subtitle = projectName ? `Task · ${projectName}` : "Task";
@@ -44,15 +45,12 @@ export function LinkWorkItem({
           Linked
         </span>
       ) : (
-        <span
+        <Checkbox
           aria-hidden="true"
-          className={cn(
-            "flex size-4 shrink-0 items-center justify-center rounded-sm border border-input",
-            selected && "border-primary bg-primary text-primary-foreground",
-          )}
-        >
-          {selected && <Check className="size-3" />}
-        </span>
+          tabIndex={-1}
+          checked={selected}
+          className="pointer-events-none"
+        />
       )}
       {selected && <span className="sr-only">Selected</span>}
     </CommandItem>

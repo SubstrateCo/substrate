@@ -1,9 +1,13 @@
-import { useId, useState } from "react";
+import { useId } from "react";
 
-import { projectPermissionOptions, type ProjectDetail, type ProjectPermission } from "../../types";
-import { PendingButton } from "@/components/feedback/pending-button";
+import { TaskAssigneeAvatar } from "../../task-cues/task-assignee-avatar";
+import {
+  projectPermissionLabels,
+  projectPermissionOptions,
+  type ProjectDetail,
+  type ProjectPermission,
+} from "../../types";
 import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
 import {
   Select,
   SelectContent,
@@ -12,99 +16,84 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Trash2, UserRound } from "lucide-react";
+import { UserMinus } from "lucide-react";
 
-const permissionRank = { view: 0, comment: 1, edit: 2, owner: 3 };
-
+/**
+ * One person with project access. Owners change the level from the menu and remove access with
+ * the row's remove button. The last owner stays fixed so the project always has one.
+ */
 export function ProjectMemberRow({
   member,
   canManage,
   lastOwner,
   pending,
-  onShare,
-  onReview,
+  onChange,
+  onRemove,
 }: {
   member: ProjectDetail["members"][number];
   canManage: boolean;
   lastOwner: boolean;
   pending: boolean;
-  onShare: (actorEntityId: string, level: ProjectPermission) => void;
-  onReview: (actorEntityId: string, name: string, level: ProjectPermission | null) => void;
+  onChange: (level: ProjectPermission) => void;
+  onRemove: () => void;
 }) {
-  const [level, setLevel] = useState<ProjectPermission>(member.level);
   const labelId = useId();
+  const editable = canManage && !lastOwner;
   return (
-    <li className="flex flex-wrap items-center justify-between gap-3 p-4">
-      <div className="flex min-w-0 flex-1 basis-36 items-center gap-3">
-        <UserRound className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-        <div className="min-w-0">
-          <p className="text-sm font-medium wrap-anywhere">{member.name}</p>
-          <p className="text-xs text-muted-foreground">
-            {member.type === "agent" ? "Agent" : "Person"} · Direct access
-          </p>
-        </div>
+    <li className="group/member flex min-h-12 items-center gap-3 px-5 py-2">
+      <TaskAssigneeAvatar name={member.name} type={member.type} className="size-7" />
+      <div className="min-w-0 flex-1">
+        <p id={labelId} className="truncate text-sm font-medium">
+          {member.name}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {member.type === "agent" ? "Agent" : "Person"}
+          {lastOwner && canManage && " · Only owner. Add another owner to change this."}
+        </p>
       </div>
-      {canManage ? (
-        <form
-          className="flex max-w-full flex-wrap items-center justify-end gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (pending || lastOwner || level === member.level) return;
-            if (permissionRank[level] > permissionRank[member.level])
-              onReview(member.actorEntityId, member.name, level);
-            else onShare(member.actorEntityId, level);
-          }}
-        >
-          {lastOwner && <span className="text-xs text-muted-foreground">Last owner</span>}
-          {level !== member.level && (
-            <PendingButton size="sm" variant="outline" pending={pending} pendingLabel="Applying…">
-              Apply
-            </PendingButton>
-          )}
-          <span id={labelId} className="sr-only">
-            {member.name} permission
-          </span>
-          <ButtonGroup aria-label={`${member.name} access`}>
-            <Select
-              value={level}
-              onValueChange={(next) => {
-                const option = projectPermissionOptions.find(
-                  (candidate) => candidate.value === next,
-                );
-                if (option) setLevel(option.value);
-              }}
-              disabled={pending || lastOwner}
-            >
-              <SelectTrigger size="compact" aria-labelledby={labelId}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent position="popper" align="start">
-                {projectPermissionOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      {editable ? (
+        <div className="flex shrink-0 items-center gap-1">
+          <Select
+            value={member.level}
+            disabled={pending}
+            onValueChange={(next) => {
+              const option = projectPermissionOptions.find((candidate) => candidate.value === next);
+              if (option && option.value !== member.level) onChange(option.value);
+            }}
+          >
+            <SelectTrigger size="sm" variant="ghost" aria-label={`${member.name} permission`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper" align="end">
+              {projectPermissionOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="opacity-0 transition-opacity duration-150 group-hover/member:opacity-100 has-focus-visible:opacity-100 has-aria-expanded:opacity-100 max-md:opacity-100">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   type="button"
                   size="icon-sm"
-                  variant="destructive"
+                  variant="destructive-ghost"
                   aria-label={`Remove ${member.name}’s access`}
-                  disabled={pending || lastOwner}
-                  onClick={() => onReview(member.actorEntityId, member.name, null)}
+                  disabled={pending}
+                  onClick={onRemove}
                 >
-                  <Trash2 aria-hidden="true" />
+                  <UserMinus aria-hidden="true" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Remove access</TooltipContent>
             </Tooltip>
-          </ButtonGroup>
-        </form>
+          </span>
+        </div>
       ) : (
-        <span className="text-sm capitalize">{member.level} access</span>
+        <span className="shrink-0 pr-2 text-sm text-muted-foreground">
+          {projectPermissionLabels[member.level]}
+        </span>
       )}
     </li>
   );

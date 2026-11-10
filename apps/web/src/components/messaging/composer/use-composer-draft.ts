@@ -3,6 +3,8 @@ import { useContext, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { ComposerDrafts } from "@/components/messaging/composer/composer-drafts";
 import type { ReferenceEditorHandle } from "@/components/messaging/references/reference-editor";
 
+export const messageMaxLength = 20000;
+
 export function useComposerDraft({
   draftKey,
   pending,
@@ -43,7 +45,7 @@ export function useComposerDraft({
   const requestFocus = (caret = 0) =>
     setFocusRequest((previous) => ({ id: previous.id + 1, caret }));
   const submit = () => {
-    const sendable = draft.trim() !== "" && draft.length <= 20000;
+    const sendable = draft.trim() !== "" && draft.length <= messageMaxLength;
     if (!sendable || pending || composing.current) return;
     onSend(draft.trim(), () => {
       drafts.clear(draftKey, draft);

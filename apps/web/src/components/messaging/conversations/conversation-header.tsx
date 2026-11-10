@@ -1,48 +1,138 @@
 import type { ReactNode } from "react";
 
+import { Tag } from "@/components/feedback/tag";
+import { PageHeader } from "@/components/layout/page-header";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Hash, LockKeyhole, UserPlus } from "lucide-react";
+import { initials } from "@/lib/people/initials";
+import { Bot, Globe, Hash, LockKeyhole, MessageCircle, UserPlus, Users } from "lucide-react";
+
+export type HeaderMember = {
+  actorId: string;
+  name: string;
+  type: "human" | "agent";
+  external?: boolean;
+};
+
+const kindIcons = {
+  private: <LockKeyhole aria-hidden="true" />,
+  public: <Hash aria-hidden="true" />,
+  group: <Users aria-hidden="true" />,
+  dm: <MessageCircle aria-hidden="true" />,
+};
+
+function MemberAvatar({ member }: { member: HeaderMember }) {
+  return (
+    <Avatar aria-hidden="true" variant="message" size="sm">
+      <AvatarFallback>
+        {member.type === "agent" ? <Bot className="size-3.5!" /> : initials(member.name)}
+      </AvatarFallback>
+    </Avatar>
+  );
+}
+
+/** Who can read here: a count that opens the member list. */
+function MembersButton({ members }: { members: HeaderMember[] }) {
+  const label = `${members.length} ${members.length === 1 ? "member" : "members"}`;
+  return (
+    <Popover>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <Button variant="disclosure" size="sm" aria-label={`Members, ${label}`}>
+              <Users aria-hidden="true" />
+              <span className="tabular-nums">{members.length}</span>
+            </Button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Members</TooltipContent>
+      </Tooltip>
+      <PopoverContent variant="reference" align="end" className="w-72" aria-label="Members">
+        <p className="border-b px-3 py-2 text-xs font-medium text-muted-foreground">{label}</p>
+        <ul className="max-h-80 overflow-y-auto p-1">
+          {members.map((member) => (
+            <li
+              key={member.actorId}
+              className="flex h-9 items-center gap-2 rounded-md px-2 text-sm"
+            >
+              <MemberAvatar member={member} />
+              <span className="min-w-0 flex-1 truncate">{member.name}</span>
+              {member.type === "agent" && <Tag>Agent</Tag>}
+              {member.external && <Tag>External</Tag>}
+            </li>
+          ))}
+        </ul>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export function ConversationHeader({
   title,
-  channelIcon,
+  kind,
+  members = [],
+  partner = false,
   addingMembers,
   onToggleMembers,
   actions,
 }: {
   title: string;
-  channelIcon?: "private" | "public";
+  /** Omitted while the conversation is unavailable. */
+  kind?: "private" | "public" | "group" | "dm";
+  members?: HeaderMember[];
+  /** People from another organization can read this conversation. */
+  partner?: boolean;
   addingMembers: boolean;
   onToggleMembers?: () => void;
   actions?: ReactNode;
 }) {
+  const dmPartner = kind === "dm" && members.length === 1 ? members[0] : undefined;
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b bg-card/60 px-4">
-      <h1 className="flex min-w-0 items-center gap-2 font-semibold">
-        {channelIcon === "private" && <LockKeyhole className="size-4 shrink-0" />}
-        {channelIcon === "public" && <Hash className="size-5 shrink-0" />}
-        <span className="truncate">{title}</span>
-      </h1>
-      <div className="flex shrink-0 items-center gap-2">
-        {onToggleMembers && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                onClick={onToggleMembers}
-                aria-label="Add people"
-                aria-expanded={addingMembers}
-              >
-                <UserPlus />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Add people</TooltipContent>
-          </Tooltip>
-        )}
-        {actions}
-      </div>
-    </header>
+    <PageHeader
+      variant="pane"
+      className="bg-card/60"
+      title={title}
+      icon={dmPartner ? <MemberAvatar member={dmPartner} /> : kind && kindIcons[kind]}
+      actions={
+        <>
+          {partner && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  tabIndex={0}
+                  className="mr-1 inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                >
+                  <Globe aria-hidden="true" className="size-3" />
+                  External
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                People from another organization can read this conversation
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {members.length > 0 && kind !== "dm" && <MembersButton members={members} />}
+          {onToggleMembers && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={onToggleMembers}
+                  aria-label="Add people"
+                  aria-expanded={addingMembers}
+                >
+                  <UserPlus />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Add people</TooltipContent>
+            </Tooltip>
+          )}
+          {actions}
+        </>
+      }
+    />
   );
 }

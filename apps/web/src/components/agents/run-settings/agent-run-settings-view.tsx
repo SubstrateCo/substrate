@@ -6,13 +6,18 @@ import {
 
 import { useState } from "react";
 
-import { SettingsCard, SettingsFooter, SettingsSection } from "../layout/settings-section";
+import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { PendingButton } from "@/components/feedback/pending-button";
+import {
+  SettingsCard,
+  SettingsFooter,
+  SettingsSection,
+} from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
 import { Field, FieldContent, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import { homeDeviceLabel } from "@/lib/agents/triggers";
-import { Monitor } from "lucide-react";
+import { Laptop } from "lucide-react";
 
 export function AgentRunSettingsView({
   name,
@@ -53,7 +58,7 @@ export function AgentRunSettingsView({
       <SettingsCard title="Runs on">
         <div className="flex flex-wrap items-center gap-3">
           <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted">
-            <Monitor aria-hidden="true" className="size-4 text-muted-foreground" />
+            <Laptop aria-hidden="true" className="size-4 text-muted-foreground" />
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium">{homeDeviceLabel(device)}</p>
@@ -84,7 +89,7 @@ export function AgentRunSettingsView({
             status={
               error ? (
                 <p role="alert" className="text-destructive">
-                  {error.message}
+                  {actionErrorMessage(error, "We couldn’t save run settings. Try again.")}
                 </p>
               ) : (
                 dirty && <p className="text-muted-foreground">You have unsaved changes.</p>

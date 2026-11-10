@@ -9,9 +9,10 @@ import {
   PaginationEllipsis,
   PaginationItem,
 } from "../ui/pagination";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { paginationPages } from "./pagination-pages";
 import type { AppTableInstance } from "./table";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export function TablePagination<TData extends RowData>({
   table,
@@ -28,16 +29,21 @@ export function TablePagination<TData extends RowData>({
     <Pagination aria-label={`${name} pagination`}>
       <PaginationContent className="flex-wrap justify-center">
         <PaginationItem>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Go to previous page"
-            disabled={!previous}
-            onClick={() => table.previousPage()}
-          >
-            <ChevronLeftIcon />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Previous page"
+                disabled={!previous}
+                onClick={() => table.previousPage()}
+              >
+                <ChevronLeft />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Previous page</TooltipContent>
+          </Tooltip>
         </PaginationItem>
         <PaginationItem className="sm:hidden">
           <span className="px-2 text-sm text-muted-foreground">
@@ -66,16 +72,21 @@ export function TablePagination<TData extends RowData>({
           </Fragment>
         ))}
         <PaginationItem>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Go to next page"
-            disabled={!next}
-            onClick={() => table.nextPage()}
-          >
-            <ChevronRightIcon />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Next page"
+                disabled={!next}
+                onClick={() => table.nextPage()}
+              >
+                <ChevronRight />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Next page</TooltipContent>
+          </Tooltip>
         </PaginationItem>
       </PaginationContent>
     </Pagination>

@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback } from "../../ui/avatar";
 import { Tag } from "@/components/feedback/tag";
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
 import { plainReferenceText } from "@/components/messaging/references/reference-token";
+import { Timestamp } from "@/components/time/timestamp";
 import { initials } from "@/lib/people/initials";
 import { cn } from "cn";
 import { Hash, MessageSquare, MessageSquareReply } from "lucide-react";
@@ -19,23 +20,6 @@ export type Discussion = {
   body: string;
   replyCount?: number;
 };
-
-const relativeUnits: [Intl.RelativeTimeFormatUnit, number][] = [
-  ["year", 31_536_000],
-  ["month", 2_592_000],
-  ["week", 604_800],
-  ["day", 86_400],
-  ["hour", 3_600],
-  ["minute", 60],
-];
-
-function relativeTime(value: string) {
-  const seconds = (new Date(value).getTime() - Date.now()) / 1000;
-  const format = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
-  for (const [unit, size] of relativeUnits)
-    if (Math.abs(seconds) >= size) return format.format(Math.round(seconds / size), unit);
-  return "just now";
-}
 
 export function DiscussionItem({ item }: { item: Discussion }) {
   const descriptionId = useId();
@@ -66,9 +50,7 @@ export function DiscussionItem({ item }: { item: Discussion }) {
             {conversation}
           </a>
           <span aria-hidden="true">·</span>
-          <time dateTime={item.createdAt} className="shrink-0 whitespace-nowrap">
-            {relativeTime(item.createdAt)}
-          </time>
+          <Timestamp value={item.createdAt} className="relative z-10 shrink-0" />
         </div>
         <div id={descriptionId} className="flex min-w-0 flex-col gap-1">
           <div className="flex min-w-0 items-center gap-1.5 text-sm">

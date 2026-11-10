@@ -1,18 +1,29 @@
 import type { Task } from "../types";
-import { SignalLow, SignalMedium, SignalHigh, Minus, AlertCircle } from "lucide-react";
+import { cn } from "cn";
+import { SignalLow, SignalMedium, SignalHigh, Minus, CircleAlert } from "lucide-react";
 
-export function TaskPriorityIcon({ priority }: { priority: Task["priority"] }) {
+export function TaskPriorityIcon({
+  priority,
+  className,
+}: {
+  priority: Task["priority"];
+  className?: string;
+}) {
   const Icon = {
     none: Minus,
     low: SignalLow,
     medium: SignalMedium,
     high: SignalHigh,
-    urgent: AlertCircle,
+    urgent: CircleAlert,
   }[priority];
   return (
     <Icon
       aria-hidden="true"
-      className={`size-4 shrink-0 ${priority === "urgent" ? "text-destructive" : "text-muted-foreground"}`}
+      className={cn(
+        "size-4 shrink-0",
+        priority === "urgent" ? "text-destructive" : "text-muted-foreground",
+        className,
+      )}
     />
   );
 }

@@ -8,6 +8,7 @@ import { Button } from "../../ui/button";
 import { Command, CommandEmpty, CommandInput, CommandList } from "../../ui/command";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -15,7 +16,13 @@ import {
   DialogTitle,
 } from "../../ui/dialog";
 import { LinkWorkItem } from "./link-work-item";
+import { SegmentedControl } from "@/components/forms/segmented-control";
 import { Link2 } from "lucide-react";
+
+const kindOptions = [
+  { value: "task", label: "Tasks" },
+  { value: "project", label: "Projects" },
+] as const;
 
 export type LinkableWork = {
   id: string;
@@ -74,7 +81,7 @@ export function LinkMessageWork({
         if (!open && !pending) onClose();
       }}
     >
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Link existing work</DialogTitle>
           <DialogDescription>
@@ -82,65 +89,54 @@ export function LinkMessageWork({
             them. Linking does not share them.
           </DialogDescription>
         </DialogHeader>
-        <Command shouldFilter={false}>
-          <div className="flex flex-col gap-3">
-            <div role="group" aria-label="Work type" className="flex gap-2">
-              <Button
-                size="sm"
-                variant={kind === "task" ? "secondary" : "outline"}
-                aria-pressed={kind === "task"}
+        <DialogBody>
+          <Command shouldFilter={false}>
+            <div className="flex flex-col gap-3">
+              <SegmentedControl
+                aria-label="Work type"
+                value={kind}
+                options={kindOptions}
                 disabled={pending}
-                onClick={() => onKindChange("task")}
-              >
-                Tasks
-              </Button>
-              <Button
-                size="sm"
-                variant={kind === "project" ? "secondary" : "outline"}
-                aria-pressed={kind === "project"}
+                onValueChange={onKindChange}
+              />
+              <CommandInput
+                aria-label="Search work to link"
+                placeholder={kind === "task" ? "Search tasks…" : "Search projects…"}
+                value={query}
+                onValueChange={onQueryChange}
                 disabled={pending}
-                onClick={() => onKindChange("project")}
-              >
-                Projects
-              </Button>
+              />
+              <div className="rounded-lg border p-1">
+                <CommandList aria-label={kind === "task" ? "Tasks" : "Projects"} className="h-72">
+                  {loading && !visible.length && (
+                    <LoadingState label="Searching work" variant="compact" />
+                  )}
+                  {error && <ErrorState compact title="Couldn't search work" onRetry={onRetry} />}
+                  {!loading && !error && (
+                    <CommandEmpty>
+                      {query.trim()
+                        ? `No editable ${kind === "task" ? "tasks" : "projects"} match “${query.trim()}”.`
+                        : `No editable ${kind === "task" ? "tasks" : "projects"} found.`}
+                    </CommandEmpty>
+                  )}
+                  {visible.map((item) => (
+                    <LinkWorkItem
+                      key={item.id}
+                      id={item.id}
+                      kind={item.kind}
+                      title={item.title}
+                      projectName={item.projectName}
+                      chosen={chosen.has(item.id)}
+                      linked={linkedIds.has(item.id)}
+                      disabled={pending}
+                      onChoose={() => toggle(item)}
+                    />
+                  ))}
+                </CommandList>
+              </div>
             </div>
-            <CommandInput
-              aria-label="Search work to link"
-              placeholder={kind === "task" ? "Search tasks…" : "Search projects…"}
-              value={query}
-              onValueChange={onQueryChange}
-              disabled={pending}
-            />
-            <div className="rounded-lg border p-1">
-              <CommandList aria-label={kind === "task" ? "Tasks" : "Projects"} className="h-72">
-                {loading && !visible.length && (
-                  <LoadingState label="Searching work" variant="compact" />
-                )}
-                {error && <ErrorState compact title="Couldn't search work" onRetry={onRetry} />}
-                {!loading && !error && (
-                  <CommandEmpty>
-                    {query.trim()
-                      ? `No editable ${kind === "task" ? "tasks" : "projects"} match “${query.trim()}”.`
-                      : `No editable ${kind === "task" ? "tasks" : "projects"} found.`}
-                  </CommandEmpty>
-                )}
-                {visible.map((item) => (
-                  <LinkWorkItem
-                    key={item.id}
-                    id={item.id}
-                    kind={item.kind}
-                    title={item.title}
-                    projectName={item.projectName}
-                    chosen={chosen.has(item.id)}
-                    linked={linkedIds.has(item.id)}
-                    disabled={pending}
-                    onChoose={() => toggle(item)}
-                  />
-                ))}
-              </CommandList>
-            </div>
-          </div>
-        </Command>
+          </Command>
+        </DialogBody>
         <DialogFooter className="items-center sm:justify-between">
           <p className="text-sm text-muted-foreground" aria-live="polite">
             {selection.length ? `${selection.length} selected` : "Select one or more items"}

@@ -31,7 +31,7 @@ export function DeleteConversationDialog({
           {impact(linkedWork)} This cannot be undone.
         </>
       }
-      confirmLabel="Delete"
+      confirmLabel="Delete conversation"
       pendingLabel="Deleting"
       destructive
       pending={pending}

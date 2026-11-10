@@ -9,7 +9,8 @@ export function OrganizationPicture({ organizationId }: { organizationId: string
   const { upload, remove } = usePictureMutations("organization-logo", organizationId);
   return (
     <PictureSettings
-      title="Organization logo"
+      title="Logo"
+      description="Shown in the workspace switcher for everyone in it."
       kind="organization-logo"
       value={organization.data?.logo}
       loading={organization.isPending}

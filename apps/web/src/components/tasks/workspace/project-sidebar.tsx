@@ -50,7 +50,7 @@ export function ProjectSidebar({
               <Button
                 ref={createButtonRef}
                 size="icon-sm"
-                variant="outline"
+                variant="ghost"
                 aria-label="New project"
                 onClick={onCreate}
               >

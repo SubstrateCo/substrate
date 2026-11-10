@@ -1,11 +1,12 @@
 import { Button } from "../../ui/button";
+import { Kbd, KbdGroup } from "../../ui/kbd";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { Bold, Code, Italic } from "lucide-react";
 
-const formats = [
-  { label: "Bold text", tooltip: "Bold", icon: Bold, prefix: "**", suffix: "**" },
-  { label: "Italic text", tooltip: "Italic", icon: Italic, prefix: "_", suffix: "_" },
-  { label: "Code text", tooltip: "Code", icon: Code, prefix: "`", suffix: "`" },
+export const composerFormats = [
+  { label: "Bold text", tooltip: "Bold", key: "b", icon: Bold, prefix: "**", suffix: "**" },
+  { label: "Italic text", tooltip: "Italic", key: "i", icon: Italic, prefix: "_", suffix: "_" },
+  { label: "Code text", tooltip: "Code", key: "e", icon: Code, prefix: "`", suffix: "`" },
 ];
 
 export function ComposerToolbar({
@@ -16,24 +17,31 @@ export function ComposerToolbar({
   onInsert: (prefix: string, suffix: string) => void;
 }) {
   return (
-    <div className="flex items-center gap-0.5 pb-1.5">
-      {formats.map(({ label, tooltip, icon: Icon, prefix, suffix }) => (
+    <>
+      {composerFormats.map(({ label, tooltip, key, icon: Icon, prefix, suffix }) => (
         <Tooltip key={label}>
           <TooltipTrigger asChild>
             <Button
               type="button"
-              size="icon-xs"
+              size="icon-sm"
               variant="ghost"
               aria-label={label}
+              aria-keyshortcuts={`Control+${key.toUpperCase()}`}
               disabled={pending}
               onClick={() => onInsert(prefix, suffix)}
             >
               <Icon />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>{tooltip}</TooltipContent>
+          <TooltipContent>
+            {tooltip}
+            <KbdGroup>
+              <Kbd>Ctrl</Kbd>
+              <Kbd>{key.toUpperCase()}</Kbd>
+            </KbdGroup>
+          </TooltipContent>
         </Tooltip>
       ))}
-    </div>
+    </>
   );
 }

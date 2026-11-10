@@ -1,22 +1,34 @@
 import { useRef, type ReactNode } from "react";
 
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export function TaskCreationDialog({
-  subtask,
   projectName,
+  parentTitle,
+  subtask,
   onCancel,
   onRestoreFocus,
   children,
 }: {
-  subtask: boolean;
   projectName: string;
+  /** The parent's title for a subtask, or undefined when the parent is not visible. */
+  parentTitle?: string;
+  subtask: boolean;
   onCancel: () => void;
   onRestoreFocus: () => void;
   children: ReactNode;
 }) {
   const content = useRef<HTMLDivElement>(null);
   const pending = () => !!content.current?.querySelector('form[aria-busy="true"]');
+  const place = subtask
+    ? `In ${projectName}, under ${parentTitle ?? "a task you can't open"}`
+    : `In ${projectName}`;
   return (
     <Dialog
       open
@@ -26,6 +38,7 @@ export function TaskCreationDialog({
     >
       <DialogContent
         ref={content}
+        size="lg"
         onEscapeKeyDown={(event) => {
           if (pending()) event.preventDefault();
         }}
@@ -37,10 +50,12 @@ export function TaskCreationDialog({
           onRestoreFocus();
         }}
       >
-        <DialogTitle className="sr-only">{subtask ? "New subtask" : "New task"}</DialogTitle>
-        <DialogDescription variant="context" className="mr-8 min-w-0" title={projectName}>
-          {projectName}
-        </DialogDescription>
+        <DialogHeader>
+          <DialogTitle>{subtask ? "New subtask" : "New task"}</DialogTitle>
+          <DialogDescription variant="context" className="min-w-0" title={place}>
+            {place}
+          </DialogDescription>
+        </DialogHeader>
         {children}
       </DialogContent>
     </Dialog>

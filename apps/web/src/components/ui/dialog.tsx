@@ -30,7 +30,7 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 isolate z-50 bg-black/40 duration-150 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        "fixed inset-0 isolate z-50 bg-black/40 duration-200 ease-out data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:duration-150 data-closed:fade-out-0",
         className,
       )}
       {...props}
@@ -38,29 +38,43 @@ function DialogOverlay({
   );
 }
 
+// A column: DialogHeader and DialogFooter stay fixed and DialogBody scrolls between them.
+// A form that is a direct child does not take part in the layout, so its body and footer do.
+const dialogContentVariants = cva(
+  "fixed top-1/2 left-1/2 z-50 flex max-h-overlay-height w-overlay-width -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border bg-popover text-sm text-popover-foreground shadow-floating duration-200 ease-out outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-97 data-closed:animate-out data-closed:duration-150 data-closed:fade-out-0 data-closed:zoom-out-97 [&>form]:contents",
+  {
+    variants: {
+      size: {
+        default: "max-w-lg",
+        lg: "max-w-2xl",
+      },
+    },
+    defaultVariants: { size: "default" },
+  },
+);
+
 function DialogContent({
   className,
   children,
+  size,
   showCloseButton = true,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content> & {
-  showCloseButton?: boolean;
-}) {
+}: React.ComponentProps<typeof DialogPrimitive.Content> &
+  VariantProps<typeof dialogContentVariants> & {
+    showCloseButton?: boolean;
+  }) {
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
-        className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid max-h-overlay-height w-overlay-width max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-xl border bg-popover p-5 text-sm text-popover-foreground shadow-floating duration-150 outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
-          className,
-        )}
+        className={cn(dialogContentVariants({ size }), className)}
         {...props}
       >
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close data-slot="dialog-close" asChild>
-            <Button variant="ghost" className="absolute top-2 right-2" size="icon-sm">
+            <Button variant="ghost" className="absolute top-4 right-4" size="icon-sm">
               <XIcon />
               <span className="sr-only">Close</span>
             </Button>
@@ -73,7 +87,22 @@ function DialogContent({
 
 function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <div data-slot="dialog-header" className={cn("flex flex-col gap-2", className)} {...props} />
+    <div
+      data-slot="dialog-header"
+      className={cn("flex shrink-0 flex-col gap-1.5 px-5 pt-5 pb-4", className)}
+      {...props}
+    />
+  );
+}
+
+/** The only part of a dialog that scrolls. */
+function DialogBody({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="dialog-body"
+      className={cn("grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-5 pb-5", className)}
+      {...props}
+    />
   );
 }
 
@@ -89,7 +118,7 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        "-mx-5 -mb-5 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-5 sm:flex-row sm:justify-end",
+        "flex shrink-0 flex-col-reverse gap-2 border-t bg-muted/50 px-5 py-3 sm:flex-row sm:items-center sm:justify-end",
         className,
       )}
       {...props}
@@ -144,6 +173,7 @@ function DialogDescription({
 
 export {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,

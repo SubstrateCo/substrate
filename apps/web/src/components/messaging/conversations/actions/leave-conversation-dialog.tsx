@@ -35,6 +35,7 @@ export function LeaveConversationDialog({
       }
       confirmLabel="Leave"
       pendingLabel="Leaving"
+      destructive
       pending={pending}
       error={error}
       onConfirm={onConfirm}

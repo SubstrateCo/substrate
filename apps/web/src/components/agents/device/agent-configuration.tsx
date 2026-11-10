@@ -1,4 +1,9 @@
-import { startupSkillIds, startupSkills, type HarnessKind } from "@startup-os/contracts/harness";
+import {
+  startupSkillIds,
+  startupSkills,
+  type HarnessKind,
+  type HarnessMcpServer,
+} from "@startup-os/contracts/harness";
 
 import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -7,15 +12,24 @@ import { useState } from "react";
 import { CatalogRow } from "../catalog/catalog-row";
 import type { AgentSection } from "../editors/agent-form";
 import { SkillEditor } from "../editors/skill-editor";
-import { SettingsList, SettingsNote, SettingsSection } from "../layout/settings-section";
 import { McpServerRow, StartupSkills } from "./startup-configuration";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
+import { SettingsList, SettingsNote, SettingsSection } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { harnessLabel } from "@/lib/agents/harness-meta";
 import { desktopLocalConfiguration } from "@/lib/desktop/agents/local-configuration";
 import { queryKeys } from "@/queries/keys";
-import { Monitor, Plus, RefreshCw, RotateCcw } from "lucide-react";
+import { Info, Laptop, Plus, RefreshCw, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+
+/** How the agent reaches a server: the command it runs or the host it calls. */
+function serverDetail(server: HarnessMcpServer) {
+  if (server.transport === "stdio") return `Runs ${server.command}`;
+  return `Connects to ${new URL(server.url).host}`;
+}
 
 export function AgentConfiguration({
   userId,
@@ -78,33 +92,40 @@ export function AgentConfiguration({
   const servers = configuration.data?.mcpServers ?? [];
   const skill = skills.find((item) => item.id === editing?.id);
   const refresh = (
-    <Button
-      type="button"
-      size="icon-sm"
-      variant="ghost"
-      aria-label="Refresh configuration"
-      disabled={!available || configuration.isFetching}
-      onClick={() => void configuration.refetch()}
-    >
-      <RefreshCw className={configuration.isFetching ? "animate-spin" : ""} />
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="ghost"
+          aria-label="Read the agent’s files again"
+          disabled={!available || configuration.isFetching}
+          onClick={() => void configuration.refetch()}
+        >
+          <RefreshCw className={configuration.isFetching ? "motion-safe:animate-spin" : ""} />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>Read the agent’s files again</TooltipContent>
+    </Tooltip>
   );
   const status = (
     <>
       {!available && (
-        <SettingsNote icon={<Monitor />}>
+        <SettingsNote icon={<Laptop />}>
           {agentId
-            ? `Open this agent in the desktop app to see and edit the ${section === "skills" ? "skills" : "MCP servers"} in its local folder.`
-            : "Save this agent to edit its local configuration."}
+            ? `Open this agent in the Startup OS desktop app to see the ${section === "skills" ? "skills" : "MCP servers"} in its folder.`
+            : "Save this agent to see its local configuration."}
         </SettingsNote>
       )}
       {available && configuration.isPending && (
-        <LoadingState label="Loading native configuration" variant="compact" />
+        <LoadingState label="Reading the agent’s files" variant="compact" />
       )}
       {configuration.error && (
-        <p role="alert" className="text-sm text-destructive">
-          {configuration.error.message}
-        </p>
+        <ErrorState
+          compact
+          title="Couldn’t read this agent’s files"
+          onRetry={() => void configuration.refetch()}
+        />
       )}
     </>
   );
@@ -112,7 +133,7 @@ export function AgentConfiguration({
     section === "skills" ? (
       <SettingsSection
         title="Skills"
-        description="Focused how-tos this agent loads when a task needs them."
+        description="How-to guides the agent opens when a task matches. Each skill is a file in its folder on its desktop."
         actions={
           <>
             {refresh}
@@ -156,7 +177,9 @@ export function AgentConfiguration({
                 />
               ))
             ) : (
-              <li className="px-4 py-3 text-sm text-muted-foreground">No custom skills.</li>
+              <li className="px-4 py-3 text-sm text-muted-foreground">
+                No skills of your own yet. Create one to teach this agent a repeatable task.
+              </li>
             )}
           </SettingsList>
         )}
@@ -164,24 +187,32 @@ export function AgentConfiguration({
     ) : (
       <SettingsSection
         title="MCP servers"
-        description="Servers that give this agent extra tools."
+        description="Tool servers this agent can use, read from its configuration on its desktop."
         actions={refresh}
       >
         {status}
         {(defaults || configuration.data) && (
           <SettingsList
             description={
-              defaults ? "Startup OS provides the built-in server when this agent runs." : undefined
+              defaults
+                ? "Startup OS adds the built-in server, which lets the agent read and post in this workspace."
+                : undefined
             }
           >
-            {defaults && <McpServerRow name="startup-os" builtIn />}
+            {defaults && <McpServerRow name="startup-os" detail="Startup OS workspace" builtIn />}
             {servers.map((server) => (
-              <McpServerRow key={server.id} name={server.name} />
+              <McpServerRow key={server.id} name={server.name} detail={serverDetail(server)} />
             ))}
             {configuration.data && !servers.length && !defaults && (
               <li className="px-4 py-3 text-sm text-muted-foreground">No MCP servers.</li>
             )}
           </SettingsList>
+        )}
+        {available && (
+          <SettingsNote icon={<Info />}>
+            Startup OS lists these servers but can’t add or edit them yet. Change them in{" "}
+            {harnessLabel(harness)}’s own configuration for this agent, then read the files again.
+          </SettingsNote>
         )}
       </SettingsSection>
     );
@@ -206,8 +237,9 @@ export function AgentConfiguration({
         <ConfirmDialog
           title="Reset Startup OS defaults?"
           description="This replaces the agent's instructions file and Startup OS skills on this device with the saved agent settings. Local edits to those files are lost. Your other skills and MCP servers are not changed."
-          confirmLabel="Reset"
-          pendingLabel="Resetting"
+          confirmLabel="Reset defaults"
+          pendingLabel="Resetting…"
+          errorDescription="We couldn’t reset the defaults. Try again."
           destructive
           pending={reset.isPending}
           error={reset.error}
@@ -221,9 +253,10 @@ export function AgentConfiguration({
       {deleting && (
         <ConfirmDialog
           title={`Delete ${deleting.name}?`}
-          description="This deletes the selected definition. Native conversation history is not deleted. This cannot be undone."
-          confirmLabel="Delete"
-          pendingLabel="Deleting"
+          description="This deletes the skill’s file from this agent’s folder on this desktop. New sessions won’t use it. You can’t undo this."
+          confirmLabel="Delete skill"
+          pendingLabel="Deleting…"
+          errorDescription="We couldn’t delete this skill. Try again."
           destructive
           pending={remove.isPending}
           error={remove.error}

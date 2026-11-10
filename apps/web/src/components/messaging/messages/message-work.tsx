@@ -1,18 +1,18 @@
+import type { TaskStatus } from "@startup-os/contracts/tasks";
+
 import { useState } from "react";
 
 import { ErrorState } from "../../feedback/error-state";
-import { LoadingState } from "../../feedback/loading-state";
 import { isAccessFailure } from "../../feedback/request-failure";
 import { Button } from "../../ui/button";
-import { MessageCard, MessageCardBody, MessageCardRow, MessageCardRows } from "./message-card";
 import { MessageWorkTile } from "./message-work-tile";
-import { Link2 } from "lucide-react";
 
 export type MessageWorkLink = {
   entityId: string;
   entityType: "task" | "project";
   title: string;
   href: string;
+  status?: TaskStatus | null;
   statusName?: string | null;
   purpose: string;
   canRemove: boolean;
@@ -21,70 +21,48 @@ export type MessageWorkLink = {
 // Longer lists collapse so a message with many links stays short.
 const collapsedCount = 3;
 
+/** Work attached to a message, as compact rows under the body. Takes no space when empty. */
 export function MessageWork({
   links,
-  loading = false,
   error,
   onRetry,
   onRemove,
   removing = false,
 }: {
   links: MessageWorkLink[];
-  loading?: boolean;
   error?: Error | null;
   onRetry?: () => void;
   onRemove?: (entityId: string) => void;
   removing?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const visible = isAccessFailure(error) ? [] : links;
-  if (!loading && !error && !visible.length) return null;
-  const hidden = visible.length - collapsedCount;
-  const shown = expanded || hidden <= 0 ? visible : visible.slice(0, collapsedCount);
+  if (error && !isAccessFailure(error))
+    return (
+      <div className="mt-1.5 max-w-120">
+        <ErrorState compact title="Couldn't load linked work" onRetry={onRetry} />
+      </div>
+    );
+  if (error || !links.length) return null;
+  const hidden = links.length - collapsedCount;
+  const shown = expanded || hidden <= 0 ? links : links.slice(0, collapsedCount);
   return (
-    <MessageCard
-      icon={Link2}
-      title="Linked work"
-      meta={visible.length > 0 ? visible.length : undefined}
-      collapsible
-    >
-      {loading && (
-        <MessageCardBody>
-          <LoadingState label="Loading linked work" variant="compact" />
-        </MessageCardBody>
-      )}
-      {error && (
-        <MessageCardBody>
-          <ErrorState compact title="Couldn't load linked work" onRetry={onRetry} />
-        </MessageCardBody>
-      )}
-      {shown.length > 0 && (
-        <MessageCardRows>
-          {shown.map((link) => (
-            <MessageWorkTile
-              key={`${link.entityId}:${link.purpose}`}
-              link={link}
-              removing={removing}
-              onRemove={onRemove}
-            />
-          ))}
-        </MessageCardRows>
-      )}
+    <ul aria-label="Linked work" className="mt-1.5 flex max-w-120 flex-col gap-1">
+      {shown.map((link) => (
+        <MessageWorkTile key={link.entityId} link={link} removing={removing} onRemove={onRemove} />
+      ))}
       {hidden > 0 && (
-        <MessageCardRows>
-          <MessageCardRow className="py-0.5 pl-1.5">
-            <Button
-              type="button"
-              size="xs"
-              variant="ghost"
-              aria-expanded={expanded}
-              onClick={() => setExpanded(!expanded)}
-            >
-              {expanded ? "Show less" : `Show ${hidden} more`}
-            </Button>
-          </MessageCardRow>
-        </MessageCardRows>
+        <li>
+          <Button
+            type="button"
+            size="xs"
+            variant="disclosure"
+            aria-expanded={expanded}
+            onClick={() => setExpanded(!expanded)}
+          >
+            {expanded ? "Show less" : `Show ${hidden} more`}
+          </Button>
+        </li>
       )}
-    </MessageCard>
+    </ul>
   );
 }

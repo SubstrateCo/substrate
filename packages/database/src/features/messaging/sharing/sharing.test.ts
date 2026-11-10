@@ -49,6 +49,20 @@ test("an organization invitation grants nothing before approval and only the inv
   ).rejects.toBeInstanceOf(AccessDeniedError);
 });
 
+test("listed members mark people from another organization as external for each viewer", async () => {
+  const c = await channel();
+  const invite = await sharing().invite(c.id, { email: "outside@example.com", shareHistory: true });
+  await sharing("outsider", f.orgB).accept(invite.id, true);
+  const external = async (userId: string, organizationId: string) =>
+    Object.fromEntries(
+      (
+        await createMessagingService(f.db, { userId, organizationId }).listConversations()
+      )[0]!.members.map((person) => [person.userId, person.external]),
+    );
+  expect(await external("alice", f.orgA)).toEqual({ alice: false, outsider: true });
+  expect(await external("outsider", f.orgB)).toEqual({ alice: true, outsider: false });
+});
+
 test("ordinary recipients request approval instead of granting access to their org", async () => {
   const c = await channel();
   await f.db.insert(member).values({ id: "bob-b", userId: "bob", organizationId: f.orgB });

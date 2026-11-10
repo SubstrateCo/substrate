@@ -2,6 +2,7 @@ import { QueryClient, QueryObserver } from "@tanstack/react-query";
 
 import {
   markNotificationsRead,
+  notificationFeedOptions,
   notificationPageOptions,
   notificationsOptions,
 } from "./notifications";
@@ -29,6 +30,24 @@ test("read updates reach every cached notification page without crossing workspa
   expect(pages[1]!.items[0]!.readAt).toBe(pages[0]!.items[0]!.readAt);
   expect(pages[2]!.items[0]!.readAt).toBeNull();
   expect(pages[0]!.nextCursor).toBe("next");
+  client.clear();
+});
+
+test("read updates reach every loaded feed page without crossing workspaces", () => {
+  const client = new QueryClient();
+  // SAFETY: cache updates only use id and readAt from each notification.
+  const page = (id: string) => ({ items: [{ id, readAt: null } as Notification], nextCursor: id });
+  const feed = { pages: [page("first"), page("notice")], pageParams: [undefined, "first"] };
+  const mine = notificationFeedOptions("org", "unread").queryKey;
+  const other = notificationFeedOptions("other", "unread").queryKey;
+  client.setQueryData(mine, feed);
+  client.setQueryData(other, feed);
+  markNotificationsRead(client, "org", null);
+  const read = (key: typeof mine) =>
+    client.getQueryData(key)!.pages.map((loaded) => loaded.items[0]!.readAt !== null);
+  expect(read(mine)).toEqual([true, true]);
+  expect(read(other)).toEqual([false, false]);
+  expect(client.getQueryData(mine)!.pageParams).toEqual([undefined, "first"]);
   client.clear();
 });
 

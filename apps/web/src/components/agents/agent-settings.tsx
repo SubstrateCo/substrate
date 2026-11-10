@@ -8,12 +8,13 @@ import { useState } from "react";
 import { AgentConfiguration } from "./device/agent-configuration";
 import { AgentForm, type AgentSection } from "./editors/agent-form";
 import { AgentPicture } from "./editors/agent-picture";
-import { SettingsCard } from "./layout/settings-section";
 import { AgentRunSettings } from "./run-settings/agent-run-settings";
 import { saveAgent, deleteAgent } from "@/api/agents/requests";
+import type { AgentSettingsSection } from "@/components/agent-work/app/agent-sections";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
+import { SettingsCard } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -26,16 +27,24 @@ import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
 import { queryKeys } from "@/queries/keys";
 import { toast } from "sonner";
 
+/**
+ * Without agentId, the Create agent dialog. With it, the selected settings section of that
+ * agent; the page around it owns the section list.
+ */
 export function AgentSettings({
   userId,
   organizationId,
   agentId,
+  section = "general",
+  onSectionChange,
   onClose,
   onCreated,
 }: {
   userId: string;
   organizationId?: string | null;
   agentId?: string;
+  section?: AgentSettingsSection;
+  onSectionChange?: (section: AgentSettingsSection) => void;
   onClose: () => void;
   onCreated?: (id: string) => void;
 }) {
@@ -66,17 +75,17 @@ export function AgentSettings({
   }
   const renderConfiguration = (
     harness: HarnessKind,
-    section: AgentSection,
+    configured: AgentSection,
     defaults: boolean,
     configuredAgentId?: string,
   ) => (
     <AgentConfiguration
-      key={`${harness}/${section}`}
+      key={`${harness}/${configured}`}
       userId={userId}
       organizationId={organizationId}
       agentId={configuredAgentId}
       harness={harness}
-      section={section}
+      section={configured}
       defaults={defaults}
     />
   );
@@ -86,7 +95,6 @@ export function AgentSettings({
         <ErrorState
           compact
           title="Couldn't load agent settings"
-          description={catalog.error.message}
           onRetry={() => void catalog.refetch()}
         />
       )}
@@ -98,6 +106,8 @@ export function AgentSettings({
           userId={userId}
           organizationId={organizationId}
           agent={agent}
+          section={section}
+          onSectionChange={onSectionChange}
           picture={<AgentPicture userId={userId} agentId={agent.id} image={agent.image} />}
           renderConfiguration={renderConfiguration}
           pending={pending}
@@ -118,12 +128,12 @@ export function AgentSettings({
                 <div className="min-w-0 flex-1 space-y-0.5">
                   <p className="text-sm font-medium">Delete agent</p>
                   <p className="text-sm text-muted-foreground">
-                    Conversation history is kept when you delete this agent.
+                    Removes {agent.name} and its settings. Messages it posted stay.
                   </p>
                 </div>
                 <Button
                   size="sm"
-                  variant="destructive"
+                  variant="destructive-ghost"
                   disabled={pending}
                   aria-label={`Delete ${agent.name}`}
                   onClick={() => setDeleting(true)}
@@ -142,11 +152,12 @@ export function AgentSettings({
             if (!open && !pending) onClose();
           }}
         >
-          <DialogContent className="max-w-xl">
+          <DialogContent size="lg">
             <DialogHeader>
               <DialogTitle>Create agent</DialogTitle>
               <DialogDescription>
-                Name it and pick a model. Add skills, MCP servers, and triggers in its settings.
+                An agent answers your messages and helps in conversations you add it to. It runs on
+                your desktop, and you can change everything later.
               </DialogDescription>
             </DialogHeader>
             <AgentForm
@@ -166,12 +177,13 @@ export function AgentSettings({
       {agent && deleting && (
         <ConfirmDialog
           title={`Delete ${agent.name}?`}
-          description="This deletes the selected definition. Native conversation history is not deleted. This cannot be undone."
-          confirmLabel="Delete"
-          pendingLabel="Deleting"
+          description={`This removes ${agent.name} and its settings. Messages it already posted stay in their conversations. You can’t undo this.`}
+          confirmLabel="Delete agent"
+          pendingLabel="Deleting…"
           destructive
           pending={pending}
           error={remove.error}
+          errorDescription="We couldn’t delete this agent. Try again."
           onConfirm={() =>
             remove.mutate(agent.id, {
               onSuccess: () => {

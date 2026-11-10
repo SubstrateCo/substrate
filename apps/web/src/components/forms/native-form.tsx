@@ -6,7 +6,7 @@ import { useNativeValidation } from "./use-native-validation";
 
 const NativeValidation = createContext<ReturnType<typeof useNativeValidation> | null>(null);
 
-/** A form that shows the browser's validation messages inline and submits its FormData once. */
+/** A form that shows constraint failures inline in product copy and submits its FormData once. */
 export function NativeForm({
   pending,
   onSubmit,
@@ -37,29 +37,52 @@ export function NativeForm({
   );
 }
 
-/** A labelled input inside NativeForm. Its error and description ids derive from `id`. */
+/**
+ * A labelled input inside NativeForm. Its error and description ids derive from `id`. An empty
+ * required field shows "Enter <label>." unless `missingMessage` gives better copy.
+ */
 export function NativeField({
   id,
   label,
   description,
+  missingMessage,
+  labelAction,
   ...props
-}: ComponentProps<typeof Input> & { id: string; label: string; description?: ReactNode }) {
+}: ComponentProps<typeof Input> & {
+  id: string;
+  label: string;
+  description?: ReactNode;
+  missingMessage?: string;
+  /** A small link on the label row, such as "Forgot password?". */
+  labelAction?: ReactNode;
+}) {
   const validation = useContext(NativeValidation);
   if (!validation) throw new Error("NativeField must be inside NativeForm.");
   const error = validation.errors[id];
-  const describedBy = [description && `${id}-description`, error && `${id}-error`]
+  // The error replaces the hint so the two never stack.
+  const hint = error ? undefined : description;
+  const describedBy = [hint && `${id}-description`, error && `${id}-error`]
     .filter(Boolean)
     .join(" ");
+  const fieldLabel = <FieldLabel htmlFor={id}>{label}</FieldLabel>;
   return (
     <Field data-invalid={Boolean(error)}>
-      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+      {labelAction ? (
+        <div className="flex items-center justify-between gap-3">
+          {fieldLabel}
+          {labelAction}
+        </div>
+      ) : (
+        fieldLabel
+      )}
       <Input
         {...props}
         id={id}
+        data-missing-message={missingMessage}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy || undefined}
       />
-      {description && <FieldDescription id={`${id}-description`}>{description}</FieldDescription>}
+      {hint && <FieldDescription id={`${id}-description`}>{hint}</FieldDescription>}
       <FieldError id={`${id}-error`}>{error}</FieldError>
     </Field>
   );

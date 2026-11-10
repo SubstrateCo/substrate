@@ -16,8 +16,7 @@ export function useTaskPanel({
     status?: TaskStatus;
   } | null>(null);
   const [restore, setRestore] = useState(0);
-  const inspector = useRef<HTMLDivElement>(null);
-  const viewport = useRef<HTMLDivElement>(null);
+  const inspector = useRef<HTMLElement>(null);
   const trigger = useRef<HTMLElement | null>(null);
   const creationTrigger = useRef<HTMLElement | null>(null);
   const newTaskButton = useRef<HTMLButtonElement>(null);
@@ -31,11 +30,14 @@ export function useTaskPanel({
   }, []);
   useEffect(() => {
     if (!ready) return;
-    if (selectedTaskId && selectedTaskId !== previousId.current) {
-      if (inspector.current) inspector.current.scrollTop = 0;
-      if (viewport.current) viewport.current.scrollTop = 0;
+    // Beside the list, focus stays where the person is working. Below `lg` the inspector covers
+    // the list, so it takes focus.
+    if (
+      selectedTaskId &&
+      selectedTaskId !== previousId.current &&
+      !window.matchMedia("(min-width: 1024px)").matches
+    )
       inspector.current?.focus({ preventScroll: true });
-    }
     previousId.current = selectedTaskId;
   }, [selectedTaskId, ready]);
   useEffect(() => {
@@ -44,7 +46,6 @@ export function useTaskPanel({
   }, [restore, selectedTaskId]);
   return {
     inspector,
-    viewport,
     newTaskButton,
     restoreFocus: () =>
       (creationTrigger.current?.isConnected

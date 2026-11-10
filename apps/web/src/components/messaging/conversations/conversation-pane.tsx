@@ -7,7 +7,7 @@ import { Composer } from "../composer/composer";
 import { MessageList } from "../messages/message-list";
 import { useMessageHistory } from "../messages/use-message-history";
 import { ThreadPane } from "../threads/thread-pane";
-import { AddMembersForm } from "./add-members-form";
+import { AddMembersDialog } from "./add-members-dialog";
 import { ConversationActions } from "./conversation-actions";
 import { LeftChannelNotice } from "./left-channel-notice";
 import { AgentWorkNotice } from "@/components/agent-work/agent-work-slot";
@@ -15,7 +15,7 @@ import { ConversationAgentWork } from "@/components/agent-work/conversation-agen
 import { ConversationTurnTranscript } from "@/components/agent-work/transcript/conversation-turn-transcript";
 import { ErrorState } from "@/components/feedback/error-state";
 import { ConversationPane as ConversationPaneView } from "@/components/messaging/conversations/conversation-pane-view";
-import { MessageHistory } from "@/components/messaging/messages/message-history";
+import { JumpToLatest, OlderMessages } from "@/components/messaging/messages/message-history";
 import { conversationName, type Conversation } from "@/lib/messaging/conversations";
 import { messageTargetOptions } from "@/queries/context/links";
 import { useConversationManagement } from "@/queries/messaging/management";
@@ -55,23 +55,23 @@ export function ConversationPane({
     );
   else if (timeline.length > 0)
     messageContent = (
-      <MessageHistory {...history} onOlder={() => loadOlder(messages.data?.[0]?.id)}>
-        <MessageList
-          messages={timeline}
-          organizationId={organizationId}
-          conversationId={conversation.id}
-          onThread={(id) => {
-            void navigate({
-              to: "/dashboard",
-              search: {
-                workspaceId: organizationId,
-                conversationId: conversation.id,
-                messageId: id,
-              },
-            });
-          }}
-        />
-      </MessageHistory>
+      <MessageList
+        messages={timeline}
+        organizationId={organizationId}
+        conversationId={conversation.id}
+        header={<OlderMessages {...history} onOlder={() => loadOlder(messages.data?.[0]?.id)} />}
+        footer={<JumpToLatest {...history} />}
+        onThread={(id) => {
+          void navigate({
+            to: "/dashboard",
+            search: {
+              workspaceId: organizationId,
+              conversationId: conversation.id,
+              messageId: id,
+            },
+          });
+        }}
+      />
     );
   // The transcript keeps the open thread in the URL, so closing it returns to that thread.
   const transcript = (turnId?: string) =>
@@ -123,6 +123,7 @@ export function ConversationPane({
     >
       <ConversationPaneView
         conversation={conversation}
+        viewerId={userId}
         loading={messages.isPending}
         error={messages.error}
         hasLoaded={messages.data !== undefined}
@@ -130,7 +131,7 @@ export function ConversationPane({
         addingMembers={addingMembers}
         onToggleMembers={() => setAddingMembers(!addingMembers)}
         membersForm={
-          <AddMembersForm
+          <AddMembersDialog
             organizationId={organizationId}
             conversationId={conversation.id}
             onClose={() => setAddingMembers(false)}

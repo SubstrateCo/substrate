@@ -9,6 +9,7 @@ import { CommandGroup, CommandList } from "@/components/ui/command";
 export function SearchResults({
   query,
   browsing,
+  filtered,
   joiningId,
   onJoin,
   results,
@@ -21,6 +22,8 @@ export function SearchResults({
 }: {
   query: string;
   browsing: boolean;
+  /** A type other than All is selected. */
+  filtered: boolean;
   joiningId?: string;
   onJoin: (conversationId: string) => void;
   results: SearchResultItem[];
@@ -32,13 +35,12 @@ export function SearchResults({
   onMore: () => void;
 }) {
   const visible = isAccessFailure(error) ? [] : results;
-  // A type label helps only when the list mixes record types.
-  const mixed = new Set(visible.map((item) => item.kind)).size > 1;
-  let heading = query ? "Results" : "Suggested for you";
+  const trimmed = query.trim();
+  let heading = trimmed ? "Results" : "Jump to";
   if (browsing) heading = "Browse channels";
   const errorState = <ErrorState compact title="Couldn't search workspace" onRetry={onRetry} />;
   return (
-    <CommandList label="Search results" className="min-h-0">
+    <CommandList label="Search results" className="max-h-96 min-h-0">
       {!visible.length && (
         // Loading, error, and empty states share one height, so the panel does not resize.
         <div className="flex h-36 flex-col justify-center px-3">
@@ -47,9 +49,19 @@ export function SearchResults({
             <LoadingState label="Searching workspace" variant="compact" rows={2} />
           )}
           {!error && !loading && (
-            <p className="text-center text-sm text-muted-foreground">
-              {browsing ? "No channels yet." : "No accessible results found. Try another search."}
-            </p>
+            <div className="space-y-1 text-center text-sm">
+              <p className="font-medium wrap-anywhere">
+                {browsing && "No channels yet"}
+                {!browsing && (trimmed ? `No results for “${trimmed}”` : "Nothing here yet")}
+              </p>
+              {!browsing && trimmed && (
+                <p className="text-muted-foreground">
+                  {filtered
+                    ? "Try All to search every type."
+                    : "Check the spelling or try fewer words."}
+                </p>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -65,26 +77,22 @@ export function SearchResults({
                 onJoin={() => onJoin(item.id)}
               />
             ) : (
-              <SearchResult key={item.id} item={item} showKind={mixed} />
+              <SearchResult key={item.id} item={item} query={trimmed} />
             ),
           )}
         </CommandGroup>
       )}
-      {!isAccessFailure(error) && visible.length > 0 && (
-        <div className="px-2 py-3 text-center">
-          {hasMore ? (
-            <PendingButton
-              variant="ghost"
-              size="sm"
-              pending={loadingMore}
-              pendingLabel="Loading results…"
-              onClick={onMore}
-            >
-              Load more results
-            </PendingButton>
-          ) : (
-            !loading && !error && <p className="text-xs text-muted-foreground">End of results</p>
-          )}
+      {!isAccessFailure(error) && visible.length > 0 && hasMore && (
+        <div className="px-2 pb-2 text-center">
+          <PendingButton
+            variant="ghost"
+            size="sm"
+            pending={loadingMore}
+            pendingLabel="Loading results."
+            onClick={onMore}
+          >
+            Show more
+          </PendingButton>
         </div>
       )}
     </CommandList>

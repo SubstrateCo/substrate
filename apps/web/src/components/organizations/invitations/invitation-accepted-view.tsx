@@ -1,4 +1,5 @@
 import { AuthFrame } from "@/components/auth/auth-frame";
+import { AuthNavLink } from "@/components/auth/auth-link";
 import { FormMessage } from "@/components/auth/form-message";
 import { PendingButton } from "@/components/feedback/pending-button";
 
@@ -14,23 +15,22 @@ export function InvitationAcceptedView({
   return (
     <AuthFrame
       title="Invitation accepted"
-      description="Your membership was saved. Continue to open the workspace."
+      description="You're a member now. Continue to open the workspace."
+      actions={<AuthNavLink href="/organizations">Your workspaces</AuthNavLink>}
     >
       <FormMessage
         error={error}
-        errorDescription="You joined the workspace, but we couldn’t open it. Try again without accepting the invitation again."
+        errorDescription="You joined the workspace, but we couldn't open it. Try again without accepting the invitation again."
       />
       <PendingButton
         className="w-full"
+        size="lg"
         pending={pending}
-        pendingLabel="Opening…"
+        pendingLabel="Opening."
         onClick={onContinue}
       >
         Continue setup
       </PendingButton>
-      <a className="text-sm underline" href="/organizations">
-        Your workspaces
-      </a>
     </AuthFrame>
   );
 }

@@ -9,39 +9,16 @@ import {
   PageSidebarHeader,
 } from "@/components/layout/page-layout";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { WorkStatus } from "@/lib/agent-work/status";
-import { cn } from "cn";
 import { Bot, Hand, Plus } from "lucide-react";
 
 export type AgentListItem = { id: string; name: string; status?: WorkStatus };
 
-function NavButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-current={active ? "page" : undefined}
-      onClick={onClick}
-      className={cn(
-        "flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none",
-        active && "bg-sidebar-accent font-medium",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
 /** The Agents app: Needs you and each agent in the sidebar, the selection beside it. */
 export function AgentsWorkspaceView({
   agents,
+  agentsLoaded,
   needsYouCount,
   selectedAgentId,
   onSelect,
@@ -51,6 +28,8 @@ export function AgentsWorkspaceView({
   aside,
 }: {
   agents: AgentListItem[];
+  /** False until the agent list loads, so the empty line does not flash. */
+  agentsLoaded: boolean;
   needsYouCount: number;
   selectedAgentId?: string;
   onSelect: (agentId?: string) => void;
@@ -70,32 +49,52 @@ export function AgentsWorkspaceView({
           <PageSidebarHeader
             title="Agents"
             actions={
-              <Button size="icon-sm" variant="ghost" aria-label="Create agent" onClick={onCreate}>
-                <Plus aria-hidden="true" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label="Create agent"
+                    onClick={onCreate}
+                  >
+                    <Plus aria-hidden="true" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Create agent</TooltipContent>
+              </Tooltip>
             }
           />
           <PageSidebarContent>
             <nav aria-label="Agent views" className="grid gap-0.5">
-              <NavButton active={!selectedAgentId} onClick={() => onSelect()}>
-                <Hand aria-hidden="true" className="size-4 shrink-0" />
-                <span className="min-w-0 flex-1 truncate">Needs you</span>
+              <Button
+                type="button"
+                variant="sidebar"
+                aria-current={!selectedAgentId ? "page" : undefined}
+                className="w-full justify-start"
+                onClick={() => onSelect()}
+              >
+                <Hand aria-hidden="true" />
+                <span className="min-w-0 flex-1 truncate text-left">Needs you</span>
                 {needsYouCount > 0 && (
-                  <span className="rounded-full bg-destructive px-1.5 text-xs text-white tabular-nums">
+                  <span className="rounded-full bg-warning/15 px-1.5 text-xs font-medium text-warning tabular-nums">
+                    <span className="sr-only">, </span>
                     {needsYouCount}
                   </span>
                 )}
-              </NavButton>
+              </Button>
             </nav>
             <section aria-label="Your agents" className="grid gap-0.5">
               <h2 className="px-2 pb-1 text-xs font-medium text-muted-foreground">Your agents</h2>
-              {!agents.length && (
+              {agentsLoaded && !agents.length && (
                 <p className="px-2 text-xs text-muted-foreground">You have no agents yet.</p>
               )}
               {agents.map((agent) => (
-                <NavButton
+                <Button
                   key={agent.id}
-                  active={agent.id === selectedAgentId}
+                  type="button"
+                  variant="sidebar"
+                  aria-current={agent.id === selectedAgentId ? "page" : undefined}
+                  className="w-full justify-start"
                   onClick={() => onSelect(agent.id)}
                 >
                   <span className="relative grid size-5 shrink-0 place-items-center rounded-md bg-accent text-accent-foreground">
@@ -104,8 +103,8 @@ export function AgentsWorkspaceView({
                       <WorkIndicator tone={agent.status.tone} label={agent.status.label} />
                     )}
                   </span>
-                  <span className="min-w-0 flex-1 truncate">{agent.name}</span>
-                </NavButton>
+                  <span className="min-w-0 flex-1 truncate text-left">{agent.name}</span>
+                </Button>
               ))}
             </section>
           </PageSidebarContent>
