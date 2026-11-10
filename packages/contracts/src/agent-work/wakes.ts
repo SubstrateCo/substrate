@@ -100,19 +100,25 @@ export const agentWakeView = z.object({
 export type AgentWakeView = z.infer<typeof agentWakeView>;
 
 /** A message body for the home desktop, returned only while the owner can see the message. */
-export interface AgentSourceMessage {
-  id: string;
-  conversationId: string;
-  threadId: string | null;
-  conversationName: string;
-  conversationKind: "dm" | "group" | "channel";
-  author: { actorId: string; name: string; kind: "owner" | "member" | "agent" };
-  body: string;
-  createdAt: string;
-}
+export const agentSourceMessage = z.object({
+  id: ref,
+  conversationId: ref,
+  threadId: ref.nullable(),
+  conversationName: z.string(),
+  conversationKind: z.enum(["dm", "group", "channel"]),
+  author: z.object({
+    actorId: ref,
+    name: z.string(),
+    kind: z.enum(["owner", "member", "agent"]),
+  }),
+  body: z.string(),
+  createdAt: z.string(),
+});
+export type AgentSourceMessage = z.infer<typeof agentSourceMessage>;
 
-export interface AgentSourcesResult {
-  messages: AgentSourceMessage[];
+export const agentSourcesResult = z.object({
+  messages: z.array(agentSourceMessage),
   /** Requested IDs that the owner cannot see now, or that do not exist. */
-  inaccessible: string[];
-}
+  inaccessible: z.array(ref),
+});
+export type AgentSourcesResult = z.infer<typeof agentSourcesResult>;

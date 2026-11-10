@@ -1,5 +1,6 @@
 import {
   agentRequestResponse,
+  agentSourcesResult,
   agentWakeView,
   type AgentRequestDelivery,
   type AgentSourcesResult,
@@ -24,25 +25,6 @@ const result = <T extends z.ZodType>(data: T) =>
   ]);
 
 const id = z.string().min(1);
-const sourcesSchema = z.object({
-  messages: z.array(
-    z.object({
-      id,
-      conversationId: id,
-      threadId: id.nullable(),
-      conversationName: z.string(),
-      conversationKind: z.enum(["dm", "group", "channel"]),
-      author: z.object({
-        actorId: id,
-        name: z.string(),
-        kind: z.enum(["owner", "member", "agent"]),
-      }),
-      body: z.string(),
-      createdAt: z.string(),
-    }),
-  ),
-  inaccessible: z.array(id),
-});
 const deliverySchema = z.object({
   requestId: id,
   userAgentId: id,
@@ -175,7 +157,7 @@ export function createAgentWorkServer(options: {
       return call(
         "/agent-work/device/sources",
         { ...device(organizationId), messageIds },
-        sourcesSchema,
+        agentSourcesResult,
       );
     },
     async publishStatus(input) {
