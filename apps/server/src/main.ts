@@ -2,22 +2,19 @@ import { pruneRecords } from "@startup-os/database/maintenance";
 
 import { createApp } from "./app";
 import { closeDatabase, db } from "./auth/database";
+// Parsed once on import: an invalid environment stops startup before the app is created.
+import { environment } from "./environment";
 import { defaultFileService } from "./v1/files/default-service";
 import { startSharingMail } from "./v1/messaging/sharing-mail";
 import { closeRefreshPublisher } from "./v1/realtime/publisher";
 import { createRealtimeService } from "./v1/realtime/service";
-
-const port = Number(process.env.SERVER_PORT ?? "3001");
-if (!Number.isInteger(port) || port < 1 || port > 65535) {
-  throw new Error("SERVER_PORT must be a valid port.");
-}
 
 const app = createApp();
 const realtime = createRealtimeService();
 await realtime.start();
 const stopSharingMail = startSharingMail();
 const server = Bun.serve({
-  port,
+  port: environment.port,
   websocket: realtime.websocket,
   fetch(request, server) {
     // Upgrade responses must not pass through response-mutating HTTP middleware.

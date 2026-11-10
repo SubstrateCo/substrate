@@ -1,8 +1,7 @@
 import type { RealtimeHint } from "@startup-os/contracts/realtime";
 
+import { environment } from "../../environment";
 import { RedisClient } from "bun";
-
-export const realtimeTopic = process.env.REALTIME_CHANNEL ?? "startup-os:realtime:v1";
 
 export function createRefreshPublisher(
   send: (message: string) => Promise<void>,
@@ -25,13 +24,13 @@ export function createRefreshPublisher(
 let client: RedisClient | undefined;
 export const publishRefresh = createRefreshPublisher(
   async (message) => {
-    client ??= new RedisClient(process.env.VALKEY_URL ?? "redis://localhost:6379", {
+    client ??= new RedisClient(environment.valkeyURL, {
       enableOfflineQueue: false,
       autoReconnect: false,
       connectionTimeout: 1_000,
     });
     if (!client.connected) await client.connect();
-    await client.publish(realtimeTopic, message);
+    await client.publish(environment.realtimeChannel, message);
   },
   () => console.warn("Realtime publish failed; clients will resync"),
 );

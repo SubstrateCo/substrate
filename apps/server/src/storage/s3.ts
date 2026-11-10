@@ -1,4 +1,4 @@
-import { storageEnvironment } from "./environment";
+import { environment, type ServerEnvironment } from "../environment";
 import type { ObjectStorage } from "./types";
 import {
   S3Client,
@@ -8,7 +8,9 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-export function createS3Storage(config = storageEnvironment()): ObjectStorage {
+export function createS3Storage(
+  config: ServerEnvironment["storage"] = environment.storage,
+): ObjectStorage {
   const client = new S3Client({
     endpoint: config.endpoint,
     region: config.region,

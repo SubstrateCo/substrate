@@ -39,10 +39,8 @@ export default defineConfig({
         DATABASE_URL:
           process.env.E2E_DATABASE_URL ??
           "postgres://startup_os_e2e:startup_os_e2e@localhost:5434/startup_os_e2e_test",
-        SERVER_PORT: "3101",
-        BETTER_AUTH_URL: apiURL,
-        APP_URL: baseURL,
-        FRONTEND_ORIGINS: `${baseURL},https://desktop.startup-os.local`,
+        STARTUP_OS_API_URL: apiURL,
+        STARTUP_OS_WEB_URL: baseURL,
         STARTUP_OS_WINDOWS_DOWNLOAD_URL: "https://downloads.example.test/StartupOS.exe",
         BETTER_AUTH_SECRET: "startup-os-e2e-only-secret-not-for-production",
         SMTP_HOST: "localhost",
@@ -58,7 +56,11 @@ export default defineConfig({
       url: baseURL,
       timeout: 120_000,
       reuseExistingServer: false,
-      env: { WEB_PORT: "3100", SERVER_URL: apiURL, VITE_CACHE_DIR: "node_modules/.vite-e2e" },
+      env: {
+        STARTUP_OS_WEB_URL: baseURL,
+        STARTUP_OS_API_URL: apiURL,
+        VITE_CACHE_DIR: "node_modules/.vite-e2e",
+      },
     },
   ],
 });

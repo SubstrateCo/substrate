@@ -1,8 +1,8 @@
 import { failure } from "@startup-os/contracts/result";
 
-import { authEnvironment } from "./auth/environment";
 import { auth } from "./auth/server";
 import { createDesktopRoutes } from "./desktop/routes";
+import { environment } from "./environment";
 import { respond } from "./shared/http";
 import { createAgentWorkRoutes } from "./v1/agent-work/routes";
 import { createAgentsRoutes } from "./v1/agents/routes";
@@ -21,7 +21,7 @@ import { HTTPException } from "hono/http-exception";
 import { secureHeaders } from "hono/secure-headers";
 
 export function createApp() {
-  const { trustedOrigins } = authEnvironment();
+  const { trustedOrigins } = environment;
   return new Hono()
     .use(secureHeaders())
     .use(

@@ -1,15 +1,17 @@
 import { desktopPath } from "@startup-os/contracts/desktop/links";
 import { failure, success } from "@startup-os/contracts/result";
 
+import { environment, type ServerEnvironment } from "../environment";
 import { respond, validationHook } from "../shared/http";
-import { desktopEnvironment } from "./environment";
 import { openDesktop } from "./service";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { html } from "hono/html";
 import { z } from "zod";
 
-export function createDesktopRoutes(environment = desktopEnvironment()) {
+export function createDesktopRoutes(
+  config: Pick<ServerEnvironment, "webURL" | "windowsDownloadURL"> = environment,
+) {
   return new Hono()
     .use(async (c, next) => {
       c.header("Cache-Control", "no-store");
@@ -22,18 +24,18 @@ export function createDesktopRoutes(environment = desktopEnvironment()) {
       await next();
     })
     .get("/release", (c) =>
-      respond(c, success({ windowsAvailable: Boolean(environment.windowsURL) })),
+      respond(c, success({ windowsAvailable: Boolean(config.windowsDownloadURL) })),
     )
     .get("/download", (c) => {
-      if (!environment.windowsURL)
+      if (!config.windowsDownloadURL)
         return respond(c, failure("NOT_FOUND", "The Windows installer is not available yet."));
-      return c.redirect(environment.windowsURL, 303);
+      return c.redirect(config.windowsDownloadURL, 303);
     })
     .get("/open", zValidator("query", z.object({ path: desktopPath }), validationHook), (c) => {
       const result = openDesktop(c.req.valid("query").path);
       if (!result.success) return respond(c, result);
-      const browserURL = new URL(c.req.valid("query").path, environment.frontendURL).toString();
-      const downloadURL = new URL("/download", environment.frontendURL);
+      const browserURL = new URL(c.req.valid("query").path, config.webURL).toString();
+      const downloadURL = new URL("/download", config.webURL);
       downloadURL.searchParams.set("redirect", c.req.valid("query").path);
       return c.html(
         html`<!doctype html>

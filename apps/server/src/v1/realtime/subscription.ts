@@ -1,7 +1,7 @@
 import { realtimeAudience, realtimeDomain, realtimeScope } from "@startup-os/contracts/realtime";
 
+import { environment } from "../../environment";
 import type { Change } from "./hub";
-import { realtimeTopic } from "./publisher";
 import { RedisClient } from "bun";
 import { z } from "zod";
 
@@ -17,8 +17,8 @@ const changes = z.array(
 export function createRealtimeSubscription({
   receive,
   setAvailable,
-  url = process.env.VALKEY_URL ?? "redis://localhost:6379",
-  topic = realtimeTopic,
+  url = environment.valkeyURL,
+  topic = environment.realtimeChannel,
 }: {
   receive: (changes: Change[]) => Promise<void>;
   setAvailable: (available: boolean) => void;

@@ -1,9 +1,8 @@
-import { desktopOrigin } from "@startup-os/contracts/desktop/links";
 import { audienceRecipients, resolveReceiver } from "@startup-os/database/realtime";
 
 import { db } from "../../auth/database";
-import { authEnvironment } from "../../auth/environment";
 import { auth } from "../../auth/server";
+import { environment } from "../../environment";
 import { createRealtimeHub } from "./hub";
 import { createRealtimeRoutes } from "./routes";
 import { createRealtimeAuthenticator } from "./session";
@@ -21,9 +20,7 @@ export function createRealtimeService() {
       console.warn("Realtime operation failed; client resync required", { failures });
     },
   });
-  const routes = createRealtimeRoutes(hub, [
-    ...new Set([...authEnvironment().trustedOrigins, desktopOrigin]),
-  ]);
+  const routes = createRealtimeRoutes(hub, environment.trustedOrigins);
   const subscription = createRealtimeSubscription({
     receive: (changes) => hub.publish(...changes),
     setAvailable: (available) => hub.setAvailable(available),

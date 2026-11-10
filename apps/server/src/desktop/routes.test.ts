@@ -41,8 +41,8 @@ describe("desktop open landing", () => {
 describe("desktop releases", () => {
   test("reports installer availability and redirects only to the configured installer", async () => {
     const app = createDesktopRoutes({
-      frontendURL: "https://app.example.test",
-      windowsURL: "https://downloads.example.test/StartupOS.exe",
+      webURL: "https://app.example.test",
+      windowsDownloadURL: "https://downloads.example.test/StartupOS.exe",
     });
     const release = await app.request("/release");
     expect(await release.json()).toEqual({ success: true, data: { windowsAvailable: true } });
@@ -55,8 +55,8 @@ describe("desktop releases", () => {
 
   test("does not advertise or redirect to an unpublished installer", async () => {
     const app = createDesktopRoutes({
-      frontendURL: "https://app.example.test",
-      windowsURL: undefined,
+      webURL: "https://app.example.test",
+      windowsDownloadURL: undefined,
     });
     expect(await (await app.request("/release")).json()).toEqual({
       success: true,

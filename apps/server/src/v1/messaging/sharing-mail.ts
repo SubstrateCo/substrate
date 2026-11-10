@@ -2,20 +2,19 @@ import { desktopPath } from "@startup-os/contracts/desktop/links";
 import { claimSharingMail, finishSharingMail } from "@startup-os/database/messaging";
 
 import { db } from "../../auth/database";
-import { authEnvironment } from "../../auth/environment";
 import { createMailer } from "../../auth/mail";
+import { environment } from "../../environment";
 import { publishRefresh } from "../realtime/publisher";
 
 let flushing: Promise<void> | undefined;
 export function deliverSharingMail() {
   if (flushing) return flushing;
   flushing = (async () => {
-    const env = authEnvironment();
-    const send = createMailer(env);
+    const send = createMailer(environment);
     for (let i = 0; i < 30; i++) {
       const mail = await claimSharingMail(db);
       if (!mail) return;
-      const link = new URL("/desktop/open", env.baseURL);
+      const link = new URL("/desktop/open", environment.apiURL);
       link.searchParams.set("path", desktopPath.parse(`/accept-sharing/${mail.id}`));
       let sent = false;
       try {

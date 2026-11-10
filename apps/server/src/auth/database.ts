@@ -1,7 +1,7 @@
 import { createDatabase } from "@startup-os/database";
 
-import { authEnvironment } from "./environment";
+import { environment } from "../environment";
 
 export const { db, close: closeDatabase } = createDatabase({
-  connectionString: authEnvironment().databaseURL,
+  connectionString: environment.databaseURL,
 });

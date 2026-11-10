@@ -1,5 +1,5 @@
-import { authEnvironment } from "../auth/environment";
 import { auth } from "../auth/server";
+import { environment } from "../environment";
 import { ServiceError } from "./service-result";
 
 export function requireWorkspace(expected: string, active: string | null | undefined) {
@@ -13,7 +13,7 @@ export function requireWorkspace(expected: string, active: string | null | undef
 
 export function requireOrigin(headers: Headers) {
   const origin = headers.get("origin");
-  if (!origin || !authEnvironment().trustedOrigins.includes(origin))
+  if (!origin || !environment.trustedOrigins.includes(origin))
     throw new ServiceError("FORBIDDEN", "Invalid request origin.");
 }
 
