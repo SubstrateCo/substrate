@@ -26,7 +26,7 @@ test("a helper runs in its own slot with its task as input", async () => {
   const { store } = fixture;
   const parent = await createSession(store);
   const helper = await store.helpers.start(parent.id, { requestId: "r1", task: "Research" }, 0);
-  const claimed = await store.turns.claim(1);
+  const claimed = await store.turns.claim(1, { organizationId: "org-1" });
   const helperTurn = claimed.find((entry) => entry.session.id === helper.sessionId);
   expect(helperTurn!.turn.folderKey).toBe(`helper:${helper.id}`);
   expect(helperTurn!.items.map((row) => [row.source, row.body])).toEqual([

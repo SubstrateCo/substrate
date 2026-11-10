@@ -84,7 +84,7 @@ test("an organization switch closes the native session of live work, and the wor
   expect(resumed.turnId).not.toBe(turn.turnId);
   expect(resumed.input.text).toContain(`<resume turn="${turn.turnId}"`);
   expect(f.runtime.liveTurnIds()).toEqual([resumed.turnId]);
-  expect(await f.store.turns.needsAttention()).toEqual([]);
+  expect(await f.store.turns.needsAttention(organizationId)).toEqual([]);
 });
 
 test("a steer the host refuses puts the message back, and the next turn takes it", async () => {
@@ -256,7 +256,7 @@ test("a Send now interrupt that the host never answers is interrupted with its r
   f.ownerMessage({ threadId: crypto.randomUUID(), body: "Urgent" });
   await f.runtime.sync();
   await f.advance(600);
-  const [held] = await f.store.inbox.waitingOwnerItems(f.now());
+  const [held] = await f.store.inbox.waitingOwnerItems(organizationId, f.now());
   f.hooks.command = (command) =>
     command.type === "interrupt" ? Promise.reject(new CodeError("timeout")) : undefined;
   await f.runtime.sendNow(held!.id);
@@ -306,7 +306,7 @@ test("an outage while loading messages requeues the work with backoff instead of
   f.outage.sources = true;
   const { conversationId } = await f.message();
   expect(f.turns()).toEqual([]);
-  expect(await f.store.turns.needsAttention()).toEqual([]);
+  expect(await f.store.turns.needsAttention(organizationId)).toEqual([]);
   const [session] = await f.store.sessions.forConversation(organizationId, conversationId);
   const [waiting] = await f.store.inbox.openForSessions([session!.id]);
   expect(waiting).toMatchObject({ status: "pending", turnId: null });
@@ -322,7 +322,7 @@ test("a harness that is not connected requeues the work instead of asking the ow
   f.hooks.command = (command) =>
     command.type === "open" ? Promise.reject(new CodeError("not-connected")) : undefined;
   await f.message();
-  expect(await f.store.turns.needsAttention()).toEqual([]);
+  expect(await f.store.turns.needsAttention(organizationId)).toEqual([]);
   f.hooks.command = undefined;
   await f.advance(60_000);
   expect(f.turns()).toHaveLength(1);
@@ -360,7 +360,7 @@ test("a catalog outage while a turn starts waits and retries instead of asking t
   f.outage.catalogLookup = true;
   await f.advance(600);
   expect(f.turns()).toEqual([]);
-  expect(await f.store.turns.needsAttention()).toEqual([]);
+  expect(await f.store.turns.needsAttention(organizationId)).toEqual([]);
   const [session] = await f.store.sessions.forConversation(organizationId, conversationId);
   const [waiting] = await f.store.inbox.openForSessions([session!.id]);
   expect(waiting).toMatchObject({ status: "pending", turnId: null });
@@ -376,11 +376,11 @@ test("a failure without a known code stops retrying after 6 backoffs and needs t
     command.type === "open" ? Promise.reject(new Error("Invalid session ref.")) : undefined;
   await f.message();
   for (let index = 0; index < 6; index++) {
-    expect(await f.store.turns.needsAttention()).toEqual([]);
+    expect(await f.store.turns.needsAttention(organizationId)).toEqual([]);
     await f.advance(outageBackoffMaxMs);
   }
   expect(commandsOf(f, "open")).toHaveLength(7);
-  const [attention] = await f.store.turns.needsAttention();
+  const [attention] = await f.store.turns.needsAttention(organizationId);
   expect(attention).toMatchObject({ attentionReason: "failed" });
   await f.advance(outageBackoffMaxMs);
   expect(commandsOf(f, "open")).toHaveLength(7);
@@ -392,7 +392,7 @@ test("a known outage keeps waiting past the retry cap", async () => {
     command.type === "open" ? Promise.reject(new CodeError("not-connected")) : undefined;
   await f.message();
   for (let index = 0; index < 10; index++) await f.advance(outageBackoffMaxMs);
-  expect(await f.store.turns.needsAttention()).toEqual([]);
+  expect(await f.store.turns.needsAttention(organizationId)).toEqual([]);
   expect(commandsOf(f, "open").length).toBeGreaterThan(7);
 });
 
@@ -585,7 +585,7 @@ test("owner messages are held, not steered, while an unattended turn of their se
   expect(lastTurn(f).mode).toBe("unattended");
   await f.message({ conversationId, body: "Now this" });
   expect(commandsOf(f, "steer")).toEqual([]);
-  const held = await f.store.inbox.waitingOwnerItems(f.now());
+  const held = await f.store.inbox.waitingOwnerItems(organizationId, f.now());
   expect(held.every((row) => row.held)).toBe(true);
 });
 

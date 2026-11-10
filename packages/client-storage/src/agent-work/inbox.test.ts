@@ -21,7 +21,9 @@ test("owner messages wait for more messages, and the batch closes two seconds af
   const session = await createSession(store);
   const [first] = await store.inbox.intake([ownerMessage(session)], 0);
   expect(first!.availableAt).toBe(ownerMessageDebounceMs);
-  expect(await store.turns.claim(ownerMessageDebounceMs - 1)).toEqual([]);
+  expect(await store.turns.claim(ownerMessageDebounceMs - 1, { organizationId: "org-1" })).toEqual(
+    [],
+  );
 
   // Each new message pushes the batch out, but never past the window.
   let now = 0;
@@ -31,7 +33,7 @@ test("owner messages wait for more messages, and the batch closes two seconds af
   }
   const items = await store.inbox.openForSessions([session.id]);
   expect(items.map((row) => row.availableAt)).toEqual(Array(5).fill(ownerBatchWindowMs));
-  const [claimed] = await store.turns.claim(ownerBatchWindowMs);
+  const [claimed] = await store.turns.claim(ownerBatchWindowMs, { organizationId: "org-1" });
   expect(claimed!.items).toHaveLength(5);
 });
 
@@ -39,5 +41,5 @@ test("answers are available at once", async () => {
   const { store } = fixture;
   const session = await createSession(store);
   await store.inbox.intake([item(session)], 0);
-  expect(await store.turns.claim(0)).toHaveLength(1);
+  expect(await store.turns.claim(0, { organizationId: "org-1" })).toHaveLength(1);
 });

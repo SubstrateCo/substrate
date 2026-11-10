@@ -40,7 +40,7 @@ const liveStatuses = [...liveTurnStatuses];
 export interface ClaimOptions {
   deviceCap?: number;
   batchLimit?: number;
-  organizationId?: string;
+  organizationId: string;
   /** Folders the runtime holds without a live turn, such as during native compaction. */
   busyFolders?: string[];
   /** Only these agents run here, such as the agents homed on this desktop. */
@@ -82,7 +82,7 @@ function rotationItem(session: SessionRow, items: InboxRow[]) {
 async function claimTurns(
   tx: LocalTransaction,
   now: number,
-  options: ClaimOptions = {},
+  options: ClaimOptions,
 ): Promise<ClaimedTurn[]> {
   const cap = options.deviceCap ?? deviceTurnCap;
   const limit = options.batchLimit ?? turnBatchLimit;
@@ -91,10 +91,7 @@ async function claimTurns(
     .from(turns)
     .where(inArray(turns.status, liveStatuses))
     .all();
-  const driven = live.filter(
-    (turn) =>
-      options.organizationId === undefined || turn.organizationId === options.organizationId,
-  );
+  const driven = live.filter((turn) => turn.organizationId === options.organizationId);
   let free = cap - driven.length;
   if (free <= 0 || options.userAgentIds?.length === 0) return [];
   const busy = new Set([...live.map((turn) => turn.folderKey), ...(options.busyFolders ?? [])]);
@@ -107,9 +104,7 @@ async function claimTurns(
         inArray(inbox.status, claimableStatuses),
         lte(inbox.availableAt, now),
         ne(sessions.status, "closed"),
-        options.organizationId === undefined
-          ? undefined
-          : eq(sessions.organizationId, options.organizationId),
+        eq(sessions.organizationId, options.organizationId),
         options.userAgentIds === undefined
           ? undefined
           : inArray(sessions.userAgentId, options.userAgentIds),
@@ -122,7 +117,12 @@ async function claimTurns(
       await tx
         .select({ sessionId: turns.sessionId })
         .from(turns)
-        .where(eq(turns.status, "needs_attention"))
+        .where(
+          and(
+            eq(turns.status, "needs_attention"),
+            eq(turns.organizationId, options.organizationId),
+          ),
+        )
         .all()
     ).map((row) => row.sessionId),
   );
@@ -459,16 +459,11 @@ async function recoverTurn(
 }
 
 /** After an app start, every live turn of the organization died with the harness process. */
-async function recoverTurns(tx: LocalTransaction, now: number, organizationId?: string) {
+async function recoverTurns(tx: LocalTransaction, now: number, organizationId: string) {
   const live = await tx
     .select()
     .from(turns)
-    .where(
-      and(
-        inArray(turns.status, liveStatuses),
-        organizationId === undefined ? undefined : eq(turns.organizationId, organizationId),
-      ),
-    )
+    .where(and(inArray(turns.status, liveStatuses), eq(turns.organizationId, organizationId)))
     .all();
   const decisions: RecoveryDecision[] = [];
   for (const turn of live)
@@ -493,7 +488,7 @@ async function attentionTurn(tx: LocalTransaction, turnId: string) {
 
 export function turnRepository(run: RunTransaction) {
   return {
-    claim: (now: number, options?: ClaimOptions) => run((tx) => claimTurns(tx, now, options)),
+    claim: (now: number, options: ClaimOptions) => run((tx) => claimTurns(tx, now, options)),
     get: (id: string) => run((tx) => tx.select().from(turns).where(eq(turns.id, id)).get()),
     /** Turns waiting for a worker, such as continues and retries. */
     assigned: (organizationId: string) =>
@@ -504,8 +499,14 @@ export function turnRepository(run: RunTransaction) {
           .where(and(eq(turns.status, "assigned"), eq(turns.organizationId, organizationId)))
           .all(),
       ),
-    needsAttention: () =>
-      run((tx) => tx.select().from(turns).where(eq(turns.status, "needs_attention")).all()),
+    needsAttention: (organizationId: string) =>
+      run((tx) =>
+        tx
+          .select()
+          .from(turns)
+          .where(and(eq(turns.status, "needs_attention"), eq(turns.organizationId, organizationId)))
+          .all(),
+      ),
     forSessions: (sessionIds: string[], options: { before?: number; limit?: number } = {}) =>
       run(async (tx) =>
         sessionIds.length
@@ -570,7 +571,7 @@ export function turnRepository(run: RunTransaction) {
           .where(eq(sessions.id, turn.sessionId));
       }),
     /** Recovers the organization's live turns. Other organizations wait for their own runtime. */
-    recover: (now: number, organizationId?: string) =>
+    recover: (now: number, organizationId: string) =>
       run((tx) => recoverTurns(tx, now, organizationId)),
     /** One live turn whose native session closed under it, such as when the worker exited. */
     recoverOne: (id: string, now: number) =>

@@ -107,8 +107,7 @@ export function createRoutines(context: RuntimeContext) {
     async tick() {
       const now = context.now();
       let fired = 0;
-      for (const routine of await context.store.routines.due(now)) {
-        if (routine.organizationId !== context.organizationId) continue;
+      for (const routine of await context.store.routines.due(context.organizationId, now)) {
         if (routine.approvedRevision !== routine.revision || routine.nextFireAt === null) continue;
         // Routines fire only on the agent's home device.
         const agent = await context.agents.get(routine.userAgentId);

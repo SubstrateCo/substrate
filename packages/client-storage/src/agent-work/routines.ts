@@ -107,13 +107,14 @@ export function routineRepository(run: RunTransaction) {
           .all(),
       ),
     /** Enabled routines whose next fire time passed. The caller checks approval. */
-    due: (now: number) =>
+    due: (organizationId: string, now: number) =>
       run((tx) =>
         tx
           .select()
           .from(routines)
           .where(
             and(
+              eq(routines.organizationId, organizationId),
               eq(routines.enabled, true),
               isNotNull(routines.nextFireAt),
               lte(routines.nextFireAt, now),

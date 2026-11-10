@@ -196,9 +196,9 @@ test("without steer the message is held, and Send now interrupts and runs it nex
   f.ownerMessage({ threadId: crypto.randomUUID(), body: "Urgent" });
   await f.runtime.sync();
   await f.advance(600);
-  const held = (await f.store.inbox.waitingOwnerItems(Number.MAX_SAFE_INTEGER)).filter(
-    (row) => row.held,
-  );
+  const held = (
+    await f.store.inbox.waitingOwnerItems(organizationId, Number.MAX_SAFE_INTEGER)
+  ).filter((row) => row.held);
   expect(held).toHaveLength(1);
   const waiting = held[0];
   expect(f.turns()).toHaveLength(1);

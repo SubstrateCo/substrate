@@ -11,7 +11,7 @@ async function liveTurn() {
   const { store } = fixture;
   const session = await createSession(store);
   await store.inbox.intake([item(session)], 0);
-  const [claimed] = await store.turns.claim(1);
+  const [claimed] = await store.turns.claim(1, { organizationId: "org-1" });
   await store.turns.running(claimed!.turn.id, 2);
   return { session, turnId: claimed!.turn.id, batch: claimed!.items };
 }
@@ -84,7 +84,7 @@ test("a turn that ends with uncertain input needs the owner until each item is r
   expect((await store.inbox.get(discarded.id))!.status).toBe("dropped");
   expect((await store.turns.get(turnId))!.status).toBe("completed");
 
-  const [next] = await store.turns.claim(7);
+  const [next] = await store.turns.claim(7, { organizationId: "org-1" });
   expect(next!.items.map((row) => row.id)).toEqual([resent.id]);
 });
 
@@ -104,10 +104,10 @@ test("later items of a session wait while its turn needs the owner; other sessio
   const blocked = await createSession(store);
   const other = await createSession(store, { kind: "thread" });
   await store.inbox.intake([item(blocked)], 0);
-  const [first] = await store.turns.claim(1);
+  const [first] = await store.turns.claim(1, { organizationId: "org-1" });
   await store.turns.attention(first!.turn.id, "failed", "Harness failed.", 2);
   await store.inbox.intake([item(blocked), item(other)], 3);
-  const claimed = await store.turns.claim(4);
+  const claimed = await store.turns.claim(4, { organizationId: "org-1" });
   expect(claimed.map((entry) => entry.session.id)).toEqual([other.id]);
 });
 
@@ -117,11 +117,11 @@ test("after a restart a stopped turn is cancelled and a Send now turn is interru
   await store.turns.stopping(stopped.turnId, "stop");
   const owner = await createSession(store, { userAgentId: "agent-2" });
   await store.inbox.intake([item(owner)], 0);
-  const [sent] = await store.turns.claim(5);
+  const [sent] = await store.turns.claim(5, { organizationId: "org-1" });
   await store.turns.running(sent!.turn.id, 6);
   await store.turns.stopping(sent!.turn.id, "owner");
 
-  const decisions = await store.turns.recover(7);
+  const decisions = await store.turns.recover(7, "org-1");
   expect(decisions).toEqual(
     expect.arrayContaining([
       { turnId: stopped.turnId, action: "cancelled" },
@@ -131,7 +131,7 @@ test("after a restart a stopped turn is cancelled and a Send now turn is interru
   expect((await store.turns.get(stopped.turnId))!.status).toBe("cancelled");
   expect((await store.turns.get(sent!.turn.id))!.status).toBe("interrupted");
   // The interrupted turn's work resumes in a new turn of its session.
-  const [resume] = await store.turns.claim(8);
+  const [resume] = await store.turns.claim(8, { organizationId: "org-1" });
   expect(resume!.turn.resumesTurnId).toBe(sent!.turn.id);
 });
 
@@ -144,7 +144,7 @@ test("a handoff turn rotates the epoch exactly once, also when it needs the owne
     0,
   );
   await store.epochs.requestRotation(session.id, "new_topic", "Hand off.", 0);
-  const [handoff] = await store.turns.claim(1);
+  const [handoff] = await store.turns.claim(1, { organizationId: "org-1" });
   expect(handoff!.turn.handoff).toBe(true);
   await store.turns.attention(handoff!.turn.id, "failed", "Harness failed.", 2);
   expect(await store.sessions.get(session.id)).toMatchObject({ epoch: 1, rotation: null });
@@ -182,6 +182,7 @@ test("a claim skips folders the runtime holds and agents that are not homed here
   const home = await createSession(store, { userAgentId: "home" });
   await store.inbox.intake([item(held), item(away), item(home)], 0);
   const claimed = await store.turns.claim(1, {
+    organizationId: "org-1",
     busyFolders: ["main:held"],
     userAgentIds: ["held", "home"],
   });
@@ -192,11 +193,11 @@ test("an unstarted turn puts its items back with a later available time", async 
   const { store } = fixture;
   const session = await createSession(store);
   await store.inbox.intake([item(session)], 0);
-  const [claimed] = await store.turns.claim(1);
+  const [claimed] = await store.turns.claim(1, { organizationId: "org-1" });
   expect(await store.turns.requeue(claimed!.turn.id, 5000, 2)).toBe("requeued");
   expect(await store.turns.get(claimed!.turn.id)).toBeUndefined();
-  expect(await store.turns.claim(4999)).toEqual([]);
-  const [again] = await store.turns.claim(5000);
+  expect(await store.turns.claim(4999, { organizationId: "org-1" })).toEqual([]);
+  const [again] = await store.turns.claim(5000, { organizationId: "org-1" });
   expect(again!.items.map((row) => row.id)).toEqual(claimed!.items.map((row) => row.id));
 });
 

@@ -11,7 +11,7 @@ test("rotation waits for the live turn, runs the handoff alone, then owner items
   const { store } = fixture;
   const session = await createSession(store);
   await store.inbox.intake([item(session)], 0);
-  const [live] = await store.turns.claim(1);
+  const [live] = await store.turns.claim(1, { organizationId: "org-1" });
   await store.sessions.opened(
     session.id,
     { nativeSessionId: "n1", prefix: "p", policyVersion: 1 },
@@ -22,10 +22,10 @@ test("rotation waits for the live turn, runs the handoff alone, then owner items
     "pending",
   );
   await store.inbox.intake([item(session)], 3);
-  expect(await store.turns.claim(4)).toEqual([]);
+  expect(await store.turns.claim(4, { organizationId: "org-1" })).toEqual([]);
 
   await store.turns.finish(live!.turn.id, { status: "completed" }, 5);
-  const [handoff] = await store.turns.claim(6);
+  const [handoff] = await store.turns.claim(6, { organizationId: "org-1" });
   expect(handoff!.turn).toMatchObject({ handoff: true, kind: "unattended", epoch: 0 });
   expect(handoff!.items.map((row) => row.source)).toEqual(["epoch"]);
 
@@ -36,7 +36,7 @@ test("rotation waits for the live turn, runs the handoff alone, then owner items
     prefix: null,
     rotation: null,
   });
-  const [next] = await store.turns.claim(8);
+  const [next] = await store.turns.claim(8, { organizationId: "org-1" });
   expect(next!.turn).toMatchObject({ epoch: 1, kind: "interactive", handoff: false });
 });
 

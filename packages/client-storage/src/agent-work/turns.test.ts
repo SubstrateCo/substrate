@@ -14,12 +14,12 @@ test("an agent's sessions share one main slot, so only one of them runs at a tim
   const thread = await createSession(store, { kind: "thread" });
   await store.inbox.intake([item(dm), item(thread)], 0);
 
-  const first = await store.turns.claim(1);
+  const first = await store.turns.claim(1, { organizationId: "org-1" });
   expect(first).toHaveLength(1);
-  expect(await store.turns.claim(2)).toEqual([]);
+  expect(await store.turns.claim(2, { organizationId: "org-1" })).toEqual([]);
 
   await store.turns.finish(first[0]!.turn.id, { status: "completed" }, 3);
-  const second = await store.turns.claim(4);
+  const second = await store.turns.claim(4, { organizationId: "org-1" });
   expect(second.map((claimed) => claimed.session.id)).toEqual([
     first[0]!.session.id === dm.id ? thread.id : dm.id,
   ]);
@@ -31,8 +31,8 @@ test("the device runs at most three live turns", async () => {
     const session = await createSession(store, { userAgentId: agent });
     await store.inbox.intake([item(session)], 0);
   }
-  expect(await store.turns.claim(1)).toHaveLength(3);
-  expect(await store.turns.claim(2)).toEqual([]);
+  expect(await store.turns.claim(1, { organizationId: "org-1" })).toHaveLength(3);
+  expect(await store.turns.claim(2, { organizationId: "org-1" })).toEqual([]);
 });
 
 test("free slots go to the owner lane first, then system, then background", async () => {
@@ -50,7 +50,7 @@ test("free slots go to the owner lane first, then system, then background", asyn
     ],
     0,
   );
-  const claimed = await store.turns.claim(1, { deviceCap: 2 });
+  const claimed = await store.turns.claim(1, { organizationId: "org-1", deviceCap: 2 });
   expect(claimed.map((entry) => entry.session.userAgentId)).toEqual(["c", "b"]);
 });
 
@@ -61,7 +61,7 @@ test("background work moves up one lane for every ten minutes it waits", async (
   await store.inbox.intake([background(waiting)], 0);
   const now = 2 * laneAgingMs;
   await store.inbox.intake([item(fresh, { lane: "system", dedupeKey: "system" })], now);
-  const claimed = await store.turns.claim(now, { deviceCap: 1 });
+  const claimed = await store.turns.claim(now, { organizationId: "org-1", deviceCap: 1 });
   expect(claimed.map((entry) => entry.session.userAgentId)).toEqual(["waiting"]);
 });
 
@@ -71,7 +71,7 @@ test("main slots go before helper slots in the same lane", async () => {
   const main = await createSession(store, { userAgentId: "b" });
   await store.inbox.intake([item(helper, { lane: "system", dedupeKey: "h" })], 0);
   await store.inbox.intake([item(main, { lane: "system", dedupeKey: "m" })], 5);
-  const claimed = await store.turns.claim(10, { deviceCap: 1 });
+  const claimed = await store.turns.claim(10, { organizationId: "org-1", deviceCap: 1 });
   expect(claimed.map((entry) => entry.session.id)).toEqual([main.id]);
 });
 
@@ -80,7 +80,7 @@ test("a claim batches the session's available items and marks owner work interac
   const session = await createSession(store);
   await store.inbox.intake([background(session), item(session), item(session)], 0);
   await store.inbox.intake([item(session, { availableAt: 100 })], 0);
-  const [claimed] = await store.turns.claim(1, { batchLimit: 20 });
+  const [claimed] = await store.turns.claim(1, { organizationId: "org-1", batchLimit: 20 });
   expect(claimed!.items).toHaveLength(3);
   expect(claimed!.turn.kind).toBe("interactive");
   expect((await store.inbox.forTurn(claimed!.turn.id)).map((row) => row.status)).toEqual([
@@ -94,7 +94,7 @@ test("helper turns are unattended even with owner-lane items", async () => {
   const { store } = fixture;
   const helper = await createSession(store, { kind: "helper" });
   await store.inbox.intake([item(helper)], 0);
-  const [claimed] = await store.turns.claim(1);
+  const [claimed] = await store.turns.claim(1, { organizationId: "org-1" });
   expect(claimed!.turn.kind).toBe("unattended");
 });
 
@@ -102,7 +102,7 @@ test("events of a turn are numbered without gaps across appends", async () => {
   const { store } = fixture;
   const session = await createSession(store);
   await store.inbox.intake([item(session)], 0);
-  const [claimed] = await store.turns.claim(1);
+  const [claimed] = await store.turns.claim(1, { organizationId: "org-1" });
   const turnId = claimed!.turn.id;
   await store.events.append(turnId, [{ kind: "turn_started", data: {} }], 2);
   await Promise.all([
@@ -130,7 +130,7 @@ async function steeredTurn() {
   const { store } = fixture;
   const session = await createSession(store);
   await store.inbox.intake([item(session)], 0);
-  const [claimed] = await store.turns.claim(1);
+  const [claimed] = await store.turns.claim(1, { organizationId: "org-1" });
   const turnId = claimed!.turn.id;
   const steered = await store.inbox.intake([item(session), item(session), item(session)], 2);
   await store.turns.running(turnId, 2);
@@ -153,12 +153,12 @@ test("steered items settle by receipt: consumed, requeued to the front, or uncer
 
   // The uncertain item is never resent by itself: the session waits for the owner.
   await store.inbox.intake([item(session, { availableAt: 0 })], 0);
-  expect(await store.turns.claim(10)).toEqual([]);
+  expect(await store.turns.claim(10, { organizationId: "org-1" })).toEqual([]);
   expect(await status(unknown)).toBe("uncertain");
 
   // Once the owner decides, the requeued item goes before older pending items of its lane.
   await store.inbox.discard(unknown, 11);
-  const [next] = await store.turns.claim(12, { batchLimit: 1 });
+  const [next] = await store.turns.claim(12, { organizationId: "org-1", batchLimit: 1 });
   expect(next!.items.map((row) => row.id)).toEqual([queued]);
 });
 
@@ -166,7 +166,7 @@ test("recovery continues a turn once when every tool finished and no input is un
   const { store } = fixture;
   const session = await createSession(store);
   await store.inbox.intake([item(session)], 0);
-  const [claimed] = await store.turns.claim(1);
+  const [claimed] = await store.turns.claim(1, { organizationId: "org-1" });
   const turnId = claimed!.turn.id;
   await store.turns.running(turnId, 2);
   await store.events.append(
@@ -177,12 +177,12 @@ test("recovery continues a turn once when every tool finished and no input is un
     ],
     3,
   );
-  expect(await store.turns.recover(4)).toEqual([{ turnId, action: "continue" }]);
+  expect(await store.turns.recover(4, "org-1")).toEqual([{ turnId, action: "continue" }]);
   const continued = (await store.turns.get(turnId))!;
   expect(continued).toMatchObject({ status: "assigned", attempt: 2, generation: 2 });
 
   await store.turns.running(turnId, 5);
-  expect(await store.turns.recover(6)).toEqual([
+  expect(await store.turns.recover(6, "org-1")).toEqual([
     { turnId, action: "needs_attention", reason: "interrupted_again" },
   ]);
   expect((await store.turns.get(turnId))!.status).toBe("needs_attention");
@@ -192,7 +192,7 @@ test("recovery asks the owner when a tool call did not finish", async () => {
   const { store } = fixture;
   const session = await createSession(store);
   await store.inbox.intake([item(session)], 0);
-  const [claimed] = await store.turns.claim(1);
+  const [claimed] = await store.turns.claim(1, { organizationId: "org-1" });
   const turnId = claimed!.turn.id;
   await store.turns.running(turnId, 2);
   await store.events.append(
@@ -200,7 +200,7 @@ test("recovery asks the owner when a tool call did not finish", async () => {
     [{ kind: "tool_started", itemId: "t1", data: { itemType: "mcp", title: "create_task" } }],
     3,
   );
-  expect(await store.turns.recover(4)).toEqual([
+  expect(await store.turns.recover(4, "org-1")).toEqual([
     { turnId, action: "needs_attention", reason: "unfinished_tool" },
   ]);
 });
@@ -209,7 +209,7 @@ test("recovery asks the owner when steered input was not confirmed, and marks it
   const { store } = fixture;
   const { turnId, steered } = await steeredTurn();
   await store.turns.running(turnId, 2);
-  expect(await store.turns.recover(4)).toEqual([
+  expect(await store.turns.recover(4, "org-1")).toEqual([
     { turnId, action: "needs_attention", reason: "uncertain_input" },
   ]);
   expect((await store.inbox.get(steered[0]!))!.status).toBe("uncertain");
@@ -219,9 +219,11 @@ test("recovery puts the items of a turn that never started back in the inbox", a
   const { store } = fixture;
   const session = await createSession(store);
   await store.inbox.intake([item(session)], 0);
-  const [claimed] = await store.turns.claim(1);
-  expect(await store.turns.recover(2)).toEqual([{ turnId: claimed!.turn.id, action: "requeued" }]);
-  const [again] = await store.turns.claim(3);
+  const [claimed] = await store.turns.claim(1, { organizationId: "org-1" });
+  expect(await store.turns.recover(2, "org-1")).toEqual([
+    { turnId: claimed!.turn.id, action: "requeued" },
+  ]);
+  const [again] = await store.turns.claim(3, { organizationId: "org-1" });
   expect(again!.items.map((row) => row.id)).toEqual(claimed!.items.map((row) => row.id));
 });
 
@@ -229,7 +231,7 @@ test("dismissing a needs-attention turn drops its items", async () => {
   const { store } = fixture;
   const session = await createSession(store);
   await store.inbox.intake([item(session)], 0);
-  const [claimed] = await store.turns.claim(1);
+  const [claimed] = await store.turns.claim(1, { organizationId: "org-1" });
   await store.turns.attention(claimed!.turn.id, "failed", "Harness failed.", 2);
   expect((await store.inbox.get(claimed!.items[0]!.id))!.status).toBe("submitted");
   await store.turns.dismiss(claimed!.turn.id, 3);

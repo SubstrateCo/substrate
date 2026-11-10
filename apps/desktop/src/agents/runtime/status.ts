@@ -50,9 +50,9 @@ export function createStatusPublisher(
     const agents = (await context.agents.all()).filter((agent) => homed.has(agent.id));
     const ids = agents.map((agent) => agent.id);
     const [queued, uncertain, attention, asked] = await Promise.all([
-      context.store.inbox.queuedCounts(),
-      context.store.inbox.uncertainCounts(),
-      context.store.turns.needsAttention(),
+      context.store.inbox.queuedCounts(context.organizationId),
+      context.store.inbox.uncertainCounts(context.organizationId),
+      context.store.turns.needsAttention(context.organizationId),
       context.store.outputs.requests(ids),
     ]);
     const answered = await context.store.inbox.answeredRequests(asked.map((row) => row.requestId));
@@ -61,9 +61,7 @@ export function createStatusPublisher(
     const result = [];
     for (const agent of agents) {
       const live = liveTurns.filter((turn) => turn.userAgentId === agent.id);
-      const needsAttention = attention.filter(
-        (turn) => turn.userAgentId === agent.id && turn.organizationId === context.organizationId,
-      );
+      const needsAttention = attention.filter((turn) => turn.userAgentId === agent.id);
       const openRequests =
         deps.requests.openCount(agent.id) +
         waiting.filter((row) => row.userAgentId === agent.id).length;

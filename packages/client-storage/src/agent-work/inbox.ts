@@ -7,7 +7,7 @@ import type {
 } from "@startup-os/contracts/agent-work";
 
 import type { LocalTransaction, RunTransaction } from "../database.ts";
-import { inbox, turns } from "../schema/index.ts";
+import { inbox, sessions, turns } from "../schema/index.ts";
 import { settleUncertainTurn } from "./uncertain.ts";
 import { and, eq, inArray, isNull, lte, sql } from "drizzle-orm";
 
@@ -103,6 +103,14 @@ export async function setItemStatus(
       .where(inArray(inbox.id, ids));
 }
 
+/** The organization's sessions, to scope inbox queries: inbox rows have no organization. */
+function organizationSessions(tx: LocalTransaction, organizationId: string) {
+  return tx
+    .select({ id: sessions.id })
+    .from(sessions)
+    .where(eq(sessions.organizationId, organizationId));
+}
+
 /** Live turns that can take steered input. A stopping turn is ending. */
 const steerableTurnStatuses: TurnStatus[] = ["assigned", "running", "waiting"];
 
@@ -140,13 +148,14 @@ export function inboxRepository(run: RunTransaction) {
           : [],
       ),
     /** Available owner items that no turn took. Their slot is busy: steer them or hold them. */
-    waitingOwnerItems: (now: number) =>
+    waitingOwnerItems: (organizationId: string, now: number) =>
       run((tx) =>
         tx
           .select()
           .from(inbox)
           .where(
             and(
+              inArray(inbox.sessionId, organizationSessions(tx, organizationId)),
               eq(inbox.lane, "owner"),
               inArray(inbox.status, claimableStatuses),
               lte(inbox.availableAt, now),
@@ -261,23 +270,33 @@ export function inboxRepository(run: RunTransaction) {
     drop: (ids: string[], reason: string) =>
       run((tx) => setItemStatus(tx, ids, "dropped", { reason, held: false })),
     /** Counts claimable items per agent, for status. */
-    queuedCounts: () =>
+    queuedCounts: (organizationId: string) =>
       run(async (tx) => {
         const rows = await tx
           .select({ userAgentId: inbox.userAgentId, count: sql<number>`count(*)` })
           .from(inbox)
-          .where(inArray(inbox.status, claimableStatuses))
+          .where(
+            and(
+              inArray(inbox.sessionId, organizationSessions(tx, organizationId)),
+              inArray(inbox.status, claimableStatuses),
+            ),
+          )
           .groupBy(inbox.userAgentId)
           .all();
         return new Map(rows.map((row) => [row.userAgentId, Number(row.count)]));
       }),
     /** Counts uncertain items per agent. The owner must decide about each. */
-    uncertainCounts: () =>
+    uncertainCounts: (organizationId: string) =>
       run(async (tx) => {
         const rows = await tx
           .select({ userAgentId: inbox.userAgentId, count: sql<number>`count(*)` })
           .from(inbox)
-          .where(eq(inbox.status, "uncertain"))
+          .where(
+            and(
+              inArray(inbox.sessionId, organizationSessions(tx, organizationId)),
+              eq(inbox.status, "uncertain"),
+            ),
+          )
           .groupBy(inbox.userAgentId)
           .all();
         return new Map(rows.map((row) => [row.userAgentId, Number(row.count)]));

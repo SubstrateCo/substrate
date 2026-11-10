@@ -133,7 +133,10 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
   return {
     async dispatch() {
       const hold: string[] = [];
-      for (const item of await context.store.inbox.waitingOwnerItems(context.now())) {
+      for (const item of await context.store.inbox.waitingOwnerItems(
+        context.organizationId,
+        context.now(),
+      )) {
         const session = await context.store.sessions.get(item.sessionId);
         if (session?.organizationId !== context.organizationId) continue;
         const state = liveInFolder(folderKey(session));
@@ -191,7 +194,7 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
     /** Long unattended turns are asked to wrap up while an owner item waits for their slot. */
     async enforceBudget() {
       const now = context.now();
-      const waiting = await context.store.inbox.waitingOwnerItems(now);
+      const waiting = await context.store.inbox.waitingOwnerItems(context.organizationId, now);
       if (!waiting.length) return;
       const sessions = await context.store.sessions.byIds([
         ...new Set(waiting.map((i) => i.sessionId)),
