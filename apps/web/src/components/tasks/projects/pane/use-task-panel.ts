@@ -44,6 +44,24 @@ export function useTaskPanel({
     if (restore && !selectedTaskId)
       (trigger.current?.isConnected ? trigger.current : newTaskButton.current)?.focus();
   }, [restore, selectedTaskId]);
+  useEffect(() => {
+    if (!selectedTaskId) return;
+    // A click on the page outside the inspector closes it. Controls keep their own action, such
+    // as opening another task. Menus and dialogs render outside the page layout, so they are
+    // not part of the page.
+    const dismiss = (event: MouseEvent) => {
+      const pane = inspector.current;
+      if (!pane || event.defaultPrevented || !(event.target instanceof Element)) return;
+      if (pane.contains(event.target)) return;
+      if (!pane.closest('[data-slot="page-layout"]')?.contains(event.target)) return;
+      if (event.target.closest("button, a, input, textarea, select, label")) return;
+      if (window.getSelection()?.isCollapsed === false) return;
+      onSelectTask(null);
+      setRestore((count) => count + 1);
+    };
+    document.addEventListener("click", dismiss);
+    return () => document.removeEventListener("click", dismiss);
+  }, [selectedTaskId, onSelectTask]);
   return {
     inspector,
     newTaskButton,

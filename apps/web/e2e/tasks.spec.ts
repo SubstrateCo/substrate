@@ -45,6 +45,43 @@ test("task drafts ask before navigation and project drafts stay with their proje
   await expect(sender.page.getByLabel("Project name", { exact: true })).toHaveValue(second.name);
 });
 
+test("a click outside the task inspector closes it, but controls and drafts keep it", async ({
+  actors,
+  client,
+}) => {
+  const created = await project(actors.sender);
+  const [first] = await Promise.all(
+    ["Open task", "Other task"].map((title) =>
+      post<{ id: string }>(actors.sender, "tasks/mutations", {
+        action: "createTask",
+        organizationId: actors.sender.organizationId,
+        projectEntityId: created.entityId,
+        title,
+      }),
+    ),
+  );
+  const user = await client(actors.sender);
+  await visit(user, undefined, "/tasks", { projectId: created.entityId, taskId: first.id });
+  const inspector = user.page.getByRole("complementary", { name: "Task", exact: true });
+  const outside = user.page.getByRole("heading", { name: created.name, exact: true });
+  await expect(inspector.getByRole("heading", { name: "Open task", exact: true })).toBeVisible();
+  // Another task's row switches the inspector instead of closing it.
+  await user.page.getByRole("button", { name: /^Not started: Other task/ }).click();
+  await expect(inspector.getByRole("heading", { name: "Other task", exact: true })).toBeVisible();
+  // A click inside the inspector keeps it open.
+  await inspector.getByRole("heading", { name: "Other task", exact: true }).click();
+  await expect(inspector).toBeVisible();
+  // A draft asks before the click outside closes the inspector.
+  await inspector.getByLabel("Add a comment").fill("A comment draft");
+  await outside.click();
+  await user.page.getByRole("button", { name: "Keep editing" }).click();
+  await expect(inspector.getByLabel("Add a comment")).toHaveValue("A comment draft");
+  await inspector.getByLabel("Add a comment").fill("");
+  await outside.click();
+  await expect(inspector).toHaveCount(0);
+  expect(new URL(user.page.url()).searchParams.has("taskId")).toBe(false);
+});
+
 test("create a project, task and subtask, then edit and reload the task", async ({
   actors,
   client,
