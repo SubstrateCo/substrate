@@ -41,6 +41,12 @@ export function TaskList({
   );
   const filtered = hasActiveFilters(filters);
   const tasks = filterTasks(detail.tasks, filters);
+  const tasksByStatus = new Map<TaskStatus, typeof tasks>();
+  for (const task of tasks) {
+    const rows = tasksByStatus.get(task.status);
+    if (rows) rows.push(task);
+    else tasksByStatus.set(task.status, [task]);
+  }
   const clearFilters = () => setFilters({ ...filters, query: "", assignee: "any", scope: "all" });
   return (
     <section aria-label="Project tasks" className="@container flex min-h-0 min-w-0 flex-1 flex-col">
@@ -80,8 +86,8 @@ export function TaskList({
           />
         )}
         {taskStatusValues.map((status) => {
-          const rows = tasks.filter((task) => task.status === status);
-          if (!rows.length) return null;
+          const rows = tasksByStatus.get(status);
+          if (!rows) return null;
           const label = taskStatusLabels[status];
           const open = !collapsed[status];
           return (

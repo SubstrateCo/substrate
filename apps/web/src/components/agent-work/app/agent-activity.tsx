@@ -1,12 +1,11 @@
 import type { AgentTurnView, TurnOutcome } from "@startup-os/contracts/agent-work";
-import { liveTurnStatuses } from "@startup-os/contracts/agent-work";
 
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 import { NeedsAttention } from "../needs-attention";
 import { hiddenConversation } from "../requests/proposal-preview";
+import { TurnStatusTag } from "../turn-work";
 import { AgentActivityView, type ActivityRow } from "./agent-activity-view";
-import { useNow } from "@/hooks/use-now";
 import { failedWorkNote, sessionKindLabels, turnStatus } from "@/lib/agent-work/status";
 import { conversationName } from "@/lib/messaging/conversations";
 import { agentActivityOptions } from "@/queries/agent-work/local";
@@ -57,7 +56,6 @@ export function AgentActivity({
   const turns = (activity.data?.pages.flatMap((page) => page.turns) ?? []).sort(
     (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
   );
-  const now = useNow(turns.some((turn) => liveTurnStatuses.includes(turn.status)));
   // Name only conversations the viewer can open now. Others stay placeholders.
   const place = (turn: AgentTurnView) => {
     const conversationId = placeOf(turn);
@@ -66,7 +64,8 @@ export function AgentActivity({
     return conversation ? `In ${conversationName(conversation)}` : hiddenConversation;
   };
   const rows: ActivityRow[] = turns.map((turn) => {
-    const status = turnStatus(turn, now);
+    // The tone does not depend on the clock; the tag shows the time with its own clock.
+    const failed = turnStatus(turn, 0).tone === "failed";
     return {
       id: turn.id,
       summary:
@@ -74,10 +73,10 @@ export function AgentActivity({
         (turn.outcome ? outcomeLabels[turn.outcome] : undefined) ??
         subjectFallbacks[turn.sessionKind],
       // Reviewed copy only. The runtime's message is under Technical details in the transcript.
-      note: status.tone === "failed" ? failedWorkNote : undefined,
+      note: failed ? failedWorkNote : undefined,
       place: place(turn),
       kind: sessionKindLabels[turn.sessionKind],
-      status,
+      status: <TurnStatusTag turn={turn} />,
       createdAt: turn.createdAt,
       selected: turn.id === selectedTurnId,
       attention: turn.status === "needs_attention" && (

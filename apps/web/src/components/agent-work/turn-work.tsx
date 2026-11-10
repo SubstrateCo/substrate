@@ -6,6 +6,7 @@ import { PendingReply } from "./pending-reply";
 import { TechnicalDetails } from "./technical-details";
 import { useStopTurn } from "./use-stop-turn";
 import { MutedWorkLine, WorkStatus } from "./work-status";
+import { WorkStatusTag } from "./work-status-tag";
 import { useNow } from "@/hooks/use-now";
 import { failedWorkNote, turnStatus } from "@/lib/agent-work/status";
 
@@ -21,6 +22,12 @@ type TurnProps = {
 export function TurnLabel({ turn, openRequest }: Pick<TurnProps, "turn" | "openRequest">) {
   const now = useNow(liveTurnStatuses.includes(turn.status));
   return turnStatus(turn, now, openRequest).label;
+}
+
+/** One turn's status tag, with its own clock so a live turn does not render the whole list. */
+export function TurnStatusTag({ turn }: Pick<TurnProps, "turn">) {
+  const now = useNow(liveTurnStatuses.includes(turn.status));
+  return <WorkStatusTag status={turnStatus(turn, now)} />;
 }
 
 /** One local turn's status, for the header of the reply it belongs to. */

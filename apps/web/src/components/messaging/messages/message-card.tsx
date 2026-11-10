@@ -14,18 +14,14 @@ export function MessageCard({
   icon: Icon,
   title,
   meta,
-  actions,
   tone = "default",
   children,
-  className,
 }: {
   icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
   title: ReactNode;
   meta?: ReactNode;
-  actions?: ReactNode;
   tone?: Tone;
   children?: ReactNode;
-  className?: string;
 }) {
   const titleId = useId();
   return (
@@ -36,7 +32,6 @@ export function MessageCard({
         className={cn(
           "mt-2.5 w-full max-w-180 overflow-hidden rounded-lg border bg-card text-card-foreground [&+&]:mt-2",
           tone === "attention" && "border-warning/50",
-          className,
         )}
       >
         <header
@@ -60,7 +55,6 @@ export function MessageCard({
               {meta}
             </span>
           )}
-          {actions && <span className="ml-auto flex shrink-0 items-center gap-0.5">{actions}</span>}
         </header>
         {children}
       </section>

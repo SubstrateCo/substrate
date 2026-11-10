@@ -2,7 +2,6 @@ import type { HelperStatus } from "@startup-os/contracts/agent-work";
 
 import type { ReactNode } from "react";
 
-import { WorkStatusTag } from "../work-status-tag";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
@@ -12,7 +11,6 @@ import { SettingsSection } from "@/components/layout/settings-section";
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
 import { Timestamp } from "@/components/time/timestamp";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import type { WorkStatus } from "@/lib/agent-work/status";
 import { cn } from "cn";
 import { Activity, ChevronRight } from "lucide-react";
 
@@ -24,7 +22,8 @@ export type ActivityRow = {
   place?: string;
   /** Direct message, Thread, Routine, or Helper. */
   kind: string;
-  status: WorkStatus;
+  /** The status tag. The container passes one with its own clock for live work. */
+  status: ReactNode;
   createdAt: string;
   selected: boolean;
   /** One line of reviewed copy for work that failed, since the row has no card. */
@@ -109,7 +108,7 @@ export function AgentActivityView({
                     />
                   </span>
                   <span className="flex min-w-0 items-center gap-2">
-                    <WorkStatusTag status={row.status} />
+                    {row.status}
                     <span className="min-w-0 truncate text-xs text-muted-foreground">
                       {[row.kind, row.place].filter(Boolean).join(" · ")}
                     </span>
