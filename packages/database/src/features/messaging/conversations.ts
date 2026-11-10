@@ -2,6 +2,7 @@ import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
+import { organization } from "../../core/organizations/schema";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { messageEntityReferences } from "../context/schema";
 import { conversationRemovalHints } from "../realtime/routing";
@@ -23,6 +24,7 @@ import {
 } from "./policy";
 import { ownedAgents, recipients } from "./recipients";
 import { messagingConversations, messagingParticipants } from "./schema";
+import { messagingConnections } from "./sharing.schema";
 import { queueSharingInvitations } from "./sharing/invitations";
 import { and, asc, countDistinct, eq, inArray, isNull, ne, or } from "drizzle-orm";
 
@@ -78,13 +80,52 @@ export function conversationOperations(db: DatabaseExecutor, scope: Readonly<Mes
           .orderBy(asc(messagingConversations.createdAt), asc(messagingConversations.id));
         const ids = rows.map((row) => row.id);
         const byConversation = await activeMembers(tx, ids, scope);
+        // Only disclose organizations attached to conversations this viewer can read.
+        const connections = ids.length
+          ? await tx
+              .select({
+                conversationId: messagingConnections.conversationId,
+                organizationId: messagingConnections.organizationId,
+              })
+              .from(messagingConnections)
+              .where(
+                and(
+                  inArray(messagingConnections.conversationId, ids),
+                  isNull(messagingConnections.disconnectedAt),
+                ),
+              )
+          : [];
+        const organizationIds = [
+          ...new Set([
+            ...rows.map((row) => row.organizationId),
+            ...connections.map((connection) => connection.organizationId),
+          ]),
+        ];
+        const organizations = organizationIds.length
+          ? await tx
+              .select({ id: organization.id, name: organization.name })
+              .from(organization)
+              .where(inArray(organization.id, organizationIds))
+              .orderBy(asc(organization.name), asc(organization.id))
+          : [];
         return rows.map((row) => {
           const members = byConversation.get(row.id) ?? [];
+          const connectedIds = new Set(
+            connections
+              .filter((connection) => connection.conversationId === row.id)
+              .map((connection) => connection.organizationId),
+          );
+          const channelOrganizations = organizations
+            .filter((org) => org.id === row.organizationId || connectedIds.has(org.id))
+            .map((org) => ({
+              ...org,
+              host: org.id === row.organizationId,
+              own: org.id === scope.organizationId,
+            }));
           return {
             ...row,
-            partner: members.some(
-              (participant) => participant.organizationId !== scope.organizationId,
-            ),
+            organizations: channelOrganizations,
+            partner: channelOrganizations.some((org) => !org.own),
             name: displayName(
               row.name,
               members.filter((participant) => participant.userId !== scope.userId),
@@ -97,7 +138,7 @@ export function conversationOperations(db: DatabaseExecutor, scope: Readonly<Mes
                 agentId,
                 name,
                 image,
-                // Members from another organization. Their organization stays private here.
+                organizationId,
                 external: organizationId !== scope.organizationId,
               }),
             ),

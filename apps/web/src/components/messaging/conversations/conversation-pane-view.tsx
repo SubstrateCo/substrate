@@ -54,11 +54,7 @@ export function ConversationPane({
   if (!hidden && conversation.kind === "channel")
     kind = conversation.private ? "private" : "public";
   if (!hidden && conversation.kind !== "channel") kind = conversation.kind;
-  const members = hidden
-    ? []
-    : conversation.members.filter(
-        (member) => conversation.kind !== "dm" || !viewerId || member.userId !== viewerId,
-      );
+  const members = hidden ? [] : conversation.members;
   return (
     <PageLayout id="conversation" aria-label="Conversation">
       <PageContent>
@@ -66,8 +62,9 @@ export function ConversationPane({
           <ConversationHeader
             title={title}
             kind={kind}
+            viewerId={viewerId}
             members={members}
-            partner={!hidden && conversation.partner}
+            organizations={hidden ? [] : conversation.organizations}
             addingMembers={addingMembers}
             onToggleMembers={
               !blocked && conversation.kind !== "dm" && conversation.canManage

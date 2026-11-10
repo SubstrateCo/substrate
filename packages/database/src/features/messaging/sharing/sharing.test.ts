@@ -63,6 +63,44 @@ test("listed members mark people from another organization as external for each 
   expect(await external("outsider", f.orgB)).toEqual({ alice: true, outsider: false });
 });
 
+test("channel readers see the host and all active partner organizations, but not pending or disconnected ones", async () => {
+  const c = await channel();
+  await f.db.insert(schema.organization).values({ id: "org-c", name: "C", slug: "c" });
+  await f.db
+    .insert(member)
+    .values({ id: "bob-c", userId: "bob", organizationId: "org-c", role: "owner" });
+  const first = await sharing().invite(c.id, { email: "outside@example.com", shareHistory: true });
+  const second = await sharing().invite(c.id, { email: "bob@example.com", shareHistory: true });
+  expect((await host().listConversations())[0]!.organizations).toEqual([
+    { id: f.orgA, name: "A", host: true, own: true },
+  ]);
+  await sharing("outsider", f.orgB).accept(first.id, true);
+  await sharing("bob", "org-c").accept(second.id, true);
+  const partner = createMessagingService(f.db, { userId: "outsider", organizationId: f.orgB });
+  const [row] = await partner.listConversations();
+  expect(row!.organizations).toEqual([
+    { id: f.orgA, name: "A", host: true, own: false },
+    { id: f.orgB, name: "B", host: false, own: true },
+    { id: "org-c", name: "C", host: false, own: false },
+  ]);
+  expect(row!.members).toEqual(
+    expect.arrayContaining([expect.objectContaining({ userId: "bob", organizationId: "org-c" })]),
+  );
+  expect(
+    await createMessagingService(f.db, {
+      userId: "bob",
+      organizationId: f.orgA,
+    }).listConversations(),
+  ).toEqual([]);
+  await sharing().disconnect(c.id, "org-c");
+  expect((await partner.listConversations())[0]!.organizations.map((org) => org.id)).toEqual([
+    f.orgA,
+    f.orgB,
+  ]);
+  await sharing().disconnect(c.id, f.orgB);
+  expect(await partner.listConversations()).toEqual([]);
+});
+
 test("ordinary recipients request approval instead of granting access to their org", async () => {
   const c = await channel();
   await f.db.insert(member).values({ id: "bob-b", userId: "bob", organizationId: f.orgB });

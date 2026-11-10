@@ -100,6 +100,64 @@ test("sharing invitation metadata is authenticated, email-bound, and cannot choo
   expect(messages.status()).toBe(404);
 });
 
+test("organization disclosure follows channel access and includes other connected partners", async ({
+  actors: { host, partner, stranger },
+  request,
+}) => {
+  const channel = await createChannel(host);
+  const organizations = async (actor: WorkspaceAccount) => {
+    const response = await actor.request.get("/api/v1/messaging/conversations", {
+      params: { organizationId: actor.organizationId },
+    });
+    expect(response.ok()).toBe(true);
+    const result: {
+      data: {
+        id: string;
+        organizations: { id: string; name: string; host: boolean; own: boolean }[];
+      }[];
+    } = await response.json();
+    return result.data.find((row) => row.id === channel.id)?.organizations;
+  };
+  expect(
+    (
+      await request.get("/api/v1/messaging/conversations", {
+        params: { organizationId: host.organizationId },
+      })
+    ).status(),
+  ).toBe(401);
+  expect(await organizations(stranger)).toBeUndefined();
+  const first = await invite(host, partner, channel.id);
+  const second = await invite(host, stranger, channel.id);
+  expect((await organizations(host))!.map((org) => org.id)).toEqual([host.organizationId]);
+  for (const [actor, invitation] of [
+    [partner, first],
+    [stranger, second],
+  ] as const) {
+    const accepted = await actor.request.post("/api/v1/messaging/sharing/accept", {
+      headers: { origin },
+      data: {
+        invitationId: invitation.id,
+        organizationId: actor.organizationId,
+        shareHistory: true,
+      },
+    });
+    expect(accepted.ok()).toBe(true);
+  }
+  const disclosed = (await organizations(partner))!;
+  expect(disclosed.map((org) => org.id).sort()).toEqual(
+    [host.organizationId, partner.organizationId, stranger.organizationId].sort(),
+  );
+  expect(disclosed.find((org) => org.id === host.organizationId)).toMatchObject({
+    host: true,
+    own: false,
+    name: expect.any(String),
+  });
+  const forged = await partner.request.get("/api/v1/messaging/conversations", {
+    params: { organizationId: host.organizationId },
+  });
+  expect(forged.status()).toBe(403);
+});
+
 test("sharing writes require trusted origins and full-history confirmation", async ({
   actors: { host, partner },
 }) => {
