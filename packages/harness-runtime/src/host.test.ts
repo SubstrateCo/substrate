@@ -8,11 +8,10 @@ import type { TurnContext, WorkspaceApiRequest } from "@startup-os/contracts/har
 
 import type { AdapterContext, NativeAdapter } from "./adapters/types.ts";
 import { createHarnessHost, type ConnectNative } from "./host.ts";
-import { createMemoryStorage } from "./test-support.ts";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { afterEach, beforeEach, expect, test } from "bun:test";
-import { mkdir, mkdtemp, readdir, readFile, realpath, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -95,7 +94,6 @@ async function host(
   const events: HarnessEvent[] = [];
   const created = await createHarnessHost({
     accountDirectory: root,
-    storage: createMemoryStorage(),
     connect: native.connect,
     keepAliveMs: options.keepAliveMs,
     interruptGraceMs: options.interruptGraceMs,
@@ -128,15 +126,6 @@ const turn = {
   input: { inputIds: ["item-1"], text: "<turn></turn>" },
   context,
 };
-
-test("host uses caller-owned storage without creating a database", async () => {
-  const { host: created } = await host();
-  try {
-    expect(await readdir(root)).not.toContain(".startup-os");
-  } finally {
-    await created.dispose();
-  }
-});
 
 test("MCP calls are accepted only while a turn is bound to the session", async () => {
   const calls: WorkspaceApiRequest[] = [];

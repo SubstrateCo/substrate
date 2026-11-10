@@ -15,6 +15,13 @@
       "when": 1794249460792,
       "tag": "0001_agent_work",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794273263151,
+      "tag": "0002_drop_configuration_state",
+      "breakpoints": true
     }
   ]
 }

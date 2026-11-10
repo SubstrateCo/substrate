@@ -1,6 +1,5 @@
-import type { RuntimeHarnessHost } from "@startup-os/harness-runtime";
+import { createHarnessHost, type RuntimeHarnessHost } from "@startup-os/harness-runtime";
 
-import { createDesktopHarnessHost } from "./desktop-harness-host.ts";
 import type { HarnessWorkerRequest, HarnessWorkerResult } from "./protocol.ts";
 import {
   createLocalToolProxy,
@@ -8,7 +7,6 @@ import {
   type LocalToolResponse,
   type WorkspaceApiResponse,
 } from "./workspace-proxy.ts";
-import { fileURLToPath } from "node:url";
 
 /* oxlint-disable deslop/no-unknown-parameters, deslop/no-runtime-typeof -- Rejections arrive untyped; only a well-formed code string crosses the process boundary. */
 
@@ -84,11 +82,8 @@ port.on(
     queue = queue.then(() =>
       reply(data.id, async () => {
         if (data.method === "initialize") {
-          const initialized = await createDesktopHarnessHost({
+          const initialized = await createHarnessHost({
             accountDirectory: data.value,
-            migrationsDirectory: fileURLToPath(
-              new URL("./client-storage-migrations/", import.meta.url),
-            ),
             workspaceProxy: workspaceProxy.request,
             localTools: localToolProxy.request,
           });

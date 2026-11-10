@@ -33,7 +33,6 @@ import {
 import { agentDirectory, helperDirectory, safeId, safePath } from "./paths.ts";
 import { binaryVersion, resolveExecutable } from "./process.ts";
 import { harnessDefinitions } from "./registry.ts";
-import type { HarnessStorage } from "./storage.ts";
 import { mkdir, realpath } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -55,7 +54,6 @@ export type ConnectNative = (
 
 export interface HarnessHostOptions {
   accountDirectory: string;
-  storage: HarnessStorage;
   workspaceProxy?: WorkspaceApiProxy;
   /** Receives local tool calls other than memory, which the host handles itself. */
   localTools?: LocalToolProxy;
@@ -115,7 +113,8 @@ const failedTurn: TurnResult = {
 export async function createHarnessHost(options: HarnessHostOptions): Promise<RuntimeHarnessHost> {
   await mkdir(options.accountDirectory, { recursive: true });
   const accountDirectory = await realpath(options.accountDirectory);
-  const store = options.storage;
+  /** Each organization's agents, from main's last configure. Main configures every new worker. */
+  const configurations = new Map<string, HarnessConfiguration>();
   const keepAliveMs = options.keepAliveMs ?? sessionKeepAliveMs;
   const graceMs = options.interruptGraceMs ?? interruptGraceMs;
   const mcp = await createStartupMcp({
@@ -164,7 +163,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
       throw new HarnessError("invalid-harness", "Unknown harness.");
     safeId(scope.organizationId);
     safeId(scope.agentId);
-    const configuration = await store.configuration(scope.organizationId);
+    const configuration = configurations.get(scope.organizationId);
     if (!configuration?.agents.some((agent) => agent.id === scope.agentId))
       throw new HarnessError("agent-not-found", "Agent is not configured in this organization.");
     // Scan must not create a missing agent or a missing native config directory.
@@ -200,7 +199,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
   }
 
   async function open(command: Extract<HarnessCommand, { type: "open" }>) {
-    const configuration = await store.configuration(command.organizationId);
+    const configuration = configurations.get(command.organizationId);
     if (!configuration)
       throw new HarnessError(
         "organization-not-configured",
@@ -466,10 +465,8 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
         if (live.turn) live.closing = "configuration";
         else await closeSession(live, "configuration");
       }
-      const previous = await store.configuration(configuration.organizationId);
       await materialize(accountDirectory, configuration);
-      if (JSON.stringify(previous) !== JSON.stringify(configuration))
-        await store.configure(configuration);
+      configurations.set(configuration.organizationId, configuration);
     },
     async scanConfiguration(scope) {
       const root = await directory(scope);
@@ -487,9 +484,9 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
     },
     async resetDefaults(scope) {
       const root = await directory(scope);
-      const agent = (await store.configuration(scope.organizationId))?.agents.find(
-        (entry) => entry.id === scope.agentId && entry.harness === scope.harness,
-      );
+      const agent = configurations
+        .get(scope.organizationId)
+        ?.agents.find((entry) => entry.id === scope.agentId && entry.harness === scope.harness);
       if (!agent)
         throw new HarnessError("agent-not-found", "Agent is not configured for this harness.");
       await writeDefaultFiles(root, scope.organizationId, agent, true);

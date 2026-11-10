@@ -12,7 +12,6 @@ import {
   scanNativeSkills,
 } from "./native-config.ts";
 import { organizationDirectory, safePath } from "./paths.ts";
-import { createMemoryStorage } from "./test-support.ts";
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import * as fs from "node:fs/promises";
 import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
@@ -214,7 +213,7 @@ describe("native MCP files", () => {
 });
 
 test("host scopes local file operations to a safe organization ID", async () => {
-  const host = await createHarnessHost({ accountDirectory: root, storage: createMemoryStorage() });
+  const host = await createHarnessHost({ accountDirectory: root });
   try {
     await host.configure(config());
     await expect(
@@ -265,8 +264,7 @@ test("rejects a junction that redirects managed writes outside the organization"
 });
 
 test("recreates the host and synchronizes edited actors without replacing local native files", async () => {
-  const storage = createMemoryStorage();
-  const first = await createHarnessHost({ accountDirectory: root, storage });
+  const first = await createHarnessHost({ accountDirectory: root });
   const configuration: HarnessConfiguration = {
     organizationId: "restart-org",
     agents: [
@@ -319,7 +317,7 @@ test("recreates the host and synchronizes edited actors without replacing local 
   } finally {
     await first.dispose();
   }
-  const second = await createHarnessHost({ accountDirectory: root, storage });
+  const second = await createHarnessHost({ accountDirectory: root });
   try {
     await second.configure(configuration);
     const local = await second.scanConfiguration(scope);

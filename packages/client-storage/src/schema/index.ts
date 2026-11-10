@@ -1,4 +1,3 @@
-export { configurationState } from "./configuration.ts";
 export { handoffs } from "./handoffs.ts";
 export { helpers } from "./helpers.ts";
 export { inbox } from "./inbox.ts";
