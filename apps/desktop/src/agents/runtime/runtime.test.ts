@@ -498,6 +498,26 @@ test("the tick pulls from the server while realtime is down, and only as a slow 
   expect(pulls()).toBe(before + 1);
 });
 
+test("an idle desktop with realtime up calls the server every minute, so it stays online", async () => {
+  const f = await started();
+  f.realtime.connected = true;
+  const calls = () =>
+    f.posts.filter((post) => post.method === "heartbeat" || post.method === "pullWakes").length;
+  let before = calls();
+  for (let index = 0; index < 4; index++) {
+    await f.advance(30_000);
+    await f.tick();
+  }
+  // Four ticks over two minutes: one call per minute keeps the 90 s online window.
+  expect(calls() - before).toBe(2);
+
+  f.runtime.dispose();
+  before = calls();
+  await f.advance(60_000);
+  await f.tick();
+  expect(calls()).toBe(before);
+});
+
 test("turns synchronize agent folders once, and again after agents change or the harness fails", async () => {
   const f = await started();
   const finish = async () => {

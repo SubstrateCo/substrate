@@ -54,6 +54,8 @@ export interface CatalogAgent {
 /** The home desktop's calls to the server. The session decides the user. */
 export interface AgentWorkServer {
   register(input: { name: string; platform: string }): Promise<void>;
+  /** Marks this device as seen, so it stays online while realtime replaces polling. */
+  heartbeat(): Promise<void>;
   catalog(): Promise<CatalogAgent[]>;
   pullWakes(organizationId: string, limit: number): Promise<AgentWakeView[]>;
   ackWakes(organizationId: string, ids: string[]): Promise<void>;
@@ -121,6 +123,13 @@ export function createAgentWorkServer(options: {
           name: input.name.slice(0, 200) || "Desktop",
           platform: input.platform.slice(0, 40) || "desktop",
         },
+        ignored,
+      );
+    },
+    async heartbeat() {
+      await call(
+        "/agent-work/device/heartbeat",
+        { installationId: options.installationId },
         ignored,
       );
     },

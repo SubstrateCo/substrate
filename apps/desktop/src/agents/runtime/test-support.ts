@@ -138,6 +138,7 @@ export async function runtimeFixture(
 
   const server: AgentWorkServer = {
     register: async (body) => record("register", body),
+    heartbeat: async () => record("heartbeat", null),
     catalog: async () => catalog.map((agent) => ({ ...agent })),
     async pullWakes(_organization, limit) {
       record("pullWakes", { limit });

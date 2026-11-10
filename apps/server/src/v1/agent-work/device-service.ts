@@ -1,6 +1,7 @@
 import type {
   ackWakesInput,
   closeRequestInput,
+  deviceHeartbeatInput,
   openRequestInput,
   publishStatusInput,
   pullWakesInput,
@@ -24,16 +25,28 @@ async function device(headers: Headers, input: { organizationId: string; install
   return { userId: session.user.id, organizationId, installationId: input.installationId };
 }
 
-// Registration needs only a verified session: a device belongs to a person, not a workspace.
+// Registration and presence need only a verified session: a device belongs to a person, not a
+// workspace.
+async function deviceOwner(headers: Headers) {
+  requireOrigin(headers);
+  const session = await auth.api.getSession({ headers });
+  if (!session) throw new ServiceError("UNAUTHENTICATED", "Sign in to continue.");
+  if (!session.user.emailVerified)
+    throw new ServiceError("FORBIDDEN", "Verify your email to continue.");
+  return session.user.id;
+}
+
 export function registerDevice(headers: Headers, input: z.output<typeof registerDeviceInput>) {
   return serviceResult(async () => {
-    requireOrigin(headers);
-    const session = await auth.api.getSession({ headers });
-    if (!session) throw new ServiceError("UNAUTHENTICATED", "Sign in to continue.");
-    if (!session.user.emailVerified)
-      throw new ServiceError("FORBIDDEN", "Verify your email to continue.");
-    const result = await work.registerDevice(db, session.user.id, input);
+    const result = await work.registerDevice(db, await deviceOwner(headers), input);
     return { id: result.id };
+  });
+}
+
+export function deviceHeartbeat(headers: Headers, input: z.output<typeof deviceHeartbeatInput>) {
+  return serviceResult(async () => {
+    await work.touchDevice(db, await deviceOwner(headers), input.installationId);
+    return {};
   });
 }
 

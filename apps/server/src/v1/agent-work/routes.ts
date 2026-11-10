@@ -3,6 +3,7 @@ import {
   closeRequestInput,
   conversationRequestsInput,
   decideProposalInput,
+  deviceHeartbeatInput,
   openRequestInput,
   ownerScopeInput,
   publishStatusInput,
@@ -84,6 +85,12 @@ export function createAgentWorkRoutes(services = { ...ownerServices, ...deviceSe
         zValidator("json", registerDeviceInput, validationHook),
         async (c) =>
           respond(c, await services.registerDevice(c.req.raw.headers, c.req.valid("json"))),
+      )
+      .post(
+        "/device/heartbeat",
+        zValidator("json", deviceHeartbeatInput, validationHook),
+        async (c) =>
+          respond(c, await services.deviceHeartbeat(c.req.raw.headers, c.req.valid("json"))),
       )
       .post("/device/wakes/pull", zValidator("json", pullWakesInput, validationHook), async (c) =>
         respond(c, await services.pullWakes(c.req.raw.headers, c.req.valid("json"))),

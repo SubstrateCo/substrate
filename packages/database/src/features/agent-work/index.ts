@@ -1,5 +1,5 @@
 export { approveProposal, declineProposal, respondToRequest } from "./decisions";
-export { registerDevice } from "../../core/devices/repository";
+export { registerDevice, touchDevice } from "../../core/devices/repository";
 export type { DeviceIdentity, OwnerIdentity } from "./device";
 export {
   closeRequest,

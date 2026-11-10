@@ -30,6 +30,11 @@ import { createTurnExecutor } from "./turn-executor.ts";
 const syncIntervalMs = 30_000;
 /** While realtime is connected, hints drive pulls; the tick still pulls this often. */
 const safetyPullMs = 5 * 60_000;
+/**
+ * The server shows a device as online for 90 s after its last call. While realtime replaces
+ * polling, an idle desktop calls at least this often.
+ */
+const heartbeatMs = 60_000;
 /** Realtime hints within this window become one pull. */
 const hintWindowMs = 300;
 const activityPageSize = 30;
@@ -61,6 +66,7 @@ export function createAgentWorkRuntime(
   let again = false;
   let hinted: (() => void) | undefined;
   let pulledAt = Number.NEGATIVE_INFINITY;
+  let seenAt = Number.NEGATIVE_INFINITY;
 
   const context: RuntimeContext = {
     ...base,
@@ -157,6 +163,7 @@ export function createAgentWorkRuntime(
    */
   async function sync(answers: "always" | "waiting" = "always") {
     if (answers === "always") pulledAt = context.now();
+    seenAt = context.now();
     status.refreshOpenRequests();
     const created = await pullWakes(context).catch(() => {
       context.log("Could not pull agent wakes.");
@@ -184,6 +191,10 @@ export function createAgentWorkRuntime(
   /** Local work runs every tick. The server is polled while realtime is down. */
   async function tick() {
     if (!options.realtimeConnected() || context.now() - pulledAt >= safetyPullMs) await sync();
+    else if (context.now() - seenAt >= heartbeatMs) {
+      seenAt = context.now();
+      await context.server.heartbeat().catch(() => context.log("Could not reach the server."));
+    }
     await reconcileHome().catch(() => context.log("Could not check where agents run."));
     await routines.tick().catch(() => context.log("Could not run routines."));
     await steering.enforceBudget().catch(() => {});

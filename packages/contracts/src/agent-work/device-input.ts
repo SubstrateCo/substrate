@@ -16,6 +16,9 @@ export const registerDeviceInput = z.strictObject({
   platform: z.string().trim().min(1).max(40),
 });
 
+/** Keeps the device online while realtime makes polling unnecessary. */
+export const deviceHeartbeatInput = z.strictObject({ installationId: id });
+
 export const pullWakesInput = z.strictObject({
   ...device,
   limit: z.number().int().min(1).max(100).default(50),
