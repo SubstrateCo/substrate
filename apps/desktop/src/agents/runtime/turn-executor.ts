@@ -390,6 +390,7 @@ export function createTurnExecutor(
       capabilities: opened.capabilities,
       stillQueued: [],
       usage: turn.usage,
+      activity: turn.activity,
       conversationId: (destination ?? origin)?.conversationId ?? null,
       threadId: (destination ?? origin)?.threadId ?? null,
       chain: Promise.resolve(),
@@ -544,6 +545,7 @@ export function createTurnExecutor(
         if (event.text) await append([{ kind: "text", data: { text: event.text } }], now);
         return;
       case "item.started":
+        state.activity = event.title;
         await append(
           [
             {

@@ -1,6 +1,6 @@
 import type { RunTransaction } from "../database.ts";
-import { outputs, turns } from "../schema/index.ts";
-import { and, eq, inArray } from "drizzle-orm";
+import { inbox, outputs, turns } from "../schema/index.ts";
+import { and, eq, inArray, notExists, or, sql } from "drizzle-orm";
 
 export type OutputRow = typeof outputs.$inferSelect;
 
@@ -28,8 +28,11 @@ export function outputRepository(run: RunTransaction) {
       ),
     forTurn: (turnId: string) =>
       run((tx) => tx.select().from(outputs).where(eq(outputs.turnId, turnId)).all()),
-    /** Requests the agent's turns opened, with the agent. */
-    requests: (userAgentIds: string[]) =>
+    /**
+     * Requests the agents' turns opened that no inbox item answers yet, with the agent. An
+     * answer or approval wake has the dedupe key answer:<id> or approval:<id>.
+     */
+    unansweredRequests: (organizationId: string, userAgentIds: string[]) =>
       run(async (tx) =>
         userAgentIds.length
           ? tx
@@ -37,7 +40,25 @@ export function outputRepository(run: RunTransaction) {
               .from(outputs)
               .innerJoin(turns, eq(turns.id, outputs.turnId))
               .where(
-                and(eq(outputs.targetKind, "request"), inArray(turns.userAgentId, userAgentIds)),
+                and(
+                  eq(outputs.targetKind, "request"),
+                  eq(turns.organizationId, organizationId),
+                  inArray(turns.userAgentId, userAgentIds),
+                  notExists(
+                    tx
+                      .select({ id: inbox.id })
+                      .from(inbox)
+                      .where(
+                        and(
+                          eq(inbox.userAgentId, turns.userAgentId),
+                          or(
+                            eq(inbox.dedupeKey, sql`'answer:' || ${outputs.targetId}`),
+                            eq(inbox.dedupeKey, sql`'approval:' || ${outputs.targetId}`),
+                          ),
+                        ),
+                      ),
+                  ),
+                ),
               )
               .all()
           : [],

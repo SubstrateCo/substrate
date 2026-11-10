@@ -168,6 +168,51 @@ test("an asked question needs the owner only while the server still has it open"
   expect((await f.runtime.agents())[0]?.state).toBe("idle");
 });
 
+test("a question with an answer wake no longer needs the owner, even before the server closes it", async () => {
+  const f = await started();
+  const { conversationId } = f.ownerMessage();
+  await f.runtime.sync();
+  await f.advance(600);
+  const [turn] = f.turns() as [TurnCommand];
+  const questionId = crypto.randomUUID();
+  f.serverOpenRequests.add(questionId);
+  await f.runtime.observeToolCall(
+    { tool: "reply", input: { requestId: "r", body: "Which?" }, turn: { turnId: turn.turnId } },
+    {
+      success: true,
+      data: {
+        messageId: crypto.randomUUID(),
+        conversationId,
+        threadId: null,
+        questionId,
+        createdAt: new Date().toISOString(),
+      },
+    },
+  );
+  await f.emit(turn.turnId, { type: "turn.completed", result: { status: "completed" } });
+  expect((await f.runtime.agents())[0]?.state).toBe("needs_you");
+
+  f.answerWake(
+    {
+      id: questionId,
+      kind: "question",
+      status: "resolved",
+      payload: { type: "questions", title: "Question", questions: [] },
+      response: { type: "questions", answers: {} },
+      outcome: null,
+      anchorMessageId: null,
+      conversationId,
+      threadId: null,
+    },
+    `dm:${conversationId}`,
+  );
+  await f.runtime.sync();
+  await f.settle();
+  const answered = f.turns().at(-1) as TurnCommand;
+  await f.emit(answered.turnId, { type: "turn.completed", result: { status: "completed" } });
+  expect((await f.runtime.agents())[0]?.state).toBe("idle");
+});
+
 test("status reads during a burst of changes ask the server for open requests at most once", async () => {
   const f = await started();
   const { conversationId } = f.ownerMessage();

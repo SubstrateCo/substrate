@@ -3,7 +3,9 @@ import {
   type InboxRow,
   type SessionRow,
   type TurnInterruption,
+  type TurnRow,
 } from "@startup-os/client-storage/agent-work";
+import type { AgentSourceMessage } from "@startup-os/contracts/agent-work";
 
 import { envelopeItem, renderEnvelope } from "../turns/envelope.ts";
 import type { LiveTurn, RuntimeContext } from "./context.ts";
@@ -72,16 +74,18 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
   }
 
   /** Renders one item as its own turn block and steers it into the live turn. */
-  async function steerItem(state: LiveTurn, item: InboxRow, sessionKind: SessionRow["kind"]) {
-    const ids = item.sourceRef.source === "owner_message" ? [item.sourceRef.messageId] : [];
-    const sources = await context.server.sources(context.organizationId, ids);
-    const messages = new Map(sources.messages.map((message) => [message.id, message]));
+  async function steerItem(
+    state: LiveTurn,
+    turn: TurnRow | undefined,
+    item: InboxRow,
+    sessionKind: SessionRow["kind"],
+    messages: Map<string, AgentSourceMessage>,
+  ) {
     const rendered = envelopeItem(item, { sessionKind, messages });
     if (!rendered) {
       await context.store.inbox.drop([item.id], "source_inaccessible");
       return true;
     }
-    const turn = await context.store.turns.get(state.turnId);
     const text = renderEnvelope({
       time: new Date(context.now()).toISOString(),
       session: sessionKind,
@@ -132,29 +136,56 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
 
   return {
     async dispatch() {
-      const hold: string[] = [];
-      for (const item of await context.store.inbox.waitingOwnerItems(
+      const waiting = await context.store.inbox.waitingOwnerItems(
         context.organizationId,
         context.now(),
-      )) {
-        const session = await context.store.sessions.get(item.sessionId);
-        if (session?.organizationId !== context.organizationId) continue;
+      );
+      if (!waiting.length) return;
+      const sessions = new Map(
+        (await context.store.sessions.byIds([...new Set(waiting.map((item) => item.sessionId))]))
+          .filter((session) => session.organizationId === context.organizationId)
+          .map((session) => [session.id, session]),
+      );
+      const turns = new Map<string, TurnRow | undefined>();
+      const steerable: { item: InboxRow; session: SessionRow; state: LiveTurn }[] = [];
+      const hold: string[] = [];
+      for (const item of waiting) {
+        const session = sessions.get(item.sessionId);
+        if (!session) continue;
         const state = liveInFolder(folderKey(session));
         if (!state) continue;
-        const turn = await context.store.turns.get(state.turnId);
+        if (!turns.has(state.turnId))
+          turns.set(state.turnId, await context.store.turns.get(state.turnId));
         // Owner items join only interactive turns of their own session in its current epoch.
-        const steerable =
+        const joins =
           state.sessionId === session.id &&
           state.kind === "interactive" &&
           state.capabilities.steer &&
           !state.handoff &&
           session.rotation === null &&
           state.epoch === session.epoch &&
-          turn?.status !== "stopping" &&
+          turns.get(state.turnId)?.status !== "stopping" &&
           item.status === "pending";
-        if (steerable) {
+        if (joins) steerable.push({ item, session, state });
+        else if (!item.held) hold.push(item.id);
+      }
+      let messages: Map<string, AgentSourceMessage> | undefined;
+      if (steerable.length) {
+        const ids = steerable.flatMap(({ item }) =>
+          item.sourceRef.source === "owner_message" ? [item.sourceRef.messageId] : [],
+        );
+        try {
+          const sources = await context.server.sources(context.organizationId, ids);
+          messages = new Map(sources.messages.map((message) => [message.id, message]));
+        } catch {
+          context.log("Could not add a message to the live turn.");
+        }
+      }
+      for (const { item, session, state } of steerable) {
+        if (messages) {
           try {
-            if (await steerItem(state, item, session.kind)) {
+            const turn = turns.get(state.turnId);
+            if (await steerItem(state, turn, item, session.kind, messages)) {
               context.changed({ userAgentId: session.userAgentId, turnId: state.turnId });
               continue;
             }

@@ -65,10 +65,9 @@ export function createStatusPublisher(
       context.store.inbox.queuedCounts(context.organizationId),
       context.store.inbox.uncertainCounts(context.organizationId),
       context.store.turns.needsAttention(context.organizationId),
-      context.store.outputs.requests(ids),
+      context.store.outputs.unansweredRequests(context.organizationId, ids),
     ]);
-    const answered = await context.store.inbox.answeredRequests(asked.map((row) => row.requestId));
-    const waiting = await stillOpen(asked.filter((row) => !answered.has(row.requestId)));
+    const waiting = await stillOpen(asked);
     const liveTurns = [...deps.executor.live.values()];
     const result = [];
     for (const agent of agents) {
@@ -87,10 +86,9 @@ export function createStatusPublisher(
       const published: Published = { state, queuedCount };
       const first = live.at(0);
       if (first) {
-        const turn = await context.store.turns.get(first.turnId);
         if (first.conversationId) published.liveConversationId = first.conversationId;
         if (first.threadId) published.liveThreadId = first.threadId;
-        if (turn?.activity) published.activity = turn.activity.slice(0, 200);
+        if (first.activity) published.activity = first.activity.slice(0, 200);
       }
       result.push({
         summary: {

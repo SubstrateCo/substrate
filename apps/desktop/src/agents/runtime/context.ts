@@ -68,6 +68,8 @@ export interface LiveTurn {
   /** Steered inputs an interrupt receipt reported as still queued. */
   stillQueued: string[];
   usage: Usage | null;
+  /** The latest tool start, for status. */
+  activity: string | null;
   conversationId: string | null;
   threadId: string | null;
   /** Events of this turn are handled one at a time, in order. */

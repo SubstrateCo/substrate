@@ -301,17 +301,5 @@ export function inboxRepository(run: RunTransaction) {
           .all();
         return new Map(rows.map((row) => [row.userAgentId, Number(row.count)]));
       }),
-    /** Whether an item answers this request, so the request is no longer open. */
-    answeredRequests: (requestIds: string[]) =>
-      run(async (tx) => {
-        if (!requestIds.length) return new Set<string>();
-        const keys = requestIds.flatMap((id) => [`answer:${id}`, `approval:${id}`]);
-        const rows = await tx
-          .select({ dedupeKey: inbox.dedupeKey })
-          .from(inbox)
-          .where(inArray(inbox.dedupeKey, keys))
-          .all();
-        return new Set(rows.map((row) => row.dedupeKey.slice(row.dedupeKey.indexOf(":") + 1)));
-      }),
   };
 }
