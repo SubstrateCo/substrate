@@ -3,7 +3,6 @@ import { useSearch } from "@tanstack/react-router";
 
 import { useState } from "react";
 
-import { CopyLink } from "../../context/links/copy-link";
 import { LinkMessageWork } from "../../context/links/link-message-work";
 import { MessageContext, type MessageContextState } from "../../context/references/message-context";
 import { ReferencedMessageBody } from "../../context/references/referenced-message-body";
@@ -20,10 +19,16 @@ import { MessageItem as MessageItemView } from "@/components/messaging/messages/
 import { PersonCardProvider } from "@/components/messaging/people/person-card-slot";
 import { PersonHoverCard } from "@/components/messaging/people/person-hover-card";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { messageHref } from "@/lib/navigation/record-links";
 import { queryKeys } from "@/queries/keys";
-import { Link2 } from "lucide-react";
+import { Copy, Ellipsis, Link2 } from "lucide-react";
 import { toast } from "sonner";
 
 export function MessageItem({
@@ -94,25 +99,41 @@ export function MessageItem({
           }
           actions={
             <>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    size="icon-sm"
-                    variant="ghost"
-                    aria-label="Link existing work"
-                    onClick={() => setLinking(true)}
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label="More message actions"
+                      >
+                        <Ellipsis aria-hidden="true" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>More message actions</TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => setLinking(true)}>
+                    <Link2 aria-hidden="true" /> Link existing work
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      const href = messageHref(organizationId, message.conversationId, message.id);
+                      void navigator.clipboard
+                        .writeText(new URL(href, window.location.origin).href)
+                        .then(
+                          () => toast.success("Link copied"),
+                          () => toast.error("Couldn’t copy link"),
+                        );
+                    }}
                   >
-                    <Link2 aria-hidden="true" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Link existing work</TooltipContent>
-              </Tooltip>
-              <CopyLink
-                grouped
-                label="Copy message link"
-                href={messageHref(organizationId, message.conversationId, message.id)}
-              />
+                    <Copy aria-hidden="true" /> Copy message link
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           }
           avatarBadge={<AgentWorkBadge messageId={message.id} />}

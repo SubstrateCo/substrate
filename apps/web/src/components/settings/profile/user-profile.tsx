@@ -42,7 +42,7 @@ export function UserProfile() {
             value={user.name}
             pending={rename.isPending}
             error={rename.error}
-            errorDescription="We couldn't save your name. Please try again."
+            errorDescription="We couldn’t save your name. Please try again."
             onSave={(name, onSaved) => {
               rename.reset();
               rename.mutate(name, { onSuccess: onSaved });

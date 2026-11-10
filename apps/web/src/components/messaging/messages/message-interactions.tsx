@@ -27,7 +27,7 @@ export function MessageToolbar({
     <div
       role="group"
       aria-label="Message actions"
-      className="absolute top-1 right-4 z-10 flex items-center gap-0.5 rounded-lg border bg-popover p-0.5 text-popover-foreground shadow-sm transition-opacity duration-100 group-hover/message:opacity-100 group-has-focus-visible/message:opacity-100 has-data-[state=open]:opacity-100 motion-reduce:transition-none [@media(hover:hover)]:opacity-0"
+      className="absolute top-1 right-4 z-10 flex items-center gap-0.5 rounded-lg border bg-popover p-0.5 text-popover-foreground shadow-raised transition-opacity duration-100 group-hover/message:opacity-100 group-has-focus-visible/message:opacity-100 has-data-[state=open]:opacity-100 motion-reduce:transition-none [@media(hover:hover)]:opacity-0"
     >
       <EmojiPicker label="React to message" size="icon-sm" onSelect={onReact} disabled={pending} />
       {onThread && (

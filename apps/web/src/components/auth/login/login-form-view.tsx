@@ -49,7 +49,7 @@ export function LoginForm({
         </div>
         <FormMessage
           error={error}
-          errorDescription="We couldn't sign you in. Check your details and try again."
+          errorDescription="We couldn’t sign you in. Check your details and try again."
         />
         <PendingButton className="w-full" size="lg" pending={pending} pendingLabel="Signing in.">
           Sign in

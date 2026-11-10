@@ -19,6 +19,7 @@ export function AddMembersDialog({
   name,
   memberUserIds,
   onClose,
+  onRestoreFocus,
 }: {
   organizationId: string;
   conversationId: string;
@@ -26,6 +27,8 @@ export function AddMembersDialog({
   /** Current members, when the viewer cannot read the conversation to tell. */
   memberUserIds?: readonly string[];
   onClose: () => void;
+  /** Focus the control that opened the dialog, which the dialog cannot find by itself. */
+  onRestoreFocus?: () => void;
 }) {
   const queryClient = useQueryClient();
   const conversation = useQuery(conversationsQueryOptions(organizationId)).data?.find(
@@ -59,6 +62,7 @@ export function AddMembersDialog({
       pending={add.isPending}
       error={add.error}
       onClose={onClose}
+      onRestoreFocus={onRestoreFocus}
       onSubmit={(recipients, shareHistory) =>
         add.mutate({ recipients, shareHistory }, { onSuccess: () => onClose() })
       }

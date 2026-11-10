@@ -38,7 +38,7 @@ export function SearchResults({
   const trimmed = query.trim();
   let heading = trimmed ? "Results" : "Jump to";
   if (browsing) heading = "Browse channels";
-  const errorState = <ErrorState compact title="Couldn't search workspace" onRetry={onRetry} />;
+  const errorState = <ErrorState compact title="Couldn’t search workspace" onRetry={onRetry} />;
   return (
     <CommandList label="Search results" className="max-h-96 min-h-0">
       {!visible.length && (

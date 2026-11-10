@@ -24,12 +24,10 @@ export type ActivityRow = {
   place?: string;
   /** Direct message, Thread, Routine, or Helper. */
   kind: string;
-  /** Background work that no owner message started. */
-  unattended: boolean;
   status: WorkStatus;
   createdAt: string;
   selected: boolean;
-  /** One reviewed line for work that failed, since the row has no card. */
+  /** One line for work that failed: what the runtime reported, since the row has no card. */
   note?: string;
   /** For example, the needs-attention card. */
   attention?: ReactNode;
@@ -113,12 +111,17 @@ export function AgentActivityView({
                   <span className="flex min-w-0 items-center gap-2">
                     <WorkStatusTag status={row.status} />
                     <span className="min-w-0 truncate text-xs text-muted-foreground">
-                      {[row.kind, row.unattended && "background", row.place]
-                        .filter(Boolean)
-                        .join(" · ")}
+                      {[row.kind, row.place].filter(Boolean).join(" · ")}
                     </span>
                   </span>
-                  {row.note && <span className="text-xs text-muted-foreground">{row.note}</span>}
+                  {row.note && (
+                    <span
+                      title={row.note}
+                      className="line-clamp-1 text-xs wrap-anywhere text-muted-foreground"
+                    >
+                      {row.note}
+                    </span>
+                  )}
                 </button>
                 {row.attention}
               </li>

@@ -1,5 +1,6 @@
 import {
   addTypedRecipients,
+  limitMessage,
   matchPeople,
   recipientFor,
   unfinishedRecipientMessage,
@@ -47,9 +48,35 @@ test("text left in the picker is reported by name, and blank text is not", () =>
   expect(unfinishedRecipientMessage("   ")).toBeUndefined();
 });
 
-test("addresses past the limit stay as text", () => {
+test("addresses past the limit are refused together and all stay as text", () => {
   expect(addTypedRecipients([], "a@x.test b@x.test", [], { max: 1 })).toEqual({
-    value: [{ email: "a@x.test" }],
-    rest: "b@x.test",
+    value: [],
+    rest: "a@x.test, b@x.test",
+    overflow: true,
   });
+});
+
+test("a pasted address that fits is added and unusable text stays beside it", () => {
+  expect(addTypedRecipients([], "a@x.test, nope", [], { max: 1 })).toEqual({
+    value: [{ email: "a@x.test" }],
+    rest: "nope",
+    overflow: false,
+  });
+});
+
+test("an address that is already chosen does not count against the limit", () => {
+  const value = [{ email: "a@x.test" }];
+  expect(addTypedRecipients(value, "a@x.test", [], { max: 1 })).toEqual({
+    value,
+    rest: "",
+    overflow: false,
+  });
+});
+
+test("leftover addresses that all parse are reported as too many, not as incomplete", () => {
+  const limit = limitMessage(1);
+  expect(unfinishedRecipientMessage("a@x.test, b@x.test", limit)).toBe("Choose one person.");
+  expect(unfinishedRecipientMessage("a@x.test, nope", limit)).toBe(
+    "“a@x.test, nope” isn’t a complete email address. Finish it or clear it.",
+  );
 });

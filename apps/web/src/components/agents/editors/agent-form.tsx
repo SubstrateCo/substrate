@@ -4,13 +4,17 @@ import type { HarnessKind } from "@startup-os/contracts/harness";
 
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 
-import { useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 
 import { HarnessAvailability } from "../model-picker/harness-availability";
 import { ModelPicker } from "../model-picker/model-picker";
 import { AgentInstructions } from "./agent-instructions";
 import { UnsavedChangesGuard } from "./unsaved-changes-guard";
-import type { AgentSettingsSection } from "@/components/agent-work/app/agent-sections";
+import { UnsavedSectionsBar } from "./unsaved-sections-bar";
+import {
+  agentSettingsSections,
+  type AgentSettingsSection,
+} from "@/components/agent-work/app/agent-sections";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { FormTextField } from "@/components/forms/form-text-field";
@@ -35,6 +39,39 @@ const agentFields = saveAgentInput.extend({
 
 export type AgentSection = "skills" | "mcps";
 
+/** The sections whose fields differ from the saved agent, as "general,instructions". */
+function definitionChanges(values: SaveAgentInput, saved: SaveAgentInput) {
+  const changed: AgentSettingsSection[] = [];
+  if (
+    values.name !== saved.name ||
+    values.harness !== saved.harness ||
+    (values.model ?? undefined) !== (saved.model ?? undefined)
+  )
+    changed.push("general");
+  if (values.instructions !== saved.instructions) changed.push("instructions");
+  return changed.join(",");
+}
+
+/** Tells the page which sections have unsaved changes, so its section list can mark them. */
+function ReportUnsaved({
+  sections,
+  onChange,
+}: {
+  sections: readonly AgentSettingsSection[];
+  onChange?: (sections: readonly AgentSettingsSection[]) => void;
+}) {
+  const key = sections.join(",");
+  const stable = useMemo(
+    () => agentSettingsSections.filter((item) => key.split(",").includes(item)),
+    [key],
+  );
+  useEffect(() => {
+    onChange?.(stable);
+    return () => onChange?.([]);
+  }, [onChange, stable]);
+  return null;
+}
+
 type AgentFormProps = {
   userId: string;
   organizationId?: string | null;
@@ -45,6 +82,7 @@ type AgentFormProps = {
   picture?: ReactNode;
   runSettings?: ReactNode;
   runSettingsDirty?: boolean;
+  onUnsavedSectionsChange?: (sections: readonly AgentSettingsSection[]) => void;
   deleteAction?: ReactNode;
   pending: boolean;
   onCancel?: () => void;
@@ -70,6 +108,7 @@ export function AgentForm({
   picture,
   runSettings,
   runSettingsDirty = false,
+  onUnsavedSectionsChange,
   deleteAction,
   pending,
   onCancel,
@@ -125,9 +164,18 @@ export function AgentForm({
     },
   });
   return (
-    <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
-      {([isSubmitting, dirty]) => {
+    <form.Subscribe
+      selector={(state) =>
+        [state.isSubmitting, agent ? definitionChanges(state.values, defaultValues) : ""] as const
+      }
+    >
+      {([isSubmitting, definitionKey]) => {
         const busy = pending || isSubmitting;
+        const dirty = definitionKey !== "";
+        // Name, model, and instructions share one draft; run settings save on their own.
+        const unsaved = agentSettingsSections.filter((item) =>
+          item === "run" ? runSettingsDirty : definitionKey.split(",").includes(item),
+        );
         const nameField = (
           <form.Field name="name">
             {(field) => (
@@ -261,26 +309,11 @@ export function AgentForm({
             </>
           );
 
-        // General and Instructions save in their card footer. Other sections show the draft
-        // in a bar so it stays visible while the owner looks around.
-        const draftBar = dirty && section !== "general" && section !== "instructions" && (
-          <div
-            role="region"
-            aria-label="Unsaved agent changes"
-            className="sticky bottom-0 z-10 mt-6 rounded-xl border bg-card px-5 py-3 shadow-sm"
-          >
-            {footer}
-          </div>
-        );
         return (
           <div className="min-w-0">
             {formElement}
-            <UnsavedChangesGuard
-              dirty={dirty || runSettingsDirty}
-              agentId={agent.id}
-              definitionDirty={dirty}
-              runSettingsDirty={runSettingsDirty}
-            />
+            <ReportUnsaved sections={unsaved} onChange={onUnsavedSectionsChange} />
+            <UnsavedChangesGuard sections={unsaved} agentId={agent.id} />
             {section === "general" && (
               <SettingsSection
                 title="General"
@@ -338,12 +371,10 @@ export function AgentForm({
               </>
             )}
             <div hidden={section !== "run"}>{runSettings}</div>
-            {runSettingsDirty && section !== "run" && (
-              <p className="mt-4 text-sm text-muted-foreground">
-                Run settings have unsaved changes. Return to Run settings to save or discard them.
-              </p>
-            )}
-            {draftBar}
+            <UnsavedSectionsBar
+              sections={unsaved.filter((item) => item !== section)}
+              onSectionChange={(next) => onSectionChange?.(next)}
+            />
           </div>
         );
       }}

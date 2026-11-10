@@ -72,7 +72,7 @@ export function OrganizationSelection({
       {loadError && (
         <ErrorState
           compact
-          title="Couldn't load workspaces"
+          title="Couldn’t load workspaces"
           description="Your workspace list is unavailable. Try again, or create a workspace below."
           onRetry={() => {
             retryOrigin.current = document.activeElement;

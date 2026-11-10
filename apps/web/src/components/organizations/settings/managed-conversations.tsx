@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { ManagedConversations as ManagedConversationsView } from "./managed-conversations-view";
 import { isAccessFailure } from "@/components/feedback/request-failure";
@@ -19,6 +19,8 @@ import { toast } from "sonner";
 export function ManagedConversations({ organizationId }: { organizationId: string }) {
   const list = useQuery(managedConversationsQueryOptions(organizationId));
   const [dialog, setDialog] = useState<{ kind: "transfer" | "delete" | "members"; id: string }>();
+  const launcher = useRef<HTMLElement | null>(null);
+  const fallback = useRef<HTMLDivElement>(null);
   const { remove, transfer } = useConversationManagement(organizationId);
   const impact = useQuery({
     ...deleteImpactQueryOptions(organizationId, dialog?.id ?? ""),
@@ -29,27 +31,44 @@ export function ManagedConversations({ organizationId }: { organizationId: strin
     : list.data?.find((row) => row.id === dialog?.id);
   const name = target?.name ?? "this group message";
   const close = () => setDialog(undefined);
+  const restoreFocus = () => {
+    if (launcher.current?.isConnected) launcher.current.focus();
+    else fallback.current?.focus();
+  };
+  const open = (
+    kind: "transfer" | "delete" | "members",
+    id: string,
+    trigger: HTMLElement | null,
+  ) => {
+    launcher.current = trigger;
+    setDialog({ kind, id });
+  };
   return (
     <SettingsPanel
       title="Conversations"
       description="Every channel and group message in this organization. You see names and members, never messages."
     >
-      <ManagedConversationsView
-        rows={list.data}
-        loading={list.isPending}
-        error={list.error}
-        onRetry={() => void list.refetch()}
-        onAddMembers={(id) => setDialog({ kind: "members", id })}
-        onTransfer={(id) => setDialog({ kind: "transfer", id })}
-        onDelete={(id) => setDialog({ kind: "delete", id })}
-      />
+      <div ref={fallback} tabIndex={-1}>
+        <ManagedConversationsView
+          rows={list.data}
+          loading={list.isPending}
+          error={list.error}
+          onRetry={() => void list.refetch()}
+          onAddMembers={(id, trigger) => open("members", id, trigger)}
+          onTransfer={(id, trigger) => open("transfer", id, trigger)}
+          onDelete={(id, trigger) => open("delete", id, trigger)}
+        />
+      </div>
       {dialog?.kind === "members" && target && (
         <AddMembersDialog
           organizationId={organizationId}
           conversationId={target.id}
           name={target.name ?? undefined}
           memberUserIds={humanMembers(target.members).map((member) => member.userId)}
-          onClose={close}
+          onClose={() => {
+            close();
+            requestAnimationFrame(restoreFocus);
+          }}
         />
       )}
       {dialog?.kind === "transfer" && target && (
@@ -62,6 +81,7 @@ export function ManagedConversations({ organizationId }: { organizationId: strin
           pending={transfer.isPending}
           error={transfer.error}
           onClose={close}
+          onRestoreFocus={restoreFocus}
           onConfirm={(userId) =>
             transfer.mutate(
               { conversationId: target.id, userId },
@@ -82,6 +102,7 @@ export function ManagedConversations({ organizationId }: { organizationId: strin
           pending={remove.isPending}
           error={remove.error ?? impact.error}
           onClose={close}
+          onRestoreFocus={restoreFocus}
           onConfirm={() =>
             remove.mutate(target.id, {
               onSuccess: () => {

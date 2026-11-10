@@ -16,7 +16,7 @@ function describe(label: string, state: HarnessAvailabilityState) {
     case "checking":
       return { tone: "bg-muted-foreground", text: `Checking ${label}…` };
     case "error":
-      return { tone: "bg-destructive", text: "Couldn't check availability." };
+      return { tone: "bg-destructive", text: "Couldn’t check availability." };
     case "ready":
       return state.available
         ? {

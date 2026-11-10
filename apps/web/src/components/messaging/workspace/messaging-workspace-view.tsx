@@ -38,15 +38,39 @@ export function MessagingWorkspace({
   agents?: DirectMessageAgent[];
   onMessagePerson?: (person: PickerPerson) => void;
   onMessageAgent?: (agent: DirectMessageAgent) => void;
-  /** The create dialog. It opens over the current conversation. */
-  renderCreate: (kind: Conversation["kind"], onClose: () => void) => ReactNode;
+  /**
+   * The create dialog. It opens over the current conversation. Call `onRestoreFocus` when it
+   * closes, so focus goes back to the button that opened it, or to the sidebar when that is gone.
+   */
+  renderCreate: (
+    kind: Conversation["kind"],
+    handlers: { onClose: () => void; onRestoreFocus: () => void },
+  ) => ReactNode;
   loading?: boolean;
   hasLoaded: boolean;
   error?: Error | null;
   onRetry: () => void;
   children?: ReactNode;
 }) {
-  const [creating, setCreating] = useState<Conversation["kind"]>();
+  // The dialog is mounted by state, so it has no trigger of its own to return focus to: keep the
+  // button that opened it.
+  const [creating, setCreating] = useState<{
+    kind: Conversation["kind"];
+    launcher: HTMLElement | null;
+  }>();
+  const create = (kind: Conversation["kind"], launcher: HTMLElement | null) =>
+    setCreating({ kind, launcher });
+  const restoreFocus = () => {
+    if (creating?.launcher?.isConnected) creating.launcher.focus();
+    else {
+      // The empty state's buttons are gone once a conversation exists.
+      document
+        .querySelector<HTMLElement>(
+          '#conversation-sidebar [aria-current="page"], #conversation-sidebar button',
+        )
+        ?.focus();
+    }
+  };
   const hasContent = Children.toArray(children).length > 0;
   const blocked = !!error && (!hasLoaded || isAccessFailure(error));
   return (
@@ -80,7 +104,7 @@ export function MessagingWorkspace({
             onMessagePerson={onMessagePerson}
             onMessageAgent={onMessageAgent}
             onSelect={onSelect}
-            onCreate={setCreating}
+            onCreate={create}
           />
           <PageContent>
             {blocked && <PaneState label="Workspace unavailable" error={error} onRetry={onRetry} />}
@@ -93,10 +117,14 @@ export function MessagingWorkspace({
             {!blocked && !hasContent && loading && (
               <PaneState label="Loading your conversations…" />
             )}
-            {!blocked && !hasContent && !loading && <WorkspaceEmpty onCreate={setCreating} />}
+            {!blocked && !hasContent && !loading && <WorkspaceEmpty onCreate={create} />}
           </PageContent>
         </PageLayout>
-        {creating && renderCreate(creating, () => setCreating(undefined))}
+        {creating &&
+          renderCreate(creating.kind, {
+            onClose: () => setCreating(undefined),
+            onRestoreFocus: restoreFocus,
+          })}
       </div>
     </ComposerDraftProvider>
   );

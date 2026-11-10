@@ -18,7 +18,7 @@ export function HarnessIcon({
     return (
       <span
         aria-hidden="true"
-        className={`${size} grid shrink-0 place-items-center rounded bg-muted text-xs font-medium text-foreground`}
+        className={`${size} grid shrink-0 place-items-center rounded border bg-muted text-xs leading-none font-medium text-foreground`}
       >
         O
       </span>

@@ -56,6 +56,44 @@ test("switching workspaces clears private messages and reconnects in the selecte
   await expect(user.page.getByText(secondBody, { exact: true })).toBeVisible();
 });
 
+test("switching workspaces asks before an unsaved draft is lost and changes nothing until confirmed", async ({
+  account,
+  client,
+}) => {
+  const firstId = account.organizationId;
+  const name = `Second ${crypto.randomUUID()}`;
+  await provisionWorkspaceSession(account.request, name, `second-${crypto.randomUUID()}`);
+  const activated = await account.request.post("/api/auth/organization/set-active", {
+    data: { organizationId: firstId },
+  });
+  expect(activated.ok()).toBe(true);
+  account.state = await account.request.storageState();
+  const user = await client(account);
+  await visit(user, undefined, "/settings/user");
+  const activeOrganizationId = async () =>
+    (await (await user.page.request.get("/api/v1/session")).json()).data.session
+      .activeOrganizationId;
+  const switchTo = async () => {
+    await user.page.getByRole("button", { name: `${account.name} ▾`, exact: true }).click();
+    await user.page.getByRole("menuitem", { name, exact: true }).click();
+  };
+  await user.page.getByLabel("Full name", { exact: true }).fill("Unsaved profile name");
+
+  await switchTo();
+  const dialog = user.page.getByRole("dialog", { name: "Discard unsaved changes?" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Keep editing" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(user.page.getByLabel("Full name", { exact: true })).toHaveValue(
+    "Unsaved profile name",
+  );
+  expect(await activeOrganizationId()).toBe(firstId);
+
+  await switchTo();
+  await dialog.getByRole("button", { name: "Discard changes" }).click();
+  await expect.poll(activeOrganizationId).not.toBe(firstId);
+});
+
 test("an owner invites a teammate, who accepts without receiving project access or owner controls", async ({
   account,
   actors,

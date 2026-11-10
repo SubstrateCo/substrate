@@ -32,7 +32,7 @@ export function LeaveConversationDialog({
   if (lastMember)
     return (
       <ConfirmDialog
-        title={`You can't leave ${name}`}
+        title={`You can’t leave ${name}`}
         description="You are the last member. Delete the conversation instead."
         onClose={onClose}
         onRestoreFocus={onRestoreFocus}

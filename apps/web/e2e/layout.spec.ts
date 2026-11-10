@@ -28,18 +28,35 @@ test("a resized sidebar keeps its width after reload", async ({ actors, client }
   await expect.poll(() => width(sender.page, "Conversations")).toBe(300);
 });
 
-test("every user settings section uses the same content column", async ({ actors, client }) => {
+test("every settings section uses the same content column and heading", async ({
+  actors,
+  client,
+}) => {
   const sender = await client(actors.sender);
   const columns: { x: number; width: number }[] = [];
+  const headings: { y: number; fontSize: string }[] = [];
   for (const [path, title] of [
     ["/settings/user", "Profile"],
     ["/settings/user/preferences", "Preferences"],
     ["/settings/user/invitations", "Your invitations"],
+    ["/settings/organization", "General"],
+    ["/settings/organization/members", "Members"],
+    ["/settings/organization/invitations", "Invitations"],
+    ["/settings/organization/conversations", "Conversations"],
+    ["/settings/organization/sharing", "External collaboration"],
   ]) {
     await visit(sender, undefined, path);
     await expect(
       sender.page.getByRole("heading", { level: 1, name: title, exact: true }),
     ).toBeVisible();
+    headings.push(
+      await sender.page
+        .getByRole("heading", { level: 1, name: title, exact: true })
+        .evaluate((heading) => ({
+          y: Math.round(heading.getBoundingClientRect().y),
+          fontSize: getComputedStyle(heading).fontSize,
+        })),
+    );
     columns.push(
       await sender.page
         .locator("[data-slot='page-header']")
@@ -52,6 +69,31 @@ test("every user settings section uses the same content column", async ({ actors
   }
   expect(new Set(columns.map(({ x }) => x)).size).toBe(1);
   expect(new Set(columns.map(({ width }) => width)).size).toBe(1);
+  expect(new Set(headings.map(({ y }) => y)).size).toBe(1);
+  expect(new Set(headings.map(({ fontSize }) => fontSize)).size).toBe(1);
+});
+
+test("discard clears name validation in profile and organization settings", async ({
+  actors,
+  client,
+}) => {
+  const sender = await client(actors.sender);
+  for (const [path, label] of [
+    ["/settings/user", "Full name"],
+    ["/settings/organization", "Organization name"],
+  ]) {
+    await visit(sender, undefined, path);
+    const field = sender.page.getByLabel(label, { exact: true });
+    const original = await field.inputValue();
+    for (const invalid of ["", "   "]) {
+      await field.fill(invalid);
+      await sender.page.getByRole("button", { name: "Save", exact: true }).click();
+      await expect(field).toHaveAttribute("aria-invalid", "true");
+      await sender.page.getByRole("button", { name: "Discard", exact: true }).click();
+      await expect(field).toHaveValue(original);
+      await expect(field).not.toHaveAttribute("aria-invalid", "true");
+    }
+  }
 });
 
 for (const width of [640, 1440]) {

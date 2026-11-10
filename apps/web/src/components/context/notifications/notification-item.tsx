@@ -79,8 +79,8 @@ export function NotificationItem({
         <Avatar variant="user" className="size-8">
           <AvatarFallback>{initials(actor)}</AvatarFallback>
         </Avatar>
-        <span className="absolute -right-1.5 -bottom-1.5 flex size-3.5 items-center justify-center rounded-full bg-surface text-muted-foreground ring-2 ring-surface group-hover/notice:bg-row-hover group-hover/notice:ring-row-hover">
-          <Icon className="size-2.5" />
+        <span className="absolute -right-1 -bottom-1 flex size-4 items-center justify-center rounded-full bg-surface text-muted-foreground ring-2 ring-surface group-hover/notice:bg-row-hover group-hover/notice:ring-row-hover">
+          <Icon className="size-3" />
         </span>
       </span>
       <div className="min-w-0 flex-1">
@@ -115,7 +115,7 @@ export function NotificationItem({
         {detail && (
           <p
             className={cn(
-              "mt-0.5 truncate text-sm",
+              "mt-0.5 line-clamp-2 text-sm wrap-anywhere",
               item.read ? "text-muted-foreground" : "text-foreground/80",
             )}
           >

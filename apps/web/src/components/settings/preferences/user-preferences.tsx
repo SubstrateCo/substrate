@@ -9,7 +9,7 @@ export function UserPreferences() {
       <SettingsCard title="Appearance">
         <SettingsRow
           label="Theme"
-          description="System follows your computer's light or dark setting."
+          description="System follows your computer’s light or dark setting."
           control={<ThemeControl />}
         />
       </SettingsCard>

@@ -50,7 +50,7 @@ export function RoutineListView({
   const add = (
     <Button type="button" onClick={onAdd}>
       <Plus aria-hidden="true" />
-      Add routine
+      New routine
     </Button>
   );
   return (

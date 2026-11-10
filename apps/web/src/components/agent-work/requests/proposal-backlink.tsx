@@ -11,7 +11,7 @@ export function ProposalBacklink({ href, label }: { href?: string; label?: strin
           from {label}
         </a>
       ) : (
-        <span>from a conversation you can't open</span>
+        <span>from a conversation you can’t open</span>
       )}
     </p>
   );

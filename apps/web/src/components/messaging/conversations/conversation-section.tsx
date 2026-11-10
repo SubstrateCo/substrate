@@ -34,7 +34,7 @@ export function ConversationSection({
   people?: PickerPerson[];
   agents?: DirectMessageAgent[];
   onSelect: (id: string) => void;
-  onCreate: (kind: Conversation["kind"]) => void;
+  onCreate: (kind: Conversation["kind"], launcher: HTMLElement | null) => void;
   onMessagePerson?: (person: PickerPerson) => void;
   onMessageAgent?: (agent: DirectMessageAgent) => void;
 }) {
@@ -117,7 +117,19 @@ export function ConversationSection({
               ))}
             </div>
             {!loading && items.length === 0 && section !== "partner" && (
-              <p className="px-2 py-1.5 text-xs text-muted-foreground">{emptyLabels[section]}</p>
+              <div className="flex items-center justify-between gap-2 px-2 py-1">
+                <p className="text-xs text-muted-foreground">{emptyLabels[section]}</p>
+                <Button
+                  type="button"
+                  variant="link"
+                  size="xs"
+                  onClick={(event) =>
+                    onCreate(section === "channel" ? "channel" : "dm", event.currentTarget)
+                  }
+                >
+                  Start one
+                </Button>
+              </div>
             )}
           </div>
         </CollapsibleContent>

@@ -48,7 +48,7 @@ export function SignupForm({
         />
         <FormMessage
           error={error}
-          errorDescription="We couldn't create your account. Please try again."
+          errorDescription="We couldn’t create your account. Please try again."
         />
         <PendingButton
           className="w-full"

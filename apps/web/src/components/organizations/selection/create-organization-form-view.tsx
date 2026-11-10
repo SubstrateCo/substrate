@@ -52,7 +52,7 @@ export function CreateOrganizationForm({
         />
       ) : (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Workspace slug: {slug || "your-company"}</span>
+          <span className="min-w-0 wrap-anywhere">Workspace slug: {slug || "—"}</span>
           <Button type="button" variant="ghost" size="sm" onClick={() => setEditingSlug(true)}>
             Edit
           </Button>
@@ -61,7 +61,7 @@ export function CreateOrganizationForm({
       )}
       <FormMessage
         error={error}
-        errorDescription="We couldn't create your workspace. Check the name and slug, then try again."
+        errorDescription="We couldn’t create your workspace. Check the name and slug, then try again."
       />
       <PendingButton className="w-full" size="lg" pending={pending} pendingLabel="Creating.">
         Create workspace

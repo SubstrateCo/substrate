@@ -30,6 +30,7 @@ export function AddMembersDialog({
   pending = false,
   error,
   onClose,
+  onRestoreFocus,
 }: {
   /** The conversation's display name, when the viewer can see it. */
   name?: string;
@@ -40,15 +41,15 @@ export function AddMembersDialog({
   pending?: boolean;
   error?: Error | null;
   onClose: () => void;
+  onRestoreFocus?: () => void;
 }) {
   const [recipients, setRecipients] = useState<PickedRecipient[]>([]);
-  const [missing, setMissing] = useState(false);
   const [shareHistory, setShareHistory] = useState(false);
   const [pendingText, setPendingText] = useState("");
   const [refused, setRefused] = useState(false);
   const invited = invitedRecipients(recipients).length;
   const unfinished = refused ? unfinishedRecipientMessage(pendingText) : undefined;
-  const errorMessage = unfinished ?? (missing ? "Choose at least one person." : undefined);
+  const errorMessage = unfinished;
   let title = "Add people";
   if (name) title = `Add people to ${name}`;
   return (
@@ -58,7 +59,13 @@ export function AddMembersDialog({
         if (!open && !pending) onClose();
       }}
     >
-      <DialogContent>
+      <DialogContent
+        onCloseAutoFocus={(event) => {
+          if (!onRestoreFocus) return;
+          event.preventDefault();
+          onRestoreFocus();
+        }}
+      >
         <form
           noValidate
           onSubmit={(event) => {
@@ -72,7 +79,6 @@ export function AddMembersDialog({
               return;
             }
             if (!recipients.length) {
-              setMissing(true);
               field?.focus();
               return;
             }
@@ -96,10 +102,7 @@ export function AddMembersDialog({
                 disabled={pending}
                 invalid={!!errorMessage}
                 describedBy={errorMessage ? "add-member-people-error" : undefined}
-                onValueChange={(value) => {
-                  setRecipients(value);
-                  if (value.length) setMissing(false);
-                }}
+                onValueChange={setRecipients}
                 onPendingTextChange={(text) => {
                   setPendingText(text);
                   setRefused(false);
@@ -122,13 +125,24 @@ export function AddMembersDialog({
               errorDescription="We couldn’t add these people. Check their email addresses and try again."
             />
           </DialogBody>
-          <DialogFooter>
-            <Button type="button" variant="outline" disabled={pending} onClick={onClose}>
-              Cancel
-            </Button>
-            <PendingButton type="submit" pending={pending} pendingLabel="Adding…">
-              {recipients.length > 1 ? `Add ${recipients.length} people` : "Add people"}
-            </PendingButton>
+          <DialogFooter className="items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground" aria-live="polite">
+              {recipients.length ? `${recipients.length} chosen` : "Choose people to add"}
+            </p>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row">
+              <Button type="button" variant="outline" disabled={pending} onClick={onClose}>
+                Cancel
+              </Button>
+              <PendingButton
+                type="submit"
+                pending={pending}
+                pendingLabel="Adding…"
+                // Text still in the field is added, or explained, by the submit.
+                disabled={!recipients.length && !pendingText.trim()}
+              >
+                {recipients.length > 1 ? `Add ${recipients.length} people` : "Add people"}
+              </PendingButton>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

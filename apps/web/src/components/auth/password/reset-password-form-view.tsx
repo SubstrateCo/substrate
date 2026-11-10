@@ -35,7 +35,7 @@ export function ResetPasswordForm({
   if (invalid)
     return (
       <AuthFrame
-        title="This reset link doesn't work"
+        title="This reset link doesn’t work"
         description="It may have expired or already been used. Request a new one to choose a password."
         footer={backToSignIn}
       >
@@ -124,7 +124,7 @@ export function ResetPasswordForm({
         </Field>
         <FormMessage
           error={error}
-          errorDescription="We couldn't reset your password. Try again, or request a new reset link."
+          errorDescription="We couldn’t reset your password. Try again, or request a new reset link."
         />
         <PendingButton className="w-full" size="lg" pending={pending} pendingLabel="Saving.">
           Save new password

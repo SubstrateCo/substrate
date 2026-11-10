@@ -16,8 +16,14 @@ export function ConversationSidebarItem({
     <Button
       variant="sidebar"
       className="w-full justify-start"
+      data-conversation-item=""
       aria-current={selected ? "page" : undefined}
-      title={conversation.partner ? "Includes people from another organization" : undefined}
+      // The name is cut off in a narrow sidebar, so the full name is always on hover.
+      title={
+        conversation.partner
+          ? `${conversationName(conversation)} · includes people from another organization`
+          : conversationName(conversation)
+      }
       onClick={onSelect}
     >
       <ConversationKindIcon

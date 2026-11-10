@@ -4,6 +4,19 @@ import { describe, expect, test } from "bun:test";
 const id = "00000000-0000-4000-8000-000000000001";
 
 describe("workspace references in message Markdown", () => {
+  test("joins punctuation to a reference but keeps normal word spacing", () => {
+    const tree: Parameters<ReturnType<typeof remarkWorkspaceReferences>>[0] = {
+      type: "paragraph",
+      children: [{ type: "text", value: `@[task:${id}] : update @[task:${id}] today` }],
+    };
+    remarkWorkspaceReferences()(tree);
+    expect(tree.children?.map((node) => node.value)).toEqual([
+      undefined,
+      ": update ",
+      undefined,
+      " today",
+    ]);
+  });
   test("keeps reference identity separate from surrounding message text", () => {
     const tree: Parameters<ReturnType<typeof remarkWorkspaceReferences>>[0] = {
       type: "paragraph",

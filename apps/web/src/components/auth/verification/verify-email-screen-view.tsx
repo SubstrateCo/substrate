@@ -34,7 +34,7 @@ export function VerifyEmailScreen({
           <>
             We sent a new verification link to{" "}
             <span className="font-medium wrap-anywhere text-foreground">{sentTo}</span>. Open it,
-            then sign in. Check your spam folder if it doesn't arrive.
+            then sign in. Check your spam folder if it doesn’t arrive.
           </>
         }
         footer={footer}
@@ -46,7 +46,7 @@ export function VerifyEmailScreen({
     );
   return (
     <AuthFrame
-      title={invalid ? "This verification link doesn't work" : "Verify your email"}
+      title={invalid ? "This verification link doesn’t work" : "Verify your email"}
       description={
         invalid
           ? "It may have expired or already been used. Send a new one and open it from your inbox."
@@ -58,7 +58,7 @@ export function VerifyEmailScreen({
         <EmailField defaultValue={email} />
         <FormMessage
           error={error}
-          errorDescription="We couldn't send a verification email. Please try again."
+          errorDescription="We couldn’t send a verification email. Please try again."
         />
         <PendingButton className="w-full" size="lg" pending={pending} pendingLabel="Sending.">
           {invalid ? "Send a new link" : "Resend verification email"}

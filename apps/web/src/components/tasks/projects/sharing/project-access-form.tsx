@@ -81,7 +81,7 @@ export function ProjectAccessForm({
               ? `${actor.name} will see every task, subtask, and comment in ${detail.project.name}. Their agents get the same access.`
               : "Choose a person in this workspace. Their agents get the same access."}
           </p>
-          <FormMessage error={error} errorDescription="Couldn't share this project. Try again." />
+          <FormMessage error={error} errorDescription="Couldn’t share this project. Try again." />
         </fieldset>
       </DialogBody>
       <DialogFooter>

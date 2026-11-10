@@ -70,7 +70,7 @@ for (const kind of ["dm", "channel"] as const) {
     if (kind === "channel") {
       await sender.page
         .getByRole("complementary", { name: "Conversations", exact: true })
-        .getByRole("button", { name: "Create channel", exact: true })
+        .getByRole("button", { name: "New channel", exact: true })
         .click();
       await sender.page.getByLabel("Channel name").fill(name);
       const people = sender.page.getByLabel("Members", { exact: true });

@@ -78,7 +78,9 @@ export function TaskListToolbar({
       <Select value={filters.assignee} onValueChange={(assignee) => set({ assignee })}>
         <SelectTrigger aria-label="Filter by assignee" className="max-w-48">
           <UserRound aria-hidden="true" className="text-muted-foreground" />
-          <SelectValue />
+          <span className="hidden @2xl:inline">
+            <SelectValue />
+          </span>
         </SelectTrigger>
         <SelectContent position="popper" align="start">
           <SelectItem value="any">Any assignee</SelectItem>
@@ -100,7 +102,9 @@ export function TaskListToolbar({
       >
         <SelectTrigger aria-label="Sort tasks">
           <ArrowUpDown aria-hidden="true" className="text-muted-foreground" />
-          <SelectValue />
+          <span className="hidden @2xl:inline">
+            <SelectValue />
+          </span>
         </SelectTrigger>
         <SelectContent position="popper" align="start">
           {sortOptions.map((option) => (
@@ -122,7 +126,7 @@ export function TaskListToolbar({
               Clear filters
             </Button>
           )}
-          <p role="status" className="ml-auto text-xs text-muted-foreground tabular-nums">
+          <p role="status" className="text-xs text-muted-foreground tabular-nums">
             {shown} of {total}
           </p>
         </>

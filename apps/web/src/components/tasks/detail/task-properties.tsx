@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatDueDate } from "@/lib/format/date";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, ChevronDown } from "lucide-react";
 
 // Property values look like text until hovered, then act as menu buttons. The negative margin
 // lines their text up with plain values.
@@ -149,9 +149,13 @@ export function TaskProperties({
                 size="sm"
                 role="combobox"
                 aria-label={`Assignee: ${assigneeText}`}
-                className={trigger}
+                className={`${trigger} group/property`}
               >
                 <span className="flex min-w-0 items-center gap-2">{assigneeValue}</span>
+                <ChevronDown
+                  aria-hidden="true"
+                  className="text-muted-foreground opacity-0 group-hover/property:opacity-100 group-focus-visible/property:opacity-100"
+                />
               </Button>
             )}
           </AssigneePicker>
@@ -167,12 +171,16 @@ export function TaskProperties({
               variant="property"
               size="sm"
               aria-label={`Due date: ${dueText(task.dueDate)}`}
-              className={trigger}
+              className={`${trigger} group/property`}
             >
               <span className="flex items-center gap-2">
                 <CalendarDays aria-hidden="true" className="text-muted-foreground" />
                 {dueValue}
               </span>
+              <ChevronDown
+                aria-hidden="true"
+                className="text-muted-foreground opacity-0 group-hover/property:opacity-100 group-focus-visible/property:opacity-100"
+              />
             </Button>
           </TaskDueDatePicker>
         ) : (

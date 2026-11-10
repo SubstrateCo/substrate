@@ -39,12 +39,15 @@ export function AgentPageView({
   name,
   status,
   section,
+  unsaved = [],
   onSectionChange,
   children,
 }: {
   name: string;
   status?: WorkStatus;
   section: AgentPageSection;
+  /** Sections with unsaved changes; the section list marks them. */
+  unsaved?: readonly AgentPageSection[];
   onSectionChange: (section: AgentPageSection) => void;
   children: ReactNode;
 }) {
@@ -66,6 +69,7 @@ export function AgentPageView({
             label="Agent sections"
             groups={groups}
             value={section}
+            marked={unsaved}
             onChange={onSectionChange}
           />
           <div className="@container/content w-full max-w-4xl min-w-0 flex-1">{children}</div>

@@ -13,6 +13,7 @@ test("workspace creation can be canceled and only asks for a name initially", as
   await create.click();
   await user.page.getByRole("button", { name: "Create workspace", exact: true }).click();
   await expect(user.page.getByText("Enter a workspace name.")).toBeVisible();
+  await expect(user.page.getByText("Workspace slug: —")).toBeVisible();
   await expect(user.page.getByText("Enter a workspace slug.")).toHaveCount(0);
   await user.page.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(create).toBeFocused();
@@ -47,6 +48,9 @@ test("a visitor creates an organization before installing and can resume setup",
   const id = crypto.randomUUID();
   const email = `public-setup-${id}@example.test`;
   const password = `Setup-${id}!`;
+  await page.goto("/login");
+  const loginCard = await page.locator('main [data-slot="card"]').boundingBox();
+  expect(loginCard).not.toBeNull();
   await page.goto("/");
   await page.getByRole("link", { name: "Create organization", exact: true }).click();
   await signUp(page, email, password);
@@ -60,6 +64,12 @@ test("a visitor creates an organization before installing and can resume setup",
   await expect(
     page.getByRole("heading", { name: "Your workspace is ready", exact: true }),
   ).toBeVisible();
+  const setupCard = await page.locator('main [data-slot="card"]').boundingBox();
+  expect(setupCard).not.toBeNull();
+  expect(setupCard!.y).toBe(loginCard!.y);
+  const navigation = await page.getByRole("navigation", { name: "Account" }).boundingBox();
+  expect(navigation).not.toBeNull();
+  expect(navigation!.y + navigation!.height).toBeLessThan(setupCard!.y);
   await expect(page.getByRole("heading", { name: "Invite your team", exact: true })).toBeVisible();
   const session = await page.request.get("/api/v1/session");
   const organizationId = (await session.json()).data.session.activeOrganizationId;
@@ -89,7 +99,7 @@ test("a visitor creates an organization before installing and can resume setup",
   await expect(
     page.getByRole("heading", { name: "Your workspace is ready", exact: true }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "Choose another workspace", exact: true }).click();
+  await page.getByRole("link", { name: "Switch workspace", exact: true }).click();
   await expect(page.getByRole("button", { name: `Public ${id}`, exact: true })).toHaveCount(1);
 });
 
@@ -197,7 +207,7 @@ test("switching accounts keeps the intended invitation", async ({ account, clien
   const destination = `/accept-invitation/${id}`;
   await user.page.goto(destination);
   await expect(
-    user.page.getByRole("heading", { name: "This invitation isn't available" }),
+    user.page.getByRole("heading", { name: "This invitation isn’t available" }),
   ).toBeVisible();
   await expect(user.page.getByRole("link", { name: "Go to your workspaces" })).toBeVisible();
   await expect(
@@ -219,7 +229,7 @@ test("a canceled invitation cannot add membership", async ({ account, actors, cl
   const user = await client(account);
   await user.page.goto(`/accept-invitation/${id}`);
   await expect(
-    user.page.getByRole("heading", { name: "This invitation isn't available" }),
+    user.page.getByRole("heading", { name: "This invitation isn’t available" }),
   ).toBeVisible();
   await expect(user.page.getByRole("link", { name: "Go to your workspaces" })).toBeVisible();
   await expect(

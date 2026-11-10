@@ -4,13 +4,9 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
-import { Button } from "../../ui/button";
-import { Input } from "../../ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import type { WorkspaceReference } from "./entity-reference";
 import { ReferencePickerOption } from "./reference-picker-option";
-import { X } from "lucide-react";
 
 export type ReferenceKind = "task" | "project" | "person" | "agent" | "channel" | "thread";
 /** A picker tab: one kind, or "all" for a mixed list. */
@@ -43,7 +39,6 @@ export function ReferencePicker({
   results,
   loading = false,
   error,
-  onQueryChange,
   onKindChange,
   onRetry,
   onInsert,
@@ -63,7 +58,6 @@ export function ReferencePicker({
   }[];
   loading?: boolean;
   error?: Error | null;
-  onQueryChange: (query: string) => void;
   onKindChange: (kind: ReferenceTab) => void;
   onRetry?: () => void;
   onInsert: (token: string, reference: WorkspaceReference) => void;
@@ -101,8 +95,28 @@ export function ReferencePicker({
       asChild
     >
       <section
+        data-reference-picker=""
         aria-label="Insert workspace reference"
         className="flex max-h-96 min-h-0 flex-col gap-2 overflow-hidden p-2"
+        onKeyDown={(e) => {
+          if (e.nativeEvent.isComposing) return;
+          if (e.key === "Escape") {
+            e.preventDefault();
+            onClose();
+          }
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setIndex(Math.min(selectedIndex + 1, Math.max(0, available.length - 1)));
+          }
+          if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setIndex(Math.max(0, selectedIndex - 1));
+          }
+          if (e.key === "Enter") {
+            e.preventDefault();
+            if (selected) insert(selected);
+          }
+        }}
       >
         <div className="flex shrink-0 items-center gap-1">
           <TabsList aria-label="Reference type">
@@ -116,58 +130,8 @@ export function ReferencePicker({
               </TabsTrigger>
             ))}
           </TabsList>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                size="icon-xs"
-                variant="ghost"
-                className="ml-auto"
-                aria-label="Close references"
-                onClick={onClose}
-              >
-                <X aria-hidden="true" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Close references</TooltipContent>
-          </Tooltip>
         </div>
-        <div className="shrink-0">
-          <Input
-            aria-label="Search references"
-            placeholder={`Search ${kindLabels[kind].toLowerCase()}`}
-            value={query}
-            onChange={(e) => {
-              onQueryChange(e.target.value);
-            }}
-            role="combobox"
-            aria-expanded={true}
-            aria-controls={listId}
-            aria-autocomplete="list"
-            aria-activedescendant={selectedId}
-            onKeyDown={(e) => {
-              if (e.nativeEvent.isComposing) return;
-              if (e.key === "Escape") {
-                e.preventDefault();
-                e.stopPropagation();
-                onClose();
-              }
-              if (e.key === "ArrowDown") {
-                e.preventDefault();
-                setIndex(Math.min(selectedIndex + 1, Math.max(0, available.length - 1)));
-              }
-              if (e.key === "ArrowUp") {
-                e.preventDefault();
-                setIndex(Math.max(0, selectedIndex - 1));
-              }
-              if (e.key === "Enter") {
-                e.preventDefault();
-                e.stopPropagation();
-                if (selected) insert(selected);
-              }
-            }}
-          />
-        </div>
+        {query && <p className="px-2 text-xs text-muted-foreground">Results for “{query}”</p>}
         {kinds.map((type) => (
           <TabsContent key={type} value={type} forceMount hidden={type !== kind} asChild>
             <div ref={type === kind ? list : undefined} className="min-h-8 flex-1 overflow-y-auto">

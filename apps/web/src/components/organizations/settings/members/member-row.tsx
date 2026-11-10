@@ -82,6 +82,7 @@ export function MemberRow({
         >
           <SelectTrigger
             ref={roleTrigger}
+            variant="ghost"
             size="sm"
             className="w-28"
             aria-label={`Role for ${member.name}`}

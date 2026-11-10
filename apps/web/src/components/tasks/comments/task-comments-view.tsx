@@ -28,7 +28,7 @@ export function TaskComments({
 }) {
   const unavailable = isAccessFailure(error);
   return (
-    <section aria-label="Task comments" className="space-y-3 border-t pt-5">
+    <section aria-label="Task comments" className="space-y-3">
       <h3 className="flex h-7 items-center gap-1.5 text-xs font-medium text-muted-foreground">
         Comments
         {!!comments.length && !unavailable && (
@@ -39,7 +39,7 @@ export function TaskComments({
       {error && (
         <ErrorState
           compact
-          title={unavailable ? "Comments unavailable" : "Couldn't load comments"}
+          title={unavailable ? "Comments unavailable" : "Couldn’t load comments"}
           onRetry={onRetry}
         />
       )}

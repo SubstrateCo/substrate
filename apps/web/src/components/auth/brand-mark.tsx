@@ -14,7 +14,7 @@ export function BrandMark({ className }: { className?: string }) {
         <rect x="6" y="13" width="5" height="5" rx="1.25" fill="currentColor" opacity="0.6" />
         <rect x="13" y="13" width="5" height="5" rx="2.5" fill="currentColor" />
       </svg>
-      Startup OS
+      <span className="truncate">Startup OS</span>
     </span>
   );
 }

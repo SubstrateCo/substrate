@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import {
   disconnectSharing,
@@ -85,11 +85,34 @@ export function SharingManager({
   onRestoreFocus?: () => void;
 }) {
   const details = useQuery(sharingOptions(organizationId, conversationId));
-  const now = useExpiryTime(details.data?.invitations.map((invite) => invite.expiresAt));
+  // Losing access is not a hiccup: nothing cached may stay on screen or stay actionable. A
+  // temporary failure keeps the last list, marked as possibly out of date.
+  const blocked = isAccessFailure(details.error);
+  const data = blocked ? undefined : details.data;
+  const now = useExpiryTime(data?.invitations.map((invite) => invite.expiresAt));
   const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [confirmation, setConfirmation] = useState<Confirmation>();
+  // The confirmation is mounted by state, so it has no trigger of its own: remember the row
+  // button, and fall back to the invite field once that row is gone.
+  const confirmLauncher = useRef<HTMLElement | null>(null);
+  const confirm = (next: Confirmation) => {
+    confirmLauncher.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setConfirmation(next);
+  };
+  const restoreConfirmFocus = () => {
+    if (confirmLauncher.current?.isConnected) confirmLauncher.current.focus();
+    else document.getElementById("sharing-email")?.focus();
+  };
+  // Drafts and a pending confirmation belong to authority that is gone: drop them, so they do not
+  // come back if access does.
+  if (blocked && (confirmation || email || confirmed)) {
+    setConfirmation(undefined);
+    setEmail("");
+    setConfirmed(false);
+  }
   const action = useMutation({
     mutationFn: async (input: Action) => {
       const base = { organizationId, conversationId };
@@ -118,8 +141,7 @@ export function SharingManager({
       ]);
     },
   });
-  const data = details.data;
-  const copy = confirmation && confirmCopy[confirmation.kind];
+  const copy = confirmation && !blocked && confirmCopy[confirmation.kind];
   return (
     <>
       <Dialog
@@ -162,14 +184,24 @@ export function SharingManager({
             </DialogHeader>
             <DialogBody>
               {details.isPending && <LoadingState label="Loading sharing…" rows={2} />}
-              {details.error && (
+              {details.error && !data && (
                 <ErrorState
                   title="Sharing unavailable"
-                  description="Only the people who manage this conversation, and organization admins, can manage sharing."
-                  // Missing permission does not change by asking again.
-                  onRetry={
-                    isAccessFailure(details.error) ? undefined : () => void details.refetch()
+                  description={
+                    blocked
+                      ? "Only the people who manage this conversation, and organization admins, can manage sharing."
+                      : "We couldn’t load sharing. Check your connection and try again."
                   }
+                  // Missing permission does not change by asking again.
+                  onRetry={blocked ? undefined : () => void details.refetch()}
+                />
+              )}
+              {details.error && data && (
+                <ErrorState
+                  compact
+                  title="Couldn’t refresh sharing"
+                  description="This list is from earlier and may be out of date."
+                  onRetry={() => void details.refetch()}
                 />
               )}
               {data && (
@@ -209,7 +241,7 @@ export function SharingManager({
                     now={now}
                     pending={action.isPending}
                     onDisconnect={(id) =>
-                      setConfirmation({
+                      confirm({
                         kind: "disconnect",
                         id,
                         name:
@@ -218,7 +250,7 @@ export function SharingManager({
                       })
                     }
                     onRemove={(id) =>
-                      setConfirmation({
+                      confirm({
                         kind: "remove",
                         id,
                         name:
@@ -228,7 +260,7 @@ export function SharingManager({
                     }
                     onResend={(id) => action.mutate({ kind: "resend", id })}
                     onRevoke={(id) =>
-                      setConfirmation({
+                      confirm({
                         kind: "revoke",
                         id,
                         name:
@@ -246,20 +278,25 @@ export function SharingManager({
                 />
               )}
             </DialogBody>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
-              {data && (
-                <PendingButton
-                  type="submit"
-                  pending={action.isPending && action.variables.kind === "invite"}
-                  pendingLabel="Sending…"
-                  disabled={!confirmed}
-                >
-                  Send invitation
-                </PendingButton>
-              )}
+            <DialogFooter className="items-center sm:justify-between">
+              <p className="text-sm text-muted-foreground" aria-live="polite">
+                {data && !confirmed ? "Confirm history access to send." : null}
+              </p>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                <Button type="button" variant="outline" onClick={onClose}>
+                  Cancel
+                </Button>
+                {data && (
+                  <PendingButton
+                    type="submit"
+                    pending={action.isPending && action.variables.kind === "invite"}
+                    pendingLabel="Sending…"
+                    disabled={!confirmed}
+                  >
+                    Send invitation
+                  </PendingButton>
+                )}
+              </div>
             </DialogFooter>
           </NativeForm>
         </DialogContent>
@@ -275,6 +312,7 @@ export function SharingManager({
           error={action.error}
           errorDescription="We couldn’t change access. Try again."
           onClose={() => setConfirmation(undefined)}
+          onRestoreFocus={restoreConfirmFocus}
           onConfirm={() => action.mutate({ kind: confirmation.kind, id: confirmation.id })}
         />
       )}

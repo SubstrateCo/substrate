@@ -36,14 +36,14 @@ export function ForgotPasswordForm({
   return (
     <AuthFrame
       title="Reset your password"
-      description="Enter your account email. We'll send you a link to choose a new password."
+      description="Enter your account email. We’ll send you a link to choose a new password."
       footer={footer}
     >
       <NativeForm pending={pending} onSubmit={onSubmit}>
         <EmailField />
         <FormMessage
           error={error}
-          errorDescription="We couldn't send a reset link. Please try again."
+          errorDescription="We couldn’t send a reset link. Please try again."
         />
         <PendingButton className="w-full" size="lg" pending={pending} pendingLabel="Sending.">
           Send reset link

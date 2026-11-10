@@ -55,7 +55,10 @@ export function AgentActivity({
 }) {
   const activity = useInfiniteQuery(agentActivityOptions(userId, organizationId, agentId));
   const conversations = useQuery(conversationsQueryOptions(organizationId));
-  const turns = activity.data?.pages.flatMap((page) => page.turns) ?? [];
+  // The list shows each turn's start time, so it is ordered by that time, newest first.
+  const turns = (activity.data?.pages.flatMap((page) => page.turns) ?? []).sort(
+    (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
+  );
   const now = useNow(turns.some((turn) => liveTurnStatuses.includes(turn.status)));
   // Name only conversations the viewer can open now. Others stay placeholders.
   const place = (turn: AgentTurnView) => {
@@ -72,10 +75,9 @@ export function AgentActivity({
         turn.activity ??
         (turn.outcome ? outcomeLabels[turn.outcome] : undefined) ??
         subjectFallbacks[turn.sessionKind],
-      note: status.tone === "failed" ? failedNote : undefined,
+      note: status.tone === "failed" ? turn.error?.trim() || failedNote : undefined,
       place: place(turn),
       kind: sessionKindLabels[turn.sessionKind],
-      unattended: turn.kind === "unattended",
       status,
       createdAt: turn.createdAt,
       selected: turn.id === selectedTurnId,

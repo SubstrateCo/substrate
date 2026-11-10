@@ -47,7 +47,7 @@ export function WorkDiscussions({
     </ul>
   );
   const failure = error && (
-    <ErrorState compact title="Couldn't load discussions" onRetry={onRetry} />
+    <ErrorState compact title="Couldn’t load discussions" onRetry={onRetry} />
   );
   if (variant === "page")
     return (
@@ -70,11 +70,9 @@ export function WorkDiscussions({
   const empty = !loading && !error && !uniqueRows.length;
   if (empty)
     return (
-      <section aria-label={label}>
-        <h3 className="flex h-7 items-center gap-1.5 text-xs text-muted-foreground">
-          {label}
-          <span>None</span>
-        </h3>
+      <section aria-label={label} className="space-y-1">
+        <h3 className="flex h-7 items-center text-xs font-medium text-muted-foreground">{label}</h3>
+        <p className="text-sm text-muted-foreground">No linked discussions</p>
       </section>
     );
   const expanded = open ?? (uniqueRows.length > 0 || !!error);

@@ -46,28 +46,29 @@ test("switching conversations cancels reference search and does not reuse the pr
   await pauseClock(page);
   const requests = searches(page);
   const editor = page.getByRole("textbox", { name: /^Message / });
-  const input = page.getByRole("combobox", { name: "Search references" });
+  // Only the member's name contains this word; the sender shares the first word of its name.
+  const memberQuery = actors.member.name.split(" ")[1];
   const member = page.getByRole("option", { name: actors.member.name, exact: true });
   await editor.fill("@");
   await page.getByRole("tab", { name: "People", exact: true }).click();
-  await input.fill(actors.member.name);
+  await editor.fill(`@${memberQuery}`);
   await visibleWithClock(page, member);
-  await input.fill("discard on conversation switch");
+  await editor.fill("@discard-on-conversation-switch");
   await page.getByRole("button", { name: second.name, exact: true }).click();
   await expect(editor).toBeEmpty();
   await expect(member).toHaveCount(0);
   await page.clock.runFor(300);
-  expect(requests.some((request) => request.query === "discard on conversation switch")).toBe(
+  expect(requests.some((request) => request.query === "discard-on-conversation-switch")).toBe(
     false,
   );
 
   await editor.fill("@");
   await page.getByRole("tab", { name: "People", exact: true }).click();
-  await input.fill(actors.member.name);
+  await editor.fill(`@${memberQuery}`);
   const response = page.waitForResponse((response) => {
     if (new URL(response.url()).pathname !== "/api/v1/context/search") return false;
     const body = response.request().postDataJSON();
-    return body.conversationId === second.id && body.query === actors.member.name;
+    return body.conversationId === second.id && body.query === memberQuery;
   });
   await expect(member).toHaveCount(0);
   await page.clock.runFor(199);

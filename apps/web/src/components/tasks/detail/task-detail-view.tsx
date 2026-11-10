@@ -73,7 +73,7 @@ export function TaskDetail({
                   {parent.title}
                 </button>
               ) : (
-                <span className="truncate">A task you can't open</span>
+                <span className="truncate">A task you can’t open</span>
               )}
             </>
           )}
@@ -133,7 +133,7 @@ export function TaskDetail({
             <TaskProperties detail={detail} task={task} canEdit={canEdit} onChange={onUpdate} />
             <FormMessage
               error={updateError}
-              errorDescription="Couldn't update this task. Your change was undone."
+              errorDescription="Couldn’t update this task. Your change was undone."
             />
           </div>
           <TaskSubtasks

@@ -178,7 +178,7 @@ export function ModelPicker({
         className="max-h-(--radix-popover-content-available-height) w-(--radix-popover-trigger-width) min-w-80"
         aria-label="Choose a model"
       >
-        <div className="flex items-center gap-2 border-b p-2">
+        <div className="flex items-center gap-3 border-b p-2">
           <div className="min-w-0 flex-1 overflow-x-auto">
             <SegmentedControl
               aria-label="Runtime"

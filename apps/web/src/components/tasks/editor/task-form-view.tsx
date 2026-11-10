@@ -134,7 +134,6 @@ export function TaskForm({
             field={field}
             id={`${id}-title`}
             label="Task title"
-            variant="surface"
             autoFocus
             aria-required
             maxLength={300}
@@ -148,7 +147,6 @@ export function TaskForm({
             id={`${id}-description`}
             label="Task description"
             multiline
-            variant="surface"
             maxLength={20000}
           />
         )}
@@ -158,7 +156,7 @@ export function TaskForm({
       )}
       <FormMessage
         error={error}
-        errorDescription="Couldn't save this task. Check its fields and make sure the assignee still has project access."
+        errorDescription="Couldn’t save this task. Check its fields and make sure the assignee still has project access."
       />
     </fieldset>
   );

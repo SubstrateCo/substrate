@@ -14,7 +14,7 @@ const instructions = (page: Page) =>
 /** Creates an agent from the Agents app, which then opens its settings. */
 async function createAgent(user: Client, name: string) {
   await visit(user, undefined, "/agents");
-  await user.page.getByLabel("Create agent", { exact: true }).first().click();
+  await user.page.getByLabel("New agent", { exact: true }).first().click();
   await user.page.getByLabel("Agent name", { exact: true }).fill(name);
   await user.page
     .getByRole("textbox", { name: "What should it help with? (optional)", exact: true })

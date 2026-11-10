@@ -1,3 +1,5 @@
+import type { KeyboardEvent } from "react";
+
 import { isAccessFailure } from "../../feedback/request-failure";
 import {
   PageSidebar,
@@ -9,6 +11,20 @@ import type { DirectMessageAgent } from "@/components/messaging/conversations/co
 import { ConversationSection } from "@/components/messaging/conversations/conversation-section";
 import type { Conversation } from "@/lib/messaging/conversations";
 import type { PickerPerson } from "@/lib/people/people-picker";
+
+/** ArrowUp and ArrowDown move focus between conversations, across sections. */
+function moveBetweenConversations(event: KeyboardEvent<HTMLDivElement>) {
+  const move = { ArrowDown: 1, ArrowUp: -1 }[event.key];
+  const current = event.target;
+  if (!move || !(current instanceof HTMLElement) || !current.matches("[data-conversation-item]")) {
+    return;
+  }
+  const items = [...event.currentTarget.querySelectorAll<HTMLElement>("[data-conversation-item]")];
+  const index = items.indexOf(current) + move;
+  if (index < 0 || index >= items.length) return;
+  event.preventDefault();
+  items[index].focus();
+}
 
 export function ConversationSidebar({
   conversations,
@@ -28,7 +44,7 @@ export function ConversationSidebar({
   people?: PickerPerson[];
   agents?: DirectMessageAgent[];
   onSelect: (id: string) => void;
-  onCreate: (kind: Conversation["kind"]) => void;
+  onCreate: (kind: Conversation["kind"], launcher: HTMLElement | null) => void;
   onMessagePerson?: (person: PickerPerson) => void;
   onMessageAgent?: (agent: DirectMessageAgent) => void;
   loading?: boolean;
@@ -43,7 +59,7 @@ export function ConversationSidebar({
     <PageSidebar id="conversation-sidebar" aria-label="Conversations" aria-busy={loading}>
       <PageSidebarHeader title="Messages" />
       {showList ? (
-        <PageSidebarContent className="pt-0">
+        <PageSidebarContent className="pt-0" onKeyDown={moveBetweenConversations}>
           {errorState}
           {(["channel", "partner", "dm"] as const).map((section) => (
             <ConversationSection

@@ -157,6 +157,7 @@ export const designConfig = {
         "design/no-tooltip-on-toggle-item": "error",
         "design/page-header": "warn",
         "design/sentence-case": "warn",
+        "design/typographic-quotes": "warn",
       },
     },
     {
@@ -178,13 +179,18 @@ export const designConfig = {
         "design/no-solid-destructive": "off",
         "design/page-header": "off",
         "design/sentence-case": "off",
+        "design/typographic-quotes": "off",
         "shadcn/no-inline-styles": "off",
       },
     },
     {
       // Tests build dates and read schema messages to check them.
       files: [`${WEB}/**/*.test.ts`, `${WEB}/**/*.test.tsx`],
-      rules: { "design/no-adhoc-date-format": "off", "design/no-raw-validation-text": "off" },
+      rules: {
+        "design/no-adhoc-date-format": "off",
+        "design/no-raw-validation-text": "off",
+        "design/typographic-quotes": "off",
+      },
     },
     {
       files: [`${WEB}/lib/format/**`],

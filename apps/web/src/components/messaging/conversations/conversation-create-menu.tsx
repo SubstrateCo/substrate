@@ -29,7 +29,7 @@ function SectionAction({
   children,
 }: {
   label: string;
-  onClick: () => void;
+  onClick: (button: HTMLButtonElement) => void;
   children: ReactNode;
 }) {
   return (
@@ -40,7 +40,7 @@ function SectionAction({
           variant="ghost"
           className="[&_svg:not([class*='size-'])]:size-3.5"
           aria-label={label}
-          onClick={onClick}
+          onClick={(event) => onClick(event.currentTarget)}
         >
           {children}
         </Button>
@@ -61,7 +61,8 @@ export function ConversationCreateMenu({
   section: "channel" | "dm";
   people?: PickerPerson[];
   agents?: DirectMessageAgent[];
-  onCreate: (kind: Conversation["kind"]) => void;
+  /** `launcher` is the button that opened the dialog, so closing it can return focus there. */
+  onCreate: (kind: Conversation["kind"], launcher: HTMLElement | null) => void;
   onMessagePerson?: (person: PickerPerson) => void;
   onMessageAgent?: (agent: DirectMessageAgent) => void;
 }) {
@@ -70,13 +71,14 @@ export function ConversationCreateMenu({
   const { openSearch } = useWorkspaceSearch();
   // Acts after the menu has returned focus to its trigger, so a dialog restores focus there.
   const chosen = useRef<Choice | null>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   if (section === "channel") {
     return (
       <span className="flex items-center gap-0.5">
         <SectionAction label="Browse channels" onClick={() => openSearch("channel")}>
           <Compass />
         </SectionAction>
-        <SectionAction label="Create channel" onClick={() => onCreate("channel")}>
+        <SectionAction label="New channel" onClick={(button) => onCreate("channel", button)}>
           <Plus />
         </SectionAction>
       </span>
@@ -110,6 +112,7 @@ export function ConversationCreateMenu({
         <TooltipTrigger asChild>
           <PopoverTrigger asChild>
             <Button
+              ref={trigger}
               size="icon-xs"
               variant="ghost"
               className="[&_svg:not([class*='size-'])]:size-3.5"
@@ -128,7 +131,7 @@ export function ConversationCreateMenu({
         onCloseAutoFocus={() => {
           const choice = chosen.current;
           chosen.current = null;
-          if (choice?.kind === "create") onCreate(choice.conversation);
+          if (choice?.kind === "create") onCreate(choice.conversation, trigger.current);
           else if (choice?.kind === "person") onMessagePerson?.(choice.person);
           else if (choice?.kind === "agent") onMessageAgent?.(choice.agent);
         }}

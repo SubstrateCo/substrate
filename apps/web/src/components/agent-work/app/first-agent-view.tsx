@@ -35,7 +35,7 @@ export function FirstAgentView({ onCreate }: { onCreate: () => void }) {
           />
           <Button type="button" onClick={onCreate}>
             <Plus aria-hidden="true" />
-            Create agent
+            New agent
           </Button>
         </div>
         <ol aria-label="How agents work" className="grid gap-3 sm:grid-cols-3">

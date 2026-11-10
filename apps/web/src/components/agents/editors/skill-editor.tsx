@@ -23,6 +23,26 @@ const skillFields = saveSkillInput.omit({ id: true }).extend({
     ),
 });
 
+const skillName = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/** "Release notes" becomes "release-notes", so people can type words and get a valid name. */
+function toSkillName(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64)
+    .replace(/-+$/, "");
+}
+
+/** The name an existing skill opens with: always one the editor accepts. */
+function openingName(skill?: HarnessSkill) {
+  if (!skill) return "";
+  if (skillName.test(skill.name)) return skill.name;
+  return skillName.test(skill.id) ? skill.id : toSkillName(skill.name);
+}
+
 const contentLimit = 100_000;
 
 /** The format, and the length once it nears the limit. */
@@ -46,7 +66,7 @@ export function SkillEditor({
   const [error, setError] = useState<string>();
   const form = useForm({
     defaultValues: {
-      name: skill?.name ?? "",
+      name: openingName(skill),
       description: skill?.description ?? "",
       content: skill?.content ?? "",
     },
@@ -67,8 +87,8 @@ export function SkillEditor({
     <form.Subscribe selector={(state) => state.isSubmitting}>
       {(isSubmitting) => (
         <EditorDialog
-          title={skill ? `Edit ${skill.name}` : "Create skill"}
-          saveLabel="Save skill"
+          title={skill ? "Edit skill" : "New skill"}
+          saveLabel={skill ? "Save skill" : "Create skill"}
           description="A skill is a short guide the agent opens when a task matches its description. It’s saved as a file in this agent’s folder on this desktop."
           pending={isSubmitting}
           onClose={onClose}
@@ -79,18 +99,23 @@ export function SkillEditor({
           <form.Field name="name">
             {(field) => (
               <FormTextField
-                field={field}
+                // Blur turns "Release notes" into "release-notes" so the name is always valid.
+                field={{
+                  state: field.state,
+                  handleChange: field.handleChange,
+                  validate: field.validate,
+                  handleBlur: () => {
+                    const name = toSkillName(field.state.value);
+                    if (name && name !== field.state.value) field.handleChange(name);
+                    field.handleBlur();
+                  },
+                }}
                 id="skill-name"
                 label="Skill name"
-                description={
-                  skill && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(skill.name)
-                    ? "Change this name to lowercase words joined by hyphens, like release-notes, before saving."
-                    : "Lowercase words joined by hyphens, like release-notes."
-                }
+                description="Words joined by hyphens, like release-notes. Other words are joined for you."
                 placeholder="release-notes"
                 required
                 maxLength={64}
-                pattern="[a-z0-9]+(-[a-z0-9]+)*"
               />
             )}
           </form.Field>

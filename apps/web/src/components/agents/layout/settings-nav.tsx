@@ -16,11 +16,14 @@ export function SettingsNav<T extends string>({
   label,
   groups,
   value,
+  marked = [],
   onChange,
 }: {
   label: string;
   groups: readonly SettingsNavGroup<T>[];
   value: T;
+  /** Items that hold unsaved changes. They get a dot. */
+  marked?: readonly T[];
   onChange: (value: T) => void;
 }) {
   return (
@@ -54,6 +57,13 @@ export function SettingsNav<T extends string>({
             >
               <Icon aria-hidden="true" />
               {itemLabel}
+              {marked.includes(item) && (
+                // Decoration only: the unsaved-changes bar and each card footer say it in words.
+                <span
+                  aria-hidden="true"
+                  className="ml-auto size-1.5 shrink-0 rounded-full bg-warning"
+                />
+              )}
             </Button>
           ))}
         </div>

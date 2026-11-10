@@ -45,7 +45,7 @@ export function TaskSubtasks({
           </Tooltip>
         )}
       </div>
-      {!subtasks.length && <p className="text-sm text-muted-foreground">No subtasks.</p>}
+      {!subtasks.length && <p className="text-sm text-muted-foreground">No subtasks</p>}
       {!!subtasks.length && (
         <ul className="-mx-2 grid gap-px">
           {subtasks.map((task) => (

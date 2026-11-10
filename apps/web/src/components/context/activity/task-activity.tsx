@@ -48,7 +48,7 @@ export function TaskActivity({
           {loading && !visible.length && (
             <LoadingState label="Loading activity" variant="compact" />
           )}
-          {error && <ErrorState compact title="Couldn't load activity" onRetry={onRetry} />}
+          {error && <ErrorState compact title="Couldn’t load activity" onRetry={onRetry} />}
           {!loading && !error && !visible.length && (
             <p className="text-sm text-muted-foreground">No activity yet.</p>
           )}

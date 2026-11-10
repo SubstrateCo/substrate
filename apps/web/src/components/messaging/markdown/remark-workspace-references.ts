@@ -46,6 +46,12 @@ export function remarkWorkspaceReferences() {
           nodes.push({ type: "text", value: child.value.slice(start) });
         return nodes;
       });
+      for (let i = 1; i < node.children.length; i++) {
+        const previous = node.children[i - 1];
+        const current = node.children[i];
+        if (previous.type === "workspaceReference" && current.type === "text" && current.value)
+          current.value = current.value.replace(/^[ \t]+(?=[,.;:!?])/, "");
+      }
     };
     visit(tree);
   };

@@ -1,9 +1,11 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 import { PersonAvatar } from "@/components/people/person-avatar";
+import { FieldError } from "@/components/ui/field";
 import {
   addTypedRecipients,
   isEmailAddress,
+  limitMessage,
   matchPeople,
   recipientFor,
   type PickedRecipient,
@@ -18,9 +20,13 @@ const separators = new Set([",", ";", " "]);
  * a removable chip, and, with `allowEmail`, offers "Invite <email>" for an address that matches no
  * one. Typing a separator, pasting a list, or leaving the field adds complete addresses.
  *
- * Suggestions open when the person types or presses ArrowDown, never on focus. They sit under the
- * field, in the flow of the form, so they push the rest of a dialog down instead of covering its
- * consent text or footer. A pick closes them; hold Shift to keep choosing.
+ * Suggestions open when the person types or presses ArrowDown (first option) or ArrowUp (last),
+ * never on focus. They sit under the field, in the flow of the form, so they push the rest of a
+ * dialog down instead of covering its consent text or footer. A pick closes them; hold Shift to
+ * keep choosing.
+ *
+ * With `max`, a paste that holds more addresses than fit is refused whole: the text stays in the
+ * field and `limitText` says why. The field stays on screen while it holds text, even when full.
  *
  * Label it with a `FieldLabel htmlFor={id}`. It owns no validation; pass `invalid` and
  * `describedBy` from the form, and use `onPendingTextChange` to refuse a submit while unfinished
@@ -34,6 +40,7 @@ export function PeoplePicker({
   onPendingTextChange,
   allowEmail = true,
   max,
+  limitText,
   placeholder,
   disabled = false,
   invalid = false,
@@ -49,8 +56,10 @@ export function PeoplePicker({
   onPendingTextChange?: (text: string) => void;
   /** Allow addresses that match none of `people`, such as people to invite. */
   allowEmail?: boolean;
-  /** The most people to choose. The input hides when the limit is reached. */
+  /** The most people to choose. The input hides when the limit is reached and holds no text. */
   max?: number;
+  /** Shown when pasted addresses do not fit in `max`. Defaults to "Choose one person." */
+  limitText?: string;
   placeholder?: string;
   disabled?: boolean;
   invalid?: boolean;
@@ -61,6 +70,8 @@ export function PeoplePicker({
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
+  // Set while the text in the field holds more addresses than `max` leaves room for.
+  const [overflowing, setOverflowing] = useState(false);
   const anchor = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLDivElement>(null);
@@ -68,6 +79,8 @@ export function PeoplePicker({
   const focusAfterChange = useRef<"input" | "chip">(undefined);
   const scrollToActive = useRef(false);
   const full = max !== undefined && value.length >= max;
+  const noticeId = `${listId}-limit`;
+  const notice = overflowing && !invalid ? (limitText ?? limitMessage(max ?? 1)) : undefined;
   const typed = recipientFor(query, people, allowEmail);
   const invite =
     typed && !typed.person && !value.some((entry) => entry.email === typed.email)
@@ -87,6 +100,7 @@ export function PeoplePicker({
 
   const setText = (text: string) => {
     setQuery(text);
+    setOverflowing(false);
     onPendingTextChange?.(text);
   };
   const choose = (recipient: PickedRecipient, keepOpen: boolean) => {
@@ -99,12 +113,15 @@ export function PeoplePicker({
   const addTyped = (text: string, refocus = false) => {
     const result = addTypedRecipients(value, text, people, { allowEmail, max });
     if (result.value.length !== value.length) {
+      // Text left in the field keeps focus, so it can be corrected.
       if (refocus && max !== undefined && result.value.length >= max) {
-        focusAfterChange.current = "chip";
+        focusAfterChange.current = result.rest ? "input" : "chip";
       }
       onValueChange(result.value);
     }
     setText(result.rest);
+    // The refused text stays; say why. Set after `setText`, which clears the notice.
+    setOverflowing(result.overflow);
     setOpen(false);
   };
   const remove = (email: string) => {
@@ -114,11 +131,16 @@ export function PeoplePicker({
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.nativeEvent.isComposing) return;
     const move = { ArrowDown: 1, ArrowUp: -1 }[event.key];
-    if (move && options.length) {
+    if (move && options.length && !full) {
       event.preventDefault();
       scrollToActive.current = true;
-      setOpen(true);
-      setActive((activeIndex + move + options.length) % options.length);
+      if (showOptions) {
+        setActive((activeIndex + move + options.length) % options.length);
+      } else {
+        // A closed list opens on the end the arrow points away from.
+        setOpen(true);
+        setActive(move > 0 ? 0 : options.length - 1);
+      }
     } else if (event.key === "Enter" && showOptions && options[activeIndex]) {
       event.preventDefault();
       choose(options[activeIndex], event.shiftKey);
@@ -170,7 +192,7 @@ export function PeoplePicker({
         data-slot="people-picker"
         data-disabled={disabled || undefined}
         aria-invalid={invalid || undefined}
-        className="flex min-h-8 w-full flex-wrap items-center gap-1 rounded-lg border border-input bg-transparent p-1 transition duration-150 ease-out focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:bg-input/30 dark:aria-invalid:border-destructive/50 data-disabled:pointer-events-none data-disabled:opacity-50"
+        className="flex min-h-8 w-full flex-wrap items-center gap-1 rounded-lg border border-input bg-transparent px-1 py-0.5 transition duration-150 ease-out focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:bg-input/30 dark:aria-invalid:border-destructive/50 data-disabled:pointer-events-none data-disabled:opacity-50"
         onPointerDown={(event) => {
           if (event.target === event.currentTarget) {
             event.preventDefault();
@@ -186,7 +208,7 @@ export function PeoplePicker({
             onRemove={() => remove(recipient.email)}
           />
         ))}
-        {!full && (
+        {(!full || query !== "") && (
           <input
             ref={input}
             id={id}
@@ -202,7 +224,9 @@ export function PeoplePicker({
             aria-controls={showOptions ? listId : undefined}
             aria-activedescendant={showOptions ? optionId(activeIndex) : undefined}
             aria-invalid={invalid || undefined}
-            aria-describedby={describedBy}
+            aria-describedby={
+              [describedBy, notice ? noticeId : undefined].filter(Boolean).join(" ") || undefined
+            }
             className="h-6 min-w-32 flex-1 bg-transparent px-1.5 text-base outline-none placeholder:text-muted-foreground md:text-sm"
             onChange={(event) => {
               setText(event.target.value);
@@ -224,6 +248,7 @@ export function PeoplePicker({
           />
         )}
       </div>
+      {notice && <FieldError id={noticeId}>{notice}</FieldError>}
       {showOptions && (
         <div
           ref={list}

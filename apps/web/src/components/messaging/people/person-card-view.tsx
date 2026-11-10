@@ -48,7 +48,7 @@ function Header({
         <AvatarFallback>{initials(name)}</AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+        <div className="flex min-w-0 items-center gap-1.5">
           <p className="min-w-0 truncate font-semibold">{name}</p>
           {tags}
         </div>

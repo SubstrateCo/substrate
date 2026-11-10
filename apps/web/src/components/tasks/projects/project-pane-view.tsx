@@ -2,6 +2,7 @@ import type { TaskStatus } from "@startup-os/contracts/tasks";
 
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 
+import { TaskInspectorActive } from "../detail/task-detail";
 import { TaskList } from "../list/task-list";
 import type { ProjectDetail, Task } from "../types";
 import { TaskCreationDialog } from "./pane/task-creation-dialog";
@@ -83,7 +84,7 @@ export function ProjectPane({
         ) : (
           <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-6">
             <ErrorState
-              title={isAccessFailure(error) ? "Project unavailable" : "Couldn't load project"}
+              title={isAccessFailure(error) ? "Project unavailable" : "Couldn’t load project"}
               description={
                 isAccessFailure(error)
                   ? "This project was removed or you no longer have access."
@@ -186,7 +187,7 @@ export function ProjectPane({
               />
             </TabsContent>
             <TabsContent value="discussions" className="min-h-0 overflow-y-auto">
-              <div className="max-w-3xl p-6">{context}</div>
+              <div className="p-6">{context}</div>
             </TabsContent>
             {/* Stays mounted so an unsaved project name or description survives a tab change. */}
             <TabsContent
@@ -261,7 +262,7 @@ export function ProjectPane({
       {pendingTab && (
         <ConfirmDialog
           title="Discard unsaved changes?"
-          description="Your task edits or comment haven't been saved."
+          description="Your task edits or comment haven’t been saved."
           confirmLabel="Discard changes"
           cancelLabel="Keep editing"
           pendingLabel="Discarding…"
@@ -314,8 +315,10 @@ function TaskAside({
           : "pointer-events-none duration-150 outline-none motion-safe:animate-out motion-safe:fade-out-0 motion-safe:slide-out-to-right-2"
       }
     >
-      {/* oxlint-disable-next-line react/refs -- Exit content is an inert snapshot. */}
-      {open ? children : lastContent.current}
+      <TaskInspectorActive.Provider value={open}>
+        {/* oxlint-disable-next-line react/refs -- Exit content is an inert snapshot. */}
+        {open ? children : lastContent.current}
+      </TaskInspectorActive.Provider>
     </PageAside>
   );
 }

@@ -18,6 +18,7 @@ export function MessageList({
   header,
   footer,
   previousDate,
+  olderPage,
 }: {
   messages: Message[];
   organizationId: string;
@@ -28,6 +29,7 @@ export function MessageList({
   /** Floats over the bottom of the list, such as a jump to the latest messages. */
   footer?: ReactNode;
   previousDate?: Message["createdAt"];
+  olderPage?: boolean;
 }) {
   const context = useQuery(
     messagePageOptions(
@@ -38,7 +40,12 @@ export function MessageList({
   );
   const contextById = new Map(context.data?.map((row) => [row.messageId, row]));
   return (
-    <MessageListView lastId={messages.at(-1)?.id} header={header} footer={footer}>
+    <MessageListView
+      lastId={messages.at(-1)?.id}
+      header={header}
+      footer={footer}
+      olderPage={olderPage}
+    >
       {messageRows(messages).map(({ message, newDay, grouped }, index) => (
         <Fragment key={message.id}>
           {newDay &&

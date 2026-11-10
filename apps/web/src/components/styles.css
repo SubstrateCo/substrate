@@ -50,6 +50,7 @@
   --color-rail-foreground: var(--rail-foreground);
   --color-destructive-solid: var(--destructive-solid);
   --color-row-hover: var(--row-hover);
+  --color-row-highlight: var(--row-highlight);
   --color-row-selected: var(--row-selected);
   --color-row-selected-foreground: var(--row-selected-foreground);
   /* Motion: strong ease-out for every enter, exit, and press. See apps/web/DESIGN.md § 6. */
@@ -119,6 +120,8 @@
   --rail-foreground: oklch(0.38 0.025 275);
   --destructive-solid: oklch(0.54 0.21 27);
   --row-hover: oklch(0.25 0.03 275 / 5%);
+  /* The keyboard cursor in a palette or picker: neutral, so it never reads as a chosen row. */
+  --row-highlight: oklch(0.25 0.03 275 / 8%);
   --row-selected: oklch(0.92 0.035 280);
   --row-selected-foreground: oklch(0.36 0.15 280);
   --surface-highlight: oklch(1 0 0 / 25%);
@@ -131,7 +134,7 @@
 .dark {
   color-scheme: dark;
   --background: oklch(0.18 0.012 275);
-  --foreground: oklch(0.93 0.008 275);
+  --foreground: oklch(0.91 0.008 275);
   --card: oklch(0.235 0.014 275);
   --card-foreground: var(--foreground);
   --popover: oklch(0.265 0.016 275);
@@ -149,11 +152,14 @@
   --input: oklch(0.52 0.016 275);
   --control-border: oklch(0.4 0.014 275);
   --ring: oklch(0.7 0.12 280);
-  /* Light text on a dark ground looks heavier, so every weight steps down a little. */
-  --font-weight-normal: 380;
-  --font-weight-medium: 460;
-  --font-weight-semibold: 570;
-  --font-weight-bold: 660;
+  /*
+   * Light text on a dark ground looks heavier, and Windows ignores font smoothing, so every
+   * weight steps down by about 60 and the text colour sits a little below white.
+   */
+  --font-weight-normal: 340;
+  --font-weight-medium: 430;
+  --font-weight-semibold: 520;
+  --font-weight-bold: 620;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -175,6 +181,7 @@
   --rail-foreground: oklch(0.94 0.014 280);
   --destructive-solid: oklch(0.56 0.2 25);
   --row-hover: oklch(1 0 0 / 5%);
+  --row-highlight: oklch(1 0 0 / 9%);
   --row-selected: oklch(0.34 0.06 280);
   --row-selected-foreground: oklch(0.97 0.01 280);
   --surface-highlight: oklch(1 0 0 / 2%);
@@ -207,6 +214,11 @@
   /* Main page outlet beside any page sidebar. Overlays anchor to it to center on page content. */
   [data-page-outlet] {
     anchor-name: --page-outlet;
+  }
+  /* The date picker's grid: a 28px cell and a soft corner. */
+  [data-slot="calendar"] {
+    --cell-radius: var(--radius-md);
+    --cell-size: calc(var(--spacing) * 7);
   }
   body {
     @apply bg-background text-foreground;

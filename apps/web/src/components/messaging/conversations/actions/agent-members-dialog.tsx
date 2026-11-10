@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { PendingButton } from "@/components/feedback/pending-button";
@@ -39,6 +39,18 @@ export function AgentMembersDialog({
   onRestoreFocus?: () => void;
 }) {
   const [removing, setRemoving] = useState<ConversationAgentOption>();
+  // The confirmation is mounted by state, so it has no trigger of its own. Return to the row
+  // button. It is replaced by a spinner while the agent is removed, so then the list is the
+  // nearest place left.
+  const list = useRef<HTMLUListElement>(null);
+  const launcher = useRef<HTMLElement | null>(null);
+  const restoreRowFocus = () => {
+    if (launcher.current?.isConnected) launcher.current.focus();
+    else {
+      const target = list.current?.querySelector<HTMLElement>("button:not(:disabled)");
+      (target ?? list.current?.closest<HTMLElement>('[role="dialog"]'))?.focus();
+    }
+  };
   const common = {
     title: `Your agents in ${name}`,
     description:
@@ -66,7 +78,7 @@ export function AgentMembersDialog({
       <ConfirmDialog {...common}>
         {loading && <Spinner aria-label="Loading your agents" className="mx-auto" />}
         {!loading && (
-          <ul className="-mx-2 grid gap-0.5">
+          <ul ref={list} aria-label="Your agents" className="-mx-2 grid gap-0.5">
             {agents.map((agent) => (
               <li
                 key={agent.agentId}
@@ -86,7 +98,13 @@ export function AgentMembersDialog({
                       label={`Remove ${agent.name}`}
                       destructive
                       disabled={!!busyId}
-                      onClick={() => setRemoving(agent)}
+                      onClick={() => {
+                        launcher.current =
+                          document.activeElement instanceof HTMLElement
+                            ? document.activeElement
+                            : null;
+                        setRemoving(agent);
+                      }}
                     >
                       <UserMinus />
                     </RowAction>
@@ -117,6 +135,7 @@ export function AgentMembersDialog({
           pendingLabel="Removing…"
           destructive
           onClose={() => setRemoving(undefined)}
+          onRestoreFocus={restoreRowFocus}
           onConfirm={() => {
             onRemove(removing.actorId!);
             setRemoving(undefined);

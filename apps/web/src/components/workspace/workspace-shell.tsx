@@ -107,7 +107,8 @@ export function WorkspaceShell({
         className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-tl-2xl bg-surface"
       >
         {loading && (
-          <div className="border-b p-3">
+          // Same height as the search bar that replaces it, so the page does not jump when it loads.
+          <div className="box-content flex h-14 shrink-0 items-center border-b px-3 *:flex-1">
             <LoadingState label="Loading workspace details…" variant="compact" rows={1} />
           </div>
         )}

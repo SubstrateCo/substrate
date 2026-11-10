@@ -23,7 +23,7 @@ export function OrganizationGeneral({ organizationId }: { organizationId: string
           value={organization.data.name}
           pending={rename.isPending}
           error={rename.error}
-          errorDescription="We couldn't rename the organization. Please try again."
+          errorDescription="We couldn’t rename the organization. Please try again."
           onSave={(name, onSaved) => {
             rename.reset();
             rename.mutate(name, { onSuccess: onSaved });

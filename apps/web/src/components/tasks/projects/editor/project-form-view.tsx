@@ -1,5 +1,4 @@
 import { revalidateLogic, useForm } from "@tanstack/react-form";
-import { useBlocker } from "@tanstack/react-router";
 
 import { useId } from "react";
 
@@ -8,7 +7,7 @@ import { PendingButton } from "../../../feedback/pending-button";
 import { Button } from "../../../ui/button";
 import { projectFormSchema } from "../../editor/task-form-validation";
 import type { Project } from "../../types";
-import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { FormTextField } from "@/components/forms/form-text-field";
 import { SettingsCard, SettingsFooter } from "@/components/layout/settings-section";
 import { DialogBody, DialogFooter } from "@/components/ui/dialog";
@@ -47,7 +46,6 @@ export function ProjectForm({
             field={field}
             id={`${id}-name`}
             label="Project name"
-            variant="surface"
             autoFocus={!project}
             aria-required
             maxLength={200}
@@ -61,7 +59,6 @@ export function ProjectForm({
             id={`${id}-description`}
             label="Project description"
             multiline
-            variant="surface"
             maxLength={20000}
           />
         )}
@@ -119,33 +116,21 @@ export function ProjectForm({
 }
 
 function ProjectDraftGuard({ dirty, projectId }: { dirty: boolean; projectId: string }) {
-  const blocker = useBlocker({
-    shouldBlockFn: ({ next, current }) => {
-      if (
-        next.routeId !== "/_authenticated/_frame/_workspace/tasks/" ||
-        current.routeId !== "/_authenticated/_frame/_workspace/tasks/"
-      )
-        return true;
-      return (
-        (next.search.projectId ?? current.search.projectId) !== projectId ||
-        next.search.workspaceId !== current.search.workspaceId
-      );
-    },
-    disabled: !dirty,
-    enableBeforeUnload: false,
-    withResolver: true,
-  });
-  if (blocker.status !== "blocked") return null;
   return (
-    <ConfirmDialog
-      title="Discard unsaved changes?"
-      description="Your project details haven't been saved."
-      confirmLabel="Discard changes"
-      cancelLabel="Keep editing"
-      pendingLabel="Discarding…"
-      destructive
-      onConfirm={blocker.proceed}
-      onClose={blocker.reset}
+    <UnsavedChangesGuard
+      dirty={dirty}
+      description="Your project details aren’t saved."
+      shouldBlock={({ next, current }) => {
+        if (
+          next.routeId !== "/_authenticated/_frame/_workspace/tasks/" ||
+          current.routeId !== "/_authenticated/_frame/_workspace/tasks/"
+        )
+          return true;
+        return (
+          (next.search.projectId ?? current.search.projectId) !== projectId ||
+          next.search.workspaceId !== current.search.workspaceId
+        );
+      }}
     />
   );
 }

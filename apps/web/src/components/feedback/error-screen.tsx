@@ -8,7 +8,7 @@ export function ErrorScreen({ onRetry }: { onRetry: () => void }) {
     <NonWorkspaceLayout>
       <AuthFrame
         title="Something went wrong"
-        description={<span role="alert">We couldn't load this page. Please try again.</span>}
+        description={<span role="alert">We couldn’t load this page. Please try again.</span>}
       >
         <Button type="button" size="lg" className="w-full" onClick={onRetry}>
           <RefreshCw aria-hidden="true" />

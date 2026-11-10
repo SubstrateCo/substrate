@@ -120,7 +120,7 @@ export function NotificationList({
                   title={
                     isAccessFailure(error)
                       ? "Notifications unavailable"
-                      : "Couldn't load notifications"
+                      : "Couldn’t load notifications"
                   }
                   description={
                     isAccessFailure(error)
@@ -134,7 +134,7 @@ export function NotificationList({
               {empty && (
                 <ContentNotice
                   icon={Bell}
-                  title={filter === "unread" ? "You're all caught up" : "No notifications yet"}
+                  title={filter === "unread" ? "You’re all caught up" : "No notifications yet"}
                   description={
                     filter === "unread"
                       ? "Nothing new since you last looked."
@@ -152,7 +152,7 @@ export function NotificationList({
               {!failed && visible.length > 0 && (
                 <>
                   {error && (
-                    <ErrorState compact title="Couldn't refresh notifications" onRetry={onRetry} />
+                    <ErrorState compact title="Couldn’t refresh notifications" onRetry={onRetry} />
                   )}
                   <ul aria-label="Notification activity" className="-mx-3 flex flex-col gap-px">
                     {dayLabeled(visible).map(({ item, label }) => (

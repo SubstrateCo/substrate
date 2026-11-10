@@ -15,12 +15,14 @@ export function CreateConversationDialog({
   people,
   onCreated,
   onClose,
+  onRestoreFocus,
 }: {
   organizationId: string;
   kind: Conversation["kind"];
   people: readonly PickerPerson[];
   onCreated: (id: string) => void;
   onClose: () => void;
+  onRestoreFocus?: () => void;
 }) {
   const queryClient = useQueryClient();
   const create = useMutation({
@@ -44,6 +46,7 @@ export function CreateConversationDialog({
       kind={kind}
       people={people}
       onClose={onClose}
+      onRestoreFocus={onRestoreFocus}
       pending={create.isPending}
       error={create.error}
       onSubmit={(draft) =>

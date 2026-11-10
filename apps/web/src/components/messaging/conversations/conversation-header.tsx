@@ -58,9 +58,17 @@ function MembersButton({ members }: { members: HeaderMember[] }) {
               className="flex h-9 items-center gap-2 rounded-md px-2 text-sm"
             >
               <MemberAvatar member={member} />
-              <span className="min-w-0 flex-1 truncate" title={member.name} tabIndex={0}>
-                {member.name}
-              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className="min-w-0 flex-1 truncate rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
+                    tabIndex={0}
+                  >
+                    {member.name}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{member.name}</TooltipContent>
+              </Tooltip>
               {member.type === "agent" && <Tag>Agent</Tag>}
               {member.external && <Tag>External</Tag>}
             </li>

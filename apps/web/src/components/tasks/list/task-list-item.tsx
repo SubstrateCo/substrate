@@ -87,7 +87,7 @@ export function TaskListItem({
         </span>
         <Tooltip>
           <TooltipTrigger asChild>
-            <span className="flex shrink-0">
+            <span className="flex w-6 shrink-0 justify-center">
               <TaskAssigneeAvatar name={assigneeName} type={assignee?.type} />
               <span className="sr-only">
                 , {assigneeName ? `assigned to ${assigneeName}` : "unassigned"}

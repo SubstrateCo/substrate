@@ -6,8 +6,8 @@ import { authHref } from "@/lib/auth/navigation";
 export function WelcomeScreen() {
   return (
     <AuthFrame
-      title="Your team's connected workspace"
-      description="Create your account and organization in the browser. Install the desktop app when you're ready."
+      title="Your team’s connected workspace"
+      description="Create your account and organization in the browser. Install the desktop app when you’re ready."
       footer={<AuthLink href="/download">Download the desktop app</AuthLink>}
     >
       <div className="grid gap-2">
@@ -19,7 +19,7 @@ export function WelcomeScreen() {
         </Button>
       </div>
       <p className="text-sm text-muted-foreground">
-        Invited by a teammate? Open the link in your invitation email. You don't need the app to
+        Invited by a teammate? Open the link in your invitation email. You don’t need the app to
         join.
       </p>
     </AuthFrame>

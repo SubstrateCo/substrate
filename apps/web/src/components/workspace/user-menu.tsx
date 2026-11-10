@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, type KeyboardEvent, type ReactNode } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
@@ -8,6 +8,19 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { UserMenuTheme } from "./user-menu-theme";
 import { initials } from "@/lib/people/initials";
 import { Building2, Settings } from "lucide-react";
+
+/** Up and Down move through the menu's actions, like a menu. The theme control keeps its own arrows. */
+function moveFocusWithArrows(event: KeyboardEvent<HTMLElement>) {
+  const step = { ArrowDown: 1, ArrowUp: -1 }[event.key];
+  if (!step) return;
+  // A roving group (theme) exposes one stop; the rest have tabindex -1.
+  const stops = [
+    ...event.currentTarget.querySelectorAll<HTMLElement>("button:not([tabindex='-1'])"),
+  ];
+  const current = stops.findIndex((stop) => stop === document.activeElement);
+  event.preventDefault();
+  stops[(current + step + stops.length) % stops.length]?.focus();
+}
 
 export function UserMenu({
   name,
@@ -60,6 +73,7 @@ export function UserMenu({
         align="end"
         sideOffset={12}
         variant="menu"
+        onKeyDown={moveFocusWithArrows}
       >
         <div className="flex min-w-0 items-center gap-2.5 p-2">
           <div className="size-8 shrink-0 overflow-hidden rounded-md">{avatar}</div>

@@ -52,16 +52,11 @@ export function AgentsWorkspaceView({
             actions={
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
-                    size="icon-sm"
-                    variant="ghost"
-                    aria-label="Create agent"
-                    onClick={onCreate}
-                  >
+                  <Button size="icon-sm" variant="ghost" aria-label="New agent" onClick={onCreate}>
                     <Plus aria-hidden="true" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Create agent</TooltipContent>
+                <TooltipContent>New agent</TooltipContent>
               </Tooltip>
             }
           />
@@ -98,7 +93,7 @@ export function AgentsWorkspaceView({
                   className="w-full justify-start"
                   onClick={() => onSelect(agent.id)}
                 >
-                  <span className="relative grid size-4 shrink-0 place-items-center [&_svg]:size-2.5">
+                  <span className="relative grid size-4 shrink-0 place-items-center [&_svg]:size-3">
                     <PersonAvatar name={agent.name} agent size="xs" className="size-4" />
                     {agent.status && (
                       <WorkIndicator tone={agent.status.tone} label={agent.status.label} />

@@ -74,7 +74,7 @@ export function PersonHoverCard({
           {children}
         </span>
       </HoverCardTrigger>
-      <HoverCardContent side="right" align="start" collisionPadding={8} className="w-76">
+      <HoverCardContent side="top" align="start" collisionPadding={8} className="w-76">
         <div className="p-0.5">
           <PersonCard
             state={state}

@@ -64,6 +64,19 @@ export function formatClock(time: string) {
   return `${hour % 12 || 12}:${pad(minute)} ${suffix}`;
 }
 
+/**
+ * Every quarter hour of a day, as "HH:MM" values with their labels. A time that is off the grid,
+ * such as one read from a saved cron, is kept so the picker can still show it.
+ */
+export function timeOptions(current: string) {
+  const times = Array.from({ length: 96 }, (_, index) => {
+    const minutes = index * 15;
+    return `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`;
+  });
+  const all = times.includes(current) ? times : [...times, current].sort();
+  return all.map((value) => ({ value, label: formatClock(value) }));
+}
+
 /** A schedule in words: "Every weekday at 9:00 AM", or the cron for custom schedules. */
 export function describeSchedule(cron: string) {
   const schedule = parseSchedule(cron);

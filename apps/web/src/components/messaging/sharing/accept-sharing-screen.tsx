@@ -128,11 +128,11 @@ export function AcceptSharingScreen({ invitationId }: { invitationId: string }) 
   else if (invite.data) content = unavailableNotice;
   return (
     <AuthFrame
-      title={missing ? "This invitation isn't available" : "External collaboration invitation"}
+      title={missing ? "This invitation isn’t available" : "External collaboration invitation"}
       description={
         missing
           ? "It may have expired or been sent to another email. Sign in with the invited email, or ask the sender for a new invitation."
-          : "Join from your own organization. You won't become a member of the inviting workspace."
+          : "Join from your own organization. You won’t become a member of the inviting workspace."
       }
       actions={
         <>
@@ -148,15 +148,15 @@ export function AcceptSharingScreen({ invitationId }: { invitationId: string }) 
         ) : (
           <ErrorState
             compact
-            title="Couldn't load invitation"
-            description="We couldn't check this invitation. Please try again."
+            title="Couldn’t load invitation"
+            description="We couldn’t check this invitation. Please try again."
             onRetry={() => void invite.refetch()}
           />
         ))}
       {organizations.error && (
         <ErrorState
           compact
-          title="Couldn't load organizations"
+          title="Couldn’t load organizations"
           onRetry={() => void organizations.refetch()}
         />
       )}

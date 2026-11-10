@@ -63,7 +63,9 @@ export function LinkMessageWork({
   const [chosen, setChosen] = useState(() => new Map<string, LinkableWork>());
   const visible = isAccessFailure(error) ? [] : results;
   // Items that became linked, for example after a partial failure, leave the selection.
-  const selection = [...chosen.values()].filter((item) => !linkedIds.has(item.id));
+  const selection = isAccessFailure(error)
+    ? []
+    : [...chosen.values()].filter((item) => !linkedIds.has(item.id));
   const toggle = (item: LinkableWork) =>
     setChosen((current) => {
       const next = new Map(current);
@@ -106,12 +108,29 @@ export function LinkMessageWork({
                 onValueChange={onQueryChange}
                 disabled={pending}
               />
+              {selection.length > 0 && (
+                <div aria-label="Selected work" className="flex flex-wrap gap-1">
+                  {selection.map((item) => (
+                    <Button
+                      key={item.id}
+                      type="button"
+                      variant="secondary"
+                      size="xs"
+                      disabled={pending}
+                      onClick={() => toggle(item)}
+                      aria-label={`Remove ${item.title} from selection`}
+                    >
+                      {item.title} <span aria-hidden="true">×</span>
+                    </Button>
+                  ))}
+                </div>
+              )}
               <div className="rounded-lg border p-1">
                 <CommandList aria-label={kind === "task" ? "Tasks" : "Projects"} className="h-72">
                   {loading && !visible.length && (
                     <LoadingState label="Searching work" variant="compact" />
                   )}
-                  {error && <ErrorState compact title="Couldn't search work" onRetry={onRetry} />}
+                  {error && <ErrorState compact title="Couldn’t search work" onRetry={onRetry} />}
                   {!loading && !error && (
                     <CommandEmpty>
                       {query.trim()

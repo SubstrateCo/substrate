@@ -35,6 +35,7 @@ export function NameSettingsCard({
 }) {
   // Null follows the saved value; a string is an unsaved edit.
   const [draft, setDraft] = useState<string | null>(null);
+  const [formVersion, setFormVersion] = useState(0);
   const current = draft ?? value;
   const dirty = draft !== null && draft.trim() !== value;
   return (
@@ -44,6 +45,7 @@ export function NameSettingsCard({
         description={`Your new ${label.toLowerCase()} isn’t saved.`}
       />
       <NativeForm
+        key={formVersion}
         pending={pending}
         className="min-w-0"
         onSubmit={() => {
@@ -60,7 +62,10 @@ export function NameSettingsCard({
                 dirty={dirty}
                 pending={pending}
                 error={error && actionErrorMessage(error, errorDescription)}
-                onDiscard={() => setDraft(null)}
+                onDiscard={() => {
+                  setDraft(null);
+                  setFormVersion((version) => version + 1);
+                }}
               />
             )
           }

@@ -43,7 +43,7 @@ test("notifications load older pages, filter unread, and mark individual and all
   await rows.first().getByRole("button", { name: "Mark as read", exact: true }).click();
   await expect(rows.locator(`a[href="${readHref}"]`)).toHaveCount(0);
   await feed.getByRole("button", { name: "Mark all as read", exact: true }).click();
-  await expect(feed.getByRole("heading", { name: "You're all caught up" })).toBeVisible();
+  await expect(feed.getByRole("heading", { name: "You’re all caught up" })).toBeVisible();
   await feed.getByRole("button", { name: "Show all", exact: true }).click();
   // The full feed keeps the older page it loaded, and every row in it is now read.
   await expect(rows).toHaveCount(21);

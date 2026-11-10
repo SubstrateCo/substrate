@@ -73,12 +73,12 @@ export function OrganizationMembers({
       <div ref={list} tabIndex={-1}>
         {loading && !members && <LoadingState label="Loading members." rows={3} />}
         {error && (!members || blocked) && (
-          <ErrorState title="Couldn't load members" onRetry={blocked ? undefined : onRetry} />
+          <ErrorState title="Couldn’t load members" onRetry={blocked ? undefined : onRetry} />
         )}
         {error && members && !blocked && (
           <ErrorState
             compact
-            title="Couldn't refresh members"
+            title="Couldn’t refresh members"
             description="This list may be out of date."
             onRetry={onRetry}
           />
@@ -123,7 +123,7 @@ export function OrganizationMembers({
           pendingLabel="Changing"
           pending={changing}
           error={changeError}
-          errorDescription="We couldn't change this role. Please try again."
+          errorDescription="We couldn’t change this role. Please try again."
           onClose={close}
           onRestoreFocus={restoreFocus}
           onConfirm={() => onChangeRole(pending.member.id, pending.role, close)}
@@ -133,12 +133,12 @@ export function OrganizationMembers({
         <ConfirmDialog
           destructive
           title={`Remove ${pending.member.name}?`}
-          description="They lose access to this organization's conversations, projects, and tasks right away. You can invite them again later."
+          description="They lose access to this organization’s conversations, projects, and tasks right away. You can invite them again later."
           confirmLabel="Remove member"
           pendingLabel="Removing"
           pending={changing}
           error={changeError}
-          errorDescription="We couldn't remove this member. Please try again."
+          errorDescription="We couldn’t remove this member. Please try again."
           onClose={close}
           onRestoreFocus={restoreFocus}
           onConfirm={() => onRemove(pending.member.id, close)}

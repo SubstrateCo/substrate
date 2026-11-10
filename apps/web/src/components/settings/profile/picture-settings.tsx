@@ -33,7 +33,7 @@ export function PictureSettings({
           <div className="min-w-0 flex-1">
             <FormMessage
               error={error}
-              errorDescription={`Couldn't refresh the ${subject}. The current one is still shown.`}
+              errorDescription={`Couldn’t refresh the ${subject}. The current one is still shown.`}
             />
           </div>
           <Button type="button" variant="outline" onClick={onRetry}>
@@ -42,7 +42,7 @@ export function PictureSettings({
         </div>
       )}
       {error && (blocked || upload.value === undefined) && (
-        <ErrorState compact title={`Couldn't load the ${subject}`} onRetry={onRetry} />
+        <ErrorState compact title={`Couldn’t load the ${subject}`} onRetry={onRetry} />
       )}
       {!blocked &&
         (!loading || upload.value !== undefined) &&

@@ -10,7 +10,8 @@ export function DownloadScreen({ destination }: { destination: string }) {
       description="Messages, docs, tasks, and agents for your team in one app."
       footer={
         <>
-          New to Startup OS? <AuthLink href="/">Create an organization</AuthLink>
+          New to Startup OS?{" "}
+          <AuthLink href={authHref("/signup", destination)}>Create account</AuthLink>
         </>
       }
     >

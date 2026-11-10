@@ -2,10 +2,12 @@ import { useState } from "react";
 
 import { FormMessage } from "../../auth/form-message";
 import { ConfirmDialog } from "../../feedback/confirm-dialog";
+import { ContentNotice } from "../../feedback/content-notice";
 import { GroupTitle, SettingsCard } from "../../layout/settings-section";
 import { Spinner } from "../../ui/spinner";
 import { InvitationForm } from "./invitation-form";
 import { InvitationTable } from "./invitation-table";
+import { Send } from "lucide-react";
 
 export type InvitationRole = "owner" | "admin" | "member";
 export type InvitationListItem = {
@@ -53,33 +55,45 @@ export function InvitationManager({
       <InvitationForm sending={sending} disabled={busy} onInvite={onInvite} />
       <FormMessage
         error={error}
-        errorDescription="We couldn't update this invitation. Check the email and try again."
+        errorDescription="We couldn’t update this invitation. Check the email and try again."
       />
     </div>
   );
   const sent = (
-    <section aria-labelledby="sent-invitations-title" className="space-y-3">
-      <GroupTitle id="sent-invitations-title" title="Sent invitations" />
+    <section
+      aria-label={framed ? "Sent invitations" : undefined}
+      aria-labelledby={framed ? undefined : "sent-invitations-title"}
+      className="space-y-3"
+    >
+      {!framed && <GroupTitle id="sent-invitations-title" title="Sent invitations" />}
       {canceling && (
         <div role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
           <Spinner aria-hidden="true" role="presentation" />
           Canceling invitation.
         </div>
       )}
-      <InvitationTable
-        invitations={invitations}
-        loading={loading}
-        error={loadError}
-        busy={busy}
-        onRetry={onRetry}
-        onInvite={onInvite}
-        onCancel={(id) => setConfirming(invitations?.find((invitation) => invitation.id === id))}
-      />
+      {framed && !loading && !loadError && !invitations?.length ? (
+        <ContentNotice
+          icon={Send}
+          title="No invitations yet"
+          description="Invitations you send appear here until they are accepted."
+        />
+      ) : (
+        <InvitationTable
+          invitations={invitations}
+          loading={loading}
+          error={loadError}
+          busy={busy}
+          onRetry={onRetry}
+          onInvite={onInvite}
+          onCancel={(id) => setConfirming(invitations?.find((invitation) => invitation.id === id))}
+        />
+      )}
       {confirming && (
         <ConfirmDialog
           destructive
           title="Cancel this invitation?"
-          description={`${confirming.email} won't be able to join with this invitation. You can invite them again later.`}
+          description={`${confirming.email} won’t be able to join with this invitation. You can invite them again later.`}
           cancelLabel="Keep invitation"
           confirmLabel="Cancel invitation"
           pendingLabel="Canceling"
@@ -99,7 +113,7 @@ export function InvitationManager({
         <SettingsCard title="Invite people" description={inviteDescription}>
           {form}
         </SettingsCard>
-        {sent}
+        <SettingsCard title="Sent invitations">{sent}</SettingsCard>
       </>
     );
   return (
@@ -111,7 +125,7 @@ export function InvitationManager({
         <p className="text-sm text-muted-foreground">{inviteDescription}</p>
       </header>
       {form}
-      {sent}
+      {(loading || loadError || Boolean(invitations?.length)) && sent}
     </section>
   );
 }

@@ -5,7 +5,11 @@ import { PaneState } from "../../feedback/pane-state";
 import { isAccessFailure } from "../../feedback/request-failure";
 import { PageContent, PageLayout } from "@/components/layout/page-layout";
 import { ConversationHeader } from "@/components/messaging/conversations/conversation-header";
-import { conversationName, type Conversation } from "@/lib/messaging/conversations";
+import {
+  conversationLabel,
+  conversationName,
+  type Conversation,
+} from "@/lib/messaging/conversations";
 
 export function ConversationPane({
   conversation,
@@ -88,7 +92,7 @@ export function ConversationPane({
               <ContentNotice
                 title={
                   conversation.kind === "channel"
-                    ? `Welcome to #${title}`
+                    ? `Welcome to ${conversationLabel({ kind: "channel", private: conversation.private, name: title })}`
                     : `Your conversation with ${title}`
                 }
                 description="No messages yet. Send the first message below."

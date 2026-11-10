@@ -18,7 +18,7 @@ export function LeftChannelNotice({
     >
       <Hash aria-hidden="true" className="size-4 shrink-0" />
       <span className="min-w-0 flex-1">
-        You're not in this channel. Join it, or post a message, to add it to your sidebar.
+        You’re not in this channel. Join it, or post a message, to add it to your sidebar.
       </span>
       {error && (
         <span role="alert" className="text-destructive">

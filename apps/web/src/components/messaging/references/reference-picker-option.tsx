@@ -44,16 +44,16 @@ export function ReferencePickerOption({
       role="option"
       aria-selected={selected}
       variant={selected ? "secondary" : "ghost"}
-      size={description ? "selection" : "default"}
+      size="default"
       className="w-full justify-start"
       onClick={onSelect}
     >
       <span className="flex min-w-0 items-center gap-2">
         {icon}
-        <span className="min-w-0 text-left">
-          <span className="block truncate">{plainReferenceText(title)}</span>
+        <span className="flex min-w-0 items-center gap-2 text-left">
+          <span className="truncate">{plainReferenceText(title)}</span>
           {description && (
-            <span className="block truncate text-xs font-normal text-muted-foreground">
+            <span className="truncate text-xs font-normal text-muted-foreground">
               {description}
             </span>
           )}

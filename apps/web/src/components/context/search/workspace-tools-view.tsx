@@ -68,12 +68,15 @@ export function WorkspaceTools({
       ref={container}
       data-workspace-search
       onClickCapture={(event) => {
-        if (event.target instanceof Element && event.target.closest("a[href]")) setOpen(false);
+        // Close after the click is handled. Unmounting the link first would skip its router
+        // handler, and the browser would follow the href and reload the app.
+        if (event.target instanceof Element && event.target.closest("a[href]"))
+          window.setTimeout(() => setOpen(false));
       }}
       className={
         desktop
           ? "relative z-10 min-w-0 text-sm font-normal text-foreground [&_[data-slot=command-input-wrapper]]:h-7 [&_[data-slot=command-input-wrapper]]:rounded-md [&_[data-slot=command-input-wrapper]]:border-rail-foreground/12 [&_[data-slot=command-input-wrapper]]:bg-surface/65 [&_[data-slot=command-input-wrapper]]:px-2 [&_[data-slot=command-input-wrapper]]:shadow-none dark:[&_[data-slot=command-input-wrapper]]:bg-popover [&_[data-slot=command-input]]:text-xs [&_[data-slot=command]]:bg-transparent"
-          : "relative z-10 shrink-0 border-b bg-sidebar px-4 py-2 text-sm font-normal text-foreground"
+          : "relative z-30 shrink-0 border-b bg-sidebar px-4 py-2 text-sm font-normal text-foreground"
       }
     >
       <div className="relative mx-auto max-w-2xl">
@@ -111,8 +114,8 @@ export function WorkspaceTools({
               data-workspace-search-results
               className={
                 desktop
-                  ? "absolute top-full left-1/2 mt-2 w-search-panel -translate-x-1/2 overflow-hidden rounded-xl border bg-popover shadow-xl max-[400px]:fixed max-[400px]:top-(--desktop-title-bar-height)"
-                  : "absolute inset-x-0 top-full mt-2 overflow-hidden rounded-xl border bg-popover shadow-xl"
+                  ? "absolute top-full left-1/2 mt-2 w-search-panel -translate-x-1/2 overflow-hidden rounded-xl border bg-popover shadow-floating max-[400px]:fixed max-[400px]:top-(--desktop-title-bar-height)"
+                  : "absolute inset-x-0 top-full mt-2 overflow-hidden rounded-xl border bg-popover shadow-floating"
               }
             >
               {renderSearch(query)}

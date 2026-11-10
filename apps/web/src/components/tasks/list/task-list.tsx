@@ -85,12 +85,7 @@ export function TaskList({
           const label = taskStatusLabels[status];
           const open = !collapsed[status];
           return (
-            <div
-              key={status}
-              role="group"
-              aria-labelledby={`${listId}-${status}-label`}
-              className="max-w-4xl"
-            >
+            <div key={status} role="group" aria-labelledby={`${listId}-${status}-label`}>
               <div className="group/header sticky top-0 z-20 flex h-8 items-center gap-1 bg-muted/50 pr-6 pl-4">
                 <h2 className="min-w-0 flex-1">
                   <button
@@ -102,7 +97,7 @@ export function TaskList({
                   >
                     <ChevronRight
                       aria-hidden="true"
-                      className={`size-3 text-muted-foreground transition-transform duration-150 ease-out ${open ? "rotate-90" : ""}`}
+                      className={`size-3 text-muted-foreground opacity-0 transition-transform duration-150 ease-out group-focus-within/header:opacity-100 group-hover/header:opacity-100 ${open ? "rotate-90" : ""}`}
                     />
                     <TaskStatusIcon status={status} className="size-3.5" />
                     <span id={`${listId}-${status}-label`}>{label}</span>

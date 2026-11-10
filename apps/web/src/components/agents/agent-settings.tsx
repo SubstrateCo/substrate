@@ -37,6 +37,7 @@ export function AgentSettings({
   agentId,
   section = "general",
   onSectionChange,
+  onUnsavedSectionsChange,
   onClose,
   onCreated,
 }: {
@@ -45,6 +46,8 @@ export function AgentSettings({
   agentId?: string;
   section?: AgentSettingsSection;
   onSectionChange?: (section: AgentSettingsSection) => void;
+  /** The sections of this agent with unsaved changes, for the page's section list. */
+  onUnsavedSectionsChange?: (sections: readonly AgentSettingsSection[]) => void;
   onClose: () => void;
   onCreated?: (id: string) => void;
 }) {
@@ -99,7 +102,7 @@ export function AgentSettings({
       {catalog.error && (
         <ErrorState
           compact
-          title="Couldn't load agent settings"
+          title="Couldn’t load agent settings"
           onRetry={() => void catalog.refetch()}
         />
       )}
@@ -114,7 +117,15 @@ export function AgentSettings({
           agent={agent}
           section={section}
           onSectionChange={onSectionChange}
-          picture={<AgentPicture userId={userId} agentId={agent.id} image={agent.image} />}
+          onUnsavedSectionsChange={onUnsavedSectionsChange}
+          picture={
+            <AgentPicture
+              userId={userId}
+              agentId={agent.id}
+              name={agent.name}
+              image={agent.image}
+            />
+          }
           renderConfiguration={renderConfiguration}
           pending={pending}
           onSave={onSave}
@@ -171,7 +182,7 @@ export function AgentSettings({
             }}
           >
             <DialogHeader>
-              <DialogTitle>Create agent</DialogTitle>
+              <DialogTitle>New agent</DialogTitle>
               <DialogDescription>
                 An agent answers your messages and helps in conversations you add it to. It runs on
                 your desktop, and you can change everything later.
@@ -204,9 +215,7 @@ export function AgentSettings({
           onRestoreFocus={() => {
             if (deleteLauncher.current?.isConnected) deleteLauncher.current.focus();
             else
-              document
-                .querySelector<HTMLButtonElement>('button[aria-label="Create agent"]')
-                ?.focus();
+              document.querySelector<HTMLButtonElement>('button[aria-label="New agent"]')?.focus();
           }}
           onConfirm={() =>
             remove.mutate(agent.id, {

@@ -1,3 +1,5 @@
+import { Link } from "@tanstack/react-router";
+
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
 import { isAccessFailure } from "../../feedback/request-failure";
@@ -67,10 +69,10 @@ export function OrganizationSwitcher({
             ))}
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
-            <a href={manageHref} className="gap-3 px-2 py-2">
+            <Link to={manageHref} className="gap-3 px-2 py-2">
               <Settings />
               Manage workspaces
-            </a>
+            </Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

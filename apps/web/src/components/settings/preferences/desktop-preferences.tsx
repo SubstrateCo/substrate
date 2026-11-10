@@ -28,7 +28,7 @@ function DesktopPreferencesCard({ bridge }: { bridge: DesktopSettingsAPI }) {
   const update = useMutation({
     mutationFn: (enabled: boolean) => bridge.setLaunchAtLogin(enabled),
     onSuccess: (next) => queryClient.setQueryData(queryKeys.desktopSettings, next),
-    onError: () => toast.error("We couldn't change this setting. Try again."),
+    onError: () => toast.error("We couldn’t change this setting. Try again."),
   });
   return (
     <SettingsCard
@@ -38,7 +38,7 @@ function DesktopPreferencesCard({ bridge }: { bridge: DesktopSettingsAPI }) {
       {settings.isError ? (
         <ErrorState
           compact
-          title="Couldn't load desktop settings"
+          title="Couldn’t load desktop settings"
           onRetry={() => void settings.refetch()}
         />
       ) : (

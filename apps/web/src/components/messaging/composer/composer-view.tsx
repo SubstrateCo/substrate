@@ -137,8 +137,10 @@ export function Composer({
                       if (["ArrowDown", "ArrowUp", "Enter"].includes(event.key)) {
                         event.preventDefault();
                         referencePicker.current
-                          ?.querySelector<HTMLInputElement>('[role="combobox"]')
-                          ?.focus();
+                          ?.querySelector<HTMLElement>("[data-reference-picker]")
+                          ?.dispatchEvent(
+                            new KeyboardEvent("keydown", { key: event.key, bubbles: true }),
+                          );
                         return;
                       }
                     }
@@ -232,10 +234,17 @@ export function Composer({
             </InputGroupAddon>
           </InputGroup>
         </Popover>
-        <FormMessage
-          error={error}
-          errorDescription="Your message couldn’t be sent. Your draft is still here. Try sending it again."
-        />
+        {error && (
+          <FormMessage
+            error={error}
+            errorDescription="Your message couldn’t be sent. Try sending it again."
+          />
+        )}
+        {error && (
+          <p className="text-xs text-muted-foreground" role="status">
+            Your draft is still here.
+          </p>
+        )}
       </Field>
     </form>
   );

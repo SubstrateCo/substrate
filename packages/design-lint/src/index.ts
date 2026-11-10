@@ -13,6 +13,7 @@ import { noSolidDestructive } from "./rules/no-solid-destructive.ts";
 import { noTooltipOnToggleItem } from "./rules/no-tooltip-on-toggle-item.ts";
 import { pageHeader } from "./rules/page-header.ts";
 import { sentenceCase } from "./rules/sentence-case.ts";
+import { typographicQuotes } from "./rules/typographic-quotes.ts";
 
 /** Design-contract rules for the Startup OS renderer. Messages point to apps/web/DESIGN.md. */
 export default {
@@ -34,5 +35,6 @@ export default {
     "no-tooltip-on-toggle-item": noTooltipOnToggleItem,
     "page-header": pageHeader,
     "sentence-case": sentenceCase,
+    "typographic-quotes": typographicQuotes,
   },
 };

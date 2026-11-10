@@ -17,7 +17,8 @@ function FieldSet({ className, ...props }: React.ComponentProps<"fieldset">) {
   );
 }
 
-const fieldVariants = cva("group/field flex w-full gap-2 data-[invalid=true]:text-destructive", {
+// An invalid field marks the control border and FieldError only; the label stays foreground.
+const fieldVariants = cva("group/field flex w-full gap-2", {
   variants: {
     orientation: {
       vertical: "flex-col *:w-full [&>.sr-only]:w-auto",

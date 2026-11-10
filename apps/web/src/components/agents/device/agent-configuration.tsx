@@ -171,7 +171,7 @@ export function AgentConfiguration({
               }}
             >
               <Plus />
-              Create skill
+              New skill
             </Button>
           </>
         }
@@ -260,7 +260,7 @@ export function AgentConfiguration({
       {resetting && (
         <ConfirmDialog
           title="Reset Startup OS defaults?"
-          description="This replaces the agent's instructions file and Startup OS skills on this device with the saved agent settings. Local edits to those files are lost. Your other skills and MCP servers are not changed."
+          description="This replaces the agent’s instructions file and Startup OS skills on this device with the saved agent settings. Local edits to those files are lost. Your other skills and MCP servers are not changed."
           confirmLabel="Reset defaults"
           pendingLabel="Resetting…"
           errorDescription="We couldn’t reset the defaults. Try again."

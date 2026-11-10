@@ -45,8 +45,8 @@ function Section({
     <section className="grid gap-1">
       <h3 className="text-xs font-medium text-muted-foreground">{title}</h3>
       {note && (
-        <p className="flex items-start gap-1.5 text-xs font-medium text-warning">
-          <TriangleAlert aria-hidden="true" className="mt-px size-3.5 shrink-0" />
+        <p className="flex items-start gap-1.5 text-xs font-medium text-warning-text">
+          <TriangleAlert aria-hidden="true" className="mt-px size-3.5 shrink-0 text-warning" />
           {note}
         </p>
       )}
@@ -76,11 +76,13 @@ function Row({
         <span
           className={
             warning
-              ? "flex items-center gap-1 text-xs font-medium text-warning"
+              ? "flex items-center gap-1 text-xs font-medium text-warning-text"
               : "block truncate text-xs text-muted-foreground"
           }
         >
-          {warning && <TriangleAlert aria-hidden="true" className="size-3.5 shrink-0" />}
+          {warning && (
+            <TriangleAlert aria-hidden="true" className="size-3.5 shrink-0 text-warning" />
+          )}
           {status}
         </span>
       </span>

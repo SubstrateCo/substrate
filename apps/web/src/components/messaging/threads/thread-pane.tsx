@@ -78,6 +78,7 @@ export function ThreadPane({
             messages={rows.filter((message) => message.id !== threadId)}
             organizationId={organizationId}
             conversationId={conversationId}
+            olderPage={history.hasPrevious}
             previousDate={root?.createdAt}
             header={
               <>

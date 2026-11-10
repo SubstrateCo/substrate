@@ -47,9 +47,15 @@ export function recipientFor(
   return allowEmail ? { email } : undefined;
 }
 
+const tokensOf = (text: string) => text.split(/[,;\s]+/).filter(Boolean);
+
 /**
  * Adds typed or pasted addresses, separated by commas, semicolons, or spaces. Returns the new
  * value and the text that is not a usable address, so the person can correct it.
+ *
+ * When more usable addresses arrive than `max` leaves room for, nothing is added and `overflow`
+ * is set. The whole text comes back in `rest`, so no address is dropped and none is picked for
+ * the person.
  */
 export function addTypedRecipients(
   value: readonly PickedRecipient[],
@@ -57,25 +63,35 @@ export function addTypedRecipients(
   people: readonly PickerPerson[],
   { allowEmail = true, max }: { allowEmail?: boolean; max?: number } = {},
 ) {
-  const next = [...value];
+  const additions: PickedRecipient[] = [];
   const rest: string[] = [];
-  for (const token of text.split(/[,;\s]+/).filter(Boolean)) {
+  for (const token of tokensOf(text)) {
     const recipient = recipientFor(token, people, allowEmail);
     if (!recipient) rest.push(token);
-    else if (next.some((entry) => entry.email === recipient.email)) continue;
-    else if (max === undefined || next.length < max) next.push(recipient);
-    else rest.push(token);
+    else if (![...value, ...additions].some((entry) => entry.email === recipient.email)) {
+      additions.push(recipient);
+    }
   }
-  return { value: next, rest: rest.join(", ") };
+  if (max !== undefined && value.length + additions.length > max) {
+    return { value: [...value], rest: tokensOf(text).join(", "), overflow: true };
+  }
+  return { value: [...value, ...additions], rest: rest.join(", "), overflow: false };
+}
+
+/** The most people the picker can hold, in words: "Choose one person." */
+export function limitMessage(max: number) {
+  return max === 1 ? "Choose one person." : `Choose up to ${max} people.`;
 }
 
 /**
  * The field error for text still in the picker when the form is submitted. The picker adds
- * complete addresses by itself, so any text left is not a usable recipient.
+ * complete addresses by itself, so text left is either not an address yet or more addresses than
+ * fit. Pass `limit` to name the second case.
  */
-export function unfinishedRecipientMessage(text: string) {
+export function unfinishedRecipientMessage(text: string, limit?: string) {
   const unfinished = text.trim();
   if (!unfinished) return undefined;
+  if (limit && tokensOf(unfinished).every(isEmailAddress)) return limit;
   return `“${unfinished}” isn’t a complete email address. Finish it or clear it.`;
 }
 

@@ -97,7 +97,7 @@ test("members browse public channels in search and join from the list or the cha
   await search.getByRole("link", { name: `Channel: ${opened.name}`, exact: true }).click();
   await expect.poll(() => new URL(page.url()).searchParams.get("conversationId")).toBe(opened.id);
   const notice = page.getByText(
-    "You're not in this channel. Join it, or post a message, to add it to your sidebar.",
+    "You’re not in this channel. Join it, or post a message, to add it to your sidebar.",
   );
   await expect(notice).toBeVisible();
   await page.getByRole("button", { name: "Join channel", exact: true }).click();

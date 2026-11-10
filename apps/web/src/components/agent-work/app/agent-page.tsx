@@ -1,9 +1,15 @@
 import type { AgentStatusView } from "@startup-os/contracts/agent-work";
 
+import { useState } from "react";
+
 import { Routines } from "../routines/routines";
 import { AgentActivity } from "./agent-activity";
 import { AgentPageView } from "./agent-page-view";
-import { isAgentSettingsSection, type AgentPageSection } from "./agent-sections";
+import {
+  isAgentSettingsSection,
+  type AgentPageSection,
+  type AgentSettingsSection,
+} from "./agent-sections";
 import { AgentSettings } from "@/components/agents/agent-settings";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { Button } from "@/components/ui/button";
@@ -39,6 +45,7 @@ export function AgentPage({
   onTranscript: (turnId: string) => void;
   onDeleted: () => void;
 }) {
+  const [unsaved, setUnsaved] = useState<readonly AgentSettingsSection[]>([]);
   const device = status?.device;
   const unavailable = !homedHere && (
     <ContentNotice
@@ -67,6 +74,7 @@ export function AgentPage({
         agentId={agentId}
         section={section}
         onSectionChange={onSectionChange}
+        onUnsavedSectionsChange={setUnsaved}
         onClose={onDeleted}
       />
     );
@@ -91,6 +99,7 @@ export function AgentPage({
       name={name}
       status={status && agentStatus(status)}
       section={section}
+      unsaved={unsaved}
       onSectionChange={onSectionChange}
     >
       {content}

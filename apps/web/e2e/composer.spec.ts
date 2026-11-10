@@ -17,7 +17,7 @@ test("channel and thread drafts stay isolated and restore reference labels", asy
   const editor = page.getByRole("textbox", { name: /^Message / });
   await editor.fill("@");
   await page.getByRole("tab", { name: "People", exact: true }).click();
-  await page.getByRole("combobox", { name: "Search references" }).fill(actors.sender.name);
+  await editor.fill(`@${actors.sender.name.split(" ")[0]}`);
   await page.getByRole("option", { name: actors.sender.name, exact: true }).click();
   await expect(editor).toContainText(actors.sender.name);
   await expect(editor).toBeFocused();

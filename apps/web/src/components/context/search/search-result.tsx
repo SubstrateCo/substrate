@@ -1,5 +1,7 @@
 import { taskStatusLabels, type TaskStatus } from "@startup-os/contracts/tasks";
 
+import { Link } from "@tanstack/react-router";
+
 import { useRef, type ReactNode } from "react";
 
 import { CommandItem } from "../../ui/command";
@@ -7,7 +9,6 @@ import { ConversationKindIcon } from "@/components/messaging/conversations/conve
 import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
 import { formatFullTimestamp, formatRelativeTime } from "@/lib/format/date";
 import { conversationLabel } from "@/lib/messaging/conversations";
-import { cn } from "cn";
 import {
   FolderKanban,
   ListTodo,
@@ -131,24 +132,25 @@ export function SearchResult({ item, query }: { item: SearchResultItem; query: s
   const { icon, title, kind, detail } = describe(item);
   return (
     <div className="px-1">
+      {/* Enter follows the row's router link, so unsaved-draft guards see the navigation. */}
       <CommandItem value={item.id} onSelect={() => link.current?.click()} className="items-start">
         <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center">{icon}</span>
         <span className="min-w-0 flex-1">
-          <a
+          <Link
             ref={link}
-            // A message excerpt gets two lines, so a long one still reads past its first words.
-            className={cn(
-              "block outline-none focus-visible:underline",
-              item.kind === "message" ? "line-clamp-2 wrap-anywhere" : "truncate",
-            )}
-            href={item.href}
+            // Two lines at rest. The selected row shows the whole title and context, so a
+            // keyboard user can tell long results with the same start apart before opening one.
+            className="line-clamp-2 block wrap-anywhere outline-none group-data-[selected=true]/command-item:line-clamp-none focus-visible:underline"
+            to={item.href}
             aria-label={`${kind}: ${title}`}
             onClick={(event) => event.stopPropagation()}
           >
             <Highlight text={title} query={query} />
-          </a>
+          </Link>
           {detail && (
-            <span className="mt-0.5 block truncate text-xs text-muted-foreground">{detail}</span>
+            <span className="mt-0.5 block truncate text-xs text-muted-foreground group-data-[selected=true]/command-item:wrap-anywhere group-data-[selected=true]/command-item:whitespace-normal">
+              {detail}
+            </span>
           )}
         </span>
       </CommandItem>

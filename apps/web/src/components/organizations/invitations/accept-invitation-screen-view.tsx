@@ -51,7 +51,7 @@ export function AcceptInvitationScreen({
     title = `Join ${ready.organizationName}`;
     description = "You were invited to this workspace. Accept to open it.";
   } else if (missing) {
-    title = "This invitation isn't available";
+    title = "This invitation isn’t available";
     description =
       "It may have expired, been canceled, or been sent to another email. Sign in with the invited email, or ask the owner for a new invitation.";
   }
@@ -70,8 +70,8 @@ export function AcceptInvitationScreen({
       {!loading && failed && !unavailable && (
         <ErrorState
           compact
-          title="Couldn't load invitation"
-          description="We couldn't check this invitation. Please try again."
+          title="Couldn’t load invitation"
+          description="We couldn’t check this invitation. Please try again."
           onRetry={onRetry}
         />
       )}
@@ -102,7 +102,7 @@ export function AcceptInvitationScreen({
           <>
             <FormMessage
               error={error}
-              errorDescription="We couldn't accept this invitation. Please try again."
+              errorDescription="We couldn’t accept this invitation. Please try again."
             />
             <PendingButton
               className="w-full"

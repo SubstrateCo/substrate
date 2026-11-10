@@ -46,7 +46,7 @@ test("follow existing message-task links and find the task in search", async ({
   expect(new URL(sender.page.url()).searchParams.get("messageId")).toBe(message.id);
   const thread = sender.page.getByRole("complementary", { name: "Thread", exact: true });
   await expect(
-    thread.getByRole("button", { name: "Link existing work", exact: true }),
+    thread.getByRole("button", { name: "More message actions", exact: true }),
   ).toBeVisible();
   await expect(
     sender.page

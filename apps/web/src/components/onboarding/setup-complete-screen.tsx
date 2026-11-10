@@ -24,12 +24,13 @@ export function SetupCompleteScreen({
       title="Your workspace is ready"
       description={
         <>
-          You're a member of <span className="font-medium text-foreground">{name}</span>.
+          You’re a member of{" "}
+          <span className="font-medium wrap-anywhere text-foreground">{name}</span>.
         </>
       }
       actions={
         <>
-          <AuthNavLink href="/onboarding">Choose another workspace</AuthNavLink>
+          <AuthNavLink href="/onboarding">Switch workspace</AuthNavLink>
           <SignOutButton destination="/onboarding" />
         </>
       }

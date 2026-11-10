@@ -33,12 +33,12 @@ export function AuthFrame({
           size === "wide" ? "max-w-2xl" : "max-w-md",
         )}
       >
-        <div className="mb-5 flex min-h-8 flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <BrandMark />
+        <div className="mb-5 flex min-h-8 items-center justify-between gap-2">
+          <BrandMark className="min-w-0" />
           {actions && (
             <nav
               aria-label="Account"
-              className="flex items-center gap-1 *:text-muted-foreground *:hover:text-foreground"
+              className="flex shrink-0 items-center gap-1 whitespace-nowrap *:text-muted-foreground *:hover:text-foreground"
             >
               {actions}
             </nav>

@@ -31,7 +31,7 @@ export function NotificationList({
       id ? markRead({ data: { organizationId, id } }) : markAllRead({ data: { organizationId } }),
     onMutate: (id) => markNotificationsRead(client, organizationId, id),
     onError: (error) => {
-      toast.error(actionErrorMessage(error, "Couldn't mark notifications as read. Try again."));
+      toast.error(actionErrorMessage(error, "Couldn’t mark notifications as read. Try again."));
       void client.invalidateQueries({ queryKey: notificationsOptions(organizationId).queryKey });
     },
   });

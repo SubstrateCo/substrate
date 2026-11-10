@@ -139,7 +139,7 @@ export function ProjectSharing({
       </ul>
       {!review && !adding && error && (
         <div className="-mx-5 border-t px-5 py-3">
-          <FormMessage error={error} errorDescription="Couldn't change access. Try again." />
+          <FormMessage error={error} errorDescription="Couldn’t change access. Try again." />
         </div>
       )}
       {review && canManage && (
@@ -159,7 +159,7 @@ export function ProjectSharing({
           destructive={!review.level}
           pending={pending}
           error={error}
-          errorDescription="Couldn't change access. Try again."
+          errorDescription="Couldn’t change access. Try again."
           onClose={() => setReview(null)}
           onRestoreFocus={() =>
             (reviewOrigin.current?.isConnected ? reviewOrigin.current : addButton.current)?.focus()

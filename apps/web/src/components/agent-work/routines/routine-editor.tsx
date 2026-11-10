@@ -10,6 +10,7 @@ import {
   describeSchedule,
   parseSchedule,
   scheduleCron,
+  timeOptions,
   weekdayNames,
   type Frequency,
   type Schedule,
@@ -44,7 +45,6 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { formatTimeZone } from "@/lib/format/date";
 
 const fieldOrder: readonly RoutineField[] = ["name", "prompt", "cron", "timezone"];
 
@@ -123,10 +123,8 @@ export function RoutineEditor({
     }
     onSave(current);
   };
-  const summary =
-    schedule.frequency === "custom"
-      ? null
-      : `${describeSchedule(cron)}, ${formatTimeZone(draft.timezone)}.`;
+  // The time zone is the field right below, so the summary does not repeat it.
+  const summary = schedule.frequency === "custom" ? null : `${describeSchedule(cron)}.`;
   return (
     <Dialog
       open
@@ -244,15 +242,21 @@ export function RoutineEditor({
                     )}
                     <Field>
                       <FieldLabel htmlFor={`${id}-time`}>At</FieldLabel>
-                      <Input
-                        id={`${id}-time`}
-                        type="time"
-                        required
+                      <Select
                         value={schedule.time}
-                        onChange={(event) =>
-                          event.target.value && setScheduleField({ time: event.target.value })
-                        }
-                      />
+                        onValueChange={(time) => setScheduleField({ time })}
+                      >
+                        <SelectTrigger id={`${id}-time`} className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {timeOptions(schedule.time).map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </Field>
                   </div>
                 )}
@@ -294,7 +298,7 @@ export function RoutineEditor({
               Cancel
             </Button>
             <PendingButton type="submit" pending={pending} pendingLabel="Saving…">
-              Save routine
+              {editing ? "Save routine" : "Create routine"}
             </PendingButton>
           </DialogFooter>
         </form>

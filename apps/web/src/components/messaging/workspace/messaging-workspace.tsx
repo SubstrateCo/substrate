@@ -100,12 +100,13 @@ export function MessagingWorkspace({
       onMessageAgent={(agent) => {
         if (!directMessage.isPending) directMessage.mutate({ kind: "agent", agent });
       }}
-      renderCreate={(kind, onClose) => (
+      renderCreate={(kind, { onClose, onRestoreFocus }) => (
         <CreateConversationDialog
           organizationId={organizationId}
           kind={kind}
           people={people}
           onClose={onClose}
+          onRestoreFocus={onRestoreFocus}
           onCreated={(id) => {
             open(id);
             onClose();

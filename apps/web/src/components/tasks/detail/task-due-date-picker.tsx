@@ -1,13 +1,11 @@
 import { useId, useState, type ReactNode } from "react";
 
+import { dateOnly, parseTaskDate } from "./task-date";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { formatShortDate } from "@/lib/format/date";
-
-// A calendar date as YYYY-MM-DD in local time, the format tasks store.
-const dateOnly = (date: Date) =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+import { formatShortDate, parseDateOnly } from "@/lib/format/date";
 
 // Days from today for each quick choice. Next week is the coming Monday.
 const quick: { label: string; days: (today: Date) => number }[] = [
@@ -29,6 +27,8 @@ export function TaskDueDatePicker({
   const id = useId();
   const [open, setOpen] = useState(false);
   const [today, setToday] = useState(() => new Date());
+  const [text, setText] = useState("");
+  const [invalid, setInvalid] = useState(false);
   const choose = (next: string | null) => {
     setOpen(false);
     if (next !== value) onChange(next);
@@ -37,12 +37,16 @@ export function TaskDueDatePicker({
     <Popover
       open={open}
       onOpenChange={(next) => {
-        if (next) setToday(new Date());
+        if (next) {
+          setToday(new Date());
+          setText("");
+          setInvalid(false);
+        }
         setOpen(next);
       }}
     >
       <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent variant="menu" align="start" className="w-56">
+      <PopoverContent variant="menu" align="start" className="w-auto">
         {quick.map((option) => {
           const date = new Date(today);
           date.setDate(date.getDate() + option.days(date));
@@ -63,24 +67,41 @@ export function TaskDueDatePicker({
         })}
         <div className="mt-1 grid gap-1.5 border-t px-1 pt-2 pb-1">
           <label htmlFor={id} className="text-xs text-muted-foreground">
-            Pick a date
+            Type a date
           </label>
           <Input
             id={id}
-            type="date"
-            defaultValue={value ?? ""}
+            placeholder="Tomorrow, Fri, or Nov 20"
+            value={text}
+            aria-invalid={invalid}
+            aria-describedby={invalid ? `${id}-error` : undefined}
+            onChange={(event) => {
+              setText(event.target.value);
+              setInvalid(false);
+            }}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();
-                choose(event.currentTarget.value || null);
+                const next = parseTaskDate(text, today);
+                if (next) choose(next);
+                else setInvalid(true);
               }
             }}
-            onBlur={(event) => {
-              const next = event.currentTarget.value || null;
-              if (next && next !== value) onChange(next);
-            }}
           />
+          {invalid && (
+            <p id={`${id}-error`} role="alert" className="text-xs text-destructive">
+              Enter a date, like Nov 20.
+            </p>
+          )}
         </div>
+        <Calendar
+          mode="single"
+          selected={value ? parseDateOnly(value) : undefined}
+          defaultMonth={value ? parseDateOnly(value) : today}
+          onSelect={(date) => {
+            if (date) choose(dateOnly(date));
+          }}
+        />
         {value && (
           <Button type="button" variant="property" size="sm" onClick={() => choose(null)}>
             Clear due date

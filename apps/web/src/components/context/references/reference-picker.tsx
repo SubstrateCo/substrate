@@ -30,10 +30,7 @@ export function ReferencePicker({
   onClose: () => void;
 }) {
   const parsed = activeReference;
-  const source = `${parsed.trigger}:${parsed.kind}:${parsed.query}`;
-  const [search, setSearch] = useState({ source, query: parsed.query });
-  const query = search.source === source ? search.query : parsed.query;
-  if (search.source !== source) setSearch({ source, query: parsed.query });
+  const query = parsed.query;
   const [selection, setSelection] = useState<{ prefix: string; kind: ReferenceTab }>({
     prefix: parsed.kind,
     kind: parsed.kind,
@@ -73,7 +70,6 @@ export function ReferencePicker({
       results={debounced.pending ? [] : rows}
       loading={debounced.pending || results.some((result) => result.isPending)}
       error={debounced.pending ? null : (results.find((result) => result.error)?.error ?? null)}
-      onQueryChange={(query) => setSearch({ source, query })}
       onKindChange={(kind) => setSelection({ prefix: parsed.kind, kind })}
       onRetry={() => {
         if (!debounced.pending) for (const result of results) void result.refetch();

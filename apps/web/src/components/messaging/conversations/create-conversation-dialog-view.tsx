@@ -37,7 +37,7 @@ export type ConversationDraft = {
 
 const copy = {
   channel: {
-    title: "Create a channel",
+    title: "New channel",
     description: "A place for your team to talk about one topic.",
     submit: "Create channel",
   },
@@ -58,6 +58,7 @@ export function CreateConversationDialog({
   people,
   onSubmit,
   onClose,
+  onRestoreFocus,
   pending = false,
   error,
 }: {
@@ -66,6 +67,8 @@ export function CreateConversationDialog({
   people: readonly PickerPerson[];
   onSubmit: (draft: ConversationDraft) => void;
   onClose: () => void;
+  /** Focus the control that opened the dialog, which the dialog cannot find by itself. */
+  onRestoreFocus?: () => void;
   pending?: boolean;
   error?: Error | null;
 }) {
@@ -86,6 +89,7 @@ export function CreateConversationDialog({
     },
   });
   const text = copy[kind];
+  const limit = kind === "dm" ? "Choose one person for a direct message." : undefined;
   const nameField = kind !== "dm" && (
     <form.Field name="name">
       {(field) => (
@@ -108,12 +112,18 @@ export function CreateConversationDialog({
         if (!open && !pending) onClose();
       }}
     >
-      <DialogContent>
+      <DialogContent
+        onCloseAutoFocus={(event) => {
+          if (!onRestoreFocus) return;
+          event.preventDefault();
+          onRestoreFocus();
+        }}
+      >
         <form
           noValidate
           onSubmit={(event) => {
             event.preventDefault();
-            if (unfinishedRecipientMessage(pendingText)) {
+            if (unfinishedRecipientMessage(pendingText, limit)) {
               setRefused(true);
               event.currentTarget
                 .querySelector<HTMLInputElement>("#conversation-recipients")
@@ -131,7 +141,9 @@ export function CreateConversationDialog({
             {kind === "channel" && nameField}
             <form.Field name="recipients">
               {(field) => {
-                const unfinished = refused ? unfinishedRecipientMessage(pendingText) : undefined;
+                const unfinished = refused
+                  ? unfinishedRecipientMessage(pendingText, limit)
+                  : undefined;
                 const invalid = !field.state.meta.isValid || !!unfinished;
                 const invited = invitedRecipients(field.state.value).length;
                 return (
@@ -145,6 +157,7 @@ export function CreateConversationDialog({
                         people={people}
                         value={field.state.value}
                         max={kind === "dm" ? 1 : undefined}
+                        limitText={limit}
                         placeholder={
                           kind === "dm"
                             ? "Search by name or email"

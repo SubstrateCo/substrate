@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 import { CopyLink } from "../../context/links/copy-link";
 import { TaskContext } from "../../context/references/task-context";
@@ -9,6 +9,8 @@ import { TaskDetail as TaskDetailView } from "@/components/tasks/detail/task-det
 import type { ProjectDetail, Task } from "@/components/tasks/types";
 import { workHref } from "@/lib/navigation/record-links";
 import { useTaskUpdate } from "@/queries/tasks/mutations";
+
+export const TaskInspectorActive = createContext(true);
 
 export function TaskDetail({
   organizationId,
@@ -32,7 +34,8 @@ export function TaskDetail({
   const update = useTaskUpdate(organizationId, detail.project.entityId);
   const [editDirty, setEditDirty] = useState(false);
   const [commentDirty, setCommentDirty] = useState(false);
-  const dirty = editDirty || commentDirty;
+  const active = useContext(TaskInspectorActive);
+  const dirty = active && (editDirty || commentDirty);
   useEffect(() => {
     onDirtyChange(dirty);
     return () => onDirtyChange(false);
@@ -41,7 +44,7 @@ export function TaskDetail({
     <>
       <UnsavedChangesGuard
         dirty={dirty}
-        description="Your task edits or comment haven't been saved."
+        description="Your task edits or comment haven’t been saved."
       />
       <TaskDetailView
         detail={detail}

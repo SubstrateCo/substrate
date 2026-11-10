@@ -1,14 +1,15 @@
 import { useId } from "react";
 
 import { assigneeLabel, AssigneePicker } from "../assignee/assignee-picker";
+import { TaskDueDatePicker } from "../detail/task-due-date-picker";
 import { TaskAssigneeAvatar } from "../task-cues/task-assignee-avatar";
 import { taskPriorityOptions, taskStatusOptions } from "../task-cues/task-options";
 import { TaskSelect } from "../task-select";
 import type { ProjectDetail } from "../types";
 import type { TaskEditorForm } from "./task-form-view";
-import { FormTextField } from "@/components/forms/form-text-field";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { formatShortDate, parseDateOnly } from "@/lib/format/date";
 import { ChevronDown } from "lucide-react";
 
 export function TaskScheduleFields({
@@ -97,13 +98,32 @@ export function TaskScheduleFields({
       </form.Field>
       <form.Field name="dueDate">
         {(field) => (
-          <FormTextField
-            field={field}
-            id={`${id}-due`}
-            label="Due date"
-            fieldClassName="min-w-0"
-            type="date"
-          />
+          <Field className="min-w-0" data-invalid={field.state.meta.errors.length > 0}>
+            <FieldLabel htmlFor={`${id}-due`}>Due date</FieldLabel>
+            <TaskDueDatePicker
+              value={field.state.value || null}
+              onChange={(value) => {
+                field.handleChange(value ?? "");
+                field.handleBlur();
+              }}
+            >
+              <Button
+                id={`${id}-due`}
+                type="button"
+                variant="outline"
+                className="w-full justify-between"
+                onBlur={field.handleBlur}
+              >
+                <span className="font-normal">
+                  {field.state.value
+                    ? formatShortDate(parseDateOnly(field.state.value) ?? field.state.value)
+                    : "Choose a date"}
+                </span>
+                <ChevronDown aria-hidden="true" className="text-muted-foreground" />
+              </Button>
+            </TaskDueDatePicker>
+            <FieldError errors={field.state.meta.errors} />
+          </Field>
         )}
       </form.Field>
     </div>

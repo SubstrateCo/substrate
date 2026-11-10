@@ -20,7 +20,7 @@ export function BrowserElectronReturn({
   return (
     <AuthFrame
       title="Return to Startup OS"
-      description="You're signed in. Continue in the desktop app."
+      description="You’re signed in. Continue in the desktop app."
       actions={signOut}
     >
       {email && (
