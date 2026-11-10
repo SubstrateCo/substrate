@@ -14,6 +14,7 @@ import {
   type Conversation,
   type MessagingIdentity,
 } from "./access";
+import { endParticipation, writeMembers } from "./members";
 import { invitationTarget, partnerTargetAllowed } from "./policy";
 import { messagingConversations, messagingParticipants } from "./schema";
 import {
@@ -222,19 +223,12 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
           organizationId: scope.organizationId,
           name: original.name,
         });
-        await tx
-          .insert(messagingParticipants)
-          .values({
-            conversationId: conversation.id,
-            organizationId: scope.organizationId,
-            actorEntityId: actor.entityId,
-            actorType: "human",
-            consentedAt: new Date(),
-          })
-          .onConflictDoUpdate({
-            target: [messagingParticipants.conversationId, messagingParticipants.actorEntityId],
-            set: { leftAt: null, consentedAt: new Date() },
-          });
+        await writeMembers(
+          tx,
+          conversation.id,
+          [{ entityId: actor.entityId, type: "human", organizationId: scope.organizationId }],
+          "consent",
+        );
         await tx
           .update(messagingInvitations)
           .set({
@@ -343,15 +337,13 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
               eq(messagingConnections.organizationId, partnerOrganizationId),
             ),
           );
-        await tx
-          .update(messagingParticipants)
-          .set({ leftAt: new Date(), consentedAt: null })
-          .where(
-            and(
-              eq(messagingParticipants.conversationId, conversationId),
-              eq(messagingParticipants.organizationId, partnerOrganizationId),
-            ),
-          );
+        await endParticipation(
+          tx,
+          and(
+            eq(messagingParticipants.conversationId, conversationId),
+            eq(messagingParticipants.organizationId, partnerOrganizationId),
+          ),
+        );
         // Invitations to other partners and host invitations without a target stay pending.
         await tx
           .update(messagingInvitations)
@@ -391,15 +383,13 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
         if (!participant || !partnerTargetAllowed(conversation, viewer, participant.organizationId))
           throw new AccessDeniedError();
         const hints = await conversationRemovalHints(tx, conversation);
-        await tx
-          .update(messagingParticipants)
-          .set({ leftAt: new Date(), consentedAt: null })
-          .where(
-            and(
-              eq(messagingParticipants.conversationId, conversationId),
-              eq(messagingParticipants.actorEntityId, actorId),
-            ),
-          );
+        await endParticipation(
+          tx,
+          and(
+            eq(messagingParticipants.conversationId, conversationId),
+            eq(messagingParticipants.actorEntityId, actorId),
+          ),
+        );
         await recordSharingEvent(tx, scope, conversationId, "removed", {
           targetOrganizationId: participant.organizationId,
         });

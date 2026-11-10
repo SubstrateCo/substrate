@@ -17,6 +17,7 @@ import {
   visibleConversations,
   type MessagingIdentity,
 } from "./access";
+import { activeMembers, endParticipation, hasOtherPerson, setOwner, writeMembers } from "./members";
 import { messageAuthorColumns } from "./message-authors";
 import { messageSummaries } from "./message-summaries";
 import {
@@ -47,7 +48,6 @@ import {
   desc,
   eq,
   inArray,
-  isNotNull,
   isNull,
   ne,
   or,
@@ -62,143 +62,6 @@ interface CreateConversationInput {
   shareHistory?: boolean;
   /** The caller's own agent definitions. */
   agentIds?: string[];
-}
-
-type MemberActor = { entityId: string; type: "human" | "agent" };
-
-// Adds or restores members. Rows of members who left stay for authorship and come back here.
-async function upsertMembers(
-  tx: DatabaseExecutor,
-  conversationId: string,
-  members: (MemberActor & { organizationId: string })[],
-) {
-  if (!members.length) return [];
-  return tx
-    .insert(messagingParticipants)
-    .values(
-      members.map((member) => ({
-        conversationId,
-        organizationId: member.organizationId,
-        actorEntityId: member.entityId,
-        actorType: member.type,
-      })),
-    )
-    .onConflictDoUpdate({
-      target: [messagingParticipants.conversationId, messagingParticipants.actorEntityId],
-      set: { leftAt: null },
-      setWhere: isNotNull(messagingParticipants.leftAt),
-    })
-    .returning();
-}
-
-// Posting rejoins a public channel the person left. Private conversations are not visible
-// after leaving, so the caller's access check fails first. Returns whether membership changed.
-async function joinConversation(
-  tx: DatabaseExecutor,
-  scope: MessagingIdentity,
-  actor: MemberActor,
-  conversationId: string,
-) {
-  const changed = await upsertMembers(tx, conversationId, [
-    { ...actor, organizationId: scope.organizationId },
-  ]);
-  return changed.length > 0;
-}
-
-// An agent writes with its owner's access. Posting records authorship, which the message foreign
-// key requires, but never changes membership: only its owner adds or removes it.
-async function recordAgentAuthor(
-  tx: DatabaseExecutor,
-  scope: MessagingIdentity,
-  actorEntityId: string,
-  conversationId: string,
-) {
-  await tx
-    .insert(messagingParticipants)
-    .values({
-      conversationId,
-      organizationId: scope.organizationId,
-      actorEntityId,
-      actorType: "agent",
-      leftAt: new Date(),
-    })
-    .onConflictDoNothing();
-}
-
-// `agentId` names the agent definition only for its owner, the viewer. Other agents stay private.
-async function activeMembers(tx: DatabaseExecutor, conversationIds: string[], viewerId = "") {
-  const rows = conversationIds.length
-    ? await tx
-        .select({
-          conversationId: messagingParticipants.conversationId,
-          actorId: actors.entityId,
-          type: actors.type,
-          userId: actors.userId,
-          agentId: sql<string | null>`(select ${userAgents.id} from ${userAgents}
-            where ${userAgents.id} = ${actors.userAgentId} and ${userAgents.userId} = ${viewerId})`,
-          name: sql<string>`coalesce(${user.name}, ${actors.name})`,
-          organizationId: messagingParticipants.organizationId,
-        })
-        .from(messagingParticipants)
-        .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
-        .innerJoin(
-          messagingConversations,
-          eq(messagingConversations.id, messagingParticipants.conversationId),
-        )
-        .leftJoin(user, eq(user.id, actors.userId))
-        .where(
-          and(
-            inArray(messagingParticipants.conversationId, conversationIds),
-            isNull(messagingParticipants.leftAt),
-            approvedParticipant(tx),
-          ),
-        )
-        .orderBy(
-          asc(actors.type),
-          sql`coalesce(${user.name}, ${actors.name})`,
-          asc(actors.entityId),
-        )
-    : [];
-  const byConversation = new Map<string, typeof rows>();
-  for (const row of rows) {
-    const group = byConversation.get(row.conversationId) ?? [];
-    group.push(row);
-    byConversation.set(row.conversationId, group);
-  }
-  return byConversation;
-}
-
-// The new owner must be a current member with a verified account and live membership.
-async function setOwner(
-  tx: DatabaseExecutor,
-  conversation: typeof messagingConversations.$inferSelect,
-  userId: string,
-) {
-  const [candidate] = await tx
-    .select({ userId: user.id })
-    .from(messagingParticipants)
-    .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
-    .innerJoin(user, and(eq(user.id, actors.userId), eq(user.emailVerified, true)))
-    .innerJoin(
-      member,
-      and(
-        eq(member.userId, user.id),
-        eq(member.organizationId, messagingParticipants.organizationId),
-      ),
-    )
-    .where(
-      and(
-        eq(messagingParticipants.conversationId, conversation.id),
-        eq(actors.userId, userId),
-        eq(messagingParticipants.organizationId, conversation.organizationId),
-        isNull(messagingParticipants.leftAt),
-      ),
-    );
-  if (!candidate) throw new ValidationError("The new owner must be a current member.");
-  await tx
-    .update(messagingConversations)
-    .set({ createdBy: userId })
-    .where(eq(messagingConversations.id, conversation.id));
 }
 
 async function requireThreadRoot(tx: DatabaseExecutor, conversationId: string, threadId: string) {
@@ -270,8 +133,11 @@ export async function sendMessageAs(
   }
   if (threadId) await requireThreadRoot(tx, conversationId, threadId);
   let joined = false;
-  if (actor.type === "agent") await recordAgentAuthor(tx, scope, actor.entityId, conversationId);
-  else joined = await joinConversation(tx, scope, actor, conversationId);
+  // Posting rejoins a public channel the person left. Private conversations are not visible after
+  // leaving, so the access check fails first.
+  const self = { ...actor, organizationId: scope.organizationId };
+  if (actor.type === "agent") await writeMembers(tx, conversationId, [self], "author");
+  else joined = (await writeMembers(tx, conversationId, [self], "join")).length > 0;
   const [created] = await tx
     .insert(messagingMessages)
     .values({
@@ -547,10 +413,12 @@ export function createMessagingService(
             ...values,
           })
           .returning();
-        await upsertMembers(tx, conversation!.id, [
-          { ...actor, organizationId: scope.organizationId },
-          ...selected,
-        ]);
+        await writeMembers(
+          tx,
+          conversation!.id,
+          [{ ...actor, organizationId: scope.organizationId }, ...selected],
+          "join",
+        );
         for (const email of external)
           await queueSharingInvitation(
             tx,
@@ -576,7 +444,7 @@ export function createMessagingService(
         for (const email of external)
           await queueSharingInvitation(tx, scope, conversation, email, shareHistory);
         // Adding someone who left brings them back.
-        const added = await upsertMembers(tx, conversationId, selected);
+        const added = await writeMembers(tx, conversationId, selected, "join");
         if (external.length) return { added: added.length, invited: external.length };
         return { added: added.length };
       });
@@ -592,7 +460,7 @@ export function createMessagingService(
         if (conversation.kind === "dm")
           throw new ValidationError("Start a direct conversation with the agent instead.");
         const [agent] = await ownedAgents(tx, [agentId]);
-        await upsertMembers(tx, conversationId, [agent!]);
+        await writeMembers(tx, conversationId, [agent!], "join");
         return { actorId: agent!.entityId };
       });
     },
@@ -604,26 +472,23 @@ export function createMessagingService(
         await authenticate(tx);
         const conversation = await loadConversation(tx, scope, conversationId, "update");
         if (conversation.kind === "dm") throw new AccessDeniedError();
-        const removed = await tx
-          .update(messagingParticipants)
-          .set({ leftAt: new Date() })
-          .where(
-            and(
-              eq(messagingParticipants.conversationId, conversationId),
-              eq(messagingParticipants.actorEntityId, agentActorId),
-              eq(messagingParticipants.actorType, "agent"),
-              isNull(messagingParticipants.leftAt),
-              inArray(
-                messagingParticipants.actorEntityId,
-                tx
-                  .select({ id: actors.entityId })
-                  .from(actors)
-                  .innerJoin(userAgents, eq(userAgents.id, actors.userAgentId))
-                  .where(eq(userAgents.userId, scope.userId)),
-              ),
+        const removed = await endParticipation(
+          tx,
+          and(
+            eq(messagingParticipants.conversationId, conversationId),
+            eq(messagingParticipants.actorEntityId, agentActorId),
+            eq(messagingParticipants.actorType, "agent"),
+            isNull(messagingParticipants.leftAt),
+            inArray(
+              messagingParticipants.actorEntityId,
+              tx
+                .select({ id: actors.entityId })
+                .from(actors)
+                .innerJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+                .where(eq(userAgents.userId, scope.userId)),
             ),
-          )
-          .returning();
+          ),
+        ).returning();
         if (!removed.length) throw new AccessDeniedError();
         return { removed: true };
       });
@@ -634,7 +499,15 @@ export function createMessagingService(
       return db.transaction(async (tx) => {
         const { actor } = await authenticate(tx);
         await loadConversation(tx, scope, conversationId, "update");
-        const changed = await joinConversation(tx, scope, actor, conversationId);
+        const changed =
+          (
+            await writeMembers(
+              tx,
+              conversationId,
+              [{ ...actor, organizationId: scope.organizationId }],
+              "join",
+            )
+          ).length > 0;
         return { joined: true, changed };
       });
     },
@@ -647,27 +520,14 @@ export function createMessagingService(
         const conversation = await loadConversation(tx, scope, conversationId, "update");
         const plan = leavePlan(conversation, viewer, newOwnerUserId);
         if (plan === "transfer") await setOwner(tx, conversation, newOwnerUserId!);
-        if (plan === "blocked") {
-          const others = (await activeMembers(tx, [conversationId])).get(conversationId) ?? [];
-          // Agents cannot own conversations, so only people count here.
-          throw leaveBlocked(
-            others.some((person) => person.userId && person.userId !== scope.userId),
-          );
-        }
-        // A public channel member may never have posted, so the row may not exist yet.
-        await tx
-          .insert(messagingParticipants)
-          .values({
-            conversationId,
-            organizationId: scope.organizationId,
-            actorEntityId: actor.entityId,
-            actorType: actor.type,
-            leftAt: new Date(),
-          })
-          .onConflictDoUpdate({
-            target: [messagingParticipants.conversationId, messagingParticipants.actorEntityId],
-            set: { leftAt: new Date() },
-          });
+        if (plan === "blocked")
+          throw leaveBlocked(await hasOtherPerson(tx, conversationId, scope.userId));
+        await writeMembers(
+          tx,
+          conversationId,
+          [{ ...actor, organizationId: scope.organizationId }],
+          "leave",
+        );
         return { left: true };
       });
     },
@@ -847,7 +707,15 @@ export function createMessagingService(
           .where(eq(messagingMessages.id, messageId));
         if (!message) throw new AccessDeniedError();
         await loadConversation(tx, scope, message.conversationId, "share");
-        const joined = await joinConversation(tx, scope, actor, message.conversationId);
+        const joined =
+          (
+            await writeMembers(
+              tx,
+              message.conversationId,
+              [{ ...actor, organizationId: scope.organizationId }],
+              "join",
+            )
+          ).length > 0;
         const hints = messageChangeHints(
           { conversationId: message.conversationId, organizationId: scope.organizationId },
           { joined },

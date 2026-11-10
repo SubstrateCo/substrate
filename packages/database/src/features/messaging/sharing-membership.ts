@@ -1,6 +1,7 @@
 import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { conversationRemovalHints } from "../realtime/routing";
+import { endParticipation } from "./members";
 import { messagingConversations, messagingParticipants } from "./schema";
 import { messagingInvitations } from "./sharing.schema";
 import { and, asc, eq, inArray, ne, or } from "drizzle-orm";
@@ -46,24 +47,22 @@ export async function clearMembershipSharing(
       )
     ).flat();
     if (ids.length)
-      await tx
-        .update(messagingParticipants)
-        .set({ consentedAt: null, leftAt: new Date() })
-        .where(
-          and(
-            inArray(
-              messagingParticipants.conversationId,
-              ids.map((row) => row.id),
-            ),
-            inArray(
-              messagingParticipants.actorEntityId,
-              tx
-                .select({ id: actors.entityId })
-                .from(actors)
-                .where(and(eq(actors.userId, userId), eq(actors.organizationId, organizationId))),
-            ),
+      await endParticipation(
+        tx,
+        and(
+          inArray(
+            messagingParticipants.conversationId,
+            ids.map((row) => row.id),
           ),
-        );
+          inArray(
+            messagingParticipants.actorEntityId,
+            tx
+              .select({ id: actors.entityId })
+              .from(actors)
+              .where(and(eq(actors.userId, userId), eq(actors.organizationId, organizationId))),
+          ),
+        ),
+      );
     await tx
       .update(messagingInvitations)
       .set({ status: "revoked" })
