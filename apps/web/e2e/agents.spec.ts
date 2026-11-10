@@ -1,4 +1,6 @@
-import { test, visit, type Client } from "./test-support/fixtures";
+import { createAgent as createHomedAgent } from "./test-support/agent-work";
+import { conversation, test, visit, type Client } from "./test-support/fixtures";
+import { searches } from "./test-support/search";
 import { expect, type Page } from "@playwright/test";
 
 const section = (page: Page, name: string) =>
@@ -123,4 +125,25 @@ test("the Agents rail button is current in the Agents app", async ({ account, cl
   await agents.click();
   await expect(agents).toHaveAttribute("aria-current", "page");
   await expect(user.page.getByRole("heading", { name: "Needs you", exact: true })).toBeVisible();
+});
+
+test("a member adds and removes their agent in a channel without an agent search", async ({
+  account,
+  client,
+}) => {
+  const user = await client(account);
+  const agent = await createHomedAgent(user.actor);
+  const channel = await conversation(user.actor);
+  const requests = searches(user.page);
+  await visit(user, channel.id);
+  await user.page.getByRole("button", { name: "Conversation actions", exact: true }).click();
+  await user.page.getByRole("menuitem", { name: "Your agents", exact: true }).click();
+  const dialog = user.page.getByRole("dialog");
+  const row = dialog.getByRole("listitem").filter({ hasText: agent.name });
+  await row.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(row.getByText("In this conversation", { exact: true })).toBeVisible();
+  await row.getByRole("button", { name: "Remove", exact: true }).click();
+  await expect(row.getByRole("button", { name: "Add", exact: true })).toBeVisible();
+  await expect(row.getByText("In this conversation", { exact: true })).toHaveCount(0);
+  expect(requests.filter((request) => "kind" in request && request.kind === "agent")).toEqual([]);
 });

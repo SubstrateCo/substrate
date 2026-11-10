@@ -1,9 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { AgentMembersDialog } from "./actions/agent-members-dialog";
-import { conversationAgentOptions } from "@/lib/messaging/conversations";
+import { conversationAgentOptions, type ConversationMember } from "@/lib/messaging/conversations";
 import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
-import { searchOptions } from "@/queries/context/search";
 import { useConversationAgents } from "@/queries/messaging/agents";
 import { toast } from "sonner";
 
@@ -11,22 +10,26 @@ export function ConversationAgents({
   userId,
   organizationId,
   conversationId,
+  members,
   name,
   onClose,
 }: {
   userId: string;
   organizationId: string;
   conversationId: string;
+  members: readonly ConversationMember[];
   name: string;
   onClose: () => void;
 }) {
   const catalog = useQuery(agentCatalogQueryOptions(userId));
-  // The server returns only the viewer's own agents that are members of this conversation.
-  const members = useQuery(
-    searchOptions({ organizationId, conversationId, query: "", kind: "agent", limit: 100 }),
+  // The server sets agentId only for the viewer's own agents, so other people's agents stay out.
+  const ownAgents = members.flatMap((member) =>
+    member.type === "agent" && member.agentId
+      ? [{ id: member.actorId, title: member.name, agentId: member.agentId }]
+      : [],
   );
   const { add, remove } = useConversationAgents(organizationId, conversationId);
-  const agents = conversationAgentOptions(catalog.data?.agents ?? [], members.data ?? []);
+  const agents = conversationAgentOptions(catalog.data?.agents ?? [], ownAgents);
   let busyId: string | undefined;
   if (add.isPending) busyId = add.variables;
   else if (remove.isPending)
@@ -35,8 +38,8 @@ export function ConversationAgents({
     <AgentMembersDialog
       name={name}
       agents={agents}
-      loading={catalog.isPending || members.isPending}
-      error={add.error ?? remove.error ?? catalog.error ?? members.error}
+      loading={catalog.isPending}
+      error={add.error ?? remove.error ?? catalog.error}
       busyId={busyId}
       onAdd={(agentId) =>
         add.mutate(agentId, {

@@ -60,6 +60,7 @@ export function ConversationActions({
           userId={userId}
           organizationId={organizationId}
           conversationId={conversation.id}
+          members={conversation.members}
           name={name}
           onClose={close}
         />
