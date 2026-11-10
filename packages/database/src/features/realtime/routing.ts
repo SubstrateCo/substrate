@@ -69,6 +69,8 @@ export async function profileRefreshHints(
   ];
 }
 
+// Members see agents as names and pictures in messages and tasks; "profile" refreshes those labels.
+// Access hints force session rechecks and reset private caches, so keep them for grant changes.
 export async function agentRefreshHints(
   db: DatabaseExecutor,
   userId: string,
@@ -82,7 +84,7 @@ export async function agentRefreshHints(
     { audience: realtimeKeys.user(userId), domain: "agents" },
     ...organizations.map(({ id }) => ({
       audience: realtimeKeys.organization(id),
-      domain: "access" as const,
+      domain: "profile" as const,
     })),
   ];
 }

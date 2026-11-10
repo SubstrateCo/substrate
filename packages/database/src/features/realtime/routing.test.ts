@@ -5,7 +5,12 @@ import { messagingConversations, messagingParticipants, user, userAgents } from 
 import { setupDatabase } from "../../testing/database";
 import { approveFixtureParticipants } from "../../testing/messaging";
 import { canReceiveChange } from "./audience";
-import { invitationRefreshHints, profileRefreshHints, projectAccessRefreshHints } from "./routing";
+import {
+  agentRefreshHints,
+  invitationRefreshHints,
+  profileRefreshHints,
+  projectAccessRefreshHints,
+} from "./routing";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -97,6 +102,24 @@ test("project access hints reset only the granted actor and an agent's owner", a
     { audience: workspace, domain: "tasks" },
     { audience: realtimeKeys.actor(fixture.orgA, agent.entityId), domain: "access" },
     { audience: realtimeKeys.actor(fixture.orgA, fixture.alice), domain: "access" },
+  ]);
+});
+
+// Workspace members see agents only as names and pictures, so they need a label refresh, not the
+// forced session recheck and private-cache reset of an access hint.
+test("agent changes refresh the owner's agents and workspace labels without an access hint", async () => {
+  const [definition] = await fixture.db
+    .insert(userAgents)
+    .values({ userId: "alice", name: "Helper", instructions: "", harness: "opencode" })
+    .returning();
+  await ensureUserAgentActor(fixture.db, {
+    organizationId: fixture.orgA,
+    userId: "alice",
+    userAgentId: definition!.id,
+  });
+  expect(await agentRefreshHints(fixture.db, "alice")).toEqual([
+    { audience: realtimeKeys.user("alice"), domain: "agents" },
+    { audience: realtimeKeys.organization(fixture.orgA), domain: "profile" },
   ]);
 });
 
