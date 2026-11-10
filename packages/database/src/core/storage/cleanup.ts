@@ -67,11 +67,10 @@ export function createStorageCleanup(db: Database) {
         .where(and(lt(fileUploads.expiresAt, before), isNull(fileUploads.temporaryCleanedAt)))
         .limit(100);
     },
+    // Cleanup reaches an upload a day after it expired, so it is complete or abandoned. A stored
+    // file keeps its own row, and the row's deletion message is no longer needed.
     async forgetUpload(id: string) {
-      await db
-        .update(fileUploads)
-        .set({ temporaryCleanedAt: new Date() })
-        .where(eq(fileUploads.id, id));
+      await db.delete(fileUploads).where(eq(fileUploads.id, id));
     },
   };
 }

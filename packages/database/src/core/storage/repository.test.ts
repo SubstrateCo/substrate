@@ -141,6 +141,39 @@ describe("stored file relationships", () => {
     expect(await f.db.select().from(storedFiles).where(eq(storedFiles.id, id))).toEqual([]);
   });
 
+  test("an upload row stays while its messages matter and goes when cleanup removes its temporary object", async () => {
+    const repo = createStorageRepository(f.db);
+    const scope = { userId: "alice", organizationId: f.orgA };
+    const id = crypto.randomUUID();
+    await repo.createUpload(
+      scope,
+      { purpose: "file", filename: "a.txt", contentType: "text/plain", size: 5 },
+      id,
+      new Date(Date.now() + 60_000),
+    );
+    const verified = {
+      objectKey: `objects/${id}/a`,
+      contentType: "text/plain",
+      size: 5,
+      sha256: "a".repeat(64),
+    };
+    await repo.complete(scope, id, verified);
+    await repo.deleteFile(scope, id);
+    await expect(repo.getUpload(scope, id)).rejects.toThrow(
+      "File was deleted. Start a new upload.",
+    );
+
+    await f.db
+      .update(fileUploads)
+      .set({ expiresAt: new Date(Date.now() - 48 * 60 * 60_000) })
+      .where(eq(fileUploads.id, id));
+    const before = new Date(Date.now() - 24 * 60 * 60_000);
+    expect((await repo.expiredUploads(before)).map((upload) => upload.id)).toEqual([id]);
+    await repo.forgetUpload(id);
+    expect(await f.db.select().from(fileUploads).where(eq(fileUploads.id, id))).toEqual([]);
+    expect(await repo.expiredUploads(before)).toEqual([]);
+  });
+
   test("upload and completion whitelist input fields instead of accepting extra persistence fields", async () => {
     const repo = createStorageRepository(f.db);
     const scope = { userId: "alice", organizationId: f.orgA };
