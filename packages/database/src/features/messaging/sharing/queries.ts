@@ -1,54 +1,19 @@
-import type { DatabaseExecutor } from "../../client";
-import { actors } from "../../core/actors/schema";
-import { user } from "../../core/authentication/schema";
-import { organization } from "../../core/organizations/schema";
-import { AccessDeniedError } from "../../errors";
-import { workspaceContext } from "../context/access";
-import { lockConversation, visibleConversations, type MessagingIdentity } from "./access";
-import { messagingConversations, messagingParticipants } from "./schema";
-import { requireSharingManager, requireSharingRecipient } from "./sharing-access";
+import type { DatabaseExecutor } from "../../../client";
+import { actors } from "../../../core/actors/schema";
+import { user } from "../../../core/authentication/schema";
+import { organization } from "../../../core/organizations/schema";
+import { workspaceContext } from "../../context/access";
+import { lockConversation, visibleConversations, type MessagingIdentity } from "../access";
+import { messagingConversations, messagingParticipants } from "../schema";
 import {
   messagingConnections,
   messagingInvitations,
   messagingSharingEvents,
-} from "./sharing.schema";
+} from "../sharing.schema";
+import { requireSharingManager } from "./access";
 import { and, desc, eq, gt, inArray, isNull, ne, or } from "drizzle-orm";
 
-export async function readSharingInvitation(db: DatabaseExecutor, userId: string, id: string) {
-  const [invitation] = await db
-    .select()
-    .from(messagingInvitations)
-    .where(eq(messagingInvitations.id, id));
-  if (!invitation) throw new AccessDeniedError();
-  await requireSharingRecipient(db, userId, invitation);
-  const [row] = await db
-    .select({
-      name: messagingConversations.name,
-      kind: messagingConversations.kind,
-      hostName: organization.name,
-    })
-    .from(messagingConversations)
-    .innerJoin(organization, eq(organization.id, messagingConversations.organizationId))
-    .where(eq(messagingConversations.id, invitation.conversationId));
-  if (!row) throw new AccessDeniedError();
-  return {
-    id: invitation.id,
-    ...row,
-    email: invitation.email,
-    purpose: invitation.purpose,
-    status: invitation.status,
-    expiresAt: invitation.expiresAt,
-    hostOrganizationId: invitation.hostOrganizationId,
-    conversationId:
-      invitation.status === "accepted" && invitation.recipientUserId === userId
-        ? invitation.conversationId
-        : null,
-    targetOrganizationId: invitation.targetOrganizationId,
-    approvalRequested: !!invitation.recipientUserId,
-  };
-}
-
-export function createSharingQueries(db: DatabaseExecutor, scope: MessagingIdentity) {
+export function sharingQueries(db: DatabaseExecutor, scope: MessagingIdentity) {
   return {
     async list(conversationId: string) {
       return db.transaction(async (tx) => {

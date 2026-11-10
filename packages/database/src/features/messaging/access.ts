@@ -5,6 +5,8 @@ import { userAgents } from "../../core/actors/user-agents.schema";
 import { entities } from "../../core/entities/schema";
 import { member } from "../../core/organizations/schema";
 import { AccessDeniedError, ValidationError } from "../../errors";
+import { workspaceContext } from "../context/access";
+import { viewerOf } from "./policy";
 import { messagingConversations, messagingMessages, messagingParticipants } from "./schema";
 import { messagingConnections } from "./sharing.schema";
 import { and, eq, exists, inArray, isNotNull, isNull, lte, or, type SQLWrapper } from "drizzle-orm";
@@ -190,6 +192,17 @@ export async function requireThreadRoot(
     .from(messagingMessages)
     .where(threadRoot(conversationId, threadId));
   if (!root) throw new ValidationError("Thread must be a root message in this conversation.");
+}
+
+/** Verifies the session and returns the author and policy viewer for messaging operations. */
+export async function messagingSession(db: DatabaseExecutor, scope: MessagingIdentity) {
+  const { context, actor, userName, admin } = await workspaceContext(db, scope);
+  return {
+    context,
+    actor,
+    authorName: actor.type === "agent" ? actor.name : userName,
+    viewer: viewerOf(scope, admin),
+  };
 }
 
 export type Conversation = typeof messagingConversations.$inferSelect;

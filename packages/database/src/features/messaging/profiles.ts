@@ -9,8 +9,9 @@ import { entities } from "../../core/entities/schema";
 import { member } from "../../core/organizations/schema";
 import { AccessDeniedError } from "../../errors";
 import { visibleConversations, type MessagingIdentity } from "./access";
-import { messagingConversations, messagingMessages, messagingParticipants } from "./schema";
-import { and, desc, eq, exists, isNull, or } from "drizzle-orm";
+import { directConversationId } from "./direct-messages";
+import { messagingConversations, messagingMessages } from "./schema";
+import { and, eq, exists, isNull, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 interface MessagingProfile {
@@ -127,41 +128,6 @@ async function requireProfileContext(
   if (!conversation) throw new AccessDeniedError();
 }
 
-async function directConversationId(
-  tx: DatabaseExecutor,
-  scope: MessagingIdentity,
-  viewerActorEntityId: string,
-  userId: string,
-) {
-  const viewer = alias(messagingParticipants, "viewer");
-  const target = alias(messagingParticipants, "target");
-  const targetActor = alias(actors, "target_actor");
-  const [row] = await tx
-    .select({ id: messagingConversations.id })
-    .from(messagingConversations)
-    .innerJoin(
-      viewer,
-      and(
-        eq(viewer.conversationId, messagingConversations.id),
-        eq(viewer.actorEntityId, viewerActorEntityId),
-      ),
-    )
-    .innerJoin(target, eq(target.conversationId, messagingConversations.id))
-    .innerJoin(
-      targetActor,
-      and(eq(targetActor.entityId, target.actorEntityId), eq(targetActor.userId, userId)),
-    )
-    .where(
-      and(
-        eq(messagingConversations.kind, "dm"),
-        eq(messagingConversations.organizationId, scope.organizationId),
-      ),
-    )
-    .orderBy(desc(messagingConversations.createdAt))
-    .limit(1);
-  return row?.id ?? null;
-}
-
 // The caller has authenticated the session scope and resolved the viewer's actor.
 export async function messagingProfile(
   tx: DatabaseExecutor,
@@ -187,7 +153,7 @@ export async function messagingProfile(
       role: person?.role ?? null,
       directConversationId:
         person && !self && !scope.actorEntityId
-          ? await directConversationId(tx, scope, viewerActorEntityId, actor.userId!)
+          ? await directConversationId(tx, scope.organizationId, viewerActorEntityId, actor.userId!)
           : null,
       agent: null,
     };

@@ -1,0 +1,161 @@
+import type { DatabaseExecutor } from "../../../client";
+import { actors } from "../../../core/actors/schema";
+import { AccessDeniedError } from "../../../errors";
+import { conversationRemovalHints } from "../../realtime/routing";
+import { lockConversation, type MessagingIdentity } from "../access";
+import { endParticipation } from "../members";
+import { partnerTargetAllowed } from "../policy";
+import { messagingConversations, messagingParticipants } from "../schema";
+import { messagingConnections, messagingInvitations } from "../sharing.schema";
+import { requireSharingManager, recordSharingEvent } from "./access";
+import { and, eq, inArray, ne, or, asc } from "drizzle-orm";
+
+export function connectionOperations(db: DatabaseExecutor, scope: MessagingIdentity) {
+  return {
+    async disconnect(conversationId: string, partnerOrganizationId: string) {
+      return db.transaction(async (tx) => {
+        const conversation = await lockConversation(tx, conversationId, "update");
+        const viewer = await requireSharingManager(tx, scope, conversation);
+        if (!partnerTargetAllowed(conversation, viewer, partnerOrganizationId))
+          throw new AccessDeniedError();
+        const hints = await conversationRemovalHints(tx, [conversation]);
+        await tx
+          .update(messagingConnections)
+          .set({ disconnectedAt: new Date() })
+          .where(
+            and(
+              eq(messagingConnections.conversationId, conversationId),
+              eq(messagingConnections.organizationId, partnerOrganizationId),
+            ),
+          );
+        await endParticipation(
+          tx,
+          and(
+            eq(messagingParticipants.conversationId, conversationId),
+            eq(messagingParticipants.organizationId, partnerOrganizationId),
+          ),
+        );
+        // Invitations to other partners and host invitations without a target stay pending.
+        await tx
+          .update(messagingInvitations)
+          .set({ status: "revoked" })
+          .where(
+            and(
+              eq(messagingInvitations.conversationId, conversationId),
+              eq(messagingInvitations.status, "pending"),
+              or(
+                eq(messagingInvitations.senderOrganizationId, partnerOrganizationId),
+                eq(messagingInvitations.targetOrganizationId, partnerOrganizationId),
+              ),
+            ),
+          );
+        await recordSharingEvent(tx, scope, conversationId, "disconnected", {
+          targetOrganizationId: partnerOrganizationId,
+        });
+        return {
+          disconnected: true,
+          hints: hints.map((hint) => ({ ...hint, domain: "access" as const })),
+        };
+      });
+    },
+    async remove(conversationId: string, actorId: string) {
+      return db.transaction(async (tx) => {
+        const conversation = await lockConversation(tx, conversationId, "update");
+        const viewer = await requireSharingManager(tx, scope, conversation);
+        const [participant] = await tx
+          .select()
+          .from(messagingParticipants)
+          .where(
+            and(
+              eq(messagingParticipants.conversationId, conversationId),
+              eq(messagingParticipants.actorEntityId, actorId),
+            ),
+          );
+        if (!participant || !partnerTargetAllowed(conversation, viewer, participant.organizationId))
+          throw new AccessDeniedError();
+        const hints = await conversationRemovalHints(tx, [conversation]);
+        await endParticipation(
+          tx,
+          and(
+            eq(messagingParticipants.conversationId, conversationId),
+            eq(messagingParticipants.actorEntityId, actorId),
+          ),
+        );
+        await recordSharingEvent(tx, scope, conversationId, "removed", {
+          targetOrganizationId: participant.organizationId,
+        });
+        return {
+          removed: true,
+          hints: hints.map((hint) => ({ ...hint, domain: "access" as const })),
+        };
+      });
+    },
+  };
+}
+
+// Run on departure and before provisioning a rejoined membership. Rejoining is not fresh consent.
+export async function clearMembershipSharing(
+  db: DatabaseExecutor,
+  userId: string,
+  organizationId: string,
+) {
+  return db.transaction(async (tx) => {
+    // Lock the person's external conversations in ID order, so concurrent changes cannot deadlock.
+    const conversations = await tx
+      .select({
+        id: messagingConversations.id,
+        organizationId: messagingConversations.organizationId,
+      })
+      .from(messagingConversations)
+      .where(
+        and(
+          ne(messagingConversations.organizationId, organizationId),
+          inArray(
+            messagingConversations.id,
+            tx
+              .select({ id: messagingParticipants.conversationId })
+              .from(messagingParticipants)
+              .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
+              .where(and(eq(actors.userId, userId), eq(actors.organizationId, organizationId))),
+          ),
+        ),
+      )
+      .orderBy(asc(messagingConversations.id))
+      .for("update");
+    const ids = conversations.map((row) => row.id);
+    const hints = await conversationRemovalHints(tx, conversations);
+    if (ids.length)
+      await endParticipation(
+        tx,
+        and(
+          inArray(messagingParticipants.conversationId, ids),
+          inArray(
+            messagingParticipants.actorEntityId,
+            tx
+              .select({ id: actors.entityId })
+              .from(actors)
+              .where(and(eq(actors.userId, userId), eq(actors.organizationId, organizationId))),
+          ),
+        ),
+      );
+    await tx
+      .update(messagingInvitations)
+      .set({ status: "revoked" })
+      .where(
+        and(
+          eq(messagingInvitations.status, "pending"),
+          or(
+            and(
+              eq(messagingInvitations.senderOrganizationId, organizationId),
+              eq(messagingInvitations.inviterId, userId),
+            ),
+            and(
+              eq(messagingInvitations.targetOrganizationId, organizationId),
+              eq(messagingInvitations.recipientUserId, userId),
+            ),
+          ),
+        ),
+      );
+    return hints.map((hint) => ({ ...hint, domain: "access" as const }));
+  });
+}

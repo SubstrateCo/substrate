@@ -3,8 +3,8 @@ import { actors } from "../core/actors/schema";
 import type { MessagingIdentity } from "../features/messaging/access";
 import { messagingConversations, messagingParticipants } from "../features/messaging/schema";
 import { createMessagingService } from "../features/messaging/service";
-import { createSharingService } from "../features/messaging/sharing";
 import { messagingInvitations } from "../features/messaging/sharing.schema";
+import { createSharingService } from "../features/messaging/sharing/service";
 import { member, user } from "../schema";
 import { and, asc, eq, ne } from "drizzle-orm";
 

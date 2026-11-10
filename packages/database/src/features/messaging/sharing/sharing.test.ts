@@ -1,22 +1,22 @@
 import { realtimeKeys } from "@startup-os/contracts/realtime";
 
-import { ensureUserAgentActor } from "../../core/actors/provisioning";
-import { userAgents } from "../../core/actors/user-agents.schema";
-import { AccessDeniedError, ValidationError } from "../../errors";
-import * as schema from "../../schema";
+import { ensureUserAgentActor } from "../../../core/actors/provisioning";
+import { userAgents } from "../../../core/actors/user-agents.schema";
+import { AccessDeniedError, ValidationError } from "../../../errors";
+import * as schema from "../../../schema";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
-import { member, user } from "../../schema";
-import { setupDatabase } from "../../testing/database";
-import { createContextService } from "../context/service";
-import { canReceiveChange } from "../realtime/audience";
-import { messagingParticipants } from "./schema";
-import { createMessagingService } from "./service";
-import { createSharingService } from "./sharing";
-import { claimSharingMail, finishSharingMail } from "./sharing-mail";
-import { clearMembershipSharing } from "./sharing-membership";
-import { readSharingInvitation } from "./sharing-queries";
-import { messagingConnections, messagingInvitations } from "./sharing.schema";
-import { messagingSharingEvents } from "./sharing.schema";
+import { member, user } from "../../../schema";
+import { setupDatabase } from "../../../testing/database";
+import { createContextService } from "../../context/service";
+import { canReceiveChange } from "../../realtime/audience";
+import { messagingParticipants } from "../schema";
+import { createMessagingService } from "../service";
+import { messagingConnections, messagingInvitations } from "../sharing.schema";
+import { messagingSharingEvents } from "../sharing.schema";
+import { clearMembershipSharing } from "./connections";
+import { readSharingInvitation } from "./invitations";
+import { claimSharingMail, finishSharingMail } from "./mail";
+import { createSharingService } from "./service";
 import { expect, test } from "bun:test";
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";

@@ -4,7 +4,7 @@ import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { messagingConversations, messagingParticipants } from "./schema";
 import { createMessagingService } from "./service";
-import { createSharingService } from "./sharing";
+import { createSharingService } from "./sharing/service";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";

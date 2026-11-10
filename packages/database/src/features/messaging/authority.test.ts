@@ -2,7 +2,7 @@ import { member, user } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { createAcceptedMessagingService } from "../../testing/messaging";
 import { createMessagingService } from "./service";
-import { createSharingService } from "./sharing";
+import { createSharingService } from "./sharing/service";
 import { expect, test } from "bun:test";
 
 const f = setupDatabase();

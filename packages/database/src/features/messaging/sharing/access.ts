@@ -1,16 +1,16 @@
-import type { DatabaseExecutor } from "../../client";
-import { user } from "../../core/authentication/schema";
-import { isOrganizationAdmin } from "../../core/organizations/roles";
-import { AccessDeniedError } from "../../errors";
-import { workspaceContext } from "../context/access";
-import { visibleConversations, type Conversation, type MessagingIdentity } from "./access";
-import { canShare, hosts, viewerOf } from "./policy";
-import { messagingConversations } from "./schema";
+import type { DatabaseExecutor } from "../../../client";
+import { user } from "../../../core/authentication/schema";
+import { isOrganizationAdmin } from "../../../core/organizations/roles";
+import { AccessDeniedError } from "../../../errors";
+import { workspaceContext } from "../../context/access";
+import { visibleConversations, type Conversation, type MessagingIdentity } from "../access";
+import { canShare, hosts, viewerOf } from "../policy";
+import { messagingConversations } from "../schema";
 import {
   messagingConnections,
   messagingInvitations,
   messagingSharingEvents,
-} from "./sharing.schema";
+} from "../sharing.schema";
 import { and, eq, isNull } from "drizzle-orm";
 
 export async function hasSharingConnection(

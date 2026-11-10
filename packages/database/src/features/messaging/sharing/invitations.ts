@@ -1,38 +1,31 @@
 import { sharingInviteInput } from "@startup-os/contracts/messaging/sharing";
 
-import type { DatabaseExecutor } from "../../client";
-import { ensureHumanActor } from "../../core/actors/provisioning";
-import { actors } from "../../core/actors/schema";
-import { user } from "../../core/authentication/schema";
-import { member } from "../../core/organizations/schema";
-import { AccessDeniedError, ValidationError } from "../../errors";
-import { workspaceContext } from "../context/access";
-import { conversationRemovalHints, sharingInvitationHints } from "../realtime/routing";
+import type { DatabaseExecutor } from "../../../client";
+import { ensureHumanActor } from "../../../core/actors/provisioning";
+import { actors } from "../../../core/actors/schema";
+import { user } from "../../../core/authentication/schema";
+import { member, organization } from "../../../core/organizations/schema";
+import { AccessDeniedError, ValidationError } from "../../../errors";
+import { workspaceContext } from "../../context/access";
+import { sharingInvitationHints } from "../../realtime/routing";
 import {
   lockConversation,
   visibleConversations,
   type Conversation,
   type MessagingIdentity,
-} from "./access";
-import { endParticipation, writeMembers } from "./members";
-import {
-  canShare,
-  invitationTarget,
-  partnerTargetAllowed,
-  validateExternalInvitations,
-  type Viewer,
-} from "./policy";
-import { messagingConversations, messagingParticipants } from "./schema";
+} from "../access";
+import { writeMembers } from "../members";
+import { canShare, invitationTarget, validateExternalInvitations, type Viewer } from "../policy";
+import { messagingConversations, messagingParticipants } from "../schema";
+import { messagingConnections, messagingInvitations } from "../sharing.schema";
 import {
   hasSharingConnection,
   requireSharingManager,
   requireSharingRecipient,
   recordSharingEvent,
   recordSharingEvents,
-} from "./sharing-access";
-import { createSharingQueries } from "./sharing-queries";
-import { messagingConnections, messagingInvitations } from "./sharing.schema";
-import { and, eq, gt, inArray, ne, or, sql } from "drizzle-orm";
+} from "./access";
+import { and, eq, gt, inArray, ne, sql } from "drizzle-orm";
 
 /**
  * Queues invitations for the emails, all or none. Callers that just authorized the caller as an
@@ -137,9 +130,42 @@ export async function queueSharingInvitations(
   return invitations;
 }
 
-export function createSharingService(db: DatabaseExecutor, scope: MessagingIdentity) {
+export async function readSharingInvitation(db: DatabaseExecutor, userId: string, id: string) {
+  const [invitation] = await db
+    .select()
+    .from(messagingInvitations)
+    .where(eq(messagingInvitations.id, id));
+  if (!invitation) throw new AccessDeniedError();
+  await requireSharingRecipient(db, userId, invitation);
+  const [row] = await db
+    .select({
+      name: messagingConversations.name,
+      kind: messagingConversations.kind,
+      hostName: organization.name,
+    })
+    .from(messagingConversations)
+    .innerJoin(organization, eq(organization.id, messagingConversations.organizationId))
+    .where(eq(messagingConversations.id, invitation.conversationId));
+  if (!row) throw new AccessDeniedError();
   return {
-    ...createSharingQueries(db, scope),
+    id: invitation.id,
+    ...row,
+    email: invitation.email,
+    purpose: invitation.purpose,
+    status: invitation.status,
+    expiresAt: invitation.expiresAt,
+    hostOrganizationId: invitation.hostOrganizationId,
+    conversationId:
+      invitation.status === "accepted" && invitation.recipientUserId === userId
+        ? invitation.conversationId
+        : null,
+    targetOrganizationId: invitation.targetOrganizationId,
+    approvalRequested: !!invitation.recipientUserId,
+  };
+}
+
+export function invitationOperations(db: DatabaseExecutor, scope: MessagingIdentity) {
+  return {
     async invite(conversationId: string, input: { email: string; shareHistory: boolean }) {
       return db.transaction(async (tx) => {
         const conversation = await lockConversation(tx, conversationId, "update");
@@ -359,84 +385,6 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
           shareHistory: true,
         });
         return { ...invitation!, hints: await sharingInvitationHints(tx, invitation!) };
-      });
-    },
-    async disconnect(conversationId: string, partnerOrganizationId: string) {
-      return db.transaction(async (tx) => {
-        const conversation = await lockConversation(tx, conversationId, "update");
-        const viewer = await requireSharingManager(tx, scope, conversation);
-        if (!partnerTargetAllowed(conversation, viewer, partnerOrganizationId))
-          throw new AccessDeniedError();
-        const hints = await conversationRemovalHints(tx, [conversation]);
-        await tx
-          .update(messagingConnections)
-          .set({ disconnectedAt: new Date() })
-          .where(
-            and(
-              eq(messagingConnections.conversationId, conversationId),
-              eq(messagingConnections.organizationId, partnerOrganizationId),
-            ),
-          );
-        await endParticipation(
-          tx,
-          and(
-            eq(messagingParticipants.conversationId, conversationId),
-            eq(messagingParticipants.organizationId, partnerOrganizationId),
-          ),
-        );
-        // Invitations to other partners and host invitations without a target stay pending.
-        await tx
-          .update(messagingInvitations)
-          .set({ status: "revoked" })
-          .where(
-            and(
-              eq(messagingInvitations.conversationId, conversationId),
-              eq(messagingInvitations.status, "pending"),
-              or(
-                eq(messagingInvitations.senderOrganizationId, partnerOrganizationId),
-                eq(messagingInvitations.targetOrganizationId, partnerOrganizationId),
-              ),
-            ),
-          );
-        await recordSharingEvent(tx, scope, conversationId, "disconnected", {
-          targetOrganizationId: partnerOrganizationId,
-        });
-        return {
-          disconnected: true,
-          hints: hints.map((hint) => ({ ...hint, domain: "access" as const })),
-        };
-      });
-    },
-    async remove(conversationId: string, actorId: string) {
-      return db.transaction(async (tx) => {
-        const conversation = await lockConversation(tx, conversationId, "update");
-        const viewer = await requireSharingManager(tx, scope, conversation);
-        const [participant] = await tx
-          .select()
-          .from(messagingParticipants)
-          .where(
-            and(
-              eq(messagingParticipants.conversationId, conversationId),
-              eq(messagingParticipants.actorEntityId, actorId),
-            ),
-          );
-        if (!participant || !partnerTargetAllowed(conversation, viewer, participant.organizationId))
-          throw new AccessDeniedError();
-        const hints = await conversationRemovalHints(tx, [conversation]);
-        await endParticipation(
-          tx,
-          and(
-            eq(messagingParticipants.conversationId, conversationId),
-            eq(messagingParticipants.actorEntityId, actorId),
-          ),
-        );
-        await recordSharingEvent(tx, scope, conversationId, "removed", {
-          targetOrganizationId: participant.organizationId,
-        });
-        return {
-          removed: true,
-          hints: hints.map((hint) => ({ ...hint, domain: "access" as const })),
-        };
       });
     },
   };

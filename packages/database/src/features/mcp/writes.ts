@@ -5,7 +5,7 @@ import { AccessDeniedError } from "../../errors";
 import { recordTaskActivity } from "../activity/events";
 import { messageEntityReferences } from "../context/schema";
 import { requireMessage, type MessagingIdentity } from "../messaging/access";
-import { sendMessageAs } from "../messaging/service";
+import { sendMessageAs } from "../messaging/messages";
 import { taskRepository } from "../tasks/repository";
 import { mcpTaskQueries } from "./tasks";
 
