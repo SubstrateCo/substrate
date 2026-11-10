@@ -326,9 +326,11 @@ export function createRealtimeCache({
     forbidden: revoke,
     resync() {
       if (disposed) return Promise.resolve();
-      // Reconnect may follow a missed revocation. Drop old private values first.
+      // Reconnect may follow a missed revocation. Drop old private values first. Queries that the
+      // reset already read after the reconnect are current, so the final refresh skips them.
+      const since = ++clock;
       resyncWork ??= resetAccess()
-        .then(() => (isDisposed() ? undefined : refresh([{ queryKey: [] }])))
+        .then(() => (isDisposed() ? undefined : refresh([{ queryKey: [] }], since)))
         .finally(() => {
           resyncWork = undefined;
         });
