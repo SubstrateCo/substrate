@@ -18,14 +18,15 @@ function mount(entries: Record<string, { key: QueryKey; data?: unknown }>) {
   const reads: Record<string, number> = {};
   const unsubscribes = Object.entries(entries).map(([name, { key, data = [] }]) => {
     reads[name] = 0;
+    const read = async () => {
+      reads[name]++;
+      return data;
+    };
     return new QueryObserver(client, {
       queryKey: key,
       initialData: data,
       staleTime: Infinity,
-      queryFn: async () => {
-        reads[name]++;
-        return data;
-      },
+      queryFn: () => read(),
     }).subscribe(() => {});
   });
   return {
@@ -111,18 +112,18 @@ test("local replies refresh cached root and reply target counts without realtime
     root: { id: "root", replyCount },
     message: { id: messageId, replyCount: messageId === "root" ? replyCount : 0 },
   });
-  const observers = scopes.map(
-    ([organizationId, conversationId, messageId], index) =>
-      new QueryObserver(client, {
-        queryKey: [...queryKeys.messageTargets(organizationId, conversationId), messageId],
-        initialData: snapshot(messageId),
-        staleTime: Infinity,
-        queryFn: async () => {
-          reads[index]++;
-          return snapshot(messageId);
-        },
-      }),
-  );
+  const observers = scopes.map(([organizationId, conversationId, messageId], index) => {
+    const read = async () => {
+      reads[index]++;
+      return snapshot(messageId);
+    };
+    return new QueryObserver(client, {
+      queryKey: [...queryKeys.messageTargets(organizationId, conversationId), messageId],
+      initialData: snapshot(messageId),
+      staleTime: Infinity,
+      queryFn: () => read(),
+    });
+  });
   const unsubscribes = observers.map((observer) => observer.subscribe(() => {}));
   try {
     // A successful local reply changes the server snapshot; no realtime cache is connected.
@@ -243,12 +244,13 @@ test("a blocked search does not block a local mutation or erase stale-only inval
   const initial = Promise.withResolvers<string[]>();
   const key = [...context, "search", "term"];
   let reads = 0;
+  const read = () => {
+    reads++;
+    return initial.promise;
+  };
   const observer = new QueryObserver(client, {
     queryKey: key,
-    queryFn: () => {
-      reads++;
-      return initial.promise;
-    },
+    queryFn: () => read(),
   });
   const unsubscribe = observer.subscribe(() => {});
   try {

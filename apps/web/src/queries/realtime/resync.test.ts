@@ -9,10 +9,11 @@ test("resync removes private content when access was lost while hints were misse
   const key = queryKeys.messages("org", "private");
   client.setQueryData(key, ["formerly visible"]);
   const denied = Promise.withResolvers<string[]>();
+  const read = () => denied.promise;
   const observer = new QueryObserver(client, {
     queryKey: key,
     staleTime: Infinity,
-    queryFn: () => denied.promise,
+    queryFn: () => read(),
   });
   const unsubscribe = observer.subscribe(() => {});
   const cache = createRealtimeCache({

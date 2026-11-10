@@ -9,12 +9,13 @@ test("ready resync ignores a canceled page that has been replaced by another vis
   const oldPage = Promise.withResolvers<string[]>();
   const oldKey = [...queryKeys.context("org"), "notifications", "page", 20];
   const currentKey = [...queryKeys.context("org"), "notifications", "page", 5];
+  const readOldPage = (signal: AbortSignal) => {
+    signal.throwIfAborted();
+    return oldPage.promise;
+  };
   const oldObserver = new QueryObserver(client, {
     queryKey: oldKey,
-    queryFn: ({ signal }) => {
-      signal.throwIfAborted();
-      return oldPage.promise;
-    },
+    queryFn: ({ signal }) => readOldPage(signal),
   });
   const unsubscribeOld = oldObserver.subscribe(() => {});
   let routed = false;
@@ -57,19 +58,20 @@ for (const trigger of ["tasks", "ready", "messaging"] as const) {
     const initial = Promise.withResolvers<string[]>();
     let reads = 0;
     let aborted = false;
+    const read = (signal: AbortSignal) => {
+      reads++;
+      if (reads === 1) {
+        signal.addEventListener("abort", () => {
+          aborted = true;
+        });
+        return initial.promise;
+      }
+      return Promise.resolve(["current project"]);
+    };
     const observer = new QueryObserver(client, {
       queryKey: key,
       retry: false,
-      queryFn: ({ signal }) => {
-        reads++;
-        if (reads === 1) {
-          signal.addEventListener("abort", () => {
-            aborted = true;
-          });
-          return initial.promise;
-        }
-        return Promise.resolve(["current project"]);
-      },
+      queryFn: ({ signal }) => read(signal),
     });
     const unsubscribe = observer.subscribe(() => {});
     const cache = createRealtimeCache({
@@ -115,13 +117,14 @@ for (const domain of ["messaging", "context"] as const) {
     const key = [...queryKeys.context("org"), "search", "term"];
     const initial = Promise.withResolvers<string[]>();
     let reads = 0;
+    const read = () => {
+      reads++;
+      return initial.promise;
+    };
     const observer = new QueryObserver(client, {
       queryKey: key,
       staleTime: Infinity,
-      queryFn: () => {
-        reads++;
-        return initial.promise;
-      },
+      queryFn: () => read(),
     });
     const unsubscribe = observer.subscribe(() => {});
     const cache = createRealtimeCache({
@@ -159,11 +162,12 @@ test("refresh retains loaded content until the replacement request completes", a
   const client = new QueryClient();
   const key = queryKeys.projects("org");
   const replacement = Promise.withResolvers<string[]>();
+  const read = () => replacement.promise;
   const observer = new QueryObserver(client, {
     queryKey: key,
     initialData: ["loaded project"],
     staleTime: Infinity,
-    queryFn: () => replacement.promise,
+    queryFn: () => read(),
   });
   const unsubscribe = observer.subscribe(() => {});
   const cache = createRealtimeCache({
@@ -200,13 +204,14 @@ test("disposed generation cancels private work and cannot restart it or revalida
   const initial = Promise.withResolvers<string[]>();
   let reads = 0;
   let routed = false;
+  const read = (signal: AbortSignal) => {
+    signal.throwIfAborted();
+    reads++;
+    return initial.promise;
+  };
   const observer = new QueryObserver(client, {
     queryKey: queryKeys.projects("org"),
-    queryFn: ({ signal }) => {
-      signal.throwIfAborted();
-      reads++;
-      return initial.promise;
-    },
+    queryFn: ({ signal }) => read(signal),
   });
   const unsubscribe = observer.subscribe(() => {});
   const cache = createRealtimeCache({
@@ -238,14 +243,15 @@ test("a plain thread reply refreshes related discussion counts without reference
   const client = new QueryClient();
   const key = [...queryKeys.context("org"), "related", "task"];
   let reads = 0;
+  const read = async () => {
+    reads++;
+    return { replyCount: 1 };
+  };
   const observer = new QueryObserver(client, {
     queryKey: key,
     initialData: { replyCount: 0 },
     staleTime: Infinity,
-    queryFn: async () => {
-      reads++;
-      return { replyCount: 1 };
-    },
+    queryFn: () => read(),
   });
   const unsubscribe = observer.subscribe(() => {});
   const cache = createRealtimeCache({

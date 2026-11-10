@@ -18,10 +18,11 @@ test("a task hint during an in-flight read stays stale when its panel becomes hi
   const key = queryKeys.taskComments("org", "project", "task");
   const first = Promise.withResolvers<string[]>();
   let reads = 0;
+  const read = async () => (++reads === 1 ? first.promise : ["fresh"]);
   const options = {
     queryKey: key,
     staleTime: Infinity,
-    queryFn: async () => (++reads === 1 ? first.promise : ["fresh"]),
+    queryFn: () => read(),
   };
   const observer = new QueryObserver(client, options);
   const unsubscribe = observer.subscribe(() => {});
@@ -58,10 +59,11 @@ for (const domain of ["context", "profile"] as const) {
       const key = [...queryKeys.context("org"), "search", "task"];
       const first = Promise.withResolvers<string[]>();
       let reads = 0;
+      const read = async () => (++reads === 1 ? first.promise : ["fresh"]);
       const observer = new QueryObserver(client, {
         queryKey: key,
         staleTime: Infinity,
-        queryFn: async () => (++reads === 1 ? first.promise : ["fresh"]),
+        queryFn: () => read(),
       });
       const unsubscribe = observer.subscribe(() => {});
       const cache = createRealtimeCache({
@@ -95,13 +97,14 @@ test("access resets clear hidden task data without issuing hidden reads", async 
   const client = new QueryClient();
   const key = queryKeys.taskComments("org", "project", "task");
   let reads = 0;
+  const read = async () => {
+    reads++;
+    return ["private"];
+  };
   const observer = new QueryObserver(client, {
     queryKey: key,
     enabled: false,
-    queryFn: async () => {
-      reads++;
-      return ["private"];
-    },
+    queryFn: () => read(),
   });
   const unsubscribe = observer.subscribe(() => {});
   client.setQueryData(key, ["private"]);
@@ -260,18 +263,18 @@ test("conversation hints refresh root and reply targets without crossing convers
     ["foreign", "viewed", "root"],
   ] as const;
   const reads = [0, 0, 0, 0];
-  const observers = scopes.map(
-    ([org, conversation, message], index) =>
-      new QueryObserver(client, {
-        queryKey: [...queryKeys.messageTargets(org, conversation), message],
-        initialData: "old",
-        staleTime: Infinity,
-        queryFn: async () => {
-          reads[index]++;
-          return "fresh";
-        },
-      }),
-  );
+  const observers = scopes.map(([org, conversation, message], index) => {
+    const read = async () => {
+      reads[index]++;
+      return "fresh";
+    };
+    return new QueryObserver(client, {
+      queryKey: [...queryKeys.messageTargets(org, conversation), message],
+      initialData: "old",
+      staleTime: Infinity,
+      queryFn: () => read(),
+    });
+  });
   const unsubscribes = observers.map((observer) => observer.subscribe(() => {}));
   const cache = createRealtimeCache({
     queryClient: client,
@@ -305,18 +308,18 @@ test("conversation hints refresh root and reply targets without crossing convers
 test("conversation hints refresh only matching mounted context pages, with a broad unhinted fallback", async () => {
   const client = new QueryClient();
   const reads = [0, 0];
-  const observers = ["viewed", "other"].map(
-    (id, index) =>
-      new QueryObserver(client, {
-        queryKey: [...queryKeys.context("org"), "message-pages", id, [id]],
-        initialData: ["old"],
-        staleTime: Infinity,
-        queryFn: async () => {
-          reads[index]++;
-          return ["fresh"];
-        },
-      }),
-  );
+  const observers = ["viewed", "other"].map((id, index) => {
+    const read = async () => {
+      reads[index]++;
+      return ["fresh"];
+    };
+    return new QueryObserver(client, {
+      queryKey: [...queryKeys.context("org"), "message-pages", id, [id]],
+      initialData: ["old"],
+      staleTime: Infinity,
+      queryFn: () => read(),
+    });
+  });
   const unsubscribes = observers.map((observer) => observer.subscribe(() => {}));
   const cache = createRealtimeCache({
     queryClient: client,
@@ -434,18 +437,18 @@ test("context changes refetch known context families only, leaving notifications
     queryKeys.conversations("org"),
   ];
   const reads = keys.map(() => 0);
-  const observers = keys.map(
-    (queryKey, index) =>
-      new QueryObserver(client, {
-        queryKey,
-        initialData: ["old"],
-        staleTime: Infinity,
-        queryFn: async () => {
-          reads[index]++;
-          return ["fresh"];
-        },
-      }),
-  );
+  const observers = keys.map((queryKey, index) => {
+    const read = async () => {
+      reads[index]++;
+      return ["fresh"];
+    };
+    return new QueryObserver(client, {
+      queryKey,
+      initialData: ["old"],
+      staleTime: Infinity,
+      queryFn: () => read(),
+    });
+  });
   const unsubscribes = observers.map((observer) => observer.subscribe(() => {}));
   const cache = createRealtimeCache({
     queryClient: client,
@@ -506,14 +509,15 @@ test("a task hint refreshes one mounted fifty-message context page, and access r
   ];
   let reads = 0;
   let title = "Old work title";
+  const read = async () => {
+    reads++;
+    return Array.from({ length: 50 }, () => ({ links: [{ entityId: "task", title }] }));
+  };
   const observer = new QueryObserver(client, {
     queryKey: key,
     staleTime: Infinity,
     retry: false,
-    queryFn: async () => {
-      reads++;
-      return Array.from({ length: 50 }, () => ({ links: [{ entityId: "task", title }] }));
-    },
+    queryFn: () => read(),
   });
   const unsubscribe = observer.subscribe(() => {});
   await observer.refetch();
@@ -577,27 +581,29 @@ test("changes during a slow refresh share one follow-up snapshot", async () => {
   const first = Promise.withResolvers<void>();
   let snapshot = 0;
   let reads = 0;
+  const read = async () => {
+    const value = snapshot;
+    if (++reads === 1) await first.promise;
+    return value;
+  };
   const observer = new QueryObserver(client, {
     queryKey: key,
     initialData: 0,
     staleTime: Infinity,
-    queryFn: async () => {
-      const value = snapshot;
-      if (++reads === 1) await first.promise;
-      return value;
-    },
+    queryFn: () => read(),
   });
   const unsubscribe = observer.subscribe(() => {});
   const threadKey = queryKeys.messages("org", "conversation", "thread");
   let threadReads = 0;
+  const readThread = async () => {
+    threadReads++;
+    return snapshot;
+  };
   const threadObserver = new QueryObserver(client, {
     queryKey: threadKey,
     initialData: 0,
     staleTime: Infinity,
-    queryFn: async () => {
-      threadReads++;
-      return snapshot;
-    },
+    queryFn: () => readThread(),
   });
   const unsubscribeThread = threadObserver.subscribe(() => {});
   const cache = createRealtimeCache({
@@ -636,15 +642,16 @@ for (const scenario of ["after", "settled", "before", "none"] as const) {
     const key = queryKeys.conversations("org");
     const blocked = Promise.withResolvers<void>();
     let reads = 0;
+    const read = async () => {
+      reads++;
+      if (scenario !== "settled") await blocked.promise;
+      return "fresh";
+    };
     const observer = new QueryObserver(client, {
       queryKey: key,
       initialData: "old",
       staleTime: Infinity,
-      queryFn: async () => {
-        reads++;
-        if (scenario !== "settled") await blocked.promise;
-        return "fresh";
-      },
+      queryFn: () => read(),
     });
     const unsubscribe = observer.subscribe(() => {});
     const cache = createRealtimeCache({

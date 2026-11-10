@@ -21,10 +21,11 @@ test("access reset clears the previous history page used as message placeholder 
     queryFn: async () => ["private history"],
   });
   const unsubscribe = observer.subscribe(() => {});
+  const read = () => (++reads === 1 ? older.promise : authorized.promise);
   observer.setOptions({
     queryKey: latestKey,
     retry: false,
-    queryFn: () => (++reads === 1 ? older.promise : authorized.promise),
+    queryFn: () => read(),
     placeholderData: (previous, query) =>
       prefix.every((part, index) => query?.queryKey[index] === part) ? previous : undefined,
   });

@@ -22,18 +22,18 @@ test("link changes refresh only the affected message pages, links, work and proj
     [...queryKeys.context("other"), "message-pages", "conversation", ["message"]],
   ];
   const reads = keys.map(() => 0);
-  const observers = keys.map(
-    (queryKey, index) =>
-      new QueryObserver(client, {
-        queryKey,
-        initialData: ["old"],
-        staleTime: Infinity,
-        queryFn: async () => {
-          reads[index]++;
-          return ["fresh"];
-        },
-      }),
-  );
+  const observers = keys.map((queryKey, index) => {
+    const read = async () => {
+      reads[index]++;
+      return ["fresh"];
+    };
+    return new QueryObserver(client, {
+      queryKey,
+      initialData: ["old"],
+      staleTime: Infinity,
+      queryFn: () => read(),
+    });
+  });
   const unsubscribes = observers.map((observer) => observer.subscribe(() => {}));
   try {
     await client.invalidateQueries({ queryKey: queryKeys.organization("org") });

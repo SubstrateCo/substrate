@@ -18,14 +18,15 @@ test("forbidden resets preserve mounted observers for a later authorized ready r
   const key = queryKeys.projects("org");
   client.setQueryData(key, ["private project"]);
   let allowed = false;
+  const read = async () => {
+    if (!allowed) throw Object.assign(new Error("Forbidden"), { status: 403 });
+    return ["authorized project"];
+  };
   const observer = new QueryObserver(client, {
     queryKey: key,
     staleTime: Infinity,
     retry: false,
-    queryFn: async () => {
-      if (!allowed) throw Object.assign(new Error("Forbidden"), { status: 403 });
-      return ["authorized project"];
-    },
+    queryFn: () => read(),
   });
   const unsubscribe = observer.subscribe(() => {});
   const cache = createRealtimeCache({
@@ -55,14 +56,15 @@ test("access resets mounted queries without detaching the view, then clears revo
   client.setQueryData(key, ["old private project"]);
   client.setQueryData(inactive, "private detail");
   let allowed = true;
+  const read = async () => {
+    if (!allowed) throw Object.assign(new Error("Forbidden"), { status: 403 });
+    return ["newly granted project"];
+  };
   const observer = new QueryObserver(client, {
     queryKey: key,
     staleTime: Infinity,
     retry: false,
-    queryFn: async () => {
-      if (!allowed) throw Object.assign(new Error("Forbidden"), { status: 403 });
-      return ["newly granted project"];
-    },
+    queryFn: () => read(),
   });
   const unsubscribe = observer.subscribe(() => {});
   const cache = createRealtimeCache({
@@ -94,16 +96,17 @@ test("a later revocation cancels a slow access reset and cannot be overwritten b
   client.setQueryData(key, ["private project"]);
   const oldGrant = Promise.withResolvers<string[]>();
   let reads = 0;
+  const read = () => {
+    reads++;
+    return reads === 1
+      ? oldGrant.promise
+      : Promise.reject(Object.assign(new Error("Forbidden"), { status: 403 }));
+  };
   const observer = new QueryObserver(client, {
     queryKey: key,
     staleTime: Infinity,
     retry: false,
-    queryFn: () => {
-      reads++;
-      return reads === 1
-        ? oldGrant.promise
-        : Promise.reject(Object.assign(new Error("Forbidden"), { status: 403 }));
-    },
+    queryFn: () => read(),
   });
   const unsubscribe = observer.subscribe(() => {});
   const cache = createRealtimeCache({

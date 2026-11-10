@@ -10,18 +10,19 @@ for (const trigger of ["ready", "profile", "session"] as const) {
     const initial = Promise.withResolvers<string[]>();
     let reads = 0;
     let aborted = false;
+    const readSession = (signal: AbortSignal) => {
+      reads++;
+      if (reads === 1)
+        signal.addEventListener("abort", () => {
+          aborted = true;
+        });
+      return reads === 1 ? initial.promise : Promise.resolve(["current session"]);
+    };
     const opts = {
       queryKey: queryKeys.session,
       staleTime: Infinity,
       retry: false,
-      queryFn: ({ signal }: { signal: AbortSignal }) => {
-        reads++;
-        if (reads === 1)
-          signal.addEventListener("abort", () => {
-            aborted = true;
-          });
-        return reads === 1 ? initial.promise : Promise.resolve(["current session"]);
-      },
+      queryFn: ({ signal }: { signal: AbortSignal }) => readSession(signal),
     };
     client.setQueryData(queryKeys.session, ["cached session"]);
     const observer = new QueryObserver(client, opts);
@@ -75,14 +76,15 @@ for (const trigger of ["ready", "organization"] as const) {
     const key = trigger === "ready" ? queryKeys.session : queryKeys.organizationDetail("org");
     const initial = Promise.withResolvers<string[]>();
     let reads = 0;
+    const read = () => {
+      reads++;
+      return reads === 1 ? initial.promise : Promise.resolve(["current"]);
+    };
     const opts = {
       queryKey: key,
       staleTime: Infinity,
       retry: false,
-      queryFn: () => {
-        reads++;
-        return reads === 1 ? initial.promise : Promise.resolve(["current"]);
-      },
+      queryFn: () => read(),
     };
     const routeLoad = client.query(opts);
     const outcome = routeLoad.then(
@@ -133,13 +135,14 @@ test("a late unobserved loader cannot refresh or revalidate a disposed generatio
   const initial = Promise.withResolvers<string[]>();
   let reads = 0;
   let routed = false;
+  const read = () => {
+    reads++;
+    return initial.promise;
+  };
   const routeLoad = client.query({
     queryKey: queryKeys.organizations,
     retry: false,
-    queryFn: () => {
-      reads++;
-      return initial.promise;
-    },
+    queryFn: () => read(),
   });
   const cache = createRealtimeCache({
     queryClient: client,
@@ -169,10 +172,11 @@ test("refresh preserves genuine loader failure rather than hiding it", async () 
   const client = new QueryClient();
   const initial = Promise.withResolvers<string[]>();
   const failure = new Error("Session request failed");
+  const read = () => initial.promise;
   const routeLoad = client.query({
     queryKey: queryKeys.session,
     retry: false,
-    queryFn: () => initial.promise,
+    queryFn: () => read(),
   });
   const outcome = routeLoad.catch((error: Error) => error);
   const cache = createRealtimeCache({

@@ -47,13 +47,14 @@ test("refresh feedback is opt-in, requires cached data, and excludes access fail
 test("poll failures notify once per outage and recovery resets feedback", async () => {
   const client = new QueryClient({ queryCache: createRefreshErrorCache() });
   let unavailable = true;
+  const read = async () => {
+    if (unavailable) throw new Error("Internal connection details");
+    return ["updated project"];
+  };
   const options = {
     queryKey: ["project-refresh"],
     meta: { refreshError: "Couldn’t refresh project" },
-    queryFn: async () => {
-      if (unavailable) throw new Error("Internal connection details");
-      return ["updated project"];
-    },
+    queryFn: () => read(),
     retry: false,
   };
   client.setQueryData(options.queryKey, ["loaded project"]);
