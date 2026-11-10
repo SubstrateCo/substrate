@@ -161,8 +161,83 @@ test("an asked question needs the owner only while the server still has it open"
   await f.emit(turn.turnId, { type: "turn.completed", result: { status: "completed" } });
   expect((await f.runtime.agents())[0]?.state).toBe("needs_you");
   // The question's conversation was deleted: the request is gone and no answer wake comes.
+  // The server's agent-work hint refreshes the open requests.
   f.serverOpenRequests.delete(questionId);
+  f.runtime.hint();
+  await f.advance(1_000);
   expect((await f.runtime.agents())[0]?.state).toBe("idle");
+});
+
+test("status reads during a burst of changes ask the server for open requests at most once", async () => {
+  const f = await started();
+  const { conversationId } = f.ownerMessage();
+  await f.runtime.sync();
+  await f.advance(600);
+  const [turn] = f.turns() as [TurnCommand];
+  const questionId = crypto.randomUUID();
+  f.serverOpenRequests.add(questionId);
+  await f.runtime.observeToolCall(
+    { tool: "reply", input: { requestId: "r", body: "Which?" }, turn: { turnId: turn.turnId } },
+    {
+      success: true,
+      data: {
+        messageId: crypto.randomUUID(),
+        conversationId,
+        threadId: null,
+        questionId,
+        createdAt: new Date().toISOString(),
+      },
+    },
+  );
+  await f.emit(turn.turnId, { type: "turn.completed", result: { status: "completed" } });
+  const before = f.posts.filter((post) => post.method === "openRequestIds").length;
+  for (let index = 0; index < 5; index++)
+    expect((await f.runtime.agents())[0]?.state).toBe("needs_you");
+  await f.advance(1_000);
+  expect(
+    f.posts.filter((post) => post.method === "openRequestIds").length - before,
+  ).toBeLessThanOrEqual(1);
+});
+
+test("a tool start that only changes the activity publishes later, and a state change publishes at once", async () => {
+  const f = await started();
+  const statuses = () =>
+    f.posts
+      .filter((post) => post.method === "status")
+      .map((post) => post.body as { state: string; activity?: string });
+  await f.message();
+  const [turn] = f.turns() as [TurnCommand];
+  await f.emit(turn.turnId, { type: "turn.started" });
+  await f.emit(turn.turnId, {
+    type: "item.started",
+    itemId: "i1",
+    itemType: "mcp",
+    title: "search",
+  });
+  await f.advance(1_000);
+  expect(statuses().at(-1)).toMatchObject({ state: "working", activity: "search" });
+  const published = statuses().length;
+
+  await f.emit(turn.turnId, { type: "item.started", itemId: "i2", itemType: "mcp", title: "edit" });
+  await f.advance(1_000);
+  await f.emit(turn.turnId, { type: "item.started", itemId: "i3", itemType: "mcp", title: "read" });
+  await f.advance(1_000);
+  expect(statuses()).toHaveLength(published);
+
+  // The throttle window ends: the latest activity goes out once.
+  await f.advance(10_000);
+  expect(statuses()).toHaveLength(published + 1);
+  expect(statuses().at(-1)).toMatchObject({ state: "working", activity: "read" });
+
+  await f.emit(turn.turnId, {
+    type: "item.started",
+    itemId: "i4",
+    itemType: "mcp",
+    title: "write",
+  });
+  await f.emit(turn.turnId, { type: "turn.completed", result: { status: "completed" } });
+  await f.advance(600);
+  expect(statuses().at(-1)).toMatchObject({ state: "idle" });
 });
 
 test("a new message for the live session is steered when the harness can steer", async () => {

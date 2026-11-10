@@ -157,6 +157,7 @@ export function createAgentWorkRuntime(
    * Answers for callbacks that are gone are orphaned by the full pulls.
    */
   async function sync(answers: "always" | "waiting" = "always") {
+    status.refreshOpenRequests();
     const created = await pullWakes(context).catch(() => {
       context.log("Could not pull agent wakes.");
       return 0;
@@ -275,6 +276,8 @@ export function createAgentWorkRuntime(
     async observeToolCall(request: unknown, result: unknown) {
       const found = toolOutputs(request, result);
       if (!found) return;
+      // A reply may have asked a question, or a proposal opened a request.
+      status.refreshOpenRequests();
       const turn = await context.store.turns.get(found.turnId);
       if (!turn || turn.organizationId !== context.organizationId) return;
       for (const output of found.outputs) {

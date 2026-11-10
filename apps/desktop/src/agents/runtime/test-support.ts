@@ -163,7 +163,10 @@ export async function runtimeFixture(
       return result;
     },
     directConversation: async () => crypto.randomUUID(),
-    openRequestIds: async () => [...serverOpenRequests],
+    async openRequestIds() {
+      record("openRequestIds", null);
+      return [...serverOpenRequests];
+    },
   };
 
   function later(callback: () => void, milliseconds: number) {

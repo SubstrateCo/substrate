@@ -6,6 +6,8 @@ import type { RequestBridge } from "./requests.ts";
 import type { TurnExecutor } from "./turn-executor.ts";
 
 const statusDebounceMs = 500;
+/** A change of only the activity line publishes at most this often. */
+const activityIntervalMs = 10_000;
 
 interface Published {
   state: AgentStatusState;
@@ -17,7 +19,8 @@ interface Published {
 
 /**
  * Publishes each agent's status, at most once per 500 ms: needs_you for open requests and work
- * that needs the owner, working for a live turn, queued for waiting items, else idle.
+ * that needs the owner, working for a live turn, queued for waiting items, else idle. A change
+ * of only the activity line, such as each tool start, publishes at most once per 10 s.
  */
 export function createStatusPublisher(
   context: RuntimeContext,
@@ -27,8 +30,13 @@ export function createStatusPublisher(
     later: (callback: () => void, milliseconds: number) => () => void;
   },
 ) {
-  const published = new Map<string, { value: string; version: number }>();
+  const published = new Map<
+    string,
+    { value: string; state: string; version: number; at: number }
+  >();
   let scheduled: (() => void) | undefined;
+  /** The server's open requests, until the next refresh. Status reads and publishes share it. */
+  let openRequests: Promise<Set<string>> | undefined;
 
   /**
    * Questions and proposals without an answer wake, that the server still lists as open. The
@@ -37,10 +45,14 @@ export function createStatusPublisher(
    */
   async function stillOpen<T extends { requestId: string }>(unanswered: T[]) {
     if (!unanswered.length) return unanswered;
+    const pending = (openRequests ??= context.server
+      .openRequestIds(context.organizationId)
+      .then((ids) => new Set(ids)));
     try {
-      const open = new Set(await context.server.openRequestIds(context.organizationId));
+      const open = await pending;
       return unanswered.filter((row) => open.has(row.requestId));
     } catch {
+      if (openRequests === pending) openRequests = undefined;
       return unanswered;
     }
   }
@@ -107,10 +119,18 @@ export function createStatusPublisher(
 
   async function publish() {
     scheduled = undefined;
+    let throttled: number | undefined;
     for (const { summary, published: payload } of await summaries()) {
       const value = JSON.stringify(payload);
+      const { activity: _activity, ...rest } = payload;
+      const state = JSON.stringify(rest);
       const previous = published.get(summary.userAgentId);
       if (previous?.value === value) continue;
+      const wait = previous ? previous.at + activityIntervalMs - context.now() : 0;
+      if (previous?.state === state && wait > 0) {
+        throttled = Math.min(throttled ?? wait, wait);
+        continue;
+      }
       const version = nextVersion();
       try {
         await context.server.publishStatus({
@@ -119,19 +139,27 @@ export function createStatusPublisher(
           ...payload,
           version,
         });
-        published.set(summary.userAgentId, { value, version });
+        published.set(summary.userAgentId, { value, state, version, at: context.now() });
       } catch {
         context.log("Could not publish agent status.");
       }
     }
+    if (throttled !== undefined) schedule(throttled);
+  }
+
+  function schedule(milliseconds = statusDebounceMs) {
+    scheduled ??= deps.later(() => {
+      void publish().catch(() => context.log("Could not publish agent status."));
+    }, milliseconds);
   }
 
   return {
     summaries: async () => (await summaries()).map((entry) => entry.summary),
-    schedule() {
-      scheduled ??= deps.later(() => {
-        void publish().catch(() => context.log("Could not publish agent status."));
-      }, statusDebounceMs);
+    schedule: () => schedule(),
+    /** The server's open requests may have changed: read them again, and publish. */
+    refreshOpenRequests() {
+      openRequests = undefined;
+      schedule();
     },
     dispose() {
       scheduled?.();
