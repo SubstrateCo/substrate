@@ -29,13 +29,11 @@ test("read updates reach every cached notification page without crossing workspa
   expect(pages[1]!.items[0]!.readAt).toBe(pages[0]!.items[0]!.readAt);
   expect(pages[2]!.items[0]!.readAt).toBeNull();
   expect(pages[0]!.nextCursor).toBe("next");
-  expect(client.getQueryState(keys[1]!)!.isInvalidated).toBe(true);
-  expect(client.getQueryState(keys[2]!)!.isInvalidated).toBe(false);
   client.clear();
 });
 
 for (const target of ["one", "all"] as const) {
-  test(`marking ${target} read updates the list at once without waiting for its refresh`, () => {
+  test(`marking ${target} read updates the list at once and leaves the refresh to the hint`, () => {
     const client = new QueryClient();
     const earlier = "2026-01-01T00:00:00.000Z";
     // SAFETY: markNotificationsRead reads and writes only id and readAt.
@@ -62,9 +60,9 @@ for (const target of ["one", "all"] as const) {
       expect(data[0]!.readAt).not.toBeNull();
       expect(data[1]!.readAt === null).toBe(target === "one");
       expect(data[2]!.readAt).toBe(earlier);
-      // The server snapshot still refreshes in the background.
-      expect(reads).toBe(1);
-      expect(observer.getCurrentResult().fetchStatus).toBe("fetching");
+      // The reader's notifications hint refreshes the list; the mutation sends no second read.
+      expect(reads).toBe(0);
+      expect(observer.getCurrentResult().fetchStatus).toBe("idle");
     } finally {
       refresh.resolve(rows);
       unsubscribe();

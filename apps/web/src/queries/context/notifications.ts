@@ -23,7 +23,8 @@ export const notificationPageOptions = (
     retry: false,
   });
 
-// Shows a read state at once. The server refresh still runs, but navigation does not wait for it.
+// Shows a read state at once. The server sends the reader a notifications hint after the write,
+// and that hint refreshes every notifications query, so this does not refetch them again.
 export function markNotificationsRead(
   client: QueryClient,
   organizationId: string,
@@ -46,5 +47,4 @@ export function markNotificationsRead(
         ),
       },
   );
-  void client.invalidateQueries({ queryKey });
 }
