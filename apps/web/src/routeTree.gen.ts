@@ -12,23 +12,24 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as PublicRouteRouteImport } from './routes/_public/route'
+import { Route as AuthenticatedStandaloneRouteRouteImport } from './routes/_authenticated/_standalone/route'
 import { Route as AuthenticatedWorkspaceRouteRouteImport } from './routes/_authenticated/_workspace/route'
-import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
-import { Route as AuthenticatedOrganizationsRouteImport } from './routes/_authenticated/organizations'
 import { Route as PublicGuestRouteRouteImport } from './routes/_public/_guest/route'
 import { Route as PublicDownloadRouteImport } from './routes/_public/download'
 import { Route as PublicForgotPasswordRouteImport } from './routes/_public/forgot-password'
 import { Route as PublicResetPasswordRouteImport } from './routes/_public/reset-password'
 import { Route as PublicVerifyEmailRouteImport } from './routes/_public/verify-email'
+import { Route as AuthenticatedStandaloneOnboardingRouteImport } from './routes/_authenticated/_standalone/onboarding'
+import { Route as AuthenticatedStandaloneOrganizationsRouteImport } from './routes/_authenticated/_standalone/organizations'
 import { Route as AuthenticatedWorkspaceAgentsRouteImport } from './routes/_authenticated/_workspace/agents'
 import { Route as AuthenticatedWorkspaceDashboardRouteImport } from './routes/_authenticated/_workspace/dashboard'
 import { Route as AuthenticatedWorkspaceNotificationsRouteImport } from './routes/_authenticated/_workspace/notifications'
-import { Route as AuthenticatedAcceptInvitationInvitationIdRouteImport } from './routes/_authenticated/accept-invitation/$invitationId'
-import { Route as AuthenticatedAcceptSharingInvitationIdRouteImport } from './routes/_authenticated/accept-sharing/$invitationId'
 import { Route as AuthenticatedSettingsUserRouteRouteImport } from './routes/_authenticated/settings/user/route'
-import { Route as AuthenticatedSetupCompleteRouteImport } from './routes/_authenticated/setup/complete'
 import { Route as PublicGuestLoginRouteImport } from './routes/_public/_guest/login'
 import { Route as PublicGuestSignupRouteImport } from './routes/_public/_guest/signup'
+import { Route as AuthenticatedStandaloneAcceptInvitationInvitationIdRouteImport } from './routes/_authenticated/_standalone/accept-invitation/$invitationId'
+import { Route as AuthenticatedStandaloneAcceptSharingInvitationIdRouteImport } from './routes/_authenticated/_standalone/accept-sharing/$invitationId'
+import { Route as AuthenticatedStandaloneSetupCompleteRouteImport } from './routes/_authenticated/_standalone/setup/complete'
 import { Route as AuthenticatedWorkspaceSettingsOrganizationRouteRouteImport } from './routes/_authenticated/_workspace/settings/organization/route'
 import { Route as AuthenticatedWorkspaceTasksIndexRouteImport } from './routes/_authenticated/_workspace/tasks/index'
 import { Route as AuthenticatedSettingsUserIndexRouteImport } from './routes/_authenticated/settings/user/index'
@@ -48,20 +49,14 @@ const PublicRouteRoute = PublicRouteRouteImport.update({
   id: '/_public',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedStandaloneRouteRoute =
+  AuthenticatedStandaloneRouteRouteImport.update({
+    id: '/_standalone',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedWorkspaceRouteRoute =
   AuthenticatedWorkspaceRouteRouteImport.update({
     id: '/_workspace',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedOrganizationsRoute =
-  AuthenticatedOrganizationsRouteImport.update({
-    id: '/organizations',
-    path: '/organizations',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const PublicGuestRouteRoute = PublicGuestRouteRouteImport.update({
@@ -88,6 +83,18 @@ const PublicVerifyEmailRoute = PublicVerifyEmailRouteImport.update({
   path: '/verify-email',
   getParentRoute: () => PublicRouteRoute,
 } as any)
+const AuthenticatedStandaloneOnboardingRoute =
+  AuthenticatedStandaloneOnboardingRouteImport.update({
+    id: '/onboarding',
+    path: '/onboarding',
+    getParentRoute: () => AuthenticatedStandaloneRouteRoute,
+  } as any)
+const AuthenticatedStandaloneOrganizationsRoute =
+  AuthenticatedStandaloneOrganizationsRouteImport.update({
+    id: '/organizations',
+    path: '/organizations',
+    getParentRoute: () => AuthenticatedStandaloneRouteRoute,
+  } as any)
 const AuthenticatedWorkspaceAgentsRoute =
   AuthenticatedWorkspaceAgentsRouteImport.update({
     id: '/agents',
@@ -106,28 +113,10 @@ const AuthenticatedWorkspaceNotificationsRoute =
     path: '/notifications',
     getParentRoute: () => AuthenticatedWorkspaceRouteRoute,
   } as any)
-const AuthenticatedAcceptInvitationInvitationIdRoute =
-  AuthenticatedAcceptInvitationInvitationIdRouteImport.update({
-    id: '/accept-invitation/$invitationId',
-    path: '/accept-invitation/$invitationId',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAcceptSharingInvitationIdRoute =
-  AuthenticatedAcceptSharingInvitationIdRouteImport.update({
-    id: '/accept-sharing/$invitationId',
-    path: '/accept-sharing/$invitationId',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedSettingsUserRouteRoute =
   AuthenticatedSettingsUserRouteRouteImport.update({
     id: '/settings/user',
     path: '/settings/user',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedSetupCompleteRoute =
-  AuthenticatedSetupCompleteRouteImport.update({
-    id: '/setup/complete',
-    path: '/setup/complete',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const PublicGuestLoginRoute = PublicGuestLoginRouteImport.update({
@@ -140,6 +129,24 @@ const PublicGuestSignupRoute = PublicGuestSignupRouteImport.update({
   path: '/signup',
   getParentRoute: () => PublicGuestRouteRoute,
 } as any)
+const AuthenticatedStandaloneAcceptInvitationInvitationIdRoute =
+  AuthenticatedStandaloneAcceptInvitationInvitationIdRouteImport.update({
+    id: '/accept-invitation/$invitationId',
+    path: '/accept-invitation/$invitationId',
+    getParentRoute: () => AuthenticatedStandaloneRouteRoute,
+  } as any)
+const AuthenticatedStandaloneAcceptSharingInvitationIdRoute =
+  AuthenticatedStandaloneAcceptSharingInvitationIdRouteImport.update({
+    id: '/accept-sharing/$invitationId',
+    path: '/accept-sharing/$invitationId',
+    getParentRoute: () => AuthenticatedStandaloneRouteRoute,
+  } as any)
+const AuthenticatedStandaloneSetupCompleteRoute =
+  AuthenticatedStandaloneSetupCompleteRouteImport.update({
+    id: '/setup/complete',
+    path: '/setup/complete',
+    getParentRoute: () => AuthenticatedStandaloneRouteRoute,
+  } as any)
 const AuthenticatedWorkspaceSettingsOrganizationRouteRoute =
   AuthenticatedWorkspaceSettingsOrganizationRouteRouteImport.update({
     id: '/settings/organization',
@@ -173,22 +180,22 @@ const AuthenticatedWorkspaceSettingsOrganizationIndexRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/onboarding': typeof AuthenticatedOnboardingRoute
-  '/organizations': typeof AuthenticatedOrganizationsRoute
   '/download': typeof PublicDownloadRoute
   '/forgot-password': typeof PublicForgotPasswordRoute
   '/reset-password': typeof PublicResetPasswordRoute
   '/verify-email': typeof PublicVerifyEmailRoute
   '/settings/user': typeof AuthenticatedSettingsUserRouteRouteWithChildren
+  '/onboarding': typeof AuthenticatedStandaloneOnboardingRoute
+  '/organizations': typeof AuthenticatedStandaloneOrganizationsRoute
   '/agents': typeof AuthenticatedWorkspaceAgentsRoute
   '/dashboard': typeof AuthenticatedWorkspaceDashboardRoute
   '/notifications': typeof AuthenticatedWorkspaceNotificationsRoute
-  '/accept-invitation/$invitationId': typeof AuthenticatedAcceptInvitationInvitationIdRoute
-  '/accept-sharing/$invitationId': typeof AuthenticatedAcceptSharingInvitationIdRoute
-  '/setup/complete': typeof AuthenticatedSetupCompleteRoute
   '/login': typeof PublicGuestLoginRoute
   '/signup': typeof PublicGuestSignupRoute
   '/settings/organization': typeof AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren
+  '/accept-invitation/$invitationId': typeof AuthenticatedStandaloneAcceptInvitationInvitationIdRoute
+  '/accept-sharing/$invitationId': typeof AuthenticatedStandaloneAcceptSharingInvitationIdRoute
+  '/setup/complete': typeof AuthenticatedStandaloneSetupCompleteRoute
   '/settings/user/invitations': typeof AuthenticatedSettingsUserInvitationsRoute
   '/tasks/': typeof AuthenticatedWorkspaceTasksIndexRoute
   '/settings/user/': typeof AuthenticatedSettingsUserIndexRoute
@@ -196,20 +203,20 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/onboarding': typeof AuthenticatedOnboardingRoute
-  '/organizations': typeof AuthenticatedOrganizationsRoute
   '/download': typeof PublicDownloadRoute
   '/forgot-password': typeof PublicForgotPasswordRoute
   '/reset-password': typeof PublicResetPasswordRoute
   '/verify-email': typeof PublicVerifyEmailRoute
+  '/onboarding': typeof AuthenticatedStandaloneOnboardingRoute
+  '/organizations': typeof AuthenticatedStandaloneOrganizationsRoute
   '/agents': typeof AuthenticatedWorkspaceAgentsRoute
   '/dashboard': typeof AuthenticatedWorkspaceDashboardRoute
   '/notifications': typeof AuthenticatedWorkspaceNotificationsRoute
-  '/accept-invitation/$invitationId': typeof AuthenticatedAcceptInvitationInvitationIdRoute
-  '/accept-sharing/$invitationId': typeof AuthenticatedAcceptSharingInvitationIdRoute
-  '/setup/complete': typeof AuthenticatedSetupCompleteRoute
   '/login': typeof PublicGuestLoginRoute
   '/signup': typeof PublicGuestSignupRoute
+  '/accept-invitation/$invitationId': typeof AuthenticatedStandaloneAcceptInvitationInvitationIdRoute
+  '/accept-sharing/$invitationId': typeof AuthenticatedStandaloneAcceptSharingInvitationIdRoute
+  '/setup/complete': typeof AuthenticatedStandaloneSetupCompleteRoute
   '/settings/user/invitations': typeof AuthenticatedSettingsUserInvitationsRoute
   '/tasks': typeof AuthenticatedWorkspaceTasksIndexRoute
   '/settings/user': typeof AuthenticatedSettingsUserIndexRoute
@@ -220,24 +227,25 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/_public': typeof PublicRouteRouteWithChildren
+  '/_authenticated/_standalone': typeof AuthenticatedStandaloneRouteRouteWithChildren
   '/_authenticated/_workspace': typeof AuthenticatedWorkspaceRouteRouteWithChildren
   '/_public/_guest': typeof PublicGuestRouteRouteWithChildren
-  '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
-  '/_authenticated/organizations': typeof AuthenticatedOrganizationsRoute
   '/_public/download': typeof PublicDownloadRoute
   '/_public/forgot-password': typeof PublicForgotPasswordRoute
   '/_public/reset-password': typeof PublicResetPasswordRoute
   '/_public/verify-email': typeof PublicVerifyEmailRoute
   '/_authenticated/settings/user': typeof AuthenticatedSettingsUserRouteRouteWithChildren
+  '/_authenticated/_standalone/onboarding': typeof AuthenticatedStandaloneOnboardingRoute
+  '/_authenticated/_standalone/organizations': typeof AuthenticatedStandaloneOrganizationsRoute
   '/_authenticated/_workspace/agents': typeof AuthenticatedWorkspaceAgentsRoute
   '/_authenticated/_workspace/dashboard': typeof AuthenticatedWorkspaceDashboardRoute
   '/_authenticated/_workspace/notifications': typeof AuthenticatedWorkspaceNotificationsRoute
-  '/_authenticated/accept-invitation/$invitationId': typeof AuthenticatedAcceptInvitationInvitationIdRoute
-  '/_authenticated/accept-sharing/$invitationId': typeof AuthenticatedAcceptSharingInvitationIdRoute
-  '/_authenticated/setup/complete': typeof AuthenticatedSetupCompleteRoute
   '/_public/_guest/login': typeof PublicGuestLoginRoute
   '/_public/_guest/signup': typeof PublicGuestSignupRoute
   '/_authenticated/_workspace/settings/organization': typeof AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren
+  '/_authenticated/_standalone/accept-invitation/$invitationId': typeof AuthenticatedStandaloneAcceptInvitationInvitationIdRoute
+  '/_authenticated/_standalone/accept-sharing/$invitationId': typeof AuthenticatedStandaloneAcceptSharingInvitationIdRoute
+  '/_authenticated/_standalone/setup/complete': typeof AuthenticatedStandaloneSetupCompleteRoute
   '/_authenticated/settings/user/invitations': typeof AuthenticatedSettingsUserInvitationsRoute
   '/_authenticated/_workspace/tasks/': typeof AuthenticatedWorkspaceTasksIndexRoute
   '/_authenticated/settings/user/': typeof AuthenticatedSettingsUserIndexRoute
@@ -247,22 +255,22 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/onboarding'
-    | '/organizations'
     | '/download'
     | '/forgot-password'
     | '/reset-password'
     | '/verify-email'
     | '/settings/user'
+    | '/onboarding'
+    | '/organizations'
     | '/agents'
     | '/dashboard'
     | '/notifications'
-    | '/accept-invitation/$invitationId'
-    | '/accept-sharing/$invitationId'
-    | '/setup/complete'
     | '/login'
     | '/signup'
     | '/settings/organization'
+    | '/accept-invitation/$invitationId'
+    | '/accept-sharing/$invitationId'
+    | '/setup/complete'
     | '/settings/user/invitations'
     | '/tasks/'
     | '/settings/user/'
@@ -270,20 +278,20 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/onboarding'
-    | '/organizations'
     | '/download'
     | '/forgot-password'
     | '/reset-password'
     | '/verify-email'
+    | '/onboarding'
+    | '/organizations'
     | '/agents'
     | '/dashboard'
     | '/notifications'
+    | '/login'
+    | '/signup'
     | '/accept-invitation/$invitationId'
     | '/accept-sharing/$invitationId'
     | '/setup/complete'
-    | '/login'
-    | '/signup'
     | '/settings/user/invitations'
     | '/tasks'
     | '/settings/user'
@@ -293,24 +301,25 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/_public'
+    | '/_authenticated/_standalone'
     | '/_authenticated/_workspace'
     | '/_public/_guest'
-    | '/_authenticated/onboarding'
-    | '/_authenticated/organizations'
     | '/_public/download'
     | '/_public/forgot-password'
     | '/_public/reset-password'
     | '/_public/verify-email'
     | '/_authenticated/settings/user'
+    | '/_authenticated/_standalone/onboarding'
+    | '/_authenticated/_standalone/organizations'
     | '/_authenticated/_workspace/agents'
     | '/_authenticated/_workspace/dashboard'
     | '/_authenticated/_workspace/notifications'
-    | '/_authenticated/accept-invitation/$invitationId'
-    | '/_authenticated/accept-sharing/$invitationId'
-    | '/_authenticated/setup/complete'
     | '/_public/_guest/login'
     | '/_public/_guest/signup'
     | '/_authenticated/_workspace/settings/organization'
+    | '/_authenticated/_standalone/accept-invitation/$invitationId'
+    | '/_authenticated/_standalone/accept-sharing/$invitationId'
+    | '/_authenticated/_standalone/setup/complete'
     | '/_authenticated/settings/user/invitations'
     | '/_authenticated/_workspace/tasks/'
     | '/_authenticated/settings/user/'
@@ -346,25 +355,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/_standalone': {
+      id: '/_authenticated/_standalone'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedStandaloneRouteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/_workspace': {
       id: '/_authenticated/_workspace'
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedWorkspaceRouteRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/onboarding': {
-      id: '/_authenticated/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/organizations': {
-      id: '/_authenticated/organizations'
-      path: '/organizations'
-      fullPath: '/organizations'
-      preLoaderRoute: typeof AuthenticatedOrganizationsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_public/_guest': {
@@ -402,6 +404,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicVerifyEmailRouteImport
       parentRoute: typeof PublicRouteRoute
     }
+    '/_authenticated/_standalone/onboarding': {
+      id: '/_authenticated/_standalone/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof AuthenticatedStandaloneOnboardingRouteImport
+      parentRoute: typeof AuthenticatedStandaloneRouteRoute
+    }
+    '/_authenticated/_standalone/organizations': {
+      id: '/_authenticated/_standalone/organizations'
+      path: '/organizations'
+      fullPath: '/organizations'
+      preLoaderRoute: typeof AuthenticatedStandaloneOrganizationsRouteImport
+      parentRoute: typeof AuthenticatedStandaloneRouteRoute
+    }
     '/_authenticated/_workspace/agents': {
       id: '/_authenticated/_workspace/agents'
       path: '/agents'
@@ -423,32 +439,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWorkspaceNotificationsRouteImport
       parentRoute: typeof AuthenticatedWorkspaceRouteRoute
     }
-    '/_authenticated/accept-invitation/$invitationId': {
-      id: '/_authenticated/accept-invitation/$invitationId'
-      path: '/accept-invitation/$invitationId'
-      fullPath: '/accept-invitation/$invitationId'
-      preLoaderRoute: typeof AuthenticatedAcceptInvitationInvitationIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/accept-sharing/$invitationId': {
-      id: '/_authenticated/accept-sharing/$invitationId'
-      path: '/accept-sharing/$invitationId'
-      fullPath: '/accept-sharing/$invitationId'
-      preLoaderRoute: typeof AuthenticatedAcceptSharingInvitationIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/settings/user': {
       id: '/_authenticated/settings/user'
       path: '/settings/user'
       fullPath: '/settings/user'
       preLoaderRoute: typeof AuthenticatedSettingsUserRouteRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/setup/complete': {
-      id: '/_authenticated/setup/complete'
-      path: '/setup/complete'
-      fullPath: '/setup/complete'
-      preLoaderRoute: typeof AuthenticatedSetupCompleteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_public/_guest/login': {
@@ -464,6 +459,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/signup'
       preLoaderRoute: typeof PublicGuestSignupRouteImport
       parentRoute: typeof PublicGuestRouteRoute
+    }
+    '/_authenticated/_standalone/accept-invitation/$invitationId': {
+      id: '/_authenticated/_standalone/accept-invitation/$invitationId'
+      path: '/accept-invitation/$invitationId'
+      fullPath: '/accept-invitation/$invitationId'
+      preLoaderRoute: typeof AuthenticatedStandaloneAcceptInvitationInvitationIdRouteImport
+      parentRoute: typeof AuthenticatedStandaloneRouteRoute
+    }
+    '/_authenticated/_standalone/accept-sharing/$invitationId': {
+      id: '/_authenticated/_standalone/accept-sharing/$invitationId'
+      path: '/accept-sharing/$invitationId'
+      fullPath: '/accept-sharing/$invitationId'
+      preLoaderRoute: typeof AuthenticatedStandaloneAcceptSharingInvitationIdRouteImport
+      parentRoute: typeof AuthenticatedStandaloneRouteRoute
+    }
+    '/_authenticated/_standalone/setup/complete': {
+      id: '/_authenticated/_standalone/setup/complete'
+      path: '/setup/complete'
+      fullPath: '/setup/complete'
+      preLoaderRoute: typeof AuthenticatedStandaloneSetupCompleteRouteImport
+      parentRoute: typeof AuthenticatedStandaloneRouteRoute
     }
     '/_authenticated/_workspace/settings/organization': {
       id: '/_authenticated/_workspace/settings/organization'
@@ -502,6 +518,33 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AuthenticatedStandaloneRouteRouteChildren {
+  AuthenticatedStandaloneOnboardingRoute: typeof AuthenticatedStandaloneOnboardingRoute
+  AuthenticatedStandaloneOrganizationsRoute: typeof AuthenticatedStandaloneOrganizationsRoute
+  AuthenticatedStandaloneAcceptInvitationInvitationIdRoute: typeof AuthenticatedStandaloneAcceptInvitationInvitationIdRoute
+  AuthenticatedStandaloneAcceptSharingInvitationIdRoute: typeof AuthenticatedStandaloneAcceptSharingInvitationIdRoute
+  AuthenticatedStandaloneSetupCompleteRoute: typeof AuthenticatedStandaloneSetupCompleteRoute
+}
+
+const AuthenticatedStandaloneRouteRouteChildren: AuthenticatedStandaloneRouteRouteChildren =
+  {
+    AuthenticatedStandaloneOnboardingRoute:
+      AuthenticatedStandaloneOnboardingRoute,
+    AuthenticatedStandaloneOrganizationsRoute:
+      AuthenticatedStandaloneOrganizationsRoute,
+    AuthenticatedStandaloneAcceptInvitationInvitationIdRoute:
+      AuthenticatedStandaloneAcceptInvitationInvitationIdRoute,
+    AuthenticatedStandaloneAcceptSharingInvitationIdRoute:
+      AuthenticatedStandaloneAcceptSharingInvitationIdRoute,
+    AuthenticatedStandaloneSetupCompleteRoute:
+      AuthenticatedStandaloneSetupCompleteRoute,
+  }
+
+const AuthenticatedStandaloneRouteRouteWithChildren =
+  AuthenticatedStandaloneRouteRoute._addFileChildren(
+    AuthenticatedStandaloneRouteRouteChildren,
+  )
 
 interface AuthenticatedWorkspaceSettingsOrganizationRouteRouteChildren {
   AuthenticatedWorkspaceSettingsOrganizationIndexRoute: typeof AuthenticatedWorkspaceSettingsOrganizationIndexRoute
@@ -561,27 +604,18 @@ const AuthenticatedSettingsUserRouteRouteWithChildren =
   )
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedStandaloneRouteRoute: typeof AuthenticatedStandaloneRouteRouteWithChildren
   AuthenticatedWorkspaceRouteRoute: typeof AuthenticatedWorkspaceRouteRouteWithChildren
-  AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
-  AuthenticatedOrganizationsRoute: typeof AuthenticatedOrganizationsRoute
   AuthenticatedSettingsUserRouteRoute: typeof AuthenticatedSettingsUserRouteRouteWithChildren
-  AuthenticatedAcceptInvitationInvitationIdRoute: typeof AuthenticatedAcceptInvitationInvitationIdRoute
-  AuthenticatedAcceptSharingInvitationIdRoute: typeof AuthenticatedAcceptSharingInvitationIdRoute
-  AuthenticatedSetupCompleteRoute: typeof AuthenticatedSetupCompleteRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedStandaloneRouteRoute:
+    AuthenticatedStandaloneRouteRouteWithChildren,
   AuthenticatedWorkspaceRouteRoute:
     AuthenticatedWorkspaceRouteRouteWithChildren,
-  AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
-  AuthenticatedOrganizationsRoute: AuthenticatedOrganizationsRoute,
   AuthenticatedSettingsUserRouteRoute:
     AuthenticatedSettingsUserRouteRouteWithChildren,
-  AuthenticatedAcceptInvitationInvitationIdRoute:
-    AuthenticatedAcceptInvitationInvitationIdRoute,
-  AuthenticatedAcceptSharingInvitationIdRoute:
-    AuthenticatedAcceptSharingInvitationIdRoute,
-  AuthenticatedSetupCompleteRoute: AuthenticatedSetupCompleteRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
