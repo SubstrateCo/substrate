@@ -93,6 +93,7 @@ test("agent-created records belong to the owner and keep agent activity attribut
     name: "Assistant",
     type: "agent",
     assignable: true,
+    image: null,
   });
   const task = await agent.tasks.create({
     projectEntityId: project.entityId,
@@ -137,6 +138,7 @@ test("other members cannot see or assign a user's local agent, but see it on ass
       name: "Assistant",
       type: "agent",
       assignable: true,
+      image: null,
     });
   await alice.tasks.update(task.entityId, { assigneeActorEntityId: actor.entityId });
   // Keeping the existing assignee does not block other edits.
@@ -153,6 +155,7 @@ test("other members cannot see or assign a user's local agent, but see it on ass
     name: "Assistant",
     type: "agent",
     assignable: false,
+    image: null,
   });
 });
 

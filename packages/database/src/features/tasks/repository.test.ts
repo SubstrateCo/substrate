@@ -319,6 +319,7 @@ test("task comments require their actual project and use three repository statem
       body: "Ready",
       createdAt: comment.createdAt,
       authorName: "Alice",
+      authorImage: null,
       authorType: "human",
     },
   ]);

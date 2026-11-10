@@ -1,5 +1,6 @@
 import type { DatabaseExecutor } from "../../client";
 import { actorDisplayName } from "../../core/actors/display-name";
+import { actorPicture } from "../../core/actors/picture";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import type { RepositoryContext } from "../../core/repository-context";
@@ -224,6 +225,7 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
           body: messagingMessages.body,
           threadId: messagingMessages.threadId,
           authorName: actorDisplayName(),
+          authorImage: actorPicture(scope),
           authorType: actors.type,
           createdAt: messagingMessages.createdAt,
           purpose: messageEntityReferences.purpose,
@@ -251,7 +253,7 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
     },
     async messageTarget(conversationId: string, messageId: string) {
       const { actor } = await workspaceContext(db, scope);
-      const author = messageAuthorColumns(scope.organizationId);
+      const author = messageAuthorColumns(scope);
       // Reads the message and its thread root together; each row must be visible.
       const rows = await db
         .select({

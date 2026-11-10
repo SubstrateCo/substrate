@@ -306,6 +306,8 @@ test("mentions notify accessible recipients once, reply notifications are dedupl
 
 test("notices name the actor and place, and excerpts name only references the recipient can open", async () => {
   const { alice, project, chat, channel } = await setup();
+  const image = `/api/v1/files/pictures/avatar/alice?v=${crypto.randomUUID()}`;
+  await f.db.update(user).set({ image }).where(eq(user.id, "alice"));
   await chat.addMembers(channel.id, ["bob@example.com"]);
   const hiddenProject = await alice.projects.create({ name: "Hidden" });
   const secret = await alice.tasks.create({
@@ -326,6 +328,7 @@ test("notices name the actor and place, and excerpts name only references the re
     kind: "mention",
     messageId: message.id,
     actorName: "Alice",
+    actorImage: image,
     source: { kind: "channel", name: "Private", private: true },
     excerpt: "@Bob see a task and Ship",
   });
@@ -333,9 +336,33 @@ test("notices name the actor and place, and excerpts name only references the re
     kind: "assignment",
     entityId: shared.entityId,
     actorName: "Alice",
+    actorImage: image,
     source: { kind: "project", name: "Shared work" },
     excerpt: null,
   });
+});
+
+test("message, discussion, comment and project actor pictures use existing reads and reflect picture changes", async () => {
+  const { alice, project, chat, channel } = await setup();
+  const image = `/api/v1/files/pictures/avatar/alice?v=${crypto.randomUUID()}`;
+  await f.db.update(user).set({ image }).where(eq(user.id, "alice"));
+  const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "Pictures" });
+  await alice.tasks.addComment(task.entityId, "Comment");
+  const message = await chat.sendMessage(channel.id, `See @[task:${task.entityId}]`);
+  const context = createContextService(f.db, { userId: "alice", organizationId: f.orgA });
+  expect((await chat.listMessages(channel.id))[0]).toMatchObject({ authorImage: image });
+  expect((await context.messageTarget(channel.id, message.id)).message).toMatchObject({
+    authorImage: image,
+  });
+  expect((await context.related(project.entityId))[0]).toMatchObject({ authorImage: image });
+  expect((await alice.tasks.listComments(task.entityId, project.entityId))[0]).toMatchObject({
+    authorImage: image,
+  });
+  const detail = await alice.projects.getDetail(project.entityId);
+  expect(detail.actors.find((actor) => actor.entityId === f.alice)).toMatchObject({ image });
+  expect(detail.members.find((actor) => actor.actorEntityId === f.alice)).toMatchObject({ image });
+  await f.db.update(user).set({ image: null }).where(eq(user.id, "alice"));
+  expect((await chat.listMessages(channel.id))[0]).toMatchObject({ authorImage: null });
 });
 
 test("private source activity is filtered independently from ordinary task activity", async () => {

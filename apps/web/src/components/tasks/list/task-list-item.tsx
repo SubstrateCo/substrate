@@ -90,7 +90,7 @@ export function TaskListItem({
       <span className="ml-2 flex w-6 shrink-0 justify-center">
         {assignee ? (
           <TaskAssigneeHoverCard assignee={assignee}>
-            <TaskAssigneeAvatar name={assignee.name} type={assignee.type} />
+            <TaskAssigneeAvatar name={assignee.name} image={assignee.image} type={assignee.type} />
           </TaskAssigneeHoverCard>
         ) : (
           <span aria-label={assigneeName ?? "Unassigned"}>

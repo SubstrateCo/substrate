@@ -3,6 +3,7 @@ import type { TaskStatus } from "@startup-os/contracts/tasks";
 
 import type { DatabaseExecutor } from "../../client";
 import { actorDisplayName } from "../../core/actors/display-name";
+import { actorPicture } from "../../core/actors/picture";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
@@ -39,6 +40,7 @@ interface SearchResult {
   id: string;
   kind: Exclude<ContextSearchKind, "all">;
   title: string;
+  image?: string | null;
   projectEntityId?: string;
   // Task results only: the readable parent project and the task's status, so pickers can tell
   // tasks with the same title apart.
@@ -491,7 +493,7 @@ export async function contextSearch(
   for (const rows of await Promise.all(branchRows)) results.push(...rows);
   if (kind === "person" && input.conversationId) {
     const rows = await db
-      .select({ id: actors.entityId, title: user.name })
+      .select({ id: actors.entityId, title: user.name, image: actorPicture(scope) })
       .from(actors)
       .innerJoin(user, eq(user.id, actors.userId))
       .innerJoin(entities, eq(entities.entityId, actors.entityId))
@@ -517,7 +519,12 @@ export async function contextSearch(
   // stay private and cannot be addressed.
   if (kind === "agent" && input.conversationId) {
     const rows = await db
-      .select({ id: actors.entityId, title: userAgents.name, agentId: userAgents.id })
+      .select({
+        id: actors.entityId,
+        title: userAgents.name,
+        agentId: userAgents.id,
+        image: actorPicture(scope),
+      })
       .from(messagingParticipants)
       .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
       .innerJoin(userAgents, eq(userAgents.id, actors.userAgentId))

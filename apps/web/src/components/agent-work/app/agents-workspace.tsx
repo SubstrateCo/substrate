@@ -58,7 +58,12 @@ export function AgentsWorkspace({
   const status = (id: string) => statuses.data?.find((entry) => entry.userAgentId === id);
   const agents = (catalog.data?.agents ?? []).map((agent) => {
     const published = status(agent.id);
-    return { id: agent.id, name: agent.name, status: published && agentStatus(published) };
+    return {
+      id: agent.id,
+      name: agent.name,
+      image: agent.image,
+      status: published && agentStatus(published),
+    };
   });
   const selected = agents.find((agent) => agent.id === agentId);
   const homedHere = !!agentId && !!local.data?.some((entry) => entry.userAgentId === agentId);

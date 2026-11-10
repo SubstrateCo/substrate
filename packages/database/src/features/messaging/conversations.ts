@@ -77,7 +77,7 @@ export function conversationOperations(db: DatabaseExecutor, scope: Readonly<Mes
           .where(visibleConversations(tx, scope))
           .orderBy(asc(messagingConversations.createdAt), asc(messagingConversations.id));
         const ids = rows.map((row) => row.id);
-        const byConversation = await activeMembers(tx, ids, scope.userId);
+        const byConversation = await activeMembers(tx, ids, scope);
         return rows.map((row) => {
           const members = byConversation.get(row.id) ?? [];
           return {
@@ -89,15 +89,18 @@ export function conversationOperations(db: DatabaseExecutor, scope: Readonly<Mes
               row.name,
               members.filter((participant) => participant.userId !== scope.userId),
             ),
-            members: members.map(({ actorId, type, userId, agentId, name, organizationId }) => ({
-              actorId,
-              type,
-              userId,
-              agentId,
-              name,
-              // Members from another organization. Their organization stays private here.
-              external: organizationId !== scope.organizationId,
-            })),
+            members: members.map(
+              ({ actorId, type, userId, agentId, name, image, organizationId }) => ({
+                actorId,
+                type,
+                userId,
+                agentId,
+                name,
+                image,
+                // Members from another organization. Their organization stays private here.
+                external: organizationId !== scope.organizationId,
+              }),
+            ),
             // The sidebar lists joined conversations. Public channels the person never joined or
             // left are still returned, so links and search can open them.
             joined: members.some((participant) => participant.userId === scope.userId),
@@ -323,10 +326,11 @@ export function conversationOperations(db: DatabaseExecutor, scope: Readonly<Mes
         const byConversation = await activeMembers(
           tx,
           rows.map((row) => row.id),
+          scope,
         );
         return rows.map((row) => {
           const members = (byConversation.get(row.id) ?? []).map(
-            ({ actorId, type, userId, name }) => ({ actorId, type, userId, name }),
+            ({ actorId, type, userId, name, image }) => ({ actorId, type, userId, name, image }),
           );
           return {
             ...row,

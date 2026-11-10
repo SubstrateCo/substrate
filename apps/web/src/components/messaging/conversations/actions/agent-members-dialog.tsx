@@ -10,6 +10,7 @@ import { UserMinus } from "lucide-react";
 type ConversationAgentOption = {
   agentId: string;
   name: string;
+  image?: string | null;
   /** The agent's actor when it is a member here. */
   actorId?: string;
 };
@@ -84,7 +85,7 @@ export function AgentMembersDialog({
                 key={agent.agentId}
                 className="group/row flex h-10 items-center gap-2 rounded-md px-2"
               >
-                <PersonAvatar name={agent.name} agent />
+                <PersonAvatar name={agent.name} image={agent.image} agent />
                 <span className="min-w-0 flex-1 truncate text-sm font-medium">{agent.name}</span>
                 {agent.actorId && (
                   <span className="text-xs text-muted-foreground">In this conversation</span>

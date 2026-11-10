@@ -12,6 +12,7 @@ export function ReferencePickerOption({
   id,
   kind,
   title,
+  image,
   description,
   status,
   selected,
@@ -21,6 +22,7 @@ export function ReferencePickerOption({
   id: string;
   kind: ReferenceKind;
   title: string;
+  image?: string | null;
   description?: string;
   /** Tasks only: replaces the kind icon. */
   status?: TaskStatus;
@@ -39,7 +41,7 @@ export function ReferencePickerOption({
   let icon = <Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />;
   if (status) icon = <TaskStatusIcon status={status} />;
   if (kind === "person" || kind === "agent")
-    icon = <PersonAvatar name={title} agent={kind === "agent"} size="xs" />;
+    icon = <PersonAvatar name={title} image={image} agent={kind === "agent"} size="xs" />;
   return (
     <Button
       id={id}

@@ -66,10 +66,19 @@ function Header({
 }
 
 /** Identity already visible on the source record, without loading private profile details. */
-export function PersonIdentityCard({ name, type }: { name: string; type: "human" | "agent" }) {
+export function PersonIdentityCard({
+  name,
+  image,
+  type,
+}: {
+  name: string;
+  image?: string | null;
+  type: "human" | "agent";
+}) {
   return (
     <Header
       name={name}
+      image={image}
       type={type}
       secondary={
         <p className="text-xs text-muted-foreground">{type === "agent" ? "Agent" : "Person"}</p>

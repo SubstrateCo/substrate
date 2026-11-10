@@ -136,6 +136,7 @@ describe("actor provisioning", () => {
       name: "Assistant",
       type: "agent",
       assignable: false,
+      image: null,
     });
     await expect(
       f.forActor(f.alice).permissions.grant({

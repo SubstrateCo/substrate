@@ -1,5 +1,6 @@
 import type { DatabaseExecutor } from "../../client";
 import { actorDisplayName } from "../../core/actors/display-name";
+import { actorPicture } from "../../core/actors/picture";
 import { actors } from "../../core/actors/schema";
 import { AccessDeniedError } from "../../errors";
 import { taskActivity } from "../activity/schema";
@@ -28,6 +29,7 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
           id: taskActivity.id,
           action: taskActivity.action,
           actorName: actorDisplayName(),
+          actorImage: actorPicture(scope),
           actorType: actors.type,
           createdAt: taskActivity.createdAt,
           sourceMessageId: taskActivity.sourceMessageId,
@@ -53,6 +55,7 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
             id: row.id,
             action: row.action,
             actorName: row.actorName,
+            actorImage: row.actorImage,
             actorType: row.actorType,
             createdAt: row.createdAt,
             source: message
@@ -116,6 +119,7 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
           body: messagingMessages.body,
           actorName: sql<string | null>`CASE WHEN ${actor.entityId} IS NULL THEN NULL
             ELSE ${actorDisplayName(actor)} END`,
+          actorImage: actorPicture(scope, actor),
         })
         .from(notifications)
         .leftJoin(

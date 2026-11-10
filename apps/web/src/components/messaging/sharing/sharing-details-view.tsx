@@ -167,7 +167,7 @@ export function SharingDetailsView({
             return (
               <Row
                 key={person.actorId}
-                icon={<PersonAvatar name={person.name} />}
+                icon={<PersonAvatar name={person.name} image={person.image} />}
                 title={
                   <>
                     {person.name}

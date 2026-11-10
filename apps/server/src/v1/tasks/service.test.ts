@@ -63,8 +63,18 @@ function projectFixture() {
       description: "Ship the desktop app",
     },
     level: "view",
-    members: [{ actorEntityId: actor.entityId, name: actor.name, type: "human", level: "view" }],
-    actors: [{ entityId: actor.entityId, name: actor.name, type: "human", assignable: true }],
+    members: [
+      {
+        actorEntityId: actor.entityId,
+        name: actor.name,
+        image: null,
+        type: "human",
+        level: "view",
+      },
+    ],
+    actors: [
+      { entityId: actor.entityId, name: actor.name, image: null, type: "human", assignable: true },
+    ],
     tasks: [],
   };
   const getDetail = spyOn(repositories.projects, "getDetail").mockResolvedValue(detail);

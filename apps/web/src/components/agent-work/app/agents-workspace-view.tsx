@@ -14,7 +14,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import type { WorkStatus } from "@/lib/agent-work/status";
 import { Hand, Plus } from "lucide-react";
 
-export type AgentListItem = { id: string; name: string; status?: WorkStatus };
+export type AgentListItem = {
+  id: string;
+  name: string;
+  image?: string | null;
+  status?: WorkStatus;
+};
 
 /** The Agents app: Needs you and each agent in the sidebar, the selection beside it. */
 export function AgentsWorkspaceView({
@@ -94,7 +99,7 @@ export function AgentsWorkspaceView({
                   onClick={() => onSelect(agent.id)}
                 >
                   <span className="relative grid size-6 shrink-0 place-items-center">
-                    <PersonAvatar name={agent.name} agent />
+                    <PersonAvatar name={agent.name} image={agent.image} agent />
                     {agent.status && (
                       <WorkIndicator tone={agent.status.tone} label={agent.status.label} compact />
                     )}

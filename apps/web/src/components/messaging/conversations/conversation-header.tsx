@@ -11,6 +11,7 @@ import { Globe, Hash, LockKeyhole, MessageCircle, UserPlus, Users } from "lucide
 export type HeaderMember = {
   actorId: string;
   name: string;
+  image?: string | null;
   type: "human" | "agent";
   external?: boolean;
 };
@@ -23,7 +24,7 @@ const kindIcons = {
 };
 
 function MemberAvatar({ member }: { member: HeaderMember }) {
-  return <PersonAvatar name={member.name} agent={member.type === "agent"} />;
+  return <PersonAvatar name={member.name} image={member.image} agent={member.type === "agent"} />;
 }
 
 /** Who can read here: a count that opens the member list. */

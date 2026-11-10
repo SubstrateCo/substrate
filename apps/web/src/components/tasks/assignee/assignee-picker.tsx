@@ -50,7 +50,7 @@ export function AssigneePicker({
       value={`${actor.name} ${actor.entityId}`}
       onSelect={() => choose(actor.entityId)}
     >
-      <TaskAssigneeAvatar name={actor.name} type={actor.type} />
+      <TaskAssigneeAvatar name={actor.name} image={actor.image} type={actor.type} />
       <span className="min-w-0 flex-1 truncate">{actor.name}</span>
       {actor.entityId === value && <Check aria-hidden="true" />}
     </CommandItem>

@@ -2,6 +2,7 @@ import { taskPriorityValues, taskStatusValues } from "@startup-os/contracts/task
 
 import { visibleActorCondition } from "../../core/actors/access";
 import { actorDisplayName } from "../../core/actors/display-name";
+import { actorPicture } from "../../core/actors/picture";
 import { actors } from "../../core/actors/schema";
 import { RepositoryContext, type PermissionLevel } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
@@ -188,6 +189,7 @@ export function taskRepository(context: RepositoryContext) {
           body: taskComments.body,
           createdAt: taskComments.createdAt,
           authorName: actorDisplayName(),
+          authorImage: actorPicture(scope),
           authorType: actors.type,
         })
         .from(taskComments)

@@ -1,5 +1,6 @@
 import { activeActorCondition, visibleActorCondition } from "../../core/actors/access";
 import { actorDisplayName } from "../../core/actors/display-name";
+import { actorPicture } from "../../core/actors/picture";
 import { actors } from "../../core/actors/schema";
 import { entities } from "../../core/entities/schema";
 import { entityGrants } from "../../core/permissions/schema";
@@ -34,6 +35,7 @@ export function projectRepository(context: RepositoryContext) {
       .select({
         actorEntityId: actors.entityId,
         name: actorDisplayName(),
+        image: actorPicture(scope),
         type: actors.type,
         level: entityGrants.level,
       })
@@ -73,6 +75,7 @@ export function projectRepository(context: RepositoryContext) {
       .select({
         entityId: actors.entityId,
         name: actorDisplayName(),
+        image: actorPicture(scope),
         type: actors.type,
         assignable: sql<boolean>`coalesce(${assignable}, false)`,
       })

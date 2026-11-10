@@ -45,22 +45,29 @@ export function conversationLabel({
  * Members that match no enabled agent stay removable.
  */
 export function conversationAgentOptions(
-  agents: readonly { id: string; name: string; enabled: boolean }[],
-  members: readonly { id: string; title: string; agentId?: string }[],
-): { agentId: string; name: string; actorId?: string }[] {
+  agents: readonly { id: string; name: string; image?: string | null; enabled: boolean }[],
+  members: readonly { id: string; title: string; image?: string | null; agentId?: string }[],
+): { agentId: string; name: string; image?: string | null; actorId?: string }[] {
   const matched = new Set<string>();
   const options = agents.flatMap((agent) => {
     if (!agent.enabled) return [];
     const member = members.find((entry) => entry.agentId === agent.id);
     if (member) matched.add(member.id);
-    return [{ agentId: agent.id, name: agent.name, actorId: member?.id }];
+    return [{ agentId: agent.id, name: agent.name, image: agent.image, actorId: member?.id }];
   });
   return [
     ...options,
     ...members.flatMap((member) =>
       matched.has(member.id)
         ? []
-        : [{ agentId: member.agentId ?? member.id, name: member.title, actorId: member.id }],
+        : [
+            {
+              agentId: member.agentId ?? member.id,
+              name: member.title,
+              image: member.image,
+              actorId: member.id,
+            },
+          ],
     ),
   ];
 }

@@ -1,6 +1,6 @@
 import type { MouseEvent } from "react";
 
-import { Avatar, AvatarFallback } from "../../ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar";
 import { Button } from "../../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { formatFullTimestamp, formatRelativeTime } from "@/lib/format/date";
@@ -16,6 +16,7 @@ export type Notification = {
   title: string;
   /** Who acted, or null when the server could not name them. */
   actorName: string | null;
+  actorImage: string | null;
   /** Where it happened, as the reader sees it. */
   source: { kind: "project" | "channel" | "dm" | "group"; name: string; private?: boolean };
   /** One line of the message, with references the reader cannot open left unnamed. */
@@ -77,6 +78,7 @@ export function NotificationItem({
       />
       <span aria-hidden="true" className="relative mt-0.5 shrink-0">
         <Avatar variant="user" className="size-8">
+          {item.actorImage && <AvatarImage src={item.actorImage} alt="" />}
           <AvatarFallback>{initials(actor)}</AvatarFallback>
         </Avatar>
         <span className="absolute -right-1 -bottom-1 flex size-4 items-center justify-center rounded-full bg-surface text-muted-foreground ring-2 ring-surface group-hover/notice:bg-row-hover group-hover/notice:ring-row-hover">

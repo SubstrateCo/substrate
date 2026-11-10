@@ -20,6 +20,7 @@ export interface FeedRow {
   threadId: string | null;
   /** Who acted: the message author or the person who assigned the task. */
   actorName: string | null;
+  actorImage: string | null;
 }
 
 /** A feed row as the recipient sees it, or null when its target is no longer readable. */
@@ -30,6 +31,7 @@ export function toFeedItem(row: FeedRow) {
     readAt: row.readAt,
     createdAt: row.createdAt,
     actorName: row.actorName,
+    actorImage: row.actorImage,
   };
   if (row.entityId) {
     if (!row.work) return null;

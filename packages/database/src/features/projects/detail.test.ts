@@ -42,7 +42,7 @@ test("project detail preserves protected output with five SELECT statements", as
   );
   expect(actual.actors.map((actor) => actor.entityId)).toEqual([f.alice, f.bob]);
   expect(actual.members).toEqual([
-    { actorEntityId: f.alice, name: "Alice", type: "human", level: "owner" },
+    { actorEntityId: f.alice, name: "Alice", image: null, type: "human", level: "owner" },
   ]);
 });
 

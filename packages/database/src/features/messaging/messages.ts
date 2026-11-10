@@ -1,5 +1,6 @@
 import type { DatabaseExecutor } from "../../client";
 import { actorDisplayName } from "../../core/actors/display-name";
+import { actorPicture } from "../../core/actors/picture";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { member } from "../../core/organizations/schema";
@@ -21,14 +22,15 @@ import { messagingMessages, messagingReactions } from "./schema";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 
 // Requires a join of `actors` on author_actor_entity_id.
-export function messageAuthorColumns(organizationId: string) {
+export function messageAuthorColumns(scope: MessagingIdentity) {
   return {
     authorName: actorDisplayName(),
+    authorImage: actorPicture(scope),
     authorType: sql<"human" | "agent">`${actors.type}`,
     authorExternal: sql<boolean>`${actors.type} <> 'agent' AND not exists (
       select 1 from ${member}
       where ${member.userId} = ${actors.userId}
-        and ${member.organizationId} = ${organizationId}
+        and ${member.organizationId} = ${scope.organizationId}
     )`,
   };
 }
@@ -218,7 +220,7 @@ export function messageOperations(db: DatabaseExecutor, scope: Readonly<Messagin
         const rows = await tx
           .select({
             message: messagingMessages,
-            ...messageAuthorColumns(scope.organizationId),
+            ...messageAuthorColumns(scope),
             authorOwnerUserId: userAgents.userId,
           })
           .from(messagingMessages)
@@ -243,11 +245,19 @@ export function messageOperations(db: DatabaseExecutor, scope: Readonly<Messagin
           rows.map((row) => row.message),
         );
         return rows.map(
-          ({ message, authorName, authorExternal, authorType, authorOwnerUserId }) => ({
+          ({
+            message,
+            authorName,
+            authorImage,
+            authorExternal,
+            authorType,
+            authorOwnerUserId,
+          }) => ({
             ...message,
             // Which agent turn published a reply is private to the agent's owner.
             originTurnId: authorOwnerUserId === scope.userId ? message.originTurnId : null,
             authorName,
+            authorImage,
             authorExternal,
             authorType,
             ...summaries.get(message.id)!,

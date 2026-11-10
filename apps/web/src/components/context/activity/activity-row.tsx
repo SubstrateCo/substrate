@@ -1,4 +1,5 @@
 import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
+import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
 import { Bot, CircleDot, Link2, MessageCircle, MessageSquare, Unlink } from "lucide-react";
 
@@ -6,6 +7,7 @@ export type ActivityEvent = {
   id: string;
   action: string;
   actorName: string | null;
+  actorImage?: string | null;
   actorType?: "human" | "agent";
   createdAt: string;
   source: {
@@ -31,6 +33,12 @@ export function ActivityRow({ event }: { event: ActivityEvent }) {
     <li className="-mx-2 flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-row-hover">
       <Icon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
       <span className="flex min-w-0 flex-1 items-center gap-1.5">
+        <PersonAvatar
+          name={event.actorName ?? "Unknown"}
+          image={event.actorImage}
+          agent={event.actorType === "agent"}
+          size="xs"
+        />
         <span className="truncate font-medium">{event.actorName ?? "Unknown"}</span>
         {event.actorType === "agent" && (
           <span className="inline-flex shrink-0 items-center gap-0.5 rounded-sm border px-1 text-xs font-medium text-muted-foreground">

@@ -88,7 +88,11 @@ export function TaskScheduleFields({
                     aria-invalid={invalid}
                     aria-describedby={invalid ? `${id}-assignee-error` : undefined}
                   >
-                    <TaskAssigneeAvatar name={actor?.name} type={actor?.type} />
+                    <TaskAssigneeAvatar
+                      name={actor?.name}
+                      image={actor?.image}
+                      type={actor?.type}
+                    />
                     <span className="min-w-0 flex-1 truncate text-left">
                       {value && !actor
                         ? "Former member. Choose someone else."

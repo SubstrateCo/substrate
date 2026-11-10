@@ -41,6 +41,7 @@ export function NotificationList({
       kind: item.kind,
       title: item.title,
       actorName: item.actorName,
+      actorImage: item.actorImage,
       source: item.source,
       excerpt: item.excerpt,
       createdAt: item.createdAt,

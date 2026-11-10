@@ -8,6 +8,7 @@ export function TaskComment({ comment }: { comment: Comment }) {
     <li className="flex min-w-0 gap-2.5">
       <PersonAvatar
         name={comment.authorName}
+        image={comment.authorImage}
         agent={comment.authorType === "agent"}
         className="mt-0.5"
       />

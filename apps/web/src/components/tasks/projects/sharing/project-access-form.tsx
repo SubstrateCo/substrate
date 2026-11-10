@@ -61,7 +61,7 @@ export function ProjectAccessForm({
                       value={`${candidate.name} ${candidate.entityId}`}
                       onSelect={() => setActorEntityId(candidate.entityId)}
                     >
-                      <TaskAssigneeAvatar name={candidate.name} />
+                      <TaskAssigneeAvatar name={candidate.name} image={candidate.image} />
                       <span className="min-w-0 flex-1 truncate">{candidate.name}</span>
                       {candidate.entityId === actorEntityId && <Check aria-hidden="true" />}
                     </CommandItem>

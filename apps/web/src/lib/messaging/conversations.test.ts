@@ -18,20 +18,21 @@ test("only a public channel is written with a hash", () => {
 test("only people with accounts can be chosen as owners", () => {
   expect(
     humanMembers([
-      { actorId: "a1", type: "human", userId: "u1", name: "Ada" },
-      { actorId: "a2", type: "agent", userId: null, name: "Helper" },
+      { actorId: "a1", type: "human", userId: "u1", name: "Ada", image: null },
+      { actorId: "a2", type: "agent", userId: null, name: "Helper", image: null },
     ]),
   ).toEqual([{ userId: "u1", name: "Ada" }]);
 });
 
 test("a new message to an agent reuses its joined DM, not a channel it is in", () => {
-  const me = { actorId: "me", type: "human" as const, userId: "u1", name: "Ada" };
+  const me = { actorId: "me", type: "human" as const, userId: "u1", name: "Ada", image: null };
   const helper = {
     actorId: "h",
     type: "agent" as const,
     userId: null,
     agentId: "d1",
     name: "Helper",
+    image: null,
   };
   const conversations = [
     {
@@ -64,21 +65,22 @@ test("a new message to an agent reuses its joined DM, not a channel it is in", (
 });
 
 test("agent options match members by definition ID, hide disabled agents, hide disabled agents, and keep unmatched members removable", () => {
+  const image = "/api/v1/files/00000000-0000-0000-0000-000000000001/content";
   expect(
     conversationAgentOptions(
       [
-        { id: "d1", name: "Helper", enabled: true },
+        { id: "d1", name: "Helper", image, enabled: true },
         { id: "d2", name: "Writer", enabled: true },
         { id: "d3", name: "Off", enabled: false },
       ],
       [
         { id: "actor-helper", title: "Renamed helper", agentId: "d1" },
-        { id: "actor-off", title: "Off", agentId: "d3" },
+        { id: "actor-off", title: "Off", image, agentId: "d3" },
       ],
     ),
   ).toEqual([
-    { agentId: "d1", name: "Helper", actorId: "actor-helper" },
+    { agentId: "d1", name: "Helper", image, actorId: "actor-helper" },
     { agentId: "d2", name: "Writer", actorId: undefined },
-    { agentId: "d3", name: "Off", actorId: "actor-off" },
+    { agentId: "d3", name: "Off", image, actorId: "actor-off" },
   ]);
 });

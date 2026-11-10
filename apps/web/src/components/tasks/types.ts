@@ -37,16 +37,24 @@ export interface ProjectDetail {
   members: {
     actorEntityId: string;
     name: string;
+    image?: string | null;
     type: "human" | "agent";
     level: ProjectPermission;
   }[];
   /** `assignable` is false for another user's agent shown only as an existing assignee. */
-  actors: { entityId: string; name: string; type: "human" | "agent"; assignable: boolean }[];
+  actors: {
+    entityId: string;
+    name: string;
+    image?: string | null;
+    type: "human" | "agent";
+    assignable: boolean;
+  }[];
   tasks: Task[];
 }
 export interface TaskComment {
   id: string;
   authorName: string;
+  authorImage?: string | null;
   authorType?: "human" | "agent";
   body: string;
   createdAt: Date | string;

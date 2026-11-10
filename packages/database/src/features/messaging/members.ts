@@ -1,11 +1,12 @@
 import type { DatabaseExecutor } from "../../client";
 import { actorDisplayName } from "../../core/actors/display-name";
+import { actorPicture } from "../../core/actors/picture";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { member } from "../../core/organizations/schema";
 import { ValidationError } from "../../errors";
-import { approvedParticipant, type Conversation } from "./access";
+import { approvedParticipant, type Conversation, type MessagingIdentity } from "./access";
 import { messagingConversations, messagingParticipants } from "./schema";
 import { and, asc, eq, inArray, isNotNull, isNull, ne, sql, type SQL } from "drizzle-orm";
 
@@ -78,7 +79,7 @@ export function endParticipation(db: DatabaseExecutor, condition: SQL | undefine
 export async function activeMembers(
   db: DatabaseExecutor,
   conversationIds: string[],
-  viewerId = "",
+  scope: MessagingIdentity,
 ) {
   const name = actorDisplayName();
   const rows = conversationIds.length
@@ -89,8 +90,9 @@ export async function activeMembers(
           type: actors.type,
           userId: actors.userId,
           agentId: sql<string | null>`(select ${userAgents.id} from ${userAgents}
-            where ${userAgents.id} = ${actors.userAgentId} and ${userAgents.userId} = ${viewerId})`,
+            where ${userAgents.id} = ${actors.userAgentId} and ${userAgents.userId} = ${scope.userId})`,
           name,
+          image: actorPicture(scope),
           organizationId: messagingParticipants.organizationId,
         })
         .from(messagingParticipants)

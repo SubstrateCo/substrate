@@ -29,7 +29,7 @@ export function ConversationAgents({
   // The server sets agentId only for the viewer's own agents, so other people's agents stay out.
   const ownAgents = members.flatMap((member) =>
     member.type === "agent" && member.agentId
-      ? [{ id: member.actorId, title: member.name, agentId: member.agentId }]
+      ? [{ id: member.actorId, title: member.name, image: member.image, agentId: member.agentId }]
       : [],
   );
   const { add, remove } = useConversationAgents(organizationId, conversationId);

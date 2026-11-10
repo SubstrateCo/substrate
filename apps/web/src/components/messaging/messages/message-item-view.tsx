@@ -9,7 +9,7 @@ import {
 } from "@/components/messaging/messages/message-interactions";
 import { PersonCardTarget, useHasPersonCard } from "@/components/messaging/people/person-card-slot";
 import { Timestamp } from "@/components/time/timestamp";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { initials } from "@/lib/people/initials";
 import { cn } from "cn";
 
@@ -65,6 +65,7 @@ export function MessageItem({
             variant={message.authorType === "agent" ? "agent" : "message"}
             className="size-9"
           >
+            {message.authorImage && <AvatarImage src={message.authorImage} alt="" />}
             <AvatarFallback>{initials(message.authorName)}</AvatarFallback>
           </Avatar>
           {avatarBadge}

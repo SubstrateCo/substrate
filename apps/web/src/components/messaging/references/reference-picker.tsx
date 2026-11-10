@@ -54,6 +54,7 @@ export function ReferencePicker({
     id: string;
     kind: ReferenceKind;
     title: string;
+    image?: string | null;
     conversationName?: string;
     /** Tasks only: tells tasks with the same title apart. */
     projectName?: string;
@@ -184,6 +185,7 @@ export function ReferencePicker({
                         key={optionId(item)}
                         kind={item.kind}
                         title={item.title}
+                        image={item.image}
                         status={item.status}
                         description={optionDescription(item)}
                         selected={selectedIndex === itemIndex}

@@ -3,7 +3,7 @@ import { actors } from "./schema";
 import { userAgents } from "./user-agents.schema";
 import { sql, type SQLWrapper } from "drizzle-orm";
 
-interface ActorColumns {
+export interface ActorColumns {
   type: SQLWrapper;
   userId: SQLWrapper;
   userAgentId: SQLWrapper;

@@ -93,7 +93,7 @@ export function TaskProperties({
   const assigneeText = assigneeLabel(task.assigneeActorEntityId, detail.actors);
   const assigneeValue = (
     <>
-      <TaskAssigneeAvatar name={assignee?.name} type={assignee?.type} />
+      <TaskAssigneeAvatar name={assignee?.name} image={assignee?.image} type={assignee?.type} />
       <span className={`truncate ${assignee ? "" : "text-muted-foreground"}`}>{assigneeText}</span>
       {assignee?.type === "agent" && <Tag className="py-0">Agent</Tag>}
     </>

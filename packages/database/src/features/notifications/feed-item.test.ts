@@ -13,6 +13,7 @@ const base: FeedRow = {
   conversation: null,
   threadId: null,
   actorName: "Alice",
+  actorImage: null,
 };
 
 test("work notices take the current work title and project, and hide unreadable work", () => {
@@ -23,6 +24,7 @@ test("work notices take the current work title and project, and hide unreadable 
     readAt: null,
     createdAt: base.createdAt,
     actorName: "Alice",
+    actorImage: null,
     title: "Ship",
     entityId: "t1",
     projectEntityId: "p1",

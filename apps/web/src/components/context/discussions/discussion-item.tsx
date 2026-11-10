@@ -17,6 +17,7 @@ export type Discussion = {
   conversationKind?: "channel" | "dm" | "group";
   private?: boolean;
   authorName: string | null;
+  authorImage?: string | null;
   authorType?: "human" | "agent";
   createdAt: string;
   body: string;
@@ -37,7 +38,12 @@ export function DiscussionItem({ item }: { item: Discussion }) {
   const author = item.authorName ?? "Unknown author";
   return (
     <li className="relative flex min-w-0 gap-3 rounded-lg border bg-card p-3 transition-colors hover:border-foreground/15 hover:bg-muted/50">
-      <PersonAvatar name={author} agent={item.authorType === "agent"} className="mt-0.5" />
+      <PersonAvatar
+        name={author}
+        image={item.authorImage}
+        agent={item.authorType === "agent"}
+        className="mt-0.5"
+      />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
           {item.conversationKind ? (

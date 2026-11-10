@@ -55,6 +55,7 @@ function MemberSummary({ members }: { members: ConversationMember[] }) {
               <PersonAvatar
                 key={`${person.type}-${person.name}`}
                 name={person.name}
+                image={person.image}
                 agent={person.type === "agent"}
               />
             ))}
@@ -70,7 +71,11 @@ function MemberSummary({ members }: { members: ConversationMember[] }) {
               key={`${person.type}-${person.name}-${index}`}
               className="flex items-center gap-2 rounded-md px-2 py-1"
             >
-              <PersonAvatar name={person.name} agent={person.type === "agent"} />
+              <PersonAvatar
+                name={person.name}
+                image={person.image}
+                agent={person.type === "agent"}
+              />
               <span className="min-w-0 flex-1 text-sm wrap-anywhere">{person.name}</span>
               {person.type === "agent" && <Tag>Agent</Tag>}
               {person.external && <Tag>External</Tag>}

@@ -1,4 +1,5 @@
 import type { DatabaseExecutor } from "../../../client";
+import { actorPicture } from "../../../core/actors/picture";
 import { actors } from "../../../core/actors/schema";
 import { user } from "../../../core/authentication/schema";
 import { organization } from "../../../core/organizations/schema";
@@ -63,6 +64,7 @@ export function sharingQueries(db: DatabaseExecutor, scope: MessagingIdentity) {
         const participants = await tx
           .select({
             actorId: actors.entityId,
+            image: actorPicture(scope),
             name: user.name,
             organizationId: messagingParticipants.organizationId,
             consentedAt: messagingParticipants.consentedAt,
