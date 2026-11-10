@@ -13,18 +13,22 @@ import type { DirectMessageAgent } from "@/components/messaging/conversations/co
 import { MessagingWorkspace as MessagingWorkspaceView } from "@/components/messaging/workspace/messaging-workspace-view";
 import { agentDirectMessage } from "@/lib/messaging/conversations";
 import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
-import { sessionQueryOptions } from "@/queries/auth/session";
 import { queryKeys } from "@/queries/keys";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
 import { organizationQueryOptions } from "@/queries/organizations/options";
 import { toast } from "sonner";
 
-export function MessagingWorkspace({ organizationId }: { organizationId: string }) {
+export function MessagingWorkspace({
+  organizationId,
+  userId,
+}: {
+  organizationId: string;
+  userId: string;
+}) {
   const conversations = useQuery(conversationsQueryOptions(organizationId));
-  const session = useQuery({ ...sessionQueryOptions(), staleTime: Infinity });
   const organization = useQuery(organizationQueryOptions(organizationId));
   const people = (organization.data?.members ?? [])
-    .filter((member) => member.userId !== session.data?.user.id)
+    .filter((member) => member.userId !== userId)
     .map((member) => ({
       id: member.userId,
       name: member.user.name,
@@ -32,8 +36,7 @@ export function MessagingWorkspace({ organizationId }: { organizationId: string 
       image: member.user.image,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
-  const userId = session.data?.user.id;
-  const catalog = useQuery({ ...agentCatalogQueryOptions(userId ?? ""), enabled: !!userId });
+  const catalog = useQuery(agentCatalogQueryOptions(userId));
   const agents = (catalog.data?.agents ?? [])
     .filter((agent) => agent.enabled)
     .map((agent) => ({ id: agent.id, name: agent.name, image: agent.image }));
@@ -113,7 +116,7 @@ export function MessagingWorkspace({ organizationId }: { organizationId: string 
           key={selected.id}
           organizationId={organizationId}
           conversation={selected}
-          userId={session.data?.user.id}
+          userId={userId}
         />
       )}
       {search.conversationId && !selected && !conversations.isPending && (

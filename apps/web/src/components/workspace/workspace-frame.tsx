@@ -21,10 +21,12 @@ import {
 } from "@/queries/organizations/options";
 
 export function WorkspaceFrame({
+  userId,
   organizationId,
   name,
   children,
 }: {
+  userId: string;
   organizationId?: string | null;
   name: string;
   children: ReactNode;
@@ -45,14 +47,13 @@ export function WorkspaceFrame({
     ...notificationPageOptions(organizationId ?? "", "unread", undefined, 1),
     enabled: !!organizationId,
   });
-  const userId = session.data?.user.id ?? "";
   // Agent notifications are only for work that needs the owner. The server returns nothing for
   // people without agents, so the dot never shows for them.
   const needsYou = useQuery({
     ...needsYouOptions(userId, organizationId ?? ""),
-    enabled: !!userId && !!organizationId,
+    enabled: !!organizationId,
   });
-  useAgentWorkBridgeSync(session.data?.user.id, organizationId);
+  useAgentWorkBridgeSync(userId, organizationId);
   const access = organizationSettingsAccess(
     member.data?.organizationId === organizationId ? member.data?.role : undefined,
   );

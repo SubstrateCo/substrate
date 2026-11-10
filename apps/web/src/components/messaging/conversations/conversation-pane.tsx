@@ -27,7 +27,7 @@ export function ConversationPane({
 }: {
   organizationId: string;
   conversation: Conversation;
-  userId?: string;
+  userId: string;
 }) {
   const search = useSearch({ strict: false });
   const navigate = useNavigate();
@@ -85,7 +85,7 @@ export function ConversationPane({
       },
     });
   let aside;
-  if (search.turnId && userId)
+  if (search.turnId)
     aside = (
       <ConversationTurnTranscript
         key={search.turnId}

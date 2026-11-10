@@ -42,7 +42,7 @@ export function ConversationAgentWork({
   onTranscript,
   children,
 }: {
-  userId?: string;
+  userId: string;
   organizationId: string;
   conversation: Conversation;
   onTranscript: (turnId: string) => void;
@@ -54,28 +54,22 @@ export function ConversationAgentWork({
       ? [{ agentId: member.agentId, name: member.name }]
       : [],
   );
-  const enabled = !!userId;
-  const user = userId ?? "";
-  const bridge = enabled && hasAgentWorkBridge();
-  const summaries = useQuery({ ...localAgentsOptions(user, organizationId), enabled: bridge });
+  const bridge = hasAgentWorkBridge();
+  const summaries = useQuery({ ...localAgentsOptions(userId, organizationId), enabled: bridge });
   const homed = new Map((summaries.data ?? []).map((summary) => [summary.userAgentId, summary]));
   // Local work and its controls exist only when an agent of this owner is homed here.
   const local = useQuery({
-    ...conversationWorkOptions(user, organizationId, conversation.id),
+    ...conversationWorkOptions(userId, organizationId, conversation.id),
     enabled: bridge && homed.size > 0,
   });
-  const requests = useQuery({
-    ...conversationRequestsOptions(user, organizationId, conversation.id),
-    enabled,
-  });
-  const statuses = useQuery({ ...agentStatusOptions(user, organizationId), enabled });
-  const { newTopic } = useLocalWorkActions(user, organizationId);
+  const requests = useQuery(conversationRequestsOptions(userId, organizationId, conversation.id));
+  const statuses = useQuery(agentStatusOptions(userId, organizationId));
+  const { newTopic } = useLocalWorkActions(userId, organizationId);
   const turns = local.data?.turns ?? [];
   const sessions = new Map((local.data?.sessions ?? []).map((session) => [session.id, session]));
   const items = local.data?.items ?? [];
   const live = turns.some((turn) => liveTurnStatuses.includes(turn.status));
   const now = useNow(live);
-  if (!enabled) return children;
 
   const agents = conversationAgents({
     conversationId: conversation.id,
@@ -196,7 +190,7 @@ export function ConversationAgentWork({
                 return (
                   <InboxReceipt
                     key={item.id}
-                    userId={user}
+                    userId={userId}
                     organizationId={organizationId}
                     item={item}
                     context={{
@@ -210,7 +204,7 @@ export function ConversationAgentWork({
               {placed.map((turn) => (
                 <TurnWork
                   key={turn.id}
-                  userId={user}
+                  userId={userId}
                   organizationId={organizationId}
                   turn={turn}
                   agentName={name(turn.userAgentId)}
@@ -223,7 +217,7 @@ export function ConversationAgentWork({
               {requestCards.map((request) => (
                 <RequestCard
                   key={request.id}
-                  userId={user}
+                  userId={userId}
                   organizationId={organizationId}
                   request={request}
                 />
@@ -237,7 +231,7 @@ export function ConversationAgentWork({
             ?.map((turn) => (
               <TurnStatus
                 key={turn.id}
-                userId={user}
+                userId={userId}
                 organizationId={organizationId}
                 turn={turn}
                 openRequest={openRequest(turn.id)}

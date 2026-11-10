@@ -12,6 +12,6 @@ export const Route = createFileRoute("/_authenticated/_workspace/dashboard")({
   }),
 });
 function DashboardRoute() {
-  const { organizationId } = Route.useRouteContext();
-  return <MessagingWorkspace organizationId={organizationId} />;
+  const { organizationId, session } = Route.useRouteContext();
+  return <MessagingWorkspace organizationId={organizationId} userId={session.user.id} />;
 }

@@ -10,7 +10,11 @@ export const Route = createFileRoute("/_authenticated/settings/user")({
 function UserSettingsRoute() {
   const { session } = Route.useRouteContext();
   return (
-    <WorkspaceFrame organizationId={session.session.activeOrganizationId} name={session.user.name}>
+    <WorkspaceFrame
+      userId={session.user.id}
+      organizationId={session.session.activeOrganizationId}
+      name={session.user.name}
+    >
       <UserSettingsLayout>
         <Outlet />
       </UserSettingsLayout>

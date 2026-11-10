@@ -26,9 +26,9 @@ export const Route = createFileRoute("/_authenticated/_workspace")({
 });
 
 function WorkspaceLayout() {
-  const { organizationId, userName } = Route.useRouteContext();
+  const { organizationId, userName, session } = Route.useRouteContext();
   return (
-    <WorkspaceFrame organizationId={organizationId} name={userName}>
+    <WorkspaceFrame userId={session.user.id} organizationId={organizationId} name={userName}>
       <WorkspaceLinkBoundary organizationId={organizationId}>
         <Outlet />
       </WorkspaceLinkBoundary>
