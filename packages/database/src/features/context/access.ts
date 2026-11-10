@@ -7,18 +7,21 @@ import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
+import { adminRoleCondition } from "../../core/organizations/roles";
 import { member } from "../../core/organizations/schema";
 import { permissionRank, RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError } from "../../errors";
 import type { MessagingIdentity } from "../messaging/access";
 import { projects } from "../projects/schema";
 import { tasks } from "../tasks/tasks.schema";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 
 const actorSelection = { entityId: actors.entityId, name: actors.name, type: actors.type };
+const adminSelection = sql<boolean>`${adminRoleCondition(member.role)}`;
 
-// Verifies the session identity, membership and active actor in one statement.
-// Only a human's first workspace use takes the provisioning lock.
+// Verifies the session identity, membership and active actor in one statement, and reads
+// whether the user is an owner or admin of the organization now. Only a human's first workspace
+// use takes the provisioning lock.
 export async function workspaceContext(
   db: DatabaseExecutor,
   scope: MessagingIdentity,
@@ -31,9 +34,10 @@ export async function workspaceContext(
   );
   let actor: { entityId: string; name: string; type: "human" | "agent" } | undefined;
   let userName: string;
+  let admin: boolean;
   if (scope.actorEntityId) {
     const query = db
-      .select({ userName: user.name, actor: actorSelection })
+      .select({ userName: user.name, actor: actorSelection, admin: adminSelection })
       .from(user)
       .innerJoin(member, eq(member.userId, user.id))
       .innerJoin(
@@ -58,12 +62,13 @@ export async function workspaceContext(
       .where(and(identity, activeActorCondition(), isNull(entities.deletedAt)));
     const [row] = await (options.lockActor ? query.for("update", { of: actors }) : query);
     if (!row) throw new AccessDeniedError();
-    ({ actor, userName } = row);
+    ({ actor, userName, admin } = row);
   } else {
     const [row] = await db
       .select({
         userName: user.name,
         actor: actorSelection,
+        admin: adminSelection,
         disabledAt: actors.disabledAt,
         deletedAt: entities.deletedAt,
       })
@@ -82,7 +87,7 @@ export async function workspaceContext(
       )
       .where(identity);
     if (!row || row.disabledAt || row.deletedAt) throw new AccessDeniedError();
-    userName = row.userName;
+    ({ userName, admin } = row);
     actor = row.actor ?? undefined;
     if (!actor) {
       const created = await ensureHumanActor(db, { ...scope, name: userName });
@@ -97,7 +102,7 @@ export async function workspaceContext(
     organizationId: scope.organizationId,
     actorEntityId: actor.entityId,
   });
-  return { context, actor, userName };
+  return { context, actor, userName, admin };
 }
 
 export async function requireWork(

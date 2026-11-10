@@ -49,8 +49,7 @@ export async function requireSharingManager(
   conversation: SharingConversation,
 ) {
   if (scope.actorEntityId) throw new AccessDeniedError();
-  await workspaceContext(db, scope);
-  const viewer = viewerOf(scope, await isOrganizationAdmin(db, scope.userId, scope.organizationId));
+  const viewer = viewerOf(scope, (await workspaceContext(db, scope)).admin);
   // Only partners need the connection, and only partner DMs the visibility.
   const partner = { connected: false, visible: false };
   if (!hosts(conversation, viewer)) {
@@ -66,6 +65,7 @@ export async function requireSharingManager(
     }
   }
   if (!canShare(conversation, viewer, partner)) throw new AccessDeniedError();
+  return viewer;
 }
 
 export async function recordSharingEvent(

@@ -1,7 +1,6 @@
 import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
-import { isOrganizationAdmin } from "../../core/organizations/roles";
 import { organization } from "../../core/organizations/schema";
 import { AccessDeniedError } from "../../errors";
 import { workspaceContext } from "../context/access";
@@ -134,8 +133,7 @@ export function createSharingQueries(db: DatabaseExecutor, scope: MessagingIdent
       });
     },
     async listConversations() {
-      await workspaceContext(db, scope);
-      const admin = await isOrganizationAdmin(db, scope.userId, scope.organizationId);
+      const { admin } = await workspaceContext(db, scope);
       return db
         .select({
           id: messagingConversations.id,
@@ -186,12 +184,11 @@ export function createSharingQueries(db: DatabaseExecutor, scope: MessagingIdent
         .orderBy(desc(messagingConversations.createdAt));
     },
     async inbox() {
-      await workspaceContext(db, scope);
+      const { admin } = await workspaceContext(db, scope);
       const [person] = await db
         .select({ email: user.email })
         .from(user)
         .where(eq(user.id, scope.userId));
-      const admin = await isOrganizationAdmin(db, scope.userId, scope.organizationId);
       return db
         .select({
           id: messagingInvitations.id,

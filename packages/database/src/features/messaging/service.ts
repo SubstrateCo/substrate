@@ -3,7 +3,6 @@ import { ensureHumanActor, ensureUserAgentActor } from "../../core/actors/provis
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
-import { isOrganizationAdmin } from "../../core/organizations/roles";
 import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
@@ -25,6 +24,7 @@ import {
   validateEmoji,
   validateExternalInvitations,
   viewerOf,
+  type Viewer,
 } from "./policy";
 import { messagingProfile } from "./profiles";
 import {
@@ -338,8 +338,13 @@ export function createMessagingService(
   });
 
   async function authenticate(tx: DatabaseExecutor) {
-    const { context, actor, userName } = await workspaceContext(tx, scope);
-    return { context, actor, authorName: actor.type === "agent" ? actor.name : userName };
+    const { context, actor, userName, admin } = await workspaceContext(tx, scope);
+    return {
+      context,
+      actor,
+      authorName: actor.type === "agent" ? actor.name : userName,
+      viewer: viewerOf(scope, admin),
+    };
   }
 
   const requireConversation = (
@@ -349,16 +354,15 @@ export function createMessagingService(
   ) => lockConversation(tx, scope, id, lock);
 
   // Admins can find conversations of their organization that they cannot read.
-  async function requireManaged(tx: DatabaseExecutor, id: string) {
-    if (scope.actorEntityId) throw new AccessDeniedError();
-    const admin = await isOrganizationAdmin(tx, scope.userId, scope.organizationId);
+  async function requireManaged(tx: DatabaseExecutor, viewer: Viewer, id: string) {
+    if (viewer.agent) throw new AccessDeniedError();
     const [conversation] = await tx
       .select()
       .from(messagingConversations)
       .where(
         and(
           eq(messagingConversations.id, id),
-          admin
+          viewer.admin
             ? or(
                 visibleConversations(tx, scope),
                 eq(messagingConversations.organizationId, scope.organizationId),
@@ -367,8 +371,7 @@ export function createMessagingService(
         ),
       )
       .for("update");
-    if (!conversation || !canManage(conversation, viewerOf(scope, admin)))
-      throw new AccessDeniedError();
+    if (!conversation || !canManage(conversation, viewer)) throw new AccessDeniedError();
     return conversation;
   }
 
@@ -462,7 +465,7 @@ export function createMessagingService(
   return {
     async listConversations() {
       return db.transaction(async (tx) => {
-        await authenticate(tx);
+        const { viewer } = await authenticate(tx);
         const rows = await tx
           .select()
           .from(messagingConversations)
@@ -470,11 +473,6 @@ export function createMessagingService(
           .orderBy(asc(messagingConversations.createdAt), asc(messagingConversations.id));
         const ids = rows.map((row) => row.id);
         const byConversation = await activeMembers(tx, ids, scope.userId);
-        const viewer = viewerOf(
-          scope,
-          !scope.actorEntityId &&
-            (await isOrganizationAdmin(tx, scope.userId, scope.organizationId)),
-        );
         return rows.map((row) => {
           const members = byConversation.get(row.id) ?? [];
           return {
@@ -510,7 +508,7 @@ export function createMessagingService(
     async createConversation(input: CreateConversationInput) {
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
-        const { actor } = await authenticate(tx);
+        const { actor, viewer } = await authenticate(tx);
         const { people, external } = await recipients(tx, input.emails ?? []);
         const selected = [...people, ...(await ownedAgents(tx, input.agentIds ?? []))];
         const values = validateCreate(input, selected.length + external.length);
@@ -563,15 +561,10 @@ export function createMessagingService(
           if (existing) return existing;
         }
         // An existing DM is returned above without a new invitation, so this checks only new ones.
-        validateExternalInvitations(
-          input,
-          viewerOf(
-            scope,
-            !!external.length &&
-              (await isOrganizationAdmin(tx, scope.userId, scope.organizationId)),
-          ),
-          { count: external.length, shareHistory: input.shareHistory === true },
-        );
+        validateExternalInvitations(input, viewer, {
+          count: external.length,
+          shareHistory: input.shareHistory === true,
+        });
         const [conversation] = await tx
           .insert(messagingConversations)
           .values({
@@ -600,18 +593,13 @@ export function createMessagingService(
     async addMembers(conversationId: string, emails: string[], shareHistory = false) {
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
-        await authenticate(tx);
-        const conversation = await requireManaged(tx, conversationId);
+        const { viewer } = await authenticate(tx);
+        const conversation = await requireManaged(tx, viewer, conversationId);
         const { people: selected, external } = await recipients(tx, emails);
-        validateExternalInvitations(
-          conversation,
-          viewerOf(
-            scope,
-            !!external.length &&
-              (await isOrganizationAdmin(tx, scope.userId, scope.organizationId)),
-          ),
-          { count: external.length, shareHistory },
-        );
+        validateExternalInvitations(conversation, viewer, {
+          count: external.length,
+          shareHistory,
+        });
         for (const email of external)
           await queueSharingInvitation(tx, scope, conversation, email, shareHistory);
         // Adding someone who left brings them back.
@@ -682,9 +670,9 @@ export function createMessagingService(
     async leaveConversation(conversationId: string, newOwnerUserId?: string) {
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
-        const { actor } = await authenticate(tx);
+        const { actor, viewer } = await authenticate(tx);
         const conversation = await requireConversation(tx, conversationId);
-        const plan = leavePlan(conversation, viewerOf(scope, false), newOwnerUserId);
+        const plan = leavePlan(conversation, viewer, newOwnerUserId);
         if (plan === "transfer") await setOwner(tx, conversation, newOwnerUserId!);
         if (plan === "blocked") {
           const others = (await activeMembers(tx, [conversationId])).get(conversationId) ?? [];
@@ -713,8 +701,8 @@ export function createMessagingService(
 
     async transferOwnership(conversationId: string, userId: string) {
       return db.transaction(async (tx) => {
-        await authenticate(tx);
-        const conversation = await requireManaged(tx, conversationId);
+        const { viewer } = await authenticate(tx);
+        const conversation = await requireManaged(tx, viewer, conversationId);
         await setOwner(tx, conversation, userId);
         return { ownerUserId: userId };
       });
@@ -723,8 +711,8 @@ export function createMessagingService(
     // Counts only linked work the caller can read, so the warning leaks nothing.
     async deleteImpact(conversationId: string) {
       return db.transaction(async (tx) => {
-        const { context } = await authenticate(tx);
-        await requireManaged(tx, conversationId);
+        const { context, viewer } = await authenticate(tx);
+        await requireManaged(tx, viewer, conversationId);
         const [row] = await tx
           .select({ linkedWork: countDistinct(messageEntityReferences.entityId) })
           .from(messageEntityReferences)
@@ -742,8 +730,8 @@ export function createMessagingService(
     // its rows without the message link. Hints are collected first because the rows go away.
     async deleteConversation(conversationId: string) {
       return db.transaction(async (tx) => {
-        await authenticate(tx);
-        const conversation = await requireManaged(tx, conversationId);
+        const { viewer } = await authenticate(tx);
+        const conversation = await requireManaged(tx, viewer, conversationId);
         const hints = await conversationRemovalHints(tx, conversation);
         await tx
           .delete(messagingConversations)
@@ -756,9 +744,8 @@ export function createMessagingService(
     async listManagedConversations() {
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
-        await authenticate(tx);
-        if (!(await isOrganizationAdmin(tx, scope.userId, scope.organizationId)))
-          throw new AccessDeniedError();
+        const { viewer } = await authenticate(tx);
+        if (!viewer.admin) throw new AccessDeniedError();
         const rows = await tx
           .select({
             id: messagingConversations.id,
