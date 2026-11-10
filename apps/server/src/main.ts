@@ -1,5 +1,7 @@
+import { pruneRecords } from "@startup-os/database/maintenance";
+
 import { createApp } from "./app";
-import { closeDatabase } from "./auth/database";
+import { closeDatabase, db } from "./auth/database";
 import { defaultFileService } from "./v1/files/default-service";
 import { startSharingMail } from "./v1/messaging/sharing-mail";
 import { closeRefreshPublisher } from "./v1/realtime/publisher";
@@ -26,20 +28,26 @@ const server = Bun.serve({
 });
 console.log(`Startup OS API listening on ${server.url}`);
 
-let cleaningStorage = false;
-async function cleanupStorage() {
-  if (cleaningStorage) return;
-  cleaningStorage = true;
+let cleaning = false;
+// Hourly: storage objects, then records nothing reads any more.
+async function cleanup() {
+  if (cleaning) return;
+  cleaning = true;
   try {
     await defaultFileService.cleanup();
   } catch (error) {
     console.error("Storage cleanup failed", error instanceof Error ? error.name : "Unknown error");
+  }
+  try {
+    await pruneRecords(db);
+  } catch (error) {
+    console.error("Record cleanup failed", error instanceof Error ? error.name : "Unknown error");
   } finally {
-    cleaningStorage = false;
+    cleaning = false;
   }
 }
-void cleanupStorage();
-const cleanupTimer = setInterval(() => void cleanupStorage(), 60 * 60_000);
+void cleanup();
+const cleanupTimer = setInterval(() => void cleanup(), 60 * 60_000);
 cleanupTimer.unref();
 
 let stopping = false;

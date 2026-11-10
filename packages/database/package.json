@@ -14,6 +14,7 @@
     "./agents": "./src/features/agents/index.ts",
     "./agent-work": "./src/features/agent-work/index.ts",
     "./realtime": "./src/features/realtime/index.ts",
+    "./maintenance": "./src/maintenance.ts",
     "./development": "./src/development/seed.ts"
   },
   "scripts": {
