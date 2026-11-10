@@ -17,7 +17,6 @@ export function usePictureUpload({
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [committing, setCommitting] = useState(false);
-  const [progress, setProgress] = useState<number | undefined>();
   const committed = useRef(false);
   const controller = useRef<AbortController | null>(null);
   const busy = useRef(false);
@@ -37,7 +36,6 @@ export function usePictureUpload({
     setCommitting(false);
     const request = new AbortController();
     controller.current = request;
-    setProgress(undefined);
     setPending(true);
     setError(null);
     try {
@@ -48,10 +46,6 @@ export function usePictureUpload({
         onCommit: () => {
           committed.current = true;
           setCommitting(true);
-        },
-        onProgress: (value) => {
-          if (!request.signal.aborted && Number.isFinite(value))
-            setProgress(Math.max(0, Math.min(100, value)));
         },
       });
     } catch {
@@ -66,5 +60,5 @@ export function usePictureUpload({
       setPending(false);
     }
   }
-  return { error, setError, pending, committing, progress, busy, confirm, cancelUpload };
+  return { error, setError, pending, committing, busy, confirm, cancelUpload };
 }

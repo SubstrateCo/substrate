@@ -3,14 +3,12 @@ export function validateFiles(
   {
     accept,
     maxSize,
-    multiple = false,
   }: {
     accept?: string;
     maxSize?: number;
-    multiple?: boolean;
   },
 ): string | null {
-  if (!multiple && files.length > 1) return "Choose one file at a time.";
+  if (files.length > 1) return "Choose one file at a time.";
   const types = accept
     ?.split(",")
     .map((type) => type.trim().toLowerCase())

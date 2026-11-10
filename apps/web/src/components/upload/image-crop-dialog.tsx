@@ -17,8 +17,6 @@ export interface ImageCropDialogProps {
 
 export interface PictureUploadContext {
   signal: AbortSignal;
-  /** Upload percentage, from 0 to 100. Omit calls for indeterminate progress. */
-  onProgress: (percentage: number) => void;
   /** Call immediately before the final, non-cancellable attachment request. */
   onCommit: () => void;
 }
@@ -38,8 +36,13 @@ export function ImageCropDialog({
   const [mode, setMode] = useState<"fit" | "fill">(kind === "organization-logo" ? "fit" : "fill");
   const [area, setArea] = useState<CropArea | null>(null);
   const [mediaFailed, setMediaFailed] = useState(false);
-  const { error, setError, pending, committing, progress, busy, confirm, cancelUpload } =
-    usePictureUpload({ file, area, rotation, mode, onConfirm });
+  const { error, setError, pending, committing, busy, confirm, cancelUpload } = usePictureUpload({
+    file,
+    area,
+    rotation,
+    mode,
+    onConfirm,
+  });
   useEffect(() => {
     const url = URL.createObjectURL(file);
     // Synchronize the external object URL with the image element; revoke it on cleanup.
@@ -132,8 +135,6 @@ export function ImageCropDialog({
             <progress
               aria-label={committing ? "Finishing picture" : "Uploading picture"}
               className="w-full accent-primary"
-              max={100}
-              value={committing ? undefined : progress}
             />
             <Button type="button" variant="outline" disabled={committing} onClick={cancelUpload}>
               Cancel upload

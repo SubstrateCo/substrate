@@ -20,7 +20,7 @@ test("picture validation accepts the size boundary and rejects oversized or unsu
   );
 });
 
-test("generic uploads support any bytes, extensions, MIME wildcards, and multiple selection", () => {
+test("generic uploads support any bytes, extensions, MIME wildcards, and one file at a time", () => {
   const file = new File(["bytes"], "report.CSV");
   expect(validateFiles([file], {})).toBeNull();
   expect(validateFiles([file], { accept: ".csv" })).toBeNull();
@@ -28,19 +28,19 @@ test("generic uploads support any bytes, extensions, MIME wildcards, and multipl
     validateFiles([new File([], "a.webp", { type: "image/webp" })], { accept: "image/*" }),
   ).toBeNull();
   expect(validateFiles([file, file], {})).toBe("Choose one file at a time.");
-  expect(validateFiles([file, file], { multiple: true })).toBeNull();
 });
 
-test("multiple uploads validate every file against the shared accepted types and size limit", () => {
-  const csv = new File(["data"], "report.CSV");
-  const png = new File(["image"], "photo.png", { type: "image/png" });
-  const options = { accept: " .csv, IMAGE/*, ", multiple: true, maxSize: 1024 * 1024 };
-  expect(validateFiles([csv, png], options)).toBeNull();
-  expect(validateFiles([csv, new File(["text"], "notes.txt")], options)).toBe(
+test("accepted types ignore surrounding spaces and letter case", () => {
+  const options = { accept: " .csv, IMAGE/*, ", maxSize: 1024 * 1024 };
+  expect(validateFiles([new File(["data"], "report.CSV")], options)).toBeNull();
+  expect(
+    validateFiles([new File(["image"], "photo.png", { type: "image/png" })], options),
+  ).toBeNull();
+  expect(validateFiles([new File(["text"], "notes.txt")], options)).toBe(
     "This file type is not supported.",
   );
   expect(
-    validateFiles([csv, new File([new Uint8Array(options.maxSize + 1)], "large.csv")], options),
+    validateFiles([new File([new Uint8Array(options.maxSize + 1)], "large.csv")], options),
   ).toBe("Each file must be 1 MB or smaller.");
 });
 
