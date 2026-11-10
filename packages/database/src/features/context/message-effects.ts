@@ -119,8 +119,9 @@ export async function applyMessageEffects(
   if (message.threadId) {
     // Members who left get mention alerts only.
     const authors = await db
-      .selectDistinct({ userId: messagingMessages.authorId })
+      .selectDistinct({ userId: actors.userId })
       .from(messagingMessages)
+      .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
       .innerJoin(
         messagingParticipants,
         and(

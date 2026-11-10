@@ -211,7 +211,6 @@ test("threads stay in their conversation and reference only roots, including raw
       .insert(messagingMessages)
       .values({
         conversationId: b.id,
-        authorId: "alice",
         authorActorEntityId: fixture.alice,
         authorOrganizationId: fixture.orgA,
         body: "bad",
@@ -224,7 +223,6 @@ test("threads stay in their conversation and reference only roots, including raw
       .insert(messagingMessages)
       .values({
         conversationId: a.id,
-        authorId: "alice",
         authorActorEntityId: fixture.alice,
         authorOrganizationId: fixture.orgA,
         body: "bad",
@@ -237,7 +235,6 @@ test("threads stay in their conversation and reference only roots, including raw
       .insert(messagingMessages)
       .values({
         conversationId: a.id,
-        authorId: "outsider",
         authorActorEntityId: fixture.outsider,
         authorOrganizationId: fixture.orgB,
         body: "bad",

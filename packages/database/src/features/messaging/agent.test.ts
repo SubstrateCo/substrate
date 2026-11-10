@@ -69,7 +69,7 @@ test("agent messages retain agent authorship and use their owner's conversation 
     .select()
     .from(messagingMessages)
     .where(eq(messagingMessages.id, sent.id));
-  expect(stored).toMatchObject({ authorId: null, authorActorEntityId: actor.entityId });
+  expect(stored).toMatchObject({ authorActorEntityId: actor.entityId });
   expect((await human.listMessages(channel.id))[0]).toMatchObject({
     authorName: "Research",
     authorType: "agent",

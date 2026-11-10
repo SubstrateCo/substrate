@@ -2,7 +2,6 @@ import type { DatabaseExecutor } from "../../client";
 import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
-import { user } from "../../core/authentication/schema";
 import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
@@ -21,15 +20,14 @@ import { messagingProfile } from "./profiles";
 import { messagingMessages, messagingReactions } from "./schema";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 
-// Requires left joins of `user` on author_id and `actors` on author_actor_entity_id.
-// A missing human author has no name here; each caller keeps its own fallback.
+// Requires a join of `actors` on author_actor_entity_id.
 export function messageAuthorColumns(organizationId: string) {
   return {
     authorName: actorDisplayName(),
-    authorType: sql<"human" | "agent">`coalesce(${actors.type}, 'human')`,
-    authorExternal: sql<boolean>`coalesce(${actors.type}, 'human') <> 'agent' AND not exists (
+    authorType: sql<"human" | "agent">`${actors.type}`,
+    authorExternal: sql<boolean>`${actors.type} <> 'agent' AND not exists (
       select 1 from ${member}
-      where ${member.userId} = ${messagingMessages.authorId}
+      where ${member.userId} = ${actors.userId}
         and ${member.organizationId} = ${organizationId}
     )`,
   };
@@ -153,7 +151,6 @@ export async function sendMessageAs(
     .insert(messagingMessages)
     .values({
       conversationId,
-      authorId: scope.actorEntityId ? null : scope.userId,
       authorActorEntityId: actor.entityId,
       authorOrganizationId: scope.organizationId,
       body,
@@ -223,8 +220,7 @@ export function messageOperations(db: DatabaseExecutor, scope: Readonly<Messagin
             authorOwnerUserId: userAgents.userId,
           })
           .from(messagingMessages)
-          .leftJoin(user, eq(user.id, messagingMessages.authorId))
-          .leftJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
+          .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
           .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
           .where(
             and(

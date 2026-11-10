@@ -124,7 +124,7 @@ test("notification recipients use one conflict-safe insert-select for one or man
     queries.length = 0;
     const sent = await sender.sendMessage(channel.id, "reply", root.id, crypto.randomUUID());
     const authors = queries.findIndex((query) =>
-      query.includes('"author_id" from "messaging_messages"'),
+      query.includes('"user_id" from "messaging_messages"'),
     );
     return {
       sent,
@@ -311,7 +311,7 @@ test("thread recipients use one distinct conversation-scoped query and mentions 
   });
   const sent = await partner.sendMessage(channel.id, "partner reply", root.id);
   expect(
-    queries.filter((query) => query.includes('"author_id" from "messaging_messages"')),
+    queries.filter((query) => query.includes('"user_id" from "messaging_messages"')),
   ).toHaveLength(1);
   expect(
     await f.db.select().from(notifications).where(eq(notifications.messageId, sent.id)),

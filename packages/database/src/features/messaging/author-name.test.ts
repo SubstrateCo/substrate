@@ -80,7 +80,7 @@ test("agent messages show the agent's current name, not its owner's", async () =
     userId: "alice",
     actorEntityId: actor.entityId,
   });
-  const attribution = { authorName: "Research", authorType: "agent", authorId: null };
+  const attribution = { authorName: "Research", authorType: "agent" };
   const root = await chat.sendMessage(channel.id, "root");
   expect(root).toMatchObject(attribution);
   const requestId = crypto.randomUUID();

@@ -85,6 +85,13 @@
       "when": 1794275719818,
       "tag": "0011_drop_actor_name_and_config",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794275984573,
+      "tag": "0012_drop_message_author_id",
+      "breakpoints": true
     }
   ]
 }

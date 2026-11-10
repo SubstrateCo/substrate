@@ -71,7 +71,8 @@ export async function routeWake(
   message: typeof messagingMessages.$inferSelect,
   conversationKind: "dm" | "group" | "channel",
 ): Promise<RealtimeHint[]> {
-  if (scope.actorEntityId || message.authorId !== scope.userId) return [];
+  // Without an actor in scope, the author is the session user's human actor.
+  if (scope.actorEntityId) return [];
   const agents = await db
     .select({
       actorId: actors.entityId,

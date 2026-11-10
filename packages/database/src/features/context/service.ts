@@ -2,7 +2,6 @@ import type { DatabaseExecutor } from "../../client";
 import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
-import { user } from "../../core/authentication/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import { ConflictError, AccessDeniedError } from "../../errors";
 import { recordTaskActivity } from "../activity/events";
@@ -212,7 +211,7 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
           body: messagingMessages.body,
           threadId: messagingMessages.threadId,
           authorName: actorDisplayName(),
-          authorType: sql<"human" | "agent">`coalesce(${actors.type}, 'human')`,
+          authorType: actors.type,
           createdAt: messagingMessages.createdAt,
           purpose: messageEntityReferences.purpose,
           replyCount: sql<number>`(select count(*)::int from ${messagingMessages} replies where replies.conversation_id = ${messagingMessages.conversationId} and replies.thread_id = coalesce(${messagingMessages.threadId}, ${messagingMessages.id}))`,
@@ -223,8 +222,7 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
           messagingConversations,
           eq(messagingConversations.id, messageEntityReferences.conversationId),
         )
-        .leftJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
-        .leftJoin(user, eq(user.id, messagingMessages.authorId))
+        .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
         .where(
           and(
             eq(messageEntityReferences.organizationId, scope.organizationId),
@@ -254,8 +252,7 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
           messagingConversations,
           eq(messagingConversations.id, messagingMessages.conversationId),
         )
-        .leftJoin(user, eq(user.id, messagingMessages.authorId))
-        .leftJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
+        .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
         .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
         .where(
           and(

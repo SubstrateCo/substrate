@@ -3,7 +3,6 @@ import type { AgentSourceMessage, AgentSourcesResult } from "@startup-os/contrac
 import type { DatabaseExecutor } from "../../client";
 import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
-import { user } from "../../core/authentication/schema";
 import { visibleConversations } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
@@ -29,7 +28,7 @@ export function loadSources(db: DatabaseExecutor, identity: DeviceIdentity, mess
         name: actorDisplayName(),
         kind: sql<AgentSourceMessage["author"]["kind"]>`case
           when ${actors.type} = 'agent' then 'agent'
-          when ${messagingMessages.authorId} = ${identity.userId} then 'owner'
+          when ${actors.userId} = ${identity.userId} then 'owner'
           else 'member' end`,
         body: messagingMessages.body,
         createdAt: messagingMessages.createdAt,
@@ -40,7 +39,6 @@ export function loadSources(db: DatabaseExecutor, identity: DeviceIdentity, mess
         eq(messagingConversations.id, messagingMessages.conversationId),
       )
       .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
-      .leftJoin(user, eq(user.id, messagingMessages.authorId))
       .where(and(inArray(messagingMessages.id, ids), visibleConversations(tx, identity)));
     const found = new Set(rows.map((row) => row.id));
     return {

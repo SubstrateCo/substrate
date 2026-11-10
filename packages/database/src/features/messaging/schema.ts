@@ -79,8 +79,7 @@ export const messagingMessages = pgTable(
     conversationId: uuid("conversation_id")
       .notNull()
       .references(() => messagingConversations.id, { onDelete: "cascade" }),
-    authorId: text("author_id"),
-    // A person also keeps author_id. Membership is checked through the author's actor.
+    // A person's user is the author actor's user_id. Membership is checked through that actor.
     authorActorEntityId: uuid("author_actor_entity_id").notNull(),
     authorOrganizationId: text("author_organization_id").notNull(),
     body: text("body").notNull(),
@@ -94,16 +93,11 @@ export const messagingMessages = pgTable(
   },
   (table) => [
     unique("messaging_message_conversation_unique").on(table.conversationId, table.id),
-    unique("messaging_message_request_unique").on(table.authorId, table.requestId),
     unique("messaging_actor_message_request_unique").on(table.authorActorEntityId, table.requestId),
     foreignKey({
       columns: [table.authorOrganizationId, table.authorActorEntityId],
       foreignColumns: [actors.organizationId, actors.entityId],
     }),
-    check(
-      "messaging_author_check",
-      sql`(${table.authorId} IS NOT NULL OR ${table.authorActorEntityId} IS NOT NULL) AND ((${table.authorActorEntityId} IS NULL) = (${table.authorOrganizationId} IS NULL))`,
-    ),
     unique("messaging_message_root_unique").on(table.conversationId, table.id, table.isRoot),
     foreignKey({
       columns: [table.conversationId, table.authorActorEntityId],

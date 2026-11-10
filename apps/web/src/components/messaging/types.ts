@@ -2,7 +2,6 @@ export type Message = {
   id: string;
   body: string;
   authorName: string;
-  authorId: string | null;
   authorActorEntityId?: string | null;
   authorType?: "human" | "agent";
   authorExternal: boolean;
