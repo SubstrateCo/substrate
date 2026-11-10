@@ -4,10 +4,15 @@ import { actors } from "../../core/actors/schema";
 import { AccessDeniedError } from "../../errors";
 import { taskActivity } from "../activity/schema";
 import { workspaceContext, requireWork } from "../context/access";
-import type { MessagingIdentity } from "../messaging/access";
+import { visibleConversations, type MessagingIdentity } from "../messaging/access";
+import { messagingConversations, messagingMessages } from "../messaging/schema";
+import { projects } from "../projects/schema";
+import { liveTask } from "../tasks/access";
+import { tasks } from "../tasks/tasks.schema";
+import { toFeedItem } from "./feed-item";
 import { notifications } from "./schema";
-import { readableWorkTargets, readableMessageTargets } from "./targets";
-import { and, desc, eq, isNull, sql, type SQL } from "drizzle-orm";
+import { readableMessageTargets } from "./targets";
+import { and, desc, eq, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
 
 export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity) {
   return {
@@ -78,65 +83,73 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
         if (!anchor) throw new AccessDeniedError();
         boundary = sql`(${notifications.createdAt}, ${notifications.id}) < (select anchor.created_at, anchor.id from ${notifications} anchor where anchor.id = ${anchor.id}::uuid)`;
       }
-      const result = [];
-      while (result.length < limit) {
-        const rows = await db
-          .select()
-          .from(notifications)
-          .where(
-            and(
-              eq(notifications.organizationId, scope.organizationId),
-              eq(notifications.recipientActorEntityId, ctx.scope.actorEntityId),
-              unread ? isNull(notifications.readAt) : undefined,
-              boundary,
-            ),
-          )
-          .orderBy(desc(notifications.createdAt), desc(notifications.id))
-          .limit(100);
-        const workTargets = await readableWorkTargets(ctx, [
-          ...new Set(rows.flatMap((row) => (row.entityId ? [row.entityId] : []))),
-        ]);
-        const messageTargets = await readableMessageTargets(db, scope, [
-          ...new Set(
-            rows.flatMap((row) => (!row.entityId && row.messageId ? [row.messageId] : [])),
+      // One statement filters by the target's current access before LIMIT, so hidden targets
+      // cost no extra round trips. A task is readable when its project is and it is not deleted.
+      const projectEntityId = sql`coalesce(${tasks.projectEntityId}, ${projects.entityId})`;
+      const rows = await db
+        .select({
+          id: notifications.id,
+          kind: notifications.kind,
+          readAt: notifications.readAt,
+          createdAt: notifications.createdAt,
+          entityId: notifications.entityId,
+          messageId: notifications.messageId,
+          title: sql<string | null>`coalesce(${tasks.title}, ${projects.name})`,
+          projectEntityId: sql<string | null>`${projectEntityId}`,
+          conversationId: messagingConversations.id,
+        })
+        .from(notifications)
+        .leftJoin(
+          tasks,
+          and(
+            eq(tasks.organizationId, notifications.organizationId),
+            eq(tasks.entityId, notifications.entityId),
           ),
-        ]);
-        for (const row of rows) {
-          if (row.entityId) {
-            const work = workTargets.get(row.entityId);
-            if (!work) continue;
-            result.push({
-              id: row.id,
-              kind: row.kind,
-              readAt: row.readAt,
-              createdAt: row.createdAt,
-              title: work.title,
-              entityId: row.entityId,
-              projectEntityId: work.projectEntityId,
-              conversationId: null,
-              messageId: null,
-            });
-          } else {
-            const message = messageTargets.get(row.messageId!);
-            if (!message) continue;
-            result.push({
-              id: row.id,
-              kind: row.kind,
-              readAt: row.readAt,
-              createdAt: row.createdAt,
-              title: row.kind === "mention" ? "You were mentioned" : "New thread reply",
-              entityId: null,
-              projectEntityId: null,
-              conversationId: message.conversationId,
-              messageId: message.id,
-            });
-          }
-        }
-        if (rows.length < 100 || result.length >= limit) break;
-        const last = rows.at(-1)!;
-        boundary = sql`(${notifications.createdAt}, ${notifications.id}) < (select anchor.created_at, anchor.id from ${notifications} anchor where anchor.id = ${last.id}::uuid)`;
-      }
-      return result.slice(0, limit);
+        )
+        .leftJoin(
+          projects,
+          and(
+            eq(projects.organizationId, notifications.organizationId),
+            eq(projects.entityId, notifications.entityId),
+          ),
+        )
+        .leftJoin(
+          messagingMessages,
+          and(isNull(notifications.entityId), eq(messagingMessages.id, notifications.messageId)),
+        )
+        .leftJoin(
+          messagingConversations,
+          eq(messagingConversations.id, messagingMessages.conversationId),
+        )
+        .where(
+          and(
+            eq(notifications.organizationId, scope.organizationId),
+            eq(notifications.recipientActorEntityId, ctx.scope.actorEntityId),
+            unread ? isNull(notifications.readAt) : undefined,
+            boundary,
+            or(
+              and(
+                isNotNull(notifications.entityId),
+                ctx.readable(projectEntityId),
+                or(isNull(tasks.entityId), liveTask()),
+              ),
+              and(
+                isNull(notifications.entityId),
+                isNotNull(messagingConversations.id),
+                visibleConversations(db, scope),
+              ),
+            ),
+          ),
+        )
+        .orderBy(desc(notifications.createdAt), desc(notifications.id))
+        .limit(limit);
+      return rows.flatMap(
+        ({ title, projectEntityId, ...row }) =>
+          toFeedItem({
+            ...row,
+            work: title !== null && projectEntityId !== null ? { title, projectEntityId } : null,
+          }) ?? [],
+      );
     },
     async markAllRead() {
       const { context: ctx } = await workspaceContext(db, scope);

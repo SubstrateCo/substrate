@@ -45,7 +45,7 @@ test("notification pages scan past inaccessible targets and filter unread before
   expect(new Set([...first.slice(0, 20), ...rest].map((item) => item.id)).size).toBe(24);
 });
 
-test("feed batches repeated and distinct current work and message targets without changing page order", async () => {
+test("feed pages read current work and message targets in one statement without changing page order", async () => {
   const { alice, project, chat, channel } = await setup();
   const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "First" });
   const other = await alice.tasks.create({ projectEntityId: project.entityId, title: "Second" });
@@ -78,19 +78,16 @@ test("feed batches repeated and distinct current work and message targets withou
   const read = async () => {
     queries.length = 0;
     const result = await service.list();
-    const start = queries.findIndex((query) => query.includes('from "notifications"'));
-    return {
-      result,
-      targetReads: queries.slice(start + 1).filter((q) => /^\s*(select|with)/i.test(q)).length,
-    };
+    // The workspace check, then the feed with its targets.
+    return { result, statements: queries.length };
   };
   await insert([task.entityId]);
-  expect((await read()).targetReads).toBe(1);
+  expect((await read()).statements).toBe(2);
   await insert(Array.from({ length: 100 }, () => task.entityId));
   const repeated = await read();
   expect(repeated.result).toHaveLength(100);
   expect(repeated.result.every((row) => row.title === "First")).toBe(true);
-  expect(repeated.targetReads).toBe(1);
+  expect(repeated.statements).toBe(2);
   const distinct = [];
   for (let index = 0; index < 20; index++)
     distinct.push(
@@ -98,7 +95,7 @@ test("feed batches repeated and distinct current work and message targets withou
     );
   await insert(distinct.map((row) => row.entityId));
   const distinctPage = await read();
-  expect(distinctPage.targetReads).toBe(1);
+  expect(distinctPage.statements).toBe(2);
   expect(distinctPage.result.map((row) => row.title)).toEqual(distinct.map((row) => row.title));
   await insert(
     [],
@@ -106,10 +103,10 @@ test("feed batches repeated and distinct current work and message targets withou
   );
   const repeatedMessages = await read();
   expect(repeatedMessages.result).toHaveLength(100);
-  expect(repeatedMessages.targetReads).toBe(1);
+  expect(repeatedMessages.statements).toBe(2);
   await insert([task.entityId, other.entityId, project.entityId], [message.id, secondMessage.id]);
   const mixed = await read();
-  expect(mixed.targetReads).toBe(2);
+  expect(mixed.statements).toBe(2);
   expect(mixed.result.map((row) => row.title)).toEqual([
     "You were mentioned",
     "First",
@@ -155,7 +152,7 @@ test("partner feeds use the selected workspace and current conversation access, 
   const { db, queries } = recordQueries();
   const partner = createFeedService(db, { userId: "outsider", organizationId: f.orgB });
   expect(await partner.list()).toMatchObject([{ messageId: reply.id, conversationId: channel.id }]);
-  expect(queries.filter((query) => query.includes('from "messaging_messages"'))).toHaveLength(1);
+  expect(queries).toHaveLength(2);
   await f.db.insert(member).values({ id: "outside-a", userId: "outsider", organizationId: f.orgA });
   const outsiderA = await ensureHumanActor(f.db, {
     userId: "outsider",
