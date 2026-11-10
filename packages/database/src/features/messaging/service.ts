@@ -1,9 +1,7 @@
 import type { DatabaseExecutor } from "../../client";
-import { ensureHumanActor, ensureUserAgentActor } from "../../core/actors/provisioning";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
-import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { routeWake } from "../agent-work/router";
@@ -33,6 +31,7 @@ import {
   type Viewer,
 } from "./policy";
 import { messagingProfile } from "./profiles";
+import { ownedAgents, recipients } from "./recipients";
 import {
   messagingConversations,
   messagingMessages,
@@ -41,18 +40,7 @@ import {
 } from "./schema";
 import { queueSharingInvitation } from "./sharing";
 import { messagingInvitations } from "./sharing.schema";
-import {
-  and,
-  asc,
-  countDistinct,
-  desc,
-  eq,
-  inArray,
-  isNull,
-  ne,
-  or,
-  sql,
-} from "drizzle-orm";
+import { and, asc, countDistinct, desc, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
 
 interface CreateConversationInput {
   kind: "dm" | "group" | "channel";
@@ -214,64 +202,6 @@ export function createMessagingService(
     return conversation;
   }
 
-  function normalizeEmail(email: string) {
-    const normalized = email.trim().toLowerCase();
-    if (!normalized || !normalized.includes("@"))
-      throw new ValidationError("An exact email address is required.");
-    return normalized;
-  }
-
-  async function recipients(tx: DatabaseExecutor, emails: string[]) {
-    if (emails.length > 100) throw new ValidationError("At most 100 recipients are allowed.");
-    const normalized = [...new Set(emails.map(normalizeEmail))];
-    if (!normalized.length) return { people: [], external: [] };
-    // Recipients are matched only in this organization. Other emails become invitations.
-    const matches = await tx
-      .select({
-        userId: user.id,
-        name: user.name,
-        organizationId: member.organizationId,
-        email: sql<string>`lower(${user.email})`,
-      })
-      .from(user)
-      .innerJoin(member, eq(member.userId, user.id))
-      .where(
-        and(
-          inArray(sql`lower(${user.email})`, normalized),
-          eq(user.emailVerified, true),
-          eq(member.organizationId, scope.organizationId),
-        ),
-      );
-    const matched = new Set(matches.map((match) => match.email));
-    const people = [];
-    for (const { userId, name, organizationId } of matches) {
-      if (userId === scope.userId) continue;
-      const recipient = { userId, name, organizationId };
-      const actor = await ensureHumanActor(tx, recipient);
-      people.push({ entityId: actor.entityId, type: "human" as const, ...recipient });
-    }
-    return { people, external: normalized.filter((email) => !matched.has(email)) };
-  }
-
-  // Only the owner can add their agent, and only an enabled agent of this organization.
-  async function ownedAgents(tx: DatabaseExecutor, agentIds: string[]) {
-    if (agentIds.length > 20) throw new ValidationError("At most 20 agents are allowed.");
-    const result = [];
-    for (const userAgentId of new Set(agentIds)) {
-      const actor = await ensureUserAgentActor(tx, {
-        organizationId: scope.organizationId,
-        userId: scope.userId,
-        userAgentId,
-      });
-      result.push({
-        entityId: actor.entityId,
-        type: "agent" as const,
-        organizationId: scope.organizationId,
-      });
-    }
-    return result;
-  }
-
   // A pair has one DM per organization. The lock serializes concurrent starts by either person,
   // so the lookup and the insert that follows act as one step.
   async function existingDirectMessage(tx: DatabaseExecutor, actorIds: [string, string]) {
@@ -348,8 +278,8 @@ export function createMessagingService(
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
         const { actor, viewer } = await authenticate(tx);
-        const { people, external } = await recipients(tx, input.emails ?? []);
-        const selected = [...people, ...(await ownedAgents(tx, input.agentIds ?? []))];
+        const { people, external } = await recipients(tx, scope, input.emails ?? []);
+        const selected = [...people, ...(await ownedAgents(tx, scope, input.agentIds ?? []))];
         const values = validateCreate(input, selected.length + external.length);
         if (input.kind === "dm" && external.length) {
           const email = external[0]!;
@@ -436,7 +366,7 @@ export function createMessagingService(
       return db.transaction(async (tx) => {
         const { viewer } = await authenticate(tx);
         const conversation = await requireManaged(tx, viewer, conversationId);
-        const { people: selected, external } = await recipients(tx, emails);
+        const { people: selected, external } = await recipients(tx, scope, emails);
         validateExternalInvitations(conversation, viewer, {
           count: external.length,
           shareHistory,
@@ -459,7 +389,7 @@ export function createMessagingService(
         const conversation = await loadConversation(tx, scope, conversationId, "update");
         if (conversation.kind === "dm")
           throw new ValidationError("Start a direct conversation with the agent instead.");
-        const [agent] = await ownedAgents(tx, [agentId]);
+        const [agent] = await ownedAgents(tx, scope, [agentId]);
         await writeMembers(tx, conversationId, [agent!], "join");
         return { actorId: agent!.entityId };
       });

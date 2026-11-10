@@ -67,6 +67,8 @@ test("100 unique recipients use one lookup for creation and member addition", as
     added: 100,
   });
   expect(lookups()).toHaveLength(1);
+  // The recipients have actors now, so the lookup returns them without per-person statements.
+  expect(queries.length).toBeLessThan(20);
   expect(
     await fixture.db
       .select()
