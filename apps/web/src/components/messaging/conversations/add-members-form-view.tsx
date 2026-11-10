@@ -4,9 +4,9 @@ import { FormMessage } from "../../auth/form-message";
 import { PendingButton } from "../../feedback/pending-button";
 import { useNativeValidation } from "../../forms/use-native-validation";
 import { Button } from "../../ui/button";
-import { Checkbox } from "../../ui/checkbox";
 import { Field, FieldDescription, FieldError, FieldLabel } from "../../ui/field";
 import { Input } from "../../ui/input";
+import { ShareHistoryField } from "./share-history-field";
 import { parseRecipientEmails } from "@/lib/messaging/recipients";
 
 export function AddMembersForm({
@@ -73,17 +73,12 @@ export function AddMembersForm({
         </FieldDescription>
         <FieldError id="add-member-emails-error">{fieldError}</FieldError>
       </Field>
-      <Field orientation="horizontal">
-        <Checkbox
-          id="add-sharing-history"
-          checked={shareHistory}
-          onCheckedChange={(value) => setShareHistory(value === true)}
-          disabled={pending}
-        />
-        <FieldLabel htmlFor="add-sharing-history">
-          For external invitations, I approve sharing the full conversation history.
-        </FieldLabel>
-      </Field>
+      <ShareHistoryField
+        id="add-sharing-history"
+        checked={shareHistory}
+        onCheckedChange={setShareHistory}
+        disabled={pending}
+      />
       <FormMessage
         error={error}
         errorDescription="We couldn’t add these people. Check their email addresses and try again."

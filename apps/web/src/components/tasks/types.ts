@@ -1,6 +1,12 @@
 import type { TaskStatus } from "@startup-os/contracts/tasks";
 
 export type ProjectPermission = "view" | "comment" | "edit" | "owner";
+export const projectPermissionOptions: { value: ProjectPermission; label: string }[] = [
+  { value: "view", label: "View" },
+  { value: "comment", label: "Comment" },
+  { value: "edit", label: "Edit" },
+  { value: "owner", label: "Owner" },
+];
 export interface Project {
   entityId: string;
   name: string;

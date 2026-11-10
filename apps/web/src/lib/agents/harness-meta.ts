@@ -9,3 +9,6 @@ export const harnessOptions: {
   { value: "claude", label: "Claude Code" },
   { value: "codex", label: "Codex" },
 ];
+
+export const harnessLabel = (harness: string) =>
+  harnessOptions.find((option) => option.value === harness)?.label ?? harness;

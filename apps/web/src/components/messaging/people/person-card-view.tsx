@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Tag } from "@/components/feedback/tag";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { harnessOptions } from "@/lib/agents/harness-meta";
+import { harnessLabel } from "@/lib/agents/harness-meta";
 import { initials } from "@/lib/people/initials";
 import { Bot, LockKeyhole, User } from "lucide-react";
 
@@ -20,8 +20,7 @@ export type PersonCardProfile = {
 
 function agentLine(agent: NonNullable<PersonCardProfile["agent"]>) {
   if (!agent.harness) return null;
-  const harness = harnessOptions.find((option) => option.value === agent.harness)?.label;
-  return ["Agent", harness ?? agent.harness, agent.model].filter(Boolean).join(" · ");
+  return ["Agent", harnessLabel(agent.harness), agent.model].filter(Boolean).join(" · ");
 }
 
 function roleLabel(role: string) {

@@ -163,3 +163,10 @@ export function agentStatus(status: AgentStatusView): WorkStatus {
     };
   return { tone: "idle", label: "Idle" };
 }
+
+export const sessionKindLabels = {
+  dm: "Direct message",
+  thread: "Thread",
+  routine: "Routine",
+  helper: "Helper",
+};

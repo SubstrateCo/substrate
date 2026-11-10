@@ -1,6 +1,6 @@
 import { useId, useState } from "react";
 
-import type { ProjectDetail, ProjectPermission } from "../../types";
+import { projectPermissionOptions, type ProjectDetail, type ProjectPermission } from "../../types";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
@@ -15,12 +15,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Trash2, UserRound } from "lucide-react";
 
 const permissionRank = { view: 0, comment: 1, edit: 2, owner: 3 };
-const permissionOptions: { value: ProjectPermission; label: string }[] = [
-  { value: "view", label: "View" },
-  { value: "comment", label: "Comment" },
-  { value: "edit", label: "Edit" },
-  { value: "owner", label: "Owner" },
-];
 
 export function ProjectMemberRow({
   member,
@@ -74,7 +68,9 @@ export function ProjectMemberRow({
             <Select
               value={level}
               onValueChange={(next) => {
-                const option = permissionOptions.find((candidate) => candidate.value === next);
+                const option = projectPermissionOptions.find(
+                  (candidate) => candidate.value === next,
+                );
                 if (option) setLevel(option.value);
               }}
               disabled={pending || lastOwner}
@@ -83,7 +79,7 @@ export function ProjectMemberRow({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent position="popper" align="start">
-                {permissionOptions.map((option) => (
+                {projectPermissionOptions.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>

@@ -9,6 +9,7 @@ import { Checkbox } from "../../ui/checkbox";
 import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from "../../ui/field";
 import { Input } from "../../ui/input";
 import { createConversationDraftSchema } from "./create-conversation-validation";
+import { ShareHistoryField } from "./share-history-field";
 import type { Conversation } from "@/lib/messaging/conversations";
 
 export type ConversationDraft = {
@@ -152,17 +153,12 @@ export function CreateConversationForm({
                 }}
               </form.Field>
               {children}
-              <Field orientation="horizontal">
-                <Checkbox
-                  id="create-sharing-history"
-                  checked={shareHistory}
-                  onCheckedChange={(value) => setShareHistory(value === true)}
-                  disabled={busy}
-                />
-                <FieldLabel htmlFor="create-sharing-history">
-                  For external invitations, I approve sharing the full conversation history.
-                </FieldLabel>
-              </Field>
+              <ShareHistoryField
+                id="create-sharing-history"
+                checked={shareHistory}
+                onCheckedChange={setShareHistory}
+                disabled={busy}
+              />
               {kind === "channel" && (
                 <form.Field name="isPrivate">
                   {(field) => {

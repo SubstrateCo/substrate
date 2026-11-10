@@ -6,7 +6,7 @@ import {
   HarnessAvailabilityView,
   type HarnessAvailabilityState,
 } from "./harness-availability-view";
-import { harnessOptions } from "@/lib/agents/harness-meta";
+import { harnessLabel } from "@/lib/agents/harness-meta";
 import { harnessStatusQueryOptions } from "@/queries/agents/harness-status";
 
 export function HarnessAvailability({
@@ -31,7 +31,7 @@ export function HarnessAvailability({
   else state = { kind: "ready", available: !!entry?.available, version: entry?.version };
   return (
     <HarnessAvailabilityView
-      label={harnessOptions.find((option) => option.value === harness)?.label ?? harness}
+      label={harnessLabel(harness)}
       state={state}
       refreshing={status.isFetching}
       onRefresh={desktop ? () => void status.refetch() : undefined}

@@ -12,7 +12,7 @@ import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useNow } from "@/hooks/use-now";
 import { outputLink, proposalResultLink } from "@/lib/agent-work/links";
 import { isOpenRequest } from "@/lib/agent-work/requests";
-import { turnStatus } from "@/lib/agent-work/status";
+import { sessionKindLabels, turnStatus } from "@/lib/agent-work/status";
 import { transcriptEntries } from "@/lib/agent-work/transcript";
 import { usageLabel } from "@/lib/agent-work/usage";
 import { messageHref } from "@/lib/navigation/record-links";
@@ -20,13 +20,6 @@ import { turnEventsOptions } from "@/queries/agent-work/local";
 import { useLocalWorkActions } from "@/queries/agent-work/mutations";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
 import { toast } from "sonner";
-
-const sessionLabels = {
-  dm: "Direct message",
-  thread: "Thread",
-  routine: "Routine",
-  helper: "Helper",
-};
 
 /**
  * One turn's transcript from the home desktop, with its sources and outputs. Links check the
@@ -108,7 +101,7 @@ export function TurnTranscript({
       tone={status?.tone}
       label={status?.label}
       startedAt={turn?.startedAt ?? turn?.createdAt}
-      session={turn && sessionLabels[turn.sessionKind]}
+      session={turn && sessionKindLabels[turn.sessionKind]}
       usage={turn && usageLabel(turn.usage)}
       sources={sources?.length ? sources : undefined}
       outputs={outputs?.length ? outputs : undefined}

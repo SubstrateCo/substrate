@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { TaskSelect } from "../../task-select";
-import type { ProjectDetail, ProjectPermission } from "../../types";
+import { projectPermissionOptions, type ProjectDetail, type ProjectPermission } from "../../types";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -63,12 +63,7 @@ export function ProjectAccessForm({
         label="Permission"
         value={level}
         onChange={setLevel}
-        options={[
-          { value: "view", label: "View" },
-          { value: "comment", label: "Comment" },
-          { value: "edit", label: "Edit" },
-          { value: "owner", label: "Owner" },
-        ]}
+        options={projectPermissionOptions}
       />
       <p className="text-xs text-muted-foreground">
         Choose an existing workspace person. Their agents use the same access. This does not invite

@@ -17,7 +17,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { harnessOptions } from "@/lib/agents/harness-meta";
+import { harnessLabel, harnessOptions } from "@/lib/agents/harness-meta";
 import { harnessModelsQueryOptions } from "@/queries/agents/models";
 import { Check, ChevronsUpDown, RefreshCw } from "lucide-react";
 
@@ -60,7 +60,7 @@ export function ModelPicker({
     choices.push({ id: model, name: model, harness, saved: true });
   const activeModel = choices.find((choice) => choice.harness === harness && choice.id === model);
   const modelName = activeModel?.name ?? "Harness default";
-  const label = harnessOptions.find((option) => option.value === harness)!.label;
+  const label = harnessLabel(harness);
   const selectedIndex = harnessOptions.findIndex((option) => option.value === selectedHarness);
   const selectedCatalog = catalogs[selectedIndex];
   const groups = harnessOptions.filter((option) => query || selectedHarness === option.value);

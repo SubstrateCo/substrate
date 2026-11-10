@@ -9,10 +9,13 @@ import { NeedsAttention } from "../needs-attention";
 import { Routines } from "../routines/routines";
 import { AgentActivityView, type ActivityRow } from "./agent-activity-view";
 import { useNow } from "@/hooks/use-now";
-import { agentStatus, noDesktopLabel, turnStatus } from "@/lib/agent-work/status";
+import {
+  agentStatus,
+  noDesktopLabel,
+  sessionKindLabels,
+  turnStatus,
+} from "@/lib/agent-work/status";
 import { agentActivityOptions } from "@/queries/agent-work/local";
-
-const kinds = { dm: "Direct message", thread: "Thread", routine: "Routine", helper: "Helper" };
 
 /**
  * One agent's activity. Local work is only on the agent's home desktop; other devices say where
@@ -62,7 +65,7 @@ export function AgentActivity({
         };
   const rows: ActivityRow[] = turns.map((turn) => ({
     id: turn.id,
-    kind: kinds[turn.sessionKind],
+    kind: sessionKindLabels[turn.sessionKind],
     unattended: turn.kind === "unattended",
     status: turnStatus(turn, now),
     createdAt: turn.createdAt,
