@@ -13,7 +13,7 @@
     "build:dir": "bun run build && electron-builder --win --dir",
     "package": "bun run build && electron-builder --win nsis",
     "typecheck": "tsc --noEmit",
-    "test": "bun test src scripts"
+    "test": "bun test --parallel src scripts"
   },
   "dependencies": {
     "@better-auth/electron": "^1.7.18",

@@ -1,5 +1,9 @@
 export function testDatabaseURL(env: Record<string, string | undefined> = process.env) {
-  const connectionString = env.TEST_DATABASE_URL;
+  // The parallel runner gives each Bun test worker its own database.
+  const connectionString =
+    env.TEST_DATABASE_WORKER_URLS && env.BUN_TEST_WORKER_ID
+      ? env.TEST_DATABASE_WORKER_URLS.split(" ")[Number(env.BUN_TEST_WORKER_ID) - 1]
+      : env.TEST_DATABASE_URL;
   if (!connectionString)
     throw new Error("TEST_DATABASE_URL is required. Use the dedicated test database.");
   const url = new URL(connectionString);

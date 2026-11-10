@@ -12,3 +12,15 @@ test("test database setup requires a dedicated test URL", () => {
   );
   expect(testDatabaseURL({ TEST_DATABASE_URL: url }).pathname).toBe("/workspace_test");
 });
+
+test("a parallel test worker uses its own database", () => {
+  const env = {
+    TEST_DATABASE_URL: "postgres://localhost/workspace_test",
+    TEST_DATABASE_WORKER_URLS: "postgres://localhost/first_test postgres://localhost/second_test",
+  };
+  expect(testDatabaseURL({ ...env, BUN_TEST_WORKER_ID: "2" }).pathname).toBe("/second_test");
+  expect(() => testDatabaseURL({ ...env, BUN_TEST_WORKER_ID: "3" })).toThrow(
+    "TEST_DATABASE_URL is required",
+  );
+  expect(testDatabaseURL(env).pathname).toBe("/workspace_test");
+});

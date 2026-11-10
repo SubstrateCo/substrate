@@ -1,7 +1,11 @@
 import { createTestDatabases } from "./databases";
 import { testDatabaseURL } from "./environment";
+import { mkdirSync } from "node:fs";
+import { availableParallelism } from "node:os";
 
-const count = Number(process.env.TEST_DATABASE_SHARDS ?? "1");
+const count = Number(
+  process.env.TEST_DATABASE_SHARDS ?? Math.min(8, Math.ceil(availableParallelism() / 2)),
+);
 if (!Number.isInteger(count) || count < 1 || count > 8)
   throw new Error("TEST_DATABASE_SHARDS must be between 1 and 8.");
 testDatabaseURL();
@@ -13,23 +17,32 @@ if (count === 1) {
   });
   process.exitCode = await child.exited;
 } else {
+  // Bun gives the slowest files to the workers first when it knows the last durations.
+  mkdirSync("node_modules/.cache", { recursive: true });
   const databases = await createTestDatabases(count);
   try {
-    const children = databases.connections.map((connection, shard) => {
-      return Bun.spawn(
-        [process.execPath, "test", "--timeout", "30000", `--shard=${shard + 1}/${count}`, ...args],
-        {
-          env: { ...process.env, TEST_DATABASE_URL: connection },
-          stdout: "inherit",
-          stderr: "inherit",
-        },
-      );
-    });
-    const cancel = () => children.forEach((child) => child.kill());
+    // Each worker runs its files serially against its own database.
+    const child = Bun.spawn(
+      [
+        process.execPath,
+        "test",
+        "--timeout",
+        "30000",
+        `--parallel=${count}`,
+        "--timings=node_modules/.cache/test-timings.json",
+        "--update-timings",
+        ...args,
+      ],
+      {
+        env: { ...process.env, TEST_DATABASE_WORKER_URLS: databases.connections.join(" ") },
+        stdout: "inherit",
+        stderr: "inherit",
+      },
+    );
+    const cancel = () => child.kill();
     process.on("SIGINT", cancel);
-    const codes = await Promise.all(children.map((child) => child.exited));
+    process.exitCode = await child.exited;
     process.off("SIGINT", cancel);
-    process.exitCode = codes.find((code) => code !== 0) ?? 0;
   } finally {
     await databases.close();
   }
