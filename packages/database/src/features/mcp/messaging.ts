@@ -1,15 +1,11 @@
 import type { McpInput, McpOutput } from "@startup-os/contracts/harness/tools";
 
 import { actors } from "../../core/actors/schema";
-import { user } from "../../core/authentication/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError } from "../../errors";
 import { requireMessage, visibleConversations, type MessagingIdentity } from "../messaging/access";
-import {
-  messagingConversations,
-  messagingMessages,
-  messagingParticipants,
-} from "../messaging/schema";
+import { conversationDisplayName } from "../messaging/display-name";
+import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { excerpt, iso } from "./formatting";
 import { pagination } from "./pagination";
 import { authorSelection } from "./tasks";
@@ -25,18 +21,14 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: MessagingI
     async listConversations(input: McpInput<"list_conversations">) {
       const p = pagination(scope, "list_conversations", input);
       const lastActivity = sql<Date | null>`(select max(m.created_at) from ${messagingMessages} m where m.conversation_id = ${messagingConversations.id})`;
-      // Unnamed DMs and groups are named after the other people in them.
-      const others = sql<
-        string | null
-      >`(select string_agg(coalesce(u.name, a.name), ', ' order by coalesce(u.name, a.name)) from ${messagingParticipants} p
-        join ${actors} a on a.entity_id = p.actor_entity_id left join ${user} u on u.id = a.user_id
-        where p.conversation_id = ${messagingConversations.id} and p.left_at is null
-          and a.user_id is distinct from ${identity.userId} and a.entity_id <> ${scope.actorEntityId}::uuid)`;
       const rows = await db
         .select({
           id: messagingConversations.id,
           kind: messagingConversations.kind,
-          name: sql<string>`coalesce(${messagingConversations.name}, ${others}, 'Direct conversation')`,
+          name: conversationDisplayName(db, {
+            userId: identity.userId,
+            excludeActorId: scope.actorEntityId,
+          }),
           lastActivityAt: lastActivity,
         })
         .from(messagingConversations)

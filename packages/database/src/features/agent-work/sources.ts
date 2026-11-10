@@ -4,8 +4,8 @@ import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
 import { visibleConversations } from "../messaging/access";
+import { conversationDisplayName } from "../messaging/display-name";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
-import { conversationName } from "./conversation-name";
 import { requireDevice, type DeviceIdentity } from "./device";
 import { and, eq, inArray, sql } from "drizzle-orm";
 
@@ -22,7 +22,7 @@ export function loadSources(db: DatabaseExecutor, identity: DeviceIdentity, mess
         id: messagingMessages.id,
         conversationId: messagingMessages.conversationId,
         threadId: messagingMessages.threadId,
-        conversationName: conversationName(identity.userId),
+        conversationName: conversationDisplayName(tx, identity),
         conversationKind: messagingConversations.kind,
         actorId: actors.entityId,
         name: sql<string>`case when ${actors.type} = 'agent' then ${actors.name} else coalesce(${user.name}, ${actors.name}) end`,

@@ -8,8 +8,8 @@ import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { workspaceContext } from "../context/access";
 import { visibleConversations } from "../messaging/access";
+import { conversationDisplayName } from "../messaging/display-name";
 import { messagingConversations } from "../messaging/schema";
-import { conversationName } from "./conversation-name";
 import type { OwnerIdentity } from "./device";
 import { agentRequests } from "./requests.schema";
 import { statusViews } from "./status";
@@ -45,7 +45,7 @@ export async function requestViews(
       agent: { actorId: actors.entityId, name: actors.name },
       conversationName: sql<
         string | null
-      >`case when ${messagingConversations.id} is null then null else ${conversationName(identity.userId)} end`,
+      >`case when ${messagingConversations.id} is null then null else ${conversationDisplayName(db, identity)} end`,
       targetVisible: sql<boolean>`(${target} IS NULL OR ${inArray(target, visibleIds)})`,
     })
     .from(agentRequests)

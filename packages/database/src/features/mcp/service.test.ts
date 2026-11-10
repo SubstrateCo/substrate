@@ -12,6 +12,7 @@ import {
   taskComments,
   messageEntityReferences,
   messagingMessages,
+  messagingParticipants,
 } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
@@ -275,6 +276,22 @@ test("conversations are named after other participants and sorted by latest acti
     "Bob",
     "general",
   ]);
+});
+
+test("conversation names leave out partners who have not consented", async () => {
+  const { human, call, agentId } = await fixture();
+  const group = await human.createConversation({
+    kind: "group",
+    emails: ["bob@example.com"],
+    agentIds: [agentId],
+  });
+  await f.db.insert(messagingParticipants).values({
+    conversationId: group.id,
+    organizationId: f.orgB,
+    actorEntityId: f.outsider,
+    actorType: "human",
+  });
+  expect((await call("list_conversations", {})).items).toMatchObject([{ name: "Bob" }]);
 });
 
 test("get_me returns the agent, its owner's actor and the organization", async () => {
