@@ -44,6 +44,7 @@ function fixture() {
     isActive: () => active,
     fetchAPI: async (url, init) => {
       requests.push({ url, init });
+      // SAFETY: the proxy sends the parsed WorkspaceApiRequest as the body.
       const body = (await new Response(init.body).json()) as WorkspaceApiRequest;
       const result = body.organizationId === organizationId ? apiResult : workspaceDenied;
       afterRequest();

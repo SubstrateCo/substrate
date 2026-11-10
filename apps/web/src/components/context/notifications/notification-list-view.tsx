@@ -70,14 +70,14 @@ export function NotificationList({
     };
     // Measure at once so the first page can load; wait for resizing to settle after that.
     measure();
-    let timeout: number | undefined;
+    const settle = { timeout: 0 };
     const observer = new ResizeObserver(() => {
-      window.clearTimeout(timeout);
-      timeout = window.setTimeout(measure, 150);
+      window.clearTimeout(settle.timeout);
+      settle.timeout = window.setTimeout(measure, 150);
     });
     observer.observe(element);
     return () => {
-      window.clearTimeout(timeout);
+      window.clearTimeout(settle.timeout);
       observer.disconnect();
     };
   }, [onPageSizeChange]);

@@ -15,6 +15,17 @@ import { conversationRemovalHints, messageChangeHints } from "../realtime/routin
 import { approvedParticipant, visibleConversations, type MessagingIdentity } from "./access";
 import { messageAuthorColumns } from "./message-authors";
 import { messageSummaries } from "./message-summaries";
+import {
+  canManage,
+  canShare,
+  leaveBlocked,
+  leavePlan,
+  validateBody,
+  validateCreate,
+  validateEmoji,
+  validateExternalInvitations,
+  viewerOf,
+} from "./policy";
 import { messagingProfile } from "./profiles";
 import {
   messagingConversations,
@@ -245,8 +256,7 @@ export async function sendMessageAs(
   if (originTurnId && actor.type !== "agent")
     throw new ValidationError("Only agent replies record a turn.");
   const conversation = await lockConversation(tx, scope, conversationId, "share");
-  if (!body.trim() || body.length > 20000)
-    throw new ValidationError("Message must contain 1 to 20000 characters.");
+  validateBody(body);
   if (requestId) {
     const [existing] = await tx
       .select()
@@ -338,8 +348,7 @@ export function createMessagingService(
     lock?: Parameters<typeof lockConversation>[3],
   ) => lockConversation(tx, scope, id, lock);
 
-  // Owners manage their conversation. Owners and admins of the owning organization manage any of
-  // its conversations except 1:1 DMs, without gaining read access. Agents never manage.
+  // Admins can find conversations of their organization that they cannot read.
   async function requireManaged(tx: DatabaseExecutor, id: string) {
     if (scope.actorEntityId) throw new AccessDeniedError();
     const admin = await isOrganizationAdmin(tx, scope.userId, scope.organizationId);
@@ -358,11 +367,7 @@ export function createMessagingService(
         ),
       )
       .for("update");
-    if (!conversation || conversation.kind === "dm") throw new AccessDeniedError();
-    const owner =
-      conversation.createdBy === scope.userId &&
-      conversation.organizationId === scope.organizationId;
-    if (!owner && !(admin && conversation.organizationId === scope.organizationId))
+    if (!conversation || !canManage(conversation, viewerOf(scope, admin)))
       throw new AccessDeniedError();
     return conversation;
   }
@@ -465,20 +470,13 @@ export function createMessagingService(
           .orderBy(asc(messagingConversations.createdAt), asc(messagingConversations.id));
         const ids = rows.map((row) => row.id);
         const byConversation = await activeMembers(tx, ids, scope.userId);
-        const admin =
+        const viewer = viewerOf(
+          scope,
           !scope.actorEntityId &&
-          (await isOrganizationAdmin(tx, scope.userId, scope.organizationId));
+            (await isOrganizationAdmin(tx, scope.userId, scope.organizationId)),
+        );
         return rows.map((row) => {
           const members = byConversation.get(row.id) ?? [];
-          let canShare = false;
-          if (!scope.actorEntityId) {
-            if (row.organizationId === scope.organizationId)
-              canShare =
-                row.kind === "channel"
-                  ? admin
-                  : row.createdBy === scope.userId || (admin && row.kind !== "dm");
-            else canShare = admin || row.kind === "dm";
-          }
           return {
             ...row,
             partner: members.some(
@@ -501,12 +499,9 @@ export function createMessagingService(
             // The sidebar lists joined conversations. Public channels the person never joined or
             // left are still returned, so links and search can open them.
             joined: members.some((participant) => participant.userId === scope.userId),
-            canShare,
-            canManage:
-              !scope.actorEntityId &&
-              row.kind !== "dm" &&
-              ((row.createdBy === scope.userId && row.organizationId === scope.organizationId) ||
-                (admin && row.organizationId === scope.organizationId)),
+            // Listed rows are visible, and a visible partner row has an active connection.
+            canShare: canShare(row, viewer, { connected: true, visible: true }),
+            canManage: canManage(row, viewer),
           };
         });
       });
@@ -517,17 +512,8 @@ export function createMessagingService(
       return db.transaction(async (tx) => {
         const { actor } = await authenticate(tx);
         const { people, external } = await recipients(tx, input.emails ?? []);
-        if (
-          input.kind === "channel" &&
-          external.length &&
-          !(await isOrganizationAdmin(tx, scope.userId, scope.organizationId))
-        )
-          throw new ValidationError(
-            "Only organization owners and admins can invite partner organizations to channels.",
-          );
         const selected = [...people, ...(await ownedAgents(tx, input.agentIds ?? []))];
-        if (input.kind === "dm" && selected.length + external.length !== 1)
-          throw new ValidationError("A DM requires exactly one recipient.");
+        const values = validateCreate(input, selected.length + external.length);
         if (input.kind === "dm" && external.length) {
           const email = external[0]!;
           await tx.execute(
@@ -576,19 +562,23 @@ export function createMessagingService(
           const existing = await existingDirectMessage(tx, [actor.entityId, selected[0]!.entityId]);
           if (existing) return existing;
         }
-        if (input.kind === "group" && selected.length + external.length < 2)
-          throw new ValidationError("A group DM requires at least two recipients.");
-        const name = input.name?.trim() || null;
-        if (input.kind === "channel" && !name)
-          throw new ValidationError("Channels require a name.");
+        // An existing DM is returned above without a new invitation, so this checks only new ones.
+        validateExternalInvitations(
+          input,
+          viewerOf(
+            scope,
+            !!external.length &&
+              (await isOrganizationAdmin(tx, scope.userId, scope.organizationId)),
+          ),
+          { count: external.length, shareHistory: input.shareHistory === true },
+        );
         const [conversation] = await tx
           .insert(messagingConversations)
           .values({
             organizationId: scope.organizationId,
             createdBy: scope.userId,
             kind: input.kind,
-            name,
-            private: input.kind === "channel" ? (input.private ?? false) : true,
+            ...values,
           })
           .returning();
         await upsertMembers(tx, conversation!.id, [
@@ -613,14 +603,15 @@ export function createMessagingService(
         await authenticate(tx);
         const conversation = await requireManaged(tx, conversationId);
         const { people: selected, external } = await recipients(tx, emails);
-        if (
-          conversation.kind === "channel" &&
-          external.length &&
-          !(await isOrganizationAdmin(tx, scope.userId, scope.organizationId))
-        )
-          throw new ValidationError(
-            "Only organization owners and admins can invite partner organizations to channels.",
-          );
+        validateExternalInvitations(
+          conversation,
+          viewerOf(
+            scope,
+            !!external.length &&
+              (await isOrganizationAdmin(tx, scope.userId, scope.organizationId)),
+          ),
+          { count: external.length, shareHistory },
+        );
         for (const email of external)
           await queueSharingInvitation(tx, scope, conversation, email, shareHistory);
         // Adding someone who left brings them back.
@@ -693,22 +684,14 @@ export function createMessagingService(
       return db.transaction(async (tx) => {
         const { actor } = await authenticate(tx);
         const conversation = await requireConversation(tx, conversationId);
-        if (conversation.kind === "dm") throw new AccessDeniedError();
-        if (
-          conversation.createdBy === scope.userId &&
-          conversation.organizationId === scope.organizationId
-        ) {
-          if (newOwnerUserId && newOwnerUserId !== scope.userId)
-            await setOwner(tx, conversation, newOwnerUserId);
-          else {
-            const others = (await activeMembers(tx, [conversationId])).get(conversationId) ?? [];
-            // Agents cannot own conversations, so only people count here.
-            throw new ConflictError(
-              others.some((person) => person.userId && person.userId !== scope.userId)
-                ? "Choose a new owner before leaving."
-                : "You are the last member. Delete the conversation instead.",
-            );
-          }
+        const plan = leavePlan(conversation, viewerOf(scope, false), newOwnerUserId);
+        if (plan === "transfer") await setOwner(tx, conversation, newOwnerUserId!);
+        if (plan === "blocked") {
+          const others = (await activeMembers(tx, [conversationId])).get(conversationId) ?? [];
+          // Agents cannot own conversations, so only people count here.
+          throw leaveBlocked(
+            others.some((person) => person.userId && person.userId !== scope.userId),
+          );
         }
         // A public channel member may never have posted, so the row may not exist yet.
         await tx
@@ -897,8 +880,7 @@ export function createMessagingService(
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
         const { actor } = await authenticate(tx);
-        if (!emoji.trim() || emoji.length > 64)
-          throw new ValidationError("Reaction must contain 1 to 64 characters.");
+        validateEmoji(emoji);
         const [message] = await tx
           .select()
           .from(messagingMessages)

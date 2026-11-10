@@ -10,6 +10,7 @@ import { AccessDeniedError, ValidationError } from "../../errors";
 import { workspaceContext } from "../context/access";
 import { conversationRemovalHints } from "../realtime/routing";
 import { visibleConversations, type MessagingIdentity } from "./access";
+import { invitationTarget, partnerTargetAllowed, viewerOf } from "./policy";
 import { messagingConversations, messagingParticipants } from "./schema";
 import {
   hasSharingConnection,
@@ -65,7 +66,6 @@ export async function queueSharingInvitation(
     );
   if ((pending?.total ?? 0) >= 100)
     throw new ValidationError("Resolve pending invitations before sending more.");
-  const partner = conversation.organizationId !== scope.organizationId;
   if (conversation.kind === "dm") {
     const otherPeople = await db
       .select({ email: user.email })
@@ -100,8 +100,8 @@ export async function queueSharingInvitation(
       senderOrganizationId: scope.organizationId,
       inviterId: scope.userId,
       email: normalized,
-      purpose: conversation.kind === "channel" && !partner ? "organization" : "person",
-      targetOrganizationId: partner ? scope.organizationId : null,
+      // The sender is a sharing manager, so only the role-free part of the viewer matters here.
+      ...invitationTarget(conversation, viewerOf(scope, false)),
       expiresAt: new Date(Date.now() + 7 * 86_400_000),
     })
     .returning();
@@ -333,11 +333,7 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
       return db.transaction(async (tx) => {
         const conversation = await lockSharingConversation(tx, conversationId);
         await requireSharingManager(tx, scope, conversation);
-        if (
-          partnerOrganizationId === conversation.organizationId ||
-          (scope.organizationId !== conversation.organizationId &&
-            partnerOrganizationId !== scope.organizationId)
-        )
+        if (!partnerTargetAllowed(conversation, viewerOf(scope, false), partnerOrganizationId))
           throw new AccessDeniedError();
         const hints = await conversationRemovalHints(tx, conversation);
         await tx
@@ -396,9 +392,7 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
           );
         if (
           !participant ||
-          participant.organizationId === conversation.organizationId ||
-          (scope.organizationId !== conversation.organizationId &&
-            participant.organizationId !== scope.organizationId)
+          !partnerTargetAllowed(conversation, viewerOf(scope, false), participant.organizationId)
         )
           throw new AccessDeniedError();
         const hints = await conversationRemovalHints(tx, conversation);

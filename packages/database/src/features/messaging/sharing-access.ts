@@ -4,6 +4,7 @@ import { isOrganizationAdmin } from "../../core/organizations/roles";
 import { AccessDeniedError } from "../../errors";
 import { workspaceContext } from "../context/access";
 import { visibleConversations, type MessagingIdentity } from "./access";
+import { canShare, hosts, viewerOf } from "./policy";
 import { messagingConversations } from "./schema";
 import {
   messagingConnections,
@@ -49,27 +50,22 @@ export async function requireSharingManager(
 ) {
   if (scope.actorEntityId) throw new AccessDeniedError();
   await workspaceContext(db, scope);
-  const admin = await isOrganizationAdmin(db, scope.userId, scope.organizationId);
-  if (conversation.organizationId === scope.organizationId) {
-    if (
-      conversation.kind === "channel"
-        ? admin
-        : conversation.createdBy === scope.userId || (admin && conversation.kind !== "dm")
-    )
-      return;
-  } else if (await hasSharingConnection(db, conversation.id, scope.organizationId)) {
-    if (admin && conversation.kind !== "dm") return;
-    if (conversation.kind === "dm") {
+  const viewer = viewerOf(scope, await isOrganizationAdmin(db, scope.userId, scope.organizationId));
+  // Only partners need the connection, and only partner DMs the visibility.
+  const partner = { connected: false, visible: false };
+  if (!hosts(conversation, viewer)) {
+    partner.connected = await hasSharingConnection(db, conversation.id, scope.organizationId);
+    if (partner.connected && conversation.kind === "dm") {
       const [visible] = await db
         .select({ id: messagingConversations.id })
         .from(messagingConversations)
         .where(
           and(eq(messagingConversations.id, conversation.id), visibleConversations(db, scope)),
         );
-      if (visible) return;
+      partner.visible = !!visible;
     }
   }
-  throw new AccessDeniedError();
+  if (!canShare(conversation, viewer, partner)) throw new AccessDeniedError();
 }
 
 export async function recordSharingEvent(
