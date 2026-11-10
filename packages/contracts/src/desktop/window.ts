@@ -16,7 +16,7 @@ export interface DesktopSettingsAPI {
 export interface DesktopWindowAPI {
   platform: string;
   isFullscreen(): Promise<boolean>;
-  setTheme(theme: "light" | "dark"): Promise<void>;
+  setTheme(theme: "light" | "dark" | "system"): Promise<void>;
   onFullscreenChange(callback: (fullscreen: boolean) => void): () => void;
 }
 

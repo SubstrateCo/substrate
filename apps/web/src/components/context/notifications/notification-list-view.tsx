@@ -88,7 +88,7 @@ export function NotificationList({
           aria-busy={loading}
           className="min-h-0 flex-1 overflow-y-auto"
         >
-          <div className="flex w-full max-w-3xl flex-col gap-4 p-6">
+          <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col gap-6 p-6">
             <PageHeader
               title="Notifications"
               description="Mentions, replies, and tasks assigned to you."
@@ -128,7 +128,7 @@ export function NotificationList({
               options={filterOptions}
               onValueChange={onFilter}
             />
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-1 flex-col gap-4">
               {failed && (
                 <ErrorState
                   title={
@@ -146,22 +146,24 @@ export function NotificationList({
               )}
               {loading && <LoadingState label="Loading notifications" variant="compact" />}
               {empty && (
-                <ContentNotice
-                  icon={Bell}
-                  title={filter === "unread" ? "You’re all caught up" : "No notifications yet"}
-                  description={
-                    filter === "unread"
-                      ? "Nothing new since you last looked."
-                      : "Mentions, replies, and tasks assigned to you will show up here."
-                  }
-                  action={
-                    filter === "unread" && (
-                      <Button variant="outline" size="sm" onClick={() => onFilter("all")}>
-                        Show all
-                      </Button>
-                    )
-                  }
-                />
+                <div className="flex flex-1 items-center justify-center">
+                  <ContentNotice
+                    icon={Bell}
+                    title={filter === "unread" ? "You’re all caught up" : "No notifications yet"}
+                    description={
+                      filter === "unread"
+                        ? "Nothing new since you last looked."
+                        : "Mentions, replies, and tasks assigned to you will show up here."
+                    }
+                    action={
+                      filter === "unread" && (
+                        <Button variant="outline" size="sm" onClick={() => onFilter("all")}>
+                          Show all
+                        </Button>
+                      )
+                    }
+                  />
+                </div>
               )}
               {!failed && visible.length > 0 && (
                 <>

@@ -53,7 +53,7 @@ export function AgentPageView({
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <div className="@container grid min-w-0 gap-6 p-6">
+      <div className="@container mx-auto grid w-full max-w-6xl min-w-0 gap-6 p-6">
         <PageHeader
           title={name}
           description={

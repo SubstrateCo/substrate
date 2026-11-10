@@ -1,5 +1,6 @@
 import { taskStatusLabels, type TaskStatus } from "@startup-os/contracts/tasks";
 
+import { TaskAssigneeHoverCard } from "../assignee/task-assignee-hover-card";
 import { TaskAssigneeAvatar } from "../task-cues/task-assignee-avatar";
 import { taskPriorityLabels } from "../task-cues/task-labels";
 import { TaskPriorityIcon } from "../task-cues/task-priority-icon";
@@ -11,7 +12,7 @@ import { cn } from "cn";
 import { CornerDownRight } from "lucide-react";
 
 /**
- * One 36px task row: status (a menu for editors), title, parent, then priority, due date, and
+ * One task row: status (a menu for editors), title, parent, then priority, due date, and
  * assignee in fixed columns so they line up down the list.
  */
 export function TaskListItem({
@@ -35,7 +36,7 @@ export function TaskListItem({
     <li
       data-selected={selected || undefined}
       className={cn(
-        "flex h-9 items-center gap-1 pr-6 pl-5 text-sm",
+        "flex h-11 items-center gap-1 pr-6 pl-9 text-sm",
         selected
           ? "bg-row-selected text-row-selected-foreground"
           : "hover:bg-row-hover has-focus-visible:bg-row-hover",
@@ -85,22 +86,18 @@ export function TaskListItem({
             </>
           )}
         </span>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="flex w-6 shrink-0 justify-center">
-              <TaskAssigneeAvatar name={assigneeName} type={assignee?.type} />
-              <span className="sr-only">
-                , {assigneeName ? `assigned to ${assigneeName}` : "unassigned"}
-              </span>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>
-            {assigneeName
-              ? `${assigneeName}${assignee?.type === "agent" ? " (agent)" : ""}`
-              : "Unassigned"}
-          </TooltipContent>
-        </Tooltip>
       </button>
+      <span className="ml-2 flex w-6 shrink-0 justify-center">
+        {assignee ? (
+          <TaskAssigneeHoverCard assignee={assignee}>
+            <TaskAssigneeAvatar name={assignee.name} type={assignee.type} />
+          </TaskAssigneeHoverCard>
+        ) : (
+          <span aria-label={assigneeName ?? "Unassigned"}>
+            <TaskAssigneeAvatar name={assigneeName} />
+          </span>
+        )}
+      </span>
     </li>
   );
 }

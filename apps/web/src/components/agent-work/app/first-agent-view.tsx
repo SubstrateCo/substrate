@@ -24,7 +24,7 @@ const steps: { icon: LucideIcon; title: string; description: string }[] = [
 export function FirstAgentView({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <div className="grid w-full max-w-3xl gap-8 p-6 pt-12">
+      <div className="mx-auto grid w-full max-w-3xl gap-8 p-6 pt-12">
         <div className="grid justify-items-start gap-5">
           <span className="grid size-11 place-items-center rounded-xl bg-accent text-accent-foreground">
             <Bot aria-hidden="true" className="size-5" />

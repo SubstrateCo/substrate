@@ -8,7 +8,7 @@ import { useTheme } from "@/components/theme/theme-provider";
 
 export function DesktopFrame({ children }: { children: ReactNode }) {
   const bridge = window.startupOSWindow;
-  const { resolvedTheme } = useTheme();
+  const { theme } = useTheme();
   const [fullscreen, setFullscreen] = useState(false);
   const [titleBarTarget, setTitleBarTarget] = useState<HTMLDivElement | null>(null);
 
@@ -28,12 +28,12 @@ export function DesktopFrame({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!bridge) return;
     const sync = () => {
-      void bridge.setTheme(resolvedTheme);
+      void bridge.setTheme(theme);
     };
     sync();
     window.addEventListener("resize", sync);
     return () => window.removeEventListener("resize", sync);
-  }, [bridge, resolvedTheme]);
+  }, [bridge, theme]);
 
   if (!bridge) return children;
   const frameStyle: CSSProperties & Record<`--${string}`, string> = {

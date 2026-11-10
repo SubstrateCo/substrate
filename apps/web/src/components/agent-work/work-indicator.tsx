@@ -20,14 +20,23 @@ const labels: Record<WorkTone, string> = {
 };
 
 /** A small dot on the agent's avatar. Working pulses softly; needing you is a steady dot. */
-export function WorkIndicator({ tone, label = labels[tone] }: { tone: WorkTone; label?: string }) {
+export function WorkIndicator({
+  tone,
+  label = labels[tone],
+  compact = false,
+}: {
+  tone: WorkTone;
+  label?: string;
+  compact?: boolean;
+}) {
   return (
     <span
       role="img"
       aria-label={label}
       title={label}
       className={cn(
-        "absolute -right-1 -bottom-1 size-3 rounded-full border-2 border-surface",
+        "absolute rounded-full border-2 border-surface",
+        compact ? "-right-0.5 -bottom-0.5 size-2.5" : "-right-1 -bottom-1 size-3",
         tones[tone],
         tone === "working" && "motion-safe:animate-pulse",
       )}

@@ -31,7 +31,7 @@ export function NeedsYouView({
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <div className="grid w-full max-w-3xl gap-6 p-6">
+      <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col gap-6 p-6">
         <PageHeader
           title="Needs you"
           description="Questions, approvals, and stopped work from your agents."
@@ -39,11 +39,13 @@ export function NeedsYouView({
         {error && <ErrorState title="Couldn’t load what needs you" onRetry={onRetry} />}
         {loading && <LoadingState label="Loading what needs you" variant="compact" />}
         {!loading && !error && !entries.length && (
-          <ContentNotice
-            icon={CheckCheck}
-            title="Nothing needs you"
-            description="When an agent asks a question or proposes an action, it shows here."
-          />
+          <div className="flex flex-1 items-center justify-center">
+            <ContentNotice
+              icon={CheckCheck}
+              title="Nothing needs you"
+              description="When an agent asks a question or proposes an action, it shows here."
+            />
+          </div>
         )}
         {entries.length > 0 && (
           <ul aria-label="Needs you" className="grid gap-5">

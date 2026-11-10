@@ -314,6 +314,7 @@ function TaskAside({
   if (!open) return null;
   return (
     <PageAside
+      overlay
       ref={inspector}
       tabIndex={-1}
       aria-label="Task"

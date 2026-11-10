@@ -34,18 +34,26 @@ function Header({
   secondary,
   action,
   tags,
+  type = "human",
 }: {
   name: string;
   image?: string | null;
   secondary: ReactNode;
   action?: ReactNode;
   tags?: ReactNode;
+  type?: "human" | "agent";
 }) {
   return (
     <div className="flex min-w-0 items-start gap-3">
-      <Avatar aria-hidden="true" variant="message" className="size-10 shrink-0">
+      <Avatar
+        aria-hidden="true"
+        variant={type === "agent" ? "agent" : "message"}
+        className="size-10 shrink-0"
+      >
         {image && <AvatarImage src={image} alt="" />}
-        <AvatarFallback>{initials(name)}</AvatarFallback>
+        <AvatarFallback>
+          {type === "agent" ? <Bot aria-hidden="true" className="size-5" /> : initials(name)}
+        </AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
         <p className="font-semibold wrap-break-word">{name}</p>
@@ -54,6 +62,19 @@ function Header({
         {action && <div className="mt-2">{action}</div>}
       </div>
     </div>
+  );
+}
+
+/** Identity already visible on the source record, without loading private profile details. */
+export function PersonIdentityCard({ name, type }: { name: string; type: "human" | "agent" }) {
+  return (
+    <Header
+      name={name}
+      type={type}
+      secondary={
+        <p className="text-xs text-muted-foreground">{type === "agent" ? "Agent" : "Person"}</p>
+      }
+    />
   );
 }
 
@@ -112,6 +133,7 @@ export function PersonCard({
     <div className="space-y-3">
       <Header
         name={profile.name}
+        type={profile.type}
         image={profile.image}
         action={action}
         tags={tags}

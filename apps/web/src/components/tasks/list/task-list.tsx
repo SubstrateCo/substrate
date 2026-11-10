@@ -91,17 +91,12 @@ export function TaskList({
           const label = taskStatusLabels[status];
           const open = !collapsed[status];
           return (
-            <div
-              key={status}
-              role="group"
-              aria-labelledby={`${listId}-${status}-label`}
-              className="max-w-4xl"
-            >
-              <div className="group/header flex h-8 items-center gap-1 border-b pr-6 pl-4">
+            <div key={status} role="group" aria-labelledby={`${listId}-${status}-label`}>
+              <div className="group/header flex h-10 items-center gap-1 border-b pr-6 pl-4">
                 <h2 className="min-w-0 flex-1">
                   <button
                     type="button"
-                    className="flex h-6 items-center gap-1.5 rounded-md px-1.5 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                    className="flex h-8 items-center gap-1.5 rounded-md px-1.5 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                     aria-expanded={open}
                     aria-controls={`${listId}-${status}`}
                     onClick={() => setCollapsed((current) => ({ ...current, [status]: open }))}
@@ -110,7 +105,7 @@ export function TaskList({
                       aria-hidden="true"
                       className={`size-3 text-muted-foreground opacity-0 transition-transform duration-150 ease-out group-focus-within/header:opacity-100 group-hover/header:opacity-100 ${open ? "rotate-90" : ""}`}
                     />
-                    <TaskStatusIcon status={status} className="size-3.5" />
+                    <TaskStatusIcon status={status} />
                     <span id={`${listId}-${status}-label`}>{label}</span>
                     <span className="font-normal text-muted-foreground tabular-nums">
                       {rows.length}

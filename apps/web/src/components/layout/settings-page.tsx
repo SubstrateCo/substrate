@@ -30,7 +30,7 @@ export function SettingsPage({
 
 /**
  * The one content column of every settings surface (account, organization, project, agent): at
- * most `max-w-3xl`, left-aligned at the page inset, `space-y-6`. It is also the `content`
+ * most `max-w-4xl`, centered within the page inset, `space-y-6`. It is also the `content`
  * container, so cards can switch to two columns by their own width. Pass `inset` when the parent
  * does not already provide the page's `p-6`, such as a tab panel.
  */
@@ -46,7 +46,7 @@ export function SettingsContent({
   const column = (
     <div
       data-slot="settings-content"
-      className={cn("@container/content w-full max-w-3xl min-w-0 space-y-6", className)}
+      className={cn("@container/content mx-auto w-full max-w-4xl min-w-0 space-y-6", className)}
     >
       {children}
     </div>

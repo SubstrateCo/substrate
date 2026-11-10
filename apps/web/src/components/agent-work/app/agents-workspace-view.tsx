@@ -93,10 +93,10 @@ export function AgentsWorkspaceView({
                   className="w-full justify-start"
                   onClick={() => onSelect(agent.id)}
                 >
-                  <span className="relative grid size-4 shrink-0 place-items-center [&_svg]:size-3">
-                    <PersonAvatar name={agent.name} agent size="xs" className="size-4" />
+                  <span className="relative grid size-6 shrink-0 place-items-center">
+                    <PersonAvatar name={agent.name} agent />
                     {agent.status && (
-                      <WorkIndicator tone={agent.status.tone} label={agent.status.label} />
+                      <WorkIndicator tone={agent.status.tone} label={agent.status.label} compact />
                     )}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-left">{agent.name}</span>

@@ -4,11 +4,7 @@ import { formatDayLabel, type DateInput } from "@/lib/format/date";
 export function DayDivider({ date }: { date: DateInput }) {
   const label = formatDayLabel(date);
   return (
-    <div
-      role="separator"
-      aria-label={label}
-      className="mx-auto flex max-w-3xl items-center gap-3 px-4 pt-3 pb-1"
-    >
+    <div role="separator" aria-label={label} className="flex items-center gap-3 px-4 pt-3 pb-1">
       <span aria-hidden="true" className="h-px flex-1 bg-border" />
       <span aria-hidden="true" className="text-xs font-medium text-muted-foreground">
         {label}

@@ -48,7 +48,7 @@ export function attachTitleBar(window: BrowserWindow, rendererURL: string) {
       throw new Error("Untrusted window request.");
     }
     if (method === "fullscreen") return window.isFullScreen();
-    if (method !== "theme" || (theme !== "light" && theme !== "dark")) {
+    if (method !== "theme" || (theme !== "light" && theme !== "dark" && theme !== "system")) {
       throw new Error("Invalid window request.");
     }
     if (nativeTheme.themeSource !== theme) nativeTheme.themeSource = theme;
