@@ -14,7 +14,7 @@ import type { WorkTone } from "@/lib/agent-work/status";
 import { cn } from "cn";
 import { Clock } from "lucide-react";
 
-export const sendNowDescription = "Stops the current work and starts again with this message";
+const sendNowDescription = "Stops the current work and starts again with this message";
 
 /**
  * Under an owner message the agent has not started on yet: where it waits. When the agent is

@@ -38,32 +38,30 @@ export function MessageInteractions({
     </Tooltip>
   );
   return (
-    <>
-      <div className="mt-1 flex flex-wrap items-center gap-1">
-        {message.reactions.map(({ emoji, count, reacted }) => (
-          <Button
-            key={emoji}
-            size="xs"
-            variant="reaction"
-            aria-label={`${emoji}, ${count} reactions`}
-            aria-pressed={reacted}
-            disabled={pending}
-            onClick={() => onReact(emoji)}
-          >
-            {emoji} {count}
-          </Button>
-        ))}
-        {!!message.replyCount && threadAction}
-        <div
-          role="group"
-          aria-label="Message actions"
-          className="flex min-w-0 flex-wrap items-center gap-1 group-focus-within:opacity-100 group-hover:opacity-100 has-data-[state=open]:opacity-100 [@media(hover:hover)]:opacity-0"
+    <div className="mt-1 flex flex-wrap items-center gap-1">
+      {message.reactions.map(({ emoji, count, reacted }) => (
+        <Button
+          key={emoji}
+          size="xs"
+          variant="reaction"
+          aria-label={`${emoji}, ${count} reactions`}
+          aria-pressed={reacted}
+          disabled={pending}
+          onClick={() => onReact(emoji)}
         >
-          <EmojiPicker label="React to message" onSelect={onReact} disabled={pending} />
-          {actions}
-          {!message.replyCount && threadAction}
-        </div>
+          {emoji} {count}
+        </Button>
+      ))}
+      {!!message.replyCount && threadAction}
+      <div
+        role="group"
+        aria-label="Message actions"
+        className="flex min-w-0 flex-wrap items-center gap-1 group-focus-within:opacity-100 group-hover:opacity-100 has-data-[state=open]:opacity-100 [@media(hover:hover)]:opacity-0"
+      >
+        <EmojiPicker label="React to message" onSelect={onReact} disabled={pending} />
+        {actions}
+        {!message.replyCount && threadAction}
       </div>
-    </>
+    </div>
   );
 }

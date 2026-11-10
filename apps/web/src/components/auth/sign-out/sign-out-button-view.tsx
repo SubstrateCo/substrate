@@ -11,15 +11,13 @@ export function SignOutButton({
 }) {
   const label = pending ? "Signing out…" : "Sign out";
   return (
-    <div className="space-y-2">
-      <Button variant="ghost" disabled={pending} aria-busy={pending} onClick={onSignOut}>
-        {pending ? (
-          <Spinner aria-hidden="true" role="presentation" />
-        ) : (
-          <LogOut aria-hidden="true" className="size-4" />
-        )}
-        {label}
-      </Button>
-    </div>
+    <Button variant="ghost" disabled={pending} aria-busy={pending} onClick={onSignOut}>
+      {pending ? (
+        <Spinner aria-hidden="true" role="presentation" />
+      ) : (
+        <LogOut aria-hidden="true" className="size-4" />
+      )}
+      {label}
+    </Button>
   );
 }

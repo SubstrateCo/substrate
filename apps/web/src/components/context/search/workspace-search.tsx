@@ -50,9 +50,7 @@ export function WorkspaceSearch({
       error={search.pending ? null : results.error}
       hasMore={!search.pending && results.hasNextPage}
       loadingMore={results.isFetchingNextPage}
-      onKindChange={(value) => {
-        setKind(value);
-      }}
+      onKindChange={setKind}
       joiningId={join.isPending ? join.variables : undefined}
       onJoin={(conversationId) =>
         join.mutate(conversationId, {

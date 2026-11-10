@@ -45,13 +45,11 @@ export function ProjectPane({
       context={
         project.data &&
         !project.error && (
-          <div className="space-y-4">
-            <WorkDiscussions
-              organizationId={organizationId}
-              entityId={projectEntityId}
-              label="Project discussions"
-            />
-          </div>
+          <WorkDiscussions
+            organizationId={organizationId}
+            entityId={projectEntityId}
+            label="Project discussions"
+          />
         )
       }
       loading={project.isPending}

@@ -1,4 +1,3 @@
-import {} from "./fixtures";
 import { expect, type Locator, type Page } from "@playwright/test";
 
 export async function pauseClock(page: Page) {

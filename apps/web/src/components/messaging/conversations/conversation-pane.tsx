@@ -47,7 +47,7 @@ export function ConversationPane({
     conversationId: conversation.id,
     aroundMessageId: target.data?.root.id,
   });
-  const timeline = [...(messages.data ?? [])];
+  const timeline = messages.data ?? [];
   let messageContent;
   if (target.error) messageContent = <MessageUnavailable onRetry={() => void target.refetch()} />;
   else if (timeline.length > 0)

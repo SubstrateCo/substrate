@@ -37,7 +37,7 @@ export function ThreadPane({
     threadId,
     aroundMessageId: targetMessage?.threadId ? targetMessage.id : undefined,
   });
-  const rows = [...(replies.data ?? [])];
+  const rows = replies.data ?? [];
   const reuseContext = !!root && contextMessageIds.includes(root.id);
   const rootMessageIds = root ? [root.id] : [];
   const rootContext = useQuery({
