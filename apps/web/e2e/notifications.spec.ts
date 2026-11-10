@@ -7,7 +7,7 @@ test("notifications paginate, filter unread, and mark individual and all items a
   account,
 }) => {
   test.setTimeout(30_000);
-  const channel = await conversation(actors.sender, [account.email]);
+  const channel = await conversation(actors.sender, [account.email], [account]);
   const root = await post<{ id: string }>(account, "messaging/messages", {
     conversationId: channel.id,
     body: "Paginated notifications",
@@ -67,7 +67,7 @@ test("notifications paginate, filter unread, and mark individual and all items a
 for (const scope of ["same organization", "cross organization"] as const) {
   test(`thread replies deliver live notifications in the ${scope}`, async ({ actors, client }) => {
     const author = scope === "same organization" ? actors.member : actors.partner;
-    const channel = await conversation(actors.sender, [author.email]);
+    const channel = await conversation(actors.sender, [author.email], [author]);
     await post(author, "messaging/messages", {
       conversationId: channel.id,
       body: `Notification root ${channel.id}`,

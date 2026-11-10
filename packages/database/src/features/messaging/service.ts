@@ -12,7 +12,7 @@ import { workspaceContext } from "../context/access";
 import { applyMessageEffects } from "../context/message-effects";
 import { messageEntityReferences } from "../context/schema";
 import { conversationRemovalHints, messageChangeHints } from "../realtime/routing";
-import { visibleConversations, type MessagingIdentity } from "./access";
+import { approvedParticipant, visibleConversations, type MessagingIdentity } from "./access";
 import { messageAuthorColumns } from "./message-authors";
 import { messageSummaries } from "./message-summaries";
 import { messagingProfile } from "./profiles";
@@ -22,6 +22,8 @@ import {
   messagingParticipants,
   messagingReactions,
 } from "./schema";
+import { queueSharingInvitation } from "./sharing";
+import { messagingInvitations } from "./sharing.schema";
 import {
   and,
   asc,
@@ -41,6 +43,7 @@ export interface CreateConversationInput {
   name?: string;
   private?: boolean;
   emails?: string[];
+  shareHistory?: boolean;
   /** The caller's own agent definitions. */
   agentIds?: string[];
 }
@@ -54,11 +57,19 @@ async function lockConversation(
   id: string,
   lock: "update" | "share" | "none" = "update",
 ) {
+  if (lock !== "none") {
+    const [locked] = await tx
+      .select({ id: messagingConversations.id })
+      .from(messagingConversations)
+      .where(eq(messagingConversations.id, id))
+      .for(lock);
+    if (!locked) throw new AccessDeniedError();
+  }
   const query = tx
     .select()
     .from(messagingConversations)
     .where(and(eq(messagingConversations.id, id), visibleConversations(tx, scope)));
-  const [conversation] = lock === "none" ? await query : await query.for(lock);
+  const [conversation] = await query;
   if (!conversation) throw new AccessDeniedError();
   return conversation;
 }
@@ -140,11 +151,16 @@ async function activeMembers(tx: DatabaseExecutor, conversationIds: string[], vi
         })
         .from(messagingParticipants)
         .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
+        .innerJoin(
+          messagingConversations,
+          eq(messagingConversations.id, messagingParticipants.conversationId),
+        )
         .leftJoin(user, eq(user.id, actors.userId))
         .where(
           and(
             inArray(messagingParticipants.conversationId, conversationIds),
             isNull(messagingParticipants.leftAt),
+            approvedParticipant(tx),
           ),
         )
         .orderBy(
@@ -184,6 +200,7 @@ async function setOwner(
       and(
         eq(messagingParticipants.conversationId, conversation.id),
         eq(actors.userId, userId),
+        eq(messagingParticipants.organizationId, conversation.organizationId),
         isNull(messagingParticipants.leftAt),
       ),
     );
@@ -342,7 +359,9 @@ export function createMessagingService(
       )
       .for("update");
     if (!conversation || conversation.kind === "dm") throw new AccessDeniedError();
-    const owner = conversation.createdBy === scope.userId;
+    const owner =
+      conversation.createdBy === scope.userId &&
+      conversation.organizationId === scope.organizationId;
     if (!owner && !(admin && conversation.organizationId === scope.organizationId))
       throw new AccessDeniedError();
     return conversation;
@@ -358,7 +377,7 @@ export function createMessagingService(
   async function recipients(tx: DatabaseExecutor, emails: string[]) {
     if (emails.length > 100) throw new ValidationError("At most 100 recipients are allowed.");
     const normalized = [...new Set(emails.map(normalizeEmail))];
-    if (!normalized.length) return [];
+    if (!normalized.length) return { people: [], external: [] };
     const matches = await tx
       .select({
         userId: user.id,
@@ -368,7 +387,13 @@ export function createMessagingService(
       })
       .from(user)
       .innerJoin(member, eq(member.userId, user.id))
-      .where(and(inArray(sql`lower(${user.email})`, normalized), eq(user.emailVerified, true)))
+      .where(
+        and(
+          inArray(sql`lower(${user.email})`, normalized),
+          eq(user.emailVerified, true),
+          eq(member.organizationId, scope.organizationId),
+        ),
+      )
       .orderBy(asc(member.organizationId));
     const byEmail = new Map<string, typeof matches>();
     for (const match of matches) {
@@ -382,10 +407,7 @@ export function createMessagingService(
       const recipient =
         candidates.find((candidate) => candidate.organizationId === scope.organizationId) ??
         candidates[0];
-      if (!recipient)
-        throw new ValidationError(
-          "Recipient must have a verified account and organization membership.",
-        );
+      if (!recipient) continue;
       if (recipient.userId !== scope.userId) result.set(recipient.userId, recipient);
     }
     // Each person joins through their human actor in the organization that matched.
@@ -394,7 +416,7 @@ export function createMessagingService(
       const actor = await ensureHumanActor(tx, recipient);
       people.push({ entityId: actor.entityId, type: "human" as const, ...recipient });
     }
-    return people;
+    return { people, external: normalized.filter((email) => !byEmail.has(email)) };
   }
 
   // Only the owner can add their agent, and only an enabled agent of this organization.
@@ -461,6 +483,15 @@ export function createMessagingService(
           (await isOrganizationAdmin(tx, scope.userId, scope.organizationId));
         return rows.map((row) => {
           const members = byConversation.get(row.id) ?? [];
+          let canShare = false;
+          if (!scope.actorEntityId) {
+            if (row.organizationId === scope.organizationId)
+              canShare =
+                row.kind === "channel"
+                  ? admin
+                  : row.createdBy === scope.userId || (admin && row.kind !== "dm");
+            else canShare = admin || row.kind === "dm";
+          }
           return {
             ...row,
             partner: members.some(
@@ -483,10 +514,11 @@ export function createMessagingService(
             // The sidebar lists joined conversations. Public channels the person never joined or
             // left are still returned, so links and search can open them.
             joined: members.some((participant) => participant.userId === scope.userId),
+            canShare,
             canManage:
               !scope.actorEntityId &&
               row.kind !== "dm" &&
-              (row.createdBy === scope.userId ||
+              ((row.createdBy === scope.userId && row.organizationId === scope.organizationId) ||
                 (admin && row.organizationId === scope.organizationId)),
           };
         });
@@ -499,17 +531,67 @@ export function createMessagingService(
         const { actor } = await authenticate(tx);
         if (!["dm", "group", "channel"].includes(input.kind))
           throw new ValidationError("Invalid conversation kind.");
-        const selected = [
-          ...(await recipients(tx, input.emails ?? [])),
-          ...(await ownedAgents(tx, input.agentIds ?? [])),
-        ];
-        if (input.kind === "dm" && selected.length !== 1)
+        const { people, external } = await recipients(tx, input.emails ?? []);
+        if (
+          input.kind === "channel" &&
+          external.length &&
+          !(await isOrganizationAdmin(tx, scope.userId, scope.organizationId))
+        )
+          throw new ValidationError(
+            "Only organization owners and admins can invite partner organizations to channels.",
+          );
+        const selected = [...people, ...(await ownedAgents(tx, input.agentIds ?? []))];
+        if (input.kind === "dm" && selected.length + external.length !== 1)
           throw new ValidationError("A DM requires exactly one recipient.");
-        if (input.kind === "dm") {
+        if (input.kind === "dm" && external.length) {
+          const email = external[0]!;
+          await tx.execute(
+            sql`select pg_advisory_xact_lock(hashtextextended(${`messaging-dm-email:${scope.organizationId}:${scope.userId}:${email}`}, 0))`,
+          );
+          const [existing] = await tx
+            .select({ conversation: messagingConversations })
+            .from(messagingConversations)
+            .leftJoin(
+              messagingParticipants,
+              eq(messagingParticipants.conversationId, messagingConversations.id),
+            )
+            .leftJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
+            .leftJoin(user, eq(user.id, actors.userId))
+            .where(
+              and(
+                eq(messagingConversations.kind, "dm"),
+                eq(messagingConversations.organizationId, scope.organizationId),
+                eq(messagingConversations.createdBy, scope.userId),
+                or(
+                  and(
+                    eq(sql`lower(${user.email})`, email),
+                    isNull(messagingParticipants.leftAt),
+                    approvedParticipant(tx),
+                  ),
+                  inArray(
+                    messagingConversations.id,
+                    tx
+                      .select({ id: messagingInvitations.conversationId })
+                      .from(messagingInvitations)
+                      .where(
+                        and(
+                          eq(messagingInvitations.email, email),
+                          eq(messagingInvitations.status, "pending"),
+                          sql`${messagingInvitations.expiresAt} > now()`,
+                        ),
+                      ),
+                  ),
+                ),
+              ),
+            )
+            .limit(1);
+          if (existing) return existing.conversation;
+        }
+        if (input.kind === "dm" && !external.length) {
           const existing = await existingDirectMessage(tx, [actor.entityId, selected[0]!.entityId]);
           if (existing) return existing;
         }
-        if (input.kind === "group" && selected.length < 2)
+        if (input.kind === "group" && selected.length + external.length < 2)
           throw new ValidationError("A group DM requires at least two recipients.");
         const name = input.name?.trim() || null;
         if (input.kind === "channel" && !name)
@@ -528,18 +610,37 @@ export function createMessagingService(
           { ...actor, organizationId: scope.organizationId },
           ...selected,
         ]);
+        for (const email of external)
+          await queueSharingInvitation(
+            tx,
+            scope,
+            conversation!,
+            email,
+            input.shareHistory === true,
+          );
         return conversation!;
       });
     },
 
-    async addMembers(conversationId: string, emails: string[]) {
+    async addMembers(conversationId: string, emails: string[], shareHistory = false) {
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
         await authenticate(tx);
-        await requireManaged(tx, conversationId);
-        const selected = await recipients(tx, emails);
+        const conversation = await requireManaged(tx, conversationId);
+        const { people: selected, external } = await recipients(tx, emails);
+        if (
+          conversation.kind === "channel" &&
+          external.length &&
+          !(await isOrganizationAdmin(tx, scope.userId, scope.organizationId))
+        )
+          throw new ValidationError(
+            "Only organization owners and admins can invite partner organizations to channels.",
+          );
+        for (const email of external)
+          await queueSharingInvitation(tx, scope, conversation, email, shareHistory);
         // Adding someone who left brings them back.
         const added = await upsertMembers(tx, conversationId, selected);
+        if (external.length) return { added: added.length, invited: external.length };
         return { added: added.length };
       });
     },
@@ -608,7 +709,10 @@ export function createMessagingService(
         const { actor } = await authenticate(tx);
         const conversation = await requireConversation(tx, conversationId);
         if (conversation.kind === "dm") throw new AccessDeniedError();
-        if (conversation.createdBy === scope.userId) {
+        if (
+          conversation.createdBy === scope.userId &&
+          conversation.organizationId === scope.organizationId
+        ) {
           if (newOwnerUserId && newOwnerUserId !== scope.userId)
             await setOwner(tx, conversation, newOwnerUserId);
           else {

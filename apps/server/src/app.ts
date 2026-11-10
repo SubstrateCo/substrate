@@ -10,6 +10,7 @@ import { createContextRoutes } from "./v1/context/routes";
 import { createFilesRoutes } from "./v1/files/routes";
 import { createMcpRoutes } from "./v1/mcp/routes";
 import { createMessagingRoutes } from "./v1/messaging/routes";
+import { createSharingRoutes } from "./v1/messaging/sharing-routes";
 import { createOrganizationRoutes } from "./v1/organizations/routes";
 import { createSessionRoutes } from "./v1/session/routes";
 import { createTasksRoutes } from "./v1/tasks/routes";
@@ -49,6 +50,7 @@ export function createApp() {
     .route("/api/v1/files", createFilesRoutes())
     .route("/api/v1/tasks", createTasksRoutes())
     .route("/api/v1/messaging", createMessagingRoutes())
+    .route("/api/v1/messaging/sharing", createSharingRoutes())
     .route("/api/v1/mcp", createMcpRoutes())
     .route("/api/v1/context", createContextRoutes())
     .route("/api/v1/agents", createAgentsRoutes())

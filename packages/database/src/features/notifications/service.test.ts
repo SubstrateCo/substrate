@@ -4,9 +4,9 @@ import { member } from "../../core/organizations/schema";
 import { AccessDeniedError } from "../../errors";
 import { entities, taskActivity, messagingParticipants, messagingMessages } from "../../schema";
 import { setupDatabase } from "../../testing/database";
+import { createAcceptedMessagingService } from "../../testing/messaging";
 import { recordQueries } from "../../testing/queries";
 import { createContextService } from "../context/service";
-import { createMessagingService } from "../messaging/service";
 import { notifications } from "./schema";
 import { createFeedService } from "./service";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
@@ -148,7 +148,7 @@ test("feed batches repeated and distinct current work and message targets withou
 test("partner feeds use the selected workspace and current conversation access, not historical notices", async () => {
   const { chat, channel } = await setup();
   await chat.addMembers(channel.id, ["outside@example.com"]);
-  const root = await createMessagingService(f.db, {
+  const root = await createAcceptedMessagingService(f.db, {
     userId: "outsider",
     organizationId: f.orgB,
   }).sendMessage(channel.id, "Partner root");
@@ -246,7 +246,7 @@ async function setup() {
     actorEntityId: f.bob,
     level: "edit",
   });
-  const chat = createMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
+  const chat = createAcceptedMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
   const channel = await chat.createConversation({
     kind: "channel",
     name: "Private",
@@ -293,7 +293,7 @@ test("mentions notify accessible recipients once, reply notifications are dedupl
   );
   expect(await feed("bob").list()).toMatchObject([{ kind: "mention", messageId: root.id }]);
   const requestId = crypto.randomUUID();
-  const bobChat = createMessagingService(f.db, { userId: "bob", organizationId: f.orgA });
+  const bobChat = createAcceptedMessagingService(f.db, { userId: "bob", organizationId: f.orgA });
   const reply = await bobChat.sendMessage(channel.id, "Reply", root.id, requestId);
   await bobChat.sendMessage(channel.id, "Reply", root.id, requestId);
   expect(await feed("alice").list()).toMatchObject([{ kind: "reply", messageId: reply.id }]);

@@ -11,6 +11,7 @@ import {
   messagingMessages,
   messagingParticipants,
 } from "../messaging/schema";
+import { messagingInvitations } from "../messaging/sharing.schema";
 import { notifications } from "../notifications/schema";
 import { and, eq, exists, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -130,6 +131,34 @@ export async function invitationRefreshHints(
     ...users.map(({ id }) => ({
       audience: realtimeKeys.user(id),
       domain: "organization" as const,
+    })),
+  ];
+}
+
+export async function sharingInvitationRefreshHints(
+  db: DatabaseExecutor,
+  invitationId: string,
+): Promise<RealtimeHint[]> {
+  const [invite] = await db
+    .select()
+    .from(messagingInvitations)
+    .where(eq(messagingInvitations.id, invitationId));
+  if (!invite) return [];
+  const recipients = await db
+    .select({ id: user.id })
+    .from(user)
+    .where(and(eq(sql`lower(${user.email})`, invite.email), eq(user.emailVerified, true)));
+  return [
+    ...[
+      ...new Set([
+        invite.hostOrganizationId,
+        invite.senderOrganizationId,
+        ...(invite.targetOrganizationId ? [invite.targetOrganizationId] : []),
+      ]),
+    ].map((id) => ({ audience: realtimeKeys.organization(id), domain: "access" as const })),
+    ...[...new Set([invite.inviterId, ...recipients.map((person) => person.id)])].map((id) => ({
+      audience: realtimeKeys.user(id),
+      domain: "access" as const,
     })),
   ];
 }

@@ -1,6 +1,6 @@
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { FormMessage } from "../../auth/form-message";
 import { PendingButton } from "../../feedback/pending-button";
@@ -11,7 +11,12 @@ import { Input } from "../../ui/input";
 import { createConversationDraftSchema } from "./create-conversation-validation";
 import type { Conversation } from "@/lib/messaging/conversations";
 
-export type ConversationDraft = { name: string; emails: string; isPrivate: boolean };
+export type ConversationDraft = {
+  name: string;
+  emails: string;
+  isPrivate: boolean;
+  shareHistory?: boolean;
+};
 
 export function CreateConversationForm({
   kind,
@@ -30,12 +35,13 @@ export function CreateConversationForm({
   error?: Error | null;
   children?: ReactNode;
 }) {
+  const [shareHistory, setShareHistory] = useState(false);
   const form = useForm({
     defaultValues: { name: "", emails: initialEmails, isPrivate: false },
     validationLogic: revalidateLogic({ mode: "blur", modeAfterSubmission: "change" }),
     validators: { onDynamic: createConversationDraftSchema(kind) },
     onSubmit: ({ value }) => {
-      if (!pending) onSubmit(value);
+      if (!pending) onSubmit({ ...value, shareHistory });
     },
   });
   const formElement = useRef<HTMLFormElement>(null);
@@ -137,14 +143,26 @@ export function CreateConversationForm({
                         <FieldError id="recipient-emails-error" errors={field.state.meta.errors} />
                       )}
                       <FieldDescription id="recipient-help">
-                        Enter exact email addresses, separated by commas. People in other workspaces
-                        can be included. They must already have an account.
+                        Enter exact email addresses, separated by commas. People outside this
+                        workspace receive an invitation and must consent. They can create an account
+                        first. Partner channels also require organization approval.
                       </FieldDescription>
                     </Field>
                   );
                 }}
               </form.Field>
               {children}
+              <Field orientation="horizontal">
+                <Checkbox
+                  id="create-sharing-history"
+                  checked={shareHistory}
+                  onCheckedChange={(value) => setShareHistory(value === true)}
+                  disabled={busy}
+                />
+                <FieldLabel htmlFor="create-sharing-history">
+                  For external invitations, I approve sharing the full conversation history.
+                </FieldLabel>
+              </Field>
               {kind === "channel" && (
                 <form.Field name="isPrivate">
                   {(field) => {

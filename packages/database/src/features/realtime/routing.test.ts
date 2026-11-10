@@ -4,6 +4,7 @@ import { ensureUserAgentActor } from "../../core/actors/provisioning";
 import { canReceiveChange } from "../../core/realtime/audience";
 import { messagingConversations, messagingParticipants, user, userAgents } from "../../schema";
 import { setupDatabase } from "../../testing/database";
+import { approveFixtureParticipants } from "../../testing/messaging";
 import { invitationRefreshHints, profileRefreshHints, projectAccessRefreshHints } from "./routing";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
@@ -38,6 +39,7 @@ test("profile changes refresh shared conversation labels across workspace bounda
     },
   ]);
   // Workspace conversations, joined or left, are covered by the organization hint.
+  await approveFixtureParticipants(fixture.db, conversation.id);
   for (const leftAt of [null, new Date()]) {
     const [internal] = await fixture.db
       .insert(messagingConversations)

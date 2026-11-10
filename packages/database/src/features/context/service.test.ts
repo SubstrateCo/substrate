@@ -13,13 +13,16 @@ import {
   userAgents,
 } from "../../schema";
 import { setupDatabase } from "../../testing/database";
+import {
+  approveFixtureParticipants,
+  createAcceptedMessagingService,
+} from "../../testing/messaging";
 import { recordQueries } from "../../testing/queries";
 import {
   messagingConversations,
   messagingMessages,
   messagingParticipants,
 } from "../messaging/schema";
-import { createMessagingService } from "../messaging/service";
 import { applyMessageEffects } from "./message-effects";
 import { messageEntityReferences, sourceTaskRequests } from "./schema";
 import { createContextService } from "./service";
@@ -63,7 +66,7 @@ test("five person mentions and five task references resolve in set-based stateme
       (await alice.tasks.create({ projectEntityId: project.entityId, title: `Task ${index}` }))
         .entityId,
     );
-  const channel = await createMessagingService(f.db, {
+  const channel = await createAcceptedMessagingService(f.db, {
     userId: "alice",
     organizationId: f.orgA,
   }).createConversation({ kind: "channel", name: "References" });
@@ -72,12 +75,12 @@ test("five person mentions and five task references resolve in set-based stateme
     ...mentioned.map((id) => `@[person:${id}]`),
     ...taskIds.map((id) => `@[task:${id}]`),
   ].join(" ");
-  const sent = await createMessagingService(db, {
+  const sent = await createAcceptedMessagingService(db, {
     userId: "alice",
     organizationId: f.orgA,
   }).sendMessage(channel.id, body);
   // Includes the lookup for the author's own agents that the message may trigger.
-  expect(queries).toHaveLength(9);
+  expect(queries).toHaveLength(10);
   expect(
     (
       await f.db
@@ -111,16 +114,16 @@ test("notification recipients use one conflict-safe insert-select for one or man
     organizationId: f.orgA,
     name: "Outside A",
   });
-  const chat = createMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
+  const chat = createAcceptedMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
   const channel = await chat.createConversation({ kind: "channel", name: "Public" });
   const root = await chat.sendMessage(channel.id, "root");
-  await createMessagingService(f.db, { userId: "bob", organizationId: f.orgA }).sendMessage(
+  await createAcceptedMessagingService(f.db, { userId: "bob", organizationId: f.orgA }).sendMessage(
     channel.id,
     "bob",
     root.id,
   );
   const { db, queries } = recordQueries();
-  const sender = createMessagingService(db, { userId: "alice", organizationId: f.orgA });
+  const sender = createAcceptedMessagingService(db, { userId: "alice", organizationId: f.orgA });
   const send = async () => {
     queries.length = 0;
     const sent = await sender.sendMessage(channel.id, "reply", root.id, crypto.randomUUID());
@@ -145,11 +148,10 @@ test("notification recipients use one conflict-safe insert-select for one or man
       (row) => row.recipientActorEntityId,
     ),
   ).toEqual([f.bob]);
-  await createMessagingService(f.db, { userId: "outsider", organizationId: f.orgA }).sendMessage(
-    channel.id,
-    "outsider",
-    root.id,
-  );
+  await createAcceptedMessagingService(f.db, {
+    userId: "outsider",
+    organizationId: f.orgA,
+  }).sendMessage(channel.id, "outsider", root.id);
   // A partner membership alone must not receive notifications outside the home workspace.
   await f.db.insert(messagingParticipants).values({
     conversationId: channel.id,
@@ -157,7 +159,8 @@ test("notification recipients use one conflict-safe insert-select for one or man
     actorEntityId: bobB.entityId,
     actorType: "human",
   });
-  await createMessagingService(f.db, { userId: "bob", organizationId: f.orgB }).sendMessage(
+  await approveFixtureParticipants(f.db, channel.id);
+  await createAcceptedMessagingService(f.db, { userId: "bob", organizationId: f.orgB }).sendMessage(
     channel.id,
     "bob in B",
     root.id,
@@ -221,14 +224,14 @@ test("notification recipients use one conflict-safe insert-select for one or man
 for (const invalid of ["disabled", "deleted", "unverified", "removed", "hidden"] as const) {
   test(`reply notifications exclude currently ${invalid} actors and invalid mentions roll back`, async () => {
     await f.db.update(user).set({ emailVerified: true });
-    const chat = createMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
+    const chat = createAcceptedMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
     const channel = await chat.createConversation({
       kind: "channel",
       name: "Private",
       private: true,
       emails: ["bob@example.com"],
     });
-    const root = await createMessagingService(f.db, {
+    const root = await createAcceptedMessagingService(f.db, {
       userId: "bob",
       organizationId: f.orgA,
     }).sendMessage(channel.id, "root");
@@ -272,7 +275,10 @@ test("message, references and batched notifications all roll back with the calle
   const before = await chat.listMessages(conversation.id);
   await expect(
     f.db.transaction(async (tx) => {
-      await createMessagingService(tx, { userId: "alice", organizationId: f.orgA }).sendMessage(
+      await createAcceptedMessagingService(tx, {
+        userId: "alice",
+        organizationId: f.orgA,
+      }).sendMessage(
         conversation.id,
         `@[project:${project.entityId}] @[person:${f.bob}]`,
         before[0]!.id,
@@ -293,17 +299,20 @@ test("message, references and batched notifications all roll back with the calle
 
 test("thread recipients use one distinct conversation-scoped query and mentions take precedence", async () => {
   await f.db.update(user).set({ emailVerified: true });
-  const chat = createMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
+  const chat = createAcceptedMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
   const channel = await chat.createConversation({
     kind: "channel",
     name: "discussion",
     emails: ["bob@example.com", "outside@example.com"],
   });
   const root = await chat.sendMessage(channel.id, "root");
-  const bob = createMessagingService(f.db, { userId: "bob", organizationId: f.orgA });
+  const bob = createAcceptedMessagingService(f.db, { userId: "bob", organizationId: f.orgA });
   for (let i = 0; i < 5; i++) await bob.sendMessage(channel.id, `reply ${i}`, root.id);
   const { db, queries } = recordQueries();
-  const partner = createMessagingService(db, { userId: "outsider", organizationId: f.orgB });
+  const partner = createAcceptedMessagingService(db, {
+    userId: "outsider",
+    organizationId: f.orgB,
+  });
   const sent = await partner.sendMessage(channel.id, "partner reply", root.id);
   expect(
     queries.filter((query) => query.includes('"author_id" from "messaging_messages"')),
@@ -347,7 +356,7 @@ async function setup() {
   await f.db.update(user).set({ emailVerified: true });
   const repos = f.forActor(f.alice);
   const project = await repos.projects.create({ name: "Launch" });
-  const chat = createMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
+  const chat = createAcceptedMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
   const conversation = await chat.createConversation({
     kind: "channel",
     name: "Private discussion",
@@ -754,7 +763,7 @@ test("source provenance survives explicit unlinking and caller rollback removes 
 test("message targets retain timeline reaction and reply summaries for roots and replies", async () => {
   const { chat, reply, root, conversation } = await setup();
   await chat.addMembers(conversation.id, ["bob@example.com"]);
-  const bob = createMessagingService(f.db, { userId: "bob", organizationId: f.orgA });
+  const bob = createAcceptedMessagingService(f.db, { userId: "bob", organizationId: f.orgA });
   await chat.toggleReaction(root.id, "👍");
   await bob.toggleReaction(root.id, "👍");
   await bob.toggleReaction(reply.id, "🎉");
@@ -807,7 +816,7 @@ test("message targets resolve a reply and root, and mismatched conversations fai
 test("related discussions use current human names for local and partner authors", async () => {
   const { chat, conversation, root, project } = await setup();
   await chat.addMembers(conversation.id, ["outside@example.com"]);
-  const reply = await createMessagingService(f.db, {
+  const reply = await createAcceptedMessagingService(f.db, {
     userId: "outsider",
     organizationId: f.orgB,
   }).sendMessage(conversation.id, "Partner reply", root.id);
@@ -830,7 +839,7 @@ test("related discussions use current human names for local and partner authors"
 test("message targets use current human names for the root and partner reply", async () => {
   const { chat, conversation, root } = await setup();
   await chat.addMembers(conversation.id, ["outside@example.com"]);
-  const reply = await createMessagingService(f.db, {
+  const reply = await createAcceptedMessagingService(f.db, {
     userId: "outsider",
     organizationId: f.orgB,
   }).sendMessage(conversation.id, "Partner reply", root.id);
@@ -864,7 +873,7 @@ test("related discussions and message targets retain agent attribution after own
     userAgentId: agent!.id,
   });
   const conversation = await chat.createConversation({ kind: "channel", name: "Agent discussion" });
-  const agentChat = createMessagingService(f.db, {
+  const agentChat = createAcceptedMessagingService(f.db, {
     userId: "alice",
     organizationId: f.orgA,
     actorEntityId: actor.entityId,
@@ -888,7 +897,10 @@ test("related discussions and message targets retain agent attribution after own
 test("linked message targets classify root and reply authors by current viewer membership", async () => {
   const { chat, conversation, root } = await setup();
   await chat.addMembers(conversation.id, ["outside@example.com"]);
-  const partner = createMessagingService(f.db, { userId: "outsider", organizationId: f.orgB });
+  const partner = createAcceptedMessagingService(f.db, {
+    userId: "outsider",
+    organizationId: f.orgB,
+  });
   const reply = await partner.sendMessage(conversation.id, "Partner reply", root.id);
   expect(await context().messageTarget(conversation.id, reply.id)).toMatchObject({
     message: { id: reply.id, authorExternal: true },

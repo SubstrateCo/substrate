@@ -13,13 +13,15 @@ export function ConversationActionsMenu({
   onLeave,
   onTransfer,
   onDelete,
+  onSharing,
 }: {
   onAgents?: () => void;
   onLeave?: () => void;
   onTransfer?: () => void;
   onDelete?: () => void;
+  onSharing?: () => void;
 }) {
-  const hasActions = [onAgents, onLeave, onTransfer, onDelete].some(Boolean);
+  const hasActions = [onAgents, onLeave, onTransfer, onDelete, onSharing].some(Boolean);
   if (!hasActions) return null;
   return (
     <DropdownMenu>
@@ -29,6 +31,9 @@ export function ConversationActionsMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        {onSharing && (
+          <DropdownMenuItem onSelect={onSharing}>External collaboration</DropdownMenuItem>
+        )}
         {onAgents && (
           <DropdownMenuItem onSelect={onAgents}>
             <Bot />

@@ -174,13 +174,34 @@ export async function post<T>(
   return result.data;
 }
 
-export function conversation(actor: Actor, emails: string[] = []) {
-  return post<{ id: string; name: string }>(actor, "messaging/conversations", {
+export async function conversation(actor: Actor, emails: string[] = [], invitees: Actor[] = []) {
+  const created = await post<{ id: string; name: string }>(actor, "messaging/conversations", {
     kind: "channel",
     name: `e2e-${randomUUID()}`,
     private: true,
     emails,
+    shareHistory: true,
   });
+  for (const invitee of invitees) await acceptCollaboration(invitee, created.id);
+  return created;
+}
+
+export async function acceptCollaboration(actor: Actor, conversationId: string) {
+  const response = await actor.request.get("/api/v1/messaging/sharing/inbox", {
+    params: { organizationId: actor.organizationId },
+  });
+  expect(response.ok()).toBe(true);
+  const { data } = await response.json();
+  const invitation = data.find(
+    (item: { conversationId: string }) => item.conversationId === conversationId,
+  );
+  if (!invitation) return;
+  const accepted = await actor.request.post("/api/v1/messaging/sharing/accept", {
+    headers: { origin: process.env.PLAYWRIGHT_BASE_URL! },
+    data: { invitationId: invitation.id, organizationId: actor.organizationId, shareHistory: true },
+  });
+  expect(accepted.ok()).toBe(true);
+  expect((await accepted.json()).data.status).toBe("accepted");
 }
 
 export async function send(page: Page, body: string, label: string | RegExp = /^Message /) {

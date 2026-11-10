@@ -1,6 +1,7 @@
 import { realtimeEvent, type RealtimeEvent } from "@startup-os/contracts/realtime";
 
 import {
+  CancelledError,
   matchQuery,
   type Query,
   type QueryClient,
@@ -78,6 +79,7 @@ export function realtimeQueryTargets(
         );
       break;
     case "access":
+      targets.push({ queryKey: queryKeys.sharingInvitations });
       targets.push({ queryKey: queryKeys.organizations }, { queryKey: queryKeys.userInvitations });
       if (organizationId) targets.push({ queryKey: queryKeys.organization(organizationId) });
       break;
@@ -231,6 +233,7 @@ export function createRealtimeCache({
         { queryKey: queryKeys.session },
         { queryKey: queryKeys.organizations },
         { queryKey: queryKeys.userInvitations },
+        { queryKey: queryKeys.sharingInvitations },
       ]);
       if (isCurrent(epoch)) await revalidate();
     }
@@ -276,7 +279,14 @@ export function createRealtimeCache({
       ),
     );
     const deferred = loads.map(async ({ query, promise, refetch }) => {
-      await promise;
+      try {
+        await promise;
+      } catch (error) {
+        // A resized or replaced page can abandon its request during a healthy resync.
+        if (error instanceof CancelledError && isCurrent(epoch) && query.getObserversCount() === 0)
+          return;
+        throw error;
+      }
       if (!isCurrent(epoch) || fetchedSince(query)) return;
       // Mark stale after the original snapshot commits, so its success cannot erase the event.
       await queryClient.invalidateQueries(

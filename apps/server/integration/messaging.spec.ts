@@ -262,7 +262,26 @@ for (const kind of ["channel", "dm", "group"] as const) {
       name: "private-api-boundary",
       private: true,
       emails,
+      shareHistory: true,
     });
+    if (kind === "group") {
+      const inbox = await recipient.request.get("/api/v1/messaging/sharing/inbox", {
+        params: { organizationId: recipient.organizationId },
+      });
+      const invitation = (await inbox.json()).data.find(
+        (item: { conversationId: string }) => item.conversationId === conversation.id,
+      );
+      expect(invitation).toBeDefined();
+      const accepted = await recipient.request.post("/api/v1/messaging/sharing/accept", {
+        headers: { origin },
+        data: {
+          organizationId: recipient.organizationId,
+          invitationId: invitation.id,
+          shareHistory: true,
+        },
+      });
+      expect(accepted.ok()).toBe(true);
+    }
     const root = await post<{ id: string }>(owner, "messages", {
       conversationId: conversation.id,
       body: "Private root",

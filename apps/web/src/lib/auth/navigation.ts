@@ -23,7 +23,7 @@ export function safeRedirect(value: unknown, fallback = "/dashboard"): string {
 
 export function authSearch(search: Record<string, unknown>) {
   return {
-    redirect: safeRedirect(search.redirect),
+    redirect: safeRedirect(search.redirect, "/onboarding"),
     email: typeof search.email === "string" ? search.email : "",
     token: typeof search.token === "string" ? search.token : "",
     error: typeof search.error === "string" ? search.error : "",

@@ -15,6 +15,7 @@ export const conversationInput = workspaceInput.extend({
   name: z.string().trim().min(1).max(80).optional(),
   private: z.boolean().optional(),
   emails: emails.optional(),
+  shareHistory: z.boolean().optional(),
   /** Agent definition IDs owned by the caller. */
   agentIds: z.array(id).max(20).optional(),
 });
@@ -33,6 +34,7 @@ export const profileInput = workspaceInput.extend({
 export const membersInput = workspaceInput.extend({
   conversationId: id,
   emails: emails.default([]),
+  shareHistory: z.boolean().optional(),
 });
 export const conversationTargetInput = workspaceInput.extend({ conversationId: id });
 export const addAgentInput = conversationTargetInput.extend({ agentId: id });

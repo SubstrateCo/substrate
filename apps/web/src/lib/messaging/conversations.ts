@@ -18,6 +18,7 @@ export type Conversation = {
   // Active member. Public channels the person never joined or left stay readable but leave the sidebar.
   joined?: boolean;
   canManage?: boolean;
+  canShare?: boolean;
 };
 
 export function conversationName(conversation: Conversation): string {

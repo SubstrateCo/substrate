@@ -9,10 +9,10 @@ import { activateOrganization } from "@/lib/auth/organization";
 import { organizationsQueryOptions } from "@/queries/organizations/options";
 import { toast } from "sonner";
 
-export function OrganizationSelection() {
+export function OrganizationSelection({ destination = "/dashboard" }: { destination?: string }) {
   const organizations = useQuery(organizationsQueryOptions());
   const select = useMutation({
-    mutationFn: (organizationId: string) => activateOrganization(organizationId),
+    mutationFn: (organizationId: string) => activateOrganization(organizationId, destination),
     onError: (error) =>
       toast.error(
         actionErrorMessage(error, "We couldn’t open this workspace. Try selecting it again."),
@@ -32,7 +32,7 @@ export function OrganizationSelection() {
           signOut={<SignOutButton />}
         />
       }
-      createForm={<CreateOrganizationForm />}
+      createForm={<CreateOrganizationForm destination={destination} />}
     />
   );
 }

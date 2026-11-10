@@ -1,12 +1,12 @@
 import { user } from "../../core/authentication/schema";
 import { AccessDeniedError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
+import { createAcceptedMessagingService } from "../../testing/messaging";
 import {
   messagingConversations,
   messagingMessages,
   messagingParticipants,
 } from "../messaging/schema";
-import { createMessagingService } from "../messaging/service";
 import { notifications } from "../notifications/schema";
 import { messageMessagingReferences } from "./schema";
 import { createContextService } from "./service";
@@ -19,7 +19,7 @@ const scope = { userId: "alice", organizationId: f.orgA };
 
 test("hashtag search returns channels and distinct threads, not DMs or standalone messages", async () => {
   await f.db.update(user).set({ emailVerified: true });
-  const chat = createMessagingService(f.db, scope);
+  const chat = createAcceptedMessagingService(f.db, scope);
   const channel = await chat.createConversation({ kind: "channel", name: "Launch" });
   const dm = await chat.createConversation({ kind: "dm", emails: ["bob@example.com"] });
   await chat.sendMessage(channel.id, "Standalone Launch");
@@ -46,7 +46,7 @@ test("hashtag search returns channels and distinct threads, not DMs or standalon
 
 test("references save atomically, resolve with live access, and expose safe related records", async () => {
   await f.db.update(user).set({ emailVerified: true });
-  const chat = createMessagingService(f.db, scope);
+  const chat = createAcceptedMessagingService(f.db, scope);
   const source = await chat.createConversation({ kind: "channel", name: "Source" });
   const target = await chat.createConversation({
     kind: "channel",
@@ -84,7 +84,7 @@ test("references save atomically, resolve with live access, and expose safe rela
   );
   const before = await f.db.select().from(messagingMessages);
   await expect(
-    createMessagingService(f.db, { userId: "bob", organizationId: f.orgA }).sendMessage(
+    createAcceptedMessagingService(f.db, { userId: "bob", organizationId: f.orgA }).sendMessage(
       source.id,
       body,
     ),
@@ -105,12 +105,12 @@ test("references save atomically, resolve with live access, and expose safe rela
 
 test("invalid target kinds, reply targets, and cross-workspace references roll back", async () => {
   await f.db.update(user).set({ emailVerified: true });
-  const chat = createMessagingService(f.db, scope);
+  const chat = createAcceptedMessagingService(f.db, scope);
   const source = await chat.createConversation({ kind: "channel", name: "Source" });
   const root = await chat.sendMessage(source.id, "Root");
   const reply = await chat.sendMessage(source.id, "Reply", root.id);
   const dm = await chat.createConversation({ kind: "dm", emails: ["bob@example.com"] });
-  const foreign = await createMessagingService(f.db, {
+  const foreign = await createAcceptedMessagingService(f.db, {
     userId: "outsider",
     organizationId: f.orgB,
   }).createConversation({ kind: "channel", name: "Foreign" });
@@ -128,14 +128,17 @@ test("invalid target kinds, reply targets, and cross-workspace references roll b
 
 test("shared foreign source conversations cannot suggest or save local hashtag references", async () => {
   await f.db.update(user).set({ emailVerified: true });
-  const foreignChat = createMessagingService(f.db, { userId: "outsider", organizationId: f.orgB });
+  const foreignChat = createAcceptedMessagingService(f.db, {
+    userId: "outsider",
+    organizationId: f.orgB,
+  });
   const shared = await foreignChat.createConversation({
     kind: "channel",
     name: "Shared",
     private: true,
     emails: ["alice@example.com"],
   });
-  const chat = createMessagingService(f.db, scope);
+  const chat = createAcceptedMessagingService(f.db, scope);
   const local = await chat.createConversation({ kind: "channel", name: "Local" });
   const context = createContextService(f.db, scope);
   for (const kind of ["channel", "thread"] as const) {
@@ -149,7 +152,7 @@ test("shared foreign source conversations cannot suggest or save local hashtag r
 
 test("channel renames resolve live labels and removed thread targets lose their derived relationships", async () => {
   await f.db.update(user).set({ emailVerified: true });
-  const chat = createMessagingService(f.db, scope);
+  const chat = createAcceptedMessagingService(f.db, scope);
   const source = await chat.createConversation({ kind: "channel", name: "Source" });
   const target = await chat.createConversation({ kind: "channel", name: "Original" });
   const root = await chat.sendMessage(target.id, "Thread");

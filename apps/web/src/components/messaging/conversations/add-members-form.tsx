@@ -15,8 +15,8 @@ export function AddMembersForm({
 }) {
   const queryClient = useQueryClient();
   const add = useMutation({
-    mutationFn: (emails: string[]) =>
-      addMembers({ data: { organizationId, conversationId, emails } }),
+    mutationFn: ({ emails, shareHistory }: { emails: string[]; shareHistory: boolean }) =>
+      addMembers({ data: { organizationId, conversationId, emails, shareHistory } }),
     onSuccess: () => invalidateAddedMembers(queryClient, organizationId, conversationId),
   });
   return (
@@ -24,7 +24,9 @@ export function AddMembersForm({
       pending={add.isPending}
       error={add.error}
       onClose={onClose}
-      onSubmit={(emails) => add.mutate(emails, { onSuccess: () => onClose() })}
+      onSubmit={(emails, shareHistory) =>
+        add.mutate({ emails, shareHistory }, { onSuccess: () => onClose() })
+      }
     />
   );
 }

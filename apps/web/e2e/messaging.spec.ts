@@ -1,4 +1,11 @@
-import { conversation, expectChange, send, test, visit } from "./test-support/fixtures";
+import {
+  acceptCollaboration,
+  conversation,
+  expectChange,
+  send,
+  test,
+  visit,
+} from "./test-support/fixtures";
 import { expect } from "@playwright/test";
 
 test("collapsing channels hides the selected channel without closing it", async ({
@@ -76,6 +83,12 @@ for (const kind of ["dm", "channel"] as const) {
         new URL(response.url()).pathname === "/api/v1/messaging/conversations" &&
         response.request().method() === "POST",
     );
+    await sender.page
+      .getByRole("checkbox", {
+        name: "For external invitations, I approve sharing the full conversation history.",
+        exact: true,
+      })
+      .check();
     const [response] = await Promise.all([
       created,
       sender.page
@@ -88,6 +101,7 @@ for (const kind of ["dm", "channel"] as const) {
     ]);
     expect(response.ok()).toBe(true);
     const { data: channel } = await response.json();
+    await acceptCollaboration(actors.partner, channel.id);
     await expect(
       sender.page.getByRole("heading", {
         level: 1,

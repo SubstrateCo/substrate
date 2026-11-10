@@ -8,7 +8,11 @@ import { member } from "../../core/organizations/schema";
 import { visibilityCte } from "../../core/permissions/visibility";
 import { pageSize } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
-import { visibleConversations, type MessagingIdentity } from "../messaging/access";
+import {
+  approvedParticipant,
+  visibleConversations,
+  type MessagingIdentity,
+} from "../messaging/access";
 import {
   messagingConversations,
   messagingMessages,
@@ -306,13 +310,14 @@ export async function contextSearch(
           when ${me.leftAt} is null then 'joined' else 'left' end`,
         memberCount: sql<number>`(select count(*)::int from ${messagingParticipants}
           where ${messagingParticipants.conversationId} = ${messagingConversations.id}
-            and ${messagingParticipants.leftAt} is null)`,
+             and ${messagingParticipants.leftAt} is null and ${approvedParticipant(db)})`,
       })
       .from(messagingConversations)
       .leftJoin(
         me,
         and(
           eq(me.conversationId, messagingConversations.id),
+          eq(me.organizationId, scope.organizationId),
           inArray(
             me.actorEntityId,
             db

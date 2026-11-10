@@ -8,7 +8,7 @@ function required(env: Environment, name: string) {
   return value;
 }
 
-function explicitOrigin(value: string) {
+export function explicitOrigin(value: string) {
   let url: URL;
   try {
     url = new URL(value);

@@ -5,10 +5,12 @@ import { ensureHumanActor } from "../core/actors/provisioning";
 import { permissionRepository } from "../core/permissions/repository";
 import { RepositoryContext } from "../core/repository-context";
 import { createMessagingService } from "../features/messaging/service";
+import { createSharingService } from "../features/messaging/sharing";
+import { messagingInvitations } from "../features/messaging/sharing.schema";
 import { projectRepository } from "../features/projects/repository";
 import { taskRepository } from "../features/tasks/repository";
 import { account, member, organization, user } from "../schema";
-import { inArray, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 
 export const developmentTeams = [
   {
@@ -262,6 +264,7 @@ export async function seedDevelopmentDatabase(db: DatabaseExecutor, passwordHash
     const shared = await alice.createConversation({
       kind: "channel",
       name: "Partner launch",
+      shareHistory: true,
       private: true,
       emails: [
         "bob@northstar.test",
@@ -271,6 +274,23 @@ export async function seedDevelopmentDatabase(db: DatabaseExecutor, passwordHash
         "farah@orbit.test",
       ],
     });
+    const sharedInvites = await tx
+      .select()
+      .from(messagingInvitations)
+      .where(eq(messagingInvitations.conversationId, shared.id));
+    for (const invite of sharedInvites) {
+      const person = developmentTeams[1].people.find((person) => person.email === invite.email);
+      if (!person) throw new Error("Missing seed invitation recipient.");
+      const accepted = await createSharingService(tx, {
+        userId: person.id,
+        organizationId: "dev-orbit",
+      }).accept(invite.id, true);
+      if (accepted.status === "approval-required")
+        await createSharingService(tx, { userId: "dev-dana", organizationId: "dev-orbit" }).accept(
+          invite.id,
+          true,
+        );
+    }
     await alice.sendMessage(
       shared.id,
       "Welcome, Orbit team! Let's use this shared channel to coordinate the autumn launch.",
@@ -313,7 +333,16 @@ export async function seedDevelopmentDatabase(db: DatabaseExecutor, passwordHash
     const partnerDm = await alice.createConversation({
       kind: "dm",
       emails: ["dana@orbit.test"],
+      shareHistory: true,
     });
+    const [dmInvite] = await tx
+      .select()
+      .from(messagingInvitations)
+      .where(eq(messagingInvitations.conversationId, partnerDm.id));
+    await createSharingService(tx, { userId: "dev-dana", organizationId: "dev-orbit" }).accept(
+      dmInvite!.id,
+      true,
+    );
     await alice.sendMessage(
       partnerDm.id,
       "Are we still on for the partner launch review on Friday?",

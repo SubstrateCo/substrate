@@ -1,4 +1,6 @@
 export const queryKeys = {
+  desktopRelease: ["desktop", "release"] as const,
+  sharingInvitations: ["sharing-invitations"] as const,
   session: ["auth", "session"] as const,
   agents: (userId: string) => ["users", userId, "agents"] as const,
   harnessModels: (userId: string, organizationId: string, harness: string, agentId?: string) =>

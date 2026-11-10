@@ -56,6 +56,8 @@ export const messagingParticipants = pgTable(
       .references(() => organization.id),
     actorEntityId: uuid("actor_entity_id").notNull(),
     actorType: actorType("actor_type").notNull(),
+    // Existing external participants stay unapproved until they accept a new invitation.
+    consentedAt: timestamp("consented_at", { withTimezone: true }),
     // Set when the member leaves. The row stays because messages and reactions reference it.
     leftAt: timestamp("left_at", { withTimezone: true }),
   },

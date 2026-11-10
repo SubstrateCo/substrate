@@ -16,6 +16,9 @@ export default defineConfig(({ mode }) => {
       port,
       strictPort: true,
       proxy: {
+        "/desktop": {
+          target: process.env.SERVER_URL ?? env.SERVER_URL ?? "http://localhost:3001",
+        },
         "/api": {
           target: process.env.SERVER_URL ?? env.SERVER_URL ?? "http://localhost:3001",
           ws: true,

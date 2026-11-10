@@ -36,7 +36,15 @@ export function BrowserLoginForm({ redirect, email }: { redirect: string; email:
     },
   });
   if (query && (login.isSuccess || session.data?.user.emailVerified))
-    return <BrowserElectronReturn />;
+    return (
+      <BrowserElectronReturn
+        redirect={redirect}
+        email={
+          session.data?.user.email ??
+          (login.variables ? formText(login.variables, "email") : undefined)
+        }
+      />
+    );
   return (
     <LoginForm
       email={email}

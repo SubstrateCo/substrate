@@ -1,6 +1,7 @@
 import { createApp } from "./app";
 import { closeDatabase } from "./auth/database";
 import { defaultFileService } from "./v1/files/default-service";
+import { startSharingMail } from "./v1/messaging/sharing-mail";
 import { closeRefreshPublisher } from "./v1/realtime/publisher";
 import { createRealtimeService } from "./v1/realtime/service";
 
@@ -12,6 +13,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 const app = createApp();
 const realtime = createRealtimeService();
 await realtime.start();
+const stopSharingMail = startSharingMail();
 const server = Bun.serve({
   port,
   websocket: realtime.websocket,
@@ -49,6 +51,7 @@ function shutdown() {
   closeRefreshPublisher();
   void server
     .stop(true)
+    .then(() => stopSharingMail())
     .then(() => closeDatabase())
     .catch(() => {
       console.error("Server shutdown failed");

@@ -2,6 +2,11 @@ import { authHref, authSearch, safeRedirect } from "./navigation";
 import { describe, expect, test } from "bun:test";
 
 describe("auth redirect policy", () => {
+  test("starts standalone browser authentication in public setup without replacing an explicit destination", () => {
+    expect(authSearch({}).redirect).toBe("/onboarding");
+    expect(authSearch({ redirect: "https://evil.test" }).redirect).toBe("/onboarding");
+    expect(authSearch({ redirect: "/dashboard" }).redirect).toBe("/dashboard");
+  });
   test("preserves only complete Electron authorization parameters across auth navigation", () => {
     const search = "?client_id=electron&state=state-1&code_challenge=challenge-1&cookie=secret";
     const link = new URL(

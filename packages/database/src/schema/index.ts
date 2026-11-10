@@ -10,6 +10,7 @@ export * from "../core/permissions/access-parents";
 export * from "../core/links/schema";
 export * from "../core/storage/schema";
 export * from "../features/messaging/schema";
+export * from "../features/messaging/sharing.schema";
 export * from "../features/projects/schema";
 export * from "../features/tasks/tasks.schema";
 export * from "../features/tasks/comments.schema";

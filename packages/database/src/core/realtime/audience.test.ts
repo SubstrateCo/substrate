@@ -10,6 +10,7 @@ import {
   user,
 } from "../../schema";
 import { setupDatabase } from "../../testing/database";
+import { approveFixtureParticipants } from "../../testing/messaging";
 import { recordQueries } from "../../testing/queries";
 import { ensureHumanActor, ensureUserAgentActor } from "../actors/provisioning";
 import {
@@ -58,6 +59,7 @@ test("private and public external channels require a participant in the viewer w
       },
     ]);
     const audience = realtimeKeys.conversation(conversation.id);
+    await approveFixtureParticipants(fixture.db, conversation.id);
     expect(await canReceiveChange(fixture.db, external, audience)).toBe(true);
     expect(await canReceiveChange(fixture.db, alice, audience)).toBe(true);
     expect(await canReceiveChange(fixture.db, bob, audience)).toBe(!privateChannel);
@@ -130,6 +132,7 @@ test("a partner with membership in both organizations receives private channel e
     },
   ]);
   const audience = realtimeKeys.conversation(conversation.id);
+  await approveFixtureParticipants(fixture.db, conversation.id);
   expect(await canReceiveChange(fixture.db, external, audience)).toBe(true);
   expect(
     await canReceiveChange(fixture.db, { ...external, organizationId: fixture.orgA }, audience),
@@ -209,6 +212,7 @@ test("a conversation audience resolves in one statement for every receiver, and 
     },
   ]);
   const { db, queries } = recordQueries();
+  await approveFixtureParticipants(fixture.db, conversation.id);
   const receives = await audienceRecipients(db, realtimeKeys.conversation(conversation.id));
   expect(queries).toHaveLength(1);
   const receivers = await Promise.all(

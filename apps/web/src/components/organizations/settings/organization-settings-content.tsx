@@ -8,11 +8,13 @@ export function OrganizationSettings({
   invitations,
   conversations,
   isOwner,
+  sharing,
 }: {
   picture: ReactNode;
   invitations: ReactNode;
   conversations: ReactNode;
   isOwner: boolean;
+  sharing: ReactNode;
 }) {
   return (
     <SettingsPage id="organization-settings">
@@ -21,9 +23,13 @@ export function OrganizationSettings({
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="invitations">Invitations</TabsTrigger>
           <TabsTrigger value="conversations">Conversations</TabsTrigger>
+          <TabsTrigger value="sharing">External collaboration</TabsTrigger>
         </TabsList>
         <TabsContent value="general" className="mt-4">
           {picture}
+        </TabsContent>
+        <TabsContent value="sharing" className="mt-4">
+          {sharing}
         </TabsContent>
         <TabsContent value="conversations" className="mt-4">
           {conversations}

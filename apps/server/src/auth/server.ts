@@ -4,10 +4,12 @@ import {
   getRememberedOrganization,
   rememberOrganization,
 } from "@startup-os/database/authentication";
+import { clearMembershipSharing } from "@startup-os/database/messaging";
 import { ensureHumanActor } from "@startup-os/database/provisioning";
 import * as schema from "@startup-os/database/schema";
 import { createStorageRepository } from "@startup-os/database/storage";
 
+import { publishRefresh } from "../v1/realtime/publisher";
 import { db } from "./database";
 import { frontendAuthLink, invitationLink } from "./email-link";
 import { authEnvironment } from "./environment";
@@ -44,6 +46,8 @@ const provisionMember = async (input: {
   organization: { id: string };
   user: { id: string; name: string };
 }) => {
+  const hints = await clearMembershipSharing(db, input.user.id, input.organization.id);
+  await publishRefresh(hints);
   await ensureHumanActor(db, {
     organizationId: input.organization.id,
     userId: input.user.id,
@@ -166,7 +170,11 @@ export const auth = betterAuth({
           await provisionMember(input);
           await publishInvitationChange(input);
         },
-        afterRemoveMember: publishMembershipChange,
+        afterRemoveMember: async (input) => {
+          const hints = await clearMembershipSharing(db, input.user.id, input.organization.id);
+          await publishRefresh(hints);
+          await publishMembershipChange(input);
+        },
         afterUpdateMemberRole: publishMembershipChange,
         afterUpdateOrganization: publishOrganizationChange,
         afterDeleteOrganization: publishOrganizationDeletion,

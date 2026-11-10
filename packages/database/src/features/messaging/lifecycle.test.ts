@@ -3,18 +3,18 @@ import { realtimeKeys } from "@startup-os/contracts/realtime";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { member, notifications, taskActivity, user } from "../../schema";
 import { setupDatabase } from "../../testing/database";
+import { createAcceptedMessagingService } from "../../testing/messaging";
 import { messageEntityReferences, messageMessagingReferences } from "../context/schema";
 import { createContextService } from "../context/service";
 import { createFeedService } from "../notifications/service";
 import { messagingConversations, messagingMessages } from "./schema";
-import { createMessagingService } from "./service";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
 const chat = (userId: string, organizationId = f.orgA) =>
-  createMessagingService(f.db, { userId, organizationId });
+  createAcceptedMessagingService(f.db, { userId, organizationId });
 const listed = async (userId: string, organizationId = f.orgA) =>
   (await chat(userId, organizationId).listConversations()).map((row) => ({
     id: row.id,
@@ -116,8 +116,8 @@ test("owners and admins of the owning organization manage conversations without 
     kind: "channel",
     name: "secret",
     private: true,
-    emails: ["outside@example.com"],
   });
+  await chat("alice").addMembers(secret.id, ["outside@example.com"]);
   await chat("bob").sendMessage(secret.id, "private words");
   // alice is an organization owner but not a member.
   expect(await listed("alice")).toEqual([]);
@@ -136,12 +136,14 @@ test("owners and admins of the owning organization manage conversations without 
   await expect(chat("outsider", f.orgB).deleteConversation(secret.id)).rejects.toBeInstanceOf(
     AccessDeniedError,
   );
-  await chat("alice").transferOwnership(secret.id, "outsider");
+  await expect(chat("alice").transferOwnership(secret.id, "outsider")).rejects.toBeInstanceOf(
+    ValidationError,
+  );
   const [owned] = await f.db
     .select()
     .from(messagingConversations)
     .where(eq(messagingConversations.id, secret.id));
-  expect(owned!.createdBy).toBe("outsider");
+  expect(owned!.createdBy).toBe("bob");
   await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "alice"));
   await expect(chat("alice").deleteConversation(secret.id)).rejects.toBeInstanceOf(
     AccessDeniedError,
@@ -269,7 +271,7 @@ test("delete impact counts only linked work the caller can read", async () => {
 test("agents cannot leave, delete, or manage conversations", async () => {
   await verified();
   const channel = await chat("alice").createConversation({ kind: "channel", name: "general" });
-  const agent = createMessagingService(f.db, {
+  const agent = createAcceptedMessagingService(f.db, {
     userId: "alice",
     organizationId: f.orgA,
     actorEntityId: crypto.randomUUID(),

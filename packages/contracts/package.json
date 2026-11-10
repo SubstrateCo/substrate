@@ -17,6 +17,7 @@
     "./tasks/input": "./src/tasks/input.ts",
     "./context/input": "./src/context/input.ts",
     "./messaging/input": "./src/messaging/input.ts",
+    "./messaging/sharing": "./src/messaging/sharing.ts",
     "./auth/permissions": "./src/auth/permissions.ts",
     "./auth/settings-access": "./src/auth/settings-access.ts",
     "./desktop/links": "./src/desktop/links.js",

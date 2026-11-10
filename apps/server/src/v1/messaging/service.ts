@@ -19,6 +19,7 @@ import { db } from "../../auth/database";
 import { serviceResult } from "../../shared/service-result";
 import { requireOrigin, workspaceSession } from "../../shared/workspace";
 import { publishRefresh } from "../realtime/publisher";
+import { deliverSharingMail } from "./sharing-mail";
 import type { z } from "zod";
 
 async function serviceForSession(headers: Headers, organizationId: string) {
@@ -52,6 +53,7 @@ export function createConversation(headers: Headers, input: z.output<typeof conv
     requireOrigin(headers);
     const service = await serviceForSession(headers, input.organizationId);
     const conversation = await service.createConversation(input);
+    await deliverSharingMail();
     await publishRefresh([
       { audience: realtimeKeys.conversation(conversation.id), domain: "messaging" },
     ]);
@@ -123,7 +125,8 @@ export function addMembers(headers: Headers, input: z.output<typeof membersInput
   return serviceResult(async () => {
     requireOrigin(headers);
     const service = await serviceForSession(headers, input.organizationId);
-    const result = await service.addMembers(input.conversationId, input.emails);
+    const result = await service.addMembers(input.conversationId, input.emails, input.shareHistory);
+    await deliverSharingMail();
     await publishRefresh(managementHints(input));
     return result;
   });

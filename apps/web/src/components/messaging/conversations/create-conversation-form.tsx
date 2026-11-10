@@ -24,7 +24,7 @@ export function CreateConversationForm({
 }) {
   const queryClient = useQueryClient();
   const create = useMutation({
-    mutationFn: async ({ name, emails, isPrivate }: ConversationDraft) => {
+    mutationFn: async ({ name, emails, isPrivate, shareHistory }: ConversationDraft) => {
       return createConversation({
         data: {
           organizationId,
@@ -32,6 +32,7 @@ export function CreateConversationForm({
           name: name.trim() || undefined,
           private: kind !== "channel" || isPrivate,
           emails: parseRecipientEmails(emails),
+          shareHistory,
         },
       });
     },

@@ -7,12 +7,13 @@ import { DeleteConversationDialog } from "./actions/delete-conversation-dialog";
 import { LeaveConversationDialog } from "./actions/leave-conversation-dialog";
 import { OwnerDialog } from "./actions/owner-dialog";
 import { ConversationAgents } from "./conversation-agents";
+import { SharingManager } from "@/components/messaging/sharing/sharing-manager";
 import { conversationName, humanMembers, type Conversation } from "@/lib/messaging/conversations";
 import { useConversationManagement } from "@/queries/messaging/management";
 import { deleteImpactQueryOptions } from "@/queries/messaging/options";
 import { toast } from "sonner";
 
-type Dialog = "agents" | "leave" | "transfer" | "delete";
+type Dialog = "agents" | "leave" | "transfer" | "delete" | "sharing";
 
 export function ConversationActions({
   organizationId,
@@ -32,7 +33,7 @@ export function ConversationActions({
     enabled: dialog === "delete",
   });
   const name = conversationName(conversation);
-  const owner = !!userId && conversation.createdBy === userId;
+  const owner = !!userId && conversation.createdBy === userId && !!conversation.canManage;
   const people = humanMembers(conversation.members);
   const others = people.filter((person) => person.userId !== userId);
   const canLeave = conversation.kind !== "dm" && !!conversation.joined;
@@ -41,11 +42,19 @@ export function ConversationActions({
   return (
     <>
       <ConversationActionsMenu
+        onSharing={conversation.canShare ? () => setDialog("sharing") : undefined}
         onAgents={canLeave && userId ? () => setDialog("agents") : undefined}
         onLeave={canLeave ? () => setDialog("leave") : undefined}
         onTransfer={conversation.canManage ? () => setDialog("transfer") : undefined}
         onDelete={conversation.canManage ? () => setDialog("delete") : undefined}
       />
+      {dialog === "sharing" && (
+        <SharingManager
+          organizationId={organizationId}
+          conversationId={conversation.id}
+          onClose={close}
+        />
+      )}
       {dialog === "agents" && userId && (
         <ConversationAgents
           userId={userId}

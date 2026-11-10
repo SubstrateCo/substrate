@@ -78,6 +78,10 @@ test("an owner invites a teammate, who accepts without receiving project access 
   ).toBeVisible();
   await invitee.page.getByRole("button", { name: "Accept invitation", exact: true }).click();
   await expect(
+    invitee.page.getByRole("heading", { name: "Your workspace is ready", exact: true }),
+  ).toBeVisible();
+  await invitee.page.goto("/dashboard");
+  await expect(
     invitee.page.getByRole("button", { name: `${actors.sender.name} ▾`, exact: true }),
   ).toBeVisible();
   await invitee.page

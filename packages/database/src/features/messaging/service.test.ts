@@ -3,6 +3,7 @@ import { realtimeKeys, type RealtimeHint } from "@startup-os/contracts/realtime"
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { user, member, entityGrants, actors } from "../../schema";
 import { setupDatabase } from "../../testing/database";
+import { createAcceptedMessagingService } from "../../testing/messaging";
 import { recordQueries } from "../../testing/queries";
 import {
   messagingConversations,
@@ -17,7 +18,7 @@ import { eq } from "drizzle-orm";
 
 const fixture = setupDatabase();
 const service = (userId: string, organizationId = fixture.orgA) =>
-  createMessagingService(fixture.db, { userId, organizationId });
+  createAcceptedMessagingService(fixture.db, { userId, organizationId });
 async function verified() {
   await fixture.db.update(user).set({ emailVerified: true });
 }
@@ -30,23 +31,18 @@ test("send and replay reuse authenticated identity and the locked conversation",
   const requestId = crypto.randomUUID();
   const sent = await chat.sendMessage(channel.id, "hello", undefined, requestId);
   expect(sent).toMatchObject({ authorName: "Alice", body: "hello", replyCount: 0, reactions: [] });
-  const redundant = () =>
-    queries.filter(
-      (query) =>
-        query.startsWith('select "name" from "user"') ||
-        (query.includes('from "messaging_conversations"') && !query.includes("for share")),
-    );
+  const redundant = () => queries.filter((query) => query.startsWith('select "name" from "user"'));
   const provisioning = () =>
     queries.filter((query) => query.includes('from "member"') && query.includes("for update"));
   expect(redundant()).toEqual([]);
   expect(provisioning()).toEqual([]);
   // Includes the lookup for the author's own agents that the message may trigger.
-  expect(queries).toHaveLength(6);
+  expect(queries).toHaveLength(7);
   queries.length = 0;
   expect(await chat.sendMessage(channel.id, "hello", undefined, requestId)).toEqual(sent);
   expect(redundant()).toEqual([]);
   expect(provisioning()).toEqual([]);
-  expect(queries).toHaveLength(3);
+  expect(queries).toHaveLength(4);
   await expect(
     chat.sendMessage(channel.id, "changed", undefined, requestId),
   ).rejects.toBeInstanceOf(ConflictError);
@@ -348,14 +344,17 @@ test("reactions aggregate per emoji, toggle per user and reject inaccessible mes
   ).rejects.toMatchObject({ cause: { code: "23503" } });
 });
 
-test("recipients require verified accounts and org membership; invalid recipients roll back", async () => {
+test("unapproved external recipients require a history confirmation and invalid recipients roll back", async () => {
   await verified();
   await fixture.db.update(user).set({ emailVerified: false }).where(eq(user.id, "bob"));
   await expect(
     service("alice").createConversation({ kind: "dm", emails: ["outside"] }),
   ).rejects.toBeInstanceOf(ValidationError);
   await expect(
-    service("alice").createConversation({
+    createMessagingService(fixture.db, {
+      userId: "alice",
+      organizationId: fixture.orgA,
+    }).createConversation({
       kind: "group",
       emails: ["outside@example.com", "bob@example.com"],
     }),
@@ -364,7 +363,10 @@ test("recipients require verified accounts and org membership; invalid recipient
   expect(await fixture.db.select().from(messagingParticipants)).toEqual([]);
   await fixture.db.delete(member).where(eq(member.userId, "outsider"));
   await expect(
-    service("alice").createConversation({ kind: "dm", emails: [" OUTSIDE@example.com "] }),
+    createMessagingService(fixture.db, {
+      userId: "alice",
+      organizationId: fixture.orgA,
+    }).createConversation({ kind: "dm", emails: [" OUTSIDE@example.com "] }),
   ).rejects.toBeInstanceOf(ValidationError);
   expect(await fixture.db.select().from(messagingConversations)).toEqual([]);
 });
@@ -376,7 +378,11 @@ test("group DMs support multiple recipients and caller transactions roll back al
       const group = await createMessagingService(tx, {
         userId: "alice",
         organizationId: fixture.orgA,
-      }).createConversation({ kind: "group", emails: ["bob@example.com", "outside@example.com"] });
+      }).createConversation({
+        kind: "group",
+        emails: ["bob@example.com", "outside@example.com"],
+        shareHistory: true,
+      });
       await createMessagingService(tx, {
         userId: "alice",
         organizationId: fixture.orgA,

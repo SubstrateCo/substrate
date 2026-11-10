@@ -3,10 +3,11 @@ import { useMutation } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 import { BrowserElectronReturn as BrowserElectronReturnView } from "@/components/auth/desktop/browser-electron-return-view";
+import { SignOutButton } from "@/components/auth/sign-out/sign-out-button";
 import { authClient } from "@/lib/auth/client";
 import { electronQuery } from "@/lib/desktop/authorization-query";
 
-export function BrowserElectronReturn() {
+export function BrowserElectronReturn({ redirect, email }: { redirect: string; email?: string }) {
   const [attempt, setAttempt] = useState(0);
   const transfer = useMutation({
     mutationFn: async () => {
@@ -23,6 +24,8 @@ export function BrowserElectronReturn() {
   }, [attempt]);
   return (
     <BrowserElectronReturnView
+      email={email}
+      signOut={<SignOutButton destination={redirect} />}
       pending={transfer.isPending}
       error={transfer.error}
       onContinue={() => transfer.mutate()}

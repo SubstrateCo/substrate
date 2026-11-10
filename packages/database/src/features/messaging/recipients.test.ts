@@ -4,6 +4,7 @@ import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { messagingConversations, messagingParticipants } from "./schema";
 import { createMessagingService } from "./service";
+import { createSharingService } from "./sharing";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
@@ -33,7 +34,7 @@ test("100 unique recipients use one lookup for creation and member addition", as
   await fixture.db.insert(user).values(recipients);
   await fixture.db
     .insert(member)
-    .values(recipients.map(({ id }) => ({ id, userId: id, organizationId: fixture.orgB })));
+    .values(recipients.map(({ id }) => ({ id, userId: id, organizationId: fixture.orgA })));
   const { chat, queries, lookups } = recordedService();
   const group = await chat.createConversation({
     kind: "group",
@@ -51,7 +52,7 @@ test("100 unique recipients use one lookup for creation and member addition", as
   ).toEqual(
     expect.arrayContaining([
       { userId: "alice", organizationId: fixture.orgA },
-      ...recipients.map(({ id }) => ({ userId: id, organizationId: fixture.orgB })),
+      ...recipients.map(({ id }) => ({ userId: id, organizationId: fixture.orgA })),
     ]),
   );
   expect(lookups()).toHaveLength(1);
@@ -74,7 +75,7 @@ test("100 unique recipients use one lookup for creation and member addition", as
   ).toHaveLength(101);
 });
 
-test("recipient normalization deduplicates emails and users, excludes sender and preserves membership preference", async () => {
+test("recipient normalization deduplicates emails and users without choosing an external organization", async () => {
   await fixture.db.update(user).set({ emailVerified: true });
   await fixture.db.update(user).set({ email: "BoB@example.com" }).where(eq(user.id, "bob"));
   await fixture.db.insert(organization).values({ id: "org-0", name: "First", slug: "first" });
@@ -85,6 +86,7 @@ test("recipient normalization deduplicates emails and users, excludes sender and
   const { chat, lookups, parameters, queries } = recordedService();
   const group = await chat.createConversation({
     kind: "group",
+    shareHistory: true,
     emails: [" BOB@example.com ", "bob@example.com", " ALICE@example.com ", "outside@example.com"],
   });
   expect(
@@ -100,7 +102,6 @@ test("recipient normalization deduplicates emails and users, excludes sender and
   ).toEqual([
     { userId: "alice", organizationId: fixture.orgA },
     { userId: "bob", organizationId: fixture.orgA },
-    { userId: "outsider", organizationId: "org-0" },
   ]);
   expect(lookups()).toHaveLength(1);
   const lookupParameters = parameters[queries.indexOf(lookups()[0]!)];
@@ -108,10 +109,19 @@ test("recipient normalization deduplicates emails and users, excludes sender and
   expect(await chat.addMembers(group.id, ["bob@example.com", " BOB@example.com "])).toEqual({
     added: 0,
   });
+  const sharing = createSharingService(fixture.db, {
+    userId: "alice",
+    organizationId: fixture.orgA,
+  });
+  const pending = (await sharing.list(group.id)).invitations[0]!;
+  await createSharingService(fixture.db, {
+    userId: "outsider",
+    organizationId: fixture.orgB,
+  }).accept(pending.id, true);
   await expect(
     createMessagingService(fixture.db, {
       userId: "outsider",
-      organizationId: fixture.orgB,
+      organizationId: "org-0",
     }).listMessages(group.id),
   ).rejects.toBeInstanceOf(AccessDeniedError);
 });

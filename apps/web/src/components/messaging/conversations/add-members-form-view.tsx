@@ -4,6 +4,7 @@ import { FormMessage } from "../../auth/form-message";
 import { PendingButton } from "../../feedback/pending-button";
 import { useNativeValidation } from "../../forms/use-native-validation";
 import { Button } from "../../ui/button";
+import { Checkbox } from "../../ui/checkbox";
 import { Field, FieldDescription, FieldError, FieldLabel } from "../../ui/field";
 import { Input } from "../../ui/input";
 import { parseRecipientEmails } from "@/lib/messaging/recipients";
@@ -14,13 +15,14 @@ export function AddMembersForm({
   error,
   onClose,
 }: {
-  onSubmit: (emails: string[]) => void;
+  onSubmit: (emails: string[], shareHistory: boolean) => void;
   pending?: boolean;
   error?: Error | null;
   onClose: () => void;
 }) {
   const [emails, setEmails] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [shareHistory, setShareHistory] = useState(false);
   const validation = useNativeValidation();
   const fieldError = validation.errors["add-member-emails"] || emailError;
   return (
@@ -44,7 +46,7 @@ export function AddMembersForm({
           event.currentTarget.querySelector<HTMLInputElement>("#add-member-emails")?.focus();
           return;
         }
-        onSubmit(recipients);
+        onSubmit(recipients, shareHistory);
       }}
     >
       <Field data-invalid={Boolean(fieldError)}>
@@ -66,10 +68,21 @@ export function AddMembersForm({
           disabled={pending}
         />
         <FieldDescription id="add-member-emails-description">
-          Include people from any workspace who already have an account. Separate email addresses
-          with commas.
+          Workspace members are added directly. External people receive invitations and must
+          consent. Partner channels require organization approval. Separate emails with commas.
         </FieldDescription>
         <FieldError id="add-member-emails-error">{fieldError}</FieldError>
+      </Field>
+      <Field orientation="horizontal">
+        <Checkbox
+          id="add-sharing-history"
+          checked={shareHistory}
+          onCheckedChange={(value) => setShareHistory(value === true)}
+          disabled={pending}
+        />
+        <FieldLabel htmlFor="add-sharing-history">
+          For external invitations, I approve sharing the full conversation history.
+        </FieldLabel>
       </Field>
       <FormMessage
         error={error}

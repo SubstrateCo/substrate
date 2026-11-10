@@ -39,6 +39,10 @@ test("signup requires email verification before creating and entering a workspac
   await page.getByLabel("Workspace name", { exact: true }).fill(name);
   await page.getByLabel("Workspace slug", { exact: true }).fill(`onboarding-${id}`);
   await page.getByRole("button", { name: "Create workspace", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Your workspace is ready", exact: true }),
+  ).toBeVisible();
+  await page.goto("/dashboard");
   await expect(page.getByRole("button", { name: `${name} ▾`, exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("button", { name: `${name} ▾`, exact: true })).toBeVisible();
@@ -76,7 +80,7 @@ test("password recovery replaces the password and invalidates old sessions", asy
 }) => {
   const old = await client(account);
   await visit(old);
-  await page.goto("/forgot-password");
+  await page.goto("/forgot-password?redirect=%2Fdashboard");
   await page.getByLabel("Email", { exact: true }).fill(account.email);
   await page.getByRole("button", { name: "Send reset link", exact: true }).click();
   await expect(

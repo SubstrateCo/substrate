@@ -2,9 +2,9 @@ import { user } from "../../core/authentication/schema";
 import { entityLinks } from "../../core/links/schema";
 import { AccessDeniedError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
+import { createAcceptedMessagingService } from "../../testing/messaging";
 import { recordQueries } from "../../testing/queries";
 import { messagingParticipants } from "../messaging/schema";
-import { createMessagingService } from "../messaging/service";
 import { createContextService } from "./service";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
@@ -13,8 +13,8 @@ const f = setupDatabase();
 
 test("channel browse lists readable channels by name with membership and live member counts", async () => {
   await f.db.update(user).set({ emailVerified: true });
-  const alice = createMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
-  const bob = createMessagingService(f.db, { userId: "bob", organizationId: f.orgA });
+  const alice = createAcceptedMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
+  const bob = createAcceptedMessagingService(f.db, { userId: "bob", organizationId: f.orgA });
   const zeta = await alice.createConversation({ kind: "channel", name: "zeta" });
   const alpha = await alice.createConversation({
     kind: "channel",
@@ -27,7 +27,7 @@ test("channel browse lists readable channels by name with membership and live me
     kind: "group",
     emails: ["bob@example.com", "outside@example.com"],
   });
-  await createMessagingService(f.db, {
+  await createAcceptedMessagingService(f.db, {
     userId: "outsider",
     organizationId: f.orgB,
   }).createConversation({ kind: "channel", name: "foreign" });
@@ -108,7 +108,7 @@ test("person search filters conversation access before paging and keeps organiza
     { id: f.bob, userId: "bob", email: "bob@example.com" },
   ].sort((a, b) => a.id.localeCompare(b.id));
   const scope = { userId: caller!.userId, organizationId: f.orgA };
-  const chat = createMessagingService(f.db, scope);
+  const chat = createAcceptedMessagingService(f.db, scope);
   const channel = await chat.createConversation({ kind: "channel", name: "People", private: true });
   const context = createContextService(f.db, scope);
   const search = (after?: string) =>
@@ -121,7 +121,11 @@ test("person search filters conversation access before paging and keeps organiza
   expect(
     await otherContext.search({ query: "", kind: "person", conversationId: channel.id }),
   ).toEqual([]);
-  await chat.addMembers(channel.id, [excluded!.email, "outside@example.com"]);
+  await chat.addMembers(channel.id, [excluded!.email]);
+  await createAcceptedMessagingService(f.db, {
+    userId: "alice",
+    organizationId: f.orgA,
+  }).addMembers(channel.id, ["outside@example.com"]);
   const first = await search();
   const second = await search(first[0]!.id);
   expect(first.map((row) => row.id)).toEqual([excluded!.id]);
@@ -206,7 +210,7 @@ test("search finds each supported domain without leaking private work, and curso
   const titles = ["Launch one", "Launch two", "Launch three"];
   for (const title of titles)
     await alice.tasks.create({ projectEntityId: project.entityId, title });
-  const chat = createMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
+  const chat = createAcceptedMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
   const channel = await chat.createConversation({ kind: "channel", name: "Launch", private: true });
   const message = await chat.sendMessage(channel.id, "Launch discussion");
   const context = createContextService(f.db, { userId: "alice", organizationId: f.orgA });
@@ -239,7 +243,7 @@ test("search finds each supported domain without leaking private work, and curso
 
 test("conversation results report the conversation type and privacy", async () => {
   await f.db.update(user).set({ emailVerified: true });
-  const alice = createMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
+  const alice = createAcceptedMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
   const open = await alice.createConversation({ kind: "channel", name: "open" });
   const locked = await alice.createConversation({ kind: "channel", name: "locked", private: true });
   const direct = await alice.createConversation({ kind: "dm", emails: ["bob@example.com"] });
@@ -323,7 +327,7 @@ test("related search traverses message references in both directions and checks 
   const alice = f.forActor(f.alice);
   const project = await alice.projects.create({ name: "Work" });
   const context = createContextService(f.db, { userId: "alice", organizationId: f.orgA });
-  const chat = createMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
+  const chat = createAcceptedMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
   const channel = await chat.createConversation({
     kind: "channel",
     name: "Discussion",

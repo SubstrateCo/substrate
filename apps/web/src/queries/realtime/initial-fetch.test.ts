@@ -4,6 +4,49 @@ import { queryKeys } from "../keys";
 import { createRealtimeCache } from "./cache";
 import { expect, test } from "bun:test";
 
+test("ready resync ignores a canceled page that has been replaced by another visible page", async () => {
+  const client = new QueryClient();
+  const oldPage = Promise.withResolvers<string[]>();
+  const oldKey = [...queryKeys.context("org"), "notifications", "page", 20];
+  const currentKey = [...queryKeys.context("org"), "notifications", "page", 5];
+  const oldObserver = new QueryObserver(client, {
+    queryKey: oldKey,
+    queryFn: ({ signal }) => {
+      signal.throwIfAborted();
+      return oldPage.promise;
+    },
+  });
+  const unsubscribeOld = oldObserver.subscribe(() => {});
+  let routed = false;
+  const cache = createRealtimeCache({
+    queryClient: client,
+    organizationId: "org",
+    userId: "user",
+    revalidate: async () => {
+      routed = true;
+    },
+  });
+  const ready = cache.receive({ version: 1, type: "ready" });
+  const currentObserver = new QueryObserver(client, {
+    queryKey: currentKey,
+    queryFn: async () => ["current page"],
+  });
+  const unsubscribeCurrent = currentObserver.subscribe(() => {});
+  unsubscribeOld();
+  try {
+    await ready;
+    await client.query({ queryKey: currentKey, queryFn: async () => ["current page"] });
+    expect(routed).toBe(true);
+    expect(client.getQueryData(currentKey)).toEqual(["current page"]);
+    expect(client.getQueryData(oldKey)).toBeUndefined();
+  } finally {
+    oldPage.resolve([]);
+    cache.dispose();
+    unsubscribeCurrent();
+    client.clear();
+  }
+});
+
 for (const trigger of ["tasks", "ready", "messaging"] as const) {
   test(`${trigger} preserves an in-flight initial snapshot then refreshes it`, async () => {
     const client = new QueryClient();

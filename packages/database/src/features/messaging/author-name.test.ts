@@ -1,13 +1,13 @@
 import { ensureUserAgentActor } from "../../core/actors/provisioning";
 import { actors, user, userAgents } from "../../schema";
 import { setupDatabase } from "../../testing/database";
-import { createMessagingService } from "./service";
+import { createAcceptedMessagingService } from "../../testing/messaging";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
 const service = (userId: string, organizationId = f.orgA) =>
-  createMessagingService(f.db, { userId, organizationId });
+  createAcceptedMessagingService(f.db, { userId, organizationId });
 
 test("renamed human authors agree across send, read, and replay for roots and replies", async () => {
   await f.db.update(user).set({ emailVerified: true });
@@ -78,7 +78,7 @@ test("agent roots and replies keep actor names when their owner is renamed", asy
   const human = service("alice");
   const channel = await human.createConversation({ kind: "channel", name: "general" });
   await f.db.update(user).set({ name: "Alice renamed" }).where(eq(user.id, "alice"));
-  const chat = createMessagingService(f.db, {
+  const chat = createAcceptedMessagingService(f.db, {
     organizationId: f.orgA,
     userId: "alice",
     actorEntityId: actor.entityId,
