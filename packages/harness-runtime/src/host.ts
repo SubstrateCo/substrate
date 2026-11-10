@@ -43,7 +43,7 @@ export const sessionKeepAliveMs = 3 * 60 * 1000;
  * After an interrupt, the harness has this long to end the turn. Then the host ends it as
  * interrupted and closes the native session, whose state is unknown.
  */
-export const interruptGraceMs = 15_000;
+const interruptGraceMs = 15_000;
 
 type CloseReason = Extract<HarnessEventBody, { type: "session.closed" }>["reason"];
 
@@ -56,8 +56,6 @@ export type ConnectNative = (
 export interface HarnessHostOptions {
   accountDirectory: string;
   storage: HarnessStorage;
-  /** Trusted main-process configuration only. Never accept executable paths from renderer commands. */
-  executables?: Partial<Record<HarnessKind, string>>;
   workspaceProxy?: WorkspaceApiProxy;
   /** Receives local tool calls other than memory, which the host handles itself. */
   localTools?: LocalToolProxy;
@@ -79,7 +77,7 @@ export interface RuntimeHarnessHost extends HarnessHost {
 }
 
 /** closeOrganization waits this long for a native interrupt before it closes the session. */
-export const closeInterruptMs = 2_000;
+const closeInterruptMs = 2_000;
 
 interface LiveTurn {
   turnId: string;
@@ -246,9 +244,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
       const context: AdapterContext = {
         model: agent.model,
         directory: folder,
-        executable: options.connect
-          ? agent.harness
-          : await resolveExecutable(agent.harness, options.executables?.[agent.harness]),
+        executable: options.connect ? agent.harness : await resolveExecutable(agent.harness),
         lease,
         prefix: command.prefix,
         emit: (body: HarnessEventBody, eventScope: EventScope = "turn") =>
@@ -453,7 +449,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
       return discoverModels(
         scope.harness,
         scope.agentId ? await directory({ ...scope, agentId: scope.agentId }) : accountDirectory,
-        options.executables?.[scope.harness],
+        undefined,
         modelDiscovery.signal,
       );
     },
@@ -509,7 +505,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
       return Promise.all(
         harnessKinds.map(async (harness) => {
           try {
-            const executable = await resolveExecutable(harness, options.executables?.[harness]);
+            const executable = await resolveExecutable(harness);
             const version = await binaryVersion(executable);
             const definition = harnessDefinitions[harness];
             const available =

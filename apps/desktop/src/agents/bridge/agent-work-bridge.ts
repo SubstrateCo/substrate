@@ -7,7 +7,7 @@ const id = z.uuid();
 const none = z.undefined();
 
 /** Every bridge method and its input. Routine inputs are parsed again by their contracts. */
-export const agentWorkMethods = {
+const agentWorkMethods = {
   conversation: id,
   turn: id,
   turnEvents: z.tuple([id, z.number().int().min(0).optional()]),

@@ -17,7 +17,7 @@ function skillFile(skill: HarnessSkill) {
 }
 
 /** Files Startup OS provides for an agent, relative to its folder. The user owns them once written. */
-export function defaultFiles(organizationId: string, agent: HarnessAgent) {
+function defaultFiles(organizationId: string, agent: HarnessAgent) {
   return new Map([
     [
       harnessDefinitions[agent.harness].instructions,
@@ -29,7 +29,7 @@ export function defaultFiles(organizationId: string, agent: HarnessAgent) {
 }
 
 /** Startup OS owns these skills: each write replaces them so they match the current MCP tools. */
-export async function writeStartupSkills(agentRoot: string, agent: HarnessAgent): Promise<void> {
+async function writeStartupSkills(agentRoot: string, agent: HarnessAgent): Promise<void> {
   if (!agent.useStartupDefaults) return;
   for (const skill of startupSkills) {
     const path = `${harnessDefinitions[agent.harness].skills}/${skill.id}/SKILL.md`;

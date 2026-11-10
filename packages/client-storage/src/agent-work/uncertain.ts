@@ -6,7 +6,7 @@ import { appendEvents } from "./events.ts";
 import { and, eq } from "drizzle-orm";
 
 /** The status a turn had before uncertain input made it need the owner. */
-export function settledStatus(turn: Pick<typeof turns.$inferSelect, "interruption">): TurnStatus {
+function settledStatus(turn: Pick<typeof turns.$inferSelect, "interruption">): TurnStatus {
   if (turn.interruption === "stop") return "cancelled";
   return turn.interruption ? "interrupted" : "completed";
 }

@@ -140,4 +140,3 @@ export function createLocalTools(
     }
   };
 }
-export type LocalToolHandler = ReturnType<typeof createLocalTools>;

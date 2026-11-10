@@ -65,14 +65,14 @@ const transientHarnessCodes = new Set([
   "turn-active",
 ]);
 /** Requeued work waits this long first, doubling up to the maximum. */
-export const outageBackoffMs = 5_000;
+const outageBackoffMs = 5_000;
 export const outageBackoffMaxMs = 5 * 60_000;
 /**
  * A failure without a known outage code, such as an unexpected response, is retried this many
  * times or for this long. Then the turn needs the owner. Known outages wait without a limit.
  */
-export const unknownFailureRetries = 6;
-export const unknownFailureWindowMs = 30 * 60_000;
+const unknownFailureRetries = 6;
+const unknownFailureWindowMs = 30 * 60_000;
 
 const codedError = z.object({ code: z.string() });
 
@@ -107,7 +107,7 @@ function batchItems(items: InboxRow[]) {
   );
 }
 
-export function folderOf(session: SessionRow): HarnessFolder {
+function folderOf(session: SessionRow): HarnessFolder {
   return session.kind === "helper" ? { helperId: session.key.slice("helper:".length) } : "main";
 }
 

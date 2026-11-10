@@ -5,7 +5,7 @@ import type { RuntimeContext } from "./context.ts";
 import type { RequestBridge } from "./requests.ts";
 import type { TurnExecutor } from "./turn-executor.ts";
 
-export const statusDebounceMs = 500;
+const statusDebounceMs = 500;
 
 interface Published {
   state: AgentStatusState;

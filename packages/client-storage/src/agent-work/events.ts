@@ -53,9 +53,9 @@ export async function appendEvents(
   return rows;
 }
 
-export type TurnEventRow = typeof turnEvents.$inferSelect;
+type TurnEventRow = typeof turnEvents.$inferSelect;
 
-export function eventView(row: TurnEventRow): TurnEventView {
+function eventView(row: TurnEventRow): TurnEventView {
   // SAFETY: rows are written only by appendEvents, which pairs each kind with its data shape.
   return {
     turnId: row.turnId,

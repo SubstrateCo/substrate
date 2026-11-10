@@ -26,7 +26,7 @@ test("a steer is recorded only while its turn is live, and a failed steer puts t
     steered: true,
     turnId,
   });
-  await store.inbox.revertSteer(message!.id, turnId);
+  await store.inbox.revertSteer(message!.id, turnId, 3);
   expect(await store.inbox.get(message!.id)).toMatchObject({
     status: "pending",
     steered: false,
@@ -53,7 +53,7 @@ test("consumption evidence that arrives after the turn settled still marks the i
   await store.inbox.submitSteer(message!.id, turnId);
   await store.turns.finish(turnId, { status: "completed" }, 4);
   expect((await store.inbox.get(message!.id))!.status).toBe("uncertain");
-  await store.inbox.consumed(turnId, message!.id);
+  await store.inbox.consumed(turnId, message!.id, 3);
   expect((await store.inbox.get(message!.id))!.status).toBe("consumed");
 });
 

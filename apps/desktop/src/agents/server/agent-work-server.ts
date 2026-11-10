@@ -70,12 +70,8 @@ const catalogSchema = z.object({
     z.object({ agentId: id, homeDevice: z.object({ current: z.boolean() }).nullable() }),
   ),
 });
-const sessionSchema = z.object({
-  user: z.object({ id }),
-  session: z.object({ activeOrganizationId: z.string().nullish() }),
-});
 
-export class AgentWorkServerError extends Error {
+class AgentWorkServerError extends Error {
   readonly code: string;
   constructor(code: string, message?: string) {
     super(message ?? code);
@@ -94,7 +90,6 @@ export interface CatalogAgent {
 
 /** The home desktop's calls to the server. The session decides the user. */
 export interface AgentWorkServer {
-  session(): Promise<{ userId: string; organizationId: string | null } | null>;
   register(input: { name: string; platform: string }): Promise<void>;
   catalog(): Promise<CatalogAgent[]>;
   pullWakes(organizationId: string, limit: number): Promise<AgentWakeView[]>;
@@ -148,19 +143,6 @@ export function createAgentWorkServer(options: {
   const ignored = z.unknown();
 
   return {
-    async session() {
-      const response = await options.fetchAPI(new URL("/api/v1/session", options.backend).href, {
-        method: "GET",
-        redirect: "error",
-      });
-      if (!response.ok) return null;
-      const parsed = result(sessionSchema).safeParse(await response.json().catch(() => null));
-      if (!parsed.success || !parsed.data.success) return null;
-      return {
-        userId: parsed.data.data.user.id,
-        organizationId: parsed.data.data.session.activeOrganizationId ?? null,
-      };
-    },
     async register(input) {
       await call(
         "/agent-work/device/register",

@@ -24,10 +24,10 @@ const undeliveredSteerCodes = new Set([
 ]);
 
 /** An unattended turn this long, while the owner waits, is asked to wrap up. */
-export const softBudgetMs = 10 * 60_000;
-export const wrapUpNote = "Your owner is waiting. Wrap up and hand off.";
+const softBudgetMs = 10 * 60_000;
+const wrapUpNote = "Your owner is waiting. Wrap up and hand off.";
 /** A stopping turn without a terminal event this long is closed natively and ended. */
-export const stopTimeoutMs = 20_000;
+const stopTimeoutMs = 20_000;
 
 /**
  * Owner items whose slot is busy. The live interactive turn of the same session, in the same

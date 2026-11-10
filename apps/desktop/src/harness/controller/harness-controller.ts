@@ -57,7 +57,7 @@ class CommandFailure extends Error {}
  * (interrupt of a turn that is not live), "timeout" (the command took too long; the worker keeps
  * running) or "worker-stopped"; never native output.
  */
-export class HarnessCommandError extends Error {
+class HarnessCommandError extends Error {
   readonly code: string;
   constructor(code: string) {
     super("Harness command failed.");
@@ -313,5 +313,3 @@ export function createHarnessController(options: {
     },
   };
 }
-
-export type HarnessController = ReturnType<typeof createHarnessController>;

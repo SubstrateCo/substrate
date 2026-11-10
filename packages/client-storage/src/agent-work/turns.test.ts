@@ -143,7 +143,7 @@ test("steered items settle by receipt: consumed, requeued to the front, or uncer
   const { session, turnId, steered, batch } = await steeredTurn();
   // SAFETY: steeredTurn steers exactly three items.
   const [consumed, queued, unknown] = steered as [string, string, string];
-  await store.inbox.consumed(turnId, consumed);
+  await store.inbox.consumed(turnId, consumed, 3);
   await store.turns.finish(turnId, { status: "interrupted", stillQueuedInputIds: [queued] }, 3);
   const status = async (id: string) => (await store.inbox.get(id))!.status;
   expect(await status(batch[0]!.id)).toBe("consumed");

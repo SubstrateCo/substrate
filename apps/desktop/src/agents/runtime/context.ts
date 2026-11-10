@@ -73,12 +73,3 @@ export interface LiveTurn {
   /** Events of this turn are handled one at a time, in order. */
   chain: Promise<void>;
 }
-
-export const noCapabilities: AdapterCapabilities = {
-  steer: false,
-  steerEvidence: false,
-  compact: false,
-  usage: false,
-  noAskProfile: false,
-  interruptReceipt: false,
-};

@@ -55,7 +55,7 @@ export interface StartupMcpHandlers {
 }
 
 /** An open session's lease expires only after it stays unused and unbound this long. */
-export const leaseIdleTtlMs = 24 * 60 * 60 * 1000;
+const leaseIdleTtlMs = 24 * 60 * 60 * 1000;
 
 interface LeaseState {
   options: McpLeaseOptions;

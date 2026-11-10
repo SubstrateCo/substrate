@@ -27,7 +27,7 @@ import { createTurnExecutor } from "./turn-executor.ts";
 
 /* oxlint-disable deslop/no-unknown-parameters -- MCP bodies and results are parsed in toolOutputs. */
 
-export const syncIntervalMs = 30_000;
+const syncIntervalMs = 30_000;
 const activityPageSize = 30;
 
 export interface RuntimeTimers {
@@ -199,12 +199,6 @@ export function createAgentWorkRuntime(
     return turn;
   }
 
-  async function closeNative(sessionId: string) {
-    await context.harness
-      .execute({ type: "close", organizationId: context.organizationId, sessionId })
-      .catch(() => {});
-  }
-
   return {
     async start() {
       // The harness process died with the app: live turns are interrupted.
@@ -364,7 +358,7 @@ export function createAgentWorkRuntime(
     },
     async startFresh(turnId: string) {
       const turn = await ownedTurn(turnId);
-      await closeNative(turn.sessionId);
+      await executor.closeNative(turn.sessionId);
       await context.store.turns.startFresh(turnId, context.now());
       context.changed({ turnId, userAgentId: turn.userAgentId });
     },
@@ -372,7 +366,6 @@ export function createAgentWorkRuntime(
     routines,
     /** For tests and diagnostics. */
     liveTurnIds: () => [...executor.live.keys()],
-    closeNative,
   };
 }
 export type AgentWorkRuntime = ReturnType<typeof createAgentWorkRuntime>;

@@ -4,8 +4,6 @@ import { insertItem } from "./inbox.ts";
 import { rotateEpoch, sessionById } from "./sessions.ts";
 import { and, eq } from "drizzle-orm";
 
-export type HandoffRow = typeof handoffs.$inferSelect;
-
 export function epochRepository(run: RunTransaction) {
   return {
     /**

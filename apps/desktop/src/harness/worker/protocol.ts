@@ -3,7 +3,7 @@ import type { RuntimeHarnessHost } from "@startup-os/harness-runtime";
 /* oxlint-disable deslop/no-unknown-returns -- Main parses structured-clone results at the process boundary before exposing domain values. */
 
 type HostMethods = Omit<RuntimeHarnessHost, "subscribe">;
-export type HarnessWorkerMethod = Exclude<keyof HostMethods, "dispose">;
+type HarnessWorkerMethod = Exclude<keyof HostMethods, "dispose">;
 
 export type HarnessWorkerRequest = { id: number } & (
   | { method: "initialize"; value: string }

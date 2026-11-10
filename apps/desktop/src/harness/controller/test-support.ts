@@ -5,7 +5,7 @@ import { createHarnessController } from "./harness-controller.ts";
 
 /* oxlint-disable deslop/no-unknown-parameters -- The fake worker records structured-clone payloads. */
 
-export const sessionRef = {
+const sessionRef = {
   id: "session-1",
   organizationId: "org-1",
   agentId: "agent-1",

@@ -11,7 +11,6 @@ import {
 import { z } from "zod";
 
 export const harnessChannel = "startup-os:harness";
-export const harnessEventChannel = "startup-os:harness-event";
 export const localHarnessMethods = [
   "listModels",
   "scanConfiguration",

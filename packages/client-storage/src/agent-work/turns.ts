@@ -20,9 +20,9 @@ import { and, desc, eq, inArray, lt, lte, ne, or } from "drizzle-orm";
 export type TurnRow = typeof turns.$inferSelect;
 
 /** Live turns on one device. Main slots go before helper slots. */
-export const deviceTurnCap = 3;
+const deviceTurnCap = 3;
 /** Items batched into one turn. */
-export const turnBatchLimit = 20;
+const turnBatchLimit = 20;
 /** Background items move up one lane for every 10 minutes they wait. */
 export const laneAgingMs = 10 * 60_000;
 
@@ -79,7 +79,7 @@ function rotationItem(session: SessionRow, items: InboxRow[]) {
  * slot takes the session with the best waiting item (owner, then system, then background with
  * aging; main folders before helper folders) and batches that session's available items.
  */
-export async function claimTurns(
+async function claimTurns(
   tx: LocalTransaction,
   now: number,
   options: ClaimOptions = {},
@@ -260,9 +260,9 @@ async function queueResume(tx: LocalTransaction, turn: TurnRow, body: string, no
   );
 }
 
-export const ownerInterruptedNote =
+const ownerInterruptedNote =
   "Your owner interrupted the previous turn so that newer messages run first. Continue its work if it still matters.";
-export const organizationSwitchNote =
+const organizationSwitchNote =
   "The desktop switched to another organization while this turn ran. Continue its work if it still matters.";
 
 /** The resume note of a turn that the owner or the runtime interrupted, if its work resumes. */
@@ -279,7 +279,7 @@ export function interruptionNote(interruption: TurnInterruption | null) {
  * and the turn needs the owner until each is resent or discarded. A handoff turn starts the
  * session's next epoch once, whatever its end.
  */
-export async function finishTurn(
+async function finishTurn(
   tx: LocalTransaction,
   turnId: string,
   input: FinishTurnInput,
@@ -459,7 +459,7 @@ async function recoverTurn(
 }
 
 /** After an app start, every live turn of the organization died with the harness process. */
-export async function recoverTurns(tx: LocalTransaction, now: number, organizationId?: string) {
+async function recoverTurns(tx: LocalTransaction, now: number, organizationId?: string) {
   const live = await tx
     .select()
     .from(turns)
@@ -495,12 +495,6 @@ export function turnRepository(run: RunTransaction) {
   return {
     claim: (now: number, options?: ClaimOptions) => run((tx) => claimTurns(tx, now, options)),
     get: (id: string) => run((tx) => tx.select().from(turns).where(eq(turns.id, id)).get()),
-    byIds: (ids: string[]) =>
-      run(async (tx) =>
-        ids.length ? tx.select().from(turns).where(inArray(turns.id, ids)).all() : [],
-      ),
-    live: () =>
-      run((tx) => tx.select().from(turns).where(inArray(turns.status, liveStatuses)).all()),
     /** Turns waiting for a worker, such as continues and retries. */
     assigned: (organizationId: string) =>
       run((tx) =>

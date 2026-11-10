@@ -112,11 +112,4 @@ test("failed calls, read tools and unknown result shapes produce nothing", () =>
   expect(
     toolOutputs(call("search"), { success: true, data: { messageId: ids.message } }),
   ).toBeNull();
-  // The old desktop-only shape: no place and no question ID field the server sends.
-  expect(
-    toolOutputs(call("reply"), {
-      success: true,
-      data: { messageId: ids.message, requestId: ids.question },
-    }),
-  ).toBeNull();
 });

@@ -13,7 +13,6 @@ import type {
 } from "@startup-os/contracts/harness";
 
 import type { AgentWorkServer, CatalogAgent } from "../server/agent-work-server.ts";
-import { noCapabilities } from "./context.ts";
 import { createAgentWorkRuntime } from "./runtime.ts";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -24,6 +23,15 @@ import { join } from "node:path";
 export const agentId = "00000000-0000-4000-8000-0000000000a1";
 export const organizationId = "org-1";
 export const installationId = "00000000-0000-4000-8000-0000000000d1";
+
+const noCapabilities: AdapterCapabilities = {
+  steer: false,
+  steerEvidence: false,
+  compact: false,
+  usage: false,
+  noAskProfile: false,
+  interruptReceipt: false,
+};
 
 /** A harness or server failure with a fixed code, as the controller reports them. */
 export class CodeError extends Error {
@@ -44,7 +52,7 @@ export async function openStore() {
 }
 
 /** Test overrides of the fake harness and server. */
-export interface FixtureHooks {
+interface FixtureHooks {
   /**
    * Replaces the fake harness result of a command. Return undefined to keep the default. next
    * runs the default host behavior, so a hook can let the command reach the host and then fail.
@@ -54,7 +62,7 @@ export interface FixtureHooks {
 }
 
 /** The host's grace after an interrupt before it ends the turn itself. */
-export const hostInterruptGraceMs = 15_000;
+const hostInterruptGraceMs = 15_000;
 
 interface FakeNativeSession {
   organizationId: string;
@@ -122,7 +130,6 @@ export async function runtimeFixture(
   };
 
   const server: AgentWorkServer = {
-    session: async () => ({ userId: "owner", organizationId }),
     register: async (body) => record("register", body),
     catalog: async () => catalog.map((agent) => ({ ...agent })),
     async pullWakes(_organization, limit) {

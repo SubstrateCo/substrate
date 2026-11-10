@@ -4,7 +4,7 @@ import type { LocalTransaction, RunTransaction } from "../database.ts";
 import { helpers, inbox } from "../schema/index.ts";
 import { insertItem, setItemStatus } from "./inbox.ts";
 import { ensureSession, sessionById } from "./sessions.ts";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 export type HelperRow = typeof helpers.$inferSelect;
 
@@ -142,16 +142,6 @@ export function helperRepository(run: RunTransaction) {
           .where(eq(helpers.userAgentId, userAgentId))
           .orderBy(desc(helpers.createdAt))
           .all(),
-      ),
-    forParents: (parentSessionIds: string[]) =>
-      run(async (tx) =>
-        parentSessionIds.length
-          ? tx
-              .select()
-              .from(helpers)
-              .where(inArray(helpers.parentSessionId, parentSessionIds))
-              .all()
-          : [],
       ),
     /** Queues more instructions for a running helper. */
     message: (helperId: string, text: string, now: number) =>

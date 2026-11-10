@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 /** A transaction on the local database. Every store operation runs in one. */
 export type LocalTransaction = Parameters<Parameters<SqliteRemoteDatabase["transaction"]>[0]>[0];
 
-export const defaultMigrationsDirectory = fileURLToPath(new URL("../migrations/", import.meta.url));
+const defaultMigrationsDirectory = fileURLToPath(new URL("../migrations/", import.meta.url));
 
 /**
  * Opens a local SQLite file and applies the migrations. Bun uses bun:sqlite; Electron's Node

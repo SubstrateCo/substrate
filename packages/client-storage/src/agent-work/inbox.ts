@@ -21,12 +21,7 @@ export const ownerBatchWindowMs = 2000;
 /** Items that can still start a turn. confirmed_unconsumed items go first in their lane. */
 export const claimableStatuses: InboxStatus[] = ["pending", "confirmed_unconsumed"];
 /** Items not yet in a finished turn. */
-export const openStatuses: InboxStatus[] = [
-  "pending",
-  "submitted",
-  "confirmed_unconsumed",
-  "uncertain",
-];
+const openStatuses: InboxStatus[] = ["pending", "submitted", "confirmed_unconsumed", "uncertain"];
 
 export interface NewInboxItem {
   sessionId: string;
@@ -181,7 +176,7 @@ export function inboxRepository(run: RunTransaction) {
         return updated.length > 0;
       }),
     /** The steer command failed: the item was not delivered and waits again. */
-    revertSteer: (id: string, turnId: string, now = 0) =>
+    revertSteer: (id: string, turnId: string, now: number) =>
       run(async (tx) => {
         await tx
           .update(inbox)
@@ -222,7 +217,7 @@ export function inboxRepository(run: RunTransaction) {
      * The harness reported that it read the item. Evidence that arrives after the turn settled
      * the item as uncertain still applies.
      */
-    consumed: (turnId: string, inputId: string, now = 0) =>
+    consumed: (turnId: string, inputId: string, now: number) =>
       run(async (tx) => {
         await tx
           .update(inbox)

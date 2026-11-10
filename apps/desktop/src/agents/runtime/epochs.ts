@@ -8,15 +8,15 @@ import {
 import type { RuntimeContext } from "./context.ts";
 
 /** Rotate or compact when the reported context use reaches this share of the window. */
-export const contextRotationShare = 0.7;
+const contextRotationShare = 0.7;
 /** Without usage reports, rotate after this many finished turns in an epoch. */
-export const epochTurnLimit = 200;
+const epochTurnLimit = 200;
 
-export const handoffInstruction =
+const handoffInstruction =
   "This session is about to restart with a fresh context. Call save_handoff once with the objectives, the open work, and the references the next session needs to continue. Do not reply or post anything. Then end your turn.";
 
 /** What to do about a session's context after a turn. */
-export function contextAction(
+function contextAction(
   session: Pick<SessionRow, "epochTurns" | "rotation">,
   usage: Usage | null,
   capabilities: AdapterCapabilities,
