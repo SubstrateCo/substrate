@@ -1,3 +1,4 @@
+import { attachmentFileIds } from "../files/attachments";
 import { organizationId } from "../workspace";
 import { z } from "zod";
 
@@ -23,10 +24,13 @@ export const conversationInput = workspaceInput.extend({
   /** Agent definition IDs owned by the caller. */
   agentIds: z.array(id).max(messagingLimits.agents).optional(),
 });
-export const messageInput = messageListInput.extend({
-  body: z.string().trim().min(1).max(messagingLimits.body),
-  requestId: z.uuid().optional(),
-});
+export const messageInput = messageListInput
+  .extend({
+    body: z.string().trim().max(messagingLimits.body),
+    attachmentFileIds: attachmentFileIds.optional(),
+    requestId: z.uuid().optional(),
+  })
+  .refine((input) => !!input.body || !!input.attachmentFileIds?.length, "Add text or a file.");
 export const reactionInput = workspaceInput.extend({
   messageId: id,
   emoji: z.string().min(1).max(messagingLimits.emoji),

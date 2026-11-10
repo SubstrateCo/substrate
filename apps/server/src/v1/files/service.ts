@@ -7,6 +7,7 @@ import {
 
 import { ServiceError, serviceResult } from "../../shared/service-result";
 import type { ObjectStorage } from "../../storage/types";
+import { fileDisposition } from "./disposition";
 import { normalizePicture } from "./image";
 import { createHash } from "node:crypto";
 
@@ -84,10 +85,7 @@ export function createFileService(deps: FileServiceDependencies) {
       return serviceResult(async () => {
         const file = await repository.getReadable(await deps.authenticate(headers), id);
         if (!file) throw new ServiceError("NOT_FOUND", "File not found or access denied.");
-        const disposition =
-          file.purpose === "file"
-            ? `attachment; filename="download"; filename*=UTF-8''${encodeURIComponent(file.filename).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)}`
-            : "inline";
+        const disposition = file.purpose === "file" ? fileDisposition(file.filename) : "inline";
         return { url: await storage.signDownload(file.objectKey, disposition) };
       });
     },

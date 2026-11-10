@@ -9,10 +9,14 @@ export function useComposerDraft({
   draftKey,
   pending,
   onSend,
+  hasAttachments = false,
+  attachmentsReady = true,
 }: {
   draftKey: string;
   pending: boolean;
   onSend: (body: string, onSuccess: () => void) => void;
+  hasAttachments?: boolean;
+  attachmentsReady?: boolean;
 }) {
   const drafts = useContext(ComposerDrafts);
   if (!drafts) throw new Error("Composer requires ComposerDraftProvider");
@@ -45,7 +49,10 @@ export function useComposerDraft({
   const requestFocus = (caret = 0) =>
     setFocusRequest((previous) => ({ id: previous.id + 1, caret }));
   const submit = () => {
-    const sendable = draft.trim() !== "" && draft.length <= messageMaxLength;
+    const sendable =
+      (draft.trim() !== "" || hasAttachments) &&
+      attachmentsReady &&
+      draft.length <= messageMaxLength;
     if (!sendable || pending || composing.current) return;
     onSend(draft.trim(), () => {
       drafts.clear(draftKey, draft);

@@ -1,3 +1,4 @@
+import { attachmentFileIds } from "../files/attachments";
 import { projectIcon } from "../files/pictures";
 import { organizationId } from "../workspace";
 import { permissionLevels, taskPriorityValues, taskStatusValues } from "./status";
@@ -29,7 +30,11 @@ export const tasksWrite = z.discriminatedUnion("action", [
     description,
   }),
   projectRequest
-    .extend({ action: z.literal("createTask"), parentTaskEntityId: z.uuid().optional() })
+    .extend({
+      action: z.literal("createTask"),
+      parentTaskEntityId: z.uuid().optional(),
+      attachmentFileIds: attachmentFileIds.optional(),
+    })
     .extend(taskFields.partial().extend({ title }).shape),
   taskRequest.extend({ action: z.literal("updateTask") }).extend(taskFields.shape),
   taskRequest.extend({ action: z.literal("comment"), body: z.string().trim().min(1).max(20000) }),

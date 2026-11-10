@@ -1,6 +1,6 @@
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 
-import { useEffect, useId, useRef, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from "react";
 
 import { FormMessage } from "../../auth/form-message";
 import { PendingButton } from "../../feedback/pending-button";
@@ -68,6 +68,8 @@ export function TaskForm({
   initialStatus,
   variant = "inline",
   onDirtyChange,
+  attachments,
+  attachmentsReady = true,
 }: {
   detail: ProjectDetail;
   task?: Task;
@@ -80,6 +82,8 @@ export function TaskForm({
   /** In a dialog, the form renders the dialog's body and its Cancel and submit footer. */
   variant?: "inline" | "dialog";
   onDirtyChange?: (dirty: boolean) => void;
+  attachments?: ReactNode;
+  attachmentsReady?: boolean;
 }) {
   const id = useId();
   const latest = useRef(task);
@@ -90,7 +94,7 @@ export function TaskForm({
   const form = useTaskForm({
     task,
     assignees,
-    pending,
+    pending: pending || !attachmentsReady,
     initialStatus,
     onSubmit: (draft) => {
       const current = latest.current;
@@ -114,7 +118,7 @@ export function TaskForm({
     submitLabel = "Save task";
   }
   const submit = () => {
-    if (!pending) void form.handleSubmit();
+    if (!pending && attachmentsReady) void form.handleSubmit();
   };
   // Ctrl+Enter (Cmd+Enter on macOS) saves from any field. Escape cancels an inline edit.
   const onKeyDown = (event: KeyboardEvent<HTMLFormElement>) => {
@@ -158,6 +162,7 @@ export function TaskForm({
         error={error}
         errorDescription="Couldn’t save this task. Check its fields and make sure the assignee still has project access."
       />
+      {attachments}
     </fieldset>
   );
   const actions = (
@@ -171,7 +176,7 @@ export function TaskForm({
       >
         Cancel
       </Button>
-      <PendingButton pending={pending} pendingLabel="Saving task.">
+      <PendingButton pending={pending} disabled={!attachmentsReady} pendingLabel="Saving task.">
         {submitLabel}
       </PendingButton>
     </>

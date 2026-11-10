@@ -98,6 +98,12 @@ export const messagingMessages = pgTable(
   },
   (table) => [
     unique("messaging_message_conversation_unique").on(table.conversationId, table.id),
+    unique("messaging_message_author_unique").on(
+      table.conversationId,
+      table.id,
+      table.authorOrganizationId,
+      table.authorActorEntityId,
+    ),
     unique("messaging_actor_message_request_unique").on(table.authorActorEntityId, table.requestId),
     foreignKey({
       columns: [table.authorOrganizationId, table.authorActorEntityId],
@@ -114,7 +120,7 @@ export const messagingMessages = pgTable(
       foreignColumns: [table.conversationId, table.id, table.isRoot],
     }),
     check("messaging_thread_root_check", sql`${table.threadRoot}`),
-    check("messaging_body_check", sql`length(trim(${table.body})) BETWEEN 1 AND 20000`),
+    check("messaging_body_check", sql`length(${table.body}) <= 20000`),
     // Message search matches words and word prefixes, not substrings inside words.
     index("messaging_messages_search_idx").using("gin", searchDocument(table.body)),
     // Root and thread pages, and the thread root foreign key on root deletion.

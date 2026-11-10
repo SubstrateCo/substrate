@@ -1,9 +1,9 @@
 import type { Database } from "../../client";
 import { userAgents } from "../actors/user-agents.schema";
 import { fileUploads, storedFiles, storageCandidates } from "./schema";
-import { and, eq, inArray, isNull, lt, notExists, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, not, notExists, type SQL } from "drizzle-orm";
 
-export function createStorageCleanup(db: Database) {
+export function createStorageCleanup(db: Database, fileReferences: SQL) {
   return {
     async cleanupCandidates(before: Date) {
       return db
@@ -29,10 +29,7 @@ export function createStorageCleanup(db: Database) {
           .from(storedFiles)
           .where(
             and(
-              or(
-                inArray(storedFiles.purpose, ["avatar", "organization-logo"]),
-                and(eq(storedFiles.purpose, "file"), isNull(storedFiles.uploadedBy)),
-              ),
+              not(fileReferences),
               lt(storedFiles.createdAt, before),
               notExists(
                 tx

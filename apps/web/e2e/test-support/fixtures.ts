@@ -129,13 +129,23 @@ export const test = base.extend<
     await use(await provisionActor(request, `Account ${randomUUID()}`));
   },
 
-  client: async ({ browser, viewport }, use) => {
+  client: async ({ browser, viewport, video }, use, testInfo) => {
     const contexts: BrowserContext[] = [];
+    const recordings: Page[] = [];
     try {
       await use(async (actor) => {
-        const context = await browser.newContext({ viewport, storageState: actor.state });
+        // oxlint-disable-next-line deslop/no-runtime-typeof -- Playwright defines video as a mode string or an options object.
+        const record = typeof video === "string" ? video !== "off" : video.mode !== "off";
+        const context = await browser.newContext({
+          viewport,
+          storageState: actor.state,
+          recordVideo: record
+            ? { dir: testInfo.outputPath("videos"), size: viewport ?? undefined }
+            : undefined,
+        });
         contexts.push(context);
         const page = await context.newPage();
+        if (record) recordings.push(page);
         const events: RealtimeEvent[] = [];
         page.on("websocket", (socket) => {
           if (new URL(socket.url()).pathname !== "/api/v1/realtime") return;
@@ -147,6 +157,11 @@ export const test = base.extend<
       });
     } finally {
       await Promise.all(contexts.map((context) => context.close()));
+      for (const [index, page] of recordings.entries()) {
+        const path = await page.video()?.path();
+        if (path)
+          await testInfo.attach(`workflow-${index + 1}`, { path, contentType: "video/webm" });
+      }
     }
   },
 });

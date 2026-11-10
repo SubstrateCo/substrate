@@ -7,6 +7,8 @@ import { actors } from "../../core/actors/schema";
 import { RepositoryContext, type PermissionLevel } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { notifyAssignment, recordTaskActivity } from "../activity/events";
+import { publishFiles } from "../files/publication";
+import { taskAttachments } from "../files/schema";
 import { projectRepository, requiredText } from "../projects/repository";
 import { liveTask } from "./access";
 import { taskChanges } from "./changes";
@@ -89,6 +91,20 @@ export async function createTaskInLockedProject(
     })
     .returning();
   const [event] = await recordTaskActivity(ctx, task!.entityId, ["Task created"]);
+  const fileIds = input.attachmentFileIds ?? [];
+  if (fileIds.length) {
+    await publishFiles(ctx, fileIds);
+    await ctx.db.insert(taskAttachments).values(
+      fileIds.map((fileId, position) => ({
+        organizationId: ctx.scope.organizationId,
+        taskEntityId: task!.entityId,
+        fileOrganizationId: ctx.scope.organizationId,
+        fileId,
+        addedByActorEntityId: ctx.scope.actorEntityId,
+        position,
+      })),
+    );
+  }
   await notifyAssignment(ctx, task!.entityId, task!.assigneeActorEntityId, event!.id);
   return task!;
 }

@@ -805,8 +805,8 @@ test("message targets retain timeline reaction and reply summaries for roots and
         (query) => query.includes('from "messaging_messages"') && query.includes("count(*)"),
       ),
     ).toHaveLength(1);
-    // Workspace context, message with root and authors, then the two summary reads.
-    expect(queries).toHaveLength(4);
+    // Workspace context, message with root and authors, two summary reads, and attachments.
+    expect(queries).toHaveLength(5);
   }
   await chat.toggleReaction(root.id, "👍");
   await bob.sendMessage(conversation.id, "Another reply", root.id);

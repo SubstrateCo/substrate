@@ -8,6 +8,9 @@ import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { routeWake } from "../agent-work/router";
 import { applyMessageEffects } from "../context/message-effects";
+import { messageAttachmentMetadata } from "../files/metadata";
+import { publishFiles } from "../files/publication";
+import { messageAttachments } from "../files/schema";
 import { messageChangeHints } from "../realtime/routing";
 import {
   loadConversation,
@@ -103,15 +106,17 @@ export async function sendMessageAs(
     requestId?: string;
     /** The agent turn that published this reply. Agents only. */
     originTurnId?: string;
+    attachmentFileIds?: string[];
   },
 ) {
   const { db: tx } = ctx;
   const { actor, authorName } = author;
   const { conversationId, body, threadId, requestId, originTurnId } = message;
+  const fileIds = message.attachmentFileIds ?? [];
   if (originTurnId && actor.type !== "agent")
     throw new ValidationError("Only agent replies record a turn.");
   const conversation = await loadConversation(tx, scope, conversationId, "share");
-  validateBody(body);
+  validateBody(body, fileIds.length);
   if (requestId) {
     const [existing] = await tx
       .select()
@@ -123,15 +128,20 @@ export async function sendMessageAs(
         ),
       );
     if (existing) {
+      const attachments = await messageAttachmentMetadata(tx, [existing.id]);
+      const sameAttachments =
+        JSON.stringify(attachments.map((item) => item.fileId)) === JSON.stringify(fileIds);
+      const sameContent = existing.body === body && sameAttachments;
       if (
         existing.conversationId !== conversationId ||
-        existing.body !== body ||
+        !sameContent ||
         existing.threadId !== (threadId ?? null)
       )
         throw new ConflictError("This request was already used for another message.");
       const reactions: { emoji: string; count: number; reacted: boolean }[] = [];
       return {
         ...existing,
+        attachments,
         authorName,
         authorType: actor.type,
         reactions,
@@ -145,6 +155,7 @@ export async function sendMessageAs(
     }
   }
   if (threadId) await requireThreadRoot(tx, conversationId, threadId);
+  await publishFiles(ctx, fileIds);
   let joined = false;
   // Posting rejoins a public channel the person left. Private conversations are not visible after
   // leaving, so the access check fails first.
@@ -163,11 +174,24 @@ export async function sendMessageAs(
       originTurnId,
     })
     .returning();
+  if (fileIds.length)
+    await tx.insert(messageAttachments).values(
+      fileIds.map((fileId, position) => ({
+        conversationId,
+        messageId: created!.id,
+        fileOrganizationId: scope.organizationId,
+        fileId,
+        addedByActorEntityId: actor.entityId,
+        position,
+      })),
+    );
+  const attachments = await messageAttachmentMetadata(tx, fileIds.length ? [created!.id] : []);
   const effects = await applyMessageEffects(ctx, scope, created!, conversation.organizationId);
   const wakeHints = await routeWake(tx, scope, created!, conversation.kind);
   const initialReactions: { emoji: string; count: number; reacted: boolean }[] = [];
   return {
     ...created!,
+    attachments,
     authorName,
     authorType: actor.type,
     replyCount: 0,
@@ -238,6 +262,10 @@ export function messageOperations(db: DatabaseExecutor, scope: Readonly<Messagin
           .orderBy(desc(messagingMessages.createdAt), desc(messagingMessages.id))
           .limit(50);
         rows.reverse();
+        const attachments = await messageAttachmentMetadata(
+          tx,
+          rows.map((row) => row.message.id),
+        );
         const summaries = await messageSummaries(
           tx,
           actor.entityId,
@@ -254,6 +282,7 @@ export function messageOperations(db: DatabaseExecutor, scope: Readonly<Messagin
             authorOwnerUserId,
           }) => ({
             ...message,
+            attachments: attachments.filter((item) => item.messageId === message.id),
             // Which agent turn published a reply is private to the agent's owner.
             originTurnId: authorOwnerUserId === scope.userId ? message.originTurnId : null,
             authorName,
@@ -271,10 +300,22 @@ export function messageOperations(db: DatabaseExecutor, scope: Readonly<Messagin
         return messagingProfile(tx, scope, actor.entityId, conversationId, actorEntityId);
       });
     },
-    async sendMessage(conversationId: string, body: string, threadId?: string, requestId?: string) {
+    async sendMessage(
+      conversationId: string,
+      body: string,
+      threadId?: string,
+      requestId?: string,
+      attachmentFileIds?: string[],
+    ) {
       return db.transaction(async (tx) => {
         const { context, ...author } = await authenticate(tx);
-        return sendMessageAs(context, scope, author, { conversationId, body, threadId, requestId });
+        return sendMessageAs(context, scope, author, {
+          conversationId,
+          body,
+          threadId,
+          requestId,
+          attachmentFileIds,
+        });
       });
     },
     async toggleReaction(messageId: string, emoji: string) {

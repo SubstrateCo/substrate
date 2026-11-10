@@ -99,6 +99,9 @@ export function createS3Storage(
           Bucket,
           Key: key,
           ResponseContentDisposition: disposition,
+          ResponseContentType: disposition.startsWith("attachment;")
+            ? "application/octet-stream"
+            : undefined,
           ResponseCacheControl: "private, no-store",
         }),
         { expiresIn: 60 },

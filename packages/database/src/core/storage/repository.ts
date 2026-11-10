@@ -4,11 +4,12 @@ import type { CreateUploadInput } from "@startup-os/contracts/files/input";
 import type { Database, DatabaseExecutor } from "../../client";
 import { AccessDeniedError, ConflictError } from "../../errors";
 import { userAgents } from "../actors/user-agents.schema";
+import { user } from "../authentication/schema";
 import { member } from "../organizations/schema";
 import { createStorageCleanup } from "./cleanup";
 import { temporaryObjectKey } from "./object-keys";
 import { fileUploads, storedFiles, storageCandidates } from "./schema";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, isNotNull, isNull, notExists, sql, type SQL } from "drizzle-orm";
 
 // Trusted server-only identity scope. Personal files deliberately do not require an actor.
 export interface StorageScope {
@@ -37,9 +38,12 @@ async function requireScope(
     throw new AccessDeniedError();
 }
 
-export function createStorageRepository(db: Database) {
+export function createStorageRepository(
+  db: Database,
+  fileReferences: SQL = isNotNull(storedFiles.publishedAt),
+) {
   return {
-    ...createStorageCleanup(db),
+    ...createStorageCleanup(db, fileReferences),
     requirePictureAccess(scope: StorageScope, purpose: "avatar" | "organization-logo") {
       return requireScope(db, scope, purpose);
     },
@@ -62,28 +66,60 @@ export function createStorageRepository(db: Database) {
       return people.every((id) => members.some((row) => row.userId === id));
     },
     async createUpload(scope: StorageScope, input: CreateUploadInput, id: string, expiresAt: Date) {
-      await requireScope(db, scope, input.purpose);
-      const [upload] = await db
-        .insert(fileUploads)
-        .values({
-          purpose: input.purpose,
-          filename: input.filename,
-          contentType: input.contentType,
-          size: input.size,
-          id,
-          uploadedBy: scope.userId,
-          ownerUserId: input.purpose === "avatar" ? scope.userId : null,
-          organizationId: input.purpose === "avatar" ? null : scope.organizationId,
-          temporaryKey: temporaryObjectKey({
-            id,
+      return db.transaction(async (tx) => {
+        if (input.purpose === "file") {
+          // Serialize the outstanding-ticket limit across devices and workspaces of one uploader.
+          await tx
+            .select({ id: user.id })
+            .from(user)
+            .where(eq(user.id, scope.userId))
+            .for("no key update");
+          const outstanding = await tx
+            .select({ id: fileUploads.id })
+            .from(fileUploads)
+            .where(
+              and(
+                eq(fileUploads.uploadedBy, scope.userId),
+                eq(fileUploads.purpose, "file"),
+                gt(fileUploads.expiresAt, new Date()),
+                isNull(fileUploads.deletedAt),
+                notExists(
+                  tx
+                    .select({ id: storedFiles.id })
+                    .from(storedFiles)
+                    .where(eq(storedFiles.id, fileUploads.id)),
+                ),
+              ),
+            )
+            .limit(20);
+          if (outstanding.length >= 20)
+            throw new ConflictError(
+              "Too many uploads are in progress. Finish them or try again later.",
+            );
+        }
+        await requireScope(tx, scope, input.purpose);
+        const [upload] = await tx
+          .insert(fileUploads)
+          .values({
             purpose: input.purpose,
+            filename: input.filename,
+            contentType: input.contentType,
+            size: input.size,
+            id,
+            uploadedBy: scope.userId,
             ownerUserId: input.purpose === "avatar" ? scope.userId : null,
             organizationId: input.purpose === "avatar" ? null : scope.organizationId,
-          }),
-          expiresAt,
-        })
-        .returning();
-      return upload!;
+            temporaryKey: temporaryObjectKey({
+              id,
+              purpose: input.purpose,
+              ownerUserId: input.purpose === "avatar" ? scope.userId : null,
+              organizationId: input.purpose === "avatar" ? null : scope.organizationId,
+            }),
+            expiresAt,
+          })
+          .returning();
+        return upload!;
+      });
     },
     async getUpload(scope: StorageScope, id: string) {
       const [result] = await db
@@ -150,6 +186,7 @@ export function createStorageRepository(db: Database) {
       const [file] = await db.select().from(storedFiles).where(eq(storedFiles.id, id));
       if (!file) return null;
       if (file.purpose === "avatar") return file.ownerUserId === scope.userId ? file : null;
+      if (file.publishedAt) return null;
       if (file.organizationId !== scope.organizationId) return null;
       if (file.uploadedBy !== scope.userId || !scope.organizationId) return null;
       const [membership] = await db
@@ -175,11 +212,12 @@ export function createStorageRepository(db: Database) {
           throw new AccessDeniedError();
         await requireScope(tx, scope, file.purpose, false);
         const [usage] = await tx.execute<{ referenced: boolean }>(sql`
-          SELECT EXISTS (SELECT 1 FROM ${userAgents} WHERE ${userAgents.imageFileId} = ${id})
+          SELECT (EXISTS (SELECT 1 FROM ${userAgents} WHERE ${userAgents.imageFileId} = ${id})
+            OR EXISTS (SELECT 1 FROM ${storedFiles} WHERE ${storedFiles.id} = ${id} AND (${fileReferences})))
             AS referenced
         `);
         if (usage?.referenced)
-          throw new ConflictError("Remove the picture before deleting this file.");
+          throw new ConflictError("Remove the attachment before deleting this file.");
         await tx
           .insert(storageCandidates)
           .values({ objectKey: file.objectKey })

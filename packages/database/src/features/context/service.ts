@@ -6,6 +6,7 @@ import { userAgents } from "../../core/actors/user-agents.schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import { ConflictError, AccessDeniedError } from "../../errors";
 import { recordTaskActivity } from "../activity/events";
+import { messageAttachmentMetadata } from "../files/metadata";
 import { requireMessage, visibleConversations, type MessagingIdentity } from "../messaging/access";
 import { messageAuthorColumns, messageSummaries } from "../messaging/messages";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
@@ -291,8 +292,13 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
         conversationId,
         target === root ? [target.message] : [target.message, root.message],
       );
+      const attachments = await messageAttachmentMetadata(
+        db,
+        rows.map((row) => row.message.id),
+      );
       const decorate = ({ message, authorOwnerUserId, ...authorFields }: typeof target) => ({
         ...message,
+        attachments: attachments.filter((attachment) => attachment.messageId === message.id),
         // Which agent turn published a reply is private to the agent's owner.
         originTurnId: authorOwnerUserId === scope.userId ? message.originTurnId : null,
         ...authorFields,

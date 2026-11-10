@@ -37,7 +37,8 @@ test("send and replay reuse authenticated identity and the locked conversation",
   expect(await chat.sendMessage(channel.id, "hello", undefined, requestId)).toEqual(sent);
   expect(redundant()).toEqual([]);
   expect(provisioning()).toEqual([]);
-  expect(queries).toHaveLength(4);
+  // Replay also reads the attachment set, so a changed set cannot reuse the request.
+  expect(queries).toHaveLength(5);
   await expect(
     chat.sendMessage(channel.id, "changed", undefined, requestId),
   ).rejects.toBeInstanceOf(ConflictError);

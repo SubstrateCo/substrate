@@ -36,7 +36,8 @@ function fixture() {
     createUpload: async () => upload,
     getUpload: async () => ({ upload, completed }),
     addCandidate: async () => {},
-    complete: async (_scope, _id, data) => (completed ??= { ...upload, ...data }),
+    complete: async (_scope, _id, data) =>
+      (completed ??= { ...upload, ...data, publishedAt: null }),
     requirePictureAccess: async () => {},
     canReadPicture: async () => true,
     getReadable: async () => completed,

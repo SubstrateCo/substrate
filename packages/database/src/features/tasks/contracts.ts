@@ -12,5 +12,6 @@ export interface TaskFields {
 export interface CreateTaskInput extends Partial<Omit<TaskFields, "title">> {
   projectEntityId: string;
   parentTaskEntityId?: string;
+  attachmentFileIds?: string[];
   title: string;
 }

@@ -1,3 +1,4 @@
+import { attachmentReferences } from "@startup-os/database/files";
 import { createStorageRepository } from "@startup-os/database/storage";
 
 import { db } from "../../auth/database";
@@ -9,7 +10,7 @@ import { createPictureService } from "./pictures";
 import { createFileService } from "./service";
 
 const dependencies = {
-  repository: createStorageRepository(db),
+  repository: createStorageRepository(db, attachmentReferences),
   storage: createS3Storage(),
   requireOrigin,
   async authenticate(headers: Headers) {

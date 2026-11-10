@@ -6,6 +6,7 @@ import { useRef, useState } from "react";
 import { LinkMessageWork } from "../../context/links/link-message-work";
 import { MessageContext, type MessageContextState } from "../../context/references/message-context";
 import { ReferencedMessageBody } from "../../context/references/referenced-message-body";
+import { messageAttachmentUrl } from "@/api/files/attachments";
 import { toggleReaction } from "@/api/messaging/requests";
 import type { Message } from "@/api/messaging/requests";
 import {
@@ -13,6 +14,7 @@ import {
   AgentWorkSlot,
   AgentWorkStatus,
 } from "@/components/agent-work/agent-work-slot";
+import { AttachmentList } from "@/components/attachments/attachment-list";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { LinkedMessage } from "@/components/messaging/messages/linked-message";
 import { MessageItem as MessageItemView } from "@/components/messaging/messages/message-item-view";
@@ -111,12 +113,25 @@ export function MessageItem({
           grouped={grouped && !highlighted}
           highlighted={highlighted}
           body={
-            <ReferencedMessageBody
-              organizationId={organizationId}
-              conversationId={message.conversationId}
-              context={context}
-              body={message.body}
-            />
+            <>
+              <ReferencedMessageBody
+                organizationId={organizationId}
+                conversationId={message.conversationId}
+                context={context}
+                body={message.body}
+              />
+              <AttachmentList
+                attachments={message.attachments}
+                href={(attachment) =>
+                  messageAttachmentUrl({
+                    organizationId,
+                    conversationId: message.conversationId,
+                    messageId: message.id,
+                    attachmentId: attachment.id,
+                  })
+                }
+              />
+            </>
           }
           actions={
             <>

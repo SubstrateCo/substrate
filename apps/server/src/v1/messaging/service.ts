@@ -74,6 +74,7 @@ export function sendMessage(headers: Headers, input: z.output<typeof messageInpu
       input.body,
       input.threadId,
       input.requestId,
+      input.attachmentFileIds,
     );
     // Hints include an agent-work hint to the author's desktops when the message woke an agent.
     const { hints, ...sent } = message;

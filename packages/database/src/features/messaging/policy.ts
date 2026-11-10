@@ -139,8 +139,8 @@ export const leaveBlocked = (otherPeople: boolean) =>
       : "You are the last member. Delete the conversation instead.",
   );
 
-export function validateBody(body: string) {
-  if (!body.trim() || body.length > messagingLimits.body)
+export function validateBody(body: string, attachmentCount = 0) {
+  if ((!body.trim() && !attachmentCount) || body.length > messagingLimits.body)
     throw new ValidationError(`Message must contain 1 to ${messagingLimits.body} characters.`);
 }
 

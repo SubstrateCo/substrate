@@ -8,6 +8,7 @@
     "./provisioning": "./src/core/actors/provisioning.ts",
     "./authentication": "./src/core/authentication/organization-preference.ts",
     "./storage": "./src/core/storage/index.ts",
+    "./files": "./src/features/files/index.ts",
     "./messaging": "./src/features/messaging/index.ts",
     "./context": "./src/features/context/index.ts",
     "./mcp": "./src/features/mcp/index.ts",

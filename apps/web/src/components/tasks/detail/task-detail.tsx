@@ -4,6 +4,7 @@ import { CopyLink } from "../../context/links/copy-link";
 import { TaskContext } from "../../context/references/task-context";
 import { TaskComments } from "../comments/task-comments";
 import { TaskForm } from "../editor/task-form";
+import { TaskAttachments } from "@/components/attachments/task-attachments";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { TaskDetail as TaskDetailView } from "@/components/tasks/detail/task-detail-view";
 import type { ProjectDetail, Task } from "@/components/tasks/types";
@@ -90,6 +91,16 @@ export function TaskDetail({
           />
         )}
       >
+        <TaskAttachments
+          key={`${organizationId}:${task.entityId}`}
+          target={{
+            organizationId,
+            projectEntityId: detail.project.entityId,
+            taskEntityId: task.entityId,
+          }}
+          canEdit={detail.level === "edit" || detail.level === "owner"}
+          visible={visible}
+        />
         <TaskContext
           visible={visible}
           organizationId={organizationId}

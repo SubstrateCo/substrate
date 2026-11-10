@@ -28,12 +28,20 @@ export function Composer({
   label,
   draftKey,
   renderReferences,
+  attachmentControls,
+  attachmentDrafts,
+  hasAttachments = false,
+  attachmentsReady = true,
 }: {
   onSend: (body: string, onSuccess: () => void) => void;
   pending?: boolean;
   error?: Error | null;
   label: string;
   draftKey: string;
+  attachmentControls?: ReactNode;
+  attachmentDrafts?: ReactNode;
+  hasAttachments?: boolean;
+  attachmentsReady?: boolean;
   renderReferences?: (
     query: ReferenceQuery,
     onInsert: (token: string, reference: WorkspaceReference) => void,
@@ -45,6 +53,8 @@ export function Composer({
       draftKey,
       pending,
       onSend,
+      hasAttachments,
+      attachmentsReady,
     });
   const limitId = useId();
   const [references, setReferences] = useState(false);
@@ -206,6 +216,7 @@ export function Composer({
               <div className="-ml-1 flex w-full min-w-0 items-center gap-0.5">
                 <ComposerToolbar pending={pending} onInsert={insert} />
                 <EmojiPicker onSelect={(emoji) => insert(emoji)} disabled={pending} />
+                {attachmentControls}
                 <span className="ml-auto flex min-w-0 items-center gap-3 pl-2">
                   {nearLimit && (
                     <span
@@ -233,7 +244,7 @@ export function Composer({
                     size="sm"
                     className="min-w-16"
                     aria-describedby={nearLimit ? limitId : undefined}
-                    disabled={!draft.trim() || overBy > 0}
+                    disabled={(!draft.trim() && !hasAttachments) || !attachmentsReady || overBy > 0}
                     pending={pending}
                     pendingLabel="Sending…"
                   >
@@ -245,6 +256,7 @@ export function Composer({
             </InputGroupAddon>
           </InputGroup>
         </Popover>
+        {attachmentDrafts}
         {error && (
           <FormMessage
             error={error}

@@ -24,6 +24,26 @@ const file = (purpose = "avatar", organizationId: string | null = null) => ({
 });
 
 describe("stored file relationships", () => {
+  test("limits outstanding generic upload tickets per uploader", async () => {
+    const repo = createStorageRepository(f.db);
+    const scope = { userId: "alice", organizationId: f.orgA };
+    const create = () =>
+      repo.createUpload(
+        scope,
+        { purpose: "file", filename: "draft.txt", contentType: "text/plain", size: 5 },
+        crypto.randomUUID(),
+        new Date(Date.now() + 60_000),
+      );
+    const pending = await Promise.all(Array.from({ length: 20 }, create));
+    await expect(create()).rejects.toBeInstanceOf(ConflictError);
+    await repo.complete(scope, pending[0]!.id, {
+      objectKey: crypto.randomUUID(),
+      contentType: "text/plain",
+      size: 5,
+      sha256: "a".repeat(64),
+    });
+    expect((await create()).uploadedBy).toBe("alice");
+  });
   test.each(["avatar", "file"] as const)(
     "authorized %s lookup includes completion without a separate query, including expired replays",
     async (purpose) => {
@@ -336,7 +356,7 @@ describe("stored file relationships", () => {
     await repo.requirePictureAccess({ userId: "bob", organizationId: f.orgA }, "organization-logo");
   });
 
-  test("cleanup prunes unused old agent uploads but keeps generic files", async () => {
+  test("cleanup prunes old unpublished files, including abandoned attachment uploads", async () => {
     const repo = createStorageRepository(f.db);
     const old = new Date(0);
     const unattached = { ...file(), createdAt: old };
@@ -344,7 +364,7 @@ describe("stored file relationships", () => {
     await f.db.insert(storedFiles).values([unattached, generic]);
     await repo.pruneUnusedFiles(new Date());
     const remaining = await f.db.select({ id: storedFiles.id }).from(storedFiles);
-    expect(remaining.map((row) => row.id)).toEqual([generic.id]);
+    expect(remaining).toEqual([]);
   });
 
   test("organization deletion preserves final-object cleanup intent", async () => {

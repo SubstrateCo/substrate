@@ -1,6 +1,7 @@
 import { createUploadInput, uploadIdParam } from "@startup-os/contracts/files/input";
 
 import { respond, validationHook } from "../../shared/http";
+import { createAttachmentRoutes } from "./attachment-routes";
 import { defaultFileService, defaultPictureService } from "./default-service";
 import { createPictureRoutes } from "./picture-routes";
 import type { PictureService } from "./pictures";
@@ -14,6 +15,7 @@ export function createFilesRoutes(
 ) {
   return new Hono()
     .route("/pictures", createPictureRoutes(pictures))
+    .route("/attachments", createAttachmentRoutes())
     .post("/uploads", zValidator("json", createUploadInput, validationHook), async (c) =>
       respond(c, await service.createUpload(c.req.raw.headers, c.req.valid("json"))),
     )

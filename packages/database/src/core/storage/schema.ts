@@ -38,6 +38,9 @@ export const fileUploads = pgTable(
     index("file_upload_expiry_idx")
       .on(t.expiresAt)
       .where(sql`${t.temporaryCleanedAt} IS NULL`),
+    index("file_upload_uploader_idx")
+      .on(t.uploadedBy, t.expiresAt)
+      .where(sql`${t.purpose} = 'file' AND ${t.deletedAt} IS NULL`),
   ],
 );
 
@@ -53,6 +56,7 @@ export const storedFiles = pgTable(
     size: integer("size").notNull(),
     objectKey: text("object_key").notNull().unique(),
     sha256: text("sha256").notNull(),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [
@@ -63,6 +67,7 @@ export const storedFiles = pgTable(
     check("stored_file_size", sql`${t.size} > 0 AND ${t.size} <= 5242880`),
     check("stored_file_image_type", sql`${t.purpose} = 'file' OR ${t.contentType} = 'image/webp'`),
     unique("stored_file_user_purpose").on(t.id, t.ownerUserId, t.purpose),
+    unique("stored_file_organization_purpose").on(t.organizationId, t.id, t.purpose),
   ],
 );
 
