@@ -10,7 +10,7 @@ import { userAgents } from "../../core/actors/user-agents.schema";
 import { homedAgents, requireDevice, type DeviceIdentity } from "./device";
 import { agentRequests } from "./requests.schema";
 import { agentWakes } from "./wakes.schema";
-import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, exists, inArray, isNull, sql } from "drizzle-orm";
 
 type RequestRow = typeof agentRequests.$inferSelect;
 
@@ -64,6 +64,7 @@ function deviceWakes(db: DatabaseExecutor, identity: DeviceIdentity, deviceId: s
 export function pullWakes(db: DatabaseExecutor, identity: DeviceIdentity, limit: number) {
   return db.transaction(async (tx) => {
     const device = await requireDevice(tx, identity);
+    // Driven from the owner's homeless agents, so the wake check uses the per-agent pending index.
     await tx
       .update(userAgents)
       .set({ homeDeviceId: device.id })
@@ -71,16 +72,16 @@ export function pullWakes(db: DatabaseExecutor, identity: DeviceIdentity, limit:
         and(
           eq(userAgents.userId, identity.userId),
           isNull(userAgents.homeDeviceId),
-          inArray(
-            userAgents.id,
+          exists(
             tx
-              .select({ id: agentWakes.userAgentId })
+              .select({ id: agentWakes.id })
               .from(agentWakes)
               .where(
                 and(
+                  eq(agentWakes.userAgentId, userAgents.id),
+                  isNull(agentWakes.ackedAt),
                   eq(agentWakes.ownerUserId, identity.userId),
                   eq(agentWakes.organizationId, identity.organizationId),
-                  isNull(agentWakes.ackedAt),
                 ),
               ),
           ),
