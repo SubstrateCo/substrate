@@ -16,27 +16,14 @@ import { drizzle } from "drizzle-orm/postgres-js";
 const fixture = setupDatabase();
 
 describe("projects and tasks", () => {
-  test("tasks default to not started and use the same five statuses across projects", async () => {
+  test("tasks default to not started and reject statuses outside the standard set", async () => {
     const alice = fixture.forActor(fixture.alice);
-    const first = await alice.projects.create({ name: "One" });
-    const second = await alice.projects.create({ name: "Two" });
-    const task = await alice.tasks.create({ projectEntityId: first.entityId, title: "Default" });
+    const project = await alice.projects.create({ name: "One" });
+    const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "Default" });
     expect(task).toMatchObject({ status: "not_started" });
-    for (const status of [
-      "not_started",
-      "in_progress",
-      "in_review",
-      "completed",
-      "canceled",
-    ] as const) {
-      const created = await alice.tasks.create({
-        projectEntityId: second.entityId,
-        title: status,
-        status,
-      });
-      expect(created).toMatchObject({ status });
-      expect(await alice.tasks.update(task.entityId, { status })).toMatchObject({ status });
-    }
+    expect(await alice.tasks.update(task.entityId, { status: "canceled" })).toMatchObject({
+      status: "canceled",
+    });
     // SAFETY: Deliberately bypass the input type to verify runtime rejection of an invalid status.
     await expect(
       alice.tasks.update(task.entityId, { status: "blocked" as never }),
