@@ -13,7 +13,7 @@ import {
 } from "../messaging/schema";
 import { messagingInvitations } from "../messaging/sharing.schema";
 import { notifications } from "../notifications/schema";
-import { and, eq, exists, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
+import { and, eq, exists, inArray, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 export async function profileRefreshHints(
@@ -163,15 +163,17 @@ export async function sharingInvitationHints(
 // cannot reach anyone afterwards; these hints use user, organization, and actor audiences instead.
 export async function conversationRemovalHints(
   db: DatabaseExecutor,
-  conversation: { id: string; organizationId: string },
+  conversations: { id: string; organizationId: string }[],
 ): Promise<RealtimeHint[]> {
+  if (!conversations.length) return [];
+  const ids = conversations.map((conversation) => conversation.id);
   const participants = await db
-    .select({ userId: sql<string>`${actors.userId}` })
+    .selectDistinct({ userId: sql<string>`${actors.userId}` })
     .from(messagingParticipants)
     .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
     .where(
       and(
-        eq(messagingParticipants.conversationId, conversation.id),
+        inArray(messagingParticipants.conversationId, ids),
         isNull(messagingParticipants.leftAt),
         isNotNull(actors.userId),
       ),
@@ -183,14 +185,17 @@ export async function conversationRemovalHints(
     })
     .from(notifications)
     .innerJoin(messagingMessages, eq(messagingMessages.id, notifications.messageId))
-    .where(eq(messagingMessages.conversationId, conversation.id));
+    .where(inArray(messagingMessages.conversationId, ids));
+  const organizations = [...new Set(conversations.map((row) => row.organizationId))];
   return [
     ...participants.map(({ userId }) => ({
       audience: realtimeKeys.user(userId),
       domain: "messaging" as const,
     })),
-    { audience: realtimeKeys.organization(conversation.organizationId), domain: "messaging" },
-    { audience: realtimeKeys.organization(conversation.organizationId), domain: "context" },
+    ...organizations.flatMap((id) => [
+      { audience: realtimeKeys.organization(id), domain: "messaging" as const },
+      { audience: realtimeKeys.organization(id), domain: "context" as const },
+    ]),
     ...recipients.map(({ organizationId, actorId }) => ({
       audience: realtimeKeys.actor(organizationId, actorId),
       domain: "notifications" as const,

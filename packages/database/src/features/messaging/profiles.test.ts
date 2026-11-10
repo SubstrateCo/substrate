@@ -3,6 +3,8 @@ import { AccessDeniedError } from "../../errors";
 import { user, userAgents } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { createAcceptedMessagingService } from "../../testing/messaging";
+import { recordQueries } from "../../testing/queries";
+import { createMessagingService } from "./service";
 import { expect, test } from "bun:test";
 
 /* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous. */
@@ -37,6 +39,13 @@ test("person profiles show contact details only to workspace members who share t
     self: true,
     directConversationId: null,
   });
+  // Session check, actor details, access, and the DM shortcut.
+  const recording = recordQueries();
+  await createMessagingService(recording.db, {
+    userId: "alice",
+    organizationId: f.orgA,
+  }).getProfile(general.id, f.bob);
+  expect(recording.queries.filter((query) => query.startsWith("select"))).toHaveLength(4);
   // Bob cannot see the private channel, so neither the conversation nor Alice resolves through it.
   await expect(chat("bob").getProfile(hidden.id, f.alice)).rejects.toBeInstanceOf(
     AccessDeniedError,

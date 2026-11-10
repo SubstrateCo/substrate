@@ -367,7 +367,7 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
         const viewer = await requireSharingManager(tx, scope, conversation);
         if (!partnerTargetAllowed(conversation, viewer, partnerOrganizationId))
           throw new AccessDeniedError();
-        const hints = await conversationRemovalHints(tx, conversation);
+        const hints = await conversationRemovalHints(tx, [conversation]);
         await tx
           .update(messagingConnections)
           .set({ disconnectedAt: new Date() })
@@ -422,7 +422,7 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
           );
         if (!participant || !partnerTargetAllowed(conversation, viewer, participant.organizationId))
           throw new AccessDeniedError();
-        const hints = await conversationRemovalHints(tx, conversation);
+        const hints = await conversationRemovalHints(tx, [conversation]);
         await endParticipation(
           tx,
           and(

@@ -477,7 +477,7 @@ export function createMessagingService(
       return db.transaction(async (tx) => {
         const { viewer } = await authenticate(tx);
         const conversation = await requireManaged(tx, viewer, conversationId);
-        const hints = await conversationRemovalHints(tx, conversation);
+        const hints = await conversationRemovalHints(tx, [conversation]);
         await tx
           .delete(messagingConversations)
           .where(eq(messagingConversations.id, conversationId));

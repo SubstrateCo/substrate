@@ -13,47 +13,35 @@ export async function clearMembershipSharing(
   organizationId: string,
 ) {
   return db.transaction(async (tx) => {
-    const ids = await tx
-      .select({ id: messagingConversations.id })
-      .from(messagingParticipants)
-      .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
-      .innerJoin(
-        messagingConversations,
-        eq(messagingConversations.id, messagingParticipants.conversationId),
-      )
+    // Lock the person's external conversations in ID order, so concurrent changes cannot deadlock.
+    const conversations = await tx
+      .select({
+        id: messagingConversations.id,
+        organizationId: messagingConversations.organizationId,
+      })
+      .from(messagingConversations)
       .where(
         and(
-          eq(actors.userId, userId),
-          eq(actors.organizationId, organizationId),
           ne(messagingConversations.organizationId, organizationId),
+          inArray(
+            messagingConversations.id,
+            tx
+              .select({ id: messagingParticipants.conversationId })
+              .from(messagingParticipants)
+              .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
+              .where(and(eq(actors.userId, userId), eq(actors.organizationId, organizationId))),
+          ),
         ),
-      );
-    const conversations = ids.length
-      ? await tx
-          .select()
-          .from(messagingConversations)
-          .where(
-            inArray(
-              messagingConversations.id,
-              ids.map((row) => row.id),
-            ),
-          )
-          .orderBy(asc(messagingConversations.id))
-          .for("update")
-      : [];
-    const hints = (
-      await Promise.all(
-        conversations.map((conversation) => conversationRemovalHints(tx, conversation)),
       )
-    ).flat();
+      .orderBy(asc(messagingConversations.id))
+      .for("update");
+    const ids = conversations.map((row) => row.id);
+    const hints = await conversationRemovalHints(tx, conversations);
     if (ids.length)
       await endParticipation(
         tx,
         and(
-          inArray(
-            messagingParticipants.conversationId,
-            ids.map((row) => row.id),
-          ),
+          inArray(messagingParticipants.conversationId, ids),
           inArray(
             messagingParticipants.actorEntityId,
             tx
