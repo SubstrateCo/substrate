@@ -82,17 +82,22 @@ export const agentWakeRequestDetail = z.strictObject({
 });
 export type AgentWakeRequestDetail = z.infer<typeof agentWakeRequestDetail>;
 
-export interface AgentWakeView {
-  id: string;
-  userAgentId: string;
-  source: AgentWakeSource;
-  sourceRef: AgentWakeSourceRef;
-  sessionKey: string;
-  dedupeKey: string;
-  createdAt: string;
+/** A server ID in a response. The desktop does not check its format. */
+const ref = z.string().min(1);
+
+/** A wake as the home desktop pulls it. */
+export const agentWakeView = z.object({
+  id: ref,
+  userAgentId: ref,
+  source: z.enum(agentWakeSources),
+  sourceRef: agentWakeSourceRef,
+  sessionKey: z.string(),
+  dedupeKey: z.string(),
+  createdAt: z.string(),
   /** Set for answer and approval_result wakes of the owner's own agent. */
-  request: AgentWakeRequestDetail | null;
-}
+  request: agentWakeRequestDetail.nullable(),
+});
+export type AgentWakeView = z.infer<typeof agentWakeView>;
 
 /** A message body for the home desktop, returned only while the owner can see the message. */
 export interface AgentSourceMessage {

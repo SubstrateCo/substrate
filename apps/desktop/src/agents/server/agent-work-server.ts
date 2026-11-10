@@ -1,8 +1,6 @@
 import {
   agentRequestResponse,
-  agentWakeRequestDetail,
-  agentWakeSourceRef,
-  agentWakeSources,
+  agentWakeView,
   type AgentRequestDelivery,
   type AgentSourcesResult,
   type AgentWakeView,
@@ -26,16 +24,6 @@ const result = <T extends z.ZodType>(data: T) =>
   ]);
 
 const id = z.string().min(1);
-const wakeSchema = z.object({
-  id,
-  userAgentId: id,
-  source: z.enum(agentWakeSources),
-  sourceRef: agentWakeSourceRef,
-  sessionKey: z.string(),
-  dedupeKey: z.string(),
-  createdAt: z.string(),
-  request: agentWakeRequestDetail.nullable(),
-});
 const sourcesSchema = z.object({
   messages: z.array(
     z.object({
@@ -175,7 +163,7 @@ export function createAgentWorkServer(options: {
       return call(
         "/agent-work/device/wakes/pull",
         { ...device(organizationId), limit },
-        z.array(wakeSchema),
+        z.array(agentWakeView),
       );
     },
     async ackWakes(organizationId, ids) {
