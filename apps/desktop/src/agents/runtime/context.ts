@@ -3,19 +3,19 @@ import type { AgentWorkChange } from "@startup-os/contracts/agent-work/desktop";
 import type {
   AdapterCapabilities,
   HarnessCommand,
+  HarnessCommandResult,
   HarnessKind,
   Usage,
 } from "@startup-os/contracts/harness";
 
 import type { AgentWorkServer, CatalogAgent } from "../server/agent-work-server.ts";
 
-/* oxlint-disable deslop/no-unknown-returns -- Harness results cross the worker boundary unparsed; callers parse them. */
-
 /** The harness controller, as the runtime uses it. Main checks account and organization. */
 export interface HarnessPort {
   /** Writes current agent folders before sessions open. */
   synchronize(): Promise<void>;
-  execute(command: HarnessCommand): Promise<unknown>;
+  /** The controller parses each result before it returns it. */
+  execute<C extends HarnessCommand>(command: C): Promise<HarnessCommandResult<C>>;
   /**
    * Interrupts and closes every native session of the organization, also when the controller
    * already verified another one. Each live turn ends, then its session.closed event follows.

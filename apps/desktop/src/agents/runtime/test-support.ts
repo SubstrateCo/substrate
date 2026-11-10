@@ -8,6 +8,7 @@ import type {
 import type {
   AdapterCapabilities,
   HarnessCommand,
+  HarnessCommandResult,
   HarnessEvent,
   HarnessEventBody,
 } from "@startup-os/contracts/harness";
@@ -317,13 +318,13 @@ export async function runtimeFixture(
         server,
         harness: {
           synchronize: async () => {},
-          async execute(command) {
+          async execute<C extends HarnessCommand>(command: C) {
             commands.push(command);
             if (command.organizationId !== harness.activeOrganizationId)
               throw new CodeError("organization-unavailable");
             const hooked = hooks.command?.(command, () => hostCommand(command));
-            if (hooked) return hooked;
-            return hostCommand(command);
+            // SAFETY: the fake host returns the result shape of each command, as the controller does.
+            return (await (hooked ?? hostCommand(command))) as HarnessCommandResult<C>;
           },
           async closeOrganization(organization) {
             closedOrganizations.push(organization);

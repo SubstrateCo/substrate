@@ -31,20 +31,6 @@ import { z } from "zod";
 
 /* oxlint-disable deslop/no-unknown-parameters -- Harness errors cross the worker boundary untyped; errorCode reads their fixed code. */
 
-const openedSchema = z.object({
-  nativeSessionId: z.string().min(1),
-  capabilities: z.object({
-    steer: z.boolean(),
-    steerEvidence: z.boolean(),
-    compact: z.boolean(),
-    usage: z.boolean(),
-    noAskProfile: z.boolean(),
-    interruptReceipt: z.boolean(),
-  }),
-  resumed: z.boolean(),
-});
-const receiptSchema = z.object({ stillQueuedInputIds: z.array(z.string()).optional() }).nullish();
-
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
 
 /**
@@ -354,7 +340,7 @@ export function createTurnExecutor(
     if (!(await stillAssigned(turn.id))) return;
     let opened;
     try {
-      opened = openedSchema.parse(await context.harness.execute(open));
+      opened = await context.harness.execute(open);
     } catch (error) {
       if (errorCode(error) === "resume-failed")
         return needsAttention(
@@ -658,15 +644,13 @@ export function createTurnExecutor(
       const state = live.get(turnId);
       if (!state) return "gone";
       try {
-        const receipt = receiptSchema.parse(
-          await context.harness.execute({
-            type: "interrupt",
-            organizationId: context.organizationId,
-            sessionId: state.sessionId,
-            turnId,
-          }),
-        );
-        state.stillQueued.push(...(receipt?.stillQueuedInputIds ?? []));
+        const receipt = await context.harness.execute({
+          type: "interrupt",
+          organizationId: context.organizationId,
+          sessionId: state.sessionId,
+          turnId,
+        });
+        state.stillQueued.push(...(receipt.stillQueuedInputIds ?? []));
         return "sent";
       } catch (error) {
         return errorCode(error) === "no-live-turn" ? "gone" : "failed";
