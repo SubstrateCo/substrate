@@ -64,8 +64,12 @@ export function SharingManager({
           return removeSharing({ data: { ...base, actorId: input.id } });
       }
     },
-    onSuccess: async () => {
+    onSuccess: async (_, input) => {
       setConfirmation(undefined);
+      // Every action except remove sends an access hint to this organization, and that hint
+      // resets the same queries. Remove reaches only the host organization and the members, so a
+      // partner organization's manager may not get one.
+      if (input.kind !== "remove") return;
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.organization(organizationId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.sharingInvitations }),
