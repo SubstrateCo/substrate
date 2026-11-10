@@ -6,7 +6,7 @@ import { ManagedConversations } from "@/components/organizations/settings/manage
 import { OrganizationPicture } from "@/components/organizations/settings/organization-picture";
 import { OrganizationSettings } from "@/components/organizations/settings/organization-settings";
 
-export const Route = createFileRoute("/_authenticated/_workspace/settings/organization/")({
+export const Route = createFileRoute("/_authenticated/_frame/_workspace/settings/organization/")({
   component: OrganizationSettingsRoute,
 });
 

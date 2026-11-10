@@ -12,29 +12,30 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as PublicRouteRouteImport } from './routes/_public/route'
+import { Route as AuthenticatedFrameRouteRouteImport } from './routes/_authenticated/_frame/route'
 import { Route as AuthenticatedStandaloneRouteRouteImport } from './routes/_authenticated/_standalone/route'
-import { Route as AuthenticatedWorkspaceRouteRouteImport } from './routes/_authenticated/_workspace/route'
 import { Route as PublicGuestRouteRouteImport } from './routes/_public/_guest/route'
 import { Route as PublicDownloadRouteImport } from './routes/_public/download'
 import { Route as PublicForgotPasswordRouteImport } from './routes/_public/forgot-password'
 import { Route as PublicResetPasswordRouteImport } from './routes/_public/reset-password'
 import { Route as PublicVerifyEmailRouteImport } from './routes/_public/verify-email'
+import { Route as AuthenticatedFrameWorkspaceRouteRouteImport } from './routes/_authenticated/_frame/_workspace/route'
 import { Route as AuthenticatedStandaloneOnboardingRouteImport } from './routes/_authenticated/_standalone/onboarding'
 import { Route as AuthenticatedStandaloneOrganizationsRouteImport } from './routes/_authenticated/_standalone/organizations'
-import { Route as AuthenticatedWorkspaceAgentsRouteImport } from './routes/_authenticated/_workspace/agents'
-import { Route as AuthenticatedWorkspaceDashboardRouteImport } from './routes/_authenticated/_workspace/dashboard'
-import { Route as AuthenticatedWorkspaceNotificationsRouteImport } from './routes/_authenticated/_workspace/notifications'
-import { Route as AuthenticatedSettingsUserRouteRouteImport } from './routes/_authenticated/settings/user/route'
 import { Route as PublicGuestLoginRouteImport } from './routes/_public/_guest/login'
 import { Route as PublicGuestSignupRouteImport } from './routes/_public/_guest/signup'
+import { Route as AuthenticatedFrameWorkspaceAgentsRouteImport } from './routes/_authenticated/_frame/_workspace/agents'
+import { Route as AuthenticatedFrameWorkspaceDashboardRouteImport } from './routes/_authenticated/_frame/_workspace/dashboard'
+import { Route as AuthenticatedFrameWorkspaceNotificationsRouteImport } from './routes/_authenticated/_frame/_workspace/notifications'
+import { Route as AuthenticatedFrameSettingsUserRouteRouteImport } from './routes/_authenticated/_frame/settings/user/route'
 import { Route as AuthenticatedStandaloneAcceptInvitationInvitationIdRouteImport } from './routes/_authenticated/_standalone/accept-invitation/$invitationId'
 import { Route as AuthenticatedStandaloneAcceptSharingInvitationIdRouteImport } from './routes/_authenticated/_standalone/accept-sharing/$invitationId'
 import { Route as AuthenticatedStandaloneSetupCompleteRouteImport } from './routes/_authenticated/_standalone/setup/complete'
-import { Route as AuthenticatedWorkspaceSettingsOrganizationRouteRouteImport } from './routes/_authenticated/_workspace/settings/organization/route'
-import { Route as AuthenticatedWorkspaceTasksIndexRouteImport } from './routes/_authenticated/_workspace/tasks/index'
-import { Route as AuthenticatedSettingsUserIndexRouteImport } from './routes/_authenticated/settings/user/index'
-import { Route as AuthenticatedSettingsUserInvitationsRouteImport } from './routes/_authenticated/settings/user/invitations'
-import { Route as AuthenticatedWorkspaceSettingsOrganizationIndexRouteImport } from './routes/_authenticated/_workspace/settings/organization/index'
+import { Route as AuthenticatedFrameWorkspaceSettingsOrganizationRouteRouteImport } from './routes/_authenticated/_frame/_workspace/settings/organization/route'
+import { Route as AuthenticatedFrameWorkspaceTasksIndexRouteImport } from './routes/_authenticated/_frame/_workspace/tasks/index'
+import { Route as AuthenticatedFrameSettingsUserIndexRouteImport } from './routes/_authenticated/_frame/settings/user/index'
+import { Route as AuthenticatedFrameSettingsUserInvitationsRouteImport } from './routes/_authenticated/_frame/settings/user/invitations'
+import { Route as AuthenticatedFrameWorkspaceSettingsOrganizationIndexRouteImport } from './routes/_authenticated/_frame/_workspace/settings/organization/index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -49,14 +50,13 @@ const PublicRouteRoute = PublicRouteRouteImport.update({
   id: '/_public',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedFrameRouteRoute = AuthenticatedFrameRouteRouteImport.update({
+  id: '/_frame',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedStandaloneRouteRoute =
   AuthenticatedStandaloneRouteRouteImport.update({
     id: '/_standalone',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedWorkspaceRouteRoute =
-  AuthenticatedWorkspaceRouteRouteImport.update({
-    id: '/_workspace',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const PublicGuestRouteRoute = PublicGuestRouteRouteImport.update({
@@ -83,6 +83,11 @@ const PublicVerifyEmailRoute = PublicVerifyEmailRouteImport.update({
   path: '/verify-email',
   getParentRoute: () => PublicRouteRoute,
 } as any)
+const AuthenticatedFrameWorkspaceRouteRoute =
+  AuthenticatedFrameWorkspaceRouteRouteImport.update({
+    id: '/_workspace',
+    getParentRoute: () => AuthenticatedFrameRouteRoute,
+  } as any)
 const AuthenticatedStandaloneOnboardingRoute =
   AuthenticatedStandaloneOnboardingRouteImport.update({
     id: '/onboarding',
@@ -95,30 +100,6 @@ const AuthenticatedStandaloneOrganizationsRoute =
     path: '/organizations',
     getParentRoute: () => AuthenticatedStandaloneRouteRoute,
   } as any)
-const AuthenticatedWorkspaceAgentsRoute =
-  AuthenticatedWorkspaceAgentsRouteImport.update({
-    id: '/agents',
-    path: '/agents',
-    getParentRoute: () => AuthenticatedWorkspaceRouteRoute,
-  } as any)
-const AuthenticatedWorkspaceDashboardRoute =
-  AuthenticatedWorkspaceDashboardRouteImport.update({
-    id: '/dashboard',
-    path: '/dashboard',
-    getParentRoute: () => AuthenticatedWorkspaceRouteRoute,
-  } as any)
-const AuthenticatedWorkspaceNotificationsRoute =
-  AuthenticatedWorkspaceNotificationsRouteImport.update({
-    id: '/notifications',
-    path: '/notifications',
-    getParentRoute: () => AuthenticatedWorkspaceRouteRoute,
-  } as any)
-const AuthenticatedSettingsUserRouteRoute =
-  AuthenticatedSettingsUserRouteRouteImport.update({
-    id: '/settings/user',
-    path: '/settings/user',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const PublicGuestLoginRoute = PublicGuestLoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -129,6 +110,30 @@ const PublicGuestSignupRoute = PublicGuestSignupRouteImport.update({
   path: '/signup',
   getParentRoute: () => PublicGuestRouteRoute,
 } as any)
+const AuthenticatedFrameWorkspaceAgentsRoute =
+  AuthenticatedFrameWorkspaceAgentsRouteImport.update({
+    id: '/agents',
+    path: '/agents',
+    getParentRoute: () => AuthenticatedFrameWorkspaceRouteRoute,
+  } as any)
+const AuthenticatedFrameWorkspaceDashboardRoute =
+  AuthenticatedFrameWorkspaceDashboardRouteImport.update({
+    id: '/dashboard',
+    path: '/dashboard',
+    getParentRoute: () => AuthenticatedFrameWorkspaceRouteRoute,
+  } as any)
+const AuthenticatedFrameWorkspaceNotificationsRoute =
+  AuthenticatedFrameWorkspaceNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
+    getParentRoute: () => AuthenticatedFrameWorkspaceRouteRoute,
+  } as any)
+const AuthenticatedFrameSettingsUserRouteRoute =
+  AuthenticatedFrameSettingsUserRouteRouteImport.update({
+    id: '/settings/user',
+    path: '/settings/user',
+    getParentRoute: () => AuthenticatedFrameRouteRoute,
+  } as any)
 const AuthenticatedStandaloneAcceptInvitationInvitationIdRoute =
   AuthenticatedStandaloneAcceptInvitationInvitationIdRouteImport.update({
     id: '/accept-invitation/$invitationId',
@@ -147,35 +152,36 @@ const AuthenticatedStandaloneSetupCompleteRoute =
     path: '/setup/complete',
     getParentRoute: () => AuthenticatedStandaloneRouteRoute,
   } as any)
-const AuthenticatedWorkspaceSettingsOrganizationRouteRoute =
-  AuthenticatedWorkspaceSettingsOrganizationRouteRouteImport.update({
+const AuthenticatedFrameWorkspaceSettingsOrganizationRouteRoute =
+  AuthenticatedFrameWorkspaceSettingsOrganizationRouteRouteImport.update({
     id: '/settings/organization',
     path: '/settings/organization',
-    getParentRoute: () => AuthenticatedWorkspaceRouteRoute,
+    getParentRoute: () => AuthenticatedFrameWorkspaceRouteRoute,
   } as any)
-const AuthenticatedWorkspaceTasksIndexRoute =
-  AuthenticatedWorkspaceTasksIndexRouteImport.update({
+const AuthenticatedFrameWorkspaceTasksIndexRoute =
+  AuthenticatedFrameWorkspaceTasksIndexRouteImport.update({
     id: '/tasks/',
     path: '/tasks/',
-    getParentRoute: () => AuthenticatedWorkspaceRouteRoute,
+    getParentRoute: () => AuthenticatedFrameWorkspaceRouteRoute,
   } as any)
-const AuthenticatedSettingsUserIndexRoute =
-  AuthenticatedSettingsUserIndexRouteImport.update({
+const AuthenticatedFrameSettingsUserIndexRoute =
+  AuthenticatedFrameSettingsUserIndexRouteImport.update({
     id: '/',
     path: '/',
-    getParentRoute: () => AuthenticatedSettingsUserRouteRoute,
+    getParentRoute: () => AuthenticatedFrameSettingsUserRouteRoute,
   } as any)
-const AuthenticatedSettingsUserInvitationsRoute =
-  AuthenticatedSettingsUserInvitationsRouteImport.update({
+const AuthenticatedFrameSettingsUserInvitationsRoute =
+  AuthenticatedFrameSettingsUserInvitationsRouteImport.update({
     id: '/invitations',
     path: '/invitations',
-    getParentRoute: () => AuthenticatedSettingsUserRouteRoute,
+    getParentRoute: () => AuthenticatedFrameSettingsUserRouteRoute,
   } as any)
-const AuthenticatedWorkspaceSettingsOrganizationIndexRoute =
-  AuthenticatedWorkspaceSettingsOrganizationIndexRouteImport.update({
+const AuthenticatedFrameWorkspaceSettingsOrganizationIndexRoute =
+  AuthenticatedFrameWorkspaceSettingsOrganizationIndexRouteImport.update({
     id: '/',
     path: '/',
-    getParentRoute: () => AuthenticatedWorkspaceSettingsOrganizationRouteRoute,
+    getParentRoute: () =>
+      AuthenticatedFrameWorkspaceSettingsOrganizationRouteRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -184,22 +190,22 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof PublicForgotPasswordRoute
   '/reset-password': typeof PublicResetPasswordRoute
   '/verify-email': typeof PublicVerifyEmailRoute
-  '/settings/user': typeof AuthenticatedSettingsUserRouteRouteWithChildren
   '/onboarding': typeof AuthenticatedStandaloneOnboardingRoute
   '/organizations': typeof AuthenticatedStandaloneOrganizationsRoute
-  '/agents': typeof AuthenticatedWorkspaceAgentsRoute
-  '/dashboard': typeof AuthenticatedWorkspaceDashboardRoute
-  '/notifications': typeof AuthenticatedWorkspaceNotificationsRoute
   '/login': typeof PublicGuestLoginRoute
   '/signup': typeof PublicGuestSignupRoute
-  '/settings/organization': typeof AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren
+  '/settings/user': typeof AuthenticatedFrameSettingsUserRouteRouteWithChildren
+  '/agents': typeof AuthenticatedFrameWorkspaceAgentsRoute
+  '/dashboard': typeof AuthenticatedFrameWorkspaceDashboardRoute
+  '/notifications': typeof AuthenticatedFrameWorkspaceNotificationsRoute
   '/accept-invitation/$invitationId': typeof AuthenticatedStandaloneAcceptInvitationInvitationIdRoute
   '/accept-sharing/$invitationId': typeof AuthenticatedStandaloneAcceptSharingInvitationIdRoute
   '/setup/complete': typeof AuthenticatedStandaloneSetupCompleteRoute
-  '/settings/user/invitations': typeof AuthenticatedSettingsUserInvitationsRoute
-  '/tasks/': typeof AuthenticatedWorkspaceTasksIndexRoute
-  '/settings/user/': typeof AuthenticatedSettingsUserIndexRoute
-  '/settings/organization/': typeof AuthenticatedWorkspaceSettingsOrganizationIndexRoute
+  '/settings/organization': typeof AuthenticatedFrameWorkspaceSettingsOrganizationRouteRouteWithChildren
+  '/settings/user/invitations': typeof AuthenticatedFrameSettingsUserInvitationsRoute
+  '/tasks/': typeof AuthenticatedFrameWorkspaceTasksIndexRoute
+  '/settings/user/': typeof AuthenticatedFrameSettingsUserIndexRoute
+  '/settings/organization/': typeof AuthenticatedFrameWorkspaceSettingsOrganizationIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -209,47 +215,48 @@ export interface FileRoutesByTo {
   '/verify-email': typeof PublicVerifyEmailRoute
   '/onboarding': typeof AuthenticatedStandaloneOnboardingRoute
   '/organizations': typeof AuthenticatedStandaloneOrganizationsRoute
-  '/agents': typeof AuthenticatedWorkspaceAgentsRoute
-  '/dashboard': typeof AuthenticatedWorkspaceDashboardRoute
-  '/notifications': typeof AuthenticatedWorkspaceNotificationsRoute
   '/login': typeof PublicGuestLoginRoute
   '/signup': typeof PublicGuestSignupRoute
+  '/agents': typeof AuthenticatedFrameWorkspaceAgentsRoute
+  '/dashboard': typeof AuthenticatedFrameWorkspaceDashboardRoute
+  '/notifications': typeof AuthenticatedFrameWorkspaceNotificationsRoute
   '/accept-invitation/$invitationId': typeof AuthenticatedStandaloneAcceptInvitationInvitationIdRoute
   '/accept-sharing/$invitationId': typeof AuthenticatedStandaloneAcceptSharingInvitationIdRoute
   '/setup/complete': typeof AuthenticatedStandaloneSetupCompleteRoute
-  '/settings/user/invitations': typeof AuthenticatedSettingsUserInvitationsRoute
-  '/tasks': typeof AuthenticatedWorkspaceTasksIndexRoute
-  '/settings/user': typeof AuthenticatedSettingsUserIndexRoute
-  '/settings/organization': typeof AuthenticatedWorkspaceSettingsOrganizationIndexRoute
+  '/settings/user/invitations': typeof AuthenticatedFrameSettingsUserInvitationsRoute
+  '/tasks': typeof AuthenticatedFrameWorkspaceTasksIndexRoute
+  '/settings/user': typeof AuthenticatedFrameSettingsUserIndexRoute
+  '/settings/organization': typeof AuthenticatedFrameWorkspaceSettingsOrganizationIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/_public': typeof PublicRouteRouteWithChildren
+  '/_authenticated/_frame': typeof AuthenticatedFrameRouteRouteWithChildren
   '/_authenticated/_standalone': typeof AuthenticatedStandaloneRouteRouteWithChildren
-  '/_authenticated/_workspace': typeof AuthenticatedWorkspaceRouteRouteWithChildren
   '/_public/_guest': typeof PublicGuestRouteRouteWithChildren
   '/_public/download': typeof PublicDownloadRoute
   '/_public/forgot-password': typeof PublicForgotPasswordRoute
   '/_public/reset-password': typeof PublicResetPasswordRoute
   '/_public/verify-email': typeof PublicVerifyEmailRoute
-  '/_authenticated/settings/user': typeof AuthenticatedSettingsUserRouteRouteWithChildren
+  '/_authenticated/_frame/_workspace': typeof AuthenticatedFrameWorkspaceRouteRouteWithChildren
   '/_authenticated/_standalone/onboarding': typeof AuthenticatedStandaloneOnboardingRoute
   '/_authenticated/_standalone/organizations': typeof AuthenticatedStandaloneOrganizationsRoute
-  '/_authenticated/_workspace/agents': typeof AuthenticatedWorkspaceAgentsRoute
-  '/_authenticated/_workspace/dashboard': typeof AuthenticatedWorkspaceDashboardRoute
-  '/_authenticated/_workspace/notifications': typeof AuthenticatedWorkspaceNotificationsRoute
   '/_public/_guest/login': typeof PublicGuestLoginRoute
   '/_public/_guest/signup': typeof PublicGuestSignupRoute
-  '/_authenticated/_workspace/settings/organization': typeof AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren
+  '/_authenticated/_frame/settings/user': typeof AuthenticatedFrameSettingsUserRouteRouteWithChildren
+  '/_authenticated/_frame/_workspace/agents': typeof AuthenticatedFrameWorkspaceAgentsRoute
+  '/_authenticated/_frame/_workspace/dashboard': typeof AuthenticatedFrameWorkspaceDashboardRoute
+  '/_authenticated/_frame/_workspace/notifications': typeof AuthenticatedFrameWorkspaceNotificationsRoute
   '/_authenticated/_standalone/accept-invitation/$invitationId': typeof AuthenticatedStandaloneAcceptInvitationInvitationIdRoute
   '/_authenticated/_standalone/accept-sharing/$invitationId': typeof AuthenticatedStandaloneAcceptSharingInvitationIdRoute
   '/_authenticated/_standalone/setup/complete': typeof AuthenticatedStandaloneSetupCompleteRoute
-  '/_authenticated/settings/user/invitations': typeof AuthenticatedSettingsUserInvitationsRoute
-  '/_authenticated/_workspace/tasks/': typeof AuthenticatedWorkspaceTasksIndexRoute
-  '/_authenticated/settings/user/': typeof AuthenticatedSettingsUserIndexRoute
-  '/_authenticated/_workspace/settings/organization/': typeof AuthenticatedWorkspaceSettingsOrganizationIndexRoute
+  '/_authenticated/_frame/_workspace/settings/organization': typeof AuthenticatedFrameWorkspaceSettingsOrganizationRouteRouteWithChildren
+  '/_authenticated/_frame/settings/user/invitations': typeof AuthenticatedFrameSettingsUserInvitationsRoute
+  '/_authenticated/_frame/_workspace/tasks/': typeof AuthenticatedFrameWorkspaceTasksIndexRoute
+  '/_authenticated/_frame/settings/user/': typeof AuthenticatedFrameSettingsUserIndexRoute
+  '/_authenticated/_frame/_workspace/settings/organization/': typeof AuthenticatedFrameWorkspaceSettingsOrganizationIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -259,18 +266,18 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/reset-password'
     | '/verify-email'
-    | '/settings/user'
     | '/onboarding'
     | '/organizations'
+    | '/login'
+    | '/signup'
+    | '/settings/user'
     | '/agents'
     | '/dashboard'
     | '/notifications'
-    | '/login'
-    | '/signup'
-    | '/settings/organization'
     | '/accept-invitation/$invitationId'
     | '/accept-sharing/$invitationId'
     | '/setup/complete'
+    | '/settings/organization'
     | '/settings/user/invitations'
     | '/tasks/'
     | '/settings/user/'
@@ -284,11 +291,11 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/onboarding'
     | '/organizations'
+    | '/login'
+    | '/signup'
     | '/agents'
     | '/dashboard'
     | '/notifications'
-    | '/login'
-    | '/signup'
     | '/accept-invitation/$invitationId'
     | '/accept-sharing/$invitationId'
     | '/setup/complete'
@@ -301,29 +308,30 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/_public'
+    | '/_authenticated/_frame'
     | '/_authenticated/_standalone'
-    | '/_authenticated/_workspace'
     | '/_public/_guest'
     | '/_public/download'
     | '/_public/forgot-password'
     | '/_public/reset-password'
     | '/_public/verify-email'
-    | '/_authenticated/settings/user'
+    | '/_authenticated/_frame/_workspace'
     | '/_authenticated/_standalone/onboarding'
     | '/_authenticated/_standalone/organizations'
-    | '/_authenticated/_workspace/agents'
-    | '/_authenticated/_workspace/dashboard'
-    | '/_authenticated/_workspace/notifications'
     | '/_public/_guest/login'
     | '/_public/_guest/signup'
-    | '/_authenticated/_workspace/settings/organization'
+    | '/_authenticated/_frame/settings/user'
+    | '/_authenticated/_frame/_workspace/agents'
+    | '/_authenticated/_frame/_workspace/dashboard'
+    | '/_authenticated/_frame/_workspace/notifications'
     | '/_authenticated/_standalone/accept-invitation/$invitationId'
     | '/_authenticated/_standalone/accept-sharing/$invitationId'
     | '/_authenticated/_standalone/setup/complete'
-    | '/_authenticated/settings/user/invitations'
-    | '/_authenticated/_workspace/tasks/'
-    | '/_authenticated/settings/user/'
-    | '/_authenticated/_workspace/settings/organization/'
+    | '/_authenticated/_frame/_workspace/settings/organization'
+    | '/_authenticated/_frame/settings/user/invitations'
+    | '/_authenticated/_frame/_workspace/tasks/'
+    | '/_authenticated/_frame/settings/user/'
+    | '/_authenticated/_frame/_workspace/settings/organization/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -355,18 +363,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/_frame': {
+      id: '/_authenticated/_frame'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedFrameRouteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/_standalone': {
       id: '/_authenticated/_standalone'
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedStandaloneRouteRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/_workspace': {
-      id: '/_authenticated/_workspace'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AuthenticatedWorkspaceRouteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_public/_guest': {
@@ -404,6 +412,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicVerifyEmailRouteImport
       parentRoute: typeof PublicRouteRoute
     }
+    '/_authenticated/_frame/_workspace': {
+      id: '/_authenticated/_frame/_workspace'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedFrameWorkspaceRouteRouteImport
+      parentRoute: typeof AuthenticatedFrameRouteRoute
+    }
     '/_authenticated/_standalone/onboarding': {
       id: '/_authenticated/_standalone/onboarding'
       path: '/onboarding'
@@ -418,34 +433,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedStandaloneOrganizationsRouteImport
       parentRoute: typeof AuthenticatedStandaloneRouteRoute
     }
-    '/_authenticated/_workspace/agents': {
-      id: '/_authenticated/_workspace/agents'
-      path: '/agents'
-      fullPath: '/agents'
-      preLoaderRoute: typeof AuthenticatedWorkspaceAgentsRouteImport
-      parentRoute: typeof AuthenticatedWorkspaceRouteRoute
-    }
-    '/_authenticated/_workspace/dashboard': {
-      id: '/_authenticated/_workspace/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthenticatedWorkspaceDashboardRouteImport
-      parentRoute: typeof AuthenticatedWorkspaceRouteRoute
-    }
-    '/_authenticated/_workspace/notifications': {
-      id: '/_authenticated/_workspace/notifications'
-      path: '/notifications'
-      fullPath: '/notifications'
-      preLoaderRoute: typeof AuthenticatedWorkspaceNotificationsRouteImport
-      parentRoute: typeof AuthenticatedWorkspaceRouteRoute
-    }
-    '/_authenticated/settings/user': {
-      id: '/_authenticated/settings/user'
-      path: '/settings/user'
-      fullPath: '/settings/user'
-      preLoaderRoute: typeof AuthenticatedSettingsUserRouteRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_public/_guest/login': {
       id: '/_public/_guest/login'
       path: '/login'
@@ -459,6 +446,34 @@ declare module '@tanstack/react-router' {
       fullPath: '/signup'
       preLoaderRoute: typeof PublicGuestSignupRouteImport
       parentRoute: typeof PublicGuestRouteRoute
+    }
+    '/_authenticated/_frame/_workspace/agents': {
+      id: '/_authenticated/_frame/_workspace/agents'
+      path: '/agents'
+      fullPath: '/agents'
+      preLoaderRoute: typeof AuthenticatedFrameWorkspaceAgentsRouteImport
+      parentRoute: typeof AuthenticatedFrameWorkspaceRouteRoute
+    }
+    '/_authenticated/_frame/_workspace/dashboard': {
+      id: '/_authenticated/_frame/_workspace/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedFrameWorkspaceDashboardRouteImport
+      parentRoute: typeof AuthenticatedFrameWorkspaceRouteRoute
+    }
+    '/_authenticated/_frame/_workspace/notifications': {
+      id: '/_authenticated/_frame/_workspace/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AuthenticatedFrameWorkspaceNotificationsRouteImport
+      parentRoute: typeof AuthenticatedFrameWorkspaceRouteRoute
+    }
+    '/_authenticated/_frame/settings/user': {
+      id: '/_authenticated/_frame/settings/user'
+      path: '/settings/user'
+      fullPath: '/settings/user'
+      preLoaderRoute: typeof AuthenticatedFrameSettingsUserRouteRouteImport
+      parentRoute: typeof AuthenticatedFrameRouteRoute
     }
     '/_authenticated/_standalone/accept-invitation/$invitationId': {
       id: '/_authenticated/_standalone/accept-invitation/$invitationId'
@@ -481,43 +496,121 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedStandaloneSetupCompleteRouteImport
       parentRoute: typeof AuthenticatedStandaloneRouteRoute
     }
-    '/_authenticated/_workspace/settings/organization': {
-      id: '/_authenticated/_workspace/settings/organization'
+    '/_authenticated/_frame/_workspace/settings/organization': {
+      id: '/_authenticated/_frame/_workspace/settings/organization'
       path: '/settings/organization'
       fullPath: '/settings/organization'
-      preLoaderRoute: typeof AuthenticatedWorkspaceSettingsOrganizationRouteRouteImport
-      parentRoute: typeof AuthenticatedWorkspaceRouteRoute
+      preLoaderRoute: typeof AuthenticatedFrameWorkspaceSettingsOrganizationRouteRouteImport
+      parentRoute: typeof AuthenticatedFrameWorkspaceRouteRoute
     }
-    '/_authenticated/_workspace/tasks/': {
-      id: '/_authenticated/_workspace/tasks/'
+    '/_authenticated/_frame/_workspace/tasks/': {
+      id: '/_authenticated/_frame/_workspace/tasks/'
       path: '/tasks'
       fullPath: '/tasks/'
-      preLoaderRoute: typeof AuthenticatedWorkspaceTasksIndexRouteImport
-      parentRoute: typeof AuthenticatedWorkspaceRouteRoute
+      preLoaderRoute: typeof AuthenticatedFrameWorkspaceTasksIndexRouteImport
+      parentRoute: typeof AuthenticatedFrameWorkspaceRouteRoute
     }
-    '/_authenticated/settings/user/': {
-      id: '/_authenticated/settings/user/'
+    '/_authenticated/_frame/settings/user/': {
+      id: '/_authenticated/_frame/settings/user/'
       path: '/'
       fullPath: '/settings/user/'
-      preLoaderRoute: typeof AuthenticatedSettingsUserIndexRouteImport
-      parentRoute: typeof AuthenticatedSettingsUserRouteRoute
+      preLoaderRoute: typeof AuthenticatedFrameSettingsUserIndexRouteImport
+      parentRoute: typeof AuthenticatedFrameSettingsUserRouteRoute
     }
-    '/_authenticated/settings/user/invitations': {
-      id: '/_authenticated/settings/user/invitations'
+    '/_authenticated/_frame/settings/user/invitations': {
+      id: '/_authenticated/_frame/settings/user/invitations'
       path: '/invitations'
       fullPath: '/settings/user/invitations'
-      preLoaderRoute: typeof AuthenticatedSettingsUserInvitationsRouteImport
-      parentRoute: typeof AuthenticatedSettingsUserRouteRoute
+      preLoaderRoute: typeof AuthenticatedFrameSettingsUserInvitationsRouteImport
+      parentRoute: typeof AuthenticatedFrameSettingsUserRouteRoute
     }
-    '/_authenticated/_workspace/settings/organization/': {
-      id: '/_authenticated/_workspace/settings/organization/'
+    '/_authenticated/_frame/_workspace/settings/organization/': {
+      id: '/_authenticated/_frame/_workspace/settings/organization/'
       path: '/'
       fullPath: '/settings/organization/'
-      preLoaderRoute: typeof AuthenticatedWorkspaceSettingsOrganizationIndexRouteImport
-      parentRoute: typeof AuthenticatedWorkspaceSettingsOrganizationRouteRoute
+      preLoaderRoute: typeof AuthenticatedFrameWorkspaceSettingsOrganizationIndexRouteImport
+      parentRoute: typeof AuthenticatedFrameWorkspaceSettingsOrganizationRouteRoute
     }
   }
 }
+
+interface AuthenticatedFrameWorkspaceSettingsOrganizationRouteRouteChildren {
+  AuthenticatedFrameWorkspaceSettingsOrganizationIndexRoute: typeof AuthenticatedFrameWorkspaceSettingsOrganizationIndexRoute
+}
+
+const AuthenticatedFrameWorkspaceSettingsOrganizationRouteRouteChildren: AuthenticatedFrameWorkspaceSettingsOrganizationRouteRouteChildren =
+  {
+    AuthenticatedFrameWorkspaceSettingsOrganizationIndexRoute:
+      AuthenticatedFrameWorkspaceSettingsOrganizationIndexRoute,
+  }
+
+const AuthenticatedFrameWorkspaceSettingsOrganizationRouteRouteWithChildren =
+  AuthenticatedFrameWorkspaceSettingsOrganizationRouteRoute._addFileChildren(
+    AuthenticatedFrameWorkspaceSettingsOrganizationRouteRouteChildren,
+  )
+
+interface AuthenticatedFrameWorkspaceRouteRouteChildren {
+  AuthenticatedFrameWorkspaceAgentsRoute: typeof AuthenticatedFrameWorkspaceAgentsRoute
+  AuthenticatedFrameWorkspaceDashboardRoute: typeof AuthenticatedFrameWorkspaceDashboardRoute
+  AuthenticatedFrameWorkspaceNotificationsRoute: typeof AuthenticatedFrameWorkspaceNotificationsRoute
+  AuthenticatedFrameWorkspaceSettingsOrganizationRouteRoute: typeof AuthenticatedFrameWorkspaceSettingsOrganizationRouteRouteWithChildren
+  AuthenticatedFrameWorkspaceTasksIndexRoute: typeof AuthenticatedFrameWorkspaceTasksIndexRoute
+}
+
+const AuthenticatedFrameWorkspaceRouteRouteChildren: AuthenticatedFrameWorkspaceRouteRouteChildren =
+  {
+    AuthenticatedFrameWorkspaceAgentsRoute:
+      AuthenticatedFrameWorkspaceAgentsRoute,
+    AuthenticatedFrameWorkspaceDashboardRoute:
+      AuthenticatedFrameWorkspaceDashboardRoute,
+    AuthenticatedFrameWorkspaceNotificationsRoute:
+      AuthenticatedFrameWorkspaceNotificationsRoute,
+    AuthenticatedFrameWorkspaceSettingsOrganizationRouteRoute:
+      AuthenticatedFrameWorkspaceSettingsOrganizationRouteRouteWithChildren,
+    AuthenticatedFrameWorkspaceTasksIndexRoute:
+      AuthenticatedFrameWorkspaceTasksIndexRoute,
+  }
+
+const AuthenticatedFrameWorkspaceRouteRouteWithChildren =
+  AuthenticatedFrameWorkspaceRouteRoute._addFileChildren(
+    AuthenticatedFrameWorkspaceRouteRouteChildren,
+  )
+
+interface AuthenticatedFrameSettingsUserRouteRouteChildren {
+  AuthenticatedFrameSettingsUserInvitationsRoute: typeof AuthenticatedFrameSettingsUserInvitationsRoute
+  AuthenticatedFrameSettingsUserIndexRoute: typeof AuthenticatedFrameSettingsUserIndexRoute
+}
+
+const AuthenticatedFrameSettingsUserRouteRouteChildren: AuthenticatedFrameSettingsUserRouteRouteChildren =
+  {
+    AuthenticatedFrameSettingsUserInvitationsRoute:
+      AuthenticatedFrameSettingsUserInvitationsRoute,
+    AuthenticatedFrameSettingsUserIndexRoute:
+      AuthenticatedFrameSettingsUserIndexRoute,
+  }
+
+const AuthenticatedFrameSettingsUserRouteRouteWithChildren =
+  AuthenticatedFrameSettingsUserRouteRoute._addFileChildren(
+    AuthenticatedFrameSettingsUserRouteRouteChildren,
+  )
+
+interface AuthenticatedFrameRouteRouteChildren {
+  AuthenticatedFrameWorkspaceRouteRoute: typeof AuthenticatedFrameWorkspaceRouteRouteWithChildren
+  AuthenticatedFrameSettingsUserRouteRoute: typeof AuthenticatedFrameSettingsUserRouteRouteWithChildren
+}
+
+const AuthenticatedFrameRouteRouteChildren: AuthenticatedFrameRouteRouteChildren =
+  {
+    AuthenticatedFrameWorkspaceRouteRoute:
+      AuthenticatedFrameWorkspaceRouteRouteWithChildren,
+    AuthenticatedFrameSettingsUserRouteRoute:
+      AuthenticatedFrameSettingsUserRouteRouteWithChildren,
+  }
+
+const AuthenticatedFrameRouteRouteWithChildren =
+  AuthenticatedFrameRouteRoute._addFileChildren(
+    AuthenticatedFrameRouteRouteChildren,
+  )
 
 interface AuthenticatedStandaloneRouteRouteChildren {
   AuthenticatedStandaloneOnboardingRoute: typeof AuthenticatedStandaloneOnboardingRoute
@@ -546,76 +639,15 @@ const AuthenticatedStandaloneRouteRouteWithChildren =
     AuthenticatedStandaloneRouteRouteChildren,
   )
 
-interface AuthenticatedWorkspaceSettingsOrganizationRouteRouteChildren {
-  AuthenticatedWorkspaceSettingsOrganizationIndexRoute: typeof AuthenticatedWorkspaceSettingsOrganizationIndexRoute
-}
-
-const AuthenticatedWorkspaceSettingsOrganizationRouteRouteChildren: AuthenticatedWorkspaceSettingsOrganizationRouteRouteChildren =
-  {
-    AuthenticatedWorkspaceSettingsOrganizationIndexRoute:
-      AuthenticatedWorkspaceSettingsOrganizationIndexRoute,
-  }
-
-const AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren =
-  AuthenticatedWorkspaceSettingsOrganizationRouteRoute._addFileChildren(
-    AuthenticatedWorkspaceSettingsOrganizationRouteRouteChildren,
-  )
-
-interface AuthenticatedWorkspaceRouteRouteChildren {
-  AuthenticatedWorkspaceAgentsRoute: typeof AuthenticatedWorkspaceAgentsRoute
-  AuthenticatedWorkspaceDashboardRoute: typeof AuthenticatedWorkspaceDashboardRoute
-  AuthenticatedWorkspaceNotificationsRoute: typeof AuthenticatedWorkspaceNotificationsRoute
-  AuthenticatedWorkspaceSettingsOrganizationRouteRoute: typeof AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren
-  AuthenticatedWorkspaceTasksIndexRoute: typeof AuthenticatedWorkspaceTasksIndexRoute
-}
-
-const AuthenticatedWorkspaceRouteRouteChildren: AuthenticatedWorkspaceRouteRouteChildren =
-  {
-    AuthenticatedWorkspaceAgentsRoute: AuthenticatedWorkspaceAgentsRoute,
-    AuthenticatedWorkspaceDashboardRoute: AuthenticatedWorkspaceDashboardRoute,
-    AuthenticatedWorkspaceNotificationsRoute:
-      AuthenticatedWorkspaceNotificationsRoute,
-    AuthenticatedWorkspaceSettingsOrganizationRouteRoute:
-      AuthenticatedWorkspaceSettingsOrganizationRouteRouteWithChildren,
-    AuthenticatedWorkspaceTasksIndexRoute:
-      AuthenticatedWorkspaceTasksIndexRoute,
-  }
-
-const AuthenticatedWorkspaceRouteRouteWithChildren =
-  AuthenticatedWorkspaceRouteRoute._addFileChildren(
-    AuthenticatedWorkspaceRouteRouteChildren,
-  )
-
-interface AuthenticatedSettingsUserRouteRouteChildren {
-  AuthenticatedSettingsUserInvitationsRoute: typeof AuthenticatedSettingsUserInvitationsRoute
-  AuthenticatedSettingsUserIndexRoute: typeof AuthenticatedSettingsUserIndexRoute
-}
-
-const AuthenticatedSettingsUserRouteRouteChildren: AuthenticatedSettingsUserRouteRouteChildren =
-  {
-    AuthenticatedSettingsUserInvitationsRoute:
-      AuthenticatedSettingsUserInvitationsRoute,
-    AuthenticatedSettingsUserIndexRoute: AuthenticatedSettingsUserIndexRoute,
-  }
-
-const AuthenticatedSettingsUserRouteRouteWithChildren =
-  AuthenticatedSettingsUserRouteRoute._addFileChildren(
-    AuthenticatedSettingsUserRouteRouteChildren,
-  )
-
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedFrameRouteRoute: typeof AuthenticatedFrameRouteRouteWithChildren
   AuthenticatedStandaloneRouteRoute: typeof AuthenticatedStandaloneRouteRouteWithChildren
-  AuthenticatedWorkspaceRouteRoute: typeof AuthenticatedWorkspaceRouteRouteWithChildren
-  AuthenticatedSettingsUserRouteRoute: typeof AuthenticatedSettingsUserRouteRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedFrameRouteRoute: AuthenticatedFrameRouteRouteWithChildren,
   AuthenticatedStandaloneRouteRoute:
     AuthenticatedStandaloneRouteRouteWithChildren,
-  AuthenticatedWorkspaceRouteRoute:
-    AuthenticatedWorkspaceRouteRouteWithChildren,
-  AuthenticatedSettingsUserRouteRoute:
-    AuthenticatedSettingsUserRouteRouteWithChildren,
 }
 
 const AuthenticatedRouteRouteWithChildren =

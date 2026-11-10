@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AgentsWorkspace } from "@/components/agent-work/app/agents-workspace";
 import { z } from "zod";
 
-export const Route = createFileRoute("/_authenticated/_workspace/agents")({
+export const Route = createFileRoute("/_authenticated/_frame/_workspace/agents")({
   component: AgentsRoute,
   validateSearch: z.object({
     agentId: z.uuid().optional(),
