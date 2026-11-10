@@ -71,7 +71,17 @@ export function createAgentWorkService(options: {
 }) {
   const log = options.log ?? (() => {});
   const authority = createHarnessAuthority(options);
-  const server = createAgentWorkServer(options);
+  /**
+   * Counts events that may change the session: session, access and organization hints, a
+   * realtime reconnect, and a denied server call. The active runtime is verified while the
+   * count it was verified at is current.
+   */
+  let sessionChanges = 0;
+  let verifiedAt = -1;
+  const sessionChanged = () => {
+    sessionChanges++;
+  };
+  const server = createAgentWorkServer({ ...options, onDenied: sessionChanged });
   const agents = agentDirectory(server);
   let active: Active | undefined;
   let ensuring: Promise<Active | undefined> | undefined;
@@ -95,7 +105,9 @@ export function createAgentWorkService(options: {
   }
 
   async function open(): Promise<Active | undefined> {
+    const seen = sessionChanges;
     const auth = await authority.verify();
+    verifiedAt = seen;
     const identity = `${auth.accountKey}:${auth.organizationId}`;
     if (active?.identity === identity) return active;
     if (active) await retire(active);
@@ -137,11 +149,13 @@ export function createAgentWorkService(options: {
   }
 
   /**
-   * The runtime for the current verified account and organization. Calls share one check. A
-   * failed check, such as a network error, keeps the running runtime: only a verified change of
-   * account or organization replaces it.
+   * The runtime for the current verified account and organization. The session is verified
+   * again only after an event that may change it; calls share one check. A failed check, such
+   * as a network error, keeps the running runtime: only a verified change of account or
+   * organization replaces it.
    */
   function ensure() {
+    if (!ensuring && active && verifiedAt === sessionChanges) return Promise.resolve(active);
     ensuring ??= open()
       .catch(() => {
         log("Could not verify the session for agent work.");
@@ -170,8 +184,18 @@ export function createAgentWorkService(options: {
     },
     onRealtime(event: RealtimeUpdate) {
       if (stopped) return;
-      if (event.type === "ready") void ensure().then((current) => current?.runtime.sync());
+      if (event.type === "ready") {
+        sessionChanged();
+        void ensure().then((current) => current?.runtime.sync());
+      }
       if (event.type !== "change") return;
+      if (
+        event.domain === "session" ||
+        event.domain === "access" ||
+        event.domain === "organization"
+      )
+        sessionChanged();
+      if (event.domain === "access") void ensure();
       if (event.domain === "agents") {
         // An agent may have moved to or from this desktop.
         agents.invalidate();

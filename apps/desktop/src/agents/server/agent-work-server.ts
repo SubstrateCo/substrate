@@ -111,10 +111,15 @@ export interface AgentWorkServer {
   openRequestIds(organizationId: string): Promise<string[]>;
 }
 
+/** Codes after which the caller verifies the session again. */
+const deniedCodes = new Set(["UNAUTHENTICATED", "FORBIDDEN"]);
+
 export function createAgentWorkServer(options: {
   backend: string;
   installationId: string;
   fetchAPI: Fetch;
+  /** The server denied a call: the session or the membership may have changed. */
+  onDenied?: () => void;
 }): AgentWorkServer {
   async function call<T extends z.ZodType>(
     path: string,
@@ -130,8 +135,10 @@ export function createAgentWorkServer(options: {
     });
     const parsed = result(z.unknown()).safeParse(await response.json().catch(() => null));
     if (!parsed.success) throw new AgentWorkServerError("INVALID_RESPONSE", path);
-    if (!parsed.data.success)
+    if (!parsed.data.success) {
+      if (deniedCodes.has(parsed.data.error.code)) options.onDenied?.();
       throw new AgentWorkServerError(parsed.data.error.code, parsed.data.error.message);
+    }
     const data = schema.safeParse(parsed.data.data);
     if (!data.success) throw new AgentWorkServerError("INVALID_RESPONSE", path);
     return data.data;
