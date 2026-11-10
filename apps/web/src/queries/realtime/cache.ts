@@ -115,6 +115,9 @@ export function realtimeQueryTargets(
         targets.push({
           queryKey: queryKeys.conversationMessages(organizationId, event.conversationId),
         });
+        targets.push({
+          queryKey: queryKeys.conversationReactions(organizationId, event.conversationId),
+        });
         targets.push({ queryKey: queryKeys.related(organizationId) });
         // A new message or reaction cannot change the context of loaded messages. A new message
         // gets its own page key; its reference changes arrive as "context" hints.

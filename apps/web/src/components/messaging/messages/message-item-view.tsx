@@ -24,6 +24,7 @@ export function MessageItem({
   actions,
   avatarBadge,
   status,
+  renderReaction,
   children,
 }: {
   message: Message;
@@ -40,6 +41,7 @@ export function MessageItem({
   onThread?: (id: string) => void;
   body?: ReactNode;
   actions?: ReactNode;
+  renderReaction?: (reaction: Message["reactions"][number]) => ReactNode;
   children?: ReactNode;
 }) {
   const hasPersonCard = useHasPersonCard();
@@ -100,6 +102,7 @@ export function MessageItem({
           onReact={onReact}
           pending={pending}
           onThread={onThread}
+          renderReaction={renderReaction}
         />
         {children}
       </div>

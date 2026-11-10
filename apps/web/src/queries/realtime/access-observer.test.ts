@@ -90,6 +90,42 @@ test("access resets mounted queries without detaching the view, then clears revo
   }
 });
 
+test("revocation clears reactor pages without replacing their infinite-query shape with a message array", async () => {
+  const client = new QueryClient();
+  const key = queryKeys.messageReactions("org", "conversation", "message");
+  const data = {
+    pages: [{ items: [{ name: "Private reactor" }], nextCursor: null }],
+    pageParams: [undefined],
+  };
+  client.setQueryData(key, data);
+  const seen: unknown[] = [];
+  const observer = new QueryObserver(client, {
+    queryKey: key,
+    staleTime: Infinity,
+    retry: false,
+    queryFn: () => Promise.reject(new Error("Access denied")),
+  });
+  const unsubscribe = observer.subscribe((result) => {
+    seen.push(result.data);
+  });
+  const cache = createRealtimeCache({
+    queryClient: client,
+    organizationId: "org",
+    userId: "user",
+    revalidate: async () => {},
+  });
+  try {
+    await cache.receive(access());
+    expect(observer.getCurrentResult().data).toBeUndefined();
+    expect(seen.some(Array.isArray)).toBe(false);
+    expect(client.getQueryData(key)).toBeUndefined();
+  } finally {
+    cache.dispose();
+    unsubscribe();
+    client.clear();
+  }
+});
+
 test("a later revocation cancels a slow access reset and cannot be overwritten by its old grant", async () => {
   const client = new QueryClient();
   const key = queryKeys.projects("org");

@@ -4,6 +4,7 @@ import {
   messageListInput,
   messageInput,
   reactionInput,
+  reactionListInput,
   membersInput,
   profileInput,
   conversationTargetInput,
@@ -34,6 +35,9 @@ export function createMessagingRoutes(services = defaultServices) {
     )
     .post("/messages", zValidator("json", messageInput, validationHook), async (c) =>
       respond(c, await services.sendMessage(c.req.raw.headers, c.req.valid("json"))),
+    )
+    .get("/reactions", zValidator("query", reactionListInput, validationHook), async (c) =>
+      respond(c, await services.listReactions(c.req.raw.headers, c.req.valid("query"))),
     )
     .post("/reactions", zValidator("json", reactionInput, validationHook), async (c) =>
       respond(c, await services.toggleReaction(c.req.raw.headers, c.req.valid("json"))),

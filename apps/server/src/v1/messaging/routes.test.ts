@@ -13,6 +13,7 @@ test("messaging validates each route before calling services", async () => {
     listMessages: mock(services.listMessages),
     sendMessage: mock(services.sendMessage),
     toggleReaction: mock(services.toggleReaction),
+    listReactions: mock(services.listReactions),
     addMembers: mock(services.addMembers),
     getProfile: mock(services.getProfile),
     listManagedConversations: mock(services.listManagedConversations),
@@ -28,6 +29,8 @@ test("messaging validates each route before calling services", async () => {
   for (const [method, path, body] of [
     ["GET", "/conversations", undefined],
     ["GET", "/messages?organizationId=org", undefined],
+    ["GET", `/reactions?organizationId=org&messageId=${conversationId}&limit=51`, undefined],
+    ["GET", `/reactions?organizationId=org&messageId=${conversationId}&afterActorId=x`, undefined],
     ["GET", `/profiles?organizationId=org&conversationId=${conversationId}&actorId=x`, undefined],
     ["POST", "/conversations", { organizationId: "org", kind: "dm", emails: ["invalid"] }],
     ["POST", "/messages", { organizationId: "org", conversationId, body: " " }],

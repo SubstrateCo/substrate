@@ -91,6 +91,51 @@ async function post<T>(
   return result.data;
 }
 
+test("reaction lookup returns bounded actors and enforces private conversation access", async ({
+  actors: { owner, member, outsider },
+}) => {
+  const channel = await post<{ id: string }>(member, "conversations", {
+    kind: "channel",
+    private: true,
+    name: "private-reactions",
+  });
+  const message = await post<{ id: string }>(member, "messages", {
+    conversationId: channel.id,
+    body: "Private reactions",
+  });
+  expect(
+    (
+      await member.request.post("/api/v1/messaging/reactions", {
+        headers: { origin },
+        data: { organizationId: member.organizationId, messageId: message.id, emoji: "👍" },
+      })
+    ).ok(),
+  ).toBe(true);
+  const query = {
+    organizationId: member.organizationId,
+    messageId: message.id,
+    emoji: "👍",
+    limit: "3",
+  };
+  const response = await member.request.get("/api/v1/messaging/reactions", { params: query });
+  expect(response.ok()).toBe(true);
+  expect(await response.json()).toMatchObject({
+    success: true,
+    data: { items: [{ name: "member", self: true, emojis: ["👍"] }], nextCursor: null },
+  });
+  for (const actor of [owner, outsider]) {
+    const denied = await actor.request.get("/api/v1/messaging/reactions", {
+      params: { ...query, organizationId: actor.organizationId },
+    });
+    expect(denied.status()).toBe(404);
+    expect(await denied.json()).toMatchObject({ success: false, error: { code: "NOT_FOUND" } });
+  }
+  const invalid = await member.request.get("/api/v1/messaging/reactions", {
+    params: { ...query, limit: "51" },
+  });
+  expect(invalid.status()).toBe(400);
+});
+
 test("channel and thread references enforce target access through search, send and resolution", async ({
   actors: { owner, member, outsider },
 }) => {

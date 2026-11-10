@@ -9,6 +9,7 @@ import type {
   messageListInput,
   profileInput,
   reactionInput,
+  reactionListInput,
   removeAgentInput,
   workspaceInput,
 } from "@startup-os/contracts/messaging/input";
@@ -29,6 +30,16 @@ export const sendMessage = ({ data, signal }: ApiInput<z.input<typeof messageInp
   readResult(api.messaging.messages.$post({ json: data }, { init: { signal } }));
 export const toggleReaction = ({ data, signal }: ApiInput<z.input<typeof reactionInput>>) =>
   readResult(api.messaging.reactions.$post({ json: data }, { init: { signal } }));
+export const listReactions = ({
+  data,
+  signal,
+}: ApiInput<Omit<z.output<typeof reactionListInput>, "limit"> & { limit?: number }>) =>
+  readResult(
+    api.messaging.reactions.$get(
+      { query: { ...data, limit: String(data.limit ?? 3) } },
+      { init: { signal } },
+    ),
+  );
 export const addMembers = ({ data, signal }: ApiInput<z.input<typeof membersInput>>) =>
   readResult(api.messaging.members.$post({ json: data }, { init: { signal } }));
 export const addAgent = ({ data, signal }: ApiInput<z.input<typeof addAgentInput>>) =>

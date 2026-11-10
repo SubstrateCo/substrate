@@ -31,6 +31,12 @@ export const reactionInput = workspaceInput.extend({
   messageId: id,
   emoji: z.string().min(1).max(messagingLimits.emoji),
 });
+export const reactionListInput = workspaceInput.extend({
+  messageId: id,
+  emoji: z.string().min(1).max(messagingLimits.emoji).optional(),
+  afterActorId: id.optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(3),
+});
 export const profileInput = workspaceInput.extend({
   conversationId: id,
   actorId: id,

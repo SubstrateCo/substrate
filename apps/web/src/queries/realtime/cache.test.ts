@@ -154,6 +154,7 @@ test("messaging targets all thread variants of one conversation, not another", (
   expect(targets).toEqual([
     { queryKey: queryKeys.conversations("org") },
     { queryKey: queryKeys.messages("org", "conversation").slice(0, -1) },
+    { queryKey: queryKeys.conversationReactions("org", "conversation") },
     { queryKey: [...queryKeys.context("org"), "related"] },
     { queryKey: [...queryKeys.context("org"), "message-pages", "conversation"] },
     { queryKey: [...queryKeys.context("org"), "target", "conversation"] },
@@ -187,7 +188,7 @@ test("new messages refresh history, not conversation lists or loaded message con
 
 test("a new-message hint reads history once and loaded message context not at all", async () => {
   const client = new QueryClient();
-  const reads = { messages: 0, pages: 0 };
+  const reads = { messages: 0, pages: 0, reactions: 0 };
   const observe = (queryKey: readonly unknown[], kind: keyof typeof reads) => {
     const read = async () => {
       reads[kind]++;
@@ -201,6 +202,7 @@ test("a new-message hint reads history once and loaded message context not at al
   };
   const unsubscribe = [
     observe(queryKeys.messages("org", "conversation"), "messages"),
+    observe(queryKeys.messageReactions("org", "conversation", "message"), "reactions"),
     observe([...queryKeys.context("org"), "message-pages", "conversation", ["m1", "m2"]], "pages"),
   ];
   const cache = createRealtimeCache({
@@ -217,10 +219,10 @@ test("a new-message hint reads history once and loaded message context not at al
       scope: "messages",
     });
     await new Promise((resolve) => setTimeout(resolve, 80));
-    expect(reads).toEqual({ messages: 2, pages: 1 });
+    expect(reads).toEqual({ messages: 2, pages: 1, reactions: 2 });
     await cache.receive({ ...change("messaging"), conversationId: "conversation" });
     await new Promise((resolve) => setTimeout(resolve, 80));
-    expect(reads).toEqual({ messages: 3, pages: 2 });
+    expect(reads).toEqual({ messages: 3, pages: 2, reactions: 3 });
   } finally {
     cache.dispose();
     for (const stop of unsubscribe) stop();

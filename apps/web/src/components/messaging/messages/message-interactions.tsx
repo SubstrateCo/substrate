@@ -57,29 +57,36 @@ export function MessageReactions({
   onReact,
   pending,
   onThread,
+  renderReaction,
 }: {
   message: Message;
   onReact: (emoji: string) => void;
   pending: boolean;
   onThread?: (id: string) => void;
+  renderReaction?: (reaction: Message["reactions"][number]) => ReactNode;
 }) {
   const replies = onThread ? message.replyCount : 0;
   if (!message.reactions.length && !replies) return null;
   return (
     <div className="mt-1 flex flex-wrap items-center gap-1">
-      {message.reactions.map(({ emoji, count, reacted }) => (
-        <Button
-          key={emoji}
-          size="xs"
-          variant="reaction"
-          aria-label={`${emoji}, ${count} ${count === 1 ? "reaction" : "reactions"}`}
-          aria-pressed={reacted}
-          disabled={pending}
-          onClick={() => onReact(emoji)}
-        >
-          {emoji} {count}
-        </Button>
-      ))}
+      {message.reactions.map((reaction) => {
+        const { emoji, count, reacted } = reaction;
+        return renderReaction ? (
+          <span key={emoji}>{renderReaction(reaction)}</span>
+        ) : (
+          <Button
+            key={emoji}
+            size="xs"
+            variant="reaction"
+            aria-label={`${emoji}, ${count} ${count === 1 ? "reaction" : "reactions"}`}
+            aria-pressed={reacted}
+            disabled={pending}
+            onClick={() => onReact(emoji)}
+          >
+            {emoji} {count}
+          </Button>
+        );
+      })}
       {!!replies && (
         <Button type="button" size="xs" variant="link" onClick={() => onThread?.(message.id)}>
           <MessageSquare aria-hidden="true" />

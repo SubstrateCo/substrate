@@ -4,6 +4,7 @@ import type {
   conversationInput,
   messageInput,
   reactionInput,
+  reactionListInput,
   membersInput,
   profileInput,
   conversationTargetInput,
@@ -102,6 +103,13 @@ export function removeAgent(headers: Headers, input: z.output<typeof removeAgent
       { audience: realtimeKeys.conversation(input.conversationId), domain: "messaging" },
     ]);
     return result;
+  });
+}
+
+export function listReactions(headers: Headers, input: z.output<typeof reactionListInput>) {
+  return serviceResult(async () => {
+    const { service } = await serviceForSession(headers, input.organizationId);
+    return service.listReactions(input.messageId, input);
   });
 }
 

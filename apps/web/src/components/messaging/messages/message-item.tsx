@@ -16,6 +16,8 @@ import {
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { LinkedMessage } from "@/components/messaging/messages/linked-message";
 import { MessageItem as MessageItemView } from "@/components/messaging/messages/message-item-view";
+import { MessageReaction } from "@/components/messaging/messages/message-reaction";
+import { ReactionPeopleDialog } from "@/components/messaging/messages/reaction-people-dialog";
 import { PersonCardProvider } from "@/components/messaging/people/person-card-slot";
 import { PersonHoverCard } from "@/components/messaging/people/person-hover-card";
 import { Button } from "@/components/ui/button";
@@ -28,7 +30,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { messageHref } from "@/lib/navigation/record-links";
 import { queryKeys } from "@/queries/keys";
-import { Copy, Ellipsis, Link2 } from "lucide-react";
+import { Copy, Ellipsis, Link2, Smile } from "lucide-react";
 import { toast } from "sonner";
 
 export function MessageItem({
@@ -55,6 +57,8 @@ export function MessageItem({
   const highlighted = linked && !threadRoot;
   const [linking, setLinking] = useState(false);
   const actionsTrigger = useRef<HTMLButtonElement>(null);
+  const [reactionsEmoji, setReactionsEmoji] = useState<string | null>(null);
+  const reactionsTrigger = useRef<HTMLElement | null>(null);
   const reaction = useMutation({
     onError: (error) =>
       toast.error(
@@ -69,6 +73,9 @@ export function MessageItem({
         }),
         queryClient.invalidateQueries({
           queryKey: queryKeys.messageTargets(organizationId, message.conversationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.messageReactions(organizationId, message.conversationId, message.id),
         }),
       ]),
   });
@@ -88,6 +95,19 @@ export function MessageItem({
       >
         <MessageItemView
           message={message}
+          renderReaction={(item) => (
+            <MessageReaction
+              organizationId={organizationId}
+              message={message}
+              reaction={item}
+              onReact={(emoji) => reaction.mutate(emoji)}
+              pending={reaction.isPending}
+              onViewAll={(emoji, trigger) => {
+                reactionsTrigger.current = trigger;
+                setReactionsEmoji(emoji);
+              }}
+            />
+          )}
           grouped={grouped && !highlighted}
           highlighted={highlighted}
           body={
@@ -118,6 +138,16 @@ export function MessageItem({
                   <TooltipContent>More message actions</TooltipContent>
                 </Tooltip>
                 <DropdownMenuContent align="end">
+                  {!!message.reactions.length && (
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        reactionsTrigger.current = actionsTrigger.current;
+                        setReactionsEmoji("");
+                      }}
+                    >
+                      <Smile aria-hidden="true" /> View reactions
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onSelect={() => setLinking(true)}>
                     <Link2 aria-hidden="true" /> Link existing work
                   </DropdownMenuItem>
@@ -161,6 +191,15 @@ export function MessageItem({
                 setLinking(false);
                 requestAnimationFrame(() => actionsTrigger.current?.focus());
               }}
+            />
+          )}
+          {reactionsEmoji !== null && (
+            <ReactionPeopleDialog
+              organizationId={organizationId}
+              message={message}
+              initialEmoji={reactionsEmoji}
+              onClose={() => setReactionsEmoji(null)}
+              restoreFocus={() => reactionsTrigger.current?.focus()}
             />
           )}
         </MessageItemView>

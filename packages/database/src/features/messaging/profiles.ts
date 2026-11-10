@@ -11,7 +11,7 @@ import { member } from "../../core/organizations/schema";
 import { AccessDeniedError } from "../../errors";
 import { visibleConversations, type MessagingIdentity } from "./access";
 import { directConversationId } from "./direct-messages";
-import { messagingConversations, messagingMessages } from "./schema";
+import { messagingConversations, messagingMessages, messagingReactions } from "./schema";
 import { and, eq, exists, isNull, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
@@ -97,6 +97,17 @@ async function requireProfileContext(
         eq(messagingConversations.id, conversationId),
         visibleConversations(db, scope),
         or(
+          exists(
+            db
+              .select({ id: messagingReactions.actorEntityId })
+              .from(messagingReactions)
+              .where(
+                and(
+                  eq(messagingReactions.conversationId, conversationId),
+                  eq(messagingReactions.actorEntityId, actor.entityId),
+                ),
+              ),
+          ),
           exists(
             db
               .select({ id: messagingMessages.id })
