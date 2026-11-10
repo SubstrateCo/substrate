@@ -1,15 +1,11 @@
-import { desktopOrigin, desktopPath } from "@startup-os/contracts/desktop/links";
+import { desktopOrigin } from "@startup-os/contracts/desktop/links";
+
+import { desktopHandoffURL } from "../desktop/service";
 
 type LinkOptions = { baseURL: string; request?: Request };
 
 function isDesktop(frontendURL: string, options: LinkOptions) {
   return frontendURL === desktopOrigin || options.request?.headers.get("origin") === desktopOrigin;
-}
-
-function desktopLanding(path: string, baseURL: string) {
-  const url = new URL("/desktop/open", baseURL);
-  url.searchParams.set("path", desktopPath.parse(path));
-  return url.toString();
 }
 
 export function frontendAuthLink(value: string, frontendURL: string) {
@@ -24,6 +20,6 @@ export function frontendAuthLink(value: string, frontendURL: string) {
 export function invitationLink(id: string, frontendURL: string, options: LinkOptions) {
   const path = `/accept-invitation/${encodeURIComponent(id)}`;
   return isDesktop(frontendURL, options)
-    ? desktopLanding(path, options.baseURL)
+    ? desktopHandoffURL(path, options.baseURL)
     : new URL(path, frontendURL).toString();
 }

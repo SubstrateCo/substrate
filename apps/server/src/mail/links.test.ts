@@ -1,4 +1,4 @@
-import { frontendAuthLink, invitationLink } from "./email-link";
+import { frontendAuthLink, invitationLink } from "./links";
 import { describe, expect, test } from "bun:test";
 
 describe("browser auth email links", () => {

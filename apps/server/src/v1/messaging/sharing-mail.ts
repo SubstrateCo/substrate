@@ -1,28 +1,23 @@
-import { desktopPath } from "@startup-os/contracts/desktop/links";
 import { claimSharingMail, finishSharingMail } from "@startup-os/database/messaging";
 
 import { db } from "../../auth/database";
-import { createMailer } from "../../auth/mail";
-import { environment } from "../../environment";
+import { mail as mailService } from "../../mail/service";
 import { publishRefresh } from "../realtime/publisher";
 
 let flushing: Promise<void> | undefined;
 export function deliverSharingMail() {
   if (flushing) return flushing;
   flushing = (async () => {
-    const send = createMailer(environment);
     for (let i = 0; i < 30; i++) {
       const mail = await claimSharingMail(db);
       if (!mail) return;
-      const link = new URL("/desktop/open", environment.apiURL);
-      link.searchParams.set("path", desktopPath.parse(`/accept-sharing/${mail.id}`));
       let sent = false;
       try {
-        await send(
-          mail.email,
-          `Collaborate with ${mail.organizationName} on Startup OS`,
-          `You have been invited to ${mail.name ?? "a conversation"}.\n\nAccept or decline:\n${link}\n\nAccepting shares the full conversation history. You can create an account and organization before installing the app.`,
-        );
+        await mailService.sharingInvitation(mail.email, {
+          id: mail.id,
+          organizationName: mail.organizationName,
+          conversationName: mail.name,
+        });
         sent = true;
       } catch {
         console.warn("Sharing invitation delivery failed; it will be retried.");

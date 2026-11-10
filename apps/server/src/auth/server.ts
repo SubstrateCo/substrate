@@ -10,10 +10,9 @@ import * as schema from "@startup-os/database/schema";
 import { createStorageRepository } from "@startup-os/database/storage";
 
 import { environment as env } from "../environment";
+import { mail } from "../mail/service";
 import { publishRefresh } from "../v1/realtime/publisher";
 import { db } from "./database";
-import { frontendAuthLink, invitationLink } from "./email-link";
-import { createMailer } from "./mail";
 import {
   organizationBody,
   organizationResult,
@@ -38,8 +37,6 @@ import { electron } from "@better-auth/electron";
 import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { organization } from "better-auth/plugins";
-
-const sendMail = createMailer(env);
 
 const provisionMember = async (input: {
   organization: { id: string };
@@ -66,22 +63,14 @@ export const auth = betterAuth({
     requireEmailVerification: true,
     revokeSessionsOnPasswordReset: true,
     sendResetPassword: async ({ user, url }) => {
-      await sendMail(
-        user.email,
-        "Reset your Startup OS password",
-        `Reset your password: ${frontendAuthLink(url, env.webURL)}`,
-      );
+      await mail.resetPassword(user.email, url);
     },
   },
   emailVerification: {
     sendOnSignUp: true,
     sendOnSignIn: true,
     sendVerificationEmail: async ({ user, url }) => {
-      await sendMail(
-        user.email,
-        "Verify your Startup OS email",
-        `Verify your email address: ${frontendAuthLink(url, env.webURL)}`,
-      );
+      await mail.verifyEmail(user.email, url);
     },
   },
   user: {
@@ -181,11 +170,10 @@ export const auth = betterAuth({
         afterCancelInvitation: publishInvitationChange,
       },
       sendInvitationEmail: async ({ id, email, organization }, request) => {
-        const url = invitationLink(id, env.webURL, { baseURL: env.apiURL, request });
-        await sendMail(
+        await mail.organizationInvitation(
           email,
-          `Join ${organization.name} on Startup OS`,
-          `Accept your invitation: ${url}`,
+          { id, organizationName: organization.name },
+          request,
         );
       },
     }),
