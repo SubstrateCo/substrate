@@ -63,7 +63,7 @@ test("project detail denies revoked, deleted, foreign and inactive access", asyn
   });
   expect((await bob.projects.getDetail(project.entityId)).level).toBe("view");
   await alice.permissions.revoke({ entityId: project.entityId, actorEntityId: f.bob });
-  await alice.permissions.grant({ entityId: task.entityId, actorEntityId: f.bob, level: "view" });
+  await expect(bob.tasks.get(task.entityId)).rejects.toBeInstanceOf(AccessDeniedError);
   await expect(bob.projects.getDetail(project.entityId)).rejects.toBeInstanceOf(AccessDeniedError);
   for (const read of [
     () => bob.projects.get(project.entityId),

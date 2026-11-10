@@ -8,10 +8,11 @@ import type { RepositoryContext } from "../../core/repository-context";
 import { mentionablePerson, type MessagingIdentity } from "../messaging/access";
 import { messagingConversations } from "../messaging/schema";
 import { projects } from "../projects/schema";
+import { liveTask } from "../tasks/access";
 import { tasks } from "../tasks/tasks.schema";
 import { messageReferences } from "./references";
 import { messageEntityReferences } from "./schema";
-import { and, asc, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
 // Callers authorize every message before resolving its metadata.
 export async function messageWorkLinks(ctx: RepositoryContext, messageIds: string[]) {
@@ -26,7 +27,7 @@ export async function messageWorkLinks(ctx: RepositoryContext, messageIds: strin
       purpose: messageEntityReferences.purpose,
       canRemove: sql<boolean>`${messageEntityReferences.purpose} = 'association' AND (
         ${messageEntityReferences.createdByActorEntityId} = ${ctx.scope.actorEntityId} OR
-        ${messageEntityReferences.entityId} IN (${visibilityCte(ctx.scope)} SELECT entity_id FROM visible_entities WHERE level = 'owner')
+        coalesce(${tasks.projectEntityId}, ${projects.entityId}) IN (${visibilityCte(ctx.scope)} SELECT entity_id FROM visible_entities WHERE level = 'owner')
       )`,
     })
     .from(messageEntityReferences)
@@ -53,11 +54,12 @@ export async function messageWorkLinks(ctx: RepositoryContext, messageIds: strin
         inArray(messageEntityReferences.messageId, messageIds),
         eq(messageEntityReferences.organizationId, ctx.scope.organizationId),
         eq(messagingConversations.organizationId, ctx.scope.organizationId),
-        inArray(messageEntityReferences.entityId, ctx.readableEntities()),
-        or(
-          and(isNotNull(tasks.entityId), inArray(tasks.projectEntityId, ctx.readableEntities())),
-          isNotNull(projects.entityId),
+        // A task is readable when its project is and the task is not deleted.
+        inArray(
+          sql`coalesce(${tasks.projectEntityId}, ${projects.entityId})`,
+          ctx.readableEntities(),
         ),
+        or(isNull(tasks.entityId), liveTask()),
       ),
     )
     .orderBy(asc(messageEntityReferences.createdAt));

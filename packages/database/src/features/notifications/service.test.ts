@@ -126,7 +126,6 @@ test("feed batches repeated and distinct current work and message targets withou
     "Shared work",
   ]);
   await alice.permissions.revoke({ entityId: project.entityId, actorEntityId: f.bob });
-  await alice.permissions.grant({ entityId: task.entityId, actorEntityId: f.bob, level: "view" });
   expect(await service.list()).toEqual([]);
   await alice.permissions.grant({
     entityId: project.entityId,

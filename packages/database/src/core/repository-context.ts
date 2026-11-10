@@ -52,15 +52,18 @@ export class RepositoryContext {
     if (!actor) throw new AccessDeniedError();
   }
 
+  // Locks the entity and its access ancestors. Read grants in a later statement, after any
+  // competing writer commits.
+  async lockAccessPath(entityId: string) {
+    // Inactive or forged scopes must not take locks.
+    await this.requireActiveActor();
+    await this.db.execute(lockAccessPath(this.scope, entityId));
+  }
+
   async requireAccess(entityId: string, minimum: PermissionLevel, lock = false) {
     // Fail closed: an unknown level would otherwise compare as granted.
     if (!Object.hasOwn(permissionRank, minimum)) throw new AccessDeniedError();
-    if (lock) {
-      // Inactive or forged scopes must not take locks.
-      await this.requireActiveActor();
-      // Lock first, then read grants in a fresh statement after any competing writer commits.
-      await this.db.execute(lockAccessPath(this.scope, entityId));
-    }
+    if (lock) await this.lockAccessPath(entityId);
     const actorEntity = alias(entities, "actor_entity");
     const [access] = await this.db
       .select({

@@ -281,7 +281,9 @@ test("task create locks the project once and update batches activity with one as
     priority: "high",
     assigneeActorEntityId: fixture.bob,
   });
-  expect(statements).toHaveLength(13);
+  // The task's lock path covers its project, so the update locks once.
+  expect(statements.filter((query) => query.includes("FOR UPDATE"))).toHaveLength(1);
+  expect(statements).toHaveLength(10);
   const activity = await fixture.db
     .select()
     .from(schema.taskActivity)
@@ -305,7 +307,7 @@ test("task create locks the project once and update batches activity with one as
   ).toEqual([{ recipient: fixture.bob, kind: "assignment", eventKey: assigned.id }]);
 });
 
-test("task comments require their actual project and use four repository statements", async () => {
+test("task comments require their actual project and use three repository statements", async () => {
   const alice = fixture.forActor(fixture.alice);
   const project = await alice.projects.create({ name: "Comments" });
   const other = await alice.projects.create({ name: "Other accessible project" });
@@ -322,7 +324,7 @@ test("task comments require their actual project and use four repository stateme
   });
   const previousTask = await repos.tasks.get(task.entityId);
   const previousComments = await repos.tasks.listComments(previousTask.entityId, project.entityId);
-  expect(statements).toHaveLength(7);
+  expect(statements).toHaveLength(5);
   statements.length = 0;
   expect(await repos.tasks.listComments(task.entityId, project.entityId)).toEqual([
     {
@@ -334,7 +336,7 @@ test("task comments require their actual project and use four repository stateme
     },
   ]);
   expect(previousComments.map((row) => row.id)).toEqual([comment.id]);
-  expect(statements).toHaveLength(4);
+  expect(statements).toHaveLength(3);
   await expect(alice.tasks.listComments(task.entityId, other.entityId)).rejects.toBeInstanceOf(
     AccessDeniedError,
   );
@@ -348,21 +350,13 @@ test("task comments require their actual project and use four repository stateme
   ).rejects.toBeInstanceOf(AccessDeniedError);
 });
 
-test("task comments retain task and actual project grants, deletion and membership checks", async () => {
+test("task comments follow the actual project's grants, deletion and membership checks", async () => {
   const alice = fixture.forActor(fixture.alice);
   const bob = fixture.forActor(fixture.bob);
   const project = await alice.projects.create({ name: "Private" });
   const other = await bob.projects.create({ name: "Accessible decoy" });
   const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "Secret" });
   await alice.tasks.addComment(task.entityId, "Private comment");
-  await expect(bob.tasks.listComments(task.entityId, project.entityId)).rejects.toBeInstanceOf(
-    AccessDeniedError,
-  );
-  await alice.permissions.grant({
-    entityId: task.entityId,
-    actorEntityId: fixture.bob,
-    level: "view",
-  });
   await expect(bob.tasks.listComments(task.entityId, project.entityId)).rejects.toBeInstanceOf(
     AccessDeniedError,
   );

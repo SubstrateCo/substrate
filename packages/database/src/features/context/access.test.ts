@@ -103,7 +103,7 @@ test("an agent actor is verified in one statement and locks only its actor row o
   await expect(workspaceContext(f.db, scope)).rejects.toBeInstanceOf(AccessDeniedError);
 });
 
-test("task work uses three statements and reports the weaker of task and project access", async () => {
+test("task work uses two statements and reports the project's access", async () => {
   await f.db.update(user).set({ emailVerified: true });
   const alice = f.forActor(f.alice);
   const project = await alice.projects.create({ name: "Launch" });
@@ -113,7 +113,6 @@ test("task work uses three statements and reports the weaker of task and project
     actorEntityId: f.bob,
     level: "view",
   });
-  await alice.permissions.grant({ entityId: task.entityId, actorEntityId: f.bob, level: "owner" });
   const { db, queries } = recordQueries();
   const { context } = await workspaceContext(db, { userId: "bob", organizationId: f.orgA });
   queries.length = 0;
@@ -124,7 +123,7 @@ test("task work uses three statements and reports the weaker of task and project
     statusName: "Not Started",
     level: "view",
   });
-  expect(queries).toHaveLength(3);
+  expect(queries).toHaveLength(2);
   queries.length = 0;
   expect(await requireWork(context, project.entityId)).toMatchObject({
     entityType: "project",

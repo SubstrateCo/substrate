@@ -2,13 +2,13 @@ import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
-import { visibilityCte } from "../../core/permissions/visibility";
 import type { RepositoryContext } from "../../core/repository-context";
 import { ConflictError, AccessDeniedError } from "../../errors";
 import { recordTaskActivity } from "../activity/events";
 import { requireMessage, visibleConversations, type MessagingIdentity } from "../messaging/access";
 import { messageAuthorColumns, messageSummaries } from "../messaging/messages";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
+import { liveTask } from "../tasks/access";
 import type { CreateTaskInput } from "../tasks/contracts";
 import { createTaskInLockedProject, taskRepository } from "../tasks/repository";
 import { tasks } from "../tasks/tasks.schema";
@@ -199,10 +199,7 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
                 and(
                   eq(tasks.organizationId, scope.organizationId),
                   eq(tasks.projectEntityId, entityId),
-                  inArray(
-                    tasks.entityId,
-                    sql`(${visibilityCte(ctx.scope)} SELECT entity_id FROM visible_entities)`,
-                  ),
+                  liveTask(),
                 ),
               )
           : undefined;

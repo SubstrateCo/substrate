@@ -4,6 +4,7 @@ import { entities } from "../../core/entities/schema";
 import { entityGrants } from "../../core/permissions/schema";
 import { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
+import { liveTask } from "../tasks/access";
 import { tasks } from "../tasks/tasks.schema";
 import { projects } from "./schema";
 import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
@@ -61,7 +62,7 @@ export function projectRepository(context: RepositoryContext) {
         and(
           eq(tasks.organizationId, scope.organizationId),
           eq(tasks.projectEntityId, projectEntityId),
-          inArray(tasks.entityId, context.readableEntities()),
+          liveTask(),
         ),
       );
     return db
@@ -106,7 +107,7 @@ export function projectRepository(context: RepositoryContext) {
             and(
               eq(tasks.organizationId, scope.organizationId),
               eq(tasks.projectEntityId, projectEntityId),
-              inArray(tasks.entityId, context.readableEntities()),
+              liveTask(),
             ),
           )
           .orderBy(asc(tasks.entityId)),

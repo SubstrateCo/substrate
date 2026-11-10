@@ -21,6 +21,7 @@ import {
   messagingParticipants,
 } from "../messaging/schema";
 import { projects } from "../projects/schema";
+import { liveTask } from "../tasks/access";
 import { tasks } from "../tasks/tasks.schema";
 import { workspaceContext, requireWork } from "./access";
 import { messageEntityReferences, messageMessagingReferences } from "./schema";
@@ -263,8 +264,9 @@ export async function contextSearch(
         .where(
           and(
             eq(table.organizationId, scope.organizationId),
-            inArray(table.entityId, accessibleWork),
-            type === "task" ? inArray(tasks.projectEntityId, accessibleWork) : undefined,
+            type === "task"
+              ? and(inArray(tasks.projectEntityId, accessibleWork), liveTask())
+              : inArray(projects.entityId, accessibleWork),
             anchorId ? inArray(table.entityId, relatedEntities) : undefined,
             anchorId ? sql`${table.entityId} <> ${anchorId}` : undefined,
             query ? match(sql`${column} || ' ' || ${table.description}`) : undefined,

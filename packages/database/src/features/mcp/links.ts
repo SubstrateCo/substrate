@@ -8,11 +8,12 @@ import { messageEntityReferences } from "../context/schema";
 import { requireMessage, visibleConversations, type MessagingIdentity } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { projects } from "../projects/schema";
+import { liveTask } from "../tasks/access";
 import { tasks } from "../tasks/tasks.schema";
 import { excerpt, iso, messageRef } from "./formatting";
 import { pagination } from "./pagination";
 import { actorSelection } from "./tasks";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
 type LinkKind = McpOutput<"list_links">["items"][number]["kind"];
 type Purpose = (typeof messageEntityReferences.$inferSelect)["purpose"];
@@ -47,7 +48,7 @@ export async function listLinks(
   if (input.target.type === "message") {
     const { conversation } = await requireMessage(db, identity, input.target.id);
     if (conversation.organizationId !== scope.organizationId) throw new AccessDeniedError();
-    // A task is shown only when the caller can read it and its project.
+    // A task is shown when the caller can read its project and the task is not deleted.
     const rows = await db
       .select({
         purpose: messageEntityReferences.purpose,
@@ -63,8 +64,11 @@ export async function listLinks(
         and(
           ...references,
           eq(messageEntityReferences.messageId, input.target.id),
-          inArray(messageEntityReferences.entityId, ctx.readableEntities()),
-          sql`(${tasks.entityId} is null or ${tasks.projectEntityId} in ${ctx.readableEntities()})`,
+          inArray(
+            sql`coalesce(${tasks.projectEntityId}, ${projects.entityId})`,
+            ctx.readableEntities(),
+          ),
+          or(isNull(tasks.entityId), liveTask()),
         ),
       )
       .orderBy(...order)

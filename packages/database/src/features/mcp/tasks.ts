@@ -10,6 +10,7 @@ import { visibleConversations, type MessagingIdentity } from "../messaging/acces
 import { messagingMessages, messagingConversations } from "../messaging/schema";
 import { projectRepository } from "../projects/repository";
 import { projects } from "../projects/schema";
+import { liveTask } from "../tasks/access";
 import { taskComments } from "../tasks/comments.schema";
 import { taskRepository } from "../tasks/repository";
 import { tasks } from "../tasks/tasks.schema";
@@ -45,7 +46,8 @@ export function authorSelection(ownerUserId: string) {
 export function mcpTaskQueries(ctx: RepositoryContext, identity: MessagingIdentity) {
   const { db, scope } = ctx;
   const inOrganization = eq(tasks.organizationId, scope.organizationId);
-  const readableTask = inArray(tasks.entityId, ctx.readableEntities());
+  // Every caller has checked the task's project first.
+  const readableTask = liveTask();
   const assigneeJoin = and(
     eq(actors.entityId, tasks.assigneeActorEntityId),
     eq(actors.organizationId, scope.organizationId),

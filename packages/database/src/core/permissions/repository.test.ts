@@ -4,6 +4,7 @@ import { actors, entityGrants, member } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { createActor } from "../actors/provisioning";
+import { entityAccessParents } from "./access-parents";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
@@ -88,19 +89,25 @@ describe("access controls", () => {
 
   test("an inherited owner allows removing the last direct owner of a child", async () => {
     const alice = f.forActor(f.alice);
-    const project = await alice.projects.create({ name: "Parent" });
-    const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "Child" });
+    const parent = await alice.contacts.create({ displayName: "Parent" });
+    const child = await alice.contacts.create({ displayName: "Child" });
+    await f.db.delete(entityGrants).where(eq(entityGrants.entityId, child.entityId));
+    await f.db.insert(entityAccessParents).values({
+      organizationId: f.orgA,
+      entityId: child.entityId,
+      parentEntityId: parent.entityId,
+    });
     await alice.permissions.grant({
-      entityId: task.entityId,
+      entityId: child.entityId,
       actorEntityId: f.bob,
       level: "owner",
     });
-    await alice.permissions.revoke({ entityId: task.entityId, actorEntityId: f.bob });
+    await alice.permissions.revoke({ entityId: child.entityId, actorEntityId: f.bob });
     expect(
-      await f.db.select().from(entityGrants).where(eq(entityGrants.entityId, task.entityId)),
+      await f.db.select().from(entityGrants).where(eq(entityGrants.entityId, child.entityId)),
     ).toEqual([]);
     await expect(
-      alice.permissions.revoke({ entityId: project.entityId, actorEntityId: f.alice }),
+      alice.permissions.revoke({ entityId: parent.entityId, actorEntityId: f.alice }),
     ).rejects.toThrow("last owner");
   });
 

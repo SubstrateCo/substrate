@@ -6,10 +6,11 @@ import { RepositoryContext, type PermissionLevel } from "../../core/repository-c
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { notifyAssignment, recordTaskActivities, recordTaskActivity } from "../activity/events";
 import { projectRepository, requiredText } from "../projects/repository";
+import { liveTask } from "./access";
 import { taskComments } from "./comments.schema";
 import type { CreateTaskInput, TaskFields } from "./contracts";
 import { tasks } from "./tasks.schema";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 
 // Pure field checks run before the assignee query.
 async function validate(
@@ -97,11 +98,15 @@ export function taskRepository(context: RepositoryContext) {
   const taskWhere = (id: string) =>
     and(eq(tasks.organizationId, scope.organizationId), eq(tasks.entityId, id));
 
+  // A task's level is its project's level. The task's lock path includes the project.
   async function requireTask(entityId: string, level: PermissionLevel = "view", lock = false) {
-    await context.requireAccess(entityId, level, lock);
-    const [task] = await db.select().from(tasks).where(taskWhere(entityId));
+    if (lock) await context.lockAccessPath(entityId);
+    const [task] = await db
+      .select()
+      .from(tasks)
+      .where(and(taskWhere(entityId), liveTask()));
     if (!task) throw new AccessDeniedError();
-    await context.requireAccess(task.projectEntityId, level, lock);
+    await context.requireAccess(task.projectEntityId, level);
     return task;
   }
 
@@ -123,7 +128,7 @@ export function taskRepository(context: RepositoryContext) {
           and(
             eq(tasks.organizationId, scope.organizationId),
             eq(tasks.projectEntityId, projectEntityId),
-            inArray(tasks.entityId, context.readableEntities()),
+            liveTask(),
           ),
         )
         .orderBy(asc(tasks.entityId));

@@ -200,11 +200,6 @@ test("task search filters project access before limiting results", async () => {
     level: "view",
   });
   await alice.permissions.grant({
-    entityId: blocked!.entityId,
-    actorEntityId: f.bob,
-    level: "edit",
-  });
-  await alice.permissions.grant({
     entityId: allowed!.projectEntityId,
     actorEntityId: f.bob,
     level: "edit",

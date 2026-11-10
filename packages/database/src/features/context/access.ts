@@ -9,7 +9,7 @@ import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import { adminRoleCondition } from "../../core/organizations/roles";
 import { member } from "../../core/organizations/schema";
-import { permissionRank, RepositoryContext } from "../../core/repository-context";
+import { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError } from "../../errors";
 import type { MessagingIdentity } from "../messaging/access";
 import { projects } from "../projects/schema";
@@ -137,8 +137,8 @@ export async function requireWork(
       ),
     );
   if (row?.entityType === "task" && row.task) {
+    // A task's level is its project's level; the task itself was checked as not deleted above.
     const { task } = row;
-    const own = await context.requireAccess(entityId, level);
     const project = await context.requireAccess(task.projectEntityId, level);
     return {
       entityId,
@@ -147,7 +147,7 @@ export async function requireWork(
       projectEntityId: task.projectEntityId,
       status: task.status,
       statusName: taskStatusLabels[task.status],
-      level: permissionRank[own.level] <= permissionRank[project.level] ? own.level : project.level,
+      level: project.level,
     };
   }
   if (row?.entityType === "project" && row.projectName !== null) {

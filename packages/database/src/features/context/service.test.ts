@@ -473,7 +473,6 @@ test("page context preserves purposes, removal rights and both work visibility b
       ?.canRemove,
   ).toBe(true);
   await repos.permissions.revoke({ entityId: project.entityId, actorEntityId: f.bob });
-  await repos.permissions.grant({ entityId: task.entityId, actorEntityId: f.bob, level: "view" });
   expect((await checkedPage(ids, "bob")).every((row) => row.links.length === 0)).toBe(true);
   await f.db
     .update(entities)
@@ -487,6 +486,24 @@ test("page context preserves purposes, removal rights and both work visibility b
     .set({ deletedAt: new Date() })
     .where(eq(entities.entityId, project.entityId));
   expect((await checkedPage(ids)).every((row) => row.links.length === 0)).toBe(true);
+});
+
+test("a task grant never raises task access above the project, so removal rights match detach", async () => {
+  const { chat, conversation, root, project, repos } = await setup();
+  await chat.addMembers(conversation.id, ["bob@example.com"]);
+  const task = await repos.tasks.create({ projectEntityId: project.entityId, title: "Linked" });
+  await context().attach(root.id, task.entityId);
+  await repos.permissions.grant({
+    entityId: project.entityId,
+    actorEntityId: f.bob,
+    level: "view",
+  });
+  await repos.permissions.grant({ entityId: task.entityId, actorEntityId: f.bob, level: "owner" });
+  const [link] = (await checkedPage([root.id], "bob"))[0]!.links;
+  expect(link).toMatchObject({ entityId: task.entityId, canRemove: false });
+  await expect(context("bob").detach(root.id, task.entityId)).rejects.toBeInstanceOf(
+    AccessDeniedError,
+  );
 });
 
 test("page people resolve parsed tokens in sets and clear inactive, deleted and conversation-hidden actors", async () => {

@@ -29,7 +29,6 @@ export async function readableWorkTargets(ctx: RepositoryContext, ids: string[])
     WHERE ${tasks.organizationId} = ${ctx.scope.organizationId}
       AND ${inArray(tasks.entityId, ids)} AND e.deleted_at IS NULL AND p.deleted_at IS NULL
       AND e.entity_type = 'task'
-      AND ${tasks.entityId} IN (SELECT entity_id FROM visible_entities)
       AND ${tasks.projectEntityId} IN (SELECT entity_id FROM visible_entities)
     UNION ALL
     SELECT ${projects.entityId} AS "entityId", 'project' AS "entityType", ${projects.name} AS title,
