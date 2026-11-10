@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useSearch } from "@tanstack/react-router";
 
 import { useState } from "react";
@@ -22,7 +22,6 @@ import { PersonHoverCard } from "@/components/messaging/people/person-hover-card
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { messageHref } from "@/lib/navigation/record-links";
-import { queryKeys } from "@/queries/keys";
 import { Link2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -37,7 +36,6 @@ export function MessageItem({
   onThread?: (id: string) => void;
   context: MessageContextState;
 }) {
-  const queryClient = useQueryClient();
   const highlighted = useSearch({
     strict: false,
     select: (search) => search.messageId === message.id,
@@ -48,17 +46,10 @@ export function MessageItem({
       toast.error(
         actionErrorMessage(error, "Your reaction couldn’t be saved. Try selecting it again."),
       ),
+    // The server sends the conversation a messaging hint, which reaches the reactor too. That
+    // hint refreshes this conversation's history and message targets, so success needs no refetch.
     mutationFn: async (emoji: string) =>
       toggleReaction({ data: { organizationId, messageId: message.id, emoji } }),
-    onSuccess: () =>
-      Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.messages(organizationId, message.conversationId).slice(0, -1),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.messageTargets(organizationId, message.conversationId),
-        }),
-      ]),
   });
   return (
     <LinkedMessage highlighted={highlighted}>
