@@ -1,9 +1,12 @@
+import type { TaskStatus } from "@startup-os/contracts/tasks";
+
 import { useState, type ReactNode } from "react";
 
-import type { ProjectDetail } from "../types";
-import { ProjectTaskPanel, type TaskPanelRenderers } from "./pane/project-task-panel";
+import { TaskList } from "../list/task-list";
+import type { ProjectDetail, Task } from "../types";
 import { TaskCreationDialog } from "./pane/task-creation-dialog";
 import { useTaskPanel } from "./pane/use-task-panel";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { isAccessFailure } from "@/components/feedback/request-failure";
 import { ProjectLoading } from "@/components/tasks/projects/project-loading";
@@ -18,10 +21,10 @@ export function ProjectPane({
   loading = false,
   error,
   onRetry,
-  renderProjectEditor,
+  editor,
+  sharing,
   renderTaskForm,
   renderTaskDetail,
-  renderSettings,
   selectedTaskId,
   onSelectTask,
   headerActions,
@@ -31,10 +34,24 @@ export function ProjectPane({
   loading?: boolean;
   error?: Error | null;
   onRetry: () => void;
-  renderProjectEditor: (detail: ProjectDetail) => ReactNode;
-  renderTaskForm: TaskPanelRenderers["form"];
-  renderTaskDetail: TaskPanelRenderers["detail"];
-  renderSettings: (detail: ProjectDetail) => ReactNode;
+  /** Project name and description editor, shown to editors in Settings. */
+  editor: ReactNode;
+  /** Project access, shown in Settings. */
+  sharing: ReactNode;
+  renderTaskForm: (
+    detail: ProjectDetail,
+    parentTaskEntityId: string | undefined,
+    onSaved: (id: string) => void,
+    onCancel: () => void,
+    status?: TaskStatus,
+  ) => ReactNode;
+  renderTaskDetail: (
+    detail: ProjectDetail,
+    task: Task,
+    onClose: () => void,
+    onSubtask: () => void,
+    visible: boolean,
+  ) => ReactNode;
   selectedTaskId: string | null;
   onSelectTask: (id: string | null) => void;
   headerActions?: ReactNode;
@@ -64,6 +81,8 @@ export function ProjectPane({
     );
   }
   const canEdit = detail.level === "edit" || detail.level === "owner";
+  const { selectedTaskId: openTaskId } = panel;
+  const selected = detail.tasks.find((task) => task.entityId === openTaskId);
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-4 sm:p-6">
       <Tabs value={tab} onValueChange={setTab} className="min-h-0 min-w-0 flex-1">
@@ -129,8 +148,8 @@ export function ProjectPane({
           className="mt-3 min-h-0 overflow-y-auto"
         >
           <div className="w-full min-w-0 space-y-6">
-            {canEdit && renderProjectEditor(detail)}
-            {renderSettings(detail)}
+            {canEdit && editor}
+            {sharing}
           </div>
         </TabsContent>
         <TabsContent value="discussions" className="mt-3 min-h-0 overflow-y-auto">
@@ -143,14 +162,39 @@ export function ProjectPane({
           hidden={tab !== "tasks"}
           className="mt-3 min-h-0 overflow-y-auto md:overflow-hidden"
         >
-          <ProjectTaskPanel
-            visible={tab === "tasks"}
-            detail={detail}
-            canEdit={canEdit}
-            panel={panel}
-            inspectorRef={inspector}
-            renderers={{ form: renderTaskForm, detail: renderTaskDetail }}
-          />
+          <div
+            className={`grid min-h-0 min-w-0 grid-cols-1 items-start gap-5 md:h-full ${openTaskId ? "md:grid-cols-2" : ""}`}
+          >
+            <TaskList
+              detail={detail}
+              selectedId={openTaskId}
+              onSelect={panel.select}
+              onCreate={canEdit ? panel.create : undefined}
+            />
+            {openTaskId && (
+              <div
+                ref={inspector}
+                tabIndex={-1}
+                aria-label="Selected task panel"
+                className="order-first min-h-0 min-w-0 rounded-xl outline-none md:order-0 md:h-full md:overflow-y-auto"
+              >
+                {selected &&
+                  renderTaskDetail(
+                    detail,
+                    selected,
+                    panel.close,
+                    () => panel.createSubtask(selected.entityId),
+                    tab === "tasks",
+                  )}
+                {!selected && (
+                  <ContentNotice
+                    title="Task unavailable"
+                    description="This task was removed or you no longer have access. Choose another task to continue."
+                  />
+                )}
+              </div>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
       {panel.creating && canEdit && (

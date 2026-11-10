@@ -55,9 +55,14 @@ export function ProjectPane({
       loading={project.isPending}
       error={project.error}
       onRetry={() => void project.refetch()}
-      renderProjectEditor={(detail) => (
-        <ProjectForm organizationId={organizationId} project={detail.project} />
-      )}
+      editor={
+        project.data && (
+          <ProjectForm organizationId={organizationId} project={project.data.project} />
+        )
+      }
+      sharing={
+        project.data && <ProjectSharing organizationId={organizationId} detail={project.data} />
+      }
       renderTaskForm={(detail, parentTaskEntityId, onSaved, onCancel, initialStatus) => (
         <TaskForm
           organizationId={organizationId}
@@ -79,9 +84,6 @@ export function ProjectPane({
           onClose={onClose}
           onSubtask={onSubtask}
         />
-      )}
-      renderSettings={(detail) => (
-        <ProjectSharing organizationId={organizationId} detail={detail} />
       )}
     />
   );

@@ -21,7 +21,7 @@ export function TasksWorkspace({
   error,
   onRetry,
   renderCreate,
-  renderProject,
+  project,
   selectedProjectId,
   onSelectProject,
 }: {
@@ -30,7 +30,8 @@ export function TasksWorkspace({
   error?: Error | null;
   onRetry: () => void;
   renderCreate: (onSaved: (id: string) => void, onCancel: () => void) => ReactNode;
-  renderProject: (projectEntityId: string) => ReactNode;
+  /** The selected project's pane. */
+  project: ReactNode;
   selectedProjectId?: string;
   onSelectProject: (id: string) => void;
 }) {
@@ -76,7 +77,7 @@ export function TasksWorkspace({
             {renderCreate(selectProject, () => setCreating(false))}
           </div>
         )}
-        {!creating && selectedProjectId && renderProject(selectedProjectId)}
+        {!creating && selectedProjectId && project}
         {!creating && !selectedProjectId && !loading && !error && (
           <Empty className="min-h-0 flex-1">
             <EmptyHeader>

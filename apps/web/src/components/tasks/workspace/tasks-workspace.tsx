@@ -43,13 +43,15 @@ export function TasksWorkspace({ organizationId }: { organizationId: string }) {
       renderCreate={(onSaved, onCancel) => (
         <ProjectForm organizationId={organizationId} onSaved={onSaved} onCancel={onCancel} />
       )}
-      renderProject={(projectEntityId) => (
-        <ProjectPane
-          key={`${organizationId}:${projectEntityId}`}
-          organizationId={organizationId}
-          projectEntityId={projectEntityId}
-        />
-      )}
+      project={
+        selectedProjectId && (
+          <ProjectPane
+            key={`${organizationId}:${selectedProjectId}`}
+            organizationId={organizationId}
+            projectEntityId={selectedProjectId}
+          />
+        )
+      }
     />
   );
 }
