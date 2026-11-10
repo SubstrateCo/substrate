@@ -5,34 +5,19 @@ import {
 } from "@startup-os/contracts/harness/mcp";
 import { mcpTools } from "@startup-os/contracts/harness/tools";
 
-import { readVerifiedSession } from "../controller/harness-authority.ts";
+/** The server's FORBIDDEN message when the call's organization is no longer the active one. */
+const workspaceChanged = "Your active workspace changed.";
 
 export function createMcpApiProxy(options: {
   backend: string;
-  userId: string;
+  /** False once main disconnects this worker generation, such as on sign-out or session change. */
   isActive: () => boolean;
   fetchAPI: (url: string, init: RequestInit) => Promise<Response>;
 }): WorkspaceApiProxy {
-  async function scope() {
-    if (!options.isActive()) throw new Error("MCP connection closed.");
-    const data = await readVerifiedSession(options.fetchAPI, options.backend);
-    if (!options.isActive() || data.user.id !== options.userId) throw new Error("Session changed.");
-    return data.session.activeOrganizationId;
-  }
-
   return async (raw) => {
     const request = workspaceApiRequest.parse(raw);
     mcpTools[request.tool].input.parse(request.input);
-    const organizationId = await scope();
-    // Returned, not thrown, so the agent receives this message instead of a generic failure.
-    if (organizationId !== request.organizationId)
-      return {
-        success: false,
-        error: {
-          code: "FORBIDDEN",
-          message: "Workspace changed. Start a new agent run in this workspace.",
-        },
-      };
+    if (!options.isActive()) throw new Error("MCP connection closed.");
     const url = new URL("/api/v1/mcp/call", options.backend);
     const init: RequestInit = {
       method: "POST",
@@ -40,8 +25,18 @@ export function createMcpApiProxy(options: {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(request),
     };
-    // The server validates the session and workspace scope in this request.
+    // The server validates the session, the membership and the active workspace in this request.
     const response = await options.fetchAPI(url.href, init);
-    return workspaceApiResult.parse(await response.json());
+    const result = workspaceApiResult.parse(await response.json());
+    // The server's wording asks a person to reload; the agent gets a message it can act on.
+    if (!result.success && result.error.message.startsWith(workspaceChanged))
+      return {
+        success: false,
+        error: {
+          code: result.error.code,
+          message: "Workspace changed. Start a new agent run in this workspace.",
+        },
+      };
+    return result;
   };
 }

@@ -143,7 +143,6 @@ export function createHarnessController(options: {
           join(options.accountsDirectory, auth.accountKey),
           createMcpApiProxy({
             backend: options.backend,
-            userId: auth.userId,
             fetchAPI: options.fetchAPI,
             isActive: () => current === generation,
           }),

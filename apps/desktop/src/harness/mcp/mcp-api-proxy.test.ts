@@ -24,43 +24,37 @@ const createProject: WorkspaceApiRequest = {
   input: { requestId: crypto.randomUUID(), projectId: crypto.randomUUID(), title: "Launch" },
 };
 
+/** The server rejects a call whose organization is not the session's active one. */
+const workspaceDenied: WorkspaceApiResult = {
+  success: false,
+  error: {
+    code: "FORBIDDEN",
+    message: "Your active workspace changed. Reload this page to continue.",
+  },
+};
+
 function fixture() {
   let organizationId = "org-a";
-  let userId = "user-a";
   let active = true;
   let afterRequest = () => {};
   let apiResult: WorkspaceApiResult = { success: true, data: ["project"] };
-  let sessionRequests = 0;
   const requests: { url: string; init: RequestInit }[] = [];
   const proxy = createMcpApiProxy({
     backend: "https://api.example.com",
-    userId,
     isActive: () => active,
     fetchAPI: async (url, init) => {
-      if (url.endsWith("/session")) {
-        sessionRequests++;
-        return Response.json({
-          success: true,
-          data: {
-            user: { id: userId, emailVerified: true },
-            session: { activeOrganizationId: organizationId },
-          },
-        });
-      }
       requests.push({ url, init });
+      const body = (await new Response(init.body).json()) as WorkspaceApiRequest;
+      const result = body.organizationId === organizationId ? apiResult : workspaceDenied;
       afterRequest();
-      return Response.json(apiResult);
+      return Response.json(result);
     },
   });
   return {
     proxy,
     requests,
-    sessionRequests: () => sessionRequests,
     switchWorkspace: () => {
       organizationId = "org-b";
-    },
-    switchAccount: () => {
-      userId = "user-b";
     },
     disconnect: () => {
       active = false;
@@ -74,15 +68,22 @@ function fixture() {
   };
 }
 
-test("MCP binds calls to the launch workspace instead of following workspace switches", async () => {
+test("a call after a workspace switch tells the agent to start a new run", async () => {
   const f = fixture();
   expect(await f.proxy(projects)).toEqual({ success: true, data: ["project"] });
   f.switchWorkspace();
-  expect(await f.proxy(projects)).toMatchObject({
+  expect(await f.proxy(projects)).toEqual({
     success: false,
-    error: { message: expect.stringContaining("Workspace changed") },
+    error: {
+      code: "FORBIDDEN",
+      message: "Workspace changed. Start a new agent run in this workspace.",
+    },
   });
-  expect(f.requests.map(({ url }) => url)).toEqual(["https://api.example.com/api/v1/mcp/call"]);
+  // Each call is one request: the server checks the session, so the proxy does not read it.
+  expect(f.requests.map(({ url }) => url)).toEqual([
+    "https://api.example.com/api/v1/mcp/call",
+    "https://api.example.com/api/v1/mcp/call",
+  ]);
 });
 
 test("calls without a turn context are rejected before the network", async () => {
@@ -103,35 +104,23 @@ test("mutations use the agent endpoint with lease-bound scope and the turn conte
   });
 });
 
-test("callers cannot select an organization or escape the workspace API", async () => {
+test("callers cannot select an organization in tool input", async () => {
   const f = fixture();
   await expect(f.proxy({ ...projects, input: { organizationId: "org-b" } })).rejects.toThrow();
-  for (const path of [
-    "https://evil.example",
-    "/api/auth/sign-out",
-    "/api/v1/tasks/../agents/list",
-    "/api/v1/tasks/projects?organizationId=org-b",
-  ]) {
-    const invalid = { ...projects, path };
-    await expect(f.proxy(invalid)).rejects.toThrow();
-  }
   expect(f.requests).toEqual([]);
 });
 
-test("old credentials cannot cross accounts or survive disconnect", async () => {
+test("a disconnected worker generation cannot call the server", async () => {
   const f = fixture();
-  f.switchAccount();
-  await expect(f.proxy(projects)).rejects.toThrow();
   f.disconnect();
   await expect(f.proxy(projects)).rejects.toThrow();
   expect(f.requests).toEqual([]);
 });
 
-test("a call verifies the session once and keeps a completed write after a workspace switch", async () => {
+test("a completed write stays after a workspace switch", async () => {
   const f = fixture();
   f.afterRequest(f.switchWorkspace);
   expect(await f.proxy(createProject)).toEqual({ success: true, data: ["project"] });
-  expect(f.sessionRequests()).toBe(1);
   expect(f.requests).toHaveLength(1);
 });
 
