@@ -1,6 +1,6 @@
 import type { HarnessCommand } from "@startup-os/contracts/harness";
 
-import { agentId, openStore, organizationId, runtimeFixture } from "./test-support.ts";
+import { agentId, CodeError, openStore, organizationId, runtimeFixture } from "./test-support.ts";
 import { afterEach, expect, test } from "bun:test";
 
 /* oxlint-disable deslop/no-unknown-parameters, deslop/require-safety-comment-for-type-assertion -- Recorded fake server bodies and harness commands are untyped, as the real boundaries are. */
@@ -451,6 +451,36 @@ test("the tick pulls from the server while realtime is down, and only as a slow 
   await f.advance(5 * 60_000);
   await f.tick();
   expect(pulls()).toBe(before + 1);
+});
+
+test("turns synchronize agent folders once, and again after agents change or the harness fails", async () => {
+  const f = await started();
+  const finish = async () => {
+    const turn = f.turns().at(-1) as TurnCommand;
+    await f.emit(turn.turnId, { type: "turn.completed", result: { status: "completed" } });
+  };
+  await f.message();
+  await finish();
+  await f.advance(2 * 60_000);
+  await f.message();
+  await finish();
+  expect(f.synchronizations.count).toBe(1);
+
+  f.runtime.agentsChanged();
+  await f.message();
+  await finish();
+  expect(f.synchronizations.count).toBe(2);
+
+  // The worker is gone: the start fails, and the retry synchronizes, which starts a new one.
+  let failed = false;
+  f.hooks.command = (command) => {
+    if (command.type !== "open" || failed) return undefined;
+    failed = true;
+    return Promise.reject(new CodeError("not-connected"));
+  };
+  await f.message();
+  await f.advance(60_000);
+  expect(f.synchronizations.count).toBe(3);
 });
 
 test("a helper runs in its own folder and its finish wakes the parent with the report", async () => {

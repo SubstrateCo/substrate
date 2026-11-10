@@ -191,7 +191,10 @@ export function createAgentWorkService(options: {
       if (event.type === "ready") {
         sessionChanged();
         agents.invalidate();
-        void ensure().then((current) => current?.runtime.sync());
+        void ensure().then((current) => {
+          current?.runtime.agentsChanged();
+          return current?.runtime.sync();
+        });
       }
       if (event.type !== "change") return;
       if (
@@ -205,6 +208,7 @@ export function createAgentWorkService(options: {
         // An agent may have moved to or from this desktop.
         agents.invalidate();
         const current = active;
+        current?.runtime.agentsChanged();
         void current?.runtime
           .reconcileHome()
           .then(() => current.runtime.hint())

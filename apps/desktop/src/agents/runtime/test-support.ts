@@ -128,6 +128,8 @@ export async function runtimeFixture(
   const closedOrganizations: string[] = [];
   /** The realtime connection main reports to agent work. */
   const realtime = { connected: false };
+  /** How often the runtime wrote agent folders through the controller. */
+  const synchronizations = { count: 0 };
   /** The runtime's periodic tick, run by the test. */
   let tick = () => {};
   const record = (method: string, body: unknown) => {
@@ -326,7 +328,9 @@ export async function runtimeFixture(
         store,
         server,
         harness: {
-          synchronize: async () => {},
+          synchronize: async () => {
+            synchronizations.count++;
+          },
           async execute<C extends HarnessCommand>(command: C) {
             commands.push(command);
             if (command.organizationId !== harness.activeOrganizationId)
@@ -451,6 +455,7 @@ export async function runtimeFixture(
     /** Sessions open in the fake host. */
     nativeSessions: () => [...native.keys()],
     realtime,
+    synchronizations,
     /** Runs the runtime's periodic tick once. */
     async tick() {
       tick();

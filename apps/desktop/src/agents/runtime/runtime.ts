@@ -273,6 +273,8 @@ export function createAgentWorkRuntime(
       dispose();
     },
     reconcileHome,
+    /** Agents changed, or hints may have been missed: the next turn synchronizes the harness. */
+    agentsChanged: () => executor.unsynchronize(),
     /** Reconnects and session changes pull wakes and answers at once. */
     sync: () => sync(),
     hint,

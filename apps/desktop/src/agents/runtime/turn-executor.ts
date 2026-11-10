@@ -116,7 +116,11 @@ export function createTurnExecutor(
   /** Failed starts per session since the last good one, and kept turns that wait to start. */
   const backoff = new Map<string, { attempts: number; since: number }>();
   const waitUntil = new Map<string, number>();
-  let synchronizedAt = Number.NEGATIVE_INFINITY;
+  /**
+   * The worker has the current agent folders. Agent changes, a failed start and a lost native
+   * session clear it: the next start synchronizes, which also starts a worker that is gone.
+   */
+  let synchronized = false;
 
   async function closeNative(sessionId: string) {
     await context.harness
@@ -173,6 +177,7 @@ export function createTurnExecutor(
         { close: true },
       );
     live.delete(turn.id);
+    synchronized = false;
     const now = context.now();
     const previous = backoff.get(turn.sessionId);
     const failures = { attempts: (previous?.attempts ?? 0) + 1, since: previous?.since ?? now };
@@ -307,10 +312,10 @@ export function createTurnExecutor(
       items: envelopeItems,
       resume,
     });
-    if (context.now() - synchronizedAt > 60_000) {
-      await context.harness.synchronize().catch(() => {});
-      synchronizedAt = context.now();
-    }
+    synchronized ||= await context.harness.synchronize().then(
+      () => true,
+      () => false,
+    );
     const managed = await prefix(session, agent.name, turn.handoff);
     await context.store.turns.prepared(turn.id, {
       envelope,
@@ -510,6 +515,7 @@ export function createTurnExecutor(
     const current = live.get(state.turnId);
     if (current && current !== state) return;
     live.delete(state.turnId);
+    synchronized = false;
     ending.add(state.turnId);
     try {
       if (options.close) await closeNative(state.sessionId);
@@ -603,6 +609,10 @@ export function createTurnExecutor(
     heldFolders,
     closeNative,
     settleHelper,
+    /** Agent settings changed: the next start writes the agent folders again. */
+    unsynchronize() {
+      synchronized = false;
+    },
     /** Starts every assigned turn that this process is not running yet. */
     async startAssigned() {
       const now = context.now();
