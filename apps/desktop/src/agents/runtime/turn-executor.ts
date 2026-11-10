@@ -35,9 +35,12 @@ const sha256 = (value: string) => createHash("sha256").update(value).digest("hex
 
 /**
  * Harness failures that pass: the worker or the connection is gone for now, a command timed
- * out, or the session closes after its live turn (turn-active). Work waits and runs again.
+ * out, the session closes after its live turn (turn-active), or the worker does not have the
+ * organization's configuration yet (it lives in memory and arrives with synchronize). Work
+ * waits and runs again.
  */
 const transientHarnessCodes = new Set([
+  "organization-not-configured",
   "not-connected",
   "session-changed",
   "organization-unavailable",

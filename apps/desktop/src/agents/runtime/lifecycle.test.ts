@@ -328,6 +328,22 @@ test("a harness that is not connected requeues the work instead of asking the ow
   expect(f.turns()).toHaveLength(1);
 });
 
+test("an open before the worker has the organization's configuration requeues and synchronizes", async () => {
+  const f = await started();
+  // The controller's configure is still on its way, or failed: the host has no configuration.
+  f.hooks.command = (command) =>
+    command.type === "open"
+      ? Promise.reject(new CodeError("organization-not-configured"))
+      : undefined;
+  await f.message();
+  expect(await f.store.turns.needsAttention(organizationId)).toEqual([]);
+  const synchronized = f.synchronizations.count;
+  f.hooks.command = undefined;
+  await f.advance(60_000);
+  expect(f.turns()).toHaveLength(1);
+  expect(f.synchronizations.count).toBe(synchronized + 1);
+});
+
 test("a started turn whose turn command fails transiently follows recovery, never stays running", async () => {
   const f = await started();
   f.hooks.command = (command, next) => {
