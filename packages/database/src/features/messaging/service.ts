@@ -11,7 +11,12 @@ import { workspaceContext } from "../context/access";
 import { applyMessageEffects } from "../context/message-effects";
 import { messageEntityReferences } from "../context/schema";
 import { conversationRemovalHints, messageChangeHints } from "../realtime/routing";
-import { approvedParticipant, visibleConversations, type MessagingIdentity } from "./access";
+import {
+  approvedParticipant,
+  loadConversation,
+  visibleConversations,
+  type MessagingIdentity,
+} from "./access";
 import { messageAuthorColumns } from "./message-authors";
 import { messageSummaries } from "./message-summaries";
 import {
@@ -57,32 +62,6 @@ interface CreateConversationInput {
   shareHistory?: boolean;
   /** The caller's own agent definitions. */
   agentIds?: string[];
-}
-
-// Membership, ownership and deletion take "update" to serialize with each other. Posts and
-// reactions take "share": they block those changes until commit but not each other. Reads lock
-// nothing.
-async function lockConversation(
-  tx: DatabaseExecutor,
-  scope: MessagingIdentity,
-  id: string,
-  lock: "update" | "share" | "none" = "update",
-) {
-  if (lock !== "none") {
-    const [locked] = await tx
-      .select({ id: messagingConversations.id })
-      .from(messagingConversations)
-      .where(eq(messagingConversations.id, id))
-      .for(lock);
-    if (!locked) throw new AccessDeniedError();
-  }
-  const query = tx
-    .select()
-    .from(messagingConversations)
-    .where(and(eq(messagingConversations.id, id), visibleConversations(tx, scope)));
-  const [conversation] = await query;
-  if (!conversation) throw new AccessDeniedError();
-  return conversation;
 }
 
 type MemberActor = { entityId: string; type: "human" | "agent" };
@@ -255,7 +234,7 @@ export async function sendMessageAs(
   const { conversationId, body, threadId, requestId, originTurnId } = message;
   if (originTurnId && actor.type !== "agent")
     throw new ValidationError("Only agent replies record a turn.");
-  const conversation = await lockConversation(tx, scope, conversationId, "share");
+  const conversation = await loadConversation(tx, scope, conversationId, "share");
   validateBody(body);
   if (requestId) {
     const [existing] = await tx
@@ -346,12 +325,6 @@ export function createMessagingService(
       viewer: viewerOf(scope, admin),
     };
   }
-
-  const requireConversation = (
-    tx: DatabaseExecutor,
-    id: string,
-    lock?: Parameters<typeof lockConversation>[3],
-  ) => lockConversation(tx, scope, id, lock);
 
   // Admins can find conversations of their organization that they cannot read.
   async function requireManaged(tx: DatabaseExecutor, viewer: Viewer, id: string) {
@@ -615,7 +588,7 @@ export function createMessagingService(
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
         await authenticate(tx);
-        const conversation = await requireConversation(tx, conversationId);
+        const conversation = await loadConversation(tx, scope, conversationId, "update");
         if (conversation.kind === "dm")
           throw new ValidationError("Start a direct conversation with the agent instead.");
         const [agent] = await ownedAgents(tx, [agentId]);
@@ -629,7 +602,7 @@ export function createMessagingService(
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
         await authenticate(tx);
-        const conversation = await requireConversation(tx, conversationId);
+        const conversation = await loadConversation(tx, scope, conversationId, "update");
         if (conversation.kind === "dm") throw new AccessDeniedError();
         const removed = await tx
           .update(messagingParticipants)
@@ -660,7 +633,7 @@ export function createMessagingService(
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
         const { actor } = await authenticate(tx);
-        await requireConversation(tx, conversationId);
+        await loadConversation(tx, scope, conversationId, "update");
         const changed = await joinConversation(tx, scope, actor, conversationId);
         return { joined: true, changed };
       });
@@ -671,7 +644,7 @@ export function createMessagingService(
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
         const { actor, viewer } = await authenticate(tx);
-        const conversation = await requireConversation(tx, conversationId);
+        const conversation = await loadConversation(tx, scope, conversationId, "update");
         const plan = leavePlan(conversation, viewer, newOwnerUserId);
         if (plan === "transfer") await setOwner(tx, conversation, newOwnerUserId!);
         if (plan === "blocked") {
@@ -788,7 +761,7 @@ export function createMessagingService(
     ) {
       return db.transaction(async (tx) => {
         const { actor } = await authenticate(tx);
-        await requireConversation(tx, conversationId, "none");
+        await loadConversation(tx, scope, conversationId);
         if (threadId) await requireThreadRoot(tx, conversationId, threadId);
         let boundary;
         const anchorId = options.beforeMessageId ?? options.aroundMessageId;
@@ -873,7 +846,7 @@ export function createMessagingService(
           .from(messagingMessages)
           .where(eq(messagingMessages.id, messageId));
         if (!message) throw new AccessDeniedError();
-        await requireConversation(tx, message.conversationId, "share");
+        await loadConversation(tx, scope, message.conversationId, "share");
         const joined = await joinConversation(tx, scope, actor, message.conversationId);
         const hints = messageChangeHints(
           { conversationId: message.conversationId, organizationId: scope.organizationId },

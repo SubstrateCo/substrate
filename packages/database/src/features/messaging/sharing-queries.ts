@@ -4,13 +4,9 @@ import { user } from "../../core/authentication/schema";
 import { organization } from "../../core/organizations/schema";
 import { AccessDeniedError } from "../../errors";
 import { workspaceContext } from "../context/access";
-import { visibleConversations, type MessagingIdentity } from "./access";
+import { lockConversation, visibleConversations, type MessagingIdentity } from "./access";
 import { messagingConversations, messagingParticipants } from "./schema";
-import {
-  lockSharingConversation,
-  requireSharingManager,
-  requireSharingRecipient,
-} from "./sharing-access";
+import { requireSharingManager, requireSharingRecipient } from "./sharing-access";
 import {
   messagingConnections,
   messagingInvitations,
@@ -56,7 +52,7 @@ export function createSharingQueries(db: DatabaseExecutor, scope: MessagingIdent
   return {
     async list(conversationId: string) {
       return db.transaction(async (tx) => {
-        const conversation = await lockSharingConversation(tx, conversationId);
+        const conversation = await lockConversation(tx, conversationId, "update");
         await requireSharingManager(tx, scope, conversation);
         const host = conversation.organizationId === scope.organizationId;
         const connections = await tx

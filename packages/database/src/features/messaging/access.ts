@@ -143,6 +143,43 @@ export function visibleConversations(
   );
 }
 
+export type Conversation = typeof messagingConversations.$inferSelect;
+
+/** Locks a conversation without an access check. The caller authorizes. */
+export async function lockConversation(db: DatabaseExecutor, id: string, lock: "update" | "share") {
+  const [row] = await db
+    .select()
+    .from(messagingConversations)
+    .where(eq(messagingConversations.id, id))
+    .for(lock);
+  if (!row) throw new AccessDeniedError();
+  return row;
+}
+
+/**
+ * Loads a conversation the scope can see. Membership, ownership, sharing and deletion take
+ * "update" to serialize with each other. Posts and reactions take "share": they block those
+ * changes until commit but not each other. Reads lock nothing.
+ *
+ * The lock comes first and visibility is read in a second statement. PostgreSQL rechecks a row
+ * after a lock wait, but not the subqueries that grant visibility, so one statement would miss a
+ * disconnect or removal that committed during the wait.
+ */
+export async function loadConversation(
+  db: DatabaseExecutor,
+  scope: MessagingIdentity,
+  id: string,
+  lock?: "update" | "share",
+) {
+  if (lock) await lockConversation(db, id, lock);
+  const [conversation] = await db
+    .select()
+    .from(messagingConversations)
+    .where(and(eq(messagingConversations.id, id), visibleConversations(db, scope)));
+  if (!conversation) throw new AccessDeniedError();
+  return conversation;
+}
+
 export async function requireMessage(
   db: DatabaseExecutor,
   scope: MessagingIdentity,

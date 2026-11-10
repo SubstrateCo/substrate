@@ -3,7 +3,7 @@ import { user } from "../../core/authentication/schema";
 import { isOrganizationAdmin } from "../../core/organizations/roles";
 import { AccessDeniedError } from "../../errors";
 import { workspaceContext } from "../context/access";
-import { visibleConversations, type MessagingIdentity } from "./access";
+import { visibleConversations, type Conversation, type MessagingIdentity } from "./access";
 import { canShare, hosts, viewerOf } from "./policy";
 import { messagingConversations } from "./schema";
 import {
@@ -12,18 +12,6 @@ import {
   messagingSharingEvents,
 } from "./sharing.schema";
 import { and, eq, isNull } from "drizzle-orm";
-
-export type SharingConversation = typeof messagingConversations.$inferSelect;
-
-export async function lockSharingConversation(db: DatabaseExecutor, id: string) {
-  const [row] = await db
-    .select()
-    .from(messagingConversations)
-    .where(eq(messagingConversations.id, id))
-    .for("update");
-  if (!row) throw new AccessDeniedError();
-  return row;
-}
 
 export async function hasSharingConnection(
   db: DatabaseExecutor,
@@ -46,7 +34,7 @@ export async function hasSharingConnection(
 export async function requireSharingManager(
   db: DatabaseExecutor,
   scope: MessagingIdentity,
-  conversation: SharingConversation,
+  conversation: Conversation,
 ) {
   if (scope.actorEntityId) throw new AccessDeniedError();
   const viewer = viewerOf(scope, (await workspaceContext(db, scope)).admin);

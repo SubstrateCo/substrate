@@ -8,16 +8,19 @@ import { member } from "../../core/organizations/schema";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { workspaceContext } from "../context/access";
 import { conversationRemovalHints } from "../realtime/routing";
-import { visibleConversations, type MessagingIdentity } from "./access";
+import {
+  lockConversation,
+  visibleConversations,
+  type Conversation,
+  type MessagingIdentity,
+} from "./access";
 import { invitationTarget, partnerTargetAllowed } from "./policy";
 import { messagingConversations, messagingParticipants } from "./schema";
 import {
   hasSharingConnection,
-  lockSharingConversation,
   requireSharingManager,
   requireSharingRecipient,
   recordSharingEvent,
-  type SharingConversation,
 } from "./sharing-access";
 import { createSharingQueries } from "./sharing-queries";
 import { messagingConnections, messagingInvitations } from "./sharing.schema";
@@ -26,7 +29,7 @@ import { and, count, eq, gt, ne, or, sql } from "drizzle-orm";
 export async function queueSharingInvitation(
   db: DatabaseExecutor,
   scope: MessagingIdentity,
-  conversation: SharingConversation,
+  conversation: Conversation,
   email: string,
   shareHistory: boolean,
 ) {
@@ -112,7 +115,7 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
     ...createSharingQueries(db, scope),
     async invite(conversationId: string, input: { email: string; shareHistory: boolean }) {
       return db.transaction(async (tx) => {
-        const conversation = await lockSharingConversation(tx, conversationId);
+        const conversation = await lockConversation(tx, conversationId, "update");
         return queueSharingInvitation(tx, scope, conversation, input.email, input.shareHistory);
       });
     },
@@ -125,7 +128,7 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
           .from(messagingInvitations)
           .where(eq(messagingInvitations.id, id));
         if (!lookup) throw new AccessDeniedError();
-        const conversation = await lockSharingConversation(tx, lookup.conversationId);
+        const conversation = await lockConversation(tx, lookup.conversationId, "update");
         const [invite] = await tx
           .select()
           .from(messagingInvitations)
@@ -258,7 +261,7 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
           .from(messagingInvitations)
           .where(eq(messagingInvitations.id, id));
         if (!lookup) throw new AccessDeniedError();
-        await lockSharingConversation(tx, lookup.conversationId);
+        await lockConversation(tx, lookup.conversationId, "update");
         const [invite] = await tx
           .select()
           .from(messagingInvitations)
@@ -289,7 +292,7 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
           .from(messagingInvitations)
           .where(eq(messagingInvitations.id, id));
         if (!invite) throw new AccessDeniedError();
-        const conversation = await lockSharingConversation(tx, invite.conversationId);
+        const conversation = await lockConversation(tx, invite.conversationId, "update");
         await requireSharingManager(tx, scope, conversation);
         if (
           invite.senderOrganizationId !== scope.organizationId &&
@@ -313,7 +316,7 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
           .from(messagingInvitations)
           .where(eq(messagingInvitations.id, id));
         if (!invite) throw new AccessDeniedError();
-        const conversation = await lockSharingConversation(tx, invite.conversationId);
+        const conversation = await lockConversation(tx, invite.conversationId, "update");
         if (invite.senderOrganizationId !== scope.organizationId) throw new AccessDeniedError();
         const [current] = await tx
           .select({ status: messagingInvitations.status })
@@ -326,7 +329,7 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
     },
     async disconnect(conversationId: string, partnerOrganizationId: string) {
       return db.transaction(async (tx) => {
-        const conversation = await lockSharingConversation(tx, conversationId);
+        const conversation = await lockConversation(tx, conversationId, "update");
         const viewer = await requireSharingManager(tx, scope, conversation);
         if (!partnerTargetAllowed(conversation, viewer, partnerOrganizationId))
           throw new AccessDeniedError();
@@ -374,7 +377,7 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
     },
     async remove(conversationId: string, actorId: string) {
       return db.transaction(async (tx) => {
-        const conversation = await lockSharingConversation(tx, conversationId);
+        const conversation = await lockConversation(tx, conversationId, "update");
         const viewer = await requireSharingManager(tx, scope, conversation);
         const [participant] = await tx
           .select()
