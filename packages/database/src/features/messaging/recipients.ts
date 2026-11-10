@@ -6,7 +6,7 @@ import { member } from "../../core/organizations/schema";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import type { MessagingIdentity } from "./access";
 import type { MemberActor } from "./members";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 function normalizeEmail(email: string) {
   const normalized = email.trim().toLowerCase();
@@ -28,7 +28,7 @@ export async function recipients(db: DatabaseExecutor, scope: MessagingIdentity,
     .select({
       userId: user.id,
       name: user.name,
-      email: sql<string>`lower(${user.email})`,
+      email: user.email,
       actorId: actors.entityId,
     })
     .from(user)
@@ -39,7 +39,7 @@ export async function recipients(db: DatabaseExecutor, scope: MessagingIdentity,
     )
     .where(
       and(
-        inArray(sql`lower(${user.email})`, normalized),
+        inArray(user.email, normalized),
         eq(user.emailVerified, true),
         eq(member.organizationId, scope.organizationId),
       ),

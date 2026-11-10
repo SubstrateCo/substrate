@@ -207,7 +207,7 @@ export function createSharingQueries(db: DatabaseExecutor, scope: MessagingIdent
               eq(messagingInvitations.recipientUserId, scope.userId),
               and(
                 isNull(messagingInvitations.recipientUserId),
-                eq(messagingInvitations.email, person!.email.toLowerCase()),
+                eq(messagingInvitations.email, person!.email),
               ),
               admin
                 ? and(

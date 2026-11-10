@@ -12,7 +12,6 @@ import type {
 } from "@startup-os/contracts/messaging/sharing";
 import { realtimeKeys } from "@startup-os/contracts/realtime";
 import { createSharingService, readSharingInvitation } from "@startup-os/database/messaging";
-import { sharingInvitationRefreshHints } from "@startup-os/database/realtime";
 
 import { db } from "../../auth/database";
 import { auth } from "../../auth/server";
@@ -48,11 +47,11 @@ export function acceptInvitation(headers: Headers, input: z.output<typeof sharin
   return serviceResult(async () => {
     requireOrigin(headers);
     const session = await verified(headers);
-    const result = await createSharingService(db, {
+    const { hints, ...result } = await createSharingService(db, {
       userId: session.user.id,
       organizationId: input.organizationId,
     }).accept(input.invitationId, input.shareHistory);
-    await publishRefresh(sharingInvitationRefreshHints(db, input.invitationId));
+    await publishRefresh(hints);
     await changed(input.organizationId, session.user.id);
     return result;
   });
@@ -64,11 +63,11 @@ export function declineInvitation(
   return serviceResult(async () => {
     requireOrigin(headers);
     const session = await verified(headers);
-    const result = await createSharingService(db, {
+    const { hints, ...result } = await createSharingService(db, {
       userId: session.user.id,
       organizationId: session.session.activeOrganizationId ?? "",
     }).decline(input.invitationId);
-    await publishRefresh(sharingInvitationRefreshHints(db, input.invitationId));
+    await publishRefresh(hints);
     return result;
   });
 }
@@ -79,7 +78,7 @@ export function invite(headers: Headers, input: z.output<typeof sharingInviteInp
       await service(headers, input.organizationId)
     ).invite(input.conversationId, input);
     await deliverSharingMail();
-    await publishRefresh(sharingInvitationRefreshHints(db, created.id));
+    await publishRefresh(created.hints);
     await changed(input.organizationId);
     return { id: created.id };
   });
@@ -87,8 +86,10 @@ export function invite(headers: Headers, input: z.output<typeof sharingInviteInp
 export function revoke(headers: Headers, input: z.output<typeof sharingActionInput>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const result = await (await service(headers, input.organizationId)).revoke(input.invitationId);
-    await publishRefresh(sharingInvitationRefreshHints(db, input.invitationId));
+    const { hints, ...result } = await (
+      await service(headers, input.organizationId)
+    ).revoke(input.invitationId);
+    await publishRefresh(hints);
     await changed(input.organizationId);
     return result;
   });
@@ -97,7 +98,7 @@ export function resend(headers: Headers, input: z.output<typeof sharingActionInp
   return serviceResult(async () => {
     requireOrigin(headers);
     const result = await (await service(headers, input.organizationId)).resend(input.invitationId);
-    await publishRefresh(sharingInvitationRefreshHints(db, result.id));
+    await publishRefresh(result.hints);
     await deliverSharingMail();
     await changed(input.organizationId);
     return { id: result.id };

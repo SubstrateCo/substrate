@@ -288,7 +288,7 @@ export function createMessagingService(
                 eq(messagingConversations.createdBy, scope.userId),
                 or(
                   and(
-                    eq(sql`lower(${user.email})`, email),
+                    eq(user.email, email),
                     isNull(messagingParticipants.leftAt),
                     approvedParticipant(tx),
                   ),

@@ -1,6 +1,5 @@
 import { desktopPath } from "@startup-os/contracts/desktop/links";
 import { claimSharingMail, finishSharingMail } from "@startup-os/database/messaging";
-import { sharingInvitationRefreshHints } from "@startup-os/database/realtime";
 
 import { db } from "../../auth/database";
 import { authEnvironment } from "../../auth/environment";
@@ -29,8 +28,7 @@ export function deliverSharingMail() {
       } catch {
         console.warn("Sharing invitation delivery failed; it will be retried.");
       }
-      await finishSharingMail(db, mail.id, mail.attempt, sent);
-      await publishRefresh(sharingInvitationRefreshHints(db, mail.id));
+      await publishRefresh(await finishSharingMail(db, mail.id, mail.attempt, sent));
     }
   })()
     .catch(() =>

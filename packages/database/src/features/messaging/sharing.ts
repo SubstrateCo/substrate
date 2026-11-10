@@ -7,7 +7,7 @@ import { user } from "../../core/authentication/schema";
 import { member } from "../../core/organizations/schema";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { workspaceContext } from "../context/access";
-import { conversationRemovalHints } from "../realtime/routing";
+import { conversationRemovalHints, sharingInvitationHints } from "../realtime/routing";
 import {
   lockConversation,
   visibleConversations,
@@ -96,7 +96,7 @@ export async function queueSharingInvitations(
           ne(user.id, conversation.createdBy),
         ),
       );
-    if (otherPeople.some((person) => emails.some((email) => person.email.toLowerCase() !== email)))
+    if (otherPeople.some((person) => emails.some((email) => person.email !== email)))
       throw new ValidationError("A direct message can only have two people.");
   }
   // A new invitation to the same address replaces the previous one.
@@ -147,7 +147,7 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
           emails: [input.email],
           shareHistory: input.shareHistory,
         });
-        return invitation!;
+        return { ...invitation!, hints: await sharingInvitationHints(tx, invitation!) };
       });
     },
     async accept(id: string, shareHistory: boolean) {
@@ -185,6 +185,8 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
             status: "accepted" as const,
             organizationId: scope.organizationId,
             conversationId: invite.recipientUserId === scope.userId ? conversation.id : null,
+            // A replay changes nothing. The hints let viewers recover from a lost first publish.
+            hints: await sharingInvitationHints(tx, invite),
           };
         }
         if (invite.status !== "pending" || invite.expiresAt <= new Date())
@@ -213,10 +215,11 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
           .where(and(eq(user.id, originalId), eq(user.emailVerified, true)));
         if (!original) throw new AccessDeniedError();
         if (invite.purpose === "organization" && !admin) {
-          await tx
+          const [requested] = await tx
             .update(messagingInvitations)
             .set({ targetOrganizationId: scope.organizationId, recipientUserId: person.id })
-            .where(eq(messagingInvitations.id, id));
+            .where(eq(messagingInvitations.id, id))
+            .returning();
           await recordSharingEvent(tx, scope, conversation.id, "approval-requested", {
             invitationId: id,
             targetOrganizationId: scope.organizationId,
@@ -225,6 +228,7 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
             status: "approval-required" as const,
             organizationId: scope.organizationId,
             conversationId: null,
+            hints: await sharingInvitationHints(tx, requested!),
           };
         }
         // Partner-managed individual invitations cannot reactivate a disconnected org.
@@ -259,14 +263,15 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
           [{ entityId: actor.entityId, type: "human", organizationId: scope.organizationId }],
           "consent",
         );
-        await tx
+        const [accepted] = await tx
           .update(messagingInvitations)
           .set({
             status: "accepted",
             targetOrganizationId: scope.organizationId,
             recipientUserId: originalId,
           })
-          .where(eq(messagingInvitations.id, id));
+          .where(eq(messagingInvitations.id, id))
+          .returning();
         await recordSharingEvent(tx, scope, conversation.id, "accepted", {
           invitationId: id,
           targetOrganizationId: scope.organizationId,
@@ -275,6 +280,7 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
           status: "accepted" as const,
           organizationId: scope.organizationId,
           conversationId: originalId === scope.userId ? conversation.id : null,
+          hints: await sharingInvitationHints(tx, accepted!),
         };
       });
     },
@@ -306,7 +312,7 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
           "declined",
           { invitationId: id },
         );
-        return { declined: true };
+        return { declined: true, hints: await sharingInvitationHints(tx, invite) };
       });
     },
     async revoke(id: string) {
@@ -330,7 +336,7 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
           .returning({ id: messagingInvitations.id });
         if (!revoked.length) throw new ValidationError("This invitation is no longer pending.");
         await recordSharingEvent(tx, scope, conversation.id, "revoked", { invitationId: id });
-        return { revoked: true };
+        return { revoked: true, hints: await sharingInvitationHints(tx, invite) };
       });
     },
     async resend(id: string) {
@@ -352,7 +358,7 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
           emails: [invite.email],
           shareHistory: true,
         });
-        return invitation!;
+        return { ...invitation!, hints: await sharingInvitationHints(tx, invitation!) };
       });
     },
     async disconnect(conversationId: string, partnerOrganizationId: string) {

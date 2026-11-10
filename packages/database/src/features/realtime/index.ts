@@ -4,7 +4,6 @@ export {
   profileRefreshHints,
   agentRefreshHints,
   invitationRefreshHints,
-  sharingInvitationRefreshHints,
   projectAccessRefreshHints,
   messageRefreshHints,
 } from "./routing";

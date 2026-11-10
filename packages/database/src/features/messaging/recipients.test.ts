@@ -19,7 +19,7 @@ function recordedService() {
       userId: "alice",
       organizationId: fixture.orgA,
     }),
-    lookups: () => recording.queries.filter((query) => query.includes('lower("user"."email")')),
+    lookups: () => recording.queries.filter((query) => query.includes('"user"."email" in')),
   };
 }
 
@@ -78,8 +78,8 @@ test("100 unique recipients use one lookup for creation and member addition", as
 });
 
 test("recipient normalization deduplicates emails and users without choosing an external organization", async () => {
+  // Better Auth stores emails in lowercase, so only the input needs normalization.
   await fixture.db.update(user).set({ emailVerified: true });
-  await fixture.db.update(user).set({ email: "BoB@example.com" }).where(eq(user.id, "bob"));
   await fixture.db.insert(organization).values({ id: "org-0", name: "First", slug: "first" });
   await fixture.db.insert(member).values([
     { id: "bob-0", userId: "bob", organizationId: "org-0" },

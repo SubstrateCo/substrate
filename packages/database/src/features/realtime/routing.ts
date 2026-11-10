@@ -135,19 +135,15 @@ export async function invitationRefreshHints(
   ];
 }
 
-export async function sharingInvitationRefreshHints(
+// Built inside the transaction from the changed row. Emails are stored lowercase.
+export async function sharingInvitationHints(
   db: DatabaseExecutor,
-  invitationId: string,
+  invite: typeof messagingInvitations.$inferSelect,
 ): Promise<RealtimeHint[]> {
-  const [invite] = await db
-    .select()
-    .from(messagingInvitations)
-    .where(eq(messagingInvitations.id, invitationId));
-  if (!invite) return [];
   const recipients = await db
     .select({ id: user.id })
     .from(user)
-    .where(and(eq(sql`lower(${user.email})`, invite.email), eq(user.emailVerified, true)));
+    .where(and(eq(user.email, invite.email), eq(user.emailVerified, true)));
   return [
     ...[
       ...new Set([

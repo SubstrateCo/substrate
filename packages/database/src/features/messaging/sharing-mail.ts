@@ -1,5 +1,6 @@
 import type { DatabaseExecutor } from "../../client";
 import { organization } from "../../core/organizations/schema";
+import { sharingInvitationHints } from "../realtime/routing";
 import { messagingConversations } from "./schema";
 import { messagingInvitations } from "./sharing.schema";
 import { and, eq, gt, isNull, lt, lte } from "drizzle-orm";
@@ -50,7 +51,7 @@ export async function finishSharingMail(
   attempt: number,
   sent: boolean,
 ) {
-  await db
+  const [finished] = await db
     .update(messagingInvitations)
     .set(
       sent
@@ -63,5 +64,8 @@ export async function finishSharingMail(
         eq(messagingInvitations.status, "pending"),
         eq(messagingInvitations.deliveryAttempts, attempt),
       ),
-    );
+    )
+    .returning();
+  // The sharing list shows delivery. A lease lost to another sender changes nothing here.
+  return finished ? sharingInvitationHints(db, finished) : [];
 }

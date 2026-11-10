@@ -101,6 +101,6 @@ export async function requireSharingRecipient(
       invitation.purpose === "organization" && invitation.targetOrganizationId;
     if (organizationApproval && (await isOrganizationAdmin(db, userId, organizationApproval)))
       return person;
-  } else if (person.email.toLowerCase() === invitation.email) return person;
+  } else if (person.email === invitation.email) return person;
   throw new AccessDeniedError();
 }
