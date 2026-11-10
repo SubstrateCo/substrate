@@ -30,7 +30,7 @@ export function ownedRequests(identity: OwnerIdentity) {
 // The place is shown only while the owner can open the conversation. A request in a hidden
 // place is a placeholder: no IDs, names, text, response or proposal. A proposal whose target
 // conversation the owner cannot open is not shown either.
-export async function requestViews(
+async function requestViews(
   db: DatabaseExecutor,
   identity: OwnerIdentity,
   where: SQL | undefined,
