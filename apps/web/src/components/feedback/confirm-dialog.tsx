@@ -11,29 +11,36 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+type ConfirmAction =
+  | { confirmLabel?: undefined; pendingLabel?: undefined; onConfirm?: undefined }
+  | { confirmLabel: string; pendingLabel: string; onConfirm: () => void };
+
+/** Without confirmLabel, the dialog only informs and offers Close. */
 export function ConfirmDialog({
   title,
   description,
   confirmLabel,
   pendingLabel,
+  cancelLabel = "Cancel",
   destructive = false,
   confirmDisabled = false,
-  pending,
+  pending = false,
   error,
   onConfirm,
   onClose,
+  onRestoreFocus,
   children,
-}: {
+}: ConfirmAction & {
   title: string;
   description: ReactNode;
-  confirmLabel?: string;
-  pendingLabel: string;
+  cancelLabel?: string;
   destructive?: boolean;
   confirmDisabled?: boolean;
-  pending: boolean;
+  pending?: boolean;
   error?: Error | null;
-  onConfirm: () => void;
   onClose: () => void;
+  /** Focus a specific element on close instead of the element that opened the dialog. */
+  onRestoreFocus?: () => void;
   children?: ReactNode;
 }) {
   return (
@@ -43,10 +50,16 @@ export function ConfirmDialog({
         if (!open && !pending) onClose();
       }}
     >
-      <DialogContent>
+      <DialogContent
+        onCloseAutoFocus={(event) => {
+          if (!onRestoreFocus) return;
+          event.preventDefault();
+          onRestoreFocus();
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="wrap-anywhere">{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
+          <DialogDescription className="wrap-anywhere">{description}</DialogDescription>
         </DialogHeader>
         {children}
         {error && (
@@ -56,7 +69,7 @@ export function ConfirmDialog({
         )}
         <DialogFooter>
           <Button variant="outline" disabled={pending} onClick={onClose}>
-            {confirmLabel ? "Cancel" : "Close"}
+            {confirmLabel ? cancelLabel : "Close"}
           </Button>
           {confirmLabel && (
             <PendingButton

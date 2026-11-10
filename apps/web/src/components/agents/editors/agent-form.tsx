@@ -43,7 +43,7 @@ const sections = [
 
 type SettingsTab = (typeof sections)[number]["value"];
 
-export type AgentFormProps = {
+type AgentFormProps = {
   userId: string;
   organizationId?: string | null;
   agent?: AgentConfiguration;

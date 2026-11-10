@@ -1,20 +1,10 @@
 import { useState } from "react";
 
-import { PendingButton } from "@/components/feedback/pending-button";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import type { WorkTone } from "@/lib/agent-work/status";
 import { cn } from "cn";
 import { Clock } from "lucide-react";
-
-const sendNowDescription = "Stops the current work and starts again with this message";
 
 /**
  * Under an owner message the agent has not started on yet: where it waits. When the agent is
@@ -70,34 +60,18 @@ export function InboxReceiptView({
         </Button>
       )}
       {confirming && onSendNow && (
-        <Dialog
-          open
-          onOpenChange={(open) => {
-            if (!open && !sending) setConfirming(false);
+        <ConfirmDialog
+          title="Send now?"
+          description="Stops the current work and starts again with this message."
+          confirmLabel="Send now"
+          pendingLabel="Sending"
+          pending={sending}
+          onConfirm={() => {
+            onSendNow();
+            setConfirming(false);
           }}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Send now?</DialogTitle>
-              <DialogDescription>{sendNowDescription}.</DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" disabled={sending} onClick={() => setConfirming(false)}>
-                Cancel
-              </Button>
-              <PendingButton
-                pending={sending}
-                pendingLabel="Sending"
-                onClick={() => {
-                  onSendNow();
-                  setConfirming(false);
-                }}
-              >
-                Send now
-              </PendingButton>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          onClose={() => setConfirming(false)}
+        />
       )}
     </div>
   );

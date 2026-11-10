@@ -22,9 +22,6 @@ export function LeaveConversationDialog({
       <ConfirmDialog
         title={`You can't leave ${name}`}
         description="You are the last member. Delete the conversation instead."
-        pendingLabel="Leaving"
-        pending={false}
-        onConfirm={onClose}
         onClose={onClose}
       />
     );

@@ -2,9 +2,9 @@ import { useRef, useState } from "react";
 
 import type { ProjectDetail, ProjectPermission } from "../../types";
 import { ProjectAccessForm } from "./project-access-form";
-import { ProjectAccessReview, type ProjectAccessChange } from "./project-access-review";
 import { ProjectMemberRow } from "./project-member-row";
 import { FormMessage } from "@/components/auth/form-message";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -31,7 +31,11 @@ export function ProjectSharing({
   onClearError: () => void;
 }) {
   const [adding, setAdding] = useState(false);
-  const [review, setReview] = useState<ProjectAccessChange | null>(null);
+  const [review, setReview] = useState<{
+    actorEntityId: string;
+    name: string;
+    level: ProjectPermission | null;
+  } | null>(null);
   const addButton = useRef<HTMLButtonElement>(null);
   const reviewOrigin = useRef<HTMLElement | null>(null);
   const canManage = detail.level === "owner";
@@ -103,12 +107,18 @@ export function ProjectSharing({
         </div>
       )}
       {review && canManage && (
-        <ProjectAccessReview
-          change={review}
-          projectName={detail.project.name}
+        <ConfirmDialog
+          title="Review access change"
+          description={
+            review.level
+              ? `Give ${review.name} ${review.level} access to ${detail.project.name}?`
+              : `Remove ${review.name}'s direct access to ${detail.project.name}?`
+          }
+          confirmLabel={review.level ? "Confirm access" : "Remove access"}
+          pendingLabel="Updating access."
+          cancelLabel="Cancel access change"
           pending={pending}
-          error={error}
-          onCancel={() => setReview(null)}
+          onClose={() => setReview(null)}
           onRestoreFocus={() =>
             (reviewOrigin.current?.isConnected ? reviewOrigin.current : addButton.current)?.focus()
           }
@@ -117,7 +127,16 @@ export function ProjectSharing({
             if (review.level) onShare(review.actorEntityId, review.level, () => setReview(null));
             else onRevoke(review.actorEntityId, () => setReview(null));
           }}
-        />
+        >
+          <p className="text-sm">
+            This applies to every task, subtask, and comment in this project. Linked messages keep
+            their separate permissions.
+          </p>
+          {review.level === "owner" && (
+            <p className="text-sm text-muted-foreground">Owners can manage project access.</p>
+          )}
+          <FormMessage error={error} />
+        </ConfirmDialog>
       )}
     </section>
   );

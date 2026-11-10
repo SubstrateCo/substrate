@@ -33,10 +33,7 @@ export function AgentMembersDialog({
     <ConfirmDialog
       title={`Your agents in ${name}`}
       description="Add an agent so you can mention it here. It reads with your access and runs on your desktop."
-      pendingLabel="Saving"
-      pending={false}
       error={error}
-      onConfirm={onClose}
       onClose={onClose}
     >
       {loading && <Spinner aria-label="Loading your agents" className="mx-auto" />}

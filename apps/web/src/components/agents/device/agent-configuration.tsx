@@ -1,16 +1,15 @@
 import { startupSkillIds, startupSkills, type HarnessKind } from "@startup-os/contracts/harness";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useState } from "react";
 
 import { CatalogRow } from "../catalog/catalog-row";
-import { DeleteDefinitionDialog } from "../catalog/delete-definition-dialog";
 import type { AgentSection } from "../editors/agent-form";
 import { SkillEditor } from "../editors/skill-editor";
 import { SettingsList, SettingsNote, SettingsSection } from "../layout/settings-section";
-import { ResetDefaultsDialog } from "./reset-defaults-dialog";
 import { McpServerRow, StartupSkills } from "./startup-configuration";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { Button } from "@/components/ui/button";
 import { desktopLocalConfiguration } from "@/lib/desktop/agents/local-configuration";
@@ -46,11 +45,7 @@ export function AgentConfiguration({
   const [deleting, setDeleting] = useState<{ id: string; name: string }>();
   const configuration = useQuery({
     queryKey: key,
-    enabled: available,
-    queryFn: () => {
-      if (!controller || !organizationId) throw new Error("Select a workspace in the desktop app.");
-      return controller.scan();
-    },
+    queryFn: controller && organizationId ? () => controller.scan() : skipToken,
   });
   const remove = useMutation({
     mutationFn: async (id: string) => {
@@ -208,20 +203,34 @@ export function AgentConfiguration({
         />
       )}
       {resetting && (
-        <ResetDefaultsDialog
+        <ConfirmDialog
+          title="Reset Startup OS defaults?"
+          description="This replaces the agent's instructions file and Startup OS skills on this device with the saved agent settings. Local edits to those files are lost. Your other skills and MCP servers are not changed."
+          confirmLabel="Reset"
+          pendingLabel="Resetting"
+          destructive
           pending={reset.isPending}
-          onClose={() => setResetting(false)}
-          onReset={() => reset.mutateAsync()}
+          error={reset.error}
+          onConfirm={() => reset.mutate(undefined, { onSuccess: () => setResetting(false) })}
+          onClose={() => {
+            setResetting(false);
+            reset.reset();
+          }}
         />
       )}
       {deleting && (
-        <DeleteDefinitionDialog
-          name={deleting.name}
+        <ConfirmDialog
+          title={`Delete ${deleting.name}?`}
+          description="This deletes the selected definition. Native conversation history is not deleted. This cannot be undone."
+          confirmLabel="Delete"
+          pendingLabel="Deleting"
+          destructive
           pending={remove.isPending}
-          onClose={() => setDeleting(undefined)}
-          onDelete={async () => {
-            await remove.mutateAsync(deleting.id);
+          error={remove.error}
+          onConfirm={() => remove.mutate(deleting.id, { onSuccess: () => setDeleting(undefined) })}
+          onClose={() => {
             setDeleting(undefined);
+            remove.reset();
           }}
         />
       )}
