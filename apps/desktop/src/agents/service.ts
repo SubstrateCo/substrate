@@ -202,14 +202,11 @@ export function createAgentWorkService(options: {
         const current = active;
         void current?.runtime
           .reconcileHome()
-          .then(() => current.runtime.sync())
+          .then(() => current.runtime.hint())
           .catch(() => log("Could not check where agents run."));
       }
-      if (
-        event.domain === "agent-work" ||
-        event.domain === "session" ||
-        event.domain === "organization"
-      )
+      if (event.domain === "agent-work") void ensure().then((current) => current?.runtime.hint());
+      if (event.domain === "session" || event.domain === "organization")
         void ensure().then((current) => current?.runtime.sync());
     },
     /** Harness events reach the store before anything else. */

@@ -325,6 +325,39 @@ test("a blocking request opens on the server, gets the owner's answer, and expir
   ).toEqual(["delivered", "expired"]);
 });
 
+test("a burst of agent-work hints pulls once, and pulls answers only while a request is open", async () => {
+  const f = await started();
+  const calls = (method: string) => f.posts.filter((post) => post.method === method).length;
+  const before = { wakes: calls("pullWakes"), answers: calls("requestAnswers") };
+  for (let index = 0; index < 5; index++) f.runtime.hint();
+  await f.advance(1_000);
+  expect(calls("pullWakes")).toBe(before.wakes + 1);
+  // No blocking request waits for an answer.
+  expect(calls("requestAnswers")).toBe(before.answers);
+
+  await f.message();
+  const [turn] = f.turns() as [TurnCommand];
+  await f.emit(turn.turnId, { type: "turn.started" });
+  await f.emit(turn.turnId, {
+    type: "request.opened",
+    requestId: "n1",
+    kind: "permission",
+    data: { toolName: "Bash", input: { command: "ls" } },
+  });
+  f.answer({
+    requestId: "server-1",
+    userAgentId: agentId,
+    turnId: turn.turnId,
+    nativeRequestId: "n1",
+    response: { type: "approval", optionId: "allow" },
+  });
+  const answers = calls("requestAnswers");
+  for (let index = 0; index < 5; index++) f.runtime.hint();
+  await f.advance(1_000);
+  expect(calls("requestAnswers")).toBe(answers + 1);
+  expect(f.commands.at(-1)).toMatchObject({ type: "respond", requestId: "n1", response: "allow" });
+});
+
 test("a helper runs in its own folder and its finish wakes the parent with the report", async () => {
   const f = await started();
   f.ownerMessage();

@@ -28,6 +28,8 @@ import { createTurnExecutor } from "./turn-executor.ts";
 /* oxlint-disable deslop/no-unknown-parameters -- MCP bodies and results are parsed in toolOutputs. */
 
 const syncIntervalMs = 30_000;
+/** Realtime hints within this window become one pull. */
+const hintWindowMs = 300;
 const activityPageSize = 30;
 
 export interface RuntimeTimers {
@@ -53,6 +55,7 @@ export function createAgentWorkRuntime(
   const timers = new Set<() => void>();
   let pumping: Promise<void> | undefined;
   let again = false;
+  let hinted: (() => void) | undefined;
 
   const context: RuntimeContext = {
     ...base,
@@ -149,7 +152,11 @@ export function createAgentWorkRuntime(
       });
   }
 
-  async function sync() {
+  /**
+   * Pulls wakes, and answers when answers is "always" or a blocking request waits for one.
+   * Answers for callbacks that are gone are orphaned by the full pulls.
+   */
+  async function sync(answers: "always" | "waiting" = "always") {
     const created = await pullWakes(context).catch(() => {
       context.log("Could not pull agent wakes.");
       return 0;
@@ -160,8 +167,17 @@ export function createAgentWorkRuntime(
       context.later(pump, ownerBatchWindowMs + 10);
       context.changed({});
     }
-    await requests.deliver().catch(() => context.log("Could not deliver agent answers."));
+    if (answers === "always" || requests.waiting())
+      await requests.deliver().catch(() => context.log("Could not deliver agent answers."));
     pump();
+  }
+
+  /** Agent-work hints: a burst, such as the echoes of this desktop's own writes, pulls once. */
+  function hint() {
+    hinted ??= context.later(() => {
+      hinted = undefined;
+      void sync("waiting");
+    }, hintWindowMs);
   }
 
   async function tick() {
@@ -249,8 +265,9 @@ export function createAgentWorkRuntime(
       dispose();
     },
     reconcileHome,
-    /** Realtime agent-work hints and reconnects pull wakes and answers. */
+    /** Reconnects and session changes pull wakes and answers at once. */
     sync: () => sync(),
+    hint,
     onHarnessEvent(event: HarnessEvent) {
       if (event.organizationId === context.organizationId) executor.onEvent(event);
     },

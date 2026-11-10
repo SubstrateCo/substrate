@@ -134,6 +134,7 @@ export async function runtimeFixture(
     register: async (body) => record("register", body),
     catalog: async () => catalog.map((agent) => ({ ...agent })),
     async pullWakes(_organization, limit) {
+      record("pullWakes", { limit });
       return wakes.filter((wake) => !acked.has(wake.id)).slice(0, limit);
     },
     ackWakes: async (_organization, ids) => {
@@ -156,6 +157,7 @@ export async function runtimeFixture(
     closeRequest: async (_organization, requestId, status) =>
       record("closeRequest", { requestId, status }),
     async requestAnswers() {
+      record("requestAnswers", null);
       const result = answers;
       answers = [];
       return result;

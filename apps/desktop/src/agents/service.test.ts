@@ -121,7 +121,10 @@ test("a server call denied with UNAUTHENTICATED verifies the session again", asy
 
   f.deniedOnce.add("/api/v1/agent-work/device/wakes/pull");
   f.service.onRealtime(change("agent-work"));
+  // Agent-work hints pull after a short window.
+  await new Promise((resolve) => setTimeout(resolve, 500));
   await settle();
+  expect(f.deniedOnce.size).toBe(0);
   await f.service.call("agents");
   expect(f.sessionChecks()).toBe(2);
 });

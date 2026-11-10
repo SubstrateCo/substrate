@@ -270,6 +270,10 @@ export function createRequestBridge(
         }
       }
     },
+    /** Whether a native callback waits for the owner's answer. */
+    waiting() {
+      return open.size > 0;
+    },
     openCount(userAgentId: string) {
       return [...open.values()].filter((request) => request.userAgentId === userAgentId).length;
     },
