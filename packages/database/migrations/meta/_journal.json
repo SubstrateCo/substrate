@@ -92,6 +92,13 @@
       "when": 1794275984573,
       "tag": "0012_drop_message_author_id",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794276171407,
+      "tag": "0013_partial_pending_indexes",
+      "breakpoints": true
     }
   ]
 }

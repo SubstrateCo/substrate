@@ -34,7 +34,10 @@ export const fileUploads = pgTable(
       sql`(${t.purpose} = 'avatar' AND ${t.ownerUserId} IS NOT NULL AND ${t.organizationId} IS NULL AND ${t.uploadedBy} = ${t.ownerUserId}) OR (${t.purpose} IN ('organization-logo', 'file') AND ${t.organizationId} IS NOT NULL AND ${t.ownerUserId} IS NULL)`,
     ),
     check("file_upload_size", sql`${t.size} > 0 AND ${t.size} <= 5242880`),
-    index("file_upload_expiry_idx").on(t.expiresAt),
+    // Cleanup reads only uploads whose temporary object is not cleaned yet.
+    index("file_upload_expiry_idx")
+      .on(t.expiresAt)
+      .where(sql`${t.temporaryCleanedAt} IS NULL`),
   ],
 );
 

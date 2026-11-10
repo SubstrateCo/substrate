@@ -47,6 +47,10 @@ export const notifications = pgTable(
       table.createdAt,
       table.id,
     ),
+    // The unread feed and mark-all-read.
+    index("notification_unread_idx")
+      .on(table.organizationId, table.recipientActorEntityId, table.createdAt, table.id)
+      .where(sql`${table.readAt} IS NULL`),
     // Message deletion cascades here.
     index("notification_message_idx").on(table.messageId),
   ],

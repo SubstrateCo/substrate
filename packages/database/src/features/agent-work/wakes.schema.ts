@@ -54,7 +54,10 @@ export const agentWakes = pgTable(
       foreignColumns: [actors.organizationId, actors.entityId, actors.userAgentId],
     }).onDelete("cascade"),
     unique("agent_wakes_dedupe_unique").on(table.userAgentId, table.dedupeKey),
-    index("agent_wakes_pending_idx").on(table.userAgentId, table.ackedAt),
+    // Acked wakes stay, so the polling index covers pending rows only, in pull order.
+    index("agent_wakes_pending_idx")
+      .on(table.userAgentId, table.createdAt, table.id)
+      .where(sql`${table.ackedAt} IS NULL`),
     check("agent_wake_source_check", sql`${table.source} IN (${checkValues(agentWakeSources)})`),
     check("agent_wake_session_key_check", sql`length(${table.sessionKey}) BETWEEN 1 AND 200`),
   ],
