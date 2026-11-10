@@ -2,6 +2,7 @@ import type { DatabaseExecutor } from "../../client";
 import { actorDisplayName } from "../../core/actors/display-name";
 import { actorPicture } from "../../core/actors/picture";
 import { actors } from "../../core/actors/schema";
+import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError } from "../../errors";
 import { taskActivity } from "../activity/schema";
 import { workspaceContext, requireWork } from "../context/access";
@@ -13,13 +14,14 @@ import { projects } from "../projects/schema";
 import { liveTask } from "../tasks/access";
 import { tasks } from "../tasks/tasks.schema";
 import { toFeedItem } from "./feed-item";
+import { createNotificationGroups } from "./groups";
 import { notifications } from "./schema";
 import { readableMessageTargets } from "./targets";
-import { and, desc, eq, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity) {
-  return {
+  const service = {
     async activity(taskEntityId: string) {
       const { context: ctx } = await workspaceContext(db, scope);
       const work = await requireWork(ctx, taskEntityId);
@@ -71,9 +73,14 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
     },
     async list(
       after?: string,
-      { limit = 100, unread = false }: { limit?: number; unread?: boolean } = {},
+      {
+        limit = 100,
+        unread = false,
+        ids,
+        context,
+      }: { limit?: number; unread?: boolean; ids?: string[]; context?: RepositoryContext } = {},
     ) {
-      const { context: ctx } = await workspaceContext(db, scope);
+      const ctx = context ?? (await workspaceContext(db, scope)).context;
       let boundary: SQL | undefined;
       if (after) {
         const [anchor] = await db
@@ -165,6 +172,7 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
             eq(notifications.organizationId, scope.organizationId),
             eq(notifications.recipientActorEntityId, ctx.scope.actorEntityId),
             unread ? isNull(notifications.readAt) : undefined,
+            ids ? inArray(notifications.id, ids) : undefined,
             boundary,
             or(
               and(
@@ -250,5 +258,11 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
       if (!row) throw new AccessDeniedError();
       return row;
     },
+  };
+  return {
+    ...service,
+    ...createNotificationGroups(db, scope, (ids, context) =>
+      service.list(undefined, { ids, context, limit: ids.length }),
+    ),
   };
 }

@@ -1,24 +1,171 @@
-import { conversation, expectChange, post, send, test, visit } from "./test-support/fixtures";
+import {
+  acceptCollaboration,
+  conversation,
+  expectChange,
+  post,
+  send,
+  test,
+  visit,
+} from "./test-support/fixtures";
 import { expect } from "@playwright/test";
 
-test("notifications load older pages, filter unread, and mark individual and all items as read", async ({
+test("single and grouped notifications share a feed and expand without eager or repeated detail requests", async ({
+  actors,
+  account,
+  client,
+}, testInfo) => {
+  test.setTimeout(60_000);
+  for (const [actor, name] of [
+    [actors.sender, "Maya Chen"],
+    [actors.member, "Jordan Lee"],
+    [actors.partner, "Sam Rivera"],
+    [account, "Alex Morgan"],
+  ] as const) {
+    expect((await actor.request.post("/api/auth/update-user", { data: { name } })).ok()).toBe(true);
+    actor.name = name;
+  }
+  const channel = await post<{ id: string }>(actors.sender, "messaging/conversations", {
+    kind: "channel",
+    name: "Launch planning",
+    private: true,
+    shareHistory: true,
+    emails: [account.email, actors.member.email, actors.partner.email],
+  });
+  await acceptCollaboration(account, channel.id);
+  await acceptCollaboration(actors.partner, channel.id);
+  const root = (body: string) =>
+    post<{ id: string }>(account, "messaging/messages", { conversationId: channel.id, body });
+  const reply = (actor: typeof account, threadId: string, body: string) =>
+    post<{ id: string }>(actor, "messaging/messages", {
+      conversationId: channel.id,
+      threadId,
+      body,
+    });
+  const oldest = await root("Final copy review");
+  await reply(actors.member, oldest.id, "The onboarding copy is approved. We’re ready to publish.");
+  expect(
+    (
+      await account.request.post("/api/v1/context/notifications/read-all", {
+        data: { organizationId: account.organizationId },
+      })
+    ).ok(),
+  ).toBe(true);
+  const smaller = await root("Customer interviews");
+  await reply(actors.sender, smaller.id, "I’ve added the interview notes to the shared brief.");
+  await reply(
+    actors.sender,
+    smaller.id,
+    "Three customers asked for the same improvement. Let’s discuss it tomorrow.",
+  );
+  const single = await root("Design handoff");
+  await reply(actors.partner, single.id, "The updated product screens are ready for your review.");
+  const launch = await root("Launch checklist");
+  await reply(
+    actors.sender,
+    launch.id,
+    "The release checklist is ready. Can everyone check their section?",
+  );
+  await reply(actors.member, launch.id, "Support is ready. I’ve added the help centre links.");
+  await reply(
+    actors.partner,
+    launch.id,
+    "The final design review is complete. Everything looks good.",
+  );
+  const newest = await reply(
+    actors.sender,
+    launch.id,
+    "We’re all set for Thursday. The final launch checklist is ready to review.",
+  );
+  const recipient = await client(account);
+  await recipient.page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
+  await recipient.page.addInitScript(() => localStorage.setItem("startup-os-theme", "system"));
+  let details = 0;
+  recipient.page.on("response", (response) => {
+    if (
+      response.ok() &&
+      new URL(response.url()).pathname === "/api/v1/context/notifications/events"
+    )
+      details++;
+  });
+  await visit(recipient, undefined, "/notifications");
+  const list = recipient.page.getByRole("list", { name: "Notification activity", exact: true });
+  await expect(list.getByRole("button", { name: "Show 4 events", exact: true })).toBeVisible();
+  await expect(list.getByRole("link", { name: /Maya Chen and 2 others replied/ })).toBeVisible();
+  await expect(list.getByRole("link")).toHaveCount(4);
+  const timestampEdges = await list
+    .locator(":scope > li > div time")
+    .evaluateAll((times) => times.map((time) => Math.round(time.getBoundingClientRect().right)));
+  expect(timestampEdges).toHaveLength(4);
+  expect(new Set(timestampEdges).size).toBe(1);
+  expect(details).toBe(0);
+  await recipient.page.screenshot({ path: testInfo.outputPath("notifications-mixed-light.png") });
+  await list.getByRole("button", { name: "Show 4 events", exact: true }).click();
+  const events = list.getByRole("list", { name: "Group events" });
+  await expect(events.getByRole("link")).toHaveCount(4);
+  const expandedTimestampEdges = await list
+    .locator("time")
+    .evaluateAll((times) => times.map((time) => Math.round(time.getBoundingClientRect().right)));
+  expect(expandedTimestampEdges).toHaveLength(8);
+  expect(new Set(expandedTimestampEdges).size).toBe(1);
+  await expect(events.locator(`a[href*="messageId=${newest.id}"]`)).toBeVisible();
+  expect(details).toBe(1);
+  await recipient.page.screenshot({
+    path: testInfo.outputPath("notifications-expanded-light.png"),
+  });
+  await list.getByRole("button", { name: "Hide 4 events", exact: true }).click();
+  await list.getByRole("button", { name: "Show 4 events", exact: true }).click();
+  await expect(events.getByRole("link")).toHaveCount(4);
+  expect(details).toBe(1);
+  // Expansion is not a read action.
+  await expect(list.getByText("4 unread", { exact: true })).toBeVisible();
+  await list.getByRole("button", { name: "Hide 4 events", exact: true }).click();
+  await recipient.page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
+  await expect(recipient.page.locator("html")).toHaveClass(/dark/);
+  await recipient.page.screenshot({ path: testInfo.outputPath("notifications-mixed-dark.png") });
+  await recipient.page.setViewportSize({ width: 800, height: 900 });
+  await expect(list.getByRole("link", { name: /Maya Chen and 2 others replied/ })).toBeVisible();
+  expect(
+    await recipient.page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+  ).toBe(true);
+  const narrowTimestampEdges = await list
+    .locator("time")
+    .evaluateAll((times) => times.map((time) => Math.round(time.getBoundingClientRect().right)));
+  expect(new Set(narrowTimestampEdges).size).toBe(1);
+  await recipient.page.screenshot({ path: testInfo.outputPath("notifications-narrow-dark.png") });
+});
+
+test("notifications page complete groups, filter unread, and mark groups and all items as read", async ({
   actors,
   client,
   account,
 }) => {
-  test.setTimeout(30_000);
+  test.setTimeout(60_000);
   const channel = await conversation(actors.sender, [account.email], [account]);
   const root = await post<{ id: string }>(account, "messaging/messages", {
     conversationId: channel.id,
     body: "Paginated notifications",
   });
   for (let index = 0; index < 21; index++) {
+    const thread =
+      index === 0
+        ? root
+        : await post<{ id: string }>(account, "messaging/messages", {
+            conversationId: channel.id,
+            body: `Thread ${index}`,
+          });
     await post(actors.sender, "messaging/messages", {
       conversationId: channel.id,
-      threadId: root.id,
+      threadId: thread.id,
       body: `Page reply ${index}`,
     });
   }
+  // A busy thread still consumes just one place in the group page.
+  for (let index = 0; index < 22; index++)
+    await post(actors.sender, "messaging/messages", {
+      conversationId: channel.id,
+      threadId: root.id,
+      body: `Busy reply ${index}`,
+    });
   const recipient = await client(account);
   await visit(recipient, undefined, "/tasks");
   await expect(recipient.page.getByText("Loading workspace details…")).toHaveCount(0);
@@ -33,7 +180,8 @@ test("notifications load older pages, filter unread, and mark individual and all
   await expect(rows.first().getByRole("link")).toHaveAccessibleName(
     `${actors.sender.name} replied to a thread in ${channel.name}, unread`,
   );
-  await expect(rows.first()).toContainText("Page reply 20");
+  await expect(rows.first()).toContainText("Busy reply 21");
+  await expect(rows.first()).toContainText("23 events");
   await feed.getByRole("button", { name: "Show older", exact: true }).click();
   await expect(rows).toHaveCount(21);
   await expect(feed.getByRole("button", { name: "Show older", exact: true })).toHaveCount(0);
@@ -101,7 +249,10 @@ for (const scope of ["same organization", "cross organization"] as const) {
     );
     expect(new URL(recipient.page.url()).searchParams.get("conversationId")).toBe(channel.id);
     expect(new URL(recipient.page.url()).searchParams.get("messageId")).toBe(sent.id);
-    await recipient.page.getByRole("button", { name: "Notifications", exact: true }).click();
+    await recipient.page
+      .getByRole("navigation", { name: "Apps" })
+      .getByRole("button", { name: /^Notifications/ })
+      .click();
     await expect(link).toHaveAccessibleName(
       `${actors.sender.name} replied to a thread in ${channel.name}`,
     );

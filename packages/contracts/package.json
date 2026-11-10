@@ -16,6 +16,7 @@
     "./tasks": "./src/tasks/status.ts",
     "./tasks/input": "./src/tasks/input.ts",
     "./context/input": "./src/context/input.ts",
+    "./context/notification-groups": "./src/context/notification-groups.ts",
     "./messaging/input": "./src/messaging/input.ts",
     "./messaging/sharing": "./src/messaging/sharing.ts",
     "./auth/permissions": "./src/auth/permissions.ts",

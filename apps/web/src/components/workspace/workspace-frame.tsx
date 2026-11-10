@@ -14,7 +14,7 @@ import { needsYouCount } from "@/lib/agent-work/needs-you";
 import { needsYouOptions } from "@/queries/agent-work/server";
 import { useAgentWorkBridgeSync } from "@/queries/agent-work/sync";
 import { sessionQueryOptions } from "@/queries/auth/session";
-import { notificationPageOptions } from "@/queries/context/notifications";
+import { notificationUnreadOptions } from "@/queries/context/notification-groups";
 import {
   activeMemberQueryOptions,
   organizationQueryOptions,
@@ -44,7 +44,7 @@ export function WorkspaceFrame({
   });
   // The dot needs only to know whether one unread notification exists.
   const notifications = useQuery({
-    ...notificationPageOptions(organizationId ?? "", "unread", undefined, 1),
+    ...notificationUnreadOptions(organizationId ?? ""),
     enabled: !!organizationId,
   });
   // Agent notifications are only for work that needs the owner. The server returns nothing for
@@ -69,9 +69,7 @@ export function WorkspaceFrame({
         name={name}
         image={session.data?.user.image}
         view={view}
-        hasUnreadNotifications={
-          !notifications.error && notifications.data?.items.some((item) => !item.readAt)
-        }
+        hasUnreadNotifications={!notifications.error && notifications.data?.unread}
         agentsNeedYou={!needsYou.error && needsYouCount(needsYou.data) > 0}
         onViewChange={(nextView) => {
           const to = {

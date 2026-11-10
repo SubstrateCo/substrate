@@ -10,6 +10,11 @@ import {
   contextNotification,
   contextNotificationPage,
 } from "@startup-os/contracts/context/input";
+import {
+  notificationGroupsInput,
+  notificationGroupEventsInput,
+  notificationGroupReadInput,
+} from "@startup-os/contracts/context/notification-groups";
 
 import { respond, validationHook } from "../../shared/http";
 import * as defaultServices from "./service";
@@ -50,6 +55,36 @@ export function createContextRoutes(services = defaultServices) {
     )
     .get("/notifications", zValidator("query", contextWorkspace, validationHook), async (c) =>
       respond(c, await services.getNotifications(c.req.raw.headers, c.req.valid("query"))),
+    )
+    .get(
+      "/notifications/groups",
+      zValidator("query", notificationGroupsInput, validationHook),
+      async (c) =>
+        respond(c, await services.getNotificationGroups(c.req.raw.headers, c.req.valid("query"))),
+    )
+    .get(
+      "/notifications/events",
+      zValidator("query", notificationGroupEventsInput, validationHook),
+      async (c) =>
+        respond(
+          c,
+          await services.getNotificationGroupEvents(c.req.raw.headers, c.req.valid("query")),
+        ),
+    )
+    .get(
+      "/notifications/unread",
+      zValidator("query", contextWorkspace, validationHook),
+      async (c) =>
+        respond(c, await services.getNotificationUnread(c.req.raw.headers, c.req.valid("query"))),
+    )
+    .post(
+      "/notifications/read-group",
+      zValidator("json", notificationGroupReadInput, validationHook),
+      async (c) =>
+        respond(
+          c,
+          await services.markNotificationGroupRead(c.req.raw.headers, c.req.valid("json")),
+        ),
     )
     .get(
       "/notifications/page",

@@ -11,10 +11,177 @@ import { notifications } from "./schema";
 import { createFeedService } from "./service";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 const f = setupDatabase();
 const feed = (userId: string) => createFeedService(f.db, { userId, organizationId: f.orgA });
+
+test("group pages count complete threads, page groups, and keep concurrent arrivals unread", async () => {
+  const { chat, channel } = await setup();
+  await chat.addMembers(channel.id, ["bob@example.com"]);
+  const bob = createAcceptedMessagingService(f.db, { userId: "bob", organizationId: f.orgA });
+  const root = await bob.sendMessage(channel.id, "First thread");
+  for (let index = 0; index < 22; index++)
+    await chat.sendMessage(channel.id, `Reply ${index}`, root.id);
+  const second = await bob.sendMessage(channel.id, "Second thread");
+  await chat.sendMessage(channel.id, "Other reply", second.id);
+  const service = feed("bob");
+  const first = await service.groups({ limit: 1, filter: "all" });
+  expect(first.items).toHaveLength(1);
+  expect(first.items[0]).toMatchObject({
+    groupKey: `thread:${second.id}`,
+    count: 1,
+    unreadCount: 1,
+  });
+  const next = await service.groups({ limit: 1, filter: "all", after: first.nextCursor! });
+  expect(next.items[0]).toMatchObject({
+    groupKey: `thread:${root.id}`,
+    count: 22,
+    unreadCount: 22,
+    otherActorCount: 0,
+  });
+  expect(next.nextCursor).toBeNull();
+  const group = next.items[0]!;
+  const details = await service.groupEvents({ groupKey: group.groupKey, limit: 20 });
+  expect(details.items).toHaveLength(20);
+  const older = await service.groupEvents({
+    groupKey: group.groupKey,
+    limit: 20,
+    after: details.nextCursor!,
+  });
+  expect(older.items).toHaveLength(2);
+  expect(new Set([...details.items, ...older.items].map((item) => item.id)).size).toBe(22);
+  await chat.sendMessage(channel.id, "Concurrent arrival", root.id);
+  await service.markGroupRead({ groupKey: group.groupKey, through: group.newestCursor });
+  const unread = await service.groups({ limit: 20, filter: "unread" });
+  expect(unread.items.find((item) => item.groupKey === group.groupKey)).toMatchObject({
+    count: 23,
+    unreadCount: 1,
+  });
+  expect(await service.hasUnread()).toBe(true);
+  await service.markAllRead();
+  expect(await service.hasUnread()).toBe(false);
+  await f.db
+    .update(messagingParticipants)
+    .set({ leftAt: new Date() })
+    .where(eq(messagingParticipants.actorEntityId, f.bob));
+  expect((await service.groups({ limit: 20, filter: "all" })).items).toEqual([]);
+  expect((await service.groupEvents({ groupKey: group.groupKey, limit: 20 })).items).toEqual([]);
+  await expect(
+    service.markGroupRead({ groupKey: group.groupKey, through: group.newestCursor }),
+  ).rejects.toBeInstanceOf(AccessDeniedError);
+});
+
+test("work groups use entity identity, page tied timestamps after a deleted anchor, and check current access", async () => {
+  const { alice, project } = await setup();
+  const tasks = await Promise.all(
+    ["First", "Second", "Third"].map((title) =>
+      alice.tasks.create({ projectEntityId: project.entityId, title }),
+    ),
+  );
+  await f.db.delete(notifications);
+  const ids = tasks.map(
+    (_, index) => `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+  );
+  await f.db.insert(notifications).values(
+    tasks.map((task, index) => ({
+      id: ids[index]!,
+      organizationId: f.orgA,
+      recipientActorEntityId: f.bob,
+      entityId: task.entityId,
+      kind: "assignment" as const,
+      eventKey: `group-task-${index}`,
+      createdAt: new Date("2026-11-10T10:00:00Z"),
+      readAt: index === 0 ? new Date() : null,
+    })),
+  );
+  const service = feed("bob");
+  const first = await service.groups({ limit: 1, filter: "all" });
+  expect(first.items[0]).toMatchObject({ groupKey: `entity:${tasks[2]!.entityId}`, count: 1 });
+  await f.db.delete(notifications).where(eq(notifications.id, first.items[0]!.id));
+  const second = await service.groups({ limit: 1, filter: "all", after: first.nextCursor! });
+  expect(second.items[0]).toMatchObject({ entityId: tasks[1]!.entityId });
+  const last = await service.groups({ limit: 1, filter: "all", after: second.nextCursor! });
+  expect(last.items[0]).toMatchObject({ entityId: tasks[0]!.entityId, unreadCount: 0 });
+  expect(last.nextCursor).toBeNull();
+  expect(
+    (await service.groups({ limit: 20, filter: "unread" })).items.map((item) => item.entityId),
+  ).toEqual([tasks[1]!.entityId]);
+  await alice.permissions.revoke({ entityId: project.entityId, actorEntityId: f.bob });
+  expect(await service.hasUnread()).toBe(false);
+  expect((await service.groups({ limit: 20, filter: "all" })).items).toEqual([]);
+  expect(
+    (await service.groupEvents({ groupKey: first.items[0]!.groupKey, limit: 20 })).items,
+  ).toEqual([]);
+  await expect(
+    service.markGroupRead({
+      groupKey: second.items[0]!.groupKey,
+      through: second.items[0]!.newestCursor,
+    }),
+  ).rejects.toBeInstanceOf(AccessDeniedError);
+});
+
+test("groups retain microsecond boundaries and mixed read history and do not enrich the unread indicator", async () => {
+  const { chat, channel } = await setup();
+  await chat.addMembers(channel.id, ["bob@example.com", "outside@example.com"]);
+  const bob = createAcceptedMessagingService(f.db, { userId: "bob", organizationId: f.orgA });
+  const partner = createAcceptedMessagingService(f.db, {
+    userId: "outsider",
+    organizationId: f.orgB,
+  });
+  const root = await bob.sendMessage(channel.id, "Thread root");
+  const first = await chat.sendMessage(channel.id, "First", root.id);
+  const second = await partner.sendMessage(channel.id, "Second", root.id);
+  await f.db
+    .update(notifications)
+    .set({ createdAt: sql`'2026-11-10T10:00:00.000001Z'::timestamptz` })
+    .where(eq(notifications.messageId, first.id));
+  await f.db
+    .update(notifications)
+    .set({ createdAt: sql`'2026-11-10T10:00:00.000002Z'::timestamptz`, kind: "mention" })
+    .where(eq(notifications.messageId, second.id));
+  const { db, queries } = recordQueries();
+  const service = createFeedService(db, { userId: "bob", organizationId: f.orgA });
+  const grouped = await service.groups({ limit: 20, filter: "all" });
+  expect(grouped.items[0]).toMatchObject({
+    groupKey: `thread:${root.id}`,
+    count: 2,
+    otherActorCount: 1,
+    mixedKinds: true,
+    messageId: second.id,
+  });
+  const events = await service.groupEvents({ groupKey: grouped.items[0]!.groupKey, limit: 1 });
+  expect(events.items[0]!.messageId).toBe(second.id);
+  const older = await service.groupEvents({
+    groupKey: grouped.items[0]!.groupKey,
+    limit: 1,
+    after: events.nextCursor!,
+  });
+  expect(older.items[0]!.messageId).toBe(first.id);
+  await service.markGroupRead({
+    groupKey: grouped.items[0]!.groupKey,
+    through: older.items[0]!.eventCursor,
+  });
+  const unread = await service.groups({ limit: 20, filter: "unread" });
+  expect(unread.items[0]).toMatchObject({ count: 2, unreadCount: 1, messageId: second.id });
+  queries.length = 0;
+  expect(await service.hasUnread()).toBe(true);
+  expect(
+    queries.some((query) => query.includes('"body"') || query.includes('"notice_actor"')),
+  ).toBe(false);
+  const otherWorkspace = createFeedService(db, { userId: "outsider", organizationId: f.orgB });
+  expect(
+    (await otherWorkspace.groups({ limit: 20, filter: "all" })).items.every(
+      (item) => item.messageId !== second.id,
+    ),
+  ).toBe(true);
+  await expect(
+    otherWorkspace.markGroupRead({
+      groupKey: `thread:${root.id}`,
+      through: grouped.items[0]!.newestCursor,
+    }),
+  ).rejects.toBeInstanceOf(AccessDeniedError);
+});
 
 test("notification pages scan past inaccessible targets and filter unread before pagination", async () => {
   const { alice, project } = await setup();

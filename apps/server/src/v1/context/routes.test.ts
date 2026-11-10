@@ -6,6 +6,32 @@ import { expect, mock, test } from "bun:test";
 
 const id = "00000000-0000-4000-8000-000000000001";
 
+test("group pages reject malformed positions and preserve their scoped paging input", async () => {
+  const getNotificationGroups = mock(async () =>
+    failure("NOT_FOUND", "Item not found or access denied."),
+  );
+  const app = createContextRoutes({ ...services, getNotificationGroups });
+  for (const after of [id, "{}", JSON.stringify({ at: "invalid", id })]) {
+    const query = new URLSearchParams({ organizationId: "org", after });
+    expect((await app.request(`/notifications/groups?${query}`)).status).toBe(400);
+  }
+  expect(getNotificationGroups).not.toHaveBeenCalled();
+  const after = JSON.stringify({ at: "2026-11-10T10:00:00.000001Z", id });
+  const query = new URLSearchParams({
+    organizationId: "org",
+    filter: "unread",
+    after,
+    limit: "10",
+  });
+  expect((await app.request(`/notifications/groups?${query}`)).status).toBe(404);
+  expect(getNotificationGroups).toHaveBeenCalledWith(expect.any(Headers), {
+    organizationId: "org",
+    filter: "unread",
+    after,
+    limit: 10,
+  });
+});
+
 test("notification pages validate cursors and filters and preserve the workspace boundary", async () => {
   const getNotificationPage = mock(async () =>
     failure("NOT_FOUND", "Item not found or access denied."),
@@ -42,6 +68,10 @@ test("context routes reject invalid input without invoking services", async () =
     getActivity: mock(services.getActivity),
     getNotifications: mock(services.getNotifications),
     getNotificationPage: mock(services.getNotificationPage),
+    getNotificationGroups: mock(services.getNotificationGroups),
+    getNotificationGroupEvents: mock(services.getNotificationGroupEvents),
+    getNotificationUnread: mock(services.getNotificationUnread),
+    markNotificationGroupRead: mock(services.markNotificationGroupRead),
     markRead: mock(services.markRead),
     markAllRead: mock(services.markAllRead),
   };
@@ -54,6 +84,9 @@ test("context routes reject invalid input without invoking services", async () =
     "/activity",
     "/notifications",
     "/notifications/page",
+    "/notifications/groups",
+    "/notifications/events",
+    "/notifications/unread",
   ]) {
     const response = await app.request(path);
     expect(response.status).toBe(400);
@@ -66,6 +99,7 @@ test("context routes reject invalid input without invoking services", async () =
     ["POST", "/links"],
     ["DELETE", "/links"],
     ["POST", "/notifications/read"],
+    ["POST", "/notifications/read-group"],
   ]) {
     const response = await app.request(path!, {
       method,

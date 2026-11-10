@@ -1,4 +1,4 @@
-import { Fragment, type KeyboardEvent, type MouseEvent } from "react";
+import { Fragment, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
 
 import { ContentNotice } from "../../feedback/content-notice";
 import { ErrorState } from "../../feedback/error-state";
@@ -59,6 +59,7 @@ export function NotificationList({
   onReadAll,
   onOpen,
   onClose,
+  renderEvents,
 }: {
   items: Notification[];
   loading: boolean;
@@ -74,6 +75,7 @@ export function NotificationList({
   onReadAll: () => void;
   onOpen: (item: Notification, event: MouseEvent<HTMLAnchorElement>) => void;
   onClose?: () => void;
+  renderEvents: (item: Notification) => ReactNode;
 }) {
   const visible = isAccessFailure(error) ? [] : items;
   const failed = !!error && !visible.length;
@@ -189,6 +191,7 @@ export function NotificationList({
                           item={item}
                           onRead={() => onRead(item.id)}
                           onOpen={(event) => onOpen(item, event)}
+                          renderEvents={() => renderEvents(item)}
                         />
                       </Fragment>
                     ))}

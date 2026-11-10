@@ -10,6 +10,11 @@ import type {
   contextNotification,
   contextNotificationPage,
 } from "@startup-os/contracts/context/input";
+import type {
+  notificationGroupsInput,
+  notificationGroupEventsInput,
+  notificationGroupReadInput,
+} from "@startup-os/contracts/context/notification-groups";
 import { realtimeKeys } from "@startup-os/contracts/realtime";
 import type { RealtimeHint } from "@startup-os/contracts/realtime";
 import { createContextService, createFeedService } from "@startup-os/database/context";
@@ -115,6 +120,42 @@ export function getNotifications(headers: Headers, input: z.output<typeof contex
   return serviceResult(async () => {
     const { feed } = await sessionServices(headers, input.organizationId);
     return feed.list();
+  });
+}
+export function getNotificationGroups(
+  headers: Headers,
+  input: z.output<typeof notificationGroupsInput>,
+) {
+  return serviceResult(async () => {
+    const { feed } = await sessionServices(headers, input.organizationId);
+    return feed.groups(input);
+  });
+}
+export function getNotificationGroupEvents(
+  headers: Headers,
+  input: z.output<typeof notificationGroupEventsInput>,
+) {
+  return serviceResult(async () => {
+    const { feed } = await sessionServices(headers, input.organizationId);
+    return feed.groupEvents(input);
+  });
+}
+export function getNotificationUnread(headers: Headers, input: z.output<typeof contextWorkspace>) {
+  return serviceResult(async () => {
+    const { feed } = await sessionServices(headers, input.organizationId);
+    return { unread: await feed.hasUnread() };
+  });
+}
+export function markNotificationGroupRead(
+  headers: Headers,
+  input: z.output<typeof notificationGroupReadInput>,
+) {
+  return serviceResult(async () => {
+    requireOrigin(headers);
+    const { feed, userId } = await sessionServices(headers, input.organizationId);
+    await feed.markGroupRead(input);
+    await publishRefresh([{ audience: realtimeKeys.user(userId), domain: "notifications" }]);
+    return null;
   });
 }
 export function getNotificationPage(
