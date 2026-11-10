@@ -11,7 +11,6 @@ export function CopyLink({
 }) {
   return (
     <CopyButton
-      iconOnly
       size={grouped ? "icon" : "icon-xs"}
       grouped={grouped}
       label={label}

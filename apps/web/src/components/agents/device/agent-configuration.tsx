@@ -196,7 +196,6 @@ export function AgentConfiguration({
       {editing && (
         <SkillEditor
           skill={skill}
-          pending={false}
           onClose={() => setEditing(undefined)}
           onSave={async (input) => {
             if (!controller || !organizationId)

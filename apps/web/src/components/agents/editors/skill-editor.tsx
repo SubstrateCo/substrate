@@ -26,12 +26,10 @@ const skillFields = saveSkillInput.omit({ id: true }).extend({
 
 export function SkillEditor({
   skill,
-  pending,
   onClose,
   onSave,
 }: {
   skill?: HarnessSkill;
-  pending: boolean;
   onClose: () => void;
   onSave: (input: SaveSkillInput) => Promise<void>;
 }) {
@@ -45,7 +43,6 @@ export function SkillEditor({
     validationLogic: revalidateLogic({ mode: "blur", modeAfterSubmission: "change" }),
     validators: { onDynamic: skillFields },
     onSubmit: async ({ value }) => {
-      if (pending) return;
       setError(undefined);
       const parsed = skillFields.parse(value);
       try {
@@ -62,7 +59,7 @@ export function SkillEditor({
           title={skill ? "Edit skill" : "Create skill"}
           saveLabel="Save skill"
           description="Native skill"
-          pending={pending || isSubmitting}
+          pending={isSubmitting}
           onClose={onClose}
           onSubmit={() => form.handleSubmit()}
           error={error}

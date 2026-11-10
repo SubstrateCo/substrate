@@ -12,7 +12,6 @@ export function CopyButton({
   successMessage = "Copied",
   errorMessage = "Couldn't copy",
   size = "xs",
-  iconOnly = false,
   className,
   grouped = false,
 }: {
@@ -21,7 +20,6 @@ export function CopyButton({
   successMessage?: string;
   errorMessage?: string;
   size?: ComponentProps<typeof Button>["size"];
-  iconOnly?: boolean;
   className?: string;
   grouped?: boolean;
 }) {
@@ -58,7 +56,7 @@ export function CopyButton({
       size={size}
       variant={grouped ? "outline" : "ghost"}
       className={className}
-      aria-label={iconOnly ? label : undefined}
+      aria-label={label}
       aria-busy={status === "pending"}
       onClick={() => void copy()}
     >
@@ -78,20 +76,15 @@ export function CopyButton({
           )}
         />
       </span>
-      {!iconOnly && label}
     </Button>
   );
 
   const content = (
     <>
-      {iconOnly ? (
-        <Tooltip>
-          <TooltipTrigger asChild>{button}</TooltipTrigger>
-          <TooltipContent>{label}</TooltipContent>
-        </Tooltip>
-      ) : (
-        button
-      )}
+      <Tooltip>
+        <TooltipTrigger asChild>{button}</TooltipTrigger>
+        <TooltipContent>{label}</TooltipContent>
+      </Tooltip>
       <span role="status" className="sr-only">
         {copied && successMessage}
       </span>
