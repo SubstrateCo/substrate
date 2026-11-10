@@ -1,5 +1,6 @@
 import { realtimeKeys } from "@startup-os/contracts/realtime";
 
+import { ensureHumanActor, ensureUserAgentActor } from "../../core/actors/provisioning";
 import * as schema from "../../schema";
 import {
   actors,
@@ -12,7 +13,6 @@ import {
 import { setupDatabase } from "../../testing/database";
 import { approveFixtureParticipants } from "../../testing/messaging";
 import { recordQueries } from "../../testing/queries";
-import { ensureHumanActor, ensureUserAgentActor } from "../actors/provisioning";
 import {
   audienceRecipients,
   canReceiveAudience,

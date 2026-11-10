@@ -2,13 +2,13 @@ import { realtimeKeys } from "@startup-os/contracts/realtime";
 
 import { ensureUserAgentActor } from "../../core/actors/provisioning";
 import { userAgents } from "../../core/actors/user-agents.schema";
-import { canReceiveChange } from "../../core/realtime/audience";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import * as schema from "../../schema";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { member, user } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { createContextService } from "../context/service";
+import { canReceiveChange } from "../realtime/audience";
 import { messagingParticipants } from "./schema";
 import { createMessagingService } from "./service";
 import { createSharingService } from "./sharing";

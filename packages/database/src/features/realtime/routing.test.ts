@@ -1,10 +1,10 @@
 import { realtimeKeys } from "@startup-os/contracts/realtime";
 
 import { ensureUserAgentActor } from "../../core/actors/provisioning";
-import { canReceiveChange } from "../../core/realtime/audience";
 import { messagingConversations, messagingParticipants, user, userAgents } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { approveFixtureParticipants } from "../../testing/messaging";
+import { canReceiveChange } from "./audience";
 import { invitationRefreshHints, profileRefreshHints, projectAccessRefreshHints } from "./routing";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";

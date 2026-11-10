@@ -1,14 +1,13 @@
 import type { RealtimeAudience } from "@startup-os/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
-import { messagingConversations, messagingParticipants } from "../../features/messaging/schema";
-import { messagingConnections } from "../../features/messaging/sharing.schema";
-import { activeActorCondition } from "../actors/access";
-import { actors } from "../actors/schema";
-import { user } from "../authentication/schema";
-import { entities } from "../entities/schema";
-import { member } from "../organizations/schema";
-import { and, eq, exists, isNotNull, isNull, lte, or } from "drizzle-orm";
+import { activeActorCondition } from "../../core/actors/access";
+import { actors } from "../../core/actors/schema";
+import { user } from "../../core/authentication/schema";
+import { entities } from "../../core/entities/schema";
+import { approvedParticipant } from "../messaging/access";
+import { messagingConversations, messagingParticipants } from "../messaging/schema";
+import { and, eq, isNull } from "drizzle-orm";
 
 export interface RealtimeReceiver {
   userId: string;
@@ -56,8 +55,8 @@ export type AudienceFilter = (receiver: RealtimeReceiver) => boolean;
 
 // Resolves who may receive an audience, once per change. Only conversation audiences read the
 // database, in one statement. The filter applies the same rules as visibleConversations: a public
-// channel reaches its own workspace, and a live human participant reaches the participant's
-// workspace. Callers must pass receivers freshly returned by resolveReceiver.
+// channel reaches its own workspace, and a live, approved human participant reaches the
+// participant's workspace. Callers must pass receivers freshly returned by resolveReceiver.
 export async function audienceRecipients(
   db: DatabaseExecutor,
   audience: Readonly<RealtimeAudience>,
@@ -89,48 +88,7 @@ export async function audienceRecipients(
           and(
             eq(messagingParticipants.conversationId, messagingConversations.id),
             isNull(messagingParticipants.leftAt),
-            or(
-              eq(messagingParticipants.organizationId, messagingConversations.organizationId),
-              and(
-                isNotNull(messagingParticipants.consentedAt),
-                exists(
-                  db
-                    .select({ id: actors.entityId })
-                    .from(actors)
-                    .innerJoin(
-                      member,
-                      and(
-                        eq(member.userId, actors.userId),
-                        eq(member.organizationId, actors.organizationId),
-                      ),
-                    )
-                    .where(
-                      and(
-                        eq(actors.entityId, messagingParticipants.actorEntityId),
-                        lte(member.createdAt, messagingParticipants.consentedAt),
-                      ),
-                    ),
-                ),
-                exists(
-                  db
-                    .select({ id: messagingConnections.conversationId })
-                    .from(messagingConnections)
-                    .where(
-                      and(
-                        eq(
-                          messagingConnections.conversationId,
-                          messagingParticipants.conversationId,
-                        ),
-                        eq(
-                          messagingConnections.organizationId,
-                          messagingParticipants.organizationId,
-                        ),
-                        isNull(messagingConnections.disconnectedAt),
-                      ),
-                    ),
-                ),
-              ),
-            ),
+            approvedParticipant(db),
           ),
         )
         .leftJoin(
