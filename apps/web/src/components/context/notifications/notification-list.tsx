@@ -3,11 +3,12 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { useCallback, useState } from "react";
 
+import { notificationListQuery } from "./notification-page";
 import { markAllRead, markRead } from "@/api/context/notifications";
 import { NotificationList as NotificationListView } from "@/components/context/notifications/notification-list-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { messageHref, workHref } from "@/lib/navigation/record-links";
-import { markNotificationsRead, notificationPageOptions } from "@/queries/context/notifications";
+import { markNotificationsRead } from "@/queries/context/notifications";
 import { toast } from "sonner";
 
 export function NotificationList({
@@ -19,7 +20,7 @@ export function NotificationList({
 }) {
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize, setPageSize] = useState<number>();
   const resizePage = useCallback(
     (size: number) => {
       if (size !== pageSize) {
@@ -29,7 +30,7 @@ export function NotificationList({
     },
     [pageSize],
   );
-  const items = useQuery(notificationPageOptions(organizationId, filter, cursors.at(-1), pageSize));
+  const items = useQuery(notificationListQuery(organizationId, filter, cursors.at(-1), pageSize));
   const client = useQueryClient();
   const navigate = useNavigate();
   const read = useMutation({

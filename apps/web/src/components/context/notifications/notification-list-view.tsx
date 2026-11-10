@@ -8,6 +8,7 @@ import { Button } from "../../ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../ui/empty";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../../ui/tabs";
 import { NotificationItem, type Notification } from "./notification-item";
+import { fittingPageSize } from "./notification-page";
 import { PageContent, PageLayout } from "@/components/layout/page-layout";
 import { Bell, CheckCheck, ChevronLeft, ChevronRight, X } from "lucide-react";
 
@@ -56,15 +57,29 @@ export function NotificationList({
   useEffect(() => {
     const element = scroll.current;
     if (!element) return;
-    const observer = new ResizeObserver(() => {
+    const measure = () => {
       const style = getComputedStyle(element);
-      const available =
-        element.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom) - 2;
-      const rowHeight = parseFloat(getComputedStyle(document.documentElement).fontSize) * 4;
-      onPageSizeChange(Math.max(1, Math.min(20, Math.floor(available / rowHeight))));
+      onPageSizeChange(
+        fittingPageSize({
+          height: element.clientHeight,
+          paddingTop: parseFloat(style.paddingTop),
+          paddingBottom: parseFloat(style.paddingBottom),
+          fontSize: parseFloat(getComputedStyle(document.documentElement).fontSize),
+        }),
+      );
+    };
+    // Measure at once so the first page can load; wait for resizing to settle after that.
+    measure();
+    let timeout: number | undefined;
+    const observer = new ResizeObserver(() => {
+      window.clearTimeout(timeout);
+      timeout = window.setTimeout(measure, 150);
     });
     observer.observe(element);
-    return () => observer.disconnect();
+    return () => {
+      window.clearTimeout(timeout);
+      observer.disconnect();
+    };
   }, [onPageSizeChange]);
 
   return (

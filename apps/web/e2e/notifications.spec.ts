@@ -20,11 +20,27 @@ test("notifications paginate, filter unread, and mark individual and all items a
     });
   }
   const recipient = await client(account);
-  await visit(recipient, undefined, "/notifications");
+  const feedLimits: number[] = [];
+  recipient.page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (
+      url.pathname === "/api/v1/context/notifications/page" &&
+      url.searchParams.get("filter") === "all"
+    )
+      feedLimits.push(Number(url.searchParams.get("limit")));
+  });
+  await visit(recipient, undefined, "/tasks");
+  await expect(recipient.page.getByText("Loading workspace details…")).toHaveCount(0);
+  await recipient.page
+    .getByRole("navigation", { name: "Apps" })
+    .getByRole("button", { name: /^Notifications/ })
+    .click();
   const feed = recipient.page.getByRole("region", { name: "Notifications", exact: true });
   const rows = feed.getByRole("list", { name: "Notification activity" }).getByRole("listitem");
   await expect(rows.first()).toBeVisible();
   const pageSize = await rows.count();
+  // The feed measures its page size before the first request, so no page is fetched and discarded.
+  expect(new Set(feedLimits)).toEqual(new Set([pageSize]));
   expect(pageSize).toBeGreaterThan(1);
   expect(pageSize).toBeLessThanOrEqual(20);
   const scroller = feed.getByRole("region", { name: "Notification feed" });
