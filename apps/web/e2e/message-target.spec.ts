@@ -19,7 +19,6 @@ for (const target of ["root", "reply"] as const) {
     });
     const react = async () => {
       const response = await actors.member.request.post("/api/v1/messaging/reactions", {
-        headers: { origin: process.env.PLAYWRIGHT_BASE_URL! },
         data: { organizationId: actors.member.organizationId, messageId: root.id, emoji: "👍" },
       });
       expect(response.ok()).toBe(true);

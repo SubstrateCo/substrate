@@ -1,12 +1,7 @@
 import { Mailpit } from "../../server/integration/test-support/mailpit";
+import { signIn } from "./test-support/auth";
 import { conversation, post, test, visit } from "./test-support/fixtures";
-import { expect, type Page } from "@playwright/test";
-
-async function login(page: Page, email: string, password: string) {
-  await page.getByLabel("Email", { exact: true }).fill(email);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-}
+import { expect } from "@playwright/test";
 
 test("signup requires email verification before creating and entering a workspace", async ({
   page,
@@ -24,7 +19,7 @@ test("signup requires email verification before creating and entering a workspac
   await page.goto("/dashboard");
   await expect(page).toHaveURL(/\/login|\/verify-email/);
   await page.goto("/login");
-  await login(page, email, password);
+  await signIn(page, email, password);
   await expect(page).toHaveURL(/\/verify-email/);
   const link = await new Mailpit(request).link(
     email,
@@ -33,7 +28,7 @@ test("signup requires email verification before creating and entering a workspac
   );
   await page.goto(link);
   await expect(page).toHaveURL(/\/login/);
-  await login(page, email, password);
+  await signIn(page, email, password);
   await expect(page.getByRole("heading", { name: "Your workspaces", exact: true })).toBeVisible();
   const name = `Onboarding ${id}`;
   await page.getByLabel("Workspace name", { exact: true }).fill(name);
@@ -66,7 +61,7 @@ test("sign-out removes private content, blocks history navigation, and allows a 
   await signedIn.page.goBack();
   await expect(signedIn.page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
   await expect(signedIn.page.getByText(body, { exact: true })).toHaveCount(0);
-  await login(signedIn.page, account.email, account.password);
+  await signIn(signedIn.page, account.email, account.password);
   await expect(
     signedIn.page.getByRole("button", { name: `Signed in as ${account.name}`, exact: true }),
   ).toBeVisible();
@@ -102,9 +97,9 @@ test("password recovery replaces the password and invalidates old sessions", asy
   await old.page.goto("/dashboard");
   await expect(old.page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Sign in", exact: true }).click();
-  await login(page, account.email, account.password);
+  await signIn(page, account.email, account.password);
   await expect(page.getByRole("alert")).toBeVisible();
-  await login(page, account.email, password);
+  await signIn(page, account.email, password);
   await expect(
     page.getByRole("button", { name: `Signed in as ${account.name}`, exact: true }),
   ).toBeVisible();

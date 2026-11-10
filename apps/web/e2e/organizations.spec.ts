@@ -23,7 +23,6 @@ test("switching workspaces clears private messages and reconnects in the selecte
   const secondBody = `Second workspace only ${secondChannel.id}`;
   await post(account, "messaging/messages", { conversationId: secondChannel.id, body: secondBody });
   const activated = await account.request.post("/api/auth/organization/set-active", {
-    headers: { origin: process.env.PLAYWRIGHT_BASE_URL! },
     data: { organizationId: firstId },
   });
   expect(activated.ok()).toBe(true);

@@ -33,6 +33,23 @@ export interface Client {
 }
 type Actors = { sender: Actor; member: Actor; partner: Actor };
 
+/** The server accepts writes only from its trusted renderer origin. */
+const trustedOrigin = () => ({ origin: process.env.PLAYWRIGHT_BASE_URL! });
+
+/** Invites an email to the actor's organization through Better Auth, as an owner does. */
+export async function inviteMember(
+  actor: Actor,
+  email: string,
+  headers?: Record<string, string>,
+): Promise<{ id: string }> {
+  const response = await actor.request.post("/api/auth/organization/invite-member", {
+    headers,
+    data: { organizationId: actor.organizationId, email, role: "member" },
+  });
+  expect(response.ok(), "invitation fixture succeeds").toBe(true);
+  return response.json();
+}
+
 async function provisionActor(
   request: APIRequestContext,
   name: string,
@@ -61,10 +78,12 @@ export const test = base.extend<
 >({
   actors: [
     async ({ playwright }, use, workerInfo) => {
-      const origin = process.env.PLAYWRIGHT_BASE_URL!;
       const requests: APIRequestContext[] = [];
       const account = async (role: string) => {
-        const request = await playwright.request.newContext({ baseURL: origin });
+        const request = await playwright.request.newContext({
+          baseURL: process.env.PLAYWRIGHT_BASE_URL,
+          extraHTTPHeaders: trustedOrigin(),
+        });
         requests.push(request);
         // The member joins the sender's organization below, rather than creating another one.
         return provisionActor(request, `E2E ${role} ${workerInfo.parallelIndex}`, {
@@ -77,19 +96,12 @@ export const test = base.extend<
           account("member"),
           account("partner"),
         ]);
-        const invitation = await sender.request.post("/api/auth/organization/invite-member", {
-          headers: { origin },
-          data: { email: member.email, role: "member" },
-        });
-        expect(invitation.ok()).toBe(true);
-        const { id } = await invitation.json();
+        const { id } = await inviteMember(sender, member.email);
         const accepted = await member.request.post("/api/auth/organization/accept-invitation", {
-          headers: { origin },
           data: { invitationId: id },
         });
         expect(accepted.ok()).toBe(true);
         const activated = await member.request.post("/api/auth/organization/set-active", {
-          headers: { origin },
           data: { organizationId: sender.organizationId },
         });
         expect(activated.ok()).toBe(true);
@@ -102,6 +114,16 @@ export const test = base.extend<
     },
     { scope: "worker", timeout: 30_000 },
   ],
+
+  // API requests carry the trusted origin, so specs and helpers need no per-call header.
+  request: async ({ playwright, baseURL }, use) => {
+    const request = await playwright.request.newContext({
+      baseURL,
+      extraHTTPHeaders: trustedOrigin(),
+    });
+    await use(request);
+    await request.dispose();
+  },
 
   account: async ({ request }, use) => {
     await use(await provisionActor(request, `Account ${randomUUID()}`));
@@ -165,7 +187,6 @@ export async function post<T>(
   data: MessagingInput | TasksWrite | z.input<typeof contextSourceTask>,
 ) {
   const response = await actor.request.post(`/api/v1/${path}`, {
-    headers: { origin: process.env.PLAYWRIGHT_BASE_URL! },
     data: { organizationId: actor.organizationId, ...data },
   });
   expect(response.ok(), `${path} fixture succeeds`).toBe(true);
@@ -197,7 +218,6 @@ export async function acceptCollaboration(actor: Actor, conversationId: string) 
   );
   if (!invitation) return;
   const accepted = await actor.request.post("/api/v1/messaging/sharing/accept", {
-    headers: { origin: process.env.PLAYWRIGHT_BASE_URL! },
     data: { invitationId: invitation.id, organizationId: actor.organizationId, shareHistory: true },
   });
   expect(accepted.ok()).toBe(true);

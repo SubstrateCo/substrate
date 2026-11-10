@@ -1,4 +1,5 @@
 import { Mailpit } from "../../server/integration/test-support/mailpit";
+import { signIn, signUp, verifyEmail } from "./test-support/auth";
 import { acceptCollaboration, conversation, post, test, visit } from "./test-support/fixtures";
 import { expect, type Page } from "@playwright/test";
 
@@ -47,21 +48,9 @@ test("a new partner signs up, creates their own org, and accepts a desktop chann
   await page.getByRole("link", { name: "Continue in browser", exact: true }).click();
   await page.getByRole("link", { name: "Create account", exact: true }).click();
   const password = `Partner-${crypto.randomUUID()}!`;
-  await page.getByLabel("Name", { exact: true }).fill("New partner");
-  await page.getByLabel("Email", { exact: true }).fill(email);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Create account", exact: true }).click();
-  await expect(page).toHaveURL(/\/verify-email/);
-  await page.goto(
-    await new Mailpit(request).link(
-      email,
-      "Verify your Startup OS email",
-      "/api/auth/verify-email",
-    ),
-  );
-  await page.getByLabel("Email", { exact: true }).fill(email);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await signUp(page, email, password, "New partner");
+  await verifyEmail(page, request, email);
+  await signIn(page, email, password);
   await expect(page).toHaveURL(/\/accept-sharing\//);
   const invitationId = new URL(page.url()).pathname.split("/").at(-1)!;
   const invitationCheck = await page.request.get("/api/v1/messaging/sharing/invitation", {
@@ -106,7 +95,6 @@ test("an ordinary recipient requests org approval and an owner approves without 
 }) => {
   const c = await conversation(account);
   const invited = await account.request.post("/api/v1/messaging/sharing/invite", {
-    headers: { origin: process.env.PLAYWRIGHT_BASE_URL! },
     data: {
       organizationId: account.organizationId,
       conversationId: c.id,

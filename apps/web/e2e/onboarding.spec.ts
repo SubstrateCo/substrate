@@ -1,20 +1,7 @@
 import { Mailpit } from "../../server/integration/test-support/mailpit";
-import { test } from "./test-support/fixtures";
-import { expect, type Page } from "@playwright/test";
-
-async function createAccount(page: Page, email: string, password: string) {
-  await page.getByLabel("Name", { exact: true }).fill("New customer");
-  await page.getByLabel("Email", { exact: true }).fill(email);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Create account", exact: true }).click();
-  await expect(page).toHaveURL(/\/verify-email/);
-}
-
-async function signIn(page: Page, email: string, password: string) {
-  await page.getByLabel("Email", { exact: true }).fill(email);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-}
+import { signIn, signUp, verifyEmail } from "./test-support/auth";
+import { inviteMember, test } from "./test-support/fixtures";
+import { expect } from "@playwright/test";
 
 test("a visitor creates an organization before installing and can resume setup", async ({
   page,
@@ -25,13 +12,8 @@ test("a visitor creates an organization before installing and can resume setup",
   const password = `Setup-${id}!`;
   await page.goto("/");
   await page.getByRole("link", { name: "Create organization", exact: true }).click();
-  await createAccount(page, email, password);
-  const verification = await new Mailpit(request).link(
-    email,
-    "Verify your Startup OS email",
-    "/api/auth/verify-email",
-  );
-  await page.goto(verification);
+  await signUp(page, email, password);
+  await verifyEmail(page, request, email);
   await signIn(page, email, password);
   await expect(page).toHaveURL(/\/onboarding/);
   await page.getByLabel("Workspace name", { exact: true }).fill(`Public ${id}`);
@@ -81,11 +63,7 @@ test("a desktop-sent teammate invitation can be accepted by a new user in the br
   const id = crypto.randomUUID();
   const email = `public-invite-${id}@example.test`;
   const password = `Invite-${id}!`;
-  const sent = await account.request.post("/api/auth/organization/invite-member", {
-    headers: { origin: "https://desktop.startup-os.local" },
-    data: { organizationId: account.organizationId, email, role: "member" },
-  });
-  expect(sent.ok()).toBe(true);
+  await inviteMember(account, email, { origin: "https://desktop.startup-os.local" });
   const invitation = await new Mailpit(request).link(
     email,
     `Join ${account.name} on Startup OS`,
@@ -94,13 +72,8 @@ test("a desktop-sent teammate invitation can be accepted by a new user in the br
   await page.goto(invitation);
   await page.getByRole("link", { name: "Continue in browser", exact: true }).click();
   await page.getByRole("link", { name: "Create account", exact: true }).click();
-  await createAccount(page, email, password);
-  const verification = await new Mailpit(request).link(
-    email,
-    "Verify your Startup OS email",
-    "/api/auth/verify-email",
-  );
-  await page.goto(verification);
+  await signUp(page, email, password);
+  await verifyEmail(page, request, email);
   await signIn(page, email, password);
   await expect(page.getByText(`Invited email: ${email}`, { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Accept invitation", exact: true }).click();
@@ -179,12 +152,7 @@ test("retrying activation opens the organization that was already created", asyn
 
 test("switching accounts keeps the intended invitation", async ({ account, client }) => {
   const email = `another-person-${crypto.randomUUID()}@example.test`;
-  const response = await account.request.post("/api/auth/organization/invite-member", {
-    headers: { origin: process.env.PLAYWRIGHT_BASE_URL! },
-    data: { organizationId: account.organizationId, email, role: "member" },
-  });
-  expect(response.ok()).toBe(true);
-  const { id } = await response.json();
+  const { id } = await inviteMember(account, email);
   const user = await client(account);
   const destination = `/accept-invitation/${id}`;
   await user.page.goto(destination);
@@ -200,14 +168,8 @@ test("switching accounts keeps the intended invitation", async ({ account, clien
 });
 
 test("a canceled invitation cannot add membership", async ({ account, actors, client }) => {
-  const response = await actors.sender.request.post("/api/auth/organization/invite-member", {
-    headers: { origin: process.env.PLAYWRIGHT_BASE_URL! },
-    data: { organizationId: actors.sender.organizationId, email: account.email, role: "member" },
-  });
-  expect(response.ok()).toBe(true);
-  const { id } = await response.json();
+  const { id } = await inviteMember(actors.sender, account.email);
   const canceled = await actors.sender.request.post("/api/auth/organization/cancel-invitation", {
-    headers: { origin: process.env.PLAYWRIGHT_BASE_URL! },
     data: { invitationId: id },
   });
   expect(canceled.ok()).toBe(true);
@@ -228,12 +190,7 @@ test("an accepted invitation can resume when workspace activation fails", async 
   actors,
   client,
 }) => {
-  const sent = await actors.sender.request.post("/api/auth/organization/invite-member", {
-    headers: { origin: process.env.PLAYWRIGHT_BASE_URL! },
-    data: { organizationId: actors.sender.organizationId, email: account.email, role: "member" },
-  });
-  expect(sent.ok()).toBe(true);
-  const { id } = await sent.json();
+  const { id } = await inviteMember(actors.sender, account.email);
   const user = await client(account);
   await user.page.goto(`/accept-invitation/${id}`);
   await user.page.route("**/api/auth/organization/set-active", (route) => route.abort(), {

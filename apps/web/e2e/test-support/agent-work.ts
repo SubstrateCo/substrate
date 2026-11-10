@@ -5,19 +5,16 @@ import type { Actor } from "./fixtures";
 import { expect } from "@playwright/test";
 import { z } from "zod";
 
-const origin = () => process.env.PLAYWRIGHT_BASE_URL!;
-
 /** Creates an agent homed on a registered test desktop. Only the home desktop can write as it. */
 export async function createAgent(owner: Actor) {
   const installationId = crypto.randomUUID();
   const registered = await owner.request.post("/api/v1/agent-work/device/register", {
-    headers: { origin: origin() },
     data: { installationId, name: "Laptop", platform: "win32" },
   });
   expect(registered.ok(), await registered.text()).toBe(true);
   const name = `Research ${crypto.randomUUID()}`;
   const saved = await owner.request.post("/api/v1/agents/actors/save", {
-    headers: { origin: origin(), "x-startup-os-installation": installationId },
+    headers: { "x-startup-os-installation": installationId },
     data: { name, instructions: "Help with work", harness: "opencode", enabled: true },
   });
   expect(saved.ok(), await saved.text()).toBe(true);
@@ -30,7 +27,6 @@ const savedAgent = z.object({ data: z.object({ id: z.uuid() }) });
 /** Adds the owner's agent to a conversation, as the owner does from the conversation menu. */
 export async function addAgent(owner: Actor, conversationId: string, agentId: string) {
   const added = await owner.request.post("/api/v1/messaging/agents/add", {
-    headers: { origin: origin() },
     data: { organizationId: owner.organizationId, conversationId, agentId },
   });
   expect(added.ok(), await added.text()).toBe(true);
@@ -62,7 +58,6 @@ export async function callTool<K extends ServerToolName>(
   input: Omit<z.input<(typeof mcpTools)[K]["input"]>, "requestId">,
 ): Promise<McpOutput<K>> {
   const response = await owner.request.post("/api/v1/mcp/call", {
-    headers: { origin: origin() },
     data: {
       organizationId: owner.organizationId,
       agentId,
