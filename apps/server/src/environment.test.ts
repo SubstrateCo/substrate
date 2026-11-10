@@ -22,13 +22,12 @@ describe("server environment", () => {
   });
 
   test("production must name every storage setting; development uses local storage", () => {
-    const error = (() => {
-      try {
-        parse({ NODE_ENV: "production" });
-      } catch (caught) {
-        return (caught as Error).message;
-      }
-    })();
+    let error = "";
+    try {
+      parse({ NODE_ENV: "production" });
+    } catch (caught) {
+      error = String(caught);
+    }
     for (const key of [
       "S3_ENDPOINT",
       "S3_REGION",

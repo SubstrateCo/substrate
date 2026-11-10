@@ -3,30 +3,23 @@ import { desktopOrigin, desktopScheme } from "@startup-os/contracts/desktop/link
 import { z } from "zod";
 
 /** A bare HTTP or HTTPS origin: no wildcard, credentials, path, query or fragment. */
-export function explicitOrigin(value: string) {
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    throw new Error("Frontend origins must be explicit HTTP or HTTPS origins.");
-  }
-  const isWebProtocol = ["http:", "https:"].includes(url.protocol);
+function explicitOrigin(value: string) {
+  const url = URL.parse(value);
+  if (!url || !["http:", "https:"].includes(url.protocol) || value.includes("*")) return undefined;
   const hasCredentials = url.username || url.password;
   const hasPathQueryOrFragment = url.pathname !== "/" || url.search || url.hash;
-  const isBareOrigin = !hasCredentials && !hasPathQueryOrFragment && value === url.origin;
-  if (!isWebProtocol || value.includes("*") || !isBareOrigin)
-    throw new Error("Frontend origins must be explicit HTTP or HTTPS origins.");
-  return url.origin;
+  return !hasCredentials && !hasPathQueryOrFragment && value === url.origin
+    ? url.origin
+    : undefined;
 }
+const originMessage = "Use explicit HTTP or HTTPS origins.";
 
 const required = () => z.string({ error: "Required." });
 const origin = required().transform((value, ctx) => {
-  try {
-    return explicitOrigin(value);
-  } catch (error) {
-    ctx.addIssue({ code: "custom", message: (error as Error).message });
-    return z.NEVER;
-  }
+  const valid = explicitOrigin(value);
+  if (valid) return valid;
+  ctx.addIssue({ code: "custom", message: originMessage });
+  return z.NEVER;
 });
 const port = z.coerce.number().int().min(1, "Use a port from 1 to 65535.").max(65535);
 const httpsURL = required().refine((value) => {
@@ -34,15 +27,21 @@ const httpsURL = required().refine((value) => {
   return url?.protocol === "https:" && !url.username && !url.password;
 }, "Use an HTTPS URL without credentials.");
 
+const storageKeys = [
+  "S3_ENDPOINT",
+  "S3_REGION",
+  "S3_BUCKET",
+  "S3_ACCESS_KEY_ID",
+  "S3_SECRET_ACCESS_KEY",
+] as const;
 // Local S3 (compose.yaml) outside production. Production must name its storage.
-const developmentStorage = {
+const developmentStorage: Record<(typeof storageKeys)[number], string> = {
   S3_ENDPOINT: "http://localhost:4566",
   S3_REGION: "us-east-1",
   S3_BUCKET: "startup-os-private",
   S3_ACCESS_KEY_ID: "startup_os",
   S3_SECRET_ACCESS_KEY: "startup_os_storage",
 };
-const storageKeys = Object.keys(developmentStorage) as (keyof typeof developmentStorage)[];
 
 const variables = z
   .object({
@@ -58,12 +57,11 @@ const variables = z
       .string()
       .optional()
       .transform((value, ctx) => {
-        try {
-          return value?.split(",").map((entry) => explicitOrigin(entry.trim())) ?? [];
-        } catch (error) {
-          ctx.addIssue({ code: "custom", message: (error as Error).message });
-          return z.NEVER;
-        }
+        const entries = value?.split(",").map((entry) => explicitOrigin(entry.trim())) ?? [];
+        const valid = entries.filter((entry) => entry !== undefined);
+        if (valid.length === entries.length) return valid;
+        ctx.addIssue({ code: "custom", message: originMessage });
+        return z.NEVER;
       }),
     BETTER_AUTH_SECRET: required().min(32, "Use at least 32 characters."),
     DATABASE_URL: required(),
@@ -99,7 +97,7 @@ const variables = z
           ctx.addIssue({ code: "custom", path: [key], message: "Required in production." });
   })
   .transform((env) => {
-    const storage = (key: keyof typeof developmentStorage) => env[key] ?? developmentStorage[key];
+    const storage = (key: (typeof storageKeys)[number]) => env[key] ?? developmentStorage[key];
     const api = new URL(env.STARTUP_OS_API_URL);
     return {
       apiURL: env.STARTUP_OS_API_URL,

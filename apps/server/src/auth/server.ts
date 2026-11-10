@@ -9,7 +9,7 @@ import { ensureHumanActor } from "@startup-os/database/provisioning";
 import * as schema from "@startup-os/database/schema";
 import { createStorageRepository } from "@startup-os/database/storage";
 
-import { environment as env } from "../environment";
+import { environment } from "../environment";
 import { mail } from "../mail/service";
 import { publishRefresh } from "../v1/realtime/publisher";
 import { db } from "./database";
@@ -53,9 +53,9 @@ const provisionMember = async (input: {
 
 export const auth = betterAuth({
   appName: "Startup OS",
-  baseURL: env.apiURL,
-  trustedOrigins: env.trustedOrigins,
-  secret: env.authSecret,
+  baseURL: environment.apiURL,
+  trustedOrigins: environment.trustedOrigins,
+  secret: environment.authSecret,
   database: drizzleAdapter(db, { provider: "pg", schema }),
   emailAndPassword: {
     enabled: true,
@@ -111,7 +111,7 @@ export const auth = betterAuth({
       const mutation = readPictureMutation(ctx.path, ctx.body ?? {});
       if (!mutation) return;
       const origin = ctx.headers?.get("origin");
-      if (!origin || !env.trustedOrigins.includes(origin))
+      if (!origin || !environment.trustedOrigins.includes(origin))
         throw new APIError("FORBIDDEN", { message: "Invalid request origin." });
       const session = await getSessionFromCtx(ctx);
       await authorizePictureMutation(mutation, session, createStorageRepository(db));

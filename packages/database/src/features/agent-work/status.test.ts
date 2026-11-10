@@ -81,13 +81,21 @@ test("a publish reports a change only when what the owner sees changed", async (
       activity: input.activity,
       version: ++version,
     });
-  expect(await publish({ activity: "Reading" })).toEqual({ applied: true, changed: true });
-  expect(await publish({ activity: "Reading" })).toEqual({ applied: true, changed: false });
-  expect(await publish({ activity: "Drafting" })).toEqual({ applied: true, changed: true });
-  expect(await publish({ state: "idle", activity: "Drafting" })).toEqual({
-    applied: true,
-    changed: true,
-  });
+  const results = [];
+  // A republish of the same status, then an activity change, then a state change.
+  for (const input of [
+    { activity: "Reading" },
+    { activity: "Reading" },
+    { activity: "Drafting" },
+    { state: "idle" as const, activity: "Drafting" },
+  ])
+    results.push(await publish(input));
+  expect(results).toEqual([
+    { applied: true, changed: true },
+    { applied: true, changed: false },
+    { applied: true, changed: true },
+    { applied: true, changed: true },
+  ]);
   version = 0;
   expect(await publish({ state: "working" })).toEqual({ applied: false, changed: false });
 });
