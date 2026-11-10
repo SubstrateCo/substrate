@@ -168,17 +168,62 @@ test("messaging targets all thread variants of one conversation, not another", (
   ]);
 });
 
-test("message content changes refresh messages and their context, not conversation lists", () => {
+test("new messages refresh history, not conversation lists or loaded message context", () => {
   const targets = realtimeQueryTargets(
     { ...change("messaging"), conversationId: "conversation", scope: "messages" },
     "user",
   );
+  const pages = { queryKey: [...queryKeys.context("org"), "message-pages", "conversation"] };
   expect(targets).not.toContainEqual({ queryKey: queryKeys.conversations("org") });
+  expect(targets).not.toContainEqual(pages);
   expect(targets).toEqual(
-    realtimeQueryTargets({ ...change("messaging"), conversationId: "conversation" }, "user").slice(
-      1,
+    realtimeQueryTargets({ ...change("messaging"), conversationId: "conversation" }, "user").filter(
+      (target) =>
+        JSON.stringify(target) !== JSON.stringify({ queryKey: queryKeys.conversations("org") }) &&
+        JSON.stringify(target) !== JSON.stringify(pages),
     ),
   );
+});
+
+test("a new-message hint reads history once and loaded message context not at all", async () => {
+  const client = new QueryClient();
+  const reads = { messages: 0, pages: 0 };
+  const observe = (queryKey: readonly unknown[], kind: keyof typeof reads) =>
+    new QueryObserver(client, {
+      queryKey,
+      staleTime: Infinity,
+      queryFn: async () => {
+        reads[kind]++;
+        return [];
+      },
+    }).subscribe(() => {});
+  const unsubscribe = [
+    observe(queryKeys.messages("org", "conversation"), "messages"),
+    observe([...queryKeys.context("org"), "message-pages", "conversation", ["m1", "m2"]], "pages"),
+  ];
+  const cache = createRealtimeCache({
+    queryClient: client,
+    organizationId: "org",
+    userId: "user",
+    revalidate: async () => {},
+  });
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await cache.receive({
+      ...change("messaging"),
+      conversationId: "conversation",
+      scope: "messages",
+    });
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect(reads).toEqual({ messages: 2, pages: 1 });
+    await cache.receive({ ...change("messaging"), conversationId: "conversation" });
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect(reads).toEqual({ messages: 3, pages: 2 });
+  } finally {
+    cache.dispose();
+    for (const stop of unsubscribe) stop();
+    client.clear();
+  }
 });
 
 test("workspace detail changes refresh organization details and invitations, not workspace records", () => {
