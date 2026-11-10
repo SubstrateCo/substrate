@@ -103,6 +103,41 @@ test("disconnection revokes access and old accepted links cannot reconnect", asy
   );
 });
 
+test("disconnecting a partner revokes only invitations that concern that partner", async () => {
+  const c = await channel();
+  const initial = await sharing().invite(c.id, {
+    email: "outside@example.com",
+    shareHistory: true,
+  });
+  await sharing("outsider", f.orgB).accept(initial.id, true);
+  await f.db.insert(member).values({ id: "bob-b", userId: "bob", organizationId: f.orgB });
+  const sentByPartner = await sharing("outsider", f.orgB).invite(c.id, {
+    email: "carol@example.test",
+    shareHistory: true,
+  });
+  const awaitingApproval = await sharing().invite(c.id, {
+    email: "bob@example.com",
+    shareHistory: true,
+  });
+  await sharing("bob", f.orgB).accept(awaitingApproval.id, true);
+  const unrelated = await sharing().invite(c.id, { email: "dan@example.test", shareHistory: true });
+  await sharing().disconnect(c.id, f.orgB);
+  const statuses = Object.fromEntries(
+    (
+      await f.db
+        .select({ id: messagingInvitations.id, status: messagingInvitations.status })
+        .from(messagingInvitations)
+        .where(eq(messagingInvitations.conversationId, c.id))
+    ).map((row) => [row.id, row.status]),
+  );
+  expect(statuses).toEqual({
+    [initial.id]: "accepted",
+    [sentByPartner.id]: "revoked",
+    [awaitingApproval.id]: "revoked",
+    [unrelated.id]: "pending",
+  });
+});
+
 test("invites are email-bound, expire, and can be revoked", async () => {
   const c = await channel();
   const invite = await sharing().invite(c.id, { email: "outside@example.com", shareHistory: true });

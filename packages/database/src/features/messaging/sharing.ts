@@ -21,7 +21,7 @@ import {
 } from "./sharing-access";
 import { createSharingQueries } from "./sharing-queries";
 import { messagingConnections, messagingInvitations } from "./sharing.schema";
-import { and, count, eq, gt, ne, sql } from "drizzle-orm";
+import { and, count, eq, gt, ne, or, sql } from "drizzle-orm";
 
 export async function queueSharingInvitation(
   db: DatabaseExecutor,
@@ -358,6 +358,7 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
               eq(messagingParticipants.organizationId, partnerOrganizationId),
             ),
           );
+        // Invitations to other partners and host invitations without a target stay pending.
         await tx
           .update(messagingInvitations)
           .set({ status: "revoked" })
@@ -365,6 +366,10 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
             and(
               eq(messagingInvitations.conversationId, conversationId),
               eq(messagingInvitations.status, "pending"),
+              or(
+                eq(messagingInvitations.senderOrganizationId, partnerOrganizationId),
+                eq(messagingInvitations.targetOrganizationId, partnerOrganizationId),
+              ),
             ),
           );
         await recordSharingEvent(tx, scope, conversationId, "disconnected", {
