@@ -55,7 +55,7 @@ export const taskResult = z.object({
   updatedAt: timestamp,
 });
 /** Every status is present, with 0 when no task has it. */
-export const taskCounts = z.record(z.enum(taskStatusValues), z.number().int());
+const taskCounts = z.record(z.enum(taskStatusValues), z.number().int());
 
 export const taskTools = {
   list_projects: {

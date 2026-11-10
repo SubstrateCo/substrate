@@ -14,13 +14,13 @@ export type WorkStatus = { tone: WorkTone; label: string };
 export const silentLabel = "Checked · nothing to report";
 export const steeredLabel = "Added to current work";
 export const noDesktopLabel = "No desktop runs this agent";
-export const resumedLabel = "Resumed after interruption";
+const resumedLabel = "Resumed after interruption";
 export const stoppedNeedsYouLabel = "Stopped · needs you";
 
 const offline = (device: string) => `Waiting for ${device} · offline`;
 
 /** The label for an open request, which comes before every other state of its turn. */
-export function requestLabel(request: Pick<AgentRequestView, "kind">) {
+function requestLabel(request: Pick<AgentRequestView, "kind">) {
   return request.kind === "question" ? "Needs your answer" : "Needs your approval";
 }
 
@@ -89,7 +89,7 @@ export interface ItemContext {
 /** sendNow offers Send now. uncertain offers Resend and Discard. */
 export type ItemStatus = WorkStatus & { sendNow: boolean; uncertain: boolean };
 
-export const uncertainItemLabel = (agentName: string) =>
+const uncertainItemLabel = (agentName: string) =>
   `We couldn't confirm ${agentName} received this message`;
 
 const waits = (item: AgentInboxItemView) =>

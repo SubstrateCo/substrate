@@ -49,7 +49,7 @@ export function ConversationAgentWork({
   children: ReactNode;
 }) {
   // Members list agent IDs only for the viewer's own agents.
-  const members = (conversation.members ?? []).flatMap((member) =>
+  const members = conversation.members.flatMap((member) =>
     member.type === "agent" && member.agentId
       ? [{ agentId: member.agentId, name: member.name }]
       : [],

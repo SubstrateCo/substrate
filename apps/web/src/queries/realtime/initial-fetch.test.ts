@@ -284,21 +284,17 @@ test("ready keeps harness reads that have not failed and retries failed ones", a
   const reads = { loaded: 0, failed: 0 };
   const loadedKey = queryKeys.harnessStatus("user", "org");
   const failedKey = queryKeys.harnessModels("user", "org", "codex");
-  const loaded = new QueryObserver(client, {
-    queryKey: loadedKey,
-    queryFn: async () => {
-      reads.loaded++;
-      return ["codex"];
-    },
-  });
-  const failed = new QueryObserver(client, {
-    queryKey: failedKey,
-    queryFn: async () => {
-      reads.failed++;
-      if (reads.failed === 1) throw new Error("Bridge unavailable");
-      return ["model"];
-    },
-  });
+  const readLoaded = async () => {
+    reads.loaded++;
+    return ["codex"];
+  };
+  const readFailed = async () => {
+    reads.failed++;
+    if (reads.failed === 1) throw new Error("Bridge unavailable");
+    return ["model"];
+  };
+  const loaded = new QueryObserver(client, { queryKey: loadedKey, queryFn: () => readLoaded() });
+  const failed = new QueryObserver(client, { queryKey: failedKey, queryFn: () => readFailed() });
   const unsubscribe = [loaded.subscribe(() => {}), failed.subscribe(() => {})];
   const cache = createRealtimeCache({
     queryClient: client,

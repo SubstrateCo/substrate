@@ -28,7 +28,7 @@ export function createMailService(send: SendMail, origins: MailOrigins) {
   };
 }
 
-export function smtpSender(config: Pick<ServerEnvironment, "smtp" | "emailFrom">): SendMail {
+function smtpSender(config: Pick<ServerEnvironment, "smtp" | "emailFrom">): SendMail {
   const transport = nodemailer.createTransport(config.smtp);
   return async (to, message) => {
     await transport.sendMail({ from: config.emailFrom, to, ...message });

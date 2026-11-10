@@ -17,7 +17,7 @@ const newest = <T extends { createdAt: string }>(values: readonly T[]) =>
  * the anchor of the request an answer or approval turn continues; the place of the turn a
  * recovery turn resumes; the newest source message here.
  */
-export function turnAnchor(
+function turnAnchor(
   turn: AgentTurnView,
   conversationId: string,
   turns: ReadonlyMap<string, AgentTurnView>,

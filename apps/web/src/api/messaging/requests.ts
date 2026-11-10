@@ -38,8 +38,6 @@ export const removeAgent = ({ data, signal }: ApiInput<z.input<typeof removeAgen
 export const getProfile = ({ data, signal }: ApiInput<z.input<typeof profileInput>>) =>
   readResult(api.messaging.profiles.$get({ query: data }, { init: { signal } }));
 
-export type ManagedConversation = Awaited<ReturnType<typeof listManagedConversations>>[number];
-
 export const listManagedConversations = ({
   data,
   signal,

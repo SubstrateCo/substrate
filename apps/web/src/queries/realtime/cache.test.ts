@@ -188,15 +188,17 @@ test("new messages refresh history, not conversation lists or loaded message con
 test("a new-message hint reads history once and loaded message context not at all", async () => {
   const client = new QueryClient();
   const reads = { messages: 0, pages: 0 };
-  const observe = (queryKey: readonly unknown[], kind: keyof typeof reads) =>
-    new QueryObserver(client, {
+  const observe = (queryKey: readonly unknown[], kind: keyof typeof reads) => {
+    const read = async () => {
+      reads[kind]++;
+      return [];
+    };
+    return new QueryObserver(client, {
       queryKey,
       staleTime: Infinity,
-      queryFn: async () => {
-        reads[kind]++;
-        return [];
-      },
+      queryFn: () => read(),
     }).subscribe(() => {});
+  };
   const unsubscribe = [
     observe(queryKeys.messages("org", "conversation"), "messages"),
     observe([...queryKeys.context("org"), "message-pages", "conversation", ["m1", "m2"]], "pages"),

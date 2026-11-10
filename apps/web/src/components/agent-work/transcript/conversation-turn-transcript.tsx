@@ -24,7 +24,7 @@ export function ConversationTurnTranscript({
   const work = useQuery({ ...turnOptions(userId, organizationId, turnId), enabled: bridge });
   const requests = useQuery(conversationRequestsOptions(userId, organizationId, conversation.id));
   const turn = work.data ?? undefined;
-  const agent = conversation.members?.find(
+  const agent = conversation.members.find(
     (member) => member.type === "agent" && member.agentId === turn?.userAgentId,
   );
   let unavailable: string | undefined;

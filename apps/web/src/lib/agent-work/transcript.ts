@@ -4,7 +4,7 @@ import type {
   TurnOutputView,
 } from "@startup-os/contracts/agent-work";
 
-export type StepState = "done" | "current" | "error";
+type StepState = "done" | "current" | "error";
 
 export type TranscriptEntry =
   | { type: "text"; key: string; text: string }
