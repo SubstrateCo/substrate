@@ -27,7 +27,6 @@ async function repositoriesForWorkspace({
   const actor = await resolveHumanActor(db, {
     organizationId,
     userId: session.user.id,
-    name: session.user.name,
   });
   return createRepositories(db).forActor({ organizationId, actorEntityId: actor.entityId });
 }

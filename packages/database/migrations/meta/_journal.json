@@ -78,6 +78,13 @@
       "when": 1794271761540,
       "tag": "0010_drop_redundant_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794275719818,
+      "tag": "0011_drop_actor_name_and_config",
+      "breakpoints": true
     }
   ]
 }

@@ -5,6 +5,7 @@ import type {
 } from "@startup-os/contracts/agent-work";
 
 import type { DatabaseExecutor } from "../../client";
+import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { workspaceContext } from "../context/access";
 import { visibleConversations } from "../messaging/access";
@@ -42,7 +43,7 @@ export async function requestViews(
   const rows = await db
     .select({
       request: agentRequests,
-      agent: { actorId: actors.entityId, name: actors.name },
+      agent: { actorId: actors.entityId, name: actorDisplayName() },
       conversationName: sql<
         string | null
       >`case when ${messagingConversations.id} is null then null else ${conversationDisplayName(db, identity)} end`,

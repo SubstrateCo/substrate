@@ -196,11 +196,11 @@ export async function requireThreadRoot(
 
 /** Verifies the session and returns the author and policy viewer for messaging operations. */
 export async function messagingSession(db: DatabaseExecutor, scope: MessagingIdentity) {
-  const { context, actor, userName, admin } = await workspaceContext(db, scope);
+  const { context, actor, admin } = await workspaceContext(db, scope);
   return {
     context,
     actor,
-    authorName: actor.type === "agent" ? actor.name : userName,
+    authorName: actor.name,
     viewer: viewerOf(scope, admin),
   };
 }

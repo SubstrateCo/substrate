@@ -1,6 +1,7 @@
 import type { AgentSourceMessage, AgentSourcesResult } from "@startup-os/contracts/agent-work";
 
 import type { DatabaseExecutor } from "../../client";
+import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
 import { visibleConversations } from "../messaging/access";
@@ -25,7 +26,7 @@ export function loadSources(db: DatabaseExecutor, identity: DeviceIdentity, mess
         conversationName: conversationDisplayName(tx, identity),
         conversationKind: messagingConversations.kind,
         actorId: actors.entityId,
-        name: sql<string>`case when ${actors.type} = 'agent' then ${actors.name} else coalesce(${user.name}, ${actors.name}) end`,
+        name: actorDisplayName(),
         kind: sql<AgentSourceMessage["author"]["kind"]>`case
           when ${actors.type} = 'agent' then 'agent'
           when ${messagingMessages.authorId} = ${identity.userId} then 'owner'

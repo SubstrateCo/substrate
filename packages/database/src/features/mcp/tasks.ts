@@ -1,6 +1,7 @@
 import type { McpInput, McpOutput } from "@startup-os/contracts/harness/tools";
 import type { TaskStatus } from "@startup-os/contracts/tasks";
 
+import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { entities } from "../../core/entities/schema";
 import type { RepositoryContext } from "../../core/repository-context";
@@ -31,7 +32,7 @@ import {
   sql,
 } from "drizzle-orm";
 
-export const actorSelection = { id: actors.entityId, name: actors.name, type: actors.type };
+export const actorSelection = { id: actors.entityId, name: actorDisplayName(), type: actors.type };
 /** An actor that wrote quoted text, labeled owner, member or agent for the reading agent. */
 export function authorSelection(ownerUserId: string) {
   return {

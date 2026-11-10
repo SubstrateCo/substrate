@@ -2,6 +2,7 @@ import { taskStatusLabels } from "@startup-os/contracts/tasks";
 
 import type { DatabaseExecutor } from "../../client";
 import { activeActorCondition } from "../../core/actors/access";
+import { actorDisplayName } from "../../core/actors/display-name";
 import { ensureHumanActor } from "../../core/actors/provisioning";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
@@ -16,7 +17,7 @@ import { projects } from "../projects/schema";
 import { tasks } from "../tasks/tasks.schema";
 import { and, eq, isNull, sql } from "drizzle-orm";
 
-const actorSelection = { entityId: actors.entityId, name: actors.name, type: actors.type };
+const actorSelection = { entityId: actors.entityId, name: actorDisplayName(), type: actors.type };
 const adminSelection = sql<boolean>`${adminRoleCondition(member.role)}`;
 
 // Verifies the session identity, membership and active actor in one statement, and reads
@@ -90,8 +91,8 @@ export async function workspaceContext(
     ({ userName, admin } = row);
     actor = row.actor ?? undefined;
     if (!actor) {
-      const created = await ensureHumanActor(db, { ...scope, name: userName });
-      actor = { entityId: created.entityId, name: created.name, type: created.type };
+      const created = await ensureHumanActor(db, scope);
+      actor = { entityId: created.entityId, name: userName, type: created.type };
       await new RepositoryContext(db, {
         organizationId: scope.organizationId,
         actorEntityId: actor.entityId,

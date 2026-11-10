@@ -1,6 +1,7 @@
 import { taskStatusLabels } from "@startup-os/contracts/tasks";
 
 import type { DatabaseExecutor } from "../../client";
+import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { entities } from "../../core/entities/schema";
 import type { RepositoryContext } from "../../core/repository-context";
@@ -99,7 +100,7 @@ export async function messagePeople(
     ? await db
         .select({
           id: actors.entityId,
-          name: actors.name,
+          name: actorDisplayName(),
           conversationId: messagingConversations.id,
         })
         .from(actors)

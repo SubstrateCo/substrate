@@ -1,4 +1,5 @@
 import { activeActorCondition, visibleActorCondition } from "../../core/actors/access";
+import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { entities } from "../../core/entities/schema";
 import { entityGrants } from "../../core/permissions/schema";
@@ -29,7 +30,7 @@ export function projectRepository(context: RepositoryContext) {
     return db
       .select({
         actorEntityId: actors.entityId,
-        name: actors.name,
+        name: actorDisplayName(),
         type: actors.type,
         level: entityGrants.level,
       })
@@ -49,7 +50,7 @@ export function projectRepository(context: RepositoryContext) {
           eq(actors.type, "human"),
         ),
       )
-      .orderBy(asc(actors.name));
+      .orderBy(asc(actorDisplayName()), asc(actors.entityId));
   }
   function availableActors(projectEntityId: string) {
     // Organization actors are discoverable only inside an accessible project, not across organizations.
@@ -68,7 +69,7 @@ export function projectRepository(context: RepositoryContext) {
     return db
       .select({
         entityId: actors.entityId,
-        name: actors.name,
+        name: actorDisplayName(),
         type: actors.type,
         assignable: sql<boolean>`coalesce(${assignable}, false)`,
       })
@@ -81,7 +82,7 @@ export function projectRepository(context: RepositoryContext) {
           or(assignable, and(eq(actors.type, "agent"), inArray(actors.entityId, assignedAgents))),
         ),
       )
-      .orderBy(asc(actors.name), asc(actors.entityId));
+      .orderBy(asc(actorDisplayName()), asc(actors.entityId));
   }
   return {
     get,

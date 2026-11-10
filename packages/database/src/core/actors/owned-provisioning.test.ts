@@ -133,29 +133,3 @@ test("membership loss denies batches including owners with no profiles", async (
   await expect(ensureOwnedAgentActors(f.db, input)).rejects.toBeInstanceOf(AccessDeniedError);
   expect(await f.db.select().from(entities)).toEqual(before);
 });
-
-test("a failed actor insert rolls back the entire batch without orphan entities", async () => {
-  await f.db.insert(userAgents).values([
-    {
-      id: "00000000-0000-0000-0000-000000000001",
-      userId: "alice",
-      name: "Valid",
-      instructions: "Help",
-      harness: "opencode",
-    },
-    {
-      id: "00000000-0000-0000-0000-000000000002",
-      userId: "alice",
-      name: " ",
-      instructions: "Help",
-      harness: "opencode",
-    },
-  ]);
-  const beforeEntities = await f.db.select().from(entities);
-  const beforeActors = await f.db.select().from(actors);
-  await expect(ensureOwnedAgentActors(f.db, input)).rejects.toMatchObject({
-    cause: { code: "23514" },
-  });
-  expect(await f.db.select().from(entities)).toEqual(beforeEntities);
-  expect(await f.db.select().from(actors)).toEqual(beforeActors);
-});

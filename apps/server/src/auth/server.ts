@@ -51,7 +51,6 @@ const provisionMember = async (input: {
   await ensureHumanActor(db, {
     organizationId: input.organization.id,
     userId: input.user.id,
-    name: input.user.name,
   });
   await publishMembershipChange(input);
 };

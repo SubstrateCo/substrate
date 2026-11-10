@@ -7,13 +7,9 @@ import { actors } from "./schema";
 import { userAgents } from "./user-agents.schema";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
-type ActorInput = { organizationId: string; name: string } & (
+type ActorInput = { organizationId: string } & (
   | { type: "human"; userId: string }
-  | {
-      type: "agent";
-      agentConfig?: NonNullable<typeof actors.$inferInsert.agentConfig>;
-      userAgentId?: string;
-    }
+  | { type: "agent"; userAgentId?: string }
 );
 
 // Trusted provisioning only: call from authenticated onboarding or organization-admin workflows.
@@ -37,11 +33,9 @@ export function createActor(db: DatabaseExecutor, input: ActorInput) {
       .values({
         entityId: entity!.entityId,
         organizationId: input.organizationId,
-        name: input.name,
         type: input.type,
         userId: input.type === "human" ? input.userId : null,
         userAgentId: input.type === "agent" ? input.userAgentId : null,
-        agentConfig: input.type === "agent" ? input.agentConfig : null,
       })
       .returning();
     if (input.type === "human") {
@@ -96,7 +90,6 @@ export function ensureUserAgentActor(
         organizationId: input.organizationId,
         type: "agent",
         userAgentId: agent.id,
-        name: agent.name,
       })
     );
   });
@@ -105,7 +98,7 @@ export function ensureUserAgentActor(
 // Trusted auth hooks can run more than once. Lock membership to serialize provisioning.
 export function ensureHumanActor(
   db: DatabaseExecutor,
-  input: { organizationId: string; userId: string; name: string },
+  input: { organizationId: string; userId: string },
 ) {
   return db.transaction(async (tx) => {
     const [membership] = await tx
@@ -126,7 +119,7 @@ export function ensureHumanActor(
 // repositories still check that the actor is active.
 export async function resolveHumanActor(
   db: DatabaseExecutor,
-  input: { organizationId: string; userId: string; name: string },
+  input: { organizationId: string; userId: string },
 ) {
   const [existing] = await db
     .select()
@@ -176,7 +169,7 @@ function provisionOwnedAgentActors(
       .for("update");
     if (!membership) throw new AccessDeniedError();
     const agents = await tx
-      .select({ id: userAgents.id, name: userAgents.name })
+      .select({ id: userAgents.id })
       .from(userAgents)
       .where(
         and(
@@ -209,7 +202,6 @@ function provisionOwnedAgentActors(
             organizationId: input.organizationId,
             type: "agent",
             userAgentId: agent.id,
-            name: agent.name,
           })),
       );
     }

@@ -1,6 +1,7 @@
 import type { AgentStatusState, AgentStatusView } from "@startup-os/contracts/agent-work";
 
 import type { DatabaseExecutor } from "../../client";
+import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { deviceOnline } from "../../core/devices/repository";
@@ -98,7 +99,7 @@ export async function statusViews(
   const rows = await db
     .select({
       status: agentStatus,
-      agent: { actorId: actors.entityId, name: actors.name },
+      agent: { actorId: actors.entityId, name: actorDisplayName() },
       liveVisible: sql<boolean>`coalesce(${visible}, false)`,
       device: { id: desktopDevices.id, name: desktopDevices.name, online: deviceOnline },
     })
@@ -122,7 +123,7 @@ export async function statusViews(
         where,
       ),
     )
-    .orderBy(asc(actors.name), asc(agentStatus.userAgentId));
+    .orderBy(asc(actorDisplayName()), asc(agentStatus.userAgentId));
   return rows.map(({ status, agent, liveVisible, device }) => ({
     userAgentId: status.userAgentId,
     agent,

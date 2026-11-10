@@ -30,7 +30,6 @@ export async function recipients(db: DatabaseExecutor, scope: MessagingIdentity,
   const matches = await db
     .select({
       userId: user.id,
-      name: user.name,
       email: user.email,
       actorId: actors.entityId,
     })
@@ -49,11 +48,11 @@ export async function recipients(db: DatabaseExecutor, scope: MessagingIdentity,
     );
   const matched = new Set(matches.map((match) => match.email));
   const people: (MemberActor & { userId: string })[] = [];
-  for (const { userId, name, actorId } of matches) {
+  for (const { userId, actorId } of matches) {
     if (userId === scope.userId) continue;
     const entityId =
       actorId ??
-      (await ensureHumanActor(db, { userId, name, organizationId: scope.organizationId })).entityId;
+      (await ensureHumanActor(db, { userId, organizationId: scope.organizationId })).entityId;
     people.push({ entityId, type: "human", userId, organizationId: scope.organizationId });
   }
   return { people, external: normalized.filter((email) => !matched.has(email)) };

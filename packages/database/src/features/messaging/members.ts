@@ -1,4 +1,5 @@
 import type { DatabaseExecutor } from "../../client";
+import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
@@ -79,7 +80,7 @@ export async function activeMembers(
   conversationIds: string[],
   viewerId = "",
 ) {
-  const name = sql<string>`coalesce(${user.name}, ${actors.name})`;
+  const name = actorDisplayName();
   const rows = conversationIds.length
     ? await db
         .select({

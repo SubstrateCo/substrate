@@ -1,4 +1,5 @@
 import type { DatabaseExecutor } from "../../client";
+import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { AccessDeniedError } from "../../errors";
 import { taskActivity } from "../activity/schema";
@@ -18,7 +19,7 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
         .select({
           id: taskActivity.id,
           action: taskActivity.action,
-          actorName: actors.name,
+          actorName: actorDisplayName(),
           actorType: actors.type,
           createdAt: taskActivity.createdAt,
           sourceMessageId: taskActivity.sourceMessageId,

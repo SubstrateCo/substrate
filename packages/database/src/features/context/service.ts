@@ -1,4 +1,5 @@
 import type { DatabaseExecutor } from "../../client";
+import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
@@ -210,7 +211,7 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
           conversationName: messagingConversations.name,
           body: messagingMessages.body,
           threadId: messagingMessages.threadId,
-          authorName: sql<string>`case when ${actors.type} = 'agent' then ${actors.name} else ${user.name} end`,
+          authorName: actorDisplayName(),
           authorType: sql<"human" | "agent">`coalesce(${actors.type}, 'human')`,
           createdAt: messagingMessages.createdAt,
           purpose: messageEntityReferences.purpose,

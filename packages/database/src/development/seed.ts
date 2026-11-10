@@ -93,7 +93,6 @@ export async function seedDevelopmentDatabase(db: DatabaseExecutor, passwordHash
           await ensureHumanActor(tx, {
             organizationId: team.id,
             userId: person.id,
-            name: person.name,
           }),
         );
       }

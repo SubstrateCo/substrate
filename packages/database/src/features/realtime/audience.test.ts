@@ -104,7 +104,6 @@ test("a partner with membership in both organizations receives private channel e
   await ensureHumanActor(fixture.db, {
     userId: "outsider",
     organizationId: fixture.orgA,
-    name: "Partner in A",
   });
   const [conversation] = await fixture.db
     .insert(messagingConversations)

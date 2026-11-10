@@ -172,7 +172,6 @@ describe("access controls", () => {
     const agent = await createActor(f.db, {
       organizationId: f.orgA,
       type: "agent",
-      name: "Assistant",
     });
     const contact = await f.forActor(f.alice).contacts.create({ displayName: "Customer" });
     await expect(f.forActor(agent.entityId).contacts.get(contact.entityId)).rejects.toBeInstanceOf(

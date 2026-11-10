@@ -7,7 +7,6 @@ import {
   check,
   foreignKey,
   index,
-  jsonb,
   pgEnum,
   pgTable,
   text,
@@ -15,11 +14,6 @@ import {
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
-
-export interface AgentConfiguration {
-  model?: string;
-  instructions?: string;
-}
 
 export const actorType = pgEnum("actor_type", ["human", "agent"]);
 
@@ -30,8 +24,7 @@ export const actors = pgTable(
     type: actorType("type").notNull(),
     userId: text("user_id").references(() => user.id),
     userAgentId: uuid("user_agent_id").references(() => userAgents.id),
-    name: text("name").notNull(),
-    agentConfig: jsonb("agent_config").$type<AgentConfiguration>(),
+    // Names come from the user or the user agent: see actorDisplayName.
     disabledAt: timestamp("disabled_at", { withTimezone: true }),
   },
   (table) => [
@@ -56,9 +49,8 @@ export const actors = pgTable(
     index("actors_user_idx").on(table.userId),
     check(
       "actors_identity_check",
-      sql`(${table.type} = 'human' AND ${table.userId} IS NOT NULL AND ${table.agentConfig} IS NULL) OR (${table.type} = 'agent' AND ${table.userId} IS NULL)`,
+      sql`(${table.type} = 'human' AND ${table.userId} IS NOT NULL) OR (${table.type} = 'agent' AND ${table.userId} IS NULL)`,
     ),
-    check("actors_name_check", sql`length(trim(${table.name})) > 0`),
     check(
       "actors_user_agent_type_check",
       sql`${table.userAgentId} IS NULL OR ${table.type} = 'agent'`,

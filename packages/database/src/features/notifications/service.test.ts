@@ -160,7 +160,6 @@ test("partner feeds use the selected workspace and current conversation access, 
   const outsiderA = await ensureHumanActor(f.db, {
     userId: "outsider",
     organizationId: f.orgA,
-    name: "Outside A",
   });
   expect(await feed("outsider").list()).toEqual([]);
   // The partner's membership moves from its workspace B actor to its workspace A actor.

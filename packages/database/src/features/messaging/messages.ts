@@ -1,4 +1,5 @@
 import type { DatabaseExecutor } from "../../client";
+import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
@@ -24,7 +25,7 @@ import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 // A missing human author has no name here; each caller keeps its own fallback.
 export function messageAuthorColumns(organizationId: string) {
   return {
-    authorName: sql<string>`case when ${actors.type} = 'agent' then ${actors.name} else ${user.name} end`,
+    authorName: actorDisplayName(),
     authorType: sql<"human" | "agent">`coalesce(${actors.type}, 'human')`,
     authorExternal: sql<boolean>`coalesce(${actors.type}, 'human') <> 'agent' AND not exists (
       select 1 from ${member}

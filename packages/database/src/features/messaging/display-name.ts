@@ -1,4 +1,5 @@
 import type { DatabaseExecutor } from "../../client";
+import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
 import { approvedParticipant } from "./access";
@@ -14,7 +15,7 @@ export function conversationDisplayName(
   db: DatabaseExecutor,
   viewer: { userId: string; excludeActorId?: string },
 ) {
-  const memberName = sql`coalesce(${user.name}, ${actors.name})`;
+  const memberName = actorDisplayName();
   const others = db
     .select({
       names: sql<

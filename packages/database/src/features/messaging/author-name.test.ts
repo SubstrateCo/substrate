@@ -1,5 +1,5 @@
 import { ensureUserAgentActor } from "../../core/actors/provisioning";
-import { actors, user, userAgents } from "../../schema";
+import { user, userAgents } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { createAcceptedMessagingService } from "../../testing/messaging";
 import { expect, test } from "bun:test";
@@ -59,12 +59,9 @@ test("renamed human authors agree across send, read, and replay for roots and re
       );
     }
   }
-  expect(
-    await f.db.select({ name: actors.name }).from(actors).where(eq(actors.entityId, f.alice)),
-  ).toEqual([{ name: "Alice" }]);
 });
 
-test("agent roots and replies keep actor names when their owner is renamed", async () => {
+test("agent messages show the agent's current name, not its owner's", async () => {
   await f.db.update(user).set({ emailVerified: true });
   const [agent] = await f.db
     .insert(userAgents)
@@ -99,4 +96,12 @@ test("agent roots and replies keep actor names when their owner is renamed", asy
   expect(await human.listMessages(channel.id, root.id)).toMatchObject([
     { id: reply.id, ...attribution, authorExternal: false },
   ]);
+  await f.db.update(userAgents).set({ name: "Scout" }).where(eq(userAgents.id, agent!.id));
+  expect(await human.listMessages(channel.id)).toMatchObject([
+    { id: root.id, authorName: "Scout", authorType: "agent" },
+  ]);
+  expect(await chat.sendMessage(channel.id, "reply", root.id, requestId)).toMatchObject({
+    id: reply.id,
+    authorName: "Scout",
+  });
 });

@@ -146,7 +146,6 @@ test("project detail uses one authenticated workspace and retains provisioning a
   expect(fixture.resolveHumanActor).toHaveBeenCalledWith(db, {
     organizationId: fixture.input.organizationId,
     userId: fixture.session.user.id,
-    name: fixture.session.user.name,
   });
   expect(fixture.forActor).toHaveBeenCalledWith({
     organizationId: fixture.input.organizationId,

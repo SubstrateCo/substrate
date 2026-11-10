@@ -55,9 +55,7 @@ test("five person mentions and five task references resolve in set-based stateme
   await f.db.update(user).set({ emailVerified: true });
   const mentioned = [f.bob];
   for (const id of people)
-    mentioned.push(
-      (await ensureHumanActor(f.db, { userId: id, organizationId: f.orgA, name: id })).entityId,
-    );
+    mentioned.push((await ensureHumanActor(f.db, { userId: id, organizationId: f.orgA })).entityId);
   const alice = f.forActor(f.alice);
   const project = await alice.projects.create({ name: "Referenced" });
   const taskIds: string[] = [];
@@ -107,12 +105,10 @@ test("notification recipients use one conflict-safe insert-select for one or man
   const bobB = await ensureHumanActor(f.db, {
     userId: "bob",
     organizationId: f.orgB,
-    name: "Bob B",
   });
   const outsiderA = await ensureHumanActor(f.db, {
     userId: "outsider",
     organizationId: f.orgA,
-    name: "Outside A",
   });
   const chat = createAcceptedMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
   const channel = await chat.createConversation({ kind: "channel", name: "Public" });

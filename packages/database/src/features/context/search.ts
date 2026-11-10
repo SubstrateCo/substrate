@@ -420,7 +420,7 @@ export async function contextSearch(
   }
   if (kind === "person" && input.conversationId) {
     const rows = await db
-      .select({ id: actors.entityId, title: actors.name })
+      .select({ id: actors.entityId, title: user.name })
       .from(actors)
       .innerJoin(user, eq(user.id, actors.userId))
       .innerJoin(entities, eq(entities.entityId, actors.entityId))
@@ -434,7 +434,7 @@ export async function contextSearch(
           anchorId ? inArray(actors.entityId, relatedEntities) : undefined,
           anchorId ? ctx.readable(actors.entityId) : undefined,
           eq(user.emailVerified, true),
-          query ? match(actors.name) : undefined,
+          query ? match(user.name) : undefined,
           input.after ? gt(actors.entityId, input.after) : undefined,
         ),
       )
@@ -446,7 +446,7 @@ export async function contextSearch(
   // stay private and cannot be addressed.
   if (kind === "agent" && input.conversationId) {
     const rows = await db
-      .select({ id: actors.entityId, title: actors.name, agentId: userAgents.id })
+      .select({ id: actors.entityId, title: userAgents.name, agentId: userAgents.id })
       .from(messagingParticipants)
       .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
       .innerJoin(userAgents, eq(userAgents.id, actors.userAgentId))
@@ -461,7 +461,7 @@ export async function contextSearch(
         and(
           liveAgentMember(input.conversationId),
           eq(userAgents.userId, scope.userId),
-          query ? match(actors.name) : undefined,
+          query ? match(userAgents.name) : undefined,
           input.after ? gt(actors.entityId, input.after) : undefined,
         ),
       )

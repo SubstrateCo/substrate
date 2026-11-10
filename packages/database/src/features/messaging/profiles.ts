@@ -2,6 +2,7 @@ import { managedPicture, managedPicturePath } from "@startup-os/contracts/files/
 
 import type { DatabaseExecutor } from "../../client";
 import { activeActorCondition } from "../../core/actors/access";
+import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
@@ -37,6 +38,7 @@ async function profileActor(db: DatabaseExecutor, scope: MessagingIdentity, acto
   const [row] = await db
     .select({
       actor: actors,
+      name: actorDisplayName(),
       membership: personMember.id,
       email: personUser.email,
       image: personUser.image,
@@ -138,8 +140,8 @@ export async function messagingProfile(
 ): Promise<MessagingProfile> {
   const found = await profileActor(tx, scope, actorEntityId);
   await requireProfileContext(tx, scope, conversationId, found);
-  const { actor, person, definition, ownerName } = found;
-  const base = { id: actor.entityId, type: actor.type, name: actor.name };
+  const { actor, name, person, definition, ownerName } = found;
+  const base = { id: actor.entityId, type: actor.type, name };
   const self = actor.entityId === viewerActorEntityId;
   if (actor.type === "human") {
     // Only fellow members of the viewer's workspace show contact details and role.

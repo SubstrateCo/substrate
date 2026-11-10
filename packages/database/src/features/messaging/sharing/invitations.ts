@@ -281,7 +281,6 @@ export function invitationOperations(db: DatabaseExecutor, scope: MessagingIdent
         const actor = await ensureHumanActor(tx, {
           userId: originalId,
           organizationId: scope.organizationId,
-          name: original.name,
         });
         await writeMembers(
           tx,

@@ -34,14 +34,9 @@ export function setupDatabase() {
         { id: "outsider-b", userId: "outsider", organizationId: fixture.orgB, role: "owner" },
       ]);
       const actors = [
-        { entityId: fixture.alice, organizationId: fixture.orgA, userId: "alice", name: "Alice" },
-        { entityId: fixture.bob, organizationId: fixture.orgA, userId: "bob", name: "Bob" },
-        {
-          entityId: fixture.outsider,
-          organizationId: fixture.orgB,
-          userId: "outsider",
-          name: "Outsider",
-        },
+        { entityId: fixture.alice, organizationId: fixture.orgA, userId: "alice" },
+        { entityId: fixture.bob, organizationId: fixture.orgA, userId: "bob" },
+        { entityId: fixture.outsider, organizationId: fixture.orgB, userId: "outsider" },
       ];
       await tx.insert(schema.entities).values(
         actors.map((actor) => ({
