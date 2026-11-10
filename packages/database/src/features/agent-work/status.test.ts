@@ -68,6 +68,30 @@ test("millisecond status versions from the desktop clock are stored, and older o
   expect((await listStatus(f.db, owner))[0]).toMatchObject({ state: "idle" });
 });
 
+test("a publish reports a change only when what the owner sees changed", async () => {
+  const { agent, alice } = await agentWorkFixture(f);
+  const channel = await alice.createConversation({ kind: "channel", name: "general" });
+  let version = 0;
+  const publish = (input: { state?: "working" | "idle"; activity?: string }) =>
+    publishStatus(f.db, agent.identity, {
+      userAgentId: agent.agentId,
+      state: input.state ?? "working",
+      queuedCount: 0,
+      liveConversationId: channel.id,
+      activity: input.activity,
+      version: ++version,
+    });
+  expect(await publish({ activity: "Reading" })).toEqual({ applied: true, changed: true });
+  expect(await publish({ activity: "Reading" })).toEqual({ applied: true, changed: false });
+  expect(await publish({ activity: "Drafting" })).toEqual({ applied: true, changed: true });
+  expect(await publish({ state: "idle", activity: "Drafting" })).toEqual({
+    applied: true,
+    changed: true,
+  });
+  version = 0;
+  expect(await publish({ state: "working" })).toEqual({ applied: false, changed: false });
+});
+
 test("status without a place keeps its activity, and a thread outside the conversation is dropped", async () => {
   const { agent, alice, owner, root } = await sharedThread();
   await publishStatus(f.db, agent.identity, {

@@ -69,7 +69,8 @@ export function publishStatus(headers: Headers, input: z.output<typeof publishSt
     const identity = await device(headers, input);
     const { organizationId: _, installationId: __, ...status } = input;
     const result = await work.publishStatus(db, identity, status);
-    if (result.applied) await ownerChanged(identity.userId);
+    // A publish that changes nothing the owner sees needs no refresh, so it causes no echo.
+    if (result.changed) await ownerChanged(identity.userId);
     return result;
   });
 }
