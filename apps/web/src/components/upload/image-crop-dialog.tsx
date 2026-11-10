@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "../ui/dia
 import type { CropArea } from "./crop-image";
 import { ImageCropControls } from "./image-crop-controls";
 import { ImageCropper } from "./image-cropper";
-import { usePictureUpload } from "@/components/upload/image-crop-dialog/use-picture-upload";
+import { usePictureUpload } from "@/components/upload/use-picture-upload";
 
 export interface ImageCropDialogProps {
   file: File;

@@ -8,7 +8,7 @@ import { CreateConversationForm } from "../conversations/create-conversation-for
 import { createConversation } from "@/api/messaging/requests";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { isAccessFailure } from "@/components/feedback/request-failure";
-import type { DirectMessageAgent } from "@/components/messaging/conversations/conversation-sidebar/conversation-create-menu";
+import type { DirectMessageAgent } from "@/components/messaging/conversations/conversation-create-menu";
 import { ConversationUnavailable } from "@/components/messaging/conversations/conversation-unavailable";
 import { MessagingWorkspace as MessagingWorkspaceView } from "@/components/messaging/workspace/messaging-workspace-view";
 import { agentDirectMessage } from "@/lib/messaging/conversations";

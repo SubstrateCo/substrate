@@ -9,9 +9,9 @@ import { PageContent, PageLayout } from "@/components/layout/page-layout";
 import type {
   DirectMessageAgent,
   DirectMessagePerson,
-} from "@/components/messaging/conversations/conversation-sidebar/conversation-create-menu";
-import { useConversationCreation } from "@/components/messaging/workspace/messaging-workspace/use-conversation-creation";
-import { WorkspaceEmpty } from "@/components/messaging/workspace/messaging-workspace/workspace-empty";
+} from "@/components/messaging/conversations/conversation-create-menu";
+import { useConversationCreation } from "@/components/messaging/workspace/use-conversation-creation";
+import { WorkspaceEmpty } from "@/components/messaging/workspace/workspace-empty";
 import type { Conversation } from "@/lib/messaging/conversations";
 import { ArrowLeft, PanelLeft } from "lucide-react";
 

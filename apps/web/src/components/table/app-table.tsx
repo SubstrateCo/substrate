@@ -7,7 +7,7 @@ import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
 import { isAccessFailure } from "../feedback/request-failure";
 import { Table, TableBody, TableCell, TableRow } from "../ui/table";
-import { AppTableHeader } from "./app-table/app-table-header";
+import { AppTableHeader } from "./app-table-header";
 import type { AppTableInstance } from "./table";
 import { TablePagination } from "./table-pagination";
 

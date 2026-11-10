@@ -13,7 +13,7 @@ import type { ReferenceQuery } from "../references/reference-query";
 import { ComposerDraftReferences } from "./composer-drafts";
 import { ComposerToolbar } from "./composer-toolbar";
 import { EmojiPicker } from "./emoji-picker";
-import { useComposerDraft } from "@/components/messaging/composer/composer/use-composer-draft";
+import { useComposerDraft } from "@/components/messaging/composer/use-composer-draft";
 import { Send } from "lucide-react";
 
 export function Composer({

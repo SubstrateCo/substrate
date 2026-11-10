@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Separator } from "../ui/separator";
-import { UserMenuTheme } from "./user-menu/user-menu-theme";
+import { UserMenuTheme } from "./user-menu-theme";
 import { Building2, Settings } from "lucide-react";
 
 export function UserMenu({

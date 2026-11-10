@@ -1,12 +1,12 @@
 import { useId, useState } from "react";
 
 import { LoadingState } from "@/components/feedback/loading-state";
-import { ConversationSidebarItem } from "@/components/messaging/conversations/conversation-sidebar-item";
 import {
   ConversationCreateMenu,
   type DirectMessageAgent,
   type DirectMessagePerson,
-} from "@/components/messaging/conversations/conversation-sidebar/conversation-create-menu";
+} from "@/components/messaging/conversations/conversation-create-menu";
+import { ConversationSidebarItem } from "@/components/messaging/conversations/conversation-sidebar-item";
 import { Button } from "@/components/ui/button";
 import type { Conversation } from "@/lib/messaging/conversations";
 import { ChevronDown } from "lucide-react";

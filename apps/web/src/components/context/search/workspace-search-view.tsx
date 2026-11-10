@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import type { SearchResultItem } from "./search-result";
-import { SearchResults } from "@/components/context/search/workspace-search/search-results";
+import { SearchResults } from "@/components/context/search/search-results";
 
 // "channel" lists channels only, with membership. DMs and group messages appear under "all".
 export type SearchKind = "all" | "task" | "project" | "message" | "channel";

@@ -10,7 +10,7 @@ import type { WorkspaceReference } from "@/components/messaging/references/entit
 import {
   ReferencesContext,
   WorkspaceReferenceNode,
-} from "@/components/messaging/references/reference-editor/workspace-reference-node";
+} from "@/components/messaging/references/workspace-reference-node";
 import { closeHistory } from "@tiptap/pm/history";
 import { Selection, TextSelection } from "@tiptap/pm/state";
 import { EditorContent, useEditor } from "@tiptap/react";

@@ -6,7 +6,7 @@ import { isAccessFailure } from "../feedback/request-failure";
 import { TooltipProvider } from "../ui/tooltip";
 import { UserMenu } from "./user-menu";
 import { RealtimeContainerContext } from "@/components/realtime/realtime-container-context";
-import { WorkspaceAppButton } from "@/components/workspace/workspace-shell/workspace-app-button";
+import { WorkspaceAppButton } from "@/components/workspace/workspace-app-button";
 import { Bell, Bot, ListTodo, MessageSquare } from "lucide-react";
 
 export type WorkspaceView =

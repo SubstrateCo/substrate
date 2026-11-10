@@ -3,7 +3,7 @@ import {
   referenceDraftText,
   referenceEditorPosition,
 } from "./reference-editor-document";
-import { WorkspaceReferenceNode } from "./reference-editor/workspace-reference-node";
+import { WorkspaceReferenceNode } from "./workspace-reference-node";
 import { getSchema } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { expect, test } from "bun:test";

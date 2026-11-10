@@ -4,7 +4,7 @@ import { ContentNotice } from "../../feedback/content-notice";
 import { PaneState } from "../../feedback/pane-state";
 import { isAccessFailure } from "../../feedback/request-failure";
 import { PageContent, PageLayout } from "@/components/layout/page-layout";
-import { ConversationHeader } from "@/components/messaging/conversations/conversation-pane/conversation-header";
+import { ConversationHeader } from "@/components/messaging/conversations/conversation-header";
 import { conversationName, type Conversation } from "@/lib/messaging/conversations";
 
 export function ConversationPane({

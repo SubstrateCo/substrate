@@ -8,8 +8,8 @@ import { PageSidebarErrorState } from "@/components/layout/page-sidebar-error-st
 import type {
   DirectMessageAgent,
   DirectMessagePerson,
-} from "@/components/messaging/conversations/conversation-sidebar/conversation-create-menu";
-import { ConversationSection } from "@/components/messaging/conversations/conversation-sidebar/conversation-section";
+} from "@/components/messaging/conversations/conversation-create-menu";
+import { ConversationSection } from "@/components/messaging/conversations/conversation-section";
 import type { Conversation } from "@/lib/messaging/conversations";
 
 export function ConversationSidebar({

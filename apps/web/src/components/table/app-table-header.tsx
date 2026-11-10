@@ -1,8 +1,8 @@
 import type { RowData } from "@tanstack/react-table";
 
-import { Button } from "../../ui/button";
-import { TableHead, TableHeader, TableRow } from "../../ui/table";
-import type { AppTableInstance } from "../table";
+import { Button } from "../ui/button";
+import { TableHead, TableHeader, TableRow } from "../ui/table";
+import type { AppTableInstance } from "./table";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
 export function AppTableHeader<TData extends RowData>({

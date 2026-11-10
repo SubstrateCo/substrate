@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { MessageMarkdown } from "../markdown/message-markdown";
 import type { Message } from "../types";
-import { MessageInteractions } from "@/components/messaging/messages/message-item/message-interactions";
+import { MessageInteractions } from "@/components/messaging/messages/message-interactions";
 import { PersonCardTarget, useHasPersonCard } from "@/components/messaging/people/person-card-slot";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 

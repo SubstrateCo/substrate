@@ -9,7 +9,7 @@ import { useMessageHistory } from "../messages/use-message-history";
 import { ThreadPane } from "../threads/thread-pane";
 import { AddMembersForm } from "./add-members-form";
 import { ConversationActions } from "./conversation-actions";
-import { LeftChannelNotice } from "./conversation-pane/left-channel-notice";
+import { LeftChannelNotice } from "./left-channel-notice";
 import { AgentWorkNotice } from "@/components/agent-work/agent-work-slot";
 import { ConversationAgentWork } from "@/components/agent-work/conversation-agent-work";
 import { ConversationTurnTranscript } from "@/components/agent-work/transcript/conversation-turn-transcript";
