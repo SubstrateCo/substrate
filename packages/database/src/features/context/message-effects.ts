@@ -17,7 +17,7 @@ import {
 } from "../messaging/schema";
 import { notifications } from "../notifications/schema";
 import { readableWorkTargets } from "../notifications/targets";
-import { saveMessagingReference } from "./messaging-references";
+import { saveMessagingReferences } from "./messaging-references";
 import { messageReferences } from "./references";
 import { messageEntityReferences } from "./schema";
 import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
@@ -34,18 +34,22 @@ export async function applyMessageEffects(
   const personIds: string[] = [];
   const agentIds: string[] = [];
   const workReferences: { id: string; kind: "task" | "project" }[] = [];
-  let referenced = false;
+  const messagingReferences: { id: string; kind: "channel" | "thread" }[] = [];
   for (const reference of messageReferences(message.body)) {
-    if (reference.kind === "channel" || reference.kind === "thread") {
-      await saveMessagingReference(db, scope, message, conversationOrganizationId, {
-        ...reference,
-        kind: reference.kind,
-      });
-      referenced = true;
-    } else if (reference.kind === "person") personIds.push(reference.id);
+    if (reference.kind === "channel" || reference.kind === "thread")
+      messagingReferences.push({ id: reference.id, kind: reference.kind });
+    else if (reference.kind === "person") personIds.push(reference.id);
     else if (reference.kind === "agent") agentIds.push(reference.id);
     else workReferences.push({ id: reference.id, kind: reference.kind });
   }
+  await saveMessagingReferences(
+    db,
+    scope,
+    message,
+    conversationOrganizationId,
+    messagingReferences,
+  );
+  let referenced = messagingReferences.length > 0;
   if (agentIds.length) {
     // A mentioned agent must be an active member of this conversation. Mentions notify nobody;
     // only the owner's mention can start a run, which the trigger evaluator decides.

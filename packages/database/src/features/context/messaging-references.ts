@@ -1,66 +1,82 @@
 import type { DatabaseExecutor } from "../../client";
 import { AccessDeniedError } from "../../errors";
-import { requireMessage, visibleConversations, type MessagingIdentity } from "../messaging/access";
+import { visibleConversations, type MessagingIdentity } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import type { Reference } from "./references";
 import { messageMessagingReferences } from "./schema";
-import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, exists, inArray, isNull, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
-export async function saveMessagingReference(
+// Messages reference channels and threads of their own organization that the author can see.
+// A thread is a root message with at least one reply. Any other target rejects the message.
+export async function saveMessagingReferences(
   db: DatabaseExecutor,
   scope: MessagingIdentity,
   message: typeof messagingMessages.$inferSelect,
   conversationOrganizationId: string,
-  reference: Reference & { kind: "channel" | "thread" },
+  references: (Reference & { kind: "channel" | "thread" })[],
 ) {
+  if (!references.length) return;
   if (conversationOrganizationId !== scope.organizationId) throw new AccessDeniedError();
-  let conversationId: string;
-  if (reference.kind === "channel") {
-    const [channel] = await db
-      .select({ id: messagingConversations.id })
-      .from(messagingConversations)
-      .where(
-        and(
-          eq(messagingConversations.id, reference.id),
-          eq(messagingConversations.organizationId, scope.organizationId),
-          eq(messagingConversations.kind, "channel"),
-          visibleConversations(db, scope),
-        ),
-      );
-    if (!channel) throw new AccessDeniedError();
-    conversationId = channel.id;
-  } else {
-    const { message: root, conversation } = await requireMessage(db, scope, reference.id);
-    if (
-      root.threadId ||
-      conversation.kind !== "channel" ||
-      conversation.organizationId !== scope.organizationId
-    )
-      throw new AccessDeniedError();
-    const [reply] = await db
-      .select({ id: messagingMessages.id })
-      .from(messagingMessages)
-      .where(
-        and(
-          eq(messagingMessages.conversationId, conversation.id),
-          eq(messagingMessages.threadId, root.id),
-        ),
-      )
-      .limit(1);
-    if (!reply) throw new AccessDeniedError();
-    conversationId = conversation.id;
-  }
+  const ids = (kind: Reference["kind"]) =>
+    references.flatMap((reference) => (reference.kind === kind ? [reference.id] : []));
+  const channelIds = ids("channel");
+  const threadIds = ids("thread");
+  const visibleChannel = and(
+    eq(messagingConversations.organizationId, scope.organizationId),
+    eq(messagingConversations.kind, "channel"),
+    visibleConversations(db, scope),
+  );
+  const channels = channelIds.length
+    ? await db
+        .select({ id: messagingConversations.id, conversationId: messagingConversations.id })
+        .from(messagingConversations)
+        .where(and(inArray(messagingConversations.id, channelIds), visibleChannel))
+    : [];
+  const replies = alias(messagingMessages, "replies");
+  const threads = threadIds.length
+    ? await db
+        .select({ id: messagingMessages.id, conversationId: messagingMessages.conversationId })
+        .from(messagingMessages)
+        .innerJoin(
+          messagingConversations,
+          eq(messagingConversations.id, messagingMessages.conversationId),
+        )
+        .where(
+          and(
+            inArray(messagingMessages.id, threadIds),
+            isNull(messagingMessages.threadId),
+            visibleChannel,
+            exists(
+              db
+                .select({ id: replies.id })
+                .from(replies)
+                .where(
+                  and(
+                    eq(replies.conversationId, messagingMessages.conversationId),
+                    eq(replies.threadId, messagingMessages.id),
+                  ),
+                ),
+            ),
+          ),
+        )
+    : [];
+  if (channels.length !== channelIds.length || threads.length !== threadIds.length)
+    throw new AccessDeniedError();
+  const targets = new Map([...channels, ...threads].map((row) => [row.id, row.conversationId]));
   await db
     .insert(messageMessagingReferences)
-    .values({
-      organizationId: scope.organizationId,
-      conversationId: message.conversationId,
-      messageId: message.id,
-      kind: reference.kind,
-      targetId: reference.id,
-      targetConversationId: conversationId,
-      targetThreadId: reference.kind === "thread" ? reference.id : null,
-    })
+    .values(
+      references.map((reference) => ({
+        organizationId: scope.organizationId,
+        conversationId: message.conversationId,
+        messageId: message.id,
+        kind: reference.kind,
+        targetId: reference.id,
+        targetConversationId: targets.get(reference.id)!,
+        targetThreadId: reference.kind === "thread" ? reference.id : null,
+      })),
+    )
     .onConflictDoNothing();
 }
 
