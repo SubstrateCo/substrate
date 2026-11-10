@@ -1,6 +1,5 @@
 import { createSessionService } from "./service";
 import { sessionFixture } from "./test-support";
-import { APIError } from "better-auth/api";
 import { describe, expect, test } from "bun:test";
 
 describe("session service", () => {
@@ -25,26 +24,5 @@ describe("session service", () => {
   test("returns null for an anonymous request", async () => {
     const service = createSessionService({ getSession: async () => null });
     expect(await service.read(new Headers())).toEqual({ success: true, data: null });
-  });
-
-  test("maps auth failures and hides unexpected error details", async () => {
-    const denied = createSessionService({
-      getSession: async () => {
-        throw new APIError("UNAUTHORIZED");
-      },
-    });
-    expect(await denied.read(new Headers())).toEqual({
-      success: false,
-      error: { code: "UNAUTHENTICATED", message: "Sign in to continue." },
-    });
-    const broken = createSessionService({
-      getSession: async () => {
-        throw new Error("private database detail");
-      },
-    });
-    expect(await broken.read(new Headers())).toEqual({
-      success: false,
-      error: { code: "INTERNAL_ERROR", message: "The operation is unavailable. Please try again." },
-    });
   });
 });

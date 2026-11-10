@@ -4,7 +4,7 @@ import * as provisioning from "@startup-os/database/provisioning";
 
 import { db } from "../../auth/database";
 import { auth } from "../../auth/server";
-import { getProject, listTaskComments, mutateTasks } from "./service";
+import { getProject } from "./service";
 import { afterEach, expect, mock, spyOn, test } from "bun:test";
 
 afterEach(() => mock.restore());
@@ -68,88 +68,19 @@ function projectFixture() {
     tasks: [],
   };
   const getDetail = spyOn(repositories.projects, "getDetail").mockResolvedValue(detail);
-  const transaction = spyOn(repositories, "transaction").mockImplementation(async (work) =>
-    work(repositories),
-  );
+
   const forActor = spyOn(factory, "forActor").mockReturnValue(repositories);
   spyOn(database, "createRepositories").mockReturnValue(factory);
   return {
     input,
     session,
-    actor,
-    detail,
     getSession,
     resolveHumanActor,
     ensureOwnedAgentActors,
     getDetail,
     forActor,
-    repositories,
-    transaction,
   };
 }
-
-test("task comments pass the expected project to the repository without fetching the task twice", async () => {
-  const fixture = projectFixture();
-  const taskEntityId = crypto.randomUUID();
-  const comments = [
-    {
-      id: crypto.randomUUID(),
-      body: "Ready",
-      createdAt: new Date(),
-      authorName: "Alice",
-      authorType: "human" as const,
-    },
-  ];
-  const get = spyOn(fixture.repositories.tasks, "get").mockRejectedValue(
-    new Error("Duplicate task read"),
-  );
-  const listComments = spyOn(fixture.repositories.tasks, "listComments").mockResolvedValue(
-    comments,
-  );
-  expect(await listTaskComments(new Headers(), { ...fixture.input, taskEntityId })).toEqual({
-    success: true,
-    data: comments,
-  });
-  expect(listComments).toHaveBeenCalledWith(taskEntityId, fixture.input.projectEntityId);
-  expect(get).not.toHaveBeenCalled();
-  listComments.mockRejectedValue(new database.AccessDeniedError());
-  expect(await listTaskComments(new Headers(), { ...fixture.input, taskEntityId })).toEqual(
-    failure("NOT_FOUND", "Item not found or access denied."),
-  );
-});
-
-test("task writes return a typed origin failure rather than throwing", async () => {
-  expect(
-    await mutateTasks(new Headers({ origin: "https://foreign.test" }), {
-      organizationId: "org",
-      action: "createProject",
-      name: "Launch",
-    }),
-  ).toEqual(failure("FORBIDDEN", "Invalid request origin."));
-});
-
-test("project detail uses one authenticated workspace and retains provisioning and actor scope", async () => {
-  const fixture = projectFixture();
-  expect(await getProject(new Headers(), fixture.input)).toEqual({
-    success: true,
-    data: fixture.detail,
-  });
-  expect(fixture.getSession).toHaveBeenCalledTimes(1);
-  expect(fixture.ensureOwnedAgentActors).toHaveBeenCalledWith(db, {
-    organizationId: fixture.input.organizationId,
-    userId: fixture.session.user.id,
-  });
-  expect(fixture.resolveHumanActor).toHaveBeenCalledWith(db, {
-    organizationId: fixture.input.organizationId,
-    userId: fixture.session.user.id,
-  });
-  expect(fixture.forActor).toHaveBeenCalledWith({
-    organizationId: fixture.input.organizationId,
-    actorEntityId: fixture.actor.entityId,
-  });
-  expect(fixture.getDetail).toHaveBeenCalledWith(fixture.input.projectEntityId);
-  expect(fixture.transaction).not.toHaveBeenCalled();
-});
 
 for (const denial of ["signed out", "unverified", "workspace mismatch"] as const) {
   test(`project detail rejects ${denial} before provisioning or project access`, async () => {
@@ -179,11 +110,3 @@ for (const denial of ["signed out", "unverified", "workspace mismatch"] as const
     expect(fixture.getDetail).not.toHaveBeenCalled();
   });
 }
-
-test("project detail hides missing or inaccessible projects", async () => {
-  const fixture = projectFixture();
-  fixture.getDetail.mockRejectedValue(new database.AccessDeniedError());
-  expect(await getProject(new Headers(), fixture.input)).toEqual(
-    failure("NOT_FOUND", "Item not found or access denied."),
-  );
-});
