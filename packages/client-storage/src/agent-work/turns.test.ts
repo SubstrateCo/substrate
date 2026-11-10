@@ -98,6 +98,17 @@ test("helper turns are unattended even with owner-lane items", async () => {
   expect(claimed!.turn.kind).toBe("unattended");
 });
 
+test("a usage event records the turn's latest usage with the event", async () => {
+  const { store } = fixture;
+  const session = await createSession(store);
+  await store.inbox.intake([item(session)], 0);
+  const [claimed] = await store.turns.claim(1, { organizationId: "org-1" });
+  const turnId = claimed!.turn.id;
+  const usage = { inputTokens: 10, outputTokens: 2, contextUsed: 40, contextWindow: 100 };
+  await store.events.append(turnId, [{ kind: "usage", data: { usage } }], 2);
+  expect((await store.turns.get(turnId))?.usage).toEqual(usage);
+});
+
 test("events of a turn are numbered without gaps across appends", async () => {
   const { store } = fixture;
   const session = await createSession(store);

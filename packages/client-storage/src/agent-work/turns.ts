@@ -554,8 +554,6 @@ export function turnRepository(run: RunTransaction) {
     /** The turn was told to wrap up, so it never continues by itself. */
     wrapUp: (id: string) =>
       run((tx) => tx.update(turns).set({ autoContinue: false }).where(eq(turns.id, id))),
-    usage: (id: string, usage: Usage) =>
-      run((tx) => tx.update(turns).set({ usage }).where(eq(turns.id, id))),
     finish: (id: string, input: FinishTurnInput, now: number) =>
       run((tx) => finishTurn(tx, id, input, now)),
     /** Removes a claimed turn whose items were all dropped before it started. */

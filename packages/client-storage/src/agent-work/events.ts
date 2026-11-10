@@ -12,7 +12,8 @@ const activityMaxLength = 200;
 
 /**
  * Appends events with the next sequence numbers of the turn, in the caller's transaction, so
- * that the numbers have no gaps. Tool starts also update the turn's activity line.
+ * that the numbers have no gaps. Tool starts also update the turn's activity line, and usage
+ * events its latest usage.
  */
 export async function appendEvents(
   tx: LocalTransaction,
@@ -49,6 +50,7 @@ export async function appendEvents(
     eventCount: turn.eventCount + events.length,
   };
   if (activity) changes.activity = activity;
+  for (const event of events) if (event.kind === "usage") changes.usage = event.data.usage;
   await tx.update(turns).set(changes).where(eq(turns.id, turnId));
   return rows;
 }

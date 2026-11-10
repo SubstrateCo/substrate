@@ -574,7 +574,6 @@ export function createTurnExecutor(
         return;
       case "usage.updated":
         state.usage = event.usage;
-        await context.store.turns.usage(state.turnId, event.usage);
         await append([{ kind: "usage", data: { usage: event.usage } }], now);
         return;
       case "compaction":
