@@ -175,7 +175,12 @@ export function createSharingQueries(db: DatabaseExecutor, scope: MessagingIdent
                   ),
                 )
               : undefined,
-            and(eq(messagingConversations.kind, "dm"), visibleConversations(db, scope)),
+            // Host DMs are shared by their creator only, above. Partners share DMs they can see.
+            and(
+              eq(messagingConversations.kind, "dm"),
+              ne(messagingConversations.organizationId, scope.organizationId),
+              visibleConversations(db, scope),
+            ),
           ),
         )
         .orderBy(desc(messagingConversations.createdAt));
