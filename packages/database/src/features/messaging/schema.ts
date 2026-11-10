@@ -116,7 +116,6 @@ export const messagingMessages = pgTable(
     }),
     check("messaging_thread_root_check", sql`${table.threadRoot}`),
     check("messaging_body_check", sql`length(trim(${table.body})) BETWEEN 1 AND 20000`),
-    index("messaging_message_timeline_idx").on(table.conversationId, table.createdAt, table.id),
     // Root and thread pages, and the thread root foreign key on root deletion.
     index("messaging_message_thread_idx").on(
       table.conversationId,

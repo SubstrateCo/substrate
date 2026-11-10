@@ -100,7 +100,6 @@ export const agentRequests = pgTable(
       .where(sql`${table.nativeRequestId} IS NOT NULL`),
     index("agent_requests_owner_status_idx").on(table.ownerUserId, table.status),
     index("agent_requests_conversation_idx").on(table.conversationId, table.createdAt),
-    index("agent_requests_thread_idx").on(table.userAgentId, table.threadId),
     index("agent_requests_turn_idx").on(table.turnId),
     check("agent_request_kind_check", sql`${table.kind} IN (${checkValues(agentRequestKinds)})`),
     check("agent_request_mode_check", sql`${table.mode} IN (${checkValues(agentRequestModes)})`),

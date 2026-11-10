@@ -4,7 +4,6 @@ import { sql } from "drizzle-orm";
 import {
   check,
   foreignKey,
-  index,
   pgEnum,
   pgTable,
   primaryKey,
@@ -44,7 +43,6 @@ export const contactIdentifiers = pgTable(
       columns: [table.organizationId, table.contactEntityId],
       foreignColumns: [contacts.organizationId, contacts.entityId],
     }).onDelete("cascade"),
-    index("contact_identifiers_lookup_idx").on(table.organizationId, table.type, table.value),
     check("contact_identifiers_value_check", sql`length(trim(${table.value})) > 0`),
   ],
 );

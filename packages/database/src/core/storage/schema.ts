@@ -60,7 +60,6 @@ export const storedFiles = pgTable(
     check("stored_file_size", sql`${t.size} > 0 AND ${t.size} <= 5242880`),
     check("stored_file_image_type", sql`${t.purpose} = 'file' OR ${t.contentType} = 'image/webp'`),
     unique("stored_file_user_purpose").on(t.id, t.ownerUserId, t.purpose),
-    unique("stored_file_organization_purpose").on(t.id, t.organizationId, t.purpose),
   ],
 );
 
