@@ -5,6 +5,7 @@ import { Button } from "../ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Separator } from "../ui/separator";
 import { UserMenuTheme } from "./user-menu-theme";
+import { initials } from "@/lib/people/initials";
 import { Building2, Settings } from "lucide-react";
 
 export function UserMenu({
@@ -28,7 +29,7 @@ export function UserMenu({
   const avatar = (
     <Avatar variant="user" className="size-full">
       <AvatarImage src={image ?? undefined} alt="" />
-      <AvatarFallback>{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+      <AvatarFallback>{initials(name)}</AvatarFallback>
     </Avatar>
   );
   const go = (action: () => void) => () => {

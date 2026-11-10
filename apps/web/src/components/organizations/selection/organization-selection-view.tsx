@@ -8,6 +8,7 @@ import { Button } from "../../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card";
 import { Separator } from "../../ui/separator";
 import { Spinner } from "../../ui/spinner";
+import { initials } from "@/lib/people/initials";
 
 export function OrganizationSelection({
   organizations,
@@ -99,7 +100,7 @@ export function OrganizationSelection({
                         {pending ? (
                           <Spinner aria-hidden="true" role="presentation" />
                         ) : (
-                          organization.name.slice(0, 2).toUpperCase()
+                          initials(organization.name)
                         )}
                       </span>
                       <span className="min-w-0 wrap-anywhere">{organization.name}</span>

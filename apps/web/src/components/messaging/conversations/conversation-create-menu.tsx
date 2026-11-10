@@ -13,6 +13,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Conversation } from "@/lib/messaging/conversations";
+import { initials } from "@/lib/people/initials";
 import { AtSign, Bot, Compass, Plus, Users } from "lucide-react";
 
 export type DirectMessagePerson = {
@@ -150,9 +151,7 @@ export function ConversationCreateMenu({
                   >
                     <Avatar aria-hidden="true" variant="user">
                       {person.image && <AvatarImage src={person.image} alt="" />}
-                      <AvatarFallback>
-                        {(person.name || "?").slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
+                      <AvatarFallback>{initials(person.name)}</AvatarFallback>
                     </Avatar>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium">{person.name}</span>

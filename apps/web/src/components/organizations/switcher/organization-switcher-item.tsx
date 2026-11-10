@@ -1,6 +1,6 @@
 import { DropdownMenuItem } from "../../ui/dropdown-menu";
 import { PicturePreview } from "../../upload/picture-preview";
-import { initials } from "./initials";
+import { initials } from "@/lib/people/initials";
 import { Check } from "lucide-react";
 
 export function OrganizationSwitcherItem({

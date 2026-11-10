@@ -1,8 +1,8 @@
-import { initials } from "./initials";
 import { Button } from "@/components/ui/button";
 import { DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Spinner } from "@/components/ui/spinner";
 import { PicturePreview } from "@/components/upload/picture-preview";
+import { initials } from "@/lib/people/initials";
 
 export function SwitcherTrigger({
   name,

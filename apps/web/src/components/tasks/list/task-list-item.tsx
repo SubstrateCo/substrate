@@ -4,6 +4,7 @@ import { Button } from "../../ui/button";
 import { TaskPriorityIcon } from "../task-cues/task-priority-icon";
 import { TaskStatusIcon } from "../task-cues/task-status-icon";
 import type { ProjectDetail, Task } from "../types";
+import { Tag } from "@/components/feedback/tag";
 import { CornerDownRight, UserRound } from "lucide-react";
 
 export function TaskListItem({
@@ -56,11 +57,7 @@ export function TaskListItem({
             <span className="truncate">
               {task.assigneeActorEntityId ? (assignee?.name ?? "Former member") : "Unassigned"}
             </span>
-            {assignee?.type === "agent" && (
-              <span className="rounded border px-1.5 py-0.5 text-xs text-muted-foreground">
-                Agent
-              </span>
-            )}
+            {assignee?.type === "agent" && <Tag>Agent</Tag>}
           </span>
           <span className="hidden w-24 shrink-0 text-xs text-muted-foreground tabular-nums @xl:block">
             {task.dueDate ? <time dateTime={task.dueDate}>{task.dueDate}</time> : "No due date"}

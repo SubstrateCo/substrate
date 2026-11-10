@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
 
+import { Tag } from "@/components/feedback/tag";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { harnessOptions } from "@/lib/agents/harness-meta";
+import { initials } from "@/lib/people/initials";
 import { Bot, LockKeyhole, User } from "lucide-react";
 
 export type PersonCardProfile = {
@@ -15,14 +17,6 @@ export type PersonCardProfile = {
   role: string | null;
   agent: { ownerName: string | null; harness: string | null; model: string | null } | null;
 };
-
-const tag = "rounded border px-1.5 py-0.5 text-xs text-muted-foreground";
-
-function initials(name: string) {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  const letters = words.length > 1 ? words[0]![0]! + words[1]![0]! : name.trim().slice(0, 2);
-  return (letters || "?").toUpperCase();
-}
 
 function agentLine(agent: NonNullable<PersonCardProfile["agent"]>) {
   if (!agent.harness) return null;
@@ -109,13 +103,13 @@ export function PersonCard({
         }
       />
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className={`${tag} inline-flex items-center gap-1`}>
+        <Tag className="inline-flex items-center gap-1">
           <TypeIcon aria-hidden="true" className="size-3" />
           {profile.type === "agent" ? "Agent" : "Person"}
-        </span>
-        {profile.role && <span className={tag}>{roleLabel(profile.role)}</span>}
-        {profile.external && <span className={tag}>External</span>}
-        {profile.self && <span className={tag}>You</span>}
+        </Tag>
+        {profile.role && <Tag>{roleLabel(profile.role)}</Tag>}
+        {profile.external && <Tag>External</Tag>}
+        {profile.self && <Tag>You</Tag>}
       </div>
       {profile.agent?.ownerName && (
         <p className="truncate text-xs text-muted-foreground">

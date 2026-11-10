@@ -2,9 +2,11 @@ import type { ReactNode } from "react";
 
 import { MessageMarkdown } from "../markdown/message-markdown";
 import type { Message } from "../types";
+import { Tag } from "@/components/feedback/tag";
 import { MessageInteractions } from "@/components/messaging/messages/message-interactions";
 import { PersonCardTarget, useHasPersonCard } from "@/components/messaging/people/person-card-slot";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { initials } from "@/lib/people/initials";
 
 export function MessageItem({
   message,
@@ -34,7 +36,7 @@ export function MessageItem({
     <article className="group flex gap-2.5 px-4 py-2 hover:bg-muted/40">
       <span className="relative h-fit shrink-0">
         <Avatar aria-hidden="true" variant="message" className="size-9">
-          <AvatarFallback>{(message.authorName || "?").slice(0, 2).toUpperCase()}</AvatarFallback>
+          <AvatarFallback>{initials(message.authorName)}</AvatarFallback>
         </Avatar>
         {avatarBadge}
       </span>
@@ -50,16 +52,8 @@ export function MessageItem({
               {message.authorName || "Unknown member"}
             </span>
           </PersonCardTarget>
-          {message.authorType === "agent" && (
-            <span className="rounded border px-1.5 py-0.5 text-xs text-muted-foreground">
-              Agent
-            </span>
-          )}
-          {message.authorExternal && (
-            <span className="rounded border px-1.5 py-0.5 text-xs text-muted-foreground">
-              External
-            </span>
-          )}
+          {message.authorType === "agent" && <Tag>Agent</Tag>}
+          {message.authorExternal && <Tag>External</Tag>}
           <time
             dateTime={new Date(message.createdAt).toISOString()}
             title={new Date(message.createdAt).toLocaleString()}

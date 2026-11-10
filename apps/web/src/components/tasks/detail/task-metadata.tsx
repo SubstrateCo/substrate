@@ -3,6 +3,7 @@ import { taskStatusLabels } from "@startup-os/contracts/tasks";
 import { TaskPriorityIcon } from "../task-cues/task-priority-icon";
 import { TaskStatusIcon } from "../task-cues/task-status-icon";
 import type { Task } from "../types";
+import { Tag } from "@/components/feedback/tag";
 
 export function TaskMetadata({
   task,
@@ -34,11 +35,7 @@ export function TaskMetadata({
           <dt className="text-muted-foreground">Assignee</dt>
           <dd className="flex flex-wrap items-center gap-1.5">
             {assigneeName}
-            {assigneeType === "agent" && (
-              <span className="rounded border px-1.5 py-0.5 text-xs text-muted-foreground">
-                Agent
-              </span>
-            )}
+            {assigneeType === "agent" && <Tag>Agent</Tag>}
           </dd>
         </div>
         <div>

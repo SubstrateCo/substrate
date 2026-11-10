@@ -1,8 +1,10 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 import { Avatar, AvatarFallback } from "../../ui/avatar";
+import { Tag } from "@/components/feedback/tag";
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
 import { plainReferenceText } from "@/components/messaging/references/reference-token";
+import { initials } from "@/lib/people/initials";
 import { cn } from "cn";
 import { Hash, MessageSquare, MessageSquareReply } from "lucide-react";
 
@@ -49,7 +51,7 @@ export function DiscussionItem({ item }: { item: Discussion }) {
   return (
     <li className="relative flex min-w-0 gap-3 rounded-lg border bg-card p-3 transition-colors hover:border-foreground/15 hover:bg-muted/50">
       <Avatar size="sm" variant="user" className="mt-0.5">
-        <AvatarFallback>{author.charAt(0).toUpperCase()}</AvatarFallback>
+        <AvatarFallback>{initials(author)}</AvatarFallback>
       </Avatar>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
@@ -71,11 +73,7 @@ export function DiscussionItem({ item }: { item: Discussion }) {
         <div id={descriptionId} className="flex min-w-0 flex-col gap-1">
           <div className="flex min-w-0 items-center gap-1.5 text-sm">
             <span className="truncate font-medium">{author}</span>
-            {item.authorType === "agent" && (
-              <span className="shrink-0 rounded border px-1.5 py-0.5 text-xs text-muted-foreground">
-                Agent
-              </span>
-            )}
+            {item.authorType === "agent" && <Tag className="shrink-0">Agent</Tag>}
           </div>
           <DiscussionBody body={item.body} />
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-xs text-muted-foreground">
