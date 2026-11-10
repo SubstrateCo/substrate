@@ -5,7 +5,7 @@ import { AppTable, createAppColumnHelper, dateTimeColumn, useAppTable } from "..
 import { Button } from "../../ui/button";
 import { ButtonGroup } from "../../ui/button-group";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../ui/tooltip";
-import { useDelayedLoading } from "../use-delayed-loading";
+import { useDelayedLoading } from "@/hooks/use-delayed-loading";
 import { ArrowUpRight } from "lucide-react";
 
 type UserInvitation = {

@@ -1,10 +1,19 @@
 import type { TasksWrite } from "@startup-os/contracts/tasks/input";
 
-import type { QueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
 import { invalidateWorkLabels, staleSearches } from "../context/mutations";
 import { queryKeys } from "../keys";
-import type { getProject } from "@/api/tasks/requests";
+import { mutateTasks, type getProject } from "@/api/tasks/requests";
+
+export function useTasksMutation(organizationId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (data: TasksWrite) => mutateTasks({ data: { ...data, organizationId } }),
+    onSuccess: (result, input) =>
+      invalidateTasksWrite(client, { ...input, organizationId }, result.id),
+  });
+}
 
 export function invalidateTasksWrite(client: QueryClient, input: TasksWrite, id: string) {
   const organizationId = input.organizationId;

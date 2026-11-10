@@ -1,4 +1,4 @@
-import { ConfirmDialog } from "./confirm-dialog";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { Spinner } from "@/components/ui/spinner";
 import { Bot } from "lucide-react";

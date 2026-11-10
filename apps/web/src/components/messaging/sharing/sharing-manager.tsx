@@ -11,10 +11,10 @@ import {
 } from "@/api/messaging/sharing";
 import { FormMessage } from "@/components/auth/form-message";
 import { formText } from "@/components/auth/form-values";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { PendingButton } from "@/components/feedback/pending-button";
-import { ConfirmDialog } from "@/components/messaging/conversations/actions/confirm-dialog";
 import { SharingDetailsView } from "@/components/messaging/sharing/sharing-details-view";
 import { Checkbox } from "@/components/ui/checkbox";
 import {

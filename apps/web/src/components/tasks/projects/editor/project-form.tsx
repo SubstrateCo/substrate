@@ -1,6 +1,6 @@
-import { useTasksMutation } from "../../use-tasks-mutation";
 import { ProjectForm as ProjectFormView } from "@/components/tasks/projects/editor/project-form-view";
 import type { Project } from "@/components/tasks/types";
+import { useTasksMutation } from "@/queries/tasks/mutations";
 
 export function ProjectForm({
   organizationId,

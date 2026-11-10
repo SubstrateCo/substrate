@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
+import { SettingsPage } from "../../layout/settings-page";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
-import { SettingsPage } from "./organization-settings-view";
 
 export function OrganizationSettings({
   picture,

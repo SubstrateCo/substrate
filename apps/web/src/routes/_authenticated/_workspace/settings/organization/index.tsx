@@ -4,7 +4,7 @@ import { SharingSettings } from "@/components/messaging/sharing/sharing-settings
 import { InvitationManager } from "@/components/organizations/invitations/invitation-manager";
 import { ManagedConversations } from "@/components/organizations/settings/managed-conversations";
 import { OrganizationPicture } from "@/components/organizations/settings/organization-picture";
-import { OrganizationSettings } from "@/components/organizations/settings/organization-settings-content";
+import { OrganizationSettings } from "@/components/organizations/settings/organization-settings";
 
 export const Route = createFileRoute("/_authenticated/_workspace/settings/organization/")({
   component: OrganizationSettingsRoute,

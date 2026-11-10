@@ -4,7 +4,6 @@ import { useQueries } from "@tanstack/react-query";
 
 import { useState } from "react";
 
-import { harnessOptions } from "../harness-meta";
 import { HarnessIcon } from "./harness-icon";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +17,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { harnessOptions } from "@/lib/agents/harness-meta";
 import { harnessModelsQueryOptions } from "@/queries/agents/models";
 import { Check, ChevronsUpDown, RefreshCw } from "lucide-react";
 

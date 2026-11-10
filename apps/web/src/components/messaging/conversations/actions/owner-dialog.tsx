@@ -1,7 +1,7 @@
 import { useState } from "react";
 
-import { ConfirmDialog } from "./confirm-dialog";
 import { OwnerSelect } from "./owner-select";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 
 // "leave" is shown to the owner, who must hand over the conversation before leaving it.
 export function OwnerDialog({

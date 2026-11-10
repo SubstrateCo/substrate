@@ -1,8 +1,8 @@
 import { useRouter } from "@tanstack/react-router";
 
-import { useTasksMutation } from "../use-tasks-mutation";
 import { TaskForm as TaskFormView } from "@/components/tasks/editor/task-form-view";
 import type { ProjectDetail, Task } from "@/components/tasks/types";
+import { useTasksMutation } from "@/queries/tasks/mutations";
 
 export function TaskForm({
   organizationId,

@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
-import { harnessOptions } from "@/components/agents/harness-meta";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { harnessOptions } from "@/lib/agents/harness-meta";
 import { Bot, LockKeyhole, User } from "lucide-react";
 
 export type PersonCardProfile = {

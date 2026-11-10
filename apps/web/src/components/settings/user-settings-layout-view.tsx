@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { SettingsPage } from "../organizations/settings/organization-settings-view";
+import { SettingsPage } from "../layout/settings-page";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 
 export function UserSettingsLayout({

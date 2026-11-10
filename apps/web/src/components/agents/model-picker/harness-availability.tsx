@@ -2,11 +2,11 @@ import type { HarnessKind } from "@startup-os/contracts/harness";
 
 import { useQuery } from "@tanstack/react-query";
 
-import { harnessOptions } from "../harness-meta";
 import {
   HarnessAvailabilityView,
   type HarnessAvailabilityState,
 } from "./harness-availability-view";
+import { harnessOptions } from "@/lib/agents/harness-meta";
 import { harnessStatusQueryOptions } from "@/queries/agents/harness-status";
 
 export function HarnessAvailability({

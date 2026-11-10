@@ -1,4 +1,4 @@
-import { ConfirmDialog } from "./confirm-dialog";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 
 function impact(linkedWork?: number) {
   if (linkedWork === undefined) return "Checking linked work…";

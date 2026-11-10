@@ -1,4 +1,4 @@
-import { ConfirmDialog } from "./confirm-dialog";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 
 export function LeaveConversationDialog({
   name,

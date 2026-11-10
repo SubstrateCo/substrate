@@ -2,7 +2,7 @@ import type { ComponentProps } from "react";
 
 import { ResizablePanel } from "../../ui/resizable";
 import { panelId, usePageLayout } from "./page-layout-context";
-import { useMediaQuery } from "./use-media-query";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "cn";
 
