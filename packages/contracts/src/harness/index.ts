@@ -35,7 +35,13 @@ export type {
   Usage,
 } from "./runtime.ts";
 export { adapterCapabilitiesSchema, harnessSessionRefSchema } from "./runtime.ts";
-export { turnContextSchema, turnKinds, type TurnContext, type TurnKind } from "./turn-context.ts";
+export {
+  turnContextSchema,
+  turnKinds,
+  type TurnContext,
+  type TurnKind,
+  type TurnPlace,
+} from "./turn-context.ts";
 export { POLICY_VERSION, managedPrefix, runtimePolicy, type ManagedPrefixInput } from "./policy.ts";
 export {
   harnessModelCatalogSchema,

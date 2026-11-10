@@ -1,21 +1,20 @@
-import { agentStatusState, type AgentStatusState } from "@startup-os/contracts/agent-work";
+import { agentStatusState, type publishStatusInput } from "@startup-os/contracts/agent-work";
 import type { AgentLocalSummary } from "@startup-os/contracts/agent-work/desktop";
 
 import type { RuntimeContext } from "./context.ts";
 import type { RequestBridge } from "./requests.ts";
 import type { TurnExecutor } from "./turn-executor.ts";
+import type { z } from "zod";
 
 const statusDebounceMs = 500;
 /** A change of only the activity line publishes at most this often. */
 const activityIntervalMs = 10_000;
 
-interface Published {
-  state: AgentStatusState;
-  queuedCount: number;
-  liveConversationId?: string;
-  liveThreadId?: string;
-  activity?: string;
-}
+/** What a status publish says about the agent; the publisher adds the device and version. */
+type Published = Pick<
+  z.input<typeof publishStatusInput>,
+  "state" | "queuedCount" | "liveConversationId" | "liveThreadId" | "activity"
+>;
 
 /**
  * Publishes each agent's status, at most once per 500 ms: needs_you for open requests and work

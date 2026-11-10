@@ -1,12 +1,11 @@
-import type { AgentSessionKind, AgentSessionView } from "@startup-os/contracts/agent-work";
-import type { HarnessKind } from "@startup-os/contracts/harness";
+import type { AgentSessionKind } from "@startup-os/contracts/agent-work";
+import type { HarnessKind, TurnPlace } from "@startup-os/contracts/harness";
 
 import type { LocalTransaction, RunTransaction } from "../database.ts";
 import { sessions } from "../schema/index.ts";
 import { and, eq, inArray, or } from "drizzle-orm";
 
 export type SessionRow = typeof sessions.$inferSelect;
-type TurnPlace = NonNullable<AgentSessionView["origin"]>;
 
 export interface EnsureSessionInput {
   organizationId: string;
