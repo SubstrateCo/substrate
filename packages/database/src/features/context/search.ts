@@ -1,3 +1,5 @@
+import type { ContextSearchKind } from "@startup-os/contracts/context/input";
+
 import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
@@ -7,7 +9,7 @@ import { entityLinks } from "../../core/links/schema";
 import { adminOwnsCondition, visibilityCte } from "../../core/permissions/visibility";
 import { pageSize } from "../../core/repository-context";
 import { searchDocument, trigramKey } from "../../core/search/indexing";
-import { AccessDeniedError, ValidationError } from "../../errors";
+import { AccessDeniedError } from "../../errors";
 import {
   approvedParticipant,
   liveAgentMember,
@@ -29,20 +31,10 @@ import { messageEntityReferences, messageMessagingReferences } from "./schema";
 import { and, asc, eq, gt, inArray, isNull, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
-export type SearchKind =
-  | "all"
-  | "task"
-  | "project"
-  | "message"
-  | "conversation"
-  | "person"
-  | "agent"
-  | "channel"
-  | "thread";
-export type ChannelMembership = "joined" | "left" | "none";
+type ChannelMembership = "joined" | "left" | "none";
 interface SearchResult {
   id: string;
-  kind: Exclude<SearchKind, "all">;
+  kind: Exclude<ContextSearchKind, "all">;
   title: string;
   projectEntityId?: string;
   conversationId?: string;
@@ -60,14 +52,14 @@ interface SearchResult {
 
 // Case-insensitive substring match for short fields such as names and titles. Three or more
 // characters can use the trigram index on lower(column); shorter queries scan.
-export function containsText(column: SQLWrapper, query: string) {
+function containsText(column: SQLWrapper, query: string) {
   if (query.length < 3) return sql`strpos(${trigramKey(column)}, lower(${query})) > 0`;
   const pattern = `%${query.replace(/[\\%_]/g, "\\$&")}%`;
   return sql`${trigramKey(column)} LIKE lower(${pattern})`;
 }
 
 // Every word of the query as a word prefix, for the word indexes. Punctuation separates words.
-export function wordPrefixQuery(query: string) {
+function wordPrefixQuery(query: string) {
   const words = query.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
   return words
     .slice(0, 16)
@@ -84,7 +76,7 @@ export async function contextSearch(
   scope: MessagingIdentity,
   input: {
     query: string;
-    kind?: SearchKind;
+    kind?: ContextSearchKind;
     after?: string;
     limit?: number;
     conversationId?: string;
@@ -93,22 +85,8 @@ export async function contextSearch(
   },
 ): Promise<SearchResult[]> {
   const { context: ctx } = await workspaceContext(db, scope);
+  // The route and the MCP tool schemas validate the query and kind.
   const limit = pageSize(input.limit ?? 30);
-  if (
-    input.query.length > 200 ||
-    ![
-      "all",
-      "task",
-      "project",
-      "message",
-      "conversation",
-      "person",
-      "agent",
-      "channel",
-      "thread",
-    ].includes(input.kind ?? "all")
-  )
-    throw new ValidationError("Invalid search.");
   const query = input.query.trim();
   const kind = input.kind ?? "all";
   if ((kind === "channel" || kind === "thread") && input.conversationId) {

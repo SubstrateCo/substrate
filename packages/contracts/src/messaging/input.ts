@@ -1,3 +1,4 @@
+import { organizationId } from "../workspace";
 import { z } from "zod";
 
 /** Input limits. The server validates them here, and the database service applies the same. */
@@ -6,7 +7,7 @@ export const messagingLimits = { recipients: 30, agents: 20, body: 20_000, emoji
 const id = z.uuid();
 const emails = z.array(z.email().max(320)).max(messagingLimits.recipients);
 
-export const workspaceInput = z.object({ organizationId: z.string().min(1).max(200) });
+export const workspaceInput = z.object({ organizationId });
 export const messageListInput = workspaceInput.extend({
   conversationId: id,
   threadId: id.optional(),

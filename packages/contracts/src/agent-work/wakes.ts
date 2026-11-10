@@ -1,3 +1,4 @@
+import { agentTriggerKinds } from "../agents/triggers.ts";
 import { proposalOutcome } from "./proposals.ts";
 import {
   agentRequestKinds,
@@ -13,8 +14,11 @@ const id = z.uuid();
 export const agentWakeSources = ["owner_message", "answer", "approval_result"] as const;
 export type AgentWakeSource = (typeof agentWakeSources)[number];
 
-/** Why an owner message woke the agent. One wake per message: mention > DM > thread reply. */
-export const agentWakeMessageKinds = ["direct_message", "mention", "thread_reply"] as const;
+/**
+ * Why an owner message woke the agent: the owner's triggers. One wake per message: mention > DM >
+ * thread reply.
+ */
+export const agentWakeMessageKinds = agentTriggerKinds;
 export type AgentWakeMessageKind = (typeof agentWakeMessageKinds)[number];
 
 /** References only. The desktop loads bodies through device/sources, which re-checks access. */

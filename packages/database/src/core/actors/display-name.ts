@@ -9,6 +9,14 @@ interface ActorColumns {
   userAgentId: SQLWrapper;
 }
 
+/** Who wrote quoted text, from the reading agent's view: its owner, another person, or an agent. */
+export function actorAuthorKind(ownerUserId: string, actor: ActorColumns = actors) {
+  return sql<"owner" | "member" | "agent">`case
+    when ${actor.type} = 'agent' then 'agent'
+    when ${actor.userId} = ${ownerUserId} then 'owner'
+    else 'member' end`;
+}
+
 // The actor's current name: the person's account name or the agent's name. Actors store no name,
 // so renames show everywhere at once. Pass an alias of `actors` when the query uses one.
 export function actorDisplayName(actor: ActorColumns = actors) {

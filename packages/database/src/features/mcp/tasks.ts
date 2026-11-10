@@ -1,7 +1,7 @@
 import type { McpInput, McpOutput } from "@startup-os/contracts/harness/tools";
 import type { TaskStatus } from "@startup-os/contracts/tasks";
 
-import { actorDisplayName } from "../../core/actors/display-name";
+import { actorAuthorKind, actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { entities } from "../../core/entities/schema";
 import type { RepositoryContext } from "../../core/repository-context";
@@ -29,19 +29,12 @@ import {
   isNull,
   lt,
   or,
-  sql,
 } from "drizzle-orm";
 
 export const actorSelection = { id: actors.entityId, name: actorDisplayName(), type: actors.type };
 /** An actor that wrote quoted text, labeled owner, member or agent for the reading agent. */
 export function authorSelection(ownerUserId: string) {
-  return {
-    ...actorSelection,
-    kind: sql<"owner" | "member" | "agent">`case
-      when ${actors.type} = 'agent' then 'agent'
-      when ${actors.userId} = ${ownerUserId} then 'owner'
-      else 'member' end`,
-  };
+  return { ...actorSelection, kind: actorAuthorKind(ownerUserId) };
 }
 
 export function mcpTaskQueries(ctx: RepositoryContext, identity: MessagingIdentity) {

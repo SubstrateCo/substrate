@@ -96,6 +96,8 @@ export const saveMcpServerInput = z.discriminatedUnion("transport", [
 ]);
 export const deleteMcpServerInput = z.strictObject({ id });
 export type SaveAgentInput = z.input<typeof saveAgentInput>;
+/** Validated agent fields, as the route passes them to the repository. */
+export type SaveAgentValues = z.output<typeof saveAgentInput>;
 export type SaveSkillInput = z.input<typeof saveSkillInput>;
 export type SaveMcpServerInput = z.input<typeof saveMcpServerInput>;
 export type SetAgentPictureInput = z.input<typeof setAgentPictureInput>;

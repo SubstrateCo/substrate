@@ -17,6 +17,7 @@ export {
 } from "./triggers";
 export type {
   SaveAgentInput,
+  SaveAgentValues,
   SetAgentPictureInput,
   SaveSkillInput,
   SaveMcpServerInput,

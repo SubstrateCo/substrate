@@ -1,8 +1,10 @@
+import { permissionLevels } from "@startup-os/contracts/tasks";
+
 import { actors } from "../actors/schema";
 import { entities } from "../entities/schema";
 import { foreignKey, index, pgEnum, pgTable, primaryKey, text, uuid } from "drizzle-orm/pg-core";
 
-export const permissionLevel = pgEnum("permission_level", ["view", "comment", "edit", "owner"]);
+export const permissionLevel = pgEnum("permission_level", permissionLevels);
 
 export const entityGrants = pgTable(
   "entity_grants",

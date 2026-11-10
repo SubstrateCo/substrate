@@ -1,3 +1,4 @@
+import { organizationId } from "../workspace.ts";
 import { agentRequestPayload } from "./requests.ts";
 import { agentActivityMaxLength, agentStatusStates } from "./status.ts";
 import { sessionKey } from "./wakes.ts";
@@ -7,7 +8,6 @@ import { z } from "zod";
 // the registered device and derives every agent from it. Bodies never name the owner.
 
 const id = z.uuid();
-const organizationId = z.string().min(1).max(200);
 const device = { organizationId, installationId: id };
 
 export const registerDeviceInput = z.strictObject({

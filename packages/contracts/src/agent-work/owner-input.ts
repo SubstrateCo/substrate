@@ -1,3 +1,4 @@
+import { organizationId } from "../workspace.ts";
 import { agentRequestResponse } from "./requests.ts";
 import { z } from "zod";
 
@@ -5,7 +6,6 @@ import { z } from "zod";
 // the records the caller can see now.
 
 const id = z.uuid();
-const organizationId = z.string().min(1).max(200);
 
 /** GET /agent-work/requests */
 export const conversationRequestsInput = z.strictObject({ organizationId, conversationId: id });

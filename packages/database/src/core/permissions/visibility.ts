@@ -16,7 +16,7 @@ const adminEntityTypes = sql.raw(
 
 // The role is read on every query, so promotion and demotion take effect at once. Agents resolve to
 // their owner's human actor, like grants do.
-export function organizationAdminCondition(scope: ActorScope) {
+function organizationAdminCondition(scope: ActorScope) {
   return sql`EXISTS (
     SELECT 1 FROM ${actors} oa
     JOIN ${member} om ON om.organization_id = oa.organization_id AND om.user_id = oa.user_id

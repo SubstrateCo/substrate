@@ -1,11 +1,11 @@
-import { taskStatusValues } from "@startup-os/contracts/tasks";
+import { taskPriorityValues, taskStatusValues } from "@startup-os/contracts/tasks";
 
 import { visibleActorCondition } from "../../core/actors/access";
 import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { RepositoryContext, type PermissionLevel } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
-import { notifyAssignment, recordTaskActivities, recordTaskActivity } from "../activity/events";
+import { notifyAssignment, recordTaskActivity } from "../activity/events";
 import { projectRepository, requiredText } from "../projects/repository";
 import { liveTask } from "./access";
 import { taskChanges } from "./changes";
@@ -22,10 +22,7 @@ async function validate(
   currentAssigneeActorEntityId: string | null = null,
 ) {
   if (input.title !== undefined) requiredText(input.title, 300);
-  if (
-    input.priority !== undefined &&
-    !["none", "low", "medium", "high", "urgent"].includes(input.priority)
-  )
+  if (input.priority !== undefined && !taskPriorityValues.includes(input.priority))
     throw new ValidationError("Invalid priority.");
   if (
     input.dueDate != null &&
@@ -90,8 +87,8 @@ export async function createTaskInLockedProject(
       dueDate: input.dueDate,
     })
     .returning();
-  const event = await recordTaskActivity(ctx, task!.entityId, "Task created");
-  await notifyAssignment(ctx, task!.entityId, task!.assigneeActorEntityId, event.id);
+  const [event] = await recordTaskActivity(ctx, task!.entityId, ["Task created"]);
+  await notifyAssignment(ctx, task!.entityId, task!.assigneeActorEntityId, event!.id);
   return task!;
 }
 
@@ -156,7 +153,7 @@ export function taskRepository(context: RepositoryContext) {
           .where(taskWhere(entityId))
           .returning();
         await ctx.touch(entityId);
-        const events = await recordTaskActivities(ctx, entityId, changes);
+        const events = await recordTaskActivity(ctx, entityId, changes);
         const assignment = events.find((event) => event.action === "Assignee changed");
         if (assignment)
           await notifyAssignment(ctx, entityId, input.assigneeActorEntityId, assignment.id);

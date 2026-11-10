@@ -1,11 +1,9 @@
 import {
   agentTriggerKinds,
-  saveAgentTriggersInput,
   type SaveAgentTriggersInput,
-  saveAgentInput,
   type AgentCatalog,
   type AgentConfiguration,
-  type SaveAgentInput,
+  type SaveAgentValues,
 } from "@startup-os/contracts/agents";
 import { managedPicturePath } from "@startup-os/contracts/files/pictures";
 
@@ -75,8 +73,9 @@ export function createAgentRepository(db: Database, userId: string, installation
         })),
       };
     },
-    async saveAgent(raw: SaveAgentInput): Promise<AgentConfiguration> {
-      const { id, model, ...fields } = saveAgentInput.parse(raw);
+    // The route validates input; repositories do not parse it again.
+    async saveAgent(input: SaveAgentValues): Promise<AgentConfiguration> {
+      const { id, model, ...fields } = input;
       const values = { ...fields, model: model ?? null };
       // A new local agent lives on the desktop that created it.
       const [row] = id
@@ -112,8 +111,7 @@ export function createAgentRepository(db: Database, userId: string, installation
       if (!row) throw new AccessDeniedError();
       return null;
     },
-    async saveTriggers(raw: SaveAgentTriggersInput): Promise<null> {
-      const input = saveAgentTriggersInput.parse(raw);
+    async saveTriggers(input: SaveAgentTriggersInput): Promise<null> {
       return db.transaction(async (tx) => {
         const [agent] = await tx
           .select({ id: userAgents.id })

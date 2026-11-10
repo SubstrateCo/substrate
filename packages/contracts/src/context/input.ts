@@ -1,7 +1,8 @@
 import { taskPriorityValues, taskStatusValues } from "../tasks/status";
+import { organizationId } from "../workspace";
 import { z } from "zod";
 
-export const contextWorkspace = z.object({ organizationId: z.string().min(1).max(200) });
+export const contextWorkspace = z.object({ organizationId });
 export const contextEntity = contextWorkspace.extend({ entityId: z.uuid() });
 export const contextMessage = contextWorkspace.extend({ messageId: z.uuid() });
 export const contextMessagePage = contextWorkspace.extend({
@@ -9,21 +10,21 @@ export const contextMessagePage = contextWorkspace.extend({
 });
 export const contextTarget = contextMessage.extend({ conversationId: z.uuid() });
 export const contextLink = contextMessage.extend({ entityId: z.uuid() });
+export const contextSearchKinds = [
+  "all",
+  "task",
+  "project",
+  "message",
+  "conversation",
+  "person",
+  "agent",
+  "channel",
+  "thread",
+] as const;
+export type ContextSearchKind = (typeof contextSearchKinds)[number];
 export const contextSearch = contextWorkspace.extend({
   query: z.string().max(200),
-  kind: z
-    .enum([
-      "all",
-      "task",
-      "project",
-      "message",
-      "conversation",
-      "person",
-      "agent",
-      "channel",
-      "thread",
-    ])
-    .optional(),
+  kind: z.enum(contextSearchKinds).optional(),
   after: z.uuid().optional(),
   limit: z.number().int().min(1).max(100).optional(),
   conversationId: z.uuid().optional(),

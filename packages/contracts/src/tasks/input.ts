@@ -1,7 +1,8 @@
-import { taskPriorityValues, taskStatusValues } from "./status";
+import { organizationId } from "../workspace";
+import { permissionLevels, taskPriorityValues, taskStatusValues } from "./status";
 import { z } from "zod";
 
-export const tasksWorkspace = z.object({ organizationId: z.string().min(1) });
+export const tasksWorkspace = z.object({ organizationId });
 export const projectRequest = tasksWorkspace.extend({ projectEntityId: z.uuid() });
 export const taskRequest = projectRequest.extend({ taskEntityId: z.uuid() });
 const title = z.string().trim().min(1).max(300);
@@ -34,7 +35,7 @@ export const tasksWrite = z.discriminatedUnion("action", [
   projectRequest.extend({
     action: z.literal("share"),
     actorEntityId: z.uuid(),
-    level: z.enum(["view", "comment", "edit", "owner"]),
+    level: z.enum(permissionLevels),
   }),
   projectRequest.extend({ action: z.literal("revoke"), actorEntityId: z.uuid() }),
 ]);

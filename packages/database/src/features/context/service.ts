@@ -66,7 +66,7 @@ export async function attachReference(
     .onConflictDoNothing()
     .returning();
   if (rows.length && work.entityType === "task")
-    await recordTaskActivity(ctx, target.id, "Discussion linked", source.messageId);
+    await recordTaskActivity(ctx, target.id, ["Discussion linked"], source.messageId);
   return rows.length > 0;
 }
 
@@ -103,7 +103,7 @@ export async function detachReference(
     )
     .returning();
   if (rows.length && work.entityType === "task")
-    await recordTaskActivity(ctx, target.id, "Discussion unlinked", source.messageId);
+    await recordTaskActivity(ctx, target.id, ["Discussion unlinked"], source.messageId);
   return rows.length > 0;
 }
 
@@ -160,7 +160,12 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
           fingerprint,
           taskEntityId: task.entityId,
         });
-        await recordTaskActivity(ctx, task.entityId, "Created from a discussion", input.messageId);
+        await recordTaskActivity(
+          ctx,
+          task.entityId,
+          ["Created from a discussion"],
+          input.messageId,
+        );
         return task;
       });
     },

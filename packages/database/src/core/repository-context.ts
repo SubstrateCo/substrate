@@ -15,7 +15,7 @@ export interface ActorScope {
 }
 
 export type PermissionLevel = (typeof permissionLevel.enumValues)[number];
-export const permissionRank = { view: 0, comment: 1, edit: 2, owner: 3 };
+const permissionRank: Record<PermissionLevel, number> = { view: 0, comment: 1, edit: 2, owner: 3 };
 
 export class RepositoryContext {
   readonly scope: Readonly<ActorScope>;
@@ -103,11 +103,8 @@ export class RepositoryContext {
     return { entity: access.entity, level: access.level };
   }
 
-  async createEntity(entityType: typeof entities.$inferInsert.entityType, parentEntityId?: string) {
-    if (parentEntityId) {
-      await this.requireAccess(parentEntityId, "edit", true);
-      return this.createChildEntity(entityType, parentEntityId);
-    }
+  // A root entity owned by the actor's person. Children use createChildEntity.
+  async createEntity(entityType: typeof entities.$inferInsert.entityType) {
     await this.requireActiveActor();
     const [entity] = await this.db
       .insert(entities)

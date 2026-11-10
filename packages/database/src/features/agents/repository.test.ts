@@ -10,7 +10,13 @@ import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
-const agent = { name: "Helper", instructions: "Help", harness: "opencode" as const, enabled: true };
+const agent = {
+  name: "Helper",
+  instructions: "Help",
+  harness: "opencode" as const,
+  enabled: true,
+  useStartupDefaults: true,
+};
 
 const avatar = () => ({
   id: crypto.randomUUID(),

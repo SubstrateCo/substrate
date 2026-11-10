@@ -1,13 +1,13 @@
-import type { AgentSourceMessage, AgentSourcesResult } from "@startup-os/contracts/agent-work";
+import type { AgentSourcesResult } from "@startup-os/contracts/agent-work";
 
 import type { DatabaseExecutor } from "../../client";
-import { actorDisplayName } from "../../core/actors/display-name";
+import { actorAuthorKind, actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { visibleConversations } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { requireDevice, type DeviceIdentity } from "./device";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 /**
  * Message bodies for the home desktop, only while the owner can see their conversation now.
@@ -26,10 +26,7 @@ export function loadSources(db: DatabaseExecutor, identity: DeviceIdentity, mess
         conversationKind: messagingConversations.kind,
         actorId: actors.entityId,
         name: actorDisplayName(),
-        kind: sql<AgentSourceMessage["author"]["kind"]>`case
-          when ${actors.type} = 'agent' then 'agent'
-          when ${actors.userId} = ${identity.userId} then 'owner'
-          else 'member' end`,
+        kind: actorAuthorKind(identity.userId),
         body: messagingMessages.body,
         createdAt: messagingMessages.createdAt,
       })

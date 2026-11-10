@@ -49,7 +49,7 @@ export function agentWrites(ctx: RepositoryContext, identity: MessagingIdentity,
         await recordTaskActivity(
           ctx,
           task.entityId,
-          "Created from a discussion",
+          ["Created from a discussion"],
           source.message.id,
         );
       }

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-/** Owner messages that wake an agent. Add new kinds here and in the wake router. */
+/** Owner messages that wake an agent, and the wake kinds. Add new kinds here and in wakeKind. */
 export const agentTriggerKinds = ["direct_message", "mention", "thread_reply"] as const;
 export type AgentTriggerKind = (typeof agentTriggerKinds)[number];
 

@@ -37,7 +37,7 @@ export const hosts = (conversation: ConversationFacts, viewer: Viewer) =>
   conversation.organizationId === viewer.organizationId;
 
 /** A legacy external creator does not own the host organization's conversation. */
-export const owns = (conversation: ConversationFacts, viewer: Viewer) =>
+const owns = (conversation: ConversationFacts, viewer: Viewer) =>
   !viewer.agent && hosts(conversation, viewer) && conversation.createdBy === viewer.userId;
 
 /**
@@ -69,7 +69,7 @@ export function canShare(
 }
 
 /** People and agents act in conversations; agents only read and post. */
-export function requirePerson(viewer: Pick<Viewer, "agent">) {
+function requirePerson(viewer: Pick<Viewer, "agent">) {
   if (viewer.agent) throw new AccessDeniedError();
 }
 

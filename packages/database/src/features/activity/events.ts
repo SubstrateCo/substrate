@@ -4,29 +4,12 @@ import { notifications } from "../notifications/schema";
 import { taskActivity } from "./schema";
 import { sql } from "drizzle-orm";
 
+/** Records the actor's actions on a task in one insert, in order. */
 export async function recordTaskActivity(
   context: RepositoryContext,
   taskEntityId: string,
-  action: string,
-  sourceMessageId?: string,
-) {
-  const [event] = await context.db
-    .insert(taskActivity)
-    .values({
-      organizationId: context.scope.organizationId,
-      taskEntityId,
-      actorEntityId: context.scope.actorEntityId,
-      action,
-      sourceMessageId,
-    })
-    .returning();
-  return event!;
-}
-
-export async function recordTaskActivities(
-  context: RepositoryContext,
-  taskEntityId: string,
   actions: string[],
+  sourceMessageId?: string,
 ) {
   if (!actions.length) return [];
   return context.db
@@ -37,6 +20,7 @@ export async function recordTaskActivities(
         taskEntityId,
         actorEntityId: context.scope.actorEntityId,
         action,
+        sourceMessageId,
       })),
     )
     .returning();
