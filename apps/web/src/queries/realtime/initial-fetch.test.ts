@@ -278,3 +278,42 @@ test("a plain thread reply refreshes related discussion counts without reference
     client.clear();
   }
 });
+
+test("ready keeps harness reads that have not failed and retries failed ones", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const reads = { loaded: 0, failed: 0 };
+  const loadedKey = queryKeys.harnessStatus("user", "org");
+  const failedKey = queryKeys.harnessModels("user", "org", "codex");
+  const loaded = new QueryObserver(client, {
+    queryKey: loadedKey,
+    queryFn: async () => {
+      reads.loaded++;
+      return ["codex"];
+    },
+  });
+  const failed = new QueryObserver(client, {
+    queryKey: failedKey,
+    queryFn: async () => {
+      reads.failed++;
+      if (reads.failed === 1) throw new Error("Bridge unavailable");
+      return ["model"];
+    },
+  });
+  const unsubscribe = [loaded.subscribe(() => {}), failed.subscribe(() => {})];
+  const cache = createRealtimeCache({
+    queryClient: client,
+    organizationId: "org",
+    userId: "user",
+    revalidate: async () => {},
+  });
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await cache.receive({ version: 1, type: "ready" });
+    expect(reads).toEqual({ loaded: 1, failed: 2 });
+    expect(client.getQueryData(failedKey)).toEqual(["model"]);
+  } finally {
+    cache.dispose();
+    for (const stop of unsubscribe) stop();
+    client.clear();
+  }
+});

@@ -18,7 +18,28 @@ interface RealtimeQueryTarget {
   refetchType?: "none";
   // Matches only message context pages that show work links, or have not loaded yet.
   withLinks?: true;
+  // Skips harness reads that have not failed. See keepsHarnessRead.
+  exceptHarness?: true;
 }
+
+const harnessKinds = new Set<unknown>([
+  "harness-status",
+  "harness-models",
+  "local-agent-configuration",
+]);
+
+// Harness reads go through the desktop bridge, which verifies the session with the server first.
+// They do not depend on missed hints, so a full refresh keeps loaded and loading ones. Failed ones
+// still retry.
+function keepsHarnessRead(query: Query) {
+  return (
+    query.queryKey[0] === "users" &&
+    harnessKinds.has(query.queryKey[2]) &&
+    query.state.status !== "error"
+  );
+}
+
+const everything: RealtimeQueryTarget = { queryKey: [], exceptHarness: true };
 
 function showsLinks(query: Query) {
   // SAFETY: withLinks targets only match message context pages, which cache this shape.
@@ -27,10 +48,13 @@ function showsLinks(query: Query) {
 }
 
 function targetFilter(target: RealtimeQueryTarget, predicate: (query: Query) => boolean) {
-  const { withLinks, ...filter } = target;
+  const { withLinks, exceptHarness, ...filter } = target;
   return {
     ...filter,
-    predicate: (query: Query) => (!withLinks || showsLinks(query)) && predicate(query),
+    predicate: (query: Query) =>
+      (!withLinks || showsLinks(query)) &&
+      (!exceptHarness || !keepsHarnessRead(query)) &&
+      predicate(query),
   };
 }
 
@@ -330,7 +354,7 @@ export function createRealtimeCache({
       // reset already read after the reconnect are current, so the final refresh skips them.
       const since = ++clock;
       resyncWork ??= resetAccess()
-        .then(() => (isDisposed() ? undefined : refresh([{ queryKey: [] }], since)))
+        .then(() => (isDisposed() ? undefined : refresh([everything], since)))
         .finally(() => {
           resyncWork = undefined;
         });
@@ -342,7 +366,7 @@ export function createRealtimeCache({
       const event = parsed.data;
       if (event.type === "ready") {
         const epoch = generation;
-        await refresh([{ queryKey: [] }]);
+        await refresh([everything]);
         if (isCurrent(epoch)) await revalidate();
         return;
       }
