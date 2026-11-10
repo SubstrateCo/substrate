@@ -30,8 +30,6 @@ export function createRealtimeRoutes(hub: RealtimeHub, trustedOrigins: string[])
         .strict(),
     ),
     async (c, next) => {
-      const params = new URL(c.req.url).searchParams;
-      if (params.getAll("organizationId").length > 1) return c.body(null, 400);
       let connection: Connection | null = null;
       try {
         connection = await hub.reserve(

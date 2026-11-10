@@ -56,7 +56,7 @@ export function createConversation(headers: Headers, input: z.output<typeof conv
     requireOrigin(headers);
     const { service } = await serviceForSession(headers, input.organizationId);
     const conversation = await service.createConversation(input);
-    await deliverSharingMail();
+    void deliverSharingMail();
     await publishRefresh([
       { audience: realtimeKeys.conversation(conversation.id), domain: "messaging" },
     ]);
@@ -129,7 +129,7 @@ export function addMembers(headers: Headers, input: z.output<typeof membersInput
     requireOrigin(headers);
     const { service } = await serviceForSession(headers, input.organizationId);
     const result = await service.addMembers(input.conversationId, input.emails, input.shareHistory);
-    await deliverSharingMail();
+    void deliverSharingMail();
     await publishRefresh(managementHints(input));
     return result;
   });

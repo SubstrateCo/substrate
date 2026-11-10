@@ -17,13 +17,17 @@ export function requireOrigin(headers: Headers) {
     throw new ServiceError("FORBIDDEN", "Invalid request origin.");
 }
 
-// Membership is checked by the database on every workspace path (workspaceContext, active actor
-// checks and actor provisioning), so a removed member gets NOT_FOUND there.
-export async function workspaceSession(headers: Headers, expectedOrganizationId: string) {
-  const session = await auth.api.getSession({ headers });
+export function requireVerified<T extends { user: { emailVerified: boolean } }>(session: T | null) {
   if (!session) throw new ServiceError("UNAUTHENTICATED", "Sign in to continue.");
   if (!session.user.emailVerified)
     throw new ServiceError("FORBIDDEN", "Verify your email to continue.");
+  return session;
+}
+
+// Membership is checked by the database on every workspace path (workspaceContext, active actor
+// checks and actor provisioning), so a removed member gets NOT_FOUND there.
+export async function workspaceSession(headers: Headers, expectedOrganizationId: string) {
+  const session = requireVerified(await auth.api.getSession({ headers }));
   const organizationId = requireWorkspace(
     expectedOrganizationId,
     session.session.activeOrganizationId,

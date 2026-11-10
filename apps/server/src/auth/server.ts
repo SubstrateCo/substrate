@@ -159,8 +159,7 @@ export const auth = betterAuth({
         },
         afterRemoveMember: async (input) => {
           const hints = await clearMembershipSharing(db, input.user.id, input.organization.id);
-          await publishRefresh(hints);
-          await publishMembershipChange(input);
+          await publishMembershipChange(input, hints);
         },
         afterUpdateMemberRole: publishMembershipChange,
         afterUpdateOrganization: publishOrganizationChange,

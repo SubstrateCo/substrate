@@ -1,4 +1,4 @@
-import { realtimeKeys } from "@startup-os/contracts/realtime";
+import { realtimeKeys, type RealtimeHint } from "@startup-os/contracts/realtime";
 import { invitationRefreshHints, profileRefreshHints } from "@startup-os/database/realtime";
 
 import { publishRefresh } from "../v1/realtime/publisher";
@@ -12,11 +12,15 @@ export function publishProfileChange(user: { id: string }) {
   return publishRefresh(profileRefreshHints(db, user.id));
 }
 
-export function publishMembershipChange(input: {
-  organization: { id: string };
-  user: { id: string };
-}) {
+export function publishMembershipChange(
+  input: {
+    organization: { id: string };
+    user: { id: string };
+  },
+  hints: RealtimeHint[] = [],
+) {
   return publishRefresh([
+    ...hints,
     { audience: realtimeKeys.organization(input.organization.id), domain: "access" },
     { audience: realtimeKeys.user(input.user.id), domain: "access" },
   ]);

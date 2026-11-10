@@ -300,6 +300,27 @@ test("heartbeat rechecks idle sessions and terminates peers that do not pong", a
   f.hub.stop();
 });
 
+test("a slow heartbeat session check does not delay pings to other connections", async () => {
+  const f = fixture({ sessionCheckMs: 1 });
+  const slow = await f.connect("slow");
+  const fast = await f.connect("fast");
+  await Bun.sleep(5);
+  const gate = Promise.withResolvers<void>();
+  const authenticate = f.deps.authenticate.bind(f.deps);
+  f.deps.authenticate = async (headers, organizationId) => {
+    if (headers.get("cookie") === slow.cookie) await gate.promise;
+    return authenticate(headers, organizationId);
+  };
+  const tick = f.hub.tick();
+  await Bun.sleep(5);
+  expect(fast.pings).toBe(1);
+  expect(slow.pings).toBe(0);
+  gate.resolve();
+  await tick;
+  expect(slow.pings).toBe(1);
+  f.hub.stop();
+});
+
 test("bounds reservations and expires abandoned upgrades", async () => {
   const f = fixture({ maxConnections: 2, maxPerUser: 1 });
   const live = await f.connect();

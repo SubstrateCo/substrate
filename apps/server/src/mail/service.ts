@@ -1,4 +1,4 @@
-import { environment, type ServerEnvironment } from "../environment";
+import { environment } from "../environment";
 import {
   organizationInvitationMessage,
   resetPasswordMessage,
@@ -12,7 +12,7 @@ import nodemailer from "nodemailer";
 export type SendMail = (to: string, message: MailMessage) => Promise<void>;
 
 /** Every email the server sends. Tests pass their own send function instead of SMTP. */
-export function createMailService(send: SendMail, origins: MailOrigins) {
+function createMailService(send: SendMail, origins: MailOrigins) {
   return {
     verifyEmail: (to: string, url: string) => send(to, verifyEmailMessage(url, origins)),
     resetPassword: (to: string, url: string) => send(to, resetPasswordMessage(url, origins)),
@@ -28,12 +28,14 @@ export function createMailService(send: SendMail, origins: MailOrigins) {
   };
 }
 
-function smtpSender(config: Pick<ServerEnvironment, "smtp" | "emailFrom">): SendMail {
-  const transport = nodemailer.createTransport(config.smtp);
-  return async (to, message) => {
-    await transport.sendMail({ from: config.emailFrom, to, ...message });
-  };
-}
+/** One pooled SMTP transport for the process. */
+const transport = nodemailer.createTransport({ ...environment.smtp, pool: true });
+const sendSmtp: SendMail = async (to, message) => {
+  await transport.sendMail({ from: environment.emailFrom, to, ...message });
+};
+export const mail = createMailService(sendSmtp, environment);
 
-/** One SMTP transport for the process. */
-export const mail = createMailService(smtpSender(environment), environment);
+/** Closes the pooled SMTP connections so they do not keep the process alive at shutdown. */
+export function closeMail() {
+  transport.close();
+}

@@ -16,6 +16,7 @@ import { createSessionRoutes } from "./v1/session/routes";
 import { createTasksRoutes } from "./v1/tasks/routes";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
+import { except } from "hono/combine";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { secureHeaders } from "hono/secure-headers";
@@ -34,10 +35,14 @@ export function createApp() {
     )
     .use(
       "/api/*",
-      bodyLimit({
-        maxSize: 1024 * 1024,
-        onError: (c) => respond(c, failure("PAYLOAD_TOO_LARGE", "Request body is too large.")),
-      }),
+      // Picture uploads set their own, larger limit on the route.
+      except(
+        "/api/v1/files/pictures/:purpose",
+        bodyLimit({
+          maxSize: 1024 * 1024,
+          onError: (c) => respond(c, failure("PAYLOAD_TOO_LARGE", "Request body is too large.")),
+        }),
+      ),
     )
     .use("/api/*", async (c, next) => {
       c.header("Cache-Control", "no-store");

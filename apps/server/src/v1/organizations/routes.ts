@@ -5,8 +5,7 @@ import { Hono } from "hono";
 export function createOrganizationRoutes(
   service: OrganizationService = defaultOrganizationService,
 ) {
-  return new Hono().get("/settings-access", async (c) => {
-    c.header("Cache-Control", "no-store");
-    return respond(c, await service.settingsAccess(c.req.raw.headers));
-  });
+  return new Hono().get("/settings-access", async (c) =>
+    respond(c, await service.settingsAccess(c.req.raw.headers)),
+  );
 }

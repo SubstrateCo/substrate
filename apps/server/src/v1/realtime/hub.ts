@@ -279,14 +279,16 @@ export function createRealtimeHub(
       try {
         if (now >= nextHeartbeat) {
           nextHeartbeat = now + heartbeatMs;
-          for (const connection of connections) {
+          await forEachLimited([...connections], maxConcurrentChecks, async (connection) => {
+            // A connection can close while it waits for its turn.
+            if (!connections.has(connection)) return;
             if (!connection.transport || !connection.ready) {
               if (now >= connection.expiresAt) remove(connection);
-              continue;
+              return;
             }
             if (connection.awaitingPong) {
               remove(connection, 1001, "Heartbeat timeout");
-              continue;
+              return;
             }
             try {
               if (fresh(connection, now) || (await revalidate(connection))) {
@@ -297,7 +299,7 @@ export function createRealtimeHub(
               remove(connection, 1012, "Resync required");
               deps.reportFailure();
             }
-          }
+          });
         }
       } catch {
         deps.reportFailure();

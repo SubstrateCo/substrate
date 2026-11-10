@@ -4,6 +4,7 @@ import { createApp } from "./app";
 import { closeDatabase, db } from "./auth/database";
 // Parsed once on import: an invalid environment stops startup before the app is created.
 import { environment } from "./environment";
+import { closeMail } from "./mail/service";
 import { defaultFileService } from "./v1/files/default-service";
 import { startSharingMail } from "./v1/messaging/sharing-mail";
 import { closeRefreshPublisher } from "./v1/realtime/publisher";
@@ -57,6 +58,7 @@ function shutdown() {
   void server
     .stop(true)
     .then(() => stopSharingMail())
+    .then(() => closeMail())
     .then(() => closeDatabase())
     .catch(() => {
       console.error("Server shutdown failed");

@@ -36,9 +36,6 @@ export function createS3Storage(
       return { url, headers: { "Content-Type": contentType } };
     },
     async read(key, maxBytes) {
-      if (!Number.isSafeInteger(maxBytes) || maxBytes < 0) {
-        throw new RangeError("maxBytes must be a non-negative safe integer.");
-      }
       const object = await client.send(new GetObjectCommand({ Bucket, Key: key }));
       if (!object.Body) throw new Error("Object has no body.");
       if (object.ContentLength !== undefined && object.ContentLength > maxBytes) {

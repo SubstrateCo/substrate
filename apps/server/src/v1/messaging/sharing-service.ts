@@ -15,18 +15,14 @@ import { createSharingService, readSharingInvitation } from "@startup-os/databas
 
 import { db } from "../../auth/database";
 import { auth } from "../../auth/server";
-import { ServiceError, serviceResult } from "../../shared/service-result";
-import { requireOrigin, workspaceSession } from "../../shared/workspace";
+import { serviceResult } from "../../shared/service-result";
+import { requireOrigin, requireVerified, workspaceSession } from "../../shared/workspace";
 import { publishRefresh } from "../realtime/publisher";
 import { deliverSharingMail } from "./sharing-mail";
 import type { z } from "zod";
 
 async function verified(headers: Headers) {
-  const session = await auth.api.getSession({ headers });
-  if (!session) throw new ServiceError("UNAUTHENTICATED", "Sign in to continue.");
-  if (!session.user.emailVerified)
-    throw new ServiceError("FORBIDDEN", "Verify your email to continue.");
-  return session;
+  return requireVerified(await auth.api.getSession({ headers }));
 }
 async function service(headers: Headers, organizationId: string) {
   const { session } = await workspaceSession(headers, organizationId);
@@ -34,11 +30,11 @@ async function service(headers: Headers, organizationId: string) {
   await auth.api.getActiveMemberRole({ headers, query: { organizationId } });
   return createSharingService(db, { userId: session.user.id, organizationId });
 }
-async function changed(organizationId: string, userId?: string) {
-  await publishRefresh([
-    { audience: realtimeKeys.organization(organizationId), domain: "access" },
+function changed(organizationId: string, userId?: string) {
+  return [
+    { audience: realtimeKeys.organization(organizationId), domain: "access" as const },
     ...(userId ? [{ audience: realtimeKeys.user(userId), domain: "access" as const }] : []),
-  ]);
+  ];
 }
 export function getInvitation(headers: Headers, input: z.output<typeof sharingInvitationInput>) {
   return serviceResult(async () =>
@@ -53,8 +49,7 @@ export function acceptInvitation(headers: Headers, input: z.output<typeof sharin
       userId: session.user.id,
       organizationId: input.organizationId,
     }).accept(input.invitationId, input.shareHistory);
-    await publishRefresh(hints);
-    await changed(input.organizationId, session.user.id);
+    await publishRefresh([...hints, ...changed(input.organizationId, session.user.id)]);
     return result;
   });
 }
@@ -79,9 +74,8 @@ export function invite(headers: Headers, input: z.output<typeof sharingInviteInp
     const created = await (
       await service(headers, input.organizationId)
     ).invite(input.conversationId, input);
-    await deliverSharingMail();
-    await publishRefresh(created.hints);
-    await changed(input.organizationId);
+    void deliverSharingMail();
+    await publishRefresh([...created.hints, ...changed(input.organizationId)]);
     return { id: created.id };
   });
 }
@@ -91,8 +85,7 @@ export function revoke(headers: Headers, input: z.output<typeof sharingActionInp
     const { hints, ...result } = await (
       await service(headers, input.organizationId)
     ).revoke(input.invitationId);
-    await publishRefresh(hints);
-    await changed(input.organizationId);
+    await publishRefresh([...hints, ...changed(input.organizationId)]);
     return result;
   });
 }
@@ -100,9 +93,8 @@ export function resend(headers: Headers, input: z.output<typeof sharingActionInp
   return serviceResult(async () => {
     requireOrigin(headers);
     const result = await (await service(headers, input.organizationId)).resend(input.invitationId);
-    await publishRefresh(result.hints);
-    await deliverSharingMail();
-    await changed(input.organizationId);
+    void deliverSharingMail();
+    await publishRefresh([...result.hints, ...changed(input.organizationId)]);
     return { id: result.id };
   });
 }
@@ -112,8 +104,7 @@ export function disconnect(headers: Headers, input: z.output<typeof sharingDisco
     const { hints, ...result } = await (
       await service(headers, input.organizationId)
     ).disconnect(input.conversationId, input.partnerOrganizationId);
-    await publishRefresh(hints);
-    await changed(input.organizationId);
+    await publishRefresh([...hints, ...changed(input.organizationId)]);
     return result;
   });
 }

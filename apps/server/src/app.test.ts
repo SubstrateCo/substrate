@@ -36,3 +36,29 @@ test("rejects oversized API payloads with a safe, standard error", async () => {
     error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large." },
   });
 });
+
+async function pictureUpload(bytes: number) {
+  const form = new FormData();
+  form.set("file", new File([new Uint8Array(bytes)], "image.png", { type: "image/png" }));
+  const encoded = new Response(form);
+  const body = await encoded.arrayBuffer();
+  return createApp().request("/api/v1/files/pictures/avatar", {
+    method: "POST",
+    headers: {
+      "Content-Type": encoded.headers.get("Content-Type")!,
+      "Content-Length": String(body.byteLength),
+    },
+    body,
+  });
+}
+
+test("picture uploads use their own size limit instead of the API limit", async () => {
+  const allowed = await pictureUpload(2 * 1024 * 1024);
+  expect(allowed.status).not.toBe(413);
+  const oversized = await pictureUpload(6 * 1024 * 1024 + 1);
+  expect(oversized.status).toBe(413);
+  expect(await oversized.json()).toEqual({
+    success: false,
+    error: { code: "PAYLOAD_TOO_LARGE", message: "Use a picture up to 5 MB." },
+  });
+});

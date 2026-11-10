@@ -13,8 +13,8 @@ import * as work from "@startup-os/database/agent-work";
 
 import { db } from "../../auth/database";
 import { auth } from "../../auth/server";
-import { ServiceError, serviceResult } from "../../shared/service-result";
-import { requireOrigin, workspaceSession } from "../../shared/workspace";
+import { serviceResult } from "../../shared/service-result";
+import { requireOrigin, requireVerified, workspaceSession } from "../../shared/workspace";
 import { ownerChanged } from "./hints";
 import type { z } from "zod";
 
@@ -29,11 +29,7 @@ async function device(headers: Headers, input: { organizationId: string; install
 // workspace.
 async function deviceOwner(headers: Headers) {
   requireOrigin(headers);
-  const session = await auth.api.getSession({ headers });
-  if (!session) throw new ServiceError("UNAUTHENTICATED", "Sign in to continue.");
-  if (!session.user.emailVerified)
-    throw new ServiceError("FORBIDDEN", "Verify your email to continue.");
-  return session.user.id;
+  return requireVerified(await auth.api.getSession({ headers })).user.id;
 }
 
 export function registerDevice(headers: Headers, input: z.output<typeof registerDeviceInput>) {

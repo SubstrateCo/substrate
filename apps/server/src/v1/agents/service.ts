@@ -10,8 +10,8 @@ import { agentRefreshHints } from "@startup-os/database/realtime";
 
 import { db } from "../../auth/database";
 import { auth } from "../../auth/server";
-import { ServiceError, serviceResult } from "../../shared/service-result";
-import { requireOrigin } from "../../shared/workspace";
+import { serviceResult } from "../../shared/service-result";
+import { requireOrigin, requireVerified } from "../../shared/workspace";
 import { publishRefresh } from "../realtime/publisher";
 import { z } from "zod";
 
@@ -29,10 +29,7 @@ const installation = z.uuid();
 export function createAgentService(dependencies: Dependencies) {
   async function repositories(headers: Headers, mutation = false) {
     if (mutation) dependencies.requireOrigin(headers);
-    const session = await dependencies.getSession({ headers });
-    if (!session) throw new ServiceError("UNAUTHENTICATED", "Sign in to continue.");
-    if (!session.user.emailVerified)
-      throw new ServiceError("FORBIDDEN", "Verify your email to continue.");
+    const session = requireVerified(await dependencies.getSession({ headers }));
     // The desktop main process adds its installation ID. It names a device of this user only.
     const installationId = installation.safeParse(headers.get(desktopInstallationHeader)).data;
     return {

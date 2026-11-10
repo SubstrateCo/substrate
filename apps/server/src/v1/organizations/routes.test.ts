@@ -5,7 +5,7 @@ import { describe, expect, test } from "bun:test";
 import { Hono } from "hono";
 
 describe("organization routes", () => {
-  test("serves settings access at the public mount without caching", async () => {
+  test("serves settings access at the public mount", async () => {
     const cookies: (string | null)[] = [];
     const access = { organizationId: "organization-1", isOwner: true };
     const app = new Hono().route(
@@ -21,7 +21,6 @@ describe("organization routes", () => {
       headers: { cookie: "session=test" },
     });
     expect(response.status).toBe(200);
-    expect(response.headers.get("cache-control")).toBe("no-store");
     expect(await response.json()).toEqual({ success: true, data: access });
     expect(cookies).toEqual(["session=test"]);
   });
