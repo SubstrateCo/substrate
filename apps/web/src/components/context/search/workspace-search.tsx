@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useState } from "react";
 
@@ -24,10 +24,9 @@ export function WorkspaceSearch({
   const [kind, setKind] = useState<SearchKind>(initialKind);
   const { join } = useConversationManagement(organizationId);
   const search = useSearchDebounce(query, JSON.stringify([organizationId, kind]));
-  const results = useInfiniteQuery({
-    ...searchPagesOptions({ organizationId, query: search.query, kind }),
-    enabled: !search.pending,
-  });
+  const pages = searchPagesOptions({ organizationId, query: search.query, kind });
+  const results = useInfiniteQuery({ ...pages, enabled: !search.pending });
+  const client = useQueryClient();
   return (
     <WorkspaceSearchView
       query={query}
@@ -54,8 +53,22 @@ export function WorkspaceSearch({
       joiningId={join.isPending ? join.variables : undefined}
       onJoin={(conversationId) =>
         join.mutate(conversationId, {
-          // The joined row and the sidebar update together.
-          onSuccess: () => void results.refetch(),
+          // Mark the joined row in place instead of refetching every loaded page.
+          onSuccess: () =>
+            client.setQueryData(
+              pages.queryKey,
+              (data) =>
+                data && {
+                  ...data,
+                  pages: data.pages.map((page) =>
+                    page.map((item) =>
+                      item.conversationId === conversationId && item.membership
+                        ? { ...item, membership: "joined" as const }
+                        : item,
+                    ),
+                  ),
+                },
+            ),
           onError: (error) => toast.error(error.message),
         })
       }
