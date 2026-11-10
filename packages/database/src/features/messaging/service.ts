@@ -38,7 +38,7 @@ import {
   sql,
 } from "drizzle-orm";
 
-export interface CreateConversationInput {
+interface CreateConversationInput {
   kind: "dm" | "group" | "channel";
   name?: string;
   private?: boolean;
@@ -378,6 +378,7 @@ export function createMessagingService(
     if (emails.length > 100) throw new ValidationError("At most 100 recipients are allowed.");
     const normalized = [...new Set(emails.map(normalizeEmail))];
     if (!normalized.length) return { people: [], external: [] };
+    // Recipients are matched only in this organization. Other emails become invitations.
     const matches = await tx
       .select({
         userId: user.id,
@@ -393,30 +394,16 @@ export function createMessagingService(
           eq(user.emailVerified, true),
           eq(member.organizationId, scope.organizationId),
         ),
-      )
-      .orderBy(asc(member.organizationId));
-    const byEmail = new Map<string, typeof matches>();
-    for (const match of matches) {
-      const group = byEmail.get(match.email) ?? [];
-      group.push(match);
-      byEmail.set(match.email, group);
-    }
-    const result = new Map<string, { userId: string; name: string; organizationId: string }>();
-    for (const email of normalized) {
-      const candidates = byEmail.get(email) ?? [];
-      const recipient =
-        candidates.find((candidate) => candidate.organizationId === scope.organizationId) ??
-        candidates[0];
-      if (!recipient) continue;
-      if (recipient.userId !== scope.userId) result.set(recipient.userId, recipient);
-    }
-    // Each person joins through their human actor in the organization that matched.
+      );
+    const matched = new Set(matches.map((match) => match.email));
     const people = [];
-    for (const recipient of result.values()) {
+    for (const { userId, name, organizationId } of matches) {
+      if (userId === scope.userId) continue;
+      const recipient = { userId, name, organizationId };
       const actor = await ensureHumanActor(tx, recipient);
       people.push({ entityId: actor.entityId, type: "human" as const, ...recipient });
     }
-    return { people, external: normalized.filter((email) => !byEmail.has(email)) };
+    return { people, external: normalized.filter((email) => !matched.has(email)) };
   }
 
   // Only the owner can add their agent, and only an enabled agent of this organization.
@@ -529,8 +516,6 @@ export function createMessagingService(
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
         const { actor } = await authenticate(tx);
-        if (!["dm", "group", "channel"].includes(input.kind))
-          throw new ValidationError("Invalid conversation kind.");
         const { people, external } = await recipients(tx, input.emails ?? []);
         if (
           input.kind === "channel" &&

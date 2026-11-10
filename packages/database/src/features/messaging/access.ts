@@ -95,7 +95,7 @@ export function approvedParticipant(db: DatabaseExecutor) {
 // A person's membership is held by their human actor in their own organization. The alias keeps
 // callers' correlated columns, such as an outer actors.user_id, bound to the outer row.
 const participantActor = alias(actors, "participant_actor");
-export function humanParticipant(
+function humanParticipant(
   db: DatabaseExecutor,
   scope: { userId: string | SQLWrapper; organizationId: string | SQLWrapper },
 ) {
