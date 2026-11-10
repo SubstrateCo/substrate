@@ -48,6 +48,11 @@ export interface RuntimeContext {
   log(message: string): void;
   /** Local work changed: tell the renderer, publish status, and run the claim loop. */
   changed(change: AgentWorkChange): void;
+  /**
+   * A live turn progressed in a way that cannot make work claimable, such as a tool start:
+   * tell the renderer and publish status, without the claim loop.
+   */
+  progressed(change: AgentWorkChange): void;
   /** Runs callback once after milliseconds, unless the runtime stopped. Returns a cancel. */
   later(callback: () => void, milliseconds: number): () => void;
 }

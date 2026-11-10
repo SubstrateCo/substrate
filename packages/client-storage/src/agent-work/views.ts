@@ -11,13 +11,13 @@ import type { HelperRow } from "./helpers.ts";
 import type { InboxRow } from "./inbox.ts";
 import type { OutputRow } from "./outputs.ts";
 import type { RoutineRow } from "./routines.ts";
-import type { SessionRow } from "./sessions.ts";
+import type { SessionRow, SessionSummary } from "./sessions.ts";
 import type { TurnRow } from "./turns.ts";
 
 const iso = (value: number) => new Date(value).toISOString();
 const isoOrNull = (value: number | null) => (value === null ? null : iso(value));
 
-export function sessionView(row: SessionRow): AgentSessionView {
+export function sessionView(row: SessionSummary): AgentSessionView {
   return {
     id: row.id,
     userAgentId: row.userAgentId,
@@ -69,7 +69,7 @@ function outputView(row: OutputRow): TurnOutputView {
 
 export function turnView(
   row: TurnRow,
-  context: { session: SessionRow; items: InboxRow[]; outputs: OutputRow[] },
+  context: { session: Pick<SessionRow, "kind">; items: InboxRow[]; outputs: OutputRow[] },
 ): AgentTurnView {
   return {
     id: row.id,

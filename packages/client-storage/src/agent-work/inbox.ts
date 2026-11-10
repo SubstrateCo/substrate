@@ -8,6 +8,7 @@ import type {
 
 import type { LocalTransaction, RunTransaction } from "../database.ts";
 import { inbox, sessions, turns } from "../schema/index.ts";
+import { appendEvents, type NewTurnEvent } from "./events.ts";
 import { settleUncertainTurn } from "./uncertain.ts";
 import { and, eq, inArray, isNull, lte, sql } from "drizzle-orm";
 
@@ -224,9 +225,9 @@ export function inboxRepository(run: RunTransaction) {
       }),
     /**
      * The harness reported that it read the item. Evidence that arrives after the turn settled
-     * the item as uncertain still applies.
+     * the item as uncertain still applies. The turn's events for it land in the same transaction.
      */
-    consumed: (turnId: string, inputId: string, now: number) =>
+    consumed: (turnId: string, inputId: string, now: number, events: NewTurnEvent[] = []) =>
       run(async (tx) => {
         await tx
           .update(inbox)
@@ -239,6 +240,7 @@ export function inboxRepository(run: RunTransaction) {
             ),
           );
         await settleUncertainTurn(tx, turnId, now);
+        await appendEvents(tx, turnId, events, now);
       }),
     /** The owner sends an uncertain item again. It waits for the next turn of its session. */
     resend: (id: string, now: number) =>

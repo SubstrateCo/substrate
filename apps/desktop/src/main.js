@@ -37,17 +37,14 @@ const errorPageURL = new URL(
 const errorPage = fileURLToPath(errorPageURL);
 app.setName("Startup OS");
 // Keep the lock identity stable for package, source-file, and smoke-test launches.
-const testID = app.commandLine.hasSwitch("desktop-smoke-test")
-  ? process.env.STARTUP_OS_TEST_ID
-  : undefined;
+const smokeTest = app.commandLine.hasSwitch("desktop-smoke-test");
+const testID = smokeTest ? process.env.STARTUP_OS_TEST_ID : undefined;
 if (testID && !/^[a-zA-Z0-9-]+$/.test(testID)) throw new Error("Invalid desktop test ID.");
 app.setPath(
   "userData",
   join(app.getPath("appData"), "Startup OS", ...(testID ? ["tests", testID] : [])),
 );
-const sessionPartition = app.commandLine.hasSwitch("desktop-smoke-test")
-  ? "startup-os-smoke-test"
-  : "persist:startup-os";
+const sessionPartition = smokeTest ? "startup-os-smoke-test" : "persist:startup-os";
 const publicConfig = app.isPackaged
   ? JSON.parse(readFileSync(new URL("./desktop-config.json", import.meta.url), "utf8"))
   : {};
@@ -67,26 +64,24 @@ let realtime;
 let agentWork;
 /** @type {Tray | undefined} */
 let tray;
-const smokeTest = app.commandLine.hasSwitch("desktop-smoke-test");
 // Closing the window hides it so agents keep running. Quit from the tray or the app menu.
 let quitting = false;
 // A login launch starts in the tray.
 const loginArguments = ["--hidden"];
 const startHidden = process.argv.includes("--hidden");
+function stopSession() {
+  agentWork?.stop();
+  harness?.disconnect();
+  realtime?.disconnect();
+}
 const { authClient, handleAuthLink } = createDesktopAuthClient(
   backend,
   process.env.STARTUP_OS_WEB_URL ?? publicConfig.webURL ?? applicationURL,
-  app.commandLine.hasSwitch("desktop-smoke-test"),
+  smokeTest,
   () => mainWindow,
+  stopSession,
   () => {
-    agentWork?.stop();
-    harness?.disconnect();
-    realtime?.disconnect();
-  },
-  () => {
-    agentWork?.stop();
-    harness?.disconnect();
-    realtime?.disconnect();
+    stopSession();
     if (!smokeTest) agentWork?.start();
     const contents = mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : undefined;
     if (contents && !contents.isDestroyed() && target(contents.getURL()) === "internal")
@@ -239,7 +234,7 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   // One dispatcher owns workspace links and auth callbacks. Better Auth owns PKCE and exchange.
   authClient.setupMain({ getWindow: () => mainWindow, scheme: false, bridges: true, csp: false });
-  if (!app.commandLine.hasSwitch("desktop-smoke-test")) {
+  if (!smokeTest) {
     if (process.defaultApp)
       app.setAsDefaultProtocolClient(desktopScheme, process.execPath, [
         fileURLToPath(import.meta.url),
@@ -262,6 +257,7 @@ if (!app.requestSingleInstanceLock()) {
     .then(() => {
       const desktopSession = session.fromPartition(sessionPartition);
       const installation = installationId(app.getPath("userData"));
+      const accountsDirectory = join(app.getPath("userData"), "accounts");
       realtime = createRealtimeController({
         backend,
         getCookie: () => authClient.getCookie(),
@@ -292,7 +288,7 @@ if (!app.requestSingleInstanceLock()) {
       });
       harness = createHarnessController({
         backend,
-        accountsDirectory: join(app.getPath("userData"), "accounts"),
+        accountsDirectory,
         // Main records what each server tool call published for the turn that made it.
         fetchAPI: observeMcpCalls(fetchAPI, (request, result) =>
           agentWork?.observeToolCall(request, result),
@@ -324,7 +320,7 @@ if (!app.requestSingleInstanceLock()) {
           closeOrganization: (organizationId) => controller.closeOrganization(organizationId),
           readProfile: (agentId) => controller.readProfile(agentId),
         },
-        accountsDirectory: join(app.getPath("userData"), "accounts"),
+        accountsDirectory,
         migrationsDirectory: app.isPackaged
           ? fileURLToPath(new URL("./client-storage-migrations/", import.meta.url))
           : undefined,

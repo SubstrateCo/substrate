@@ -1,32 +1,44 @@
 import type { AgentWorkRuntime } from "../runtime/runtime.ts";
-import type { AgentWorkMethod } from "./agent-work-api.ts";
 /* oxlint-disable deslop/no-unknown-parameters, deslop/no-unknown-returns -- IPC values are parsed per method here; results are structured-clone values for the renderer. */
 import { z } from "zod";
 
 const id = z.uuid();
 const none = z.undefined();
 
+/** One bridge method: main parses the IPC value with input before the runtime sees it. */
+function parsed<Input extends z.ZodType>(
+  input: Input,
+  run: (runtime: AgentWorkRuntime, value: z.output<Input>) => unknown,
+) {
+  return (runtime: AgentWorkRuntime, value: unknown) => run(runtime, input.parse(value));
+}
+
 /** Every bridge method and its input. Routine inputs are parsed again by their contracts. */
 const agentWorkMethods = {
-  conversation: id,
-  turn: id,
-  turnEvents: z.tuple([id, z.number().int().min(0).optional()]),
-  agents: none,
-  agentActivity: z.tuple([id, z.string().max(40).optional()]),
-  sendNow: id,
-  resendItem: id,
-  discardItem: id,
-  stop: id,
-  retry: id,
-  dismiss: id,
-  startFresh: id,
-  newTopic: id,
-  "routines.list": id,
-  "routines.create": z.unknown(),
-  "routines.update": z.unknown(),
-  "routines.approve": z.unknown(),
-  "routines.delete": id,
-} satisfies Record<AgentWorkMethod, z.ZodType>;
+  conversation: parsed(id, (runtime, value) => runtime.conversation(value)),
+  turn: parsed(id, (runtime, value) => runtime.turn(value)),
+  turnEvents: parsed(z.tuple([id, z.number().int().min(0).optional()]), (runtime, value) =>
+    runtime.turnEvents(...value),
+  ),
+  agents: parsed(none, (runtime) => runtime.agents()),
+  agentActivity: parsed(z.tuple([id, z.string().max(40).optional()]), (runtime, value) =>
+    runtime.agentActivity(...value),
+  ),
+  sendNow: parsed(id, (runtime, value) => runtime.sendNow(value)),
+  resendItem: parsed(id, (runtime, value) => runtime.resendItem(value)),
+  discardItem: parsed(id, (runtime, value) => runtime.discardItem(value)),
+  stop: parsed(id, (runtime, value) => runtime.stop(value)),
+  retry: parsed(id, (runtime, value) => runtime.retry(value)),
+  dismiss: parsed(id, (runtime, value) => runtime.dismiss(value)),
+  startFresh: parsed(id, (runtime, value) => runtime.startFresh(value)),
+  newTopic: parsed(id, (runtime, value) => runtime.newTopic(value)),
+  "routines.list": parsed(id, (runtime, value) => runtime.routines.list(value)),
+  "routines.create": parsed(z.unknown(), (runtime, value) => runtime.routines.create(value)),
+  "routines.update": parsed(z.unknown(), (runtime, value) => runtime.routines.update(value)),
+  "routines.approve": parsed(z.unknown(), (runtime, value) => runtime.routines.approve(value)),
+  "routines.delete": parsed(id, (runtime, value) => runtime.routines.delete(value)),
+};
+export type AgentWorkMethod = keyof typeof agentWorkMethods;
 
 const methodSchema = z.enum(
   // SAFETY: the keys come from the nonempty method table above.
@@ -39,48 +51,5 @@ export async function dispatchAgentWork(
   method: unknown,
   value?: unknown,
 ): Promise<unknown> {
-  const name = methodSchema.parse(method);
-  switch (name) {
-    case "conversation":
-      return runtime.conversation(agentWorkMethods.conversation.parse(value));
-    case "turn":
-      return runtime.turn(agentWorkMethods.turn.parse(value));
-    case "turnEvents": {
-      const [turnId, after] = agentWorkMethods.turnEvents.parse(value);
-      return runtime.turnEvents(turnId, after);
-    }
-    case "agents":
-      agentWorkMethods.agents.parse(value);
-      return runtime.agents();
-    case "agentActivity": {
-      const [agentId, cursor] = agentWorkMethods.agentActivity.parse(value);
-      return runtime.agentActivity(agentId, cursor);
-    }
-    case "sendNow":
-      return runtime.sendNow(agentWorkMethods.sendNow.parse(value));
-    case "resendItem":
-      return runtime.resendItem(agentWorkMethods.resendItem.parse(value));
-    case "discardItem":
-      return runtime.discardItem(agentWorkMethods.discardItem.parse(value));
-    case "stop":
-      return runtime.stop(agentWorkMethods.stop.parse(value));
-    case "retry":
-      return runtime.retry(agentWorkMethods.retry.parse(value));
-    case "dismiss":
-      return runtime.dismiss(agentWorkMethods.dismiss.parse(value));
-    case "startFresh":
-      return runtime.startFresh(agentWorkMethods.startFresh.parse(value));
-    case "newTopic":
-      return runtime.newTopic(agentWorkMethods.newTopic.parse(value));
-    case "routines.list":
-      return runtime.routines.list(agentWorkMethods["routines.list"].parse(value));
-    case "routines.create":
-      return runtime.routines.create(value);
-    case "routines.update":
-      return runtime.routines.update(value);
-    case "routines.approve":
-      return runtime.routines.approve(value);
-    case "routines.delete":
-      return runtime.routines.delete(agentWorkMethods["routines.delete"].parse(value));
-  }
+  return agentWorkMethods[methodSchema.parse(method)](runtime, value);
 }

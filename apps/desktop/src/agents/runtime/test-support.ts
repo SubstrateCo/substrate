@@ -495,7 +495,6 @@ export async function runtimeFixture(
       answers.push(delivery);
     },
     turns: () => commands.filter((command) => command.type === "turn"),
-    turnCommand,
     /** Emits a harness event for a turn this runtime started. */
     async emit(turnId: string, body: HarnessEventBody) {
       const turn = turnCommand(turnId);

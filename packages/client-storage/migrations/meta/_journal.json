@@ -22,6 +22,13 @@
       "when": 1794273263151,
       "tag": "0002_drop_configuration_state",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1794282032080,
+      "tag": "0003_status_indexes",
+      "breakpoints": true
     }
   ]
 }

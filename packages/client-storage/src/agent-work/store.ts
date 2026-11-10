@@ -20,7 +20,7 @@ function viewRepository(run: RunTransaction) {
         const ids = rows.map((row) => row.id);
         const [sessionRows, itemRows, outputRows] = await Promise.all([
           tx
-            .select()
+            .select({ id: sessions.id, kind: sessions.kind })
             .from(sessions)
             .where(inArray(sessions.id, [...new Set(rows.map((row) => row.sessionId))]))
             .all(),

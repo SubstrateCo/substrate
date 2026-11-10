@@ -30,7 +30,10 @@ function contextAction(
 }
 
 export function createEpochs(context: RuntimeContext) {
-  async function rotate(session: SessionRow, reason: EpochRotationReason) {
+  async function rotate(
+    session: Pick<SessionRow, "id" | "userAgentId">,
+    reason: EpochRotationReason,
+  ) {
     await context.store.epochs.requestRotation(
       session.id,
       reason,
@@ -41,7 +44,6 @@ export function createEpochs(context: RuntimeContext) {
   }
 
   return {
-    rotate,
     /** After a finished turn: compact natively where the harness can, else rotate. */
     async afterTurn(sessionId: string, usage: Usage | null, capabilities: AdapterCapabilities) {
       const session = await context.store.sessions.get(sessionId);

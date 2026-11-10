@@ -3,9 +3,13 @@ import type { HarnessKind, TurnPlace } from "@startup-os/contracts/harness";
 
 import type { LocalTransaction, RunTransaction } from "../database.ts";
 import { sessions } from "../schema/index.ts";
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, eq, getTableColumns, inArray, isNotNull, isNull, ne, or } from "drizzle-orm";
 
 export type SessionRow = typeof sessions.$inferSelect;
+
+/** A session without its managed prefix, which is large and only the turn start needs. */
+export type SessionSummary = Omit<SessionRow, "prefix">;
+const { prefix: _prefix, ...summaryColumns } = getTableColumns(sessions);
 
 export interface EnsureSessionInput {
   organizationId: string;
@@ -94,10 +98,10 @@ export function sessionRepository(run: RunTransaction) {
       run(async (tx) =>
         ids.length ? tx.select().from(sessions).where(inArray(sessions.id, ids)).all() : [],
       ),
-    forAgent: (organizationId: string, userAgentId: string) =>
+    forAgent: (organizationId: string, userAgentId: string): Promise<SessionSummary[]> =>
       run((tx) =>
         tx
-          .select()
+          .select(summaryColumns)
           .from(sessions)
           .where(
             and(eq(sessions.organizationId, organizationId), eq(sessions.userAgentId, userAgentId)),
@@ -116,10 +120,10 @@ export function sessionRepository(run: RunTransaction) {
         ).map((row) => row.userAgentId),
       ),
     /** Sessions that started in or publish to the conversation. */
-    forConversation: (organizationId: string, conversationId: string) =>
+    forConversation: (organizationId: string, conversationId: string): Promise<SessionSummary[]> =>
       run((tx) =>
         tx
-          .select()
+          .select(summaryColumns)
           .from(sessions)
           .where(
             and(
@@ -153,16 +157,20 @@ export function sessionRepository(run: RunTransaction) {
       ),
     /** Sessions of the organization whose epoch prefix was built with another policy version. */
     outdatedPolicy: (policyVersion: number, organizationId: string) =>
-      run(async (tx) =>
-        (
-          await tx.select().from(sessions).where(eq(sessions.organizationId, organizationId)).all()
-        ).filter(
-          (session) =>
-            session.policyVersion !== null &&
-            session.policyVersion !== policyVersion &&
-            session.rotation === null &&
-            session.status !== "closed",
-        ),
+      run((tx) =>
+        tx
+          .select({ id: sessions.id, userAgentId: sessions.userAgentId })
+          .from(sessions)
+          .where(
+            and(
+              eq(sessions.organizationId, organizationId),
+              isNotNull(sessions.policyVersion),
+              ne(sessions.policyVersion, policyVersion),
+              isNull(sessions.rotation),
+              ne(sessions.status, "closed"),
+            ),
+          )
+          .all(),
       ),
   };
 }

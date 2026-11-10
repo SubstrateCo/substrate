@@ -100,7 +100,7 @@ function folderOf(session: SessionRow): HarnessFolder {
   return session.kind === "helper" ? { helperId: session.key.slice("helper:".length) } : "main";
 }
 
-export type InterruptResult = "sent" | "gone" | "failed";
+type InterruptResult = "sent" | "gone" | "failed";
 
 /**
  * Runs assigned turns against the harness host and records every canonical event in the local
@@ -206,7 +206,7 @@ export function createTurnExecutor(
   }
 
   async function resumeNote(turnId: string, previousAttempt: number): Promise<EnvelopeResumeNote> {
-    const events = await context.store.events.list(turnId, 0, 10_000);
+    const events = await context.store.events.ofKinds(turnId, ["tool_started", "tool_completed"]);
     const titles = new Map<string, string>();
     const completed: string[] = [];
     for (const event of events) {
@@ -538,8 +538,7 @@ export function createTurnExecutor(
     const append = context.store.events.append.bind(null, state.turnId);
     switch (event.type) {
       case "turn.started":
-        await context.store.turns.running(state.turnId, now);
-        await append([{ kind: "turn_started", data: {} }], now);
+        await context.store.turns.running(state.turnId, now, [{ kind: "turn_started", data: {} }]);
         return;
       case "text":
         if (event.text) await append([{ kind: "text", data: { text: event.text } }], now);
@@ -556,7 +555,7 @@ export function createTurnExecutor(
           ],
           now,
         );
-        context.changed({ userAgentId: state.userAgentId, turnId: state.turnId });
+        context.progressed({ userAgentId: state.userAgentId, turnId: state.turnId });
         return;
       case "item.completed":
         await append(
@@ -568,8 +567,9 @@ export function createTurnExecutor(
         await deps.requests.opened(state, event);
         return;
       case "input.consumed":
-        await context.store.inbox.consumed(state.turnId, event.inputId, now);
-        await append([{ kind: "input_consumed", data: { inputId: event.inputId } }], now);
+        await context.store.inbox.consumed(state.turnId, event.inputId, now, [
+          { kind: "input_consumed", data: { inputId: event.inputId } },
+        ]);
         context.changed({ userAgentId: state.userAgentId, turnId: state.turnId });
         return;
       case "usage.updated":
@@ -603,7 +603,7 @@ export function createTurnExecutor(
       [{ kind: "note", data: { text: event.text } }],
       context.now(),
     );
-    context.changed({ userAgentId: latest.userAgentId, turnId: latest.id });
+    context.progressed({ userAgentId: latest.userAgentId, turnId: latest.id });
   }
 
   let outside = Promise.resolve();

@@ -11,7 +11,7 @@ import type { Usage } from "@startup-os/contracts/harness";
 
 import type { LocalTransaction, RunTransaction } from "../database.ts";
 import { inbox, sessions, turnEvents, turns, type TurnInterruption } from "../schema/index.ts";
-import { appendEvents } from "./events.ts";
+import { appendEvents, type NewTurnEvent } from "./events.ts";
 import { claimableStatuses, insertItem, setItemStatus, type InboxRow } from "./inbox.ts";
 import { folderKey, rotateEpoch, sessionById, type SessionRow } from "./sessions.ts";
 import { settleUncertainTurn } from "./uncertain.ts";
@@ -135,9 +135,10 @@ async function claimTurns(
   }
   const ranked = [...groups.values()].map((group) => {
     group.items.sort(itemOrder);
-    const best = [...group.items].sort(
-      (a, b) => effectiveLane(a, now) - effectiveLane(b, now) || itemOrder(a, b),
-    )[0]!;
+    // The first of equal items wins, as the items are in claim order.
+    const best = group.items.reduce((a, b) =>
+      (effectiveLane(a, now) - effectiveLane(b, now) || itemOrder(a, b)) <= 0 ? a : b,
+    );
     return {
       ...group,
       best,
@@ -529,20 +530,24 @@ export function turnRepository(run: RunTransaction) {
       id: string,
       input: { envelope: string; prefixHash: string; sourceMessages: TurnSourceMessage[] },
     ) => run((tx) => tx.update(turns).set(input).where(eq(turns.id, id))),
-    running: (id: string, now: number) =>
-      run((tx) =>
-        tx
+    /** The turn runs. The events for it land in the same transaction. */
+    running: (id: string, now: number, events: NewTurnEvent[] = []) =>
+      run(async (tx) => {
+        await tx
           .update(turns)
           .set({ status: "running", startedAt: now })
-          .where(and(eq(turns.id, id), inArray(turns.status, ["assigned", "waiting"]))),
-      ),
-    waiting: (id: string) =>
-      run((tx) =>
-        tx
+          .where(and(eq(turns.id, id), inArray(turns.status, ["assigned", "waiting"])));
+        await appendEvents(tx, id, events, now);
+      }),
+    /** The turn waits for the owner. The events for it land in the same transaction. */
+    waiting: (id: string, now: number, events: NewTurnEvent[] = []) =>
+      run(async (tx) => {
+        await tx
           .update(turns)
           .set({ status: "waiting" })
-          .where(and(eq(turns.id, id), eq(turns.status, "running"))),
-      ),
+          .where(and(eq(turns.id, id), eq(turns.status, "running")));
+        await appendEvents(tx, id, events, now);
+      }),
     /** The owner or the runtime asked the live turn to end. */
     stopping: (id: string, interruption: TurnInterruption) =>
       run(async (tx) => {

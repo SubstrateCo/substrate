@@ -7,10 +7,11 @@ import {
   type TurnInterruption,
 } from "@startup-os/client-storage/agent-work";
 import type { AgentTurnView } from "@startup-os/contracts/agent-work";
-import type {
-  AgentActivityPage,
-  AgentConversationWork,
-  AgentWorkChange,
+import {
+  turnEventsPageSize,
+  type AgentActivityPage,
+  type AgentConversationWork,
+  type AgentWorkChange,
 } from "@startup-os/contracts/agent-work/desktop";
 import type { HarnessEvent } from "@startup-os/contracts/harness";
 
@@ -50,7 +51,7 @@ export interface RuntimeTimers {
  * free slots; harness events are written to the local store first.
  */
 export function createAgentWorkRuntime(
-  base: Omit<RuntimeContext, "changed" | "later">,
+  base: Omit<RuntimeContext, "changed" | "progressed" | "later">,
   options: RuntimeTimers & {
     notify(change: AgentWorkChange): void;
     device: { name: string; platform: string };
@@ -75,6 +76,11 @@ export function createAgentWorkRuntime(
       options.notify(change);
       status.schedule();
       pump();
+    },
+    progressed(change) {
+      if (stopped) return;
+      options.notify(change);
+      status.schedule();
     },
     later(callback, milliseconds) {
       const clear = options.later(() => {
@@ -296,26 +302,21 @@ export function createAgentWorkRuntime(
       if (!turn || turn.organizationId !== context.organizationId) return;
       for (const output of found.outputs) {
         const createdAt = new Date(context.now()).toISOString();
-        await context.store.outputs.record(turn.id, output, context.now());
-        await context.store.events.append(
-          turn.id,
-          [
-            {
-              kind: "output",
-              data:
-                output.kind === "message"
-                  ? {
-                      kind: "message",
-                      id: output.id,
-                      conversationId: output.conversationId,
-                      threadId: output.threadId,
-                      createdAt,
-                    }
-                  : { kind: output.kind, id: output.id, createdAt },
-            },
-          ],
-          context.now(),
-        );
+        await context.store.outputs.record(turn.id, output, context.now(), [
+          {
+            kind: "output",
+            data:
+              output.kind === "message"
+                ? {
+                    kind: "message",
+                    id: output.id,
+                    conversationId: output.conversationId,
+                    threadId: output.threadId,
+                    createdAt,
+                  }
+                : { kind: output.kind, id: output.id, createdAt },
+          },
+        ]);
       }
       context.changed({ userAgentId: turn.userAgentId, turnId: turn.id });
     },
@@ -344,7 +345,7 @@ export function createAgentWorkRuntime(
     },
     async turnEvents(turnId: string, after?: number) {
       await ownedTurn(turnId);
-      return context.store.events.list(turnId, after ?? 0);
+      return context.store.events.list(turnId, after ?? 0, turnEventsPageSize);
     },
     agents: () => status.summaries(),
     async agentActivity(agentId: string, cursor?: string): Promise<AgentActivityPage> {

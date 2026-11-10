@@ -26,11 +26,13 @@ export function nextOccurrence(cron: string, timezone: string, after: number): n
  */
 export function dueOccurrence(cron: string, timezone: string, due: number, now: number) {
   const job = pattern(cron, timezone);
-  let occurrence = due;
-  for (let step = 0; step < 100_000; step++) {
-    const next = job.nextRun(new Date(occurrence))?.getTime();
-    if (next === undefined || next > now) break;
-    occurrence = next;
-  }
-  return { occurrence, nextFireAt: job.nextRun(new Date(now))?.getTime() ?? null };
+  // previousRuns drops milliseconds and excludes its reference, so the next second includes now.
+  const latest = job
+    .previousRuns(1, new Date(now + 1000))
+    .at(0)
+    ?.getTime();
+  return {
+    occurrence: Math.max(due, latest ?? due),
+    nextFireAt: job.nextRun(new Date(now))?.getTime() ?? null,
+  };
 }

@@ -1,7 +1,7 @@
 import type { AgentSessionKind, AgentSessionStatus } from "@startup-os/contracts/agent-work";
 import type { HarnessKind } from "@startup-os/contracts/harness";
 
-import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 /** Why a session's epoch is rotating. */
 export type EpochRotationReason = "new_topic" | "usage" | "turns" | "policy" | "start_fresh";
@@ -35,5 +35,10 @@ export const sessions = sqliteTable(
     createdAt: integer("created_at").notNull(),
     updatedAt: integer("updated_at").notNull(),
   },
-  (table) => [uniqueIndex("sessions_agent_key").on(table.userAgentId, table.key)],
+  (table) => [
+    uniqueIndex("sessions_agent_key").on(table.userAgentId, table.key),
+    index("sessions_organization_agent").on(table.organizationId, table.userAgentId),
+    index("sessions_origin_conversation").on(table.originConversationId),
+    index("sessions_destination_conversation").on(table.destinationConversationId),
+  ],
 );

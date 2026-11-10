@@ -187,20 +187,15 @@ export function createRequestBridge(context: RuntimeContext) {
         return;
       }
       request.serverId = opened.id;
-      await context.store.events.append(
-        live.turnId,
-        [
-          {
-            kind: "request",
-            data: {
-              requestId: opened.id,
-              kind: event.kind === "permission" ? "permission" : "question",
-            },
+      await context.store.turns.waiting(live.turnId, context.now(), [
+        {
+          kind: "request",
+          data: {
+            requestId: opened.id,
+            kind: event.kind === "permission" ? "permission" : "question",
           },
-        ],
-        context.now(),
-      );
-      await context.store.turns.waiting(live.turnId);
+        },
+      ]);
       context.changed({ userAgentId: live.userAgentId, turnId: live.turnId });
     },
     /** Delivers answers the owner gave on any device. Answers for gone callbacks are orphaned. */
@@ -240,7 +235,7 @@ export function createRequestBridge(context: RuntimeContext) {
      */
     async closeOrphans(turnIds: string[]) {
       for (const turnId of turnIds) {
-        const events = await context.store.events.list(turnId, 0, 10_000);
+        const events = await context.store.events.ofKinds(turnId, ["request", "request_resolved"]);
         const resolved = new Set(
           events.flatMap((event) =>
             event.kind === "request_resolved" ? [event.data.requestId] : [],

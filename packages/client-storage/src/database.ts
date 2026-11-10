@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import type { RemoteCallback, SqliteRemoteDatabase } from "drizzle-orm/sqlite-proxy";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
 import { migrate } from "drizzle-orm/sqlite-proxy/migrator";
+import type { StatementSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 
 /** A transaction on the local database. Every store operation runs in one. */
@@ -35,14 +36,24 @@ export async function openLocalDatabase(
     };
   } else {
     const database = new (await import("node:sqlite")).DatabaseSync(path);
-    close = () => database.close();
+    // Statements are prepared once per SQL text. Closing the database finalizes them.
+    const statements = new Map<string, StatementSync>();
+    close = () => {
+      statements.clear();
+      database.close();
+    };
     execute = async (query, params, method) => {
-      const statement = database.prepare(query);
+      let statement = statements.get(query);
+      if (!statement) {
+        statement = database.prepare(query);
+        // Arrays change only what get and all return; run is not affected.
+        statement.setReturnArrays(true);
+        statements.set(query, statement);
+      }
       if (method === "run") {
         statement.run(...params);
         return { rows: [] };
       }
-      statement.setReturnArrays(true);
       // SAFETY: Node's types still describe object rows after setReturnArrays(true).
       return {
         rows: (method === "get" ? statement.get(...params) : statement.all(...params)) as unknown[],
@@ -52,6 +63,8 @@ export async function openLocalDatabase(
   const database = drizzle(execute);
   try {
     await database.run(sql`PRAGMA journal_mode = WAL`);
+    // With WAL, NORMAL stays consistent after a crash; a power failure can lose the last commits.
+    await database.run(sql`PRAGMA synchronous = NORMAL`);
     await migrate(
       database,
       async (queries) => {

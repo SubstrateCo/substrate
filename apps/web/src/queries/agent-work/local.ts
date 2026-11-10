@@ -1,3 +1,6 @@
+import type { TurnEventView } from "@startup-os/contracts/agent-work";
+import { turnEventsPageSize } from "@startup-os/contracts/agent-work/desktop";
+
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
@@ -34,10 +37,30 @@ export const turnOptions = (userId: string, organizationId: string, turnId: stri
     retry: false,
   });
 
+/**
+ * Every event of a turn, oldest first. The bridge returns one page per call, and a turn's events
+ * are only appended, so a refetch reads the pages after the cached events.
+ */
+export async function loadTurnEvents(
+  read: (after: number) => Promise<TurnEventView[]>,
+  cached: TurnEventView[] = [],
+) {
+  const events = [...cached];
+  for (;;) {
+    const page = await read(events.at(-1)?.seq ?? 0);
+    events.push(...page);
+    if (page.length < turnEventsPageSize) return events;
+  }
+}
+
 export const turnEventsOptions = (userId: string, organizationId: string, turnId: string) =>
   queryOptions({
     queryKey: queryKeys.agentWorkTurnEvents(userId, organizationId, turnId),
-    queryFn: () => agentWorkBridge().turnEvents(turnId),
+    queryFn: ({ client, queryKey }) =>
+      loadTurnEvents(
+        (after) => agentWorkBridge().turnEvents(turnId, after),
+        client.getQueryData<TurnEventView[]>(queryKey),
+      ),
     enabled: hasAgentWorkBridge() && !!userId,
     retry: false,
   });

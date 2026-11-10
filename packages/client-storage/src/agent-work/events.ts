@@ -2,7 +2,7 @@ import type { TurnEventData, TurnEventKind, TurnEventView } from "@startup-os/co
 
 import type { LocalTransaction, RunTransaction } from "../database.ts";
 import { turnEvents, turns } from "../schema/index.ts";
-import { and, asc, eq, gt } from "drizzle-orm";
+import { and, asc, eq, gt, inArray } from "drizzle-orm";
 
 export type NewTurnEvent = {
   [K in TurnEventKind]: { kind: K; data: TurnEventData[K]; itemId?: string | null };
@@ -86,6 +86,21 @@ export function eventRepository(run: RunTransaction) {
             .limit(limit)
             .all()
         ).map(eventView),
+      ),
+    /** Every event of the turn with one of these kinds, oldest first. */
+    ofKinds: <K extends TurnEventKind>(turnId: string, kinds: K[]) =>
+      run(async (tx) =>
+        (
+          await tx
+            .select()
+            .from(turnEvents)
+            .where(and(eq(turnEvents.turnId, turnId), inArray(turnEvents.kind, kinds)))
+            .orderBy(asc(turnEvents.seq))
+            .all()
+        ).map(
+          // SAFETY: the query returns only rows of the requested kinds.
+          (row) => eventView(row) as Extract<TurnEventView, { kind: K }>,
+        ),
       ),
   };
 }

@@ -95,5 +95,8 @@ export const outputs = sqliteTable(
     requestKind: text("request_kind").$type<"question" | "proposal">(),
     createdAt: integer("created_at").notNull(),
   },
-  (table) => [primaryKey({ columns: [table.turnId, table.targetKind, table.targetId] })],
+  (table) => [
+    primaryKey({ columns: [table.turnId, table.targetKind, table.targetId] }),
+    index("outputs_target_kind").on(table.targetKind),
+  ],
 );

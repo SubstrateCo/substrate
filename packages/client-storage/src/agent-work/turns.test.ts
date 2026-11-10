@@ -268,3 +268,72 @@ test("a claim takes only the active organization's work", async () => {
   const claimed = await store.turns.claim(1, { organizationId: "org-1" });
   expect(claimed.map((entry) => entry.session.id)).toEqual([mine.id]);
 });
+
+test("a turn's status change and its events land in one transaction", async () => {
+  const { store } = fixture;
+  const session = await createSession(store);
+  const [input] = await store.inbox.intake([item(session)], 0);
+  const [claimed] = await store.turns.claim(1, { organizationId: "org-1" });
+  const turnId = claimed!.turn.id;
+
+  await store.turns.running(turnId, 2, [{ kind: "turn_started", data: {} }]);
+  await store.inbox.consumed(turnId, input!.id, 3, [
+    { kind: "input_consumed", data: { inputId: input!.id } },
+  ]);
+  await store.turns.waiting(turnId, 4, [
+    { kind: "request", data: { requestId: "request-1", kind: "question" } },
+  ]);
+  expect((await store.turns.get(turnId))!.status).toBe("waiting");
+  expect((await store.inbox.get(input!.id))!.status).toBe("consumed");
+  expect((await store.events.list(turnId)).map((event) => [event.seq, event.kind])).toEqual([
+    [1, "turn_started"],
+    [2, "input_consumed"],
+    [3, "request"],
+  ]);
+});
+
+test("an output whose event cannot be appended is not recorded", async () => {
+  const { store } = fixture;
+  const output = { kind: "task", id: "task-1" } as const;
+  const event = {
+    kind: "output",
+    data: { kind: "task", id: "task-1", createdAt: "2026-01-01T00:00:00.000Z" },
+  } as const;
+  // oxlint-disable-next-line typescript/await-thenable -- Bun rejection assertions are asynchronous despite their assertion return declarations.
+  await expect(store.outputs.record("no-such-turn", output, 1, [event])).rejects.toThrow(
+    "Turn not found.",
+  );
+  expect(await store.outputs.forTurn("no-such-turn")).toEqual([]);
+
+  const session = await createSession(store);
+  await store.inbox.intake([item(session)], 0);
+  const [claimed] = await store.turns.claim(1, { organizationId: "org-1" });
+  await store.outputs.record(claimed!.turn.id, output, 2, [event]);
+  expect((await store.outputs.forTurn(claimed!.turn.id)).map((row) => row.targetId)).toEqual([
+    "task-1",
+  ]);
+  expect((await store.events.list(claimed!.turn.id)).map((row) => row.kind)).toEqual(["output"]);
+});
+
+test("events are read by kind, oldest first", async () => {
+  const { store } = fixture;
+  const session = await createSession(store);
+  await store.inbox.intake([item(session)], 0);
+  const [claimed] = await store.turns.claim(1, { organizationId: "org-1" });
+  const turnId = claimed!.turn.id;
+  await store.events.append(
+    turnId,
+    [
+      { kind: "text", data: { text: "a" } },
+      { kind: "request", data: { requestId: "request-1", kind: "question" } },
+      { kind: "note", data: { text: "b" } },
+      { kind: "request_resolved", data: { requestId: "request-1" } },
+    ],
+    2,
+  );
+  const events = await store.events.ofKinds(turnId, ["request", "request_resolved"]);
+  expect(events.map((event) => [event.seq, event.kind])).toEqual([
+    [2, "request"],
+    [4, "request_resolved"],
+  ]);
+});

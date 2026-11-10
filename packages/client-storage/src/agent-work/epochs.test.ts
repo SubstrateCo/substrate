@@ -63,6 +63,25 @@ test("outdated policy sessions are listed for one organization only", async () =
   expect((await store.sessions.outdatedPolicy(2, "org-1")).map((row) => row.id)).toEqual([own.id]);
 });
 
+test("only open sessions with another policy version that do not rotate yet are outdated", async () => {
+  const { store } = fixture;
+  const current = await createSession(store);
+  const outdated = await createSession(store);
+  const rotating = await createSession(store);
+  // A session that never opened has no prefix to replace.
+  await createSession(store);
+  for (const session of [current, outdated, rotating])
+    await store.sessions.opened(
+      session.id,
+      { nativeSessionId: "n", prefix: "p", policyVersion: session === current ? 2 : 1 },
+      1,
+    );
+  await store.epochs.requestRotation(rotating.id, "policy", "Hand off.", 2);
+  expect(await store.sessions.outdatedPolicy(2, "org-1")).toEqual([
+    { id: outdated.id, userAgentId: outdated.userAgentId },
+  ]);
+});
+
 test("a session without a native session rotates at once", async () => {
   const { store } = fixture;
   const session = await createSession(store);

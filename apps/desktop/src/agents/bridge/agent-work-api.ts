@@ -1,25 +1,7 @@
 /* oxlint-disable deslop/no-unknown-parameters -- The preload forwards typed API inputs over IPC; main parses each one. */
 import type { AgentWorkAPI } from "@startup-os/contracts/agent-work/desktop";
 
-export type AgentWorkMethod =
-  | "conversation"
-  | "turn"
-  | "turnEvents"
-  | "agents"
-  | "agentActivity"
-  | "sendNow"
-  | "resendItem"
-  | "discardItem"
-  | "stop"
-  | "retry"
-  | "dismiss"
-  | "startFresh"
-  | "newTopic"
-  | "routines.list"
-  | "routines.create"
-  | "routines.update"
-  | "routines.approve"
-  | "routines.delete";
+import type { AgentWorkMethod } from "./agent-work-bridge.ts";
 
 /** The renderer API over one IPC invoke function, as the preload exposes it. */
 export function agentWorkAPI(

@@ -16,6 +16,8 @@ import type {
 
 export const agentWorkChannel = "startup-os:agent-work";
 export const agentWorkChangeChannel = "startup-os:agent-work:change";
+/** The most events one turnEvents call returns. A full page means more may follow. */
+export const turnEventsPageSize = 1000;
 
 /** Local work in one conversation, for agents homed on this desktop. */
 export interface AgentConversationWork {
@@ -55,7 +57,7 @@ export interface AgentWorkAPI {
   conversation(conversationId: string): Promise<AgentConversationWork>;
   /** One turn on this desktop, for transcript links. Null when this desktop does not have it. */
   turn(turnId: string): Promise<AgentTurnView | null>;
-  /** Events with seq greater than after, oldest first. */
+  /** Events with seq greater than after, oldest first, at most turnEventsPageSize. */
   turnEvents(turnId: string, after?: number): Promise<TurnEventView[]>;
   agents(): Promise<AgentLocalSummary[]>;
   agentActivity(agentId: string, cursor?: string): Promise<AgentActivityPage>;
