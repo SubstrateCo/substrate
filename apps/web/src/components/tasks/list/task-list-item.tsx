@@ -22,6 +22,7 @@ export function TaskListItem({
   selected,
   onSelect,
   onStatusChange,
+  statusPending = false,
 }: {
   task: Task;
   assignee?: ProjectDetail["actors"][number];
@@ -29,6 +30,7 @@ export function TaskListItem({
   selected: boolean;
   onSelect: () => void;
   onStatusChange?: (status: TaskStatus) => void;
+  statusPending?: boolean;
 }) {
   const closed = task.status === "completed" || task.status === "canceled";
   const assigneeName = task.assigneeActorEntityId ? (assignee?.name ?? "Former member") : undefined;
@@ -42,7 +44,12 @@ export function TaskListItem({
           : "hover:bg-row-hover has-focus-visible:bg-row-hover",
       )}
     >
-      <TaskStatusMenu status={task.status} title={task.title} onChange={onStatusChange} />
+      <TaskStatusMenu
+        status={task.status}
+        title={task.title}
+        onChange={onStatusChange}
+        disabled={statusPending}
+      />
       <button
         type="button"
         aria-current={selected || undefined}

@@ -3,6 +3,7 @@ import { taskStatusLabels, taskStatusValues, type TaskStatus } from "@startup-os
 import { useId, useState } from "react";
 
 import { ContentNotice } from "../../feedback/content-notice";
+import { TaskBoard } from "../board/task-board";
 import { TaskStatusIcon } from "../task-cues/task-status-icon";
 import type { ProjectDetail } from "../types";
 import {
@@ -17,19 +18,23 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ChevronRight, ListTodo, Plus, SearchX } from "lucide-react";
 
-/** A project's tasks: a filter bar, then one continuous list grouped by status. */
+/** A project's tasks, shown as a status-grouped list or board with shared filters. */
 export function TaskList({
   detail,
+  view,
   selectedId,
   onSelect,
   onCreate,
   onStatusChange,
+  statusPending = false,
 }: {
   detail: ProjectDetail;
+  view: "list" | "board";
   selectedId: string | null;
   onSelect: (id: string) => void;
   onCreate?: (status?: TaskStatus) => void;
   onStatusChange?: (taskId: string, status: TaskStatus) => void;
+  statusPending?: boolean;
 }) {
   const listId = useId();
   const [collapsed, setCollapsed] = useState<Partial<Record<TaskStatus, boolean>>>({});
@@ -41,6 +46,7 @@ export function TaskList({
   );
   const filtered = hasActiveFilters(filters);
   const tasks = filterTasks(detail.tasks, filters);
+  const noMatches = filtered && !tasks.length;
   const tasksByStatus = new Map<TaskStatus, typeof tasks>();
   for (const task of tasks) {
     const rows = tasksByStatus.get(task.status);
@@ -60,20 +66,8 @@ export function TaskList({
           total={detail.tasks.length}
         />
       )}
-      <div className="min-h-0 flex-1 overflow-y-auto pb-6">
-        {!detail.tasks.length && (
-          <ContentNotice
-            icon={ListTodo}
-            title="No tasks yet"
-            description={
-              onCreate
-                ? "Break the project into tasks, then assign and schedule them."
-                : "Tasks appear here when a project editor creates them."
-            }
-            action={onCreate && <Button onClick={() => onCreate()}>New task</Button>}
-          />
-        )}
-        {!!detail.tasks.length && !tasks.length && (
+      {noMatches && (
+        <div className="min-h-0 flex-1 overflow-y-auto">
           <ContentNotice
             icon={SearchX}
             title="No matching tasks"
@@ -84,79 +78,107 @@ export function TaskList({
               </Button>
             }
           />
-        )}
-        {taskStatusValues.map((status) => {
-          const rows = tasksByStatus.get(status);
-          if (!rows) return null;
-          const label = taskStatusLabels[status];
-          const open = !collapsed[status];
-          return (
-            <div key={status} role="group" aria-labelledby={`${listId}-${status}-label`}>
-              <div className="group/header flex h-10 items-center gap-1 border-b pr-6 pl-4">
-                <h2 className="min-w-0 flex-1">
-                  <button
-                    type="button"
-                    className="flex h-8 items-center gap-1.5 rounded-md px-1.5 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-                    aria-expanded={open}
-                    aria-controls={`${listId}-${status}`}
-                    onClick={() => setCollapsed((current) => ({ ...current, [status]: open }))}
-                  >
-                    <ChevronRight
-                      aria-hidden="true"
-                      className={`size-3 text-muted-foreground opacity-0 transition-transform duration-150 ease-out group-focus-within/header:opacity-100 group-hover/header:opacity-100 ${open ? "rotate-90" : ""}`}
-                    />
-                    <TaskStatusIcon status={status} />
-                    <span id={`${listId}-${status}-label`}>{label}</span>
-                    <span className="font-normal text-muted-foreground tabular-nums">
-                      {rows.length}
+        </div>
+      )}
+      {!noMatches && view === "board" && (
+        <TaskBoard
+          detail={detail}
+          tasks={tasks}
+          selectedId={selectedId}
+          onSelect={onSelect}
+          onCreate={onCreate}
+          onStatusChange={onStatusChange}
+          statusPending={statusPending}
+        />
+      )}
+      {!noMatches && view === "list" && (
+        <div className="min-h-0 flex-1 overflow-y-auto pb-6">
+          {!detail.tasks.length && (
+            <ContentNotice
+              icon={ListTodo}
+              title="No tasks yet"
+              description={
+                onCreate
+                  ? "Break the project into tasks, then assign and schedule them."
+                  : "Tasks appear here when a project editor creates them."
+              }
+              action={onCreate && <Button onClick={() => onCreate()}>New task</Button>}
+            />
+          )}
+          {taskStatusValues.map((status) => {
+            const rows = tasksByStatus.get(status);
+            if (!rows) return null;
+            const label = taskStatusLabels[status];
+            const open = !collapsed[status];
+            return (
+              <div key={status} role="group" aria-labelledby={`${listId}-${status}-label`}>
+                <div className="group/header flex h-10 items-center gap-1 border-b pr-6 pl-4">
+                  <h2 className="min-w-0 flex-1">
+                    <button
+                      type="button"
+                      className="flex h-8 items-center gap-1.5 rounded-md px-1.5 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                      aria-expanded={open}
+                      aria-controls={`${listId}-${status}`}
+                      onClick={() => setCollapsed((current) => ({ ...current, [status]: open }))}
+                    >
+                      <ChevronRight
+                        aria-hidden="true"
+                        className={`size-3 text-muted-foreground opacity-0 transition-transform duration-150 ease-out group-focus-within/header:opacity-100 group-hover/header:opacity-100 ${open ? "rotate-90" : ""}`}
+                      />
+                      <TaskStatusIcon status={status} />
+                      <span id={`${listId}-${status}-label`}>{label}</span>
+                      <span className="font-normal text-muted-foreground tabular-nums">
+                        {rows.length}
+                      </span>
+                    </button>
+                  </h2>
+                  {onCreate && (
+                    <span className="opacity-0 transition-opacity duration-150 group-hover/header:opacity-100 has-focus-visible:opacity-100">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            aria-label={`Add task to ${label}`}
+                            onClick={() => onCreate(status)}
+                          >
+                            <Plus aria-hidden="true" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Add task to {label}</TooltipContent>
+                      </Tooltip>
                     </span>
-                  </button>
-                </h2>
-                {onCreate && (
-                  <span className="opacity-0 transition-opacity duration-150 group-hover/header:opacity-100 has-focus-visible:opacity-100">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon-xs"
-                          aria-label={`Add task to ${label}`}
-                          onClick={() => onCreate(status)}
-                        >
-                          <Plus aria-hidden="true" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Add task to {label}</TooltipContent>
-                    </Tooltip>
-                  </span>
-                )}
+                  )}
+                </div>
+                <ul id={`${listId}-${status}`} hidden={!open}>
+                  {rows.map((task) => (
+                    <TaskListItem
+                      key={task.entityId}
+                      task={task}
+                      assignee={
+                        task.assigneeActorEntityId
+                          ? actorsById.get(task.assigneeActorEntityId)
+                          : undefined
+                      }
+                      parentTitle={
+                        task.parentTaskEntityId
+                          ? tasksById.get(task.parentTaskEntityId)?.title
+                          : undefined
+                      }
+                      selected={task.entityId === selectedId}
+                      statusPending={statusPending}
+                      onSelect={() => onSelect(task.entityId)}
+                      onStatusChange={
+                        onStatusChange ? (next) => onStatusChange(task.entityId, next) : undefined
+                      }
+                    />
+                  ))}
+                </ul>
               </div>
-              <ul id={`${listId}-${status}`} hidden={!open}>
-                {rows.map((task) => (
-                  <TaskListItem
-                    key={task.entityId}
-                    task={task}
-                    assignee={
-                      task.assigneeActorEntityId
-                        ? actorsById.get(task.assigneeActorEntityId)
-                        : undefined
-                    }
-                    parentTitle={
-                      task.parentTaskEntityId
-                        ? tasksById.get(task.parentTaskEntityId)?.title
-                        : undefined
-                    }
-                    selected={task.entityId === selectedId}
-                    onSelect={() => onSelect(task.entityId)}
-                    onStatusChange={
-                      onStatusChange && ((next) => onStatusChange(task.entityId, next))
-                    }
-                  />
-                ))}
-              </ul>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }

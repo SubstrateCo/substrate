@@ -15,10 +15,12 @@ export function TaskStatusMenu({
   status,
   title,
   onChange,
+  disabled = false,
 }: {
   status: TaskStatus;
   title: string;
   onChange?: (status: TaskStatus) => void;
+  disabled?: boolean;
 }) {
   if (!onChange)
     return (
@@ -31,6 +33,7 @@ export function TaskStatusMenu({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
+          disabled={disabled}
           aria-label={`Change status of ${title}: ${taskStatusLabels[status]}`}
           className="flex size-6 shrink-0 items-center justify-center rounded-md outline-none hover:bg-foreground/10 focus-visible:ring-2 focus-visible:ring-ring/50 aria-expanded:bg-foreground/10"
         >
@@ -42,7 +45,7 @@ export function TaskStatusMenu({
           value={status}
           onValueChange={(next) => {
             const option = taskStatusOptions.find((candidate) => candidate.value === next);
-            if (option && option.value !== status) onChange(option.value);
+            if (option && option.value !== status && !disabled) onChange(option.value);
           }}
         >
           {taskStatusOptions.map((option) => (

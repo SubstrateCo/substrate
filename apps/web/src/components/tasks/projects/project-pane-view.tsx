@@ -12,6 +12,7 @@ import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { isAccessFailure } from "@/components/feedback/request-failure";
+import { SegmentedControl } from "@/components/forms/segmented-control";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageAside, PageContent } from "@/components/layout/page-layout";
 import { SettingsContent } from "@/components/layout/settings-page";
@@ -19,7 +20,12 @@ import { ProjectLoading } from "@/components/tasks/projects/project-loading";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Unlink, X } from "lucide-react";
+import { Columns3, ListTodo, Plus, Unlink, X } from "lucide-react";
+
+const viewOptions = [
+  { value: "list", label: "List", icon: ListTodo },
+  { value: "board", label: "Board", icon: Columns3 },
+] as const;
 
 /**
  * A project page and, when a task is open, the task inspector beside it. It renders the page's
@@ -39,6 +45,7 @@ export function ProjectPane({
   onTaskStatusChange,
   headerActions,
   context,
+  statusPending = false,
 }: {
   data?: ProjectDetail;
   loading?: boolean;
@@ -68,8 +75,10 @@ export function ProjectPane({
   onTaskStatusChange: (task: Task, status: TaskStatus) => void;
   headerActions?: ReactNode;
   context?: ReactNode;
+  statusPending?: boolean;
 }) {
   const [tab, setTab] = useState("tasks");
+  const [view, setView] = useState<"list" | "board">("list");
   const [taskDirty, setTaskDirty] = useState(false);
   const [pendingTab, setPendingTab] = useState<string | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -158,17 +167,27 @@ export function ProjectPane({
                   </div>
                 }
               />
-              <TabsList ref={tabsRef} variant="line" className="mt-3 -ml-1.5">
-                <TabsTrigger value="tasks" className="flex-none">
-                  Tasks
-                </TabsTrigger>
-                <TabsTrigger value="discussions" className="flex-none">
-                  Discussions
-                </TabsTrigger>
-                <TabsTrigger value="settings" className="flex-none">
-                  Settings
-                </TabsTrigger>
-              </TabsList>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 pb-1">
+                <TabsList ref={tabsRef} variant="line" className="-ml-1.5">
+                  <TabsTrigger value="tasks" className="flex-none">
+                    Tasks
+                  </TabsTrigger>
+                  <TabsTrigger value="discussions" className="flex-none">
+                    Discussions
+                  </TabsTrigger>
+                  <TabsTrigger value="settings" className="flex-none">
+                    Settings
+                  </TabsTrigger>
+                </TabsList>
+                {tab === "tasks" && (
+                  <SegmentedControl
+                    aria-label="Task view"
+                    value={view}
+                    options={viewOptions}
+                    onValueChange={setView}
+                  />
+                )}
+              </div>
             </div>
             {error && (
               <p role="status" className="border-b px-6 py-2 text-xs text-muted-foreground">
@@ -183,6 +202,8 @@ export function ProjectPane({
             >
               <TaskList
                 detail={detail}
+                view={view}
+                statusPending={statusPending}
                 selectedId={openTaskId}
                 onSelect={panel.select}
                 onCreate={canEdit ? panel.create : undefined}

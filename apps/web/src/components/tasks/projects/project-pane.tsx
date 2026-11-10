@@ -28,6 +28,7 @@ export function ProjectPane({
   return (
     <ProjectPaneView
       data={project.data}
+      statusPending={update.isPending}
       selectedTaskId={search.taskId ?? null}
       onSelectTask={(taskId) =>
         void navigate({
