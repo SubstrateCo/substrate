@@ -80,6 +80,8 @@ export function createRealtimeHub(
     maxConnections?: number;
     maxPerUser?: number;
     heartbeatMs?: number;
+    // Revocations send session or access hints that force a check, so this is only a backstop.
+    sessionCheckMs?: number;
     maxBufferedBytes?: number;
     maxConcurrentChecks?: number;
   } = {},
@@ -88,6 +90,7 @@ export function createRealtimeHub(
   const maxConnections = options.maxConnections ?? 1_000;
   const maxPerUser = options.maxPerUser ?? 8;
   const heartbeatMs = options.heartbeatMs ?? 15_000;
+  const sessionCheckMs = options.sessionCheckMs ?? 60_000;
   const maxBufferedBytes = options.maxBufferedBytes ?? 64 * 1024;
   const maxConcurrentChecks = options.maxConcurrentChecks ?? 16;
   let stopped = false;
@@ -139,8 +142,9 @@ export function createRealtimeHub(
     return pending;
   }
 
-  // The heartbeat rechecks every session, so a check stays valid until the next one is due.
-  const fresh = (connection: Connection) => Date.now() - connection.verifiedAt < heartbeatMs;
+  // The heartbeat rechecks every session when it is due, so a check stays valid until then.
+  const fresh = (connection: Connection, now = Date.now()) =>
+    now - connection.verifiedAt < sessionCheckMs;
 
   function send(connection: Connection, event: RealtimeEvent) {
     const transport = connection.transport;
@@ -240,12 +244,18 @@ export function createRealtimeHub(
         }
       await forEachLimited(candidates, maxConcurrentChecks, async ([connection, matching]) => {
         try {
-          const forced = matching.some(forcesRecheck);
-          if ((forced || !fresh(connection)) && !(await revalidate(connection, forced))) return;
+          // Filter first: a check either keeps the identity or removes the connection, so only
+          // recipients need one.
+          const received: Change[] = [];
           for (const change of matching) {
             const receives = await filters.get(JSON.stringify(change.audience))!;
+            if (receives(connection.identity)) received.push(change);
+          }
+          if (!received.length) return;
+          const forced = received.some(forcesRecheck);
+          if ((forced || !fresh(connection)) && !(await revalidate(connection, forced))) return;
+          for (const change of received) {
             if (isStopped() || !available || !connections.has(connection)) return;
-            if (!receives(connection.identity)) continue;
             const event: Extract<RealtimeEvent, { type: "change" }> = {
               version: 1,
               type: "change",
@@ -279,7 +289,7 @@ export function createRealtimeHub(
               continue;
             }
             try {
-              if (await revalidate(connection)) {
+              if (fresh(connection, now) || (await revalidate(connection))) {
                 connection.awaitingPong = true;
                 connection.transport.ping();
               }

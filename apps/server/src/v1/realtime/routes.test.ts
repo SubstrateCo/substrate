@@ -167,7 +167,7 @@ test("real sockets close on unexpected client data, revocation, oversized payloa
   const revoked = f.connect();
   await revoked.next();
   f.revoke();
-  await f.hub.tick(1);
+  await f.hub.tick(Date.now() + 60_000);
   expect((await revoked.closed).code).toBe(1008);
   expect(f.hub.size).toBe(0);
 });

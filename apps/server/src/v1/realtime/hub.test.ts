@@ -129,7 +129,7 @@ function drift(f: ReturnType<typeof fixture>, peers: { cookie: string }[]) {
   });
 }
 
-test("revocation and workspace drift stop delivery by the next heartbeat", async () => {
+test("revocation and workspace drift stop delivery by the next session check", async () => {
   const f = fixture();
   const peers = [
     await f.connect("revoked"),
@@ -139,11 +139,11 @@ test("revocation and workspace drift stop delivery by the next heartbeat", async
   // reserve() checks each session once; open() reuses that check.
   expect(f.checks).toBe(3);
   drift(f, peers);
-  // A check stays valid until the next heartbeat, so ordinary hints skip the session lookup.
+  // A check stays valid until the next one is due, so ordinary hints skip the session lookup.
   await f.publish(realtimeKeys.organization("org"));
   expect(f.checks).toBe(3);
   for (const peer of peers) expect(peer.events).toHaveLength(2);
-  await f.hub.tick();
+  await f.hub.tick(Date.now() + 60_000);
   await f.publish(realtimeKeys.organization("org"));
   for (const peer of peers) {
     expect(peer.events).toHaveLength(2);
@@ -193,8 +193,32 @@ test("a conversation change to fifty other-workspace connections resolves its au
   f.hub.stop();
 });
 
+test("a change checks only the stale sessions of its recipients", async () => {
+  const f = fixture({ sessionCheckMs: 1 });
+  f.deps.recipients = async () => (identity) => identity.userId === "member";
+  const member = await f.connect("member", "org");
+  const others = [];
+  for (let index = 0; index < 5; index++) others.push(await f.connect(`other-${index}`, "org"));
+  await Bun.sleep(5);
+  const checked: string[] = [];
+  const authenticate = f.deps.authenticate.bind(f.deps);
+  f.deps.authenticate = async (headers, organizationId) => {
+    checked.push(headers.get("cookie") ?? "");
+    return authenticate(headers, organizationId);
+  };
+  await f.publish(realtimeKeys.conversation("shared"));
+  await f.publish(realtimeKeys.organization("org"), "access");
+  expect(checked).toEqual([member.cookie, member.cookie]);
+  expect(member.events.slice(1)).toMatchObject([
+    { conversationId: "shared" },
+    { domain: "access" },
+  ]);
+  for (const other of others) expect(other.events).toHaveLength(1);
+  f.hub.stop();
+});
+
 test("a batch checks each stale session once, resolves each audience once and keeps event order", async () => {
-  const f = fixture({ heartbeatMs: 1 });
+  const f = fixture({ sessionCheckMs: 1 });
   let resolved = 0;
   f.deps.recipients = async () => {
     resolved++;
@@ -222,7 +246,7 @@ test("a batch checks each stale session once, resolves each audience once and ke
 });
 
 test("session checks during delivery run with bounded concurrency", async () => {
-  const f = fixture({ heartbeatMs: 1, maxConcurrentChecks: 2 });
+  const f = fixture({ sessionCheckMs: 1, maxConcurrentChecks: 2 });
   const peers = [];
   for (let index = 0; index < 6; index++) peers.push(await f.connect(`user-${index}`));
   await Bun.sleep(5);
@@ -241,16 +265,33 @@ test("session checks during delivery run with bounded concurrency", async () => 
   f.hub.stop();
 });
 
+test("heartbeat pings without a session lookup until the session check is due", async () => {
+  const f = fixture({ heartbeatMs: 10, sessionCheckMs: 30 });
+  const live = await f.connect("live");
+  const start = Date.now();
+  const checks = f.checks;
+  await f.hub.tick(start + 1);
+  f.hub.pong(live.connection);
+  await f.hub.tick(start + 12);
+  f.hub.pong(live.connection);
+  expect(f.checks - checks).toBe(0);
+  await f.hub.tick(start + 31);
+  expect(f.checks - checks).toBe(1);
+  expect(live.pings).toBe(3);
+  f.hub.stop();
+});
+
 test("heartbeat rechecks idle sessions and terminates peers that do not pong", async () => {
-  const f = fixture({ heartbeatMs: 10 });
+  const f = fixture({ heartbeatMs: 10, sessionCheckMs: 10 });
   const dead = await f.connect("dead");
   const revoked = await f.connect("revoked");
   const live = await f.connect("live");
-  await f.hub.tick(1);
+  const start = Date.now();
+  await f.hub.tick(start + 1);
   f.hub.pong(live.connection);
   f.hub.pong(revoked.connection);
   f.sessions.delete(revoked.cookie);
-  await f.hub.tick(11);
+  await f.hub.tick(start + 11);
   expect(dead.terminated).toBe(true);
   expect(dead.closed).toEqual([1001]);
   expect(revoked.closed).toEqual([1008]);
