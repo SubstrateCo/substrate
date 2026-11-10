@@ -3,10 +3,11 @@ import { liveTurnStatuses } from "@startup-os/contracts/agent-work";
 
 import { NeedsAttention } from "./needs-attention";
 import { PendingReply } from "./pending-reply";
+import { TechnicalDetails } from "./technical-details";
 import { MutedWorkLine, WorkStatus } from "./work-status";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useNow } from "@/hooks/use-now";
-import { turnStatus } from "@/lib/agent-work/status";
+import { failedWorkNote, turnStatus } from "@/lib/agent-work/status";
 import { useLocalWorkActions } from "@/queries/agent-work/mutations";
 import { toast } from "sonner";
 
@@ -68,8 +69,11 @@ export function TurnWork({
   if (status.tone === "muted") return <MutedWorkLine label={status.label} />;
   const body = (
     <>
-      {turn.status === "failed" && turn.error && (
-        <p className="mt-1 max-w-180 text-xs wrap-anywhere text-destructive">{turn.error}</p>
+      {turn.status === "failed" && (
+        <div className="mt-1 grid max-w-180 gap-1.5">
+          <p className="text-xs text-destructive">{failedWorkNote}</p>
+          {turn.error?.trim() && <TechnicalDetails>{turn.error}</TechnicalDetails>}
+        </div>
       )}
       {turn.status === "needs_attention" && (
         <NeedsAttention

@@ -158,18 +158,26 @@ export function SharingManager({
             onRestoreFocus();
           }}
         >
-          {/* Consent only enables Send. A missing or incomplete address gets inline copy. */}
+          {/* The acknowledgement only enables Send. A missing or incomplete address gets inline copy. */}
           <NativeForm
             pending={action.isPending}
             className=""
             onSubmit={(form) => {
-              if (!confirmed) return;
+              // Enter in the address field can reach here without the acknowledgement: take the
+              // person to it instead of ignoring the key.
+              if (!confirmed) {
+                document.getElementById("sharing-history")?.focus();
+                return;
+              }
               action.mutate(
                 { kind: "invite", email: formText(form, "email") },
                 {
+                  // The acknowledgement holds for the rest of this dialog, so the next invitation
+                  // needs only an address.
                   onSuccess: () => {
                     setEmail("");
-                    setConfirmed(false);
+                    // The field is disabled until the request settles.
+                    requestAnimationFrame(() => document.getElementById("sharing-email")?.focus());
                   },
                 },
               );
@@ -206,34 +214,20 @@ export function SharingManager({
               )}
               {data && (
                 <>
-                  <div className="grid gap-4">
-                    <NativeField
-                      id="sharing-email"
-                      name="email"
-                      type="email"
-                      label="Invite by email"
-                      required
-                      missingMessage="Enter an email address."
-                      placeholder="name@partner.com"
-                      autoComplete="off"
-                      value={email}
-                      onChange={(event) => setEmail(event.target.value)}
-                      disabled={action.isPending}
-                      description={inviteHint(data)}
-                    />
-                    <Field orientation="horizontal">
-                      <Checkbox
-                        id="sharing-history"
-                        checked={confirmed}
-                        onCheckedChange={(value) => setConfirmed(value === true)}
-                        disabled={action.isPending}
-                      />
-                      <FieldLabel htmlFor="sharing-history">
-                        Let invited people read the full conversation history, including earlier
-                        messages
-                      </FieldLabel>
-                    </Field>
-                  </div>
+                  <NativeField
+                    id="sharing-email"
+                    name="email"
+                    type="email"
+                    label="Invite by email"
+                    required
+                    missingMessage="Enter an email address."
+                    placeholder="name@partner.com"
+                    autoComplete="off"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    disabled={action.isPending}
+                    description={inviteHint(data)}
+                  />
                   <Separator />
                   <SharingDetailsView
                     details={data}
@@ -279,9 +273,23 @@ export function SharingManager({
               )}
             </DialogBody>
             <DialogFooter className="items-center sm:justify-between">
-              <p className="text-sm text-muted-foreground" aria-live="polite">
-                {data && !confirmed ? "Confirm history access to send." : null}
-              </p>
+              {/* Inviting always shares the full history, so this is a required acknowledgement
+                  next to Send, not an option. */}
+              {data ? (
+                <Field orientation="horizontal" className="w-auto">
+                  <Checkbox
+                    id="sharing-history"
+                    checked={confirmed}
+                    onCheckedChange={(value) => setConfirmed(value === true)}
+                    disabled={action.isPending}
+                  />
+                  <FieldLabel htmlFor="sharing-history">
+                    I understand invited people can read all earlier messages
+                  </FieldLabel>
+                </Field>
+              ) : (
+                <span />
+              )}
               <div className="flex flex-col-reverse gap-2 sm:flex-row">
                 <Button type="button" variant="outline" onClick={onClose}>
                   Cancel

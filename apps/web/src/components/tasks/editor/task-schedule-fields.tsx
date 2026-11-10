@@ -75,14 +75,14 @@ export function TaskScheduleFields({
                     id={`${id}-assignee`}
                     type="button"
                     role="combobox"
-                    variant="outline"
-                    className="w-full min-w-0"
+                    variant="field"
+                    className="min-w-0"
                     onBlur={field.handleBlur}
                     aria-invalid={invalid}
                     aria-describedby={invalid ? `${id}-assignee-error` : undefined}
                   >
                     <TaskAssigneeAvatar name={actor?.name} type={actor?.type} />
-                    <span className="min-w-0 flex-1 truncate text-left font-normal">
+                    <span className="min-w-0 flex-1 truncate text-left">
                       {value && !actor
                         ? "Former member. Choose someone else."
                         : assigneeLabel(value, actors)}
@@ -107,14 +107,8 @@ export function TaskScheduleFields({
                 field.handleBlur();
               }}
             >
-              <Button
-                id={`${id}-due`}
-                type="button"
-                variant="outline"
-                className="w-full justify-between"
-                onBlur={field.handleBlur}
-              >
-                <span className="font-normal">
+              <Button id={`${id}-due`} type="button" variant="field" onBlur={field.handleBlur}>
+                <span>
                   {field.state.value
                     ? formatShortDate(parseDateOnly(field.state.value) ?? field.state.value)
                     : "Choose a date"}

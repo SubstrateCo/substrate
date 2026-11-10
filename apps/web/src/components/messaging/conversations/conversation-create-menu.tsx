@@ -96,6 +96,15 @@ export function ConversationCreateMenu({
   const agentMatches = onMessageAgent
     ? agents.filter((agent) => !search || agent.name.toLowerCase().includes(search))
     : [];
+  // The email tells two people with one name apart, or explains a match made on the address.
+  const names = new Map<string, number>();
+  for (const person of people) {
+    const key = person.name.toLowerCase();
+    names.set(key, (names.get(key) ?? 0) + 1);
+  }
+  const showEmail = (person: PickerPerson) =>
+    (names.get(person.name.toLowerCase()) ?? 0) > 1 ||
+    (!!search && !person.name.toLowerCase().includes(search));
   const choose = (choice: Choice) => {
     chosen.current = choice;
     setOpen(false);
@@ -155,7 +164,9 @@ export function ConversationCreateMenu({
                 >
                   <PersonAvatar name={person.name} image={person.image} />
                   <span className="truncate font-medium">{person.name}</span>
-                  <span className="min-w-0 truncate text-muted-foreground">{person.email}</span>
+                  {showEmail(person) && (
+                    <span className="min-w-0 truncate text-muted-foreground">{person.email}</span>
+                  )}
                 </CommandItem>
               ))}
               {!matches.length && (

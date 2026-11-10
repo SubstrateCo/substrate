@@ -83,8 +83,11 @@ export function DesktopInstallView({
         ) : (
           !loading && !error && continueInBrowser(true)
         )}
-        {openInstalled}
-        {(windowsAvailable || error) && continueInBrowser(false)}
+        {/* The two quieter paths share one row, so the primary action stands alone above them. */}
+        <div className="flex gap-2 *:flex-1">
+          {openInstalled}
+          {(windowsAvailable || error) && continueInBrowser(false)}
+        </div>
       </div>
     </section>
   );

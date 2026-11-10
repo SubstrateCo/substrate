@@ -136,7 +136,7 @@ export function AcceptSharingScreen({ invitationId }: { invitationId: string }) 
       }
       actions={
         <>
-          <AuthNavLink href="/onboarding">Your workspaces</AuthNavLink>
+          <AuthNavLink href="/onboarding">Workspaces</AuthNavLink>
           <SignOutButton destination={path} />
         </>
       }

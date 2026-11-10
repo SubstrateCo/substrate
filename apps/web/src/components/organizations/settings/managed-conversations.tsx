@@ -8,7 +8,7 @@ import { SettingsPanel } from "@/components/layout/settings-page";
 import { DeleteConversationDialog } from "@/components/messaging/conversations/actions/delete-conversation-dialog";
 import { OwnerDialog } from "@/components/messaging/conversations/actions/owner-dialog";
 import { AddMembersDialog } from "@/components/messaging/conversations/add-members-dialog";
-import { humanMembers } from "@/lib/messaging/conversations";
+import { conversationLabel, humanMembers } from "@/lib/messaging/conversations";
 import { useConversationManagement } from "@/queries/messaging/management";
 import {
   deleteImpactQueryOptions,
@@ -29,7 +29,10 @@ export function ManagedConversations({ organizationId }: { organizationId: strin
   const target = isAccessFailure(list.error)
     ? undefined
     : list.data?.find((row) => row.id === dialog?.id);
-  const name = target?.name ?? "this group message";
+  const name = target
+    ? conversationLabel({ ...target, name: target.name ?? "this group message" })
+    : "this group message";
+  const deleteLabel = target?.kind === "channel" ? "Delete channel" : "Delete group";
   const close = () => setDialog(undefined);
   const restoreFocus = () => {
     if (launcher.current?.isConnected) launcher.current.focus();
@@ -63,12 +66,10 @@ export function ManagedConversations({ organizationId }: { organizationId: strin
         <AddMembersDialog
           organizationId={organizationId}
           conversationId={target.id}
-          name={target.name ?? undefined}
+          name={name}
           memberUserIds={humanMembers(target.members).map((member) => member.userId)}
-          onClose={() => {
-            close();
-            requestAnimationFrame(restoreFocus);
-          }}
+          onClose={close}
+          onRestoreFocus={restoreFocus}
         />
       )}
       {dialog?.kind === "transfer" && target && (
@@ -98,6 +99,7 @@ export function ManagedConversations({ organizationId }: { organizationId: strin
       {dialog?.kind === "delete" && target && (
         <DeleteConversationDialog
           name={name}
+          deleteLabel={deleteLabel}
           linkedWork={impact.data?.linkedWork}
           pending={remove.isPending}
           error={remove.error ?? impact.error}

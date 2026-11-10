@@ -53,6 +53,13 @@ const copy = {
   },
 };
 
+const minimumRecipients: Record<Conversation["kind"], number> = { channel: 0, dm: 1, group: 2 };
+
+function recipientStatus(kind: Conversation["kind"], chosen: number) {
+  if (kind === "dm") return "Choose a person";
+  return chosen === 1 ? "Choose one more person" : "Choose at least two people";
+}
+
 export function CreateConversationDialog({
   kind,
   people,
@@ -228,14 +235,32 @@ export function CreateConversationDialog({
               errorDescription="We couldn’t create this conversation. Check the people and try again."
             />
           </DialogBody>
-          <DialogFooter>
-            <Button type="button" variant="outline" disabled={pending} onClick={onClose}>
-              Cancel
-            </Button>
-            <PendingButton type="submit" pending={pending} pendingLabel="Creating…">
-              {text.submit}
-            </PendingButton>
-          </DialogFooter>
+          <form.Subscribe selector={(state) => state.values.recipients.length}>
+            {(chosen) => {
+              const missing = Math.max(0, minimumRecipients[kind] - chosen);
+              return (
+                <DialogFooter className="items-center sm:justify-between">
+                  <p className="text-sm text-muted-foreground" aria-live="polite">
+                    {missing > 0 ? recipientStatus(kind, chosen) : null}
+                  </p>
+                  <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                    <Button type="button" variant="outline" disabled={pending} onClick={onClose}>
+                      Cancel
+                    </Button>
+                    <PendingButton
+                      type="submit"
+                      pending={pending}
+                      pendingLabel="Creating…"
+                      // Text still in the field is added, or explained, by the submit.
+                      disabled={missing > 0 && !pendingText.trim()}
+                    >
+                      {text.submit}
+                    </PendingButton>
+                  </div>
+                </DialogFooter>
+              );
+            }}
+          </form.Subscribe>
         </form>
       </DialogContent>
     </Dialog>

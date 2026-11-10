@@ -40,7 +40,7 @@ export function ForgotPasswordForm({
       footer={footer}
     >
       <NativeForm pending={pending} onSubmit={onSubmit}>
-        <EmailField />
+        <EmailField autoFocus />
         <FormMessage
           error={error}
           errorDescription="We couldn’t send a reset link. Please try again."

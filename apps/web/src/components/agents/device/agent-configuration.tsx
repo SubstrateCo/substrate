@@ -11,7 +11,7 @@ import { useRef, useState } from "react";
 
 import { CatalogRow } from "../catalog/catalog-row";
 import type { AgentSection } from "../editors/agent-form";
-import { SkillEditor } from "../editors/skill-editor";
+import { openingName, SkillEditor } from "../editors/skill-editor";
 import { McpServerRow, StartupSkills } from "./startup-configuration";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ErrorState } from "@/components/feedback/error-state";
@@ -186,7 +186,9 @@ export function AgentConfiguration({
               skills.map((item) => (
                 <CatalogRow
                   key={item.id}
-                  name={item.name}
+                  // The list, the editor and the delete prompt all name the skill by its file name.
+                  name={openingName(item)}
+                  mono
                   detail={item.description}
                   disabled={remove.isPending}
                   onEdit={() => {
@@ -195,7 +197,7 @@ export function AgentConfiguration({
                   }}
                   onDelete={() => {
                     rememberLauncher();
-                    setDeleting({ id: item.id, name: item.name });
+                    setDeleting({ id: item.id, name: openingName(item) });
                   }}
                 />
               ))

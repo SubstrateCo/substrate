@@ -37,7 +37,7 @@ function toSkillName(value: string) {
 }
 
 /** The name an existing skill opens with: always one the editor accepts. */
-function openingName(skill?: HarnessSkill) {
+export function openingName(skill?: HarnessSkill) {
   if (!skill) return "";
   if (skillName.test(skill.name)) return skill.name;
   return skillName.test(skill.id) ? skill.id : toSkillName(skill.name);
@@ -87,7 +87,7 @@ export function SkillEditor({
     <form.Subscribe selector={(state) => state.isSubmitting}>
       {(isSubmitting) => (
         <EditorDialog
-          title={skill ? "Edit skill" : "New skill"}
+          title={skill ? `Edit ${openingName(skill)}` : "New skill"}
           saveLabel={skill ? "Save skill" : "Create skill"}
           description="A skill is a short guide the agent opens when a task matches its description. It’s saved as a file in this agent’s folder on this desktop."
           pending={isSubmitting}
@@ -113,7 +113,7 @@ export function SkillEditor({
                 id="skill-name"
                 label="Skill name"
                 description="Words joined by hyphens, like release-notes. Other words are joined for you."
-                placeholder="release-notes"
+                placeholder="For example: release-notes"
                 required
                 maxLength={64}
               />

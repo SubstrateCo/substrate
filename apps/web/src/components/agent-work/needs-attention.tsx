@@ -6,11 +6,11 @@ import { attentionReasonText } from "@/lib/agent-work/status";
 import { useLocalWorkActions } from "@/queries/agent-work/mutations";
 
 const failures: Record<NeedsAttentionAction, string> = {
-  retry: "We couldn't retry. Try again.",
-  dismiss: "We couldn't dismiss this. Try again.",
-  startFresh: "We couldn't start a fresh session. Try again.",
-  resend: "We couldn't resend the message. Try again.",
-  discard: "We couldn't discard the message. Try again.",
+  retry: "We couldn’t retry. Try again.",
+  dismiss: "We couldn’t dismiss this. Try again.",
+  startFresh: "We couldn’t start a fresh session. Try again.",
+  resend: "We couldn’t resend the message. Try again.",
+  discard: "We couldn’t discard the message. Try again.",
 };
 
 /**

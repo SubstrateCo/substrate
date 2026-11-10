@@ -1,6 +1,6 @@
 import { taskStatusLabels, type TaskStatus } from "@startup-os/contracts/tasks";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useId, useRef, useState } from "react";
 
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
@@ -11,6 +11,9 @@ import { ReferencePickerOption } from "./reference-picker-option";
 export type ReferenceKind = "task" | "project" | "person" | "agent" | "channel" | "thread";
 /** A picker tab: one kind, or "all" for a mixed list. */
 export type ReferenceTab = ReferenceKind | "all";
+export const ReferencePickerAccessibility = createContext<
+  ((value: { listId: string; selectedId?: string } | null) => void) | null
+>(null);
 
 const kindLabels: Record<ReferenceTab, string> = {
   all: "All",
@@ -75,6 +78,11 @@ export function ReferencePicker({
     `${listId}-${item.kind}-${item.id}`;
   const selected = available.at(selectedIndex);
   const selectedId = selected ? optionId(selected) : undefined;
+  const setAccessibility = useContext(ReferencePickerAccessibility);
+  useEffect(() => {
+    setAccessibility?.({ listId, selectedId });
+    return () => setAccessibility?.(null);
+  }, [listId, selectedId, setAccessibility]);
   const insert = (item: (typeof results)[number]) =>
     onInsert(`@[${item.kind}:${item.id}]`, {
       id: item.id,
@@ -100,6 +108,7 @@ export function ReferencePicker({
         className="flex max-h-96 min-h-0 flex-col gap-2 overflow-hidden p-2"
         onKeyDown={(e) => {
           if (e.nativeEvent.isComposing) return;
+          if (e.target !== e.currentTarget) return;
           if (e.key === "Escape") {
             e.preventDefault();
             onClose();
@@ -146,7 +155,29 @@ export function ReferencePicker({
                       No accessible references found.
                     </p>
                   )}
-                  <div id={listId} role="listbox" aria-label="References">
+                  <div
+                    id={listId}
+                    role="listbox"
+                    aria-label="References"
+                    onKeyDown={(event) => {
+                      if (
+                        event.nativeEvent.isComposing ||
+                        !["ArrowDown", "ArrowUp"].includes(event.key)
+                      )
+                        return;
+                      event.preventDefault();
+                      const next = Math.max(
+                        0,
+                        Math.min(
+                          available.length - 1,
+                          selectedIndex + (event.key === "ArrowDown" ? 1 : -1),
+                        ),
+                      );
+                      setIndex(next);
+                      if (available.length)
+                        document.getElementById(optionId(available[next]!))?.focus();
+                    }}
+                  >
                     {available.map((item, itemIndex) => (
                       <ReferencePickerOption
                         id={optionId(item)}
@@ -156,6 +187,7 @@ export function ReferencePicker({
                         status={item.status}
                         description={optionDescription(item)}
                         selected={selectedIndex === itemIndex}
+                        onFocus={() => setIndex(itemIndex)}
                         onSelect={() => insert(item)}
                       />
                     ))}

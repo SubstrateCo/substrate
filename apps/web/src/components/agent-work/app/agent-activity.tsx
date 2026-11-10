@@ -7,7 +7,7 @@ import { NeedsAttention } from "../needs-attention";
 import { hiddenConversation } from "../requests/proposal-preview";
 import { AgentActivityView, type ActivityRow } from "./agent-activity-view";
 import { useNow } from "@/hooks/use-now";
-import { sessionKindLabels, turnStatus } from "@/lib/agent-work/status";
+import { failedWorkNote, sessionKindLabels, turnStatus } from "@/lib/agent-work/status";
 import { conversationName } from "@/lib/messaging/conversations";
 import { agentActivityOptions } from "@/queries/agent-work/local";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
@@ -27,8 +27,6 @@ const subjectFallbacks: Record<AgentTurnView["sessionKind"], string> = {
   routine: "Routine run",
   helper: "Helper task",
 };
-
-const failedNote = "The work didn’t finish. Open it to see what happened.";
 
 /** The conversation a turn answered or wrote to: its output first, then its newest source. */
 function placeOf(turn: AgentTurnView) {
@@ -75,7 +73,8 @@ export function AgentActivity({
         turn.activity ??
         (turn.outcome ? outcomeLabels[turn.outcome] : undefined) ??
         subjectFallbacks[turn.sessionKind],
-      note: status.tone === "failed" ? turn.error?.trim() || failedNote : undefined,
+      // Reviewed copy only. The runtime's message is under Technical details in the transcript.
+      note: status.tone === "failed" ? failedWorkNote : undefined,
       place: place(turn),
       kind: sessionKindLabels[turn.sessionKind],
       status,

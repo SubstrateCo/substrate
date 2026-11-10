@@ -12,6 +12,7 @@ import {
 } from "./agent-sections";
 import { AgentSettings } from "@/components/agents/agent-settings";
 import { ContentNotice } from "@/components/feedback/content-notice";
+import { SettingsContent } from "@/components/layout/settings-page";
 import { Button } from "@/components/ui/button";
 import { agentStatus, noDesktopLabel } from "@/lib/agent-work/status";
 import { Laptop } from "lucide-react";
@@ -68,15 +69,17 @@ export function AgentPage({
   let content;
   if (isAgentSettingsSection(section))
     content = (
-      <AgentSettings
-        userId={userId}
-        organizationId={organizationId}
-        agentId={agentId}
-        section={section}
-        onSectionChange={onSectionChange}
-        onUnsavedSectionsChange={setUnsaved}
-        onClose={onDeleted}
-      />
+      <SettingsContent>
+        <AgentSettings
+          userId={userId}
+          organizationId={organizationId}
+          agentId={agentId}
+          section={section}
+          onSectionChange={onSectionChange}
+          onUnsavedSectionsChange={setUnsaved}
+          onClose={onDeleted}
+        />
+      </SettingsContent>
     );
   else if (unavailable) content = unavailable;
   else if (section === "routines")

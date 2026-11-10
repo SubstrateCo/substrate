@@ -65,30 +65,45 @@ export function NativeField({
     .filter(Boolean)
     .join(" ");
   const fieldLabel = <FieldLabel htmlFor={id}>{label}</FieldLabel>;
+  const input = (
+    <Input
+      {...props}
+      id={id}
+      data-missing-message={missingMessage}
+      aria-invalid={error ? true : undefined}
+      aria-describedby={describedBy || undefined}
+    />
+  );
   return (
     <Field data-invalid={Boolean(error)}>
       {labelAction ? (
-        <div className="flex items-center justify-between gap-3">
-          {fieldLabel}
-          {labelAction}
+        // The action shares the label row but follows the input in the DOM, so Tab goes from the
+        // previous field to this input first and to the action after it.
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <div className="order-1 grow">{fieldLabel}</div>
+          <div className="order-3 w-full">{input}</div>
+          <div className="order-2">{labelAction}</div>
         </div>
       ) : (
-        fieldLabel
+        <>
+          {fieldLabel}
+          {input}
+        </>
       )}
-      <Input
-        {...props}
-        id={id}
-        data-missing-message={missingMessage}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy || undefined}
-      />
       {hint && <FieldDescription id={`${id}-description`}>{hint}</FieldDescription>}
       <FieldError id={`${id}-error`}>{error}</FieldError>
     </Field>
   );
 }
 
-export function EmailField({ defaultValue }: { defaultValue?: string }) {
+export function EmailField({
+  defaultValue,
+  autoFocus,
+}: {
+  defaultValue?: string;
+  /** For a page whose first task is this field, such as sign-in. */
+  autoFocus?: boolean;
+}) {
   return (
     <NativeField
       id="email"
@@ -97,6 +112,7 @@ export function EmailField({ defaultValue }: { defaultValue?: string }) {
       type="email"
       autoComplete="email"
       defaultValue={defaultValue}
+      autoFocus={autoFocus}
       required
     />
   );

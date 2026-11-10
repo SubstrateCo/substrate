@@ -64,7 +64,7 @@ export function TaskListItem({
             <span className="hidden min-w-0 shrink items-center gap-1 text-xs text-muted-foreground @md:flex">
               <CornerDownRight aria-hidden="true" className="size-3 shrink-0" />
               <span className="sr-only">, subtask of </span>
-              <span className="truncate">{parentTitle ?? "a task you can't open"}</span>
+              <span className="truncate">{parentTitle ?? "a task you can’t open"}</span>
             </span>
           )}
         </span>

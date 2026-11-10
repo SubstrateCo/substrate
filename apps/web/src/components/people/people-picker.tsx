@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 import { PersonAvatar } from "@/components/people/person-avatar";
-import { FieldError } from "@/components/ui/field";
+import { FieldDescription, FieldError } from "@/components/ui/field";
 import {
   addTypedRecipients,
   isEmailAddress,
@@ -192,7 +192,7 @@ export function PeoplePicker({
         data-slot="people-picker"
         data-disabled={disabled || undefined}
         aria-invalid={invalid || undefined}
-        className="flex min-h-8 w-full flex-wrap items-center gap-1 rounded-lg border border-input bg-transparent px-1 py-0.5 transition duration-150 ease-out focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:bg-input/30 dark:aria-invalid:border-destructive/50 data-disabled:pointer-events-none data-disabled:opacity-50"
+        className="flex min-h-8 w-full flex-wrap items-center gap-1 rounded-lg border border-input bg-transparent px-1 py-0.5 transition duration-150 ease-out focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 aria-invalid:border-destructive focus-within:aria-invalid:ring-destructive/20 dark:bg-input/30 dark:aria-invalid:border-destructive data-disabled:pointer-events-none data-disabled:opacity-50"
         onPointerDown={(event) => {
           if (event.target === event.currentTarget) {
             event.preventDefault();
@@ -288,11 +288,11 @@ export function PeoplePicker({
         </div>
       )}
       {expanded && !options.length && (
-        <p role="status" className="px-1 text-sm text-muted-foreground">
+        <FieldDescription role="status">
           {allowEmail
             ? "No one here matches. Type a full email address to invite someone."
             : "No one here matches."}
-        </p>
+        </FieldDescription>
       )}
     </div>
   );

@@ -142,6 +142,10 @@ export function WorkspaceSearch({
       >
         {results.length > 0 && (
           <>
+            <span className="tabular-nums">
+              {results.length}
+              {hasMore ? "+" : ""} {results.length === 1 && !hasMore ? "result" : "results"}
+            </span>
             <Hint keys={["↑", "↓"]} label="Navigate" /> <Hint keys={["↵"]} label="Open" />
           </>
         )}

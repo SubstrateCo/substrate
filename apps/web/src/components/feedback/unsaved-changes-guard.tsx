@@ -20,10 +20,13 @@ import { registerUnsavedDraft } from "@/lib/navigation/unsaved-drafts";
 export function UnsavedChangesGuard({
   dirty,
   description,
+  name,
   shouldBlock,
 }: {
   dirty: boolean;
   description: string;
+  /** How a document exit lists this draft when several are dirty, such as "Project details". */
+  name?: string;
   shouldBlock?: ShouldBlockFn;
 }) {
   const blocker = useBlocker({
@@ -32,16 +35,17 @@ export function UnsavedChangesGuard({
     enableBeforeUnload: false,
     withResolver: true,
   });
-  const [asking, setAsking] = useState(false);
+  const [asking, setAsking] = useState<readonly string[] | null>(null);
   const answer = useRef<((leave: boolean) => void) | null>(null);
   useEffect(() => {
     if (!dirty) return;
     const unregister = registerUnsavedDraft(
-      () =>
+      (names) =>
         new Promise<boolean>((resolve) => {
           answer.current = resolve;
-          setAsking(true);
+          setAsking(names);
         }),
+      name,
     );
     return () => {
       unregister();
@@ -49,17 +53,19 @@ export function UnsavedChangesGuard({
       answer.current?.(false);
       answer.current = null;
     };
-  }, [dirty]);
+  }, [dirty, name]);
   const settle = (leave: boolean) => {
     answer.current?.(leave);
     answer.current = null;
-    setAsking(false);
+    setAsking(null);
   };
   if (blocker.status !== "blocked" && !asking) return null;
+  // One question covers every dirty draft, so it lists each one by name.
+  const several = blocker.status !== "blocked" && asking && asking.length > 1 ? asking : null;
   return (
     <ConfirmDialog
       title="Discard unsaved changes?"
-      description={description}
+      description={several ? `You have ${several.length} unsaved drafts:` : description}
       confirmLabel="Discard changes"
       pendingLabel="Discarding…"
       cancelLabel="Keep editing"
@@ -72,6 +78,16 @@ export function UnsavedChangesGuard({
         if (blocker.status === "blocked") blocker.reset();
         else settle(false);
       }}
-    />
+    >
+      {several && (
+        <ul aria-label="Unsaved drafts" className="list-disc space-y-1 pl-5 text-sm">
+          {several.map((draft) => (
+            <li key={draft} className="wrap-anywhere">
+              {draft}
+            </li>
+          ))}
+        </ul>
+      )}
+    </ConfirmDialog>
   );
 }

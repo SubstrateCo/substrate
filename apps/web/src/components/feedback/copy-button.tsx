@@ -10,7 +10,7 @@ export function CopyButton({
   onCopy,
   label,
   successMessage = "Copied",
-  errorMessage = "Couldn't copy",
+  errorMessage = "Couldn’t copy",
   size = "xs",
   className,
   grouped = false,

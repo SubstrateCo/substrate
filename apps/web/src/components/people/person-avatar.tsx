@@ -3,7 +3,10 @@ import { initials } from "@/lib/people/initials";
 import { cn } from "cn";
 import { Bot } from "lucide-react";
 
-/** A small square avatar for people and agents in rows and chips: 24px, or 20px for `xs`. */
+/**
+ * A person or agent in rows, chips, and pickers: 24px, or 20px for `xs`. A person is a circle
+ * with initials; an agent is a rounded square with the Bot mark. Both use the neutral fill.
+ */
 export function PersonAvatar({
   name,
   image,
@@ -20,7 +23,7 @@ export function PersonAvatar({
   return (
     <Avatar
       aria-hidden="true"
-      variant="user"
+      variant={agent ? "agent" : "user"}
       size="sm"
       className={cn(size === "xs" && "size-5", className)}
     >

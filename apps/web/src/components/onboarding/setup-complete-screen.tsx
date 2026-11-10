@@ -30,7 +30,7 @@ export function SetupCompleteScreen({
       }
       actions={
         <>
-          <AuthNavLink href="/onboarding">Switch workspace</AuthNavLink>
+          <AuthNavLink href="/onboarding">Workspaces</AuthNavLink>
           <SignOutButton destination="/onboarding" />
         </>
       }

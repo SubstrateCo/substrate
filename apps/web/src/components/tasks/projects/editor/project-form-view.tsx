@@ -120,6 +120,7 @@ function ProjectDraftGuard({ dirty, projectId }: { dirty: boolean; projectId: st
     <UnsavedChangesGuard
       dirty={dirty}
       description="Your project details aren’t saved."
+      name="Project details"
       shouldBlock={({ next, current }) => {
         if (
           next.routeId !== "/_authenticated/_frame/_workspace/tasks/" ||

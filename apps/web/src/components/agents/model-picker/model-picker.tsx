@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { harnessLabel, harnessOptions } from "@/lib/agents/harness-meta";
 import { harnessModelsQueryOptions } from "@/queries/agents/models";
 import { Check, ChevronsUpDown, CircleAlert, Laptop, RefreshCw } from "lucide-react";
@@ -160,9 +159,7 @@ export function ModelPicker({
           aria-label={`Model: ${modelName}, ${label}`}
           className="w-full justify-start text-left"
         >
-          <span className="mr-1 flex size-6 shrink-0 items-center justify-center">
-            <HarnessIcon harness={harness} />
-          </span>
+          <HarnessIcon harness={harness} />
           <span className="grid min-w-0 flex-1 gap-0.5">
             <span className="truncate">{modelName}</span>
             <span className="truncate text-xs font-normal text-muted-foreground">{label}</span>
@@ -175,33 +172,16 @@ export function ModelPicker({
         align="start"
         side="bottom"
         collisionPadding={8}
-        className="max-h-(--radix-popover-content-available-height) w-(--radix-popover-trigger-width) min-w-80"
+        className="max-h-(--radix-popover-content-available-height) w-(--radix-popover-trigger-width) min-w-88"
         aria-label="Choose a model"
       >
-        <div className="flex items-center gap-3 border-b p-2">
-          <div className="min-w-0 flex-1 overflow-x-auto">
-            <SegmentedControl
-              aria-label="Runtime"
-              value={selectedHarness}
-              options={harnessOptions}
-              onValueChange={chooseHarness}
-            />
-          </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Refresh models"
-                disabled={!available || refreshing}
-                onClick={refresh}
-              >
-                <RefreshCw className={refreshing ? "motion-safe:animate-spin" : ""} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Refresh models</TooltipContent>
-          </Tooltip>
+        <div className="border-b p-2">
+          <SegmentedControl
+            aria-label="Runtime"
+            value={selectedHarness}
+            options={harnessOptions}
+            onValueChange={chooseHarness}
+          />
         </div>
         <Command
           key={`${open}/${selectedHarness}`}
@@ -296,6 +276,21 @@ export function ModelPicker({
           </CommandList>
         </Command>
         {note}
+        <div className="flex shrink-0 items-center justify-end border-t p-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            disabled={!available || refreshing}
+            onClick={refresh}
+          >
+            <RefreshCw
+              aria-hidden="true"
+              className={refreshing ? "motion-safe:animate-spin" : ""}
+            />
+            Refresh models
+          </Button>
+        </div>
       </PopoverContent>
     </Popover>
   );

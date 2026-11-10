@@ -56,7 +56,7 @@ export function FileUpload({
     try {
       await onFiles(files);
     } catch {
-      setError("We couldn't select these files. Please try again.");
+      setError("We couldn’t select these files. Please try again.");
     } finally {
       busy.current = false;
       setPending(false);

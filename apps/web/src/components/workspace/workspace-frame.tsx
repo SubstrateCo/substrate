@@ -94,7 +94,7 @@ export function WorkspaceFrame({
               logo={organization.data?.logo}
             />
           ) : (
-            <a href="/organizations" aria-label="Your workspaces">
+            <a href="/organizations" aria-label="Workspaces">
               OS
             </a>
           )

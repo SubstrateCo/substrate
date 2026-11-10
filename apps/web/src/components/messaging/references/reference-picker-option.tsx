@@ -1,4 +1,5 @@
 import type { TaskStatus } from "@startup-os/contracts/tasks";
+/* oxlint-disable shadcn/no-restyle -- Picker candidates need a neutral cursor and wrapping context, not a button's selected state. */
 
 import { Button } from "../../ui/button";
 import type { ReferenceKind } from "./reference-picker";
@@ -14,6 +15,7 @@ export function ReferencePickerOption({
   description,
   status,
   selected,
+  onFocus,
   onSelect,
 }: {
   id: string;
@@ -23,6 +25,7 @@ export function ReferencePickerOption({
   /** Tasks only: replaces the kind icon. */
   status?: TaskStatus;
   selected: boolean;
+  onFocus: () => void;
   onSelect: () => void;
 }) {
   const Icon = {
@@ -43,17 +46,19 @@ export function ReferencePickerOption({
       type="button"
       role="option"
       aria-selected={selected}
-      variant={selected ? "secondary" : "ghost"}
+      variant="ghost"
       size="default"
-      className="w-full justify-start"
+      tabIndex={selected ? 0 : -1}
+      className={`h-auto w-full justify-start py-1.5 font-normal hover:bg-row-hover active:scale-100 ${selected ? "bg-row-highlight hover:bg-row-highlight" : ""}`}
+      onFocus={onFocus}
       onClick={onSelect}
     >
       <span className="flex min-w-0 items-center gap-2">
         {icon}
-        <span className="flex min-w-0 items-center gap-2 text-left">
-          <span className="truncate">{plainReferenceText(title)}</span>
+        <span className="flex min-w-0 flex-col items-start text-left">
+          <span className="wrap-break-word">{plainReferenceText(title)}</span>
           {description && (
-            <span className="truncate text-xs font-normal text-muted-foreground">
+            <span className="text-xs font-normal wrap-break-word text-muted-foreground">
               {description}
             </span>
           )}

@@ -24,7 +24,7 @@ export type RequestPending =
   | { kind: "answer" }
   | { kind: "option"; optionId: string };
 
-const hiddenRequestTitle = "A request you can't open";
+const hiddenRequestTitle = "A request you can’t open";
 
 /** How a request ended, with a forward link to what an approved proposal created. */
 export function RequestResult({

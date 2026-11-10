@@ -179,6 +179,7 @@ export function ManagedConversations({
                           if (element) menuTriggers.current.set(row.id, element);
                           else menuTriggers.current.delete(row.id);
                         }}
+                        deleteLabel={row.kind === "channel" ? "Delete channel" : "Delete group"}
                         onTransfer={() =>
                           onTransfer(row.id, menuTriggers.current.get(row.id) ?? null)
                         }

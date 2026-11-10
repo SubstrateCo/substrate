@@ -9,6 +9,7 @@ function impact(linkedWork?: number) {
 
 export function DeleteConversationDialog({
   name,
+  deleteLabel = "Delete conversation",
   linkedWork,
   pending,
   error,
@@ -16,7 +17,10 @@ export function DeleteConversationDialog({
   onClose,
   onRestoreFocus,
 }: {
+  /** The conversation as running text, from `conversationLabel`. */
   name: string;
+  /** "Delete channel" or "Delete group": the button names what it destroys. */
+  deleteLabel?: string;
   linkedWork?: number;
   pending: boolean;
   error?: Error | null;
@@ -33,8 +37,8 @@ export function DeleteConversationDialog({
           {impact(linkedWork)} This cannot be undone.
         </>
       }
-      confirmLabel="Delete conversation"
-      pendingLabel="Deleting"
+      confirmLabel={deleteLabel}
+      pendingLabel="Deleting…"
       destructive
       pending={pending}
       error={error}

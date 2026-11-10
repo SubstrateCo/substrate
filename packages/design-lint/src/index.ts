@@ -1,5 +1,6 @@
 import { canonicalIcons } from "./rules/canonical-icons.ts";
 import { conversationLabel } from "./rules/conversation-label.ts";
+import { destructiveLabel } from "./rules/destructive-label.ts";
 import { dialogFooterOrder } from "./rules/dialog-footer-order.ts";
 import { dialogStructure } from "./rules/dialog-structure.ts";
 import { iconButtonName, iconButtonTooltip } from "./rules/icon-buttons.ts";
@@ -12,6 +13,7 @@ import { noRawValidationText } from "./rules/no-raw-validation-text.ts";
 import { noSolidDestructive } from "./rules/no-solid-destructive.ts";
 import { noTooltipOnToggleItem } from "./rules/no-tooltip-on-toggle-item.ts";
 import { pageHeader } from "./rules/page-header.ts";
+import { personAvatar } from "./rules/person-avatar.ts";
 import { sentenceCase } from "./rules/sentence-case.ts";
 import { typographicQuotes } from "./rules/typographic-quotes.ts";
 
@@ -21,6 +23,7 @@ export default {
   rules: {
     "canonical-icons": canonicalIcons,
     "conversation-label": conversationLabel,
+    "destructive-label": destructiveLabel,
     "dialog-footer-order": dialogFooterOrder,
     "dialog-structure": dialogStructure,
     "icon-button-name": iconButtonName,
@@ -34,6 +37,7 @@ export default {
     "no-solid-destructive": noSolidDestructive,
     "no-tooltip-on-toggle-item": noTooltipOnToggleItem,
     "page-header": pageHeader,
+    "person-avatar": personAvatar,
     "sentence-case": sentenceCase,
     "typographic-quotes": typographicQuotes,
   },

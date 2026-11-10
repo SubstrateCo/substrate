@@ -37,10 +37,10 @@ test("deleting a channel keeps its linked task and removes the channel for every
 
   const since = member.events.length;
   await sender.page.getByRole("button", { name: "Conversation actions", exact: true }).click();
-  await sender.page.getByRole("menuitem", { name: "Delete", exact: true }).click();
+  await sender.page.getByRole("menuitem", { name: "Delete channel", exact: true }).click();
   const dialog = sender.page.getByRole("dialog", { name: `Delete ${channel.name}?` });
   await expect(dialog.getByText(/1 task or project links to its messages/)).toBeVisible();
-  await dialog.getByRole("button", { name: "Delete conversation", exact: true }).click();
+  await dialog.getByRole("button", { name: "Delete channel", exact: true }).click();
 
   await expect(dialog).toHaveCount(0);
   await expect.poll(() => new URL(sender.page.url()).searchParams.get("conversationId")).toBeNull();
@@ -110,7 +110,7 @@ test("a member leaves a private channel and loses access to it", async ({ actors
   const member = await client(actors.member);
   await visit(member, channel.id);
   await member.page.getByRole("button", { name: "Conversation actions", exact: true }).click();
-  await expect(member.page.getByRole("menuitem", { name: "Delete", exact: true })).toHaveCount(0);
+  await expect(member.page.getByRole("menuitem", { name: /^Delete/ })).toHaveCount(0);
   await member.page.getByRole("menuitem", { name: "Leave channel", exact: true }).click();
   await member.page
     .getByRole("dialog", { name: `Leave ${channel.name}?` })

@@ -82,6 +82,8 @@ type AgentFormProps = {
   picture?: ReactNode;
   runSettings?: ReactNode;
   runSettingsDirty?: boolean;
+  /** Drops the unsaved run settings, which keep their own draft. */
+  onDiscardRunSettings?: () => void;
   onUnsavedSectionsChange?: (sections: readonly AgentSettingsSection[]) => void;
   deleteAction?: ReactNode;
   pending: boolean;
@@ -108,6 +110,7 @@ export function AgentForm({
   picture,
   runSettings,
   runSettingsDirty = false,
+  onDiscardRunSettings,
   onUnsavedSectionsChange,
   deleteAction,
   pending,
@@ -374,6 +377,11 @@ export function AgentForm({
             <UnsavedSectionsBar
               sections={unsaved.filter((item) => item !== section)}
               onSectionChange={(next) => onSectionChange?.(next)}
+              onDiscardAll={() => {
+                form.reset();
+                setError(undefined);
+                if (runSettingsDirty) onDiscardRunSettings?.();
+              }}
             />
           </div>
         );

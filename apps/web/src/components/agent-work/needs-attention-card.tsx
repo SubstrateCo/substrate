@@ -1,3 +1,4 @@
+import { TechnicalDetails } from "./technical-details";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { MessageCard, MessageCardBody } from "@/components/messaging/messages/message-card";
 import { stoppedNeedsYouLabel } from "@/lib/agent-work/status";
@@ -26,7 +27,7 @@ export function NeedsAttentionCard({
   /** Inside an activity row that already names the state: no card, no header. */
   inline?: boolean;
   text: string;
-  /** What the runtime reported when the work stopped. */
+  /** What the runtime reported when the work stopped. Shown under Technical details only. */
   error: string | null;
   /** The action being sent, if any. */
   pending?: NeedsAttentionAction;
@@ -61,7 +62,7 @@ export function NeedsAttentionCard({
   const content = (
     <>
       <p>{text}</p>
-      {error && <p className="text-xs wrap-anywhere text-muted-foreground">{error}</p>}
+      {error?.trim() && <TechnicalDetails>{error}</TechnicalDetails>}
       {failure && (
         <p role="alert" className="flex items-start gap-1.5 text-xs text-destructive">
           <CircleAlert aria-hidden="true" className="mt-px size-3.5 shrink-0" />

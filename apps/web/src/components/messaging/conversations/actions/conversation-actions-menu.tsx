@@ -14,6 +14,7 @@ import { Bot, Crown, Ellipsis, Globe, LogOut, Trash2 } from "lucide-react";
 export function ConversationActionsMenu({
   triggerRef,
   leaveLabel = "Leave conversation",
+  deleteLabel = "Delete conversation",
   onAgents,
   onLeave,
   onTransfer,
@@ -24,6 +25,8 @@ export function ConversationActionsMenu({
   triggerRef?: Ref<HTMLButtonElement>;
   /** "Leave channel" or "Leave group". */
   leaveLabel?: string;
+  /** "Delete channel" or "Delete group": the item names what it destroys. */
+  deleteLabel?: string;
   onAgents?: () => void;
   onLeave?: () => void;
   onTransfer?: () => void;
@@ -79,7 +82,7 @@ export function ConversationActionsMenu({
             {(onSharing || onAgents || onLeave || onTransfer) && <DropdownMenuSeparator />}
             <DropdownMenuItem variant="destructive" onSelect={onDelete}>
               <Trash2 />
-              Delete
+              {deleteLabel}
             </DropdownMenuItem>
           </>
         )}

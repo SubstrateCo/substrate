@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "@tanstack/react-router";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { LinkMessageWork } from "../../context/links/link-message-work";
 import { MessageContext, type MessageContextState } from "../../context/references/message-context";
@@ -54,6 +54,7 @@ export function MessageItem({
   // A thread's root heads its own pane, so it is not marked as the link target there.
   const highlighted = linked && !threadRoot;
   const [linking, setLinking] = useState(false);
+  const actionsTrigger = useRef<HTMLButtonElement>(null);
   const reaction = useMutation({
     onError: (error) =>
       toast.error(
@@ -104,6 +105,7 @@ export function MessageItem({
                   <TooltipTrigger asChild>
                     <DropdownMenuTrigger asChild>
                       <Button
+                        ref={actionsTrigger}
                         type="button"
                         size="icon-sm"
                         variant="ghost"
@@ -155,7 +157,10 @@ export function MessageItem({
               organizationId={organizationId}
               messageId={message.id}
               linkedIds={context.data?.links.map((link) => link.entityId) ?? []}
-              onClose={() => setLinking(false)}
+              onClose={() => {
+                setLinking(false);
+                requestAnimationFrame(() => actionsTrigger.current?.focus());
+              }}
             />
           )}
         </MessageItemView>

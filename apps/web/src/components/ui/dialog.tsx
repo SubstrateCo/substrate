@@ -41,7 +41,7 @@ function DialogOverlay({
 // A column: DialogHeader and DialogFooter stay fixed and DialogBody scrolls between them.
 // A form that is a direct child does not take part in the layout, so its body and footer do.
 const dialogContentVariants = cva(
-  "fixed top-1/2 left-1/2 z-50 flex max-h-overlay-height w-overlay-width -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border bg-popover text-sm text-popover-foreground shadow-floating duration-200 ease-out outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-97 data-closed:animate-out data-closed:duration-150 data-closed:fade-out-0 data-closed:zoom-out-97 [&>form]:contents",
+  "fixed top-dialog-top left-1/2 z-50 flex max-h-dialog-height w-overlay-width -translate-x-1/2 flex-col overflow-hidden rounded-xl border bg-popover text-sm text-popover-foreground shadow-floating duration-200 ease-out outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-97 data-closed:animate-out data-closed:duration-150 data-closed:fade-out-0 data-closed:zoom-out-97 [&>form]:contents",
   {
     variants: {
       size: {
@@ -53,22 +53,45 @@ const dialogContentVariants = cva(
   },
 );
 
+/**
+ * Focus returns to the element that had it when the dialog opened, so a dialog that is mounted by
+ * state (a confirm, a menu action) hands focus back like one with a `DialogTrigger`. If that
+ * element is gone, such as a menu item, Radix's default applies; pass `onCloseAutoFocus` and call
+ * `event.preventDefault()` to focus a stable launcher instead.
+ */
 function DialogContent({
   className,
   children,
   size,
   showCloseButton = true,
+  onOpenAutoFocus,
+  onCloseAutoFocus,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> &
   VariantProps<typeof dialogContentVariants> & {
     showCloseButton?: boolean;
   }) {
+  const opener = React.useRef<Element | null>(null);
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(dialogContentVariants({ size }), className)}
+        onOpenAutoFocus={(event) => {
+          opener.current = document.activeElement;
+          onOpenAutoFocus?.(event);
+        }}
+        onCloseAutoFocus={(event) => {
+          onCloseAutoFocus?.(event);
+          const target = opener.current;
+          opener.current = null;
+          if (event.defaultPrevented) return;
+          if (target instanceof HTMLElement && target !== document.body && target.isConnected) {
+            event.preventDefault();
+            target.focus();
+          }
+        }}
         {...props}
       >
         {children}

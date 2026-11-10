@@ -8,6 +8,7 @@ import { InputGroup, InputGroupAddon } from "../../ui/input-group";
 import { Popover, PopoverAnchor, PopoverContent } from "../../ui/popover";
 import type { WorkspaceReference } from "../references/entity-reference";
 import { ReferenceEditor } from "../references/reference-editor";
+import { ReferencePickerAccessibility } from "../references/reference-picker";
 import { referenceQuery } from "../references/reference-query";
 import type { ReferenceQuery } from "../references/reference-query";
 import { ComposerDraftReferences } from "./composer-drafts";
@@ -47,6 +48,10 @@ export function Composer({
     });
   const limitId = useId();
   const [references, setReferences] = useState(false);
+  const [pickerAccessibility, setPickerAccessibility] = useState<{
+    listId: string;
+    selectedId?: string;
+  } | null>(null);
   const [caret, setCaret] = useState(draft.length);
   const draftReferences = useContext(ComposerDraftReferences);
   if (!draftReferences) throw new Error("Composer requires ComposerDraftProvider");
@@ -86,7 +91,7 @@ export function Composer({
   const nearLimit = draft.length > messageMaxLength - 1000;
   return (
     <form
-      className="@container relative w-full max-w-3xl p-3 pt-1"
+      className="@container relative mx-auto w-full max-w-3xl p-3 pt-1"
       onSubmit={(event) => {
         event.preventDefault();
         submit();
@@ -117,6 +122,10 @@ export function Composer({
                   value={draft}
                   references={resolvedReferences}
                   disabled={pending}
+                  listId={references && activeReference ? pickerAccessibility?.listId : undefined}
+                  activeOptionId={
+                    references && activeReference ? pickerAccessibility?.selectedId : undefined
+                  }
                   onChange={(value, position) => {
                     setDraft(value);
                     setCaret(position);
@@ -185,10 +194,12 @@ export function Composer({
                     event.preventDefault();
                 }}
               >
-                {renderReferences(activeReference, insertReference, () => {
-                  closeReferences();
-                  requestFocus(caret);
-                })}
+                <ReferencePickerAccessibility value={setPickerAccessibility}>
+                  {renderReferences(activeReference, insertReference, () => {
+                    closeReferences();
+                    requestFocus(caret);
+                  })}
+                </ReferencePickerAccessibility>
               </PopoverContent>
             )}
             <InputGroupAddon align="block-end">

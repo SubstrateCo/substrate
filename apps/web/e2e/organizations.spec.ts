@@ -132,3 +132,24 @@ test("an owner invites a teammate, who accepts without receiving project access 
     invitee.page.getByRole("heading", { name: "No projects yet", exact: true }),
   ).toBeVisible();
 });
+
+test("invitation validation and owner confirmation return to the form", async ({
+  account,
+  client,
+}) => {
+  const user = await client(account);
+  await visit(user, undefined, "/settings/organization/invitations");
+  const send = user.page.getByRole("button", { name: "Send invitation", exact: true });
+  const email = user.page.getByLabel("Email", { exact: true });
+  await send.click();
+  await expect(user.page.getByText("Enter an email address to invite.")).toBeVisible();
+  await email.fill("owner@example.com");
+  await user.page.getByRole("combobox", { name: "Role" }).click();
+  await user.page.getByRole("option", { name: "Owner", exact: true }).click();
+  await send.click();
+  const dialog = user.page.getByRole("dialog", { name: "Invite an owner?" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(send).toBeFocused();
+  await expect(email).toHaveValue("owner@example.com");
+});

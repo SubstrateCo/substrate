@@ -1,4 +1,5 @@
 import { useState } from "react";
+/* oxlint-disable shadcn/no-restyle -- Selected record chips must grow vertically to reveal long identities. */
 
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
@@ -116,11 +117,18 @@ export function LinkMessageWork({
                       type="button"
                       variant="secondary"
                       size="xs"
+                      className="h-auto max-w-full text-left whitespace-normal"
                       disabled={pending}
                       onClick={() => toggle(item)}
-                      aria-label={`Remove ${item.title} from selection`}
+                      aria-label={`Remove ${item.title}, ${item.kind === "task" ? `task${item.projectName ? ` in ${item.projectName}` : ""}` : "project"} from selection`}
                     >
-                      {item.title} <span aria-hidden="true">×</span>
+                      <span className="min-w-0 wrap-anywhere">
+                        {item.title}{" "}
+                        <span className="text-muted-foreground">
+                          · {item.kind === "task" ? (item.projectName ?? "Task") : "Project"}
+                        </span>
+                      </span>{" "}
+                      <span aria-hidden="true">×</span>
                     </Button>
                   ))}
                 </div>

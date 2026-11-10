@@ -79,7 +79,7 @@ export function ResetPasswordForm({
           if (pending) return;
           const form = new FormData(event.currentTarget);
           if (form.get("password") !== form.get("confirm")) {
-            setMismatch("The passwords don't match.");
+            setMismatch("The passwords don’t match.");
             event.currentTarget.querySelector<HTMLInputElement>("#confirm")?.focus();
             return;
           }
@@ -95,6 +95,7 @@ export function ResetPasswordForm({
             name="password"
             type="password"
             autoComplete="new-password"
+            autoFocus
             minLength={8}
             data-missing-message="Choose a new password."
             required

@@ -1,4 +1,4 @@
-import { confirmDiscardDrafts, registerUnsavedDraft } from "./unsaved-drafts";
+import { confirmDiscardDrafts, registerUnsavedDraft, unsavedDraftNames } from "./unsaved-drafts";
 import { describe, expect, mock, test } from "bun:test";
 
 describe("unsaved drafts", () => {
@@ -18,6 +18,22 @@ describe("unsaved drafts", () => {
 
     unregisterFirst();
     unregisterSecond();
+  });
+
+  test("gives the question the name of every dirty draft", async () => {
+    const ask = mock((_names: readonly string[]) => Promise.resolve(true));
+    const unregister = [
+      registerUnsavedDraft(ask, "Project details"),
+      registerUnsavedDraft(() => Promise.resolve(true), "Task edits"),
+      registerUnsavedDraft(() => Promise.resolve(true), "Task edits"),
+      registerUnsavedDraft(() => Promise.resolve(true)),
+    ];
+
+    await confirmDiscardDrafts();
+
+    expect(ask).toHaveBeenCalledWith(["Project details", "Task edits"]);
+    for (const stop of unregister) stop();
+    expect(unsavedDraftNames()).toEqual([]);
   });
 
   test("stops asking once the draft is saved or discarded", async () => {

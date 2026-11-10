@@ -87,6 +87,27 @@ export function formatDateTimeInZone(value: DateInput, zone: string, now: DateIn
   }
 }
 
+/** "Tue, Nov 10, 9:00 AM EST": a moment read in a named IANA time zone, with the zone's short name. */
+export function formatZonedDateTime(value: DateInput, zone: string) {
+  const date = toDate(value);
+  if (!date) return "";
+  try {
+    return plain(
+      new Intl.DateTimeFormat(locale, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZoneName: "short",
+        timeZone: zone,
+      }).format(date),
+    ).replace(" at ", ", ");
+  } catch {
+    return formatDateTime(date);
+  }
+}
+
 /** "America / New York · UTC−5": a zone's name for reading, with its offset at the given time. */
 export function formatTimeZone(zone: string, at: DateInput = Date.now()) {
   const name = zone.replaceAll("_", " ").replaceAll("/", " / ");

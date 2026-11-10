@@ -45,6 +45,7 @@ export function TaskDetail({
       <UnsavedChangesGuard
         dirty={dirty}
         description="Your task edits or comment haven’t been saved."
+        name={`Task “${task.title}”`}
       />
       <TaskDetailView
         detail={detail}

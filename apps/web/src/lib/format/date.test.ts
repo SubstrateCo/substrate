@@ -6,6 +6,7 @@ import {
   formatRelativeTime,
   formatShortDate,
   formatTimeZone,
+  formatZonedDateTime,
   parseDateOnly,
 } from "./date";
 import { expect, test } from "bun:test";
@@ -17,6 +18,11 @@ test("a schedule's next run reads in the schedule's own zone", () => {
   const instant = "2026-11-10T14:00:00.000Z";
   expect(formatDateTimeInZone(instant, "America/New_York", now)).toBe("Nov 10, 9:00 AM");
   expect(formatDateTimeInZone(instant, "Europe/Berlin", now)).toBe("Nov 10, 3:00 PM");
+});
+
+test("a zoned moment names the weekday and the zone", () => {
+  const instant = "2026-11-10T14:00:00.000Z";
+  expect(formatZonedDateTime(instant, "America/New_York")).toBe("Tue, Nov 10, 9:00 AM EST");
 });
 
 test("a time zone label has a readable name and its UTC offset", () => {

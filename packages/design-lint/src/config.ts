@@ -143,6 +143,7 @@ export const designConfig = {
       rules: {
         "design/canonical-icons": "error",
         "design/conversation-label": "warn",
+        "design/destructive-label": "warn",
         "design/dialog-footer-order": "error",
         "design/dialog-structure": "warn",
         "design/icon-button-name": "error",
@@ -156,6 +157,7 @@ export const designConfig = {
         "design/no-solid-destructive": "error",
         "design/no-tooltip-on-toggle-item": "error",
         "design/page-header": "warn",
+        "design/person-avatar": "warn",
         "design/sentence-case": "warn",
         "design/typographic-quotes": "warn",
       },
@@ -199,6 +201,11 @@ export const designConfig = {
     {
       files: [`${WEB}/lib/forms/**`],
       rules: { "design/no-raw-validation-text": "off" },
+    },
+    {
+      // PersonAvatar is the one place a small head is built from Avatar.
+      files: [`${WEB}/components/people/person-avatar.tsx`],
+      rules: { "design/person-avatar": "off" },
     },
     {
       files: [`${WEB}/components/feedback/confirm-dialog.tsx`],

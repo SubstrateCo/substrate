@@ -31,6 +31,7 @@ export function SignupForm({
           name="name"
           label="Name"
           autoComplete="name"
+          autoFocus
           missingMessage="Enter your name."
           required
         />

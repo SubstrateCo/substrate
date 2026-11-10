@@ -72,7 +72,7 @@ export function WorkspaceSearch({
             ),
           onError: (error) =>
             toast.error(
-              actionErrorMessage(error, "We couldn't join the channel. Please try again."),
+              actionErrorMessage(error, "We couldn’t join the channel. Please try again."),
             ),
         })
       }

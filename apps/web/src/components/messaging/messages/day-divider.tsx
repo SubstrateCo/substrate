@@ -7,7 +7,7 @@ export function DayDivider({ date }: { date: DateInput }) {
     <div
       role="separator"
       aria-label={label}
-      className="flex max-w-3xl items-center gap-3 px-4 pt-3 pb-1"
+      className="mx-auto flex max-w-3xl items-center gap-3 px-4 pt-3 pb-1"
     >
       <span aria-hidden="true" className="h-px flex-1 bg-border" />
       <span aria-hidden="true" className="text-xs font-medium text-muted-foreground">

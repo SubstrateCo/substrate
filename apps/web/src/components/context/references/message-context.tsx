@@ -31,7 +31,7 @@ export function MessageContext({
       detachWork({ data: { organizationId, messageId, entityId } }),
     onError: (error) =>
       toast.error(
-        actionErrorMessage(error, "Couldn't remove this link. Check that you still have access."),
+        actionErrorMessage(error, "Couldn’t remove this link. Check that you still have access."),
       ),
     onSuccess: (_, { entityId, projectEntityId }) =>
       invalidateMessageWork(client, organizationId, messageId, entityId, projectEntityId),

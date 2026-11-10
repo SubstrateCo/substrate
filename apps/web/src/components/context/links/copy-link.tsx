@@ -16,7 +16,7 @@ export function CopyLink({
       label={label}
       onCopy={() => navigator.clipboard.writeText(new URL(href, window.location.origin).href)}
       successMessage="Link copied"
-      errorMessage="Couldn't copy link"
+      errorMessage="Couldn’t copy link"
     />
   );
 }

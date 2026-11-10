@@ -42,19 +42,17 @@ function Header({
   tags?: ReactNode;
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-3">
-      <Avatar aria-hidden="true" variant="message" className="size-10">
+    <div className="flex min-w-0 items-start gap-3">
+      <Avatar aria-hidden="true" variant="message" className="size-10 shrink-0">
         {image && <AvatarImage src={image} alt="" />}
         <AvatarFallback>{initials(name)}</AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <p className="min-w-0 truncate font-semibold">{name}</p>
-          {tags}
-        </div>
+        <p className="font-semibold wrap-break-word">{name}</p>
         {secondary}
+        {tags && <div className="mt-1 flex flex-wrap gap-1">{tags}</div>}
+        {action && <div className="mt-2">{action}</div>}
       </div>
-      {action && <div className="shrink-0">{action}</div>}
     </div>
   );
 }
@@ -118,11 +116,11 @@ export function PersonCard({
         action={action}
         tags={tags}
         secondary={
-          secondary && <p className="truncate text-xs text-muted-foreground">{secondary}</p>
+          secondary && <p className="text-xs wrap-anywhere text-muted-foreground">{secondary}</p>
         }
       />
       {profile.agent?.ownerName && (
-        <p className="truncate text-xs text-muted-foreground">
+        <p className="text-xs wrap-anywhere text-muted-foreground">
           Owned by <span className="font-medium text-foreground">{profile.agent.ownerName}</span>
         </p>
       )}

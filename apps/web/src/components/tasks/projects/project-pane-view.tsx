@@ -1,6 +1,6 @@
 import type { TaskStatus } from "@startup-os/contracts/tasks";
 
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { TaskInspectorActive } from "../detail/task-detail";
 import { TaskList } from "../list/task-list";
@@ -13,6 +13,7 @@ import { ErrorState } from "@/components/feedback/error-state";
 import { isAccessFailure } from "@/components/feedback/request-failure";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageAside, PageContent } from "@/components/layout/page-layout";
+import { SettingsContent } from "@/components/layout/settings-page";
 import { ProjectLoading } from "@/components/tasks/projects/project-loading";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -70,6 +71,9 @@ export function ProjectPane({
   const [tab, setTab] = useState("tasks");
   const [taskDirty, setTaskDirty] = useState(false);
   const [pendingTab, setPendingTab] = useState<string | null>(null);
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const lastInspectorFocus = useRef<HTMLElement | null>(null);
+  const restoreDestination = useRef(false);
   const detail = isAccessFailure(error) ? undefined : data;
   const { panel, inspector, newTaskButton, restoreFocus } = useTaskPanel({
     selectedTaskId,
@@ -148,7 +152,7 @@ export function ProjectPane({
                   </div>
                 }
               />
-              <TabsList variant="line" className="mt-3 -ml-1.5">
+              <TabsList ref={tabsRef} variant="line" className="mt-3 -ml-1.5">
                 <TabsTrigger value="tasks" className="flex-none">
                   Tasks
                 </TabsTrigger>
@@ -196,15 +200,21 @@ export function ProjectPane({
               hidden={tab !== "settings"}
               className="min-h-0 overflow-y-auto"
             >
-              <div className="grid max-w-3xl min-w-0 gap-6 p-6">
+              <SettingsContent inset>
                 {canEdit && editor}
                 {sharing}
-              </div>
+              </SettingsContent>
             </TabsContent>
           </div>
         </Tabs>
       </PageContent>
-      <TaskAside open={Boolean(openTaskId && tab === "tasks")} inspector={inspector}>
+      <TaskAside
+        open={Boolean(openTaskId && tab === "tasks")}
+        inspector={inspector}
+        onFocusCapture={(event) => {
+          if (event.target instanceof HTMLElement) lastInspectorFocus.current = event.target;
+        }}
+      >
         {selected ? (
           renderTaskDetail(
             detail,
@@ -268,7 +278,18 @@ export function ProjectPane({
           pendingLabel="Discarding…"
           destructive
           onClose={() => setPendingTab(null)}
+          onRestoreFocus={() => {
+            if (restoreDestination.current) {
+              restoreDestination.current = false;
+              tabsRef.current?.querySelector<HTMLElement>('[data-state="active"]')?.focus();
+            } else if (lastInspectorFocus.current?.isConnected) {
+              lastInspectorFocus.current.focus();
+            } else {
+              inspector.current?.focus();
+            }
+          }}
           onConfirm={() => {
+            restoreDestination.current = true;
             setTaskDirty(false);
             setTab(pendingTab);
             setPendingTab(null);
@@ -282,43 +303,24 @@ export function ProjectPane({
 function TaskAside({
   open,
   inspector,
+  onFocusCapture,
   children,
 }: {
   open: boolean;
   inspector: RefObject<HTMLElement | null>;
+  onFocusCapture: React.FocusEventHandler<HTMLElement>;
   children: ReactNode;
 }) {
-  const [present, setPresent] = useState(open);
-  const lastContent = useRef(children);
-  // Keep the last inspector visible for the exit animation after its selection is cleared.
-  // oxlint-disable-next-line react/refs -- The snapshot is used only for the short exit state.
-  if (open) lastContent.current = children;
-  useEffect(() => {
-    if (open) {
-      // oxlint-disable-next-line react/set-state-in-effect -- Re-arm exit presence after reopening.
-      setPresent(true);
-      return;
-    }
-    const timer = window.setTimeout(() => setPresent(false), 150);
-    return () => window.clearTimeout(timer);
-  }, [open]);
-  if (!open && !present) return null;
+  if (!open) return null;
   return (
     <PageAside
       ref={inspector}
       tabIndex={-1}
       aria-label="Task"
-      inert={!open}
-      className={
-        open
-          ? "outline-none"
-          : "pointer-events-none duration-150 outline-none motion-safe:animate-out motion-safe:fade-out-0 motion-safe:slide-out-to-right-2"
-      }
+      onFocusCapture={onFocusCapture}
+      className="outline-none"
     >
-      <TaskInspectorActive.Provider value={open}>
-        {/* oxlint-disable-next-line react/refs -- Exit content is an inert snapshot. */}
-        {open ? children : lastContent.current}
-      </TaskInspectorActive.Provider>
+      <TaskInspectorActive.Provider value={open}>{children}</TaskInspectorActive.Provider>
     </PageAside>
   );
 }

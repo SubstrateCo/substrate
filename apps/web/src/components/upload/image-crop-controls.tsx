@@ -16,7 +16,7 @@ const maxZoom = 3;
 const zoomStep = 0.25;
 
 /** Logos choose between keeping the whole image and filling the square. */
-export function ImageSizingControl({
+function ImageSizingControl({
   mode,
   onModeChange,
 }: {
@@ -24,7 +24,7 @@ export function ImageSizingControl({
   onModeChange: (mode: "fit" | "fill") => void;
 }) {
   return (
-    <div className="flex justify-center">
+    <div>
       <SegmentedControl
         aria-label="Logo sizing"
         value={mode}
@@ -67,55 +67,70 @@ function ToolButton({
 
 /** Zoom, rotate, and reset, on one row under the image. Fit mode has nothing to zoom. */
 export function ImageCropControls({
+  kind,
   mode,
   zoom,
+  onModeChange,
   onZoomChange,
   onRotate,
   onReset,
 }: {
+  kind: "avatar" | "organization-logo";
   mode: "fit" | "fill";
   zoom: number;
+  onModeChange: (mode: "fit" | "fill") => void;
   onZoomChange: (zoom: number) => void;
-  onRotate: () => void;
+  onRotate: (degrees: number) => void;
   onReset: () => void;
 }) {
+  const zoomControl = (
+    <div className="flex min-w-0 flex-1 items-center">
+      <ToolButton
+        label="Zoom out"
+        disabled={zoom <= minZoom}
+        onClick={() => onZoomChange(Math.max(minZoom, zoom - zoomStep))}
+      >
+        <ZoomOut aria-hidden="true" />
+      </ToolButton>
+      <Slider
+        aria-label="Zoom"
+        className="mx-2 min-w-0 flex-1"
+        min={minZoom}
+        max={maxZoom}
+        step={0.01}
+        value={[zoom]}
+        onValueChange={(values) => onZoomChange(values[0]!)}
+      />
+      <ToolButton
+        label="Zoom in"
+        disabled={zoom >= maxZoom}
+        onClick={() => onZoomChange(Math.min(maxZoom, zoom + zoomStep))}
+      >
+        <ZoomIn aria-hidden="true" />
+      </ToolButton>
+    </div>
+  );
   return (
-    <div className="flex items-center gap-0.5">
-      {mode === "fill" && (
-        <>
-          <ToolButton
-            label="Zoom out"
-            disabled={zoom <= minZoom}
-            onClick={() => onZoomChange(Math.max(minZoom, zoom - zoomStep))}
-          >
-            <ZoomOut aria-hidden="true" />
+    <div className="space-y-2">
+      <div className="flex items-center gap-0.5">
+        {kind === "organization-logo" ? (
+          <ImageSizingControl mode={mode} onModeChange={onModeChange} />
+        ) : (
+          zoomControl
+        )}
+        <div className="ml-auto flex items-center gap-0.5 pl-2">
+          <ToolButton label="Rotate left" onClick={() => onRotate(-90)}>
+            <RotateCcw aria-hidden="true" />
           </ToolButton>
-          <Slider
-            aria-label="Zoom"
-            className="mx-2 min-w-0 flex-1"
-            min={minZoom}
-            max={maxZoom}
-            step={0.01}
-            value={[zoom]}
-            onValueChange={(values) => onZoomChange(values[0]!)}
-          />
-          <ToolButton
-            label="Zoom in"
-            disabled={zoom >= maxZoom}
-            onClick={() => onZoomChange(Math.min(maxZoom, zoom + zoomStep))}
-          >
-            <ZoomIn aria-hidden="true" />
+          <ToolButton label="Rotate right" onClick={() => onRotate(90)}>
+            <RotateCw aria-hidden="true" />
           </ToolButton>
-        </>
-      )}
-      <div className="ml-auto flex items-center gap-0.5 pl-2">
-        <ToolButton label="Rotate 90°" onClick={onRotate}>
-          <RotateCw aria-hidden="true" />
-        </ToolButton>
-        <ToolButton label="Reset" onClick={onReset}>
-          <RotateCcw aria-hidden="true" />
-        </ToolButton>
+          <Button type="button" variant="ghost" size="sm" onClick={onReset}>
+            Reset
+          </Button>
+        </div>
       </div>
+      {kind === "organization-logo" && mode === "fill" && zoomControl}
     </div>
   );
 }

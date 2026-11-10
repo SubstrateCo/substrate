@@ -24,6 +24,7 @@ export function UnsavedChangesGuard({
     <DraftGuard
       dirty={sections.length > 0}
       description={`Your changes in ${listSections(sections)} aren’t saved.`}
+      name={`Agent settings: ${listSections(sections)}`}
       shouldBlock={({ next }) => {
         if (next.routeId !== agentsRoute) return true;
         return !(next.search.agentId === agentId && isAgentSettingsSection(next.search.section));

@@ -1,4 +1,4 @@
-import { Fragment, type MouseEvent } from "react";
+import { Fragment, type KeyboardEvent, type MouseEvent } from "react";
 
 import { ContentNotice } from "../../feedback/content-notice";
 import { ErrorState } from "../../feedback/error-state";
@@ -28,6 +28,20 @@ function dayLabeled(items: Notification[]) {
     previous = day;
     return { item, label };
   });
+}
+
+/** Up and Down move between rows, like a list in Linear or Mail. Tab still visits every control. */
+function moveBetweenRows(event: KeyboardEvent<HTMLUListElement>) {
+  const step = { ArrowDown: 1, ArrowUp: -1 }[event.key];
+  if (!step || !(event.target instanceof HTMLElement) || event.target.tagName !== "A") return;
+  const rows = [...event.currentTarget.querySelectorAll<HTMLAnchorElement>("li > div a[href]")];
+  const target = event.target;
+  const current = rows.findIndex((row) => row === target);
+  const next = current < 0 ? undefined : rows[current + step];
+  if (!next) return;
+  event.preventDefault();
+  next.focus();
+  next.scrollIntoView({ block: "nearest" });
 }
 
 export function NotificationList({
@@ -74,7 +88,7 @@ export function NotificationList({
           aria-busy={loading}
           className="min-h-0 flex-1 overflow-y-auto"
         >
-          <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-6">
+          <div className="flex w-full max-w-3xl flex-col gap-4 p-6">
             <PageHeader
               title="Notifications"
               description="Mentions, replies, and tasks assigned to you."
@@ -154,7 +168,11 @@ export function NotificationList({
                   {error && (
                     <ErrorState compact title="Couldn’t refresh notifications" onRetry={onRetry} />
                   )}
-                  <ul aria-label="Notification activity" className="-mx-3 flex flex-col gap-px">
+                  <ul
+                    aria-label="Notification activity"
+                    className="-mx-3 flex flex-col gap-px"
+                    onKeyDown={moveBetweenRows}
+                  >
                     {dayLabeled(visible).map(({ item, label }) => (
                       <Fragment key={item.id}>
                         {label && (

@@ -85,8 +85,13 @@ export function TaskList({
           const label = taskStatusLabels[status];
           const open = !collapsed[status];
           return (
-            <div key={status} role="group" aria-labelledby={`${listId}-${status}-label`}>
-              <div className="group/header sticky top-0 z-20 flex h-8 items-center gap-1 bg-muted/50 pr-6 pl-4">
+            <div
+              key={status}
+              role="group"
+              aria-labelledby={`${listId}-${status}-label`}
+              className="max-w-4xl"
+            >
+              <div className="group/header flex h-8 items-center gap-1 border-b pr-6 pl-4">
                 <h2 className="min-w-0 flex-1">
                   <button
                     type="button"

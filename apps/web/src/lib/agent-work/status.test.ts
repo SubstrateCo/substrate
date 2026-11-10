@@ -94,7 +94,7 @@ describe("inbox item labels", () => {
   test("a message the agent may not have seen offers Resend and Discard, not Send now", () => {
     expect(itemStatus(item({ status: "uncertain" }), context)).toEqual({
       tone: "attention",
-      label: "We couldn't confirm Researcher received this message",
+      label: "We couldn’t confirm Researcher received this message",
       sendNow: false,
       uncertain: true,
     });
@@ -105,7 +105,7 @@ describe("inbox item labels", () => {
 describe("attention reasons", () => {
   test("uncertain input says the message may not have arrived", () => {
     expect(attentionReasonText("uncertain_input", "Researcher")).toBe(
-      "We couldn't confirm Researcher received this message",
+      "We couldn’t confirm Researcher received this message",
     );
   });
 

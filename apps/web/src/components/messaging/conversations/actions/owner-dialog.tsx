@@ -45,6 +45,7 @@ export function OwnerDialog({
       pendingLabel={leaving ? "Leaving…" : "Saving…"}
       destructive={leaving}
       confirmDisabled={!owner}
+      status={owner ? "" : "Choose a new owner"}
       pending={pending}
       error={error}
       onConfirm={() => owner && onConfirm(owner)}

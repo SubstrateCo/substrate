@@ -14,7 +14,7 @@ import {
 import { ArrowUpDown, Search, UserRound, X } from "lucide-react";
 
 const sortOptions: { value: TaskSort; label: string }[] = [
-  { value: "default", label: "Default order" },
+  { value: "default", label: "Task ID" },
   { value: "priority", label: "Priority" },
   { value: "dueDate", label: "Due date" },
   { value: "title", label: "Title" },
@@ -43,6 +43,10 @@ export function TaskListToolbar({
   total: number;
 }) {
   const set = (patch: Partial<TaskFilters>) => onChange({ ...filters, ...patch });
+  let assigneeName =
+    assignees.find((actor) => actor.entityId === filters.assignee)?.name ?? "Former member";
+  if (filters.assignee === "any") assigneeName = "Any assignee";
+  if (filters.assignee === "unassigned") assigneeName = "Unassigned";
   return (
     <div
       role="toolbar"
@@ -76,9 +80,9 @@ export function TaskListToolbar({
         onValueChange={(scope) => set({ scope })}
       />
       <Select value={filters.assignee} onValueChange={(assignee) => set({ assignee })}>
-        <SelectTrigger aria-label="Filter by assignee" className="max-w-48">
+        <SelectTrigger aria-label="Filter by assignee" title={assigneeName} className="max-w-48">
           <UserRound aria-hidden="true" className="text-muted-foreground" />
-          <span className="hidden @2xl:inline">
+          <span className="min-w-0 truncate">
             <SelectValue />
           </span>
         </SelectTrigger>
@@ -102,7 +106,7 @@ export function TaskListToolbar({
       >
         <SelectTrigger aria-label="Sort tasks">
           <ArrowUpDown aria-hidden="true" className="text-muted-foreground" />
-          <span className="hidden @2xl:inline">
+          <span>
             <SelectValue />
           </span>
         </SelectTrigger>

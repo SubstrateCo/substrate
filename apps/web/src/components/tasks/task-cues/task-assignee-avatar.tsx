@@ -1,7 +1,5 @@
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { initials } from "@/lib/people/initials";
+import { PersonAvatar } from "@/components/people/person-avatar";
 import { cn } from "cn";
-import { Bot } from "lucide-react";
 
 /** A small avatar for a task assignee. No name shows an empty dashed circle. */
 export function TaskAssigneeAvatar({
@@ -23,11 +21,5 @@ export function TaskAssigneeAvatar({
         )}
       />
     );
-  return (
-    <Avatar aria-hidden="true" size="sm" className={cn("size-5", className)}>
-      <AvatarFallback>
-        {type === "agent" ? <Bot className="size-3" /> : initials(name)}
-      </AvatarFallback>
-    </Avatar>
-  );
+  return <PersonAvatar name={name} agent={type === "agent"} size="xs" className={className} />;
 }

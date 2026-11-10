@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 import { ConfirmDialog } from "../../feedback/confirm-dialog";
 import { PendingButton } from "../../feedback/pending-button";
@@ -25,6 +25,7 @@ export function InvitationForm({
   onInvite: (email: string, role: InvitationRole) => void;
 }) {
   const id = useId();
+  const inviteButton = useRef<HTMLButtonElement>(null);
   const [role, setRole] = useState<InvitationRole>("member");
   // Owner invitations grant full control, so they are confirmed first.
   const [ownerInvite, setOwnerInvite] = useState<string>();
@@ -57,6 +58,7 @@ export function InvitationForm({
             type="email"
             autoComplete="email"
             placeholder="teammate@company.com"
+            data-missing-message="Enter an email address to invite."
             required
           />
           <FieldError id={`${id}-email-error`}>{validation.errors[`${id}-email`]}</FieldError>
@@ -85,11 +87,9 @@ export function InvitationForm({
               ))}
             </SelectContent>
           </Select>
-          <FieldDescription id={`${id}-role-description`}>
-            {roleOption.description}
-          </FieldDescription>
         </Field>
         <PendingButton
+          ref={inviteButton}
           className="@lg:col-span-3 @lg:col-start-10 @lg:row-start-2"
           disabled={disabled}
           pending={sending}
@@ -97,6 +97,9 @@ export function InvitationForm({
         >
           Send invitation
         </PendingButton>
+        <FieldDescription id={`${id}-role-description`} className="@lg:col-span-12 @lg:row-start-4">
+          {roleOption.description}
+        </FieldDescription>
       </form>
       {ownerInvite && (
         <ConfirmDialog
@@ -106,6 +109,7 @@ export function InvitationForm({
           pendingLabel="Sending"
           pending={sending}
           onClose={() => setOwnerInvite(undefined)}
+          onRestoreFocus={() => inviteButton.current?.focus()}
           onConfirm={() => {
             onInvite(ownerInvite, "owner");
             setOwnerInvite(undefined);

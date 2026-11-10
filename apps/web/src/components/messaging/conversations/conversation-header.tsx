@@ -1,13 +1,12 @@
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 
 import { Tag } from "@/components/feedback/tag";
 import { PageHeader } from "@/components/layout/page-header";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { PersonAvatar } from "@/components/people/person-avatar";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { initials } from "@/lib/people/initials";
-import { Bot, Globe, Hash, LockKeyhole, MessageCircle, UserPlus, Users } from "lucide-react";
+import { Globe, Hash, LockKeyhole, MessageCircle, UserPlus, Users } from "lucide-react";
 
 export type HeaderMember = {
   actorId: string;
@@ -24,18 +23,13 @@ const kindIcons = {
 };
 
 function MemberAvatar({ member }: { member: HeaderMember }) {
-  return (
-    <Avatar aria-hidden="true" variant="message" size="sm">
-      <AvatarFallback>
-        {member.type === "agent" ? <Bot className="size-3.5!" /> : initials(member.name)}
-      </AvatarFallback>
-    </Avatar>
-  );
+  return <PersonAvatar name={member.name} agent={member.type === "agent"} />;
 }
 
 /** Who can read here: a count that opens the member list. */
 function MembersButton({ members }: { members: HeaderMember[] }) {
   const label = `${members.length} ${members.length === 1 ? "member" : "members"}`;
+  const list = useRef<HTMLUListElement>(null);
   return (
     <Popover>
       <Tooltip>
@@ -49,9 +43,18 @@ function MembersButton({ members }: { members: HeaderMember[] }) {
         </TooltipTrigger>
         <TooltipContent>Members</TooltipContent>
       </Tooltip>
-      <PopoverContent variant="reference" align="end" className="w-72" aria-label="Members">
+      <PopoverContent
+        variant="reference"
+        align="end"
+        className="w-72"
+        aria-label="Members"
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          list.current?.focus();
+        }}
+      >
         <p className="border-b px-3 py-2 text-xs font-medium text-muted-foreground">{label}</p>
-        <ul className="max-h-80 overflow-y-auto p-1">
+        <ul ref={list} tabIndex={-1} className="max-h-80 overflow-y-auto p-1 outline-none">
           {members.map((member) => (
             <li
               key={member.actorId}

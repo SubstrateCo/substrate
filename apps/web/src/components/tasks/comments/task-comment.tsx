@@ -1,22 +1,16 @@
 import type { TaskComment as Comment } from "../types";
 import { Tag } from "@/components/feedback/tag";
+import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { initials } from "@/lib/people/initials";
-import { Bot } from "lucide-react";
 
 export function TaskComment({ comment }: { comment: Comment }) {
   return (
     <li className="flex min-w-0 gap-2.5">
-      <Avatar aria-hidden="true" size="sm" variant="user" className="mt-0.5">
-        <AvatarFallback>
-          {comment.authorType === "agent" ? (
-            <Bot className="size-3.5" />
-          ) : (
-            initials(comment.authorName)
-          )}
-        </AvatarFallback>
-      </Avatar>
+      <PersonAvatar
+        name={comment.authorName}
+        agent={comment.authorType === "agent"}
+        className="mt-0.5"
+      />
       <article className="min-w-0 flex-1">
         <header className="flex min-w-0 items-center gap-1.5 text-sm">
           <strong className="truncate font-medium">{comment.authorName}</strong>

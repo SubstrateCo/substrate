@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { addMembers } from "@/api/messaging/requests";
 import { AddMembersDialog as AddMembersDialogView } from "@/components/messaging/conversations/add-members-dialog-view";
-import { conversationName, humanMembers } from "@/lib/messaging/conversations";
+import { conversationLabel, conversationName, humanMembers } from "@/lib/messaging/conversations";
 import { recipientEmails, type PickedRecipient } from "@/lib/people/people-picker";
 import { invalidateAddedMembers } from "@/queries/messaging/mutations";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
@@ -23,6 +23,7 @@ export function AddMembersDialog({
 }: {
   organizationId: string;
   conversationId: string;
+  /** The conversation as running text, from `conversationLabel`. */
   name?: string;
   /** Current members, when the viewer cannot read the conversation to tell. */
   memberUserIds?: readonly string[];
@@ -56,7 +57,11 @@ export function AddMembersDialog({
   });
   return (
     <AddMembersDialogView
-      name={name ?? (conversation && conversationName(conversation))}
+      name={
+        name ??
+        (conversation &&
+          conversationLabel({ ...conversation, name: conversationName(conversation) }))
+      }
       channel={conversation?.kind === "channel"}
       people={people}
       pending={add.isPending}

@@ -63,6 +63,9 @@
   --shadow-floating: var(--elevation-floating);
   --spacing-overlay-width: calc(100% - 2rem);
   --spacing-overlay-height: calc(100dvh - 2rem);
+  /* Dialogs hang from a fixed top edge, so growing content extends downward and the title stays put. */
+  --spacing-dialog-top: min(12dvh, 6rem);
+  --spacing-dialog-height: calc(100dvh - min(12dvh, 6rem) - 1rem);
   /* The crop preview shrinks on short windows so the dialog footer stays visible. */
   --spacing-crop-preview: min(20rem, max(5rem, calc(100dvh - 22rem)));
   /* The desktop title-bar search results: 32rem, with a 12px margin on narrow windows. */

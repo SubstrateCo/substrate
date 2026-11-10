@@ -99,7 +99,7 @@ test("a visitor creates an organization before installing and can resume setup",
   await expect(
     page.getByRole("heading", { name: "Your workspace is ready", exact: true }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "Switch workspace", exact: true }).click();
+  await page.getByRole("link", { name: "Workspaces", exact: true }).click();
   await expect(page.getByRole("button", { name: `Public ${id}`, exact: true })).toHaveCount(1);
 });
 

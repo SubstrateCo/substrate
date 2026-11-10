@@ -31,7 +31,7 @@ export function NeedsYouView({
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <div className="mx-auto grid w-full max-w-3xl gap-6 p-6">
+      <div className="grid w-full max-w-3xl gap-6 p-6">
         <PageHeader
           title="Needs you"
           description="Questions, approvals, and stopped work from your agents."

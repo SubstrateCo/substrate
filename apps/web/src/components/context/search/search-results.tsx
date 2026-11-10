@@ -95,6 +95,13 @@ export function SearchResults({
           </PendingButton>
         </div>
       )}
+      {visible.length > 0 && (
+        // A fade over the last 16px, so a row cut by the list's edge reads as "more below".
+        <div
+          aria-hidden="true"
+          className="pointer-events-none sticky bottom-0 -mt-4 h-4 bg-linear-to-t from-popover to-transparent"
+        />
+      )}
     </CommandList>
   );
 }

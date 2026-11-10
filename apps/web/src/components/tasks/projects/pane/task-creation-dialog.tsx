@@ -27,7 +27,7 @@ export function TaskCreationDialog({
   const content = useRef<HTMLDivElement>(null);
   const pending = () => !!content.current?.querySelector('form[aria-busy="true"]');
   const place = subtask
-    ? `In ${projectName}, under ${parentTitle ?? "a task you can't open"}`
+    ? `In ${projectName}, under ${parentTitle ?? "a task you can’t open"}`
     : `In ${projectName}`;
   return (
     <Dialog

@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react";
 
+import { TechnicalDetails } from "../technical-details";
 import { WorkIndicator } from "../work-indicator";
 import { PaneState } from "@/components/feedback/pane-state";
 import { PageAside } from "@/components/layout/page-layout";
@@ -27,6 +28,7 @@ export function TurnTranscriptView({
   startedAt,
   session,
   usage,
+  diagnostic,
   sources,
   outputs,
   timeline,
@@ -44,6 +46,8 @@ export function TurnTranscriptView({
   startedAt?: string;
   session?: string;
   usage?: string;
+  /** What the runtime reported when the work stopped, shown under Technical details. */
+  diagnostic?: string;
   sources?: ReactNode;
   outputs?: ReactNode;
   timeline?: ReactNode;
@@ -76,6 +80,11 @@ export function TurnTranscriptView({
           {sources && <Detail label="From">{sources}</Detail>}
           {outputs && <Detail label="Output">{outputs}</Detail>}
           <Detail label="Usage">{usage ?? "Unavailable"}</Detail>
+          {diagnostic && (
+            <Detail label="Error">
+              <TechnicalDetails>{diagnostic}</TechnicalDetails>
+            </Detail>
+          )}
         </dl>
         {timeline}
       </div>

@@ -17,7 +17,7 @@ export function AuthLink({ className, ...props }: ComponentProps<"a">) {
 }
 
 /**
- * Secondary navigation on guest and setup pages, such as "Your workspaces". Use it in
+ * Secondary navigation on guest and setup pages, such as "Workspaces". Use it in
  * `AuthFrame` actions, which mute it beside Sign out.
  */
 export function AuthNavLink(props: ComponentProps<"a">) {

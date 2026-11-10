@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import type { CropArea } from "./crop-image";
-import { ImageCropControls, ImageSizingControl } from "./image-crop-controls";
+import { ImageCropControls } from "./image-crop-controls";
 import { ImageCropper } from "./image-cropper";
 import { usePictureUpload } from "@/components/upload/use-picture-upload";
 
@@ -101,15 +101,6 @@ export function ImageCropDialog({
         </DialogHeader>
         <DialogBody>
           <fieldset disabled={pending} className="min-w-0 space-y-3">
-            {kind === "organization-logo" && (
-              <ImageSizingControl
-                mode={mode}
-                onModeChange={(next) => {
-                  reset();
-                  setMode(next);
-                }}
-              />
-            )}
             {src && (
               <div inert={pending}>
                 <ImageCropper
@@ -130,15 +121,20 @@ export function ImageCropDialog({
               </div>
             )}
             <ImageCropControls
+              kind={kind}
               mode={mode}
               zoom={zoom}
+              onModeChange={(next) => {
+                reset();
+                setMode(next);
+              }}
               onZoomChange={(next) => {
                 setArea(null);
                 setZoom(next);
               }}
-              onRotate={() => {
+              onRotate={(degrees) => {
                 setArea(null);
-                setRotation((value) => (value + 90) % 360);
+                setRotation((value) => (value + degrees + 360) % 360);
               }}
               onReset={reset}
             />

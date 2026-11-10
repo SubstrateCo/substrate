@@ -3,23 +3,35 @@
  * navigation by itself; a workspace switch or a sign-out replaces the whole document, so those
  * actions call `confirmDiscardDrafts()` first. `UnsavedChangesGuard` registers while it is dirty.
  */
-type AskToDiscard = () => Promise<boolean>;
+type AskToDiscard = (names: readonly string[]) => Promise<boolean>;
 
-const drafts = new Set<AskToDiscard>();
+type Draft = { ask: AskToDiscard; name?: string };
 
-/** Registers a dirty draft. Returns the function that unregisters it. */
-export function registerUnsavedDraft(ask: AskToDiscard) {
-  drafts.add(ask);
+const drafts = new Set<Draft>();
+
+/**
+ * Registers a dirty draft. `name` is how the question lists it ("Project details"). Returns the
+ * function that unregisters it.
+ */
+export function registerUnsavedDraft(ask: AskToDiscard, name?: string) {
+  const draft: Draft = { ask, name };
+  drafts.add(draft);
   return () => {
-    drafts.delete(ask);
+    drafts.delete(draft);
   };
+}
+
+/** The names of every dirty draft that has one, once each, in the order they became dirty. */
+export function unsavedDraftNames() {
+  return [...new Set([...drafts].flatMap((draft) => (draft.name ? [draft.name] : [])))];
 }
 
 /**
  * Resolves `true` when nothing is unsaved or the person chose to discard. One question covers
- * every draft, because leaving the document loses all of them.
+ * every draft, because leaving the document loses all of them; it is given the names of all of
+ * them so the dialog can list each one.
  */
 export async function confirmDiscardDrafts() {
   const first = [...drafts].at(0);
-  return first ? first() : true;
+  return first ? first.ask(unsavedDraftNames()) : true;
 }

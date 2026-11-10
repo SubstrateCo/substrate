@@ -52,6 +52,8 @@ export function ReferenceEditor({
   onSelectionChange,
   onKeyDown,
   disabled = false,
+  listId,
+  activeOptionId,
 }: {
   ref?: Ref<ReferenceEditorHandle>;
   value: string;
@@ -61,6 +63,8 @@ export function ReferenceEditor({
   onSelectionChange: (caret: number) => void;
   onKeyDown: (event: KeyboardEvent) => void;
   disabled?: boolean;
+  listId?: string;
+  activeOptionId?: string;
 }) {
   const editor = useEditor({
     extensions,
@@ -128,6 +132,14 @@ export function ReferenceEditor({
   useLayoutEffect(() => {
     editor.setEditable(!disabled, false);
   }, [editor, disabled]);
+
+  useLayoutEffect(() => {
+    const element = editor.view.dom;
+    if (listId) element.setAttribute("aria-controls", listId);
+    else element.removeAttribute("aria-controls");
+    if (activeOptionId) element.setAttribute("aria-activedescendant", activeOptionId);
+    else element.removeAttribute("aria-activedescendant");
+  }, [editor, listId, activeOptionId]);
 
   const referencesByKey = new Map(
     references.map((item) => [referenceKey(item.kind, item.id), item] as const),

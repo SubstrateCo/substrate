@@ -33,7 +33,7 @@ test("a new partner signs up, creates their own org, and accepts a desktop chann
   await sender.page.getByLabel("Invite by email", { exact: true }).fill(email);
   await sender.page
     .getByRole("checkbox", {
-      name: /Let invited people read the full conversation history, including earlier messages/,
+      name: /I understand invited people can read all earlier messages/,
     })
     .check();
   await sender.page.getByRole("button", { name: "Send invitation", exact: true }).click();

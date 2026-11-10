@@ -40,13 +40,12 @@ export function TimeZonePicker({
         <Button
           id={id}
           type="button"
-          variant="outline"
+          variant="field"
           role="combobox"
           aria-expanded={open}
           aria-invalid={invalid || undefined}
           aria-describedby={describedBy}
           disabled={disabled}
-          className="w-full justify-between"
         >
           <span className="truncate">{value ? formatTimeZone(value) : "Choose a time zone"}</span>
           <ChevronsUpDown aria-hidden="true" className="size-3.5 text-muted-foreground" />

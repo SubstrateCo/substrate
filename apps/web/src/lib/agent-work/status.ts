@@ -64,7 +64,7 @@ const attentionReasons = {
   unfinished_tool: () =>
     "The work stopped while a tool was still running, so it may have finished only part of a change.",
   uncertain_input: (agentName) => uncertainItemLabel(agentName),
-  resume_failed: (agentName) => `${agentName} couldn't pick up its previous session.`,
+  resume_failed: (agentName) => `${agentName} couldn’t pick up its previous session.`,
   interrupted_again: () => "The work was interrupted twice.",
   failed: () => "The work failed.",
 } satisfies Record<TurnAttentionReason, (agentName: string) => string>;
@@ -74,6 +74,9 @@ export const attentionFallback = "The work stopped and needs you to decide what 
 export function attentionReasonText(reason: TurnAttentionReason | null, agentName: string) {
   return reason ? attentionReasons[reason](agentName) : attentionFallback;
 }
+
+/** Reviewed copy for work that failed. The runtime's own message is a diagnostic, shown apart. */
+export const failedWorkNote = "The work didn’t finish. Open the transcript to see what happened.";
 
 /** What the inbox receipt under an owner message needs to know about the agent. */
 export interface ItemContext {
@@ -90,7 +93,7 @@ export interface ItemContext {
 export type ItemStatus = WorkStatus & { sendNow: boolean; uncertain: boolean };
 
 const uncertainItemLabel = (agentName: string) =>
-  `We couldn't confirm ${agentName} received this message`;
+  `We couldn’t confirm ${agentName} received this message`;
 
 const waits = (item: AgentInboxItemView) =>
   item.lane === "owner" &&

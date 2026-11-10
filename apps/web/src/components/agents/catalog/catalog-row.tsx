@@ -1,18 +1,22 @@
 import type { ReactNode } from "react";
 
 import { RowAction, RowActions } from "@/components/layout/row-actions";
+import { cn } from "cn";
 import { Pencil, Settings, Trash2 } from "lucide-react";
 
 export function CatalogRow({
   name,
   detail,
   picture,
+  mono = false,
   onSettings,
   onEdit,
   onDelete,
   disabled,
 }: {
   name: string;
+  /** Show the name as a file name, in monospace. */
+  mono?: boolean;
   detail: string;
   picture?: ReactNode;
   onSettings?: () => void;
@@ -25,7 +29,7 @@ export function CatalogRow({
       <div className="flex min-w-0 items-center gap-3">
         {picture}
         <div className="grid min-w-0 gap-1">
-          <p className="text-sm font-medium wrap-anywhere">{name}</p>
+          <p className={cn("text-sm font-medium wrap-anywhere", mono && "font-mono")}>{name}</p>
           <p className="line-clamp-2 text-xs wrap-anywhere text-muted-foreground">{detail}</p>
         </div>
       </div>

@@ -17,7 +17,8 @@ export function StartupInstructions({
 }) {
   const text = startupInstructions({
     harness,
-    name: name.trim(),
+    // The preview reads before the agent is named, so an empty name shows a stand-in.
+    name: name.trim() || "Your agent’s name",
     id: agentId ?? "Assigned when saved",
     organizationId: organizationId ?? "Active workspace",
   }).trimEnd();

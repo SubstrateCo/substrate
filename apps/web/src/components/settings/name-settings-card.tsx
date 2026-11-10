@@ -43,6 +43,7 @@ export function NameSettingsCard({
       <UnsavedChangesGuard
         dirty={dirty}
         description={`Your new ${label.toLowerCase()} isn’t saved.`}
+        name={label}
       />
       <NativeForm
         key={formVersion}

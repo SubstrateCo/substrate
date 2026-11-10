@@ -8,7 +8,12 @@ import { LeaveConversationDialog } from "./actions/leave-conversation-dialog";
 import { OwnerDialog } from "./actions/owner-dialog";
 import { ConversationAgents } from "./conversation-agents";
 import { SharingManager } from "@/components/messaging/sharing/sharing-manager";
-import { conversationName, humanMembers, type Conversation } from "@/lib/messaging/conversations";
+import {
+  conversationLabel,
+  conversationName,
+  humanMembers,
+  type Conversation,
+} from "@/lib/messaging/conversations";
 import { useConversationManagement } from "@/queries/messaging/management";
 import { deleteImpactQueryOptions } from "@/queries/messaging/options";
 import { toast } from "sonner";
@@ -32,12 +37,14 @@ export function ConversationActions({
     ...deleteImpactQueryOptions(organizationId, conversation.id),
     enabled: dialog === "delete",
   });
-  const name = conversationName(conversation);
+  // Running text: a public channel reads "#name", as in the composer and search.
+  const name = conversationLabel({ ...conversation, name: conversationName(conversation) });
   const owner = !!userId && conversation.createdBy === userId && !!conversation.canManage;
   const people = humanMembers(conversation.members);
   const others = people.filter((person) => person.userId !== userId);
   const canLeave = conversation.kind !== "dm" && !!conversation.joined;
   const leaveLabel = conversation.kind === "channel" ? "Leave channel" : "Leave group";
+  const deleteLabel = conversation.kind === "channel" ? "Delete channel" : "Delete group";
   const publicChannel = conversation.kind === "channel" && !conversation.private;
   const close = () => setDialog(undefined);
   // The dialogs are mounted by state, so none has a trigger of its own. A menu item is gone once
@@ -54,6 +61,7 @@ export function ConversationActions({
       <ConversationActionsMenu
         triggerRef={trigger}
         leaveLabel={leaveLabel}
+        deleteLabel={deleteLabel}
         onSharing={conversation.canShare ? () => setDialog("sharing") : undefined}
         onAgents={canLeave && userId ? () => setDialog("agents") : undefined}
         onLeave={canLeave ? () => setDialog("leave") : undefined}
@@ -141,6 +149,7 @@ export function ConversationActions({
       {dialog === "delete" && (
         <DeleteConversationDialog
           name={name}
+          deleteLabel={deleteLabel}
           linkedWork={impact.data?.linkedWork}
           pending={remove.isPending}
           error={remove.error ?? impact.error}

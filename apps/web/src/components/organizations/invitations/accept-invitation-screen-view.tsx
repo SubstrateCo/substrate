@@ -61,7 +61,7 @@ export function AcceptInvitationScreen({
       description={description}
       actions={
         <>
-          <AuthNavLink href={workspacesHref}>Your workspaces</AuthNavLink>
+          <AuthNavLink href={workspacesHref}>Workspaces</AuthNavLink>
           {signOut}
         </>
       }

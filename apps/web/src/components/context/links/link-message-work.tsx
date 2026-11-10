@@ -71,7 +71,7 @@ export function LinkMessageWork({
       toast.error(
         actionErrorMessage(
           failures[0]!.error,
-          `Couldn't link ${names}. Check that you still have access.`,
+          `Couldn’t link ${names}. Check that you still have access.`,
         ),
       );
     },

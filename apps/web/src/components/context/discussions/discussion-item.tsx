@@ -1,12 +1,11 @@
 import { useEffect, useId, useRef, useState } from "react";
 
-import { Avatar, AvatarFallback } from "../../ui/avatar";
 import { Tag } from "@/components/feedback/tag";
 import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
 import { plainReferenceText } from "@/components/messaging/references/reference-token";
+import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
-import { initials } from "@/lib/people/initials";
 import { cn } from "cn";
 import { MessageCircle, MessageSquareReply } from "lucide-react";
 
@@ -38,9 +37,7 @@ export function DiscussionItem({ item }: { item: Discussion }) {
   const author = item.authorName ?? "Unknown author";
   return (
     <li className="relative flex min-w-0 gap-3 rounded-lg border bg-card p-3 transition-colors hover:border-foreground/15 hover:bg-muted/50">
-      <Avatar size="sm" variant="user" className="mt-0.5">
-        <AvatarFallback>{initials(author)}</AvatarFallback>
-      </Avatar>
+      <PersonAvatar name={author} agent={item.authorType === "agent"} className="mt-0.5" />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
           {item.conversationKind ? (

@@ -74,6 +74,7 @@ export function AgentSettings({
     document.activeElement instanceof HTMLElement ? document.activeElement : null,
   );
   const [runSettingsDirty, setRunSettingsDirty] = useState(false);
+  const [runSettingsDraft, setRunSettingsDraft] = useState(0);
   const pending = save.isPending || remove.isPending;
   const agent = catalog.data?.agents.find((item) => item.id === agentId);
   const runSettings = catalog.data?.runSettings.find((item) => item.agentId === agentId);
@@ -130,10 +131,12 @@ export function AgentSettings({
           pending={pending}
           onSave={onSave}
           runSettingsDirty={runSettingsDirty}
+          // A new key remounts run settings, which drops their draft.
+          onDiscardRunSettings={() => setRunSettingsDraft((count) => count + 1)}
           runSettings={
             runSettings && (
               <AgentRunSettings
-                key={agent.id}
+                key={`${agent.id}/${runSettingsDraft}`}
                 userId={userId}
                 name={agent.name}
                 settings={runSettings}

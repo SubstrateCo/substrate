@@ -22,7 +22,7 @@ export function LeftChannelNotice({
       </span>
       {error && (
         <span role="alert" className="text-destructive">
-          {actionErrorMessage(error, "Couldn't join this channel. Try again.")}
+          {actionErrorMessage(error, "Couldn’t join this channel. Try again.")}
         </span>
       )}
       <PendingButton size="sm" pending={pending} pendingLabel="Joining" onClick={onJoin}>

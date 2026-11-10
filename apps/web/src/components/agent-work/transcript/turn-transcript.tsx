@@ -103,6 +103,7 @@ export function TurnTranscript({
       startedAt={turn?.startedAt ?? turn?.createdAt}
       session={turn && sessionKindLabels[turn.sessionKind]}
       usage={turn && usageLabel(turn.usage)}
+      diagnostic={turn?.error?.trim() || undefined}
       sources={sources?.length ? sources : undefined}
       outputs={outputs?.length ? outputs : undefined}
       unavailable={unavailable}

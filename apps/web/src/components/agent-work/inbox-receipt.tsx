@@ -30,7 +30,7 @@ export function InboxReceipt({
           ? () =>
               resend.mutate(item.id, {
                 onError: (error) =>
-                  toast.error(actionErrorMessage(error, "We couldn't resend the message.")),
+                  toast.error(actionErrorMessage(error, "We couldn’t resend the message.")),
               })
           : undefined
       }
@@ -39,7 +39,7 @@ export function InboxReceipt({
           ? () =>
               discard.mutate(item.id, {
                 onError: (error) =>
-                  toast.error(actionErrorMessage(error, "We couldn't discard the message.")),
+                  toast.error(actionErrorMessage(error, "We couldn’t discard the message.")),
               })
           : undefined
       }

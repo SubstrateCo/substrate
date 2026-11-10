@@ -6,15 +6,15 @@ import type { ReactNode } from "react";
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
 import type { ProposalRecord, ProposalTarget } from "@/lib/agent-work/proposal-target";
 
-export const hiddenConversation = "A conversation you can't open";
+export const hiddenConversation = "A conversation you can’t open";
 
 const hiddenText = {
   conversation: hiddenConversation,
-  thread: "A thread you can't open",
-  project: "A project you can't open",
-  task: "A task you can't open",
-  message: "A message you can't open",
-  person: "Someone you can't see",
+  thread: "A thread you can’t open",
+  project: "A project you can’t open",
+  task: "A task you can’t open",
+  message: "A message you can’t open",
+  person: "Someone you can’t see",
 };
 
 type TaskChanges = Partial<{

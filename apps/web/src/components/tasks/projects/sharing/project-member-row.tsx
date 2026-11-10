@@ -51,7 +51,7 @@ export function ProjectMemberRow({
         </p>
       </div>
       {editable ? (
-        <div className="flex shrink-0 items-center gap-1">
+        <>
           <Select
             value={member.level}
             disabled={pending}
@@ -60,7 +60,12 @@ export function ProjectMemberRow({
               if (option && option.value !== member.level) onChange(option.value);
             }}
           >
-            <SelectTrigger size="sm" variant="ghost" aria-label={`${member.name} permission`}>
+            <SelectTrigger
+              size="sm"
+              variant="ghost"
+              aria-label={`${member.name} permission`}
+              className="w-30 justify-end"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent position="popper" align="end">
@@ -81,11 +86,14 @@ export function ProjectMemberRow({
               <UserMinus aria-hidden="true" />
             </RowAction>
           </RowActions>
-        </div>
+        </>
       ) : (
-        <span className="shrink-0 pr-2 text-sm text-muted-foreground">
-          {projectPermissionLabels[member.level]}
-        </span>
+        <>
+          <span className="w-30 shrink-0 pr-2 text-right text-sm text-muted-foreground">
+            {projectPermissionLabels[member.level]}
+          </span>
+          <span className="w-7 shrink-0" />
+        </>
       )}
     </li>
   );

@@ -152,7 +152,7 @@ export function EmojiPicker({
         </div>
         <div
           ref={list}
-          className="h-72 max-h-(--radix-popover-content-available-height) space-y-3 overflow-y-auto p-2"
+          className={`${search ? "max-h-72" : "h-72 max-h-(--radix-popover-content-available-height)"} space-y-3 overflow-y-auto p-2`}
           onKeyDown={(event) => {
             const delta = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -8, ArrowDown: 8 }[event.key];
             if (delta !== undefined) {

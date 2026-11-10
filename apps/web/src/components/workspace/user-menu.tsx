@@ -76,7 +76,7 @@ export function UserMenu({
         onKeyDown={moveFocusWithArrows}
       >
         <div className="flex min-w-0 items-center gap-2.5 p-2">
-          <div className="size-8 shrink-0 overflow-hidden rounded-md">{avatar}</div>
+          <div className="size-8 shrink-0 overflow-hidden rounded-full">{avatar}</div>
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">{name}</p>
             {organizationName && (

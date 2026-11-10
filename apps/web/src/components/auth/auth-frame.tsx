@@ -7,7 +7,7 @@ import { cn } from "cn";
 /**
  * The one frame for signed-out and pre-workspace pages: same background, brand, and top offset.
  * The card is anchored near the top so it grows downward when errors appear instead of
- * re-centering. `actions` sit on the brand row (Your workspaces, Sign out); `footer` sits under
+ * re-centering. `actions` sit on the brand row (Workspaces, Sign out); `footer` sits under
  * the card (Already have an account?).
  */
 export function AuthFrame({

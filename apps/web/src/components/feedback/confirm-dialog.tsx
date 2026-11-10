@@ -35,6 +35,7 @@ export function ConfirmDialog({
   onConfirm,
   onClose,
   onRestoreFocus,
+  status,
   children,
 }: ConfirmAction & {
   title: string;
@@ -49,6 +50,8 @@ export function ConfirmDialog({
   onClose: () => void;
   /** Focus a specific element on close instead of the element that opened the dialog. */
   onRestoreFocus?: () => void;
+  /** Why the confirm button is disabled, on the footer's left ("Choose a new owner"). */
+  status?: string;
   children?: ReactNode;
 }) {
   return (
@@ -75,21 +78,28 @@ export function ConfirmDialog({
             <FormMessage error={error} errorDescription={errorDescription} />
           </DialogBody>
         )}
-        <DialogFooter>
-          <Button variant="outline" disabled={pending} onClick={onClose}>
-            {confirmLabel ? cancelLabel : "Close"}
-          </Button>
-          {confirmLabel && (
-            <PendingButton
-              variant={destructive ? "destructive" : "default"}
-              disabled={confirmDisabled}
-              pending={pending}
-              pendingLabel={pendingLabel}
-              onClick={onConfirm}
-            >
-              {confirmLabel}
-            </PendingButton>
+        <DialogFooter className={status ? "items-center sm:justify-between" : undefined}>
+          {status !== undefined && (
+            <p className="text-sm text-muted-foreground" aria-live="polite">
+              {status}
+            </p>
           )}
+          <div className="flex flex-col-reverse gap-2 sm:flex-row">
+            <Button variant="outline" disabled={pending} onClick={onClose}>
+              {confirmLabel ? cancelLabel : "Close"}
+            </Button>
+            {confirmLabel && (
+              <PendingButton
+                variant={destructive ? "destructive" : "default"}
+                disabled={confirmDisabled}
+                pending={pending}
+                pendingLabel={pendingLabel}
+                onClick={onConfirm}
+              >
+                {confirmLabel}
+              </PendingButton>
+            )}
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

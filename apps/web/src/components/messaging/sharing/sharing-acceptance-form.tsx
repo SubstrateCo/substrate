@@ -55,7 +55,7 @@ export function SharingAcceptanceForm({
           <p className="text-muted-foreground">
             {invitation.purpose === "organization"
               ? "An owner or admin must approve for your organization. Other members can request approval."
-              : "Only you are invited. Other members of your organization don't get access."}
+              : "Only you are invited. Other members of your organization don’t get access."}
           </p>
         </div>
       </div>

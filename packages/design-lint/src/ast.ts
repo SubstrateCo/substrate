@@ -144,7 +144,8 @@ function objectValueStrings(node: NodeOf<"ObjectExpression">): StringSite[] {
   });
 }
 
-function insideClassAttribute(node: AstNode) {
+/** Whether a node is part of a `className` value or an argument of `cn(...)`, `cva(...)`, etc. */
+export function insideClassAttribute(node: AstNode) {
   for (let current = node.parent; current; current = current.parent) {
     if (current.type === "JSXAttribute")
       return current.name.type === "JSXIdentifier" && CLASS_ATTRIBUTES.has(current.name.name);

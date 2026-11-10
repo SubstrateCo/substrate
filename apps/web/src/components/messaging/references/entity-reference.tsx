@@ -66,7 +66,7 @@ export function EntityReference({
     </>
   );
   const className =
-    "inline-flex max-w-full items-baseline gap-1 rounded-md bg-accent px-1.5 align-baseline text-sm leading-5 font-medium text-accent-foreground no-underline ring-1 ring-border/50 ring-inset";
+    "inline-flex max-w-full items-baseline gap-1 rounded-md bg-primary/10 px-1 align-baseline text-sm leading-5 font-medium text-primary no-underline ring-1 ring-border/50 ring-inset";
   if (!reference)
     return (
       <span
