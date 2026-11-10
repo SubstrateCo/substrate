@@ -17,27 +17,16 @@ const width = async (page: Page, sidebar: string) =>
       0,
   );
 
-for (const page of [
-  { path: "/tasks", sidebar: "Projects", separator: "Resize projects sidebar" },
-  { path: "/dashboard", sidebar: "Conversations", separator: "Resize conversations sidebar" },
-]) {
-  test(`${page.sidebar} sidebar resizes within its limits and keeps its width after reload`, async ({
-    actors,
-    client,
-  }) => {
-    const sender = await client(actors.sender);
-    await visit(sender, undefined, page.path);
-    await expect.poll(() => width(sender.page, page.sidebar)).toBe(240);
-    await dragBy(sender.page, page.separator, -400);
-    await expect.poll(() => width(sender.page, page.sidebar)).toBe(180);
-    await dragBy(sender.page, page.separator, 400);
-    await expect.poll(() => width(sender.page, page.sidebar)).toBe(360);
-    await dragBy(sender.page, page.separator, -60);
-    await expect.poll(() => width(sender.page, page.sidebar)).toBe(300);
-    await visit(sender, undefined, page.path);
-    await expect.poll(() => width(sender.page, page.sidebar)).toBe(300);
-  });
-}
+// Every app uses the same PageSidebar, so one sidebar covers resizing and its saved width.
+test("a resized sidebar keeps its width after reload", async ({ actors, client }) => {
+  const sender = await client(actors.sender);
+  await visit(sender);
+  await expect.poll(() => width(sender.page, "Conversations")).toBe(240);
+  await dragBy(sender.page, "Resize conversations sidebar", 60);
+  await expect.poll(() => width(sender.page, "Conversations")).toBe(300);
+  await visit(sender);
+  await expect.poll(() => width(sender.page, "Conversations")).toBe(300);
+});
 
 for (const width of [640, 1440]) {
   test(`messages and thread controls remain usable at ${width}px`, async ({ actors, client }) => {

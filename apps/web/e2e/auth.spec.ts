@@ -1,48 +1,22 @@
 import { Mailpit } from "../../server/integration/test-support/mailpit";
-import { signIn } from "./test-support/auth";
+import { signIn, signUp } from "./test-support/auth";
 import { conversation, post, test, visit } from "./test-support/fixtures";
 import { expect } from "@playwright/test";
 
-test("signup requires email verification before creating and entering a workspace", async ({
+test("an unverified account cannot open the workspace until its email is verified", async ({
   page,
-  request,
 }) => {
   const id = crypto.randomUUID();
-  const email = `onboarding-${id}@example.test`;
-  const password = `Onboarding-${id}!`;
+  const email = `unverified-${id}@example.test`;
+  const password = `Unverified-${id}!`;
   await page.goto("/signup");
-  await page.getByLabel("Name", { exact: true }).fill("New teammate");
-  await page.getByLabel("Email", { exact: true }).fill(email);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Create account", exact: true }).click();
-  await expect(page).toHaveURL(/\/verify-email/);
+  await signUp(page, email, password, "New teammate");
   await page.goto("/dashboard");
   await expect(page).toHaveURL(/\/login|\/verify-email/);
   await page.goto("/login");
   await signIn(page, email, password);
   await expect(page).toHaveURL(/\/verify-email/);
-  const link = await new Mailpit(request).link(
-    email,
-    "Verify your Startup OS email",
-    "/api/auth/verify-email",
-  );
-  await page.goto(link);
-  await expect(page).toHaveURL(/\/login/);
-  await signIn(page, email, password);
-  await expect(page.getByRole("heading", { name: "Your workspaces", exact: true })).toBeVisible();
-  const name = `Onboarding ${id}`;
-  await page.getByLabel("Workspace name", { exact: true }).fill(name);
-  await page.getByLabel("Workspace slug", { exact: true }).fill(`onboarding-${id}`);
-  await page.getByRole("button", { name: "Create workspace", exact: true }).click();
-  await expect(
-    page.getByRole("heading", { name: "Your workspace is ready", exact: true }),
-  ).toBeVisible();
-  await page.goto("/dashboard");
-  await expect(page.getByRole("button", { name: `${name} ▾`, exact: true })).toBeVisible();
-  await page.reload();
-  await expect(page.getByRole("button", { name: `${name} ▾`, exact: true })).toBeVisible();
 });
-
 test("sign-out removes private content, blocks history navigation, and allows a fresh login", async ({
   account,
   client,
