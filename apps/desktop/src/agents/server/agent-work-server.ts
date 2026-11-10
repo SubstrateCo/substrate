@@ -1,5 +1,5 @@
 import {
-  agentRequestResponse,
+  agentRequestDelivery,
   agentSourcesResult,
   agentWakeView,
   type AgentRequestDelivery,
@@ -25,13 +25,6 @@ const result = <T extends z.ZodType>(data: T) =>
   ]);
 
 const id = z.string().min(1);
-const deliverySchema = z.object({
-  requestId: id,
-  userAgentId: id,
-  turnId: id,
-  nativeRequestId: z.string(),
-  response: agentRequestResponse,
-});
 const catalogSchema = z.object({
   agents: z.array(
     z.object({ id, name: z.string(), harness: z.enum(harnessKinds), enabled: z.boolean() }),
@@ -185,7 +178,7 @@ export function createAgentWorkServer(options: {
       return call(
         "/agent-work/device/requests/answers",
         device(organizationId),
-        z.array(deliverySchema),
+        z.array(agentRequestDelivery),
       );
     },
     async directConversation(organizationId, agentId) {

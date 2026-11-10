@@ -1,12 +1,14 @@
 import type { ProposalAction, ProposalOutcome } from "./proposals.ts";
-import type {
-  AgentRequestKind,
-  AgentRequestMode,
-  AgentRequestPayload,
-  AgentRequestResponse,
-  AgentRequestStatus,
+import {
+  agentRequestResponse,
+  type AgentRequestKind,
+  type AgentRequestMode,
+  type AgentRequestPayload,
+  type AgentRequestResponse,
+  type AgentRequestStatus,
 } from "./requests.ts";
 import type { AgentStatusView } from "./status.ts";
+import { z } from "zod";
 
 /**
  * Where a request belongs, as the viewer can see it now. hidden carries no IDs or names; the UI
@@ -59,14 +61,17 @@ export interface AgentNeedsYou {
   agents: AgentStatusView[];
 }
 
+const ref = z.string().min(1);
+
 /** A resolved blocking request that the home desktop must deliver to the native callback. */
-export interface AgentRequestDelivery {
-  requestId: string;
-  userAgentId: string;
-  turnId: string;
-  nativeRequestId: string;
-  response: AgentRequestResponse;
-}
+export const agentRequestDelivery = z.object({
+  requestId: ref,
+  userAgentId: ref,
+  turnId: ref,
+  nativeRequestId: z.string(),
+  response: agentRequestResponse,
+});
+export type AgentRequestDelivery = z.infer<typeof agentRequestDelivery>;
 
 export interface AgentRequestOpened {
   id: string;
