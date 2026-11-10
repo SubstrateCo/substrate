@@ -16,6 +16,7 @@ import {
   type OwnerIdentity,
 } from "./device";
 import { agentStatus } from "./status.schema";
+import { toStatusView } from "./views";
 import { and, asc, eq, inArray, sql, type SQL } from "drizzle-orm";
 
 export interface PublishStatusInput {
@@ -143,19 +144,7 @@ export async function statusViews(
       ),
     )
     .orderBy(asc(actorDisplayName()), asc(agentStatus.userAgentId));
-  return rows.map(({ status, agent, liveVisible, device }) => ({
-    userAgentId: status.userAgentId,
-    agent,
-    state: status.state,
-    queuedCount: status.queuedCount,
-    liveConversationId: liveVisible ? status.liveConversationId : null,
-    liveThreadId: liveVisible ? status.liveThreadId : null,
-    // Activity in a conversation the owner can no longer open may quote it.
-    activity: status.liveConversationId === null || liveVisible ? status.activity : null,
-    updatedAt: status.updatedAt.toISOString(),
-    version: status.version,
-    device: device?.id ? device : null,
-  }));
+  return rows.map(toStatusView);
 }
 
 /** The owner's agents' published status. */

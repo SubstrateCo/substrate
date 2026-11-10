@@ -1,8 +1,4 @@
-import {
-  sessionKeys,
-  wakeDedupeKeys,
-  type AgentWakeMessageKind,
-} from "@startup-os/contracts/agent-work";
+import { wakeDedupeKeys, type AgentWakeMessageKind } from "@startup-os/contracts/agent-work";
 import { realtimeKeys, type RealtimeHint } from "@startup-os/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
@@ -13,6 +9,7 @@ import { messageReferences } from "../context/references";
 import { liveAgentMember, type MessagingIdentity } from "../messaging/access";
 import { messagingMessages, messagingParticipants } from "../messaging/schema";
 import { agentRequests } from "./requests.schema";
+import { wakeKind, wakeSessionKey } from "./wake-kind";
 import { agentWakes } from "./wakes.schema";
 import { and, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
 
@@ -100,16 +97,15 @@ export async function routeWake(
       .map((reference) => reference.id),
   );
   const worked = await agentsThatWorked(db, message, agents);
-  const sessionKey =
-    conversationKind === "dm"
-      ? sessionKeys.dm(message.conversationId)
-      : sessionKeys.thread(message.threadId ?? message.id);
+  const sessionKey = wakeSessionKey(conversationKind, message);
   const wakes = agents.flatMap((agent) => {
-    let kind: AgentWakeMessageKind | undefined;
-    if (mentioned.has(agent.actorId)) kind = "mention";
-    else if (conversationKind === "dm") kind = "direct_message";
-    else if (worked.has(agent.actorId)) kind = "thread_reply";
-    if (!kind || agent.disabled.includes(kind)) return [];
+    const kind = wakeKind({
+      mentioned: mentioned.has(agent.actorId),
+      directMessage: conversationKind === "dm",
+      workedInThread: worked.has(agent.actorId),
+      disabled: agent.disabled,
+    });
+    if (!kind) return [];
     return [
       {
         organizationId: agent.organizationId,

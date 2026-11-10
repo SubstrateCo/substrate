@@ -99,6 +99,15 @@ export function declineProposal(db: DatabaseExecutor, identity: OwnerIdentity, r
  * again when the action runs, with its targets locked, and the action runs only while the targets
  * are as they were proposed. A failed action is recorded and reported; it is not retried.
  */
+// Only expected failures are recorded, with messages the owner can act on. Others are rethrown.
+export function proposalFailure(error: Error): ProposalOutcome | null {
+  if (error instanceof AccessDeniedError)
+    return { status: "failed", error: "The target no longer exists or is no longer available." };
+  if (error instanceof ValidationError || error instanceof ConflictError)
+    return { status: "failed", error: error.message };
+  return null;
+}
+
 export function approveProposal(db: DatabaseExecutor, identity: OwnerIdentity, requestId: string) {
   return db.transaction(async (tx) => {
     await workspaceContext(tx, identity);
@@ -134,15 +143,9 @@ export function approveProposal(db: DatabaseExecutor, identity: OwnerIdentity, r
         outcome = { status: "executed", receipt: result.receipt };
         hints = result.hints;
       } catch (error) {
-        // Only expected failures are recorded, with messages the owner can act on.
-        if (error instanceof AccessDeniedError)
-          outcome = {
-            status: "failed",
-            error: "The target no longer exists or is no longer available.",
-          };
-        else if (error instanceof ValidationError || error instanceof ConflictError)
-          outcome = { status: "failed", error: error.message };
-        else throw error;
+        const failure = error instanceof Error ? proposalFailure(error) : null;
+        if (!failure) throw error;
+        outcome = failure;
       }
     }
     const [finished] = await tx

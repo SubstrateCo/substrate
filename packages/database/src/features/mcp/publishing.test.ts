@@ -56,14 +56,6 @@ test("background turns post only to their own place and propose everything else"
       background,
     ),
   ).rejects.toThrow("Use propose for this action");
-  const project = await f.forActor(f.alice).projects.create({ name: "Work" });
-  await expect(
-    call(
-      "create_task",
-      { requestId: crypto.randomUUID(), projectId: project.entityId, title: "Task" },
-      background,
-    ),
-  ).rejects.toBeInstanceOf(ValidationError);
 
   // A routine turn has no source and publishes to its destination.
   const routine = {
@@ -181,31 +173,13 @@ test("only the agent's home desktop can write; a moved agent's old desktop can o
   expect((await messagesIn(dm.id)).map((row) => row.body)).toEqual(["Moved"]);
 });
 
-test("a quiet handoff turn cannot publish, propose or write", async () => {
+// writeGate's unit test covers each tool and turn kind; this checks the gate runs before writes.
+test("a quiet handoff turn cannot publish but can read", async () => {
   const { dm, call } = await agentWorkFixture(f);
-  const project = await f.forActor(f.alice).projects.create({ name: "Work" });
+  await f.forActor(f.alice).projects.create({ name: "Work" });
   const handoff = { ...dmTurn(dm.id, "unattended"), purpose: "handoff" as const };
   await expect(
     call("reply", { requestId: crypto.randomUUID(), body: "Handing off" }, handoff),
-  ).rejects.toBeInstanceOf(ValidationError);
-  await expect(
-    call(
-      "propose",
-      {
-        requestId: crypto.randomUUID(),
-        summary: "Track",
-        action: { type: "create_task", input: { projectId: project.entityId, title: "Task" } },
-      },
-      handoff,
-    ),
-  ).rejects.toBeInstanceOf(ValidationError);
-  // Even an interactive-looking handoff is quiet.
-  await expect(
-    call(
-      "create_task",
-      { requestId: crypto.randomUUID(), projectId: project.entityId, title: "Task" },
-      { ...dmTurn(dm.id), purpose: "handoff" },
-    ),
   ).rejects.toBeInstanceOf(ValidationError);
   expect(await messagesIn(dm.id)).toEqual([]);
   expect(await f.db.select().from(agentRequests)).toEqual([]);

@@ -1,8 +1,4 @@
-import type {
-  AgentNeedsYou,
-  AgentRequestPlace,
-  AgentRequestView,
-} from "@startup-os/contracts/agent-work";
+import type { AgentNeedsYou, AgentRequestView } from "@startup-os/contracts/agent-work";
 
 import type { DatabaseExecutor } from "../../client";
 import { actorDisplayName } from "../../core/actors/display-name";
@@ -15,9 +11,8 @@ import type { OwnerIdentity } from "./device";
 import { agentRequests } from "./requests.schema";
 import { statusViews } from "./status";
 import { agentStatus } from "./status.schema";
+import { toRequestView } from "./views";
 import { and, desc, eq, gt, inArray, or, sql, type SQL } from "drizzle-orm";
-
-const iso = (value: Date | null) => value?.toISOString() ?? null;
 
 /** Requests of the owner's own agents in the organization. */
 export function ownedRequests(identity: OwnerIdentity) {
@@ -67,53 +62,7 @@ async function requestViews(
     .where(and(ownedRequests(identity), where))
     .orderBy(desc(agentRequests.createdAt), desc(agentRequests.id))
     .limit(100);
-  return rows.map(({ request, agent, conversationName: name, targetVisible }): AgentRequestView => {
-    const common = {
-      id: request.id,
-      userAgentId: request.userAgentId,
-      agent,
-      turnId: request.turnId,
-      kind: request.kind,
-      mode: request.mode,
-      status: request.status,
-      createdAt: request.createdAt.toISOString(),
-      resolvedAt: iso(request.resolvedAt),
-      expiresAt: iso(request.expiresAt),
-    };
-    if (request.conversationId && name === null)
-      return {
-        ...common,
-        sessionKey: null,
-        place: { access: "hidden" },
-        payload: null,
-        response: null,
-        proposal: null,
-      };
-    let place: AgentRequestPlace = { access: "none" };
-    if (request.conversationId && name !== null)
-      place = {
-        access: "visible",
-        conversationId: request.conversationId,
-        threadId: request.threadId,
-        conversationName: name,
-        anchorMessageId: request.anchorMessageId,
-      };
-    return {
-      ...common,
-      sessionKey: request.sessionKey,
-      place,
-      payload: request.payload,
-      response: request.response,
-      proposal:
-        request.proposedAction && request.actionHash && targetVisible
-          ? {
-              action: request.proposedAction,
-              actionHash: request.actionHash,
-              outcome: request.outcome,
-            }
-          : null,
-    };
-  });
+  return rows.map(toRequestView);
 }
 
 // Blocking requests stop being answerable when their wait ends.

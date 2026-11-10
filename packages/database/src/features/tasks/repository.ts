@@ -8,6 +8,7 @@ import { AccessDeniedError, ValidationError } from "../../errors";
 import { notifyAssignment, recordTaskActivities, recordTaskActivity } from "../activity/events";
 import { projectRepository, requiredText } from "../projects/repository";
 import { liveTask } from "./access";
+import { taskChanges } from "./changes";
 import { taskComments } from "./comments.schema";
 import type { CreateTaskInput, TaskFields } from "./contracts";
 import { tasks } from "./tasks.schema";
@@ -141,22 +142,7 @@ export function taskRepository(context: RepositoryContext) {
         if (expectedProjectEntityId && task.projectEntityId !== expectedProjectEntityId)
           throw new AccessDeniedError();
         await validate(ctx, task.projectEntityId, input, task.assigneeActorEntityId);
-        const changes: string[] = [];
-        if (input.status !== undefined && input.status !== task.status)
-          changes.push("Status changed");
-        if (
-          input.assigneeActorEntityId !== undefined &&
-          input.assigneeActorEntityId !== task.assigneeActorEntityId
-        )
-          changes.push("Assignee changed");
-        if (input.title !== undefined && input.title.trim() !== task.title)
-          changes.push("Title changed");
-        if (input.description !== undefined && input.description !== task.description)
-          changes.push("Description changed");
-        if (input.priority !== undefined && input.priority !== task.priority)
-          changes.push("Priority changed");
-        if (input.dueDate !== undefined && input.dueDate !== task.dueDate)
-          changes.push("Due date changed");
+        const changes = taskChanges(task, input);
         const [updated] = await tx
           .update(tasks)
           .set({

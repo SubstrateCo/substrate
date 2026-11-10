@@ -25,7 +25,8 @@ import { mcpMessagingQueries } from "./messaging";
 import { publishingTools } from "./publishing";
 import { agentToolRequests } from "./schema";
 import { mcpTaskQueries } from "./tasks";
-import { proposeInstead, requireTurn } from "./turn";
+import { requireTurn } from "./turn";
+import { writeGate } from "./write-gate";
 import { agentWrites } from "./writes";
 import { and, eq } from "drizzle-orm";
 
@@ -48,11 +49,6 @@ type ReplayableTool = {
 type ReplayChecks = {
   [K in ReplayableTool]: (input: McpInput<K>, output: McpOutput<K>) => Promise<void>;
 };
-
-// In background turns the agent may only publish to its own place or propose.
-const unattendedWrites: ReadonlySet<ServerToolName> = new Set(["reply", "propose"]);
-const handoffIsQuiet =
-  "A handoff turn saves its notes with save_handoff. It does not publish, propose or change records.";
 
 function requestIdOf(input: McpInput<ServerToolName>) {
   return "requestId" in input ? input.requestId : undefined;
@@ -82,9 +78,8 @@ export async function executeAgentTool<K extends ServerToolName>(
     // Writes use the turn context, so the turn is checked before any write runs.
     let userAgentId: string | null = null;
     if (!definition.readOnly) {
-      if (turn.purpose === "handoff") throw new ValidationError(handoffIsQuiet);
-      if (turn.kind === "unattended" && !unattendedWrites.has(tool))
-        throw new ValidationError(proposeInstead);
+      const blocked = writeGate(turn, tool);
+      if (blocked) throw new ValidationError(blocked);
       // Only the agent's home desktop runs its turns. The share lock keeps the agent from moving
       // to another desktop until this write commits.
       const [row] = await tx
