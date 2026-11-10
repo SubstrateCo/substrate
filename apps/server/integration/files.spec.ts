@@ -2,6 +2,7 @@ import type { CompletedUpload, FilePurpose, UploadTicket } from "@startup-os/con
 import type { ServiceResult } from "@startup-os/contracts/result";
 
 import { provisionVerifiedAccount } from "./test-support/auth";
+import { appOrigin } from "./test-support/environment";
 import { Mailpit } from "./test-support/mailpit";
 import { provisionWorkspaceSession } from "./test-support/organizations";
 import {
@@ -13,7 +14,7 @@ import {
 } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 
-const origin = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000").origin;
+const origin = appOrigin;
 const root = "/api/v1/files";
 const png = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=",

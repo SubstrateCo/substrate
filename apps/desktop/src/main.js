@@ -52,8 +52,14 @@ const publicConfig = app.isPackaged
   ? JSON.parse(readFileSync(new URL("./desktop-config.json", import.meta.url), "utf8"))
   : {};
 const backend = backendURL(process.env.STARTUP_OS_API_URL ?? publicConfig.apiURL, app.isPackaged);
+// Signed uploads go to the server's storage endpoint. A packaged app uses the origin from its
+// build, so an unrelated S3_ENDPOINT on the machine cannot widen it.
 const allowedStorageOrigins = storageOrigins(
-  process.env.STARTUP_OS_STORAGE_ORIGINS ?? publicConfig.storageOrigins,
+  app.isPackaged
+    ? publicConfig.storageOrigins
+    : process.env.S3_ENDPOINT
+      ? new URL(process.env.S3_ENDPOINT).origin
+      : undefined,
   app.isPackaged,
 );
 /** @type {ReturnType<typeof createHarnessController> | undefined} */

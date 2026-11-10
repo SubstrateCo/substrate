@@ -2,13 +2,14 @@ import type { conversationInput, messageInput } from "@startup-os/contracts/mess
 import type { ServiceResult } from "@startup-os/contracts/result";
 
 import { provisionVerifiedAccount } from "./test-support/auth";
+import { appOrigin } from "./test-support/environment";
 import { Mailpit } from "./test-support/mailpit";
 import { provisionWorkspaceSession, type WorkspaceAccount } from "./test-support/organizations";
 import { expect, test as base, type APIRequestContext } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import type { z } from "zod";
 
-const origin = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000").origin;
+const origin = appOrigin;
 
 const test = base.extend<{
   actors: {

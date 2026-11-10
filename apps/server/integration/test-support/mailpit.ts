@@ -1,3 +1,4 @@
+import { mailpitURL } from "./environment";
 import { expect, type APIRequestContext } from "@playwright/test";
 
 interface MailpitMessage {
@@ -7,7 +8,7 @@ interface MailpitMessage {
 }
 
 export class Mailpit {
-  private readonly baseURL = process.env.MAILPIT_BASE_URL ?? "http://localhost:8025";
+  private readonly baseURL = mailpitURL;
 
   constructor(private readonly request: APIRequestContext) {}
 

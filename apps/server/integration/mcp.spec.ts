@@ -1,9 +1,10 @@
 import { provisionVerifiedAccount } from "./test-support/auth";
+import { appOrigin } from "./test-support/environment";
 import { Mailpit } from "./test-support/mailpit";
 import { provisionWorkspaceSession } from "./test-support/organizations";
 import { expect, test } from "@playwright/test";
 
-const origin = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000").origin;
+const origin = appOrigin;
 
 test("MCP calls require a verified owner, active workspace, trusted origin and strict tool input", async ({
   playwright,

@@ -1,3 +1,4 @@
+import { appOrigin } from "./integration/test-support/environment";
 import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
@@ -8,7 +9,7 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   reporter: "./scripts/errors-reporter.ts",
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
+    baseURL: appOrigin,
     // Auth and signed storage URLs contain credentials.
     trace: "off",
     screenshot: "off",

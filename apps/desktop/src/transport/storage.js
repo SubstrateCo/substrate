@@ -3,7 +3,7 @@ export function storageOrigins(value, packaged) {
   if (value === undefined) return [];
   // oxlint-disable-next-line deslop/no-runtime-typeof -- Public config/env boundary: parse comma-separated env text or a JSON array before validating each origin.
   const values = typeof value === "string" ? value.split(",") : value;
-  if (!Array.isArray(values)) throw new Error("STARTUP_OS_STORAGE_ORIGINS must contain origins.");
+  if (!Array.isArray(values)) throw new Error("Storage origins must be a list of origins.");
   return [
     ...new Set(
       values.map((entry) => {

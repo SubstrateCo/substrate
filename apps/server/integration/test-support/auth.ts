@@ -1,3 +1,4 @@
+import { appOrigin } from "./environment.js";
 import { Mailpit } from "./mailpit.js";
 import { expect, type APIRequestContext } from "@playwright/test";
 
@@ -12,7 +13,7 @@ export async function provisionVerifiedAccount(
   mailpit: Mailpit,
   account: TestAccount,
 ) {
-  const origin = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000").origin;
+  const origin = appOrigin;
   const created = await page.request.post("/api/auth/sign-up/email", {
     headers: { origin },
     data: { ...account, callbackURL: "/login" },

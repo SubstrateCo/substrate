@@ -6,23 +6,26 @@ import { fileURLToPath } from "node:url";
 import { defineConfig, loadEnv } from "vite";
 
 export default defineConfig(({ mode }) => {
-  const env: { WEB_PORT?: string; SERVER_URL?: string } = loadEnv(mode, "../..", "");
-  const port = Number(process.env.WEB_PORT ?? env.WEB_PORT ?? "3000");
-  if (!Number.isInteger(port) || port < 1 || port > 65535)
-    throw new Error("WEB_PORT must be a valid port.");
+  const env: { STARTUP_OS_WEB_URL?: string; STARTUP_OS_API_URL?: string } = loadEnv(
+    mode,
+    "../..",
+    "",
+  );
+  // The dev server serves the public web origin and proxies the API origin.
+  const webURL = new URL(
+    process.env.STARTUP_OS_WEB_URL ?? env.STARTUP_OS_WEB_URL ?? "http://localhost:3000",
+  );
+  const port = Number(webURL.port || (webURL.protocol === "https:" ? 443 : 80));
+  const apiURL =
+    process.env.STARTUP_OS_API_URL ?? env.STARTUP_OS_API_URL ?? "http://localhost:3001";
   return {
     cacheDir: process.env.VITE_CACHE_DIR,
     server: {
       port,
       strictPort: true,
       proxy: {
-        "/desktop": {
-          target: process.env.SERVER_URL ?? env.SERVER_URL ?? "http://localhost:3001",
-        },
-        "/api": {
-          target: process.env.SERVER_URL ?? env.SERVER_URL ?? "http://localhost:3001",
-          ws: true,
-        },
+        "/desktop": { target: apiURL },
+        "/api": { target: apiURL, ws: true },
       },
     },
     envDir: "../..",

@@ -10,7 +10,12 @@ const web = fileURLToPath(new URL("../../web/", import.meta.url));
 // Only this validated, public origin is captured. Never serialize process.env.
 const apiURL = backendURL(process.env.STARTUP_OS_API_URL, true);
 const webURL = backendURL(process.env.STARTUP_OS_WEB_URL, true);
-const allowedStorageOrigins = storageOrigins(process.env.STARTUP_OS_STORAGE_ORIGINS, true);
+// Signed uploads go to the storage endpoint the server signs with.
+const storageEndpoint = process.env.S3_ENDPOINT;
+const allowedStorageOrigins = storageOrigins(
+  storageEndpoint ? new URL(storageEndpoint).origin : undefined,
+  true,
+);
 // This is a generated staging directory, never a source directory.
 await rm(`${desktop}/dist`, { recursive: true, force: true });
 const renderer = Bun.spawn([process.execPath, "run", "build"], {

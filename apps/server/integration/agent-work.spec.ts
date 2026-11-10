@@ -1,11 +1,12 @@
 import type { WorkspaceApiRequest } from "@startup-os/contracts/harness/mcp";
 
 import { provisionVerifiedAccount } from "./test-support/auth";
+import { appOrigin } from "./test-support/environment";
 import { Mailpit } from "./test-support/mailpit";
 import { provisionWorkspaceSession } from "./test-support/organizations";
 import { expect, test } from "@playwright/test";
 
-const origin = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000").origin;
+const origin = appOrigin;
 
 test("only the owner's home desktop receives wakes, and only the owner sees and answers requests", async ({
   playwright,

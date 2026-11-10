@@ -1,3 +1,4 @@
+import { appOrigin } from "./environment";
 import { expect, type APIRequestContext } from "@playwright/test";
 
 /** A signed-in request context with its active workspace. */
@@ -12,7 +13,7 @@ export async function provisionWorkspaceSession(
   name: string,
   slug: string,
 ) {
-  const origin = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000").origin;
+  const origin = appOrigin;
   const created = await request.post("/api/auth/organization/create", {
     headers: { origin },
     data: { name, slug },
