@@ -6,12 +6,12 @@ import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { member } from "../../core/organizations/schema";
+import { agentRequests } from "../agent-work/requests.schema";
 import {
   messagingConversations,
   messagingMessages,
   messagingParticipants,
 } from "../messaging/schema";
-import { agentRequests } from "../agent-work/requests.schema";
 import { messagingInvitations } from "../messaging/sharing.schema";
 import { notifications } from "../notifications/schema";
 import { and, eq, exists, inArray, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
@@ -236,31 +236,6 @@ export function messageChangeHints(
       ? [{ audience: realtimeKeys.organization(change.organizationId), domain: "context" as const }]
       : []),
     ...(effects.notified ?? []).map(({ organizationId, actorId }) => ({
-      audience: realtimeKeys.actor(organizationId, actorId),
-      domain: "notifications" as const,
-    })),
-  ];
-}
-
-export async function messageRefreshHints(
-  db: DatabaseExecutor,
-  messageId: string,
-): Promise<RealtimeHint[]> {
-  const [message] = await db
-    .select({ conversationId: messagingMessages.conversationId })
-    .from(messagingMessages)
-    .where(eq(messagingMessages.id, messageId));
-  if (!message) return [];
-  const recipients = await db
-    .selectDistinct({
-      organizationId: notifications.organizationId,
-      actorId: notifications.recipientActorEntityId,
-    })
-    .from(notifications)
-    .where(eq(notifications.messageId, messageId));
-  return [
-    { audience: realtimeKeys.conversation(message.conversationId), domain: "messaging" },
-    ...recipients.map(({ organizationId, actorId }) => ({
       audience: realtimeKeys.actor(organizationId, actorId),
       domain: "notifications" as const,
     })),

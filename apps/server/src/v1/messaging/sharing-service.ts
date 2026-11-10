@@ -30,6 +30,8 @@ async function verified(headers: Headers) {
 }
 async function service(headers: Headers, organizationId: string) {
   const { session } = await workspaceSession(headers, organizationId);
+  // Invitations lock the conversation before the manager check, so check membership first.
+  await auth.api.getActiveMemberRole({ headers, query: { organizationId } });
   return createSharingService(db, { userId: session.user.id, organizationId });
 }
 async function changed(organizationId: string, userId?: string) {

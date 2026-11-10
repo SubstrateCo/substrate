@@ -5,7 +5,6 @@ import * as provisioning from "@startup-os/database/provisioning";
 import { db } from "../../auth/database";
 import { auth } from "../../auth/server";
 import { getProject, listTaskComments, mutateTasks } from "./service";
-import { APIError } from "better-auth/api";
 import { afterEach, expect, mock, spyOn, test } from "bun:test";
 
 afterEach(() => mock.restore());
@@ -35,7 +34,6 @@ function projectFixture() {
     },
   };
   const getSession = spyOn(auth.api, "getSession").mockResolvedValue(session);
-  const getRole = spyOn(auth.api, "getActiveMemberRole").mockResolvedValue({ role: "member" });
   const actor = {
     entityId: crypto.randomUUID(),
     organizationId: input.organizationId,
@@ -81,7 +79,6 @@ function projectFixture() {
     actor,
     detail,
     getSession,
-    getRole,
     resolveHumanActor,
     ensureOwnedAgentActors,
     getDetail,
@@ -138,7 +135,6 @@ test("project detail uses one authenticated workspace and retains provisioning a
     data: fixture.detail,
   });
   expect(fixture.getSession).toHaveBeenCalledTimes(1);
-  expect(fixture.getRole).toHaveBeenCalledTimes(1);
   expect(fixture.ensureOwnedAgentActors).toHaveBeenCalledWith(db, {
     organizationId: fixture.input.organizationId,
     userId: fixture.session.user.id,
@@ -155,7 +151,7 @@ test("project detail uses one authenticated workspace and retains provisioning a
   expect(fixture.transaction).not.toHaveBeenCalled();
 });
 
-for (const denial of ["signed out", "unverified", "workspace mismatch", "not a member"] as const) {
+for (const denial of ["signed out", "unverified", "workspace mismatch"] as const) {
   test(`project detail rejects ${denial} before provisioning or project access`, async () => {
     const fixture = projectFixture();
     let expected;
@@ -175,10 +171,6 @@ for (const denial of ["signed out", "unverified", "workspace mismatch", "not a m
           "Your active workspace changed. Reload this page to continue.",
         );
         break;
-      case "not a member":
-        fixture.getRole.mockRejectedValue(new APIError("FORBIDDEN"));
-        expected = failure("FORBIDDEN", "Access denied.");
-        break;
     }
     expect(await getProject(new Headers(), fixture.input)).toEqual(expected);
     expect(fixture.resolveHumanActor).not.toHaveBeenCalled();
@@ -188,9 +180,8 @@ for (const denial of ["signed out", "unverified", "workspace mismatch", "not a m
   });
 }
 
-test("project detail hides missing or inaccessible projects even for an organization admin", async () => {
+test("project detail hides missing or inaccessible projects", async () => {
   const fixture = projectFixture();
-  fixture.getRole.mockResolvedValue({ role: "admin" });
   fixture.getDetail.mockRejectedValue(new database.AccessDeniedError());
   expect(await getProject(new Headers(), fixture.input)).toEqual(
     failure("NOT_FOUND", "Item not found or access denied."),

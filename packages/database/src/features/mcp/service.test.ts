@@ -1,5 +1,6 @@
 import type { WorkspaceApiRequest } from "@startup-os/contracts/harness/mcp";
 import { mcpTools, type McpOutput, type ServerToolName } from "@startup-os/contracts/harness/tools";
+import { realtimeKeys, type RealtimeHint } from "@startup-os/contracts/realtime";
 
 import { ensureUserAgentActor } from "../../core/actors/provisioning";
 import { registerDevice } from "../../core/devices/repository";
@@ -334,9 +335,30 @@ test("reply resolves the agent once and does not re-authenticate inside messagin
   ).toBe("agent");
   const identityReads = () => queries.filter((query) => query.includes('from "user"'));
   expect(identityReads()).toHaveLength(1);
+  // The send builds its hints in the transaction; a replay still refreshes the conversation.
+  const conversationHint: RealtimeHint = {
+    audience: realtimeKeys.conversation(channel.id),
+    domain: "messaging",
+    scope: "messages",
+  };
+  expect(sent.hints).toContainEqual(conversationHint);
   queries.length = 0;
-  expect((await executeAgentTool(db, identity, "reply", input, turn)).output).toEqual(sent.output);
+  const replay = await executeAgentTool(db, identity, "reply", input, turn);
+  expect(replay.output).toEqual(sent.output);
+  expect(replay.hints).toEqual([conversationHint]);
   expect(identityReads()).toHaveLength(1);
+});
+
+test("read tools take no row locks, and write tools lock the agent's actor row", async () => {
+  const { identity, project } = await fixture();
+  const { db, queries } = recordQueries();
+  await executeAgentTool(db, identity, "list_projects", {}, turn);
+  await executeAgentTool(db, identity, "get_project", { projectId: project.entityId }, turn);
+  expect(queries.some((query) => /for (update|share)/i.test(query))).toBe(false);
+  queries.length = 0;
+  const input = { requestId: crypto.randomUUID(), projectId: project.entityId, title: "Locked" };
+  await executeAgentTool(db, identity, "create_task", input, turn);
+  expect(queries.filter((query) => query.includes('for update of "actors"'))).toHaveLength(1);
 });
 
 test("failed source validation rolls back task creation; foreign owners and organizations cannot impersonate agents", async () => {

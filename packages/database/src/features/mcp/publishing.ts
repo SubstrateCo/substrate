@@ -1,6 +1,7 @@
 import { askRequestPayload, proposalActionHash } from "@startup-os/contracts/agent-work";
 import type { TurnContext } from "@startup-os/contracts/harness/mcp";
 import type { McpInput, McpOutput } from "@startup-os/contracts/harness/tools";
+import type { RealtimeHint } from "@startup-os/contracts/realtime";
 
 import type { RepositoryContext } from "../../core/repository-context";
 import { ValidationError } from "../../errors";
@@ -28,7 +29,7 @@ export function publishingTools(
     turnId: turn.turnId,
   };
   return {
-    async reply(input: McpInput<"reply">): Promise<McpOutput<"reply">> {
+    async reply(input: McpInput<"reply">): Promise<McpOutput<"reply"> & { hints: RealtimeHint[] }> {
       // Checked before the message posts, so a rejected ask publishes nothing.
       if (input.ask && turn.kind === "unattended")
         throw new ValidationError(
@@ -59,6 +60,8 @@ export function publishingTools(
         threadId: message.threadId,
         questionId,
         createdAt: message.createdAt.toISOString(),
+        // Built in the send transaction, so the caller publishes them without reading back.
+        hints: message.hints,
       };
     },
     async propose(input: McpInput<"propose">): Promise<McpOutput<"propose">> {

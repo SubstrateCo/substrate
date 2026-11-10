@@ -50,11 +50,36 @@ export function createActor(db: DatabaseExecutor, input: ActorInput) {
   });
 }
 
-// Trusted session/credential identity only. Never accept the owner from tool input.
-export function ensureUserAgentActor(
+// Trusted session/credential identity only. Never accept the owner from tool input. An existing
+// actor of a live, enabled agent whose owner is a member returns from one lock-free statement;
+// only a missing actor takes the provisioning locks. Callers still check the actor is active.
+export async function ensureUserAgentActor(
   db: DatabaseExecutor,
   input: { organizationId: string; userId: string; userAgentId: string },
 ) {
+  const [existing] = await db
+    .select({ actor: actors })
+    .from(actors)
+    .innerJoin(
+      userAgents,
+      and(
+        eq(userAgents.id, actors.userAgentId),
+        eq(userAgents.userId, input.userId),
+        eq(userAgents.enabled, true),
+        isNull(userAgents.deletedAt),
+      ),
+    )
+    .innerJoin(
+      member,
+      and(eq(member.organizationId, actors.organizationId), eq(member.userId, input.userId)),
+    )
+    .where(
+      and(
+        eq(actors.organizationId, input.organizationId),
+        eq(actors.userAgentId, input.userAgentId),
+      ),
+    );
+  if (existing) return existing.actor;
   return db.transaction(async (tx) => {
     const [membership] = await tx
       .select()
@@ -115,17 +140,23 @@ export function ensureHumanActor(
   });
 }
 
-// Trusted, already verified session identity only. Existing actors skip the provisioning lock;
-// repositories still check that the actor is active.
+// Trusted, already verified session identity only. One statement checks membership and reads
+// the actor; only a missing actor takes the provisioning lock. Repositories still check that the
+// actor is active.
 export async function resolveHumanActor(
   db: DatabaseExecutor,
   input: { organizationId: string; userId: string },
 ) {
-  const [existing] = await db
-    .select()
-    .from(actors)
-    .where(and(eq(actors.organizationId, input.organizationId), eq(actors.userId, input.userId)));
-  return existing ?? ensureHumanActor(db, input);
+  const [row] = await db
+    .select({ actor: actors })
+    .from(member)
+    .leftJoin(
+      actors,
+      and(eq(actors.organizationId, member.organizationId), eq(actors.userId, member.userId)),
+    )
+    .where(and(eq(member.organizationId, input.organizationId), eq(member.userId, input.userId)));
+  if (!row) throw new AccessDeniedError();
+  return row.actor ?? ensureHumanActor(db, input);
 }
 
 // Reads take one lock-free statement when every enabled agent already has an actor here. Only a

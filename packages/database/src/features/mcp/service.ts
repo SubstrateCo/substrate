@@ -5,6 +5,7 @@ import {
   type McpOutput,
   type ServerToolName,
 } from "@startup-os/contracts/harness/tools";
+import type { RealtimeHint } from "@startup-os/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
@@ -16,6 +17,7 @@ import { workspaceContext } from "../context/access";
 import { attachReference, detachReference } from "../context/service";
 import type { MessagingIdentity } from "../messaging/access";
 import { requireMessage } from "../messaging/access";
+import { messageChangeHints } from "../realtime/routing";
 import { taskRepository } from "../tasks/repository";
 import { mcpContextQueries } from "./context";
 import { listLinks } from "./links";
@@ -28,7 +30,12 @@ import { agentWrites } from "./writes";
 import { and, eq } from "drizzle-orm";
 
 type AgentToolExecution = {
-  [K in ServerToolName]: { tool: K; input: McpInput<K>; output: McpOutput<K> };
+  [K in ServerToolName]: {
+    tool: K;
+    input: McpInput<K>;
+    output: McpOutput<K>;
+    hints: RealtimeHint[];
+  };
 }[ServerToolName];
 
 // Handler results are serialized to JSON, then parsed with the tool's output schema.
@@ -61,14 +68,16 @@ export async function executeAgentTool<K extends ServerToolName>(
   const definition = mcpTools[tool];
   // SAFETY: `definition` is the registry entry for `tool`, so its schema produces McpInput<K>.
   const input = definition.input.parse(raw) as McpInput<K>;
+  // Message hints a write built in its transaction, published by the caller after commit.
+  const hints: RealtimeHint[] = [];
   const output = await db.transaction(async (tx) => {
+    // Writes lock the agent's actor row so one agent's writes run one at a time. Reads run in
+    // parallel.
     const {
       context: ctx,
       actor: agent,
       userName,
-    } = await workspaceContext(tx, identity, {
-      lockActor: true,
-    });
+    } = await workspaceContext(tx, identity, { lockActor: !definition.readOnly });
     const actor = { id: agent.entityId, name: agent.name, type: agent.type };
     // Writes use the turn context, so the turn is checked before any write runs.
     let userAgentId: string | null = null;
@@ -119,7 +128,11 @@ export async function executeAgentTool<K extends ServerToolName>(
         const comment = await tasks.addComment(value.taskId, value.body);
         return { id: comment.id, taskId: value.taskId, createdAt: comment.createdAt };
       },
-      reply: (value) => publishing().reply(value),
+      async reply(value) {
+        const { hints: messageHints, ...result } = await publishing().reply(value);
+        hints.push(...messageHints);
+        return result;
+      },
       propose: (value) => publishing().propose(value),
       async attach_message(value) {
         return { changed: await attachReference(ctx, identity, value, value.target) };
@@ -183,6 +196,18 @@ export async function executeAgentTool<K extends ServerToolName>(
       )[tool];
       if (!recheck) throw new AccessDeniedError();
       await recheck(input, result);
+      // A replay changes nothing. The hint still lets viewers recover from a lost first publish.
+      if (tool === "reply")
+        hints.push(
+          ...messageChangeHints(
+            {
+              // SAFETY: `result` was parsed with the reply tool's output schema.
+              conversationId: (result as McpOutput<"reply">).conversationId,
+              organizationId: identity.organizationId,
+            },
+            { joined: false },
+          ),
+        );
     } else if (requestId)
       await tx.insert(agentToolRequests).values({
         organizationId: identity.organizationId,
@@ -197,5 +222,5 @@ export async function executeAgentTool<K extends ServerToolName>(
     return result;
   });
   // SAFETY: input and output were parsed with the registry entry for the same tool.
-  return { tool, input, output } as Extract<AgentToolExecution, { tool: K }>;
+  return { tool, input, output, hints } as Extract<AgentToolExecution, { tool: K }>;
 }

@@ -17,6 +17,8 @@ export function requireOrigin(headers: Headers) {
     throw new ServiceError("FORBIDDEN", "Invalid request origin.");
 }
 
+// Membership is checked by the database on every workspace path (workspaceContext, active actor
+// checks and actor provisioning), so a removed member gets NOT_FOUND there.
 export async function workspaceSession(headers: Headers, expectedOrganizationId: string) {
   const session = await auth.api.getSession({ headers });
   if (!session) throw new ServiceError("UNAUTHENTICATED", "Sign in to continue.");
@@ -26,6 +28,5 @@ export async function workspaceSession(headers: Headers, expectedOrganizationId:
     expectedOrganizationId,
     session.session.activeOrganizationId,
   );
-  await auth.api.getActiveMemberRole({ headers, query: { organizationId } });
   return { session, organizationId };
 }
