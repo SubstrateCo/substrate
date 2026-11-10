@@ -137,7 +137,7 @@ export function projectRepository(context: RepositoryContext) {
         .where(
           and(
             eq(projects.organizationId, scope.organizationId),
-            inArray(projects.entityId, context.readableEntities()),
+            context.readable(projects.entityId),
           ),
         )
         .orderBy(asc(projects.name), asc(projects.entityId));

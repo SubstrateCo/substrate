@@ -51,7 +51,12 @@ export async function messageWorkLinks(ctx: RepositoryContext, messageIds: strin
         eq(messageEntityReferences.entityType, "project"),
       ),
     )
-    .innerJoin(ctx.visibleLevels("work_access"), sql`work_access.entity_id = ${projectEntityId}`)
+    // A page has few references, so each walks up from its project instead of reading the
+    // caller's whole visible set.
+    .innerJoin(
+      sql`LATERAL (SELECT ${ctx.accessLevel(projectEntityId)} AS level) work_access`,
+      sql`work_access.level IS NOT NULL`,
+    )
     .where(
       and(
         inArray(messageEntityReferences.messageId, messageIds),

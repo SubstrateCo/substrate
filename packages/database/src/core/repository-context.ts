@@ -5,8 +5,8 @@ import { actors } from "./actors/schema";
 import { entities } from "./entities/schema";
 import { entityAccessParents } from "./permissions/access-parents";
 import { entityGrants, permissionLevel } from "./permissions/schema";
-import { visibilityCte, lockAccessPath } from "./permissions/visibility";
-import { and, eq, exists, isNull, sql } from "drizzle-orm";
+import { entityAccessLevel, lockAccessPath, readableCondition } from "./permissions/visibility";
+import { and, eq, exists, isNull, sql, type SQLWrapper } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 export interface ActorScope {
@@ -68,8 +68,7 @@ export class RepositoryContext {
     const [access] = await this.db
       .select({
         entity: entities,
-        level: sql<PermissionLevel | null>`(${visibilityCte(this.scope)}
-          SELECT level FROM visible_entities WHERE entity_id = ${entityId} ORDER BY level DESC LIMIT 1)`,
+        level: sql<PermissionLevel | null>`${entityAccessLevel(this.scope, entityId)}`,
       })
       .from(entities)
       .where(
@@ -140,15 +139,15 @@ export class RepositoryContext {
     return entity!;
   }
 
-  readableEntities() {
-    return sql`(${visibilityCte(this.scope)} SELECT DISTINCT entity_id FROM visible_entities)`;
+  // List filter: the entity in `entityId` is readable at `minimum`. Runs one visibility CTE.
+  readable(entityId: SQLWrapper, minimum: PermissionLevel = "view") {
+    return readableCondition(this.scope, entityId, minimum);
   }
 
-  // The strongest level per visible entity, for statements that need both the readable set and
-  // a level. Join it once so the statement runs the visibility CTE once.
-  visibleLevels(alias: string) {
-    return sql`(${visibilityCte(this.scope)}
-      SELECT entity_id, max(level) AS level FROM visible_entities GROUP BY entity_id) ${sql.identifier(alias)}`;
+  // The actor's level on the entity in `entityId`, or NULL. Walks up from each row, so use it
+  // for a few rows, not a whole table.
+  accessLevel(entityId: SQLWrapper) {
+    return entityAccessLevel(this.scope, entityId);
   }
 
   async touch(entityId: string) {

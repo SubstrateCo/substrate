@@ -4,7 +4,6 @@ import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import { entityLinks } from "../../core/links/schema";
-import { visibilityCte } from "../../core/permissions/visibility";
 import { pageSize } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import {
@@ -246,8 +245,8 @@ export async function contextSearch(
   }
   const match = (column: SQLWrapper) =>
     sql`(to_tsvector('simple', ${column}) @@ plainto_tsquery('simple', ${query}) OR strpos(lower(coalesce(${column}, '')), lower(${query})) > 0)`;
-  const accessibleWork = sql`(${visibilityCte(ctx.scope)} SELECT DISTINCT entity_id FROM visible_entities
-    WHERE ${input.editable ? sql`level IN ('edit', 'owner')` : sql`true`})`;
+  const accessibleWork = (entityId: SQLWrapper) =>
+    ctx.readable(entityId, input.editable ? "edit" : "view");
   const results: SearchResult[] = [];
   if (kind === "all" || kind === "task" || kind === "project") {
     for (const type of ["task", "project"] as const) {
@@ -265,8 +264,8 @@ export async function contextSearch(
           and(
             eq(table.organizationId, scope.organizationId),
             type === "task"
-              ? and(inArray(tasks.projectEntityId, accessibleWork), liveTask())
-              : inArray(projects.entityId, accessibleWork),
+              ? and(accessibleWork(tasks.projectEntityId), liveTask())
+              : accessibleWork(projects.entityId),
             anchorId ? inArray(table.entityId, relatedEntities) : undefined,
             anchorId ? sql`${table.entityId} <> ${anchorId}` : undefined,
             query ? match(sql`${column} || ' ' || ${table.description}`) : undefined,
@@ -433,7 +432,7 @@ export async function contextSearch(
         and(
           mentionablePerson(db, scope.organizationId),
           anchorId ? inArray(actors.entityId, relatedEntities) : undefined,
-          anchorId ? inArray(actors.entityId, ctx.readableEntities()) : undefined,
+          anchorId ? ctx.readable(actors.entityId) : undefined,
           eq(user.emailVerified, true),
           query ? match(actors.name) : undefined,
           input.after ? gt(actors.entityId, input.after) : undefined,

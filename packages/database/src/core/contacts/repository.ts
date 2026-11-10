@@ -1,7 +1,7 @@
 import { AccessDeniedError } from "../../errors";
 import { RepositoryContext, pageSize } from "../repository-context";
 import { contacts } from "./schema";
-import { and, asc, eq, gt, inArray } from "drizzle-orm";
+import { and, asc, eq, gt } from "drizzle-orm";
 
 export function contactRepository(context: RepositoryContext) {
   const { db, scope } = context;
@@ -41,7 +41,7 @@ export function contactRepository(context: RepositoryContext) {
         .where(
           and(
             eq(contacts.organizationId, scope.organizationId),
-            inArray(contacts.entityId, context.readableEntities()),
+            context.readable(contacts.entityId),
             options.afterEntityId ? gt(contacts.entityId, options.afterEntityId) : undefined,
           ),
         )

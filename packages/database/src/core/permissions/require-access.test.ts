@@ -116,6 +116,19 @@ test("deleted ancestors stop inheritance but do not hide a live child's direct g
   );
 });
 
+test("an access-parent cycle ends the upward walk and keeps the grants on the cycle", async () => {
+  const { owner, parent, child } = await hierarchy();
+  await f.db
+    .insert(entityAccessParents)
+    .values({ organizationId: f.orgA, entityId: parent.entityId, parentEntityId: child.entityId });
+  await owner.permissions.grant({ entityId: parent.entityId, actorEntityId: f.bob, level: "edit" });
+  const context = new RepositoryContext(f.db, { organizationId: f.orgA, actorEntityId: f.bob });
+  expect((await context.requireAccess(child.entityId, "view")).level).toBe("edit");
+  expect((await f.forActor(f.bob).contacts.list()).map((row) => row.entityId).sort()).toHaveLength(
+    3,
+  );
+});
+
 test("missing, deleted, and foreign entities are denied even with an active actor", async () => {
   const local = await f.forActor(f.alice).contacts.create({ displayName: "Local" });
   const foreign = await f.forActor(f.outsider, f.orgB).contacts.create({ displayName: "Foreign" });

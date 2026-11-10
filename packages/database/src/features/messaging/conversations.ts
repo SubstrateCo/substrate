@@ -270,7 +270,7 @@ export function conversationOperations(db: DatabaseExecutor, scope: Readonly<Mes
           .where(
             and(
               eq(messageEntityReferences.conversationId, conversationId),
-              inArray(messageEntityReferences.entityId, context.readableEntities()),
+              context.readable(messageEntityReferences.entityId),
             ),
           );
         return { linkedWork: row?.linkedWork ?? 0 };

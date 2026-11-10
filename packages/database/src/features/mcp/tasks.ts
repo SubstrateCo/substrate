@@ -64,10 +64,7 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: MessagingIdenti
         .select({ id: projects.entityId, name: projects.name })
         .from(projects)
         .where(
-          and(
-            eq(projects.organizationId, scope.organizationId),
-            inArray(projects.entityId, ctx.readableEntities()),
-          ),
+          and(eq(projects.organizationId, scope.organizationId), ctx.readable(projects.entityId)),
         )
         .orderBy(asc(projects.name), asc(projects.entityId))
         .offset(p.offset)

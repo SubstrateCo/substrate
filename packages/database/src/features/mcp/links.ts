@@ -13,7 +13,7 @@ import { tasks } from "../tasks/tasks.schema";
 import { excerpt, iso, messageRef } from "./formatting";
 import { pagination } from "./pagination";
 import { actorSelection } from "./tasks";
-import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
 
 type LinkKind = McpOutput<"list_links">["items"][number]["kind"];
 type Purpose = (typeof messageEntityReferences.$inferSelect)["purpose"];
@@ -64,10 +64,7 @@ export async function listLinks(
         and(
           ...references,
           eq(messageEntityReferences.messageId, input.target.id),
-          inArray(
-            sql`coalesce(${tasks.projectEntityId}, ${projects.entityId})`,
-            ctx.readableEntities(),
-          ),
+          ctx.readable(sql`coalesce(${tasks.projectEntityId}, ${projects.entityId})`),
           or(isNull(tasks.entityId), liveTask()),
         ),
       )

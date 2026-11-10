@@ -3,10 +3,10 @@ import { actors } from "../actors/schema";
 import { entities } from "../entities/schema";
 import { adminRoleCondition } from "../organizations/roles";
 import { member } from "../organizations/schema";
-import type { ActorScope } from "../repository-context";
+import type { ActorScope, PermissionLevel } from "../repository-context";
 import { entityAccessParents } from "./access-parents";
 import { entityGrants } from "./schema";
-import { sql } from "drizzle-orm";
+import { sql, type SQLWrapper } from "drizzle-orm";
 
 // Organization owners and admins are super users. People and personal mailbox or calendar
 // records are excluded. Add a type here only when its domain is shared with the organization.
@@ -25,6 +25,8 @@ export function organizationAdminCondition(scope: ActorScope) {
   )`;
 }
 
+// Entities reached from the actor's grants, top-down, for list queries. Every link of the chain
+// must be live. Admin access is not in this set; use readableCondition, which adds it per row.
 export function visibilityCte(scope: ActorScope) {
   return sql`WITH RECURSIVE visible_entities(entity_id, level) AS (
     SELECT g.entity_id, g.level FROM ${entityGrants} g
@@ -32,15 +34,59 @@ export function visibilityCte(scope: ActorScope) {
     WHERE g.organization_id = ${scope.organizationId} AND g.actor_entity_id = ${permissionActorEntityId(scope)}
       AND e.deleted_at IS NULL
     UNION
-    SELECT e.entity_id, 'owner'::permission_level FROM ${entities} e
-    WHERE e.organization_id = ${scope.organizationId} AND e.deleted_at IS NULL
-      AND e.entity_type IN (${adminEntityTypes}) AND ${organizationAdminCondition(scope)}
-    UNION
     SELECT p.entity_id, v.level FROM visible_entities v
     JOIN ${entityAccessParents} p ON p.parent_entity_id = v.entity_id AND p.organization_id = ${scope.organizationId}
     JOIN ${entities} e ON e.entity_id = p.entity_id AND e.organization_id = p.organization_id
     WHERE e.deleted_at IS NULL
   )`;
+}
+
+// Admins own every live entity of a shared type. Every access child is a shared type today
+// (tasks under projects), so a per-row type check equals inheriting admin access from an
+// ancestor. Revisit this when a non-shared type gets a shared-type access parent.
+export function adminOwnsCondition(scope: ActorScope, entityId: SQLWrapper) {
+  return sql`(${organizationAdminCondition(scope)} AND EXISTS (
+    SELECT 1 FROM ${entities} ae
+    WHERE ae.organization_id = ${scope.organizationId} AND ae.entity_id = ${entityId}
+      AND ae.deleted_at IS NULL AND ae.entity_type IN (${adminEntityTypes})
+  ))`;
+}
+
+// Whether the actor can read the entity in a list query, at the minimum level. Uses one
+// visibility CTE; admins are checked per row instead of enumerating the organization.
+export function readableCondition(
+  scope: ActorScope,
+  entityId: SQLWrapper,
+  minimum: PermissionLevel = "view",
+) {
+  return sql`(${entityId} IN (${visibilityCte(scope)}
+    SELECT entity_id FROM visible_entities WHERE level >= ${minimum}::permission_level)
+    OR ${adminOwnsCondition(scope, entityId)})`;
+}
+
+// The actor's strongest level on one entity, walking up from it: O(depth) index probes. A grant
+// on an ancestor flows down; the walk stops at a deleted entity, so a deleted node on the path
+// blocks inheritance through it. An admin owns the entity when a live node on the path has a
+// shared type. UNION stops the walk on cycles.
+export function entityAccessLevel(scope: ActorScope, entityId: SQLWrapper | string) {
+  return sql`(WITH RECURSIVE access_path(entity_id, entity_type) AS (
+    SELECT e.entity_id, e.entity_type FROM ${entities} e
+    WHERE e.organization_id = ${scope.organizationId} AND e.entity_id = ${entityId}
+      AND e.deleted_at IS NULL
+    UNION
+    SELECT e.entity_id, e.entity_type FROM access_path a
+    JOIN ${entityAccessParents} p ON p.organization_id = ${scope.organizationId} AND p.entity_id = a.entity_id
+    JOIN ${entities} e ON e.organization_id = p.organization_id AND e.entity_id = p.parent_entity_id
+    WHERE e.deleted_at IS NULL
+  )
+  SELECT max(level) FROM (
+    SELECT g.level FROM access_path a
+    JOIN ${entityGrants} g ON g.organization_id = ${scope.organizationId} AND g.entity_id = a.entity_id
+    WHERE g.actor_entity_id = ${permissionActorEntityId(scope)}
+    UNION ALL
+    SELECT 'owner'::permission_level FROM access_path a
+    WHERE a.entity_type IN (${adminEntityTypes}) AND ${organizationAdminCondition(scope)}
+  ) levels)`;
 }
 
 export function lockAccessPath(scope: ActorScope, entityId: string) {

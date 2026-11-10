@@ -1,6 +1,6 @@
 import type { DatabaseExecutor } from "../../client";
 import { entities } from "../../core/entities/schema";
-import { visibilityCte } from "../../core/permissions/visibility";
+import { adminOwnsCondition, visibilityCte } from "../../core/permissions/visibility";
 import type { RepositoryContext } from "../../core/repository-context";
 import { visibleConversations, type MessagingIdentity } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
@@ -29,7 +29,8 @@ export async function readableWorkTargets(ctx: RepositoryContext, ids: string[])
     WHERE ${tasks.organizationId} = ${ctx.scope.organizationId}
       AND ${inArray(tasks.entityId, ids)} AND e.deleted_at IS NULL AND p.deleted_at IS NULL
       AND e.entity_type = 'task'
-      AND ${tasks.projectEntityId} IN (SELECT entity_id FROM visible_entities)
+      AND (${tasks.projectEntityId} IN (SELECT entity_id FROM visible_entities)
+        OR ${adminOwnsCondition(ctx.scope, tasks.projectEntityId)})
     UNION ALL
     SELECT ${projects.entityId} AS "entityId", 'project' AS "entityType", ${projects.name} AS title,
       ${projects.entityId} AS "projectEntityId"
@@ -37,7 +38,8 @@ export async function readableWorkTargets(ctx: RepositoryContext, ids: string[])
     JOIN ${entities} e ON e.entity_id = ${projects.entityId} AND e.organization_id = ${projects.organizationId}
     WHERE ${projects.organizationId} = ${ctx.scope.organizationId}
       AND ${inArray(projects.entityId, ids)} AND e.deleted_at IS NULL AND e.entity_type = 'project'
-      AND ${projects.entityId} IN (SELECT entity_id FROM visible_entities)
+      AND (${projects.entityId} IN (SELECT entity_id FROM visible_entities)
+        OR ${adminOwnsCondition(ctx.scope, projects.entityId)})
   `);
   return new Map(rows.map((row) => [row.entityId, row]));
 }
