@@ -82,17 +82,11 @@ export function createAgentWorkRuntime(
       };
     },
   };
-  const requests = createRequestBridge(context, {
-    later: (callback, milliseconds) => options.later(callback, milliseconds),
-  });
+  const requests = createRequestBridge(context);
   const epochs = createEpochs(context);
   const executor = createTurnExecutor(context, { requests, epochs });
   const steering = createSteering(context, executor);
-  const status = createStatusPublisher(context, {
-    executor,
-    requests,
-    later: (callback, milliseconds) => options.later(callback, milliseconds),
-  });
+  const status = createStatusPublisher(context, { executor, requests });
   const routines = createRoutines(context);
   const localTools = createLocalTools(context, { executor, steering });
 

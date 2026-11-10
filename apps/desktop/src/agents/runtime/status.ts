@@ -24,11 +24,7 @@ interface Published {
  */
 export function createStatusPublisher(
   context: RuntimeContext,
-  deps: {
-    executor: TurnExecutor;
-    requests: RequestBridge;
-    later: (callback: () => void, milliseconds: number) => () => void;
-  },
+  deps: { executor: TurnExecutor; requests: RequestBridge },
 ) {
   const published = new Map<
     string,
@@ -146,7 +142,7 @@ export function createStatusPublisher(
   }
 
   function schedule(milliseconds = statusDebounceMs) {
-    scheduled ??= deps.later(() => {
+    scheduled ??= context.later(() => {
       void publish().catch(() => context.log("Could not publish agent status."));
     }, milliseconds);
   }

@@ -35,10 +35,7 @@ function fallbackResponse(payload: AgentRequestPayload): AgentRequestResponse {
  * device. Interactive turns open a server request; unattended turns never ask, so anything that
  * reaches here is denied. Requests expire after ten minutes and are denied.
  */
-export function createRequestBridge(
-  context: RuntimeContext,
-  options: { later: (callback: () => void, milliseconds: number) => () => void },
-) {
+export function createRequestBridge(context: RuntimeContext) {
   const open = new Map<string, OpenRequest>();
   const key = (turnId: string, nativeRequestId: string) => `${turnId}:${nativeRequestId}`;
 
@@ -133,7 +130,7 @@ export function createRequestBridge(
       }
       const entry = key(live.turnId, event.requestId);
       open.set(entry, request);
-      request.timer = options.later(() => {
+      request.timer = context.later(() => {
         if (open.get(entry) === request) void settle(request, fallbackResponse(payload), "expired");
       }, blockingRequestTimeoutMs);
       const turn = await context.store.turns.get(live.turnId);
