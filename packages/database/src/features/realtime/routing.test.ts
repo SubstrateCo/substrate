@@ -2,11 +2,13 @@ import { realtimeKeys } from "@startup-os/contracts/realtime";
 
 import { ensureUserAgentActor } from "../../core/actors/provisioning";
 import { messagingConversations, messagingParticipants, user, userAgents } from "../../schema";
+import { agentWorkFixture, dmTurn } from "../../testing/agent-work";
 import { setupDatabase } from "../../testing/database";
 import { approveFixtureParticipants } from "../../testing/messaging";
 import { canReceiveChange } from "./audience";
 import {
   agentRefreshHints,
+  conversationRemovalHints,
   invitationRefreshHints,
   profileRefreshHints,
   projectAccessRefreshHints,
@@ -135,4 +137,25 @@ test("invitation hints reach only the verified matching account and inviting wor
   expect(await invitationRefreshHints(fixture.db, fixture.orgA, recipient.email)).toEqual([
     { audience: realtimeKeys.organization(fixture.orgA), domain: "organization" },
   ]);
+});
+
+// Deleting a conversation deletes its agent requests without a wake, so the owner's views and the
+// home desktop's open-request cache need a refresh.
+test("removing a conversation with an agent request refreshes the owner's agent work", async () => {
+  const { dm, call } = await agentWorkFixture(fixture);
+  const removal = (id: string) =>
+    conversationRemovalHints(fixture.db, [{ id, organizationId: fixture.orgA }]);
+  const agentWork = { audience: realtimeKeys.user("alice"), domain: "agent-work" };
+  expect(await removal(dm.id)).not.toContainEqual(agentWork);
+  await call(
+    "reply",
+    {
+      requestId: crypto.randomUUID(),
+      body: "Which week?",
+      ask: { question: "Which week?", options: [{ label: "This week" }, { label: "Next week" }] },
+    },
+    dmTurn(dm.id),
+  );
+  const hints = await removal(dm.id);
+  expect(hints.filter((hint) => hint.domain === "agent-work")).toEqual([agentWork]);
 });

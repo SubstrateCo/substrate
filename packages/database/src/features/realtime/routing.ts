@@ -11,6 +11,7 @@ import {
   messagingMessages,
   messagingParticipants,
 } from "../messaging/schema";
+import { agentRequests } from "../agent-work/requests.schema";
 import { messagingInvitations } from "../messaging/sharing.schema";
 import { notifications } from "../notifications/schema";
 import { and, eq, exists, inArray, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
@@ -188,6 +189,11 @@ export async function conversationRemovalHints(
     .from(notifications)
     .innerJoin(messagingMessages, eq(messagingMessages.id, notifications.messageId))
     .where(inArray(messagingMessages.conversationId, ids));
+  // Requests go with the conversation and no wake reports it, so their owners refresh.
+  const requestOwners = await db
+    .selectDistinct({ userId: agentRequests.ownerUserId })
+    .from(agentRequests)
+    .where(inArray(agentRequests.conversationId, ids));
   const organizations = [...new Set(conversations.map((row) => row.organizationId))];
   return [
     ...participants.map(({ userId }) => ({
@@ -201,6 +207,10 @@ export async function conversationRemovalHints(
     ...recipients.map(({ organizationId, actorId }) => ({
       audience: realtimeKeys.actor(organizationId, actorId),
       domain: "notifications" as const,
+    })),
+    ...requestOwners.map(({ userId }) => ({
+      audience: realtimeKeys.user(userId),
+      domain: "agent-work" as const,
     })),
   ];
 }
