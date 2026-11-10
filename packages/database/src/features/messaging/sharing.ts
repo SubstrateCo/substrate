@@ -15,59 +15,74 @@ import {
   type MessagingIdentity,
 } from "./access";
 import { endParticipation, writeMembers } from "./members";
-import { invitationTarget, partnerTargetAllowed } from "./policy";
+import {
+  canShare,
+  invitationTarget,
+  partnerTargetAllowed,
+  validateExternalInvitations,
+  type Viewer,
+} from "./policy";
 import { messagingConversations, messagingParticipants } from "./schema";
 import {
   hasSharingConnection,
   requireSharingManager,
   requireSharingRecipient,
   recordSharingEvent,
+  recordSharingEvents,
 } from "./sharing-access";
 import { createSharingQueries } from "./sharing-queries";
 import { messagingConnections, messagingInvitations } from "./sharing.schema";
-import { and, count, eq, gt, ne, or, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, ne, or, sql } from "drizzle-orm";
 
-export async function queueSharingInvitation(
+/**
+ * Queues invitations for the emails, all or none. Callers that just authorized the caller as an
+ * owner or admin of the host organization pass their viewer; others are checked as sharing
+ * managers here. The organization's limits apply to the whole batch.
+ */
+export async function queueSharingInvitations(
   db: DatabaseExecutor,
   scope: MessagingIdentity,
   conversation: Conversation,
-  email: string,
-  shareHistory: boolean,
+  input: { emails: string[]; shareHistory: boolean },
+  authorized?: Viewer,
 ) {
-  const viewer = await requireSharingManager(db, scope, conversation);
-  if (!shareHistory)
-    throw new ValidationError(
-      "Confirm that invited people can read the full conversation history.",
-    );
-  const parsedEmail = sharingInviteInput.shape.email.safeParse(email.trim().toLowerCase());
-  if (!parsedEmail.success) throw new ValidationError("An exact email address is required.");
-  const normalized = parsedEmail.data;
-  // Serialize the per-org limit across different conversations.
+  if (!input.emails.length) return [];
+  const viewer = authorized ?? (await requireSharingManager(db, scope, conversation));
+  if (authorized && !canShare(conversation, authorized, { connected: false, visible: false }))
+    throw new AccessDeniedError();
+  validateExternalInvitations(conversation, viewer, {
+    count: input.emails.length,
+    shareHistory: input.shareHistory,
+  });
+  const emails = [
+    ...new Set(
+      input.emails.map((email) => {
+        const parsed = sharingInviteInput.shape.email.safeParse(email.trim().toLowerCase());
+        if (!parsed.success) throw new ValidationError("An exact email address is required.");
+        return parsed.data;
+      }),
+    ),
+  ];
+  // Serialize the per-org limits across different conversations.
   await db.execute(
     sql`select pg_advisory_xact_lock(hashtextextended(${`messaging-invitations:${scope.organizationId}`}, 0))`,
   );
-  const [limit] = await db
-    .select({ total: count() })
-    .from(messagingInvitations)
-    .where(
-      and(
-        eq(messagingInvitations.senderOrganizationId, scope.organizationId),
-        gt(messagingInvitations.createdAt, new Date(Date.now() - 3_600_000)),
-      ),
-    );
-  if ((limit?.total ?? 0) >= 100)
-    throw new ValidationError("Too many invitations. Try again in an hour.");
-  const [pending] = await db
-    .select({ total: count() })
-    .from(messagingInvitations)
-    .where(
-      and(
-        eq(messagingInvitations.senderOrganizationId, scope.organizationId),
+  const [totals] = await db
+    .select({
+      sent: sql<number>`count(*) filter (where ${gt(
+        messagingInvitations.createdAt,
+        new Date(Date.now() - 3_600_000),
+      )})::int`,
+      pending: sql<number>`count(*) filter (where ${and(
         eq(messagingInvitations.status, "pending"),
         gt(messagingInvitations.expiresAt, new Date()),
-      ),
-    );
-  if ((pending?.total ?? 0) >= 100)
+      )})::int`,
+    })
+    .from(messagingInvitations)
+    .where(eq(messagingInvitations.senderOrganizationId, scope.organizationId));
+  if ((totals?.sent ?? 0) + emails.length > 100)
+    throw new ValidationError("Too many invitations. Try again in an hour.");
+  if ((totals?.pending ?? 0) + emails.length > 100)
     throw new ValidationError("Resolve pending invitations before sending more.");
   if (conversation.kind === "dm") {
     const otherPeople = await db
@@ -81,9 +96,10 @@ export async function queueSharingInvitation(
           ne(user.id, conversation.createdBy),
         ),
       );
-    if (otherPeople.some((person) => person.email.toLowerCase() !== normalized))
+    if (otherPeople.some((person) => emails.some((email) => person.email.toLowerCase() !== email)))
       throw new ValidationError("A direct message can only have two people.");
   }
+  // A new invitation to the same address replaces the previous one.
   await db
     .update(messagingInvitations)
     .set({ status: "revoked" })
@@ -91,24 +107,34 @@ export async function queueSharingInvitation(
       and(
         eq(messagingInvitations.conversationId, conversation.id),
         eq(messagingInvitations.senderOrganizationId, scope.organizationId),
-        eq(messagingInvitations.email, normalized),
+        inArray(messagingInvitations.email, emails),
         eq(messagingInvitations.status, "pending"),
       ),
     );
-  const [invitation] = await db
+  const target = invitationTarget(conversation, viewer);
+  const expiresAt = new Date(Date.now() + 7 * 86_400_000);
+  const invitations = await db
     .insert(messagingInvitations)
-    .values({
-      conversationId: conversation.id,
-      hostOrganizationId: conversation.organizationId,
-      senderOrganizationId: scope.organizationId,
-      inviterId: scope.userId,
-      email: normalized,
-      ...invitationTarget(conversation, viewer),
-      expiresAt: new Date(Date.now() + 7 * 86_400_000),
-    })
+    .values(
+      emails.map((email) => ({
+        conversationId: conversation.id,
+        hostOrganizationId: conversation.organizationId,
+        senderOrganizationId: scope.organizationId,
+        inviterId: scope.userId,
+        email,
+        ...target,
+        expiresAt,
+      })),
+    )
     .returning();
-  await recordSharingEvent(db, scope, conversation.id, "invited", { invitationId: invitation!.id });
-  return invitation!;
+  await recordSharingEvents(
+    db,
+    scope,
+    conversation.id,
+    "invited",
+    invitations.map((invitation) => ({ invitationId: invitation.id })),
+  );
+  return invitations;
 }
 
 export function createSharingService(db: DatabaseExecutor, scope: MessagingIdentity) {
@@ -117,7 +143,11 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
     async invite(conversationId: string, input: { email: string; shareHistory: boolean }) {
       return db.transaction(async (tx) => {
         const conversation = await lockConversation(tx, conversationId, "update");
-        return queueSharingInvitation(tx, scope, conversation, input.email, input.shareHistory);
+        const [invitation] = await queueSharingInvitations(tx, scope, conversation, {
+          emails: [input.email],
+          shareHistory: input.shareHistory,
+        });
+        return invitation!;
       });
     },
     async accept(id: string, shareHistory: boolean) {
@@ -318,7 +348,11 @@ export function createSharingService(db: DatabaseExecutor, scope: MessagingIdent
           .where(eq(messagingInvitations.id, id));
         if (current?.status === "accepted")
           throw new ValidationError("This invitation was already accepted.");
-        return queueSharingInvitation(tx, scope, conversation, invite.email, true);
+        const [invitation] = await queueSharingInvitations(tx, scope, conversation, {
+          emails: [invite.email],
+          shareHistory: true,
+        });
+        return invitation!;
       });
     },
     async disconnect(conversationId: string, partnerOrganizationId: string) {

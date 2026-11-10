@@ -138,6 +138,35 @@ test("disconnecting a partner revokes only invitations that concern that partner
   });
 });
 
+test("the pending invitation limit applies to the whole batch", async () => {
+  const c = await channel();
+  await f.db.insert(messagingInvitations).values(
+    Array.from({ length: 98 }, (_, index) => ({
+      conversationId: c.id,
+      hostOrganizationId: f.orgA,
+      senderOrganizationId: f.orgA,
+      inviterId: "alice",
+      email: `pending-${index}@example.test`,
+      purpose: "organization" as const,
+      createdAt: new Date(Date.now() - 7_200_000),
+      expiresAt: new Date(Date.now() + 86_400_000),
+    })),
+  );
+  const emails = ["one@example.test", "two@example.test", "three@example.test"];
+  await expect(host().addMembers(c.id, emails, true)).rejects.toBeInstanceOf(ValidationError);
+  expect(await f.db.select().from(messagingInvitations)).toHaveLength(98);
+  expect(await host().addMembers(c.id, emails.slice(0, 2), true)).toEqual({
+    added: 0,
+    invited: 2,
+  });
+  expect(
+    await f.db
+      .select()
+      .from(messagingSharingEvents)
+      .where(eq(messagingSharingEvents.action, "invited")),
+  ).toHaveLength(2);
+});
+
 test("invites are email-bound, expire, and can be revoked", async () => {
   const c = await channel();
   const invite = await sharing().invite(c.id, { email: "outside@example.com", shareHistory: true });

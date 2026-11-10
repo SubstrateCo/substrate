@@ -26,7 +26,6 @@ import {
   validateBody,
   validateCreate,
   validateEmoji,
-  validateExternalInvitations,
   viewerOf,
   type Viewer,
 } from "./policy";
@@ -38,7 +37,7 @@ import {
   messagingParticipants,
   messagingReactions,
 } from "./schema";
-import { queueSharingInvitation } from "./sharing";
+import { queueSharingInvitations } from "./sharing";
 import { messagingInvitations } from "./sharing.schema";
 import { and, asc, countDistinct, desc, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
 
@@ -329,11 +328,6 @@ export function createMessagingService(
           const existing = await existingDirectMessage(tx, [actor.entityId, selected[0]!.entityId]);
           if (existing) return existing;
         }
-        // An existing DM is returned above without a new invitation, so this checks only new ones.
-        validateExternalInvitations(input, viewer, {
-          count: external.length,
-          shareHistory: input.shareHistory === true,
-        });
         const [conversation] = await tx
           .insert(messagingConversations)
           .values({
@@ -349,14 +343,14 @@ export function createMessagingService(
           [{ ...actor, organizationId: scope.organizationId }, ...selected],
           "join",
         );
-        for (const email of external)
-          await queueSharingInvitation(
-            tx,
-            scope,
-            conversation!,
-            email,
-            input.shareHistory === true,
-          );
+        // An existing DM is returned above without a new invitation.
+        await queueSharingInvitations(
+          tx,
+          scope,
+          conversation!,
+          { emails: external, shareHistory: input.shareHistory === true },
+          viewer,
+        );
         return conversation!;
       });
     },
@@ -367,12 +361,13 @@ export function createMessagingService(
         const { viewer } = await authenticate(tx);
         const conversation = await requireManaged(tx, viewer, conversationId);
         const { people: selected, external } = await recipients(tx, scope, emails);
-        validateExternalInvitations(conversation, viewer, {
-          count: external.length,
-          shareHistory,
-        });
-        for (const email of external)
-          await queueSharingInvitation(tx, scope, conversation, email, shareHistory);
+        await queueSharingInvitations(
+          tx,
+          scope,
+          conversation,
+          { emails: external, shareHistory },
+          viewer,
+        );
         // Adding someone who left brings them back.
         const added = await writeMembers(tx, conversationId, selected, "join");
         if (external.length) return { added: added.length, invited: external.length };

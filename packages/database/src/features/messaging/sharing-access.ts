@@ -63,13 +63,26 @@ export async function recordSharingEvent(
   action: typeof messagingSharingEvents.$inferInsert.action,
   input: { invitationId?: string; targetOrganizationId?: string } = {},
 ) {
-  await db.insert(messagingSharingEvents).values({
-    conversationId,
-    organizationId: scope.organizationId,
-    userId: scope.userId,
-    action,
-    ...input,
-  });
+  await recordSharingEvents(db, scope, conversationId, action, [input]);
+}
+
+export async function recordSharingEvents(
+  db: DatabaseExecutor,
+  scope: MessagingIdentity,
+  conversationId: string,
+  action: typeof messagingSharingEvents.$inferInsert.action,
+  inputs: { invitationId?: string; targetOrganizationId?: string }[],
+) {
+  if (!inputs.length) return;
+  await db.insert(messagingSharingEvents).values(
+    inputs.map((input) => ({
+      conversationId,
+      organizationId: scope.organizationId,
+      userId: scope.userId,
+      action,
+      ...input,
+    })),
+  );
 }
 
 export async function requireSharingRecipient(
