@@ -13,12 +13,8 @@ import {
 import { setupDatabase } from "../../testing/database";
 import { approveFixtureParticipants } from "../../testing/messaging";
 import { recordQueries } from "../../testing/queries";
-import {
-  audienceRecipients,
-  canReceiveAudience,
-  canReceiveChange,
-  resolveReceiver,
-} from "./audience";
+import { receivesChange } from "../../testing/realtime";
+import { audienceRecipients, resolveReceiver } from "./audience";
 import { beforeEach, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -60,39 +56,39 @@ test("private and public external channels require a participant in the viewer w
     ]);
     const audience = realtimeKeys.conversation(conversation.id);
     await approveFixtureParticipants(fixture.db, conversation.id);
-    expect(await canReceiveChange(fixture.db, external, audience)).toBe(true);
-    expect(await canReceiveChange(fixture.db, alice, audience)).toBe(true);
-    expect(await canReceiveChange(fixture.db, bob, audience)).toBe(!privateChannel);
+    expect(await receivesChange(fixture.db, external, audience)).toBe(true);
+    expect(await receivesChange(fixture.db, alice, audience)).toBe(true);
+    expect(await receivesChange(fixture.db, bob, audience)).toBe(!privateChannel);
     expect(
-      await canReceiveChange(fixture.db, { ...external, organizationId: fixture.orgA }, audience),
+      await receivesChange(fixture.db, { ...external, organizationId: fixture.orgA }, audience),
     ).toBe(false);
     await fixture.db
       .update(messagingParticipants)
       .set({ leftAt: new Date() })
       .where(eq(messagingParticipants.actorEntityId, fixture.outsider));
-    expect(await canReceiveChange(fixture.db, external, audience)).toBe(false);
+    expect(await receivesChange(fixture.db, external, audience)).toBe(false);
   }
 });
 
 test("actor notifications, organization and user audiences do not cross identity or workspace", async () => {
   const audience = realtimeKeys.actor(fixture.orgA, fixture.alice);
-  expect(await canReceiveChange(fixture.db, alice, audience)).toBe(true);
-  expect(await canReceiveChange(fixture.db, bob, audience)).toBe(false);
-  expect(await canReceiveChange(fixture.db, external, audience)).toBe(false);
+  expect(await receivesChange(fixture.db, alice, audience)).toBe(true);
+  expect(await receivesChange(fixture.db, bob, audience)).toBe(false);
+  expect(await receivesChange(fixture.db, external, audience)).toBe(false);
   expect(
-    await canReceiveChange(fixture.db, alice, realtimeKeys.actor(fixture.orgB, fixture.alice)),
+    await receivesChange(fixture.db, alice, realtimeKeys.actor(fixture.orgB, fixture.alice)),
   ).toBe(false);
-  expect(await canReceiveChange(fixture.db, alice, realtimeKeys.organization(fixture.orgB))).toBe(
+  expect(await receivesChange(fixture.db, alice, realtimeKeys.organization(fixture.orgB))).toBe(
     false,
   );
   expect(
-    await canReceiveChange(
+    await receivesChange(
       fixture.db,
       { ...alice, organizationId: null },
       realtimeKeys.user("alice"),
     ),
   ).toBe(true);
-  expect(await canReceiveChange(fixture.db, bob, realtimeKeys.user("alice"))).toBe(false);
+  expect(await receivesChange(fixture.db, bob, realtimeKeys.user("alice"))).toBe(false);
 });
 
 test("a partner with membership in both organizations receives private channel events only in its participant workspace", async () => {
@@ -132,9 +128,9 @@ test("a partner with membership in both organizations receives private channel e
   ]);
   const audience = realtimeKeys.conversation(conversation.id);
   await approveFixtureParticipants(fixture.db, conversation.id);
-  expect(await canReceiveChange(fixture.db, external, audience)).toBe(true);
+  expect(await receivesChange(fixture.db, external, audience)).toBe(true);
   expect(
-    await canReceiveChange(fixture.db, { ...external, organizationId: fixture.orgA }, audience),
+    await receivesChange(fixture.db, { ...external, organizationId: fixture.orgA }, audience),
   ).toBe(false);
 });
 
@@ -164,7 +160,7 @@ test("a delivery resolves the receiver once and checks only conversation audienc
     statements.length = 0;
     const receiver = await resolveReceiver(db, alice);
     expect(receiver).toEqual({ ...alice, actorId: fixture.alice });
-    expect(await canReceiveAudience(db, receiver!, audience)).toBe(true);
+    expect((await audienceRecipients(db, audience))(receiver!)).toBe(true);
     counts[audience[0]] = statements.length;
   }
   expect(counts).toEqual({ organization: 1, actor: 1, conversation: 2 });
@@ -230,14 +226,14 @@ test("a conversation audience resolves in one statement for every receiver, and 
 test("disabled, deleted, revoked and unverified viewers lose scoped delivery", async () => {
   const audience = realtimeKeys.organization(fixture.orgA);
   const notificationAudience = realtimeKeys.actor(fixture.orgA, fixture.alice);
-  expect(await canReceiveChange(fixture.db, alice, audience)).toBe(true);
-  expect(await canReceiveChange(fixture.db, alice, notificationAudience)).toBe(true);
+  expect(await receivesChange(fixture.db, alice, audience)).toBe(true);
+  expect(await receivesChange(fixture.db, alice, notificationAudience)).toBe(true);
   await fixture.db
     .update(actors)
     .set({ disabledAt: new Date() })
     .where(eq(actors.entityId, fixture.alice));
-  expect(await canReceiveChange(fixture.db, alice, audience)).toBe(false);
-  expect(await canReceiveChange(fixture.db, alice, notificationAudience)).toBe(false);
+  expect(await receivesChange(fixture.db, alice, audience)).toBe(false);
+  expect(await receivesChange(fixture.db, alice, notificationAudience)).toBe(false);
   await fixture.db
     .update(actors)
     .set({ disabledAt: null })
@@ -246,17 +242,17 @@ test("disabled, deleted, revoked and unverified viewers lose scoped delivery", a
     .update(entities)
     .set({ deletedAt: new Date() })
     .where(eq(entities.entityId, fixture.alice));
-  expect(await canReceiveChange(fixture.db, alice, audience)).toBe(false);
-  expect(await canReceiveChange(fixture.db, alice, notificationAudience)).toBe(false);
+  expect(await receivesChange(fixture.db, alice, audience)).toBe(false);
+  expect(await receivesChange(fixture.db, alice, notificationAudience)).toBe(false);
   await fixture.db
     .update(entities)
     .set({ deletedAt: null })
     .where(eq(entities.entityId, fixture.alice));
   await fixture.db.update(user).set({ emailVerified: false }).where(eq(user.id, "alice"));
-  expect(await canReceiveChange(fixture.db, alice, audience)).toBe(false);
-  expect(await canReceiveChange(fixture.db, alice, notificationAudience)).toBe(false);
+  expect(await receivesChange(fixture.db, alice, audience)).toBe(false);
+  expect(await receivesChange(fixture.db, alice, notificationAudience)).toBe(false);
   await fixture.db.update(user).set({ emailVerified: true }).where(eq(user.id, "alice"));
   await fixture.db.delete(member).where(eq(member.id, "alice-a"));
-  expect(await canReceiveChange(fixture.db, alice, audience)).toBe(false);
-  expect(await canReceiveChange(fixture.db, alice, notificationAudience)).toBe(false);
+  expect(await receivesChange(fixture.db, alice, audience)).toBe(false);
+  expect(await receivesChange(fixture.db, alice, notificationAudience)).toBe(false);
 });

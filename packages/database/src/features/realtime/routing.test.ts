@@ -5,7 +5,7 @@ import { messagingConversations, messagingParticipants, user, userAgents } from 
 import { agentWorkFixture, dmTurn } from "../../testing/agent-work";
 import { setupDatabase } from "../../testing/database";
 import { approveFixtureParticipants } from "../../testing/messaging";
-import { canReceiveChange } from "./audience";
+import { receivesChange } from "../../testing/realtime";
 import {
   agentRefreshHints,
   conversationRemovalHints,
@@ -70,14 +70,14 @@ test("profile changes refresh shared conversation labels across workspace bounda
   ]);
   const shared = hints[2];
   expect(
-    await canReceiveChange(
+    await receivesChange(
       fixture.db,
       { userId: "outsider", organizationId: fixture.orgB },
       shared!.audience,
     ),
   ).toBe(true);
   expect(
-    await canReceiveChange(
+    await receivesChange(
       fixture.db,
       { userId: "bob", organizationId: fixture.orgA },
       shared!.audience,

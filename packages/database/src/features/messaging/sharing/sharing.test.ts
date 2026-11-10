@@ -7,8 +7,8 @@ import * as schema from "../../../schema";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { member, user } from "../../../schema";
 import { setupDatabase } from "../../../testing/database";
+import { receivesChange } from "../../../testing/realtime";
 import { createContextService } from "../../context/service";
-import { canReceiveChange } from "../../realtime/audience";
 import { messagingParticipants } from "../schema";
 import { createMessagingService } from "../service";
 import { messagingConnections, messagingInvitations } from "../sharing.schema";
@@ -282,10 +282,10 @@ test("disconnect removes search, profiles, realtime and owner-based agent reads"
   expect(await context.search({ query: "Searchable", kind: "message" })).toHaveLength(1);
   expect(await agentChat.listMessages(c.id)).toHaveLength(1);
   expect((await agentChat.listConversations())[0]!.canShare).toBe(false);
-  expect(await canReceiveChange(f.db, identity, realtimeKeys.conversation(c.id))).toBe(true);
+  expect(await receivesChange(f.db, identity, realtimeKeys.conversation(c.id))).toBe(true);
   await sharing().disconnect(c.id, f.orgB);
   expect(await context.search({ query: "Searchable", kind: "message" })).toEqual([]);
-  expect(await canReceiveChange(f.db, identity, realtimeKeys.conversation(c.id))).toBe(false);
+  expect(await receivesChange(f.db, identity, realtimeKeys.conversation(c.id))).toBe(false);
   await expect(agentChat.listMessages(c.id)).rejects.toBeInstanceOf(AccessDeniedError);
   await expect(context.messageTarget(c.id, message.id)).rejects.toBeInstanceOf(AccessDeniedError);
   await expect(
@@ -314,7 +314,7 @@ test("leaving and rejoining an organization does not restore earlier external co
     createMessagingService(f.db, { userId: "outsider", organizationId: f.orgB }).listMessages(c.id),
   ).rejects.toBeInstanceOf(AccessDeniedError);
   expect(
-    await canReceiveChange(
+    await receivesChange(
       f.db,
       { userId: "outsider", organizationId: f.orgB },
       realtimeKeys.conversation(c.id),

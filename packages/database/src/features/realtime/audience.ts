@@ -120,21 +120,3 @@ export async function audienceRecipients(
     }
   }
 }
-
-// Callers must pass a receiver freshly returned by resolveReceiver.
-export async function canReceiveAudience(
-  db: DatabaseExecutor,
-  receiver: RealtimeReceiver,
-  audience: Readonly<RealtimeAudience>,
-): Promise<boolean> {
-  return (await audienceRecipients(db, audience))(receiver);
-}
-
-export async function canReceiveChange(
-  db: DatabaseExecutor,
-  identity: { userId: string; organizationId: string | null },
-  audience: Readonly<RealtimeAudience>,
-): Promise<boolean> {
-  const receiver = await resolveReceiver(db, identity);
-  return !!receiver && canReceiveAudience(db, receiver, audience);
-}
