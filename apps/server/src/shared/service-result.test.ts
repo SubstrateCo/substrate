@@ -34,6 +34,21 @@ describe("service results", () => {
     expect(result).toEqual({ success: false, error: { code, message } });
   });
 
+  test("trusts database error classes, not an error that only shares their name", async () => {
+    const log = spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const foreign = Object.assign(new Error("relation users: private detail"), {
+        name: "ValidationError",
+      });
+      const result = await serviceResult(async () => {
+        throw foreign;
+      });
+      expect(result).toMatchObject({ success: false, error: { code: "INTERNAL_ERROR" } });
+    } finally {
+      log.mockRestore();
+    }
+  });
+
   test("does not expose unexpected errors or their messages in logs", async () => {
     const log = spyOn(console, "error").mockImplementation(() => {});
     try {

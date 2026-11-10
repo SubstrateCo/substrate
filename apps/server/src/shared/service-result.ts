@@ -4,6 +4,7 @@ import {
   type ServiceErrorCode,
   type ServiceResult,
 } from "@startup-os/contracts/result";
+import { AccessDeniedError, ConflictError, ValidationError } from "@startup-os/database";
 
 import { APIError } from "better-auth/api";
 import { ZodError } from "zod";
@@ -29,12 +30,10 @@ export async function serviceResult<T>(work: () => Promise<T>): Promise<ServiceR
       if (error.statusCode === 401) return failure("UNAUTHENTICATED", "Sign in to continue.");
       if (error.statusCode === 403) return failure("FORBIDDEN", "Access denied.");
     }
-    if (error instanceof Error) {
-      if (error.name === "AccessDeniedError")
-        return failure("NOT_FOUND", "Item not found or access denied.");
-      if (error.name === "ValidationError") return failure("INVALID_INPUT", error.message);
-      if (error.name === "ConflictError") return failure("CONFLICT", error.message);
-    }
+    if (error instanceof AccessDeniedError)
+      return failure("NOT_FOUND", "Item not found or access denied.");
+    if (error instanceof ValidationError) return failure("INVALID_INPUT", error.message);
+    if (error instanceof ConflictError) return failure("CONFLICT", error.message);
     console.error(
       "Service operation failed",
       error instanceof Error ? error.name : "Unknown error",
