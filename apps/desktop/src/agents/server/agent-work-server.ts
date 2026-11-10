@@ -77,7 +77,7 @@ export interface AgentWorkServer {
 }
 
 /** Codes after which the caller verifies the session again. */
-const deniedCodes = new Set(["UNAUTHENTICATED", "FORBIDDEN"]);
+const deniedCodes = new Set(["UNAUTHENTICATED", "FORBIDDEN", "WORKSPACE_CHANGED"]);
 
 export function createAgentWorkServer(options: {
   backend: string;

@@ -5,7 +5,7 @@ import { ServiceError } from "./service-result";
 export function requireWorkspace(expected: string, active: string | null | undefined) {
   if (!active || active !== expected)
     throw new ServiceError(
-      "FORBIDDEN",
+      "WORKSPACE_CHANGED",
       "Your active workspace changed. Reload this page to continue.",
     );
   return active;

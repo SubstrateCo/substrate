@@ -171,7 +171,7 @@ for (const denial of ["signed out", "unverified", "workspace mismatch", "not a m
       case "workspace mismatch":
         fixture.session.session.activeOrganizationId = "other-org";
         expected = failure(
-          "FORBIDDEN",
+          "WORKSPACE_CHANGED",
           "Your active workspace changed. Reload this page to continue.",
         );
         break;

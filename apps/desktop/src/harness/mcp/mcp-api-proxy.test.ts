@@ -28,7 +28,7 @@ const createProject: WorkspaceApiRequest = {
 const workspaceDenied: WorkspaceApiResult = {
   success: false,
   error: {
-    code: "FORBIDDEN",
+    code: "WORKSPACE_CHANGED",
     message: "Your active workspace changed. Reload this page to continue.",
   },
 };

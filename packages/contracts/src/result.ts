@@ -2,6 +2,8 @@ export type ServiceErrorCode =
   | "INVALID_INPUT"
   | "UNAUTHENTICATED"
   | "FORBIDDEN"
+  /** The request names a workspace that is no longer the session's active one. */
+  | "WORKSPACE_CHANGED"
   | "NOT_FOUND"
   | "CONFLICT"
   | "PAYLOAD_TOO_LARGE"

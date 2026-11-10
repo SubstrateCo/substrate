@@ -10,7 +10,7 @@ test("workspace scope rejects stale or absent active workspaces", () => {
     try {
       requireWorkspace("one", active);
     } catch (error) {
-      expect(error).toMatchObject({ code: "FORBIDDEN" });
+      expect(error).toMatchObject({ code: "WORKSPACE_CHANGED" });
     }
   }
 });

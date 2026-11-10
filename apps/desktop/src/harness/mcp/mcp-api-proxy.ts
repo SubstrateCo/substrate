@@ -5,9 +5,6 @@ import {
 } from "@startup-os/contracts/harness/mcp";
 import { mcpTools } from "@startup-os/contracts/harness/tools";
 
-/** The server's FORBIDDEN message when the call's organization is no longer the active one. */
-const workspaceChanged = "Your active workspace changed.";
-
 export function createMcpApiProxy(options: {
   backend: string;
   /** False once main disconnects this worker generation, such as on sign-out or session change. */
@@ -28,12 +25,13 @@ export function createMcpApiProxy(options: {
     // The server validates the session, the membership and the active workspace in this request.
     const response = await options.fetchAPI(url.href, init);
     const result = workspaceApiResult.parse(await response.json());
-    // The server's wording asks a person to reload; the agent gets a message it can act on.
-    if (!result.success && result.error.message.startsWith(workspaceChanged))
+    // The call's organization is no longer the active one. The server's wording asks a person to
+    // reload; the agent gets a denial it can act on.
+    if (!result.success && result.error.code === "WORKSPACE_CHANGED")
       return {
         success: false,
         error: {
-          code: result.error.code,
+          code: "FORBIDDEN",
           message: "Workspace changed. Start a new agent run in this workspace.",
         },
       };
