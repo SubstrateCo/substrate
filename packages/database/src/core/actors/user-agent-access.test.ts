@@ -45,7 +45,7 @@ test("agents use their owner's live access, not grants of their own", async () =
     await f
       .forActor(f.bob)
       .permissions.grant({ entityId: contact.entityId, actorEntityId: f.alice, level });
-    expect(await agent.permissions.getEffectiveLevel(contact.entityId)).toBe(level);
+    expect(await f.accessLevel(actor.entityId, contact.entityId)).toBe(level);
     expect((await agent.contacts.list()).map((item) => item.entityId)).toContain(contact.entityId);
     if (level === "view" || level === "comment") {
       await expect(
@@ -79,7 +79,7 @@ test("agents cannot receive grants", async () => {
 test("agent-created records belong to the owner and keep agent activity attribution", async () => {
   const { repositories: agent, actor } = await assistant();
   const project = await agent.projects.create({ name: "Agent work" });
-  expect(await agent.permissions.getEffectiveLevel(project.entityId)).toBe("owner");
+  expect(await f.accessLevel(actor.entityId, project.entityId)).toBe("owner");
   expect((await f.forActor(f.alice).projects.get(project.entityId)).name).toBe("Agent work");
   const grants = await f.db
     .select()

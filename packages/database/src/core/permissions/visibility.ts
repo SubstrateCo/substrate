@@ -1,4 +1,4 @@
-import { permissionActorEntityId } from "../actors/access";
+import { activeActorCondition, permissionActorEntityId } from "../actors/access";
 import { actors } from "../actors/schema";
 import { entities } from "../entities/schema";
 import { adminRoleCondition } from "../organizations/roles";
@@ -89,6 +89,7 @@ export function entityAccessLevel(scope: ActorScope, entityId: SQLWrapper | stri
   ) levels)`;
 }
 
+// Locks nothing and returns no rows unless the scope's actor is active.
 export function lockAccessPath(scope: ActorScope, entityId: string) {
   return sql`WITH RECURSIVE ancestors(entity_id) AS (
     SELECT entity_id FROM ${entities}
@@ -100,6 +101,14 @@ export function lockAccessPath(scope: ActorScope, entityId: string) {
   )
   SELECT e.entity_id FROM ${entities} e
   WHERE e.organization_id = ${scope.organizationId} AND e.entity_id IN (SELECT entity_id FROM ancestors)
+    AND EXISTS (
+      SELECT 1 FROM ${actors}
+      JOIN ${entities} actor_entity ON actor_entity.entity_id = ${actors.entityId}
+        AND actor_entity.organization_id = ${actors.organizationId}
+      WHERE ${actors.organizationId} = ${scope.organizationId}
+        AND ${actors.entityId} = ${scope.actorEntityId}
+        AND ${activeActorCondition()} AND actor_entity.deleted_at IS NULL
+    )
   ORDER BY e.entity_id FOR UPDATE`;
 }
 

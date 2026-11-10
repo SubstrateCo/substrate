@@ -1,5 +1,4 @@
 import { ValidationError } from "../../errors";
-import { actors } from "../actors/schema";
 import { RepositoryContext, type PermissionLevel } from "../repository-context";
 import { entityGrants, permissionLevel } from "./schema";
 import { inheritedOwnerQuery } from "./visibility";
@@ -17,17 +16,8 @@ export function permissionRepository(context: RepositoryContext) {
       const ctx = new RepositoryContext(tx, scope);
       await ctx.requireAccess(input.entityId, "owner", true);
       if (input.level) {
-        await ctx.requireActiveActor(input.actorEntityId);
-        const [target] = await tx
-          .select({ type: actors.type })
-          .from(actors)
-          .where(
-            and(
-              eq(actors.organizationId, scope.organizationId),
-              eq(actors.entityId, input.actorEntityId),
-            ),
-          );
-        if (target?.type !== "human")
+        const target = await ctx.requireActiveActor(input.actorEntityId);
+        if (target.type !== "human")
           throw new ValidationError(
             "Agents use their owner's access. Share with the owner instead.",
           );
@@ -37,7 +27,10 @@ export function permissionRepository(context: RepositoryContext) {
         eq(entityGrants.entityId, input.entityId),
         eq(entityGrants.actorEntityId, input.actorEntityId),
       );
-      const [existing] = await tx.select().from(entityGrants).where(target);
+      const [existing] = await tx
+        .select({ level: entityGrants.level })
+        .from(entityGrants)
+        .where(target);
       if (existing?.level === "owner" && input.level !== "owner") {
         const [owners] = await tx.execute<{ remaining: boolean }>(sql`
           SELECT EXISTS (
@@ -86,9 +79,6 @@ export function permissionRepository(context: RepositoryContext) {
     },
     revoke(input: { entityId: string; actorEntityId: string }) {
       return change({ entityId: input.entityId, actorEntityId: input.actorEntityId });
-    },
-    async getEffectiveLevel(entityId: string) {
-      return (await context.requireAccess(entityId, "view")).level;
     },
   };
 }

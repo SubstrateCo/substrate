@@ -32,7 +32,7 @@ export class RepositoryContext {
 
   async requireActiveActor(actorEntityId = this.scope.actorEntityId) {
     const [actor] = await this.db
-      .select({ entityId: actors.entityId })
+      .select({ entityId: actors.entityId, type: actors.type })
       .from(actors)
       .innerJoin(
         entities,
@@ -50,14 +50,16 @@ export class RepositoryContext {
         ),
       );
     if (!actor) throw new AccessDeniedError();
+    return actor;
   }
 
   // Locks the entity and its access ancestors. Read grants in a later statement, after any
   // competing writer commits.
   async lockAccessPath(entityId: string) {
-    // Inactive or forged scopes must not take locks.
-    await this.requireActiveActor();
-    await this.db.execute(lockAccessPath(this.scope, entityId));
+    // Inactive or forged scopes take no locks: the statement locks only for an active actor.
+    // No row also means a missing entity, which every caller denies.
+    const locked = await this.db.execute(lockAccessPath(this.scope, entityId));
+    if (!locked.length) throw new AccessDeniedError();
   }
 
   async requireAccess(entityId: string, minimum: PermissionLevel, lock = false) {

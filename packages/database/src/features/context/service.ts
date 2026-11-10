@@ -107,6 +107,24 @@ export async function detachReference(
   return rows.length > 0;
 }
 
+/** Marks a new task as created from a message. Callers have checked the message and the task. */
+export async function recordTaskSource(
+  ctx: RepositoryContext,
+  source: { messageId: string; conversationId: string },
+  taskEntityId: string,
+) {
+  await ctx.db.insert(messageEntityReferences).values({
+    organizationId: ctx.scope.organizationId,
+    conversationId: source.conversationId,
+    messageId: source.messageId,
+    entityId: taskEntityId,
+    entityType: "task",
+    purpose: "source",
+    createdByActorEntityId: ctx.scope.actorEntityId,
+  });
+  await recordTaskActivity(ctx, taskEntityId, ["Created from a discussion"], source.messageId);
+}
+
 export function createContextService(db: DatabaseExecutor, scope: MessagingIdentity) {
   return {
     messagePage: (messageIds: string[]) => messagePage(db, scope, messageIds),
@@ -144,15 +162,11 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
           return taskRepository(ctx).get(existing.taskEntityId);
         }
         const task = await createTaskInLockedProject(ctx, project, input);
-        await tx.insert(messageEntityReferences).values({
-          organizationId: scope.organizationId,
-          conversationId: conversation.id,
-          messageId: input.messageId,
-          entityId: task.entityId,
-          entityType: "task",
-          purpose: "source",
-          createdByActorEntityId: ctx.scope.actorEntityId,
-        });
+        await recordTaskSource(
+          ctx,
+          { messageId: input.messageId, conversationId: conversation.id },
+          task.entityId,
+        );
         await tx.insert(sourceTaskRequests).values({
           organizationId: scope.organizationId,
           actorEntityId: ctx.scope.actorEntityId,
@@ -160,12 +174,6 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
           fingerprint,
           taskEntityId: task.entityId,
         });
-        await recordTaskActivity(
-          ctx,
-          task.entityId,
-          ["Created from a discussion"],
-          input.messageId,
-        );
         return task;
       });
     },

@@ -8,7 +8,7 @@ import { member } from "../organizations/schema";
 import { createStorageCleanup } from "./cleanup";
 import { temporaryObjectKey } from "./object-keys";
 import { fileUploads, storedFiles, storageCandidates } from "./schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
 // Trusted server-only identity scope. Personal files deliberately do not require an actor.
 export interface StorageScope {
@@ -50,19 +50,16 @@ export function createStorageRepository(db: Database) {
     ) {
       if (purpose === "avatar" && ownerId === scope.userId) return true;
       if (!scope.organizationId) return false;
-      const [viewer] = await db
-        .select({ id: member.id })
+      if (purpose === "organization-logo" && ownerId !== scope.organizationId) return false;
+      // An avatar needs both the viewer and its owner in the organization.
+      const people = purpose === "avatar" ? [scope.userId, ownerId] : [scope.userId];
+      const members = await db
+        .select({ userId: member.userId })
         .from(member)
         .where(
-          and(eq(member.userId, scope.userId), eq(member.organizationId, scope.organizationId)),
+          and(inArray(member.userId, people), eq(member.organizationId, scope.organizationId)),
         );
-      if (!viewer) return false;
-      if (purpose === "organization-logo") return ownerId === scope.organizationId;
-      const [owner] = await db
-        .select({ id: member.id })
-        .from(member)
-        .where(and(eq(member.userId, ownerId), eq(member.organizationId, scope.organizationId)));
-      return !!owner;
+      return people.every((id) => members.some((row) => row.userId === id));
     },
     async createUpload(scope: StorageScope, input: CreateUploadInput, id: string, expiresAt: Date) {
       await requireScope(db, scope, input.purpose);
@@ -154,14 +151,14 @@ export function createStorageRepository(db: Database) {
       if (!file) return null;
       if (file.purpose === "avatar") return file.ownerUserId === scope.userId ? file : null;
       if (file.organizationId !== scope.organizationId) return null;
-      try {
-        await requireScope(db, scope, file.purpose, false);
-      } catch (error) {
-        if (error instanceof AccessDeniedError) return null;
-        throw error;
-      }
-      if (file.uploadedBy === scope.userId) return file;
-      return null;
+      if (file.uploadedBy !== scope.userId || !scope.organizationId) return null;
+      const [membership] = await db
+        .select({ id: member.id })
+        .from(member)
+        .where(
+          and(eq(member.userId, scope.userId), eq(member.organizationId, scope.organizationId)),
+        );
+      return membership ? file : null;
     },
     async deleteFile(scope: StorageScope, id: string) {
       await db.transaction(async (tx) => {

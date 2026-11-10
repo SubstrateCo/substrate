@@ -8,7 +8,7 @@ import { agentRequests } from "../agent-work/requests.schema";
 import type { MessagingIdentity } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { agentToolRequests } from "./schema";
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, exists, ne, sql } from "drizzle-orm";
 
 type TurnPlace = NonNullable<TurnContext["origin"]>;
 
@@ -46,14 +46,13 @@ export async function requireTurn(
   if (turn.destination) await requirePlace(db, identity, turn.destination);
 
   // Turn IDs are random. One that another agent already used is not this agent's turn.
-  const [request] = await db
+  const request = db
     .select({ id: agentRequests.id })
     .from(agentRequests)
     .where(
       and(eq(agentRequests.turnId, turn.turnId), ne(agentRequests.userAgentId, agent.userAgentId)),
-    )
-    .limit(1);
-  const [receipt] = await db
+    );
+  const receipt = db
     .select({ id: agentToolRequests.requestId })
     .from(agentToolRequests)
     .where(
@@ -61,9 +60,8 @@ export async function requireTurn(
         eq(agentToolRequests.turnId, turn.turnId),
         ne(agentToolRequests.actorEntityId, agent.actorId),
       ),
-    )
-    .limit(1);
-  const [message] = await db
+    );
+  const message = db
     .select({ id: messagingMessages.id })
     .from(messagingMessages)
     .where(
@@ -71,9 +69,11 @@ export async function requireTurn(
         eq(messagingMessages.originTurnId, turn.turnId),
         ne(messagingMessages.authorActorEntityId, agent.actorId),
       ),
-    )
-    .limit(1);
-  if (request || receipt || message) throw new AccessDeniedError();
+    );
+  const [turnId] = await db.execute<{ used: boolean }>(
+    sql`SELECT (${exists(request)} OR ${exists(receipt)} OR ${exists(message)}) AS used`,
+  );
+  if (turnId?.used !== false) throw new AccessDeniedError();
   return turn;
 }
 

@@ -13,9 +13,10 @@ const day = 24 * 60 * 60_000;
  */
 export async function pruneRecords(
   db: DatabaseExecutor,
-  { now = new Date(), batchSize = 500, maxBatches = 20 } = {},
+  { batchSize = 500, maxBatches = 20 } = {},
 ) {
-  const ago = (days: number) => new Date(now.getTime() - days * day);
+  const now = Date.now();
+  const ago = (days: number) => new Date(now - days * day);
   async function drain(run: (limit: number) => Promise<number>) {
     let total = 0;
     for (let batch = 0; batch < maxBatches; batch++) {

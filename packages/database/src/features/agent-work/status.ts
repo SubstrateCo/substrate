@@ -7,7 +7,7 @@ import { userAgents } from "../../core/actors/user-agents.schema";
 import { deviceOnline } from "../../core/devices/repository";
 import { desktopDevices } from "../../core/devices/schema";
 import { workspaceContext } from "../context/access";
-import { threadRoot, visibleConversations } from "../messaging/access";
+import { threadRoot, visibleConversationIds, visibleConversations } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import {
   requireDevice,
@@ -27,13 +27,6 @@ export interface PublishStatusInput {
   liveThreadId?: string;
   activity?: string;
   version: number;
-}
-
-function visibleConversationIds(db: DatabaseExecutor, identity: OwnerIdentity) {
-  return db
-    .select({ id: messagingConversations.id })
-    .from(messagingConversations)
-    .where(visibleConversations(db, identity));
 }
 
 /** The home desktop publishes an agent's status. An older or repeated version changes nothing. */

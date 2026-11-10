@@ -14,7 +14,7 @@ export interface Viewer {
   admin: boolean;
 }
 
-export interface ConversationFacts {
+interface ConversationFacts {
   kind: ConversationKind;
   /** The host organization. */
   organizationId: string;
@@ -66,11 +66,6 @@ export function canShare(
   }
   if (!partner.connected) return false;
   return conversation.kind === "dm" ? partner.visible : viewer.admin;
-}
-
-/** People and agents act in conversations; agents only read and post. */
-function requirePerson(viewer: Pick<Viewer, "agent">) {
-  if (viewer.agent) throw new AccessDeniedError();
 }
 
 /** Host channel invitations need a partner admin's approval. Others are individual consent. */
@@ -131,8 +126,8 @@ export function leavePlan(
   viewer: Viewer,
   newOwnerUserId?: string,
 ): "leave" | "transfer" | "blocked" {
-  requirePerson(viewer);
-  if (conversation.kind === "dm") throw new AccessDeniedError();
+  // Agents only read and post.
+  if (viewer.agent || conversation.kind === "dm") throw new AccessDeniedError();
   if (!owns(conversation, viewer)) return "leave";
   return newOwnerUserId && newOwnerUserId !== viewer.userId ? "transfer" : "blocked";
 }

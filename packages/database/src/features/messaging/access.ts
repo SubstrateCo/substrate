@@ -145,6 +145,17 @@ export function visibleConversations(
   );
 }
 
+/** A subquery of the IDs of the conversations the scope can see. */
+export function visibleConversationIds(
+  db: DatabaseExecutor,
+  scope: { userId: string; organizationId: string },
+) {
+  return db
+    .select({ id: messagingConversations.id })
+    .from(messagingConversations)
+    .where(visibleConversations(db, scope));
+}
+
 /**
  * An active person of the organization who can see the outer conversation, as mentions and the
  * mention picker require. Needs `actors`, `entities` on the actor, and `messaging_conversations`

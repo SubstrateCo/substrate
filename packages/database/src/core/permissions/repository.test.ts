@@ -32,7 +32,7 @@ describe("access controls", () => {
         level: emptyLevel,
       }),
     ).toThrow("Unknown permission level");
-    expect(await repo.permissions.getEffectiveLevel(contact.entityId)).toBe("owner");
+    expect(await f.accessLevel(f.alice, contact.entityId)).toBe("owner");
   });
 
   test("enforces the view, comment, edit, owner hierarchy", async () => {
@@ -42,7 +42,7 @@ describe("access controls", () => {
     for (const level of ["view", "comment", "edit"] as const) {
       await owner.permissions.grant({ entityId: contact.entityId, actorEntityId: f.bob, level });
       expect((await other.contacts.get(contact.entityId)).displayName).toBe("Original");
-      expect(await other.permissions.getEffectiveLevel(contact.entityId)).toBe(level);
+      expect(await f.accessLevel(f.bob, contact.entityId)).toBe(level);
       await expect(
         other.permissions.grant({
           entityId: contact.entityId,
@@ -82,9 +82,9 @@ describe("access controls", () => {
     await createRepositories(db)
       .forActor({ organizationId: f.orgA, actorEntityId: f.alice })
       .permissions.revoke({ entityId: contact.entityId, actorEntityId: f.alice });
-    // Lock path (3), target grant, one remaining-owner check, delete.
-    expect(queries).toHaveLength(6);
-    expect(await f.forActor(f.bob).permissions.getEffectiveLevel(contact.entityId)).toBe("owner");
+    // Lock path (2), target grant, one remaining-owner check, delete.
+    expect(queries).toHaveLength(5);
+    expect(await f.accessLevel(f.bob, contact.entityId)).toBe("owner");
   });
 
   test("an inherited owner allows removing the last direct owner of a child", async () => {

@@ -68,5 +68,8 @@ export const tasks = pgTable(
     check("tasks_parent_check", sql`${table.entityId} <> ${table.parentTaskEntityId}`),
     index("tasks_search_idx").using("gin", searchDocument(table.title, table.description)),
     index("tasks_title_trgm_idx").using("gin", sql`${trigramKey(table.title)} gin_trgm_ops`),
+    index("tasks_parent_idx")
+      .on(table.organizationId, table.parentTaskEntityId)
+      .where(sql`${table.parentTaskEntityId} IS NOT NULL`),
   ],
 );

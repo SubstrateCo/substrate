@@ -26,7 +26,7 @@ async function hierarchy() {
 }
 
 for (const lock of [false, true]) {
-  test(`requireAccess uses ${lock ? 3 : 1} statements with lock=${lock} and preserves entity values`, async () => {
+  test(`requireAccess uses ${lock ? 2 : 1} statements with lock=${lock} and preserves entity values`, async () => {
     const contact = await f.forActor(f.alice).contacts.create({ displayName: "Owned" });
     const [entity] = await f.db
       .select()
@@ -41,7 +41,7 @@ for (const lock of [false, true]) {
         "owner",
         lock,
       );
-      expect(queries).toHaveLength(lock ? 3 : 1);
+      expect(queries).toHaveLength(lock ? 2 : 1);
       return access;
     });
     expect(result).toEqual({ entity: entity!, level: "owner" });
@@ -171,6 +171,25 @@ test("inactive and forged scopes fail the actor precheck before locks or visibil
   await deny(f.alice);
 });
 
+test("a denied inactive scope holds no lock on the access path", async () => {
+  const contact = await f.forActor(f.alice).contacts.create({ displayName: "Unlocked" });
+  await f.db.update(actors).set({ disabledAt: new Date() }).where(eq(actors.entityId, f.bob));
+  await f.db.transaction(async (tx) => {
+    await expect(
+      new RepositoryContext(tx, { organizationId: f.orgA, actorEntityId: f.bob }).requireAccess(
+        contact.entityId,
+        "view",
+        true,
+      ),
+    ).rejects.toBeInstanceOf(AccessDeniedError);
+    // A second connection locks the row at once while the denied transaction is still open.
+    const rows = await f.db.execute(
+      sql`SELECT entity_id FROM ${entities} WHERE entity_id = ${contact.entityId} FOR UPDATE NOWAIT`,
+    );
+    expect(rows).toHaveLength(1);
+  });
+});
+
 for (const inherited of [false, true]) {
   test(`locked access sees ${inherited ? "inherited" : "direct"} revocation committed while waiting for the lock`, async () => {
     const { owner, parent, child } = await hierarchy();
@@ -227,7 +246,7 @@ for (const inherited of [false, true]) {
       const [result] = await reader;
       expect(result!.status).toBe("rejected");
       if (result!.status === "rejected") expect(result!.reason).toBeInstanceOf(AccessDeniedError);
-      expect(queries.filter((query) => !["begin", "rollback"].includes(query))).toHaveLength(3);
+      expect(queries.filter((query) => !["begin", "rollback"].includes(query))).toHaveLength(2);
     } finally {
       release.resolve();
       await Promise.allSettled([writer, ...(reader ? [reader] : [])]);

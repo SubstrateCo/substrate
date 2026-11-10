@@ -6,6 +6,7 @@ import { ensureUserAgentActor } from "../../core/actors/provisioning";
 import { registerDevice } from "../../core/devices/repository";
 import { AccessDeniedError, ConflictError } from "../../errors";
 import {
+  entities,
   member,
   user,
   userAgents,
@@ -251,6 +252,26 @@ test("task counts and links leave out messages in conversations the caller canno
       item.message?.id,
     ]),
   ).toEqual([["mention", mention.id]]);
+});
+
+test("get_task returns the parent and counts only live subtasks", async () => {
+  const { call, createTask } = await fixture();
+  const parent = await createTask({ title: "Launch" });
+  const kept = await createTask({ title: "Checklist", parentTaskId: parent.id });
+  const removed = await createTask({ title: "Dropped", parentTaskId: parent.id });
+  await f.db
+    .update(entities)
+    .set({ deletedAt: new Date() })
+    .where(eq(entities.entityId, removed.id));
+  expect(await call("get_task", { taskId: parent.id })).toMatchObject({
+    parent: null,
+    subtaskCount: 1,
+    commentCount: 0,
+  });
+  expect((await call("get_task", { taskId: kept.id })).parent).toEqual({
+    id: parent.id,
+    title: "Launch",
+  });
 });
 
 test("assignees resolve by name and list_tasks accepts me for the agent's own tasks", async () => {

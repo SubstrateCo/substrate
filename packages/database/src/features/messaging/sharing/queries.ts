@@ -2,8 +2,9 @@ import type { DatabaseExecutor } from "../../../client";
 import { actors } from "../../../core/actors/schema";
 import { user } from "../../../core/authentication/schema";
 import { organization } from "../../../core/organizations/schema";
+import { AccessDeniedError } from "../../../errors";
 import { workspaceContext } from "../../context/access";
-import { lockConversation, visibleConversations, type MessagingIdentity } from "../access";
+import { visibleConversations, type MessagingIdentity } from "../access";
 import { messagingConversations, messagingParticipants } from "../schema";
 import {
   messagingConnections,
@@ -17,7 +18,11 @@ export function sharingQueries(db: DatabaseExecutor, scope: MessagingIdentity) {
   return {
     async list(conversationId: string) {
       return db.transaction(async (tx) => {
-        const conversation = await lockConversation(tx, conversationId, "update");
+        const [conversation] = await tx
+          .select()
+          .from(messagingConversations)
+          .where(eq(messagingConversations.id, conversationId));
+        if (!conversation) throw new AccessDeniedError();
         await requireSharingManager(tx, scope, conversation);
         const host = conversation.organizationId === scope.organizationId;
         const connections = await tx

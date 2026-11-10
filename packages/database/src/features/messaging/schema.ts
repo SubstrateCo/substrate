@@ -127,6 +127,8 @@ export const messagingMessages = pgTable(
     index("messaging_message_origin_turn_idx")
       .on(table.originTurnId)
       .where(sql`${table.originTurnId} IS NOT NULL`),
+    // A conversation's latest activity, which does not filter by thread.
+    index("messaging_message_conversation_created_idx").on(table.conversationId, table.createdAt),
   ],
 );
 
@@ -149,5 +151,7 @@ export const messagingReactions = pgTable(
       foreignColumns: [messagingParticipants.conversationId, messagingParticipants.actorEntityId],
     }),
     check("messaging_emoji_check", sql`length(trim(${table.emoji})) BETWEEN 1 AND 64`),
+    // The participant foreign key on participant removal.
+    index("messaging_reactions_participant_idx").on(table.conversationId, table.actorEntityId),
   ],
 );

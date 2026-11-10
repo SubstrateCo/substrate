@@ -5,9 +5,8 @@ import {
 } from "@startup-os/contracts/agent-work";
 
 import type { DatabaseExecutor } from "../../client";
-import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
-import { homedAgents, requireDevice, type DeviceIdentity } from "./device";
+import { homedAgentIds, requireDevice, type DeviceIdentity } from "./device";
 import { agentRequests } from "./requests.schema";
 import { agentWakes } from "./wakes.schema";
 import { and, asc, eq, exists, inArray, isNull, sql } from "drizzle-orm";
@@ -47,14 +46,7 @@ function requestIdOf(wake: typeof agentWakes.$inferSelect) {
 
 // Wakes of agents that this device runs, for this owner and organization.
 function deviceWakes(db: DatabaseExecutor, identity: DeviceIdentity, deviceId: string) {
-  return inArray(
-    agentWakes.userAgentId,
-    db
-      .select({ id: userAgents.id })
-      .from(userAgents)
-      .innerJoin(actors, eq(actors.userAgentId, userAgents.id))
-      .where(homedAgents(identity, deviceId)),
-  );
+  return inArray(agentWakes.userAgentId, homedAgentIds(db, identity, deviceId));
 }
 
 /**

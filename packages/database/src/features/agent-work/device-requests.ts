@@ -6,10 +6,8 @@ import {
 } from "@startup-os/contracts/agent-work";
 
 import type { DatabaseExecutor } from "../../client";
-import { actors } from "../../core/actors/schema";
-import { userAgents } from "../../core/actors/user-agents.schema";
 import { AccessDeniedError } from "../../errors";
-import { homedAgents, requireDevice, requireHomedAgent, type DeviceIdentity } from "./device";
+import { homedAgentIds, requireDevice, requireHomedAgent, type DeviceIdentity } from "./device";
 import { requirePlace } from "./place";
 import { agentRequests } from "./requests.schema";
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
@@ -32,14 +30,7 @@ function deviceRequests(db: DatabaseExecutor, identity: DeviceIdentity, deviceId
   return and(
     eq(agentRequests.ownerUserId, identity.userId),
     eq(agentRequests.organizationId, identity.organizationId),
-    inArray(
-      agentRequests.userAgentId,
-      db
-        .select({ id: userAgents.id })
-        .from(userAgents)
-        .innerJoin(actors, eq(actors.userAgentId, userAgents.id))
-        .where(homedAgents(identity, deviceId)),
-    ),
+    inArray(agentRequests.userAgentId, homedAgentIds(db, identity, deviceId)),
   );
 }
 

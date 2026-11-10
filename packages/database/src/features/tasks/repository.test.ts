@@ -260,7 +260,7 @@ test("task create locks the project once and update batches activity with one as
   });
   const task = await repos.tasks.create({ projectEntityId: project.entityId, title: "Count" });
   expect(statements.filter((query) => query.includes("FOR UPDATE"))).toHaveLength(1);
-  expect(statements).toHaveLength(7);
+  expect(statements).toHaveLength(6);
   statements.length = 0;
   await repos.tasks.update(task.entityId, {
     title: "Counted",
@@ -270,7 +270,7 @@ test("task create locks the project once and update batches activity with one as
   });
   // The task's lock path covers its project, so the update locks once.
   expect(statements.filter((query) => query.includes("FOR UPDATE"))).toHaveLength(1);
-  expect(statements).toHaveLength(10);
+  expect(statements).toHaveLength(9);
   const activity = await fixture.db
     .select()
     .from(schema.taskActivity)

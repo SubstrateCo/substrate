@@ -116,5 +116,8 @@ export const messagingSharingEvents = pgTable(
     }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (t) => [index("messaging_sharing_event_conversation_idx").on(t.conversationId, t.createdAt)],
+  (t) => [
+    index("messaging_sharing_event_conversation_idx").on(t.conversationId, t.createdAt),
+    index("messaging_sharing_event_invitation_idx").on(t.invitationId),
+  ],
 );

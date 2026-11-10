@@ -491,6 +491,31 @@ test("a post waiting for a disconnect lock rechecks access after that disconnect
   expect(await host().listMessages(c.id)).toEqual([]);
 });
 
+test("listing sharing does not wait for an open post", async () => {
+  const c = await channel();
+  const held = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  const open = f.db.transaction(async (tx) => {
+    await createMessagingService(tx, { userId: "alice", organizationId: f.orgA }).sendMessage(
+      c.id,
+      "open",
+    );
+    held.resolve();
+    await release.promise;
+  });
+  try {
+    await held.promise;
+    const outcome = await Promise.race([
+      sharing().list(c.id),
+      Bun.sleep(1_000).then(() => "blocked" as const),
+    ]);
+    expect(outcome).toMatchObject({ host: true, kind: "channel" });
+  } finally {
+    release.resolve();
+    await open;
+  }
+});
+
 test("mail is durable, leased once, retried after failure, and skipped after revocation", async () => {
   const c = await channel();
   const invite = await sharing().invite(c.id, { email: "outside@example.com", shareHistory: true });

@@ -1,9 +1,9 @@
 import type { ActorScope } from "../../core/repository-context";
 import { ValidationError } from "../../errors";
+import { uuidPattern } from "../context/references";
 import { createHash } from "node:crypto";
 
 const maximumOffset = 1_000_000;
-const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // A cursor is bound to the caller, the tool and every filter, so it cannot be replayed elsewhere.
 function cursorCodec(scope: ActorScope, tool: string, input: { cursor?: string }) {

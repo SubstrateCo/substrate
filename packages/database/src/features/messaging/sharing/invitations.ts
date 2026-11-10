@@ -22,7 +22,6 @@ import {
   hasSharingConnection,
   requireSharingManager,
   requireSharingRecipient,
-  recordSharingEvent,
   recordSharingEvents,
 } from "./access";
 import { and, eq, gt, inArray, ne, sql } from "drizzle-orm";
@@ -246,10 +245,9 @@ export function invitationOperations(db: DatabaseExecutor, scope: MessagingIdent
             .set({ targetOrganizationId: scope.organizationId, recipientUserId: person.id })
             .where(eq(messagingInvitations.id, id))
             .returning();
-          await recordSharingEvent(tx, scope, conversation.id, "approval-requested", {
-            invitationId: id,
-            targetOrganizationId: scope.organizationId,
-          });
+          await recordSharingEvents(tx, scope, conversation.id, "approval-requested", [
+            { invitationId: id, targetOrganizationId: scope.organizationId },
+          ]);
           return {
             status: "approval-required" as const,
             organizationId: scope.organizationId,
@@ -297,10 +295,9 @@ export function invitationOperations(db: DatabaseExecutor, scope: MessagingIdent
           })
           .where(eq(messagingInvitations.id, id))
           .returning();
-        await recordSharingEvent(tx, scope, conversation.id, "accepted", {
-          invitationId: id,
-          targetOrganizationId: scope.organizationId,
-        });
+        await recordSharingEvents(tx, scope, conversation.id, "accepted", [
+          { invitationId: id, targetOrganizationId: scope.organizationId },
+        ]);
         return {
           status: "accepted" as const,
           organizationId: scope.organizationId,
@@ -330,12 +327,12 @@ export function invitationOperations(db: DatabaseExecutor, scope: MessagingIdent
           .update(messagingInvitations)
           .set({ status: "declined" })
           .where(eq(messagingInvitations.id, id));
-        await recordSharingEvent(
+        await recordSharingEvents(
           tx,
           { ...scope, organizationId: invite.hostOrganizationId },
           invite.conversationId,
           "declined",
-          { invitationId: id },
+          [{ invitationId: id }],
         );
         return { declined: true, hints: await sharingInvitationHints(tx, invite) };
       });
@@ -360,7 +357,7 @@ export function invitationOperations(db: DatabaseExecutor, scope: MessagingIdent
           .where(and(eq(messagingInvitations.id, id), eq(messagingInvitations.status, "pending")))
           .returning({ id: messagingInvitations.id });
         if (!revoked.length) throw new ValidationError("This invitation is no longer pending.");
-        await recordSharingEvent(tx, scope, conversation.id, "revoked", { invitationId: id });
+        await recordSharingEvents(tx, scope, conversation.id, "revoked", [{ invitationId: id }]);
         return { revoked: true, hints: await sharingInvitationHints(tx, invite) };
       });
     },

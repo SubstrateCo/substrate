@@ -271,7 +271,7 @@ export function messageOperations(db: DatabaseExecutor, scope: Readonly<Messagin
         const { actor } = await authenticate(tx);
         validateEmoji(emoji);
         const [message] = await tx
-          .select()
+          .select({ conversationId: messagingMessages.conversationId })
           .from(messagingMessages)
           .where(eq(messagingMessages.id, messageId));
         if (!message) throw new AccessDeniedError();

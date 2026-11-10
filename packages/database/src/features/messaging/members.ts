@@ -99,7 +99,6 @@ export async function activeMembers(
           messagingConversations,
           eq(messagingConversations.id, messagingParticipants.conversationId),
         )
-        .leftJoin(user, eq(user.id, actors.userId))
         .where(
           and(
             inArray(messagingParticipants.conversationId, conversationIds),

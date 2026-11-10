@@ -30,13 +30,22 @@ export async function requireDevice(db: DatabaseExecutor, identity: DeviceIdenti
  * The owner's active agents whose home is this device, with their actor in the organization.
  * Requires a join of actors on actors.user_agent_id = user_agents.id.
  */
-export function homedAgents(identity: DeviceIdentity, deviceId: string) {
+function homedAgents(identity: DeviceIdentity, deviceId: string) {
   return and(
     eq(userAgents.userId, identity.userId),
     eq(userAgents.homeDeviceId, deviceId),
     eq(actors.organizationId, identity.organizationId),
     activeActorCondition(),
   );
+}
+
+/** A subquery of the IDs of the owner's agents that this device runs. */
+export function homedAgentIds(db: DatabaseExecutor, identity: DeviceIdentity, deviceId: string) {
+  return db
+    .select({ id: userAgents.id })
+    .from(userAgents)
+    .innerJoin(actors, eq(actors.userAgentId, userAgents.id))
+    .where(homedAgents(identity, deviceId));
 }
 
 /** One of the owner's agents that this device runs. */

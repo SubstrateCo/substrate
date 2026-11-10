@@ -3,7 +3,7 @@ import { organization } from "../../../core/organizations/schema";
 import { sharingInvitationHints } from "../../realtime/routing";
 import { messagingConversations } from "../schema";
 import { messagingInvitations } from "../sharing.schema";
-import { and, eq, gt, isNull, lt, lte } from "drizzle-orm";
+import { and, asc, eq, gt, isNull, lt, lte } from "drizzle-orm";
 
 export async function claimSharingMail(db: DatabaseExecutor) {
   return db.transaction(async (tx) => {
@@ -19,6 +19,7 @@ export async function claimSharingMail(db: DatabaseExecutor) {
           gt(messagingInvitations.expiresAt, new Date()),
         ),
       )
+      .orderBy(asc(messagingInvitations.createdAt))
       .for("update", { skipLocked: true })
       .limit(1);
     if (!invitation) return null;

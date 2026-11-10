@@ -7,7 +7,7 @@ import { endParticipation } from "../members";
 import { partnerTargetAllowed } from "../policy";
 import { messagingConversations, messagingParticipants } from "../schema";
 import { messagingConnections, messagingInvitations } from "../sharing.schema";
-import { requireSharingManager, recordSharingEvent } from "./access";
+import { requireSharingManager, recordSharingEvents } from "./access";
 import { and, eq, inArray, ne, or, asc } from "drizzle-orm";
 
 export function connectionOperations(db: DatabaseExecutor, scope: MessagingIdentity) {
@@ -49,9 +49,9 @@ export function connectionOperations(db: DatabaseExecutor, scope: MessagingIdent
               ),
             ),
           );
-        await recordSharingEvent(tx, scope, conversationId, "disconnected", {
-          targetOrganizationId: partnerOrganizationId,
-        });
+        await recordSharingEvents(tx, scope, conversationId, "disconnected", [
+          { targetOrganizationId: partnerOrganizationId },
+        ]);
         return {
           disconnected: true,
           hints: hints.map((hint) => ({ ...hint, domain: "access" as const })),
@@ -81,9 +81,9 @@ export function connectionOperations(db: DatabaseExecutor, scope: MessagingIdent
             eq(messagingParticipants.actorEntityId, actorId),
           ),
         );
-        await recordSharingEvent(tx, scope, conversationId, "removed", {
-          targetOrganizationId: participant.organizationId,
-        });
+        await recordSharingEvents(tx, scope, conversationId, "removed", [
+          { targetOrganizationId: participant.organizationId },
+        ]);
         return {
           removed: true,
           hints: hints.map((hint) => ({ ...hint, domain: "access" as const })),

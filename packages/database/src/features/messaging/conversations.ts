@@ -36,6 +36,11 @@ interface CreateConversationInput {
   agentIds?: string[];
 }
 
+// An unnamed conversation is named after the given members.
+function displayName(name: string | null, members: { name: string }[]) {
+  return name ?? (members.map((person) => person.name).join(", ") || null);
+}
+
 // Conversation membership and management. Scope comes from the authenticated session.
 export function conversationOperations(db: DatabaseExecutor, scope: Readonly<MessagingIdentity>) {
   const authenticate = (tx: DatabaseExecutor) => messagingSession(tx, scope);
@@ -80,13 +85,10 @@ export function conversationOperations(db: DatabaseExecutor, scope: Readonly<Mes
             partner: members.some(
               (participant) => participant.organizationId !== scope.organizationId,
             ),
-            name:
-              row.name ??
-              (members
-                .filter((participant) => participant.userId !== scope.userId)
-                .map((participant) => participant.name)
-                .join(", ") ||
-                null),
+            name: displayName(
+              row.name,
+              members.filter((participant) => participant.userId !== scope.userId),
+            ),
             members: members.map(({ actorId, type, userId, agentId, name, organizationId }) => ({
               actorId,
               type,
@@ -328,7 +330,7 @@ export function conversationOperations(db: DatabaseExecutor, scope: Readonly<Mes
           );
           return {
             ...row,
-            name: row.name ?? (members.map((person) => person.name).join(", ") || null),
+            name: displayName(row.name, members),
             members,
           };
         });

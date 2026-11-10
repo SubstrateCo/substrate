@@ -1,3 +1,4 @@
+import { RepositoryContext } from "../core/repository-context";
 import { createRepositories } from "../repositories";
 import * as schema from "../schema";
 import { resetTestData, testDatabase } from "./connection";
@@ -62,5 +63,13 @@ export function setupDatabase() {
   return Object.assign(fixture, {
     forActor: (actorEntityId: string, organizationId = fixture.orgA) =>
       createRepositories(testDatabase).forActor({ organizationId, actorEntityId }),
+    /** The actor's level on the entity, through the access check that repositories use. */
+    accessLevel: async (actorEntityId: string, entityId: string) =>
+      (
+        await new RepositoryContext(testDatabase, {
+          organizationId: fixture.orgA,
+          actorEntityId,
+        }).requireAccess(entityId, "view")
+      ).level,
   });
 }

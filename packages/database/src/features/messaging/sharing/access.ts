@@ -56,16 +56,6 @@ export async function requireSharingManager(
   return viewer;
 }
 
-export async function recordSharingEvent(
-  db: DatabaseExecutor,
-  scope: MessagingIdentity,
-  conversationId: string,
-  action: typeof messagingSharingEvents.$inferInsert.action,
-  input: { invitationId?: string; targetOrganizationId?: string } = {},
-) {
-  await recordSharingEvents(db, scope, conversationId, action, [input]);
-}
-
 export async function recordSharingEvents(
   db: DatabaseExecutor,
   scope: MessagingIdentity,

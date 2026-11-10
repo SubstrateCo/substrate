@@ -27,7 +27,7 @@ test("inherited access applies to reads, lists, edits, and revocations", async (
     .insert(entityAccessParents)
     .values({ organizationId: f.orgA, entityId: childId, parentEntityId: parent.entityId });
   await owner.permissions.grant({ entityId: parent.entityId, actorEntityId: f.bob, level: "edit" });
-  expect(await f.forActor(f.bob).permissions.getEffectiveLevel(childId)).toBe("edit");
+  expect(await f.accessLevel(f.bob, childId)).toBe("edit");
   expect(await f.forActor(f.bob).contacts.list()).toHaveLength(2);
   expect(
     (await f.forActor(f.bob).contacts.update(childId, { displayName: "Edited" })).displayName,
@@ -51,8 +51,8 @@ test("revoking a child owner grant falls back to inherited access without strand
   await f.db.delete(entityGrants).where(eq(entityGrants.entityId, child.entityId));
   await owner.permissions.grant({ entityId: parent.entityId, actorEntityId: f.bob, level: "view" });
   await owner.permissions.grant({ entityId: child.entityId, actorEntityId: f.bob, level: "owner" });
-  expect(await f.forActor(f.bob).permissions.getEffectiveLevel(child.entityId)).toBe("owner");
+  expect(await f.accessLevel(f.bob, child.entityId)).toBe("owner");
   await owner.permissions.revoke({ entityId: child.entityId, actorEntityId: f.bob });
-  expect(await f.forActor(f.bob).permissions.getEffectiveLevel(child.entityId)).toBe("view");
-  expect(await owner.permissions.getEffectiveLevel(child.entityId)).toBe("owner");
+  expect(await f.accessLevel(f.bob, child.entityId)).toBe("view");
+  expect(await f.accessLevel(f.alice, child.entityId)).toBe("owner");
 });

@@ -7,7 +7,11 @@ import { entities } from "../../core/entities/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import { taskActivity } from "../activity/schema";
 import { messageEntityReferences } from "../context/schema";
-import { visibleConversations, type MessagingIdentity } from "../messaging/access";
+import {
+  visibleConversationIds,
+  visibleConversations,
+  type MessagingIdentity,
+} from "../messaging/access";
 import { messagingMessages, messagingConversations } from "../messaging/schema";
 import { projectRepository } from "../projects/repository";
 import { projects } from "../projects/schema";
@@ -29,7 +33,9 @@ import {
   isNull,
   lt,
   or,
+  sql,
 } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 export const actorSelection = { id: actors.entityId, name: actorDisplayName(), type: actors.type };
 /** An actor that wrote quoted text, labeled owner, member or agent for the reading agent. */
@@ -46,10 +52,7 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: MessagingIdenti
     eq(actors.entityId, tasks.assigneeActorEntityId),
     eq(actors.organizationId, scope.organizationId),
   );
-  const visibleConversationIds = db
-    .select({ id: messagingConversations.id })
-    .from(messagingConversations)
-    .where(visibleConversations(db, identity));
+  const visibleIds = visibleConversationIds(db, identity);
 
   return {
     async listProjects(input: McpInput<"list_projects">) {
@@ -127,42 +130,57 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: MessagingIdenti
     },
     async getTask(taskId: string): Promise<McpOutput<"get_task">> {
       const task = await taskRepository(ctx).get(taskId);
+      const parent = alias(tasks, "parent");
+      const subtask = alias(tasks, "subtask");
+      const subtaskCount = db
+        .select({ total: sql`count(*)` })
+        .from(subtask)
+        .where(
+          and(
+            eq(subtask.organizationId, scope.organizationId),
+            // Subtasks share their parent's project, which bounds the scan by the unique index.
+            eq(subtask.projectEntityId, tasks.projectEntityId),
+            eq(subtask.parentTaskEntityId, tasks.entityId),
+            liveTask(subtask.entityId),
+          ),
+        );
+      const commentCount = db
+        .select({ total: sql`count(*)` })
+        .from(taskComments)
+        .where(
+          and(
+            eq(taskComments.organizationId, scope.organizationId),
+            eq(taskComments.taskEntityId, tasks.entityId),
+          ),
+        );
       const [detail] = await db
         .select({
           assignee: actorSelection,
           projectName: projects.name,
           createdAt: entities.createdAt,
           updatedAt: entities.updatedAt,
+          parent: { id: parent.entityId, title: parent.title },
+          subtaskCount: sql<number>`(${subtaskCount})`.mapWith(Number),
+          commentCount: sql<number>`(${commentCount})`.mapWith(Number),
         })
         .from(tasks)
         .innerJoin(entities, eq(entities.entityId, tasks.entityId))
         .innerJoin(projects, eq(projects.entityId, tasks.projectEntityId))
         .leftJoin(actors, assigneeJoin)
-        .where(and(inOrganization, eq(tasks.entityId, taskId)));
-      const [parent] = task.parentTaskEntityId
-        ? await db
-            .select({ id: tasks.entityId, title: tasks.title })
-            .from(tasks)
-            .where(and(inOrganization, eq(tasks.entityId, task.parentTaskEntityId), readableTask))
-        : [];
-      const [subtasks] = await db
-        .select({ total: count() })
-        .from(tasks)
-        .where(and(inOrganization, eq(tasks.parentTaskEntityId, taskId), readableTask));
-      const [comments] = await db
-        .select({ total: count() })
-        .from(taskComments)
-        .where(
+        .leftJoin(
+          parent,
           and(
-            eq(taskComments.organizationId, scope.organizationId),
-            eq(taskComments.taskEntityId, taskId),
+            eq(parent.organizationId, scope.organizationId),
+            eq(parent.entityId, tasks.parentTaskEntityId),
+            liveTask(parent.entityId),
           ),
-        );
+        )
+        .where(and(inOrganization, eq(tasks.entityId, taskId)));
       // Only messages in conversations the caller can see are counted or shown.
       const references = and(
         eq(messageEntityReferences.organizationId, scope.organizationId),
         eq(messageEntityReferences.entityId, taskId),
-        inArray(messageEntityReferences.conversationId, visibleConversationIds),
+        inArray(messageEntityReferences.conversationId, visibleIds),
       );
       const [linked] = await db
         .select({ total: countDistinct(messageEntityReferences.messageId) })
@@ -188,10 +206,10 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: MessagingIdenti
         assignee: detail!.assignee,
         dueDate: task.dueDate,
         project: { id: task.projectEntityId, name: detail!.projectName },
-        parent: parent ?? null,
-        subtaskCount: subtasks!.total,
+        parent: detail!.parent,
+        subtaskCount: detail!.subtaskCount,
         source: source ? messageRef(source) : null,
-        commentCount: comments!.total,
+        commentCount: detail!.commentCount,
         linkedMessageCount: linked!.total,
         createdAt: iso(detail!.createdAt),
         updatedAt: iso(detail!.updatedAt),

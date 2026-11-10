@@ -11,7 +11,7 @@ describe("contacts and transactions", () => {
     const contact = await repo.contacts.create({ displayName: "Customer" });
     expect(contact.organizationId).toBe(f.orgA);
     expect((await repo.entities.get(contact.entityId)).entityType).toBe("contact");
-    expect(await repo.permissions.getEffectiveLevel(contact.entityId)).toBe("owner");
+    expect(await f.accessLevel(f.alice, contact.entityId)).toBe("owner");
     expect((await repo.contacts.get(contact.entityId)).displayName).toBe("Customer");
   });
 

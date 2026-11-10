@@ -19,11 +19,12 @@ import { and, eq } from "drizzle-orm";
 
 type Agent = Parameters<typeof agentWrites>[2];
 
-// The entity's version. With lock, its access path stays locked until the transaction ends, in
-// the same order the task repository locks it.
-async function entityVersion(ctx: RepositoryContext, entityId: string, lock: boolean) {
-  const { entity } = await ctx.requireAccess(entityId, "edit", lock);
-  return entity.updatedAt.toISOString();
+// The editable task or project with its version. With lock, its access path stays locked until
+// the transaction ends, in the same order the task repository locks it.
+async function editableWork(ctx: RepositoryContext, entityId: string, lock: boolean) {
+  if (lock) await ctx.lockAccessPath(entityId);
+  const work = await requireWork(ctx, entityId, "edit");
+  return { ...work, version: work.updatedAt.toISOString() };
 }
 
 /**
@@ -63,23 +64,19 @@ export async function checkProposalAccess(
       return { type: action.type, conversationId, threadId, ...target };
     }
     case "create_task": {
-      const projectUpdatedAt = await entityVersion(ctx, action.input.projectId, lock);
-      const project = await requireWork(ctx, action.input.projectId, "edit");
+      const project = await editableWork(ctx, action.input.projectId, lock);
       if (project.entityType !== "project") throw new AccessDeniedError();
       let parentTaskUpdatedAt = null;
-      if (action.input.parentTaskId) {
-        parentTaskUpdatedAt = await entityVersion(ctx, action.input.parentTaskId, lock);
-        await requireWork(ctx, action.input.parentTaskId, "edit");
-      }
+      if (action.input.parentTaskId)
+        parentTaskUpdatedAt = (await editableWork(ctx, action.input.parentTaskId, lock)).version;
       if (action.input.sourceMessageId)
         await requireMessage(ctx.db, identity, action.input.sourceMessageId);
-      return { type: action.type, projectUpdatedAt, parentTaskUpdatedAt };
+      return { type: action.type, projectUpdatedAt: project.version, parentTaskUpdatedAt };
     }
     case "update_task": {
-      const taskUpdatedAt = await entityVersion(ctx, action.input.taskId, lock);
-      const task = await requireWork(ctx, action.input.taskId, "edit");
+      const task = await editableWork(ctx, action.input.taskId, lock);
       if (task.entityType !== "task") throw new AccessDeniedError();
-      return { type: action.type, taskUpdatedAt };
+      return { type: action.type, taskUpdatedAt: task.version };
     }
   }
 }

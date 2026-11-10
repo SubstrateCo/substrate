@@ -120,15 +120,19 @@ export async function projectAccessRefreshHints(
   ];
 }
 
+function verifiedUsersByEmail(db: DatabaseExecutor, email: string) {
+  return db
+    .select({ id: user.id })
+    .from(user)
+    .where(and(eq(user.email, email), eq(user.emailVerified, true)));
+}
+
 export async function invitationRefreshHints(
   db: DatabaseExecutor,
   organizationId: string,
   email: string,
 ): Promise<RealtimeHint[]> {
-  const users = await db
-    .select({ id: user.id })
-    .from(user)
-    .where(and(eq(user.email, email), eq(user.emailVerified, true)));
+  const users = await verifiedUsersByEmail(db, email);
   return [
     { audience: realtimeKeys.organization(organizationId), domain: "organization" },
     ...users.map(({ id }) => ({
@@ -143,10 +147,7 @@ export async function sharingInvitationHints(
   db: DatabaseExecutor,
   invite: typeof messagingInvitations.$inferSelect,
 ): Promise<RealtimeHint[]> {
-  const recipients = await db
-    .select({ id: user.id })
-    .from(user)
-    .where(and(eq(user.email, invite.email), eq(user.emailVerified, true)));
+  const recipients = await verifiedUsersByEmail(db, invite.email);
   return [
     ...[
       ...new Set([

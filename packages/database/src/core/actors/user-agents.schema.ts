@@ -6,6 +6,7 @@ import {
   boolean,
   check,
   foreignKey,
+  index,
   pgTable,
   text,
   timestamp,
@@ -46,5 +47,8 @@ export const userAgents = pgTable(
       columns: [table.imageFileId, table.userId, table.picturePurpose],
       foreignColumns: [storedFiles.id, storedFiles.ownerUserId, storedFiles.purpose],
     }),
+    index("user_agents_image_file_idx")
+      .on(table.imageFileId)
+      .where(sql`${table.imageFileId} IS NOT NULL`),
   ],
 );

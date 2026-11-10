@@ -20,11 +20,14 @@ export function projectRepository(context: RepositoryContext) {
   const { db, scope } = context;
   const projectWhere = (id: string) =>
     and(eq(projects.organizationId, scope.organizationId), eq(projects.entityId, id));
-  async function get(entityId: string) {
-    await context.requireAccess(entityId, "view");
+  async function getWithLevel(entityId: string) {
+    const { level } = await context.requireAccess(entityId, "view");
     const [project] = await db.select().from(projects).where(projectWhere(entityId));
     if (!project) throw new AccessDeniedError();
-    return project;
+    return { project, level };
+  }
+  async function get(entityId: string) {
+    return (await getWithLevel(entityId)).project;
   }
   function members(projectEntityId: string) {
     return db
@@ -93,9 +96,7 @@ export function projectRepository(context: RepositoryContext) {
       return rows.filter((row) => row.assignable);
     },
     async getDetail(projectEntityId: string) {
-      const { level } = await context.requireAccess(projectEntityId, "view");
-      const [project] = await db.select().from(projects).where(projectWhere(projectEntityId));
-      if (!project) throw new AccessDeniedError();
+      const { project, level } = await getWithLevel(projectEntityId);
       return {
         project,
         level,

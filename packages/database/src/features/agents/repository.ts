@@ -14,7 +14,7 @@ import { desktopDevices } from "../../core/devices/schema";
 import { storedFiles } from "../../core/storage/schema";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { userAgentTriggers } from "./triggers.schema";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
 function configuration(row: typeof userAgents.$inferSelect): AgentConfiguration {
   const result: AgentConfiguration = {
@@ -125,13 +125,15 @@ export function createAgentRepository(db: Database, userId: string, installation
           )
           .for("update");
         if (!agent) throw new AccessDeniedError();
-        for (const trigger of input.triggers)
+        // One row per kind: the last setting of a repeated kind wins.
+        const triggers = [...new Map(input.triggers.map((trigger) => [trigger.kind, trigger]))];
+        if (triggers.length)
           await tx
             .insert(userAgentTriggers)
-            .values({ userAgentId: agent.id, ...trigger })
+            .values(triggers.map(([, trigger]) => ({ userAgentId: agent.id, ...trigger })))
             .onConflictDoUpdate({
               target: [userAgentTriggers.userAgentId, userAgentTriggers.kind],
-              set: { enabled: trigger.enabled, updatedAt: new Date() },
+              set: { enabled: sql`excluded.enabled`, updatedAt: new Date() },
             });
         return null;
       });

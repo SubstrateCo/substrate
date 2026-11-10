@@ -115,6 +115,7 @@ export async function requireWork(
   const [row] = await db
     .select({
       entityType: entities.entityType,
+      updatedAt: entities.updatedAt,
       task: { title: tasks.title, projectEntityId: tasks.projectEntityId, status: tasks.status },
       projectName: projects.name,
     })
@@ -149,6 +150,7 @@ export async function requireWork(
       status: task.status,
       statusName: taskStatusLabels[task.status],
       level: project.level,
+      updatedAt: row.updatedAt,
     };
   }
   if (row?.entityType === "project" && row.projectName !== null) {
@@ -161,6 +163,7 @@ export async function requireWork(
       status: null,
       statusName: null,
       level: projectLevel,
+      updatedAt: row.updatedAt,
     };
   }
   throw new AccessDeniedError();

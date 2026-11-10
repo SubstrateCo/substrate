@@ -291,7 +291,9 @@ test("mentions notify accessible recipients once, reply notifications are dedupl
   const bobChat = createAcceptedMessagingService(f.db, { userId: "bob", organizationId: f.orgA });
   const reply = await bobChat.sendMessage(channel.id, "Reply", root.id, requestId);
   await bobChat.sendMessage(channel.id, "Reply", root.id, requestId);
-  expect(await feed("alice").list()).toMatchObject([{ kind: "reply", messageId: reply.id }]);
+  expect(await feed("alice").list()).toMatchObject([
+    { kind: "reply", messageId: reply.id, title: "New thread reply" },
+  ]);
   const before = await chat.listMessages(channel.id);
   await expect(chat.sendMessage(channel.id, `Bad @[person:${f.outsider}]`)).rejects.toBeInstanceOf(
     AccessDeniedError,

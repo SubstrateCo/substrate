@@ -2,8 +2,7 @@ import type { McpInput } from "@startup-os/contracts/harness/tools";
 
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError } from "../../errors";
-import { recordTaskActivity } from "../activity/events";
-import { messageEntityReferences } from "../context/schema";
+import { recordTaskSource } from "../context/service";
 import { requireMessage, type MessagingIdentity } from "../messaging/access";
 import { sendMessageAs } from "../messaging/messages";
 import { taskRepository } from "../tasks/repository";
@@ -36,23 +35,12 @@ export function agentWrites(ctx: RepositoryContext, identity: MessagingIdentity,
         parentTaskEntityId: value.parentTaskId,
         assigneeActorEntityId: value.assigneeActorId,
       });
-      if (source) {
-        await tx.insert(messageEntityReferences).values({
-          organizationId: identity.organizationId,
-          conversationId: source.conversation.id,
-          messageId: source.message.id,
-          entityId: task.entityId,
-          entityType: "task",
-          purpose: "source",
-          createdByActorEntityId: agent.entityId,
-        });
-        await recordTaskActivity(
+      if (source)
+        await recordTaskSource(
           ctx,
+          { messageId: source.message.id, conversationId: source.conversation.id },
           task.entityId,
-          ["Created from a discussion"],
-          source.message.id,
         );
-      }
       return queries.getTask(task.entityId);
     },
     async updateTask({ taskId, changes }: Pick<McpInput<"update_task">, "taskId" | "changes">) {

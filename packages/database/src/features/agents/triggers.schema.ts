@@ -1,10 +1,9 @@
 import { agentTriggerKinds, type AgentTriggerKind } from "@startup-os/contracts/agents";
 
 import { userAgents } from "../../core/actors/user-agents.schema";
+import { checkValues } from "../agent-work/check-values";
 import { sql } from "drizzle-orm";
 import { boolean, check, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
-
-const kinds = sql.raw(agentTriggerKinds.map((kind) => `'${kind}'`).join(", "));
 
 // Owner overrides for the code-defined triggers. A missing row means enabled.
 export const userAgentTriggers = pgTable(
@@ -19,6 +18,9 @@ export const userAgentTriggers = pgTable(
   },
   (table) => [
     primaryKey({ columns: [table.userAgentId, table.kind] }),
-    check("user_agent_trigger_kind_check", sql`${table.kind} IN (${kinds})`),
+    check(
+      "user_agent_trigger_kind_check",
+      sql`${table.kind} IN (${checkValues(agentTriggerKinds)})`,
+    ),
   ],
 );

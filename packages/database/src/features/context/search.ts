@@ -118,6 +118,8 @@ export async function contextSearch(
   // The anchor can be an entity, a message, or a conversation ID.
   let anchorKind: "entity" | "message" | "conversation" | undefined;
   let anchorConversationId: string | undefined;
+  // A task anchor's subtasks share its project, which bounds the scan by the unique index.
+  let anchorProjectId: string | undefined;
   const anchorId = input.relatedToEntityId;
   if (anchorId) {
     const [entity] = await db
@@ -128,7 +130,7 @@ export async function contextSearch(
       );
     if (entity) {
       if (entity.entityType === "task" || entity.entityType === "project")
-        await requireWork(ctx, anchorId);
+        anchorProjectId = (await requireWork(ctx, anchorId)).projectEntityId;
       else await ctx.requireAccess(anchorId, "view");
       anchorKind = "entity";
     } else {
@@ -164,6 +166,7 @@ export async function contextSearch(
           AND (${entityLinks.sourceEntityId} = ${anchorId} OR ${entityLinks.targetEntityId} = ${anchorId})
         UNION SELECT ${tasks.entityId} FROM ${tasks}
         WHERE ${tasks.organizationId} = ${scope.organizationId}
+          AND ${anchorProjectId ? eq(tasks.projectEntityId, anchorProjectId) : sql`true`}
           AND (${tasks.projectEntityId} = ${anchorId} OR ${tasks.parentTaskEntityId} = ${anchorId})
         UNION SELECT ${tasks.projectEntityId} FROM ${tasks}
         WHERE ${tasks.organizationId} = ${scope.organizationId} AND ${tasks.entityId} = ${anchorId}
@@ -222,6 +225,7 @@ export async function contextSearch(
             .where(
               and(
                 eq(messageMessagingReferences.organizationId, scope.organizationId),
+                eq(messageMessagingReferences.targetConversationId, anchorConversationId!),
                 eq(messageMessagingReferences.targetThreadId, anchorId),
               ),
             ),
