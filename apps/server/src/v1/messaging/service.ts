@@ -24,26 +24,29 @@ import type { z } from "zod";
 
 async function serviceForSession(headers: Headers, organizationId: string) {
   const { session } = await workspaceSession(headers, organizationId);
-  return createMessagingService(db, { userId: session.user.id, organizationId });
+  return {
+    service: createMessagingService(db, { userId: session.user.id, organizationId }),
+    session,
+  };
 }
 
 export function listConversations(headers: Headers, input: z.output<typeof workspaceInput>) {
   return serviceResult(async () => {
-    const service = await serviceForSession(headers, input.organizationId);
+    const { service } = await serviceForSession(headers, input.organizationId);
     return service.listConversations();
   });
 }
 
 export function listMessages(headers: Headers, input: z.output<typeof messageListInput>) {
   return serviceResult(async () => {
-    const service = await serviceForSession(headers, input.organizationId);
+    const { service } = await serviceForSession(headers, input.organizationId);
     return service.listMessages(input.conversationId, input.threadId, input);
   });
 }
 
 export function getProfile(headers: Headers, input: z.output<typeof profileInput>) {
   return serviceResult(async () => {
-    const service = await serviceForSession(headers, input.organizationId);
+    const { service } = await serviceForSession(headers, input.organizationId);
     return service.getProfile(input.conversationId, input.actorId);
   });
 }
@@ -51,7 +54,7 @@ export function getProfile(headers: Headers, input: z.output<typeof profileInput
 export function createConversation(headers: Headers, input: z.output<typeof conversationInput>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const service = await serviceForSession(headers, input.organizationId);
+    const { service } = await serviceForSession(headers, input.organizationId);
     const conversation = await service.createConversation(input);
     await deliverSharingMail();
     await publishRefresh([
@@ -64,7 +67,7 @@ export function createConversation(headers: Headers, input: z.output<typeof conv
 export function sendMessage(headers: Headers, input: z.output<typeof messageInput>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const service = await serviceForSession(headers, input.organizationId);
+    const { service } = await serviceForSession(headers, input.organizationId);
     const message = await service.sendMessage(
       input.conversationId,
       input.body,
@@ -81,7 +84,7 @@ export function sendMessage(headers: Headers, input: z.output<typeof messageInpu
 export function addAgent(headers: Headers, input: z.output<typeof addAgentInput>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const service = await serviceForSession(headers, input.organizationId);
+    const { service } = await serviceForSession(headers, input.organizationId);
     const result = await service.addAgent(input.conversationId, input.agentId);
     await publishRefresh([
       { audience: realtimeKeys.conversation(input.conversationId), domain: "messaging" },
@@ -93,7 +96,7 @@ export function addAgent(headers: Headers, input: z.output<typeof addAgentInput>
 export function removeAgent(headers: Headers, input: z.output<typeof removeAgentInput>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const service = await serviceForSession(headers, input.organizationId);
+    const { service } = await serviceForSession(headers, input.organizationId);
     const result = await service.removeAgent(input.conversationId, input.actorId);
     await publishRefresh([
       { audience: realtimeKeys.conversation(input.conversationId), domain: "messaging" },
@@ -105,7 +108,7 @@ export function removeAgent(headers: Headers, input: z.output<typeof removeAgent
 export function toggleReaction(headers: Headers, input: z.output<typeof reactionInput>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const service = await serviceForSession(headers, input.organizationId);
+    const { service } = await serviceForSession(headers, input.organizationId);
     const { hints, ...result } = await service.toggleReaction(input.messageId, input.emoji);
     await publishRefresh(hints);
     return result;
@@ -124,7 +127,7 @@ function managementHints(input: { organizationId: string; conversationId: string
 export function addMembers(headers: Headers, input: z.output<typeof membersInput>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const service = await serviceForSession(headers, input.organizationId);
+    const { service } = await serviceForSession(headers, input.organizationId);
     const result = await service.addMembers(input.conversationId, input.emails, input.shareHistory);
     await deliverSharingMail();
     await publishRefresh(managementHints(input));
@@ -134,7 +137,7 @@ export function addMembers(headers: Headers, input: z.output<typeof membersInput
 
 export function listManagedConversations(headers: Headers, input: z.output<typeof workspaceInput>) {
   return serviceResult(async () => {
-    const service = await serviceForSession(headers, input.organizationId);
+    const { service } = await serviceForSession(headers, input.organizationId);
     return service.listManagedConversations();
   });
 }
@@ -145,7 +148,7 @@ export function joinConversation(
 ) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const service = await serviceForSession(headers, input.organizationId);
+    const { service } = await serviceForSession(headers, input.organizationId);
     const { changed, ...result } = await service.joinConversation(input.conversationId);
     // Joining as a current member changes nothing that viewers need to refresh.
     if (changed)
@@ -159,11 +162,7 @@ export function joinConversation(
 export function leaveConversation(headers: Headers, input: z.output<typeof leaveInput>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const { session } = await workspaceSession(headers, input.organizationId);
-    const service = createMessagingService(db, {
-      userId: session.user.id,
-      organizationId: input.organizationId,
-    });
+    const { service, session } = await serviceForSession(headers, input.organizationId);
     const result = await service.leaveConversation(input.conversationId, input.newOwnerUserId);
     // The leaver may no longer pass the conversation audience check.
     await publishRefresh([
@@ -177,7 +176,7 @@ export function leaveConversation(headers: Headers, input: z.output<typeof leave
 export function transferOwnership(headers: Headers, input: z.output<typeof ownerInput>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const service = await serviceForSession(headers, input.organizationId);
+    const { service } = await serviceForSession(headers, input.organizationId);
     const result = await service.transferOwnership(input.conversationId, input.userId);
     await publishRefresh(managementHints(input));
     return result;
@@ -186,7 +185,7 @@ export function transferOwnership(headers: Headers, input: z.output<typeof owner
 
 export function deleteImpact(headers: Headers, input: z.output<typeof conversationTargetInput>) {
   return serviceResult(async () => {
-    const service = await serviceForSession(headers, input.organizationId);
+    const { service } = await serviceForSession(headers, input.organizationId);
     return service.deleteImpact(input.conversationId);
   });
 }
@@ -197,7 +196,7 @@ export function deleteConversation(
 ) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const service = await serviceForSession(headers, input.organizationId);
+    const { service } = await serviceForSession(headers, input.organizationId);
     const { hints } = await service.deleteConversation(input.conversationId);
     await publishRefresh(hints);
     return { deleted: true };

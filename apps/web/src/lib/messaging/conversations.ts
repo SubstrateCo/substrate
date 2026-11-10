@@ -1,27 +1,17 @@
-export type ConversationMember = {
-  actorId: string;
-  type: "human" | "agent";
-  userId: string | null;
-  /** The agent definition ID, only for the viewer's own agents. */
+import type { listConversations } from "@/api/messaging/requests";
+
+/**
+ * A conversation as the server lists it. `joined` marks an active member: public channels the
+ * person never joined or left stay readable but leave the sidebar.
+ */
+export type Conversation = Awaited<ReturnType<typeof listConversations>>[number];
+
+/** `agentId` names the agent definition only for the viewer's own agents. Admin lists omit it. */
+export type ConversationMember = Omit<Conversation["members"][number], "agentId"> & {
   agentId?: string | null;
-  name: string;
 };
 
-export type Conversation = {
-  id: string;
-  kind: "dm" | "group" | "channel";
-  name: string | null;
-  private: boolean;
-  partner?: boolean;
-  createdBy?: string;
-  members?: ConversationMember[];
-  // Active member. Public channels the person never joined or left stay readable but leave the sidebar.
-  joined?: boolean;
-  canManage?: boolean;
-  canShare?: boolean;
-};
-
-export function conversationName(conversation: Conversation): string {
+export function conversationName(conversation: Pick<Conversation, "name" | "kind">): string {
   return (
     conversation.name || (conversation.kind === "channel" ? "Untitled channel" : "Direct message")
   );
@@ -53,17 +43,19 @@ export function conversationAgentOptions(
 }
 
 /** The viewer's open DM with their agent, so a new message reuses it. */
-export function agentDirectMessage(conversations: readonly Conversation[], agentId: string) {
+export function agentDirectMessage<
+  C extends Pick<Conversation, "kind" | "joined"> & { members: readonly ConversationMember[] },
+>(conversations: readonly C[], agentId: string) {
   return conversations.find(
     (conversation) =>
       conversation.kind === "dm" &&
       conversation.joined &&
-      conversation.members?.some((member) => member.type === "agent" && member.agentId === agentId),
+      conversation.members.some((member) => member.type === "agent" && member.agentId === agentId),
   );
 }
 
 // Only people can own, leave, or receive a conversation. Agents are members without a user.
-export function humanMembers(members: ConversationMember[] = []) {
+export function humanMembers(members: readonly ConversationMember[] = []) {
   return members.flatMap((member) =>
     member.type === "human" && member.userId ? [{ userId: member.userId, name: member.name }] : [],
   );

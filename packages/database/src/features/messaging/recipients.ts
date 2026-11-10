@@ -1,3 +1,5 @@
+import { messagingLimits } from "@startup-os/contracts/messaging/input";
+
 import type { DatabaseExecutor } from "../../client";
 import { ensureHumanActor, ensureOwnedAgentActors } from "../../core/actors/provisioning";
 import { actors } from "../../core/actors/schema";
@@ -21,7 +23,8 @@ function normalizeEmail(email: string) {
  * their actors; only a person's first workspace use provisions an actor.
  */
 export async function recipients(db: DatabaseExecutor, scope: MessagingIdentity, emails: string[]) {
-  if (emails.length > 100) throw new ValidationError("At most 100 recipients are allowed.");
+  if (emails.length > messagingLimits.recipients)
+    throw new ValidationError(`At most ${messagingLimits.recipients} recipients are allowed.`);
   const normalized = [...new Set(emails.map(normalizeEmail))];
   if (!normalized.length) return { people: [], external: [] };
   const matches = await db
@@ -62,7 +65,8 @@ export async function ownedAgents(
   scope: MessagingIdentity,
   agentIds: string[],
 ): Promise<MemberActor[]> {
-  if (agentIds.length > 20) throw new ValidationError("At most 20 agents are allowed.");
+  if (agentIds.length > messagingLimits.agents)
+    throw new ValidationError(`At most ${messagingLimits.agents} agents are allowed.`);
   const requested = new Set(agentIds);
   if (!requested.size) return [];
   const owned = await ensureOwnedAgentActors(db, scope);

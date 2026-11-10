@@ -1,3 +1,5 @@
+import { messagingLimits } from "@startup-os/contracts/messaging/input";
+
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { actors, member, organization, user } from "../../schema";
 import { setupDatabase } from "../../testing/database";
@@ -23,9 +25,9 @@ function recordedService() {
   };
 }
 
-test("100 unique recipients use one lookup for creation and member addition", async () => {
+test("the most recipients use one lookup for creation and member addition", async () => {
   await fixture.db.update(user).set({ emailVerified: true });
-  const recipients = Array.from({ length: 100 }, (_, index) => ({
+  const recipients = Array.from({ length: messagingLimits.recipients }, (_, index) => ({
     id: `recipient-${index}`,
     name: `Recipient ${index}`,
     email: `recipient-${index}@example.com`,
@@ -64,7 +66,7 @@ test("100 unique recipients use one lookup for creation and member addition", as
       recipients.map(({ email }) => email),
     ),
   ).toEqual({
-    added: 100,
+    added: messagingLimits.recipients,
   });
   expect(lookups()).toHaveLength(1);
   // The recipients have actors now, so the lookup returns them without per-person statements.
@@ -74,7 +76,7 @@ test("100 unique recipients use one lookup for creation and member addition", as
       .select()
       .from(messagingParticipants)
       .where(eq(messagingParticipants.conversationId, group.id)),
-  ).toHaveLength(101);
+  ).toHaveLength(messagingLimits.recipients + 1);
 });
 
 test("recipient normalization deduplicates emails and users without choosing an external organization", async () => {
@@ -166,7 +168,7 @@ test("empty, invalid and oversized lists skip recipient lookup", async () => {
   for (const emails of [
     ["bob@example.com", "invalid"],
     [" "],
-    Array<string>(101).fill("bob@example.com"),
+    Array<string>(messagingLimits.recipients + 1).fill("bob@example.com"),
   ]) {
     await expect(chat.createConversation({ kind: "group", emails })).rejects.toBeInstanceOf(
       ValidationError,

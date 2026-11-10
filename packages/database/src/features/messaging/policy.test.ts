@@ -1,3 +1,5 @@
+import { messagingLimits } from "@startup-os/contracts/messaging/input";
+
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import {
   canManage,
@@ -143,9 +145,9 @@ test("owners leave only by naming another owner; DMs and agents cannot leave", (
 
 test("bodies and reactions must not be blank or too long", () => {
   expect(() => validateBody(" ")).toThrow(ValidationError);
-  expect(() => validateBody("x".repeat(20001))).toThrow(ValidationError);
-  expect(() => validateBody("x".repeat(20000))).not.toThrow();
+  expect(() => validateBody("x".repeat(messagingLimits.body + 1))).toThrow(ValidationError);
+  expect(() => validateBody("x".repeat(messagingLimits.body))).not.toThrow();
   expect(() => validateEmoji("")).toThrow(ValidationError);
-  expect(() => validateEmoji("x".repeat(65))).toThrow(ValidationError);
-  expect(() => validateEmoji("x".repeat(64))).not.toThrow();
+  expect(() => validateEmoji("x".repeat(messagingLimits.emoji + 1))).toThrow(ValidationError);
+  expect(() => validateEmoji("x".repeat(messagingLimits.emoji))).not.toThrow();
 });

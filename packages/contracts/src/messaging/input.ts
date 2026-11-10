@@ -1,7 +1,10 @@
 import { z } from "zod";
 
+/** Input limits. The server validates them here, and the database service applies the same. */
+export const messagingLimits = { recipients: 30, agents: 20, body: 20_000, emoji: 64 } as const;
+
 const id = z.uuid();
-const emails = z.array(z.email().max(320)).max(30);
+const emails = z.array(z.email().max(320)).max(messagingLimits.recipients);
 
 export const workspaceInput = z.object({ organizationId: z.string().min(1).max(200) });
 export const messageListInput = workspaceInput.extend({
@@ -17,15 +20,15 @@ export const conversationInput = workspaceInput.extend({
   emails: emails.optional(),
   shareHistory: z.boolean().optional(),
   /** Agent definition IDs owned by the caller. */
-  agentIds: z.array(id).max(20).optional(),
+  agentIds: z.array(id).max(messagingLimits.agents).optional(),
 });
 export const messageInput = messageListInput.extend({
-  body: z.string().trim().min(1).max(20_000),
+  body: z.string().trim().min(1).max(messagingLimits.body),
   requestId: z.uuid().optional(),
 });
 export const reactionInput = workspaceInput.extend({
   messageId: id,
-  emoji: z.string().min(1).max(32),
+  emoji: z.string().min(1).max(messagingLimits.emoji),
 });
 export const profileInput = workspaceInput.extend({
   conversationId: id,

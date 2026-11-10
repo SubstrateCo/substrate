@@ -1,3 +1,5 @@
+import { messagingLimits } from "@startup-os/contracts/messaging/input";
+
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 
 // Pure messaging rules. Callers load the facts; set-based visibility stays in SQL (access.ts).
@@ -143,11 +145,11 @@ export const leaveBlocked = (otherPeople: boolean) =>
   );
 
 export function validateBody(body: string) {
-  if (!body.trim() || body.length > 20000)
-    throw new ValidationError("Message must contain 1 to 20000 characters.");
+  if (!body.trim() || body.length > messagingLimits.body)
+    throw new ValidationError(`Message must contain 1 to ${messagingLimits.body} characters.`);
 }
 
 export function validateEmoji(emoji: string) {
-  if (!emoji.trim() || emoji.length > 64)
-    throw new ValidationError("Reaction must contain 1 to 64 characters.");
+  if (!emoji.trim() || emoji.length > messagingLimits.emoji)
+    throw new ValidationError(`Reaction must contain 1 to ${messagingLimits.emoji} characters.`);
 }
