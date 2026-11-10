@@ -1,5 +1,5 @@
 import type { HarnessConfiguration } from "./agent.ts";
-import type { HarnessKind } from "./kinds.ts";
+import { harnessKinds, type HarnessKind } from "./kinds.ts";
 import type {
   HarnessInspection,
   HarnessLocalConfiguration,
@@ -61,15 +61,19 @@ export interface InterruptReceipt {
 export type HarnessFolder = "main" | { helperId: string };
 
 /** A native session that the host keeps open for a local agent-work session. */
-export interface HarnessSessionRef extends HarnessLocalScope {
+export const harnessSessionRefSchema = z.object({
   /** The local agent-work session ID. */
-  id: string;
-  nativeSessionId: string;
-  folder: HarnessFolder;
-  capabilities: AdapterCapabilities;
+  id: z.string(),
+  organizationId: z.string(),
+  agentId: z.string(),
+  harness: z.enum(harnessKinds),
+  nativeSessionId: z.string(),
+  folder: z.union([z.literal("main"), z.object({ helperId: z.string() })]),
+  capabilities: adapterCapabilitiesSchema,
   /** False when a new native session started instead of resuming nativeSessionId. */
-  resumed: boolean;
-}
+  resumed: z.boolean(),
+});
+export type HarnessSessionRef = z.infer<typeof harnessSessionRefSchema>;
 
 interface SessionCommand {
   organizationId: string;

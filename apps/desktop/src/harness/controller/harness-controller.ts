@@ -1,10 +1,9 @@
 import {
   harnessIdSchema,
   harnessInspectionSchema,
-  harnessKinds,
   harnessLocalConfigurationSchema,
   harnessModelCatalogSchema,
-  adapterCapabilitiesSchema,
+  harnessSessionRefSchema,
   type HarnessCommand,
   type HarnessCommandResult,
 } from "@startup-os/contracts/harness";
@@ -36,16 +35,6 @@ import { z } from "zod";
 
 const methodSchema = z.enum(harnessMethods);
 const localMethodSchema = z.enum(localHarnessMethods);
-const sessionRefSchema = z.object({
-  id: z.string(),
-  organizationId: z.string(),
-  agentId: z.string(),
-  harness: z.enum(harnessKinds),
-  nativeSessionId: z.string(),
-  folder: z.union([z.literal("main"), z.object({ helperId: z.string() })]),
-  capabilities: adapterCapabilitiesSchema,
-  resumed: z.boolean(),
-});
 const interruptReceiptSchema = z.object({ stillQueuedInputIds: z.array(z.string()).optional() });
 
 /** A native command failed after authorization passed. Other sessions keep running. */
@@ -269,7 +258,7 @@ export function createHarnessController(options: {
       const result = await request(target, () => target.worker.request("execute", parsed));
       if (parsed.type === "open") {
         // SAFETY: an open command's result is the session ref parsed here.
-        return sessionRefSchema.parse(result) as HarnessCommandResult<C>;
+        return harnessSessionRefSchema.parse(result) as HarnessCommandResult<C>;
       }
       if (parsed.type === "interrupt") {
         // SAFETY: an interrupt command's result is the receipt parsed here.
