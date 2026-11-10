@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { Button } from "@/components/ui/button";
 import type { WorkTone } from "@/lib/agent-work/status";
 import { cn } from "cn";
@@ -7,7 +9,7 @@ export type ComposerNoticeLine = {
   key: string;
   agentName: string;
   tone: WorkTone;
-  label: string;
+  label: ReactNode;
   /** For example, a link to agent settings when no desktop runs the agent. */
   link?: { href: string; label: string };
 };

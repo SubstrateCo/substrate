@@ -11,7 +11,10 @@ export const Route = createFileRoute("/_authenticated/_frame/_workspace/settings
   // server still checks the role on every settings request.
   beforeLoad: async ({ context }) => {
     const { organizationId } = context;
-    const member = await context.queryClient.query(activeMemberQueryOptions(organizationId));
+    const member = await context.queryClient.query({
+      ...activeMemberQueryOptions(organizationId),
+      staleTime: Infinity,
+    });
     const access = organizationSettingsAccess(member.role);
     if (!access.allowed) throw redirect({ to: "/dashboard" });
     return { organizationSettings: { organizationId, isOwner: access.isOwner } };

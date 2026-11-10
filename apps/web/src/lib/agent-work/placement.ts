@@ -11,6 +11,12 @@ const newest = <T extends { createdAt: string }>(values: readonly T[]) =>
     undefined,
   );
 
+function add<T>(map: Map<string, T[]>, id: string, value: T) {
+  const list = map.get(id);
+  if (list) list.push(value);
+  else map.set(id, [value]);
+}
+
 /**
  * The message a turn's work shows under, in one conversation, or null when it has no place
  * there (it shows only in the Agents app). In order: the latest message the turn posted here;
@@ -57,7 +63,7 @@ export function turnPlacements(turns: readonly AgentTurnView[], conversationId: 
     const anchor = turnAnchor(turn, conversationId, byId);
     if (!anchor) continue;
     anchors.set(turn.id, anchor);
-    placements.set(anchor, [...(placements.get(anchor) ?? []), turn]);
+    add(placements, anchor, turn);
   }
   return { placements, anchors };
 }
@@ -77,7 +83,7 @@ export function itemPlacements(
     const ref = item.sourceRef;
     if (ref.source !== "owner_message" || ref.conversationId !== conversationId) continue;
     if (started.has(item.id)) continue;
-    placements.set(ref.messageId, [...(placements.get(ref.messageId) ?? []), item]);
+    add(placements, ref.messageId, item);
   }
   return placements;
 }
@@ -93,8 +99,6 @@ export function requestPlacements(
 ) {
   const cards = new Map<string, AgentRequestView[]>();
   const backlinks = new Map<string, AgentRequestView[]>();
-  const add = (map: Map<string, AgentRequestView[]>, id: string, request: AgentRequestView) =>
-    map.set(id, [...(map.get(id) ?? []), request]);
   for (const request of requests) {
     const receipt = request.proposal?.outcome;
     if (

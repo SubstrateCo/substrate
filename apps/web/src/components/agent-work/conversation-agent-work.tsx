@@ -1,4 +1,8 @@
-import type { AgentInboxItemView, AgentTurnView } from "@startup-os/contracts/agent-work";
+import type {
+  AgentInboxItemView,
+  AgentRequestView,
+  AgentTurnView,
+} from "@startup-os/contracts/agent-work";
 import { liveTurnStatuses } from "@startup-os/contracts/agent-work";
 
 import { useQuery } from "@tanstack/react-query";
@@ -10,10 +14,9 @@ import { ComposerNotice, type ComposerNoticeLine } from "./composer-notice";
 import { InboxReceipt } from "./inbox-receipt";
 import { ProposalBacklink } from "./requests/proposal-backlink";
 import { RequestCard } from "./requests/request-card";
-import { TurnStatus, TurnWork } from "./turn-work";
+import { TurnLabel, TurnStatus, TurnWork } from "./turn-work";
 import { WorkIndicator } from "./work-indicator";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
-import { useNow } from "@/hooks/use-now";
 import { conversationAgents } from "@/lib/agent-work/conversation-agents";
 import { proposalSourceLink } from "@/lib/agent-work/links";
 import { itemPlacements, requestPlacements, turnPlacements } from "@/lib/agent-work/placement";
@@ -22,7 +25,7 @@ import { agentStatus, noDesktopLabel, queueAhead, turnStatus } from "@/lib/agent
 import type { Conversation } from "@/lib/messaging/conversations";
 import { hasAgentWorkBridge } from "@/queries/agent-work/bridge";
 import { conversationWorkOptions, localAgentsOptions } from "@/queries/agent-work/local";
-import { useLocalWorkActions } from "@/queries/agent-work/mutations";
+import { useNewTopic } from "@/queries/agent-work/mutations";
 import { agentStatusOptions, conversationRequestsOptions } from "@/queries/agent-work/server";
 import { toast } from "sonner";
 
@@ -64,12 +67,10 @@ export function ConversationAgentWork({
   });
   const requests = useQuery(conversationRequestsOptions(userId, organizationId, conversation.id));
   const statuses = useQuery(agentStatusOptions(userId, organizationId));
-  const { newTopic } = useLocalWorkActions(userId, organizationId);
+  const newTopic = useNewTopic(userId, organizationId);
   const turns = local.data?.turns ?? [];
   const sessions = new Map((local.data?.sessions ?? []).map((session) => [session.id, session]));
   const items = local.data?.items ?? [];
-  const live = turns.some((turn) => liveTurnStatuses.includes(turn.status));
-  const now = useNow(live);
 
   const agents = conversationAgents({
     conversationId: conversation.id,
@@ -80,21 +81,31 @@ export function ConversationAgentWork({
   });
   const name = (agentId: string) =>
     agents.find((agent) => agent.agentId === agentId)?.name ?? "Agent";
+  const uncertain = items.filter((entry) => entry.status === "uncertain");
   const uncertainItems = (turn: AgentTurnView) =>
-    items
-      .filter((entry) => entry.status === "uncertain" && turn.itemIds.includes(entry.id))
-      .map((entry) => entry.id);
+    uncertain.filter((entry) => turn.itemIds.includes(entry.id)).map((entry) => entry.id);
   const { placements, anchors } = turnPlacements(turns, conversation.id);
   const waitingItems = itemPlacements(items, turns, conversation.id);
   const { cards, backlinks } = requestPlacements(requests.data ?? [], anchors, conversation.id);
-  const openRequest = (turnId: string) =>
-    requests.data?.find((request) => request.turnId === turnId && isOpenRequest(request));
+  // The first open request of each turn.
+  const openRequests = new Map<string, AgentRequestView>();
+  for (const request of requests.data ?? [])
+    if (isOpenRequest(request) && !openRequests.has(request.turnId))
+      openRequests.set(request.turnId, request);
+  const openRequest = (turnId: string) => openRequests.get(turnId);
   const outputs = new Set(
     turns.flatMap((turn) =>
       turn.outputs.flatMap((entry) => (entry.kind === "message" ? [entry.id] : [])),
     ),
   );
   const agentOf = (item: AgentInboxItemView) => sessions.get(item.sessionId)?.userAgentId ?? "";
+  const itemsByAgent = new Map<string, AgentInboxItemView[]>();
+  for (const item of items) {
+    const agentId = agentOf(item);
+    const list = itemsByAgent.get(agentId);
+    if (list) list.push(item);
+    else itemsByAgent.set(agentId, [item]);
+  }
 
   const notice = (threadId: string | null) => {
     const lines: ComposerNoticeLine[] = [];
@@ -108,8 +119,14 @@ export function ConversationAgentWork({
             (sessions.get(turn.sessionId)?.origin?.threadId ?? null) === threadId,
         );
         if (current) {
-          const status = turnStatus(current, now, openRequest(current.id));
-          lines.push({ key: agent.agentId, agentName: agent.name, ...status });
+          const request = openRequest(current.id);
+          // The tone does not depend on the clock; the label keeps its own clock.
+          lines.push({
+            key: agent.agentId,
+            agentName: agent.name,
+            tone: turnStatus(current, 0, request).tone,
+            label: <TurnLabel turn={current} openRequest={request} />,
+          });
         }
         continue;
       }
@@ -186,7 +203,7 @@ export function ConversationAgentWork({
               })}
               {waiting.map((item) => {
                 const agentId = agentOf(item);
-                const sameAgent = items.filter((entry) => agentOf(entry) === agentId);
+                const sameAgent = itemsByAgent.get(agentId) ?? [];
                 return (
                   <InboxReceipt
                     key={item.id}

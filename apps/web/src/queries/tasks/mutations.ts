@@ -72,7 +72,6 @@ export function useTaskUpdate(organizationId: string, projectEntityId: string) {
 
 export function invalidateTasksWrite(client: QueryClient, input: TasksWrite, id: string) {
   const organizationId = input.organizationId;
-  const context = queryKeys.context(organizationId);
   if (input.action === "comment")
     return client.invalidateQueries({
       queryKey: queryKeys.taskComments(organizationId, input.projectEntityId, id),
@@ -92,22 +91,20 @@ export function invalidateTasksWrite(client: QueryClient, input: TasksWrite, id:
   if (input.action === "createProject" || input.action === "updateProject" || access)
     refreshes.push(client.invalidateQueries({ queryKey: queryKeys.projects(organizationId) }));
   if (input.action === "createTask" || input.action === "updateTask")
-    refreshes.push(client.invalidateQueries({ queryKey: [...context, "activity", id] }));
+    refreshes.push(client.invalidateQueries({ queryKey: queryKeys.activity(organizationId, id) }));
   if (input.action === "updateTask" || input.action === "updateProject" || access)
     refreshes.push(invalidateWorkLabels(client, organizationId, entityIds));
   if (input.action !== "createProject")
-    refreshes.push(client.invalidateQueries({ queryKey: [...context, "notifications"] }));
+    refreshes.push(client.invalidateQueries({ queryKey: queryKeys.notifications(organizationId) }));
   if (access)
     refreshes.push(
       client.invalidateQueries({
         queryKey: [...queryKeys.tasks(organizationId), "comments", projectId],
       }),
-      client.invalidateQueries({
-        queryKey: context,
-        predicate: ({ queryKey }) =>
-          (queryKey[3] === "related" || queryKey[3] === "activity") &&
-          entityIds.some((entityId) => entityId === queryKey[4]),
-      }),
+      ...entityIds.flatMap((entityId) => [
+        client.invalidateQueries({ queryKey: queryKeys.related(organizationId, entityId) }),
+        client.invalidateQueries({ queryKey: queryKeys.activity(organizationId, entityId) }),
+      ]),
     );
   return Promise.all(refreshes);
 }

@@ -1,4 +1,4 @@
-import { useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
+import { useContext, useRef, useState, type ReactNode } from "react";
 
 import { ResizablePanelGroup } from "../../ui/resizable";
 import {
@@ -37,21 +37,18 @@ export function PageLayout({
   const parent = useContext(PageLayoutContext);
   const [hasAside, setHasAside] = useState(false);
   const panes = useRef(new Map<PagePane, HTMLDivElement>());
-  const registerPane = useCallback((pane: PagePane, element: HTMLDivElement | null) => {
+  const registerPane = (pane: PagePane, element: HTMLDivElement | null) => {
     if (element) panes.current.set(pane, element);
     else panes.current.delete(pane);
-  }, []);
-  const context = useMemo<PageLayoutContextValue>(
-    () => ({
-      id,
-      depth: parent ? parent.depth + 1 : 0,
-      mobileView,
-      hasAside,
-      setHasAside,
-      registerPane,
-    }),
-    [id, parent, mobileView, hasAside, registerPane],
-  );
+  };
+  const context: PageLayoutContextValue = {
+    id,
+    depth: parent ? parent.depth + 1 : 0,
+    mobileView,
+    hasAside,
+    setHasAside,
+    registerPane,
+  };
   const saveWidths = (layout: Layout, meta: LayoutChangedMeta) => {
     if (!meta.isUserInteraction) return;
     // Layout values are percentages of the combined panel widths, which a drag does not change.

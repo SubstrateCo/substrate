@@ -1,5 +1,3 @@
-import { useMemo } from "react";
-
 import { DateTimeDisplay } from "../../table/date-time-cell";
 import { AppTable, createAppColumnHelper, dateTimeColumn, useAppTable } from "../../table/index";
 import { Button } from "../../ui/button";
@@ -79,14 +77,10 @@ export function UserInvitationsTable({
   onRetry: () => void;
   now: number;
 }) {
-  const data = useMemo(
-    () =>
-      invitations.map((invitation) => ({
-        ...invitation,
-        expired: new Date(invitation.expiresAt).getTime() <= now,
-      })),
-    [invitations, now],
-  );
+  const data = invitations.map((invitation) => ({
+    ...invitation,
+    expired: new Date(invitation.expiresAt).getTime() <= now,
+  }));
   const table = useAppTable({
     columns,
     data,

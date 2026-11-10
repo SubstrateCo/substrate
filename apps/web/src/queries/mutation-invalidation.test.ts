@@ -73,7 +73,8 @@ test("sending a work reference refreshes its project discussions, not other conv
       `New discussion @[task:${taskId}]`,
     );
     expect(fixture.reads).toEqual({
-      conversations: 1,
+      // A send changes the list only by rejoining, and that sends its own messaging hint.
+      conversations: 0,
       channel: 1,
       thread: 1,
       history: 1,

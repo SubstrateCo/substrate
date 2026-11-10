@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 
 import type { SearchKind } from "./workspace-search-view";
 
@@ -16,14 +16,11 @@ const WorkspaceSearchContext = createContext<{
 
 export function WorkspaceSearchProvider({ children }: { children: ReactNode }) {
   const [request, setRequest] = useState<SearchRequest>();
-  const value = useMemo(
-    () => ({
-      request,
-      openSearch: (kind: SearchKind) =>
-        setRequest((current) => ({ id: (current?.id ?? 0) + 1, kind })),
-    }),
-    [request],
-  );
+  const value = {
+    request,
+    openSearch: (kind: SearchKind) =>
+      setRequest((current) => ({ id: (current?.id ?? 0) + 1, kind })),
+  };
   return <WorkspaceSearchContext value={value}>{children}</WorkspaceSearchContext>;
 }
 

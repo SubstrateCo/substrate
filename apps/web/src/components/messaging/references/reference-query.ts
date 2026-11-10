@@ -25,12 +25,9 @@ export function referenceQuery(draft: string, caret: number): ReferenceQuery | n
   ).exec(text);
   let kind: ReferenceQuery["kind"] = trigger === "#" ? "channel" : "all";
   if (prefix) {
-    if (prefix[1]!.toLowerCase() === "user") kind = "person";
-    if (prefix[1]!.toLowerCase() === "agent") kind = "agent";
-    if (prefix[1]!.toLowerCase() === "task") kind = "task";
-    if (prefix[1]!.toLowerCase() === "project") kind = "project";
-    if (prefix[1]!.toLowerCase() === "channel") kind = "channel";
-    if (prefix[1]!.toLowerCase() === "thread") kind = "thread";
+    // SAFETY: The patterns allow only these names. Only "user" differs from its kind.
+    const name = prefix[1]!.toLowerCase() as Exclude<ReferenceKind, "person"> | "user";
+    kind = name === "user" ? "person" : name;
   }
   return {
     start: caret - text.length - 1,

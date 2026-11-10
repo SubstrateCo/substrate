@@ -12,10 +12,13 @@ export const Route = createFileRoute("/_authenticated/_frame/_workspace")({
     const organizationId = context.session.session.activeOrganizationId;
     if (!organizationId) throw redirect({ to: "/organizations" });
     try {
-      const organization = await context.queryClient.query(
-        organizationQueryOptions(organizationId),
-      );
-      return { organizationId, organization };
+      // Realtime organization and access hints and reconnect resyncs invalidate or reset this
+      // entry, so a cached one is current and navigation does not wait for the network.
+      await context.queryClient.query({
+        ...organizationQueryOptions(organizationId),
+        staleTime: Infinity,
+      });
+      return { organizationId };
     } catch (error) {
       if (error instanceof Error && isAccessFailure(error))
         throw redirect({ to: "/organizations" });

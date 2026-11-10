@@ -12,6 +12,19 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { formatShortDate, parseDateOnly } from "@/lib/format/date";
 import { ChevronDown } from "lucide-react";
 
+/** Sets the value, then checks an invalid field again so its error clears on a valid choice. */
+function change<T>(
+  field: {
+    handleChange: (value: T) => void;
+    state: { meta: { isValid: boolean } };
+    validate: (cause: "blur") => void;
+  },
+  value: T,
+) {
+  field.handleChange(value);
+  if (!field.state.meta.isValid) field.validate("blur");
+}
+
 export function TaskScheduleFields({
   form,
   assignees,
@@ -29,10 +42,7 @@ export function TaskScheduleFields({
           <TaskSelect
             label="Status"
             value={field.state.value}
-            onChange={(value) => {
-              field.handleChange(value);
-              if (!field.state.meta.isValid) void field.validate("blur");
-            }}
+            onChange={(value) => change(field, value)}
             onBlur={field.handleBlur}
             errors={field.state.meta.errors}
             options={taskStatusOptions}
@@ -44,10 +54,7 @@ export function TaskScheduleFields({
           <TaskSelect
             label="Priority"
             value={field.state.value}
-            onChange={(value) => {
-              field.handleChange(value);
-              if (!field.state.meta.isValid) void field.validate("blur");
-            }}
+            onChange={(value) => change(field, value)}
             onBlur={field.handleBlur}
             errors={field.state.meta.errors}
             options={taskPriorityOptions}

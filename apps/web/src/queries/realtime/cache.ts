@@ -59,8 +59,8 @@ function targetFilter(target: RealtimeQueryTarget, predicate: (query: Query) => 
 }
 
 function searchTargets(organizationId: string): RealtimeQueryTarget[] {
-  return ["search", "search-pages"].map((kind) => ({
-    queryKey: [...queryKeys.context(organizationId), kind],
+  return queryKeys.searches(organizationId).map((queryKey) => ({
+    queryKey,
     refetchType: "none",
   }));
 }
@@ -113,20 +113,14 @@ export function realtimeQueryTargets(
         if (event.scope !== "messages")
           targets.push({ queryKey: queryKeys.conversations(organizationId) });
         targets.push({
-          queryKey: event.conversationId
-            ? queryKeys.messages(organizationId, event.conversationId).slice(0, -1)
-            : [...queryKeys.messaging(organizationId), "messages"],
+          queryKey: queryKeys.conversationMessages(organizationId, event.conversationId),
         });
-        targets.push({ queryKey: [...queryKeys.context(organizationId), "related"] });
+        targets.push({ queryKey: queryKeys.related(organizationId) });
         // A new message or reaction cannot change the context of loaded messages. A new message
         // gets its own page key; its reference changes arrive as "context" hints.
         if (event.scope !== "messages")
           targets.push({
-            queryKey: [
-              ...queryKeys.context(organizationId),
-              "message-pages",
-              ...(event.conversationId ? [event.conversationId] : []),
-            ],
+            queryKey: queryKeys.messagePages(organizationId, event.conversationId),
           });
         targets.push({ queryKey: queryKeys.messageTargets(organizationId, event.conversationId) });
         targets.push(...searchTargets(organizationId));
@@ -136,12 +130,12 @@ export function realtimeQueryTargets(
       if (organizationId)
         targets.push(
           { queryKey: queryKeys.tasks(organizationId) },
-          { queryKey: [...queryKeys.context(organizationId), "activity"] },
-          { queryKey: [...queryKeys.context(organizationId), "related"] },
+          { queryKey: queryKeys.activity(organizationId) },
+          { queryKey: queryKeys.related(organizationId) },
           // Pages without work links show no task titles.
-          { queryKey: [...queryKeys.context(organizationId), "message-pages"], withLinks: true },
+          { queryKey: queryKeys.messagePages(organizationId), withLinks: true },
           // Notifications show task titles. New notifications arrive as their own hints.
-          { queryKey: [...queryKeys.context(organizationId), "notifications"] },
+          { queryKey: queryKeys.notifications(organizationId) },
           ...searchTargets(organizationId),
         );
       break;
@@ -150,16 +144,17 @@ export function realtimeQueryTargets(
       // conversation deletion, send notifications hints to the recipients.
       if (organizationId)
         targets.push(
-          ...["activity", "related", "message-pages", "target"].map((kind) => ({
-            queryKey: [...queryKeys.context(organizationId), kind],
-          })),
+          { queryKey: queryKeys.activity(organizationId) },
+          { queryKey: queryKeys.related(organizationId) },
+          { queryKey: queryKeys.messagePages(organizationId) },
+          { queryKey: queryKeys.messageTargets(organizationId) },
           ...searchTargets(organizationId),
         );
       break;
     case "notifications":
       if (organizationId)
         targets.push({
-          queryKey: [...queryKeys.context(organizationId), "notifications"],
+          queryKey: queryKeys.notifications(organizationId),
         });
       break;
   }
@@ -209,10 +204,7 @@ export function createRealtimeCache({
   function resetPrivate(filter: QueryFilters) {
     const queries = queryClient.getQueryCache().findAll(filter);
     const placeholders = organizationId
-      ? [
-          [...queryKeys.messaging(organizationId), "messages"],
-          [...queryKeys.context(organizationId), "message-pages"],
-        ]
+      ? [queryKeys.conversationMessages(organizationId), queryKeys.messagePages(organizationId)]
       : [];
     // History and message context placeholders can hold a previous page outside the cache.
     // Replace their visible value before resetting, so access checks never display that old page.

@@ -50,6 +50,30 @@ export const queryKeys = {
       "target",
       ...(conversationId ? [conversationId] : []),
     ] as const,
+  related: (organizationId: string, entityId?: string) =>
+    [...queryKeys.context(organizationId), "related", ...(entityId ? [entityId] : [])] as const,
+  // Reads the entity ID back from a related key, so predicates do not count positions.
+  relatedEntityId: (queryKey: readonly unknown[]) => queryKey[4],
+  activity: (organizationId: string, entityId?: string) =>
+    [...queryKeys.context(organizationId), "activity", ...(entityId ? [entityId] : [])] as const,
+  // A page key ends with the IDs of its messages.
+  messagePages: (organizationId: string, conversationId?: string) =>
+    [
+      ...queryKeys.context(organizationId),
+      "message-pages",
+      ...(conversationId ? [conversationId] : []),
+    ] as const,
+  messagePageIds: (queryKey: readonly unknown[]): unknown[] =>
+    Array.isArray(queryKey[5]) ? queryKey[5] : [],
+  notifications: (organizationId: string) =>
+    [...queryKeys.context(organizationId), "notifications"] as const,
+  notificationPages: (organizationId: string) =>
+    [...queryKeys.notifications(organizationId), "page"] as const,
+  search: (organizationId: string) => [...queryKeys.context(organizationId), "search"] as const,
+  searchPages: (organizationId: string) =>
+    [...queryKeys.context(organizationId), "search-pages"] as const,
+  searches: (organizationId: string) =>
+    [queryKeys.search(organizationId), queryKeys.searchPages(organizationId)] as const,
   organizations: ["organizations", "list"] as const,
   userInvitations: ["invitations", "user"] as const,
   organization: (organizationId: string) => ["organizations", organizationId] as const,
@@ -77,6 +101,13 @@ export const queryKeys = {
     [...queryKeys.conversations(organizationId), "delete-impact", conversationId] as const,
   messagingProfile: (organizationId: string, conversationId: string, actorId: string) =>
     [...queryKeys.messaging(organizationId), "profiles", conversationId, actorId] as const,
+  // Every thread and history page of one conversation, or of the whole workspace.
+  conversationMessages: (organizationId: string, conversationId?: string) =>
+    [
+      ...queryKeys.messaging(organizationId),
+      "messages",
+      ...(conversationId ? [conversationId] : []),
+    ] as const,
   messages: (organizationId: string, conversationId: string, threadId?: string) =>
     [...queryKeys.messaging(organizationId), "messages", conversationId, threadId ?? null] as const,
 };

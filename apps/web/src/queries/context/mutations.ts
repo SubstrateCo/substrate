@@ -5,8 +5,7 @@ import type { MessagePageContext } from "@/api/context/links";
 
 export function staleSearches(client: QueryClient, organizationId: string) {
   return Promise.all(
-    ["search", "search-pages"].map((kind) => {
-      const queryKey = [...queryKeys.context(organizationId), kind];
+    queryKeys.searches(organizationId).map((queryKey) => {
       const inflight = client
         .getQueryCache()
         .findAll({ queryKey })
@@ -36,20 +35,16 @@ export function invalidateMessageWork(
   entityId: string,
   projectEntityId: string,
 ) {
-  const context = queryKeys.context(organizationId);
   return Promise.all([
     client.invalidateQueries({
-      queryKey: context,
-      predicate: ({ queryKey }) =>
-        queryKey[3] === "message-pages" &&
-        Array.isArray(queryKey[5]) &&
-        queryKey[5].includes(messageId),
+      queryKey: queryKeys.messagePages(organizationId),
+      predicate: ({ queryKey }) => queryKeys.messagePageIds(queryKey).includes(messageId),
     }),
     ...[...new Set([entityId, projectEntityId])].map((id) =>
-      client.invalidateQueries({ queryKey: [...context, "related", id] }),
+      client.invalidateQueries({ queryKey: queryKeys.related(organizationId, id) }),
     ),
     ...(entityId !== projectEntityId
-      ? [client.invalidateQueries({ queryKey: [...context, "activity", entityId] })]
+      ? [client.invalidateQueries({ queryKey: queryKeys.activity(organizationId, entityId) })]
       : []),
     staleSearches(client, organizationId),
   ]);
@@ -61,15 +56,13 @@ export function invalidateWorkLabels(
   entityIds: string[],
 ) {
   return client.invalidateQueries({
-    queryKey: queryKeys.context(organizationId),
+    queryKey: queryKeys.messagePages(organizationId),
     predicate: ({ queryKey }) => {
       const matches = (links: MessagePageContext["links"]) =>
         links.some((link) => entityIds.includes(link.entityId));
-      if (queryKey[3] === "message-pages")
-        return (client.getQueryData<MessagePageContext[]>(queryKey) ?? []).some((item) =>
-          matches(item.links),
-        );
-      return false;
+      return (client.getQueryData<MessagePageContext[]>(queryKey) ?? []).some((item) =>
+        matches(item.links),
+      );
     },
   });
 }

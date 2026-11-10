@@ -2,7 +2,6 @@ import {
   createContext,
   useContext,
   useLayoutEffect,
-  useMemo,
   useState,
   useSyncExternalStore,
   type ReactNode,
@@ -28,13 +27,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const resolvedTheme = snapshot.theme === "system" ? snapshot.systemTheme : snapshot.theme;
   useLayoutEffect(() => applyTheme(resolvedTheme), [resolvedTheme]);
-  const value = useMemo(
-    () => ({
-      ...snapshot,
-      resolvedTheme,
-      setTheme: store.setTheme,
-    }),
-    [snapshot, resolvedTheme, store],
-  );
+  const value = {
+    ...snapshot,
+    resolvedTheme,
+    setTheme: store.setTheme,
+  };
   return <ThemeContext value={value}>{children}</ThemeContext>;
 }

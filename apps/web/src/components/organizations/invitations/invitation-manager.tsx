@@ -1,7 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { useCallback } from "react";
-
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import {
   InvitationManager as InvitationManagerView,
@@ -71,20 +69,14 @@ export function InvitationManager({
   });
   const { mutate: sendInvite, reset: resetInvite } = invite;
   const { mutate: cancelInvite, reset: resetCancel } = cancel;
-  const onInvite = useCallback(
-    (email: string, role: InvitationRole, resend?: boolean) => {
-      resetCancel();
-      sendInvite({ email, role, resend });
-    },
-    [resetCancel, sendInvite],
-  );
-  const onCancel = useCallback(
-    (id: string) => {
-      resetInvite();
-      cancelInvite(id);
-    },
-    [resetInvite, cancelInvite],
-  );
+  const onInvite = (email: string, role: InvitationRole, resend?: boolean) => {
+    resetCancel();
+    sendInvite({ email, role, resend });
+  };
+  const onCancel = (id: string) => {
+    resetInvite();
+    cancelInvite(id);
+  };
   return (
     <InvitationManagerView
       framed={framed}

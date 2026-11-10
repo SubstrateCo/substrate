@@ -6,14 +6,14 @@ import { searchContext } from "@/api/context/search";
 export type SearchInput = Parameters<typeof searchContext>[0]["data"];
 export const searchOptions = (input: SearchInput) =>
   queryOptions({
-    queryKey: [...queryKeys.context(input.organizationId), "search", input],
+    queryKey: [...queryKeys.search(input.organizationId), input],
     queryFn: ({ signal }) => searchContext({ data: input, signal }),
     retry: false,
   });
 
 export const searchPagesOptions = (input: Omit<SearchInput, "after" | "limit">) =>
   infiniteQueryOptions({
-    queryKey: [...queryKeys.context(input.organizationId), "search-pages", input],
+    queryKey: [...queryKeys.searchPages(input.organizationId), input],
     // SAFETY: The first page has no cursor; later pages use result IDs.
     initialPageParam: undefined as string | undefined,
     queryFn: ({ signal, pageParam }) =>

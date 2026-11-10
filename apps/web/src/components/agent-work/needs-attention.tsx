@@ -3,7 +3,13 @@ import type { AgentTurnView } from "@startup-os/contracts/agent-work";
 import { NeedsAttentionCard, type NeedsAttentionAction } from "./needs-attention-card";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { attentionReasonText } from "@/lib/agent-work/status";
-import { useLocalWorkActions } from "@/queries/agent-work/mutations";
+import {
+  useDiscardItem,
+  useDismiss,
+  useResendItem,
+  useRetry,
+  useStartFresh,
+} from "@/queries/agent-work/mutations";
 
 const failures: Record<NeedsAttentionAction, string> = {
   retry: "We couldn’t retry. Try again.",
@@ -34,13 +40,12 @@ export function NeedsAttention({
   agentName: string;
   uncertainItemIds?: readonly string[];
 }) {
-  const actions = useLocalWorkActions(userId, organizationId);
   const tracked = {
-    retry: actions.retry,
-    dismiss: actions.dismiss,
-    startFresh: actions.startFresh,
-    resend: actions.resend,
-    discard: actions.discard,
+    retry: useRetry(userId, organizationId),
+    dismiss: useDismiss(userId, organizationId),
+    startFresh: useStartFresh(userId, organizationId),
+    resend: useResendItem(userId, organizationId),
+    discard: useDiscardItem(userId, organizationId),
   };
   const order: readonly NeedsAttentionAction[] = [
     "retry",

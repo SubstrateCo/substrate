@@ -3,7 +3,7 @@ import type { AgentInboxItemView } from "@startup-os/contracts/agent-work";
 import { InboxReceiptView } from "./inbox-receipt-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { itemStatus, type ItemContext } from "@/lib/agent-work/status";
-import { useLocalWorkActions } from "@/queries/agent-work/mutations";
+import { useDiscardItem, useResendItem, useSendNow } from "@/queries/agent-work/mutations";
 import { toast } from "sonner";
 
 export function InboxReceipt({
@@ -17,7 +17,9 @@ export function InboxReceipt({
   item: AgentInboxItemView;
   context: ItemContext;
 }) {
-  const { sendNow, resend, discard } = useLocalWorkActions(userId, organizationId);
+  const sendNow = useSendNow(userId, organizationId);
+  const resend = useResendItem(userId, organizationId);
+  const discard = useDiscardItem(userId, organizationId);
   const status = itemStatus(item, context);
   return (
     <InboxReceiptView

@@ -4,12 +4,10 @@ import { liveTurnStatuses } from "@startup-os/contracts/agent-work";
 import { NeedsAttention } from "./needs-attention";
 import { PendingReply } from "./pending-reply";
 import { TechnicalDetails } from "./technical-details";
+import { useStopTurn } from "./use-stop-turn";
 import { MutedWorkLine, WorkStatus } from "./work-status";
-import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useNow } from "@/hooks/use-now";
 import { failedWorkNote, turnStatus } from "@/lib/agent-work/status";
-import { useLocalWorkActions } from "@/queries/agent-work/mutations";
-import { toast } from "sonner";
 
 type TurnProps = {
   userId: string;
@@ -19,29 +17,31 @@ type TurnProps = {
   onTranscript: (turnId: string) => void;
 };
 
+/** One turn's status line, with its own clock so only this text renders each second. */
+export function TurnLabel({ turn, openRequest }: Pick<TurnProps, "turn" | "openRequest">) {
+  const now = useNow(liveTurnStatuses.includes(turn.status));
+  return turnStatus(turn, now, openRequest).label;
+}
+
 /** One local turn's status, for the header of the reply it belongs to. */
-export function TurnStatus({ userId, organizationId, turn, openRequest, onTranscript }: TurnProps) {
-  const live = liveTurnStatuses.includes(turn.status);
-  const now = useNow(live);
+export function TurnStatus(props: TurnProps) {
+  // The tone does not depend on the clock. Muted turns mount no clock and no actions.
+  if (turnStatus(props.turn, 0, props.openRequest).tone === "muted") return null;
+  return <LiveTurnStatus {...props} />;
+}
+
+function LiveTurnStatus({ userId, organizationId, turn, openRequest, onTranscript }: TurnProps) {
+  const now = useNow(liveTurnStatuses.includes(turn.status));
   const status = turnStatus(turn, now, openRequest);
-  const actions = useLocalWorkActions(userId, organizationId);
-  if (status.tone === "muted") return null;
+  const { onStop, stopping } = useStopTurn(userId, organizationId, turn);
   return (
     <WorkStatus
       tone={status.tone}
       label={status.label}
       activity={turn.activity}
       onTranscript={() => onTranscript(turn.id)}
-      onStop={
-        live && turn.status !== "stopping"
-          ? () =>
-              actions.stop.mutate(turn.id, {
-                onError: (error) =>
-                  toast.error(actionErrorMessage(error, "We couldn’t stop this work.")),
-              })
-          : undefined
-      }
-      stopping={actions.stop.isPending || turn.status === "stopping"}
+      onStop={onStop}
+      stopping={stopping}
     />
   );
 }

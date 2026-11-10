@@ -36,6 +36,19 @@ export const listAgentStatus = ({
 
 type RequestAction<T> = ApiInput<T & { requestId: string }>;
 
+const decideProposal =
+  (decision: "approve" | "decline") =>
+  ({
+    data: { requestId, ...json },
+    signal,
+  }: RequestAction<z.input<typeof decideProposalInput>>): Promise<void> =>
+    readResult(
+      routes.requests[":id"][decision].$post(
+        { param: { id: requestId }, json },
+        { init: { signal } },
+      ),
+    ).then(() => undefined);
+
 export const respondToRequest = ({
   data: { requestId, ...json },
   signal,
@@ -44,18 +57,5 @@ export const respondToRequest = ({
     routes.requests[":id"].respond.$post({ param: { id: requestId }, json }, { init: { signal } }),
   ).then(() => undefined);
 
-export const approveProposal = ({
-  data: { requestId, ...json },
-  signal,
-}: RequestAction<z.input<typeof decideProposalInput>>): Promise<void> =>
-  readResult(
-    routes.requests[":id"].approve.$post({ param: { id: requestId }, json }, { init: { signal } }),
-  ).then(() => undefined);
-
-export const declineProposal = ({
-  data: { requestId, ...json },
-  signal,
-}: RequestAction<z.input<typeof decideProposalInput>>): Promise<void> =>
-  readResult(
-    routes.requests[":id"].decline.$post({ param: { id: requestId }, json }, { init: { signal } }),
-  ).then(() => undefined);
+export const approveProposal = decideProposal("approve");
+export const declineProposal = decideProposal("decline");

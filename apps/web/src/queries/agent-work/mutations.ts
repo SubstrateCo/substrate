@@ -45,46 +45,45 @@ export function useRequestActions(userId: string, organizationId: string) {
   };
 }
 
-/** Actions on this desktop's local work. Only the agent's home desktop offers them. */
-export function useLocalWorkActions(userId: string, organizationId: string) {
+/**
+ * One action on this desktop's local work. Only the agent's home desktop offers them. Each
+ * caller mounts only the actions it uses.
+ */
+function useLocalWorkAction<T>(
+  userId: string,
+  organizationId: string,
+  mutationFn: (id: string) => Promise<T>,
+) {
   const refresh = useRefresh(userId, organizationId);
-  const settled = () => refresh({ kind: "agent-work" });
-  return {
-    sendNow: useMutation({
-      mutationFn: (itemId: string) => agentWorkBridge().sendNow(itemId),
-      onSettled: settled,
-    }),
-    // For an item the desktop couldn't confirm the agent received.
-    resend: useMutation({
-      mutationFn: (itemId: string) => agentWorkBridge().resendItem(itemId),
-      onSettled: settled,
-    }),
-    discard: useMutation({
-      mutationFn: (itemId: string) => agentWorkBridge().discardItem(itemId),
-      onSettled: settled,
-    }),
-    stop: useMutation({
-      mutationFn: (turnId: string) => agentWorkBridge().stop(turnId),
-      onSettled: settled,
-    }),
-    retry: useMutation({
-      mutationFn: (turnId: string) => agentWorkBridge().retry(turnId),
-      onSettled: settled,
-    }),
-    dismiss: useMutation({
-      mutationFn: (turnId: string) => agentWorkBridge().dismiss(turnId),
-      onSettled: settled,
-    }),
-    startFresh: useMutation({
-      mutationFn: (turnId: string) => agentWorkBridge().startFresh(turnId),
-      onSettled: settled,
-    }),
-    newTopic: useMutation({
-      mutationFn: (conversationId: string) => agentWorkBridge().newTopic(conversationId),
-      onSettled: settled,
-    }),
-  };
+  return useMutation({ mutationFn, onSettled: () => refresh({ kind: "agent-work" }) });
 }
+
+export const useSendNow = (userId: string, organizationId: string) =>
+  useLocalWorkAction(userId, organizationId, (itemId) => agentWorkBridge().sendNow(itemId));
+
+/** For an item the desktop couldn't confirm the agent received. */
+export const useResendItem = (userId: string, organizationId: string) =>
+  useLocalWorkAction(userId, organizationId, (itemId) => agentWorkBridge().resendItem(itemId));
+
+export const useDiscardItem = (userId: string, organizationId: string) =>
+  useLocalWorkAction(userId, organizationId, (itemId) => agentWorkBridge().discardItem(itemId));
+
+export const useStop = (userId: string, organizationId: string) =>
+  useLocalWorkAction(userId, organizationId, (turnId) => agentWorkBridge().stop(turnId));
+
+export const useRetry = (userId: string, organizationId: string) =>
+  useLocalWorkAction(userId, organizationId, (turnId) => agentWorkBridge().retry(turnId));
+
+export const useDismiss = (userId: string, organizationId: string) =>
+  useLocalWorkAction(userId, organizationId, (turnId) => agentWorkBridge().dismiss(turnId));
+
+export const useStartFresh = (userId: string, organizationId: string) =>
+  useLocalWorkAction(userId, organizationId, (turnId) => agentWorkBridge().startFresh(turnId));
+
+export const useNewTopic = (userId: string, organizationId: string) =>
+  useLocalWorkAction(userId, organizationId, (conversationId) =>
+    agentWorkBridge().newTopic(conversationId),
+  );
 
 export function useRoutineActions(userId: string, organizationId: string) {
   const refresh = useRefresh(userId, organizationId);

@@ -13,7 +13,6 @@ export function invalidateSentMessage(
   body: string,
   threadId?: string,
 ) {
-  const context = queryKeys.context(organizationId);
   const referencedIds = [...body.matchAll(referenceTokenPattern)].map((match) => match[2]!);
   const relatedIds = new Set<unknown>(referencedIds);
   // Project discussion feeds include references to their tasks, even when the feed is empty.
@@ -23,18 +22,21 @@ export function invalidateSentMessage(
     if (detail?.tasks.some((task) => relatedIds.has(task.entityId))) relatedIds.add(key[4]);
   }
   return Promise.all([
-    client.invalidateQueries({ queryKey: queryKeys.conversations(organizationId) }),
+    // The conversation list changes only when the send rejoins a channel. That send publishes an
+    // unscoped messaging hint, which refreshes the list.
     client.invalidateQueries({
-      queryKey: queryKeys.messages(organizationId, conversationId).slice(0, -1),
+      queryKey: queryKeys.conversationMessages(organizationId, conversationId),
     }),
     client.invalidateQueries({
       queryKey: queryKeys.messageTargets(organizationId, conversationId),
     }),
-    client.invalidateQueries({ queryKey: [...context, "message-pages", conversationId] }),
     client.invalidateQueries({
-      queryKey: [...context, "related"],
+      queryKey: queryKeys.messagePages(organizationId, conversationId),
+    }),
+    client.invalidateQueries({
+      queryKey: queryKeys.related(organizationId),
       predicate: ({ queryKey }) =>
-        relatedIds.has(queryKey[4]) ||
+        relatedIds.has(queryKeys.relatedEntityId(queryKey)) ||
         (!!threadId &&
           (client.getQueryData<Awaited<ReturnType<typeof getRelatedContext>>>(queryKey) ?? []).some(
             (item) =>
@@ -53,18 +55,17 @@ export function invalidateRemovedConversation(
   organizationId: string,
   conversationId: string,
 ) {
-  const context = queryKeys.context(organizationId);
   for (const queryKey of [
-    queryKeys.messages(organizationId, conversationId).slice(0, -1),
-    [...context, "message-pages", conversationId],
+    queryKeys.conversationMessages(organizationId, conversationId),
+    queryKeys.messagePages(organizationId, conversationId),
     queryKeys.messageTargets(organizationId, conversationId),
   ])
     client.removeQueries({ queryKey });
   return Promise.all([
     client.invalidateQueries({ queryKey: queryKeys.conversations(organizationId) }),
-    client.invalidateQueries({ queryKey: [...context, "related"] }),
-    client.invalidateQueries({ queryKey: [...context, "activity"] }),
-    client.invalidateQueries({ queryKey: [...context, "notifications"] }),
+    client.invalidateQueries({ queryKey: queryKeys.related(organizationId) }),
+    client.invalidateQueries({ queryKey: queryKeys.activity(organizationId) }),
+    client.invalidateQueries({ queryKey: queryKeys.notifications(organizationId) }),
     staleSearches(client, organizationId),
   ]);
 }
@@ -77,7 +78,7 @@ export function invalidateAddedMembers(
   return Promise.all([
     client.invalidateQueries({ queryKey: queryKeys.conversations(organizationId) }),
     client.invalidateQueries({
-      queryKey: queryKeys.messages(organizationId, conversationId).slice(0, -1),
+      queryKey: queryKeys.conversationMessages(organizationId, conversationId),
     }),
   ]);
 }

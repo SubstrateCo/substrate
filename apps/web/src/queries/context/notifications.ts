@@ -10,7 +10,7 @@ import { getNotifications, getNotificationPage } from "@/api/context/notificatio
 
 export const notificationsOptions = (organizationId: string) =>
   queryOptions({
-    queryKey: [...queryKeys.context(organizationId), "notifications"],
+    queryKey: queryKeys.notifications(organizationId),
     queryFn: ({ signal }) => getNotifications({ data: { organizationId }, signal }),
     retry: false,
   });
@@ -22,7 +22,7 @@ export const notificationPageOptions = (
   limit = 20,
 ) =>
   queryOptions({
-    queryKey: [...notificationsOptions(organizationId).queryKey, "page", filter, after, limit],
+    queryKey: [...queryKeys.notificationPages(organizationId), filter, after, limit],
     queryFn: ({ signal }) =>
       getNotificationPage({ data: { organizationId, filter, after, limit }, signal }),
     retry: false,
@@ -52,20 +52,13 @@ export function markNotificationsRead(
 ) {
   const { queryKey } = notificationsOptions(organizationId);
   const readAt = new Date().toISOString();
-  client.setQueryData(queryKey, (items) =>
-    items?.map((item) =>
-      id === null || item.id === id ? { ...item, readAt: item.readAt ?? readAt } : item,
-    ),
-  );
+  const read = <T extends { id: string; readAt: string | null }>(item: T) =>
+    id === null || item.id === id ? { ...item, readAt: item.readAt ?? readAt } : item;
+  client.setQueryData(queryKey, (items) => items?.map(read));
   type Page = Awaited<ReturnType<typeof getNotificationPage>>;
-  const markPage = (page: Page): Page => ({
-    ...page,
-    items: page.items.map((item) =>
-      id === null || item.id === id ? { ...item, readAt: item.readAt ?? readAt } : item,
-    ),
-  });
+  const markPage = (page: Page): Page => ({ ...page, items: page.items.map(read) });
   client.setQueriesData<Page>(
-    { queryKey: [...queryKey, "page"] },
+    { queryKey: queryKeys.notificationPages(organizationId) },
     (page) => page && markPage(page),
   );
   client.setQueriesData<InfiniteData<Page>>(

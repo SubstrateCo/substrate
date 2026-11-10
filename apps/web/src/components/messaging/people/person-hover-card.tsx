@@ -27,13 +27,47 @@ export function PersonHoverCard({
   children: ReactElement;
 }) {
   const [open, setOpen] = useState(false);
+  return (
+    <HoverCard open={open} onOpenChange={setOpen} openDelay={400} closeDelay={150}>
+      <HoverCardTrigger asChild>
+        <span
+          tabIndex={0}
+          className="rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          {children}
+        </span>
+      </HoverCardTrigger>
+      <HoverCardContent side="bottom" align="start" collisionPadding={8} className="w-76">
+        <PersonHoverCardBody
+          organizationId={organizationId}
+          conversationId={conversationId}
+          actorId={actorId}
+          name={name}
+          onClose={() => setOpen(false)}
+        />
+      </HoverCardContent>
+    </HoverCard>
+  );
+}
+
+/** The card's content. It mounts only while the card is open, so closed cards hold no queries. */
+function PersonHoverCardBody({
+  organizationId,
+  conversationId,
+  actorId,
+  name,
+  onClose,
+}: {
+  organizationId: string;
+  conversationId: string;
+  actorId: string;
+  name: string;
+  onClose: () => void;
+}) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  // Load details only when the card opens. The server checks conversation access each time.
-  const profile = useQuery({
-    ...messagingProfileOptions(organizationId, conversationId, actorId),
-    enabled: open,
-  });
+  // Details load when the card opens. The server checks conversation access each time.
+  const profile = useQuery(messagingProfileOptions(organizationId, conversationId, actorId));
   const directMessage = useMutation({
     mutationFn: async ({ id, email }: { id: string | null; email: string }) =>
       id ??
@@ -50,7 +84,7 @@ export function PersonHoverCard({
             queryKey: [...queryKeys.messaging(organizationId), "profiles"],
           }),
         ]);
-      setOpen(false);
+      onClose();
       void navigate({
         to: "/dashboard",
         search: { workspaceId: organizationId, conversationId: id },
@@ -65,40 +99,28 @@ export function PersonHoverCard({
   if (profile.isPending) state = "loading";
   else if (profile.isError) state = "unavailable";
   return (
-    <HoverCard open={open} onOpenChange={setOpen} openDelay={400} closeDelay={150}>
-      <HoverCardTrigger asChild>
-        <span
-          tabIndex={0}
-          className="rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
-        >
-          {children}
-        </span>
-      </HoverCardTrigger>
-      <HoverCardContent side="bottom" align="start" collisionPadding={8} className="w-76">
-        <div className="p-0.5">
-          <PersonCard
-            state={state}
-            name={name}
-            profile={data}
-            action={
-              canMessage && (
-                <PendingButton
-                  size="sm"
-                  variant="outline"
-                  pending={directMessage.isPending}
-                  pendingLabel="Opening conversation…"
-                  onClick={() =>
-                    directMessage.mutate({ id: data.directConversationId, email: data.email! })
-                  }
-                >
-                  <MessageSquare aria-hidden="true" />
-                  Message
-                </PendingButton>
-              )
-            }
-          />
-        </div>
-      </HoverCardContent>
-    </HoverCard>
+    <div className="p-0.5">
+      <PersonCard
+        state={state}
+        name={name}
+        profile={data}
+        action={
+          canMessage && (
+            <PendingButton
+              size="sm"
+              variant="outline"
+              pending={directMessage.isPending}
+              pendingLabel="Opening conversation."
+              onClick={() =>
+                directMessage.mutate({ id: data.directConversationId, email: data.email! })
+              }
+            >
+              <MessageSquare aria-hidden="true" />
+              Message
+            </PendingButton>
+          )
+        }
+      />
+    </div>
   );
 }

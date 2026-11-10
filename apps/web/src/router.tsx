@@ -8,7 +8,7 @@ import { createRefreshErrorCache } from "@/queries/refresh-error-cache";
 export function getRouter() {
   const queryClient = new QueryClient({
     queryCache: createRefreshErrorCache(),
-    defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
+    defaultOptions: { queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false } },
   });
   const router = createRouter({
     routeTree,

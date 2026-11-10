@@ -5,7 +5,7 @@ import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { isAccessFailure } from "@/components/feedback/request-failure";
 import { attachedWork } from "@/components/messaging/messages/attached-work";
 import { MessageWork } from "@/components/messaging/messages/message-work";
-import { workHref } from "@/lib/navigation/record-links";
+import { linkedWorkHref } from "@/lib/navigation/record-links";
 import { invalidateMessageWork } from "@/queries/context/mutations";
 import { toast } from "sonner";
 
@@ -25,6 +25,30 @@ export function MessageContext({
   messageId: string;
   context: MessageContextState;
 }) {
+  const links = attachedWork(isAccessFailure(context.error) ? [] : (context.data?.links ?? []));
+  // Most messages have no linked work. They mount no card and no mutation.
+  if (!links.length && (!context.error || isAccessFailure(context.error))) return null;
+  return (
+    <MessageContextCard
+      organizationId={organizationId}
+      messageId={messageId}
+      context={context}
+      links={links}
+    />
+  );
+}
+
+function MessageContextCard({
+  organizationId,
+  messageId,
+  context,
+  links,
+}: {
+  organizationId: string;
+  messageId: string;
+  context: MessageContextState;
+  links: MessagePageContext["links"];
+}) {
   const client = useQueryClient();
   const remove = useMutation({
     mutationFn: ({ entityId }: { entityId: string; projectEntityId: string }) =>
@@ -36,17 +60,9 @@ export function MessageContext({
     onSuccess: (_, { entityId, projectEntityId }) =>
       invalidateMessageWork(client, organizationId, messageId, entityId, projectEntityId),
   });
-  const links = isAccessFailure(context.error) ? [] : (context.data?.links ?? []);
   return (
     <MessageWork
-      links={attachedWork(links).map((link) => ({
-        ...link,
-        href: workHref(
-          organizationId,
-          link.projectEntityId,
-          link.entityType === "task" ? link.entityId : undefined,
-        ),
-      }))}
+      links={links.map((link) => ({ ...link, href: linkedWorkHref(organizationId, link) }))}
       error={context.error}
       onRetry={context.onRetry}
       onRemove={(entityId) => {

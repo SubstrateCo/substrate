@@ -11,7 +11,7 @@ export function useConversationAgents(organizationId: string, conversationId: st
   const refresh = () =>
     Promise.all([
       invalidateAddedMembers(client, organizationId, conversationId),
-      client.invalidateQueries({ queryKey: [...queryKeys.context(organizationId), "search"] }),
+      client.invalidateQueries({ queryKey: queryKeys.search(organizationId) }),
     ]);
   return {
     add: useMutation({

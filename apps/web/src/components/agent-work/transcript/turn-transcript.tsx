@@ -8,7 +8,7 @@ import { RequestCard } from "../requests/request-card";
 import { RequestResult } from "../requests/request-card-view";
 import { TurnTimeline } from "./turn-timeline";
 import { TurnTranscriptView } from "./turn-transcript-view";
-import { actionErrorMessage } from "@/components/feedback/action-error-message";
+import { useStopTurn } from "@/components/agent-work/use-stop-turn";
 import { useNow } from "@/hooks/use-now";
 import { outputLink, proposalResultLink } from "@/lib/agent-work/links";
 import { isOpenRequest } from "@/lib/agent-work/requests";
@@ -17,9 +17,7 @@ import { transcriptEntries } from "@/lib/agent-work/transcript";
 import { usageLabel } from "@/lib/agent-work/usage";
 import { messageHref } from "@/lib/navigation/record-links";
 import { turnEventsOptions } from "@/queries/agent-work/local";
-import { useLocalWorkActions } from "@/queries/agent-work/mutations";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
-import { toast } from "sonner";
 
 /**
  * One turn's transcript from the home desktop, with its sources and outputs. Links check the
@@ -54,7 +52,7 @@ export function TurnTranscript({
     enabled: !!turn && !unavailable,
   });
   const conversations = useQuery(conversationsQueryOptions(organizationId));
-  const { stop } = useLocalWorkActions(userId, organizationId);
+  const { onStop, stopping } = useStopTurn(userId, organizationId, turn);
   const now = useNow(live);
   const open = (conversationId: string) =>
     conversations.data?.some((conversation) => conversation.id === conversationId) ?? false;
@@ -136,16 +134,8 @@ export function TurnTranscript({
           />
         )
       }
-      onStop={
-        live && turn.status !== "stopping"
-          ? () =>
-              stop.mutate(turn.id, {
-                onError: (error) =>
-                  toast.error(actionErrorMessage(error, "We couldn’t stop this work.")),
-              })
-          : undefined
-      }
-      stopping={stop.isPending || turn?.status === "stopping"}
+      onStop={onStop}
+      stopping={stopping}
     />
   );
 }
