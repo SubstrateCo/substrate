@@ -36,13 +36,14 @@ const time = {
   since: timestamp.optional().describe("Include items created at or after this time (ISO 8601)."),
   until: timestamp.optional().describe("Include items created before this time (ISO 8601)."),
 };
+const timeWindow = z.object(time);
 /** Adds an optional since/until window and rejects reversed windows. */
 export const timed = <T extends Record<string, z.ZodType>>(fields: T) =>
   z
     .object({ ...fields, ...time })
     .strict()
     .refine((value) => {
-      const { since, until } = z.object(time).parse(value);
+      const { since, until } = timeWindow.parse(value);
       return !since || !until || Date.parse(since) < Date.parse(until);
     }, "since must precede until");
 

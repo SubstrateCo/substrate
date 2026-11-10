@@ -98,7 +98,9 @@ test("reset replaces only Startup OS files with the current agent", async () => 
   await writeFile(join(directory, "CLAUDE.md"), "User prompt");
   const userSkill = { id: "review", name: "review", description: "Mine", content: "Keep me." };
   await saveNativeSkill(directory, "claude", userSkill);
-  await writeDefaultFiles(directory, "org-a", agent("claude", { instructions: "Updated." }), true);
+  await writeDefaultFiles(directory, "org-a", agent("claude", { instructions: "Updated." }), {
+    replace: true,
+  });
   expect(await read(directory, "CLAUDE.md")).toContain("Updated.");
   expect(await scanNativeSkills(directory, "claude")).toContainEqual(userSkill);
 });
@@ -111,7 +113,9 @@ test("defaults are never written through a symlink", async () => {
   await expect(materialize(root, configuration(agent("claude")))).rejects.toMatchObject({
     code: "unsafe-path",
   });
-  await expect(writeDefaultFiles(directory, "org-a", agent("claude"), true)).rejects.toMatchObject({
+  await expect(
+    writeDefaultFiles(directory, "org-a", agent("claude"), { replace: true }),
+  ).rejects.toMatchObject({
     code: "unsafe-path",
   });
   expect(await readFile(outside, "utf8")).toBe("Outside content");

@@ -10,11 +10,10 @@ import { harnessDefinitions } from "../registry.ts";
 export async function discoverModels(
   harness: HarnessKind,
   directory: string,
-  executableOverride?: string,
   signal: AbortSignal = AbortSignal.timeout(30_000),
 ): Promise<HarnessModelCatalog> {
   try {
-    const executable = await resolveExecutable(harness, executableOverride);
+    const executable = await resolveExecutable(harness);
     const models = await harnessDefinitions[harness].discoverModels(
       executable,
       directory,

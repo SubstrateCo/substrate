@@ -6,7 +6,7 @@ import { spawn } from "node:child_process";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import type { EventEmitter } from "node:events";
 import { access, realpath } from "node:fs/promises";
-import { delimiter, extname, isAbsolute, join } from "node:path";
+import { delimiter, extname, join } from "node:path";
 
 // Node 24 and Bun expose the same process events, but their ambient ChildProcess
 // declarations disagree when a consumer loads both sets of types.
@@ -17,19 +17,15 @@ export type NativeProcess = ChildProcessWithoutNullStreams &
     close: [number | null, NodeJS.Signals | null];
   }>;
 
-export async function resolveExecutable(kind: HarnessKind, override?: string): Promise<string> {
-  if (override && !isAbsolute(override))
-    throw new HarnessError("unsafe-executable", "Executable overrides must be absolute paths.");
-  const candidates = override
-    ? [override]
-    : (process.env.PATH ?? "")
-        .split(delimiter)
-        .filter(Boolean)
-        .flatMap((directory) =>
-          (process.platform === "win32" ? [".exe", ".com", ""] : [""]).map((extension) =>
-            join(directory, harnessDefinitions[kind].executable + extension),
-          ),
-        );
+export async function resolveExecutable(kind: HarnessKind): Promise<string> {
+  const candidates = (process.env.PATH ?? "")
+    .split(delimiter)
+    .filter(Boolean)
+    .flatMap((directory) =>
+      (process.platform === "win32" ? [".exe", ".com", ""] : [""]).map((extension) =>
+        join(directory, harnessDefinitions[kind].executable + extension),
+      ),
+    );
   for (const candidate of candidates) {
     try {
       await access(candidate);
@@ -37,17 +33,11 @@ export async function resolveExecutable(kind: HarnessKind, override?: string): P
       if (
         process.platform === "win32" &&
         ![".exe", ".com"].includes(extname(resolved).toLowerCase())
-      ) {
-        if (override)
-          throw new HarnessError(
-            "unsafe-executable",
-            "Use a native .exe or .com executable, not a Windows shell shim.",
-          );
+      )
         continue;
-      }
       return resolved;
-    } catch (error) {
-      if (error instanceof HarnessError) throw error;
+    } catch {
+      /* Not at this PATH entry; try the next one. */
     }
   }
   throw new HarnessError(

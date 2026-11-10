@@ -23,6 +23,7 @@ export class JsonLineRpc {
   >();
   private sequence = 0;
   private buffer = "";
+  private bufferBytes = 0;
   private ended = false;
   private readonly child: NativeProcess;
   private readonly onMessage: (message: RpcMessage) => void;
@@ -32,17 +33,21 @@ export class JsonLineRpc {
     this.onMessage = onMessage;
     child.stdout.setEncoding("utf8");
     child.stdout.on("data", (chunk: string) => {
+      // The buffer held no newline before this chunk, so the scan starts at the chunk.
+      let scanFrom = this.buffer.length;
       this.buffer += chunk;
-      if (Buffer.byteLength(this.buffer) > 4 * 1024 * 1024) {
+      this.bufferBytes += Buffer.byteLength(chunk);
+      if (this.bufferBytes > 4 * 1024 * 1024) {
         this.close(
           new HarnessError("protocol-limit", "Native JSON-RPC message exceeded the size limit."),
         );
         return;
       }
       let newline: number;
-      while ((newline = this.buffer.indexOf("\n")) >= 0) {
+      while ((newline = this.buffer.indexOf("\n", scanFrom)) >= 0) {
         const line = this.buffer.slice(0, newline);
         this.buffer = this.buffer.slice(newline + 1);
+        scanFrom = 0;
         if (!line.trim()) continue;
         let message: RpcMessage;
         try {
@@ -74,6 +79,8 @@ export class JsonLineRpc {
           else request.resolve(message.result);
         } else this.onMessage(message);
       }
+      // After a line was taken, what remains is the tail of this chunk.
+      if (scanFrom === 0) this.bufferBytes = Buffer.byteLength(this.buffer);
     });
     child.stderr.resume();
     child.on("error", (error) =>

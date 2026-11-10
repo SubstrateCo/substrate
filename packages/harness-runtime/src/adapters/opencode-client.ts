@@ -4,6 +4,8 @@ import { OpenCode } from "@opencode/client";
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 
+const endpointAnnounce = z.object({ url: z.url() });
+
 export async function startOpenCode(
   executable: string,
   directory: string,
@@ -39,9 +41,15 @@ export async function startOpenCode(
       };
       child.once("error", fail);
       child.once("exit", fail);
-      child.stdout.on("data", (chunk: Buffer) => {
+      // After the announce, later output is discarded; it must still drain so the child never blocks.
+      const settled = () => {
+        child.stdout.off("data", read);
+        child.stdout.resume();
+      };
+      const read = (chunk: Buffer) => {
         buffer += chunk.toString();
         if (buffer.length > 65536) {
+          settled();
           clearTimeout(timer);
           reject(
             new HarnessError("protocol-limit", "OpenCode startup output exceeded the size limit."),
@@ -50,9 +58,10 @@ export async function startOpenCode(
         }
         const newline = buffer.indexOf("\n");
         if (newline < 0) return;
+        settled();
         clearTimeout(timer);
         try {
-          const endpoint = z.object({ url: z.url() }).parse(JSON.parse(buffer.slice(0, newline)));
+          const endpoint = endpointAnnounce.parse(JSON.parse(buffer.slice(0, newline)));
           const url = new URL(endpoint.url);
           const isLoopbackRoot =
             url.protocol === "http:" && url.hostname === "127.0.0.1" && url.pathname === "/";
@@ -69,7 +78,8 @@ export async function startOpenCode(
             ),
           );
         }
-      });
+      };
+      child.stdout.on("data", read);
     });
     return {
       client: OpenCode.make({

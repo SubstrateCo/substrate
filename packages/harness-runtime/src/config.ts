@@ -1,5 +1,4 @@
 import {
-  harnessKinds,
   startupInstructions,
   startupSkills,
   type HarnessAgent,
@@ -39,41 +38,25 @@ async function writeStartupSkills(agentRoot: string, agent: HarnessAgent): Promi
 }
 
 /**
- * Writes missing default files. With `reset`, replaces existing ones too. Startup OS skills are
- * always replaced. Never deletes files.
- */
-export async function writeDefaultFiles(
-  agentRoot: string,
-  organizationId: string,
-  agent: HarnessAgent,
-  reset = false,
-): Promise<void> {
-  for (const [path, content] of defaultFiles(organizationId, agent)) {
-    const target = await safePath(agentRoot, path, false, true);
-    await writeFile(target, content, { mode: 0o600, flag: reset ? "w" : "wx" }).catch(
-      (error: NodeJS.ErrnoException) => {
-        if (error.code !== "EEXIST") throw error;
-      },
-    );
-  }
-  await writeStartupSkills(agentRoot, agent);
-}
-
-/**
- * Rewrites the instructions file and Startup OS skills in a session folder when a session opens,
- * so they match the current agent. With managedPrefix, the instructions file starts with it: the
+ * Writes missing default files. With `replace`, replaces existing ones too: on a reset, and when
+ * a session opens, so its folder matches the current agent. Startup OS skills are always
+ * replaced. Never deletes files. With managedPrefix, the instructions file starts with it: the
  * managed policy channel for harnesses that load no other instruction source.
  */
-export async function writeSessionFiles(
+export async function writeDefaultFiles(
   folder: string,
   organizationId: string,
   agent: HarnessAgent,
-  managedPrefix?: string,
+  options: { replace?: boolean; managedPrefix?: string } = {},
 ): Promise<void> {
+  const { replace = false, managedPrefix } = options;
   for (const [path, content] of defaultFiles(organizationId, agent)) {
     const target = await safePath(folder, path, false, true);
     await writeFile(target, managedPrefix ? `${managedPrefix}\n${content}` : content, {
       mode: 0o600,
+      flag: replace ? "w" : "wx",
+    }).catch((error: NodeJS.ErrnoException) => {
+      if (error.code !== "EEXIST") throw error;
     });
   }
   await writeStartupSkills(folder, agent);
@@ -90,8 +73,6 @@ export async function materialize(
     if (ids.has(agent.id))
       throw new HarnessError("duplicate-id", `Duplicate agent ID: ${agent.id}`);
     ids.add(agent.id);
-    if (!harnessKinds.includes(agent.harness))
-      throw new HarnessError("invalid-harness", "Unknown harness kind.");
     const agentRoot = await safePath(directory, safeId(agent.id), true);
     if (agent.enabled) await writeDefaultFiles(agentRoot, config.organizationId, agent);
   }

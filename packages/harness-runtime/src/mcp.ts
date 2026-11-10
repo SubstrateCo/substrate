@@ -194,7 +194,6 @@ export async function createStartupMcp(
             // The turn is captured when the call starts; a call in flight at turn end completes.
             const turn = lease.context;
             const { organizationId, agentId, sessionId } = lease.options;
-            const json = JSON.parse(JSON.stringify(input));
             if (!turn)
               return {
                 isError: true,
@@ -211,7 +210,7 @@ export async function createStartupMcp(
               };
             let result: WorkspaceApiResult;
             if (memoryTools.has(name))
-              result = await runMemoryTool(name, lease.options.agentFolder, json);
+              result = await runMemoryTool(name, lease.options.agentFolder, input);
             else if (isLocalTool(name)) {
               if (!handlers.local) throw new Error("Local tools unavailable");
               result = await handlers.local({
@@ -220,7 +219,7 @@ export async function createStartupMcp(
                 organizationId,
                 agentId,
                 turn,
-                input: json,
+                input,
               });
             } else {
               if (!handlers.workspace) throw new Error("Workspace API unavailable");
@@ -229,7 +228,7 @@ export async function createStartupMcp(
                 organizationId,
                 agentId,
                 turn,
-                input: json,
+                input,
               });
             }
             if (!live()) throw new Error("Credential revoked or expired");

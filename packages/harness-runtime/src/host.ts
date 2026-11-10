@@ -18,7 +18,7 @@ import type { LocalToolProxy, WorkspaceApiProxy } from "@startup-os/contracts/ha
 import { leaseTools } from "@startup-os/contracts/harness/tools";
 
 import type { AdapterContext, EventScope, NativeAdapter } from "./adapters/types.ts";
-import { materialize, writeDefaultFiles, writeSessionFiles } from "./config.ts";
+import { materialize, writeDefaultFiles } from "./config.ts";
 import { HarnessError } from "./errors.ts";
 import { createStartupMcp, type McpLease } from "./mcp.ts";
 import { readProfileMemory } from "./memory.ts";
@@ -221,12 +221,10 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
           );
     const definition = harnessDefinitions[agent.harness];
     // The instructions file follows the agent at each open, not only at first write.
-    await writeSessionFiles(
-      folder,
-      command.organizationId,
-      agent,
-      definition.prefixInInstructions ? command.prefix : undefined,
-    );
+    await writeDefaultFiles(folder, command.organizationId, agent, {
+      replace: true,
+      managedPrefix: definition.prefixInInstructions ? command.prefix : undefined,
+    });
     const lease = agent.useStartupDefaults
       ? mcp.issue({
           organizationId: command.organizationId,
@@ -448,7 +446,6 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
       return discoverModels(
         scope.harness,
         scope.agentId ? await directory({ ...scope, agentId: scope.agentId }) : accountDirectory,
-        undefined,
         modelDiscovery.signal,
       );
     },
@@ -489,7 +486,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
         ?.agents.find((entry) => entry.id === scope.agentId && entry.harness === scope.harness);
       if (!agent)
         throw new HarnessError("agent-not-found", "Agent is not configured for this harness.");
-      await writeDefaultFiles(root, scope.organizationId, agent, true);
+      await writeDefaultFiles(root, scope.organizationId, agent, { replace: true });
     },
     async saveMcpServer(input) {
       await editNativeServer(await directory(input), input.harness, input.server.id, input.server);
