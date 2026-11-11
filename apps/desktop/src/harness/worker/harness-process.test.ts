@@ -148,3 +148,18 @@ test("dispose closes every open session", async () => {
   f.worker.dispose();
   expect(closed(f.events)).toEqual([["session-1", "worker_exited", null, null]]);
 });
+
+for (const code of ["resume-failed", "not-initialized", "ENOENT", "toString", undefined])
+  test(`worker failures forward only registered codes: ${code ?? "missing"}`, async () => {
+    const f = await started();
+    const pending = f.worker.request("inspect");
+    await Bun.sleep(0);
+    const request = f.child.sent.filter((entry) => entry.method === "inspect").at(-1);
+    f.child.emit("message", { id: request!.id, error: "Native details", code });
+    await expect(pending).rejects.toMatchObject({
+      code: code === "resume-failed" || code === "not-initialized" ? code : "harness-error",
+      message: "Harness operation failed.",
+    });
+    f.worker.dispose();
+    f.child.answer("dispose");
+  });

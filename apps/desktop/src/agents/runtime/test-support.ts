@@ -1,9 +1,10 @@
 import { AgentWorkStore } from "@substrate/client-storage/agent-work";
-import type {
-  AgentRequestDelivery,
-  AgentSourceMessage,
-  AgentWakeRequestDetail,
-  AgentWakeView,
+import {
+  sessionKeys,
+  type AgentRequestDelivery,
+  type AgentSourceMessage,
+  type AgentWakeRequestDetail,
+  type AgentWakeView,
 } from "@substrate/contracts/agent-work";
 import type {
   AdapterCapabilities,
@@ -410,7 +411,9 @@ export async function runtimeFixture(
         threadId: input.threadId ?? null,
         kind: input.threadId ? "thread_reply" : "direct_message",
       },
-      sessionKey: input.threadId ? `thread:${input.threadId}` : `dm:${conversationId}`,
+      sessionKey: input.threadId
+        ? sessionKeys.thread(input.threadId)
+        : sessionKeys.dm(conversationId),
       dedupeKey: `msg:${id}`,
       createdAt: new Date(now).toISOString(),
       request: null,

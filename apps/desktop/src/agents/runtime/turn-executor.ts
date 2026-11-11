@@ -1,4 +1,5 @@
 import {
+  folderOf,
   interruptionNote,
   type FinishTurnInput,
   type InboxRow,
@@ -12,11 +13,11 @@ import {
 } from "@substrate/contracts/agent-work";
 import type { AgentWorkChange } from "@substrate/contracts/agent-work/desktop";
 import {
+  harnessCodesWithClassification,
   managedPrefix,
   POLICY_VERSION,
   type HarnessCommand,
   type HarnessEvent,
-  type HarnessFolder,
   type TurnContext,
   type TurnResult,
 } from "@substrate/contracts/harness";
@@ -39,20 +40,7 @@ const sha256 = (value: string) => createHash("sha256").update(value).digest("hex
  * organization's configuration yet (it lives in memory and arrives with synchronize). Work
  * waits and runs again.
  */
-const transientHarnessCodes = new Set([
-  "organization-not-configured",
-  "not-connected",
-  "session-changed",
-  "organization-unavailable",
-  "disposed",
-  "harness-error",
-  "disconnected",
-  "request-timeout",
-  "process-timeout",
-  "timeout",
-  "worker-stopped",
-  "turn-active",
-]);
+const transientHarnessCodes = harnessCodesWithClassification("transient");
 /** Requeued work waits this long first, doubling up to the maximum. */
 const outageBackoffMs = 5_000;
 export const outageBackoffMaxMs = 5 * 60_000;
@@ -72,16 +60,13 @@ export function errorCode(error: unknown) {
 
 /**
  * A known outage: the harness, the worker or the network is gone for now. fetch rejects with
- * a TypeError when the network fails; the controller rejects without a code when it cannot
- * verify the session.
+ * a TypeError when the network fails; the controller uses a code when it cannot verify the
+ * session.
  */
 function outage(error: unknown) {
   const code = errorCode(error);
   if (code !== undefined) return transientHarnessCodes.has(code);
-  return (
-    error instanceof TypeError ||
-    (error instanceof Error && error.message.startsWith("Harness unavailable"))
-  );
+  return error instanceof TypeError;
 }
 
 /** A failure that is worth retrying later: an outage, or a failure without any code. */
@@ -94,10 +79,6 @@ function batchItems(items: InboxRow[]) {
   return items.filter(
     (item) => !item.steered && (item.status === "submitted" || item.status === "consumed"),
   );
-}
-
-function folderOf(session: SessionRow): HarnessFolder {
-  return session.kind === "helper" ? { helperId: session.key.slice("helper:".length) } : "main";
 }
 
 type InterruptResult = "sent" | "gone" | "failed";

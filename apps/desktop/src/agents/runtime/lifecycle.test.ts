@@ -1,3 +1,4 @@
+import { sessionKeys } from "@substrate/contracts/agent-work";
 import type { HarnessCommand } from "@substrate/contracts/harness";
 
 import {
@@ -87,22 +88,23 @@ test("an organization switch closes the native session of live work, and the wor
   expect(await f.store.turns.needsAttention(organizationId)).toEqual([]);
 });
 
-test("a steer the host refuses puts the message back, and the next turn takes it", async () => {
-  const f = await started({ capabilities: { steer: true, steerEvidence: true } });
-  const { conversationId } = await f.message();
-  const turn = lastTurn(f);
-  f.hooks.command = (command) =>
-    command.type === "steer" ? Promise.reject(new CodeError("steer-unsupported")) : undefined;
-  await f.message({ conversationId, body: "Also this" });
-  const [item] = await f.store.inbox
-    .openForSessions([turn.sessionId])
-    .then((rows) => rows.filter((row) => row.turnId !== turn.turnId));
-  expect(item).toMatchObject({ status: "pending", steered: false, turnId: null });
+for (const code of ["steer-unsupported", "not-initialized", "harness-unavailable"])
+  test(`a steer refused with ${code} puts the message back, and the next turn takes it`, async () => {
+    const f = await started({ capabilities: { steer: true, steerEvidence: true } });
+    const { conversationId } = await f.message();
+    const turn = lastTurn(f);
+    f.hooks.command = (command) =>
+      command.type === "steer" ? Promise.reject(new CodeError(code)) : undefined;
+    await f.message({ conversationId, body: "Also this" });
+    const [item] = await f.store.inbox
+      .openForSessions([turn.sessionId])
+      .then((rows) => rows.filter((row) => row.turnId !== turn.turnId));
+    expect(item).toMatchObject({ status: "pending", steered: false, turnId: null });
 
-  f.hooks.command = undefined;
-  await f.emit(turn.turnId, { type: "turn.completed", result: { status: "completed" } });
-  expect(lastTurn(f).input.inputIds).toEqual([item!.id]);
-});
+    f.hooks.command = undefined;
+    await f.emit(turn.turnId, { type: "turn.completed", result: { status: "completed" } });
+    expect(lastTurn(f).input.inputIds).toEqual([item!.id]);
+  });
 
 for (const code of ["timeout", "worker-stopped", "session-changed", "disconnected", undefined])
   test(`a steer that fails with ${code ?? "no code"} may have been delivered: the owner decides`, async () => {
@@ -291,7 +293,7 @@ test("wakes this desktop cannot run are acknowledged so that newer wakes are pul
         threadId: null,
         kind: "direct_message",
       },
-      sessionKey: `dm:${crypto.randomUUID()}`,
+      sessionKey: sessionKeys.dm(crypto.randomUUID()),
       dedupeKey: `msg:${crypto.randomUUID()}`,
       createdAt: new Date(f.now()).toISOString(),
       request: null,
@@ -402,15 +404,16 @@ test("a failure without a known code stops retrying after 6 backoffs and needs t
   expect(commandsOf(f, "open")).toHaveLength(7);
 });
 
-test("a known outage keeps waiting past the retry cap", async () => {
-  const f = await started();
-  f.hooks.command = (command) =>
-    command.type === "open" ? Promise.reject(new CodeError("not-connected")) : undefined;
-  await f.message();
-  for (let index = 0; index < 10; index++) await f.advance(outageBackoffMaxMs);
-  expect(await f.store.turns.needsAttention(organizationId)).toEqual([]);
-  expect(commandsOf(f, "open").length).toBeGreaterThan(7);
-});
+for (const code of ["not-connected", "not-initialized", "harness-unavailable"])
+  test(`a known ${code} outage keeps waiting past the retry cap`, async () => {
+    const f = await started();
+    f.hooks.command = (command) =>
+      command.type === "open" ? Promise.reject(new CodeError(code)) : undefined;
+    await f.message();
+    for (let index = 0; index < 10; index++) await f.advance(outageBackoffMaxMs);
+    expect(await f.store.turns.needsAttention(organizationId)).toEqual([]);
+    expect(commandsOf(f, "open").length).toBeGreaterThan(7);
+  });
 
 test("a blocking request that the server cannot open is denied at once", async () => {
   const f = await started();

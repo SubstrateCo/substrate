@@ -1,6 +1,14 @@
 export { harnessInstructionsFiles, harnessKinds, type HarnessKind } from "./kinds.ts";
 export { startupInstructions } from "./defaults.ts";
 export {
+  harnessErrors,
+  harnessErrorCodes,
+  harnessCodesWithClassification,
+  isHarnessErrorCode,
+  type HarnessErrorClassification,
+  type HarnessErrorCode,
+} from "./errors.ts";
+export {
   harnessAgentSchema,
   harnessConfigurationSchema,
   type HarnessAgent,

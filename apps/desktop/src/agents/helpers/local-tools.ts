@@ -1,4 +1,5 @@
 import { HelperLimitError } from "@substrate/client-storage/agent-work";
+import { sessionKeys } from "@substrate/contracts/agent-work";
 import { localToolRequest, type WorkspaceApiResult } from "@substrate/contracts/harness/mcp";
 import { mcpTools, type LocalToolName, type McpOutput } from "@substrate/contracts/harness/tools";
 
@@ -46,7 +47,7 @@ export function createLocalTools(
 
   function liveHelperTurn(helperId: string) {
     return [...deps.executor.live.values()].find(
-      (state) => state.folderKey === `helper:${helperId}`,
+      (state) => state.folderKey === sessionKeys.helper(helperId),
     );
   }
 

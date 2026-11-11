@@ -1,3 +1,4 @@
+import { sessionKeys } from "@substrate/contracts/agent-work";
 import type {
   AdapterCapabilities,
   HarnessAgent,
@@ -22,7 +23,7 @@ const turnId = "0d6f4c3e-8b4f-4c39-9d7e-3f1c2a5b6e71";
 const context: TurnContext = {
   turnId,
   attempt: 1,
-  sessionKey: "dm:9b2c1d4e-5f60-4a71-8b92-c3d4e5f60718",
+  sessionKey: sessionKeys.dm("9b2c1d4e-5f60-4a71-8b92-c3d4e5f60718"),
   origin: { conversationId: "9b2c1d4e-5f60-4a71-8b92-c3d4e5f60718", threadId: null },
   kind: "interactive",
 };

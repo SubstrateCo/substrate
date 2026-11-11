@@ -1,3 +1,4 @@
+import { sessionKeys } from "@substrate/contracts/agent-work";
 import type { HarnessCommand } from "@substrate/contracts/harness";
 
 import { agentId, CodeError, openStore, organizationId, runtimeFixture } from "./test-support.ts";
@@ -126,7 +127,7 @@ test("an answer wake runs a turn whose input carries the owner's answer, under t
       conversationId,
       threadId: null,
     },
-    `dm:${conversationId}`,
+    sessionKeys.dm(conversationId),
   );
   await f.runtime.sync();
   await f.settle();
@@ -204,7 +205,7 @@ test("a question with an answer wake no longer needs the owner, even before the 
       conversationId,
       threadId: null,
     },
-    `dm:${conversationId}`,
+    sessionKeys.dm(conversationId),
   );
   await f.runtime.sync();
   await f.settle();
@@ -611,7 +612,7 @@ test("local tools reject calls that do not come from a live turn of the named se
     turn: {
       turnId: crypto.randomUUID(),
       attempt: 1,
-      sessionKey: "dm:x",
+      sessionKey: sessionKeys.dm("x"),
       origin: null,
       kind: "interactive",
     },

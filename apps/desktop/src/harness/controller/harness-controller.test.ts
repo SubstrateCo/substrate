@@ -1,3 +1,5 @@
+import { sessionKeys } from "@substrate/contracts/agent-work";
+
 import { DesktopSessionAuthority } from "../../session/desktop-session-authority.ts";
 import { createHarnessController } from "./harness-controller.ts";
 import { fixture } from "./test-support.ts";
@@ -172,11 +174,13 @@ describe("desktop harness authority", () => {
       await f.controller.run("synchronize");
       f.setOutage(outage);
       f.controller.refreshAuthority();
-      expect(f.controller.execute(open)).rejects.toThrow("Harness unavailable");
+      expect(f.controller.execute(open)).rejects.toMatchObject({ code: "harness-unavailable" });
       await f.controller.execute(open).catch(() => undefined);
-      expect(f.controller.run("synchronize")).rejects.toThrow("Harness unavailable");
+      expect(f.controller.run("synchronize")).rejects.toMatchObject({
+        code: "harness-unavailable",
+      });
       await f.controller.run("synchronize").catch(() => undefined);
-      expect(f.controller.run("status")).rejects.toThrow("Harness unavailable");
+      expect(f.controller.run("status")).rejects.toMatchObject({ code: "harness-unavailable" });
       await f.controller.run("status").catch(() => undefined);
       expect(f.disposed()).toBe(0);
       f.setOutage(undefined);
@@ -289,7 +293,7 @@ describe("desktop harness authority", () => {
       turn: {
         turnId: crypto.randomUUID(),
         attempt: 1,
-        sessionKey: "dm:x",
+        sessionKey: sessionKeys.dm("x"),
         origin: null,
         kind: "interactive" as const,
       },

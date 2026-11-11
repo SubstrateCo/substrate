@@ -7,6 +7,7 @@ import {
   commandSchema,
   type HarnessCommand,
   type HarnessCommandResult,
+  type HarnessErrorCode,
 } from "@substrate/contracts/harness";
 import { harnessMethods, localHarnessMethods } from "@substrate/contracts/harness/ipc";
 import type { HarnessMethod } from "@substrate/contracts/harness/ipc";
@@ -42,10 +43,10 @@ class CommandFailure extends Error {}
  * (interrupt of a turn that is not live), "timeout" (the command took too long; the worker keeps
  * running) or "worker-stopped"; never native output.
  */
-class HarnessCommandError extends Error {
-  readonly code: string;
-  constructor(code: string) {
-    super("Harness command failed.");
+export class HarnessCommandError extends Error {
+  readonly code: HarnessErrorCode;
+  constructor(code: HarnessErrorCode, message = "Harness command failed.") {
+    super(message);
     this.name = "HarnessCommandError";
     this.code = code;
   }
@@ -178,7 +179,10 @@ export function createHarnessController(options: {
         (error instanceof HarnessWorkerError && error.code === "worker-stopped")
       )
         disconnect();
-      throw new Error("Harness unavailable. Verify your session and synchronize again.");
+      throw new HarnessCommandError(
+        "harness-unavailable",
+        "Harness unavailable. Verify your session and synchronize again.",
+      );
     }
   }
 
@@ -189,7 +193,10 @@ export function createHarnessController(options: {
       auth = await authorized();
     } catch (error) {
       if (error instanceof HarnessAccessDenied) disconnect();
-      throw new Error("Harness unavailable. Verify your session and synchronize again.");
+      throw new HarnessCommandError(
+        "harness-unavailable",
+        "Harness unavailable. Verify your session and synchronize again.",
+      );
     }
     if (organizationId !== undefined && organizationId !== auth.organizationId)
       throw new HarnessCommandError("organization-unavailable");

@@ -1,6 +1,7 @@
 /* oxlint-disable deslop/no-unknown-parameters, deslop/no-unknown-returns -- This transport forwards structured-clone payloads. Main validates requests and parses responses in the controller. */
 import {
   harnessEventSchema,
+  isHarnessErrorCode,
   type HarnessCommand,
   type HarnessEvent,
 } from "@substrate/contracts/harness";
@@ -149,7 +150,9 @@ export function createHarnessProcess(
       pending.delete(message.id);
       clearTimeout(request.timer);
       if (message.error)
-        request.reject(new HarnessWorkerError(String(message.code ?? "harness-error")));
+        request.reject(
+          new HarnessWorkerError(isHarnessErrorCode(message.code) ? message.code : "harness-error"),
+        );
       else request.resolve(message.result);
     },
   );

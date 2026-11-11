@@ -1,3 +1,4 @@
+import { sessionKeys } from "@substrate/contracts/agent-work";
 import type {
   LocalToolRequest,
   TurnContext,
@@ -19,7 +20,7 @@ const agentId = "ad4f709e-b80e-40f5-80ee-588e1db066e5";
 const turn: TurnContext = {
   turnId: "0d6f4c3e-8b4f-4c39-9d7e-3f1c2a5b6e71",
   attempt: 1,
-  sessionKey: "dm:9b2c1d4e-5f60-4a71-8b92-c3d4e5f60718",
+  sessionKey: sessionKeys.dm("9b2c1d4e-5f60-4a71-8b92-c3d4e5f60718"),
   origin: { conversationId: "9b2c1d4e-5f60-4a71-8b92-c3d4e5f60718", threadId: null },
   kind: "interactive",
 };

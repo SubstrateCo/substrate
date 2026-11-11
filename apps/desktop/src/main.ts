@@ -10,6 +10,7 @@ import * as realtimeIPC from "@substrate/contracts/realtime/ipc";
 import { installationId } from "./agents/installation.ts";
 import { composeDesktop } from "./app/composition.ts";
 import { createDesktopAuthClient } from "./auth/auth-client.js";
+import { HarnessCommandError } from "./harness/controller/harness-controller.ts";
 import { applicationURL, bundledApplicationURL, navigationTarget } from "./shell/navigation.js";
 import { registerWindowBridge } from "./shell/title-bar.ts";
 import { trustedSender } from "./shell/trusted-sender.ts";
@@ -275,7 +276,7 @@ function main() {
         });
         ipcMain.handle(harnessIPC.channel, (event, method, value) => {
           if (!trustedSender(event, mainWindow?.webContents, rendererURL))
-            throw new Error("Harness unavailable.");
+            throw new HarnessCommandError("harness-unavailable", "Harness unavailable.");
           return dispatchHarness(method, value);
         });
         configureProtocols({

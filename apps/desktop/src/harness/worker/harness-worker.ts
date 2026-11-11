@@ -1,6 +1,11 @@
+import { isHarnessErrorCode } from "@substrate/contracts/harness";
 import { createHarnessHost, type RuntimeHarnessHost } from "@substrate/harness-runtime";
 
-import type { HarnessWorkerRequest, HarnessWorkerResult } from "./protocol.ts";
+import {
+  HarnessWorkerError,
+  type HarnessWorkerRequest,
+  type HarnessWorkerResult,
+} from "./protocol.ts";
 import {
   createLocalToolProxy,
   createWorkspaceProxy,
@@ -8,14 +13,12 @@ import {
   type WorkspaceApiResponse,
 } from "./workspace-proxy.ts";
 
-/* oxlint-disable deslop/no-unknown-parameters, deslop/no-runtime-typeof -- Rejections arrive untyped; only a well-formed code string crosses the process boundary. */
+/* oxlint-disable deslop/no-unknown-parameters -- Rejections arrive untyped; only registered error codes cross the process boundary. */
 
 /** Forwards only fixed error codes, never native output or local paths. */
 function errorCode(error: unknown) {
   const code = error instanceof Error && "code" in error ? error.code : undefined;
-  return typeof code === "string" && /^[a-zA-Z][a-zA-Z_-]{0,63}$/.test(code)
-    ? code
-    : "harness-error";
+  return isHarnessErrorCode(code) ? code : "harness-error";
 }
 
 // This dedicated process receives messages only from the trusted main-process controller.
@@ -66,10 +69,8 @@ port.on(
     ) {
       const current = host;
       if (!current) {
-        port.postMessage({
-          id: data.id,
-          error: "Harness not initialized.",
-          code: "not-initialized",
+        void reply(data.id, async () => {
+          throw new HarnessWorkerError("not-initialized");
         });
         return;
       }
@@ -91,7 +92,7 @@ port.on(
           initialized.subscribe((event) => port.postMessage({ event }));
           return undefined;
         }
-        if (!host) throw new Error("Harness not initialized.");
+        if (!host) throw new HarnessWorkerError("not-initialized");
         switch (data.method) {
           case "configure":
             return host.configure(data.value);

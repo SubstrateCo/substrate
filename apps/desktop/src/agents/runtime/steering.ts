@@ -6,6 +6,7 @@ import {
   type TurnRow,
 } from "@substrate/client-storage/agent-work";
 import type { AgentSourceMessage } from "@substrate/contracts/agent-work";
+import { harnessCodesWithClassification } from "@substrate/contracts/harness";
 
 import { envelopeItem, renderEnvelope } from "../turns/envelope.ts";
 import type { LiveTurn, RuntimeContext } from "./context.ts";
@@ -15,15 +16,7 @@ import { errorCode, type TurnExecutor } from "./turn-executor.ts";
  * Steer failures that prove the harness did not take the input: it refused before delivery,
  * or the command never reached a session with that live turn.
  */
-const undeliveredSteerCodes = new Set([
-  "steer-unsupported",
-  "no-live-turn",
-  "turn-not-live",
-  "turn-active",
-  "not-connected",
-  "organization-unavailable",
-  "invalid-command",
-]);
+const undeliveredSteerCodes = harnessCodesWithClassification("undelivered");
 
 /** An unattended turn this long, while the owner waits, is asked to wrap up. */
 const softBudgetMs = 10 * 60_000;

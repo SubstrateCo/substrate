@@ -1,3 +1,4 @@
+import type { HarnessErrorCode } from "@substrate/contracts/harness";
 import type { RuntimeHarnessHost } from "@substrate/harness-runtime";
 
 /* oxlint-disable deslop/no-unknown-returns -- Main parses structured-clone results at the process boundary before exposing domain values. */
@@ -20,8 +21,8 @@ export type HarnessWorkerResult = Awaited<ReturnType<HostMethods[keyof HostMetho
 
 /** A failed worker request. code is a fixed HarnessError code, never native output or a path. */
 export class HarnessWorkerError extends Error {
-  readonly code: string;
-  constructor(code: string) {
+  readonly code: HarnessErrorCode;
+  constructor(code: HarnessErrorCode) {
     super("Harness operation failed.");
     this.name = "HarnessWorkerError";
     this.code = code;

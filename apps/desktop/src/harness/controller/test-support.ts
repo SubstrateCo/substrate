@@ -1,3 +1,4 @@
+import type { HarnessErrorCode } from "@substrate/contracts/harness";
 import type { LocalToolProxy } from "@substrate/contracts/harness/mcp";
 
 import { DesktopSessionAuthority } from "../../session/desktop-session-authority.ts";
@@ -28,7 +29,7 @@ export function fixture(
   beforeScan?: () => Promise<void>,
   nativeMcpServers: unknown[] = [],
   options: {
-    failExecute?: string;
+    failExecute?: HarnessErrorCode;
     /** Holds every execute command except interrupt until resolved. */
     holdExecute?: Promise<void>;
     localToolHandler?: LocalToolProxy;
