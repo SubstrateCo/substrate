@@ -11,7 +11,7 @@ import { ChevronRight, Pencil, X } from "lucide-react";
 
 /**
  * The task inspector: a fixed header with the task's place and tools, then one scrolling column
- * with the title, properties, description, subtasks, and the connected context in `children`.
+ * with the title, properties, description, subtasks, links, and the connected context in `children`.
  */
 export function TaskDetail({
   detail,
@@ -23,6 +23,7 @@ export function TaskDetail({
   updateError,
   renderEditor,
   actions,
+  links,
   children,
 }: {
   detail: ProjectDetail;
@@ -34,6 +35,8 @@ export function TaskDetail({
   updateError?: Error | null;
   renderEditor: (onDone: () => void) => ReactNode;
   actions?: ReactNode;
+  /** The linked tasks section. */
+  links?: ReactNode;
   children: ReactNode;
 }) {
   const [editing, setEditing] = useState(false);
@@ -142,6 +145,7 @@ export function TaskDetail({
             onSelect={onSelectTask}
             onCreate={canEdit ? onSubtask : undefined}
           />
+          {links}
           {children}
         </div>
       </div>

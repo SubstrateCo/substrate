@@ -2,6 +2,7 @@ import { taskStatusLabels, taskStatusValues, type TaskStatus } from "@startup-os
 
 import { useState } from "react";
 
+import { blockedTaskIds } from "../links/task-relations";
 import type { ProjectDetail, Task } from "../types";
 import { TaskBoardCard } from "./task-board-card";
 import { TaskBoardColumn } from "./task-board-column";
@@ -28,6 +29,7 @@ export function TaskBoard({
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const active = tasks.find((task) => task.entityId === activeId);
   const actors = new Map(detail.actors.map((actor) => [actor.entityId, actor]));
+  const blocked = blockedTaskIds(detail.links, detail.tasks);
   const parents = new Map(detail.tasks.map((task) => [task.entityId, task.title]));
   return (
     <DndContext
@@ -82,6 +84,7 @@ export function TaskBoard({
                   parentTitle={
                     task.parentTaskEntityId ? parents.get(task.parentTaskEntityId) : undefined
                   }
+                  blocked={blocked.has(task.entityId)}
                   selected={selectedId === task.entityId}
                   statusPending={statusPending}
                   onSelect={() => onSelect(task.entityId)}

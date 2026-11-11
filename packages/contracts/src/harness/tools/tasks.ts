@@ -1,3 +1,4 @@
+import { taskLinkRelations } from "../../tasks/links.ts";
 import { taskPriorityValues, taskStatusValues } from "../../tasks/status.ts";
 import {
   actor,
@@ -36,7 +37,26 @@ const taskSummary = z.object({
   parentTaskId: id.nullable(),
   updatedAt: timestamp,
 });
-/** What get_task, create_task and update_task return. */
+const relation = z
+  .enum(taskLinkRelations)
+  .describe(
+    "How the task relates to the other task: blocks | blocked_by | duplicates | duplicated_by | relates_to",
+  );
+const taskLink = z.object({
+  id,
+  relation,
+  task: z
+    .object({
+      id,
+      title: z.string(),
+      status: z.enum(taskStatusValues),
+      project: z.object({ id, name: z.string() }),
+    })
+    .nullable()
+    .describe("The other task. Null when you cannot open it."),
+  blocking: z.boolean().describe("True for a blocks link whose blocking task is still open."),
+});
+/** What get_task and the task write tools return. */
 export const taskResult = z.object({
   id,
   title: z.string(),
@@ -51,6 +71,8 @@ export const taskResult = z.object({
   source: messageRef.nullable().describe("The message this task was created from."),
   commentCount: z.number().int(),
   linkedMessageCount: z.number().int(),
+  // Results stored before task links existed have no list.
+  links: z.array(taskLink).default([]).describe("Links to other tasks."),
   createdAt: timestamp,
   updatedAt: timestamp,
 });
@@ -99,7 +121,7 @@ export const taskTools = {
   get_task: {
     title: "Get task",
     description:
-      "Read a task in full: description, assignee, project, parent, subtask count, the message it was created from, and counts of comments and linked messages. Use list_task_comments, list_task_activity or list_links for more.",
+      "Read a task in full: description, assignee, project, parent, subtask count, links to other tasks, the message it was created from, and counts of comments and linked messages. Use list_task_comments, list_task_activity or list_links for more.",
     readOnly: true,
     input: z.object({ taskId: id }).strict(),
     output: taskResult,
@@ -162,6 +184,25 @@ export const taskTools = {
       })
       .strict(),
     output: z.object({ id, taskId: id, createdAt: timestamp }),
+  },
+  add_task_link: {
+    title: "Add task link",
+    description:
+      "Link a task to another task as yourself. The relation reads from taskId to otherTaskId: blocked_by means otherTaskId must finish first. A link never changes a status. Returns the task with its links.",
+    readOnly: false,
+    idempotent: true,
+    input: z.object({ requestId, taskId: id, relation, otherTaskId: id }).strict(),
+    output: taskResult,
+  },
+  remove_task_link: {
+    title: "Remove task link",
+    description:
+      "Remove a link from a task. Use a link id from the task's links. Returns the task with its remaining links.",
+    readOnly: false,
+    idempotent: true,
+    destructive: true,
+    input: z.object({ requestId, taskId: id, linkId: id }).strict(),
+    output: taskResult,
   },
   list_task_activity: {
     title: "List task activity",

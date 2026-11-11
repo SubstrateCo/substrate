@@ -9,6 +9,7 @@ import { entityGrants } from "../../core/permissions/schema";
 import { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { liveTask } from "../tasks/access";
+import { projectTaskLinks } from "../tasks/links";
 import { tasks } from "../tasks/tasks.schema";
 import { projects } from "./schema";
 import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
@@ -131,7 +132,7 @@ export function projectRepository(context: RepositoryContext) {
     },
     async getDetail(projectEntityId: string) {
       const { project, level } = await getWithLevel(projectEntityId);
-      const [projectMembers, projectActors, projectTasks] = await Promise.all([
+      const [projectMembers, projectActors, projectTasks, links] = await Promise.all([
         members(projectEntityId),
         availableActors(projectEntityId),
         db
@@ -145,6 +146,7 @@ export function projectRepository(context: RepositoryContext) {
             ),
           )
           .orderBy(asc(tasks.entityId)),
+        projectTaskLinks(context, projectEntityId),
       ]);
       return {
         project,
@@ -152,6 +154,7 @@ export function projectRepository(context: RepositoryContext) {
         members: projectMembers,
         actors: projectActors,
         tasks: projectTasks,
+        links,
       };
     },
     async create(input: { name: string; description?: string }) {

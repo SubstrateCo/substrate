@@ -3,6 +3,7 @@ import type {
   taskRequest,
   tasksWorkspace,
   TasksWrite,
+  workRequest,
 } from "@startup-os/contracts/tasks/input";
 
 import { api, type ApiInput } from "../client";
@@ -16,6 +17,8 @@ export const getProject = ({ data, signal }: ApiInput<z.input<typeof projectRequ
   readResult(api.tasks.project.$get({ query: data }, { init: { signal } }));
 export const listTaskComments = ({ data, signal }: ApiInput<z.input<typeof taskRequest>>) =>
   readResult(api.tasks.comments.$get({ query: data }, { init: { signal } }));
+export const listCommentMentions = ({ data, signal }: ApiInput<z.input<typeof workRequest>>) =>
+  readResult(api.tasks["comment-mentions"].$get({ query: data }, { init: { signal } }));
 export const mutateTasks = ({ data, signal }: ApiInput<TasksWrite>) =>
   readResult(api.tasks.mutations.$post({ json: data }, { init: { signal } }));
 

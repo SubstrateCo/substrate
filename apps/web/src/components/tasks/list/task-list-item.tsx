@@ -9,7 +9,18 @@ import { TaskStatusMenu } from "./task-status-menu";
 import { DueDate } from "@/components/time/due-date";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "cn";
-import { CornerDownRight } from "lucide-react";
+import { Ban, CornerDownRight } from "lucide-react";
+
+/** Marks a task that waits on another open task. */
+export function TaskBlockedCue() {
+  return (
+    <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-destructive">
+      <Ban aria-hidden="true" className="size-3" />
+      <span className="sr-only">, </span>
+      Blocked
+    </span>
+  );
+}
 
 /**
  * One task row: status (a menu for editors), title, parent, then priority, due date, and
@@ -19,6 +30,7 @@ export function TaskListItem({
   task,
   assignee,
   parentTitle,
+  blocked = false,
   selected,
   onSelect,
   onStatusChange,
@@ -27,6 +39,8 @@ export function TaskListItem({
   task: Task;
   assignee?: ProjectDetail["actors"][number];
   parentTitle?: string;
+  /** An open task blocks this one. */
+  blocked?: boolean;
   selected: boolean;
   onSelect: () => void;
   onStatusChange?: (status: TaskStatus) => void;
@@ -68,6 +82,7 @@ export function TaskListItem({
           >
             {task.title}
           </span>
+          {blocked && <TaskBlockedCue />}
           {task.parentTaskEntityId && (
             <span className="hidden min-w-0 shrink items-center gap-1 text-xs text-muted-foreground @md:flex">
               <CornerDownRight aria-hidden="true" className="size-3 shrink-0" />

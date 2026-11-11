@@ -2,8 +2,10 @@ import { createContext, useContext, useEffect, useState } from "react";
 
 import { CopyLink } from "../../context/links/copy-link";
 import { TaskContext } from "../../context/references/task-context";
+import { TaskCommentMentions } from "../comments/task-comment-mentions";
 import { TaskComments } from "../comments/task-comments";
 import { TaskForm } from "../editor/task-form";
+import { TaskLinks } from "../links/task-links";
 import { TaskAttachments } from "@/components/attachments/task-attachments";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { TaskDetail as TaskDetailView } from "@/components/tasks/detail/task-detail-view";
@@ -74,6 +76,14 @@ export function TaskDetail({
             href={workHref(organizationId, detail.project.entityId, task.entityId)}
           />
         }
+        links={
+          <TaskLinks
+            organizationId={organizationId}
+            detail={detail}
+            task={task}
+            onSelectTask={onSelectTask}
+          />
+        }
         renderEditor={(onDone) => (
           <TaskForm
             organizationId={organizationId}
@@ -106,10 +116,15 @@ export function TaskDetail({
           organizationId={organizationId}
           taskEntityId={task.entityId}
         />
+        <TaskCommentMentions
+          visible={visible}
+          organizationId={organizationId}
+          entityId={task.entityId}
+        />
         <TaskComments
           visible={visible}
           organizationId={organizationId}
-          projectEntityId={detail.project.entityId}
+          detail={detail}
           taskEntityId={task.entityId}
           canComment={detail.level !== "view"}
           onDirtyChange={setCommentDirty}

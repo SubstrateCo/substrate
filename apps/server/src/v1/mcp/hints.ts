@@ -1,6 +1,8 @@
 import type { McpInput, ServerToolName } from "@startup-os/contracts/harness/tools";
 import { realtimeKeys, type RealtimeHint } from "@startup-os/contracts/realtime";
 
+const personMention = /@\[person:([0-9a-f-]{36})\]/gi;
+
 type ToolExecution = {
   [K in ServerToolName]: { tool: K; input: McpInput<K>; hints: RealtimeHint[] };
 }[ServerToolName];
@@ -40,6 +42,15 @@ export function toolHints(
     case "update_task":
       return [tasks, ...assigned(execution.input.changes.assigneeActorId)];
     case "add_task_comment":
+      // A comment alerts the people it mentions. The server rejects a mention it cannot deliver.
+      return [
+        tasks,
+        ...[...execution.input.body.matchAll(personMention)].flatMap((match) =>
+          assigned(match[1]!.toLowerCase()),
+        ),
+      ];
+    case "add_task_link":
+    case "remove_task_link":
       return [tasks];
     case "attach_message":
     case "detach_message":

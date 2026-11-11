@@ -1,5 +1,6 @@
 import type { TaskComment as Comment } from "../types";
 import { Tag } from "@/components/feedback/tag";
+import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
 
@@ -18,7 +19,8 @@ export function TaskComment({ comment }: { comment: Comment }) {
           {comment.authorType === "agent" && <Tag className="py-0">Agent</Tag>}
           <Timestamp value={comment.createdAt} className="text-xs text-muted-foreground" />
         </header>
-        <p className="mt-0.5 text-sm/relaxed wrap-break-word whitespace-pre-wrap">{comment.body}</p>
+        {/* A reference the reader cannot open is not in the list and shows as unavailable. */}
+        <MessageMarkdown body={comment.body} references={comment.references ?? []} />
       </article>
     </li>
   );

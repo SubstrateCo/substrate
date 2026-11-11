@@ -1,4 +1,5 @@
 import { taskPriorityValues, taskStatusValues } from "@startup-os/contracts/tasks";
+import type { TaskLinkRelation } from "@startup-os/contracts/tasks/links";
 
 import { visibleActorCondition } from "../../core/actors/access";
 import { actorDisplayName } from "../../core/actors/display-name";
@@ -12,10 +13,13 @@ import { taskAttachments } from "../files/schema";
 import { projectRepository, requiredText } from "../projects/repository";
 import { liveTask } from "./access";
 import { taskChanges } from "./changes";
+import { applyCommentReferences, commentReferences } from "./comment-references";
+import { taskCommentReferences } from "./comment-references.schema";
 import { taskComments } from "./comments.schema";
 import type { CreateTaskInput, TaskFields } from "./contracts";
+import { addTaskLink, linksOfTask, removeTaskLink } from "./links";
 import { tasks } from "./tasks.schema";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, ne } from "drizzle-orm";
 
 // Pure field checks run before the assignee query.
 async function validate(
@@ -193,13 +197,82 @@ export function taskRepository(context: RepositoryContext) {
             body: text,
           })
           .returning();
-        return comment!;
+        const notified = await applyCommentReferences(ctx, task, comment!);
+        return { ...comment!, notified };
       });
+    },
+    /** Links the task to another one. `relation` is how this task relates to the other. */
+    async addLink(
+      entityId: string,
+      relation: TaskLinkRelation,
+      otherEntityId: string,
+      expectedProjectEntityId?: string,
+    ) {
+      return db.transaction(async (tx) => {
+        const ctx = new RepositoryContext(tx, scope);
+        const repository = taskRepository(ctx);
+        const task = await repository.get(entityId, "edit", true);
+        if (expectedProjectEntityId && task.projectEntityId !== expectedProjectEntityId)
+          throw new AccessDeniedError();
+        return addTaskLink(ctx, task, await repository.get(otherEntityId), relation);
+      });
+    },
+    async removeLink(entityId: string, linkId: string, expectedProjectEntityId?: string) {
+      return db.transaction(async (tx) => {
+        const ctx = new RepositoryContext(tx, scope);
+        const task = await taskRepository(ctx).get(entityId, "edit", true);
+        if (expectedProjectEntityId && task.projectEntityId !== expectedProjectEntityId)
+          throw new AccessDeniedError();
+        return removeTaskLink(ctx, task, linkId);
+      });
+    },
+    /** Comments on other readable tasks that reference this task or project. No bodies. */
+    async commentMentions(entityId: string) {
+      await context.requireAccess(entityId, "view");
+      return db
+        .select({
+          commentId: taskComments.id,
+          taskEntityId: tasks.entityId,
+          taskTitle: tasks.title,
+          projectEntityId: tasks.projectEntityId,
+          authorName: actorDisplayName(),
+          createdAt: taskComments.createdAt,
+        })
+        .from(taskCommentReferences)
+        .innerJoin(taskComments, eq(taskComments.id, taskCommentReferences.commentId))
+        .innerJoin(
+          tasks,
+          and(
+            eq(tasks.organizationId, taskComments.organizationId),
+            eq(tasks.entityId, taskComments.taskEntityId),
+          ),
+        )
+        .innerJoin(
+          actors,
+          and(
+            eq(actors.organizationId, taskComments.organizationId),
+            eq(actors.entityId, taskComments.authorActorEntityId),
+          ),
+        )
+        .where(
+          and(
+            eq(taskCommentReferences.organizationId, scope.organizationId),
+            eq(taskCommentReferences.entityId, entityId),
+            ne(tasks.entityId, entityId),
+            context.readable(tasks.entityId),
+          ),
+        )
+        .orderBy(desc(taskComments.createdAt), desc(taskComments.id))
+        .limit(50);
+    },
+    async listLinks(entityId: string) {
+      await requireTask(entityId);
+      return linksOfTask(context, entityId);
     },
     async listComments(entityId: string, projectEntityId: string) {
       const task = await requireTask(entityId);
       if (task.projectEntityId !== projectEntityId) throw new AccessDeniedError();
-      return db
+      const comments = await db
         .select({
           id: taskComments.id,
           body: taskComments.body,
@@ -223,6 +296,11 @@ export function taskRepository(context: RepositoryContext) {
           ),
         )
         .orderBy(asc(taskComments.createdAt), asc(taskComments.id));
+      const references = await commentReferences(
+        context,
+        comments.map((comment) => comment.body),
+      );
+      return comments.map((comment, index) => ({ ...comment, references: references[index]! }));
     },
   };
 }

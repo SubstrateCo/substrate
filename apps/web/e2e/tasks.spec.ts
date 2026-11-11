@@ -31,7 +31,7 @@ test("task drafts ask before navigation and project drafts stay with their proje
   await sender.page.getByRole("button", { name: "Close task" }).click();
   await expect(sender.page.getByRole("dialog", { name: "Discard unsaved changes?" })).toBeVisible();
   await sender.page.getByRole("button", { name: "Keep editing" }).click();
-  await expect(sender.page.getByLabel("Add a comment")).toHaveValue("A comment draft");
+  await expect(sender.page.getByLabel("Add a comment")).toHaveText("A comment draft");
   await sender.page.getByRole("tab", { name: "Settings" }).click();
   await sender.page.getByRole("button", { name: "Discard changes" }).click();
   // The task inspector keeps its draft guard until its exit animation ends.
@@ -75,7 +75,7 @@ test("a click outside the task inspector closes it, but controls, drafts and bac
   await inspector.getByLabel("Add a comment").fill("A comment draft");
   await outside.click();
   await user.page.getByRole("button", { name: "Keep editing" }).click();
-  await expect(inspector.getByLabel("Add a comment")).toHaveValue("A comment draft");
+  await expect(inspector.getByLabel("Add a comment")).toHaveText("A comment draft");
   await inspector.getByLabel("Add a comment").fill("");
   await outside.click();
   await expect(inspector).toHaveCount(0);
@@ -248,4 +248,67 @@ test("project sharing needs confirmation and revocation removes cached private c
   await expect(member.page.getByRole("link", { name: `Task: ${title}`, exact: true })).toHaveCount(
     0,
   );
+});
+
+test("a blocking link marks a task blocked, and a comment mention alerts the person and backlinks the task", async ({
+  actors,
+  client,
+}) => {
+  const created = await project(actors.sender);
+  await share(actors.sender, created.entityId, actors.member.name, "edit");
+  const task = (title: string) =>
+    post<{ id: string }>(actors.sender, "tasks/mutations", {
+      action: "createTask",
+      organizationId: actors.sender.organizationId,
+      projectEntityId: created.entityId,
+      title,
+    });
+  const waiting = `Waiting ${created.entityId}`;
+  const blocker = `Blocker ${created.entityId}`;
+  const [first, second] = await Promise.all([task(waiting), task(blocker)]);
+  await post(actors.sender, "tasks/mutations", {
+    action: "comment",
+    organizationId: actors.sender.organizationId,
+    projectEntityId: created.entityId,
+    taskEntityId: second.id,
+    body: `Do this before @[task:${first.id}]`,
+  });
+  const [sender, member] = await Promise.all([client(actors.sender), client(actors.member)]);
+  await Promise.all([
+    visit(sender, undefined, "/tasks", { projectId: created.entityId, taskId: first.id }),
+    visit(member, undefined, "/notifications"),
+  ]);
+  const links = sender.page.getByRole("region", { name: "Linked tasks", exact: true });
+  await links.getByRole("button", { name: "Link a task", exact: true }).click();
+  await sender.page.getByLabel("Search tasks to link", { exact: true }).fill(blocker);
+  await sender.page.getByRole("option", { name: new RegExp(blocker) }).click();
+  await expect(
+    links
+      .getByRole("group", { name: "Is blocked by", exact: true })
+      .getByRole("button", { name: `Not started: ${blocker}`, exact: true }),
+  ).toBeVisible();
+  // The filter keeps only the open task that waits on an open task.
+  await sender.page.getByRole("radio", { name: "Blocked", exact: true }).click();
+  await expect(
+    sender.page.getByRole("button", { name: new RegExp(`^Not started: ${waiting}.*Blocked`) }),
+  ).toBeVisible();
+  await expect(
+    sender.page.getByRole("button", { name: new RegExp(`^Not started: ${blocker}`) }),
+  ).toHaveCount(1);
+  // The other task's comment references this task, so this task lists it.
+  await expect(
+    sender.page
+      .getByRole("region", { name: "Mentioned in comments", exact: true })
+      .getByRole("link", { name: new RegExp(blocker) }),
+  ).toBeVisible();
+
+  await sender.page.getByLabel("Add a comment", { exact: true }).click();
+  await sender.page.keyboard.type(`Please check @${actors.member.name.split(" ")[0]}`);
+  await sender.page.getByRole("option", { name: new RegExp(actors.member.name) }).click();
+  await sender.page.getByRole("button", { name: "Post comment", exact: true }).click();
+  const comments = sender.page.getByRole("region", { name: "Task comments", exact: true });
+  await expect(comments.getByRole("listitem").getByText(actors.member.name)).toBeVisible();
+  await expect(
+    member.page.getByRole("listitem").filter({ hasText: waiting }).getByRole("link"),
+  ).toHaveAccessibleName(`${actors.sender.name} mentioned you in a comment on ${waiting}, unread`);
 });

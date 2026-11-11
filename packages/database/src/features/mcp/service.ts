@@ -123,6 +123,14 @@ export async function executeAgentTool<K extends ServerToolName>(
         const comment = await tasks.addComment(value.taskId, value.body);
         return { id: comment.id, taskId: value.taskId, createdAt: comment.createdAt };
       },
+      async add_task_link(value) {
+        await tasks.addLink(value.taskId, value.relation, value.otherTaskId);
+        return queries.getTask(value.taskId);
+      },
+      async remove_task_link(value) {
+        await tasks.removeLink(value.taskId, value.linkId);
+        return queries.getTask(value.taskId);
+      },
       async reply(value) {
         const { hints: messageHints, ...result } = await publishing().reply(value);
         hints.push(...messageHints);
@@ -146,6 +154,13 @@ export async function executeAgentTool<K extends ServerToolName>(
         await tasks.get(value.taskId);
       },
       async add_task_comment(value) {
+        await tasks.get(value.taskId);
+      },
+      async add_task_link(value) {
+        await tasks.get(value.taskId);
+        await tasks.get(value.otherTaskId);
+      },
+      async remove_task_link(value) {
         await tasks.get(value.taskId);
       },
       async reply(_, previous) {

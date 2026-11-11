@@ -1,7 +1,12 @@
 import { queryOptions } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
-import { getProject, listProjects, listTaskComments } from "@/api/tasks/requests";
+import {
+  getProject,
+  listCommentMentions,
+  listProjects,
+  listTaskComments,
+} from "@/api/tasks/requests";
 
 export const projectsQueryOptions = (organizationId: string) =>
   queryOptions({
@@ -14,6 +19,12 @@ export const projectQueryOptions = (organizationId: string, projectEntityId: str
     queryKey: queryKeys.project(organizationId, projectEntityId),
     meta: { refreshError: "Couldn’t refresh project" },
     queryFn: ({ signal }) => getProject({ data: { organizationId, projectEntityId }, signal }),
+    retry: false,
+  });
+export const commentMentionsQueryOptions = (organizationId: string, entityId: string) =>
+  queryOptions({
+    queryKey: queryKeys.commentMentions(organizationId, entityId),
+    queryFn: ({ signal }) => listCommentMentions({ data: { organizationId, entityId }, signal }),
     retry: false,
   });
 export const taskCommentsQueryOptions = (

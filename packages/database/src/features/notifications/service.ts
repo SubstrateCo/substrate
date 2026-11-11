@@ -12,6 +12,7 @@ import { conversationDisplayName } from "../messaging/display-name";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { projects } from "../projects/schema";
 import { liveTask } from "../tasks/access";
+import { taskComments } from "../tasks/comments.schema";
 import { tasks } from "../tasks/tasks.schema";
 import { toFeedItem } from "./feed-item";
 import { createNotificationGroups } from "./groups";
@@ -161,10 +162,19 @@ export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity
           ),
         )
         .leftJoin(
+          taskComments,
+          and(
+            eq(notifications.kind, "mention"),
+            eq(taskComments.organizationId, notifications.organizationId),
+            eq(taskComments.taskEntityId, notifications.entityId),
+            sql`${taskComments.id}::text = ${notifications.eventKey}`,
+          ),
+        )
+        .leftJoin(
           actor,
           eq(
             actor.entityId,
-            sql`coalesce(${messagingMessages.authorActorEntityId}, ${taskActivity.actorEntityId})`,
+            sql`coalesce(${messagingMessages.authorActorEntityId}, ${taskActivity.actorEntityId}, ${taskComments.authorActorEntityId})`,
           ),
         )
         .where(

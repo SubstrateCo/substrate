@@ -23,6 +23,7 @@ const sortOptions: { value: TaskSort; label: string }[] = [
 const scopeOptions = [
   { value: "all", label: "All" },
   { value: "active", label: "Active" },
+  { value: "blocked", label: "Blocked" },
 ] as const;
 
 /** Text filter, scope, assignee filter, and sort for one project's tasks. */

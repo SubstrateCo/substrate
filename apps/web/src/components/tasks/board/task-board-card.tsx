@@ -1,6 +1,7 @@
 import type { TaskStatus } from "@startup-os/contracts/tasks";
 
 import { TaskAssigneeHoverCard } from "../assignee/task-assignee-hover-card";
+import { TaskBlockedCue } from "../list/task-list-item";
 import { TaskStatusMenu } from "../list/task-status-menu";
 import { TaskAssigneeAvatar } from "../task-cues/task-assignee-avatar";
 import { taskPriorityLabels } from "../task-cues/task-labels";
@@ -17,6 +18,7 @@ export function TaskBoardCard({
   task,
   assignee,
   parentTitle,
+  blocked = false,
   selected,
   onSelect,
   onStatusChange,
@@ -25,6 +27,7 @@ export function TaskBoardCard({
   task: Task;
   assignee?: ProjectDetail["actors"][number];
   parentTitle?: string;
+  blocked?: boolean;
   selected: boolean;
   onSelect: () => void;
   onStatusChange?: (status: TaskStatus) => void;
@@ -98,6 +101,7 @@ export function TaskBoardCard({
           <TooltipContent>{taskPriorityLabels[task.priority]}</TooltipContent>
         </Tooltip>
         {task.dueDate && <DueDate value={task.dueDate} />}
+        {blocked && <TaskBlockedCue />}
         <span className="flex-1" />
         {assignee ? (
           <TaskAssigneeHoverCard assignee={assignee}>

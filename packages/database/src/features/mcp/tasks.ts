@@ -1,5 +1,6 @@
 import type { McpInput, McpOutput } from "@startup-os/contracts/harness/tools";
 import type { TaskStatus } from "@startup-os/contracts/tasks";
+import { taskLinkRelation } from "@startup-os/contracts/tasks/links";
 
 import { actorAuthorKind, actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
@@ -17,6 +18,7 @@ import { projectRepository } from "../projects/repository";
 import { projects } from "../projects/schema";
 import { liveTask } from "../tasks/access";
 import { taskComments } from "../tasks/comments.schema";
+import { linksOfTask } from "../tasks/links";
 import { taskRepository } from "../tasks/repository";
 import { tasks } from "../tasks/tasks.schema";
 import { iso, messageRef } from "./formatting";
@@ -211,6 +213,21 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: MessagingIdenti
         source: source ? messageRef(source) : null,
         commentCount: detail!.commentCount,
         linkedMessageCount: linked!.total,
+        links: (await linksOfTask(ctx, taskId)).map((link) => {
+          const side = link.source?.entityId === taskId ? "source" : "target";
+          const other = side === "source" ? link.target : link.source;
+          return {
+            id: link.id,
+            relation: taskLinkRelation(link.kind, side),
+            task: other && {
+              id: other.entityId,
+              title: other.title,
+              status: other.status,
+              project: { id: other.projectEntityId, name: other.projectName },
+            },
+            blocking: link.blocking,
+          };
+        }),
         createdAt: iso(detail!.createdAt),
         updatedAt: iso(detail!.updatedAt),
       };

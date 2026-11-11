@@ -77,6 +77,7 @@ function projectFixture() {
       { entityId: actor.entityId, name: actor.name, image: null, type: "human", assignable: true },
     ],
     tasks: [],
+    links: [],
   };
   const getDetail = spyOn(repositories.projects, "getDetail").mockResolvedValue(detail);
 

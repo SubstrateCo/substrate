@@ -44,6 +44,9 @@ function sentence(item: Notification) {
   if (item.mixedKinds && item.source.kind !== "project")
     return { verb: "updated a thread in", object: place(item.source) };
   if (item.kind === "assignment") return { verb: "assigned you", object: item.title };
+  // A mention on a task comes from a comment.
+  if (item.kind === "mention" && item.source.kind === "project")
+    return { verb: "mentioned you in a comment on", object: item.title };
   if (item.kind === "mention") return { verb: "mentioned you in", object: place(item.source) };
   return { verb: "replied to a thread in", object: place(item.source) };
 }
@@ -78,7 +81,7 @@ export function NotificationItem({
   const actor = item.actorName ?? "Someone";
   const actors = `${actor}${item.otherActorCount ? ` and ${item.otherActorCount} ${item.otherActorCount === 1 ? "other" : "others"}` : ""}`;
   const { verb, object } = sentence(item);
-  const detail = item.kind === "assignment" ? item.source.name : item.excerpt;
+  const detail = item.source.kind === "project" ? item.source.name : item.excerpt;
   return (
     <Collapsible asChild open={expanded} onOpenChange={setExpanded}>
       <li>

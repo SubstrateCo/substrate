@@ -53,6 +53,32 @@ test("task writes refresh tasks, a sourced task also refreshes context, and assi
       scope,
     ),
   ).toEqual([tasks]);
+  expect(
+    toolHints(
+      {
+        tool: "add_task_comment",
+        input: { taskId: id, body: `Ask @[person:${id}] about @[task:${id}]`, requestId: id },
+        hints: [],
+      },
+      scope,
+    ),
+  ).toEqual([tasks, notified(id)]);
+  expect(
+    toolHints(
+      {
+        tool: "add_task_link",
+        input: { taskId: id, otherTaskId: id, relation: "blocks", requestId: id },
+        hints: [],
+      },
+      scope,
+    ),
+  ).toEqual([tasks]);
+  expect(
+    toolHints(
+      { tool: "remove_task_link", input: { taskId: id, linkId: id, requestId: id }, hints: [] },
+      scope,
+    ),
+  ).toEqual([tasks]);
 });
 
 test("replies send their message hints and the owner's agent-work refresh, not task or context", () => {

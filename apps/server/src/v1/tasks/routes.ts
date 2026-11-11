@@ -3,6 +3,7 @@ import {
   projectRequest,
   taskRequest,
   tasksWrite,
+  workRequest,
 } from "@startup-os/contracts/tasks/input";
 
 import { respond, validationHook } from "../../shared/http";
@@ -20,6 +21,9 @@ export function createTasksRoutes(services = defaultServices) {
     )
     .get("/comments", zValidator("query", taskRequest, validationHook), async (c) =>
       respond(c, await services.listTaskComments(c.req.raw.headers, c.req.valid("query"))),
+    )
+    .get("/comment-mentions", zValidator("query", workRequest, validationHook), async (c) =>
+      respond(c, await services.listCommentMentions(c.req.raw.headers, c.req.valid("query"))),
     )
     .post("/mutations", zValidator("json", tasksWrite, validationHook), async (c) =>
       respond(c, await services.mutateTasks(c.req.raw.headers, c.req.valid("json"))),

@@ -1,12 +1,15 @@
 import { attachmentFileIds } from "../files/attachments";
 import { projectIcon } from "../files/pictures";
 import { organizationId } from "../workspace";
+import { taskLinkRelations } from "./links";
 import { permissionLevels, taskPriorityValues, taskStatusValues } from "./status";
 import { z } from "zod";
 
 export const tasksWorkspace = z.object({ organizationId });
 export const projectRequest = tasksWorkspace.extend({ projectEntityId: z.uuid() });
 export const taskRequest = projectRequest.extend({ taskEntityId: z.uuid() });
+/** A task or a project. */
+export const workRequest = tasksWorkspace.extend({ entityId: z.uuid() });
 const title = z.string().trim().min(1).max(300);
 const description = z.string().max(20000);
 const taskFields = z.object({
@@ -38,6 +41,12 @@ export const tasksWrite = z.discriminatedUnion("action", [
     .extend(taskFields.partial().extend({ title }).shape),
   taskRequest.extend({ action: z.literal("updateTask") }).extend(taskFields.shape),
   taskRequest.extend({ action: z.literal("comment"), body: z.string().trim().min(1).max(20000) }),
+  taskRequest.extend({
+    action: z.literal("addTaskLink"),
+    relation: z.enum(taskLinkRelations),
+    otherTaskEntityId: z.uuid(),
+  }),
+  taskRequest.extend({ action: z.literal("removeTaskLink"), linkId: z.uuid() }),
   projectRequest.extend({
     action: z.literal("share"),
     actorEntityId: z.uuid(),

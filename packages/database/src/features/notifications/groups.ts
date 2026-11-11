@@ -9,6 +9,7 @@ import { visibleConversations, type MessagingIdentity } from "../messaging/acces
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { projects } from "../projects/schema";
 import { liveTask } from "../tasks/access";
+import { taskComments } from "../tasks/comments.schema";
 import { tasks } from "../tasks/tasks.schema";
 import type { toFeedItem } from "./feed-item";
 import { notifications } from "./schema";
@@ -74,12 +75,19 @@ export function createNotificationGroups(
       }>(sql`
         WITH eligible AS (${eligible(db, ctx, scope)}),
         events AS (
-          SELECT eligible.*, coalesce(message_actor, ${taskActivity.actorEntityId}) AS actor_id
+          SELECT eligible.*, coalesce(
+            message_actor, ${taskActivity.actorEntityId}, ${taskComments.authorActorEntityId}
+          ) AS actor_id
           FROM eligible LEFT JOIN ${taskActivity}
             ON eligible.kind = 'assignment'
             AND ${taskActivity.organizationId} = ${scope.organizationId}
             AND ${taskActivity.taskEntityId} = eligible.entity_id
             AND ${taskActivity.id}::text = eligible.event_key
+          LEFT JOIN ${taskComments}
+            ON eligible.kind = 'mention'
+            AND ${taskComments.organizationId} = ${scope.organizationId}
+            AND ${taskComments.taskEntityId} = eligible.entity_id
+            AND ${taskComments.id}::text = eligible.event_key
         ),
         totals AS (
           SELECT group_key, count(*)::int AS count,

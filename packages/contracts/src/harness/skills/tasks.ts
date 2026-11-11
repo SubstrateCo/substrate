@@ -53,6 +53,15 @@ To find your own tasks, call \`list_tasks\` with \`assigneeActorId: "me"\`. To a
 - \`detach_message\` removes only hand-made links. Links of kind \`origin\` and \`mention\` stay.
 - A link never gives anyone access to the task or the message.
 
+## Links between tasks
+
+- \`add_task_link\` links two tasks. The relation reads from \`taskId\` to \`otherTaskId\`: \`blocks\`, \`blocked_by\`, \`duplicates\`, \`duplicated_by\` or \`relates_to\`.
+- Use \`blocked_by\` when the other task must finish first. A task is blocked while a task that blocks it is open.
+- A link is a cue. It never changes a status, and no status change is refused because of a link.
+- \`get_task\` returns the links. A link whose \`task\` is null points to a task you cannot open. Do not guess what it is.
+- \`remove_task_link\` needs the link \`id\` from \`get_task\`.
+- To mention a task, project or person in a comment, write \`@[task:<id>]\`, \`@[project:<id>]\` or \`@[person:<actor id>]\`. A mentioned person gets a notification and must be able to open the task.
+
 ## Bulk changes
 
 When you change many tasks, first list the changes in your reply. Make the changes one at a time and check each result. Then report what changed and what failed.

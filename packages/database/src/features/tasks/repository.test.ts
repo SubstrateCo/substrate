@@ -346,6 +346,7 @@ test("task comments require their actual project and use three repository statem
       authorName: "Alice",
       authorImage: null,
       authorType: "human",
+      references: [],
     },
   ]);
   expect(previousComments.map((row) => row.id)).toEqual([comment.id]);

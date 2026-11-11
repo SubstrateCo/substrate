@@ -73,9 +73,20 @@ export function useTaskUpdate(organizationId: string, projectEntityId: string) {
 export function invalidateTasksWrite(client: QueryClient, input: TasksWrite, id: string) {
   const organizationId = input.organizationId;
   if (input.action === "comment")
-    return client.invalidateQueries({
-      queryKey: queryKeys.taskComments(organizationId, input.projectEntityId, id),
-    });
+    return Promise.all([
+      client.invalidateQueries({
+        queryKey: queryKeys.taskComments(organizationId, input.projectEntityId, id),
+      }),
+      // The comment may reference any task or project.
+      client.invalidateQueries({ queryKey: queryKeys.commentMentions(organizationId) }),
+    ]);
+  if (input.action === "addTaskLink" || input.action === "removeTaskLink")
+    // The other task may be in another cached project, and both tasks get a history row.
+    return Promise.all([
+      client.invalidateQueries({ queryKey: [...queryKeys.tasks(organizationId), "project"] }),
+      client.invalidateQueries({ queryKey: queryKeys.activity(organizationId) }),
+      client.invalidateQueries({ queryKey: queryKeys.related(organizationId) }),
+    ]);
   const projectId = "projectEntityId" in input ? input.projectEntityId : id;
   const access = input.action === "share" || input.action === "revoke";
   const detail = client.getQueryData<Awaited<ReturnType<typeof getProject>>>(

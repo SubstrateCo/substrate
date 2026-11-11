@@ -7,8 +7,8 @@ export type TaskFilters = {
   query: string;
   /** "any", "unassigned", or an actor entity ID. */
   assignee: string;
-  /** "active" hides completed and canceled tasks. */
-  scope: "all" | "active";
+  /** "active" hides completed and canceled tasks. "blocked" keeps open tasks with an open blocker. */
+  scope: "all" | "active" | "blocked";
   sort: TaskSort;
 };
 
@@ -38,12 +38,17 @@ const comparers: Record<Exclude<TaskSort, "default">, (a: Task, b: Task) => numb
 };
 
 /** The tasks that match the filters, in the chosen order. The default order is the server's. */
-export function filterTasks(tasks: readonly Task[], filters: TaskFilters) {
+export function filterTasks(
+  tasks: readonly Task[],
+  filters: TaskFilters,
+  blocked: ReadonlySet<string> = new Set(),
+) {
   const query = filters.query.trim().toLocaleLowerCase();
   const matches = tasks.filter(
     (task) =>
       (!query || task.title.toLocaleLowerCase().includes(query)) &&
       (filters.scope === "all" || !closed.has(task.status)) &&
+      (filters.scope !== "blocked" || blocked.has(task.entityId)) &&
       (filters.assignee === "any" ||
         (filters.assignee === "unassigned"
           ? !task.assigneeActorEntityId

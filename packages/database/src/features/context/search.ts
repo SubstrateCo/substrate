@@ -28,6 +28,7 @@ import {
 } from "../messaging/schema";
 import { projects } from "../projects/schema";
 import { liveTask } from "../tasks/access";
+import { taskLinks } from "../tasks/links.schema";
 import { tasks } from "../tasks/tasks.schema";
 import { workspaceContext, requireWork } from "./access";
 import { messageExcerpts } from "./message-excerpt";
@@ -169,6 +170,11 @@ export async function contextSearch(
         FROM ${entityLinks}
         WHERE ${entityLinks.organizationId} = ${scope.organizationId}
           AND (${entityLinks.sourceEntityId} = ${anchorId} OR ${entityLinks.targetEntityId} = ${anchorId})
+        UNION SELECT CASE WHEN ${taskLinks.sourceTaskEntityId} = ${anchorId}
+          THEN ${taskLinks.targetTaskEntityId} ELSE ${taskLinks.sourceTaskEntityId} END
+        FROM ${taskLinks}
+        WHERE ${taskLinks.organizationId} = ${scope.organizationId}
+          AND (${taskLinks.sourceTaskEntityId} = ${anchorId} OR ${taskLinks.targetTaskEntityId} = ${anchorId})
         UNION SELECT ${tasks.entityId} FROM ${tasks}
         WHERE ${tasks.organizationId} = ${scope.organizationId}
           AND ${anchorProjectId ? eq(tasks.projectEntityId, anchorProjectId) : sql`true`}

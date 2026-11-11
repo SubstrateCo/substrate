@@ -241,6 +241,56 @@ test("task edits refresh the affected project, labels, activity and notification
   }
 });
 
+test("a link refreshes every cached project and task history; a comment refreshes comment backlinks", async () => {
+  const fixture = mount({
+    project: { key: queryKeys.project("org", "project"), data: { tasks: [{ entityId: taskId }] } },
+    // The other end of a link may be in another project.
+    otherProject: { key: queryKeys.project("org", "other"), data: { tasks: [] } },
+    catalog: { key: queryKeys.projects("org") },
+    comments: { key: queryKeys.taskComments("org", "project", taskId) },
+    mentions: { key: queryKeys.commentMentions("org", "other") },
+    activity: { key: [...context, "activity", taskId] },
+    otherActivity: { key: [...context, "activity", "other"] },
+    notifications: { key: [...context, "notifications"] },
+    foreign: { key: queryKeys.project("foreign", "project"), data: { tasks: [] } },
+  });
+  const target = { organizationId: "org", projectEntityId: "project", taskEntityId: taskId };
+  const quiet = { catalog: 0, notifications: 0, foreign: 0 };
+  try {
+    await invalidateTasksWrite(
+      fixture.client,
+      { ...target, action: "addTaskLink", relation: "blocked_by", otherTaskEntityId: "other" },
+      taskId,
+    );
+    expect(fixture.reads).toEqual({
+      ...quiet,
+      project: 1,
+      otherProject: 1,
+      comments: 0,
+      mentions: 0,
+      activity: 1,
+      otherActivity: 1,
+    });
+    for (const name of Object.keys(fixture.reads)) fixture.reads[name] = 0;
+    await invalidateTasksWrite(
+      fixture.client,
+      { ...target, action: "comment", body: "See @[task:other]" },
+      taskId,
+    );
+    expect(fixture.reads).toEqual({
+      ...quiet,
+      project: 0,
+      otherProject: 0,
+      comments: 1,
+      mentions: 1,
+      activity: 0,
+      otherActivity: 0,
+    });
+  } finally {
+    fixture.close();
+  }
+});
+
 test("a blocked search does not block a local mutation or erase stale-only invalidation when it finishes", async () => {
   const client = new QueryClient();
   const initial = Promise.withResolvers<string[]>();

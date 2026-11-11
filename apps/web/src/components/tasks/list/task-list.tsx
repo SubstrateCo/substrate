@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 
 import { ContentNotice } from "../../feedback/content-notice";
 import { TaskBoard } from "../board/task-board";
+import { blockedTaskIds } from "../links/task-relations";
 import { TaskStatusIcon } from "../task-cues/task-status-icon";
 import type { ProjectDetail } from "../types";
 import {
@@ -45,7 +46,8 @@ export function TaskList({
     detail.tasks.some((task) => task.assigneeActorEntityId === actor.entityId),
   );
   const filtered = hasActiveFilters(filters);
-  const tasks = filterTasks(detail.tasks, filters);
+  const blocked = blockedTaskIds(detail.links, detail.tasks);
+  const tasks = filterTasks(detail.tasks, filters, blocked);
   const noMatches = filtered && !tasks.length;
   const tasksByStatus = new Map<TaskStatus, typeof tasks>();
   for (const task of tasks) {
@@ -165,6 +167,7 @@ export function TaskList({
                           ? tasksById.get(task.parentTaskEntityId)?.title
                           : undefined
                       }
+                      blocked={blocked.has(task.entityId)}
                       selected={task.entityId === selectedId}
                       statusPending={statusPending}
                       onSelect={() => onSelect(task.entityId)}

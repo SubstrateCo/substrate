@@ -5,6 +5,7 @@ import type {
   taskRequest,
   tasksWorkspace,
   tasksWrite,
+  workRequest,
 } from "@startup-os/contracts/tasks/input";
 import { createRepositories } from "@startup-os/database";
 import { ensureOwnedAgentActors, resolveHumanActor } from "@startup-os/database/provisioning";
@@ -57,10 +58,18 @@ export function listTaskComments(headers: Headers, input: z.output<typeof taskRe
   });
 }
 
+export function listCommentMentions(headers: Headers, input: z.output<typeof workRequest>) {
+  return serviceResult(async () => {
+    const repositories = await repositoriesForSession(headers, input.organizationId);
+    return repositories.tasks.commentMentions(input.entityId);
+  });
+}
+
 export function mutateTasks(headers: Headers, input: z.output<typeof tasksWrite>) {
   return serviceResult(async () => {
     requireOrigin(headers);
     const repositories = await repositoriesForSession(headers, input.organizationId);
+    let mentioned: string[] = [];
     const result = await repositories.transaction(async (repos) => {
       switch (input.action) {
         case "createProject":
@@ -77,7 +86,20 @@ export function mutateTasks(headers: Headers, input: z.output<typeof tasksWrite>
           await repos.tasks.update(input.taskEntityId, input, input.projectEntityId);
           return { id: input.taskEntityId };
         case "comment":
-          await repos.tasks.addComment(input.taskEntityId, input.body, input.projectEntityId);
+          mentioned = (
+            await repos.tasks.addComment(input.taskEntityId, input.body, input.projectEntityId)
+          ).notified;
+          return { id: input.taskEntityId };
+        case "addTaskLink":
+          await repos.tasks.addLink(
+            input.taskEntityId,
+            input.relation,
+            input.otherTaskEntityId,
+            input.projectEntityId,
+          );
+          return { id: input.taskEntityId };
+        case "removeTaskLink":
+          await repos.tasks.removeLink(input.taskEntityId, input.linkId, input.projectEntityId);
           return { id: input.taskEntityId };
         case "share":
           // Grants through this API apply only to projects.
@@ -108,6 +130,11 @@ export function mutateTasks(headers: Headers, input: z.output<typeof tasksWrite>
     )
       hints.push({
         audience: realtimeKeys.actor(input.organizationId, input.assigneeActorEntityId),
+        domain: "notifications",
+      });
+    for (const actorEntityId of mentioned)
+      hints.push({
+        audience: realtimeKeys.actor(input.organizationId, actorEntityId),
         domain: "notifications",
       });
     await publishRefresh(hints);

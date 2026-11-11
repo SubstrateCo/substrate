@@ -1,3 +1,5 @@
+import type { ComponentProps } from "react";
+
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
 import { isAccessFailure } from "../../feedback/request-failure";
@@ -15,6 +17,7 @@ export function TaskComments({
   onRetry,
   onSend,
   onDirtyChange,
+  renderReferences,
 }: {
   canComment: boolean;
   comments: Comment[];
@@ -25,6 +28,7 @@ export function TaskComments({
   onRetry: () => void;
   onSend: (body: string, onSuccess: () => void) => void;
   onDirtyChange: (dirty: boolean) => void;
+  renderReferences?: ComponentProps<typeof TaskCommentForm>["renderReferences"];
 }) {
   const unavailable = isAccessFailure(error);
   return (
@@ -59,6 +63,7 @@ export function TaskComments({
           error={actionError}
           onSend={onSend}
           onDirtyChange={onDirtyChange}
+          renderReferences={renderReferences}
         />
       )}
     </section>
