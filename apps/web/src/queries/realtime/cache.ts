@@ -169,11 +169,14 @@ export function createRealtimeCache({
   organizationId,
   userId,
   revalidate,
+  batchMs = 50,
 }: {
   queryClient: QueryClient;
   organizationId: string | null;
   userId: string;
   revalidate: () => Promise<void>;
+  /** How long change hints collect before one refresh. */
+  batchMs?: number;
 }) {
   const seen = new Set<string>();
   const pending = new Map<string, RealtimeQueryTarget>();
@@ -342,7 +345,7 @@ export function createRealtimeCache({
     if (disposed || flushing || timer !== undefined) return;
     timer = setTimeout(() => {
       void flush().catch(() => {});
-    }, 50);
+    }, batchMs);
   }
   return {
     forbidden: revoke,

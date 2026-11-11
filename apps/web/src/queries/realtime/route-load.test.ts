@@ -38,6 +38,7 @@ for (const trigger of ["ready", "profile", "session"] as const) {
       organizationId: "org",
       userId: "user",
       revalidate: async () => {},
+      batchMs: 5,
     });
     try {
       expect(reads).toBe(1);
@@ -52,7 +53,7 @@ for (const trigger of ["ready", "profile", "session"] as const) {
               id: crypto.randomUUID(),
             },
       );
-      await new Promise((resolve) => setTimeout(resolve, 80));
+      await new Promise((resolve) => setTimeout(resolve, 25));
       initial.resolve(["original session"]);
       expect(await outcome).toEqual({ status: "resolved", data: ["original session"] });
       expect(aborted).toBe(false);
@@ -99,6 +100,7 @@ for (const trigger of ["ready", "organization"] as const) {
       revalidate: async () => {
         routed++;
       },
+      batchMs: 5,
     });
     try {
       expect(client.getQueryCache().find({ queryKey: key })?.getObserversCount()).toBe(0);
@@ -113,7 +115,7 @@ for (const trigger of ["ready", "organization"] as const) {
               id: crypto.randomUUID(),
             },
       );
-      await new Promise((resolve) => setTimeout(resolve, 80));
+      await new Promise((resolve) => setTimeout(resolve, 25));
       initial.resolve(["original snapshot"]);
       expect(await outcome).toEqual({ status: "resolved", data: ["original snapshot"] });
       await resync;

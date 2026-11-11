@@ -79,6 +79,7 @@ for (const trigger of ["tasks", "ready", "messaging"] as const) {
       organizationId: "org",
       userId: "user",
       revalidate: async () => {},
+      batchMs: 5,
     });
     try {
       expect(reads).toBe(1);
@@ -93,7 +94,7 @@ for (const trigger of ["tasks", "ready", "messaging"] as const) {
               id: crypto.randomUUID(),
             },
       );
-      await new Promise((resolve) => setTimeout(resolve, 80));
+      await new Promise((resolve) => setTimeout(resolve, 25));
       initial.resolve(["obsolete project"]);
       await received;
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -132,6 +133,7 @@ for (const domain of ["messaging", "context"] as const) {
       organizationId: "org",
       userId: "user",
       revalidate: async () => {},
+      batchMs: 5,
     });
     try {
       const received = cache.receive({
@@ -141,7 +143,7 @@ for (const domain of ["messaging", "context"] as const) {
         organizationId: "org",
         id: crypto.randomUUID(),
       });
-      await new Promise((resolve) => setTimeout(resolve, 80));
+      await new Promise((resolve) => setTimeout(resolve, 25));
       initial.resolve(["retained result"]);
       await received;
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -175,6 +177,7 @@ test("refresh retains loaded content until the replacement request completes", a
     organizationId: "org",
     userId: "user",
     revalidate: async () => {},
+    batchMs: 5,
   });
   try {
     await cache.receive({
@@ -184,7 +187,7 @@ test("refresh retains loaded content until the replacement request completes", a
       organizationId: "org",
       id: crypto.randomUUID(),
     });
-    await new Promise((resolve) => setTimeout(resolve, 80));
+    await new Promise((resolve) => setTimeout(resolve, 25));
     expect(client.getQueryData(key)).toEqual(["loaded project"]);
     expect(observer.getCurrentResult().fetchStatus).toBe("fetching");
     replacement.resolve(["current project"]);
@@ -259,6 +262,7 @@ test("a plain thread reply refreshes related discussion counts without reference
     organizationId: "org",
     userId: "user",
     revalidate: async () => {},
+    batchMs: 5,
   });
   try {
     await cache.receive({
@@ -269,7 +273,7 @@ test("a plain thread reply refreshes related discussion counts without reference
       conversationId: "conversation",
       id: crypto.randomUUID(),
     });
-    await new Promise((resolve) => setTimeout(resolve, 80));
+    await new Promise((resolve) => setTimeout(resolve, 25));
     expect(reads).toBe(1);
     expect(client.getQueryData(key)).toEqual({ replyCount: 1 });
   } finally {

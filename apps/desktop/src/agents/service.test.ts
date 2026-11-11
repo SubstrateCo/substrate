@@ -1,7 +1,7 @@
 import type { RealtimeDomain, RealtimeUpdate } from "@startup-os/contracts/realtime";
 
 import { createAgentWorkService } from "./service.ts";
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, expect, jest, test } from "bun:test";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -21,11 +21,12 @@ function change(domain: RealtimeDomain): RealtimeUpdate {
 }
 
 async function settle() {
-  for (let index = 0; index < 40; index++) await new Promise((resolve) => setTimeout(resolve, 0));
+  for (let index = 0; index < 40; index++) await new Promise((resolve) => setImmediate(resolve));
 }
 
 let cleanup: (() => Promise<void>) | undefined;
 afterEach(async () => {
+  jest.useRealTimers();
   await cleanup?.();
   cleanup = undefined;
 });
@@ -113,6 +114,7 @@ test("agent work reuses the verified session until a session, access or organiza
 });
 
 test("a server call denied with UNAUTHENTICATED verifies the session again", async () => {
+  jest.useFakeTimers();
   const f = await serviceFixture();
   f.service.start();
   await f.service.call("agents");
@@ -122,7 +124,8 @@ test("a server call denied with UNAUTHENTICATED verifies the session again", asy
   f.deniedOnce.add("/api/v1/agent-work/device/wakes/pull");
   f.service.onRealtime(change("agent-work"));
   // Agent-work hints pull after a short window.
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  await settle();
+  jest.advanceTimersByTime(300);
   await settle();
   expect(f.deniedOnce.size).toBe(0);
   await f.service.call("agents");

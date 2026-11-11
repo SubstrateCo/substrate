@@ -239,9 +239,7 @@ test("status reads during a burst of changes ask the server for open requests at
   for (let index = 0; index < 5; index++)
     expect((await f.runtime.agents())[0]?.state).toBe("needs_you");
   await f.advance(1_000);
-  expect(
-    f.posts.filter((post) => post.method === "openRequestIds").length - before,
-  ).toBeLessThanOrEqual(1);
+  expect(f.posts.filter((post) => post.method === "openRequestIds").length - before).toBe(1);
 });
 
 test("a tool start that only changes the activity publishes later, and a state change publishes at once", async () => {

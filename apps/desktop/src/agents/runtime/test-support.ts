@@ -99,10 +99,9 @@ export async function runtimeFixture(
     now?: number;
   } = {},
 ) {
-  const location = options.path
-    ? { path: options.path, remove: async () => {} }
-    : await openStore();
-  const store = await AgentWorkStore.open(location.path);
+  // A restart reuses the given file. Other tests need no file.
+  const path = options.path ?? ":memory:";
+  const store = await AgentWorkStore.open(path);
   let now = options.now ?? Date.parse("2026-06-01T10:00:00Z");
   const wakes: AgentWakeView[] = [];
   const acked = new Set<string>();
@@ -376,7 +375,7 @@ export async function runtimeFixture(
   let runtime = createRuntime();
 
   async function settle() {
-    for (let index = 0; index < 40; index++) await new Promise((resolve) => setTimeout(resolve, 0));
+    for (let index = 0; index < 40; index++) await new Promise((resolve) => setImmediate(resolve));
   }
 
   interface OwnerMessageInput {
@@ -473,7 +472,7 @@ export async function runtimeFixture(
     acked,
     wakes,
     settle,
-    path: location.path,
+    path,
     now: () => now,
     /** Moves the clock and runs due timers. */
     advance,
@@ -529,7 +528,6 @@ export async function runtimeFixture(
     async close() {
       runtime.dispose();
       store.close();
-      await location.remove();
     },
   };
 }

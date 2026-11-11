@@ -31,13 +31,14 @@ test("a task hint during an in-flight read stays stale when its panel becomes hi
     organizationId: "org",
     userId: "user",
     revalidate: async () => {},
+    batchMs: 5,
   });
   try {
     await cache.receive(change("tasks"));
-    await new Promise((resolve) => setTimeout(resolve, 80));
+    await new Promise((resolve) => setTimeout(resolve, 25));
     observer.setOptions({ ...options, enabled: false });
     first.resolve(["old snapshot"]);
-    await new Promise((resolve) => setTimeout(resolve, 80));
+    await new Promise((resolve) => setTimeout(resolve, 25));
     expect(reads).toBe(1);
     expect(client.getQueryState(key)?.isInvalidated).toBe(true);
     observer.setOptions({ ...options, enabled: true });
@@ -71,14 +72,15 @@ for (const domain of ["context", "profile"] as const) {
         organizationId: "org",
         userId: "user",
         revalidate: async () => {},
+        batchMs: 5,
       });
       try {
         if (overlap === "before") await cache.receive(change(domain));
         await cache.receive(change("tasks"));
         if (overlap === "after") await cache.receive(change(domain));
-        await Bun.sleep(80);
+        await Bun.sleep(25);
         first.resolve(["old snapshot"]);
-        await Bun.sleep(80);
+        await Bun.sleep(25);
         const refresh = domain === "profile" && overlap !== "none";
         expect(reads).toBe(refresh ? 2 : 1);
         expect(client.getQueryState(key)?.isInvalidated).toBe(!refresh);
@@ -210,6 +212,7 @@ test("a new-message hint reads history once and loaded message context not at al
     organizationId: "org",
     userId: "user",
     revalidate: async () => {},
+    batchMs: 5,
   });
   try {
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -218,10 +221,10 @@ test("a new-message hint reads history once and loaded message context not at al
       conversationId: "conversation",
       scope: "messages",
     });
-    await new Promise((resolve) => setTimeout(resolve, 80));
+    await new Promise((resolve) => setTimeout(resolve, 25));
     expect(reads).toEqual({ messages: 2, pages: 1, reactions: 2 });
     await cache.receive({ ...change("messaging"), conversationId: "conversation" });
-    await new Promise((resolve) => setTimeout(resolve, 80));
+    await new Promise((resolve) => setTimeout(resolve, 25));
     expect(reads).toEqual({ messages: 3, pages: 2, reactions: 3 });
   } finally {
     cache.dispose();
@@ -330,13 +333,14 @@ test("conversation hints refresh root and reply targets without crossing convers
     organizationId: "org",
     userId: "user",
     revalidate: async () => {},
+    batchMs: 5,
   });
   try {
     await cache.receive({ ...change("messaging", "foreign"), conversationId: "viewed" });
-    await Bun.sleep(80);
+    await Bun.sleep(25);
     expect(reads).toEqual([0, 0, 0, 0]);
     await cache.receive({ ...change("messaging"), conversationId: "viewed" });
-    await Bun.sleep(80);
+    await Bun.sleep(25);
     expect(observers.map((observer) => observer.getCurrentResult().data)).toEqual([
       "fresh",
       "fresh",
@@ -345,7 +349,7 @@ test("conversation hints refresh root and reply targets without crossing convers
     ]);
     expect(reads).toEqual([1, 1, 0, 0]);
     await cache.receive(change("messaging"));
-    await Bun.sleep(80);
+    await Bun.sleep(25);
     expect(reads).toEqual([2, 2, 1, 0]);
   } finally {
     cache.dispose();
@@ -375,18 +379,19 @@ test("conversation hints refresh only matching mounted context pages, with a bro
     organizationId: "org",
     userId: "user",
     revalidate: async () => {},
+    batchMs: 5,
   });
   try {
     await cache.receive({ ...change("messaging"), conversationId: "other" });
-    await Bun.sleep(80);
+    await Bun.sleep(25);
     expect(reads).toEqual([0, 1]);
     expect(observers[0]!.getCurrentResult().data).toEqual(["old"]);
     await cache.receive({ ...change("messaging"), conversationId: "viewed" });
-    await Bun.sleep(80);
+    await Bun.sleep(25);
     expect(reads).toEqual([1, 1]);
     expect(observers[0]!.getCurrentResult().data).toEqual(["fresh"]);
     await cache.receive(change("messaging"));
-    await Bun.sleep(80);
+    await Bun.sleep(25);
     expect(reads).toEqual([2, 2]);
   } finally {
     cache.dispose();
@@ -423,9 +428,10 @@ test("task activity and related context refresh while task/message search become
       organizationId: "org",
       userId: "user",
       revalidate: async () => {},
+      batchMs: 5,
     });
     await cache.receive(change(domain));
-    await new Promise((resolve) => setTimeout(resolve, 80));
+    await new Promise((resolve) => setTimeout(resolve, 25));
     expect(client.getQueryState(keys.activity)?.isInvalidated).toBe(domain !== "messaging");
     expect(client.getQueryState(keys.related)?.isInvalidated).toBe(true);
     expect(client.getQueryState(keys.search)?.isInvalidated).toBe(true);
@@ -504,13 +510,14 @@ test("context changes refetch known context families only, leaving notifications
     organizationId: "org",
     userId: "user",
     revalidate: async () => {},
+    batchMs: 5,
   });
   try {
     await client.invalidateQueries({ queryKey: context });
     expect(reads.reduce((sum, count) => sum + count, 0)).toBe(9);
     reads.fill(0);
     await cache.receive(change("context"));
-    await Bun.sleep(80);
+    await Bun.sleep(25);
     expect(reads).toEqual([1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0]);
     expect(client.getQueryState(keys[5]!)?.isInvalidated).toBe(true);
     expect(client.getQueryState(keys[6]!)?.isInvalidated).toBe(true);
@@ -534,15 +541,16 @@ test("task edits refresh titles shown by message links and existing notification
     organizationId: "org",
     userId: "user",
     revalidate: async () => {},
+    batchMs: 5,
   });
   await cache.receive(change("tasks"));
-  await new Promise((resolve) => setTimeout(resolve, 80));
+  await new Promise((resolve) => setTimeout(resolve, 25));
   expect(client.getQueryState(linked)?.isInvalidated).toBe(true);
   expect(client.getQueryState(notifications)?.isInvalidated).toBe(true);
   expect(client.getQueryState(plain)?.isInvalidated).toBe(false);
   // Reference changes can add links, so they still refresh every page.
   await cache.receive(change("context"));
-  await new Promise((resolve) => setTimeout(resolve, 80));
+  await new Promise((resolve) => setTimeout(resolve, 25));
   expect(client.getQueryState(plain)?.isInvalidated).toBe(true);
   cache.dispose();
   client.clear();
@@ -576,11 +584,12 @@ test("a task hint refreshes one mounted fifty-message context page, and access r
     organizationId: "org",
     userId: "user",
     revalidate: async () => {},
+    batchMs: 5,
   });
   try {
     title = "Updated work title";
     await cache.receive(change("tasks"));
-    await new Promise((resolve) => setTimeout(resolve, 80));
+    await new Promise((resolve) => setTimeout(resolve, 25));
     expect(reads).toBe(2);
     expect(client.getQueryData(key)).toEqual(
       Array.from({ length: 50 }, () => ({ links: [{ entityId: "task", title }] })),
@@ -608,15 +617,16 @@ test("duplicate changes coalesce and ready resyncs cached state", async () => {
     organizationId: "org",
     userId: "user",
     revalidate: async () => {},
+    batchMs: 5,
   });
   const event = change("tasks");
   await cache.receive(event);
   await cache.receive(event);
-  await new Promise((resolve) => setTimeout(resolve, 80));
+  await new Promise((resolve) => setTimeout(resolve, 25));
   expect(client.getQueryState(key)?.isInvalidated).toBe(true);
   client.setQueryData(key, ["new"]);
   await cache.receive(event);
-  await new Promise((resolve) => setTimeout(resolve, 80));
+  await new Promise((resolve) => setTimeout(resolve, 25));
   expect(client.getQueryState(key)?.isInvalidated).toBe(false);
   await cache.receive({ version: 1, type: "ready" });
   expect(client.getQueryState(key)?.isInvalidated).toBe(true);
@@ -660,18 +670,19 @@ test("changes during a slow refresh share one follow-up snapshot", async () => {
     organizationId: "org",
     userId: "user",
     revalidate: async () => {},
+    batchMs: 5,
   });
   try {
     snapshot++;
     await cache.receive(change("messaging"));
-    await new Promise((resolve) => setTimeout(resolve, 80));
+    await new Promise((resolve) => setTimeout(resolve, 25));
     for (let index = 0; index < 4; index++) {
       snapshot++;
       await cache.receive(change("messaging"));
-      await new Promise((resolve) => setTimeout(resolve, 80));
+      await new Promise((resolve) => setTimeout(resolve, 25));
     }
     first.resolve();
-    await new Promise((resolve) => setTimeout(resolve, 80));
+    await new Promise((resolve) => setTimeout(resolve, 25));
     expect(client.getQueryData(key)).toBe(snapshot);
     expect(client.getQueryData(threadKey)).toBe(snapshot);
     expect(reads).toBe(2);
@@ -708,6 +719,7 @@ for (const scenario of ["after", "settled", "before", "none"] as const) {
       organizationId: "org",
       userId: "user",
       revalidate: async () => {},
+      batchMs: 5,
     });
     // The local mutation invalidation starts a read before or after its realtime echo arrives.
     const localRead = () => void client.invalidateQueries({ queryKey: key });
@@ -715,7 +727,7 @@ for (const scenario of ["after", "settled", "before", "none"] as const) {
       if (scenario === "before") localRead();
       await cache.receive(change("messaging"));
       if (scenario === "after" || scenario === "settled") localRead();
-      await Bun.sleep(80);
+      await Bun.sleep(25);
       blocked.resolve();
       await Bun.sleep(20);
       expect(reads).toBe(scenario === "before" ? 2 : 1);
