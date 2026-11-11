@@ -76,16 +76,26 @@ export async function authorizePictureMutation(
   session: PictureSession | null,
   repository: Pick<StorageRepository, "requirePictureAccess">,
 ) {
-  if (!session) throw new APIError("UNAUTHORIZED", { message: "Sign in to continue." });
+  if (!session)
+    throw new APIError("UNAUTHORIZED", {
+      code: "UNAUTHENTICATED",
+      message: "Sign in to continue.",
+    });
   if (!session.user.emailVerified)
-    throw new APIError("FORBIDDEN", { message: "Verify your email to continue." });
+    throw new APIError("FORBIDDEN", {
+      code: "EMAIL_NOT_VERIFIED",
+      message: "Verify your email to continue.",
+    });
   const organizationId = session.session.activeOrganizationId ?? null;
   if (
     mutation.purpose === "organization-logo" &&
     mutation.organizationId !== undefined &&
     mutation.organizationId !== organizationId
   )
-    throw new APIError("FORBIDDEN", { message: "Your active workspace changed." });
+    throw new APIError("FORBIDDEN", {
+      code: "WORKSPACE_CHANGED",
+      message: "Your active workspace changed.",
+    });
   const owner = mutation.purpose === "avatar" ? session.user.id : organizationId;
   if (
     mutation.url !== null &&
@@ -99,7 +109,10 @@ export async function authorizePictureMutation(
     );
   } catch (error) {
     if (error instanceof AccessDeniedError)
-      throw new APIError("BAD_REQUEST", { message: "Picture not found or access denied." });
+      throw new APIError("BAD_REQUEST", {
+        code: "NOT_FOUND",
+        message: "Picture not found or access denied.",
+      });
     throw error;
   }
 }

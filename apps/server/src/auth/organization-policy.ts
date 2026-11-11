@@ -1,4 +1,19 @@
+import { APIError } from "better-auth/api";
 import { z } from "zod";
+
+export function rethrowInvitationLookupError(path: string, returned: APIError): void {
+  if (path !== "/organization/get-invitation") return;
+  // Better Auth sends this one failure without a code; give it one so clients never match copy.
+  const uncodedNotFound =
+    returned.statusCode === 400 &&
+    returned.body?.code === undefined &&
+    returned.body?.message === "Invitation not found!";
+  if (uncodedNotFound)
+    throw new APIError("BAD_REQUEST", {
+      ...returned.body,
+      code: "INVITATION_NOT_FOUND",
+    });
+}
 
 export const organizationBody = z.object({ keepCurrentActiveOrganization: z.boolean().optional() });
 export const organizationResult = z

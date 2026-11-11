@@ -1,5 +1,30 @@
 type AuthFailure = { message?: string; code?: string; status?: number };
 
+const accessFailureCodes = new Set([
+  "FORBIDDEN",
+  "UNAUTHORIZED",
+  "UNAUTHENTICATED",
+  "WORKSPACE_CHANGED",
+  "EMAIL_NOT_VERIFIED",
+  "EMAIL_VERIFICATION_REQUIRED_FOR_INVITATION",
+  "ORGANIZATION_NOT_FOUND",
+  "USER_IS_NOT_A_MEMBER_OF_THE_ORGANIZATION",
+  "YOU_ARE_NOT_A_MEMBER_OF_THIS_ORGANIZATION",
+]);
+
+const invitationUnavailableCodes = new Set([
+  "INVITATION_NOT_FOUND",
+  "YOU_ARE_NOT_THE_RECIPIENT_OF_THE_INVITATION",
+]);
+
+export function isAuthAccessFailure(error: AuthError): boolean {
+  return error.code !== undefined && accessFailureCodes.has(error.code);
+}
+
+export function isAuthInvitationUnavailable(error: AuthError): boolean {
+  return error.code !== undefined && invitationUnavailableCodes.has(error.code);
+}
+
 const messages = new Map([
   ["INVALID_EMAIL_OR_PASSWORD", "Invalid email or password."],
   ["USER_ALREADY_EXISTS", "An account with this email already exists."],

@@ -1,9 +1,41 @@
 import { roles } from "@substrate/contracts/auth/permissions";
 
-import { organizationResult, rememberedOrganization } from "./organization-policy";
+import {
+  organizationResult,
+  rememberedOrganization,
+  rethrowInvitationLookupError,
+} from "./organization-policy";
+import { APIError } from "better-auth/api";
 import { describe, expect, test } from "bun:test";
 
 describe("organization policy", () => {
+  test("invitation lookup failures expose a stable code without changing legacy status or copy", () => {
+    const error = new APIError("BAD_REQUEST", { message: "Invitation not found!" });
+    expect(() => rethrowInvitationLookupError("/organization/get-invitation", error)).toThrow(
+      expect.objectContaining({
+        statusCode: 400,
+        body: { code: "INVITATION_NOT_FOUND", message: "Invitation not found!" },
+      }),
+    );
+  });
+
+  test("invitation error normalization leaves other paths and results alone", () => {
+    const missing = new APIError("BAD_REQUEST", { message: "Invitation not found!" });
+    expect(
+      rethrowInvitationLookupError("/organization/accept-invitation", missing),
+    ).toBeUndefined();
+    for (const result of [
+      new APIError("FORBIDDEN", { message: "Invitation not found!" }),
+      new APIError("BAD_REQUEST", { message: "Invalid request input." }),
+      new APIError("BAD_REQUEST", {
+        code: "EXISTING_CODE",
+        message: "Invitation not found!",
+      }),
+    ]) {
+      expect(rethrowInvitationLookupError("/organization/get-invitation", result)).toBeUndefined();
+    }
+  });
+
   test("only owners can send or cancel invitations", () => {
     for (const role of [roles.admin, roles.member]) {
       expect(role.authorize({ invitation: ["create"] }).success).toBe(false);

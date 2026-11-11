@@ -18,6 +18,7 @@ import {
   organizationBody,
   organizationResult,
   rememberedOrganization,
+  rethrowInvitationLookupError,
 } from "./organization-policy";
 import {
   authorizePictureMutation,
@@ -125,6 +126,8 @@ export function createAuth(deps: {
         await authorizePictureMutation(mutation, session, createStorageRepository(db));
       }),
       after: createAuthMiddleware(async (ctx) => {
+        if (ctx.context.returned instanceof APIError)
+          rethrowInvitationLookupError(ctx.path, ctx.context.returned);
         const body = organizationBody.safeParse(ctx.body ?? {});
         const result = organizationResult.safeParse(ctx.context.returned);
         if (!body.success || !result.success) return;

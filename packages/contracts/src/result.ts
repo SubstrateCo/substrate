@@ -1,13 +1,32 @@
-export type ServiceErrorCode =
-  | "INVALID_INPUT"
-  | "UNAUTHENTICATED"
-  | "FORBIDDEN"
+export const serviceErrorCodes = [
+  "INVALID_INPUT",
+  "UNAUTHENTICATED",
+  "FORBIDDEN",
   /** The request names a workspace that is no longer the session's active one. */
-  | "WORKSPACE_CHANGED"
-  | "NOT_FOUND"
-  | "CONFLICT"
-  | "PAYLOAD_TOO_LARGE"
-  | "INTERNAL_ERROR";
+  "WORKSPACE_CHANGED",
+  "NOT_FOUND",
+  "CONFLICT",
+  "PAYLOAD_TOO_LARGE",
+  "INTERNAL_ERROR",
+] as const;
+
+export type ServiceErrorCode = (typeof serviceErrorCodes)[number];
+export type ServiceErrorKind = "access" | "validation" | "conflict" | "server";
+
+export const serviceErrorKinds = {
+  INVALID_INPUT: "validation",
+  UNAUTHENTICATED: "access",
+  FORBIDDEN: "access",
+  WORKSPACE_CHANGED: "access",
+  NOT_FOUND: "access",
+  CONFLICT: "conflict",
+  PAYLOAD_TOO_LARGE: "validation",
+  INTERNAL_ERROR: "server",
+} as const satisfies Record<ServiceErrorCode, ServiceErrorKind>;
+
+export function serviceErrorKind(code: ServiceErrorCode): ServiceErrorKind {
+  return serviceErrorKinds[code];
+}
 
 export type ServiceResult<T> =
   | { success: true; data: T }

@@ -84,7 +84,15 @@ test("classifies rejected requests but not response parsing failures as connecti
         },
       }),
     ).catch((error) => error),
-  ).toBe(parsingError);
+  ).toMatchObject({ code: "INTERNAL_ERROR", status: 200 });
   const cancellation = new DOMException("Aborted", "AbortError");
   expect(await readResult(Promise.reject(cancellation)).catch((error) => error)).toBe(cancellation);
+});
+
+test("non-JSON gateway failures retain their HTTP status", async () => {
+  const error = await readResult(
+    Promise.resolve(new Response("<html>Bad gateway</html>", { status: 502 })),
+  ).catch((error) => error);
+  expect(error).toBeInstanceOf(ApiError);
+  expect(error).toMatchObject({ code: "INTERNAL_ERROR", status: 502 });
 });

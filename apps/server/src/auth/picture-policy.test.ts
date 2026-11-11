@@ -85,6 +85,7 @@ test("native mutations derive identity from verified session and only accept the
   expect(seen).toEqual(["alice:org:avatar", "alice:org:avatar"]);
   await expect(authorizePictureMutation(valid, null, repository)).rejects.toMatchObject({
     statusCode: 401,
+    body: { code: "UNAUTHENTICATED", message: "Sign in to continue." },
   });
   await expect(
     authorizePictureMutation(
@@ -92,7 +93,10 @@ test("native mutations derive identity from verified session and only accept the
       { ...session, user: { ...session.user, emailVerified: false } },
       repository,
     ),
-  ).rejects.toMatchObject({ statusCode: 403 });
+  ).rejects.toMatchObject({
+    statusCode: 403,
+    body: { code: "EMAIL_NOT_VERIFIED", message: "Verify your email to continue." },
+  });
   await expect(
     authorizePictureMutation(
       { ...valid, url: `/api/v1/files/pictures/avatar/bob?v=${id}` },
@@ -106,7 +110,10 @@ test("native mutations derive identity from verified session and only accept the
       session,
       repository,
     ),
-  ).rejects.toMatchObject({ statusCode: 403 });
+  ).rejects.toMatchObject({
+    statusCode: 403,
+    body: { code: "WORKSPACE_CHANGED", message: "Your active workspace changed." },
+  });
   await authorizePictureMutation(
     { ...valid, purpose: "organization-logo", url: logo },
     session,
@@ -118,5 +125,8 @@ test("native mutations derive identity from verified session and only accept the
         throw new AccessDeniedError();
       },
     }),
-  ).rejects.toMatchObject({ statusCode: 400 });
+  ).rejects.toMatchObject({
+    statusCode: 400,
+    body: { code: "NOT_FOUND", message: "Picture not found or access denied." },
+  });
 });

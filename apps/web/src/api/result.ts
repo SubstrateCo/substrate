@@ -34,7 +34,16 @@ export async function readResult<T>(
     if (error instanceof TypeError) throw new NetworkError(error);
     throw error;
   }
-  const result = await resolved.json();
+  let result;
+  try {
+    result = await resolved.json();
+  } catch {
+    throw new ApiError(
+      "INTERNAL_ERROR",
+      "The server returned an invalid response.",
+      resolved.status,
+    );
+  }
   if (!result.success) {
     throw new ApiError(result.error.code, result.error.message, resolved.status, result.error);
   }
