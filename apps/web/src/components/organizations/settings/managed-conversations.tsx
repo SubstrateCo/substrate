@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { useRef, useState } from "react";
+import { useRef } from "react";
 
 import { ManagedConversations as ManagedConversationsView } from "./managed-conversations-view";
+import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { SettingsPanel } from "@/components/layout/settings-page";
 import { DeleteConversationDialog } from "@/components/messaging/conversations/actions/delete-conversation-dialog";
 import { OwnerDialog } from "@/components/messaging/conversations/actions/owner-dialog";
@@ -18,9 +19,13 @@ import { toast } from "sonner";
 
 export function ManagedConversations({ organizationId }: { organizationId: string }) {
   const list = useQuery(managedConversationsQueryOptions(organizationId));
-  const [dialog, setDialog] = useState<{ kind: "transfer" | "delete" | "members"; id: string }>();
-  const launcher = useRef<HTMLElement | null>(null);
   const fallback = useRef<HTMLDivElement>(null);
+  const {
+    value: dialog,
+    open,
+    close,
+    restoreFocus,
+  } = useStateDialog<{ kind: "transfer" | "delete" | "members"; id: string }>(fallback);
   const { remove, transfer } = useConversationManagement(organizationId);
   const impact = useQuery({
     ...deleteImpactQueryOptions(organizationId, dialog?.id ?? ""),
@@ -32,19 +37,6 @@ export function ManagedConversations({ organizationId }: { organizationId: strin
     ? conversationLabel({ ...target, name: target.name ?? "this group message" })
     : "this group message";
   const deleteLabel = target?.kind === "channel" ? "Delete channel" : "Delete group";
-  const close = () => setDialog(undefined);
-  const restoreFocus = () => {
-    if (launcher.current?.isConnected) launcher.current.focus();
-    else fallback.current?.focus();
-  };
-  const open = (
-    kind: "transfer" | "delete" | "members",
-    id: string,
-    trigger: HTMLElement | null,
-  ) => {
-    launcher.current = trigger;
-    setDialog({ kind, id });
-  };
   return (
     <SettingsPanel
       title="Conversations"
@@ -57,9 +49,9 @@ export function ManagedConversations({ organizationId }: { organizationId: strin
           loading={list.isPending}
           error={list.error}
           onRetry={() => void list.refetch()}
-          onAddMembers={(id, trigger) => open("members", id, trigger)}
-          onTransfer={(id, trigger) => open("transfer", id, trigger)}
-          onDelete={(id, trigger) => open("delete", id, trigger)}
+          onAddMembers={(id) => open({ kind: "members", id })}
+          onTransfer={(id) => open({ kind: "transfer", id })}
+          onDelete={(id) => open({ kind: "delete", id })}
         />
       </div>
       {dialog?.kind === "members" && target && (

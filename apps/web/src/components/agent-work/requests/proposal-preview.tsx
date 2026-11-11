@@ -6,9 +6,8 @@ import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
+import { hiddenConversation } from "@/lib/agent-work/hidden-records";
 import type { ProposalRecord, ProposalTarget } from "@/lib/agent-work/proposal-target";
-
-export const hiddenConversation = "A conversation you can’t open";
 
 const hiddenText = {
   conversation: hiddenConversation,

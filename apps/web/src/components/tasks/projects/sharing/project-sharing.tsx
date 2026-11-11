@@ -2,6 +2,7 @@ import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import {
   ProjectSharing as ProjectSharingView,
   type AccessChange,
+  type ErrorSurface,
 } from "@/components/tasks/projects/sharing/project-sharing-view";
 import type { ProjectDetail, ProjectPermission } from "@/components/tasks/types";
 import { projectCapabilities } from "@/lib/tasks/project-capabilities";
@@ -24,14 +25,12 @@ export function ProjectSharing({
 }) {
   const share = useTasksMutation(organizationId);
   const scope = { organizationId, projectEntityId: detail.project.entityId };
-  // A change without `onSuccess` comes from a member row or an Undo, with no dialog to show the
-  // error, so it fails in a toast.
-  const apply = (change: AccessChange, onSuccess?: () => void) =>
+  const apply = (change: AccessChange, surface: ErrorSurface) =>
     share.mutate(
       { action: "share", ...scope, actorEntityId: change.actorEntityId, level: change.level },
       {
         onError: (error) => {
-          if (!onSuccess)
+          if (surface.kind === "toast")
             toast.error(actionErrorMessage(error, "Couldn’t change access. Try again."));
         },
         onSuccess: () => {
@@ -39,10 +38,11 @@ export function ProjectSharing({
           toast.success(`${change.name} ${outcomes[change.level]}.`, {
             action: previous && {
               label: "Undo",
-              onClick: () => apply({ ...change, level: previous, previous: undefined }),
+              onClick: () =>
+                apply({ ...change, level: previous, previous: undefined }, { kind: "toast" }),
             },
           });
-          onSuccess?.();
+          if (surface.kind === "dialog") surface.onSuccess();
         },
       },
     );

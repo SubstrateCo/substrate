@@ -12,7 +12,7 @@ import { useStopTurn } from "@/components/agent-work/use-stop-turn";
 import { useNow } from "@/hooks/use-now";
 import { outputLink, proposalResultLink } from "@/lib/agent-work/links";
 import { isOpenRequest } from "@/lib/agent-work/requests";
-import { sessionKindLabels, turnStatus } from "@/lib/agent-work/status";
+import { sessionKindLabels, turnLabel, turnTone } from "@/lib/agent-work/status";
 import { transcriptEntries } from "@/lib/agent-work/transcript";
 import { usageLabel } from "@/lib/agent-work/usage";
 import { messageLink } from "@/lib/navigation/record-links";
@@ -57,13 +57,8 @@ export function TurnTranscript({
   const open = (conversationId: string) =>
     conversations.data?.some((conversation) => conversation.id === conversationId) ?? false;
   const request = (id: string) => requests.find((entry) => entry.id === id);
-  const status =
-    turn &&
-    turnStatus(
-      turn,
-      now,
-      requests.find((entry) => entry.turnId === turn.id && isOpenRequest(entry)),
-    );
+  const openRequest =
+    turn && requests.find((entry) => entry.turnId === turn.id && isOpenRequest(entry));
   const sources = turn?.sourceMessages.map((source) => (
     <RecordName
       key={source.messageId}
@@ -96,8 +91,8 @@ export function TurnTranscript({
   return (
     <TurnTranscriptView
       name={agentName}
-      tone={status?.tone}
-      label={status?.label}
+      tone={turn && turnTone(turn, openRequest)}
+      label={turn && turnLabel(turn, now, openRequest)}
       startedAt={turn?.startedAt ?? turn?.createdAt}
       session={turn && sessionKindLabels[turn.sessionKind]}
       usage={turn && usageLabel(turn.usage)}

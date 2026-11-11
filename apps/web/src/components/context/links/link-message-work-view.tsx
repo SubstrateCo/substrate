@@ -47,6 +47,7 @@ export function LinkMessageWork({
   onRetry,
   onLink,
   onClose,
+  onRestoreFocus,
 }: {
   query: string;
   state: ResourceStatus;
@@ -61,6 +62,8 @@ export function LinkMessageWork({
   onRetry: () => void;
   onLink: (items: LinkableWork[]) => void;
   onClose: () => void;
+  /** Focus a stable control on close, because the menu item that opened the dialog is gone. */
+  onRestoreFocus?: () => void;
 }) {
   // Selection survives tab and search changes, so tasks and projects can be linked together.
   const [chosen, setChosen] = useState(() => new Map<string, LinkableWork>());
@@ -85,7 +88,13 @@ export function LinkMessageWork({
         if (!open && !pending) onClose();
       }}
     >
-      <DialogContent>
+      <DialogContent
+        onCloseAutoFocus={(event) => {
+          if (!onRestoreFocus) return;
+          event.preventDefault();
+          onRestoreFocus();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Link existing work</DialogTitle>
           <DialogDescription>

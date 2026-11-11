@@ -3,8 +3,6 @@ import type { HarnessKind } from "@substrate/contracts/harness";
 
 import { useQuery } from "@tanstack/react-query";
 
-import { useState } from "react";
-
 import { AgentConfiguration } from "./device/agent-configuration";
 import { AgentForm, type AgentSection } from "./editors/agent-form";
 import { AgentPicture } from "./editors/agent-picture";
@@ -29,7 +27,6 @@ export function AgentSettings({
   agentId,
   section = "general",
   onSectionChange,
-  runSettingsDirty = false,
   onClose,
   onCreated,
 }: {
@@ -38,14 +35,12 @@ export function AgentSettings({
   agentId?: string;
   section?: AgentSettingsSection;
   onSectionChange?: (section: AgentSettingsSection) => void;
-  runSettingsDirty?: boolean;
   onClose: () => void;
   onCreated?: (id: string) => void;
 }) {
   const catalog = useQuery(agentCatalogQueryOptions(userId));
   const { save, remove } = useAgentMutations(userId);
   const createFocus = useFocusReturn();
-  const [runSettingsDraft, setRunSettingsDraft] = useState(0);
   const pending = save.isPending || remove.isPending;
   const agent = catalog.data?.agents.find((item) => item.id === agentId);
   const runSettings = catalog.data?.runSettings.find((item) => item.agentId === agentId);
@@ -116,13 +111,10 @@ export function AgentSettings({
           // The mutation outlives each agent's form; show only this agent's failure.
           error={save.variables?.id === agent.id ? save.error : null}
           onResetError={() => save.reset()}
-          runSettingsDirty={runSettingsDirty}
-          // A new key remounts run settings, which drops their draft.
-          onDiscardRunSettings={() => setRunSettingsDraft((count) => count + 1)}
           runSettings={
             runSettings && (
               <AgentRunSettings
-                key={`${agent.id}/${runSettingsDraft}`}
+                key={agent.id}
                 userId={userId}
                 name={agent.name}
                 settings={runSettings}
@@ -140,9 +132,6 @@ export function AgentSettings({
               error={remove.error}
               errorDescription="We couldn’t delete this agent. Try again."
               onReset={() => remove.reset()}
-              onRestoreFocus={() =>
-                document.querySelector<HTMLButtonElement>('button[aria-label="New agent"]')?.focus()
-              }
               onDelete={(onDeleted) =>
                 remove.mutate(agent.id, {
                   onSuccess: () => {

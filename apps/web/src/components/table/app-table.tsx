@@ -9,6 +9,8 @@ import { Table, TableBody, TableCell, TableRow } from "../ui/table";
 import { AppTableHeader } from "./app-table-header";
 import type { AppTableInstance } from "./table";
 import { TablePagination } from "./table-pagination";
+import { actionRow } from "@/components/layout/row-actions";
+import { cn } from "cn";
 import type { LucideIcon } from "lucide-react";
 
 export function AppTable<TData extends RowData>({
@@ -70,7 +72,10 @@ export function AppTable<TData extends RowData>({
             ) : (
               <ul aria-label={name} className="space-y-3">
                 {rows.map((row) => (
-                  <li key={row.id} className="group/row min-w-0 space-y-3 rounded-lg border p-3">
+                  <li
+                    key={row.id}
+                    className={cn(actionRow, "min-w-0 space-y-3 rounded-lg border p-3")}
+                  >
                     {renderMobileRow(row.original)}
                   </li>
                 ))}

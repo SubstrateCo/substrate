@@ -7,7 +7,7 @@ import {
   type ProjectDetail,
   type ProjectPermission,
 } from "../../types";
-import { RowAction, RowActions } from "@/components/layout/row-actions";
+import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
 import {
   Select,
   SelectContent,
@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "cn";
 import { UserMinus } from "lucide-react";
 
 /**
@@ -39,7 +40,7 @@ export function ProjectMemberRow({
   const labelId = useId();
   const editable = canManage && !lastOwner;
   return (
-    <li className="group/row flex min-h-12 items-center gap-3 px-5 py-2">
+    <li className={cn(actionRow, "flex min-h-12 items-center gap-3 px-5 py-2")}>
       <TaskAssigneeAvatar
         name={member.name}
         image={member.image}

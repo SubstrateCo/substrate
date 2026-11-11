@@ -3,11 +3,10 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { TechnicalDetails } from "../technical-details";
 import { WorkIndicator } from "../work-indicator";
 import { PaneState } from "@/components/feedback/pane-state";
-import { PageAside } from "@/components/layout/page-layout";
+import { PageAside, useAsideCovers } from "@/components/layout/page-layout";
 import { Timestamp } from "@/components/time/timestamp";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useMediaQuery } from "@/hooks/use-media-query";
 import type { WorkTone } from "@/lib/agent-work/status";
 import { cn } from "cn";
 import { Bot, Square, X } from "lucide-react";
@@ -62,11 +61,11 @@ export function TurnTranscriptView({
   stopping: boolean;
 }) {
   const close = useRef<HTMLButtonElement>(null);
-  const wide = useMediaQuery("(min-width: 1024px)");
+  const covers = useAsideCovers();
   useEffect(() => {
-    // Below `lg` the panel covers the page, so focus moves into it.
-    if (!wide) close.current?.focus();
-  }, [wide]);
+    // When the panel covers the page, focus moves into it.
+    if (covers) close.current?.focus();
+  }, [covers]);
   let body: ReactNode;
   if (unavailable) body = <PaneState label={unavailable} />;
   else if (timeline)

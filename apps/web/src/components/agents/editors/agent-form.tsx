@@ -19,7 +19,11 @@ import {
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import type { FormDialogEditor } from "@/components/feedback/form-dialog";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
-import { RegisterDraft } from "@/components/feedback/unsaved-drafts";
+import {
+  RegisterDraft,
+  useDiscardDrafts,
+  useDraftKeys,
+} from "@/components/feedback/unsaved-drafts";
 import { FormTextField } from "@/components/forms/form-text-field";
 import {
   GroupTitle,
@@ -40,17 +44,14 @@ const agentFields = saveAgentInput.extend({
 
 export type AgentSection = "skills" | "mcps";
 
-/** The sections whose fields differ from the saved agent, as "general,instructions". */
+/** Whether general and instructions differ from the saved agent. */
 function definitionChanges(values: SaveAgentInput, saved: SaveAgentInput) {
-  const changed: AgentSettingsSection[] = [];
-  if (
+  return [
     values.name !== saved.name ||
-    values.harness !== saved.harness ||
-    (values.model ?? undefined) !== (saved.model ?? undefined)
-  )
-    changed.push("general");
-  if (values.instructions !== saved.instructions) changed.push("instructions");
-  return changed.join(",");
+      values.harness !== saved.harness ||
+      (values.model ?? undefined) !== (saved.model ?? undefined),
+    values.instructions !== saved.instructions,
+  ] as const;
 }
 
 type AgentFormProps = {
@@ -61,10 +62,8 @@ type AgentFormProps = {
   section?: AgentSettingsSection;
   onSectionChange?: (section: AgentSettingsSection) => void;
   picture?: ReactNode;
+  /** Keeps its own draft, registered under "run". */
   runSettings?: ReactNode;
-  runSettingsDirty?: boolean;
-  /** Drops the unsaved run settings, which keep their own draft. */
-  onDiscardRunSettings?: () => void;
   deleteAction?: ReactNode;
   pending: boolean;
   renderCreate?: (editor: FormDialogEditor) => ReactNode;
@@ -94,8 +93,6 @@ export function AgentForm({
   onSectionChange,
   picture,
   runSettings,
-  runSettingsDirty = false,
-  onDiscardRunSettings,
   deleteAction,
   pending,
   renderCreate,
@@ -108,6 +105,8 @@ export function AgentForm({
     ? actionErrorMessage(saveError, "We couldn’t save this agent. Try again.")
     : undefined;
   const formId = useId();
+  const runSettingsDirty = useDraftKeys().includes("run");
+  const discardDrafts = useDiscardDrafts();
   const defaultValues: SaveAgentInput = agent
     ? {
         id: agent.id,
@@ -147,16 +146,24 @@ export function AgentForm({
   return (
     <form.Subscribe
       selector={(state) =>
-        [state.isSubmitting, agent ? definitionChanges(state.values, defaultValues) : ""] as const
+        [
+          state.isSubmitting,
+          ...(agent ? definitionChanges(state.values, defaultValues) : ([false, false] as const)),
+        ] as const
       }
     >
-      {([isSubmitting, definitionKey]) => {
+      {([isSubmitting, generalChanged, instructionsChanged]) => {
         const busy = pending || isSubmitting;
-        const dirty = definitionKey !== "";
+        const dirty = generalChanged || instructionsChanged;
         // Name, model, and instructions share one draft; run settings save on their own.
-        const unsaved = agentSettingsSections.filter((item) =>
-          item === "run" ? runSettingsDirty : definitionKey.split(",").includes(item),
-        );
+        const changed: Record<AgentSettingsSection, boolean> = {
+          general: generalChanged,
+          instructions: instructionsChanged,
+          run: runSettingsDirty,
+          skills: false,
+          mcps: false,
+        };
+        const unsaved = agentSettingsSections.filter((item) => changed[item]);
         const nameField = (
           <form.Field name="name">
             {(field) => (
@@ -359,7 +366,7 @@ export function AgentForm({
               onDiscardAll={() => {
                 form.reset();
                 onResetError?.();
-                if (runSettingsDirty) onDiscardRunSettings?.();
+                discardDrafts();
               }}
             />
           </div>

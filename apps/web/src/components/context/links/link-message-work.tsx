@@ -19,11 +19,13 @@ export function LinkMessageWork({
   messageId,
   linkedIds,
   onClose,
+  onRestoreFocus,
 }: {
   organizationId: string;
   messageId: string;
   linkedIds: string[];
   onClose: () => void;
+  onRestoreFocus?: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<"task" | "project">("task");
@@ -79,6 +81,7 @@ export function LinkMessageWork({
         if (items.length) attach.mutate(items, { onSuccess });
       }}
       onClose={onClose}
+      onRestoreFocus={onRestoreFocus}
     />
   );
 }

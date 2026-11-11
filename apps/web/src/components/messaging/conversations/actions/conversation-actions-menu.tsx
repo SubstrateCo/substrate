@@ -1,5 +1,3 @@
-import type { Ref } from "react";
-
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,7 +10,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Bot, Crown, Ellipsis, Globe, LogOut, Trash2 } from "lucide-react";
 
 export function ConversationActionsMenu({
-  triggerRef,
   leaveLabel = "Leave conversation",
   deleteLabel = "Delete conversation",
   onAgents,
@@ -21,8 +18,6 @@ export function ConversationActionsMenu({
   onDelete,
   onSharing,
 }: {
-  /** The stable button the dialogs opened from this menu give focus back to. */
-  triggerRef?: Ref<HTMLButtonElement>;
   /** "Leave channel" or "Leave group". */
   leaveLabel?: string;
   /** "Delete channel" or "Delete group": the item names what it destroys. */
@@ -40,12 +35,7 @@ export function ConversationActionsMenu({
       <Tooltip>
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>
-            <Button
-              ref={triggerRef}
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Conversation actions"
-            >
+            <Button variant="ghost" size="icon-sm" aria-label="Conversation actions">
               <Ellipsis />
             </Button>
           </DropdownMenuTrigger>

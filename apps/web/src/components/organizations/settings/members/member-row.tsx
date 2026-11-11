@@ -1,6 +1,4 @@
-import { useRef } from "react";
-
-import { RowAction, RowActions } from "@/components/layout/row-actions";
+import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
 import {
@@ -17,6 +15,7 @@ import {
   roleLabel,
   type OrganizationRole,
 } from "@/lib/organizations/member-policy";
+import { cn } from "cn";
 import { UserMinus } from "lucide-react";
 
 export type MemberRowData = {
@@ -39,13 +38,12 @@ export function MemberRow({
 }: {
   member: MemberRowData;
   disabled: boolean;
-  onRoleChange: (role: OrganizationRole, launcher: HTMLElement | null) => void;
-  onRemove: (launcher: HTMLElement | null) => void;
+  onRoleChange: (role: OrganizationRole) => void;
+  onRemove: () => void;
 }) {
   const role = primaryRole(member.role);
-  const roleTrigger = useRef<HTMLButtonElement>(null);
   return (
-    <li className="group/row flex min-w-0 items-center gap-3 px-4 py-2.5 hover:bg-row-hover">
+    <li className={cn(actionRow, "flex min-w-0 items-center gap-3 px-4 py-2.5 hover:bg-row-hover")}>
       <PersonAvatar name={member.name} image={member.image} className="data-[size=sm]:size-8" />
 
       <Tooltip>
@@ -77,11 +75,10 @@ export function MemberRow({
           disabled={disabled}
           onValueChange={(value) => {
             const option = organizationRoles.find((candidate) => candidate.value === value);
-            if (option && option.value !== role) onRoleChange(option.value, roleTrigger.current);
+            if (option && option.value !== role) onRoleChange(option.value);
           }}
         >
           <SelectTrigger
-            ref={roleTrigger}
             variant="ghost"
             size="sm"
             className="w-28"
@@ -107,7 +104,7 @@ export function MemberRow({
             label={`Remove ${member.name}`}
             destructive
             disabled={disabled}
-            onClick={(event) => onRemove(event.currentTarget)}
+            onClick={onRemove}
           >
             <UserMinus aria-hidden="true" />
           </RowAction>

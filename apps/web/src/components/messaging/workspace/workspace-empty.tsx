@@ -4,11 +4,7 @@ import { Button } from "@/components/ui/button";
 import type { Conversation } from "@/lib/messaging/conversations";
 import { MessageCircle } from "lucide-react";
 
-export function WorkspaceEmpty({
-  onCreate,
-}: {
-  onCreate: (kind: Conversation["kind"], launcher: HTMLElement | null) => void;
-}) {
+export function WorkspaceEmpty({ onCreate }: { onCreate: (kind: Conversation["kind"]) => void }) {
   const { openSearch } = useWorkspaceSearch();
   return (
     <div className="m-auto flex max-w-md flex-col items-center p-6 text-center">
@@ -18,13 +14,11 @@ export function WorkspaceEmpty({
         description="Create a channel for your team, join an existing one, or message someone directly."
         action={
           <div className="flex flex-wrap justify-center gap-2">
-            <Button onClick={(event) => onCreate("channel", event.currentTarget)}>
-              New channel
-            </Button>
+            <Button onClick={() => onCreate("channel")}>New channel</Button>
             <Button variant="outline" onClick={() => openSearch("channel")}>
               Browse channels
             </Button>
-            <Button variant="outline" onClick={(event) => onCreate("dm", event.currentTarget)}>
+            <Button variant="outline" onClick={() => onCreate("dm")}>
               New direct message
             </Button>
           </div>

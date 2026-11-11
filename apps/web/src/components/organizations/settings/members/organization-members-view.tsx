@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 
 import { MemberRow, type MemberRowData } from "./member-row";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
@@ -6,6 +6,7 @@ import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { StaleNotice } from "@/components/feedback/stale-notice";
+import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { SettingsPanel } from "@/components/layout/settings-page";
 import { roleLabel, type OrganizationRole } from "@/lib/organizations/member-policy";
 import type { ResourceStatus } from "@/lib/resource-state";
@@ -49,18 +50,17 @@ export function OrganizationMembers({
   onRemove: (memberId: string, onDone: () => void) => void;
   onResetChange: () => void;
 }) {
-  const [confirming, setConfirming] = useState<PendingChange>();
-  const launcher = useRef<HTMLElement | null>(null);
   const list = useRef<HTMLDivElement>(null);
-  const restoreFocus = () => {
-    if (launcher.current?.isConnected && !launcher.current.matches(":disabled"))
-      launcher.current.focus();
-    else list.current?.focus();
-  };
+  const {
+    value: confirming,
+    open: confirm,
+    close: closeConfirm,
+    restoreFocus,
+  } = useStateDialog<PendingChange>(list);
   const blocked = state === "unavailable";
   const visibleMembers = members;
   const close = () => {
-    setConfirming(undefined);
+    closeConfirm();
     onResetChange();
   };
   const count = visibleMembers?.length;
@@ -100,14 +100,8 @@ export function OrganizationMembers({
                 key={member.id}
                 member={member}
                 disabled={changing}
-                onRoleChange={(role, target) => {
-                  launcher.current = target;
-                  setConfirming({ kind: "role", member, role });
-                }}
-                onRemove={(target) => {
-                  launcher.current = target;
-                  setConfirming({ kind: "remove", member });
-                }}
+                onRoleChange={(role) => confirm({ kind: "role", member, role })}
+                onRemove={() => confirm({ kind: "remove", member })}
               />
             ))}
           </ul>

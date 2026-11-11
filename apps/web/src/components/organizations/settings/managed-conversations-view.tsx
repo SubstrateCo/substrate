@@ -1,5 +1,3 @@
-import { useRef } from "react";
-
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { PaneState } from "@/components/feedback/pane-state";
 import { StaleNotice } from "@/components/feedback/stale-notice";
@@ -103,11 +101,10 @@ export function ManagedConversations({
   loading: boolean;
   error?: Error | null;
   onRetry: () => void;
-  onAddMembers: (id: string, launcher: HTMLElement | null) => void;
-  onTransfer: (id: string, launcher: HTMLElement | null) => void;
-  onDelete: (id: string, launcher: HTMLElement | null) => void;
+  onAddMembers: (id: string) => void;
+  onTransfer: (id: string) => void;
+  onDelete: (id: string) => void;
 }) {
-  const menuTriggers = useRef(new Map<string, HTMLButtonElement>());
   if (state === "error" || state === "unavailable")
     return (
       <PaneState
@@ -169,7 +166,7 @@ export function ManagedConversations({
                             variant="ghost"
                             size="icon-sm"
                             aria-label={`Add people to ${name}`}
-                            onClick={(event) => onAddMembers(row.id, event.currentTarget)}
+                            onClick={() => onAddMembers(row.id)}
                           >
                             <UserPlus aria-hidden="true" />
                           </Button>
@@ -177,15 +174,9 @@ export function ManagedConversations({
                         <TooltipContent>Add people</TooltipContent>
                       </Tooltip>
                       <ConversationActionsMenu
-                        triggerRef={(element) => {
-                          if (element) menuTriggers.current.set(row.id, element);
-                          else menuTriggers.current.delete(row.id);
-                        }}
                         deleteLabel={row.kind === "channel" ? "Delete channel" : "Delete group"}
-                        onTransfer={() =>
-                          onTransfer(row.id, menuTriggers.current.get(row.id) ?? null)
-                        }
-                        onDelete={() => onDelete(row.id, menuTriggers.current.get(row.id) ?? null)}
+                        onTransfer={() => onTransfer(row.id)}
+                        onDelete={() => onDelete(row.id)}
                       />
                     </RowActions>
                   </TableCell>

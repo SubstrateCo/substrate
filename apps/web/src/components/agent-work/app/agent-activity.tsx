@@ -3,10 +3,11 @@ import type { AgentTurnView, TurnOutcome } from "@substrate/contracts/agent-work
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 import { NeedsAttention } from "../needs-attention";
-import { hiddenConversation } from "../requests/proposal-preview";
 import { TurnStatusTag } from "../turn-work";
 import { AgentActivityView, type ActivityRow } from "./agent-activity-view";
-import { failedWorkNote, sessionKindLabels, turnStatus } from "@/lib/agent-work/status";
+import { hiddenConversation } from "@/lib/agent-work/hidden-records";
+import { turnConversation } from "@/lib/agent-work/placement";
+import { failedWorkNote, sessionKindLabels, turnTone } from "@/lib/agent-work/status";
 import { conversationName } from "@/lib/messaging/conversations";
 import { agentActivityOptions } from "@/queries/agent-work/local";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
@@ -26,13 +27,6 @@ const subjectFallbacks: Record<AgentTurnView["sessionKind"], string> = {
   routine: "Routine run",
   helper: "Helper task",
 };
-
-/** The conversation a turn answered or wrote to: its output first, then its newest source. */
-function placeOf(turn: AgentTurnView) {
-  const output = turn.outputs.filter((entry) => entry.kind === "message").at(-1);
-  if (output) return output.conversationId;
-  return turn.sourceMessages.at(-1)?.conversationId;
-}
 
 /** One agent's work on its home desktop, including silent, routine, and helper work. */
 export function AgentActivity({
@@ -56,16 +50,16 @@ export function AgentActivity({
   const turns = (activity.data?.pages.flatMap((page) => page.turns) ?? []).sort(
     (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
   );
+  const turnsById = new Map(turns.map((turn) => [turn.id, turn]));
   // Name only conversations the viewer can open now. Others stay placeholders.
   const place = (turn: AgentTurnView) => {
-    const conversationId = placeOf(turn);
+    const conversationId = turnConversation(turn, turnsById);
     if (!conversationId) return undefined;
     const conversation = conversations.data?.find((entry) => entry.id === conversationId);
     return conversation ? `In ${conversationName(conversation)}` : hiddenConversation;
   };
   const rows: ActivityRow[] = turns.map((turn) => {
-    // The tone does not depend on the clock; the tag shows the time with its own clock.
-    const failed = turnStatus(turn, 0).tone === "failed";
+    const failed = turnTone(turn) === "failed";
     return {
       id: turn.id,
       summary:

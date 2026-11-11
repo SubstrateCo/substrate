@@ -8,7 +8,7 @@ import { useStopTurn } from "./use-stop-turn";
 import { MutedWorkLine, WorkStatus } from "./work-status";
 import { WorkStatusTag } from "./work-status-tag";
 import { useNow } from "@/hooks/use-now";
-import { failedWorkNote, turnStatus } from "@/lib/agent-work/status";
+import { failedWorkNote, silentLabel, turnLabel, turnTone } from "@/lib/agent-work/status";
 
 type TurnProps = {
   userId: string;
@@ -21,30 +21,29 @@ type TurnProps = {
 /** One turn's status line, with its own clock so only this text renders each second. */
 export function TurnLabel({ turn, openRequest }: Pick<TurnProps, "turn" | "openRequest">) {
   const now = useNow(liveTurnStatuses.includes(turn.status));
-  return turnStatus(turn, now, openRequest).label;
+  return turnLabel(turn, now, openRequest);
 }
 
 /** One turn's status tag, with its own clock so a live turn does not render the whole list. */
 export function TurnStatusTag({ turn }: Pick<TurnProps, "turn">) {
   const now = useNow(liveTurnStatuses.includes(turn.status));
-  return <WorkStatusTag status={turnStatus(turn, now)} />;
+  return <WorkStatusTag status={{ tone: turnTone(turn), label: turnLabel(turn, now) }} />;
 }
 
 /** One local turn's status, for the header of the reply it belongs to. */
 export function TurnStatus(props: TurnProps) {
-  // The tone does not depend on the clock. Muted turns mount no clock and no actions.
-  if (turnStatus(props.turn, 0, props.openRequest).tone === "muted") return null;
+  // Muted turns mount no clock and no actions.
+  if (turnTone(props.turn, props.openRequest) === "muted") return null;
   return <LiveTurnStatus {...props} />;
 }
 
 function LiveTurnStatus({ userId, organizationId, turn, openRequest, onTranscript }: TurnProps) {
   const now = useNow(liveTurnStatuses.includes(turn.status));
-  const status = turnStatus(turn, now, openRequest);
   const { onStop, stopping } = useStopTurn(userId, organizationId, turn);
   return (
     <WorkStatus
-      tone={status.tone}
-      label={status.label}
+      tone={turnTone(turn, openRequest)}
+      label={turnLabel(turn, now, openRequest)}
       activity={turn.activity}
       onTranscript={() => onTranscript(turn.id)}
       onStop={onStop}
@@ -71,9 +70,8 @@ export function TurnWork({
   uncertainItemIds?: readonly string[];
 }) {
   const { userId, organizationId, turn, openRequest } = props;
-  // The tone does not depend on the clock; the status shows the time.
-  const status = turnStatus(turn, 0, openRequest);
-  if (status.tone === "muted") return <MutedWorkLine label={status.label} />;
+  const tone = turnTone(turn, openRequest);
+  if (tone === "muted") return <MutedWorkLine label={silentLabel} />;
   const body = (
     <>
       {turn.status === "failed" && (
@@ -95,7 +93,7 @@ export function TurnWork({
   );
   if (underReply) return body;
   return (
-    <PendingReply name={agentName} tone={status.tone} status={<TurnStatus {...props} />}>
+    <PendingReply name={agentName} tone={tone} status={<TurnStatus {...props} />}>
       {body}
     </PendingReply>
   );

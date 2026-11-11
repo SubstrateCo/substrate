@@ -4,6 +4,7 @@ import type { ReactNode, RefObject } from "react";
 
 import { sharingInvitationSchema } from "./sharing-invitation-validation";
 import { FormDialog } from "@/components/feedback/form-dialog";
+import { useFocusAfterRender } from "@/components/feedback/use-focus-after-render";
 import { FormTextField } from "@/components/forms/form-text-field";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
@@ -30,6 +31,7 @@ export function SharingInvitationForm({
   onRestoreFocus?: () => void;
   children: ReactNode;
 }) {
+  const focusAfterRender = useFocusAfterRender();
   const form = useForm({
     defaultValues: { email: "", confirmed: false },
     validationLogic: revalidateLogic({ mode: "submit", modeAfterSubmission: "change" }),
@@ -40,7 +42,7 @@ export function SharingInvitationForm({
       onInvite(invitation.email, () => {
         // Keep the acknowledgement for subsequent invitations in this dialog.
         form.reset({ email: "", confirmed: true });
-        requestAnimationFrame(() => inputRef.current?.focus());
+        focusAfterRender(() => inputRef.current);
       });
     },
     onSubmitInvalid: ({ formApi }) => {

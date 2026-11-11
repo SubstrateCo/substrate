@@ -1,10 +1,11 @@
 import { useNavigate } from "@tanstack/react-router";
 
-import { useRef, useState } from "react";
+import { useRef } from "react";
 
 import { TaskActionsMenu } from "./task-actions-menu";
 import { TaskMoveDialog } from "./task-move-dialog";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import type { ProjectDetail, Task } from "@/components/tasks/types";
 import { useTasksMutation } from "@/queries/tasks/mutations";
 
@@ -17,19 +18,18 @@ export function TaskActions({
   detail: ProjectDetail;
   task: Task;
 }) {
-  const [action, setAction] = useState<"move" | "delete" | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
+  const { value: action, open, close, restoreFocus } = useStateDialog<"move" | "delete">(trigger);
   const remove = useTasksMutation(organizationId);
   const navigate = useNavigate();
-  const restoreFocus = () => trigger.current?.focus();
   return (
     <>
       <TaskActionsMenu
         triggerRef={trigger}
-        onMove={() => setAction("move")}
+        onMove={() => open("move")}
         onDelete={() => {
           remove.reset();
-          setAction("delete");
+          open("delete");
         }}
       />
       {action === "move" && (
@@ -37,7 +37,7 @@ export function TaskActions({
           organizationId={organizationId}
           detail={detail}
           task={task}
-          onClose={() => setAction(null)}
+          onClose={close}
           onRestoreFocus={restoreFocus}
         />
       )}
@@ -51,7 +51,7 @@ export function TaskActions({
           pending={remove.isPending}
           error={remove.error}
           errorDescription="Couldn’t delete this task. Try again."
-          onClose={() => setAction(null)}
+          onClose={close}
           onRestoreFocus={restoreFocus}
           onConfirm={() =>
             remove.mutate(

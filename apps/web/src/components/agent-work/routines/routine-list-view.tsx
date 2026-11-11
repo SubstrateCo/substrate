@@ -6,7 +6,7 @@ import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { Tag } from "@/components/feedback/tag";
-import { RowAction, RowActions } from "@/components/layout/row-actions";
+import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
 import { SettingsSection } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +16,7 @@ import {
   formatTimeZone,
   formatZonedDateTime,
 } from "@/lib/format/date";
+import { cn } from "cn";
 import { CalendarClock, Hand, Pencil, Plus, Trash2 } from "lucide-react";
 
 /** "Next run Wed, Nov 11, 9:00 AM EST": in the routine's own zone, so it matches its schedule. */
@@ -86,7 +87,10 @@ export function RoutineListView({
             const needsApproval = routine.approvedRevision !== routine.revision;
             const next = nextRun(routine);
             return (
-              <li key={routine.id} className="group/row flex min-w-0 items-start gap-3 px-4 py-3">
+              <li
+                key={routine.id}
+                className={cn(actionRow, "flex min-w-0 items-start gap-3 px-4 py-3")}
+              >
                 <div className="grid min-w-0 flex-1 gap-0.5">
                   <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
                     <span className="truncate">{routine.name}</span>

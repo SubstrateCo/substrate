@@ -4,11 +4,14 @@ import { Button } from "../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "cn";
 
+/** The class of a row that holds `RowActions`, so they show while the row is hovered or focused. */
+export const actionRow = "group/row";
+
 /**
  * The icon actions of a list row: edit, delete, remove. They show when the pointer is over the
  * row, when focus is inside it, and while one of them has a menu open; touch screens always show
- * them. The row must have the `group/row` class. Labelled buttons, such as "Approve", stay outside
- * and visible.
+ * them. The row must have the `actionRow` class. Labelled buttons, such as "Approve", stay
+ * outside and visible.
  */
 export function RowActions({
   label,

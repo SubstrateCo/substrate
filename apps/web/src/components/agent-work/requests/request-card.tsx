@@ -5,8 +5,14 @@ import { ApiError } from "@/api/result";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { proposalResultLink } from "@/lib/agent-work/links";
 import { isOpenRequest } from "@/lib/agent-work/requests";
-import { useRequestActions } from "@/queries/agent-work/mutations";
+import { useRequestAction, type RequestAction } from "@/queries/agent-work/mutations";
 import { useProposalTarget } from "@/queries/agent-work/proposal-target";
+
+const failures: Record<RequestAction["kind"], string> = {
+  respond: "We couldn’t send your answer. Try again.",
+  approve: "We couldn’t approve this. Try again.",
+  decline: "We couldn’t decline this. Try again.",
+};
 
 function failure(error: Error, fallback: string) {
   return error instanceof ApiError && error.code === "CONFLICT"
@@ -23,46 +29,38 @@ export function RequestCard({
   organizationId: string;
   request: AgentRequestView;
 }) {
-  const { respond, approve, decline } = useRequestActions(userId, organizationId);
+  // One mutation, so the card shows only the latest attempt and its failure.
+  const attempt = useRequestAction(userId, organizationId);
   const open = isOpenRequest(request);
   // Resolve targets only while the owner can still decide.
   const target = useProposalTarget(organizationId, request, open);
   if (!open)
     return <RequestResult request={request} link={proposalResultLink(organizationId, request)} />;
   let pending: RequestPending | undefined;
-  if (approve.isPending) pending = { kind: "approve" };
-  else if (decline.isPending) pending = { kind: "decline" };
-  else if (respond.isPending) {
-    const response = respond.variables.response;
-    pending =
-      response.type === "approval"
-        ? { kind: "option", optionId: response.optionId }
-        : { kind: "answer" };
+  if (attempt.isPending) {
+    const input = attempt.variables;
+    if (input.kind !== "respond") pending = { kind: input.kind };
+    else
+      pending =
+        input.response.type === "approval"
+          ? { kind: "option", optionId: input.response.optionId }
+          : { kind: "answer" };
   }
-  let error: string | undefined;
-  if (respond.error) error = failure(respond.error, "We couldn’t send your answer. Try again.");
-  else if (approve.error) error = failure(approve.error, "We couldn’t approve this. Try again.");
-  else if (decline.error) error = failure(decline.error, "We couldn’t decline this. Try again.");
-  // Each attempt clears the other actions' errors, so the card shows only the latest one.
-  const reset = () => [respond, approve, decline].forEach((action) => action.reset());
+  const error = attempt.isError
+    ? failure(attempt.error, failures[attempt.variables.kind])
+    : undefined;
+  const requestId = request.id;
   return (
     <RequestCardView
       request={request}
       target={target}
       pending={pending}
       error={error}
-      onRespond={(response) => {
-        reset();
-        respond.mutate({ requestId: request.id, response });
-      }}
-      onApprove={() => {
-        reset();
-        approve.mutate({ requestId: request.id, action: request.proposal?.action ?? null });
-      }}
-      onDecline={() => {
-        reset();
-        decline.mutate(request.id);
-      }}
+      onRespond={(response) => attempt.mutate({ kind: "respond", requestId, response })}
+      onApprove={() =>
+        attempt.mutate({ kind: "approve", requestId, action: request.proposal?.action ?? null })
+      }
+      onDecline={() => attempt.mutate({ kind: "decline", requestId })}
     />
   );
 }

@@ -1,8 +1,9 @@
 import type { AgentRequestPayload, AgentRequestResponse } from "@substrate/contracts/agent-work";
 
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { useId, useRef, useState, type KeyboardEvent } from "react";
 
 import { PendingButton } from "@/components/feedback/pending-button";
+import { useFocusAfterRender } from "@/components/feedback/use-focus-after-render";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -45,19 +46,16 @@ export function QuestionsRequest({
   const [drafts, setDrafts] = useState<Partial<Record<string, QuestionDraft>>>({});
   const id = useId();
   const promptRef = useRef<HTMLParagraphElement>(null);
-  const moved = useRef(false);
+  const focusAfterRender = useFocusAfterRender();
   const question = payload.questions[step]!;
   const last = step === payload.questions.length - 1;
   const answered = questionAnswer(drafts[question.id]).length > 0;
   const selected = drafts[question.id]?.selected ?? [];
   const shortcuts = Math.min(question.options.length, 9);
-  // Move focus to the new question only after the owner changed steps, not on mount.
-  useEffect(() => {
-    if (moved.current) promptRef.current?.focus();
-  }, [step]);
+  // Focus moves to the new question once it shows.
   const goTo = (next: number) => {
-    moved.current = true;
     setStep(next);
+    focusAfterRender(() => promptRef.current);
   };
   const update = (draft: QuestionDraft) =>
     setDrafts((previous) => ({ ...previous, [question.id]: draft }));

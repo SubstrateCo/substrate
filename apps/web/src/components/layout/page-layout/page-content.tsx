@@ -2,7 +2,6 @@ import type { ComponentProps } from "react";
 
 import { ResizablePanel } from "../../ui/resizable";
 import { panelId, usePageLayout } from "./page-layout-context";
-import { useMediaQuery } from "@/hooks/use-media-query";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "cn";
 
@@ -25,9 +24,8 @@ export function PageContent({
   ...props
 }: ComponentProps<"div"> & VariantProps<typeof pageContentVariants>) {
   const layout = usePageLayout("PageContent");
-  const wide = useMediaQuery("(min-width: 1024px)");
-  // Below `lg` the aside covers the content, so the content must not take focus or be read.
-  const covered = layout.hasAside && !wide;
+  // A covering aside hides the content, so the content must not take focus or be read.
+  const covered = layout.hasAside && layout.asideCovers;
   return (
     <ResizablePanel
       id={panelId(layout.id, "content")}

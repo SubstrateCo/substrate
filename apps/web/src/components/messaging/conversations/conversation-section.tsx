@@ -34,7 +34,7 @@ export function ConversationSection({
   people?: PickerPerson[];
   agents?: DirectMessageAgent[];
   onSelect: (id: string) => void;
-  onCreate: (kind: Conversation["kind"], launcher: HTMLElement | null) => void;
+  onCreate: (kind: Conversation["kind"]) => void;
   onMessagePerson?: (person: PickerPerson) => void;
   onMessageAgent?: (agent: DirectMessageAgent) => void;
 }) {
@@ -123,9 +123,7 @@ export function ConversationSection({
                   type="button"
                   variant="link"
                   size="xs"
-                  onClick={(event) =>
-                    onCreate(section === "channel" ? "channel" : "dm", event.currentTarget)
-                  }
+                  onClick={() => onCreate(section === "channel" ? "channel" : "dm")}
                 >
                   Start one
                 </Button>

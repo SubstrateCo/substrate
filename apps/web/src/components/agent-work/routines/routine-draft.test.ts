@@ -19,6 +19,20 @@ describe("routine draft errors", () => {
     expect(Object.keys(errors)).toEqual(["name", "prompt", "cron", "timezone"]);
   });
 
+  test("rejects text longer than the routine contract allows", () => {
+    const errors = routineErrors({
+      ...valid,
+      name: "n".repeat(201),
+      prompt: "p".repeat(20_001),
+      cron: `0 9 * * ${"1,".repeat(50)}1`,
+    });
+    expect(errors).toEqual({
+      name: "Use a routine name of 200 characters or fewer.",
+      prompt: "Use 20,000 characters or fewer.",
+      cron: "Use 100 characters or fewer.",
+    });
+  });
+
   test("rejects a time zone the runtime doesn't know", () => {
     expect(routineErrors({ ...valid, timezone: "Mars/Olympus" })).toEqual({
       timezone: "Choose a time zone.",

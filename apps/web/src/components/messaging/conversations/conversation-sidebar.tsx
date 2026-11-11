@@ -46,7 +46,7 @@ export function ConversationSidebar({
   people?: PickerPerson[];
   agents?: DirectMessageAgent[];
   onSelect: (id: string) => void;
-  onCreate: (kind: Conversation["kind"], launcher: HTMLElement | null) => void;
+  onCreate: (kind: Conversation["kind"]) => void;
   onMessagePerson?: (person: PickerPerson) => void;
   onMessageAgent?: (agent: DirectMessageAgent) => void;
   loading?: boolean;

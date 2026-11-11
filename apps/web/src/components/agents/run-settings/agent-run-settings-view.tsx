@@ -49,7 +49,7 @@ export function AgentRunSettingsView({
     (trigger) =>
       settings.triggers.find((saved) => saved.kind === trigger.kind)?.enabled !== trigger.enabled,
   );
-  useRegisterDraft("run", dirty);
+  useRegisterDraft("run", dirty, () => setTriggers(settings.triggers));
   return (
     <SettingsSection
       title="Run settings"

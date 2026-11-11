@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 
 import { WorkIndicator } from "../work-indicator";
 import {
@@ -29,6 +29,7 @@ export function AgentsWorkspaceView({
   selectedAgentId,
   onSelect,
   onCreate,
+  createButtonRef,
   editor,
   content,
   aside,
@@ -40,6 +41,8 @@ export function AgentsWorkspaceView({
   selectedAgentId?: string;
   onSelect: (agentId?: string) => void;
   onCreate: () => void;
+  /** The New agent button, where focus goes once an agent is deleted. */
+  createButtonRef?: Ref<HTMLButtonElement>;
   editor?: ReactNode;
   content: ReactNode;
   aside?: ReactNode;
@@ -57,7 +60,13 @@ export function AgentsWorkspaceView({
             actions={
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button size="icon-sm" variant="ghost" aria-label="New agent" onClick={onCreate}>
+                  <Button
+                    ref={createButtonRef}
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label="New agent"
+                    onClick={onCreate}
+                  >
                     <Plus aria-hidden="true" />
                   </Button>
                 </TooltipTrigger>

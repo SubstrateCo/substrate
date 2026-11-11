@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { ActivityTurnTranscript } from "../transcript/activity-turn-transcript";
 import { AgentPage } from "./agent-page";
@@ -11,6 +11,7 @@ import { FirstAgentView } from "./first-agent-view";
 import { NeedsYou } from "./needs-you";
 import { AgentSettings } from "@/components/agents/agent-settings";
 import { PaneState } from "@/components/feedback/pane-state";
+import { useFocusAfterRender } from "@/components/feedback/use-focus-after-render";
 import { needsYouCount } from "@/lib/agent-work/needs-you";
 import { agentStatus } from "@/lib/agent-work/status";
 import { hasAgentWorkBridge } from "@/queries/agent-work/bridge";
@@ -39,6 +40,8 @@ export function AgentsWorkspace({
 }) {
   const navigate = useNavigate();
   const [creating, setCreating] = useState(false);
+  const newAgentButton = useRef<HTMLButtonElement>(null);
+  const focusAfterRender = useFocusAfterRender();
   const catalog = useQuery(agentCatalogQueryOptions(userId));
   const statuses = useQuery(agentStatusOptions(userId, organizationId));
   const needsYou = useQuery(needsYouOptions(userId, organizationId));
@@ -101,7 +104,10 @@ export function AgentsWorkspace({
         selectedTurnId={turnId}
         onSectionChange={(next) => go({ agentId, section: next })}
         onTranscript={(id) => go({ agentId, turnId: id })}
-        onDeleted={() => go({})}
+        onDeleted={() => {
+          go({});
+          focusAfterRender(() => newAgentButton.current);
+        }}
       />
     );
   return (
@@ -112,6 +118,7 @@ export function AgentsWorkspace({
       selectedAgentId={agentId}
       onSelect={(id) => go({ agentId: id })}
       onCreate={() => setCreating(true)}
+      createButtonRef={newAgentButton}
       editor={
         creating && (
           <AgentSettings

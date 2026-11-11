@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { TurnTranscript } from "./turn-transcript";
 import type { Conversation } from "@/lib/messaging/conversations";
 import { hasAgentWorkBridge } from "@/queries/agent-work/bridge";
-import { turnOptions } from "@/queries/agent-work/local";
+import { localWorkEnabled, turnOptions } from "@/queries/agent-work/local";
 import { conversationRequestsOptions } from "@/queries/agent-work/server";
 
 /** The transcript beside a conversation. The turn is read by ID from the home desktop. */
@@ -21,7 +21,10 @@ export function ConversationTurnTranscript({
   onClose: () => void;
 }) {
   const bridge = hasAgentWorkBridge();
-  const work = useQuery({ ...turnOptions(userId, organizationId, turnId), enabled: bridge });
+  const work = useQuery({
+    ...turnOptions(userId, organizationId, turnId),
+    enabled: localWorkEnabled(userId),
+  });
   const requests = useQuery(conversationRequestsOptions(userId, organizationId, conversation.id));
   const turn = work.data ?? undefined;
   const agent = conversation.members.find(

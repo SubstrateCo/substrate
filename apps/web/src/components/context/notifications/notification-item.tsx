@@ -7,6 +7,7 @@ import { PersonAvatar } from "../../people/person-avatar";
 import { Timestamp } from "../../time/timestamp";
 import { Button } from "../../ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
+import { actionRow } from "@/components/layout/row-actions";
 import { conversationLabel } from "@/lib/messaging/conversations";
 import type { RecordLink } from "@/lib/navigation/record-links";
 import { cn } from "cn";
@@ -88,7 +89,12 @@ export function NotificationItem({
   return (
     <Collapsible asChild open={expanded} onOpenChange={setExpanded}>
       <li>
-        <div className="group/row relative flex items-start gap-3 rounded-lg px-3 py-3 hover:bg-row-hover has-[a:focus-visible]:bg-row-hover">
+        <div
+          className={cn(
+            actionRow,
+            "relative flex items-start gap-3 rounded-lg px-3 py-3 hover:bg-row-hover has-[a:focus-visible]:bg-row-hover",
+          )}
+        >
           <span
             aria-hidden="true"
             className={cn(

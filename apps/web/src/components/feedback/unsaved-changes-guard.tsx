@@ -2,7 +2,7 @@ import { useBlocker, type ShouldBlockFn } from "@tanstack/react-router";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+import { DiscardChangesDialog } from "@/components/feedback/discard-changes-dialog";
 import { registerUnsavedDraft } from "@/lib/navigation/unsaved-drafts";
 
 /**
@@ -12,8 +12,8 @@ import { registerUnsavedDraft } from "@/lib/navigation/unsaved-drafts";
  * Two exits are covered while `dirty`:
  * - Router navigation, including search results and links. Pass `shouldBlock` to let some moves
  *   keep the draft, such as switching between one agent's settings sections.
- * - Full-document exits, such as a workspace switch or sign-out. They call
- *   `confirmDiscardDrafts()` from "@/lib/navigation/unsaved-drafts" before they start.
+ * - Full-document exits, such as a workspace switch or sign-out. They go through
+ *   `leaveDocument()` from "@/lib/navigation/unsaved-drafts", which asks before they start.
  *
  * It does not use the unload event: Electron would cancel closing the window without asking.
  */
@@ -86,13 +86,8 @@ export function UnsavedChangesGuard({
   // One question covers every dirty draft, so it lists each one by name.
   const several = blocker.status !== "blocked" && asking && asking.length > 1 ? asking : null;
   return (
-    <ConfirmDialog
-      title="Discard unsaved changes?"
+    <DiscardChangesDialog
       description={several ? `You have ${several.length} unsaved drafts:` : description}
-      confirmLabel="Discard changes"
-      pendingLabel="Discarding…"
-      cancelLabel="Keep editing"
-      destructive
       onConfirm={() => {
         if (blocker.status === "blocked") blocker.proceed();
         else settle(true);
@@ -111,6 +106,6 @@ export function UnsavedChangesGuard({
           ))}
         </ul>
       )}
-    </ConfirmDialog>
+    </DiscardChangesDialog>
   );
 }

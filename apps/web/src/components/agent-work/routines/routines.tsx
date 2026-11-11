@@ -2,7 +2,7 @@ import type { AgentRoutineView } from "@substrate/contracts/agent-work";
 
 import { useQuery } from "@tanstack/react-query";
 
-import { useRef, useState } from "react";
+import { useRef } from "react";
 
 import type { RoutineDraft } from "./routine-draft";
 import { RoutineEditor } from "./routine-editor";
@@ -10,7 +10,7 @@ import { RoutineListView } from "./routine-list-view";
 import { describeSchedule } from "./schedule";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
-import { useFocusReturn } from "@/components/feedback/use-focus-return";
+import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { routinesOptions } from "@/queries/agent-work/local";
 import { useRoutineActions } from "@/queries/agent-work/mutations";
 import { toast } from "sonner";
@@ -39,16 +39,16 @@ export function Routines({
 }) {
   const routines = useQuery(routinesOptions(userId, organizationId, agentId));
   const actions = useRoutineActions(userId, organizationId);
-  const [editingId, setEditingId] = useState<string>();
-  const [deleting, setDeleting] = useState<AgentRoutineView>();
+  // Focus falls back to the section when the launcher is gone, such as after a delete.
+  const region = useRef<HTMLDivElement>(null);
+  const editor = useStateDialog<string>(region);
+  const deletion = useStateDialog<AgentRoutineView>(region);
+  const editingId = editor.value;
+  const deleting = deletion.value;
   const saveError = actions.create.error ?? actions.update.error;
   const editing = routines.data?.find((routine) => routine.id === editingId);
-  // Dialogs here are mounted from state, so they cannot find their launcher. Remember it, and
-  // fall back to the section when the launcher is gone, such as after a delete.
-  const region = useRef<HTMLDivElement>(null);
-  const { remember, restore: restoreFocus } = useFocusReturn(region);
   const close = () => {
-    setEditingId(undefined);
+    editor.close();
     actions.create.reset();
     actions.update.reset();
   };
@@ -77,14 +77,8 @@ export function Routines({
         error={routines.error}
         onRetry={() => void routines.refetch()}
         approvingId={actions.approve.isPending ? actions.approve.variables.routineId : undefined}
-        onAdd={() => {
-          remember();
-          setEditingId("new");
-        }}
-        onEdit={(routineId) => {
-          remember();
-          setEditingId(routineId);
-        }}
+        onAdd={() => editor.open("new")}
+        onEdit={(routineId) => editor.open(routineId)}
         onApprove={(routine) =>
           actions.approve.mutate(
             { routineId: routine.id, revision: routine.revision },
@@ -95,10 +89,7 @@ export function Routines({
             },
           )
         }
-        onDelete={(routine) => {
-          remember();
-          setDeleting(routine);
-        }}
+        onDelete={(routine) => deletion.open(routine)}
       />
       {editingId && (
         <RoutineEditor
@@ -120,7 +111,7 @@ export function Routines({
           error={saveError && actionErrorMessage(saveError, saveFailed)}
           onSave={save}
           onCancel={close}
-          onRestoreFocus={restoreFocus}
+          onRestoreFocus={editor.restoreFocus}
         />
       )}
       {deleting && (
@@ -137,15 +128,15 @@ export function Routines({
             actions.remove.mutate(deleting.id, {
               onSuccess: () => {
                 toast.success(`${deleting.name} deleted.`);
-                setDeleting(undefined);
+                deletion.close();
               },
             })
           }
           onClose={() => {
-            setDeleting(undefined);
+            deletion.close();
             actions.remove.reset();
           }}
-          onRestoreFocus={restoreFocus}
+          onRestoreFocus={deletion.restoreFocus}
         />
       )}
     </div>

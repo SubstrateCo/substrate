@@ -1,12 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
-import { useRef, useState } from "react";
-
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { isAccessFailure } from "@/components/feedback/request-failure";
 import { StaleNotice } from "@/components/feedback/stale-notice";
+import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { SettingsPanel } from "@/components/layout/settings-page";
 import { SettingsCard, SettingsNote } from "@/components/layout/settings-section";
 import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
@@ -18,10 +17,9 @@ import { Globe } from "lucide-react";
 export function SharingSettings({ organizationId }: { organizationId: string }) {
   const conversations = useQuery(sharingConversationOptions(organizationId));
   const inbox = useQuery(sharingInboxOptions(organizationId));
-  const [selected, setSelected] = useState<string>();
-  const launcher = useRef<HTMLButtonElement | null>(null);
+  const { value: selected, open, close, restoreFocus } = useStateDialog<string>();
   const blocked = isAccessFailure(conversations.error) || isAccessFailure(inbox.error);
-  if (blocked && selected !== undefined) setSelected(undefined);
+  if (blocked && selected !== undefined) close();
   return (
     <SettingsPanel
       title="External collaboration"
@@ -98,13 +96,7 @@ export function SharingSettings({ organizationId }: { organizationId: string }) 
                     )}
                     {conversation.name ?? "Direct message"}
                   </span>
-                  <Button
-                    variant="ghost"
-                    onClick={(event) => {
-                      launcher.current = event.currentTarget;
-                      setSelected(conversation.id);
-                    }}
-                  >
+                  <Button variant="ghost" onClick={() => open(conversation.id)}>
                     Manage
                   </Button>
                 </li>
@@ -117,8 +109,8 @@ export function SharingSettings({ organizationId }: { organizationId: string }) 
         <SharingManager
           organizationId={organizationId}
           conversationId={selected}
-          onClose={() => setSelected(undefined)}
-          onRestoreFocus={() => launcher.current?.isConnected && launcher.current.focus()}
+          onClose={close}
+          onRestoreFocus={restoreFocus}
         />
       )}
     </SettingsPanel>

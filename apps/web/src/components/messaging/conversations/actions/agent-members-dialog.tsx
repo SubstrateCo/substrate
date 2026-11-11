@@ -1,11 +1,12 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { PendingButton } from "@/components/feedback/pending-button";
-import { useFocusReturn } from "@/components/feedback/use-focus-return";
-import { RowAction, RowActions } from "@/components/layout/row-actions";
+import { useStateDialog } from "@/components/feedback/use-state-dialog";
+import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Spinner } from "@/components/ui/spinner";
+import { cn } from "cn";
 import { UserMinus } from "lucide-react";
 
 type ConversationAgentOption = {
@@ -40,12 +41,11 @@ export function AgentMembersDialog({
   onClose: () => void;
   onRestoreFocus?: () => void;
 }) {
-  const [removing, setRemoving] = useState<ConversationAgentOption>();
-  // The confirmation is mounted by state, so it has no trigger of its own. Return to the row
-  // button. It is replaced by a spinner while the agent is removed, so then the list is the
-  // nearest place left.
+  // Focus returns to the row button. It is replaced by a spinner while the agent is removed, so
+  // then the list is the nearest place left.
   const list = useRef<HTMLUListElement>(null);
-  const rowFocus = useFocusReturn(list);
+  const removal = useStateDialog<ConversationAgentOption>(list);
+  const removing = removal.value;
   const common = {
     title: `Your agents in ${name}`,
     description:
@@ -77,7 +77,7 @@ export function AgentMembersDialog({
             {agents.map((agent) => (
               <li
                 key={agent.agentId}
-                className="group/row flex h-10 items-center gap-2 rounded-md px-2"
+                className={cn(actionRow, "flex h-10 items-center gap-2 rounded-md px-2")}
               >
                 <PersonAvatar name={agent.name} image={agent.image} agent />
                 <span className="min-w-0 flex-1 truncate text-sm font-medium">{agent.name}</span>
@@ -93,10 +93,7 @@ export function AgentMembersDialog({
                       label={`Remove ${agent.name}`}
                       destructive
                       disabled={!!busyId}
-                      onClick={() => {
-                        rowFocus.remember();
-                        setRemoving(agent);
-                      }}
+                      onClick={() => removal.open(agent)}
                     >
                       <UserMinus />
                     </RowAction>
@@ -126,11 +123,11 @@ export function AgentMembersDialog({
           confirmLabel={`Remove ${removing.name}`}
           pendingLabel="Removing…"
           destructive
-          onClose={() => setRemoving(undefined)}
-          onRestoreFocus={rowFocus.restore}
+          onClose={removal.close}
+          onRestoreFocus={removal.restoreFocus}
           onConfirm={() => {
             onRemove(removing.actorId!);
-            setRemoving(undefined);
+            removal.close();
           }}
         />
       )}

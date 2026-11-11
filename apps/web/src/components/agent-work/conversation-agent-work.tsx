@@ -21,11 +21,14 @@ import { conversationAgents } from "@/lib/agent-work/conversation-agents";
 import { proposalSourceLink } from "@/lib/agent-work/links";
 import { itemPlacements, requestPlacements, turnPlacements } from "@/lib/agent-work/placement";
 import { isOpenRequest } from "@/lib/agent-work/requests";
-import { agentStatus, noDesktopLabel, queueAhead, turnStatus } from "@/lib/agent-work/status";
+import { agentStatus, noDesktopLabel, queueAhead, turnTone } from "@/lib/agent-work/status";
 import type { Conversation } from "@/lib/messaging/conversations";
 import { agentLink } from "@/lib/navigation/record-links";
-import { hasAgentWorkBridge } from "@/queries/agent-work/bridge";
-import { conversationWorkOptions, localAgentsOptions } from "@/queries/agent-work/local";
+import {
+  conversationWorkOptions,
+  localAgentsOptions,
+  localWorkEnabled,
+} from "@/queries/agent-work/local";
 import { useNewTopic } from "@/queries/agent-work/mutations";
 import { agentStatusOptions, conversationRequestsOptions } from "@/queries/agent-work/server";
 import { toast } from "sonner";
@@ -58,13 +61,12 @@ export function ConversationAgentWork({
       ? [{ agentId: member.agentId, name: member.name }]
       : [],
   );
-  const bridge = hasAgentWorkBridge();
-  const summaries = useQuery({ ...localAgentsOptions(userId, organizationId), enabled: bridge });
+  const summaries = useQuery(localAgentsOptions(userId, organizationId));
   const homed = new Map((summaries.data ?? []).map((summary) => [summary.userAgentId, summary]));
   // Local work and its controls exist only when an agent of this owner is homed here.
   const local = useQuery({
     ...conversationWorkOptions(userId, organizationId, conversation.id),
-    enabled: bridge && homed.size > 0,
+    enabled: localWorkEnabled(userId) && homed.size > 0,
   });
   const requests = useQuery(conversationRequestsOptions(userId, organizationId, conversation.id));
   const statuses = useQuery(agentStatusOptions(userId, organizationId));
@@ -121,11 +123,10 @@ export function ConversationAgentWork({
         );
         if (current) {
           const request = openRequest(current.id);
-          // The tone does not depend on the clock; the label keeps its own clock.
           lines.push({
             key: agent.agentId,
             agentName: agent.name,
-            tone: turnStatus(current, 0, request).tone,
+            tone: turnTone(current, request),
             label: <TurnLabel turn={current} openRequest={request} />,
           });
         }
@@ -259,10 +260,7 @@ export function ConversationAgentWork({
         badge: (messageId) => {
           if (!outputs.has(messageId)) return null;
           const latest = placements.get(messageId)?.at(-1);
-          // The tone does not depend on the clock; the status in the reply's header shows the time.
-          return latest ? (
-            <WorkIndicator tone={turnStatus(latest, 0, openRequest(latest.id)).tone} />
-          ) : null;
+          return latest ? <WorkIndicator tone={turnTone(latest, openRequest(latest.id))} /> : null;
         },
         notice,
       }}

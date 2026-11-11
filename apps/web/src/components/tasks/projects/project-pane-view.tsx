@@ -7,12 +7,13 @@ import { TaskList } from "../list/task-list";
 import type { ProjectDetail, Task } from "../types";
 import { useTaskPanel } from "./pane/use-task-panel";
 import { ProjectIcon } from "./project-icon";
-import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ContentNotice } from "@/components/feedback/content-notice";
+import { DiscardChangesDialog } from "@/components/feedback/discard-changes-dialog";
 import { ErrorState } from "@/components/feedback/error-state";
 import { FormDialog, type FormDialogEditor } from "@/components/feedback/form-dialog";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { UnsavedDraftsProvider, useDraftKeys } from "@/components/feedback/unsaved-drafts";
+import { useFocusReturn } from "@/components/feedback/use-focus-return";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageAside, PageContent } from "@/components/layout/page-layout";
@@ -95,13 +96,13 @@ function ProjectPaneContent({
   const [pendingTab, setPendingTab] = useState<string | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
   const lastInspectorFocus = useRef<HTMLElement | null>(null);
-  const restoreDestination = useRef(false);
   const detail = data;
   const { panel, inspector, newTaskButton, restoreFocus } = useTaskPanel({
     selectedTaskId,
     onSelectTask,
     ready: !!detail,
   });
+  const tabFocus = useFocusReturn(inspector);
   if (!detail)
     return (
       <PageContent>
@@ -136,8 +137,11 @@ function ProjectPaneContent({
         <Tabs
           value={tab}
           onValueChange={(next) => {
-            if (tab === "tasks" && next !== "tasks" && taskDirty) setPendingTab(next);
-            else setTab(next);
+            if (tab === "tasks" && next !== "tasks" && taskDirty) {
+              // Keep editing returns to where the person was working in the inspector.
+              tabFocus.remember(lastInspectorFocus.current);
+              setPendingTab(next);
+            } else setTab(next);
           }}
           className="min-h-0 min-w-0 flex-1"
         >
@@ -314,26 +318,17 @@ function ProjectPaneContent({
           ),
         })}
       {pendingTab && (
-        <ConfirmDialog
-          title="Discard unsaved changes?"
+        <DiscardChangesDialog
           description="Your task edits or comment haven’t been saved."
-          confirmLabel="Discard changes"
-          cancelLabel="Keep editing"
-          pendingLabel="Discarding…"
-          destructive
           onClose={() => setPendingTab(null)}
-          onRestoreFocus={() => {
-            if (restoreDestination.current) {
-              restoreDestination.current = false;
-              tabsRef.current?.querySelector<HTMLElement>('[data-state="active"]')?.focus();
-            } else if (lastInspectorFocus.current?.isConnected) {
-              lastInspectorFocus.current.focus();
-            } else {
-              inspector.current?.focus();
-            }
-          }}
+          onRestoreFocus={tabFocus.restore}
           onConfirm={() => {
-            restoreDestination.current = true;
+            // Focus goes to the tab the person chose instead of back into the inspector.
+            tabFocus.remember(
+              tabsRef.current?.querySelector(
+                `[role="tab"][aria-controls$="-content-${CSS.escape(pendingTab)}"]`,
+              ) ?? null,
+            );
             setTab(pendingTab);
             setPendingTab(null);
           }}

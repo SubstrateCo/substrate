@@ -2,6 +2,8 @@ import type { Attachment } from "@substrate/contracts/files/attachments";
 
 import type { ReactNode } from "react";
 
+import { actionRow } from "@/components/layout/row-actions";
+import { cn } from "cn";
 import { File, Download } from "lucide-react";
 
 export function AttachmentList({
@@ -19,7 +21,10 @@ export function AttachmentList({
       {attachments.map((attachment) => (
         <li
           key={attachment.id}
-          className="group/row flex min-w-0 items-center rounded-md border bg-background pr-2 hover:bg-row-hover"
+          className={cn(
+            actionRow,
+            "flex min-w-0 items-center rounded-md border bg-background pr-2 hover:bg-row-hover",
+          )}
         >
           <a
             href={href(attachment)}

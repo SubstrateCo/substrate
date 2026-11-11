@@ -3,13 +3,7 @@ import type { AgentTurnView } from "@substrate/contracts/agent-work";
 import { NeedsAttentionCard, type NeedsAttentionAction } from "./needs-attention-card";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { attentionReasonText } from "@/lib/agent-work/status";
-import {
-  useDiscardItem,
-  useDismiss,
-  useResendItem,
-  useRetry,
-  useStartFresh,
-} from "@/queries/agent-work/mutations";
+import { useAttentionAction } from "@/queries/agent-work/mutations";
 
 const failures: Record<NeedsAttentionAction, string> = {
   retry: "We couldn’t retry. Try again.",
@@ -40,34 +34,14 @@ export function NeedsAttention({
   agentName: string;
   uncertainItemIds?: readonly string[];
 }) {
-  const tracked = {
-    retry: useRetry(userId, organizationId),
-    dismiss: useDismiss(userId, organizationId),
-    startFresh: useStartFresh(userId, organizationId),
-    resend: useResendItem(userId, organizationId),
-    discard: useDiscardItem(userId, organizationId),
-  };
-  const order: readonly NeedsAttentionAction[] = [
-    "retry",
-    "dismiss",
-    "startFresh",
-    "resend",
-    "discard",
-  ];
-  const pending = order.find((action) => tracked[action].isPending);
-  let failure: string | undefined;
-  for (const action of order) {
-    const { error } = tracked[action];
-    if (error) {
-      failure = actionErrorMessage(error, failures[action]);
-      break;
-    }
-  }
-  // Each attempt clears earlier failures, so the card shows only the latest one.
-  const run = (action: NeedsAttentionAction, ids: readonly string[]) => () => {
-    for (const name of order) tracked[name].reset();
-    for (const id of ids) tracked[action].mutate(id);
-  };
+  // One mutation, so the card shows only the latest attempt and its failure.
+  const attempt = useAttentionAction(userId, organizationId);
+  const pending = attempt.isPending ? attempt.variables.kind : undefined;
+  const failure = attempt.isError
+    ? actionErrorMessage(attempt.error, failures[attempt.variables.kind])
+    : undefined;
+  const run = (kind: NeedsAttentionAction, ids: readonly string[]) => () =>
+    attempt.mutate({ kind, ids });
   const uncertain = turn.attentionReason === "uncertain_input" && uncertainItemIds.length > 0;
   return (
     <NeedsAttentionCard

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { RowAction, RowActions } from "@/components/layout/row-actions";
+import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
 import { cn } from "cn";
 import { Pencil, Settings, Trash2 } from "lucide-react";
 
@@ -25,7 +25,7 @@ export function CatalogRow({
   disabled: boolean;
 }) {
   return (
-    <li className="group/row flex items-center justify-between gap-3 px-4 py-3">
+    <li className={cn(actionRow, "flex items-center justify-between gap-3 px-4 py-3")}>
       <div className="flex min-w-0 items-center gap-3">
         {picture}
         <div className="grid min-w-0 gap-1">

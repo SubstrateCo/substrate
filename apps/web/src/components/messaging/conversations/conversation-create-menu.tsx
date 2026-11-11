@@ -29,7 +29,7 @@ function SectionAction({
   children,
 }: {
   label: string;
-  onClick: (button: HTMLButtonElement) => void;
+  onClick: () => void;
   children: ReactNode;
 }) {
   return (
@@ -40,7 +40,7 @@ function SectionAction({
           variant="ghost"
           className="[&_svg:not([class*='size-'])]:size-3.5"
           aria-label={label}
-          onClick={(event) => onClick(event.currentTarget)}
+          onClick={onClick}
         >
           {children}
         </Button>
@@ -61,8 +61,8 @@ export function ConversationCreateMenu({
   section: "channel" | "dm";
   people?: PickerPerson[];
   agents?: DirectMessageAgent[];
-  /** `launcher` is the button that opened the dialog, so closing it can return focus there. */
-  onCreate: (kind: Conversation["kind"], launcher: HTMLElement | null) => void;
+  /** Called with focus on the button that opened the dialog, so closing it can return there. */
+  onCreate: (kind: Conversation["kind"]) => void;
   onMessagePerson?: (person: PickerPerson) => void;
   onMessageAgent?: (agent: DirectMessageAgent) => void;
 }) {
@@ -78,7 +78,7 @@ export function ConversationCreateMenu({
         <SectionAction label="Browse channels" onClick={() => openSearch("channel")}>
           <Compass />
         </SectionAction>
-        <SectionAction label="New channel" onClick={(button) => onCreate("channel", button)}>
+        <SectionAction label="New channel" onClick={() => onCreate("channel")}>
           <Plus />
         </SectionAction>
       </span>
@@ -137,11 +137,14 @@ export function ConversationCreateMenu({
         align="start"
         variant="reference"
         className="w-80"
-        onCloseAutoFocus={() => {
+        onCloseAutoFocus={(event) => {
           const choice = chosen.current;
           chosen.current = null;
-          if (choice?.kind === "create") onCreate(choice.conversation, trigger.current);
-          else if (choice?.kind === "person") onMessagePerson?.(choice.person);
+          if (choice?.kind === "create") {
+            event.preventDefault();
+            trigger.current?.focus();
+            onCreate(choice.conversation);
+          } else if (choice?.kind === "person") onMessagePerson?.(choice.person);
           else if (choice?.kind === "agent") onMessageAgent?.(choice.agent);
         }}
       >

@@ -1,12 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { useRef, useState } from "react";
-
 import { ConversationActionsMenu } from "./actions/conversation-actions-menu";
 import { DeleteConversationDialog } from "./actions/delete-conversation-dialog";
 import { LeaveConversationDialog } from "./actions/leave-conversation-dialog";
 import { OwnerDialog } from "./actions/owner-dialog";
 import { ConversationAgents } from "./conversation-agents";
+import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { SharingManager } from "@/components/messaging/sharing/sharing-manager";
 import {
   conversationLabel,
@@ -20,6 +19,10 @@ import { toast } from "sonner";
 
 type Dialog = "agents" | "leave" | "transfer" | "delete" | "sharing";
 
+function focusSidebar() {
+  document.querySelector<HTMLElement>("#conversation-sidebar button")?.focus();
+}
+
 export function ConversationActions({
   organizationId,
   conversation,
@@ -31,7 +34,9 @@ export function ConversationActions({
   userId?: string;
   onRemoved: () => Promise<void> | void;
 }) {
-  const [dialog, setDialog] = useState<Dialog>();
+  // A dialog opened from the menu returns focus to its trigger. When the conversation is gone
+  // too, the sidebar is the nearest place left.
+  const { value: dialog, open, close, restoreFocus } = useStateDialog<Dialog>(focusSidebar);
   const { remove, leave, transfer } = useConversationManagement(organizationId, onRemoved);
   const impact = useQuery({
     ...deleteImpactQueryOptions(organizationId, conversation.id),
@@ -46,27 +51,17 @@ export function ConversationActions({
   const leaveLabel = conversation.kind === "channel" ? "Leave channel" : "Leave group";
   const deleteLabel = conversation.kind === "channel" ? "Delete channel" : "Delete group";
   const publicChannel = conversation.kind === "channel" && !conversation.private;
-  const close = () => setDialog(undefined);
-  // The dialogs are mounted by state, so none has a trigger of its own. A menu item is gone once
-  // the menu closes; give focus back to the actions button instead. When the conversation is gone
-  // too, the sidebar is the nearest place left.
-  const trigger = useRef<HTMLButtonElement>(null);
-  const restoreFocus = () => {
-    if (trigger.current?.isConnected) trigger.current.focus();
-    else document.querySelector<HTMLElement>("#conversation-sidebar button")?.focus();
-  };
 
   return (
     <>
       <ConversationActionsMenu
-        triggerRef={trigger}
         leaveLabel={leaveLabel}
         deleteLabel={deleteLabel}
-        onSharing={conversation.canShare ? () => setDialog("sharing") : undefined}
-        onAgents={canLeave && userId ? () => setDialog("agents") : undefined}
-        onLeave={canLeave ? () => setDialog("leave") : undefined}
-        onTransfer={conversation.canManage ? () => setDialog("transfer") : undefined}
-        onDelete={conversation.canManage ? () => setDialog("delete") : undefined}
+        onSharing={conversation.canShare ? () => open("sharing") : undefined}
+        onAgents={canLeave && userId ? () => open("agents") : undefined}
+        onLeave={canLeave ? () => open("leave") : undefined}
+        onTransfer={conversation.canManage ? () => open("transfer") : undefined}
+        onDelete={conversation.canManage ? () => open("delete") : undefined}
       />
       {dialog === "sharing" && (
         <SharingManager

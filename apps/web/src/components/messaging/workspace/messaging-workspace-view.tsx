@@ -1,10 +1,11 @@
-import { Children, useState, type ReactNode } from "react";
+import { Children, type ReactNode } from "react";
 
 import { PaneState } from "../../feedback/pane-state";
 import { Button } from "../../ui/button";
 import { ComposerDraftProvider } from "../composer/composer-drafts";
 import { ConversationSidebar } from "../conversations/conversation-sidebar";
 import { StaleNotice } from "@/components/feedback/stale-notice";
+import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { PageContent, PageLayout } from "@/components/layout/page-layout";
 import type { DirectMessageAgent } from "@/components/messaging/conversations/conversation-create-menu";
 import { WorkspaceEmpty } from "@/components/messaging/workspace/workspace-empty";
@@ -12,6 +13,15 @@ import type { Conversation } from "@/lib/messaging/conversations";
 import type { PickerPerson } from "@/lib/people/people-picker";
 import type { ResourceStatus } from "@/lib/resource-state";
 import { ArrowLeft, PanelLeft } from "lucide-react";
+
+/** The empty state's buttons are gone once a conversation exists. */
+function focusSidebar() {
+  document
+    .querySelector<HTMLElement>(
+      '#conversation-sidebar [aria-current="page"], #conversation-sidebar button',
+    )
+    ?.focus();
+}
 
 export function MessagingWorkspace({
   conversations,
@@ -53,25 +63,12 @@ export function MessagingWorkspace({
   onRetry: () => void;
   children?: ReactNode;
 }) {
-  // The dialog is mounted by state, so it has no trigger of its own to return focus to: keep the
-  // button that opened it.
-  const [creating, setCreating] = useState<{
-    kind: Conversation["kind"];
-    launcher: HTMLElement | null;
-  }>();
-  const create = (kind: Conversation["kind"], launcher: HTMLElement | null) =>
-    setCreating({ kind, launcher });
-  const restoreFocus = () => {
-    if (creating?.launcher?.isConnected) creating.launcher.focus();
-    else {
-      // The empty state's buttons are gone once a conversation exists.
-      document
-        .querySelector<HTMLElement>(
-          '#conversation-sidebar [aria-current="page"], #conversation-sidebar button',
-        )
-        ?.focus();
-    }
-  };
+  const {
+    value: creating,
+    open: create,
+    close,
+    restoreFocus,
+  } = useStateDialog<Conversation["kind"]>(focusSidebar);
   const hasContent = Children.toArray(children).length > 0;
   const blocked = state === "error" || state === "unavailable";
   return (
@@ -124,11 +121,7 @@ export function MessagingWorkspace({
             {!blocked && !hasContent && !loading && <WorkspaceEmpty onCreate={create} />}
           </PageContent>
         </PageLayout>
-        {creating &&
-          renderCreate(creating.kind, {
-            onClose: () => setCreating(undefined),
-            onRestoreFocus: restoreFocus,
-          })}
+        {creating && renderCreate(creating, { onClose: close, onRestoreFocus: restoreFocus })}
       </div>
     </ComposerDraftProvider>
   );

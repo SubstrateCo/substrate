@@ -4,8 +4,7 @@ import { PaneState } from "../../feedback/pane-state";
 import { Button } from "../../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { StaleNotice } from "@/components/feedback/stale-notice";
-import { PageAside } from "@/components/layout/page-layout";
-import { useMediaQuery } from "@/hooks/use-media-query";
+import { PageAside, useAsideCovers } from "@/components/layout/page-layout";
 import type { ResourceStatus } from "@/lib/resource-state";
 import { X } from "lucide-react";
 
@@ -32,7 +31,7 @@ export function ThreadPane({
 }) {
   const blocked = state === "error" || state === "unavailable";
   const close = useRef<HTMLButtonElement>(null);
-  const wide = useMediaQuery("(min-width: 1024px)");
+  const covers = useAsideCovers();
   // Runs before the focus effect below, so it remembers where focus was before the thread opened.
   useEffect(() => {
     const previous = document.activeElement;
@@ -40,10 +39,10 @@ export function ThreadPane({
       if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
     };
   }, []);
-  // Below `lg` the thread covers the page, so focus moves into it.
+  // When the thread covers the page, focus moves into it.
   useEffect(() => {
-    if (!wide) close.current?.focus();
-  }, [wide]);
+    if (covers) close.current?.focus();
+  }, [covers]);
   return (
     <PageAside aria-label="Thread">
       <header className="flex h-12 shrink-0 items-center justify-between border-b bg-card/60 px-4">

@@ -11,7 +11,7 @@ import { ContentNotice } from "@/components/feedback/content-notice";
 import { UnsavedDraftsProvider, useDraftKeys } from "@/components/feedback/unsaved-drafts";
 import { SettingsContent } from "@/components/layout/settings-page";
 import { Button } from "@/components/ui/button";
-import { agentStatus, noDesktopLabel } from "@/lib/agent-work/status";
+import { agentStatus, homeDeviceNotice } from "@/lib/agent-work/status";
 import { Laptop } from "lucide-react";
 
 /**
@@ -56,7 +56,7 @@ function AgentPageContent({
   const unavailable = !homedHere && (
     <ContentNotice
       icon={Laptop}
-      title={device ? `Open on ${device.name}` : noDesktopLabel}
+      title={homeDeviceNotice(device?.name)}
       description={
         device
           ? `${name} runs on ${device.name}. Its activity, transcripts, and routines are stored there.`
@@ -81,7 +81,6 @@ function AgentPageContent({
           agentId={agentId}
           section={section}
           onSectionChange={onSectionChange}
-          runSettingsDirty={unsaved.includes("run")}
           onClose={onDeleted}
         />
       </SettingsContent>

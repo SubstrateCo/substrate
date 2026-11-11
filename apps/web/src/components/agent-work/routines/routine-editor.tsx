@@ -1,3 +1,5 @@
+import { routineLimits } from "@substrate/contracts/agent-work";
+
 import { useForm, useSelector } from "@tanstack/react-form";
 
 import { useId, useRef, useState } from "react";
@@ -129,7 +131,7 @@ export function RoutineEditor({
           <Input
             id={fieldId("name")}
             placeholder="For example: Weekly design digest"
-            maxLength={200}
+            maxLength={routineLimits.name}
             value={draft.name}
             onChange={(event) => form.setFieldValue("name", event.target.value)}
             {...errorProps("name")}
@@ -141,7 +143,7 @@ export function RoutineEditor({
           <Textarea
             id={fieldId("prompt")}
             rows={4}
-            maxLength={20_000}
+            maxLength={routineLimits.prompt}
             placeholder="For example: Summarize open design-review threads and list the top issues."
             value={draft.prompt}
             onChange={(event) => form.setFieldValue("prompt", event.target.value)}
@@ -175,7 +177,7 @@ export function RoutineEditor({
               <Input
                 id={fieldId("cron")}
                 placeholder="0 9 * * 1-5"
-                maxLength={100}
+                maxLength={routineLimits.cron}
                 value={schedule.cron}
                 onChange={(event) => setScheduleField({ cron: event.target.value })}
                 {...errorProps("cron", true)}

@@ -5,7 +5,7 @@ import {
   type HarnessMcpServer,
 } from "@substrate/contracts/harness";
 
-import { skipToken, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { useRef, useState } from "react";
 
@@ -21,9 +21,11 @@ import { SettingsList, SettingsNote, SettingsSection } from "@/components/layout
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { harnessLabel } from "@/lib/agents/harness-meta";
-import { desktopLocalConfiguration } from "@/lib/desktop/agents/local-configuration";
 import { useAgentConfigurationMutations } from "@/queries/agents/configuration-mutations";
-import { queryKeys } from "@/queries/keys";
+import {
+  localAgentConfiguration,
+  localConfigurationOptions,
+} from "@/queries/agents/local-configuration";
 import { Info, Laptop, Plus, RefreshCw, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -48,28 +50,14 @@ export function AgentConfiguration({
   section: AgentSection;
   defaults: boolean;
 }) {
-  const controller = desktopLocalConfiguration(harness, agentId);
-  const key = queryKeys.localAgentConfiguration(
-    userId,
-    organizationId ?? "",
-    agentId ?? "",
-    harness,
-  );
-  const available = !!controller && !!organizationId;
+  const local = localAgentConfiguration(userId, organizationId, agentId, harness);
+  const available = !!local;
   const [editing, setEditing] = useState<{ id?: string }>();
   const [deleting, setDeleting] = useState<{ id: string; name: string }>();
   const container = useRef<HTMLDivElement>(null);
   const { remember: rememberLauncher, restore: restoreFocus } = useFocusReturn(container);
-  const configuration = useQuery({
-    queryKey: key,
-    queryFn: controller && organizationId ? () => controller.scan() : skipToken,
-  });
-  const { save, remove, reset } = useAgentConfigurationMutations(
-    userId,
-    organizationId,
-    agentId,
-    harness,
-  );
+  const configuration = useQuery(localConfigurationOptions(userId, local));
+  const { save, remove, reset } = useAgentConfigurationMutations(local);
   const [resetting, setResetting] = useState(false);
   // Substrate rewrites its own skills on every sync, so they are not listed as editable.
   const isStartupSkill = (id: string) => startupSkillIds.includes(id);

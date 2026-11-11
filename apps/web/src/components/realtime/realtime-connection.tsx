@@ -3,14 +3,27 @@ import type { RealtimeStatus } from "@substrate/contracts/realtime";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useReducer, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 import { RealtimeContainerContext } from "@/components/realtime/realtime-container-context";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { realtimeBridge } from "@/lib/desktop/bridges";
 import { createBrowserRealtime } from "@/lib/realtime/browser";
-import { createRealtimeCache } from "@/queries/realtime/cache";
+import { createRealtimeCache, type RealtimeHealth } from "@/queries/realtime/cache";
+
+type LiveState = { socket: RealtimeStatus; health: RealtimeHealth };
+
+function liveState(state: LiveState, change: Partial<LiveState>): LiveState {
+  return { ...state, ...change };
+}
+
+/** A connected socket shows as connected only once the cache refresh after it is done. */
+function liveStatus({ socket, health }: LiveState): RealtimeStatus | "stale" {
+  if (socket !== "connected") return socket;
+  if (health === "stale") return "stale";
+  return health === "syncing" ? "connecting" : "connected";
+}
 
 export function RealtimeConnection({
   userId,
@@ -23,50 +36,33 @@ export function RealtimeConnection({
 }) {
   const queryClient = useQueryClient();
   const router = useRouter();
-  // "stale" means the socket is up but the cache resync after it failed.
-  const [status, setStatus] = useState<RealtimeStatus | "stale">("connecting");
+  const [live, dispatch] = useReducer(liveState, { socket: "connecting", health: "fresh" });
+  // "stale" means the socket is up but the cache refresh after it failed.
+  const status = liveStatus(live);
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   useEffect(() => {
     const bridge = realtimeBridge() ?? createBrowserRealtime();
     let active = true;
-    let statusEpoch = 0;
-    let ready: Promise<void> = Promise.resolve();
-    let hasReady = false;
     const cache = createRealtimeCache({
       queryClient,
       organizationId,
       userId,
       revalidate: () => router.invalidate(),
+      onHealth: (health) => {
+        if (active) dispatch({ health });
+      },
     });
     const unsubscribe = bridge.onEvent((event) => {
       if (!active) return;
-      if (event.type !== "status") {
-        const received = event.type === "ready" && hasReady ? cache.resync() : cache.receive(event);
-        if (event.type === "ready") {
-          hasReady = true;
-          ready = received;
-        }
-        void received.catch(() => {
-          if (active) setStatus("stale");
-        });
-      } else if (event.status === "connected") {
-        const epoch = ++statusEpoch;
-        void ready.then(
-          () => {
-            if (active && epoch === statusEpoch) setStatus("connected");
-          },
-          () => {
-            if (active && epoch === statusEpoch) setStatus("stale");
-          },
-        );
-      } else {
-        statusEpoch++;
-        setStatus(event.status);
+      // The cache reports failed refreshes through onHealth.
+      if (event.type !== "status") void cache.receive(event).catch(() => {});
+      else {
+        dispatch({ socket: event.status });
         if (event.status === "forbidden") void cache.forbidden().catch(() => {});
       }
     });
     void bridge.connect({ organizationId }).catch(() => {
-      if (active) setStatus("disconnected");
+      if (active) dispatch({ socket: "disconnected" });
     });
     return () => {
       active = false;

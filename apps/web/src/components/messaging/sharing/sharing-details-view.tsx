@@ -2,10 +2,11 @@ import type { ReactNode } from "react";
 
 import type { SharingDetails } from "@/api/messaging/sharing";
 import { Tag } from "@/components/feedback/tag";
-import { RowAction, RowActions } from "@/components/layout/row-actions";
+import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
 import { Button } from "@/components/ui/button";
+import { cn } from "cn";
 import { Building2, Mail, RotateCcw, TriangleAlert, UserMinus, X } from "lucide-react";
 
 type Invitation = SharingDetails["invitations"][number];
@@ -69,7 +70,7 @@ function Row({
   actions?: ReactNode;
 }) {
   return (
-    <li className="group/row flex min-h-11 items-center gap-3 rounded-md py-1.5">
+    <li className={cn(actionRow, "flex min-h-11 items-center gap-3 rounded-md py-1.5")}>
       {icon}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium">{title}</span>

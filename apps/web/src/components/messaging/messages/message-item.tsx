@@ -189,10 +189,8 @@ export function MessageItem({
               organizationId={organizationId}
               messageId={message.id}
               linkedIds={context.data?.links.map((link) => link.entityId) ?? []}
-              onClose={() => {
-                setLinking(false);
-                requestAnimationFrame(() => actionsTrigger.current?.focus());
-              }}
+              onClose={() => setLinking(false)}
+              onRestoreFocus={() => actionsTrigger.current?.focus()}
             />
           )}
           {reactionsEmoji !== null && (

@@ -8,6 +8,7 @@ import {
   type PagePane,
 } from "./page-layout-context";
 import { writePaneWidth } from "./pane-width";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "cn";
 import type { Layout, LayoutChangedMeta } from "react-resizable-panels";
 
@@ -36,6 +37,7 @@ export function PageLayout({
 }) {
   const parent = useContext(PageLayoutContext);
   const [hasAside, setHasAside] = useState(false);
+  const wide = useMediaQuery("(min-width: 1024px)");
   const panes = useRef(new Map<PagePane, HTMLDivElement>());
   const registerPane = (pane: PagePane, element: HTMLDivElement | null) => {
     if (element) panes.current.set(pane, element);
@@ -46,6 +48,7 @@ export function PageLayout({
     depth: parent ? parent.depth + 1 : 0,
     mobileView,
     hasAside,
+    asideCovers: !wide,
     setHasAside,
     registerPane,
   };

@@ -28,6 +28,12 @@ export type AccessChange = {
 };
 
 /**
+ * Where a failed change shows. A dialog shows its error and closes on success; a member row or
+ * an Undo has no dialog, so its failure shows in a toast.
+ */
+export type ErrorSurface = { kind: "dialog"; onSuccess: () => void } | { kind: "toast" };
+
+/**
  * Who can open a project. Lowering access applies at once and can be undone. Raising access and
  * removing a person each ask for confirmation first.
  */
@@ -44,7 +50,7 @@ export function ProjectSharing({
   capabilities: ProjectCapabilities;
   pending?: boolean;
   error?: Error | null;
-  onShare: (change: AccessChange, onSuccess?: () => void) => void;
+  onShare: (change: AccessChange, surface: ErrorSurface) => void;
   onRevoke: (actorEntityId: string, name: string, onSuccess: () => void) => void;
   onClearError: () => void;
 }) {
@@ -100,7 +106,10 @@ export function ProjectSharing({
           pending={pending}
           error={error}
           onShare={(actorEntityId, name, level) =>
-            onShare({ actorEntityId, name, level }, () => setAdding(false))
+            onShare(
+              { actorEntityId, name, level },
+              { kind: "dialog", onSuccess: () => setAdding(false) },
+            )
           }
           renderDialog={({ fields, ...editor }) => (
             <FormDialog
@@ -133,12 +142,15 @@ export function ProjectSharing({
               if (permissionRank[level] > permissionRank[member.level])
                 openReview(member.actorEntityId, member.name, level);
               else
-                onShare({
-                  actorEntityId: member.actorEntityId,
-                  name: member.name,
-                  level,
-                  previous: member.level,
-                });
+                onShare(
+                  {
+                    actorEntityId: member.actorEntityId,
+                    name: member.name,
+                    level,
+                    previous: member.level,
+                  },
+                  { kind: "toast" },
+                );
             }}
             onRemove={() => openReview(member.actorEntityId, member.name, null)}
           />
@@ -169,7 +181,7 @@ export function ProjectSharing({
             if (review.level)
               onShare(
                 { actorEntityId: review.actorEntityId, name: review.name, level: review.level },
-                () => setReview(null),
+                { kind: "dialog", onSuccess: () => setReview(null) },
               );
             else onRevoke(review.actorEntityId, review.name, () => setReview(null));
           }}

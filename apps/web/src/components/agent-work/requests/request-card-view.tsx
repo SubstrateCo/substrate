@@ -3,11 +3,12 @@ import type { AgentRequestResponse, AgentRequestView } from "@substrate/contract
 import { Link } from "@tanstack/react-router";
 
 import { ApprovalRequest } from "./approval-request";
-import { hiddenConversation, ProposalPreview } from "./proposal-preview";
+import { ProposalPreview } from "./proposal-preview";
 import { QuestionsRequest } from "./questions-request";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { MessageCard, MessageCardBody } from "@/components/messaging/messages/message-card";
 import { useNow } from "@/hooks/use-now";
+import { hiddenConversation } from "@/lib/agent-work/hidden-records";
 import {
   proposalTargetHidden,
   proposalTargetLoading,

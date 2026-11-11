@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { useRef, useState } from "react";
+import { useRef } from "react";
 
 import { SharingInvitationForm } from "./sharing-invitation-form";
 import type { SharingDetails } from "@/api/messaging/sharing";
@@ -10,7 +10,7 @@ import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { isAccessFailure } from "@/components/feedback/request-failure";
 import { StaleNotice } from "@/components/feedback/stale-notice";
-import { useFocusReturn } from "@/components/feedback/use-focus-return";
+import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { SharingDetailsView } from "@/components/messaging/sharing/sharing-details-view";
 import { useExpiryTime } from "@/hooks/use-expiry-time";
 import { sharingOptions } from "@/queries/messaging/sharing";
@@ -70,20 +70,16 @@ export function SharingManager({
   const blocked = isAccessFailure(details.error);
   const data = blocked ? undefined : details.data;
   const now = useExpiryTime(data?.invitations.map((invite) => invite.expiresAt));
-  const [confirmation, setConfirmation] = useState<Confirmation>();
-  // The confirmation is mounted by state, so it has no trigger of its own: remember the row
-  // button, and fall back to the invite field once that row is gone.
+  // Focus returns to the row button, or to the invite field once that row is gone.
   const confirmFallback = useRef<HTMLElement>(null);
-  const confirmFocus = useFocusReturn(confirmFallback);
-  const confirm = (next: Confirmation) => {
-    confirmFocus.remember();
-    setConfirmation(next);
-  };
-  const restoreConfirmFocus = () => {
-    confirmFocus.restore();
-  };
+  const {
+    value: confirmation,
+    open: confirm,
+    close: closeConfirmation,
+    restoreFocus: restoreConfirmFocus,
+  } = useStateDialog<Confirmation>(confirmFallback);
   const action = useSharingAction(organizationId, conversationId);
-  if (blocked && confirmation) setConfirmation(undefined);
+  if (blocked && confirmation) closeConfirmation();
   const copy = confirmation && !blocked && confirmCopy[confirmation.kind];
   return (
     <>
@@ -174,14 +170,14 @@ export function SharingManager({
           pending={action.isPending}
           error={action.error}
           errorDescription="We couldn’t change access. Try again."
-          onClose={() => setConfirmation(undefined)}
+          onClose={closeConfirmation}
           onRestoreFocus={restoreConfirmFocus}
           onConfirm={() =>
             action.mutate(
               { kind: confirmation.kind, id: confirmation.id },
               {
                 onSuccess: () => {
-                  setConfirmation(undefined);
+                  closeConfirmation();
                   toast.success(copy.done(confirmation.name));
                 },
               },

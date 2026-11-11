@@ -5,6 +5,7 @@ import { AuthNavLink } from "../../auth/auth-link";
 import { ContentNotice } from "../../feedback/content-notice";
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
+import { useFocusAfterRender } from "../../feedback/use-focus-after-render";
 import { Button } from "../../ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
 import { Item } from "../../ui/item";
@@ -41,6 +42,7 @@ export function OrganizationSelection({
   const creationHeading = useRef<HTMLHeadingElement | null>(null);
   const createTrigger = useRef<HTMLButtonElement | null>(null);
   const [creating, setCreating] = useState(false);
+  const focusAfterRender = useFocusAfterRender();
   useEffect(() => {
     const origin = retryOrigin.current;
     if (!origin || loading || loadError) return;
@@ -127,8 +129,7 @@ export function OrganizationSelection({
         open={showCreate}
         onOpenChange={(open) => {
           setCreating(open);
-          if (open)
-            requestAnimationFrame(() => document.getElementById("organization-name")?.focus());
+          if (open) focusAfterRender(() => document.getElementById("organization-name"));
         }}
       >
         {!showCreate && (
@@ -163,7 +164,7 @@ export function OrganizationSelection({
                   size="sm"
                   onClick={() => {
                     setCreating(false);
-                    requestAnimationFrame(() => createTrigger.current?.focus());
+                    focusAfterRender(() => createTrigger.current);
                   }}
                 >
                   Cancel

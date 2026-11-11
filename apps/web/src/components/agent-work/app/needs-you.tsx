@@ -3,9 +3,9 @@ import type { AgentRequestPlace } from "@substrate/contracts/agent-work";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
-import { hiddenConversation } from "../requests/proposal-preview";
 import { RequestCard } from "../requests/request-card";
 import { NeedsYouView, type NeedsYouEntry } from "./needs-you-view";
+import { hiddenConversation } from "@/lib/agent-work/hidden-records";
 import { needsYouItems } from "@/lib/agent-work/needs-you";
 import { agentStatus } from "@/lib/agent-work/status";
 import { messageLink } from "@/lib/navigation/record-links";
