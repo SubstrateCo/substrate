@@ -11,6 +11,9 @@ import { fileDisposition } from "./disposition";
 import { normalizePicture } from "./image";
 import { createHash } from "node:crypto";
 
+/** How long an upload can be completed after it was created. */
+const uploadTtlMs = 15 * 60_000;
+
 export interface FileServiceDependencies {
   repository: StorageRepository;
   storage: ObjectStorage;
@@ -26,7 +29,7 @@ export function createFileService(deps: FileServiceDependencies) {
           scope,
           input,
           id,
-          new Date(Date.now() + 15 * 60_000),
+          new Date(Date.now() + uploadTtlMs),
         );
         const ticket = await storage.signUpload(upload.temporaryKey, input.contentType, input.size);
         return { uploadId: id, uploadUrl: ticket.url, headers: ticket.headers };
@@ -88,7 +91,7 @@ export function createFileService(deps: FileServiceDependencies) {
       });
     },
     async cleanup() {
-      // Uploads expire in 15 minutes. A full day gives in-flight completions ample time to stop.
+      // Uploads expire after uploadTtlMs. A full day gives in-flight completions ample time to stop.
       const before = new Date(Date.now() - 24 * 60 * 60_000);
       await repository.pruneUnusedFiles(before);
       for (const candidate of await repository.cleanupCandidates(before)) {

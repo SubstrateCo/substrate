@@ -3,12 +3,14 @@ import type { RealtimeEvent } from "@substrate/contracts/realtime";
 
 import { createRealtimeHub } from "./hub";
 import type { Transport } from "./hub";
+import { testReceiver } from "./test-support";
 import { expect, test } from "bun:test";
 
 test("publishes without polling and isolates a failed recipient", async () => {
   const failures: boolean[] = [];
   const hub = createRealtimeHub({
-    authenticate: async () => ({ userId: "user", organizationId: "org", actorId: "actor" }),
+    authenticate: async () =>
+      testReceiver({ userId: "user", organizationId: "org", actorId: "actor" }),
     recipients: async () => () => true,
     reportFailure: () => failures.push(true),
   });

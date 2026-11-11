@@ -4,6 +4,7 @@ import type { RealtimeEvent } from "@substrate/contracts/realtime";
 import { createRealtimeHub } from "./hub";
 import { createRefreshPublisher } from "./publisher";
 import { createRealtimeSubscription } from "./subscription";
+import { testReceiver } from "./test-support";
 import { RedisClient } from "bun";
 import { expect, test } from "bun:test";
 
@@ -17,11 +18,8 @@ test.skipIf(!process.env.TEST_VALKEY_URL)(
       const received: RealtimeEvent[] = [];
       let next = Promise.withResolvers<void>();
       const hub = createRealtimeHub({
-        authenticate: async () => ({
-          userId: organizationId,
-          organizationId,
-          actorId: organizationId,
-        }),
+        authenticate: async () =>
+          testReceiver({ userId: organizationId, organizationId, actorId: organizationId }),
         recipients: async (audience) => () =>
           audience[0] !== "conversation" || audience[1] === "shared" || organizationId === "org-a",
         reportFailure: () => {

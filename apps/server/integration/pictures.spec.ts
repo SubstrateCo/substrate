@@ -124,15 +124,6 @@ test("workspace pictures are readable by members but cannot be managed by member
   for (const file of [logo, avatar]) {
     await rejected(await member.request.get(file.url, { maxRedirects: 0 }));
   }
-
-  // The shared owner keeps no picture for later tests.
-  for (const [path, data] of [
-    ["/api/auth/update-user", { image: null }],
-    ["/api/auth/organization/update", { organizationId: organization.id, data: { logo: null } }],
-  ] as const)
-    expect((await owner.request.post(path, { headers: { origin }, data })).ok()).toBe(true);
-  expect(await image(owner)).toBeNull();
-  expect((await getOrganization(owner)).logo ?? null).toBeNull();
 });
 
 for (const purpose of ["avatar", "organization-logo"] as const) {

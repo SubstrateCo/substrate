@@ -1,5 +1,6 @@
 import { provisionVerifiedAccount } from "./auth";
 import { appOrigin } from "./environment";
+import { image } from "./files";
 import { Mailpit } from "./mailpit";
 import { provisionWorkspaceSession, type WorkspaceAccount } from "./organizations";
 import { expect, test as base, type APIRequestContext } from "@playwright/test";
@@ -12,8 +13,9 @@ export type Actor = WorkspaceAccount & { name: string };
 
 /**
  * One set per worker. The owner and member share the owner's workspace; the outsider and the
- * recipient each own a workspace. Tests must leave account state (avatars, active workspace)
- * as they found it; a failed test restarts the worker and so recreates the actors.
+ * recipient each own a workspace. After each test the fixtures restore the owner's avatar and
+ * workspace logo, and the workspace fixture restores active workspaces; a failed test restarts
+ * the worker and so recreates the actors.
  */
 export type Actors = { owner: Actor; member: Actor; outsider: Actor; recipient: Actor };
 
@@ -23,6 +25,15 @@ async function activate(actor: Actor, organizationId: string) {
     data: { organizationId },
   });
   expect(response.ok(), `${actor.name} activates the fixture workspace`).toBe(true);
+}
+
+async function logo(owner: Actor) {
+  const response = await owner.request.get("/api/auth/organization/get-full-organization", {
+    params: { organizationId: owner.organizationId },
+  });
+  expect(response.ok()).toBe(true);
+  const organization: { logo?: string | null } = await response.json();
+  return organization.logo ?? null;
 }
 
 async function join(owner: Actor, member: Actor, organizationId: string) {
@@ -42,6 +53,7 @@ async function join(owner: Actor, member: Actor, organizationId: string) {
 
 export const test = base.extend<
   {
+    actors: Actors;
     /**
      * Creates a workspace owned by `owner`, joins `member` to it, and activates it for both.
      * Returns both actors scoped to it. Teardown activates each actor's own workspace again.
@@ -51,9 +63,9 @@ export const test = base.extend<
       (owner: Actor, member: Actor): Promise<[Actor, Actor]>;
     };
   },
-  { actors: Actors }
+  { workerActors: Actors }
 >({
-  actors: [
+  workerActors: [
     async ({ playwright }, use) => {
       const contexts: APIRequestContext[] = [];
       const account = async (name: string, ownsWorkspace: boolean): Promise<Actor> => {
@@ -87,6 +99,27 @@ export const test = base.extend<
     },
     { scope: "worker", timeout: 60_000 },
   ],
+
+  // The owner is shared by every test of the worker, so its pictures are restored after each.
+  actors: async ({ workerActors }, use) => {
+    const { owner } = workerActors;
+    const before = { image: await image(owner), logo: await logo(owner) };
+    await use(workerActors);
+    if ((await image(owner)) !== before.image) {
+      const restored = await owner.request.post("/api/auth/update-user", {
+        headers: { origin },
+        data: { image: before.image },
+      });
+      expect(restored.ok(), "The owner's avatar is restored").toBe(true);
+    }
+    if ((await logo(owner)) !== before.logo) {
+      const restored = await owner.request.post("/api/auth/organization/update", {
+        headers: { origin },
+        data: { organizationId: owner.organizationId, data: { logo: before.logo } },
+      });
+      expect(restored.ok(), "The owner's workspace logo is restored").toBe(true);
+    }
+  },
 
   workspace: async ({ actors: _actors }, use) => {
     const switched = new Set<Actor>();

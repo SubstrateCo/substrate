@@ -1,3 +1,4 @@
+import { sessionKeys } from "@substrate/contracts/agent-work";
 import { failure, publicFailure } from "@substrate/contracts/result";
 
 import { createTestScopes } from "../../test-support";
@@ -36,7 +37,7 @@ test("MCP forwards the validated turn and resolved workspace, and preserves deni
     turn: {
       turnId: crypto.randomUUID(),
       attempt: 1,
-      sessionKey: "owner",
+      sessionKey: sessionKeys.dm(crypto.randomUUID()),
       origin: null,
       kind: "interactive",
     },

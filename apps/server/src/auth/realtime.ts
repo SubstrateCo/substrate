@@ -2,12 +2,22 @@ import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 import { invitationRefreshHints, profileRefreshHints } from "@substrate/database/realtime";
 import type { Database } from "@substrate/database/trusted";
 
-import type { createRefreshPublisher } from "../v1/realtime/publisher";
+import type { CommittedPublisher } from "../v1/realtime/committed";
 
-export function createAuthPublisher(
-  db: Database,
-  publishRefresh: ReturnType<typeof createRefreshPublisher>,
-) {
+// Better Auth runs these hooks after its own writes commit, so their hints publish as committed.
+export function createAuthPublisher(db: Database, publish: CommittedPublisher) {
+  async function publishRefresh(hints: RealtimeHint[] | Promise<RealtimeHint[]>) {
+    let resolved: RealtimeHint[];
+    try {
+      resolved = await hints;
+    } catch {
+      // A failed hint lookup must not fail the auth request. Clients resync on reconnect.
+      console.warn("Realtime publish failed; clients will resync");
+      return;
+    }
+    await publish({ result: undefined, hints: resolved });
+  }
+
   function publishSessionChange(session: { userId: string }) {
     return publishRefresh([{ audience: realtimeKeys.user(session.userId), domain: "session" }]);
   }

@@ -1,3 +1,4 @@
+import { testReceiver } from "../v1/realtime/test-support";
 import { createRealtimeAuthenticator } from "./realtime-session";
 import { expect, test } from "bun:test";
 
@@ -19,14 +20,12 @@ test("requires a fresh verified session with exact active-organization scope", a
         return current;
       },
     },
-    async (identity) => ({ ...identity, actorId: "actor" }),
+    async (identity) => testReceiver({ ...identity, actorId: "actor" }),
   );
   const headers = new Headers({ cookie: "session" });
-  expect(await authenticate(headers, "org")).toEqual({
-    userId: "user",
-    organizationId: "org",
-    actorId: "actor",
-  });
+  expect(await authenticate(headers, "org")).toEqual(
+    testReceiver({ userId: "user", organizationId: "org", actorId: "actor" }),
+  );
   expect(await authenticate(headers, null)).toBeNull();
   expect(await authenticate(headers, "other")).toBeNull();
   current.user.emailVerified = false;
@@ -49,22 +48,20 @@ test("connect permission uses the database receiver resolver and supports accoun
     },
     async (identity) => {
       identities.push(identity);
-      return allowed ? { ...identity, actorId: identity.organizationId && "actor" } : null;
+      return allowed
+        ? testReceiver({ ...identity, actorId: identity.organizationId && "actor" })
+        : null;
     },
   );
   expect(await authenticate(new Headers(), "org")).toBeNull();
   allowed = true;
-  expect(await authenticate(new Headers(), "org")).toEqual({
-    userId: "user",
-    organizationId: "org",
-    actorId: "actor",
-  });
+  expect(await authenticate(new Headers(), "org")).toEqual(
+    testReceiver({ userId: "user", organizationId: "org", actorId: "actor" }),
+  );
   organizationId = null;
-  expect(await authenticate(new Headers(), null)).toEqual({
-    userId: "user",
-    organizationId: null,
-    actorId: null,
-  });
+  expect(await authenticate(new Headers(), null)).toEqual(
+    testReceiver({ userId: "user", organizationId: null, actorId: null }),
+  );
   expect(identities).toEqual([
     { userId: "user", organizationId: "org" },
     { userId: "user", organizationId: "org" },

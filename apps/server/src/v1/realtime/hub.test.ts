@@ -4,6 +4,7 @@ import type { RealtimeReceiver } from "@substrate/database/realtime";
 
 import { createRealtimeHub } from "./hub";
 import type { Change, HubDependencies, Transport } from "./hub";
+import { testReceiver } from "./test-support";
 /* oxlint-disable typescript/await-thenable -- Bun's rejection matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 
@@ -25,7 +26,10 @@ function fixture(options: Parameters<typeof createRealtimeHub>[1] = {}) {
   const hub = createRealtimeHub(deps, options);
   async function connect(userId = "user", organizationId: string | null = "org") {
     const cookie = `${userId}-${organizationId}`;
-    sessions.set(cookie, { userId, organizationId, actorId: organizationId && `${userId}-actor` });
+    sessions.set(
+      cookie,
+      testReceiver({ userId, organizationId, actorId: organizationId && `${userId}-actor` }),
+    );
     const connection = await hub.reserve(new Headers({ cookie }), organizationId);
     if (!connection) throw new Error("Reservation rejected");
     const events: RealtimeEvent[] = [];
@@ -116,17 +120,15 @@ test("routes server-owned audiences and authorizes each viewer in their own work
 function drift(f: ReturnType<typeof fixture>, peers: { cookie: string }[]) {
   const [revoked, moved, recreated] = peers;
   f.sessions.delete(revoked!.cookie);
-  f.sessions.set(moved!.cookie, {
-    userId: "moved",
-    organizationId: "other",
-    actorId: "moved-actor",
-  });
+  f.sessions.set(
+    moved!.cookie,
+    testReceiver({ userId: "moved", organizationId: "other", actorId: "moved-actor" }),
+  );
   // A replaced workspace actor must not inherit the old connection's actor audience.
-  f.sessions.set(recreated!.cookie, {
-    userId: "recreated",
-    organizationId: "org",
-    actorId: "replacement-actor",
-  });
+  f.sessions.set(
+    recreated!.cookie,
+    testReceiver({ userId: "recreated", organizationId: "org", actorId: "replacement-actor" }),
+  );
 }
 
 test("revocation and workspace drift stop delivery by the next session check", async () => {
@@ -327,7 +329,10 @@ test("bounds reservations and expires abandoned upgrades", async () => {
   await expect(f.hub.reserve(new Headers({ cookie: live.cookie }), "org")).rejects.toThrow(
     "Realtime capacity reached",
   );
-  f.sessions.set("pending", { userId: "pending", organizationId: null, actorId: null });
+  f.sessions.set(
+    "pending",
+    testReceiver({ userId: "pending", organizationId: null, actorId: null }),
+  );
   const pending = await f.hub.reserve(new Headers({ cookie: "pending" }), null);
   expect(pending).not.toBeNull();
   const atCapacity = f.hub.reserve(new Headers({ cookie: "pending" }), null);

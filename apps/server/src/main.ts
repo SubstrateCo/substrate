@@ -26,7 +26,7 @@ const publish = createCommittedPublisher({
   sharingMail: { trigger: () => sharingMail.worker.trigger() },
 });
 const sharingMail = createSharingMail({ db, mail, publish });
-const auth = createAuth({ db, mail, publish, realtime: createAuthPublisher(db, refresh.publish) });
+const auth = createAuth({ db, mail, publish, realtime: createAuthPublisher(db, publish) });
 const storage = createS3Storage();
 const services = createServices({ db, storage, publish });
 const scopes = createScopes({

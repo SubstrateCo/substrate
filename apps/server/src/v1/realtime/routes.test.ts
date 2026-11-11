@@ -7,6 +7,7 @@ import { appFixture } from "../../test-support";
 import { createRealtimeHub } from "./hub";
 import type { Change } from "./hub";
 import { createRealtimeRoutes } from "./routes";
+import { testReceiver } from "./test-support";
 import type { WebSocketOptions } from "bun";
 import { afterEach, expect, test } from "bun:test";
 
@@ -27,7 +28,7 @@ function fixture(options: Parameters<typeof createRealtimeHub>[1] = {}) {
     {
       authenticate: async (headers, organizationId) =>
         active && headers.get("cookie") === "session=test"
-          ? { userId: "user", organizationId, actorId: organizationId && "actor" }
+          ? testReceiver({ userId: "user", organizationId, actorId: organizationId && "actor" })
           : null,
       recipients: async (audience) => () => audience[1] !== "forbidden-conversation",
       reportFailure: () => {

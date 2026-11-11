@@ -231,14 +231,11 @@ test("only the home desktop publishes, and a left conversation's requests are pl
     await owner.get(`/api/v1/agent-work/needs-you?organizationId=${workspace.id}`)
   ).json();
   expect(needsYou.data.requests).toHaveLength(2);
-  for (const request of needsYou.data.requests)
-    expect(request).toMatchObject({
-      sessionKey: null,
-      place: { access: "hidden" },
-      payload: null,
-      response: null,
-      proposal: null,
-    });
+  for (const request of needsYou.data.requests) {
+    expect(request.place).toEqual({ access: "hidden" });
+    for (const field of ["sessionKey", "payload", "response", "proposal"])
+      expect(request).not.toHaveProperty(field);
+  }
   const text = JSON.stringify(needsYou);
   for (const hidden of [secret, conversationId, rootId]) expect(text).not.toContain(hidden);
 });
