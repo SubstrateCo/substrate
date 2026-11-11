@@ -16,8 +16,7 @@ export default defineConfig(({ mode }) => {
     process.env.SUBSTRATE_WEB_URL ?? env.SUBSTRATE_WEB_URL ?? "http://localhost:3000",
   );
   const port = Number(webURL.port || (webURL.protocol === "https:" ? 443 : 80));
-  const apiURL =
-    process.env.SUBSTRATE_API_URL ?? env.SUBSTRATE_API_URL ?? "http://localhost:3001";
+  const apiURL = process.env.SUBSTRATE_API_URL ?? env.SUBSTRATE_API_URL ?? "http://localhost:3001";
   return {
     cacheDir: process.env.VITE_CACHE_DIR,
     server: {

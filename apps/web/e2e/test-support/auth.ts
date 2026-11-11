@@ -20,10 +20,6 @@ export async function signIn(page: Page, email: string, password: string) {
 /** Opens the verification link from the email the server sent. */
 export async function verifyEmail(page: Page, request: APIRequestContext, email: string) {
   await page.goto(
-    await new Mailpit(request).link(
-      email,
-      "Verify your Substrate email",
-      "/api/auth/verify-email",
-    ),
+    await new Mailpit(request).link(email, "Verify your Substrate email", "/api/auth/verify-email"),
   );
 }

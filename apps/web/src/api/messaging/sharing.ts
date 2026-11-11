@@ -1,7 +1,4 @@
-import type {
-  conversationTargetInput,
-  workspaceInput,
-} from "@substrate/contracts/messaging/input";
+import type { conversationTargetInput, workspaceInput } from "@substrate/contracts/messaging/input";
 import type {
   sharingAcceptInput,
   sharingActionInput,
