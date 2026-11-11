@@ -20,6 +20,7 @@ import { except } from "hono/combine";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { secureHeaders } from "hono/secure-headers";
+import type { ExtractSchema } from "hono/types";
 
 export function createApp() {
   const { trustedOrigins } = environment;
@@ -74,4 +75,6 @@ export function createApp() {
     });
 }
 
-export type AppType = ReturnType<typeof createApp>;
+type AppSchema = ExtractSchema<ReturnType<typeof createApp>>;
+// Flatten the accumulated route schema before the RPC client expands it.
+export type AppType = Hono<{}, { [Path in keyof AppSchema]: AppSchema[Path] }>;

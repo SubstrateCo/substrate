@@ -6,7 +6,12 @@ import { requireVerifiedSession } from "@/lib/auth/route-access";
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   component: AuthenticatedLayout,
-  beforeLoad: async ({ context, location }) => ({
+  beforeLoad: async ({
+    context,
+    location,
+  }): Promise<{
+    session: Awaited<ReturnType<typeof requireVerifiedSession>>;
+  }> => ({
     session: await requireVerifiedSession(context.queryClient, location.href),
   }),
 });

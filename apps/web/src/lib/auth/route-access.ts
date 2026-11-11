@@ -2,9 +2,13 @@ import type { QueryClient } from "@tanstack/react-query";
 import { redirect } from "@tanstack/react-router";
 
 import { guestSessionRedirect, verifiedSessionAccess } from "./session-policy";
+import type { getSession } from "@/api/auth/session";
 import { sessionQueryOptions } from "@/queries/auth/session";
 
-export async function requireVerifiedSession(queryClient: QueryClient, destination: string) {
+export async function requireVerifiedSession(
+  queryClient: QueryClient,
+  destination: string,
+): Promise<NonNullable<Awaited<ReturnType<typeof getSession>>>> {
   // Realtime session and access events, reconnect resyncs, and full-document auth changes keep a
   // verified session current. Recheck a missing or unverified one, since no event reports email verification.
   const session = await queryClient.query({
