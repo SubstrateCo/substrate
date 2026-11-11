@@ -1,22 +1,31 @@
+import { partialMatchKey, type QueryKey } from "@tanstack/react-query";
+
 export const queryKeys = {
   desktopRelease: ["desktop", "release"] as const,
   desktopSettings: ["desktop", "settings"] as const,
   sharingInvitations: ["sharing-invitations"] as const,
   session: ["auth", "session"] as const,
-  agents: (userId: string) => ["users", userId, "agents"] as const,
+  // Private to one user. Each key names a kind, then the organization when it has one.
+  user: (userId: string) => ["users", userId] as const,
+  agents: (userId: string) => [...queryKeys.user(userId), "agents"] as const,
+  // Harness reads go through the desktop bridge. Each kind is a prefix, so isHarnessKey can match.
+  allHarnessModels: (userId: string) => [...queryKeys.user(userId), "harness-models"] as const,
   harnessModels: (userId: string, organizationId: string, harness: string, agentId?: string) =>
-    ["users", userId, "harness-models", organizationId, harness, agentId ?? ""] as const,
+    [...queryKeys.allHarnessModels(userId), organizationId, harness, agentId ?? ""] as const,
+  allHarnessStatus: (userId: string) => [...queryKeys.user(userId), "harness-status"] as const,
   harnessStatus: (userId: string, organizationId: string) =>
-    ["users", userId, "harness-status", organizationId] as const,
+    [...queryKeys.allHarnessStatus(userId), organizationId] as const,
+  localAgentConfigurations: (userId: string) =>
+    [...queryKeys.user(userId), "local-agent-configuration"] as const,
   localAgentConfiguration: (
     userId: string,
     organizationId: string,
     agentId: string,
     harness: string,
-  ) => ["users", userId, "local-agent-configuration", organizationId, agentId, harness] as const,
+  ) => [...queryKeys.localAgentConfigurations(userId), organizationId, agentId, harness] as const,
   // Agent work is private to the agent's owner, so it lives under the user.
   agentWork: (userId: string, organizationId?: string) =>
-    ["users", userId, "agent-work", ...(organizationId ? [organizationId] : [])] as const,
+    [...queryKeys.user(userId), "agent-work", ...(organizationId ? [organizationId] : [])] as const,
   // Server: requests and status that every owner device can read.
   agentWorkStatus: (userId: string, organizationId: string) =>
     [...queryKeys.agentWork(userId, organizationId), "status"] as const,
@@ -53,7 +62,7 @@ export const queryKeys = {
   related: (organizationId: string, entityId?: string) =>
     [...queryKeys.context(organizationId), "related", ...(entityId ? [entityId] : [])] as const,
   // Reads the entity ID back from a related key, so predicates do not count positions.
-  relatedEntityId: (queryKey: readonly unknown[]) => queryKey[4],
+  relatedEntityId: (queryKey: readonly unknown[]) => queryKey[queryKeys.related("").length],
   activity: (organizationId: string, entityId?: string) =>
     [...queryKeys.context(organizationId), "activity", ...(entityId ? [entityId] : [])] as const,
   // A page key ends with the IDs of its messages.
@@ -63,10 +72,25 @@ export const queryKeys = {
       "message-pages",
       ...(conversationId ? [conversationId] : []),
     ] as const,
-  messagePageIds: (queryKey: readonly unknown[]): unknown[] =>
-    Array.isArray(queryKey[5]) ? queryKey[5] : [],
+  messagePage: (organizationId: string, conversationId: string, messageIds: string[]) =>
+    [...queryKeys.messagePages(organizationId, conversationId), messageIds] as const,
+  messagePageIds: (queryKey: readonly unknown[]): unknown[] => {
+    const ids = queryKey[queryKeys.messagePages("organization", "conversation").length];
+    return Array.isArray(ids) ? ids : [];
+  },
   notifications: (organizationId: string) =>
     [...queryKeys.context(organizationId), "notifications"] as const,
+  notificationUnread: (organizationId: string) =>
+    [...queryKeys.notifications(organizationId), "unread-status"] as const,
+  notificationGroups: (organizationId: string, filter: "all" | "unread") =>
+    [...queryKeys.notifications(organizationId), "groups", filter] as const,
+  // Without a group key, every group's events.
+  notificationEvents: (organizationId: string, groupKey?: string) =>
+    [
+      ...queryKeys.notifications(organizationId),
+      "events",
+      ...(groupKey ? [groupKey] : []),
+    ] as const,
   search: (organizationId: string) => [...queryKeys.context(organizationId), "search"] as const,
   searchPages: (organizationId: string) =>
     [...queryKeys.context(organizationId), "search-pages"] as const,
@@ -84,12 +108,19 @@ export const queryKeys = {
   invitation: (invitationId: string) => ["invitations", invitationId] as const,
   tasks: (organizationId: string) => [...queryKeys.organization(organizationId), "tasks"] as const,
   projects: (organizationId: string) => [...queryKeys.tasks(organizationId), "projects"] as const,
+  // Every cached project detail.
+  projectDetails: (organizationId: string) =>
+    [...queryKeys.tasks(organizationId), "project"] as const,
   project: (organizationId: string, projectEntityId: string) =>
-    [...queryKeys.tasks(organizationId), "project", projectEntityId] as const,
+    [...queryKeys.projectDetails(organizationId), projectEntityId] as const,
+  projectEntityId: (queryKey: readonly unknown[]) => queryKey[queryKeys.projectDetails("").length],
   taskLocation: (organizationId: string, taskEntityId: string) =>
     [...queryKeys.tasks(organizationId), "location", taskEntityId] as const,
+  // Comments on every task of one project.
+  projectComments: (organizationId: string, projectEntityId: string) =>
+    [...queryKeys.tasks(organizationId), "comments", projectEntityId] as const,
   taskComments: (organizationId: string, projectEntityId: string, taskEntityId: string) =>
-    [...queryKeys.tasks(organizationId), "comments", projectEntityId, taskEntityId] as const,
+    [...queryKeys.projectComments(organizationId, projectEntityId), taskEntityId] as const,
   commentMentions: (organizationId: string, entityId?: string) =>
     [
       ...queryKeys.tasks(organizationId),
@@ -105,10 +136,21 @@ export const queryKeys = {
   // Nested under conversations, so conversation refreshes also refresh these.
   managedConversations: (organizationId: string) =>
     [...queryKeys.conversations(organizationId), "managed"] as const,
+  // Without a conversation, the list of conversations shared with other workspaces.
+  conversationSharing: (organizationId: string, conversationId?: string) =>
+    [
+      ...queryKeys.conversations(organizationId),
+      "sharing",
+      ...(conversationId ? [conversationId] : []),
+    ] as const,
+  sharingInbox: (organizationId: string) =>
+    [...queryKeys.messaging(organizationId), "sharing-inbox"] as const,
   deleteImpact: (organizationId: string, conversationId: string) =>
     [...queryKeys.conversations(organizationId), "delete-impact", conversationId] as const,
+  messagingProfiles: (organizationId: string) =>
+    [...queryKeys.messaging(organizationId), "profiles"] as const,
   messagingProfile: (organizationId: string, conversationId: string, actorId: string) =>
-    [...queryKeys.messaging(organizationId), "profiles", conversationId, actorId] as const,
+    [...queryKeys.messagingProfiles(organizationId), conversationId, actorId] as const,
   // Every thread and history page of one conversation, or of the whole workspace.
   conversationMessages: (organizationId: string, conversationId?: string) =>
     [
@@ -117,7 +159,7 @@ export const queryKeys = {
       ...(conversationId ? [conversationId] : []),
     ] as const,
   messages: (organizationId: string, conversationId: string, threadId?: string) =>
-    [...queryKeys.messaging(organizationId), "messages", conversationId, threadId ?? null] as const,
+    [...queryKeys.conversationMessages(organizationId, conversationId), threadId ?? null] as const,
   conversationReactions: (organizationId: string, conversationId?: string) =>
     [
       ...queryKeys.messaging(organizationId),
@@ -127,3 +169,18 @@ export const queryKeys = {
   messageReactions: (organizationId: string, conversationId: string, messageId: string) =>
     [...queryKeys.conversationReactions(organizationId, conversationId), messageId] as const,
 };
+
+/** Whether a key holds a desktop harness read of this user. */
+export function isHarnessKey(queryKey: QueryKey, userId: string) {
+  return [
+    queryKeys.allHarnessStatus(userId),
+    queryKeys.allHarnessModels(userId),
+    queryKeys.localAgentConfigurations(userId),
+  ].some((prefix) => partialMatchKey(queryKey, prefix));
+}
+
+/** The organization of one of this user's private keys, which follows the key's kind. */
+export function userKeyOrganization(queryKey: QueryKey, userId: string) {
+  const user = queryKeys.user(userId);
+  return partialMatchKey(queryKey, user) ? queryKey[user.length + 1] : undefined;
+}

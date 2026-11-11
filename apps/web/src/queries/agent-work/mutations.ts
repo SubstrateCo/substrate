@@ -6,9 +6,11 @@ import type {
   UpdateRoutineInput,
 } from "@substrate/contracts/agent-work";
 import { createRoutineInput, updateRoutineInput } from "@substrate/contracts/agent-work";
+import type { AgentWorkAPI } from "@substrate/contracts/agent-work/desktop";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { invalidateTargets } from "../targets";
 import { agentWorkBridge } from "./bridge";
 import { agentWorkInvalidations, type AgentWorkEffect } from "./invalidation";
 import { approveProposal, declineProposal, respondToRequest } from "@/api/agent-work/requests";
@@ -16,34 +18,36 @@ import { approveProposal, declineProposal, respondToRequest } from "@/api/agent-
 function useRefresh(userId: string, organizationId: string) {
   const client = useQueryClient();
   return (effect: AgentWorkEffect) =>
-    Promise.all(
-      agentWorkInvalidations(userId, organizationId, effect).map((queryKey) =>
-        client.invalidateQueries({ queryKey }),
-      ),
-    );
+    invalidateTargets(client, agentWorkInvalidations(userId, organizationId, effect));
 }
 
-/** Answers and proposal decisions. They go to the server, so any owner device can make them. */
-export function useRequestActions(userId: string, organizationId: string) {
+export type RequestAction =
+  | { kind: "respond"; requestId: string; response: AgentRequestResponse }
+  | { kind: "approve"; requestId: string; action: ProposalAction | null }
+  | { kind: "decline"; requestId: string };
+
+/**
+ * Answers and proposal decisions, as one mutation, so its state is always the latest attempt.
+ * They go to the server, so any owner device can make them.
+ */
+export function useRequestAction(userId: string, organizationId: string) {
   const refresh = useRefresh(userId, organizationId);
-  const settled = () => refresh({ kind: "agent-work" });
-  return {
+  return useMutation({
+    mutationFn: (input: RequestAction) => {
+      const { requestId } = input;
+      if (input.kind === "respond")
+        return respondToRequest({ data: { organizationId, requestId, response: input.response } });
+      if (input.kind === "approve") return approveProposal({ data: { organizationId, requestId } });
+      return declineProposal({ data: { organizationId, requestId } });
+    },
     // A conflict means another device answered first. Refresh to show that answer.
-    respond: useMutation({
-      mutationFn: (input: { requestId: string; response: AgentRequestResponse }) =>
-        respondToRequest({ data: { organizationId, ...input } }),
-      onSettled: settled,
-    }),
-    approve: useMutation({
-      mutationFn: (input: { requestId: string; action: ProposalAction | null }) =>
-        approveProposal({ data: { organizationId, requestId: input.requestId } }),
-      onSettled: (_data, _error, input) => refresh({ kind: "approved", action: input.action }),
-    }),
-    decline: useMutation({
-      mutationFn: (requestId: string) => declineProposal({ data: { organizationId, requestId } }),
-      onSettled: settled,
-    }),
-  };
+    onSettled: (_data, _error, input) =>
+      refresh(
+        input.kind === "approve"
+          ? { kind: "approved", action: input.action }
+          : { kind: "agent-work" },
+      ),
+  });
 }
 
 /**
@@ -72,14 +76,31 @@ export const useDiscardItem = (userId: string, organizationId: string) =>
 export const useStop = (userId: string, organizationId: string) =>
   useLocalWorkAction(userId, organizationId, (turnId) => agentWorkBridge().stop(turnId));
 
-export const useRetry = (userId: string, organizationId: string) =>
-  useLocalWorkAction(userId, organizationId, (turnId) => agentWorkBridge().retry(turnId));
+export type AttentionAction = "retry" | "dismiss" | "startFresh" | "resend" | "discard";
 
-export const useDismiss = (userId: string, organizationId: string) =>
-  useLocalWorkAction(userId, organizationId, (turnId) => agentWorkBridge().dismiss(turnId));
-
-export const useStartFresh = (userId: string, organizationId: string) =>
-  useLocalWorkAction(userId, organizationId, (turnId) => agentWorkBridge().startFresh(turnId));
+/**
+ * The actions for a turn that needs attention, as one mutation, so its state is always the
+ * latest attempt. ids are the turn for retry, dismiss, and start fresh, or the uncertain items
+ * for resend and discard; the attempt fails if any of them fails.
+ */
+export function useAttentionAction(userId: string, organizationId: string) {
+  const refresh = useRefresh(userId, organizationId);
+  return useMutation({
+    mutationFn: ({ kind, ids }: { kind: AttentionAction; ids: readonly string[] }) => {
+      const bridge = agentWorkBridge();
+      // Every one of these bridge commands has the same result.
+      const calls: Record<AttentionAction, AgentWorkAPI["retry"]> = {
+        retry: (id) => bridge.retry(id),
+        dismiss: (id) => bridge.dismiss(id),
+        startFresh: (id) => bridge.startFresh(id),
+        resend: (id) => bridge.resendItem(id),
+        discard: (id) => bridge.discardItem(id),
+      };
+      return Promise.all(ids.map(calls[kind]));
+    },
+    onSettled: () => refresh({ kind: "local" }),
+  });
+}
 
 export const useNewTopic = (userId: string, organizationId: string) =>
   useLocalWorkAction(userId, organizationId, (conversationId) =>

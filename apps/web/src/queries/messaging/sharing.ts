@@ -16,16 +16,16 @@ export const sharingInvitationOptions = (invitationId: string) =>
   });
 export const sharingOptions = (organizationId: string, conversationId: string) =>
   queryOptions({
-    queryKey: [...queryKeys.conversations(organizationId), "sharing", conversationId],
+    queryKey: queryKeys.conversationSharing(organizationId, conversationId),
     queryFn: ({ signal }) => listSharing({ data: { organizationId, conversationId }, signal }),
   });
 export const sharingConversationOptions = (organizationId: string) =>
   queryOptions({
-    queryKey: [...queryKeys.conversations(organizationId), "sharing"],
+    queryKey: queryKeys.conversationSharing(organizationId),
     queryFn: ({ signal }) => listSharingConversations({ data: { organizationId }, signal }),
   });
 export const sharingInboxOptions = (organizationId: string) =>
   queryOptions({
-    queryKey: [...queryKeys.messaging(organizationId), "sharing-inbox"],
+    queryKey: queryKeys.sharingInbox(organizationId),
     queryFn: ({ signal }) => listSharingInbox({ data: { organizationId }, signal }),
   });

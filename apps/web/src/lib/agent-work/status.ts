@@ -14,6 +14,10 @@ export type WorkStatus = { tone: WorkTone; label: string };
 export const silentLabel = "Checked · nothing to report";
 export const steeredLabel = "Added to current work";
 export const noDesktopLabel = "No desktop runs this agent";
+
+/** Where to see an agent's local work from a device that doesn't run it. */
+export const homeDeviceNotice = (deviceName?: string) =>
+  deviceName ? `Open on ${deviceName}` : noDesktopLabel;
 const resumedLabel = "Resumed after interruption";
 export const stoppedNeedsYouLabel = "Stopped · needs you";
 
@@ -24,38 +28,58 @@ function requestLabel(request: Pick<AgentRequestView, "kind">) {
   return request.kind === "question" ? "Needs your answer" : "Needs your approval";
 }
 
-/** One turn as a tone and one short line, such as "Working for 1m 05s". */
-export function turnStatus(
+/** One turn's tone. It does not depend on the clock. */
+export function turnTone(
+  turn: AgentTurnView,
+  openRequest?: Pick<AgentRequestView, "kind">,
+): WorkTone {
+  if (openRequest) return "attention";
+  switch (turn.status) {
+    case "needs_attention":
+      return "attention";
+    case "assigned":
+    case "running":
+    case "waiting":
+    case "stopping":
+      return "working";
+    case "completed":
+      return turn.outcome === "silent" ? "muted" : "done";
+    case "cancelled":
+    case "interrupted":
+      return "idle";
+    case "failed":
+      return "failed";
+  }
+}
+
+/** One turn as one short line, such as "Working for 1m 05s". */
+export function turnLabel(
   turn: AgentTurnView,
   now: number,
   openRequest?: Pick<AgentRequestView, "kind">,
-): WorkStatus {
-  if (openRequest) return { tone: "attention", label: requestLabel(openRequest) };
+): string {
+  if (openRequest) return requestLabel(openRequest);
   const started = Date.parse(turn.startedAt ?? turn.createdAt);
   const ran = () => formatDuration((turn.finishedAt ? Date.parse(turn.finishedAt) : now) - started);
   const resumed = turn.attempt > 1 || turn.resumesTurnId !== null;
   switch (turn.status) {
     case "needs_attention":
-      return { tone: "attention", label: stoppedNeedsYouLabel };
+      return stoppedNeedsYouLabel;
     case "assigned":
-      return { tone: "working", label: resumed ? resumedLabel : "Starting" };
+      return resumed ? resumedLabel : "Starting";
     case "running":
     case "waiting":
-      return {
-        tone: "working",
-        label: resumed ? `${resumedLabel} · working for ${ran()}` : `Working for ${ran()}`,
-      };
+      return resumed ? `${resumedLabel} · working for ${ran()}` : `Working for ${ran()}`;
     case "stopping":
-      return { tone: "working", label: "Stopping" };
+      return "Stopping";
     case "completed":
-      if (turn.outcome === "silent") return { tone: "muted", label: silentLabel };
-      return { tone: "done", label: `Worked for ${ran()}` };
+      return turn.outcome === "silent" ? silentLabel : `Worked for ${ran()}`;
     case "cancelled":
-      return { tone: "idle", label: "Stopped" };
+      return "Stopped";
     case "interrupted":
-      return { tone: "idle", label: "Stopped for your new message" };
+      return "Stopped for your new message";
     case "failed":
-      return { tone: "failed", label: turn.startedAt ? `Failed after ${ran()}` : "Failed" };
+      return turn.startedAt ? `Failed after ${ran()}` : "Failed";
   }
 }
 

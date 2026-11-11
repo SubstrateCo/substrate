@@ -1,7 +1,7 @@
 /**
  * Drafts with unsaved edits that a full-document exit would lose. The router blocks in-app
  * navigation by itself; a workspace switch or a sign-out replaces the whole document, so those
- * actions call `confirmDiscardDrafts()` first. `UnsavedChangesGuard` registers while it is dirty.
+ * actions exit through `leaveDocument()`. `UnsavedChangesGuard` registers while it is dirty.
  */
 type AskToDiscard = (names: readonly string[]) => Promise<boolean>;
 
@@ -34,4 +34,17 @@ export function unsavedDraftNames() {
 export async function confirmDiscardDrafts() {
   const first = [...drafts].at(0);
   return first ? first.ask(unsavedDraftNames()) : true;
+}
+
+/**
+ * Replaces the whole document, after the person agrees to lose unsaved drafts. `prepare` runs
+ * between their answer and the exit, such as a sign-out; when it throws, the document stays.
+ * `null` reloads the current address. Resolves `false` when they chose to keep editing.
+ */
+export async function leaveDocument(destination: string | null, prepare?: () => Promise<void>) {
+  if (!(await confirmDiscardDrafts())) return false;
+  await prepare?.();
+  if (destination === null) window.location.reload();
+  else window.location.assign(destination);
+  return true;
 }

@@ -14,7 +14,7 @@ export function useToggleReaction(
     onSuccess: () =>
       Promise.all([
         client.invalidateQueries({
-          queryKey: queryKeys.messages(organizationId, conversationId).slice(0, -1),
+          queryKey: queryKeys.conversationMessages(organizationId, conversationId),
         }),
         client.invalidateQueries({
           queryKey: queryKeys.messageTargets(organizationId, conversationId),

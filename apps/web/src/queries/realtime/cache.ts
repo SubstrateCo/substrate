@@ -3,67 +3,37 @@ import { realtimeEvent, type RealtimeEvent } from "@substrate/contracts/realtime
 import {
   CancelledError,
   matchQuery,
+  partialMatchKey,
   type Query,
   type QueryClient,
   type QueryFilters,
   type QueryKey,
 } from "@tanstack/react-query";
 
-import { queryKeys } from "../keys";
-import type { MessagePageContext } from "@/api/context/links";
+import { isHarnessKey, queryKeys, userKeyOrganization } from "../keys";
+import {
+  domainTargets,
+  markStaleAfterInflight,
+  queryTargetFilter,
+  type QueryTarget,
+} from "../targets";
 
-interface RealtimeQueryTarget {
-  queryKey: QueryKey;
-  exact?: boolean;
-  refetchType?: "none";
-  // Matches only message context pages that show work links, or have not loaded yet.
-  withLinks?: true;
+interface RealtimeQueryTarget extends QueryTarget {
   // Skips harness reads that have not failed. See keepsHarnessRead.
   exceptHarness?: true;
 }
 
-const harnessKinds = new Set<unknown>([
-  "harness-status",
-  "harness-models",
-  "local-agent-configuration",
-]);
-
 // Harness reads go through the desktop bridge, which verifies the session with the server first.
 // They do not depend on missed hints, so a full refresh keeps loaded and loading ones. Failed ones
 // still retry.
-function keepsHarnessRead(query: Query) {
-  return (
-    query.queryKey[0] === "users" &&
-    harnessKinds.has(query.queryKey[2]) &&
-    query.state.status !== "error"
-  );
+function keepsHarnessRead(query: Query, userId: string) {
+  return isHarnessKey(query.queryKey, userId) && query.state.status !== "error";
 }
 
 const everything: RealtimeQueryTarget = { queryKey: [], exceptHarness: true };
 
-function showsLinks(query: Query) {
-  // SAFETY: withLinks targets only match message context pages, which cache this shape.
-  const pages = query.state.data as MessagePageContext[] | undefined;
-  return pages === undefined || pages.some((page) => page.links.length > 0);
-}
-
-function targetFilter(target: RealtimeQueryTarget, predicate: (query: Query) => boolean) {
-  const { withLinks, exceptHarness, ...filter } = target;
-  return {
-    ...filter,
-    predicate: (query: Query) =>
-      (!withLinks || showsLinks(query)) &&
-      (!exceptHarness || !keepsHarnessRead(query)) &&
-      predicate(query),
-  };
-}
-
-function searchTargets(organizationId: string): RealtimeQueryTarget[] {
-  return queryKeys.searches(organizationId).map((queryKey) => ({
-    queryKey,
-    refetchType: "none",
-  }));
-}
+/** How the cache matches the live state: refreshing after a ready, current, or stale after a failure. */
+export type RealtimeHealth = "syncing" | "fresh" | "stale";
 
 export function realtimeQueryTargets(
   event: Extract<RealtimeEvent, { type: "change" }>,
@@ -108,57 +78,13 @@ export function realtimeQueryTargets(
       if (organizationId) targets.push({ queryKey: queryKeys.organization(organizationId) });
       break;
     case "messaging":
-      if (organizationId) {
-        // Message content changes leave membership and conversation details unchanged.
-        if (event.scope !== "messages")
-          targets.push({ queryKey: queryKeys.conversations(organizationId) });
-        targets.push({
-          queryKey: queryKeys.conversationMessages(organizationId, event.conversationId),
-        });
-        targets.push({
-          queryKey: queryKeys.conversationReactions(organizationId, event.conversationId),
-        });
-        targets.push({ queryKey: queryKeys.related(organizationId) });
-        // A new message or reaction cannot change the context of loaded messages. A new message
-        // gets its own page key; its reference changes arrive as "context" hints.
-        if (event.scope !== "messages")
-          targets.push({
-            queryKey: queryKeys.messagePages(organizationId, event.conversationId),
-          });
-        targets.push({ queryKey: queryKeys.messageTargets(organizationId, event.conversationId) });
-        targets.push(...searchTargets(organizationId));
-      }
-      break;
     case "tasks":
-      if (organizationId)
-        targets.push(
-          { queryKey: queryKeys.tasks(organizationId) },
-          { queryKey: queryKeys.activity(organizationId) },
-          { queryKey: queryKeys.related(organizationId) },
-          // Pages without work links show no task titles.
-          { queryKey: queryKeys.messagePages(organizationId), withLinks: true },
-          // Notifications show task titles. New notifications arrive as their own hints.
-          { queryKey: queryKeys.notifications(organizationId) },
-          ...searchTargets(organizationId),
-        );
-      break;
     case "context":
-      // Reference changes do not change notifications. Writes that create notifications, and
-      // conversation deletion, send notifications hints to the recipients.
-      if (organizationId)
-        targets.push(
-          { queryKey: queryKeys.activity(organizationId) },
-          { queryKey: queryKeys.related(organizationId) },
-          { queryKey: queryKeys.messagePages(organizationId) },
-          { queryKey: queryKeys.messageTargets(organizationId) },
-          ...searchTargets(organizationId),
-        );
-      break;
     case "notifications":
       if (organizationId)
-        targets.push({
-          queryKey: queryKeys.notifications(organizationId),
-        });
+        targets.push(
+          ...domainTargets(event.domain, organizationId, event.conversationId, event.scope),
+        );
       break;
   }
   return targets;
@@ -169,16 +95,29 @@ export function createRealtimeCache({
   organizationId,
   userId,
   revalidate,
+  onHealth,
   batchMs = 50,
 }: {
   queryClient: QueryClient;
   organizationId: string | null;
   userId: string;
   revalidate: () => Promise<void>;
+  /** Reports each ready refresh, and every failed refresh. */
+  onHealth?: (health: RealtimeHealth) => void;
   /** How long change hints collect before one refresh. */
   batchMs?: number;
 }) {
+  const targetFilter = (target: RealtimeQueryTarget, predicate: (query: Query) => boolean) => {
+    const { exceptHarness, ...rest } = target;
+    return queryTargetFilter(
+      rest,
+      (query) => (!exceptHarness || !keepsHarnessRead(query, userId)) && predicate(query),
+    );
+  };
   const seen = new Set<string>();
+  // The first ready loads the cache. A later one follows a reconnect, which may hide a missed
+  // revocation, so it resyncs. Only the latest ready reports that the cache is fresh.
+  let readyCount = 0;
   const pending = new Map<string, RealtimeQueryTarget>();
   let timer: ReturnType<typeof setTimeout> | undefined;
   let flushing = false;
@@ -200,12 +139,9 @@ export function createRealtimeCache({
   });
   const privateFilter = {
     predicate: (query: { queryKey: QueryKey }) =>
-      (organizationId !== null &&
-        query.queryKey[0] === "organizations" &&
-        query.queryKey[1] === organizationId) ||
-      (query.queryKey[0] === "users" &&
-        query.queryKey[1] === userId &&
-        query.queryKey[3] === organizationId),
+      organizationId !== null &&
+      (partialMatchKey(query.queryKey, queryKeys.organization(organizationId)) ||
+        userKeyOrganization(query.queryKey, userId) === organizationId),
   };
   function resetPrivate(filter: QueryFilters) {
     const queries = queryClient.getQueryCache().findAll(filter);
@@ -215,9 +151,7 @@ export function createRealtimeCache({
     // History and message context placeholders can hold a previous page outside the cache.
     // Replace their visible value before resetting, so access checks never display that old page.
     for (const query of queries) {
-      if (
-        placeholders.some((prefix) => prefix.every((part, index) => query.queryKey[index] === part))
-      )
+      if (placeholders.some((prefix) => partialMatchKey(query.queryKey, prefix)))
         queryClient.setQueryData(query.queryKey, []);
     }
     for (const query of queries) {
@@ -237,8 +171,8 @@ export function createRealtimeCache({
     await resetPrivate({
       predicate: (query) =>
         privateFilter.predicate(query) ||
-        (query.queryKey[0] === "users" && query.queryKey[1] === userId) ||
-        (query.queryKey[0] === queryKeys.session[0] && query.queryKey[1] === queryKeys.session[1]),
+        partialMatchKey(query.queryKey, queryKeys.user(userId)) ||
+        partialMatchKey(query.queryKey, queryKeys.session),
     });
     if (isDisposed()) return;
     await Promise.all([
@@ -304,21 +238,22 @@ export function createRealtimeCache({
       ),
     );
     const deferred = loads.map(async ({ query, promise, refetch }) => {
+      let marked: boolean;
       try {
-        await promise;
+        marked = await markStaleAfterInflight(
+          queryClient,
+          query,
+          promise,
+          () => isCurrent(epoch) && !fetchedSince(query),
+        );
       } catch (error) {
         // A resized or replaced page can abandon its request during a healthy resync.
         if (error instanceof CancelledError && isCurrent(epoch) && query.getObserversCount() === 0)
           return;
         throw error;
       }
-      if (!isCurrent(epoch) || fetchedSince(query)) return;
-      // Mark stale after the original snapshot commits, so its success cannot erase the event.
-      await queryClient.invalidateQueries(
-        { queryKey: query.queryKey, exact: true, refetchType: "none" },
-        { cancelRefetch: false },
-      );
-      if (!isCurrent(epoch) || !refetch || query.isDisabled()) return;
+      const readAgain = marked && refetch && !query.isDisabled();
+      if (!readAgain || !isCurrent(epoch)) return;
       await queryClient.query({ ...query.options, queryKey: query.queryKey });
     });
     await Promise.all([...invalidations, ...deferred]);
@@ -347,35 +282,53 @@ export function createRealtimeCache({
       void flush().catch(() => {});
     }, batchMs);
   }
+  function ready() {
+    const count = ++readyCount;
+    onHealth?.("syncing");
+    const work = count === 1 ? initialRefresh() : resync();
+    return work.then(
+      () => {
+        if (!disposed && count === readyCount) onHealth?.("fresh");
+      },
+      (error: Error) => {
+        if (!disposed) onHealth?.("stale");
+        throw error;
+      },
+    );
+  }
+  async function initialRefresh() {
+    const epoch = generation;
+    await refresh([everything]);
+    if (isCurrent(epoch)) await revalidate();
+  }
+  function resync() {
+    if (disposed) return Promise.resolve();
+    // Reconnect may follow a missed revocation. Drop old private values first. Queries that the
+    // reset already read after the reconnect are current, so the final refresh skips them.
+    const since = ++clock;
+    resyncWork ??= resetAccess()
+      .then(() => (isDisposed() ? undefined : refresh([everything], since)))
+      .finally(() => {
+        resyncWork = undefined;
+      });
+    return resyncWork;
+  }
   return {
     forbidden: revoke,
-    resync() {
-      if (disposed) return Promise.resolve();
-      // Reconnect may follow a missed revocation. Drop old private values first. Queries that the
-      // reset already read after the reconnect are current, so the final refresh skips them.
-      const since = ++clock;
-      resyncWork ??= resetAccess()
-        .then(() => (isDisposed() ? undefined : refresh([everything], since)))
-        .finally(() => {
-          resyncWork = undefined;
-        });
-      return resyncWork;
-    },
+    resync,
     async receive(value: RealtimeEvent) {
       const parsed = realtimeEvent.safeParse(value);
       if (isDisposed() || !parsed.success) return;
       const event = parsed.data;
-      if (event.type === "ready") {
-        const epoch = generation;
-        await refresh([everything]);
-        if (isCurrent(epoch)) await revalidate();
-        return;
-      }
+      if (event.type === "ready") return ready();
       if (event.organizationId !== organizationId || seen.has(event.id)) return;
       seen.add(event.id);
       if (seen.size > 1000) seen.delete(seen.values().next().value!);
       if (event.domain === "access" && organizationId) {
-        return resetAccess();
+        return resetAccess().catch((error: Error) => {
+          if (!disposed) onHealth?.("stale");
+          throw error;
+        });
       }
       if (isDisposed()) return;
       for (const target of realtimeQueryTargets(event, userId))

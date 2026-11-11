@@ -9,12 +9,20 @@ import { agentWorkBridge, hasAgentWorkBridge } from "./bridge";
 // Local agent work comes from the bridge on the agent's home desktop. The bridge sends change
 // hints (see sync.ts), so these reads do not poll.
 
+/**
+ * Whether local reads can run here: only on a desktop with the bridge, for a signed-in owner.
+ * Callers that narrow `enabled` further combine it with this check.
+ */
+export const localWorkEnabled = (userId: string) => hasAgentWorkBridge() && !!userId;
+
+// The bridge answers from local storage, so a failed read does not retry.
+const localRead = (userId: string) => ({ enabled: localWorkEnabled(userId), retry: false });
+
 export const localAgentsOptions = (userId: string, organizationId: string) =>
   queryOptions({
     queryKey: queryKeys.agentWorkAgents(userId, organizationId),
     queryFn: () => agentWorkBridge().agents(),
-    enabled: hasAgentWorkBridge() && !!userId,
-    retry: false,
+    ...localRead(userId),
   });
 
 export const conversationWorkOptions = (
@@ -25,16 +33,14 @@ export const conversationWorkOptions = (
   queryOptions({
     queryKey: queryKeys.agentWorkConversation(userId, organizationId, conversationId),
     queryFn: () => agentWorkBridge().conversation(conversationId),
-    enabled: hasAgentWorkBridge() && !!userId,
-    retry: false,
+    ...localRead(userId),
   });
 
 export const turnOptions = (userId: string, organizationId: string, turnId: string) =>
   queryOptions({
     queryKey: queryKeys.agentWorkTurn(userId, organizationId, turnId),
     queryFn: () => agentWorkBridge().turn(turnId),
-    enabled: hasAgentWorkBridge() && !!userId,
-    retry: false,
+    ...localRead(userId),
   });
 
 /**
@@ -61,8 +67,7 @@ export const turnEventsOptions = (userId: string, organizationId: string, turnId
         (after) => agentWorkBridge().turnEvents(turnId, after),
         client.getQueryData<TurnEventView[]>(queryKey),
       ),
-    enabled: hasAgentWorkBridge() && !!userId,
-    retry: false,
+    ...localRead(userId),
   });
 
 export const agentActivityOptions = (userId: string, organizationId: string, agentId: string) =>
@@ -72,14 +77,12 @@ export const agentActivityOptions = (userId: string, organizationId: string, age
       agentWorkBridge().agentActivity(agentId, pageParam),
     initialPageParam: undefined,
     getNextPageParam: (page) => page.nextCursor ?? undefined,
-    enabled: hasAgentWorkBridge() && !!userId,
-    retry: false,
+    ...localRead(userId),
   });
 
 export const routinesOptions = (userId: string, organizationId: string, agentId: string) =>
   queryOptions({
     queryKey: queryKeys.agentWorkRoutines(userId, organizationId, agentId),
     queryFn: () => agentWorkBridge().routines.list(agentId),
-    enabled: hasAgentWorkBridge() && !!userId,
-    retry: false,
+    ...localRead(userId),
   });

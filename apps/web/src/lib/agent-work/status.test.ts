@@ -6,7 +6,8 @@ import {
   queueAhead,
   silentLabel,
   steeredLabel,
-  turnStatus,
+  turnLabel,
+  turnTone,
   type ItemContext,
 } from "./status";
 import { item, status, turn } from "./test-support";
@@ -15,6 +16,10 @@ import { describe, expect, test } from "bun:test";
 
 const now = Date.parse("2026-11-08T10:01:05Z");
 const started = { startedAt: "2026-11-08T10:00:00Z" };
+const turnStatus = (...[value, at, request]: Parameters<typeof turnLabel>) => ({
+  tone: turnTone(value, request),
+  label: turnLabel(value, at, request),
+});
 
 describe("turn labels", () => {
   test("an open request comes before every other state", () => {

@@ -53,6 +53,26 @@ function turnAnchor(
   return source?.messageId ?? null;
 }
 
+/**
+ * The conversation a turn's work shows in, in the order `turnAnchor` uses: where it posted last,
+ * then where the turn it resumes shows, then its newest source. A request anchor names only a
+ * message, so it adds no conversation. Undefined when the turn shows only in the Agents app.
+ */
+export function turnConversation(
+  turn: AgentTurnView,
+  turns: ReadonlyMap<string, AgentTurnView>,
+  visited: Set<string> = new Set(),
+): string | undefined {
+  if (visited.has(turn.id)) return undefined;
+  visited.add(turn.id);
+  const output = newest(turn.outputs.filter((entry) => entry.kind === "message"));
+  if (output) return output.conversationId;
+  const resumed = turn.resumesTurnId ? turns.get(turn.resumesTurnId) : undefined;
+  const place = resumed && turnConversation(resumed, turns, visited);
+  if (place) return place;
+  return newest(turn.sourceMessages)?.conversationId;
+}
+
 /** Turns grouped under the message they show under, oldest first. */
 export function turnPlacements(turns: readonly AgentTurnView[], conversationId: string) {
   const byId = new Map(turns.map((turn) => [turn.id, turn]));

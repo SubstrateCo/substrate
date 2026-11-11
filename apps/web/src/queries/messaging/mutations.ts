@@ -9,7 +9,7 @@ import { referenceTokenPattern } from "@/components/messaging/references/referen
 export function invalidateDirectMessage(client: QueryClient, organizationId: string) {
   return Promise.all([
     client.invalidateQueries({ queryKey: queryKeys.conversations(organizationId) }),
-    client.invalidateQueries({ queryKey: [...queryKeys.messaging(organizationId), "profiles"] }),
+    client.invalidateQueries({ queryKey: queryKeys.messagingProfiles(organizationId) }),
   ]);
 }
 
@@ -24,9 +24,10 @@ export function invalidateSentMessage(
   const relatedIds = new Set<unknown>(referencedIds);
   // Project discussion feeds include references to their tasks, even when the feed is empty.
   for (const [key, detail] of client.getQueriesData<Awaited<ReturnType<typeof getProject>>>({
-    queryKey: [...queryKeys.tasks(organizationId), "project"],
+    queryKey: queryKeys.projectDetails(organizationId),
   })) {
-    if (detail?.tasks.some((task) => relatedIds.has(task.entityId))) relatedIds.add(key[4]);
+    if (detail?.tasks.some((task) => relatedIds.has(task.entityId)))
+      relatedIds.add(queryKeys.projectEntityId(key));
   }
   return Promise.all([
     // The conversation list changes only when the send rejoins a channel. That send publishes an

@@ -1,5 +1,10 @@
-import { confirmDiscardDrafts, registerUnsavedDraft, unsavedDraftNames } from "./unsaved-drafts";
-import { describe, expect, mock, test } from "bun:test";
+import {
+  confirmDiscardDrafts,
+  leaveDocument,
+  registerUnsavedDraft,
+  unsavedDraftNames,
+} from "./unsaved-drafts";
+import { afterAll, afterEach, beforeAll, describe, expect, mock, test } from "bun:test";
 
 describe("unsaved drafts", () => {
   test("lets a document exit proceed when nothing is unsaved", async () => {
@@ -42,5 +47,55 @@ describe("unsaved drafts", () => {
 
     expect(await confirmDiscardDrafts()).toBe(true);
     expect(ask).not.toHaveBeenCalled();
+  });
+});
+
+describe("leaving the document", () => {
+  const original = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const location = { assign: mock((_url: string) => {}), reload: mock(() => {}) };
+  beforeAll(() => {
+    // leaveDocument reads only window.location.
+    Object.defineProperty(globalThis, "window", { value: { location }, configurable: true });
+  });
+  afterAll(() => {
+    if (original) Object.defineProperty(globalThis, "window", original);
+    else Reflect.deleteProperty(globalThis, "window");
+  });
+  afterEach(() => {
+    location.assign.mockClear();
+    location.reload.mockClear();
+  });
+
+  test("stays, without preparing, when the person keeps editing", async () => {
+    const prepare = mock(() => Promise.resolve());
+    const unregister = registerUnsavedDraft(() => Promise.resolve(false));
+
+    expect(await leaveDocument("/login", prepare)).toBe(false);
+    expect(prepare).not.toHaveBeenCalled();
+    expect(location.assign).not.toHaveBeenCalled();
+    unregister();
+  });
+
+  test("prepares, then loads the destination after the person agrees", async () => {
+    const steps: string[] = [];
+    location.assign.mockImplementation((url) => void steps.push(url));
+    const unregister = registerUnsavedDraft(() => Promise.resolve(true));
+
+    expect(await leaveDocument("/login", async () => void steps.push("prepare"))).toBe(true);
+    expect(steps).toEqual(["prepare", "/login"]);
+    unregister();
+  });
+
+  test("stays when preparing fails", async () => {
+    const outcome = await leaveDocument("/login", () => Promise.reject(new Error("offline"))).catch(
+      (error: Error) => error,
+    );
+    expect(outcome).toMatchObject({ message: "offline" });
+    expect(location.assign).not.toHaveBeenCalled();
+  });
+
+  test("reloads the current address without a destination", async () => {
+    expect(await leaveDocument(null)).toBe(true);
+    expect(location.reload).toHaveBeenCalledTimes(1);
   });
 });

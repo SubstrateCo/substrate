@@ -1,4 +1,6 @@
-export type OrganizationRole = "owner" | "admin" | "member";
+import { roles } from "@substrate/contracts/auth/permissions";
+
+export type OrganizationRole = keyof typeof roles;
 
 export const organizationRoles: readonly {
   value: OrganizationRole;
@@ -37,9 +39,10 @@ export function roleLabel(role: string) {
 }
 
 /**
- * What the viewer may do to one member. This mirrors the server so the UI hides actions that
- * would fail: only owners change roles, nobody changes or removes themselves here, and admins
- * cannot remove owners. The server still enforces every rule, including the last owner.
+ * What the viewer may do to one member, so the UI hides actions that would fail. The shared role
+ * permissions decide who may change roles and remove members. Two rules are local: nobody changes
+ * or removes themselves here, and admins cannot remove owners. The server still enforces every
+ * rule, including the last owner.
  */
 export function memberActions({
   viewerRole,
@@ -55,8 +58,10 @@ export function memberActions({
   const viewer = primaryRole(viewerRole);
   const self = viewerUserId === memberUserId;
   const target = primaryRole(memberRole);
+  const can = (action: "update" | "delete") =>
+    roles[viewer].authorize({ member: [action] }).success;
   return {
-    canChangeRole: !self && viewer === "owner",
-    canRemove: !self && (viewer === "owner" || (viewer === "admin" && target !== "owner")),
+    canChangeRole: !self && can("update"),
+    canRemove: !self && can("delete") && !(viewer === "admin" && target === "owner"),
   };
 }

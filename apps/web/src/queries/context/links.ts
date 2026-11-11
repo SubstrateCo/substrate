@@ -14,7 +14,7 @@ export const messagePageOptions = (
   messageIds: string[],
 ) =>
   queryOptions({
-    queryKey: [...queryKeys.messagePages(organizationId, conversationId), messageIds],
+    queryKey: queryKeys.messagePage(organizationId, conversationId, messageIds),
     queryFn: async ({ signal, client, queryKey }) => {
       // Each new message changes the key. Rows of messages already loaded in this conversation
       // are reused, so only the new IDs are requested and unchanged rows keep their objects.

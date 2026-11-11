@@ -1,6 +1,6 @@
 import type { AgentWorkChange } from "@substrate/contracts/agent-work/desktop";
 
-import { useQueryClient, type QueryKey } from "@tanstack/react-query";
+import { partialMatchKey, useQueryClient, type QueryKey } from "@tanstack/react-query";
 
 import { useEffect } from "react";
 
@@ -38,7 +38,7 @@ export function bridgeChangeTargets(
 }
 
 function startsWith(key: QueryKey, prefix: QueryKey) {
-  return prefix.length < key.length && prefix.every((part, index) => part === key[index]);
+  return prefix.length < key.length && partialMatchKey(key, prefix);
 }
 
 /**

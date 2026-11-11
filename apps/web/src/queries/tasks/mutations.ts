@@ -100,7 +100,7 @@ export function invalidateTasksWrite(client: QueryClient, input: TasksWrite, id:
   if (input.action === "addTaskLink" || input.action === "removeTaskLink")
     // The other task may be in another cached project, and both tasks get a history row.
     return Promise.all([
-      client.invalidateQueries({ queryKey: [...queryKeys.tasks(organizationId), "project"] }),
+      client.invalidateQueries({ queryKey: queryKeys.projectDetails(organizationId) }),
       client.invalidateQueries({ queryKey: queryKeys.activity(organizationId) }),
       client.invalidateQueries({ queryKey: queryKeys.related(organizationId) }),
     ]);
@@ -126,9 +126,7 @@ export function invalidateTasksWrite(client: QueryClient, input: TasksWrite, id:
     refreshes.push(client.invalidateQueries({ queryKey: queryKeys.notifications(organizationId) }));
   if (access)
     refreshes.push(
-      client.invalidateQueries({
-        queryKey: [...queryKeys.tasks(organizationId), "comments", projectId],
-      }),
+      client.invalidateQueries({ queryKey: queryKeys.projectComments(organizationId, projectId) }),
       ...entityIds.flatMap((entityId) => [
         client.invalidateQueries({ queryKey: queryKeys.related(organizationId, entityId) }),
         client.invalidateQueries({ queryKey: queryKeys.activity(organizationId, entityId) }),

@@ -1,9 +1,10 @@
 import {
   sessionKeys,
   type AgentInboxItemView,
-  type AgentRequestView,
+  type AgentHiddenRequestView,
   type AgentStatusView,
   type AgentTurnView,
+  type AgentVisibleRequestView,
 } from "@substrate/contracts/agent-work";
 
 export const conversationId = "conversation";
@@ -61,7 +62,7 @@ export function item(fields: Partial<AgentInboxItemView> = {}): AgentInboxItemVi
   };
 }
 
-export function request(fields: Partial<AgentRequestView> = {}): AgentRequestView {
+export function request(fields: Partial<AgentVisibleRequestView> = {}): AgentVisibleRequestView {
   return {
     id: "request",
     userAgentId: "agent",
@@ -86,6 +87,20 @@ export function request(fields: Partial<AgentRequestView> = {}): AgentRequestVie
     expiresAt: null,
     ...fields,
   };
+}
+
+/** A request in a conversation the viewer cannot open. */
+export function hiddenRequest(
+  fields: Partial<AgentHiddenRequestView> = {},
+): AgentHiddenRequestView {
+  const {
+    sessionKey: _sessionKey,
+    payload: _payload,
+    response: _response,
+    proposal: _proposal,
+    ...common
+  } = request();
+  return { ...common, place: { access: "hidden" }, ...fields };
 }
 
 export function status(fields: Partial<AgentStatusView> = {}): AgentStatusView {

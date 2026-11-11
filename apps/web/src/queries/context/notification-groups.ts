@@ -16,14 +16,14 @@ import {
 
 export const notificationUnreadOptions = (organizationId: string) =>
   queryOptions({
-    queryKey: [...queryKeys.notifications(organizationId), "unread-status"],
+    queryKey: queryKeys.notificationUnread(organizationId),
     queryFn: ({ signal }) => getNotificationUnread({ data: { organizationId }, signal }),
     retry: false,
   });
 
 export const notificationGroupsOptions = (organizationId: string, filter: "all" | "unread") =>
   infiniteQueryOptions({
-    queryKey: [...queryKeys.notifications(organizationId), "groups", filter],
+    queryKey: queryKeys.notificationGroups(organizationId, filter),
     // SAFETY: The first page has no cursor; later pages use the server's cursor.
     initialPageParam: undefined as string | undefined,
     queryFn: ({ signal, pageParam }) =>
@@ -37,7 +37,7 @@ export const notificationGroupsOptions = (organizationId: string, filter: "all" 
 
 export const notificationGroupEventsOptions = (organizationId: string, groupKey: string) =>
   infiniteQueryOptions({
-    queryKey: [...queryKeys.notifications(organizationId), "events", groupKey],
+    queryKey: queryKeys.notificationEvents(organizationId, groupKey),
     // SAFETY: The first page has no cursor; later pages use the server's cursor.
     initialPageParam: undefined as string | undefined,
     queryFn: ({ signal, pageParam }) =>
@@ -67,12 +67,11 @@ export function markNotificationGroupsRead(
   organizationId: string,
   target: GroupRead,
 ) {
-  const prefix = queryKeys.notifications(organizationId);
   const readAt = new Date().toISOString();
   type Groups = InfiniteData<Awaited<ReturnType<typeof getNotificationGroups>>>;
   for (const filter of ["all", "unread"] as const) {
     client.setQueryData<Groups>(
-      [...prefix, "groups", filter],
+      queryKeys.notificationGroups(organizationId, filter),
       (feed) =>
         feed && {
           ...feed,
@@ -95,7 +94,7 @@ export function markNotificationGroupsRead(
   }
   type Events = InfiniteData<Awaited<ReturnType<typeof getNotificationGroupEvents>>>;
   client.setQueriesData<Events>(
-    { queryKey: target ? [...prefix, "events", target.groupKey] : [...prefix, "events"] },
+    { queryKey: queryKeys.notificationEvents(organizationId, target?.groupKey) },
     (feed) =>
       feed && {
         ...feed,

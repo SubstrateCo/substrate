@@ -1,6 +1,7 @@
 import { QueryClient, type QueryKey } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
+import { queryTargetFilter, type QueryTarget } from "../targets";
 import { agentWorkInvalidations } from "./invalidation";
 import { bridgeChangeTargets } from "./sync";
 import { describe, expect, test } from "bun:test";
@@ -8,14 +9,14 @@ import { describe, expect, test } from "bun:test";
 const target = crypto.randomUUID();
 
 /** Which of the cached keys the targets match, by TanStack prefix matching. */
-function matched(cached: QueryKey[], targets: QueryKey[]) {
+function matched(cached: QueryKey[], targets: (QueryKey | QueryTarget)[]) {
   const client = new QueryClient();
   for (const key of cached) client.setQueryData(key, []);
   const hits = new Set(
-    targets.flatMap((queryKey) =>
+    targets.flatMap((target) =>
       client
         .getQueryCache()
-        .findAll({ queryKey })
+        .findAll(queryTargetFilter("queryKey" in target ? target : { queryKey: target }))
         .map((query) => JSON.stringify(query.queryKey)),
     ),
   );
@@ -54,8 +55,29 @@ describe("agent-work mutation invalidation", () => {
       queryKeys.agentWorkRequests("user", "org", "c1"),
     ];
     const keys = agentWorkInvalidations("user", "org", { kind: "local" });
-    expect(keys).toEqual([queryKeys.agentWorkLocal("user", "org")]);
+    expect(keys).toEqual([{ queryKey: queryKeys.agentWorkLocal("user", "org") }]);
     expect(matched([...local, ...server], keys)).toEqual(local);
+  });
+
+  test("an approval refreshes the reactions, notifications, and searches its record shows in", () => {
+    const shown = [
+      queryKeys.messageReactions("org", target, "m1"),
+      queryKeys.notifications("org"),
+      [...queryKeys.search("org"), { query: "follow" }],
+      [...queryKeys.searchPages("org"), { query: "follow" }],
+    ];
+    const reply = agentWorkInvalidations("user", "org", {
+      kind: "approved",
+      action: { type: "reply_elsewhere", input: { conversationId: target, body: "Hi" } },
+    });
+    const task = agentWorkInvalidations("user", "org", {
+      kind: "approved",
+      action: { type: "create_task", input: { projectId: target, title: "Follow up" } },
+    });
+    const unknown = agentWorkInvalidations("user", "org", { kind: "approved", action: null });
+    expect(matched(shown, reply)).toEqual([shown[0]!, shown[2]!, shown[3]!]);
+    expect(matched(shown, task)).toEqual(shown.slice(1));
+    expect(matched(shown, unknown)).toEqual(shown);
   });
 
   test("an approved reply also refreshes the target conversation's messages", () => {

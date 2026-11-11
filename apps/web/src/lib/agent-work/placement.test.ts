@@ -1,11 +1,46 @@
-import { itemPlacements, requestPlacements, turnPlacements } from "./placement";
-import { conversationId, item, output, request, source, turn } from "./test-support";
+import { itemPlacements, requestPlacements, turnConversation, turnPlacements } from "./placement";
+import { conversationId, hiddenRequest, item, output, request, source, turn } from "./test-support";
 import { describe, expect, test } from "bun:test";
 
 const ids = (placements: Map<string, { id: string }[]>) =>
   Object.fromEntries(
     [...placements].map(([messageId, list]) => [messageId, list.map((x) => x.id)]),
   );
+
+describe("turn conversation", () => {
+  test("is where the turn posted last, before its sources", () => {
+    const work = turn({
+      sourceMessages: [source("ask", "2026-11-08T10:05:00Z", "asked")],
+      outputs: [
+        output("latest", "2026-11-08T10:02:00Z", "replied"),
+        output("first", "2026-11-08T10:01:00Z", "earlier"),
+      ],
+    });
+    expect(turnConversation(work, new Map([[work.id, work]]))).toBe("replied");
+  });
+
+  test("a recovery turn without output is where the turn it resumes is", () => {
+    const resumed = turn({ id: "resumed", outputs: [output("reply", "2026-11-08T10:01:00Z")] });
+    const recovery = turn({
+      id: "recovery",
+      resumesTurnId: "resumed",
+      sourceMessages: [source("ask", "2026-11-08T10:00:00Z", "other")],
+    });
+    expect(turnConversation(recovery, new Map([[resumed.id, resumed]]))).toBe(conversationId);
+  });
+
+  test("otherwise is the newest source's conversation, or none", () => {
+    const work = turn({
+      sourceMessages: [
+        source("newer", "2026-11-08T10:00:05Z", "newer"),
+        source("older", "2026-11-08T10:00:00Z", "older"),
+      ],
+    });
+    const bare = turn();
+    expect(turnConversation(work, new Map([[work.id, work]]))).toBe("newer");
+    expect(turnConversation(bare, new Map([[bare.id, bare]]))).toBeUndefined();
+  });
+});
 
 describe("turn placement", () => {
   test("work shows under its latest reply in this conversation, not under its source", () => {
@@ -144,7 +179,7 @@ describe("request placement", () => {
   test("hidden requests and requests of other conversations never show here", () => {
     const { cards } = requestPlacements(
       [
-        request({ id: "hidden", place: { access: "hidden" } }),
+        hiddenRequest({ id: "hidden" }),
         request({
           id: "other",
           place: {

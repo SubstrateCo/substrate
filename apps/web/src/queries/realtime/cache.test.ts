@@ -155,16 +155,16 @@ test("messaging targets all thread variants of one conversation, not another", (
   );
   expect(targets).toEqual([
     { queryKey: queryKeys.conversations("org") },
-    { queryKey: queryKeys.messages("org", "conversation").slice(0, -1) },
+    { queryKey: queryKeys.conversationMessages("org", "conversation") },
     { queryKey: queryKeys.conversationReactions("org", "conversation") },
-    { queryKey: [...queryKeys.context("org"), "related"] },
-    { queryKey: [...queryKeys.context("org"), "message-pages", "conversation"] },
-    { queryKey: [...queryKeys.context("org"), "target", "conversation"] },
-    { queryKey: [...queryKeys.context("org"), "search"], refetchType: "none" },
-    { queryKey: [...queryKeys.context("org"), "search-pages"], refetchType: "none" },
+    { queryKey: queryKeys.related("org") },
+    { queryKey: queryKeys.messagePages("org", "conversation") },
+    { queryKey: queryKeys.messageTargets("org", "conversation") },
+    { queryKey: queryKeys.search("org"), refetchType: "none" },
+    { queryKey: queryKeys.searchPages("org"), refetchType: "none" },
   ]);
   expect(realtimeQueryTargets(change("notifications"), "user")).toEqual([
-    { queryKey: [...queryKeys.context("org"), "notifications"] },
+    { queryKey: queryKeys.notifications("org") },
   ]);
   expect(realtimeQueryTargets(change("agents", null), "user")).toEqual([
     { queryKey: queryKeys.agents("user") },
@@ -176,7 +176,7 @@ test("new messages refresh history, not conversation lists or loaded message con
     { ...change("messaging"), conversationId: "conversation", scope: "messages" },
     "user",
   );
-  const pages = { queryKey: [...queryKeys.context("org"), "message-pages", "conversation"] };
+  const pages = { queryKey: queryKeys.messagePages("org", "conversation") };
   expect(targets).not.toContainEqual({ queryKey: queryKeys.conversations("org") });
   expect(targets).not.toContainEqual(pages);
   expect(targets).toEqual(
@@ -741,3 +741,39 @@ for (const scenario of ["after", "settled", "before", "none"] as const) {
     }
   });
 }
+
+test("a later ready resyncs: it drops private values first, and health follows the latest ready", async () => {
+  const client = new QueryClient();
+  const key = queryKeys.projects("org");
+  const health: string[] = [];
+  let fail = false;
+  const cache = createRealtimeCache({
+    queryClient: client,
+    organizationId: "org",
+    userId: "user",
+    revalidate: async () => {
+      if (fail) throw new Error("route load failed");
+    },
+    onHealth: (value) => health.push(value),
+  });
+  try {
+    client.setQueryData(key, ["private"]);
+    await cache.receive({ version: 1, type: "ready" });
+    // The first ready keeps loaded values and marks them stale.
+    expect(client.getQueryData(key)).toEqual(["private"]);
+    expect(health).toEqual(["syncing", "fresh"]);
+    await cache.receive({ version: 1, type: "ready" });
+    // A reconnect may follow a missed revocation, so it drops private values.
+    expect(client.getQueryData(key)).toBeUndefined();
+    expect(health).toEqual(["syncing", "fresh", "syncing", "fresh"]);
+    fail = true;
+    const outcome = await cache
+      .receive({ version: 1, type: "ready" })
+      .catch((error: Error) => error);
+    expect(outcome).toMatchObject({ message: "route load failed" });
+    expect(health.at(-1)).toBe("stale");
+  } finally {
+    cache.dispose();
+    client.clear();
+  }
+});

@@ -1,31 +1,11 @@
 import type { QueryClient } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
+import { invalidateTargets, searchTargets } from "../targets";
 import type { MessagePageContext } from "@/api/context/links";
 
 export function staleSearches(client: QueryClient, organizationId: string) {
-  return Promise.all(
-    queryKeys.searches(organizationId).map((queryKey) => {
-      const inflight = client
-        .getQueryCache()
-        .findAll({ queryKey })
-        .filter((query) => query.state.fetchStatus !== "idle");
-      // A completed snapshot must not erase staleness recorded during its request.
-      for (const query of inflight)
-        void query.promise?.then(
-          () => {
-            if (client.getQueryCache().get(query.queryHash) === query)
-              return client.invalidateQueries({
-                queryKey: query.queryKey,
-                exact: true,
-                refetchType: "none",
-              });
-          },
-          () => {},
-        );
-      return client.invalidateQueries({ queryKey, refetchType: "none" });
-    }),
-  );
+  return invalidateTargets(client, searchTargets(organizationId));
 }
 
 export function invalidateMessageWork(
