@@ -6,6 +6,7 @@ import { TaskCommentMentions } from "../comments/task-comment-mentions";
 import { TaskComments } from "../comments/task-comments";
 import { TaskForm } from "../editor/task-form";
 import { TaskLinks } from "../links/task-links";
+import { TaskActions } from "./task-actions";
 import { TaskAttachments } from "@/components/attachments/task-attachments";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { TaskDetail as TaskDetailView } from "@/components/tasks/detail/task-detail-view";
@@ -60,21 +61,20 @@ export function TaskDetail({
         onUpdate={(patch) =>
           update.mutate({
             taskEntityId: task.entityId,
-            title: task.title,
-            description: task.description,
-            status: task.status,
-            priority: task.priority,
-            assigneeActorEntityId: task.assigneeActorEntityId,
-            dueDate: task.dueDate,
             ...patch,
           })
         }
         actions={
-          <CopyLink
-            grouped
-            label="Copy task link"
-            href={workHref(organizationId, detail.project.entityId, task.entityId)}
-          />
+          <>
+            <CopyLink
+              grouped
+              label="Copy task link"
+              href={workHref(organizationId, detail.project.entityId, task.entityId)}
+            />
+            {(detail.level === "edit" || detail.level === "owner") && (
+              <TaskActions organizationId={organizationId} detail={detail} task={task} />
+            )}
+          </>
         }
         links={
           <TaskLinks

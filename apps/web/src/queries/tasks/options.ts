@@ -3,6 +3,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { queryKeys } from "../keys";
 import {
   getProject,
+  getTaskLocation,
   listCommentMentions,
   listProjects,
   listTaskComments,
@@ -12,6 +13,12 @@ export const projectsQueryOptions = (organizationId: string) =>
   queryOptions({
     queryKey: queryKeys.projects(organizationId),
     queryFn: ({ signal }) => listProjects({ data: { organizationId }, signal }),
+    retry: false,
+  });
+export const taskLocationQueryOptions = (organizationId: string, taskEntityId: string) =>
+  queryOptions({
+    queryKey: queryKeys.taskLocation(organizationId, taskEntityId),
+    queryFn: ({ signal }) => getTaskLocation({ data: { organizationId, taskEntityId }, signal }),
     retry: false,
   });
 export const projectQueryOptions = (organizationId: string, projectEntityId: string) =>

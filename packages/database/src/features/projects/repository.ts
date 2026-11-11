@@ -4,7 +4,9 @@ import { activeActorCondition, visibleActorCondition } from "../../core/actors/a
 import { actorDisplayName } from "../../core/actors/display-name";
 import { actorPicture } from "../../core/actors/picture";
 import { actors } from "../../core/actors/schema";
+import { userAgents } from "../../core/actors/user-agents.schema";
 import { entities } from "../../core/entities/schema";
+import { permissionRepository } from "../../core/permissions/repository";
 import { entityGrants } from "../../core/permissions/schema";
 import { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
@@ -95,6 +97,66 @@ export function projectRepository(context: RepositoryContext) {
   }
   return {
     get,
+    async delete(entityId: string) {
+      return db.transaction(async (tx) => {
+        const ctx = new RepositoryContext(tx, scope);
+        const { entity } = await ctx.requireAccess(entityId, "owner", true);
+        if (entity.entityType !== "project") throw new AccessDeniedError();
+        await tx
+          .update(entities)
+          .set({ deletedAt: new Date(), updatedAt: new Date() })
+          .where(
+            and(
+              eq(entities.organizationId, scope.organizationId),
+              eq(entities.accessEntityId, entityId),
+            ),
+          );
+      });
+    },
+    async revoke(entityId: string, actorEntityId: string) {
+      return db.transaction(async (tx) => {
+        const ctx = new RepositoryContext(tx, scope);
+        const { entity } = await ctx.requireAccess(entityId, "owner", true);
+        if (entity.entityType !== "project") throw new AccessDeniedError();
+        const [target] = await tx
+          .select({ userId: actors.userId })
+          .from(actors)
+          .where(
+            and(
+              eq(actors.organizationId, scope.organizationId),
+              eq(actors.entityId, actorEntityId),
+            ),
+          );
+        const [assigned] = await tx
+          .select({ id: tasks.entityId })
+          .from(tasks)
+          .innerJoin(
+            actors,
+            and(
+              eq(actors.organizationId, tasks.organizationId),
+              eq(actors.entityId, tasks.assigneeActorEntityId),
+            ),
+          )
+          .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+          .where(
+            and(
+              eq(tasks.organizationId, scope.organizationId),
+              eq(tasks.projectEntityId, entityId),
+              liveTask(),
+              or(
+                eq(actors.entityId, actorEntityId),
+                target?.userId ? eq(userAgents.userId, target.userId) : undefined,
+              ),
+            ),
+          )
+          .limit(1);
+        if (assigned)
+          throw new ValidationError(
+            "Reassign or unassign this person’s and their agents’ tasks before removing project access.",
+          );
+        await permissionRepository(ctx).revoke({ entityId, actorEntityId });
+      });
+    },
     async getPicture(entityId: string, minimum: "view" | "edit" = "view") {
       await context.requireAccess(entityId, minimum);
       const [project] = await db

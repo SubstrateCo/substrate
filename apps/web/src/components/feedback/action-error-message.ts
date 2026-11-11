@@ -17,6 +17,10 @@ const validationMessages = [
   "Cannot remove or downgrade the last owner.",
   "Select a status from this project.",
   "Enter a valid due date.",
+  "Reassign or unassign this person’s and their agents’ tasks before removing project access.",
+  "Reassign or unassign tasks whose assignees cannot access the destination project.",
+  "A task cannot be its own parent or a child of its subtasks.",
+  "Select a parent in the destination project.",
 ];
 
 const normalize = (message: string) => message.trim().replace(/\.$/, "").toLowerCase();

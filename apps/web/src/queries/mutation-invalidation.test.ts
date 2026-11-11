@@ -13,6 +13,45 @@ import { expect, test } from "bun:test";
 const taskId = "00000000-0000-4000-8000-000000000001";
 const context = queryKeys.context("org");
 
+test("task deletion and moves clear cached work and references without touching another organization", async () => {
+  for (const action of ["deleteProject", "deleteTask", "moveTask"] as const) {
+    const client = new QueryClient();
+    const keys = [
+      queryKeys.project("org", "source"),
+      queryKeys.project("org", "destination"),
+      queryKeys.taskComments("org", "source", taskId),
+      queryKeys.taskAttachments("org", "source", taskId),
+      queryKeys.taskLocation("org", taskId),
+      queryKeys.related("org", taskId),
+      queryKeys.activity("org", taskId),
+      queryKeys.notifications("org"),
+      [...queryKeys.messagePages("org"), "conversation", ["message"]],
+      ...queryKeys.searches("org").map((key) => [...key, "private task"]),
+    ];
+    for (const key of keys) client.setQueryData(key, { title: "Private task" });
+    const foreign = queryKeys.project("foreign", "project");
+    client.setQueryData(foreign, { title: "Other organization" });
+    try {
+      await invalidateTasksWrite(
+        client,
+        {
+          action,
+          organizationId: "org",
+          projectEntityId: "source",
+          taskEntityId: taskId,
+          destinationProjectEntityId: "destination",
+          parentTaskEntityId: null,
+        },
+        taskId,
+      );
+      for (const key of keys) expect(client.getQueryData(key)).toBeUndefined();
+      expect(client.getQueryData(foreign)).toEqual({ title: "Other organization" });
+    } finally {
+      client.clear();
+    }
+  }
+});
+
 function mount(entries: Record<string, { key: QueryKey; data?: unknown }>) {
   const client = new QueryClient();
   const reads: Record<string, number> = {};

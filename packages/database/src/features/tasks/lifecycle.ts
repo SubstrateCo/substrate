@@ -1,0 +1,150 @@
+import { entities } from "../../core/entities/schema";
+import { RepositoryContext } from "../../core/repository-context";
+import { AccessDeniedError, ValidationError } from "../../errors";
+import { recordTaskActivity } from "../activity/events";
+import { liveTask } from "./access";
+import { tasks } from "./tasks.schema";
+import { and, eq, inArray, sql } from "drizzle-orm";
+
+async function taskSubtree(ctx: RepositoryContext, projectId: string, taskId: string) {
+  return ctx.db.execute<{ entityId: string }>(sql`
+    WITH RECURSIVE subtree AS (
+      SELECT entity_id FROM ${tasks}
+      WHERE organization_id = ${ctx.scope.organizationId} AND project_entity_id = ${projectId}
+        AND entity_id = ${taskId}
+      UNION
+      SELECT child.entity_id FROM ${tasks} child
+      JOIN subtree parent ON child.parent_task_entity_id = parent.entity_id
+      WHERE child.organization_id = ${ctx.scope.organizationId} AND child.project_entity_id = ${projectId}
+    ) SELECT entity_id AS "entityId" FROM subtree
+  `);
+}
+
+export function taskLifecycle(context: RepositoryContext) {
+  const { scope } = context;
+  async function requireTask(ctx: RepositoryContext, taskId: string, projectId: string) {
+    const [task] = await ctx.db
+      .select()
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.organizationId, scope.organizationId),
+          eq(tasks.entityId, taskId),
+          eq(tasks.projectEntityId, projectId),
+          liveTask(),
+        ),
+      );
+    if (!task) throw new AccessDeniedError();
+    return task;
+  }
+  return {
+    async delete(taskId: string, projectId: string) {
+      return context.db.transaction(async (tx) => {
+        const ctx = new RepositoryContext(tx, scope);
+        await ctx.requireAccess(projectId, "edit", true);
+        await requireTask(ctx, taskId, projectId);
+        const subtree = await taskSubtree(ctx, projectId, taskId);
+        await tx
+          .update(entities)
+          .set({ deletedAt: new Date(), updatedAt: new Date() })
+          .where(
+            and(
+              eq(entities.organizationId, scope.organizationId),
+              inArray(
+                entities.entityId,
+                subtree.map((task) => task.entityId),
+              ),
+            ),
+          );
+      });
+    },
+    async move(
+      taskId: string,
+      projectId: string,
+      destinationProjectId: string,
+      parentTaskId: string | null,
+    ) {
+      return context.db.transaction(async (tx) => {
+        const ctx = new RepositoryContext(tx, scope);
+        // All project locks are taken in the same order for moves in either direction.
+        for (const id of [...new Set([projectId, destinationProjectId])].sort()) {
+          const { entity } = await ctx.requireAccess(id, "edit", true);
+          if (entity.entityType !== "project") throw new AccessDeniedError();
+        }
+        const task = await requireTask(ctx, taskId, projectId);
+        const subtree = await taskSubtree(ctx, projectId, taskId);
+        const ids = subtree.map((row) => row.entityId);
+        if (parentTaskId) {
+          if (ids.includes(parentTaskId))
+            throw new ValidationError(
+              "A task cannot be its own parent or a child of its subtasks.",
+            );
+          const [parent] = await tx
+            .select()
+            .from(tasks)
+            .where(
+              and(
+                eq(tasks.organizationId, scope.organizationId),
+                eq(tasks.entityId, parentTaskId),
+                eq(tasks.projectEntityId, destinationProjectId),
+                liveTask(),
+              ),
+            );
+          if (!parent) throw new ValidationError("Select a parent in the destination project.");
+        }
+        if (projectId !== destinationProjectId) {
+          const live = await tx
+            .select({ assignee: tasks.assigneeActorEntityId })
+            .from(tasks)
+            .where(
+              and(
+                eq(tasks.organizationId, scope.organizationId),
+                inArray(tasks.entityId, ids),
+                liveTask(),
+              ),
+            );
+          for (const assignee of new Set(
+            live.flatMap((row) => (row.assignee ? [row.assignee] : [])),
+          )) {
+            try {
+              await new RepositoryContext(tx, {
+                organizationId: scope.organizationId,
+                actorEntityId: assignee,
+              }).requireAccess(destinationProjectId, "view");
+            } catch (error) {
+              if (!(error instanceof AccessDeniedError)) throw error;
+              throw new ValidationError(
+                "Reassign or unassign tasks whose assignees cannot access the destination project.",
+              );
+            }
+          }
+          // A single statement keeps the entity-container and same-project parent FKs valid.
+          // Include deleted descendants too: their structural references must remain aligned.
+          await tx.execute(sql`
+            WITH moved_entities AS (
+              UPDATE ${entities} SET access_entity_id = ${destinationProjectId}, updated_at = now()
+              WHERE organization_id = ${scope.organizationId} AND entity_id IN ${ids}
+              RETURNING entity_id
+            )
+            UPDATE ${tasks} SET project_entity_id = ${destinationProjectId},
+              parent_task_entity_id = CASE WHEN entity_id = ${taskId} THEN ${parentTaskId}::uuid ELSE parent_task_entity_id END
+            WHERE organization_id = ${scope.organizationId} AND entity_id IN (SELECT entity_id FROM moved_entities)
+          `);
+        } else {
+          await tx
+            .update(tasks)
+            .set({ parentTaskEntityId: parentTaskId })
+            .where(and(eq(tasks.organizationId, scope.organizationId), eq(tasks.entityId, taskId)));
+          await ctx.touch(taskId);
+        }
+        if (
+          task.projectEntityId !== destinationProjectId ||
+          task.parentTaskEntityId !== parentTaskId
+        )
+          await recordTaskActivity(ctx, taskId, [
+            projectId === destinationProjectId ? "Parent changed" : "Project changed",
+          ]);
+      });
+    },
+  };
+}

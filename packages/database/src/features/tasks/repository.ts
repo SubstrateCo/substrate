@@ -17,6 +17,7 @@ import { applyCommentReferences, commentReferences } from "./comment-references"
 import { taskCommentReferences } from "./comment-references.schema";
 import { taskComments } from "./comments.schema";
 import type { CreateTaskInput, TaskFields } from "./contracts";
+import { taskLifecycle } from "./lifecycle";
 import { addTaskLink, linksOfTask, removeTaskLink } from "./links";
 import { tasks } from "./tasks.schema";
 import { and, asc, desc, eq, ne } from "drizzle-orm";
@@ -131,6 +132,7 @@ export function taskRepository(context: RepositoryContext) {
   }
 
   return {
+    ...taskLifecycle(context),
     get: requireTask,
     async create(input: CreateTaskInput) {
       return db.transaction(async (tx) => {

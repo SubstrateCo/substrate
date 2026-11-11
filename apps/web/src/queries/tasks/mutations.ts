@@ -21,12 +21,15 @@ type TaskUpdate = Extract<TasksWrite, { action: "updateTask" }>;
 /** Replace one task's editable fields in a cached project. */
 function patchProjectTask(detail: ProjectData, input: TaskUpdate): ProjectData {
   const { title, description, status, priority, assigneeActorEntityId, dueDate } = input;
+  const fields = Object.fromEntries(
+    Object.entries({ title, description, status, priority, assigneeActorEntityId, dueDate }).filter(
+      ([, value]) => value !== undefined,
+    ),
+  );
   return {
     ...detail,
     tasks: detail.tasks.map((task) =>
-      task.entityId === input.taskEntityId
-        ? { ...task, title, description, status, priority, assigneeActorEntityId, dueDate }
-        : task,
+      task.entityId === input.taskEntityId ? { ...task, ...fields } : task,
     ),
   };
 }
@@ -72,6 +75,20 @@ export function useTaskUpdate(organizationId: string, projectEntityId: string) {
 
 export function invalidateTasksWrite(client: QueryClient, input: TasksWrite, id: string) {
   const organizationId = input.organizationId;
+  if (
+    input.action === "deleteProject" ||
+    input.action === "deleteTask" ||
+    input.action === "moveTask"
+  )
+    return Promise.all([
+      client.resetQueries({ queryKey: queryKeys.tasks(organizationId) }),
+      client.resetQueries({ queryKey: queryKeys.related(organizationId) }),
+      client.resetQueries({ queryKey: queryKeys.activity(organizationId) }),
+      client.resetQueries({ queryKey: queryKeys.messagePages(organizationId) }),
+      client.resetQueries({ queryKey: queryKeys.messageTargets(organizationId) }),
+      client.resetQueries({ queryKey: queryKeys.notifications(organizationId) }),
+      ...queryKeys.searches(organizationId).map((queryKey) => client.resetQueries({ queryKey })),
+    ]);
   if (input.action === "comment")
     return Promise.all([
       client.invalidateQueries({

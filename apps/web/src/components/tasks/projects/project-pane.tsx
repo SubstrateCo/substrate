@@ -5,6 +5,7 @@ import { WorkDiscussions } from "../../context/discussions/work-discussions";
 import { CopyLink } from "../../context/links/copy-link";
 import { TaskDetail } from "../detail/task-detail";
 import { TaskForm } from "../editor/task-form";
+import { ProjectDelete } from "./editor/project-delete";
 import { ProjectForm } from "./editor/project-form";
 import { ProjectPicture } from "./editor/project-picture";
 import { ProjectSharing } from "./sharing/project-sharing";
@@ -44,12 +45,7 @@ export function ProjectPane({
         update.mutate(
           {
             taskEntityId: task.entityId,
-            title: task.title,
-            description: task.description,
             status,
-            priority: task.priority,
-            assigneeActorEntityId: task.assigneeActorEntityId,
-            dueDate: task.dueDate,
           },
           { onError: () => toast.error("Couldn't change the status. It was set back.") },
         )
@@ -80,6 +76,9 @@ export function ProjectPane({
           <>
             <ProjectPicture organizationId={organizationId} project={project.data.project} />
             <ProjectForm organizationId={organizationId} project={project.data.project} />
+            {project.data.level === "owner" && (
+              <ProjectDelete organizationId={organizationId} project={project.data.project} />
+            )}
           </>
         )
       }

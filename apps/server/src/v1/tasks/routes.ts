@@ -2,6 +2,7 @@ import {
   tasksWorkspace,
   projectRequest,
   taskRequest,
+  taskLocationRequest,
   tasksWrite,
   workRequest,
 } from "@substrate/contracts/tasks/input";
@@ -13,14 +14,25 @@ import {
   listTaskComments,
   listCommentMentions,
   mutateTasks,
+  getTaskLocation,
 } from "./service";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 
 export function createTasksRoutes(
-  services = { listProjects, getProject, listTaskComments, listCommentMentions, mutateTasks },
+  services = {
+    listProjects,
+    getProject,
+    listTaskComments,
+    listCommentMentions,
+    mutateTasks,
+    getTaskLocation,
+  },
 ) {
   return new Hono()
+    .get("/task-location", zValidator("query", taskLocationRequest, validationHook), async (c) =>
+      respond(c, await services.getTaskLocation(c.req.raw.headers, c.req.valid("query"))),
+    )
     .get("/projects", zValidator("query", tasksWorkspace, validationHook), async (c) =>
       respond(c, await services.listProjects(c.req.raw.headers, c.req.valid("query"))),
     )

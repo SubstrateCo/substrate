@@ -1,8 +1,8 @@
-import { tasksWrite } from "@substrate/contracts/tasks/input";
+import { tasksWrite, taskFields as taskFieldSchema } from "@substrate/contracts/tasks/input";
 
 import { z } from "zod";
 
-const taskFields = tasksWrite.options[3].shape;
+const taskFields = taskFieldSchema.shape;
 const projectFields = tasksWrite.options[1].shape;
 
 export const projectFormSchema = z.object({

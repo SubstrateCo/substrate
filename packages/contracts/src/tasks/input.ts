@@ -8,11 +8,12 @@ import { z } from "zod";
 export const tasksWorkspace = z.object({ organizationId });
 export const projectRequest = tasksWorkspace.extend({ projectEntityId: z.uuid() });
 export const taskRequest = projectRequest.extend({ taskEntityId: z.uuid() });
+export const taskLocationRequest = tasksWorkspace.extend({ taskEntityId: z.uuid() });
 /** A task or a project. */
 export const workRequest = tasksWorkspace.extend({ entityId: z.uuid() });
 const title = z.string().trim().min(1).max(300);
 const description = z.string().max(20000);
-const taskFields = z.object({
+export const taskFields = z.object({
   title,
   description,
   status: z.enum(taskStatusValues),
@@ -39,7 +40,13 @@ export const tasksWrite = z.discriminatedUnion("action", [
       attachmentFileIds: attachmentFileIds.optional(),
     })
     .extend(taskFields.partial().extend({ title }).shape),
-  taskRequest.extend({ action: z.literal("updateTask") }).extend(taskFields.shape),
+  taskRequest
+    .extend({ action: z.literal("updateTask") })
+    .extend(taskFields.partial().shape)
+    .refine(
+      (input) => Object.keys(taskFields.shape).some((key) => key in input),
+      "Change at least one task field.",
+    ),
   taskRequest.extend({ action: z.literal("comment"), body: z.string().trim().min(1).max(20000) }),
   taskRequest.extend({
     action: z.literal("addTaskLink"),
@@ -54,6 +61,13 @@ export const tasksWrite = z.discriminatedUnion("action", [
   }),
   projectRequest.extend({ action: z.literal("revoke"), actorEntityId: z.uuid() }),
   projectRequest.extend({ action: z.literal("setProjectPicture"), image: projectIcon }),
+  projectRequest.extend({ action: z.literal("deleteProject") }),
+  taskRequest.extend({ action: z.literal("deleteTask") }),
+  taskRequest.extend({
+    action: z.literal("moveTask"),
+    destinationProjectEntityId: z.uuid(),
+    parentTaskEntityId: z.uuid().nullable(),
+  }),
 ]);
 
 export type TasksWrite = z.input<typeof tasksWrite>;

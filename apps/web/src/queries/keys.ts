@@ -88,6 +88,8 @@ export const queryKeys = {
   projects: (organizationId: string) => [...queryKeys.tasks(organizationId), "projects"] as const,
   project: (organizationId: string, projectEntityId: string) =>
     [...queryKeys.tasks(organizationId), "project", projectEntityId] as const,
+  taskLocation: (organizationId: string, taskEntityId: string) =>
+    [...queryKeys.tasks(organizationId), "location", taskEntityId] as const,
   taskComments: (organizationId: string, projectEntityId: string, taskEntityId: string) =>
     [...queryKeys.tasks(organizationId), "comments", projectEntityId, taskEntityId] as const,
   commentMentions: (organizationId: string, entityId?: string) =>

@@ -1,5 +1,6 @@
 import { useRouter } from "@tanstack/react-router";
 
+import { changedTaskFields } from "./task-patch";
 import { AttachFilesButton, AttachmentDraftList } from "@/components/attachments/attachment-picker";
 import { FileDropZone } from "@/components/attachments/file-drop-zone";
 import { useAttachmentUploads } from "@/components/attachments/use-attachment-uploads";
@@ -63,10 +64,21 @@ export function TaskForm({
       onSubmit={(draft) => {
         const fields = { organizationId, projectEntityId: detail.project.entityId, ...draft };
         const destination = router.latestLocation.href;
+        const changes = task ? changedTaskFields(task, draft) : undefined;
+        if (task && changes && !Object.keys(changes).length) {
+          onSaved(task.entityId);
+          return;
+        }
         void save
           .mutateAsync(
             task
-              ? { action: "updateTask", ...fields, taskEntityId: task.entityId }
+              ? {
+                  action: "updateTask",
+                  organizationId,
+                  projectEntityId: detail.project.entityId,
+                  ...changes,
+                  taskEntityId: task.entityId,
+                }
               : {
                   action: "createTask",
                   ...fields,

@@ -1,6 +1,7 @@
 import type {
   projectRequest,
   taskRequest,
+  taskLocationRequest,
   tasksWorkspace,
   TasksWrite,
   workRequest,
@@ -15,6 +16,8 @@ export const listProjects = ({ data, signal }: ApiInput<z.input<typeof tasksWork
   readResult(api.tasks.projects.$get({ query: data }, { init: { signal } }));
 export const getProject = ({ data, signal }: ApiInput<z.input<typeof projectRequest>>) =>
   readResult(api.tasks.project.$get({ query: data }, { init: { signal } }));
+export const getTaskLocation = ({ data, signal }: ApiInput<z.input<typeof taskLocationRequest>>) =>
+  readResult(api.tasks["task-location"].$get({ query: data }, { init: { signal } }));
 export const listTaskComments = ({ data, signal }: ApiInput<z.input<typeof taskRequest>>) =>
   readResult(api.tasks.comments.$get({ query: data }, { init: { signal } }));
 export const listCommentMentions = ({ data, signal }: ApiInput<z.input<typeof workRequest>>) =>

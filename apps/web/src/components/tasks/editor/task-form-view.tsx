@@ -86,6 +86,7 @@ export function TaskForm({
   attachmentsReady?: boolean;
 }) {
   const id = useId();
+  const initial = useRef(task);
   const latest = useRef(task);
   useEffect(() => {
     latest.current = task;
@@ -102,6 +103,11 @@ export function TaskForm({
         current && variant === "inline"
           ? {
               ...draft,
+              title: draft.title === initial.current?.title ? current.title : draft.title,
+              description:
+                draft.description === initial.current?.description
+                  ? current.description
+                  : draft.description,
               status: current.status,
               priority: current.priority,
               assigneeActorEntityId: current.assigneeActorEntityId,

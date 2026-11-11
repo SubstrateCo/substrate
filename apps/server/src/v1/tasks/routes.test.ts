@@ -1,4 +1,5 @@
 import { failure, success } from "@substrate/contracts/result";
+import type { TasksWrite } from "@substrate/contracts/tasks/input";
 
 import { createTasksRoutes } from "./routes";
 import * as services from "./service";
@@ -83,4 +84,27 @@ test("task mutations return successful IDs", async () => {
     action: "createProject",
     name: "Launch",
   });
+});
+
+test("task updates accept a single field and reject an empty patch", async () => {
+  const mutateTasks = mock<typeof services.mutateTasks>(async () =>
+    success({ id: projectEntityId }),
+  );
+  const app = createTasksRoutes({ ...services, mutateTasks });
+  const input = {
+    organizationId: "org",
+    projectEntityId,
+    taskEntityId: projectEntityId,
+    action: "updateTask" as const,
+  };
+  const update = (fields: Partial<Extract<TasksWrite, { action: "updateTask" }>>) =>
+    app.request("/mutations", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...input, ...fields }),
+    });
+  expect((await update({ status: "completed" })).status).toBe(200);
+  expect((await update({})).status).toBe(400);
+  expect(mutateTasks.mock.calls).toHaveLength(1);
+  expect(mutateTasks.mock.calls[0]?.[1]).toEqual({ ...input, status: "completed" });
 });

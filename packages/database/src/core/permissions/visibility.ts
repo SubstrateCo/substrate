@@ -85,7 +85,7 @@ export function entityAccessLevel(scope: ActorScope, entityId: SQLWrapper | stri
   ) levels)`;
 }
 
-// Locks the entity and its container. Locks nothing and returns no rows unless the scope's actor
+// Locks the container before its child, like project lifecycle writes. Locks nothing unless the actor
 // is active.
 export function lockAccessPath(scope: ActorScope, entityId: string) {
   return sql`SELECT e.entity_id FROM ${entities} e
@@ -102,5 +102,5 @@ export function lockAccessPath(scope: ActorScope, entityId: string) {
         AND ${actors.entityId} = ${scope.actorEntityId}
         AND ${activeActorCondition()} AND actor_entity.deleted_at IS NULL
     )
-  ORDER BY e.entity_id FOR UPDATE`;
+  ORDER BY (e.entity_id <> e.access_entity_id), e.entity_id FOR UPDATE`;
 }

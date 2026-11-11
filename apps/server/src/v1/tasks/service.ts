@@ -3,6 +3,7 @@ import type { RealtimeHint } from "@substrate/contracts/realtime";
 import type {
   projectRequest,
   taskRequest,
+  taskLocationRequest,
   tasksWorkspace,
   tasksWrite,
   workRequest,
@@ -58,6 +59,14 @@ export function listTaskComments(headers: Headers, input: z.output<typeof taskRe
   });
 }
 
+export function getTaskLocation(headers: Headers, input: z.output<typeof taskLocationRequest>) {
+  return serviceResult(async () => {
+    const repositories = await repositoriesForSession(headers, input.organizationId);
+    const task = await repositories.tasks.get(input.taskEntityId);
+    return { projectEntityId: task.projectEntityId };
+  });
+}
+
 export function listCommentMentions(headers: Headers, input: z.output<typeof workRequest>) {
   return serviceResult(async () => {
     const repositories = await repositoriesForSession(headers, input.organizationId);
@@ -85,6 +94,20 @@ export function mutateTasks(headers: Headers, input: z.output<typeof tasksWrite>
         case "updateTask":
           await repos.tasks.update(input.taskEntityId, input, input.projectEntityId);
           return { id: input.taskEntityId };
+        case "deleteProject":
+          await repos.projects.delete(input.projectEntityId);
+          break;
+        case "deleteTask":
+          await repos.tasks.delete(input.taskEntityId, input.projectEntityId);
+          return { id: input.taskEntityId };
+        case "moveTask":
+          await repos.tasks.move(
+            input.taskEntityId,
+            input.projectEntityId,
+            input.destinationProjectEntityId,
+            input.parentTaskEntityId,
+          );
+          return { id: input.taskEntityId };
         case "comment":
           mentioned = (
             await repos.tasks.addComment(input.taskEntityId, input.body, input.projectEntityId)
@@ -111,11 +134,7 @@ export function mutateTasks(headers: Headers, input: z.output<typeof tasksWrite>
           });
           break;
         case "revoke":
-          await repos.projects.get(input.projectEntityId);
-          await repos.permissions.revoke({
-            entityId: input.projectEntityId,
-            actorEntityId: input.actorEntityId,
-          });
+          await repos.projects.revoke(input.projectEntityId, input.actorEntityId);
           break;
       }
       return { id: input.projectEntityId };
@@ -123,7 +142,17 @@ export function mutateTasks(headers: Headers, input: z.output<typeof tasksWrite>
     const hints: RealtimeHint[] =
       input.action === "share" || input.action === "revoke"
         ? await projectAccessRefreshHints(db, input.organizationId, input.actorEntityId)
-        : [{ audience: realtimeKeys.organization(input.organizationId), domain: "tasks" }];
+        : [
+            {
+              audience: realtimeKeys.organization(input.organizationId),
+              domain:
+                input.action === "moveTask" ||
+                input.action === "deleteTask" ||
+                input.action === "deleteProject"
+                  ? "access"
+                  : "tasks",
+            },
+          ];
     if (
       (input.action === "createTask" || input.action === "updateTask") &&
       input.assigneeActorEntityId

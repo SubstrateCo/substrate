@@ -1,18 +1,42 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { ProjectForm } from "../projects/editor/project-form";
 import { ProjectPane } from "../projects/project-pane";
 import { isAccessFailure } from "@/components/feedback/request-failure";
 import { TasksWorkspace as TasksWorkspaceView } from "@/components/tasks/workspace/tasks-workspace-view";
-import { projectsQueryOptions } from "@/queries/tasks/options";
+import { projectsQueryOptions, taskLocationQueryOptions } from "@/queries/tasks/options";
 
 export function TasksWorkspace({ organizationId }: { organizationId: string }) {
   const projects = useQuery(projectsQueryOptions(organizationId));
   const search = useSearch({ strict: false });
   const navigate = useNavigate();
+  const taskLocation = useQuery({
+    ...taskLocationQueryOptions(organizationId, search.taskId ?? ""),
+    enabled: !!search.taskId,
+  });
+  useEffect(() => {
+    const resolvedLocation = !taskLocation.error ? taskLocation.data : undefined;
+    if (search.taskId && resolvedLocation && resolvedLocation.projectEntityId !== search.projectId)
+      void navigate({
+        to: "/tasks",
+        replace: true,
+        search: {
+          workspaceId: organizationId,
+          projectId: resolvedLocation.projectEntityId,
+          taskId: search.taskId,
+        },
+      });
+  }, [
+    navigate,
+    organizationId,
+    search.taskId,
+    search.projectId,
+    taskLocation.data,
+    taskLocation.error,
+  ]);
   const [lastSelection, setLastSelection] = useState<{
     organizationId: string;
     projectId?: string;
