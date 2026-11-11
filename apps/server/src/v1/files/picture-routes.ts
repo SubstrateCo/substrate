@@ -5,27 +5,28 @@ import {
 } from "@substrate/contracts/files/pictures";
 import { publicFailure } from "@substrate/contracts/result";
 
-import { respond, validationHook } from "../../shared/http";
+import { respond, v } from "../../shared/http";
+import type { ScopeEnv, Scopes, UserScope } from "../../shared/scope";
 import type { PictureService } from "./pictures";
-import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 
-export function createPictureRoutes(service: PictureService) {
-  return new Hono()
+export function createPictureRoutes(service: PictureService, scopes: Scopes) {
+  return new Hono<ScopeEnv<UserScope>>()
     .post(
       "/:purpose",
       bodyLimit({
         maxSize: 6 * 1024 * 1024,
         onError: (c) => respond(c, publicFailure("PAYLOAD_TOO_LARGE", "Use a picture up to 5 MB.")),
       }),
-      zValidator("param", pictureKindParam, validationHook),
-      zValidator("form", pictureUploadInput, validationHook),
+      v("param", pictureKindParam),
+      v("form", pictureUploadInput),
+      scopes.user(),
       async (c) =>
         respond(
           c,
           await service.upload(
-            c.req.raw.headers,
+            c.var.scope,
             c.req.valid("param").purpose,
             c.req.valid("form").file,
             c.req.valid("form").organizationId,
@@ -33,9 +34,9 @@ export function createPictureRoutes(service: PictureService) {
           ),
         ),
     )
-    .get("/:purpose/:owner", zValidator("param", pictureOwnerParam, validationHook), async (c) => {
+    .get("/:purpose/:owner", v("param", pictureOwnerParam), scopes.user(), async (c) => {
       const { purpose, owner } = c.req.valid("param");
-      const result = await service.content(c.req.raw.headers, purpose, owner);
+      const result = await service.content(c.var.scope, purpose, owner);
       if (!result.success) return respond(c, result);
       c.header("Cache-Control", "private, no-store");
       c.header("Vary", "Cookie");

@@ -1,17 +1,22 @@
 import { failure, publicFailure } from "@substrate/contracts/result";
 
-import { auth } from "./auth/server";
+import type { Auth } from "./auth/server";
 import { createDesktopRoutes } from "./desktop/routes";
-import { environment } from "./environment";
+import type { Services } from "./services";
 import { respond } from "./shared/http";
+import { trustedOrigin } from "./shared/origin";
+import type { Scopes } from "./shared/scope";
 import { createAgentWorkRoutes } from "./v1/agent-work/routes";
 import { createAgentsRoutes } from "./v1/agents/routes";
 import { createContextRoutes } from "./v1/context/routes";
+import { createAttachmentRoutes } from "./v1/files/attachment-routes";
+import { createPictureRoutes } from "./v1/files/picture-routes";
 import { createFilesRoutes } from "./v1/files/routes";
 import { createMcpRoutes } from "./v1/mcp/routes";
 import { createMessagingRoutes } from "./v1/messaging/routes";
 import { createSharingRoutes } from "./v1/messaging/sharing-routes";
 import { createOrganizationRoutes } from "./v1/organizations/routes";
+import type { createRealtimeRoutes } from "./v1/realtime/routes";
 import { createSessionRoutes } from "./v1/session/routes";
 import { createTasksRoutes } from "./v1/tasks/routes";
 import { Hono } from "hono";
@@ -22,9 +27,20 @@ import { HTTPException } from "hono/http-exception";
 import { secureHeaders } from "hono/secure-headers";
 import type { ExtractSchema } from "hono/types";
 
-export function createApp() {
-  const { trustedOrigins } = environment;
-  return new Hono()
+export interface AppDependencies {
+  auth: Pick<Auth, "handler">;
+  services: Services;
+  scopes: Scopes;
+  trustedOrigins: string[];
+  realtime?: Pick<ReturnType<typeof createRealtimeRoutes>, "app">;
+}
+
+export function createApp({ auth, services, scopes, trustedOrigins, realtime }: AppDependencies) {
+  const app = new Hono();
+  // Upgrade handlers must run before response-mutating middleware. Hono owns routing;
+  // Bun only receives its websocket callbacks in main.ts.
+  if (realtime) app.route("/", realtime.app);
+  return app
     .use(secureHeaders())
     .use(
       "/api/*",
@@ -50,18 +66,24 @@ export function createApp() {
       c.header("Cache-Control", "no-store");
       await next();
     })
+    .use("/api/v1/*", trustedOrigin(trustedOrigins))
     .on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw))
     .route("/desktop", createDesktopRoutes())
-    .route("/api/v1/session", createSessionRoutes())
-    .route("/api/v1/organizations", createOrganizationRoutes())
-    .route("/api/v1/files", createFilesRoutes())
-    .route("/api/v1/tasks", createTasksRoutes())
-    .route("/api/v1/messaging", createMessagingRoutes())
-    .route("/api/v1/messaging/sharing", createSharingRoutes())
-    .route("/api/v1/mcp", createMcpRoutes())
-    .route("/api/v1/context", createContextRoutes())
-    .route("/api/v1/agents", createAgentsRoutes())
-    .route("/api/v1/agent-work", createAgentWorkRoutes())
+    .route("/api/v1/session", createSessionRoutes(services.session, scopes))
+    .route("/api/v1/organizations", createOrganizationRoutes(services.organizations, scopes))
+    .route("/api/v1/files/pictures", createPictureRoutes(services.pictures, scopes))
+    .route("/api/v1/files/attachments", createAttachmentRoutes(services.attachments, scopes))
+    .route("/api/v1/files", createFilesRoutes(services.files, scopes))
+    .route("/api/v1/tasks", createTasksRoutes(services.tasks, scopes))
+    .route("/api/v1/messaging", createMessagingRoutes(services.messaging, scopes))
+    .route("/api/v1/messaging/sharing", createSharingRoutes(services.sharing, scopes))
+    .route("/api/v1/mcp", createMcpRoutes(services.mcp, scopes))
+    .route("/api/v1/context", createContextRoutes(services.context, scopes))
+    .route("/api/v1/agents", createAgentsRoutes(services.agents, scopes))
+    .route(
+      "/api/v1/agent-work",
+      createAgentWorkRoutes(services.agentWork, services.devices, scopes),
+    )
     .notFound((c) => respond(c, publicFailure("NOT_FOUND", "Endpoint not found.")))
     .onError((error, c) => {
       if (error instanceof HTTPException && error.status === 400) {

@@ -1,5 +1,6 @@
 import type { CompletedUpload } from "@substrate/contracts/files/input";
 
+import { rejected, result } from "./test-support/api";
 import { appOrigin } from "./test-support/environment";
 import {
   complete,
@@ -7,8 +8,6 @@ import {
   image,
   png,
   putBytes,
-  rejected,
-  result,
   root,
   uploadPicture,
 } from "./test-support/files";

@@ -1,30 +1,14 @@
-import type { TasksWrite } from "@substrate/contracts/tasks/input";
-
-import { appOrigin } from "./test-support/environment";
-import { rejected, result } from "./test-support/files";
+import { rejected, result, tasks } from "./test-support/api";
 import { test, type Actor } from "./test-support/fixtures";
 import { expect } from "@playwright/test";
 
-const origin = appOrigin;
-
-type WorkspaceWrite<T = TasksWrite> = T extends TasksWrite ? Omit<T, "organizationId"> : never;
 type End = { entityId: string; title: string } | null;
 type Detail = {
   actors: { entityId: string; name: string }[];
   links: { id: string; kind: string; source: End; target: End; blocking: boolean }[];
 };
 
-const write = (actor: Actor, data: WorkspaceWrite, from = origin) =>
-  actor.request.post("/api/v1/tasks/mutations", {
-    headers: { origin: from },
-    data: { organizationId: actor.organizationId, ...data },
-  });
-const created = async (actor: Actor, data: WorkspaceWrite) =>
-  (await result<{ id: string }>(await write(actor, data))).id;
-const project = (actor: Actor, projectEntityId: string) =>
-  actor.request.get("/api/v1/tasks/project", {
-    params: { organizationId: actor.organizationId, projectEntityId },
-  });
+const { write, create: created, project } = tasks;
 
 async function setup(owner: Actor, member: Actor) {
   const open = await created(owner, { action: "createProject", name: "Open work" });

@@ -1,9 +1,6 @@
 import type { RealtimeHint } from "@substrate/contracts/realtime";
 import type { Committed } from "@substrate/database";
 
-import { sharingMailWorker } from "../messaging/sharing-mail";
-import { publishRefresh } from "./publisher";
-
 export function createCommittedPublisher(dependencies: {
   publish: (hints: RealtimeHint[]) => Promise<void>;
   sharingMail: { trigger: () => void };
@@ -15,7 +12,4 @@ export function createCommittedPublisher(dependencies: {
   };
 }
 
-export const publishCommitted = createCommittedPublisher({
-  publish: publishRefresh,
-  sharingMail: sharingMailWorker,
-});
+export type CommittedPublisher = ReturnType<typeof createCommittedPublisher>;

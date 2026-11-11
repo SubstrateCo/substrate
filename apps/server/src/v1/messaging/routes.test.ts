@@ -1,8 +1,13 @@
 import { failure, publicFailure } from "@substrate/contracts/result";
 
-import { createMessagingRoutes } from "./routes";
-import * as services from "./service";
+import { createTestScopes, createTestServices } from "../../test-support";
+import { createMessagingRoutes as createRoutes } from "./routes";
+import type { MessagingService } from "./service";
 import { expect, mock, test } from "bun:test";
+
+const services = createTestServices().messaging;
+const createMessagingRoutes = (service: MessagingService) =>
+  createRoutes(service, createTestScopes());
 
 const conversationId = "00000000-0000-4000-8000-000000000001";
 
@@ -76,9 +81,12 @@ test("messaging forwards only validated input and maps domain errors", async () 
   });
   expect(response.status).toBe(409);
   expect(await response.json()).toEqual(failure("CONFLICT", "Message request already used."));
-  expect(sendMessage).toHaveBeenCalledWith(expect.any(Headers), {
-    organizationId: "org",
-    conversationId,
-    body: "hello",
-  });
+  expect(sendMessage).toHaveBeenCalledWith(
+    expect.objectContaining({ userId: "user-1", organizationId: "org" }),
+    {
+      organizationId: "org",
+      conversationId,
+      body: "hello",
+    },
+  );
 });

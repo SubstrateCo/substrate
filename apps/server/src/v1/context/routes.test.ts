@@ -1,8 +1,12 @@
 import { failure, publicFailure } from "@substrate/contracts/result";
 
-import { createContextRoutes } from "./routes";
-import * as services from "./service";
+import { createTestScopes, createTestServices } from "../../test-support";
+import { createContextRoutes as createRoutes } from "./routes";
+import type { ContextService } from "./service";
 import { expect, mock, test } from "bun:test";
+
+const services = createTestServices().context;
+const createContextRoutes = (service: ContextService) => createRoutes(service, createTestScopes());
 
 const id = "00000000-0000-4000-8000-000000000001";
 
@@ -24,12 +28,15 @@ test("group pages reject malformed positions and preserve their scoped paging in
     limit: "10",
   });
   expect((await app.request(`/notifications/groups?${query}`)).status).toBe(404);
-  expect(getNotificationGroups).toHaveBeenCalledWith(expect.any(Headers), {
-    organizationId: "org",
-    filter: "unread",
-    after,
-    limit: 10,
-  });
+  expect(getNotificationGroups).toHaveBeenCalledWith(
+    expect.objectContaining({ userId: "user-1", organizationId: "org" }),
+    {
+      organizationId: "org",
+      filter: "unread",
+      after,
+      limit: 10,
+    },
+  );
 });
 
 test("notification pages validate cursors and filters and preserve the workspace boundary", async () => {
@@ -46,12 +53,15 @@ test("notification pages validate cursors and filters and preserve the workspace
   );
   expect(response.status).toBe(404);
   expect(await response.json()).toEqual(failure("NOT_FOUND", "Item not found or access denied."));
-  expect(getNotificationPage).toHaveBeenCalledWith(expect.any(Headers), {
-    organizationId: "org",
-    after: id,
-    filter: "unread",
-    limit: 20,
-  });
+  expect(getNotificationPage).toHaveBeenCalledWith(
+    expect.objectContaining({ userId: "user-1", organizationId: "org" }),
+    {
+      organizationId: "org",
+      after: id,
+      filter: "unread",
+      limit: 20,
+    },
+  );
 });
 
 test("context routes reject invalid input without invoking services", async () => {
@@ -128,7 +138,10 @@ test("context search keeps JSON numbers and booleans and maps authorization fail
   });
   expect(response.status).toBe(403);
   expect(await response.json()).toEqual(failure("FORBIDDEN", "Verify your email to continue."));
-  expect(searchContext).toHaveBeenCalledWith(expect.any(Headers), input);
+  expect(searchContext).toHaveBeenCalledWith(
+    expect.objectContaining({ userId: "user-1", organizationId: "org" }),
+    input,
+  );
 });
 
 test("context unlink reads JSON on DELETE and preserves structured IDs", async () => {
@@ -142,7 +155,10 @@ test("context unlink reads JSON on DELETE and preserves structured IDs", async (
   });
   expect(response.status).toBe(404);
   expect(await response.json()).toEqual(failure("NOT_FOUND", "Item not found or access denied."));
-  expect(detachWork).toHaveBeenCalledWith(expect.any(Headers), input);
+  expect(detachWork).toHaveBeenCalledWith(
+    expect.objectContaining({ userId: "user-1", organizationId: "org" }),
+    input,
+  );
 });
 
 test("page context rejects oversized pages before authorization and returns no partial metadata on denial", async () => {

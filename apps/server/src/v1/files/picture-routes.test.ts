@@ -1,14 +1,19 @@
 import { failure, success } from "@substrate/contracts/result";
 
+import { createTestScopes } from "../../test-support";
 import { createPictureRoutes } from "./picture-routes";
 import type { PictureService } from "./pictures";
 import { expect, test } from "bun:test";
 
 test("picture uploads accept multipart bytes and return the URL without saving a profile", async () => {
-  const app = createPictureRoutes({
-    upload: async (_headers, purpose, file) => success({ url: `${purpose}:${await file.text()}` }),
-    content: async () => failure("NOT_FOUND", "Not found."),
-  });
+  const app = createPictureRoutes(
+    {
+      upload: async (_headers, purpose, file) =>
+        success({ url: `${purpose}:${await file.text()}` }),
+      content: async () => failure("NOT_FOUND", "Not found."),
+    },
+    createTestScopes(),
+  );
   const form = new FormData();
   form.set("file", new File(["pixels"], "image.png", { type: "image/png" }));
   const response = await app.request("/avatar", { method: "POST", body: form });
@@ -25,7 +30,7 @@ test("picture content redirects only after authorization and is not cached", asy
         ? success({ url: `https://s3.test/${purpose}/${owner}` })
         : failure("NOT_FOUND", "Not found."),
   };
-  const app = createPictureRoutes(service);
+  const app = createPictureRoutes(service, createTestScopes());
   const response = await app.request("/avatar/alice?v=one");
   expect(response.status).toBe(302);
   expect(response.headers.get("location")).toBe("https://s3.test/avatar/alice");

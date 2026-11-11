@@ -1,50 +1,63 @@
 import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 import { invitationRefreshHints, profileRefreshHints } from "@substrate/database/realtime";
+import type { Database } from "@substrate/database/trusted";
 
-import { publishRefresh } from "../v1/realtime/publisher";
-import { db } from "./database";
+import type { createRefreshPublisher } from "../v1/realtime/publisher";
 
-export function publishSessionChange(session: { userId: string }) {
-  return publishRefresh([{ audience: realtimeKeys.user(session.userId), domain: "session" }]);
-}
+export function createAuthPublisher(
+  db: Database,
+  publishRefresh: ReturnType<typeof createRefreshPublisher>,
+) {
+  function publishSessionChange(session: { userId: string }) {
+    return publishRefresh([{ audience: realtimeKeys.user(session.userId), domain: "session" }]);
+  }
 
-export function publishProfileChange(user: { id: string }) {
-  return publishRefresh(profileRefreshHints(db, user.id));
-}
+  function publishProfileChange(user: { id: string }) {
+    return publishRefresh(profileRefreshHints(db, user.id));
+  }
 
-export function publishMembershipChange(
-  input: {
+  function publishMembershipChange(
+    input: {
+      organization: { id: string };
+      user: { id: string };
+    },
+    hints: RealtimeHint[] = [],
+  ) {
+    return publishRefresh([
+      ...hints,
+      { audience: realtimeKeys.organization(input.organization.id), domain: "access" },
+      { audience: realtimeKeys.user(input.user.id), domain: "access" },
+    ]);
+  }
+
+  function publishInvitationChange(input: {
+    invitation: { organizationId: string; email: string };
+  }) {
+    const { organizationId, email } = input.invitation;
+    return publishRefresh(invitationRefreshHints(db, organizationId, email));
+  }
+
+  function publishOrganizationChange(input: { member: { organizationId: string } }) {
+    return publishRefresh([
+      { audience: realtimeKeys.organization(input.member.organizationId), domain: "organization" },
+    ]);
+  }
+
+  function publishOrganizationDeletion(input: {
     organization: { id: string };
     user: { id: string };
-  },
-  hints: RealtimeHint[] = [],
-) {
-  return publishRefresh([
-    ...hints,
-    { audience: realtimeKeys.organization(input.organization.id), domain: "access" },
-    { audience: realtimeKeys.user(input.user.id), domain: "access" },
-  ]);
-}
-
-export function publishInvitationChange(input: {
-  invitation: { organizationId: string; email: string };
-}) {
-  const { organizationId, email } = input.invitation;
-  return publishRefresh(invitationRefreshHints(db, organizationId, email));
-}
-
-export function publishOrganizationChange(input: { member: { organizationId: string } }) {
-  return publishRefresh([
-    { audience: realtimeKeys.organization(input.member.organizationId), domain: "organization" },
-  ]);
-}
-
-export function publishOrganizationDeletion(input: {
-  organization: { id: string };
-  user: { id: string };
-}) {
-  return publishRefresh([
-    { audience: realtimeKeys.organization(input.organization.id), domain: "organization" },
-    { audience: realtimeKeys.user(input.user.id), domain: "organization" },
-  ]);
+  }) {
+    return publishRefresh([
+      { audience: realtimeKeys.organization(input.organization.id), domain: "organization" },
+      { audience: realtimeKeys.user(input.user.id), domain: "organization" },
+    ]);
+  }
+  return {
+    publishSessionChange,
+    publishProfileChange,
+    publishMembershipChange,
+    publishInvitationChange,
+    publishOrganizationChange,
+    publishOrganizationDeletion,
+  };
 }

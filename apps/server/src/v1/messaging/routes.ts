@@ -14,67 +14,72 @@ import {
   removeAgentInput,
 } from "@substrate/contracts/messaging/input";
 
-import { respond, validationHook } from "../../shared/http";
-import * as defaultServices from "./service";
-import { zValidator } from "@hono/zod-validator";
+import { respond, v } from "../../shared/http";
+import type { ScopeEnv, Scopes } from "../../shared/scope";
+import type { MessagingService } from "./service";
 import { Hono } from "hono";
 
-export function createMessagingRoutes(services = defaultServices) {
-  return new Hono()
-    .get("/conversations", zValidator("query", workspaceInput, validationHook), async (c) =>
-      respond(c, await services.listConversations(c.req.raw.headers, c.req.valid("query"))),
+export function createMessagingRoutes(services: MessagingService, scopes: Scopes) {
+  return new Hono<ScopeEnv>()
+    .get("/conversations", v("query", workspaceInput), scopes.workspace("query"), async (c) =>
+      respond(c, await services.listConversations(c.var.scope, c.req.valid("query"))),
     )
-    .post("/conversations", zValidator("json", conversationInput, validationHook), async (c) =>
-      respond(c, await services.createConversation(c.req.raw.headers, c.req.valid("json"))),
+    .post("/conversations", v("json", conversationInput), scopes.workspace("json"), async (c) =>
+      respond(c, await services.createConversation(c.var.scope, c.req.valid("json"))),
     )
-    .get("/profiles", zValidator("query", profileInput, validationHook), async (c) =>
-      respond(c, await services.getProfile(c.req.raw.headers, c.req.valid("query"))),
+    .get("/profiles", v("query", profileInput), scopes.workspace("query"), async (c) =>
+      respond(c, await services.getProfile(c.var.scope, c.req.valid("query"))),
     )
-    .get("/messages", zValidator("query", messageListInput, validationHook), async (c) =>
-      respond(c, await services.listMessages(c.req.raw.headers, c.req.valid("query"))),
+    .get("/messages", v("query", messageListInput), scopes.workspace("query"), async (c) =>
+      respond(c, await services.listMessages(c.var.scope, c.req.valid("query"))),
     )
-    .post("/messages", zValidator("json", messageInput, validationHook), async (c) =>
-      respond(c, await services.sendMessage(c.req.raw.headers, c.req.valid("json"))),
+    .post("/messages", v("json", messageInput), scopes.workspace("json"), async (c) =>
+      respond(c, await services.sendMessage(c.var.scope, c.req.valid("json"))),
     )
-    .get("/reactions", zValidator("query", reactionListInput, validationHook), async (c) =>
-      respond(c, await services.listReactions(c.req.raw.headers, c.req.valid("query"))),
+    .get("/reactions", v("query", reactionListInput), scopes.workspace("query"), async (c) =>
+      respond(c, await services.listReactions(c.var.scope, c.req.valid("query"))),
     )
-    .post("/reactions", zValidator("json", reactionInput, validationHook), async (c) =>
-      respond(c, await services.toggleReaction(c.req.raw.headers, c.req.valid("json"))),
+    .post("/reactions", v("json", reactionInput), scopes.workspace("json"), async (c) =>
+      respond(c, await services.toggleReaction(c.var.scope, c.req.valid("json"))),
     )
-    .post("/members", zValidator("json", membersInput, validationHook), async (c) =>
-      respond(c, await services.addMembers(c.req.raw.headers, c.req.valid("json"))),
+    .post("/members", v("json", membersInput), scopes.workspace("json"), async (c) =>
+      respond(c, await services.addMembers(c.var.scope, c.req.valid("json"))),
     )
-    .post("/agents/add", zValidator("json", addAgentInput, validationHook), async (c) =>
-      respond(c, await services.addAgent(c.req.raw.headers, c.req.valid("json"))),
+    .post("/agents/add", v("json", addAgentInput), scopes.workspace("json"), async (c) =>
+      respond(c, await services.addAgent(c.var.scope, c.req.valid("json"))),
     )
-    .post("/agents/remove", zValidator("json", removeAgentInput, validationHook), async (c) =>
-      respond(c, await services.removeAgent(c.req.raw.headers, c.req.valid("json"))),
+    .post("/agents/remove", v("json", removeAgentInput), scopes.workspace("json"), async (c) =>
+      respond(c, await services.removeAgent(c.var.scope, c.req.valid("json"))),
     )
-    .get("/conversations/managed", zValidator("query", workspaceInput, validationHook), async (c) =>
-      respond(c, await services.listManagedConversations(c.req.raw.headers, c.req.valid("query"))),
+    .get(
+      "/conversations/managed",
+      v("query", workspaceInput),
+      scopes.workspace("query"),
+      async (c) =>
+        respond(c, await services.listManagedConversations(c.var.scope, c.req.valid("query"))),
     )
     .get(
       "/conversations/delete-impact",
-      zValidator("query", conversationTargetInput, validationHook),
-      async (c) => respond(c, await services.deleteImpact(c.req.raw.headers, c.req.valid("query"))),
+      v("query", conversationTargetInput),
+      scopes.workspace("query"),
+      async (c) => respond(c, await services.deleteImpact(c.var.scope, c.req.valid("query"))),
     )
     .post(
       "/conversations/join",
-      zValidator("json", conversationTargetInput, validationHook),
-      async (c) =>
-        respond(c, await services.joinConversation(c.req.raw.headers, c.req.valid("json"))),
+      v("json", conversationTargetInput),
+      scopes.workspace("json"),
+      async (c) => respond(c, await services.joinConversation(c.var.scope, c.req.valid("json"))),
     )
-    .post("/conversations/leave", zValidator("json", leaveInput, validationHook), async (c) =>
-      respond(c, await services.leaveConversation(c.req.raw.headers, c.req.valid("json"))),
+    .post("/conversations/leave", v("json", leaveInput), scopes.workspace("json"), async (c) =>
+      respond(c, await services.leaveConversation(c.var.scope, c.req.valid("json"))),
     )
-    .post("/conversations/owner", zValidator("json", ownerInput, validationHook), async (c) =>
-      respond(c, await services.transferOwnership(c.req.raw.headers, c.req.valid("json"))),
+    .post("/conversations/owner", v("json", ownerInput), scopes.workspace("json"), async (c) =>
+      respond(c, await services.transferOwnership(c.var.scope, c.req.valid("json"))),
     )
     .post(
       "/conversations/delete",
-      zValidator("json", conversationTargetInput, validationHook),
-      async (c) =>
-        respond(c, await services.deleteConversation(c.req.raw.headers, c.req.valid("json"))),
+      v("json", conversationTargetInput),
+      scopes.workspace("json"),
+      async (c) => respond(c, await services.deleteConversation(c.var.scope, c.req.valid("json"))),
     );
 }

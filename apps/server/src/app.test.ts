@@ -1,5 +1,8 @@
-import { createApp } from "./app";
+import { createApp as createApplication } from "./app";
+import { appFixture } from "./test-support";
 import { expect, test } from "bun:test";
+
+const createApp = () => createApplication(appFixture());
 
 test("unknown API versions fail with the standard response", async () => {
   const response = await createApp().request("/api/v99/tasks/projects");
@@ -59,6 +62,7 @@ async function pictureUpload(bytes: number) {
     headers: {
       "Content-Type": encoded.headers.get("Content-Type")!,
       "Content-Length": String(body.byteLength),
+      Origin: "http://localhost:3000",
     },
     body,
   });

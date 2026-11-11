@@ -1,6 +1,6 @@
 import type { FilePurpose, UploadTicket } from "@substrate/contracts/files/input";
-import type { ServiceResult } from "@substrate/contracts/result";
 
+import { result } from "./api";
 import { appOrigin } from "./environment";
 import { expect, type APIRequestContext, type APIResponse } from "@playwright/test";
 
@@ -12,30 +12,6 @@ export const png = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=",
   "base64",
 );
-
-export async function result<T>(response: APIResponse): Promise<T> {
-  expect(response.ok(), "The authorized file operation succeeds").toBe(true);
-  const body: ServiceResult<T> = await response.json();
-  expect(body.success, "The operation returns successful application data").toBe(true);
-  if (!body.success) throw new Error("The file operation did not succeed.");
-  return body.data;
-}
-
-export async function rejected(response: APIResponse, privateValues: readonly string[] = []) {
-  expect(response.status(), "The operation is rejected, not a server error").toBeGreaterThanOrEqual(
-    400,
-  );
-  expect(response.status()).toBeLessThan(500);
-  const text = await response.text();
-  for (const value of privateValues) {
-    expect(text.includes(value), "The rejection does not disclose private file data").toBe(false);
-  }
-  if (response.headers()["content-type"]?.includes("application/json")) {
-    const body = JSON.parse(text);
-    expect(body.data ?? null, "Rejected operations expose no successful resource data").toBeNull();
-    expect(body.success).not.toBe(true);
-  }
-}
 
 export async function createUpload(
   page: APIClient,

@@ -1,12 +1,15 @@
 import { mcpCall } from "@substrate/contracts/harness/tools";
 
-import { respond, validationHook } from "../../shared/http";
-import { callAgentTool } from "./service";
-import { zValidator } from "@hono/zod-validator";
+import { respond, v } from "../../shared/http";
+import type { ScopeEnv, Scopes } from "../../shared/scope";
+import type { McpService } from "./service";
 import { Hono } from "hono";
 
-export function createMcpRoutes() {
-  return new Hono().post("/call", zValidator("json", mcpCall, validationHook), async (c) =>
-    respond(c, await callAgentTool(c.req.raw.headers, c.req.valid("json"))),
+export function createMcpRoutes(service: McpService, scopes: Scopes) {
+  return new Hono<ScopeEnv>().post(
+    "/call",
+    v("json", mcpCall),
+    scopes.workspace("json"),
+    async (c) => respond(c, await service.callAgentTool(c.var.scope, c.req.valid("json"))),
   );
 }

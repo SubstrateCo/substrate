@@ -1,30 +1,18 @@
 import { organizationSettingsAccess } from "@substrate/contracts/auth/settings-access";
 
-import { auth } from "../../auth/server";
+import type { SettingsScope } from "../../shared/scope";
 import { serviceResult } from "../../shared/service-result";
-import type { SessionAPI } from "../session/service";
 
-export interface OrganizationAPI extends SessionAPI {
-  getActiveMemberRole(input: {
-    headers: Headers;
-    query: { organizationId: string };
-  }): Promise<{ role: string }>;
-}
-
-export function createOrganizationService(api: OrganizationAPI) {
+export function createOrganizationService() {
   return {
-    settingsAccess(headers: Headers) {
+    settingsAccess({ session, role }: SettingsScope) {
       return serviceResult(async () => {
-        const session = await api.getSession({ headers });
-        if (!session?.user.emailVerified || !session.session.activeOrganizationId) return null;
-        const organizationId = session.session.activeOrganizationId;
-        const member = await api.getActiveMemberRole({ headers, query: { organizationId } });
-        const access = organizationSettingsAccess(member.role);
+        const organizationId = session?.session.activeOrganizationId;
+        if (!organizationId || role === null) return null;
+        const access = organizationSettingsAccess(role);
         return access.allowed ? { organizationId, isOwner: access.isOwner } : null;
       });
     },
   };
 }
-
-export const defaultOrganizationService = createOrganizationService(auth.api);
 export type OrganizationService = ReturnType<typeof createOrganizationService>;

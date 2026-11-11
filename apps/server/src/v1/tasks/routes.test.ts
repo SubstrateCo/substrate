@@ -1,9 +1,13 @@
 import { failure, publicFailure, success } from "@substrate/contracts/result";
 import type { TasksWrite } from "@substrate/contracts/tasks/input";
 
-import { createTasksRoutes } from "./routes";
-import * as services from "./service";
+import { createTestScopes, createTestServices } from "../../test-support";
+import { createTasksRoutes as createRoutes } from "./routes";
+import type { TasksService } from "./service";
 import { expect, mock, test } from "bun:test";
+
+const services = createTestServices().tasks;
+const createTasksRoutes = (service: TasksService) => createRoutes(service, createTestScopes());
 
 const projectEntityId = "00000000-0000-4000-8000-000000000001";
 
@@ -62,11 +66,14 @@ test("task routes preserve service errors and request scope", async () => {
   );
   expect(response.status).toBe(404);
   expect(await response.json()).toEqual(failure("NOT_FOUND", "Item not found or access denied."));
-  expect(getProject).toHaveBeenCalledWith(expect.any(Headers), {
-    organizationId: "org",
-    projectEntityId,
-  });
-  expect(getProject.mock.calls[0]?.[0].get("cookie")).toBe("session=example");
+  expect(getProject).toHaveBeenCalledWith(
+    expect.objectContaining({ userId: "user-1", organizationId: "org" }),
+    {
+      organizationId: "org",
+      projectEntityId,
+    },
+  );
+  expect(getProject.mock.calls[0]?.[0].session.user.id).toBe("user-1");
 });
 
 test("task mutations return successful IDs", async () => {
@@ -79,11 +86,14 @@ test("task mutations return successful IDs", async () => {
   });
   expect(response.status).toBe(200);
   expect(await response.json()).toEqual(success({ id: projectEntityId }));
-  expect(mutateTasks).toHaveBeenCalledWith(expect.any(Headers), {
-    organizationId: "org",
-    action: "createProject",
-    name: "Launch",
-  });
+  expect(mutateTasks).toHaveBeenCalledWith(
+    expect.objectContaining({ userId: "user-1", organizationId: "org" }),
+    {
+      organizationId: "org",
+      action: "createProject",
+      name: "Launch",
+    },
+  );
 });
 
 test("task updates accept a single field and reject an empty patch", async () => {

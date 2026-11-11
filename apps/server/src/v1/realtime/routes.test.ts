@@ -3,6 +3,7 @@ import type { RealtimeEvent } from "@substrate/contracts/realtime";
 import { realtimeEvent } from "@substrate/contracts/realtime";
 
 import { createApp } from "../../app";
+import { appFixture } from "../../test-support";
 import { createRealtimeHub } from "./hub";
 import type { Change } from "./hub";
 import { createRealtimeRoutes } from "./routes";
@@ -36,16 +37,12 @@ function fixture(options: Parameters<typeof createRealtimeHub>[1] = {}) {
     options,
   );
   const realtime = createRealtimeRoutes(hub, [trustedOrigin, "http://localhost:3000"]);
-  const http = createApp();
+  const http = createApp({ ...appFixture(), realtime });
   const server = Bun.serve({
     port: 0,
     hostname: "127.0.0.1",
     websocket: realtime.websocket,
-    fetch(request, server) {
-      return new URL(request.url).pathname === "/api/v1/realtime"
-        ? realtime.app.fetch(request, server)
-        : http.fetch(request, server);
-    },
+    fetch: http.fetch,
   });
   cleanup.push(() => {
     hub.stop();

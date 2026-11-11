@@ -12,7 +12,7 @@ import nodemailer from "nodemailer";
 export type SendMail = (to: string, message: MailMessage) => Promise<void>;
 
 /** Every email the server sends. Tests pass their own send function instead of SMTP. */
-function createMailService(send: SendMail, origins: MailOrigins) {
+export function createMailService(send: SendMail, origins: MailOrigins) {
   return {
     verifyEmail: (to: string, url: string) => send(to, verifyEmailMessage(url, origins)),
     resetPassword: (to: string, url: string) => send(to, resetPasswordMessage(url, origins)),
@@ -28,14 +28,12 @@ function createMailService(send: SendMail, origins: MailOrigins) {
   };
 }
 
-/** One pooled SMTP transport for the process. */
-const transport = nodemailer.createTransport({ ...environment.smtp, pool: true });
-const sendSmtp: SendMail = async (to, message) => {
-  await transport.sendMail({ from: environment.emailFrom, to, ...message });
-};
-export const mail = createMailService(sendSmtp, environment);
+export type MailService = ReturnType<typeof createMailService>;
 
-/** Closes the pooled SMTP connections so they do not keep the process alive at shutdown. */
-export function closeMail() {
-  transport.close();
+export function createSmtpMail() {
+  const transport = nodemailer.createTransport({ ...environment.smtp, pool: true });
+  const send: SendMail = async (to, message) => {
+    await transport.sendMail({ from: environment.emailFrom, to, ...message });
+  };
+  return { mail: createMailService(send, environment), close: () => transport.close() };
 }

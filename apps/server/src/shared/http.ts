@@ -4,8 +4,9 @@ import {
   type ServiceResult,
 } from "@substrate/contracts/result";
 
-import type { Hook } from "@hono/zod-validator";
-import type { Context, Env } from "hono";
+import { zValidator, type Hook } from "@hono/zod-validator";
+import type { Context, Env, ValidationTargets } from "hono";
+import type { z } from "zod";
 
 const statuses = {
   INVALID_INPUT: 400,
@@ -25,3 +26,6 @@ export function respond<T extends ServiceResult<unknown>>(c: Context, result: T)
 export const validationHook = ((result, c) => {
   if (!result.success) return respond(c, publicFailure("INVALID_INPUT", "Invalid request input."));
 }) satisfies Hook<unknown, Env, string>;
+
+export const v = <T extends keyof ValidationTargets, S extends z.ZodType>(target: T, schema: S) =>
+  zValidator(target, schema, validationHook);

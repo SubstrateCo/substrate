@@ -8,11 +8,12 @@ import { clearMembershipSharing } from "@substrate/database/messaging";
 import * as schema from "@substrate/database/schema";
 import { ensureHumanActor } from "@substrate/database/trusted";
 import { createStorageRepository } from "@substrate/database/trusted";
+import type { Database } from "@substrate/database/trusted";
 
 import { environment } from "../environment";
-import { mail } from "../mail/service";
-import { publishCommitted } from "../v1/realtime/committed";
-import { db } from "./database";
+import type { MailService } from "../mail/service";
+import { isTrustedOrigin } from "../shared/origin";
+import type { createCommittedPublisher } from "../v1/realtime/committed";
 import {
   organizationBody,
   organizationResult,
@@ -23,14 +24,7 @@ import {
   readPictureMutation,
   protectUserPicture,
 } from "./picture-policy";
-import {
-  publishSessionChange,
-  publishProfileChange,
-  publishMembershipChange,
-  publishInvitationChange,
-  publishOrganizationChange,
-  publishOrganizationDeletion,
-} from "./realtime";
+import type { createAuthPublisher } from "./realtime";
 import { normalizeUserName } from "./user-name";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { electron } from "@better-auth/electron";
@@ -38,144 +32,161 @@ import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { organization } from "better-auth/plugins";
 
-const provisionMember = async (input: {
-  organization: { id: string };
-  user: { id: string; name: string };
-}) => {
-  await publishCommitted(await clearMembershipSharing(db, input.user.id, input.organization.id));
-  await ensureHumanActor(db, {
-    organizationId: input.organization.id,
-    userId: input.user.id,
-  });
-  await publishMembershipChange(input);
-};
+export function createAuth(deps: {
+  db: Database;
+  mail: MailService;
+  publish: ReturnType<typeof createCommittedPublisher>;
+  realtime: ReturnType<typeof createAuthPublisher>;
+}) {
+  const { db, mail, publish: publishCommitted } = deps;
+  const {
+    publishSessionChange,
+    publishProfileChange,
+    publishMembershipChange,
+    publishInvitationChange,
+    publishOrganizationChange,
+    publishOrganizationDeletion,
+  } = deps.realtime;
+  const provisionMember = async (input: {
+    organization: { id: string };
+    user: { id: string; name: string };
+  }) => {
+    await publishCommitted(await clearMembershipSharing(db, input.user.id, input.organization.id));
+    await ensureHumanActor(db, {
+      organizationId: input.organization.id,
+      userId: input.user.id,
+    });
+    await publishMembershipChange(input);
+  };
 
-export const auth = betterAuth({
-  appName: "Substrate",
-  baseURL: environment.apiURL,
-  trustedOrigins: environment.trustedOrigins,
-  secret: environment.authSecret,
-  database: drizzleAdapter(db, { provider: "pg", schema }),
-  emailAndPassword: {
-    enabled: true,
-    disableSignUp: false,
-    requireEmailVerification: true,
-    revokeSessionsOnPasswordReset: true,
-    sendResetPassword: async ({ user, url }) => {
-      await mail.resetPassword(user.email, url);
+  return betterAuth({
+    appName: "Substrate",
+    baseURL: environment.apiURL,
+    trustedOrigins: environment.trustedOrigins,
+    secret: environment.authSecret,
+    database: drizzleAdapter(db, { provider: "pg", schema }),
+    emailAndPassword: {
+      enabled: true,
+      disableSignUp: false,
+      requireEmailVerification: true,
+      revokeSessionsOnPasswordReset: true,
+      sendResetPassword: async ({ user, url }) => {
+        await mail.resetPassword(user.email, url);
+      },
     },
-  },
-  emailVerification: {
-    sendOnSignUp: true,
-    sendOnSignIn: true,
-    sendVerificationEmail: async ({ user, url }) => {
-      await mail.verifyEmail(user.email, url);
+    emailVerification: {
+      sendOnSignUp: true,
+      sendOnSignIn: true,
+      sendVerificationEmail: async ({ user, url }) => {
+        await mail.verifyEmail(user.email, url);
+      },
     },
-  },
-  user: {
-    additionalFields: {
-      lastOrganizationId: { type: "string", required: false, input: false },
-    },
-  },
-  databaseHooks: {
     user: {
-      create: {
-        before: async (user) => ({ data: protectUserPicture(normalizeUserName(user), true) }),
-      },
-      update: {
-        before: async (user) => ({ data: protectUserPicture(normalizeUserName(user)) }),
-        after: publishProfileChange,
+      additionalFields: {
+        lastOrganizationId: { type: "string", required: false, input: false },
       },
     },
-    session: {
-      create: {
-        before: async (session) => {
-          // No authenticated session exists yet, so the organization APIs cannot be used here.
-          const activeOrganizationId = await getRememberedOrganization(db, session.userId);
-          return { data: { ...session, activeOrganizationId } };
+    databaseHooks: {
+      user: {
+        create: {
+          before: async (user) => ({ data: protectUserPicture(normalizeUserName(user), true) }),
         },
-        after: publishSessionChange,
+        update: {
+          before: async (user) => ({ data: protectUserPicture(normalizeUserName(user)) }),
+          after: publishProfileChange,
+        },
       },
-      update: { after: publishSessionChange },
-      delete: { after: publishSessionChange },
+      session: {
+        create: {
+          before: async (session) => {
+            // No authenticated session exists yet, so the organization APIs cannot be used here.
+            const activeOrganizationId = await getRememberedOrganization(db, session.userId);
+            return { data: { ...session, activeOrganizationId } };
+          },
+          after: publishSessionChange,
+        },
+        update: { after: publishSessionChange },
+        delete: { after: publishSessionChange },
+      },
+      account: {
+        create: { after: publishSessionChange },
+        update: { after: publishSessionChange },
+        delete: { after: publishSessionChange },
+      },
     },
-    account: {
-      create: { after: publishSessionChange },
-      update: { after: publishSessionChange },
-      delete: { after: publishSessionChange },
+    hooks: {
+      before: createAuthMiddleware(async (ctx) => {
+        const mutation = readPictureMutation(ctx.path, ctx.body ?? {});
+        if (!mutation) return;
+        const origin = ctx.headers?.get("origin");
+        if (!isTrustedOrigin(origin, environment.trustedOrigins))
+          throw new APIError("FORBIDDEN", { message: "Invalid request origin." });
+        const session = await getSessionFromCtx(ctx);
+        await authorizePictureMutation(mutation, session, createStorageRepository(db));
+      }),
+      after: createAuthMiddleware(async (ctx) => {
+        const body = organizationBody.safeParse(ctx.body ?? {});
+        const result = organizationResult.safeParse(ctx.context.returned);
+        if (!body.success || !result.success) return;
+        const organizationId = rememberedOrganization(ctx.path, body.data, result.data);
+        if (organizationId === undefined) return;
+        const session = await getSessionFromCtx(ctx);
+        if (!session) return;
+        await rememberOrganization(db, session.user.id, organizationId);
+      }),
     },
-  },
-  hooks: {
-    before: createAuthMiddleware(async (ctx) => {
-      const mutation = readPictureMutation(ctx.path, ctx.body ?? {});
-      if (!mutation) return;
-      const origin = ctx.headers?.get("origin");
-      if (!origin || !environment.trustedOrigins.includes(origin))
-        throw new APIError("FORBIDDEN", { message: "Invalid request origin." });
-      const session = await getSessionFromCtx(ctx);
-      await authorizePictureMutation(mutation, session, createStorageRepository(db));
-    }),
-    after: createAuthMiddleware(async (ctx) => {
-      const body = organizationBody.safeParse(ctx.body ?? {});
-      const result = organizationResult.safeParse(ctx.context.returned);
-      if (!body.success || !result.success) return;
-      const organizationId = rememberedOrganization(ctx.path, body.data, result.data);
-      if (organizationId === undefined) return;
-      const session = await getSessionFromCtx(ctx);
-      if (!session) return;
-      await rememberOrganization(db, session.user.id, organizationId);
-    }),
-  },
-  plugins: [
-    electron(),
-    organization({
-      ac,
-      roles,
-      creatorRole: "owner",
-      allowUserToCreateOrganization: (user) => user.emailVerified,
-      requireEmailVerificationOnInvitation: true,
-      organizationHooks: {
-        beforeCreateOrganization: async ({ organization }) => {
-          if (organization.logo != null)
-            throw new APIError("BAD_REQUEST", {
-              message: "Upload a picture after creating your organization.",
-            });
+    plugins: [
+      electron(),
+      organization({
+        ac,
+        roles,
+        creatorRole: "owner",
+        allowUserToCreateOrganization: (user) => user.emailVerified,
+        requireEmailVerificationOnInvitation: true,
+        organizationHooks: {
+          beforeCreateOrganization: async ({ organization }) => {
+            if (organization.logo != null)
+              throw new APIError("BAD_REQUEST", {
+                message: "Upload a picture after creating your organization.",
+              });
+          },
+          beforeUpdateOrganization: async ({ organization }) => {
+            if (
+              organization.logo !== undefined &&
+              !managedPicture.safeParse(organization.logo).success
+            )
+              throw new APIError("BAD_REQUEST", {
+                message: "Use an uploaded picture URL or null.",
+              });
+          },
+          afterCreateOrganization: provisionMember,
+          afterAddMember: provisionMember,
+          afterAcceptInvitation: async (input) => {
+            await provisionMember(input);
+            await publishInvitationChange(input);
+          },
+          afterRemoveMember: async (input) => {
+            await publishCommitted(
+              await clearMembershipSharing(db, input.user.id, input.organization.id),
+            );
+            await publishMembershipChange(input);
+          },
+          afterUpdateMemberRole: publishMembershipChange,
+          afterUpdateOrganization: publishOrganizationChange,
+          afterDeleteOrganization: publishOrganizationDeletion,
+          afterCreateInvitation: publishInvitationChange,
+          afterRejectInvitation: publishInvitationChange,
+          afterCancelInvitation: publishInvitationChange,
         },
-        beforeUpdateOrganization: async ({ organization }) => {
-          if (
-            organization.logo !== undefined &&
-            !managedPicture.safeParse(organization.logo).success
-          )
-            throw new APIError("BAD_REQUEST", {
-              message: "Use an uploaded picture URL or null.",
-            });
-        },
-        afterCreateOrganization: provisionMember,
-        afterAddMember: provisionMember,
-        afterAcceptInvitation: async (input) => {
-          await provisionMember(input);
-          await publishInvitationChange(input);
-        },
-        afterRemoveMember: async (input) => {
-          await publishCommitted(
-            await clearMembershipSharing(db, input.user.id, input.organization.id),
+        sendInvitationEmail: async ({ id, email, organization }, request) => {
+          await mail.organizationInvitation(
+            email,
+            { id, organizationName: organization.name },
+            request,
           );
-          await publishMembershipChange(input);
         },
-        afterUpdateMemberRole: publishMembershipChange,
-        afterUpdateOrganization: publishOrganizationChange,
-        afterDeleteOrganization: publishOrganizationDeletion,
-        afterCreateInvitation: publishInvitationChange,
-        afterRejectInvitation: publishInvitationChange,
-        afterCancelInvitation: publishInvitationChange,
-      },
-      sendInvitationEmail: async ({ id, email, organization }, request) => {
-        await mail.organizationInvitation(
-          email,
-          { id, organizationName: organization.name },
-          request,
-        );
-      },
-    }),
-  ],
-});
+      }),
+    ],
+  });
+}
+export type Auth = ReturnType<typeof createAuth>;

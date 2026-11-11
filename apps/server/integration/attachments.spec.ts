@@ -1,32 +1,30 @@
 import type { Attachment } from "@substrate/contracts/files/attachments";
 import type { CompletedUpload } from "@substrate/contracts/files/input";
-import type { TasksWrite } from "@substrate/contracts/tasks/input";
 
+import { rejected, result, tasks } from "./test-support/api";
 import { appOrigin } from "./test-support/environment";
-import { complete, createUpload, putBytes, rejected, result, root } from "./test-support/files";
+import { complete, createUpload, putBytes, root } from "./test-support/files";
 import { test } from "./test-support/fixtures";
 import { expect } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 
 const origin = appOrigin;
 
-type WorkspaceWrite<T = TasksWrite> = T extends TasksWrite ? Omit<T, "organizationId"> : never;
 test("task attachments enforce workspace, parent, origin and download boundaries", async ({
   actors: { outsider: a, owner: b },
   request: anonymous,
 }) => {
   const workspace = { id: b.organizationId };
   const foreign = { id: a.organizationId };
-  const write = (data: WorkspaceWrite) =>
-    b.request.post("/api/v1/tasks/mutations", {
-      headers: { origin },
-      data: { organizationId: workspace.id, ...data },
-    });
   const project = await result<{ id: string }>(
-    await write({ action: "createProject", name: "Files" }),
+    await tasks.write(b, { action: "createProject", name: "Files" }),
   );
   const task = await result<{ id: string }>(
-    await write({ action: "createTask", projectEntityId: project.id, title: "With attachments" }),
+    await tasks.write(b, {
+      action: "createTask",
+      projectEntityId: project.id,
+      title: "With attachments",
+    }),
   );
   const bytes = Buffer.from("Private task attachment");
   const upload = await createUpload(b, "file", "private-task.txt", "text/plain", bytes);

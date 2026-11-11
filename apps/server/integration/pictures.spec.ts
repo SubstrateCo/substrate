@@ -1,5 +1,6 @@
+import { rejected, result } from "./test-support/api";
 import { appOrigin } from "./test-support/environment";
-import { image, rejected, result, uploadPicture, type APIClient } from "./test-support/files";
+import { image, uploadPicture, type APIClient } from "./test-support/files";
 import { test } from "./test-support/fixtures";
 import { expect } from "@playwright/test";
 import { randomUUID } from "node:crypto";

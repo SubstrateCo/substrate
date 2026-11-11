@@ -1,6 +1,5 @@
 import type { StorageRepository } from "@substrate/database/storage";
 
-import { ServiceError } from "../../shared/service-result";
 import type { ObjectStorage } from "../../storage/types";
 import { createFileService } from "./service";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
@@ -74,14 +73,6 @@ function fixture() {
   const service = createFileService({
     repository,
     storage,
-    authenticate: async (headers) => {
-      if (!headers.has("cookie")) throw new ServiceError("UNAUTHENTICATED", "Sign in.");
-      return { userId: "alice", organizationId: "org" };
-    },
-    requireOrigin: (headers) => {
-      if (headers.get("origin") !== "https://app.test")
-        throw new ServiceError("FORBIDDEN", "Invalid origin.");
-    },
   });
   return {
     id,
@@ -92,21 +83,21 @@ function fixture() {
     service,
     candidates,
     expiredUploads,
-    headers: new Headers({ cookie: "session=1", origin: "https://app.test" }),
+    scope: { userId: "alice", organizationId: "org" },
   };
 }
 
 describe("file workflow", () => {
   test("generic completion verifies bytes and retries cannot replace final content", async () => {
     const f = fixture();
-    const first = await f.service.completeUpload(f.headers, f.id);
+    const first = await f.service.completeUpload(f.scope, f.id);
     expect(first).toEqual({ success: true, data: { fileId: f.id } });
     f.objects.set(f.upload.temporaryKey, new TextEncoder().encode("other"));
     f.upload.expiresAt = new Date(0);
     f.storage.read = async () => {
       throw new Error("Completed replay must not read temporary bytes");
     };
-    expect(await f.service.completeUpload(f.headers, f.id)).toEqual(first);
+    expect(await f.service.completeUpload(f.scope, f.id)).toEqual(first);
     const { completed: final } = await f.repository.getUpload(
       { userId: "alice", organizationId: "org" },
       f.id,
@@ -115,15 +106,15 @@ describe("file workflow", () => {
     expect(final!.size).toBe(5);
     expect(final!.objectKey).not.toBe(f.upload.temporaryKey);
     expect(final!.objectKey).toBe(`objects/organizations/org/file/${f.id}/${final!.sha256}`);
-    const content = await f.service.content(f.headers, f.id);
+    const content = await f.service.content(f.scope, f.id);
     expect(content.success && content.data.url).toContain("attachment;");
   });
 
   test("parallel completion converges on one identity", async () => {
     const f = fixture();
     const results = await Promise.all([
-      f.service.completeUpload(f.headers, f.id),
-      f.service.completeUpload(f.headers, f.id),
+      f.service.completeUpload(f.scope, f.id),
+      f.service.completeUpload(f.scope, f.id),
     ]);
     expect(results[0]).toEqual({ success: true, data: { fileId: f.id } });
     expect(results[1]).toEqual(results[0]);
@@ -133,10 +124,10 @@ describe("file workflow", () => {
   test("size mismatches and expired uploads never finalize", async () => {
     const f = fixture();
     f.upload.size = 10;
-    const mismatch = await f.service.completeUpload(f.headers, f.id);
+    const mismatch = await f.service.completeUpload(f.scope, f.id);
     expect(!mismatch.success && mismatch.error.code).toBe("INVALID_INPUT");
     f.upload.expiresAt = new Date(0);
-    const expired = await f.service.completeUpload(f.headers, f.id);
+    const expired = await f.service.completeUpload(f.scope, f.id);
     expect(!expired.success && expired.error.code).toBe("CONFLICT");
     expect(
       (await f.repository.getUpload({ userId: "alice", organizationId: "org" }, f.id)).completed,
@@ -158,7 +149,7 @@ describe("file workflow", () => {
       size: bytes.length,
     });
     f.objects.set(f.upload.temporaryKey, bytes);
-    expect((await f.service.completeUpload(f.headers, f.id)).success).toBe(true);
+    expect((await f.service.completeUpload(f.scope, f.id)).success).toBe(true);
     const { completed: final } = await f.repository.getUpload(
       { userId: "alice", organizationId: "org" },
       f.id,
@@ -166,17 +157,6 @@ describe("file workflow", () => {
     expect(final!.contentType).toBe("image/webp");
     expect(final!.objectKey).toBe(`objects/users/alice/avatar/${f.id}/${final!.sha256}.webp`);
     expect((await sharp(f.objects.get(final!.objectKey)).metadata()).format).toBe("webp");
-  });
-
-  test("mutations require origin and authentication", async () => {
-    const f = fixture();
-    const origin = await f.service.completeUpload(new Headers({ cookie: "x" }), f.id);
-    expect(!origin.success && origin.error.code).toBe("FORBIDDEN");
-    const session = await f.service.completeUpload(
-      new Headers({ origin: "https://app.test" }),
-      f.id,
-    );
-    expect(!session.success && session.error.code).toBe("UNAUTHENTICATED");
   });
 
   test.each(["orphan", "temporary"])(

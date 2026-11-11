@@ -8,44 +8,46 @@ import {
   sharingRemoveInput,
 } from "@substrate/contracts/messaging/sharing";
 
-import { respond, validationHook } from "../../shared/http";
-import * as service from "./sharing-service";
-import { zValidator } from "@hono/zod-validator";
+import { respond, v } from "../../shared/http";
+import type { ScopeEnv, Scopes, UserScope } from "../../shared/scope";
+import type { SharingService } from "./sharing-service";
 import { Hono } from "hono";
 
-export function createSharingRoutes() {
-  return new Hono()
-    .get("/invitation", zValidator("query", sharingInvitationInput, validationHook), async (c) =>
-      respond(c, await service.getInvitation(c.req.raw.headers, c.req.valid("query"))),
+export function createSharingRoutes(service: SharingService, scopes: Scopes) {
+  const user = new Hono<ScopeEnv<UserScope>>()
+    .get("/invitation", v("query", sharingInvitationInput), scopes.user(), async (c) =>
+      respond(c, await service.getInvitation(c.var.scope, c.req.valid("query"))),
     )
-    .post("/accept", zValidator("json", sharingAcceptInput, validationHook), async (c) =>
-      respond(c, await service.acceptInvitation(c.req.raw.headers, c.req.valid("json"))),
+    .post("/accept", v("json", sharingAcceptInput), scopes.user(), async (c) =>
+      respond(c, await service.acceptInvitation(c.var.scope, c.req.valid("json"))),
     )
-    .post("/decline", zValidator("json", sharingInvitationInput, validationHook), async (c) =>
-      respond(c, await service.declineInvitation(c.req.raw.headers, c.req.valid("json"))),
-    )
-    .post("/invite", zValidator("json", sharingInviteInput, validationHook), async (c) =>
-      respond(c, await service.invite(c.req.raw.headers, c.req.valid("json"))),
-    )
-    .post("/revoke", zValidator("json", sharingActionInput, validationHook), async (c) =>
-      respond(c, await service.revoke(c.req.raw.headers, c.req.valid("json"))),
-    )
-    .post("/resend", zValidator("json", sharingActionInput, validationHook), async (c) =>
-      respond(c, await service.resend(c.req.raw.headers, c.req.valid("json"))),
-    )
-    .post("/disconnect", zValidator("json", sharingDisconnectInput, validationHook), async (c) =>
-      respond(c, await service.disconnect(c.req.raw.headers, c.req.valid("json"))),
-    )
-    .post("/remove", zValidator("json", sharingRemoveInput, validationHook), async (c) =>
-      respond(c, await service.remove(c.req.raw.headers, c.req.valid("json"))),
-    )
-    .get("/details", zValidator("query", conversationTargetInput, validationHook), async (c) =>
-      respond(c, await service.list(c.req.raw.headers, c.req.valid("query"))),
-    )
-    .get("/conversations", zValidator("query", workspaceInput, validationHook), async (c) =>
-      respond(c, await service.conversations(c.req.raw.headers, c.req.valid("query"))),
-    )
-    .get("/inbox", zValidator("query", workspaceInput, validationHook), async (c) =>
-      respond(c, await service.inbox(c.req.raw.headers, c.req.valid("query"))),
+    .post("/decline", v("json", sharingInvitationInput), scopes.user(), async (c) =>
+      respond(c, await service.declineInvitation(c.var.scope, c.req.valid("json"))),
     );
+  const workspace = new Hono<ScopeEnv>()
+    .post("/invite", v("json", sharingInviteInput), scopes.workspace("json"), async (c) =>
+      respond(c, await service.invite(c.var.scope, c.req.valid("json"))),
+    )
+    .post("/revoke", v("json", sharingActionInput), scopes.workspace("json"), async (c) =>
+      respond(c, await service.revoke(c.var.scope, c.req.valid("json"))),
+    )
+    .post("/resend", v("json", sharingActionInput), scopes.workspace("json"), async (c) =>
+      respond(c, await service.resend(c.var.scope, c.req.valid("json"))),
+    )
+    .post("/disconnect", v("json", sharingDisconnectInput), scopes.workspace("json"), async (c) =>
+      respond(c, await service.disconnect(c.var.scope, c.req.valid("json"))),
+    )
+    .post("/remove", v("json", sharingRemoveInput), scopes.workspace("json"), async (c) =>
+      respond(c, await service.remove(c.var.scope, c.req.valid("json"))),
+    )
+    .get("/details", v("query", conversationTargetInput), scopes.workspace("query"), async (c) =>
+      respond(c, await service.list(c.var.scope, c.req.valid("query"))),
+    )
+    .get("/conversations", v("query", workspaceInput), scopes.workspace("query"), async (c) =>
+      respond(c, await service.conversations(c.var.scope, c.req.valid("query"))),
+    )
+    .get("/inbox", v("query", workspaceInput), scopes.workspace("query"), async (c) =>
+      respond(c, await service.inbox(c.var.scope, c.req.valid("query"))),
+    );
+  return new Hono().route("/", user).route("/", workspace);
 }

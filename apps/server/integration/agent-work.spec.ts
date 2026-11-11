@@ -57,7 +57,11 @@ test("only the owner's home desktop receives wakes, and only the owner sees and 
       messageIds?: string[];
     },
     from = origin,
-  ) => request.post(`/api/v1/agent-work/device/${path}`, { headers: { origin: from }, data });
+  ) =>
+    request.post(`/api/v1/agent-work/device/${path}`, {
+      headers: { origin: from, "x-substrate-installation": data.installationId },
+      data,
+    });
   expect((await device(anonymous, "wakes/pull", pull)).status()).toBe(401);
   expect((await device(owner, "wakes/pull", pull, "https://evil.example")).status()).toBe(403);
   expect((await device(other, "wakes/pull", pull)).status()).toBe(403);

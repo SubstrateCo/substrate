@@ -1,5 +1,6 @@
 import { realtimeConnectInput } from "@substrate/contracts/realtime";
 
+import { isTrustedOrigin } from "../../shared/origin";
 import type { RealtimeHub } from "./hub";
 import { zValidator } from "@hono/zod-validator";
 import type { ServerWebSocket } from "bun";
@@ -17,7 +18,7 @@ export function createRealtimeRoutes(hub: RealtimeHub, trustedOrigins: string[])
     "/api/v1/realtime",
     async (c, next) => {
       const origin = c.req.header("origin");
-      if (!origin || !trustedOrigins.includes(origin)) return c.body(null, 403);
+      if (!isTrustedOrigin(origin, trustedOrigins)) return c.body(null, 403);
       if (c.req.header("upgrade")?.toLowerCase() !== "websocket") return c.body(null, 426);
       await next();
     },

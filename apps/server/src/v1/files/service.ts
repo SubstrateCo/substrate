@@ -14,20 +14,13 @@ import { createHash } from "node:crypto";
 export interface FileServiceDependencies {
   repository: StorageRepository;
   storage: ObjectStorage;
-  authenticate(headers: Headers): Promise<StorageScope>;
-  requireOrigin(headers: Headers): void;
 }
 
 export function createFileService(deps: FileServiceDependencies) {
   const { repository, storage } = deps;
-  const mutationScope = async (headers: Headers) => {
-    deps.requireOrigin(headers);
-    return deps.authenticate(headers);
-  };
   return {
-    createUpload(headers: Headers, input: CreateUploadInput) {
+    createUpload(scope: StorageScope, input: CreateUploadInput) {
       return serviceResult(async () => {
-        const scope = await mutationScope(headers);
         const id = crypto.randomUUID();
         const upload = await repository.createUpload(
           scope,
@@ -39,9 +32,8 @@ export function createFileService(deps: FileServiceDependencies) {
         return { uploadId: id, uploadUrl: ticket.url, headers: ticket.headers };
       });
     },
-    completeUpload(headers: Headers, id: string) {
+    completeUpload(scope: StorageScope, id: string) {
       return serviceResult(async () => {
-        const scope = await mutationScope(headers);
         const { upload, completed } = await repository.getUpload(scope, id);
         if (completed) return { fileId: completed.id };
         if (upload.expiresAt <= new Date())
@@ -81,17 +73,17 @@ export function createFileService(deps: FileServiceDependencies) {
         return { fileId: file.id };
       });
     },
-    content(headers: Headers, id: string) {
+    content(scope: StorageScope, id: string) {
       return serviceResult(async () => {
-        const file = await repository.getReadable(await deps.authenticate(headers), id);
+        const file = await repository.getReadable(scope, id);
         if (!file) throw new ServiceError("NOT_FOUND", "File not found or access denied.");
         const disposition = file.purpose === "file" ? fileDisposition(file.filename) : "inline";
         return { url: await storage.signDownload(file.objectKey, disposition) };
       });
     },
-    deleteFile(headers: Headers, id: string) {
+    deleteFile(scope: StorageScope, id: string) {
       return serviceResult(async () => {
-        await repository.deleteFile(await mutationScope(headers), id);
+        await repository.deleteFile(scope, id);
         return { fileId: id };
       });
     },

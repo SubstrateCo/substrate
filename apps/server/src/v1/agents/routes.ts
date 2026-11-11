@@ -1,50 +1,31 @@
-import { saveAgentTriggersInput } from "@substrate/contracts/agents";
 import {
+  saveAgentTriggersInput,
   saveAgentInput,
   deleteAgentInput,
   setAgentPictureInput,
 } from "@substrate/contracts/agents";
 
-import { respond, validationHook } from "../../shared/http";
-import {
-  listAgents,
-  saveAgent,
-  deleteAgent,
-  setAgentPicture,
-  saveAgentTriggers,
-  setAgentHomeDevice,
-} from "./service";
-import { zValidator } from "@hono/zod-validator";
+import { respond, v } from "../../shared/http";
+import type { ScopeEnv, Scopes, UserScope } from "../../shared/scope";
+import type { AgentService } from "./service";
 import { Hono } from "hono";
 
-export function createAgentsRoutes(
-  services = {
-    listAgents,
-    saveAgent,
-    deleteAgent,
-    setAgentPicture,
-    saveAgentTriggers,
-    setAgentHomeDevice,
-  },
-) {
-  return new Hono()
-    .post("/list", async (c) => respond(c, await services.listAgents(c.req.raw.headers)))
-    .post("/actors/save", zValidator("json", saveAgentInput, validationHook), async (c) =>
-      respond(c, await services.saveAgent(c.req.raw.headers, c.req.valid("json"))),
+export function createAgentsRoutes(services: AgentService, scopes: Scopes) {
+  return new Hono<ScopeEnv<UserScope>>()
+    .post("/list", scopes.user(), async (c) => respond(c, await services.listAgents(c.var.scope)))
+    .post("/actors/save", v("json", saveAgentInput), scopes.user(), async (c) =>
+      respond(c, await services.saveAgent(c.var.scope, c.req.valid("json"))),
     )
-    .post("/actors/delete", zValidator("json", deleteAgentInput, validationHook), async (c) =>
-      respond(c, await services.deleteAgent(c.req.raw.headers, c.req.valid("json"))),
+    .post("/actors/delete", v("json", deleteAgentInput), scopes.user(), async (c) =>
+      respond(c, await services.deleteAgent(c.var.scope, c.req.valid("json"))),
     )
-    .post("/actors/picture", zValidator("json", setAgentPictureInput, validationHook), async (c) =>
-      respond(c, await services.setAgentPicture(c.req.raw.headers, c.req.valid("json"))),
+    .post("/actors/picture", v("json", setAgentPictureInput), scopes.user(), async (c) =>
+      respond(c, await services.setAgentPicture(c.var.scope, c.req.valid("json"))),
     )
-    .post(
-      "/actors/triggers",
-      zValidator("json", saveAgentTriggersInput, validationHook),
-      async (c) =>
-        respond(c, await services.saveAgentTriggers(c.req.raw.headers, c.req.valid("json"))),
+    .post("/actors/triggers", v("json", saveAgentTriggersInput), scopes.user(), async (c) =>
+      respond(c, await services.saveAgentTriggers(c.var.scope, c.req.valid("json"))),
     )
-    .post("/actors/home", zValidator("json", deleteAgentInput, validationHook), async (c) =>
-      respond(c, await services.setAgentHomeDevice(c.req.raw.headers, c.req.valid("json"))),
+    .post("/actors/home", v("json", deleteAgentInput), scopes.user(), async (c) =>
+      respond(c, await services.setAgentHomeDevice(c.var.scope, c.req.valid("json"))),
     );
 }

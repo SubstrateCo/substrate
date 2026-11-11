@@ -16,90 +16,91 @@ import {
   notificationGroupReadInput,
 } from "@substrate/contracts/context/notification-groups";
 
-import { respond, validationHook } from "../../shared/http";
-import * as defaultServices from "./service";
-import { zValidator } from "@hono/zod-validator";
+import { respond, v } from "../../shared/http";
+import type { ScopeEnv, Scopes } from "../../shared/scope";
+import type { ContextService } from "./service";
 import { Hono } from "hono";
 
-export function createContextRoutes(services = defaultServices) {
-  return new Hono()
-    .post("/message-page", zValidator("json", contextMessagePage, validationHook), async (c) =>
-      respond(c, await services.getMessagePage(c.req.raw.headers, c.req.valid("json"))),
+export function createContextRoutes(services: ContextService, scopes: Scopes) {
+  return new Hono<ScopeEnv>()
+    .post("/message-page", v("json", contextMessagePage), scopes.workspace("json"), async (c) =>
+      respond(c, await services.getMessagePage(c.var.scope, c.req.valid("json"))),
     )
-    .get("/message-links", zValidator("query", contextMessage, validationHook), async (c) =>
-      respond(c, await services.getMessageLinks(c.req.raw.headers, c.req.valid("query"))),
+    .get("/message-links", v("query", contextMessage), scopes.workspace("query"), async (c) =>
+      respond(c, await services.getMessageLinks(c.var.scope, c.req.valid("query"))),
     )
-    .get("/message-people", zValidator("query", contextMessage, validationHook), async (c) =>
-      respond(c, await services.getMessagePeople(c.req.raw.headers, c.req.valid("query"))),
+    .get("/message-people", v("query", contextMessage), scopes.workspace("query"), async (c) =>
+      respond(c, await services.getMessagePeople(c.var.scope, c.req.valid("query"))),
     )
-    .get("/related", zValidator("query", contextEntity, validationHook), async (c) =>
-      respond(c, await services.getRelatedContext(c.req.raw.headers, c.req.valid("query"))),
+    .get("/related", v("query", contextEntity), scopes.workspace("query"), async (c) =>
+      respond(c, await services.getRelatedContext(c.var.scope, c.req.valid("query"))),
     )
-    .get("/message-target", zValidator("query", contextTarget, validationHook), async (c) =>
-      respond(c, await services.getMessageTarget(c.req.raw.headers, c.req.valid("query"))),
+    .get("/message-target", v("query", contextTarget), scopes.workspace("query"), async (c) =>
+      respond(c, await services.getMessageTarget(c.var.scope, c.req.valid("query"))),
     )
-    .post("/search", zValidator("json", contextSearch, validationHook), async (c) =>
-      respond(c, await services.searchContext(c.req.raw.headers, c.req.valid("json"))),
+    .post("/search", v("json", contextSearch), scopes.workspace("json"), async (c) =>
+      respond(c, await services.searchContext(c.var.scope, c.req.valid("json"))),
     )
-    .post("/source-tasks", zValidator("json", contextSourceTask, validationHook), async (c) =>
-      respond(c, await services.createTaskFromMessage(c.req.raw.headers, c.req.valid("json"))),
+    .post("/source-tasks", v("json", contextSourceTask), scopes.workspace("json"), async (c) =>
+      respond(c, await services.createTaskFromMessage(c.var.scope, c.req.valid("json"))),
     )
-    .post("/links", zValidator("json", contextLink, validationHook), async (c) =>
-      respond(c, await services.attachWork(c.req.raw.headers, c.req.valid("json"))),
+    .post("/links", v("json", contextLink), scopes.workspace("json"), async (c) =>
+      respond(c, await services.attachWork(c.var.scope, c.req.valid("json"))),
     )
-    .delete("/links", zValidator("json", contextLink, validationHook), async (c) =>
-      respond(c, await services.detachWork(c.req.raw.headers, c.req.valid("json"))),
+    .delete("/links", v("json", contextLink), scopes.workspace("json"), async (c) =>
+      respond(c, await services.detachWork(c.var.scope, c.req.valid("json"))),
     )
-    .get("/activity", zValidator("query", contextEntity, validationHook), async (c) =>
-      respond(c, await services.getActivity(c.req.raw.headers, c.req.valid("query"))),
+    .get("/activity", v("query", contextEntity), scopes.workspace("query"), async (c) =>
+      respond(c, await services.getActivity(c.var.scope, c.req.valid("query"))),
     )
-    .get("/notifications", zValidator("query", contextWorkspace, validationHook), async (c) =>
-      respond(c, await services.getNotifications(c.req.raw.headers, c.req.valid("query"))),
+    .get("/notifications", v("query", contextWorkspace), scopes.workspace("query"), async (c) =>
+      respond(c, await services.getNotifications(c.var.scope, c.req.valid("query"))),
     )
     .get(
       "/notifications/groups",
-      zValidator("query", notificationGroupsInput, validationHook),
+      v("query", notificationGroupsInput),
+      scopes.workspace("query"),
       async (c) =>
-        respond(c, await services.getNotificationGroups(c.req.raw.headers, c.req.valid("query"))),
+        respond(c, await services.getNotificationGroups(c.var.scope, c.req.valid("query"))),
     )
     .get(
       "/notifications/events",
-      zValidator("query", notificationGroupEventsInput, validationHook),
+      v("query", notificationGroupEventsInput),
+      scopes.workspace("query"),
       async (c) =>
-        respond(
-          c,
-          await services.getNotificationGroupEvents(c.req.raw.headers, c.req.valid("query")),
-        ),
+        respond(c, await services.getNotificationGroupEvents(c.var.scope, c.req.valid("query"))),
     )
     .get(
       "/notifications/unread",
-      zValidator("query", contextWorkspace, validationHook),
+      v("query", contextWorkspace),
+      scopes.workspace("query"),
       async (c) =>
-        respond(c, await services.getNotificationUnread(c.req.raw.headers, c.req.valid("query"))),
+        respond(c, await services.getNotificationUnread(c.var.scope, c.req.valid("query"))),
     )
     .post(
       "/notifications/read-group",
-      zValidator("json", notificationGroupReadInput, validationHook),
+      v("json", notificationGroupReadInput),
+      scopes.workspace("json"),
       async (c) =>
-        respond(
-          c,
-          await services.markNotificationGroupRead(c.req.raw.headers, c.req.valid("json")),
-        ),
+        respond(c, await services.markNotificationGroupRead(c.var.scope, c.req.valid("json"))),
     )
     .get(
       "/notifications/page",
-      zValidator("query", contextNotificationPage, validationHook),
+      v("query", contextNotificationPage),
+      scopes.workspace("query"),
       async (c) =>
-        respond(c, await services.getNotificationPage(c.req.raw.headers, c.req.valid("query"))),
+        respond(c, await services.getNotificationPage(c.var.scope, c.req.valid("query"))),
     )
     .post(
       "/notifications/read-all",
-      zValidator("json", contextWorkspace, validationHook),
-      async (c) => respond(c, await services.markAllRead(c.req.raw.headers, c.req.valid("json"))),
+      v("json", contextWorkspace),
+      scopes.workspace("json"),
+      async (c) => respond(c, await services.markAllRead(c.var.scope, c.req.valid("json"))),
     )
     .post(
       "/notifications/read",
-      zValidator("json", contextNotification, validationHook),
-      async (c) => respond(c, await services.markRead(c.req.raw.headers, c.req.valid("json"))),
+      v("json", contextNotification),
+      scopes.workspace("json"),
+      async (c) => respond(c, await services.markRead(c.var.scope, c.req.valid("json"))),
     );
 }

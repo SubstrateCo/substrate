@@ -1,28 +1,55 @@
-import { pruneRecords } from "@substrate/database/trusted";
+import { createRepositories } from "@substrate/database";
+import { pruneRecords, touchDevice } from "@substrate/database/trusted";
 
 import { createApp } from "./app";
-import { closeDatabase, db } from "./auth/database";
+import { createAuthPublisher } from "./auth/realtime";
+import { createAuth } from "./auth/server";
 // Parsed once on import: an invalid environment stops startup before the app is created.
 import { environment } from "./environment";
-import { closeMail } from "./mail/service";
-import { defaultFileService } from "./v1/files/default-service";
-import { startSharingMail } from "./v1/messaging/sharing-mail";
-import { closeRefreshPublisher } from "./v1/realtime/publisher";
+import { createServerDatabase } from "./infrastructure/database";
+import { createSmtpMail } from "./mail/service";
+import { createServices } from "./services";
+import { createScopes } from "./shared/scope";
+import { createS3Storage } from "./storage/s3";
+import { createSharingMail } from "./v1/messaging/sharing-mail";
+import { createCommittedPublisher } from "./v1/realtime/committed";
+import { createRedisPublisher } from "./v1/realtime/publisher";
 import { createRealtimeService } from "./v1/realtime/service";
 
-const app = createApp();
-const realtime = createRealtimeService();
+const { db, close: closeDatabase } = createServerDatabase();
+const { mail, close: closeMail } = createSmtpMail();
+const refresh = createRedisPublisher();
+// The worker needs the committed publisher, while publication wakes that same worker.
+// No work starts until both have been constructed.
+const publish = createCommittedPublisher({
+  publish: refresh.publish,
+  sharingMail: { trigger: () => sharingMail.worker.trigger() },
+});
+const sharingMail = createSharingMail({ db, mail, publish });
+const auth = createAuth({ db, mail, publish, realtime: createAuthPublisher(db, refresh.publish) });
+const storage = createS3Storage();
+const services = createServices({ db, storage, publish });
+const scopes = createScopes({
+  api: auth.api,
+  repositories: createRepositories(db),
+  checkDevice: async (userId, installationId) => {
+    await touchDevice(db, userId, installationId);
+  },
+});
+const realtime = createRealtimeService({ db, auth });
+const app = createApp({
+  auth,
+  services,
+  scopes,
+  trustedOrigins: environment.trustedOrigins,
+  realtime,
+});
 await realtime.start();
-const stopSharingMail = startSharingMail();
+const stopSharingMail = sharingMail.start();
 const server = Bun.serve({
   port: environment.port,
   websocket: realtime.websocket,
-  fetch(request, server) {
-    // Upgrade responses must not pass through response-mutating HTTP middleware.
-    if (new URL(request.url).pathname === "/api/v1/realtime")
-      return realtime.app.fetch(request, server);
-    return app.fetch(request, server);
-  },
+  fetch: app.fetch,
 });
 console.log(`Substrate API listening on ${server.url}`);
 
@@ -32,7 +59,7 @@ async function cleanup() {
   if (cleaning) return;
   cleaning = true;
   try {
-    await defaultFileService.cleanup();
+    await services.files.cleanup();
   } catch (error) {
     console.error("Storage cleanup failed", error instanceof Error ? error.name : "Unknown error");
   }
@@ -54,10 +81,10 @@ function shutdown() {
   stopping = true;
   clearInterval(cleanupTimer);
   realtime.stop();
-  closeRefreshPublisher();
   void server
     .stop(true)
     .then(() => stopSharingMail())
+    .then(() => refresh.close())
     .then(() => closeMail())
     .then(() => closeDatabase())
     .catch(() => {

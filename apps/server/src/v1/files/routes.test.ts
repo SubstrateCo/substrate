@@ -1,5 +1,6 @@
 import { failure, success } from "@substrate/contracts/result";
 
+import { createTestScopes } from "../../test-support";
 import { createFilesRoutes } from "./routes";
 import type { FileService } from "./service";
 import { expect, test } from "bun:test";
@@ -16,7 +17,7 @@ function service(): FileService {
 }
 
 test("file routes validate upload limits and completion identity", async () => {
-  const app = createFilesRoutes(service());
+  const app = createFilesRoutes(service(), createTestScopes());
   const upload = await app.request("/uploads", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -38,7 +39,7 @@ test("file routes validate upload limits and completion identity", async () => {
 
 test("content redirects only after access checks, without caching", async () => {
   const services = service();
-  const app = createFilesRoutes(services);
+  const app = createFilesRoutes(services, createTestScopes());
   const id = crypto.randomUUID();
   const response = await app.request(`/${id}/content`);
   expect(response.status).toBe(302);

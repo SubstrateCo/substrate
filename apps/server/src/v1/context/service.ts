@@ -15,168 +15,134 @@ import type {
   notificationGroupEventsInput,
   notificationGroupReadInput,
 } from "@substrate/contracts/context/notification-groups";
-import { createRepositories } from "@substrate/database";
 
-import { db } from "../../auth/database";
+import type { WorkspaceScope } from "../../shared/scope";
 import { serviceResult } from "../../shared/service-result";
-import { requireOrigin, workspaceSession } from "../../shared/workspace";
-import { publishCommitted } from "../realtime/committed";
+import type { createCommittedPublisher } from "../realtime/committed";
 import type { z } from "zod";
 
-async function sessionServices(headers: Headers, organizationId: string) {
-  const { session } = await workspaceSession(headers, organizationId);
-  const scope = { organizationId, userId: session.user.id };
-  const repositories = await createRepositories(db).forSession(scope);
+export function createContextService({
+  publish,
+}: {
+  publish: ReturnType<typeof createCommittedPublisher>;
+}) {
   return {
-    context: repositories.context,
-    repositories,
-    feed: repositories.feed,
-    userId: session.user.id,
+    getMessageLinks(this: void, scope: WorkspaceScope, input: z.output<typeof contextMessage>) {
+      return serviceResult(() => scope.repositories.context.messageLinks(input.messageId));
+    },
+    getMessagePage(this: void, scope: WorkspaceScope, input: z.output<typeof contextMessagePage>) {
+      return serviceResult(() => scope.repositories.context.messagePage(input.messageIds));
+    },
+    getMessagePeople(this: void, scope: WorkspaceScope, input: z.output<typeof contextMessage>) {
+      return serviceResult(() => scope.repositories.context.messagePeople(input.messageId));
+    },
+    getRelatedContext(this: void, scope: WorkspaceScope, input: z.output<typeof contextEntity>) {
+      return serviceResult(() => scope.repositories.context.related(input.entityId));
+    },
+    getMessageTarget(this: void, scope: WorkspaceScope, input: z.output<typeof contextTarget>) {
+      return serviceResult(() =>
+        scope.repositories.context.messageTarget(input.conversationId, input.messageId),
+      );
+    },
+    searchContext(this: void, scope: WorkspaceScope, input: z.output<typeof contextSearch>) {
+      return serviceResult(() => scope.repositories.context.search(input));
+    },
+    createTaskFromMessage(
+      this: void,
+      scope: WorkspaceScope,
+      input: z.output<typeof contextSourceTask>,
+    ) {
+      return serviceResult(async () =>
+        publish(
+          await scope.repositories.transaction((repos) =>
+            repos.context.createTaskFromMessage(input),
+          ),
+        ),
+      );
+    },
+    attachWork(this: void, scope: WorkspaceScope, input: z.output<typeof contextLink>) {
+      return serviceResult(async () => {
+        await publish(
+          await scope.repositories.transaction((repos) =>
+            repos.context.attach(input.messageId, input.entityId),
+          ),
+        );
+        return null;
+      });
+    },
+    detachWork(this: void, scope: WorkspaceScope, input: z.output<typeof contextLink>) {
+      return serviceResult(async () => {
+        await publish(
+          await scope.repositories.transaction((repos) =>
+            repos.context.detach(input.messageId, input.entityId),
+          ),
+        );
+        return null;
+      });
+    },
+    getActivity(this: void, scope: WorkspaceScope, input: z.output<typeof contextEntity>) {
+      return serviceResult(() => scope.repositories.feed.activity(input.entityId));
+    },
+    getNotifications(this: void, scope: WorkspaceScope, _input: z.output<typeof contextWorkspace>) {
+      return serviceResult(() => scope.repositories.feed.list());
+    },
+    getNotificationGroups(
+      this: void,
+      scope: WorkspaceScope,
+      input: z.output<typeof notificationGroupsInput>,
+    ) {
+      return serviceResult(() => scope.repositories.feed.groups(input));
+    },
+    getNotificationGroupEvents(
+      this: void,
+      scope: WorkspaceScope,
+      input: z.output<typeof notificationGroupEventsInput>,
+    ) {
+      return serviceResult(() => scope.repositories.feed.groupEvents(input));
+    },
+    getNotificationUnread(
+      this: void,
+      scope: WorkspaceScope,
+      _input: z.output<typeof contextWorkspace>,
+    ) {
+      return serviceResult(async () => ({ unread: await scope.repositories.feed.hasUnread() }));
+    },
+    markNotificationGroupRead(
+      this: void,
+      scope: WorkspaceScope,
+      input: z.output<typeof notificationGroupReadInput>,
+    ) {
+      return serviceResult(async () => {
+        await publish(await scope.repositories.feed.markGroupRead(input));
+        return null;
+      });
+    },
+    getNotificationPage(
+      this: void,
+      scope: WorkspaceScope,
+      input: z.output<typeof contextNotificationPage>,
+    ) {
+      return serviceResult(async () => {
+        const rows = await scope.repositories.feed.list(input.after, {
+          limit: input.limit + 1,
+          unread: input.filter === "unread",
+        });
+        const items = rows.slice(0, input.limit);
+        return { items, nextCursor: rows.length > input.limit ? items.at(-1)!.id : null };
+      });
+    },
+    markRead(this: void, scope: WorkspaceScope, input: z.output<typeof contextNotification>) {
+      return serviceResult(async () => {
+        await publish(await scope.repositories.feed.markRead(input.id));
+        return null;
+      });
+    },
+    markAllRead(this: void, scope: WorkspaceScope, _input: z.output<typeof contextWorkspace>) {
+      return serviceResult(async () => {
+        await publish(await scope.repositories.feed.markAllRead());
+        return null;
+      });
+    },
   };
 }
-export function getMessageLinks(headers: Headers, input: z.output<typeof contextMessage>) {
-  return serviceResult(async () => {
-    const { context } = await sessionServices(headers, input.organizationId);
-    return context.messageLinks(input.messageId);
-  });
-}
-export function getMessagePage(headers: Headers, input: z.output<typeof contextMessagePage>) {
-  return serviceResult(async () => {
-    const { context } = await sessionServices(headers, input.organizationId);
-    return context.messagePage(input.messageIds);
-  });
-}
-export function getMessagePeople(headers: Headers, input: z.output<typeof contextMessage>) {
-  return serviceResult(async () => {
-    const { context } = await sessionServices(headers, input.organizationId);
-    return context.messagePeople(input.messageId);
-  });
-}
-export function getRelatedContext(headers: Headers, input: z.output<typeof contextEntity>) {
-  return serviceResult(async () => {
-    const { context } = await sessionServices(headers, input.organizationId);
-    return context.related(input.entityId);
-  });
-}
-export function getMessageTarget(headers: Headers, input: z.output<typeof contextTarget>) {
-  return serviceResult(async () => {
-    const { context } = await sessionServices(headers, input.organizationId);
-    return context.messageTarget(input.conversationId, input.messageId);
-  });
-}
-export function searchContext(headers: Headers, input: z.output<typeof contextSearch>) {
-  return serviceResult(async () => {
-    const { context } = await sessionServices(headers, input.organizationId);
-    return context.search(input);
-  });
-}
-export function createTaskFromMessage(headers: Headers, input: z.output<typeof contextSourceTask>) {
-  return serviceResult(async () => {
-    requireOrigin(headers);
-    const { repositories } = await sessionServices(headers, input.organizationId);
-    return publishCommitted(
-      await repositories.transaction((repos) => repos.context.createTaskFromMessage(input)),
-    );
-  });
-}
-export function attachWork(headers: Headers, input: z.output<typeof contextLink>) {
-  return serviceResult(async () => {
-    requireOrigin(headers);
-    const { repositories } = await sessionServices(headers, input.organizationId);
-    await publishCommitted(
-      await repositories.transaction((repos) =>
-        repos.context.attach(input.messageId, input.entityId),
-      ),
-    );
-    return null;
-  });
-}
-export function detachWork(headers: Headers, input: z.output<typeof contextLink>) {
-  return serviceResult(async () => {
-    requireOrigin(headers);
-    const { repositories } = await sessionServices(headers, input.organizationId);
-    await publishCommitted(
-      await repositories.transaction((repos) =>
-        repos.context.detach(input.messageId, input.entityId),
-      ),
-    );
-    return null;
-  });
-}
-export function getActivity(headers: Headers, input: z.output<typeof contextEntity>) {
-  return serviceResult(async () => {
-    const { feed } = await sessionServices(headers, input.organizationId);
-    return feed.activity(input.entityId);
-  });
-}
-export function getNotifications(headers: Headers, input: z.output<typeof contextWorkspace>) {
-  return serviceResult(async () => {
-    const { feed } = await sessionServices(headers, input.organizationId);
-    return feed.list();
-  });
-}
-export function getNotificationGroups(
-  headers: Headers,
-  input: z.output<typeof notificationGroupsInput>,
-) {
-  return serviceResult(async () => {
-    const { feed } = await sessionServices(headers, input.organizationId);
-    return feed.groups(input);
-  });
-}
-export function getNotificationGroupEvents(
-  headers: Headers,
-  input: z.output<typeof notificationGroupEventsInput>,
-) {
-  return serviceResult(async () => {
-    const { feed } = await sessionServices(headers, input.organizationId);
-    return feed.groupEvents(input);
-  });
-}
-export function getNotificationUnread(headers: Headers, input: z.output<typeof contextWorkspace>) {
-  return serviceResult(async () => {
-    const { feed } = await sessionServices(headers, input.organizationId);
-    return { unread: await feed.hasUnread() };
-  });
-}
-export function markNotificationGroupRead(
-  headers: Headers,
-  input: z.output<typeof notificationGroupReadInput>,
-) {
-  return serviceResult(async () => {
-    requireOrigin(headers);
-    const { feed } = await sessionServices(headers, input.organizationId);
-    await publishCommitted(await feed.markGroupRead(input));
-    return null;
-  });
-}
-export function getNotificationPage(
-  headers: Headers,
-  input: z.output<typeof contextNotificationPage>,
-) {
-  return serviceResult(async () => {
-    const { feed } = await sessionServices(headers, input.organizationId);
-    const rows = await feed.list(input.after, {
-      limit: input.limit + 1,
-      unread: input.filter === "unread",
-    });
-    const items = rows.slice(0, input.limit);
-    return { items, nextCursor: rows.length > input.limit ? items.at(-1)!.id : null };
-  });
-}
-export function markRead(headers: Headers, input: z.output<typeof contextNotification>) {
-  return serviceResult(async () => {
-    requireOrigin(headers);
-    const { feed } = await sessionServices(headers, input.organizationId);
-    await publishCommitted(await feed.markRead(input.id));
-    return null;
-  });
-}
-export function markAllRead(headers: Headers, input: z.output<typeof contextWorkspace>) {
-  return serviceResult(async () => {
-    requireOrigin(headers);
-    const { feed } = await sessionServices(headers, input.organizationId);
-    await publishCommitted(await feed.markAllRead());
-    return null;
-  });
-}
+export type ContextService = ReturnType<typeof createContextService>;

@@ -103,6 +103,7 @@ test("channel and thread references enforce target access through search, send a
     [outsider, []],
   ] as const) {
     const search = await actor.request.post("/api/v1/context/search", {
+      headers: { origin },
       data: {
         organizationId: actor.organizationId,
         kind: "channel",
@@ -112,6 +113,7 @@ test("channel and thread references enforce target access through search, send a
     expect(search.ok()).toBe(true);
     expect((await search.json()).data.map((item: { id: string }) => item.id)).toEqual(expectedIds);
     const threads = await actor.request.post("/api/v1/context/search", {
+      headers: { origin },
       data: { organizationId: actor.organizationId, kind: "thread", query: reply },
     });
     expect(threads.ok()).toBe(true);
@@ -121,6 +123,7 @@ test("channel and thread references enforce target access through search, send a
   }
   for (const actor of [owner, member]) {
     const page = await actor.request.post("/api/v1/context/message-page", {
+      headers: { origin },
       data: { organizationId: actor.organizationId, messageIds: [sent.id] },
     });
     expect(page.ok()).toBe(true);
@@ -288,6 +291,7 @@ for (const kind of ["channel", "dm", "group"] as const) {
       const params = { organizationId: actor.organizationId, conversationId: conversation.id };
       const responses = [
         await actor.request.post("/api/v1/context/message-page", {
+          headers: { origin },
           data: { organizationId: actor.organizationId, messageIds: [root.id] },
         }),
         await actor.request.get("/api/v1/messaging/messages", { params }),
@@ -333,6 +337,7 @@ for (const kind of ["channel", "dm", "group"] as const) {
       "Private root",
     ]);
     const context = await owner.request.post("/api/v1/context/message-page", {
+      headers: { origin },
       data: { organizationId: owner.organizationId, messageIds: [root.id] },
     });
     expect(context.status()).toBe(200);

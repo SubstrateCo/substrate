@@ -1,8 +1,13 @@
 import { failure, publicFailure, success } from "@substrate/contracts/result";
 
-import { createAgentsRoutes } from "./routes";
-import * as services from "./service";
+import type { UserScope } from "../../shared/scope";
+import { createTestScopes, createTestServices } from "../../test-support";
+import { createAgentsRoutes as createRoutes } from "./routes";
+import type { AgentService } from "./service";
 import { expect, mock, test } from "bun:test";
+
+const services = createTestServices().agents;
+const createAgentsRoutes = (service: AgentService) => createRoutes(service, createTestScopes());
 
 test("rejects invalid IDs, scope injection and device assignments before calling services", async () => {
   const spies = {
@@ -66,7 +71,7 @@ test("picture endpoint returns configurations, accepts clearing, and maps owners
     image: null,
   };
   const setAgentPicture = mock(
-    async (_headers: Headers, input: { id: string; fileId: string | null }) =>
+    async (_scope: UserScope, input: { id: string; fileId: string | null }) =>
       input.fileId
         ? failure("NOT_FOUND", "Item not found or access denied.")
         : success(configuration),
@@ -80,7 +85,10 @@ test("picture endpoint returns configurations, accepts clearing, and maps owners
     });
     expect(response.status).toBe(value ? 404 : 200);
     if (!value) expect(await response.json()).toEqual(success(configuration));
-    expect(setAgentPicture).toHaveBeenCalledWith(expect.any(Headers), { id, fileId: value });
+    expect(setAgentPicture).toHaveBeenCalledWith(expect.objectContaining({ userId: "user-1" }), {
+      id,
+      fileId: value,
+    });
   }
 });
 
@@ -98,5 +106,5 @@ test("list uses POST without a body and mutations map ownership errors", async (
     body: JSON.stringify({ id }),
   });
   expect(deleted.status).toBe(404);
-  expect(deleteAgent).toHaveBeenCalledWith(expect.any(Headers), { id });
+  expect(deleteAgent).toHaveBeenCalledWith(expect.objectContaining({ userId: "user-1" }), { id });
 });

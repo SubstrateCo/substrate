@@ -1,18 +1,9 @@
-import type { TasksWrite } from "@substrate/contracts/tasks/input";
-
+import { rejected, result, tasks } from "./test-support/api";
 import { appOrigin } from "./test-support/environment";
-import { rejected, result } from "./test-support/files";
-import { test, type Actor } from "./test-support/fixtures";
+import { test } from "./test-support/fixtures";
 import { expect } from "@playwright/test";
 
-type Write<T = TasksWrite> = T extends TasksWrite ? Omit<T, "organizationId"> : never;
-const write = (actor: Actor, data: Write, origin = appOrigin) =>
-  actor.request.post("/api/v1/tasks/mutations", {
-    headers: { origin },
-    data: { ...data, organizationId: actor.organizationId },
-  });
-const create = async (actor: Actor, data: Write) =>
-  (await result<{ id: string }>(await write(actor, data))).id;
+const { write, create } = tasks;
 
 test("deletion, partial updates, moves, and task-location reads enforce live access and trusted origins", async ({
   actors,

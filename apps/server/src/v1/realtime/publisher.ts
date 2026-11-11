@@ -21,21 +21,24 @@ export function createRefreshPublisher(
   };
 }
 
-let client: RedisClient | undefined;
-export const publishRefresh = createRefreshPublisher(
-  async (message) => {
-    client ??= new RedisClient(environment.valkeyURL, {
-      enableOfflineQueue: false,
-      autoReconnect: false,
-      connectionTimeout: 1_000,
-    });
-    if (!client.connected) await client.connect();
-    await client.publish(environment.realtimeChannel, message);
-  },
-  () => console.warn("Realtime publish failed; clients will resync"),
-);
+export function createRedisPublisher() {
+  let client: RedisClient | undefined;
+  const publish = createRefreshPublisher(
+    async (message) => {
+      client ??= new RedisClient(environment.valkeyURL, {
+        enableOfflineQueue: false,
+        autoReconnect: false,
+        connectionTimeout: 1_000,
+      });
+      if (!client.connected) await client.connect();
+      await client.publish(environment.realtimeChannel, message);
+    },
+    () => console.warn("Realtime publish failed; clients will resync"),
+  );
 
-export function closeRefreshPublisher() {
-  client?.close();
-  client = undefined;
+  function close() {
+    client?.close();
+    client = undefined;
+  }
+  return { publish, close };
 }

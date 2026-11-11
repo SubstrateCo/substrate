@@ -1,33 +1,35 @@
 import type { mcpCall } from "@substrate/contracts/harness/tools";
 import { executeAgentTool } from "@substrate/database/mcp";
-import { ensureUserAgentActor } from "@substrate/database/trusted";
+import { ensureUserAgentActor, type Database } from "@substrate/database/trusted";
 
-import { db } from "../../auth/database";
+import type { WorkspaceScope } from "../../shared/scope";
 import { serviceResult } from "../../shared/service-result";
-import { requireOrigin, workspaceSession } from "../../shared/workspace";
-import { publishCommitted } from "../realtime/committed";
+import type { CommittedPublisher } from "../realtime/committed";
 import type { z } from "zod";
 
-// The route validates the call envelope, including the turn context the desktop host attached.
-// executeAgentTool checks that the turn belongs to this agent and validates input and output.
-export function callAgentTool(headers: Headers, call: z.output<typeof mcpCall>) {
-  return serviceResult(async () => {
-    requireOrigin(headers);
-    const { session, organizationId } = await workspaceSession(headers, call.organizationId);
-    const actor = await ensureUserAgentActor(db, {
-      organizationId,
-      userId: session.user.id,
-      userAgentId: call.agentId,
-    });
-    const execution = await publishCommitted(
-      await executeAgentTool(
-        db,
-        { organizationId, userId: session.user.id, actorEntityId: actor.entityId },
-        call.tool,
-        call.input,
-        call.turn,
-      ),
-    );
-    return execution.output;
-  });
+export function createMcpService({ db, publish }: { db: Database; publish: CommittedPublisher }) {
+  return {
+    callAgentTool(scope: WorkspaceScope, call: z.output<typeof mcpCall>) {
+      return serviceResult(async () => {
+        const { organizationId, userId } = scope;
+        const actor = await ensureUserAgentActor(db, {
+          organizationId,
+          userId,
+          userAgentId: call.agentId,
+        });
+        // The database verifies TurnContext, and requires the home installation for write tools.
+        const execution = await publish(
+          await executeAgentTool(
+            db,
+            { organizationId, userId, actorEntityId: actor.entityId },
+            call.tool,
+            call.input,
+            call.turn,
+          ),
+        );
+        return execution.output;
+      });
+    },
+  };
 }
+export type McpService = ReturnType<typeof createMcpService>;

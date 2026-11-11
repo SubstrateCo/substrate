@@ -1,5 +1,3 @@
-import { auth } from "../auth/server";
-import { environment } from "../environment";
 import { ServiceError } from "./service-result";
 
 export function requireWorkspace(expected: string, active: string | null | undefined) {
@@ -11,26 +9,9 @@ export function requireWorkspace(expected: string, active: string | null | undef
   return active;
 }
 
-export function requireOrigin(headers: Headers) {
-  const origin = headers.get("origin");
-  if (!origin || !environment.trustedOrigins.includes(origin))
-    throw new ServiceError("FORBIDDEN", "Invalid request origin.");
-}
-
 export function requireVerified<T extends { user: { emailVerified: boolean } }>(session: T | null) {
   if (!session) throw new ServiceError("UNAUTHENTICATED", "Sign in to continue.");
   if (!session.user.emailVerified)
     throw new ServiceError("FORBIDDEN", "Verify your email to continue.", "EMAIL_NOT_VERIFIED");
   return session;
-}
-
-// Membership is checked by the database on every workspace path (workspaceContext, active actor
-// checks and actor provisioning), so a removed member gets NOT_FOUND there.
-export async function workspaceSession(headers: Headers, expectedOrganizationId: string) {
-  const session = requireVerified(await auth.api.getSession({ headers }));
-  const organizationId = requireWorkspace(
-    expectedOrganizationId,
-    session.session.activeOrganizationId,
-  );
-  return { session, organizationId };
 }

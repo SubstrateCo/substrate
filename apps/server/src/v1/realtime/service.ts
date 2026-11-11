@@ -1,14 +1,14 @@
 import { audienceRecipients, resolveReceiver } from "@substrate/database/realtime";
+import type { Database } from "@substrate/database/trusted";
 
-import { db } from "../../auth/database";
-import { auth } from "../../auth/server";
+import { createRealtimeAuthenticator } from "../../auth/realtime-session";
+import type { Auth } from "../../auth/server";
 import { environment } from "../../environment";
 import { createRealtimeHub } from "./hub";
 import { createRealtimeRoutes } from "./routes";
-import { createRealtimeAuthenticator } from "./session";
 import { createRealtimeSubscription } from "./subscription";
 
-export function createRealtimeService() {
+export function createRealtimeService({ db, auth }: { db: Database; auth: Auth }) {
   let failures = 0;
   const hub = createRealtimeHub({
     authenticate: createRealtimeAuthenticator(auth.api, (identity) =>

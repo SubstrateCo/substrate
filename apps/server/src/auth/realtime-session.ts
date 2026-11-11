@@ -1,6 +1,6 @@
 import type { RealtimeReceiver } from "@substrate/database/realtime";
 
-interface SessionAPI {
+export interface RealtimeSessionAPI {
   getSession(input: { headers: Headers; query: { disableCookieCache: true } }): Promise<{
     user: { id: string; emailVerified: boolean };
     session: { activeOrganizationId?: string | null };
@@ -8,7 +8,7 @@ interface SessionAPI {
 }
 
 export function createRealtimeAuthenticator(
-  api: SessionAPI,
+  api: RealtimeSessionAPI,
   resolveReceiver: (identity: {
     userId: string;
     organizationId: string | null;

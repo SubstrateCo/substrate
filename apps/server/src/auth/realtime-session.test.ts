@@ -1,4 +1,4 @@
-import { createRealtimeAuthenticator } from "./session";
+import { createRealtimeAuthenticator } from "./realtime-session";
 import { expect, test } from "bun:test";
 
 test("requires a fresh verified session with exact active-organization scope", async () => {

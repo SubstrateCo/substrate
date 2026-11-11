@@ -1,7 +1,10 @@
 import { environment } from "../environment";
+import { requireOrigin as checkOrigin } from "./origin";
 import { ServiceError } from "./service-result";
-import { requireOrigin, requireWorkspace } from "./workspace";
+import { requireWorkspace } from "./workspace";
 import { expect, test } from "bun:test";
+
+const requireOrigin = (headers: Headers) => checkOrigin(headers, environment.trustedOrigins);
 
 test("workspace scope rejects stale or absent active workspaces", () => {
   expect(requireWorkspace("one", "one")).toBe("one");
