@@ -12,6 +12,7 @@ import {
 } from "@/api/messaging/sharing";
 import { FormMessage } from "@/components/auth/form-message";
 import { formText } from "@/components/auth/form-values";
+import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
@@ -35,6 +36,7 @@ import { Separator } from "@/components/ui/separator";
 import { useExpiryTime } from "@/hooks/use-expiry-time";
 import { queryKeys } from "@/queries/keys";
 import { sharingOptions } from "@/queries/messaging/sharing";
+import { toast } from "sonner";
 
 type Action =
   | { kind: "invite"; email: string }
@@ -49,6 +51,7 @@ const confirmCopy = {
       "Everyone from this organization loses access to messages, search, and agent sources here. Its pending invitations are revoked. Their earlier messages stay. A new invitation is needed to reconnect.",
     confirm: "Remove access",
     pending: "Removing…",
+    done: (name: string) => `${name} no longer has access.`,
   },
   remove: {
     title: (name: string) => `Remove ${name}?`,
@@ -56,12 +59,14 @@ const confirmCopy = {
       "They lose access to messages, search, and agent sources here. Their earlier messages stay. A new invitation is needed to add them again.",
     confirm: "Remove access",
     pending: "Removing…",
+    done: (name: string) => `${name} no longer has access.`,
   },
   revoke: {
     title: (name: string) => `Revoke the invitation to ${name}?`,
     description: "The link in their email stops working. You can invite them again later.",
     confirm: "Revoke invitation",
     pending: "Revoking…",
+    done: (name: string) => `Invitation to ${name} revoked.`,
   },
 };
 
@@ -252,7 +257,21 @@ export function SharingManager({
                           "this person",
                       })
                     }
-                    onResend={(id) => action.mutate({ kind: "resend", id })}
+                    onResend={(id) =>
+                      action.mutate(
+                        { kind: "resend", id },
+                        {
+                          onSuccess: () => toast.success("Invitation email resent."),
+                          onError: (error) =>
+                            toast.error(
+                              actionErrorMessage(
+                                error,
+                                "We couldn’t resend this invitation. Try again.",
+                              ),
+                            ),
+                        },
+                      )
+                    }
                     onRevoke={(id) =>
                       confirm({
                         kind: "revoke",
@@ -265,10 +284,12 @@ export function SharingManager({
                   />
                 </>
               )}
-              {!confirmation && (
+              {/* Row actions report in a toast or their confirmation; only the form's own
+                  submit fails here. */}
+              {action.variables?.kind === "invite" && (
                 <FormMessage
                   error={action.error}
-                  errorDescription="We couldn’t update sharing. Try again."
+                  errorDescription="We couldn’t send this invitation. Try again."
                 />
               )}
             </DialogBody>
@@ -321,7 +342,12 @@ export function SharingManager({
           errorDescription="We couldn’t change access. Try again."
           onClose={() => setConfirmation(undefined)}
           onRestoreFocus={restoreConfirmFocus}
-          onConfirm={() => action.mutate({ kind: confirmation.kind, id: confirmation.id })}
+          onConfirm={() =>
+            action.mutate(
+              { kind: confirmation.kind, id: confirmation.id },
+              { onSuccess: () => toast.success(copy.done(confirmation.name)) },
+            )
+          }
         />
       )}
     </>

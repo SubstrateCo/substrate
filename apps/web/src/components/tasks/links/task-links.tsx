@@ -7,10 +7,12 @@ import { useState } from "react";
 import type { ProjectDetail, Task } from "../types";
 import { TaskLinkPicker, TaskLinks as TaskLinksView } from "./task-links-view";
 import { blockedTaskIds, taskRelations } from "./task-relations";
+import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { workHref } from "@/lib/navigation/record-links";
 import { searchOptions } from "@/queries/context/search";
 import { useTasksMutation } from "@/queries/tasks/mutations";
+import { toast } from "sonner";
 
 /** The task inspector's links section, with the add and remove actions for editors. */
 export function TaskLinks({
@@ -39,6 +41,8 @@ export function TaskLinks({
     projectEntityId: detail.project.entityId,
     taskEntityId: task.entityId,
   };
+  const linkFailed = (error: Error) =>
+    toast.error(actionErrorMessage(error, "Couldn’t change the links. Try again."));
   return (
     <TaskLinksView
       relations={taskRelations(detail.links, task.entityId)}
@@ -47,10 +51,10 @@ export function TaskLinks({
       onSelect={onSelectTask}
       hrefFor={(other) => workHref(organizationId, other.projectEntityId, other.entityId)}
       pending={write.isPending}
-      error={write.error}
       onRemove={
         canEdit
-          ? (linkId) => write.mutate({ ...target, action: "removeTaskLink", linkId })
+          ? (linkId) =>
+              write.mutate({ ...target, action: "removeTaskLink", linkId }, { onError: linkFailed })
           : undefined
       }
       add={
@@ -72,7 +76,10 @@ export function TaskLinks({
             onPick={(otherTaskEntityId) => {
               setOpen(false);
               setQuery("");
-              write.mutate({ ...target, action: "addTaskLink", relation, otherTaskEntityId });
+              write.mutate(
+                { ...target, action: "addTaskLink", relation, otherTaskEntityId },
+                { onError: linkFailed },
+              );
             }}
           />
         )

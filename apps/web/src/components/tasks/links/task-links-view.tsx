@@ -7,7 +7,6 @@ import {
 
 import type { ReactNode } from "react";
 
-import { FormMessage } from "../../auth/form-message";
 import { TaskBlockedCue } from "../list/task-list-item";
 import { TaskStatusIcon } from "../task-cues/task-status-icon";
 import type { TaskRelation } from "./task-relations";
@@ -47,7 +46,6 @@ export function TaskLinks({
   hrefFor,
   onRemove,
   pending = false,
-  error,
   add,
 }: {
   relations: TaskRelation[];
@@ -59,7 +57,6 @@ export function TaskLinks({
   /** Set for editors. */
   onRemove?: (linkId: string) => void;
   pending?: boolean;
-  error?: Error | null;
   add?: ReactNode;
 }) {
   const groups = taskLinkRelations
@@ -154,7 +151,6 @@ export function TaskLinks({
           </div>
         );
       })}
-      <FormMessage error={error} errorDescription="Couldn’t change the links. Try again." />
     </section>
   );
 }

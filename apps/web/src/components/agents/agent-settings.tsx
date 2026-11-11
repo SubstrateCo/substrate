@@ -56,8 +56,9 @@ export function AgentSettings({
   const invalidate = () => client.invalidateQueries({ queryKey: queryKeys.agents(userId) });
   const save = useMutation({
     mutationFn: saveAgent,
-    onSuccess: async () => {
-      toast.success("Agent saved.");
+    // An edit shows its save in the settings footer. A new agent opens in its own page.
+    onSuccess: async (_, input) => {
+      if (!input.id) toast.success("Agent created.");
       await invalidate();
     },
   });

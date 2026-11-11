@@ -8,11 +8,13 @@ import { TaskForm } from "../editor/task-form";
 import { TaskLinks } from "../links/task-links";
 import { TaskActions } from "./task-actions";
 import { TaskAttachments } from "@/components/attachments/task-attachments";
+import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { TaskDetail as TaskDetailView } from "@/components/tasks/detail/task-detail-view";
 import type { ProjectDetail, Task } from "@/components/tasks/types";
 import { workHref } from "@/lib/navigation/record-links";
 import { useTaskUpdate } from "@/queries/tasks/mutations";
+import { toast } from "sonner";
 
 export const TaskInspectorActive = createContext(true);
 
@@ -57,12 +59,19 @@ export function TaskDetail({
         onClose={onClose}
         onSelectTask={onSelectTask}
         onSubtask={onSubtask}
-        updateError={update.error}
         onUpdate={(patch) =>
-          update.mutate({
-            taskEntityId: task.entityId,
-            ...patch,
-          })
+          update.mutate(
+            {
+              taskEntityId: task.entityId,
+              ...patch,
+            },
+            {
+              onError: (error) =>
+                toast.error(
+                  actionErrorMessage(error, "Couldn’t update this task. Your change was undone."),
+                ),
+            },
+          )
         }
         actions={
           <>

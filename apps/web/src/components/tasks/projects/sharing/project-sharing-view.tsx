@@ -3,7 +3,6 @@ import { useRef, useState } from "react";
 import type { ProjectDetail, ProjectPermission } from "../../types";
 import { ProjectAccessForm } from "./project-access-form";
 import { ProjectMemberRow } from "./project-member-row";
-import { FormMessage } from "@/components/auth/form-message";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { GroupTitle, SettingsCard } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
@@ -137,11 +136,6 @@ export function ProjectSharing({
           />
         ))}
       </ul>
-      {!review && !adding && error && (
-        <div className="-mx-5 border-t px-5 py-3">
-          <FormMessage error={error} errorDescription="Couldn’t change access. Try again." />
-        </div>
-      )}
       {review && canManage && (
         <ConfirmDialog
           title={

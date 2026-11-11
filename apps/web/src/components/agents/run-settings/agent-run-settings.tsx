@@ -31,10 +31,8 @@ export function AgentRunSettings({
   });
   const triggers = useMutation({
     mutationFn: saveAgentTriggers,
-    onSuccess: async () => {
-      toast.success("Run settings saved.");
-      await invalidate();
-    },
+    // The settings footer shows the save.
+    onSuccess: invalidate,
   });
   return (
     <AgentRunSettingsView

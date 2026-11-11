@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import { FormMessage } from "../../auth/form-message";
 import { Button } from "../../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { ProjectIcon } from "../projects/project-icon";
@@ -20,7 +19,6 @@ export function TaskDetail({
   onSelectTask,
   onSubtask,
   onUpdate,
-  updateError,
   renderEditor,
   actions,
   links,
@@ -32,7 +30,6 @@ export function TaskDetail({
   onSelectTask: (id: string) => void;
   onSubtask: () => void;
   onUpdate: (patch: Partial<TaskDraft>) => void;
-  updateError?: Error | null;
   renderEditor: (onDone: () => void) => ReactNode;
   actions?: ReactNode;
   /** The linked tasks section. */
@@ -133,13 +130,7 @@ export function TaskDetail({
               )}
             </div>
           )}
-          <div className="grid gap-2">
-            <TaskProperties detail={detail} task={task} canEdit={canEdit} onChange={onUpdate} />
-            <FormMessage
-              error={updateError}
-              errorDescription="Couldn’t update this task. Your change was undone."
-            />
-          </div>
+          <TaskProperties detail={detail} task={task} canEdit={canEdit} onChange={onUpdate} />
           <TaskSubtasks
             subtasks={subtasks}
             onSelect={onSelectTask}
