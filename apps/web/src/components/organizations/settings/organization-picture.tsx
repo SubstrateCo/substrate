@@ -8,7 +8,7 @@ import { organizationQueryOptions } from "@/queries/organizations/options";
 export function OrganizationPicture({ organizationId }: { organizationId: string }) {
   const organization = useQuery(organizationQueryOptions(organizationId));
   const resource = resourceState(organization);
-  const { upload, remove } = usePictureMutations("organization-logo", organizationId);
+  const { upload, remove } = usePictureMutations({ kind: "organization-logo", organizationId });
   return (
     <PictureSettings
       state={resource.status}

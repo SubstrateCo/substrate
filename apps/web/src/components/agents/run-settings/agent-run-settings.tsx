@@ -1,12 +1,9 @@
 import type { AgentRunSettings as AgentRunSettingsData } from "@substrate/contracts/agents";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-
 import { AgentRunSettingsView } from "./agent-run-settings-view";
-import { saveAgentTriggers, setAgentHomeDevice } from "@/api/agents/requests";
 import { triggersInput } from "@/lib/agents/triggers";
 import { isDesktop } from "@/lib/desktop/auth";
-import { queryKeys } from "@/queries/keys";
+import { useAgentRunSettingsMutations } from "@/queries/agents/mutations";
 import { toast } from "sonner";
 
 export function AgentRunSettings({
@@ -18,20 +15,7 @@ export function AgentRunSettings({
   name: string;
   settings: AgentRunSettingsData;
 }) {
-  const client = useQueryClient();
-  const invalidate = () => client.invalidateQueries({ queryKey: queryKeys.agents(userId) });
-  const home = useMutation({
-    mutationFn: () => setAgentHomeDevice(settings.agentId),
-    onSuccess: async () => {
-      toast.success(`${name} now runs on this device.`);
-      await invalidate();
-    },
-  });
-  const triggers = useMutation({
-    mutationFn: saveAgentTriggers,
-    // The settings footer shows the save.
-    onSuccess: invalidate,
-  });
+  const { home, triggers } = useAgentRunSettingsMutations(userId, settings.agentId);
   return (
     <AgentRunSettingsView
       name={name}
@@ -40,7 +24,11 @@ export function AgentRunSettings({
       moving={home.isPending}
       saving={triggers.isPending}
       error={home.error ?? triggers.error}
-      onRunHere={() => home.mutate()}
+      onRunHere={() =>
+        home.mutate(undefined, {
+          onSuccess: () => toast.success(`${name} now runs on this device.`),
+        })
+      }
       onSave={(next) => triggers.mutate(triggersInput(settings.agentId, next))}
     />
   );

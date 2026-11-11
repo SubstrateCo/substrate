@@ -5,7 +5,7 @@ import {
   type HarnessMcpServer,
 } from "@substrate/contracts/harness";
 
-import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { skipToken, useQuery } from "@tanstack/react-query";
 
 import { useRef, useState } from "react";
 
@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { harnessLabel } from "@/lib/agents/harness-meta";
 import { desktopLocalConfiguration } from "@/lib/desktop/agents/local-configuration";
+import { useAgentConfigurationMutations } from "@/queries/agents/configuration-mutations";
 import { queryKeys } from "@/queries/keys";
 import { Info, Laptop, Plus, RefreshCw, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
@@ -48,7 +49,6 @@ export function AgentConfiguration({
   defaults: boolean;
 }) {
   const controller = desktopLocalConfiguration(harness, agentId);
-  const client = useQueryClient();
   const key = queryKeys.localAgentConfiguration(
     userId,
     organizationId ?? "",
@@ -64,27 +64,13 @@ export function AgentConfiguration({
     queryKey: key,
     queryFn: controller && organizationId ? () => controller.scan() : skipToken,
   });
-  const remove = useMutation({
-    mutationFn: async (id: string) => {
-      if (!controller || !organizationId) throw new Error("Select a workspace in the desktop app.");
-      await controller.deleteSkill(id);
-    },
-    onSuccess: async () => {
-      toast.success("Skill deleted.");
-      await client.invalidateQueries({ queryKey: key });
-    },
-  });
+  const { save, remove, reset } = useAgentConfigurationMutations(
+    userId,
+    organizationId,
+    agentId,
+    harness,
+  );
   const [resetting, setResetting] = useState(false);
-  const reset = useMutation({
-    mutationFn: async () => {
-      if (!controller || !organizationId) throw new Error("Select a workspace in the desktop app.");
-      await controller.resetDefaults();
-    },
-    onSuccess: async () => {
-      toast.success("Substrate defaults reset.");
-      await client.invalidateQueries({ queryKey: key });
-    },
-  });
   // Substrate rewrites its own skills on every sync, so they are not listed as editable.
   const isStartupSkill = (id: string) => startupSkillIds.includes(id);
   const skills = configuration.data?.skills.filter((skill) => !isStartupSkill(skill.id)) ?? [];
@@ -242,11 +228,7 @@ export function AgentConfiguration({
           onRestoreFocus={restoreFocus}
           onClose={() => setEditing(undefined)}
           onSave={async (input) => {
-            if (!controller || !organizationId)
-              throw new Error("Select a workspace in the desktop app.");
-            await controller.saveSkill(input);
-            toast.success("Skill saved.");
-            await client.invalidateQueries({ queryKey: key });
+            await save.mutateAsync(input, { onSuccess: () => toast.success("Skill saved.") });
             setEditing(undefined);
           }}
         />
@@ -262,7 +244,14 @@ export function AgentConfiguration({
           pending={reset.isPending}
           error={reset.error}
           onRestoreFocus={restoreFocus}
-          onConfirm={() => reset.mutate(undefined, { onSuccess: () => setResetting(false) })}
+          onConfirm={() =>
+            reset.mutate(undefined, {
+              onSuccess: () => {
+                toast.success("Substrate defaults reset.");
+                setResetting(false);
+              },
+            })
+          }
           onClose={() => {
             setResetting(false);
             reset.reset();
@@ -280,7 +269,14 @@ export function AgentConfiguration({
           pending={remove.isPending}
           error={remove.error}
           onRestoreFocus={restoreFocus}
-          onConfirm={() => remove.mutate(deleting.id, { onSuccess: () => setDeleting(undefined) })}
+          onConfirm={() =>
+            remove.mutate(deleting.id, {
+              onSuccess: () => {
+                toast.success("Skill deleted.");
+                setDeleting(undefined);
+              },
+            })
+          }
           onClose={() => {
             setDeleting(undefined);
             remove.reset();

@@ -10,6 +10,55 @@ afterEach(() => {
   fetchSpy?.mockRestore();
 });
 
+test("agent pictures refresh only their owner's catalog", async () => {
+  const client = new QueryClient();
+  const owner = queryKeys.agents("owner");
+  const untouched = [
+    queryKeys.agents("other"),
+    queryKeys.session,
+    queryKeys.projects("organization"),
+  ];
+  for (const key of [owner, ...untouched]) client.setQueryData(key, { image: "old" });
+  try {
+    await pictureMutationOptions(client, {
+      kind: "agent",
+      userId: "owner",
+      agentId: "agent",
+    }).refresh();
+    expect(client.getQueryState(owner)?.isInvalidated).toBe(true);
+    for (const key of untouched) expect(client.getQueryState(key)?.isInvalidated).toBe(false);
+  } finally {
+    client.clear();
+  }
+});
+
+test("project pictures refresh their detail and workspace catalog, not other project details", async () => {
+  const client = new QueryClient();
+  const affected = [
+    queryKeys.project("organization", "project"),
+    queryKeys.projects("organization"),
+  ];
+  const untouched = [
+    queryKeys.project("organization", "other-project"),
+    queryKeys.project("other-organization", "project"),
+    queryKeys.projects("other-organization"),
+    queryKeys.session,
+    queryKeys.agents("owner"),
+  ];
+  for (const key of [...affected, ...untouched]) client.setQueryData(key, { image: "old" });
+  try {
+    await pictureMutationOptions(client, {
+      kind: "project",
+      organizationId: "organization",
+      projectEntityId: "project",
+    }).refresh();
+    for (const key of affected) expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+    for (const key of untouched) expect(client.getQueryState(key)?.isInvalidated).toBe(false);
+  } finally {
+    client.clear();
+  }
+});
+
 for (const kind of ["avatar", "organization-logo"] as const) {
   for (const action of ["upload", "remove"] as const) {
     test(`${kind} ${action} refreshes affected pictures when a commit response is lost`, async () => {
@@ -40,7 +89,11 @@ for (const kind of ["avatar", "organization-logo"] as const) {
         );
       }
       fetchSpy.mockRejectedValueOnce(new Error("Commit response lost"));
-      const options = pictureMutationOptions(queryClient, kind, "active", testPictureApi);
+      const options = pictureMutationOptions(
+        queryClient,
+        kind === "avatar" ? { kind } : { kind, organizationId: "active" },
+        testPictureApi,
+      );
       const mutation =
         action === "upload"
           ? new MutationObserver(queryClient, options.upload).mutate({
@@ -82,8 +135,7 @@ for (const action of ["upload", "remove"] as const) {
     queryClient.setQueryData(queryKeys.organizationDetail("organization-b"), { logo: "old-b" });
     const options = pictureMutationOptions(
       queryClient,
-      "organization-logo",
-      "organization-a",
+      { kind: "organization-logo", organizationId: "organization-a" },
       testPictureApi,
     );
     fetchSpy = spyOn(globalThis, "fetch");

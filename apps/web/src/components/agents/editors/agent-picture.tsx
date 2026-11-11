@@ -1,9 +1,5 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-
-import { setAgentPicture, uploadAgentPicture } from "@/api/agents/requests";
-import type { PictureUploadContext } from "@/components/upload/image-crop-dialog";
 import { PictureUpload } from "@/components/upload/picture-upload";
-import { queryKeys } from "@/queries/keys";
+import { usePictureMutations } from "@/queries/files/mutations";
 
 export function AgentPicture({
   userId,
@@ -17,17 +13,7 @@ export function AgentPicture({
   name: string;
   image: string | null;
 }) {
-  const client = useQueryClient();
-  const onSettled = () => client.invalidateQueries({ queryKey: queryKeys.agents(userId) });
-  const upload = useMutation({
-    mutationFn: ({ file, signal, onCommit }: { file: File } & PictureUploadContext) =>
-      uploadAgentPicture(agentId, file, signal, onCommit),
-    onSettled,
-  });
-  const remove = useMutation({
-    mutationFn: () => setAgentPicture(agentId, null),
-    onSettled,
-  });
+  const { upload, remove } = usePictureMutations({ kind: "agent", userId, agentId });
   return (
     <PictureUpload
       kind="avatar"

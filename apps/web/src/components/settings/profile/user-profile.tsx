@@ -11,7 +11,7 @@ import { usePictureMutations } from "@/queries/files/mutations";
 
 export function UserProfile() {
   const session = useQuery({ ...sessionQueryOptions(), staleTime: Infinity });
-  const { upload, remove } = usePictureMutations("avatar");
+  const { upload, remove } = usePictureMutations({ kind: "avatar" });
   const rename = useUpdateProfileName();
   const resource = resourceState(session);
   const user = resource.data?.user;

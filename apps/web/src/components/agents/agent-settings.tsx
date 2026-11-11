@@ -1,7 +1,7 @@
 import type { SaveAgentInput } from "@substrate/contracts/agents";
 import type { HarnessKind } from "@substrate/contracts/harness";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
 
@@ -9,7 +9,6 @@ import { AgentConfiguration } from "./device/agent-configuration";
 import { AgentForm, type AgentSection } from "./editors/agent-form";
 import { AgentPicture } from "./editors/agent-picture";
 import { AgentRunSettings } from "./run-settings/agent-run-settings";
-import { saveAgent, deleteAgent } from "@/api/agents/requests";
 import type { AgentSettingsSection } from "@/components/agent-work/app/agent-sections";
 import { DeleteRecordCard } from "@/components/feedback/delete-record-card";
 import { ErrorState } from "@/components/feedback/error-state";
@@ -17,7 +16,7 @@ import { FormDialog } from "@/components/feedback/form-dialog";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { useFocusReturn } from "@/components/feedback/use-focus-return";
 import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
-import { queryKeys } from "@/queries/keys";
+import { useAgentMutations } from "@/queries/agents/mutations";
 import { toast } from "sonner";
 
 /**
@@ -43,31 +42,20 @@ export function AgentSettings({
   onClose: () => void;
   onCreated?: (id: string) => void;
 }) {
-  const client = useQueryClient();
   const catalog = useQuery(agentCatalogQueryOptions(userId));
-  const invalidate = () => client.invalidateQueries({ queryKey: queryKeys.agents(userId) });
-  const save = useMutation({
-    mutationFn: saveAgent,
-    // An edit shows its save in the settings footer. A new agent opens in its own page.
-    onSuccess: async (_, input) => {
-      if (!input.id) toast.success("Agent created.");
-      await invalidate();
-    },
-  });
-  const remove = useMutation({
-    mutationFn: deleteAgent,
-    onSuccess: async () => {
-      toast.success("Agent deleted.");
-      await invalidate();
-    },
-  });
+  const { save, remove } = useAgentMutations(userId);
   const createFocus = useFocusReturn();
   const [runSettingsDraft, setRunSettingsDraft] = useState(0);
   const pending = save.isPending || remove.isPending;
   const agent = catalog.data?.agents.find((item) => item.id === agentId);
   const runSettings = catalog.data?.runSettings.find((item) => item.agentId === agentId);
   async function onSave(input: SaveAgentInput) {
-    const saved = await save.mutateAsync(input);
+    const saved = await save.mutateAsync(input, {
+      // An edit shows its save in the settings footer. A new agent opens in its own page.
+      onSuccess: () => {
+        if (!input.id) toast.success("Agent created.");
+      },
+    });
     if (!input.id) onCreated?.(saved.id);
   }
   const renderConfiguration = ({
@@ -149,7 +137,9 @@ export function AgentSettings({
                 document.querySelector<HTMLButtonElement>('button[aria-label="New agent"]')?.focus()
               }
               onDelete={async () => {
-                await remove.mutateAsync(agent.id);
+                await remove.mutateAsync(agent.id, {
+                  onSuccess: () => toast.success("Agent deleted."),
+                });
                 onClose();
               }}
             />
