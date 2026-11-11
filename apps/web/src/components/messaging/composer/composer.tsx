@@ -1,15 +1,10 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-
-import { useRef } from "react";
-
 import { ReferencePicker } from "../../context/references/reference-picker";
-import { sendMessage } from "@/api/messaging/requests";
 import { AttachFilesButton, AttachmentDraftList } from "@/components/attachments/attachment-picker";
 import { FileDropZone } from "@/components/attachments/file-drop-zone";
 import { useAttachmentUploads } from "@/components/attachments/use-attachment-uploads";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { Composer as ComposerView } from "@/components/messaging/composer/composer-view";
-import { invalidateSentMessage } from "@/queries/messaging/mutations";
+import { useSendMessage } from "@/queries/messaging/messages";
 
 export function Composer(props: {
   organizationId: string;
@@ -36,31 +31,8 @@ function DestinationComposer({
   threadId?: string;
   label: string;
 }) {
-  const queryClient = useQueryClient();
   const uploads = useAttachmentUploads();
-  const request = useRef<{ id: string; body: string } | null>(null);
-  const send = useMutation({
-    mutationFn: async (body: string) => {
-      const fingerprint = JSON.stringify([body, uploads.fileIds]);
-      if (!request.current || request.current.body !== fingerprint)
-        request.current = { id: crypto.randomUUID(), body: fingerprint };
-      return sendMessage({
-        data: {
-          organizationId,
-          conversationId,
-          threadId,
-          body,
-          requestId: request.current.id,
-          attachmentFileIds: uploads.fileIds,
-        },
-      });
-    },
-    onSuccess: (_, body) => {
-      request.current = null;
-      uploads.clear();
-      return invalidateSentMessage(queryClient, organizationId, conversationId, body, threadId);
-    },
-  });
+  const send = useSendMessage(organizationId, conversationId, threadId, () => uploads.clear());
   return (
     <FileDropZone label="Message attachments" disabled={send.isPending} onFiles={uploads.add}>
       <UnsavedChangesGuard
@@ -90,7 +62,7 @@ function DestinationComposer({
         error={send.error}
         onSend={(body, onSuccess) => {
           void send
-            .mutateAsync(body)
+            .mutateAsync({ body, attachmentFileIds: uploads.fileIds })
             .then(onSuccess)
             .catch(() => {});
         }}

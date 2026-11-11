@@ -1,10 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
-import { addMembers } from "@/api/messaging/requests";
 import { AddMembersDialog as AddMembersDialogView } from "@/components/messaging/conversations/add-members-dialog-view";
 import { conversationLabel, conversationName, humanMembers } from "@/lib/messaging/conversations";
-import { recipientEmails, type PickedRecipient } from "@/lib/people/people-picker";
-import { invalidateAddedMembers } from "@/queries/messaging/mutations";
+import { useAddMembers } from "@/queries/messaging/conversations";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
 import { workspacePeopleQueryOptions } from "@/queries/organizations/people";
 
@@ -31,7 +29,6 @@ export function AddMembersDialog({
   /** Focus the control that opened the dialog, which the dialog cannot find by itself. */
   onRestoreFocus?: () => void;
 }) {
-  const queryClient = useQueryClient();
   const conversation = useQuery(conversationsQueryOptions(organizationId)).data?.find(
     (row) => row.id === conversationId,
   );
@@ -42,19 +39,7 @@ export function AddMembersDialog({
   const people = (useQuery(workspacePeopleQueryOptions(organizationId)).data ?? []).filter(
     (person) => !members.has(person.id),
   );
-  const add = useMutation({
-    mutationFn: ({
-      recipients,
-      shareHistory,
-    }: {
-      recipients: PickedRecipient[];
-      shareHistory: boolean;
-    }) =>
-      addMembers({
-        data: { organizationId, conversationId, emails: recipientEmails(recipients), shareHistory },
-      }),
-    onSuccess: () => invalidateAddedMembers(queryClient, organizationId, conversationId),
-  });
+  const add = useAddMembers(organizationId, conversationId);
   return (
     <AddMembersDialogView
       name={

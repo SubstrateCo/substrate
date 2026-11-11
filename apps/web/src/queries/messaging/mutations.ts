@@ -6,6 +6,13 @@ import type { getRelatedContext } from "@/api/context/links";
 import type { getProject } from "@/api/tasks/requests";
 import { referenceTokenPattern } from "@/components/messaging/references/reference-token";
 
+export function invalidateDirectMessage(client: QueryClient, organizationId: string) {
+  return Promise.all([
+    client.invalidateQueries({ queryKey: queryKeys.conversations(organizationId) }),
+    client.invalidateQueries({ queryKey: [...queryKeys.messaging(organizationId), "profiles"] }),
+  ]);
+}
+
 export function invalidateSentMessage(
   client: QueryClient,
   organizationId: string,

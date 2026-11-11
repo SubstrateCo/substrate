@@ -1,4 +1,3 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "@tanstack/react-router";
 
 import { useRef, useState } from "react";
@@ -7,7 +6,6 @@ import { LinkMessageWork } from "../../context/links/link-message-work";
 import { MessageContext, type MessageContextState } from "../../context/references/message-context";
 import { ReferencedMessageBody } from "../../context/references/referenced-message-body";
 import { messageAttachmentUrl } from "@/api/files/attachments";
-import { toggleReaction } from "@/api/messaging/requests";
 import type { Message } from "@/api/messaging/requests";
 import {
   AgentWorkBadge,
@@ -31,7 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { messageHref } from "@/lib/navigation/record-links";
-import { queryKeys } from "@/queries/keys";
+import { useToggleReaction } from "@/queries/messaging/reactions";
 import { Copy, Ellipsis, Link2, Smile } from "lucide-react";
 import { toast } from "sonner";
 
@@ -50,7 +48,6 @@ export function MessageItem({
   onThread?: (id: string) => void;
   context: MessageContextState;
 }) {
-  const queryClient = useQueryClient();
   const linked = useSearch({
     strict: false,
     select: (search) => search.messageId === message.id,
@@ -61,26 +58,14 @@ export function MessageItem({
   const actionsTrigger = useRef<HTMLButtonElement>(null);
   const [reactionsEmoji, setReactionsEmoji] = useState<string | null>(null);
   const reactionsTrigger = useRef<HTMLElement | null>(null);
-  const reaction = useMutation({
-    onError: (error) =>
-      toast.error(
-        actionErrorMessage(error, "Your reaction couldn’t be saved. Try selecting it again."),
-      ),
-    mutationFn: async (emoji: string) =>
-      toggleReaction({ data: { organizationId, messageId: message.id, emoji } }),
-    onSuccess: () =>
-      Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.messages(organizationId, message.conversationId).slice(0, -1),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.messageTargets(organizationId, message.conversationId),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.messageReactions(organizationId, message.conversationId, message.id),
-        }),
-      ]),
-  });
+  const reaction = useToggleReaction(organizationId, message.conversationId, message.id);
+  const react = (emoji: string) =>
+    reaction.mutate(emoji, {
+      onError: (error) =>
+        toast.error(
+          actionErrorMessage(error, "Your reaction couldn’t be saved. Try selecting it again."),
+        ),
+    });
   return (
     <LinkedMessage highlighted={highlighted}>
       <PersonCardProvider
@@ -102,7 +87,7 @@ export function MessageItem({
               organizationId={organizationId}
               message={message}
               reaction={item}
-              onReact={(emoji) => reaction.mutate(emoji)}
+              onReact={react}
               pending={reaction.isPending}
               onViewAll={(emoji, trigger) => {
                 reactionsTrigger.current = trigger;
@@ -188,7 +173,7 @@ export function MessageItem({
             message.authorType === "agent" ? <AgentWorkStatus messageId={message.id} /> : undefined
           }
           onThread={onThread}
-          onReact={(emoji) => reaction.mutate(emoji)}
+          onReact={react}
           pending={reaction.isPending}
         >
           <MessageContext

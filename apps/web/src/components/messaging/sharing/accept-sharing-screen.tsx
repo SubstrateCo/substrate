@@ -1,8 +1,7 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { useState, type ReactNode } from "react";
 
-import { acceptSharingInvitation, declineSharingInvitation } from "@/api/messaging/sharing";
 import { ApiError } from "@/api/result";
 import { AuthFrame } from "@/components/auth/auth-frame";
 import { AuthNavLink } from "@/components/auth/auth-link";
@@ -14,9 +13,13 @@ import { PendingButton } from "@/components/feedback/pending-button";
 import { SharingAcceptanceForm } from "@/components/messaging/sharing/sharing-acceptance-form";
 import { Button } from "@/components/ui/button";
 import { useExpiryTime } from "@/hooks/use-expiry-time";
-import { activateOrganization } from "@/lib/auth/organization";
 import { isDesktop } from "@/lib/desktop/auth";
 import { sharingInvitationOptions } from "@/queries/messaging/sharing";
+import {
+  useAcceptSharingInvitation,
+  useActivateSharingOrganization,
+  useDeclineSharingInvitation,
+} from "@/queries/messaging/sharing-mutations";
 import { organizationsQueryOptions } from "@/queries/organizations/options";
 import { RefreshCw } from "lucide-react";
 
@@ -38,24 +41,15 @@ export function AcceptSharingScreen({ invitationId }: { invitationId: string }) 
   const [confirmed, setConfirmed] = useState(false);
   const now = useExpiryTime(invite.data ? [invite.data.expiresAt] : undefined);
   const organizationId = invite.data?.targetOrganizationId ?? selected;
-  const activate = useMutation({
-    mutationFn: (result: { organizationId: string; conversationId: string | null }) => {
-      const search = new URLSearchParams({ workspaceId: result.organizationId });
-      if (result.conversationId) search.set("conversationId", result.conversationId);
-      const destination = isDesktop() ? `/dashboard?${search}` : `/setup/complete?${search}`;
-      return activateOrganization(result.organizationId, destination);
-    },
-  });
-  const accept = useMutation({
-    mutationFn: () =>
-      acceptSharingInvitation({ data: { invitationId, organizationId, shareHistory: true } }),
-    onSuccess: (result) => {
-      if (result.status === "accepted") activate.mutate(result);
-    },
-  });
-  const decline = useMutation({
-    mutationFn: () => declineSharingInvitation({ data: { invitationId } }),
-  });
+  const activate = useActivateSharingOrganization();
+  const activateShared = (result: { organizationId: string; conversationId: string | null }) => {
+    const search = new URLSearchParams({ workspaceId: result.organizationId });
+    if (result.conversationId) search.set("conversationId", result.conversationId);
+    const destination = isDesktop() ? `/dashboard?${search}` : `/setup/complete?${search}`;
+    activate.mutate({ organizationId: result.organizationId, destination });
+  };
+  const accept = useAcceptSharingInvitation(invitationId, organizationId);
+  const decline = useDeclineSharingInvitation(invitationId);
   const path = `/accept-sharing/${invitationId}`;
   const available =
     invite.data?.status === "pending" && new Date(invite.data.expiresAt).getTime() > now;
@@ -91,7 +85,7 @@ export function AcceptSharingScreen({ invitationId }: { invitationId: string }) 
           size="lg"
           pending={activate.isPending}
           pendingLabel="Opening."
-          onClick={() => activate.mutate(result)}
+          onClick={() => activateShared(result)}
         >
           Continue setup
         </PendingButton>
@@ -121,7 +115,13 @@ export function AcceptSharingScreen({ invitationId }: { invitationId: string }) 
         error={accept.error ?? decline.error ?? activate.error}
         onOrganization={setSelected}
         onConfirmed={setConfirmed}
-        onAccept={() => accept.mutate()}
+        onAccept={() =>
+          accept.mutate(undefined, {
+            onSuccess: (result) => {
+              if (result.status === "accepted") activateShared(result);
+            },
+          })
+        }
         onDecline={() => decline.mutate()}
       />
     );

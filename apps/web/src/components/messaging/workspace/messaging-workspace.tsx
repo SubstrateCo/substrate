@@ -1,20 +1,18 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { useState } from "react";
 
 import { ConversationPane } from "../conversations/conversation-pane";
-import { createConversation } from "@/api/messaging/requests";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import type { DirectMessageAgent } from "@/components/messaging/conversations/conversation-create-menu";
 import { CreateConversationDialog } from "@/components/messaging/conversations/create-conversation-dialog";
 import { MessagingWorkspace as MessagingWorkspaceView } from "@/components/messaging/workspace/messaging-workspace-view";
-import { agentDirectMessage } from "@/lib/messaging/conversations";
 import type { PickerPerson } from "@/lib/people/people-picker";
 import { resourceState } from "@/lib/resource-state";
 import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
-import { queryKeys } from "@/queries/keys";
+import { useDirectMessage } from "@/queries/messaging/conversations";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
 import { workspacePeopleQueryOptions } from "@/queries/organizations/people";
 import { Unlink } from "lucide-react";
@@ -41,7 +39,6 @@ export function MessagingWorkspace({
   const search = useSearch({ strict: false });
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const queryClient = useQueryClient();
   const open = (id: string) => {
     void navigate({
       to: "/dashboard",
@@ -49,32 +46,18 @@ export function MessagingWorkspace({
     });
     setSidebarOpen(false);
   };
-  // The server returns an existing DM with the same person instead of creating another one.
-  const directMessage = useMutation({
-    mutationFn: async (target: DirectMessageTarget) => {
-      if (target.kind === "agent") {
-        const existing = agentDirectMessage(conversations.data ?? [], target.agent.id);
-        if (existing) return existing.id;
-      }
-      const created = await createConversation({
-        data: {
-          organizationId,
-          kind: "dm",
-          private: true,
-          ...(target.kind === "agent"
-            ? { agentIds: [target.agent.id] }
-            : { emails: [target.person.email] }),
-        },
-      });
-      return created.id;
-    },
-    onSuccess: async (id) => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.conversations(organizationId) });
-      open(id);
-    },
-    onError: (error) =>
-      toast.error(actionErrorMessage(error, "We couldn’t open this conversation. Try again.")),
-  });
+  const directMessage = useDirectMessage(organizationId);
+  const messageTarget = (target: DirectMessageTarget) => {
+    if (directMessage.isPending) return;
+    directMessage.mutate(
+      target.kind === "agent" ? { agentIds: [target.agent.id] } : { emails: [target.person.email] },
+      {
+        onSuccess: ({ id }) => open(id),
+        onError: (error) =>
+          toast.error(actionErrorMessage(error, "We couldn’t open this conversation. Try again.")),
+      },
+    );
+  };
   const resource = resourceState(conversations);
   const visibleConversations = resource.data ?? [];
   // The sidebar lists joined conversations. Other public channels stay reachable by link and search.
@@ -95,12 +78,8 @@ export function MessagingWorkspace({
       onRetry={() => void conversations.refetch()}
       people={people}
       agents={agents}
-      onMessagePerson={(person) => {
-        if (!directMessage.isPending) directMessage.mutate({ kind: "person", person });
-      }}
-      onMessageAgent={(agent) => {
-        if (!directMessage.isPending) directMessage.mutate({ kind: "agent", agent });
-      }}
+      onMessagePerson={(person) => messageTarget({ kind: "person", person })}
+      onMessageAgent={(agent) => messageTarget({ kind: "agent", agent })}
       renderCreate={(kind, { onClose, onRestoreFocus }) => (
         <CreateConversationDialog
           organizationId={organizationId}

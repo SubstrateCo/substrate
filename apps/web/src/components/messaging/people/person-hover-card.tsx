@@ -1,14 +1,13 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
 import { useState, type ReactElement } from "react";
 
-import { createConversation } from "@/api/messaging/requests";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { PersonCard } from "@/components/messaging/people/person-card-view";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { queryKeys } from "@/queries/keys";
+import { useDirectMessage } from "@/queries/messaging/conversations";
 import { messagingProfileOptions } from "@/queries/messaging/profiles";
 import { MessageSquare } from "lucide-react";
 import { toast } from "sonner";
@@ -64,35 +63,27 @@ function PersonHoverCardBody({
   name: string;
   onClose: () => void;
 }) {
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
   // Details load when the card opens. The server checks conversation access each time.
   const profile = useQuery(messagingProfileOptions(organizationId, conversationId, actorId));
-  const directMessage = useMutation({
-    mutationFn: async ({ id, email }: { id: string | null; email: string }) =>
-      id ??
-      (
-        await createConversation({
-          data: { organizationId, kind: "dm", private: true, emails: [email] },
-        })
-      ).id,
-    onSuccess: async (id, { id: existing }) => {
-      if (!existing)
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: queryKeys.conversations(organizationId) }),
-          queryClient.invalidateQueries({
-            queryKey: [...queryKeys.messaging(organizationId), "profiles"],
-          }),
-        ]);
-      onClose();
-      void navigate({
-        to: "/dashboard",
-        search: { workspaceId: organizationId, conversationId: id },
-      });
-    },
-    onError: (error) =>
-      toast.error(actionErrorMessage(error, "We couldn’t open this conversation. Try again.")),
-  });
+  const directMessage = useDirectMessage(organizationId);
+  const openDirectMessage = () => {
+    if (!profile.data?.email) return;
+    directMessage.mutate(
+      { id: profile.data.directConversationId, emails: [profile.data.email] },
+      {
+        onSuccess: ({ id }) => {
+          onClose();
+          void navigate({
+            to: "/dashboard",
+            search: { workspaceId: organizationId, conversationId: id },
+          });
+        },
+        onError: (error) =>
+          toast.error(actionErrorMessage(error, "We couldn’t open this conversation. Try again.")),
+      },
+    );
+  };
   const data = profile.data;
   const canMessage = data?.type === "human" && !data.self && !data.external && !!data.email;
   let state: "loading" | "unavailable" | "ready" = "ready";
@@ -111,9 +102,7 @@ function PersonHoverCardBody({
               variant="outline"
               pending={directMessage.isPending}
               pendingLabel="Opening conversation."
-              onClick={() =>
-                directMessage.mutate({ id: data.directConversationId, email: data.email! })
-              }
+              onClick={openDirectMessage}
             >
               <MessageSquare aria-hidden="true" />
               Message

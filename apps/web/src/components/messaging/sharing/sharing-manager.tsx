@@ -1,16 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { useRef, useState } from "react";
 
 import { SharingInvitationForm } from "./sharing-invitation-form";
-import {
-  disconnectSharing,
-  inviteSharing,
-  removeSharing,
-  resendSharing,
-  revokeSharing,
-  type SharingDetails,
-} from "@/api/messaging/sharing";
+import type { SharingDetails } from "@/api/messaging/sharing";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ErrorState } from "@/components/feedback/error-state";
@@ -20,13 +13,9 @@ import { StaleNotice } from "@/components/feedback/stale-notice";
 import { useFocusReturn } from "@/components/feedback/use-focus-return";
 import { SharingDetailsView } from "@/components/messaging/sharing/sharing-details-view";
 import { useExpiryTime } from "@/hooks/use-expiry-time";
-import { queryKeys } from "@/queries/keys";
 import { sharingOptions } from "@/queries/messaging/sharing";
+import { useSharingAction } from "@/queries/messaging/sharing-mutations";
 import { toast } from "sonner";
-
-type Action =
-  | { kind: "invite"; email: string }
-  | { kind: "resend" | "revoke" | "disconnect" | "remove"; id: string };
 
 type Confirmation = { kind: "revoke" | "disconnect" | "remove"; id: string; name: string };
 
@@ -81,7 +70,6 @@ export function SharingManager({
   const blocked = isAccessFailure(details.error);
   const data = blocked ? undefined : details.data;
   const now = useExpiryTime(data?.invitations.map((invite) => invite.expiresAt));
-  const queryClient = useQueryClient();
   const [confirmation, setConfirmation] = useState<Confirmation>();
   // The confirmation is mounted by state, so it has no trigger of its own: remember the row
   // button, and fall back to the invite field once that row is gone.
@@ -94,34 +82,7 @@ export function SharingManager({
   const restoreConfirmFocus = () => {
     confirmFocus.restore();
   };
-  const action = useMutation({
-    mutationFn: async (input: Action) => {
-      const base = { organizationId, conversationId };
-      switch (input.kind) {
-        case "invite":
-          return inviteSharing({ data: { ...base, email: input.email, shareHistory: true } });
-        case "resend":
-          return resendSharing({ data: { organizationId, invitationId: input.id } });
-        case "revoke":
-          return revokeSharing({ data: { organizationId, invitationId: input.id } });
-        case "disconnect":
-          return disconnectSharing({ data: { ...base, partnerOrganizationId: input.id } });
-        case "remove":
-          return removeSharing({ data: { ...base, actorId: input.id } });
-      }
-    },
-    onSuccess: async (_, input) => {
-      setConfirmation(undefined);
-      // Every action except remove sends an access hint to this organization, and that hint
-      // resets the same queries. Remove reaches only the host organization and the members, so a
-      // partner organization's manager may not get one.
-      if (input.kind !== "remove") return;
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.organization(organizationId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.sharingInvitations }),
-      ]);
-    },
-  });
+  const action = useSharingAction(organizationId, conversationId);
   if (blocked && confirmation) setConfirmation(undefined);
   const copy = confirmation && !blocked && confirmCopy[confirmation.kind];
   return (
@@ -218,7 +179,12 @@ export function SharingManager({
           onConfirm={() =>
             action.mutate(
               { kind: confirmation.kind, id: confirmation.id },
-              { onSuccess: () => toast.success(copy.done(confirmation.name)) },
+              {
+                onSuccess: () => {
+                  setConfirmation(undefined);
+                  toast.success(copy.done(confirmation.name));
+                },
+              },
             )
           }
         />

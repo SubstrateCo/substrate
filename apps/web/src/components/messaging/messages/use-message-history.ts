@@ -1,8 +1,9 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { useEffect, useState } from "react";
 
 import { queryKeys } from "@/queries/keys";
+import { useInvalidateLatestMessages } from "@/queries/messaging/messages";
 import { messagesQueryOptions } from "@/queries/messaging/options";
 
 type HistoryPosition = {
@@ -23,7 +24,7 @@ export function useMessageHistory({
   threadId?: string;
   aroundMessageId?: string;
 }) {
-  const queryClient = useQueryClient();
+  const invalidateLatest = useInvalidateLatestMessages(organizationId, conversationId, threadId);
   const scope = JSON.stringify([organizationId, conversationId, threadId]);
   const initialPosition: HistoryPosition = {
     scope,
@@ -78,11 +79,7 @@ export function useMessageHistory({
           !!messages.data &&
           latest.data.at(-1)?.id !== messages.data.at(-1)?.id),
       onLatest: () => {
-        void queryClient.invalidateQueries({
-          queryKey: messagesQueryOptions(organizationId, conversationId, threadId).queryKey,
-          exact: true,
-          refetchType: "none",
-        });
+        void invalidateLatest();
         setHistoryRequest("latest");
         setPosition({ ...current, beforeMessageId: undefined, aroundMessageId: undefined });
       },

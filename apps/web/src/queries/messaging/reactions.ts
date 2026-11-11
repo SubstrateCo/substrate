@@ -1,7 +1,30 @@
-import { infiniteQueryOptions } from "@tanstack/react-query";
+import { infiniteQueryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { listReactions } from "@/api/messaging/requests";
+import { listReactions, toggleReaction } from "@/api/messaging/requests";
 import { queryKeys } from "@/queries/keys";
+
+export function useToggleReaction(
+  organizationId: string,
+  conversationId: string,
+  messageId: string,
+) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (emoji: string) => toggleReaction({ data: { organizationId, messageId, emoji } }),
+    onSuccess: () =>
+      Promise.all([
+        client.invalidateQueries({
+          queryKey: queryKeys.messages(organizationId, conversationId).slice(0, -1),
+        }),
+        client.invalidateQueries({
+          queryKey: queryKeys.messageTargets(organizationId, conversationId),
+        }),
+        client.invalidateQueries({
+          queryKey: queryKeys.messageReactions(organizationId, conversationId, messageId),
+        }),
+      ]),
+  });
+}
 
 export const messageReactionsOptions = (
   organizationId: string,
