@@ -1,3 +1,4 @@
+import { sessionKeys } from "@substrate/contracts/agent-work";
 import type { HarnessKind } from "@substrate/contracts/harness";
 
 import type { RunTransaction } from "../database.ts";
@@ -78,7 +79,7 @@ export function routineRepository(run: RunTransaction) {
         const session = await tx
           .select()
           .from(sessions)
-          .where(eq(sessions.key, `routine:${id}`))
+          .where(eq(sessions.key, sessionKeys.routine(id)))
           .get();
         if (session) {
           const pending = await tx
@@ -157,7 +158,7 @@ export function routineRepository(run: RunTransaction) {
             organizationId: routine.organizationId,
             userAgentId: routine.userAgentId,
             agentId: input.agentId,
-            key: `routine:${routine.id}`,
+            key: sessionKeys.routine(routine.id),
             kind: "routine",
             harness: input.harness,
             destination,

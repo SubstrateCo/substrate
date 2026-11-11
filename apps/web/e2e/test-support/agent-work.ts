@@ -1,3 +1,4 @@
+import { sessionKeys } from "@substrate/contracts/agent-work";
 import type { TurnContext } from "@substrate/contracts/harness/mcp";
 import { mcpTools, type McpOutput, type ServerToolName } from "@substrate/contracts/harness/tools";
 
@@ -41,7 +42,7 @@ export function threadTurn(
   return {
     turnId: crypto.randomUUID(),
     attempt: 1,
-    sessionKey: `thread:${rootMessageId}`,
+    sessionKey: sessionKeys.thread(rootMessageId),
     origin: { conversationId, threadId: rootMessageId },
     kind: "interactive",
     installationId,

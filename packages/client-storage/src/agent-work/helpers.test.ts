@@ -1,3 +1,5 @@
+import { sessionKeys } from "@substrate/contracts/agent-work";
+
 import { HelperLimitError } from "./helpers.ts";
 import { createSession, openTestStore } from "./test-support.ts";
 import { afterEach, beforeEach, expect, test } from "bun:test";
@@ -28,7 +30,7 @@ test("a helper runs in its own slot with its task as input", async () => {
   const helper = await store.helpers.start(parent.id, { requestId: "r1", task: "Research" }, 0);
   const claimed = await store.turns.claim(1, { organizationId: "org-1" });
   const helperTurn = claimed.find((entry) => entry.session.id === helper.sessionId);
-  expect(helperTurn!.turn.folderKey).toBe(`helper:${helper.id}`);
+  expect(helperTurn!.turn.folderKey).toBe(sessionKeys.helper(helper.id));
   expect(helperTurn!.items.map((row) => [row.source, row.body])).toEqual([
     ["helper_task", "Research"],
   ]);

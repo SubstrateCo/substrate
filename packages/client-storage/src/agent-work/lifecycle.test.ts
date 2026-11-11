@@ -1,3 +1,5 @@
+import { sessionKeys } from "@substrate/contracts/agent-work";
+
 import { createSession, item, openTestStore } from "./test-support.ts";
 import { afterEach, beforeEach, expect, test } from "bun:test";
 
@@ -161,7 +163,7 @@ test("the device cap counts the live turns of the active organization only", asy
         organizationId: "org-2",
         userAgentId: agent,
         agentId: agent,
-        key: `dm:${agent}`,
+        key: sessionKeys.dm(agent),
         kind: "dm",
         harness: "claude",
       },

@@ -1,4 +1,4 @@
-import { askRequestPayload } from "@substrate/contracts/agent-work";
+import { askRequestPayload, sessionKeys } from "@substrate/contracts/agent-work";
 
 import { registerDevice } from "../../core/devices/repository";
 import { AccessDeniedError } from "../../errors";
@@ -28,7 +28,7 @@ test("only the home device pulls an agent's wakes, and ack is idempotent", async
   expect(wake).toMatchObject({
     userAgentId: agent.agentId,
     source: "owner_message",
-    sessionKey: `dm:${dm.id}`,
+    sessionKey: sessionKeys.dm(dm.id),
     sourceRef: { messageId: message.id },
   });
   // A wake stays until the home device stores it; another device cannot ack it.
@@ -123,7 +123,7 @@ test("a wake never carries a request of another agent or another owner", async (
   const open = (identity: typeof agent.identity, userAgentId: string) =>
     openRequest(f.db, identity, {
       userAgentId,
-      sessionKey: `dm:${dm.id}`,
+      sessionKey: sessionKeys.dm(dm.id),
       turnId: crypto.randomUUID(),
       epoch: 0,
       kind: "permission",
@@ -149,7 +149,7 @@ test("a wake never carries a request of another agent or another owner", async (
       ownerUserId: "alice",
       source: "answer" as const,
       sourceRef: { requestId: request.id },
-      sessionKey: `dm:${dm.id}`,
+      sessionKey: sessionKeys.dm(dm.id),
       dedupeKey: `answer:${request.id}`,
     })),
   );

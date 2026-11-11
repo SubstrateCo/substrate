@@ -1,3 +1,5 @@
+import { sessionKeys } from "@substrate/contracts/agent-work";
+
 import { agentWakes, messagingMessages } from "../../schema";
 import { agentWorkFixture, threadTurn } from "../../testing/agent-work";
 import { setupDatabase } from "../../testing/database";
@@ -29,7 +31,7 @@ test("DM messages wake the agent in one session per conversation, once per messa
   const reply = await alice.sendMessage(dm.id, "Include risks", first.id);
   expect(await wakes()).toEqual([
     {
-      sessionKey: `dm:${dm.id}`,
+      sessionKey: sessionKeys.dm(dm.id),
       dedupeKey: `msg:${first.id}`,
       sourceRef: {
         messageId: first.id,
@@ -39,7 +41,7 @@ test("DM messages wake the agent in one session per conversation, once per messa
       },
     },
     {
-      sessionKey: `dm:${dm.id}`,
+      sessionKey: sessionKeys.dm(dm.id),
       dedupeKey: `msg:${reply.id}`,
       sourceRef: {
         messageId: reply.id,
@@ -78,7 +80,7 @@ test("only the owner's own messages wake the agent; agent messages never do", as
   const asked = await alice.sendMessage(channel.id, `${mention} draft the brief`);
   expect(await wakes()).toEqual([
     {
-      sessionKey: `thread:${asked.id}`,
+      sessionKey: sessionKeys.thread(asked.id),
       dedupeKey: `msg:${asked.id}`,
       sourceRef: {
         messageId: asked.id,
@@ -106,7 +108,7 @@ test("a thread reply wakes the agent only after it worked in that thread, unless
   const later = await alice.sendMessage(channel.id, "and also this", root.id);
   expect(await wakes()).toEqual([
     {
-      sessionKey: `thread:${root.id}`,
+      sessionKey: sessionKeys.thread(root.id),
       dedupeKey: `msg:${later.id}`,
       sourceRef: {
         messageId: later.id,

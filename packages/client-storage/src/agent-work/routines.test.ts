@@ -1,3 +1,5 @@
+import { sessionKeys } from "@substrate/contracts/agent-work";
+
 import { openTestStore } from "./test-support.ts";
 import { afterEach, beforeEach, expect, test } from "bun:test";
 
@@ -38,7 +40,7 @@ test("a routine fires each occurrence once", async () => {
   };
   expect(await store.routines.fire(fire, 1000)).toBeDefined();
   expect(await store.routines.fire(fire, 1001)).toBeUndefined();
-  const session = await store.sessions.byKey("agent-1", `routine:${routine.id}`);
+  const session = await store.sessions.byKey("agent-1", sessionKeys.routine(routine.id));
   expect(await store.inbox.openForSessions([session!.id])).toHaveLength(1);
 });
 

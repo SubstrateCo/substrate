@@ -1,4 +1,4 @@
-import { maxLiveHelpers } from "@substrate/contracts/agent-work";
+import { maxLiveHelpers, sessionKeys } from "@substrate/contracts/agent-work";
 
 import type { LocalTransaction, RunTransaction } from "../database.ts";
 import { helpers, inbox } from "../schema/index.ts";
@@ -101,7 +101,7 @@ export function helperRepository(run: RunTransaction) {
             organizationId: parent.organizationId,
             userAgentId: parent.userAgentId,
             agentId: parent.agentId,
-            key: `helper:${id}`,
+            key: sessionKeys.helper(id),
             kind: "helper",
             harness: parent.harness,
             parentSessionId,

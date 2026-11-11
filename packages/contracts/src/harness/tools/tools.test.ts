@@ -1,10 +1,11 @@
+import { sessionKeys } from "../../agent-work/wakes.ts";
 import { leaseTools, localToolCall, mcpCall, mcpTools } from "./index.ts";
 import { expect, test } from "bun:test";
 
 const turn = {
   turnId: crypto.randomUUID(),
   attempt: 1,
-  sessionKey: `dm:${crypto.randomUUID()}`,
+  sessionKey: sessionKeys.dm(crypto.randomUUID()),
   origin: { conversationId: crypto.randomUUID(), threadId: null },
   kind: "interactive",
 };

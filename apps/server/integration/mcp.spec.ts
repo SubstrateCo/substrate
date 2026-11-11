@@ -1,3 +1,5 @@
+import { sessionKeys } from "@substrate/contracts/agent-work";
+
 import { appOrigin } from "./test-support/environment";
 import { test } from "./test-support/fixtures";
 import { expect } from "@playwright/test";
@@ -25,7 +27,7 @@ test("MCP calls require a verified owner, active workspace, trusted origin and s
   const turn = {
     turnId: crypto.randomUUID(),
     attempt: 1,
-    sessionKey: `routine:${crypto.randomUUID()}`,
+    sessionKey: sessionKeys.routine(crypto.randomUUID()),
     origin: null,
     kind: "unattended",
   };

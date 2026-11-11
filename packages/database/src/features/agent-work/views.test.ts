@@ -1,3 +1,5 @@
+import { sessionKeys } from "@substrate/contracts/agent-work";
+
 import type { agentRequests } from "./requests.schema";
 import type { agentStatus } from "./status.schema";
 import { toRequestView, toStatusView } from "./views";
@@ -11,7 +13,7 @@ const request: typeof agentRequests.$inferSelect = {
   userAgentId: "agent",
   ownerUserId: "owner",
   agentActorEntityId: "actor",
-  sessionKey: "thread:root",
+  sessionKey: sessionKeys.thread("root"),
   turnId: "turn",
   epoch: null,
   kind: "proposal",
@@ -38,7 +40,7 @@ test("a request in a visible place shows its place, payload and proposal", () =>
   expect(
     toRequestView({ request, agent, conversationName: "General", targetVisible: true }),
   ).toMatchObject({
-    sessionKey: "thread:root",
+    sessionKey: sessionKeys.thread("root"),
     place: {
       access: "visible",
       conversationId: "conversation",

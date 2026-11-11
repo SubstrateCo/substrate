@@ -1,3 +1,5 @@
+import { sessionKeys } from "@substrate/contracts/agent-work";
+
 import { agentRequests, agentStatus, agentWakes } from "../../schema";
 import { agentWorkFixture } from "../../testing/agent-work";
 import { ownedAgent } from "../../testing/agents";
@@ -19,7 +21,7 @@ test("wakes and requests name the user agent's own agent actor", async () => {
     ownerUserId: "alice",
     source: "owner_message" as const,
     sourceRef: { requestId: crypto.randomUUID() },
-    sessionKey: `dm:${dm.id}`,
+    sessionKey: sessionKeys.dm(dm.id),
     dedupeKey: `msg:${crypto.randomUUID()}`,
   });
   const request = (agentActorEntityId: string) => ({
@@ -27,7 +29,7 @@ test("wakes and requests name the user agent's own agent actor", async () => {
     userAgentId: agent.agentId,
     ownerUserId: "alice",
     agentActorEntityId,
-    sessionKey: `dm:${dm.id}`,
+    sessionKey: sessionKeys.dm(dm.id),
     turnId: crypto.randomUUID(),
     kind: "question" as const,
     mode: "async" as const,

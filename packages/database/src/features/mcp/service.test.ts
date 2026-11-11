@@ -1,3 +1,4 @@
+import { sessionKeys } from "@substrate/contracts/agent-work";
 import type { WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
 import { mcpTools, type McpOutput, type ServerToolName } from "@substrate/contracts/harness/tools";
 import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
@@ -31,7 +32,7 @@ const f = setupDatabase();
 const turn = {
   turnId: crypto.randomUUID(),
   attempt: 1,
-  sessionKey: `routine:${crypto.randomUUID()}`,
+  sessionKey: sessionKeys.routine(crypto.randomUUID()),
   origin: null,
   kind: "interactive" as const,
   installationId: crypto.randomUUID(),

@@ -1,3 +1,4 @@
+import { sessionKeys } from "@substrate/contracts/agent-work";
 import type { TurnContext, WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
 import { mcpTools, type McpOutput, type ServerToolName } from "@substrate/contracts/harness/tools";
 
@@ -14,7 +15,7 @@ export const dmTurn = (
 ): TurnContext => ({
   turnId: crypto.randomUUID(),
   attempt: 1,
-  sessionKey: `dm:${conversationId}`,
+  sessionKey: sessionKeys.dm(conversationId),
   origin: { conversationId, threadId: null },
   kind,
 });
@@ -22,7 +23,7 @@ export const dmTurn = (
 export const threadTurn = (conversationId: string, rootId: string): TurnContext => ({
   turnId: crypto.randomUUID(),
   attempt: 1,
-  sessionKey: `thread:${rootId}`,
+  sessionKey: sessionKeys.thread(rootId),
   origin: { conversationId, threadId: rootId },
   kind: "interactive",
 });

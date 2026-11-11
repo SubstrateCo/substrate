@@ -1,3 +1,4 @@
+import { sessionKeys } from "@substrate/contracts/agent-work";
 import type { WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
 
 import { appOrigin } from "./test-support/environment";
@@ -70,7 +71,7 @@ test("only the owner's home desktop receives wakes, and only the owner sees and 
   ).toBe(404);
   const pulled = await (await device(owner, "wakes/pull", pull)).json();
   expect(pulled.data).toHaveLength(1);
-  expect(pulled.data[0]).toMatchObject({ sessionKey: `dm:${conversationId}` });
+  expect(pulled.data[0]).toMatchObject({ sessionKey: sessionKeys.dm(conversationId) });
   const sources = await (
     await device(owner, "sources", {
       organizationId: workspace.id,
@@ -84,7 +85,7 @@ test("only the owner's home desktop receives wakes, and only the owner sees and 
   const turn = {
     turnId: crypto.randomUUID(),
     attempt: 1,
-    sessionKey: `dm:${conversationId}`,
+    sessionKey: sessionKeys.dm(conversationId),
     origin: { conversationId, threadId: null },
     kind: "interactive",
     installationId,
@@ -183,7 +184,7 @@ test("only the home desktop publishes, and a left conversation's requests are pl
   const turn = (installationId?: string) => ({
     turnId: crypto.randomUUID(),
     attempt: 1,
-    sessionKey: `thread:${rootId}`,
+    sessionKey: sessionKeys.thread(rootId),
     origin: { conversationId, threadId: rootId },
     kind: "interactive",
     installationId,

@@ -1,5 +1,9 @@
-import type { AgentSessionKind } from "@substrate/contracts/agent-work";
-import type { HarnessKind, TurnPlace } from "@substrate/contracts/harness";
+import {
+  parseSessionKey,
+  sessionKeys,
+  type AgentSessionKind,
+} from "@substrate/contracts/agent-work";
+import type { HarnessFolder, HarnessKind, TurnPlace } from "@substrate/contracts/harness";
 
 import type { LocalTransaction, RunTransaction } from "../database.ts";
 import { sessions } from "../schema/index.ts";
@@ -25,9 +29,12 @@ export interface EnsureSessionInput {
 
 /** The slot a session's turns run in: the agent's main folder, or a helper's own folder. */
 export function folderKey(session: Pick<SessionRow, "kind" | "key" | "userAgentId">) {
-  return session.kind === "helper"
-    ? `helper:${session.key.slice("helper:".length)}`
-    : `main:${session.userAgentId}`;
+  const folder = folderOf(session);
+  return folder === "main" ? `main:${session.userAgentId}` : sessionKeys.helper(folder.helperId);
+}
+
+export function folderOf(session: Pick<SessionRow, "kind" | "key">): HarnessFolder {
+  return session.kind === "helper" ? { helperId: parseSessionKey(session.key)!.id } : "main";
 }
 
 export async function ensureSession(tx: LocalTransaction, input: EnsureSessionInput, now: number) {

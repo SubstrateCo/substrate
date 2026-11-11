@@ -1,3 +1,5 @@
+import { sessionKeys } from "@substrate/contracts/agent-work";
+
 import { registerDevice } from "../../core/devices/repository";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { agentRequests, agentToolRequests, messagingMessages, userAgents } from "../../schema";
@@ -63,7 +65,7 @@ test("background turns post only to their own place and propose everything else"
   const routine = {
     turnId: crypto.randomUUID(),
     attempt: 1,
-    sessionKey: `routine:${crypto.randomUUID()}`,
+    sessionKey: sessionKeys.routine(crypto.randomUUID()),
     origin: null,
     kind: "unattended" as const,
     destination: { conversationId: channel.id, threadId: null },
@@ -106,7 +108,7 @@ test("the turn must match its session and cannot borrow another agent's turn", a
         { requestId: crypto.randomUUID(), body: "Borrowed" },
         {
           ...turn,
-          sessionKey: `dm:${otherDm.id}`,
+          sessionKey: sessionKeys.dm(otherDm.id),
           origin: { conversationId: otherDm.id, threadId: null },
           installationId: other.identity.installationId,
         },

@@ -1,8 +1,9 @@
-import type {
-  AgentInboxItemView,
-  AgentRequestView,
-  AgentStatusView,
-  AgentTurnView,
+import {
+  sessionKeys,
+  type AgentInboxItemView,
+  type AgentRequestView,
+  type AgentStatusView,
+  type AgentTurnView,
 } from "@substrate/contracts/agent-work";
 
 export const conversationId = "conversation";
@@ -65,7 +66,7 @@ export function request(fields: Partial<AgentRequestView> = {}): AgentRequestVie
     id: "request",
     userAgentId: "agent",
     agent: { actorId: "actor", name: "Researcher" },
-    sessionKey: `dm:${conversationId}`,
+    sessionKey: sessionKeys.dm(conversationId),
     turnId: "turn",
     kind: "question",
     mode: "async",

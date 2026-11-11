@@ -1,3 +1,5 @@
+import { sessionKeys } from "@substrate/contracts/agent-work";
+
 import { background, createSession, item, openTestStore } from "./test-support.ts";
 import { laneAgingMs } from "./turns.ts";
 import { afterEach, beforeEach, expect, test } from "bun:test";
@@ -257,7 +259,7 @@ test("a claim takes only the active organization's work", async () => {
       organizationId: "org-2",
       userAgentId: "agent-2",
       agentId: "agent-2",
-      key: "dm:other",
+      key: sessionKeys.dm("other"),
       kind: "dm",
       harness: "claude",
     },
