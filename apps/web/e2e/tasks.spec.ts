@@ -77,6 +77,8 @@ test("a click outside the task inspector closes it, but controls, drafts and bac
   await user.page.getByRole("button", { name: "Keep editing" }).click();
   await expect(user.page.getByRole("dialog")).toHaveCount(0);
   await expect(inspector.getByLabel("Add a comment")).toHaveText("A comment draft");
+  // The click outside moved focus off the draft, so keeping it returns focus there.
+  await expect(inspector.getByLabel("Add a comment")).toBeFocused();
   // fill("") sets the DOM selection, then presses Delete. Chromium can deliver the key before
   // selectionchange, so ProseMirror deletes at its stale caret. Select through the editor instead.
   await inspector.getByLabel("Add a comment").press("ControlOrMeta+a");

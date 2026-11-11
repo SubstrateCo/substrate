@@ -1,6 +1,6 @@
 import { useBlocker, type ShouldBlockFn } from "@tanstack/react-router";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { registerUnsavedDraft } from "@/lib/navigation/unsaved-drafts";
@@ -54,12 +54,35 @@ export function UnsavedChangesGuard({
       answer.current = null;
     };
   }, [dirty, name]);
+  // A click on plain page content moves focus to the body before the question opens.
+  const lastFocus = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!dirty) return;
+    // The draft usually becomes dirty while its field already has focus.
+    if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body)
+      lastFocus.current = document.activeElement;
+    const remember = (event: FocusEvent) => {
+      if (event.target instanceof HTMLElement) lastFocus.current = event.target;
+    };
+    document.addEventListener("focusin", remember);
+    return () => {
+      document.removeEventListener("focusin", remember);
+      lastFocus.current = null;
+    };
+  }, [dirty]);
+  const open = blocker.status === "blocked" || asking !== null;
+  // The dialog returns focus to the element focused when it opened, so "Keep editing" lands
+  // back where the person was working instead of on the body.
+  useLayoutEffect(() => {
+    if (open && document.activeElement === document.body && lastFocus.current?.isConnected)
+      lastFocus.current.focus({ preventScroll: true });
+  }, [open]);
   const settle = (leave: boolean) => {
     answer.current?.(leave);
     answer.current = null;
     setAsking(null);
   };
-  if (blocker.status !== "blocked" && !asking) return null;
+  if (!open) return null;
   // One question covers every dirty draft, so it lists each one by name.
   const several = blocker.status !== "blocked" && asking && asking.length > 1 ? asking : null;
   return (
