@@ -29,8 +29,9 @@ export const Route = createFileRoute("/_authenticated/_frame/_workspace")({
 
 function WorkspaceLayout() {
   const { organizationId } = Route.useRouteContext();
+  const { workspaceId } = Route.useSearch();
   return (
-    <WorkspaceLinkBoundary organizationId={organizationId}>
+    <WorkspaceLinkBoundary organizationId={organizationId} workspaceId={workspaceId}>
       <Outlet />
     </WorkspaceLinkBoundary>
   );

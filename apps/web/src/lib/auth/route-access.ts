@@ -16,13 +16,13 @@ export async function requireVerifiedSession(
     staleTime: (query) => (query.state.data?.user.emailVerified ? Infinity : 0),
   });
   const access = verifiedSessionAccess(session, destination);
-  if ("redirect" in access) throw redirect({ href: access.redirect });
+  if (access.redirect) throw redirect(access.redirect);
   return access.session;
 }
 
 export async function redirectAuthenticatedSession(queryClient: QueryClient, destination: string) {
   const session = await queryClient.query(sessionQueryOptions());
-  const href = guestSessionRedirect(session, destination);
-  if (href) throw redirect({ href });
-  return null;
+  const target = guestSessionRedirect(session, destination);
+  if (!target) return null;
+  throw "href" in target ? redirect({ href: target.href }) : redirect(target);
 }

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 
 import { useState } from "react";
 
@@ -25,9 +25,15 @@ type DirectMessageTarget =
 export function MessagingWorkspace({
   organizationId,
   userId,
+  conversationId,
+  messageId,
+  turnId,
 }: {
   organizationId: string;
   userId: string;
+  conversationId?: string;
+  messageId?: string;
+  turnId?: string;
 }) {
   const conversations = useQuery(conversationsQueryOptions(organizationId));
   const workspacePeople = useQuery(workspacePeopleQueryOptions(organizationId));
@@ -36,7 +42,6 @@ export function MessagingWorkspace({
   const agents = (catalog.data?.agents ?? [])
     .filter((agent) => agent.enabled)
     .map((agent) => ({ id: agent.id, name: agent.name, image: agent.image }));
-  const search = useSearch({ strict: false });
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const open = (id: string) => {
@@ -62,8 +67,8 @@ export function MessagingWorkspace({
   const visibleConversations = resource.data ?? [];
   // The sidebar lists joined conversations. Other public channels stay reachable by link and search.
   const sidebarConversations = visibleConversations.filter((conversation) => conversation.joined);
-  const selected = search.conversationId
-    ? visibleConversations.find((conversation) => conversation.id === search.conversationId)
+  const selected = conversationId
+    ? visibleConversations.find((conversation) => conversation.id === conversationId)
     : sidebarConversations[0];
   return (
     <MessagingWorkspaceView
@@ -100,9 +105,11 @@ export function MessagingWorkspace({
           organizationId={organizationId}
           conversation={selected}
           userId={userId}
+          messageId={messageId}
+          turnId={turnId}
         />
       )}
-      {search.conversationId && !selected && !conversations.isPending && (
+      {conversationId && !selected && !conversations.isPending && (
         <ContentNotice
           icon={Unlink}
           title="Conversation unavailable"

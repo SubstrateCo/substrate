@@ -1,9 +1,12 @@
+import { Link } from "@tanstack/react-router";
+
 import { Timestamp } from "@/components/time/timestamp";
+import type { RecordLink } from "@/lib/navigation/record-links";
 import { MessageSquareText } from "lucide-react";
 
 export type CommentMention = {
   commentId: string;
-  href: string;
+  link: RecordLink;
   taskTitle: string;
   authorName: string;
   createdAt: Date | string;
@@ -24,8 +27,8 @@ export function TaskCommentMentions({ items }: { items: CommentMention[] }) {
       <ul className="-mx-2 grid gap-px">
         {items.map((item) => (
           <li key={item.commentId}>
-            <a
-              href={item.href}
+            <Link
+              {...item.link}
               className="flex h-8 min-w-0 items-center gap-2 rounded-md px-2 text-sm outline-none hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring/50"
             >
               <MessageSquareText
@@ -39,7 +42,7 @@ export function TaskCommentMentions({ items }: { items: CommentMention[] }) {
                 <span aria-hidden="true">·</span>
                 <Timestamp value={item.createdAt} />
               </span>
-            </a>
+            </Link>
           </li>
         ))}
       </ul>

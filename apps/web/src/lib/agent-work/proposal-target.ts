@@ -1,6 +1,6 @@
 import type { ProposalAction } from "@substrate/contracts/agent-work";
 
-import { messageHref, workHref } from "@/lib/navigation/record-links";
+import { messageLink, workLink, type RecordLink } from "@/lib/navigation/record-links";
 
 /**
  * A record an action names, as the viewer can see it now. hidden carries no name or link, so the
@@ -9,7 +9,7 @@ import { messageHref, workHref } from "@/lib/navigation/record-links";
 export type ProposalRecord =
   | { access: "loading" }
   | { access: "hidden" }
-  | { access: "visible"; label: string; href?: string };
+  | { access: "visible"; label: string; link?: RecordLink };
 
 /** The parts of a project's detail the preview reads. Tasks are only the readable ones. */
 export interface ProposalProject {
@@ -66,7 +66,7 @@ function taskRecord(organizationId: string, detail: ProposalProject, taskId: str
   return {
     access: "visible",
     label: task.title,
-    href: workHref(organizationId, detail.project.entityId, task.entityId),
+    link: workLink(organizationId, detail.project.entityId, task.entityId),
   } satisfies ProposalRecord;
 }
 
@@ -74,7 +74,7 @@ function projectRecord(organizationId: string, detail: ProposalProject): Proposa
   return {
     access: "visible",
     label: detail.project.name,
-    href: workHref(organizationId, detail.project.entityId),
+    link: workLink(organizationId, detail.project.entityId),
   };
 }
 
@@ -114,7 +114,7 @@ function sourceRecord(lookups: ProposalLookups, messageId: string | undefined) {
   return resolve(lookups.message(conversationId, messageId), ({ label }) => ({
     access: "visible",
     label,
-    href: messageHref(lookups.organizationId, conversationId, messageId),
+    link: messageLink(lookups.organizationId, conversationId, messageId),
   }));
 }
 
@@ -133,13 +133,13 @@ export function proposalTarget(action: ProposalAction, lookups: ProposalLookups)
         conversation: resolve(conversation, ({ name }) => ({
           access: "visible",
           label: name,
-          href: messageHref(organizationId, conversationId),
+          link: messageLink(organizationId, conversationId),
         })),
         thread: threadId
           ? resolve(conversation && lookups.message(conversationId, threadId), ({ label }) => ({
               access: "visible",
               label,
-              href: messageHref(organizationId, conversationId, threadId),
+              link: messageLink(organizationId, conversationId, threadId),
             }))
           : null,
       };

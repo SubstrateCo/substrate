@@ -27,7 +27,10 @@ const session: NonNullable<Awaited<ReturnType<typeof getSession>>> = {
 describe("verified route session policy", () => {
   test("sends guests to login with their full destination", () => {
     expect(verifiedSessionAccess(null, "/accept-invitation/invite-123?source=email")).toEqual({
-      redirect: "/login?redirect=%2Faccept-invitation%2Finvite-123%3Fsource%3Demail",
+      redirect: {
+        to: "/login",
+        search: { redirect: "/accept-invitation/invite-123?source=email" },
+      },
     });
   });
 
@@ -41,7 +44,10 @@ describe("verified route session policy", () => {
         "/organizations",
       ),
     ).toEqual({
-      redirect: "/verify-email?redirect=%2Forganizations&email=team%40example.com",
+      redirect: {
+        to: "/verify-email",
+        search: { redirect: "/organizations", email: "team@example.com" },
+      },
     });
   });
 
@@ -56,7 +62,7 @@ describe("guest route session policy", () => {
   });
 
   test("redirects restored verified sessions without an organization to selection", () => {
-    expect(guestSessionRedirect(session, "/dashboard")).toBe("/organizations");
+    expect(guestSessionRedirect(session, "/dashboard")).toEqual({ href: "/organizations" });
   });
 
   test("redirects restored verified workspace sessions to dashboard", () => {
@@ -68,13 +74,13 @@ describe("guest route session policy", () => {
         },
         "/dashboard",
       ),
-    ).toBe("/dashboard");
+    ).toEqual({ href: "/dashboard" });
   });
 
   test("honors an invitation destination", () => {
-    expect(guestSessionRedirect(session, "/accept-invitation/invite-123?source=email")).toBe(
-      "/accept-invitation/invite-123?source=email",
-    );
+    expect(guestSessionRedirect(session, "/accept-invitation/invite-123?source=email")).toEqual({
+      href: "/accept-invitation/invite-123?source=email",
+    });
   });
 
   test("rejects unsafe destinations and guest-page redirect loops", () => {
@@ -85,7 +91,7 @@ describe("guest route session policy", () => {
       "/LOGIN/",
       "/%6cogin",
     ]) {
-      expect(guestSessionRedirect(session, destination)).toBe("/organizations");
+      expect(guestSessionRedirect(session, destination)).toEqual({ href: "/organizations" });
     }
   });
 
@@ -98,6 +104,9 @@ describe("guest route session policy", () => {
         },
         "/accept-invitation/invite-123",
       ),
-    ).toBe("/verify-email?redirect=%2Faccept-invitation%2Finvite-123&email=team%40example.com");
+    ).toEqual({
+      to: "/verify-email",
+      search: { redirect: "/accept-invitation/invite-123", email: "team@example.com" },
+    });
   });
 });

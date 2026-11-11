@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 
 import { useEffect, useState } from "react";
 
@@ -9,34 +9,34 @@ import { TasksWorkspace as TasksWorkspaceView } from "@/components/tasks/workspa
 import { resourceState } from "@/lib/resource-state";
 import { projectsQueryOptions, taskLocationQueryOptions } from "@/queries/tasks/options";
 
-export function TasksWorkspace({ organizationId }: { organizationId: string }) {
+export function TasksWorkspace({
+  organizationId,
+  projectId,
+  taskId,
+}: {
+  organizationId: string;
+  projectId?: string;
+  taskId?: string;
+}) {
   const projects = useQuery(projectsQueryOptions(organizationId));
-  const search = useSearch({ strict: false });
   const navigate = useNavigate();
   const taskLocation = useQuery({
-    ...taskLocationQueryOptions(organizationId, search.taskId ?? ""),
-    enabled: !!search.taskId,
+    ...taskLocationQueryOptions(organizationId, taskId ?? ""),
+    enabled: !!taskId,
   });
   useEffect(() => {
     const resolvedLocation = !taskLocation.error ? taskLocation.data : undefined;
-    if (search.taskId && resolvedLocation && resolvedLocation.projectEntityId !== search.projectId)
+    if (taskId && resolvedLocation && resolvedLocation.projectEntityId !== projectId)
       void navigate({
         to: "/tasks",
         replace: true,
         search: {
           workspaceId: organizationId,
           projectId: resolvedLocation.projectEntityId,
-          taskId: search.taskId,
+          taskId,
         },
       });
-  }, [
-    navigate,
-    organizationId,
-    search.taskId,
-    search.projectId,
-    taskLocation.data,
-    taskLocation.error,
-  ]);
+  }, [navigate, organizationId, taskId, projectId, taskLocation.data, taskLocation.error]);
   const [lastSelection, setLastSelection] = useState<{
     organizationId: string;
     projectId?: string;
@@ -44,7 +44,7 @@ export function TasksWorkspace({ organizationId }: { organizationId: string }) {
   const resource = resourceState(projects);
   const defaultProjectId = resource.data?.[0]?.entityId;
   const selectedProjectId =
-    search.projectId ??
+    projectId ??
     (projects.isPending && lastSelection.organizationId === organizationId
       ? lastSelection.projectId
       : defaultProjectId);
@@ -58,8 +58,11 @@ export function TasksWorkspace({ organizationId }: { organizationId: string }) {
       state={resource.status}
       projects={resource.data ?? []}
       selectedProjectId={selectedProjectId}
-      onSelectProject={(projectId) =>
-        void navigate({ to: "/tasks", search: { workspaceId: organizationId, projectId } })
+      onSelectProject={(selected) =>
+        void navigate({
+          to: "/tasks",
+          search: { workspaceId: organizationId, projectId: selected },
+        })
       }
       loading={projects.isPending}
       error={projects.error}
@@ -77,6 +80,7 @@ export function TasksWorkspace({ organizationId }: { organizationId: string }) {
             key={`${organizationId}:${selectedProjectId}`}
             organizationId={organizationId}
             projectEntityId={selectedProjectId}
+            taskId={taskId}
           />
         )
       }

@@ -31,7 +31,7 @@ export function ChannelSearchResult({
         <Link
           ref={link}
           className="min-w-0 flex-1 truncate outline-none focus-visible:underline"
-          to={item.href}
+          {...item.link}
           aria-label={`Channel: ${item.title}`}
           onClick={(event) => event.stopPropagation()}
         >

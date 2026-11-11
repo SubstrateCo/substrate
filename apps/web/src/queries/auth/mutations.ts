@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { authError } from "@/api/auth/error";
 import { authClient } from "@/lib/auth/client";
 import { isDesktop } from "@/lib/desktop/auth";
-import { electronQuery } from "@/lib/desktop/authorization-query";
+import type { ElectronAuthorization } from "@/lib/desktop/authorization-query";
 
 export function useEmailLogin() {
   const client = useQueryClient();
@@ -12,7 +12,7 @@ export function useEmailLogin() {
       email: string;
       password: string;
       callbackURL: string;
-      query: ReturnType<typeof electronQuery>;
+      query: ElectronAuthorization | undefined;
     }) => {
       const { query, ...credentials } = input;
       const result = await authClient.signIn.email({ ...credentials, fetchOptions: { query } });
@@ -33,11 +33,10 @@ export function useEmailSignup() {
       email: string;
       password: string;
       callbackURL: string;
+      query: ElectronAuthorization | undefined;
     }) => {
-      const result = await authClient.signUp.email({
-        ...input,
-        fetchOptions: { query: electronQuery(window.location.search) },
-      });
+      const { query, ...account } = input;
+      const result = await authClient.signUp.email({ ...account, fetchOptions: { query } });
       if (result.error) throw authError(result.error);
     },
   });

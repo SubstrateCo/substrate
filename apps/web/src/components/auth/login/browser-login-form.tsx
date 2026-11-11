@@ -3,14 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { BrowserElectronReturn } from "../desktop/browser-electron-return";
 import { formText } from "../form-values";
 import { LoginForm } from "@/components/auth/login/login-form-view";
-import { authHref } from "@/lib/auth/browser-links";
+import { useAuthHref, useElectronAuthorization } from "@/hooks/use-auth-href";
 import { safeRedirect } from "@/lib/auth/navigation";
-import { electronQuery } from "@/lib/desktop/authorization-query";
 import { useEmailLogin } from "@/queries/auth/mutations";
 import { sessionQueryOptions } from "@/queries/auth/session";
 
 export function BrowserLoginForm({ redirect, email }: { redirect: string; email: string }) {
-  const query = electronQuery(window.location.search);
+  const query = useElectronAuthorization();
+  const authHref = useAuthHref();
   // Only the desktop handoff returns early for an existing browser session.
   const session = useQuery({ ...sessionQueryOptions(), enabled: !!query });
   const login = useEmailLogin();

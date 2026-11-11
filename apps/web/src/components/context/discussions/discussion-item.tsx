@@ -1,3 +1,5 @@
+import { Link } from "@tanstack/react-router";
+
 import { useEffect, useId, useRef, useState } from "react";
 
 import { Tag } from "@/components/feedback/tag";
@@ -6,13 +8,14 @@ import { MessageMarkdown } from "@/components/messaging/markdown/message-markdow
 import { plainReferenceText } from "@/components/messaging/references/reference-token";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
+import type { RecordLink } from "@/lib/navigation/record-links";
 import { cn } from "cn";
 import { MessageCircle, MessageSquareReply } from "lucide-react";
 
 export type Discussion = {
   messageId: string;
   purpose: "source" | "mention" | "association";
-  href: string;
+  link: RecordLink;
   conversationName: string | null;
   conversationKind?: "channel" | "dm" | "group";
   private?: boolean;
@@ -56,14 +59,14 @@ export function DiscussionItem({ item }: { item: Discussion }) {
             <MessageCircle aria-hidden="true" className="size-3.5 shrink-0" />
           )}
           {/* Stretch the link over the card. A card-wide <a> would nest Markdown links. */}
-          <a
-            href={item.href}
+          <Link
+            {...item.link}
             aria-label={title}
             aria-describedby={descriptionId}
             className="truncate font-medium text-foreground outline-none after:absolute after:inset-0 after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-ring"
           >
             {conversation}
-          </a>
+          </Link>
           <span aria-hidden="true">·</span>
           <Timestamp value={item.createdAt} className="relative z-10 shrink-0" />
         </div>

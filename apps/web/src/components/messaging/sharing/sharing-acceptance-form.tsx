@@ -1,3 +1,5 @@
+import { useRouter } from "@tanstack/react-router";
+
 import type { getSharingInvitation } from "@/api/messaging/sharing";
 import { AuthLink } from "@/components/auth/auth-link";
 import { FormMessage } from "@/components/feedback/form-message";
@@ -37,6 +39,7 @@ export function SharingAcceptanceForm({
   onAccept: () => void;
   onDecline: () => void;
 }) {
+  const router = useRouter();
   return (
     <div className="space-y-5">
       <div className="flex items-start gap-3 rounded-lg border p-3 wrap-anywhere">
@@ -65,7 +68,12 @@ export function SharingAcceptanceForm({
           {!invitation.targetOrganizationId && (
             <AuthLink
               className="text-sm font-normal text-muted-foreground hover:text-foreground"
-              href={`/onboarding?${new URLSearchParams({ redirect: `/accept-sharing/${invitation.id}` })}`}
+              href={
+                router.buildLocation({
+                  to: "/onboarding",
+                  search: { redirect: `/accept-sharing/${invitation.id}` },
+                }).href
+              }
             >
               Create an organization
             </AuthLink>

@@ -1,5 +1,7 @@
 import type { AgentRequestResponse, AgentRequestView } from "@substrate/contracts/agent-work";
 
+import { Link } from "@tanstack/react-router";
+
 import { ApprovalRequest } from "./approval-request";
 import { hiddenConversation, ProposalPreview } from "./proposal-preview";
 import { QuestionsRequest } from "./questions-request";
@@ -13,9 +15,10 @@ import {
 } from "@/lib/agent-work/proposal-target";
 import { requestDeadline, requestOutcome } from "@/lib/agent-work/requests";
 import { formatDuration } from "@/lib/agent-work/time";
+import type { RecordLink } from "@/lib/navigation/record-links";
 import { ArrowUpRight, CircleAlert, Hand, Lightbulb } from "lucide-react";
 
-export type RequestLink = { href: string; label: string };
+export type RequestLink = { link: RecordLink; label: string };
 
 /** Which answer is being sent, so only that button says so. */
 export type RequestPending =
@@ -44,13 +47,13 @@ export function RequestResult({
       </span>
       <span className="shrink-0">· {requestOutcome(request)}</span>
       {link && (
-        <a
-          href={link.href}
+        <Link
+          {...link.link}
           className="inline-flex items-center gap-0.5 font-medium text-primary hover:underline"
         >
           {link.label}
           <ArrowUpRight aria-hidden="true" className="size-3" />
-        </a>
+        </Link>
       )}
     </p>
   );

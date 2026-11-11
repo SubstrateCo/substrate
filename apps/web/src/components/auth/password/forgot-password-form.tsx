@@ -1,9 +1,10 @@
 import { formText } from "../form-values";
 import { ForgotPasswordForm as ForgotPasswordFormView } from "@/components/auth/password/forgot-password-form-view";
-import { authHref } from "@/lib/auth/browser-links";
+import { useAuthHref } from "@/hooks/use-auth-href";
 import { useRequestPasswordReset } from "@/queries/auth/mutations";
 
 export function ForgotPasswordForm({ redirect }: { redirect: string }) {
+  const authHref = useAuthHref();
   const reset = useRequestPasswordReset(authHref("/reset-password", redirect));
   return (
     <ForgotPasswordFormView

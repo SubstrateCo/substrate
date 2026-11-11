@@ -1,6 +1,6 @@
 import { formText } from "../form-values";
 import { ResetPasswordForm as ResetPasswordFormView } from "@/components/auth/password/reset-password-form-view";
-import { authHref } from "@/lib/auth/browser-links";
+import { useAuthHref } from "@/hooks/use-auth-href";
 import { useResetPassword } from "@/queries/auth/mutations";
 
 export function ResetPasswordForm({
@@ -13,6 +13,7 @@ export function ResetPasswordForm({
   redirect: string;
 }) {
   const reset = useResetPassword(token);
+  const authHref = useAuthHref();
   return (
     <ResetPasswordFormView
       invalid={!token || Boolean(error)}

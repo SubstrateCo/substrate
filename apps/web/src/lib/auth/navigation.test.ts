@@ -1,59 +1,52 @@
-import { authHref, authSearch, safeRedirect } from "./navigation";
+import { electronQuery } from "../desktop/authorization-query";
+import { authLink, authSearch, safeRedirect } from "./navigation";
 import { describe, expect, test } from "bun:test";
 
 describe("auth redirect policy", () => {
   test("starts standalone browser authentication in public setup without replacing an explicit destination", () => {
-    expect(authSearch({}).redirect).toBe("/onboarding");
-    expect(authSearch({ redirect: "https://evil.test" }).redirect).toBe("/onboarding");
-    expect(authSearch({ redirect: "/dashboard" }).redirect).toBe("/dashboard");
+    expect(authSearch.parse({}).redirect).toBe("/onboarding");
+    expect(authSearch.parse({ redirect: "https://evil.test" }).redirect).toBe("/onboarding");
+    expect(authSearch.parse({ redirect: "/dashboard" }).redirect).toBe("/dashboard");
+  });
+  test("opens the page with fallbacks when a search value is malformed", () => {
+    expect(authSearch.parse({ redirect: 42, email: ["a"], state: {} })).toEqual({
+      redirect: "/onboarding",
+      email: "",
+      token: "",
+      error: "",
+    });
   });
   test("preserves only complete Electron authorization parameters across auth navigation", () => {
-    const search = "?client_id=electron&state=state-1&code_challenge=challenge-1&cookie=secret";
-    const link = new URL(
-      authHref("/signup", "/accept-invitation/invite-1", undefined, search),
-      "https://app.test",
-    );
-    expect(Object.fromEntries(link.searchParams)).toEqual({
+    const search = authSearch.parse({
+      client_id: "electron",
+      state: "state-1",
+      code_challenge: "challenge-1",
+      cookie: "secret",
+    });
+    expect(
+      authLink("/signup", "/accept-invitation/invite-1", undefined, electronQuery(search)).search,
+    ).toEqual({
       redirect: "/accept-invitation/invite-1",
       client_id: "electron",
       state: "state-1",
       code_challenge: "challenge-1",
     });
     expect(
-      new URL(
-        authHref(
-          "/login",
-          "/dashboard",
-          undefined,
-          "?client_id=other&state=state&code_challenge=challenge",
-        ),
-        "https://app.test",
-      ).searchParams.has("state"),
-    ).toBe(false);
-    expect(
-      new URL(
-        authHref("/login", "/dashboard", undefined, "?client_id=electron&state=state"),
-        "https://app.test",
-      ).searchParams.has("state"),
-    ).toBe(false);
+      electronQuery(authSearch.parse({ client_id: "other", state: "s", code_challenge: "c" })),
+    ).toBeUndefined();
+    expect(electronQuery(authSearch.parse({ client_id: "electron", state: "s" }))).toBeUndefined();
   });
   test("keeps an invitation through every auth link", () => {
     const invitation = "/accept-invitation/invite-123";
-    const signup = new URL(authHref("/signup", invitation), "https://app.test");
-    const verification = new URL(
-      authHref(
-        "/verify-email",
-        authSearch(Object.fromEntries(signup.searchParams)).redirect,
-        "team@example.com",
-      ),
-      "https://app.test",
-    );
-    const login = new URL(
-      authHref("/login", authSearch(Object.fromEntries(verification.searchParams)).redirect),
-      "https://app.test",
-    );
-    expect(authSearch(Object.fromEntries(login.searchParams)).redirect).toBe(invitation);
-    expect(verification.searchParams.get("email")).toBe("team@example.com");
+    const signup = authLink("/signup", invitation).search;
+    const verification = authLink(
+      "/verify-email",
+      authSearch.parse(signup).redirect,
+      "team@example.com",
+    ).search;
+    const login = authLink("/login", authSearch.parse(verification).redirect).search;
+    expect(authSearch.parse(login).redirect).toBe(invitation);
+    expect(authSearch.parse(verification).email).toBe("team@example.com");
   });
   test("rejects external, ambiguous, and API destinations", () => {
     for (const destination of [

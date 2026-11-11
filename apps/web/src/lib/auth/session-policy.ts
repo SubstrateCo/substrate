@@ -1,19 +1,17 @@
 import type { getSession } from "@/api/auth/session";
-import { authHref, safeRedirect } from "@/lib/auth/navigation";
+import { authLink, safeRedirect } from "@/lib/auth/navigation";
 
 type Session = Awaited<ReturnType<typeof getSession>>;
 
-export function verifiedSessionAccess(
-  session: Session,
-  destination: string,
-): { redirect: string } | { session: NonNullable<Session> } {
-  if (!session) return { redirect: authHref("/login", destination) };
+export function verifiedSessionAccess(session: Session, destination: string) {
+  if (!session) return { redirect: authLink("/login", destination) };
   if (!session.user.emailVerified) {
-    return { redirect: authHref("/verify-email", destination, session.user.email) };
+    return { redirect: authLink("/verify-email", destination, session.user.email) };
   }
   return { session };
 }
 
+/** Where a signed-in visitor goes instead of a guest page. A destination is any internal URL. */
 export function guestSessionRedirect(session: Session, destination: string) {
   if (!session) return null;
   const fallback = session.session.activeOrganizationId ? "/dashboard" : "/organizations";
@@ -21,8 +19,8 @@ export function guestSessionRedirect(session: Session, destination: string) {
   const pathname = decodeURIComponent(new URL(target, "https://startup.invalid").pathname);
   if (/^\/(login|signup)\/?$/i.test(pathname)) target = fallback;
   if (!session.user.emailVerified) {
-    return authHref("/verify-email", target, session.user.email);
+    return authLink("/verify-email", target, session.user.email);
   }
   if (target === "/dashboard" && !session.session.activeOrganizationId) target = "/organizations";
-  return target;
+  return { href: target };
 }

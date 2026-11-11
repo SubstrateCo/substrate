@@ -48,7 +48,7 @@ export function NotificationList({
     if (event.button !== 0 || modified) return;
     event.preventDefault();
     onClose?.();
-    void navigate({ to: item.href });
+    void navigate(item.link);
   };
   return (
     <NotificationListView

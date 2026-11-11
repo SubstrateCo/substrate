@@ -1,6 +1,9 @@
+import { Link } from "@tanstack/react-router";
+
 import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
+import type { RecordLink } from "@/lib/navigation/record-links";
 import { Bot, CircleDot, Link2, MessageCircle, MessageSquare, Unlink } from "lucide-react";
 
 export type ActivityEvent = {
@@ -11,7 +14,7 @@ export type ActivityEvent = {
   actorType?: "human" | "agent";
   createdAt: string;
   source: {
-    href: string;
+    link: RecordLink;
     conversationName: string | null;
     conversationKind?: "channel" | "dm" | "group";
     private?: boolean;
@@ -48,8 +51,8 @@ export function ActivityRow({ event }: { event: ActivityEvent }) {
         )}
         <span className="shrink-0 text-muted-foreground">{known?.verb ?? event.action}</span>
         {event.source && (
-          <a
-            href={event.source.href}
+          <Link
+            {...event.source.link}
             className="inline-flex min-w-0 items-center gap-0.5 rounded-sm bg-muted px-1 font-medium outline-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring"
           >
             {event.source.conversationKind ? (
@@ -65,7 +68,7 @@ export function ActivityRow({ event }: { event: ActivityEvent }) {
               {event.source.conversationName ??
                 (event.source.conversationKind === "group" ? "Group message" : "Direct message")}
             </span>
-          </a>
+          </Link>
         )}
       </span>
       <Timestamp value={event.createdAt} className="shrink-0 text-xs text-muted-foreground" />

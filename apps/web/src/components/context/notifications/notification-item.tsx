@@ -1,3 +1,5 @@
+import { Link } from "@tanstack/react-router";
+
 import { useState, type MouseEvent, type ReactNode } from "react";
 
 import { RowAction, RowActions } from "../../layout/row-actions";
@@ -6,6 +8,7 @@ import { Timestamp } from "../../time/timestamp";
 import { Button } from "../../ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
 import { conversationLabel } from "@/lib/messaging/conversations";
+import type { RecordLink } from "@/lib/navigation/record-links";
 import { cn } from "cn";
 import { AtSign, Check, ChevronRight, ListTodo, LockKeyhole, MessageSquare } from "lucide-react";
 
@@ -21,7 +24,7 @@ export type Notification = {
   source: { kind: "project" | "channel" | "dm" | "group"; name: string; private?: boolean };
   /** One line of the message, with references the reader cannot open left unnamed. */
   excerpt: string | null;
-  href: string;
+  link: RecordLink;
   read: boolean;
   createdAt: string;
   count?: number;
@@ -101,8 +104,8 @@ export function NotificationItem({
           </span>
           <div className="min-w-0 flex-1">
             <p className="flex min-w-0 items-baseline gap-2 text-sm">
-              <a
-                href={item.href}
+              <Link
+                {...item.link}
                 // One name for the row; a visually hidden span would add a stray space before ", unread".
                 aria-label={`${actors} ${verb} ${object}${item.read ? "" : ", unread"}`}
                 onClick={onOpen}
@@ -113,7 +116,7 @@ export function NotificationItem({
                 <span className={cn(item.read ? "font-medium" : "font-semibold")}>
                   <LockedPlace item={item} object={object} />
                 </span>
-              </a>
+              </Link>
             </p>
             {detail && (
               <p

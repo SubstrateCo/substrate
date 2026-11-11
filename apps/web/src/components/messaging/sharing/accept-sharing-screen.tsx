@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { linkOptions, useRouter } from "@tanstack/react-router";
 
 import { useState, type ReactNode } from "react";
 
@@ -42,11 +43,20 @@ export function AcceptSharingScreen({ invitationId }: { invitationId: string }) 
   const now = useExpiryTime(invite.data ? [invite.data.expiresAt] : undefined);
   const organizationId = invite.data?.targetOrganizationId ?? selected;
   const activate = useActivateSharingOrganization();
+  const router = useRouter();
   const activateShared = (result: { organizationId: string; conversationId: string | null }) => {
-    const search = new URLSearchParams({ workspaceId: result.organizationId });
-    if (result.conversationId) search.set("conversationId", result.conversationId);
-    const destination = isDesktop() ? `/dashboard?${search}` : `/setup/complete?${search}`;
-    activate.mutate({ organizationId: result.organizationId, destination });
+    const conversationId = result.conversationId ?? undefined;
+    // Setup complete shows the now-active workspace, so it needs only the conversation.
+    const destination = isDesktop()
+      ? linkOptions({
+          to: "/dashboard",
+          search: { workspaceId: result.organizationId, conversationId },
+        })
+      : linkOptions({ to: "/setup/complete", search: { conversationId } });
+    activate.mutate({
+      organizationId: result.organizationId,
+      destination: router.buildLocation(destination).href,
+    });
   };
   const accept = useAcceptSharingInvitation(invitationId, organizationId);
   const decline = useDeclineSharingInvitation(invitationId);

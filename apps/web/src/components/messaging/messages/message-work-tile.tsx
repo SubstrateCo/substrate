@@ -1,3 +1,5 @@
+import { Link } from "@tanstack/react-router";
+
 import { Button } from "../../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import type { MessageWorkLink } from "./message-work";
@@ -19,8 +21,8 @@ export function MessageWorkTile({
     .join(" · ");
   return (
     <li className="group/work flex h-8 min-w-0 items-center gap-1 rounded-md border bg-card pr-1 text-sm transition-colors hover:bg-row-hover">
-      <a
-        href={link.href}
+      <Link
+        {...link.link}
         className="flex h-full min-w-0 flex-1 items-center gap-2 rounded-md pl-2.5 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       >
         {link.entityType === "task" && link.status ? (
@@ -34,7 +36,7 @@ export function MessageWorkTile({
         {meta && (
           <span className="ml-auto shrink-0 pl-2 text-xs text-muted-foreground">{meta}</span>
         )}
-      </a>
+      </Link>
       {link.canRemove && onRemove && (
         <span className="flex opacity-0 group-focus-within/work:opacity-100 group-hover/work:opacity-100">
           <Tooltip>

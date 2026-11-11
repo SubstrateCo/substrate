@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
 import { WorkDiscussions as WorkDiscussionsView } from "@/components/context/discussions/work-discussions-view";
-import { messageHref } from "@/lib/navigation/record-links";
+import { messageLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import { relatedContextOptions } from "@/queries/context/links";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
@@ -39,7 +39,7 @@ export function WorkDiscussions({
           ...item,
           conversationKind: conversation?.kind,
           private: conversation?.private,
-          href: messageHref(organizationId, item.conversationId, item.messageId),
+          link: messageLink(organizationId, item.conversationId, item.messageId),
         };
       })}
       loading={related.isPending}

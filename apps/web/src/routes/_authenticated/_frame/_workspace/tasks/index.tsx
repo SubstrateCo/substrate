@@ -10,5 +10,13 @@ export const Route = createFileRoute("/_authenticated/_frame/_workspace/tasks/")
 
 function TasksRoute() {
   const { organizationId } = Route.useRouteContext();
-  return <TasksWorkspace key={organizationId} organizationId={organizationId} />;
+  const { projectId, taskId } = Route.useSearch();
+  return (
+    <TasksWorkspace
+      key={organizationId}
+      organizationId={organizationId}
+      projectId={projectId}
+      taskId={taskId}
+    />
+  );
 }

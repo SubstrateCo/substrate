@@ -1,5 +1,7 @@
 import type { TaskStatus } from "@substrate/contracts/tasks";
 
+import { Link } from "@tanstack/react-router";
+
 import type { ReactNode } from "react";
 
 import { Spinner } from "../../ui/spinner";
@@ -8,6 +10,7 @@ import type { ReferenceKind } from "./reference-picker";
 import { plainReferenceText } from "./reference-token";
 import { PersonCardTarget, useHasPersonCard } from "@/components/messaging/people/person-card-slot";
 import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
+import type { RecordLink } from "@/lib/navigation/record-links";
 import {
   AtSign,
   Bot,
@@ -22,7 +25,7 @@ export type WorkspaceReference = {
   id: string;
   kind: ReferenceKind;
   label: string;
-  href?: string;
+  link?: RecordLink;
   /** Tasks only: shown as the chip's icon, with the label for screen readers. */
   status?: { value: TaskStatus; label: string };
 };
@@ -79,7 +82,7 @@ export function EntityReference({
     );
   const label = plainReferenceText(reference.label);
   if (
-    !reference.href &&
+    !reference.link &&
     (reference.kind === "person" || reference.kind === "agent") &&
     hasPersonCard
   )
@@ -91,14 +94,14 @@ export function EntityReference({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        {reference.href ? (
-          <a
-            href={reference.href}
+        {reference.link ? (
+          <Link
+            {...reference.link}
             data-slot="entity-reference"
             className={`${className} hover:bg-accent/80 focus-visible:outline-2 focus-visible:outline-ring`}
           >
             {content}
-          </a>
+          </Link>
         ) : (
           <span className={className}>{content}</span>
         )}

@@ -9,6 +9,7 @@ import { ConversationKindIcon } from "@/components/messaging/conversations/conve
 import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
 import { formatFullTimestamp, formatRelativeTime } from "@/lib/format/date";
 import { conversationLabel } from "@/lib/messaging/conversations";
+import type { RecordLink } from "@/lib/navigation/record-links";
 import {
   FolderKanban,
   ListTodo,
@@ -21,7 +22,7 @@ export type SearchResultItem = {
   id: string;
   kind: string;
   title: string;
-  href: string;
+  link: RecordLink;
   // Task results only.
   projectName?: string;
   status?: TaskStatus;
@@ -141,7 +142,7 @@ export function SearchResult({ item, query }: { item: SearchResultItem; query: s
             // Two lines at rest. The selected row shows the whole title and context, so a
             // keyboard user can tell long results with the same start apart before opening one.
             className="line-clamp-2 block wrap-anywhere outline-none group-data-[selected=true]/command-item:line-clamp-none focus-visible:underline"
-            to={item.href}
+            {...item.link}
             aria-label={`${kind}: ${title}`}
             onClick={(event) => event.stopPropagation()}
           >

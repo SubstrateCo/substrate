@@ -5,12 +5,13 @@ import { useState } from "react";
 import { ErrorState } from "../../feedback/error-state";
 import { Button } from "../../ui/button";
 import { MessageWorkTile } from "./message-work-tile";
+import type { RecordLink } from "@/lib/navigation/record-links";
 
 export type MessageWorkLink = {
   entityId: string;
   entityType: "task" | "project";
   title: string;
-  href: string;
+  link: RecordLink;
   status?: TaskStatus | null;
   statusName?: string | null;
   purpose: string;

@@ -5,6 +5,8 @@ import {
   type TaskLinkRelation,
 } from "@substrate/contracts/tasks/links";
 
+import { Link } from "@tanstack/react-router";
+
 import type { ReactNode } from "react";
 
 import { TaskBlockedCue } from "../list/task-list-item";
@@ -29,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import type { RecordLink } from "@/lib/navigation/record-links";
 import { LockKeyhole, Plus, X } from "lucide-react";
 
 const rowClass =
@@ -43,7 +46,7 @@ export function TaskLinks({
   projectEntityId,
   blocked,
   onSelect,
-  hrefFor,
+  linkFor,
   onRemove,
   pending = false,
   add,
@@ -53,7 +56,7 @@ export function TaskLinks({
   /** This task is open and waits on an open task. */
   blocked: boolean;
   onSelect: (taskEntityId: string) => void;
-  hrefFor: (other: NonNullable<TaskRelation["other"]>) => string;
+  linkFor: (other: NonNullable<TaskRelation["other"]>) => RecordLink;
   /** Set for editors. */
   onRemove?: (linkId: string) => void;
   pending?: boolean;
@@ -123,9 +126,9 @@ export function TaskLinks({
                       </button>
                     )}
                     {other && other.projectEntityId !== projectEntityId && (
-                      <a href={hrefFor(other)} className={rowClass}>
+                      <Link {...linkFor(other)} className={rowClass}>
                         {content}
-                      </a>
+                      </Link>
                     )}
                     {onRemove && (
                       <Tooltip>

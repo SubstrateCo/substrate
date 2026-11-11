@@ -1,7 +1,10 @@
+import { Link } from "@tanstack/react-router";
+
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import type { WorkTone } from "@/lib/agent-work/status";
+import type { RecordLink } from "@/lib/navigation/record-links";
 import { cn } from "cn";
 import { Bot, MessageSquarePlus } from "lucide-react";
 
@@ -11,7 +14,7 @@ export type ComposerNoticeLine = {
   tone: WorkTone;
   label: ReactNode;
   /** For example, a link to agent settings when no desktop runs the agent. */
-  link?: { href: string; label: string };
+  link?: { link: RecordLink; label: string };
 };
 
 /**
@@ -49,9 +52,9 @@ export function ComposerNotice({
             {line.label}
           </span>
           {line.link && (
-            <a href={line.link.href} className="shrink-0 font-medium text-primary hover:underline">
+            <Link {...line.link.link} className="shrink-0 font-medium text-primary hover:underline">
               {line.link.label}
-            </a>
+            </Link>
           )}
         </span>
       ))}

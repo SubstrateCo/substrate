@@ -3,7 +3,7 @@ import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { isAccessFailure } from "@/components/feedback/request-failure";
 import { attachedWork } from "@/components/messaging/messages/attached-work";
 import { MessageWork } from "@/components/messaging/messages/message-work";
-import { linkedWorkHref } from "@/lib/navigation/record-links";
+import { linkedWorkLink } from "@/lib/navigation/record-links";
 import { useDetachMessageWork } from "@/queries/context/link-mutations";
 import { toast } from "sonner";
 
@@ -50,7 +50,7 @@ function MessageContextCard({
   const remove = useDetachMessageWork(organizationId, messageId);
   return (
     <MessageWork
-      links={links.map((link) => ({ ...link, href: linkedWorkHref(organizationId, link) }))}
+      links={links.map((link) => ({ ...link, link: linkedWorkLink(organizationId, link) }))}
       error={context.error}
       onRetry={context.onRetry}
       onRemove={(entityId) => {

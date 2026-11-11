@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 
 import { WorkDiscussions } from "../../context/discussions/work-discussions";
 import { CopyLink } from "../../context/links/copy-link";
@@ -10,7 +10,7 @@ import { ProjectForm } from "./editor/project-form";
 import { ProjectPicture } from "./editor/project-picture";
 import { ProjectSharing } from "./sharing/project-sharing";
 import { ProjectPane as ProjectPaneView } from "@/components/tasks/projects/project-pane-view";
-import { workHref } from "@/lib/navigation/record-links";
+import { workLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import { projectCapabilities } from "@/lib/tasks/project-capabilities";
 import { useTaskUpdate } from "@/queries/tasks/mutations";
@@ -20,15 +20,16 @@ import { toast } from "sonner";
 export function ProjectPane({
   organizationId,
   projectEntityId,
+  taskId,
 }: {
   organizationId: string;
   projectEntityId: string;
+  taskId?: string;
 }) {
   const project = useQuery(projectQueryOptions(organizationId, projectEntityId));
   const resource = resourceState(project);
   const capabilities = projectCapabilities(resource.data?.level);
   const update = useTaskUpdate(organizationId, projectEntityId);
-  const search = useSearch({ strict: false });
   const navigate = useNavigate();
   return (
     <ProjectPaneView
@@ -36,14 +37,14 @@ export function ProjectPane({
       state={resource.status}
       capabilities={capabilities}
       statusPending={update.isPending}
-      selectedTaskId={search.taskId ?? null}
-      onSelectTask={(taskId) =>
+      selectedTaskId={taskId ?? null}
+      onSelectTask={(selected) =>
         void navigate({
           to: "/tasks",
           search: {
             workspaceId: organizationId,
             projectId: projectEntityId,
-            taskId: taskId ?? undefined,
+            taskId: selected ?? undefined,
           },
         })
       }
@@ -60,7 +61,7 @@ export function ProjectPane({
         <CopyLink
           grouped
           label="Copy project link"
-          href={workHref(organizationId, projectEntityId)}
+          link={workLink(organizationId, projectEntityId)}
         />
       }
       context={

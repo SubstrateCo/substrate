@@ -8,7 +8,7 @@ import {
 } from "@/components/context/search/workspace-search-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
-import { messageHref, workHref } from "@/lib/navigation/record-links";
+import { messageLink, workLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import { searchPagesOptions, useJoinSearchConversation } from "@/queries/context/search";
 import { toast } from "sonner";
@@ -34,13 +34,13 @@ export function WorkspaceSearch({
       results={(search.pending ? [] : (resourceState(results).data?.pages.flat() ?? [])).map(
         (item) => ({
           ...item,
-          href: item.conversationId
-            ? messageHref(
+          link: item.conversationId
+            ? messageLink(
                 organizationId,
                 item.conversationId,
                 item.kind === "message" ? item.id : undefined,
               )
-            : workHref(
+            : workLink(
                 organizationId,
                 item.projectEntityId!,
                 item.kind === "task" ? item.id : undefined,

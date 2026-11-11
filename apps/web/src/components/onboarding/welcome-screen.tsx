@@ -1,9 +1,10 @@
 import { AuthFrame } from "@/components/auth/auth-frame";
 import { AuthLink } from "@/components/auth/auth-link";
 import { Button } from "@/components/ui/button";
-import { authHref } from "@/lib/auth/navigation";
+import { useAuthHref } from "@/hooks/use-auth-href";
 
 export function WelcomeScreen() {
+  const authHref = useAuthHref();
   return (
     <AuthFrame
       title="Your team’s connected workspace"

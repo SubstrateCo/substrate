@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { TaskReferencePicker } from "./task-reference-picker";
 import { TaskComments as TaskCommentsView } from "@/components/tasks/comments/task-comments-view";
 import type { ProjectDetail } from "@/components/tasks/types";
-import { workHref } from "@/lib/navigation/record-links";
+import { workLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import { useTasksMutation } from "@/queries/tasks/mutations";
 import { taskCommentsQueryOptions } from "@/queries/tasks/options";
@@ -37,8 +37,8 @@ export function TaskComments({
         ...comment,
         references: comment.references.map(({ projectEntityId: project, ...reference }) => ({
           ...reference,
-          href: project
-            ? workHref(
+          link: project
+            ? workLink(
                 organizationId,
                 project,
                 reference.kind === "task" ? reference.id : undefined,

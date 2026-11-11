@@ -1,4 +1,4 @@
-import { useSearch } from "@tanstack/react-router";
+import { getRouteApi } from "@tanstack/react-router";
 
 import { useRef, useState } from "react";
 
@@ -28,10 +28,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { messageHref } from "@/lib/navigation/record-links";
+import { useRecordUrl } from "@/hooks/use-record-url";
+import { messageLink } from "@/lib/navigation/record-links";
 import { useToggleReaction } from "@/queries/messaging/reactions";
 import { Copy, Ellipsis, Link2, Smile } from "lucide-react";
 import { toast } from "sonner";
+
+// Messages render only in the dashboard, which owns the linked-message search param.
+const dashboard = getRouteApi("/_authenticated/_frame/_workspace/dashboard");
 
 export function MessageItem({
   message,
@@ -48,10 +52,8 @@ export function MessageItem({
   onThread?: (id: string) => void;
   context: MessageContextState;
 }) {
-  const linked = useSearch({
-    strict: false,
-    select: (search) => search.messageId === message.id,
-  });
+  const recordUrl = useRecordUrl();
+  const linked = dashboard.useSearch({ select: (search) => search.messageId === message.id });
   // A thread's root heads its own pane, so it is not marked as the link target there.
   const highlighted = linked && !threadRoot;
   const [linking, setLinking] = useState(false);
@@ -153,13 +155,11 @@ export function MessageItem({
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onSelect={() => {
-                      const href = messageHref(organizationId, message.conversationId, message.id);
-                      void navigator.clipboard
-                        .writeText(new URL(href, window.location.origin).href)
-                        .then(
-                          () => toast.success("Link copied"),
-                          () => toast.error("Couldn’t copy link"),
-                        );
+                      const link = messageLink(organizationId, message.conversationId, message.id);
+                      void navigator.clipboard.writeText(recordUrl(link)).then(
+                        () => toast.success("Link copied"),
+                        () => toast.error("Couldn’t copy link"),
+                      );
                     }}
                   >
                     <Copy aria-hidden="true" /> Copy message link

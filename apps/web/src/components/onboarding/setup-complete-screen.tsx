@@ -1,3 +1,5 @@
+import { useRouter } from "@tanstack/react-router";
+
 import { AuthFrame } from "@/components/auth/auth-frame";
 import { AuthNavLink } from "@/components/auth/auth-link";
 import { SignOutButton } from "@/components/auth/sign-out/sign-out-button";
@@ -16,9 +18,11 @@ export function SetupCompleteScreen({
   canInvite: boolean;
   conversationId?: string;
 }) {
-  const search = new URLSearchParams({ workspaceId: organizationId });
-  if (conversationId) search.set("conversationId", conversationId);
-  const destination = `/dashboard?${search}`;
+  const router = useRouter();
+  const destination = router.buildLocation({
+    to: "/dashboard",
+    search: { workspaceId: organizationId, conversationId },
+  }).href;
   return (
     <AuthFrame
       title="Your workspace is ready"

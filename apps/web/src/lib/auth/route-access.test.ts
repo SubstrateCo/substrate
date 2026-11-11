@@ -45,9 +45,9 @@ test("an unverified session is rechecked on each navigation, so verification els
   );
   try {
     const denied = await requireVerifiedSession(client, "/dashboard").catch(
-      (redirect: { options: { href: string } }) => redirect.options.href,
+      (redirect: { options: { to?: string } }) => redirect.options.to,
     );
-    expect(denied).toStartWith("/verify-email");
+    expect(denied).toBe("/verify-email");
     verified = true;
     expect((await requireVerifiedSession(client, "/dashboard")).user.emailVerified).toBe(true);
     expect(fetchSpy).toHaveBeenCalledTimes(2);

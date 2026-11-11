@@ -1,7 +1,10 @@
+import { Link } from "@tanstack/react-router";
+
 import type { ReactNode } from "react";
 
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
 import type { TranscriptEntry } from "@/lib/agent-work/transcript";
+import type { RecordLink } from "@/lib/navigation/record-links";
 import { Bot, Check, CornerDownRight, Hand, MessageSquarePlus, RotateCcw, X } from "lucide-react";
 
 const outputLabels = { message: "Posted a message", task: "Changed a task", request: "Asked you" };
@@ -10,11 +13,11 @@ const outputLabels = { message: "Posted a message", task: "Changed a task", requ
 export function TurnTimeline({
   entries,
   renderRequest,
-  outputHref,
+  outputLink,
 }: {
   entries: TranscriptEntry[];
   renderRequest: (requestId: string, kind: string) => ReactNode;
-  outputHref: (entry: Extract<TranscriptEntry, { type: "output" }>) => string | undefined;
+  outputLink: (entry: Extract<TranscriptEntry, { type: "output" }>) => RecordLink | undefined;
 }) {
   if (!entries.length)
     return <p className="px-5 py-4 text-sm text-muted-foreground">Nothing has happened yet.</p>;
@@ -64,14 +67,14 @@ export function TurnTimeline({
               </li>
             );
           case "output": {
-            const href = outputHref(entry);
+            const link = outputLink(entry);
             return (
               <li key={entry.key} className="flex items-center gap-2 text-xs text-muted-foreground">
                 <CornerDownRight aria-hidden="true" className="size-3.5 shrink-0" />
-                {href ? (
-                  <a href={href} className="font-medium text-primary hover:underline">
+                {link ? (
+                  <Link {...link} className="font-medium text-primary hover:underline">
                     {outputLabels[entry.output.kind]}
-                  </a>
+                  </Link>
                 ) : (
                   outputLabels[entry.output.kind]
                 )}

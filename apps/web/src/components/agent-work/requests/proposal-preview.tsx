@@ -1,6 +1,8 @@
 import type { ProposalAction } from "@substrate/contracts/agent-work";
 import { taskStatusLabels } from "@substrate/contracts/tasks";
 
+import { Link } from "@tanstack/react-router";
+
 import type { ReactNode } from "react";
 
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
@@ -46,10 +48,10 @@ export function RecordName({
   if (record.access === "loading") return <span className="text-muted-foreground">Loading…</span>;
   if (record.access === "hidden")
     return <span className="text-muted-foreground">{hiddenText[kind]}</span>;
-  return record.href ? (
-    <a href={record.href} className="font-medium text-primary hover:underline">
+  return record.link ? (
+    <Link {...record.link} className="font-medium text-primary hover:underline">
       {record.label}
-    </a>
+    </Link>
   ) : (
     <span className="font-medium">{record.label}</span>
   );

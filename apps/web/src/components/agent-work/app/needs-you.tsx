@@ -1,25 +1,26 @@
 import type { AgentRequestPlace } from "@substrate/contracts/agent-work";
 
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 
 import { hiddenConversation } from "../requests/proposal-preview";
 import { RequestCard } from "../requests/request-card";
 import { NeedsYouView, type NeedsYouEntry } from "./needs-you-view";
 import { needsYouItems } from "@/lib/agent-work/needs-you";
 import { agentStatus } from "@/lib/agent-work/status";
-import { messageHref } from "@/lib/navigation/record-links";
+import { messageLink } from "@/lib/navigation/record-links";
 import { needsYouOptions } from "@/queries/agent-work/server";
 
 function Place({ organizationId, place }: { organizationId: string; place: AgentRequestPlace }) {
   if (place.access === "hidden") return <span>{hiddenConversation}</span>;
   if (place.access === "none") return <span>Not from a message</span>;
   return (
-    <a
-      href={messageHref(organizationId, place.conversationId, place.anchorMessageId ?? undefined)}
+    <Link
+      {...messageLink(organizationId, place.conversationId, place.anchorMessageId ?? undefined)}
       className="min-w-0 truncate font-medium text-primary hover:underline"
     >
       In {place.conversationName}
-    </a>
+    </Link>
   );
 }
 

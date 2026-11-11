@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 
 import { useState } from "react";
 
@@ -29,23 +29,26 @@ export function ConversationPane({
   organizationId,
   conversation,
   userId,
+  messageId,
+  turnId,
 }: {
   organizationId: string;
   conversation: Conversation;
   userId: string;
+  messageId?: string;
+  turnId?: string;
 }) {
-  const search = useSearch({ strict: false });
   const navigate = useNavigate();
   const { join } = useConversationManagement(organizationId);
   const target = useQuery({
     ...messageTargetOptions(
       organizationId,
       conversation.id,
-      search.messageId ?? "00000000-0000-0000-0000-000000000000",
+      messageId ?? "00000000-0000-0000-0000-000000000000",
     ),
-    enabled: !!search.messageId,
+    enabled: !!messageId,
   });
-  const activeThreadId = search.messageId && !target.error ? target.data?.root.id : undefined;
+  const activeThreadId = messageId && !target.error ? target.data?.root.id : undefined;
   const [addingMembers, setAddingMembers] = useState(false);
   const { messages, history, loadOlder } = useMessageHistory({
     organizationId,
@@ -81,25 +84,25 @@ export function ConversationPane({
       />
     );
   // The transcript keeps the open thread in the URL, so closing it returns to that thread.
-  const transcript = (turnId?: string) =>
+  const transcript = (openTurnId?: string) =>
     void navigate({
       to: "/dashboard",
       search: {
         workspaceId: organizationId,
         conversationId: conversation.id,
-        messageId: search.messageId,
-        turnId,
+        messageId,
+        turnId: openTurnId,
       },
     });
   let aside;
-  if (search.turnId)
+  if (turnId)
     aside = (
       <ConversationTurnTranscript
-        key={search.turnId}
+        key={turnId}
         userId={userId}
         organizationId={organizationId}
         conversation={conversation}
-        turnId={search.turnId}
+        turnId={turnId}
         onClose={() => transcript()}
       />
     );

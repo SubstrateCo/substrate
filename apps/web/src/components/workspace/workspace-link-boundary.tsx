@@ -1,5 +1,3 @@
-import { useSearch } from "@tanstack/react-router";
-
 import { type ReactNode } from "react";
 
 import { WorkspaceLinkPrompt } from "@/components/workspace/workspace-link-prompt";
@@ -7,19 +5,21 @@ import { useActivateOrganization } from "@/queries/organizations/selection-mutat
 
 export function WorkspaceLinkBoundary({
   organizationId,
+  workspaceId,
   children,
 }: {
   organizationId: string;
+  /** The workspace a link was made in. */
+  workspaceId?: string;
   children: ReactNode;
 }) {
-  const search = useSearch({ strict: false });
   const change = useActivateOrganization(null);
-  if (!search.workspaceId || search.workspaceId === organizationId) return children;
+  if (!workspaceId || workspaceId === organizationId) return children;
   return (
     <WorkspaceLinkPrompt
       pending={change.isPending}
       error={change.error}
-      onSwitch={() => change.mutate(search.workspaceId!)}
+      onSwitch={() => change.mutate(workspaceId)}
     />
   );
 }

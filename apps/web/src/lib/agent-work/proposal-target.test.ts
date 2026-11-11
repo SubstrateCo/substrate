@@ -47,12 +47,18 @@ describe("reply proposals", () => {
       conversation: {
         access: "visible",
         label: "General",
-        href: "/dashboard?workspaceId=org&conversationId=c1",
+        link: {
+          to: "/dashboard",
+          search: { workspaceId: "org", conversationId: "c1", messageId: undefined },
+        },
       },
       thread: {
         access: "visible",
         label: "Can we ship Friday?",
-        href: "/dashboard?workspaceId=org&conversationId=c1&messageId=m1",
+        link: {
+          to: "/dashboard",
+          search: { workspaceId: "org", conversationId: "c1", messageId: "m1" },
+        },
       },
     });
   });
@@ -86,7 +92,7 @@ describe("create-task proposals", () => {
       parentTask: {
         access: "visible",
         label: "Write copy",
-        href: "/tasks?workspaceId=org&projectId=p1&taskId=t1",
+        link: { to: "/tasks", search: { workspaceId: "org", projectId: "p1", taskId: "t1" } },
       },
       sourceMessage: { access: "visible", label: "Can we ship Friday?" },
       assignee: { access: "visible", label: "Dana" },
@@ -138,17 +144,20 @@ describe("update-task proposals", () => {
       task: {
         access: "visible",
         label: "Headline",
-        href: "/tasks?workspaceId=org&projectId=p1&taskId=t2",
+        link: { to: "/tasks", search: { workspaceId: "org", projectId: "p1", taskId: "t2" } },
       },
       project: {
         access: "visible",
         label: "Launch",
-        href: "/tasks?workspaceId=org&projectId=p1",
+        link: {
+          to: "/tasks",
+          search: { workspaceId: "org", projectId: "p1", taskId: undefined },
+        },
       },
       parentTask: {
         access: "visible",
         label: "Write copy",
-        href: "/tasks?workspaceId=org&projectId=p1&taskId=t1",
+        link: { to: "/tasks", search: { workspaceId: "org", projectId: "p1", taskId: "t1" } },
       },
       assignee: null,
     });

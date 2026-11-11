@@ -3,7 +3,7 @@ import { useQueries } from "@tanstack/react-query";
 import type { MessageContextState } from "./message-context";
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
 import { referenceTokenPattern } from "@/components/messaging/references/reference-token";
-import { linkedWorkHref, messageHref } from "@/lib/navigation/record-links";
+import { linkedWorkLink, messageLink } from "@/lib/navigation/record-links";
 import { messagingProfileOptions } from "@/queries/messaging/profiles";
 
 export function ReferencedMessageBody({
@@ -39,7 +39,7 @@ export function ReferencedMessageBody({
           id: reference.id,
           kind: reference.kind,
           label: reference.title,
-          href: messageHref(
+          link: messageLink(
             organizationId,
             reference.conversationId,
             reference.threadId ?? undefined,
@@ -53,7 +53,7 @@ export function ReferencedMessageBody({
             link.status && link.statusName
               ? { value: link.status, label: link.statusName }
               : undefined,
-          href: linkedWorkHref(organizationId, link),
+          link: linkedWorkLink(organizationId, link),
         })),
         ...(context.error ? [] : (context.data?.people ?? [])).map((person) => ({
           id: person.id,

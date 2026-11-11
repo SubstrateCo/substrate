@@ -15,7 +15,7 @@ import { isOpenRequest } from "@/lib/agent-work/requests";
 import { sessionKindLabels, turnStatus } from "@/lib/agent-work/status";
 import { transcriptEntries } from "@/lib/agent-work/transcript";
 import { usageLabel } from "@/lib/agent-work/usage";
-import { messageHref } from "@/lib/navigation/record-links";
+import { messageLink } from "@/lib/navigation/record-links";
 import { turnEventsOptions } from "@/queries/agent-work/local";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
 
@@ -73,7 +73,7 @@ export function TurnTranscript({
           ? {
               access: "visible",
               label: "The message",
-              href: messageHref(organizationId, source.conversationId, source.messageId),
+              link: messageLink(organizationId, source.conversationId, source.messageId),
             }
           : { access: "hidden" }
       }
@@ -87,7 +87,7 @@ export function TurnTranscript({
         kind="conversation"
         record={
           open(entry.conversationId)
-            ? { access: "visible", label: "The reply", href: outputLink(organizationId, entry) }
+            ? { access: "visible", label: "The reply", link: outputLink(organizationId, entry) }
             : { access: "hidden" }
         }
       />,
@@ -117,7 +117,7 @@ export function TurnTranscript({
         events.data && (
           <TurnTimeline
             entries={transcriptEntries(events.data, live)}
-            outputHref={({ output }) =>
+            outputLink={({ output }) =>
               output.kind === "message" && open(output.conversationId)
                 ? outputLink(organizationId, output)
                 : undefined

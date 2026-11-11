@@ -23,6 +23,7 @@ import { itemPlacements, requestPlacements, turnPlacements } from "@/lib/agent-w
 import { isOpenRequest } from "@/lib/agent-work/requests";
 import { agentStatus, noDesktopLabel, queueAhead, turnStatus } from "@/lib/agent-work/status";
 import type { Conversation } from "@/lib/messaging/conversations";
+import { agentLink } from "@/lib/navigation/record-links";
 import { hasAgentWorkBridge } from "@/queries/agent-work/bridge";
 import { conversationWorkOptions, localAgentsOptions } from "@/queries/agent-work/local";
 import { useNewTopic } from "@/queries/agent-work/mutations";
@@ -144,7 +145,7 @@ export function ConversationAgentWork({
             tone: "idle",
             label: noDesktopLabel,
             link: {
-              href: `/agents?workspaceId=${organizationId}&agentId=${agent.agentId}&tab=settings`,
+              link: agentLink(organizationId, agent.agentId, "run"),
               label: "Choose a desktop",
             },
           });
@@ -156,7 +157,7 @@ export function ConversationAgentWork({
           agentName: agent.name,
           tone: "attention",
           label: "Needs you",
-          link: { href: `/agents?agentId=${agent.agentId}`, label: "Open Agents" },
+          link: { link: agentLink(organizationId, agent.agentId), label: "Open Agents" },
         });
       else if (here || (!status.device.online && status.state !== "idle" && threadId === null))
         lines.push({ key: agent.agentId, agentName: agent.name, ...agentStatus(status) });
@@ -198,7 +199,7 @@ export function ConversationAgentWork({
               {created.map((request) => {
                 const link = proposalSourceLink(organizationId, request);
                 return (
-                  <ProposalBacklink key={`b${request.id}`} href={link?.href} label={link?.label} />
+                  <ProposalBacklink key={`b${request.id}`} link={link?.link} label={link?.label} />
                 );
               })}
               {waiting.map((item) => {

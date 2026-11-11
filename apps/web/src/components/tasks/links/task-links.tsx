@@ -9,7 +9,7 @@ import { TaskLinkPicker, TaskLinks as TaskLinksView } from "./task-links-view";
 import { blockedTaskIds, taskRelations } from "./task-relations";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
-import { workHref } from "@/lib/navigation/record-links";
+import { workLink } from "@/lib/navigation/record-links";
 import { projectCapabilities } from "@/lib/tasks/project-capabilities";
 import { searchOptions } from "@/queries/context/search";
 import { useTasksMutation } from "@/queries/tasks/mutations";
@@ -50,7 +50,7 @@ export function TaskLinks({
       projectEntityId={detail.project.entityId}
       blocked={blockedTaskIds(detail.links, detail.tasks).has(task.entityId)}
       onSelect={onSelectTask}
-      hrefFor={(other) => workHref(organizationId, other.projectEntityId, other.entityId)}
+      linkFor={(other) => workLink(organizationId, other.projectEntityId, other.entityId)}
       pending={write.isPending}
       onRemove={
         canEdit

@@ -1,6 +1,9 @@
 /* Search parameters are untrusted router input. This module is their parsing boundary. */
-/* oxlint-disable deslop/no-unknown-parameters, deslop/no-runtime-typeof, deslop/no-unsafe-dictionary-type */
-import { electronQuery } from "../desktop/authorization-query";
+/* oxlint-disable deslop/no-unknown-parameters, deslop/no-runtime-typeof */
+import { linkOptions } from "@tanstack/react-router";
+
+import type { ElectronAuthorization } from "../desktop/authorization-query";
+import { z } from "zod";
 export function safeRedirect(value: unknown, fallback = "/dashboard"): string {
   if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//"))
     return fallback;
@@ -21,22 +24,36 @@ export function safeRedirect(value: unknown, fallback = "/dashboard"): string {
   }
 }
 
-export function authSearch(search: Record<string, unknown>) {
-  return {
-    redirect: safeRedirect(search.redirect, "/onboarding"),
-    email: typeof search.email === "string" ? search.email : "",
-    token: typeof search.token === "string" ? search.token : "",
-    error: typeof search.error === "string" ? search.error : "",
-    client_id: typeof search.client_id === "string" ? search.client_id : "",
-    state: typeof search.state === "string" ? search.state : "",
-    code_challenge: typeof search.code_challenge === "string" ? search.code_challenge : "",
-  };
-}
+// A malformed value falls back to absent, so a bad link still opens the page.
+const text = z.string().optional().catch(undefined);
 
-export function authHref(path: string, redirect: string, email?: string, authorizationSearch = "") {
-  const search = new URLSearchParams({ redirect: safeRedirect(redirect) });
-  if (email) search.set("email", email);
-  const query = electronQuery(authorizationSearch);
-  if (query) for (const [key, value] of Object.entries(query)) search.set(key, value);
-  return `${path}?${search}`;
+/** Search params for the public auth pages. */
+export const authSearch = z.object({
+  redirect: text.transform((value) => safeRedirect(value, "/onboarding")),
+  email: text.transform((value) => value ?? ""),
+  token: text.transform((value) => value ?? ""),
+  error: text.transform((value) => value ?? ""),
+  client_id: text,
+  state: text,
+  code_challenge: text,
+});
+
+export type AuthPath =
+  | "/login"
+  | "/signup"
+  | "/verify-email"
+  | "/forgot-password"
+  | "/reset-password";
+
+/** An auth page that keeps the destination and, when present, the desktop sign-in handoff. */
+export function authLink(
+  to: AuthPath,
+  redirect: string,
+  email?: string,
+  authorization?: ElectronAuthorization,
+) {
+  return linkOptions({
+    to,
+    search: { redirect: safeRedirect(redirect), ...(email && { email }), ...authorization },
+  });
 }

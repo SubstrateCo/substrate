@@ -14,7 +14,7 @@ import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard
 import { useRegisterDraft } from "@/components/feedback/unsaved-drafts";
 import { TaskDetail as TaskDetailView } from "@/components/tasks/detail/task-detail-view";
 import type { ProjectDetail, Task } from "@/components/tasks/types";
-import { workHref } from "@/lib/navigation/record-links";
+import { workLink } from "@/lib/navigation/record-links";
 import { projectCapabilities } from "@/lib/tasks/project-capabilities";
 import { useTaskUpdate } from "@/queries/tasks/mutations";
 import { toast } from "sonner";
@@ -76,7 +76,7 @@ export function TaskDetail({
             <CopyLink
               grouped
               label="Copy task link"
-              href={workHref(organizationId, detail.project.entityId, task.entityId)}
+              link={workLink(organizationId, detail.project.entityId, task.entityId)}
             />
             {capabilities.canEdit && (
               <TaskActions organizationId={organizationId} detail={detail} task={task} />
