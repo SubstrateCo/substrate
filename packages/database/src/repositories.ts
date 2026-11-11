@@ -70,6 +70,8 @@ class WorkspaceRepositories extends ActorRepositories {
     private readonly identity: SessionIdentity,
   ) {
     super(context.db, context.scope, context.effects);
+    // TODO: Rename these facades to *Repository and pass the resolved WorkspaceScope.
+    // Each operation now re-runs messagingSession/workspaceContext after forSession checked it.
     this.messaging = createMessagingService(context.db, identity);
     this.context = createContextService(context.db, identity, context);
     this.sharing = createSharingService(context.db, identity);
