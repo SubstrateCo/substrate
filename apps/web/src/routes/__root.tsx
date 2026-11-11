@@ -3,20 +3,11 @@ import { createRootRouteWithContext, Link, Outlet } from "@tanstack/react-router
 
 import { NotFound } from "@/components/feedback/not-found";
 import { RouteErrorScreen } from "@/components/feedback/route-error-screen";
-import { TooltipProvider } from "@/components/ui/tooltip";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  component: Root,
+  component: Outlet,
   notFoundComponent: () => (
     <NotFound homeLink={<Link to="/dashboard">Go to your workspace</Link>} />
   ),
   errorComponent: RouteErrorScreen,
 });
-
-function Root() {
-  return (
-    <TooltipProvider delayDuration={350}>
-      <Outlet />
-    </TooltipProvider>
-  );
-}

@@ -9,6 +9,7 @@ import { DesktopFrame } from "@/components/desktop/desktop-frame";
 import { ScrollbarVisibility } from "@/components/scroll/scrollbar-visibility";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { schemaIssueMessage } from "@/lib/forms/validation-messages";
 import { z } from "zod";
 import "./styles.css";
@@ -23,10 +24,13 @@ createRoot(document.getElementById("root")!).render(
     <ScrollbarVisibility />
     <QueryClientProvider client={router.options.context.queryClient}>
       <ThemeProvider>
-        <DesktopFrame>
-          <RouterProvider router={router} />
-          <Toaster position="bottom-right" closeButton />
-        </DesktopFrame>
+        {/* Above the router, so root error and not-found screens keep tooltips. */}
+        <TooltipProvider delayDuration={350}>
+          <DesktopFrame>
+            <RouterProvider router={router} />
+            <Toaster position="bottom-right" closeButton />
+          </DesktopFrame>
+        </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
   </StrictMode>,
