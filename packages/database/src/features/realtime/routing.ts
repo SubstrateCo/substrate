@@ -223,7 +223,6 @@ export function messageChangeHints(
   effects: {
     joined: boolean;
     referenced?: boolean;
-    notified?: { organizationId: string; actorId: string }[];
   },
 ): RealtimeHint[] {
   const conversation: RealtimeHint = {
@@ -236,9 +235,5 @@ export function messageChangeHints(
     ...(effects.referenced
       ? [{ audience: realtimeKeys.organization(change.organizationId), domain: "context" as const }]
       : []),
-    ...(effects.notified ?? []).map(({ organizationId, actorId }) => ({
-      audience: realtimeKeys.actor(organizationId, actorId),
-      domain: "notifications" as const,
-    })),
   ];
 }

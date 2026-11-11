@@ -1,2 +1,1 @@
-export { claimSharingMail, finishSharingMail } from "./sharing/mail";
-export { clearMembershipSharing } from "./sharing/connections";
+export { claimSharingMail, finishSharingMail, clearMembershipSharing } from "./sharing/committed";

@@ -7,15 +7,13 @@ import type {
   sharingInvitationInput,
   sharingRemoveInput,
 } from "@substrate/contracts/messaging/sharing";
-import { realtimeKeys } from "@substrate/contracts/realtime";
 import { createRepositories } from "@substrate/database";
 
 import { db } from "../../auth/database";
 import { auth } from "../../auth/server";
 import { serviceResult } from "../../shared/service-result";
 import { requireOrigin, requireVerified, workspaceSession } from "../../shared/workspace";
-import { publishRefresh } from "../realtime/publisher";
-import { deliverSharingMail } from "./sharing-mail";
+import { publishCommitted } from "../realtime/committed";
 import type { z } from "zod";
 
 async function verified(headers: Headers) {
@@ -28,12 +26,6 @@ async function service(headers: Headers, organizationId: string) {
   return (await createRepositories(db).forSession({ userId: session.user.id, organizationId }))
     .sharing;
 }
-function changed(organizationId: string, userId?: string) {
-  return [
-    { audience: realtimeKeys.organization(organizationId), domain: "access" as const },
-    ...(userId ? [{ audience: realtimeKeys.user(userId), domain: "access" as const }] : []),
-  ];
-}
 export function getInvitation(headers: Headers, input: z.output<typeof sharingInvitationInput>) {
   return serviceResult(async () =>
     (
@@ -45,14 +37,13 @@ export function acceptInvitation(headers: Headers, input: z.output<typeof sharin
   return serviceResult(async () => {
     requireOrigin(headers);
     const session = await verified(headers);
-    const { hints, ...result } = await (
-      await createRepositories(db).forSession({
-        userId: session.user.id,
-        organizationId: input.organizationId,
-      })
-    ).sharing.accept(input.invitationId, input.shareHistory);
-    await publishRefresh([...hints, ...changed(input.organizationId, session.user.id)]);
-    return result;
+    return publishCommitted(
+      await (
+        await createRepositories(db).forOwnerSession({
+          userId: session.user.id,
+        })
+      ).sharing.accept(input.invitationId, input.organizationId, input.shareHistory),
+    );
   });
 }
 export function declineInvitation(
@@ -62,61 +53,57 @@ export function declineInvitation(
   return serviceResult(async () => {
     requireOrigin(headers);
     const session = await verified(headers);
-    const { hints, ...result } = await (
-      await createRepositories(db).forOwnerSession({ userId: session.user.id })
-    ).sharing.decline(input.invitationId);
-    await publishRefresh(hints);
-    return result;
+    return publishCommitted(
+      await (
+        await createRepositories(db).forOwnerSession({ userId: session.user.id })
+      ).sharing.decline(input.invitationId),
+    );
   });
 }
 export function invite(headers: Headers, input: z.output<typeof sharingInviteInput>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const created = await (
-      await service(headers, input.organizationId)
-    ).invite(input.conversationId, input);
-    void deliverSharingMail();
-    await publishRefresh([...created.hints, ...changed(input.organizationId)]);
+    const created = await publishCommitted(
+      await (await service(headers, input.organizationId)).invite(input.conversationId, input),
+    );
     return { id: created.id };
   });
 }
 export function revoke(headers: Headers, input: z.output<typeof sharingActionInput>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const { hints, ...result } = await (
-      await service(headers, input.organizationId)
-    ).revoke(input.invitationId);
-    await publishRefresh([...hints, ...changed(input.organizationId)]);
-    return result;
+    return publishCommitted(
+      await (await service(headers, input.organizationId)).revoke(input.invitationId),
+    );
   });
 }
 export function resend(headers: Headers, input: z.output<typeof sharingActionInput>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const result = await (await service(headers, input.organizationId)).resend(input.invitationId);
-    void deliverSharingMail();
-    await publishRefresh([...result.hints, ...changed(input.organizationId)]);
+    const result = await publishCommitted(
+      await (await service(headers, input.organizationId)).resend(input.invitationId),
+    );
     return { id: result.id };
   });
 }
 export function disconnect(headers: Headers, input: z.output<typeof sharingDisconnectInput>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const { hints, ...result } = await (
-      await service(headers, input.organizationId)
-    ).disconnect(input.conversationId, input.partnerOrganizationId);
-    await publishRefresh([...hints, ...changed(input.organizationId)]);
-    return result;
+    return publishCommitted(
+      await (
+        await service(headers, input.organizationId)
+      ).disconnect(input.conversationId, input.partnerOrganizationId),
+    );
   });
 }
 export function remove(headers: Headers, input: z.output<typeof sharingRemoveInput>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const { hints, ...result } = await (
-      await service(headers, input.organizationId)
-    ).remove(input.conversationId, input.actorId);
-    await publishRefresh(hints);
-    return result;
+    return publishCommitted(
+      await (
+        await service(headers, input.organizationId)
+      ).remove(input.conversationId, input.actorId),
+    );
   });
 }
 export function list(headers: Headers, input: z.output<typeof conversationTargetInput>) {

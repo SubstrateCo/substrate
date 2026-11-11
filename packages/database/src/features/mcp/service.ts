@@ -133,11 +133,7 @@ export async function executeAgentTool<K extends ServerToolName>(
         await tasks.removeLink(value.taskId, value.linkId);
         return queries.getTask(value.taskId);
       },
-      async reply(value) {
-        const { hints: messageHints, ...result } = await publishing().reply(value);
-        hints.push(...messageHints);
-        return result;
-      },
+      reply: (value) => publishing().reply(value),
       propose: (value) => publishing().propose(value),
       async attach_message(value) {
         return { changed: await attachReference(ctx, identity, value, value.target) };

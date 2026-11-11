@@ -1,3 +1,5 @@
+import type { Committed } from "@substrate/database";
+
 import { ServiceError } from "../../shared/service-result";
 import { createAgentService } from "./service";
 import { expect, mock, test } from "bun:test";
@@ -22,7 +24,7 @@ test("requires an authenticated verified user for reads and writes", async () =>
     const service = createAgentService({
       getSession: async () => (user ? { user } : null),
       forUser,
-      changed: async () => {},
+      publish: async (committed) => committed.result,
       requireOrigin: () => {},
     });
     for (const result of [
@@ -43,7 +45,7 @@ test("all mutations enforce origin and do not reach persistence on failure", asy
   const service = createAgentService({
     getSession: async () => ({ user: { id: "alice", emailVerified: true } }),
     forUser,
-    changed: async () => {},
+    publish: async (committed) => committed.result,
     requireOrigin: () => {
       throw new ServiceError("FORBIDDEN", "Invalid request origin.");
     },
@@ -73,18 +75,18 @@ test("derives user identity without requiring an active organization", async () 
     saveAgent: async () => {
       throw new Error("Unexpected save.");
     },
-    deleteAgent: async () => null,
+    deleteAgent: async () => ({ result: null, hints: [] }),
     setPicture: async () => {
       throw new Error("Unexpected picture update.");
     },
-    setHomeDevice: async () => null,
-    saveTriggers: async () => null,
+    setHomeDevice: async () => ({ result: null, hints: [] }),
+    saveTriggers: async () => ({ result: null, hints: [] }),
   };
   const forUser = mock(() => repository);
   const service = createAgentService({
     getSession: async () => ({ user: { id: "solo", emailVerified: true } }),
     forUser,
-    changed: async () => {},
+    publish: async (committed) => committed.result,
     requireOrigin: () => {},
   });
   expect(await service.listAgents(headers)).toEqual({ success: true, data: catalog });
@@ -100,19 +102,19 @@ test("picture updates use the verified session owner and return the updated conf
     image: `/api/v1/files/${fileId}/content`,
     useStartupDefaults: true,
   };
-  const setPicture = mock(async () => configuration);
+  const setPicture = mock(async () => ({ result: configuration, hints: [] }));
   const forUser = mock(() => ({
     list: async () => ({ agents: [], runSettings: [] }),
-    setHomeDevice: async () => null,
-    saveTriggers: async () => null,
-    saveAgent: async () => configuration,
-    deleteAgent: async () => null,
+    setHomeDevice: async () => ({ result: null, hints: [] }),
+    saveTriggers: async () => ({ result: null, hints: [] }),
+    saveAgent: async () => ({ result: configuration, hints: [] }),
+    deleteAgent: async () => ({ result: null, hints: [] }),
     setPicture,
   }));
   const service = createAgentService({
     getSession: async () => ({ user: { id: "alice", emailVerified: true } }),
     forUser,
-    changed: async () => {},
+    publish: async (committed) => committed.result,
     requireOrigin: () => {},
   });
   expect(await service.setAgentPicture(headers, { id, fileId })).toEqual({
@@ -125,20 +127,21 @@ test("picture updates use the verified session owner and return the updated conf
 
 test("publishes only after persistence succeeds, never for a rolled-back mutation", async () => {
   const saved = { ...input, id: crypto.randomUUID(), image: null, useStartupDefaults: true };
-  const commit = Promise.withResolvers<typeof saved>();
+  const commit = Promise.withResolvers<Committed<typeof saved>>();
   const published: string[] = [];
   const service = createAgentService({
     getSession: async () => ({ user: { id: "alice", emailVerified: true } }),
     requireOrigin: () => {},
-    changed: async (userId) => {
-      published.push(userId);
+    publish: async (committed) => {
+      published.push(...committed.hints.map((hint) => hint.domain));
+      return committed.result;
     },
     forUser: () => ({
       list: async () => ({ agents: [], runSettings: [] }),
-      setHomeDevice: async () => null,
-      saveTriggers: async () => null,
+      setHomeDevice: async () => ({ result: null, hints: [] }),
+      saveTriggers: async () => ({ result: null, hints: [] }),
       saveAgent: () => commit.promise,
-      setPicture: async () => saved,
+      setPicture: async () => ({ result: saved, hints: [] }),
       deleteAgent: async () => {
         throw new ServiceError("FORBIDDEN", "Cannot delete.");
       },
@@ -147,11 +150,11 @@ test("publishes only after persistence succeeds, never for a rolled-back mutatio
   const saving = service.saveAgent(headers, input);
   await Bun.sleep(0);
   expect(published).toEqual([]);
-  commit.resolve(saved);
+  commit.resolve({ result: saved, hints: [{ audience: ["user", "alice"], domain: "agents" }] });
   expect(await saving).toEqual({ success: true, data: saved });
   const afterCommit = published.slice();
-  expect(afterCommit).toEqual(["alice"]);
+  expect(afterCommit).toEqual(["agents"]);
   expect(await service.deleteAgent(headers, { id: saved.id })).toMatchObject({ success: false });
   const afterRollback = published.slice();
-  expect(afterRollback).toEqual(["alice"]);
+  expect(afterRollback).toEqual(["agents"]);
 });

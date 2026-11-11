@@ -11,8 +11,10 @@ import type { DatabaseExecutor } from "../../client";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { deviceOnline, findDevice } from "../../core/devices/repository";
 import { desktopDevices } from "../../core/devices/schema";
+import { effectsFor } from "../../core/effects";
 import { storedFiles } from "../../core/storage/schema";
 import { AccessDeniedError, ValidationError } from "../../errors";
+import { agentRefreshHints } from "../realtime/routing";
 import { userAgentTriggers } from "./triggers.schema";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
@@ -36,6 +38,9 @@ export function createAgentRepository(
   userId: string,
   installationId?: string,
 ) {
+  async function changed(tx = db) {
+    for (const hint of await agentRefreshHints(tx, userId)) effectsFor(tx).hint(hint);
+  }
   async function currentDevice() {
     return installationId ? findDevice(db, userId, installationId) : null;
   }
@@ -99,6 +104,7 @@ export function createAgentRepository(
             .values({ ...values, userId, homeDeviceId: (await currentDevice())?.id ?? null })
             .returning();
       if (!row) throw new AccessDeniedError();
+      await changed();
       return configuration(row);
     },
     /** Moves the agent to the calling desktop. Its folder on the old device is not copied. */
@@ -113,6 +119,7 @@ export function createAgentRepository(
         )
         .returning({ id: userAgents.id });
       if (!row) throw new AccessDeniedError();
+      await changed();
       return null;
     },
     async saveTriggers(input: SaveAgentTriggersInput): Promise<null> {
@@ -139,6 +146,7 @@ export function createAgentRepository(
               target: [userAgentTriggers.userAgentId, userAgentTriggers.kind],
               set: { enabled: sql`excluded.enabled`, updatedAt: new Date() },
             });
+        if (triggers.length) await changed(tx);
         return null;
       });
     },
@@ -171,6 +179,7 @@ export function createAgentRepository(
           .set({ imageFileId: fileId })
           .where(eq(userAgents.id, id))
           .returning();
+        await changed(tx);
         return configuration(row!);
       });
     },
@@ -183,6 +192,7 @@ export function createAgentRepository(
         )
         .returning({ id: userAgents.id });
       if (!row) throw new AccessDeniedError();
+      await changed();
       return null;
     },
   };

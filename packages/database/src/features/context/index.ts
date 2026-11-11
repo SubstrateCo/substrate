@@ -1,1 +1,3 @@
-export type ContextRepository = ReturnType<typeof import("./service").createContextService>;
+export type ContextRepository = Awaited<
+  ReturnType<ReturnType<typeof import("../../repositories").createRepositories>["forSession"]>
+>["context"];

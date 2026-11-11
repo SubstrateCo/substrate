@@ -5,11 +5,10 @@ import {
   type AgentRequestResponse,
   type ProposalOutcome,
 } from "@substrate/contracts/agent-work";
-import type { RealtimeHint } from "@substrate/contracts/realtime";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
-import { RepositoryEffects } from "../../core/effects";
+import { RepositoryEffects, effectsFor } from "../../core/effects";
 import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
@@ -69,6 +68,7 @@ export function respondToRequest(
       .returning();
     if (!resolved) throw new ConflictError(closed);
     if (resolved.mode === "async") await wakeForRequest(tx, resolved, "answer");
+    effectsFor(tx).hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });
     return { status: resolved.status };
   });
 }
@@ -95,6 +95,7 @@ export function declineProposal(
       .returning();
     if (!resolved) throw new ConflictError(closed);
     await wakeForRequest(tx, resolved, "approval_result");
+    effectsFor(tx).hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });
     return { status: resolved.status, outcome };
   });
 }
@@ -129,7 +130,6 @@ export function approveProposal(
       .returning();
     if (!claimed) throw new ConflictError(closed);
     let outcome: ProposalOutcome;
-    let hints: RealtimeHint[] = [];
     const effects = new RepositoryEffects();
     const parsed = proposalAction.safeParse(claimed.proposedAction);
     if (!parsed.success || (await proposalActionHash(parsed.data)) !== claimed.actionHash)
@@ -153,7 +153,6 @@ export function approveProposal(
           return { ...action, effects: context.effects };
         });
         outcome = { status: "executed", receipt: result.receipt };
-        hints = result.hints;
         effects.merge(result.effects);
       } catch (error) {
         const failure = error instanceof Error ? proposalFailure(error) : null;
@@ -168,7 +167,7 @@ export function approveProposal(
       .returning();
     await wakeForRequest(tx, finished!, "approval_result");
     effects.hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });
-    for (const hint of hints) effects.hint(hint);
-    return { status: finished!.status, outcome, hints: effects.committed(null).hints };
+    effectsFor(tx).merge(effects);
+    return { status: finished!.status, outcome };
   });
 }

@@ -3,6 +3,7 @@ import { actorDisplayName } from "../../core/actors/display-name";
 import { actorPicture } from "../../core/actors/picture";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
+import { effectsFor } from "../../core/effects";
 import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
@@ -135,6 +136,11 @@ export async function sendMessageAs(
       )
         throw new ConflictError("This request was already used for another message.");
       const reactions: { emoji: string; count: number; reacted: boolean }[] = [];
+      for (const hint of messageChangeHints(
+        { conversationId, organizationId: scope.organizationId },
+        { joined: false },
+      ))
+        ctx.effects.hint(hint);
       return {
         ...existing,
         attachments,
@@ -142,11 +148,6 @@ export async function sendMessageAs(
         authorType: actor.type,
         reactions,
         replyCount: 0,
-        // A replay changes nothing. The hint still lets viewers recover from a lost first publish.
-        hints: messageChangeHints(
-          { conversationId, organizationId: scope.organizationId },
-          { joined: false },
-        ),
       };
     }
   }
@@ -184,6 +185,14 @@ export async function sendMessageAs(
   const attachments = await messageAttachmentMetadata(tx, fileIds.length ? [created!.id] : []);
   const effects = await applyMessageEffects(ctx, scope, created!, conversation.organizationId);
   const wakeHints = await routeWake(tx, scope, created!, conversation.kind);
+  for (const hint of [
+    ...messageChangeHints(
+      { conversationId, organizationId: scope.organizationId },
+      { joined, ...effects },
+    ),
+    ...wakeHints,
+  ])
+    ctx.effects.hint(hint);
   const initialReactions: { emoji: string; count: number; reacted: boolean }[] = [];
   return {
     ...created!,
@@ -192,14 +201,6 @@ export async function sendMessageAs(
     authorType: actor.type,
     replyCount: 0,
     reactions: initialReactions,
-    // Publish only after the caller's transaction commits. Wake hints reach the author's desktops.
-    hints: [
-      ...messageChangeHints(
-        { conversationId, organizationId: scope.organizationId },
-        { joined, ...effects },
-      ),
-      ...wakeHints,
-    ],
   };
 }
 
@@ -338,13 +339,14 @@ export function messageOperations(db: DatabaseExecutor, scope: Readonly<SessionI
           { conversationId: message.conversationId, organizationId: scope.organizationId },
           { joined },
         );
+        for (const hint of hints) effectsFor(tx).hint(hint);
         const key = and(
           eq(messagingReactions.messageId, messageId),
           eq(messagingReactions.actorEntityId, actor.entityId),
           eq(messagingReactions.emoji, emoji),
         );
         const removed = await tx.delete(messagingReactions).where(key).returning();
-        if (removed.length) return { active: false, hints };
+        if (removed.length) return { active: false };
         // The shared conversation lock lets toggles run together. If a concurrent toggle added
         // this reaction, the insert waits for it to commit and this toggle removes it.
         const added = await tx
@@ -357,9 +359,9 @@ export function messageOperations(db: DatabaseExecutor, scope: Readonly<SessionI
           })
           .onConflictDoNothing()
           .returning();
-        if (added.length) return { active: true, hints };
+        if (added.length) return { active: true };
         await tx.delete(messagingReactions).where(key);
-        return { active: false, hints };
+        return { active: false };
       });
     },
   };

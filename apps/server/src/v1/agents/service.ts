@@ -7,13 +7,12 @@ import type {
 import { desktopInstallationHeader } from "@substrate/contracts/desktop/links";
 import { createRepositories } from "@substrate/database";
 import type { AgentRepository } from "@substrate/database/agents";
-import { agentRefreshHints } from "@substrate/database/realtime";
 
 import { db } from "../../auth/database";
 import { auth } from "../../auth/server";
 import { serviceResult } from "../../shared/service-result";
 import { requireOrigin, requireVerified } from "../../shared/workspace";
-import { publishRefresh } from "../realtime/publisher";
+import { publishCommitted } from "../realtime/committed";
 import { z } from "zod";
 
 interface Dependencies {
@@ -22,7 +21,7 @@ interface Dependencies {
   }) => Promise<{ user: { id: string; emailVerified: boolean } } | null>;
   forUser: (userId: string, installationId?: string) => AgentRepository | Promise<AgentRepository>;
   requireOrigin: (headers: Headers) => void;
-  changed: (userId: string) => Promise<void>;
+  publish: typeof publishCommitted;
 }
 
 const installation = z.uuid();
@@ -45,27 +44,21 @@ export function createAgentService(dependencies: Dependencies) {
     },
     saveAgent(this: void, headers: Headers, input: z.output<typeof saveAgentInput>) {
       return serviceResult(async () => {
-        const { repository, userId } = await repositories(headers, true);
-        const result = await repository.saveAgent(input);
-        await dependencies.changed(userId);
-        return result;
+        const { repository } = await repositories(headers, true);
+        return dependencies.publish(await repository.saveAgent(input));
       });
     },
     setAgentPicture(this: void, headers: Headers, input: z.output<typeof setAgentPictureInput>) {
       return serviceResult(async () => {
-        const { repository, userId } = await repositories(headers, true);
+        const { repository } = await repositories(headers, true);
         const { id, fileId } = input;
-        const result = await repository.setPicture(id, fileId);
-        await dependencies.changed(userId);
-        return result;
+        return dependencies.publish(await repository.setPicture(id, fileId));
       });
     },
     deleteAgent(this: void, headers: Headers, input: z.output<typeof deleteAgentInput>) {
       return serviceResult(async () => {
-        const { repository, userId } = await repositories(headers, true);
-        const result = await repository.deleteAgent(input.id);
-        await dependencies.changed(userId);
-        return result;
+        const { repository } = await repositories(headers, true);
+        return dependencies.publish(await repository.deleteAgent(input.id));
       });
     },
     saveAgentTriggers(
@@ -74,18 +67,14 @@ export function createAgentService(dependencies: Dependencies) {
       input: z.output<typeof saveAgentTriggersInput>,
     ) {
       return serviceResult(async () => {
-        const { repository, userId } = await repositories(headers, true);
-        const result = await repository.saveTriggers(input);
-        await dependencies.changed(userId);
-        return result;
+        const { repository } = await repositories(headers, true);
+        return dependencies.publish(await repository.saveTriggers(input));
       });
     },
     setAgentHomeDevice(this: void, headers: Headers, input: z.output<typeof deleteAgentInput>) {
       return serviceResult(async () => {
-        const { repository, userId } = await repositories(headers, true);
-        const result = await repository.setHomeDevice(input.id);
-        await dependencies.changed(userId);
-        return result;
+        const { repository } = await repositories(headers, true);
+        return dependencies.publish(await repository.setHomeDevice(input.id));
       });
     },
   };
@@ -103,5 +92,5 @@ export const {
   forUser: async (userId, installationId) =>
     (await createRepositories(db).forOwnerSession({ userId, installationId })).agents,
   requireOrigin,
-  changed: (userId) => publishRefresh(agentRefreshHints(db, userId)),
+  publish: publishCommitted,
 });

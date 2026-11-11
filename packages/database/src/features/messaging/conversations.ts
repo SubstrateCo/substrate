@@ -1,7 +1,10 @@
+import { realtimeKeys } from "@substrate/contracts/realtime";
+
 import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
+import { effectsFor } from "../../core/effects";
 import { organization } from "../../core/organizations/schema";
 import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError, ValidationError } from "../../errors";
@@ -42,6 +45,15 @@ function displayName(name: string | null, members: { name: string }[]) {
 // Conversation membership and management. Scope comes from the authenticated session.
 export function conversationOperations(db: DatabaseExecutor, scope: Readonly<SessionIdentity>) {
   const authenticate = (tx: DatabaseExecutor) => messagingSession(tx, scope);
+  function changed(tx: DatabaseExecutor, conversationId: string, management = false) {
+    const effects = effectsFor(tx);
+    effects.hint({ audience: realtimeKeys.conversation(conversationId), domain: "messaging" });
+    if (management)
+      effects.hint({
+        audience: realtimeKeys.organization(scope.organizationId),
+        domain: "messaging",
+      });
+  }
 
   // Admins can find conversations of their organization that they cannot read.
   async function requireManaged(tx: DatabaseExecutor, viewer: Viewer, id: string) {
@@ -188,6 +200,7 @@ export function conversationOperations(db: DatabaseExecutor, scope: Readonly<Ses
           { emails: external, shareHistory: input.shareHistory === true },
           viewer,
         );
+        changed(tx, conversation!.id);
         return conversation!;
       });
     },
@@ -207,6 +220,7 @@ export function conversationOperations(db: DatabaseExecutor, scope: Readonly<Ses
         );
         // Adding someone who left brings them back.
         const added = await writeMembers(tx, conversationId, selected, "join");
+        if (added.length || external.length) changed(tx, conversationId, true);
         if (external.length) return { added: added.length, invited: external.length };
         return { added: added.length };
       });
@@ -222,7 +236,8 @@ export function conversationOperations(db: DatabaseExecutor, scope: Readonly<Ses
         if (conversation.kind === "dm")
           throw new ValidationError("Start a direct conversation with the agent instead.");
         const [agent] = await ownedAgents(tx, scope, [agentId]);
-        await writeMembers(tx, conversationId, [agent!], "join");
+        const added = await writeMembers(tx, conversationId, [agent!], "join");
+        if (added.length) changed(tx, conversationId);
         return { actorId: agent!.entityId };
       });
     },
@@ -252,6 +267,7 @@ export function conversationOperations(db: DatabaseExecutor, scope: Readonly<Ses
           ),
         ).returning();
         if (!removed.length) throw new AccessDeniedError();
+        changed(tx, conversationId);
         return { removed: true };
       });
     },
@@ -270,6 +286,11 @@ export function conversationOperations(db: DatabaseExecutor, scope: Readonly<Ses
               "join",
             )
           ).length > 0;
+        if (changed)
+          effectsFor(tx).hint({
+            audience: realtimeKeys.conversation(conversationId),
+            domain: "messaging",
+          });
         return { joined: true, changed };
       });
     },
@@ -290,6 +311,8 @@ export function conversationOperations(db: DatabaseExecutor, scope: Readonly<Ses
           [{ ...actor, organizationId: scope.organizationId }],
           "leave",
         );
+        changed(tx, conversationId, true);
+        effectsFor(tx).hint({ audience: realtimeKeys.user(scope.userId), domain: "messaging" });
         return { left: true };
       });
     },
@@ -299,6 +322,7 @@ export function conversationOperations(db: DatabaseExecutor, scope: Readonly<Ses
         const { viewer } = await authenticate(tx);
         const conversation = await requireManaged(tx, viewer, conversationId);
         await setOwner(tx, conversation, userId);
+        if (conversation.createdBy !== userId) changed(tx, conversationId, true);
         return { ownerUserId: userId };
       });
     },
@@ -328,10 +352,11 @@ export function conversationOperations(db: DatabaseExecutor, scope: Readonly<Ses
         const { viewer } = await authenticate(tx);
         const conversation = await requireManaged(tx, viewer, conversationId);
         const hints = await conversationRemovalHints(tx, [conversation]);
+        for (const hint of hints) effectsFor(tx).hint(hint);
         await tx
           .delete(messagingConversations)
           .where(eq(messagingConversations.id, conversationId));
-        return { hints };
+        return { deleted: true };
       });
     },
 

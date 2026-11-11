@@ -1,4 +1,5 @@
 import type { AgentStatusState, AgentStatusView } from "@substrate/contracts/agent-work";
+import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
 import { actorDisplayName } from "../../core/actors/display-name";
@@ -6,6 +7,7 @@ import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { deviceOnline } from "../../core/devices/repository";
 import { desktopDevices } from "../../core/devices/schema";
+import { effectsFor } from "../../core/effects";
 import { requireDevice, type DeviceIdentity } from "../../core/session/device";
 import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
@@ -95,7 +97,10 @@ export function publishStatus(
           is not distinct from (agent_status.state, agent_status.queued_count,
           agent_status.live_conversation_id, agent_status.live_thread_id, agent_status.activity))`,
       });
-    return { applied: applied.length > 0, changed: applied.some((row) => !row.same) };
+    const changed = applied.some((row) => !row.same);
+    if (changed)
+      effectsFor(tx).hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });
+    return { applied: applied.length > 0, changed };
   });
 }
 

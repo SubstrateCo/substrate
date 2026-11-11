@@ -235,18 +235,18 @@ test("the pending invitation limit applies to the whole batch", async () => {
 
 test("invitation changes return hints for both organizations and both people", async () => {
   const c = await channel();
-  const invite = await sharing().invite(c.id, { email: "outside@example.com", shareHistory: true });
+  const invite = await (
+    await f.forSession("alice")
+  ).sharing.invite(c.id, { email: "outside@example.com", shareHistory: true });
   const host = { audience: realtimeKeys.organization(f.orgA), domain: "access" as const };
   const people = [
     { audience: realtimeKeys.user("alice"), domain: "access" as const },
     { audience: realtimeKeys.user("outsider"), domain: "access" as const },
   ];
   expect(invite.hints).toEqual([host, ...people]);
-  expect((await sharing("outsider", f.orgB).accept(invite.id, true)).hints).toEqual([
-    host,
-    { audience: realtimeKeys.organization(f.orgB), domain: "access" },
-    ...people,
-  ]);
+  expect(
+    (await (await f.forSession("outsider", f.orgB)).sharing.accept(invite.result.id, true)).hints,
+  ).toEqual([host, { audience: realtimeKeys.organization(f.orgB), domain: "access" }, ...people]);
 });
 
 test("invites are email-bound, expire, and can be revoked", async () => {

@@ -1,1 +1,3 @@
-export type FeedRepository = ReturnType<typeof import("./service").createFeedService>;
+export type FeedRepository = Awaited<
+  ReturnType<ReturnType<typeof import("../../repositories").createRepositories>["forSession"]>
+>["feed"];

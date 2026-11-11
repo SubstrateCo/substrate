@@ -111,20 +111,18 @@ export async function runProposalAction(
         conversationId: message.conversationId,
         threadId: message.threadId,
       };
-      return { receipt, hints: message.hints };
+      return { receipt };
     }
     case "create_task": {
       const task = await writes.createTask(action.input);
       return {
         receipt: { kind: "task" as const, id: task.entityId, projectId: task.projectEntityId },
-        hints: [],
       };
     }
     case "update_task": {
       const task = await writes.updateTask(action.input);
       return {
         receipt: { kind: "task" as const, id: task.entityId, projectId: task.projectEntityId },
-        hints: [],
       };
     }
   }

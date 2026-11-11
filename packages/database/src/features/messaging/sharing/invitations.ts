@@ -1,9 +1,11 @@
 import { sharingInviteInput } from "@substrate/contracts/messaging/sharing";
+import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../../client";
 import { ensureHumanActor } from "../../../core/actors/provisioning";
 import { actors } from "../../../core/actors/schema";
 import { user } from "../../../core/authentication/schema";
+import { effectsFor } from "../../../core/effects";
 import { member, organization } from "../../../core/organizations/schema";
 import { workspaceContext } from "../../../core/session/workspace";
 import { AccessDeniedError, ValidationError } from "../../../errors";
@@ -121,6 +123,10 @@ export async function queueSharingInvitations(
     "invited",
     invitations.map((invitation) => ({ invitationId: invitation.id })),
   );
+  const effects = effectsFor(db);
+  for (const invitation of invitations)
+    for (const hint of await sharingInvitationHints(db, invitation)) effects.hint(hint);
+  effects.mail("sharing");
   return invitations;
 }
 
@@ -186,7 +192,9 @@ export async function declineSharingInvitation(db: DatabaseExecutor, userId: str
       "declined",
       [{ invitationId: id }],
     );
-    return { declined: true, hints: await sharingInvitationHints(tx, invite) };
+    const hints = await sharingInvitationHints(tx, invite);
+    for (const hint of hints) effectsFor(tx).hint(hint);
+    return { declined: true };
   });
 }
 
@@ -199,7 +207,7 @@ export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentit
           emails: [input.email],
           shareHistory: input.shareHistory,
         });
-        return { ...invitation!, hints: await sharingInvitationHints(tx, invitation!) };
+        return invitation!;
       });
     },
     async accept(id: string, shareHistory: boolean) {
@@ -233,12 +241,12 @@ export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentit
               ),
             );
           if (!participant) throw new ValidationError("This invitation no longer grants access.");
+          for (const hint of await sharingInvitationHints(tx, invite)) effectsFor(tx).hint(hint);
+          effectsFor(tx).hint({ audience: realtimeKeys.user(scope.userId), domain: "access" });
           return {
             status: "accepted" as const,
             organizationId: scope.organizationId,
             conversationId: invite.recipientUserId === scope.userId ? conversation.id : null,
-            // A replay changes nothing. The hints let viewers recover from a lost first publish.
-            hints: await sharingInvitationHints(tx, invite),
           };
         }
         if (invite.status !== "pending" || invite.expiresAt <= new Date())
@@ -275,11 +283,13 @@ export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentit
           await recordSharingEvents(tx, scope, conversation.id, "approval-requested", [
             { invitationId: id, targetOrganizationId: scope.organizationId },
           ]);
+          for (const hint of await sharingInvitationHints(tx, requested!))
+            effectsFor(tx).hint(hint);
+          effectsFor(tx).hint({ audience: realtimeKeys.user(scope.userId), domain: "access" });
           return {
             status: "approval-required" as const,
             organizationId: scope.organizationId,
             conversationId: null,
-            hints: await sharingInvitationHints(tx, requested!),
           };
         }
         // Partner-managed individual invitations cannot reactivate a disconnected org.
@@ -325,11 +335,12 @@ export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentit
         await recordSharingEvents(tx, scope, conversation.id, "accepted", [
           { invitationId: id, targetOrganizationId: scope.organizationId },
         ]);
+        for (const hint of await sharingInvitationHints(tx, accepted!)) effectsFor(tx).hint(hint);
+        effectsFor(tx).hint({ audience: realtimeKeys.user(scope.userId), domain: "access" });
         return {
           status: "accepted" as const,
           organizationId: scope.organizationId,
           conversationId: originalId === scope.userId ? conversation.id : null,
-          hints: await sharingInvitationHints(tx, accepted!),
         };
       });
     },
@@ -355,7 +366,8 @@ export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentit
           .returning({ id: messagingInvitations.id });
         if (!revoked.length) throw new ValidationError("This invitation is no longer pending.");
         await recordSharingEvents(tx, scope, conversation.id, "revoked", [{ invitationId: id }]);
-        return { revoked: true, hints: await sharingInvitationHints(tx, invite) };
+        for (const hint of await sharingInvitationHints(tx, invite)) effectsFor(tx).hint(hint);
+        return { revoked: true };
       });
     },
     async resend(id: string) {
@@ -377,7 +389,7 @@ export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentit
           emails: [invite.email],
           shareHistory: true,
         });
-        return { ...invitation!, hints: await sharingInvitationHints(tx, invitation!) };
+        return invitation!;
       });
     },
   };

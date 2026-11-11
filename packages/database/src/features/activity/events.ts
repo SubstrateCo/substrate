@@ -12,22 +12,22 @@ export async function recordTaskActivity(
   sourceMessageId?: string,
 ) {
   if (!actions.length) return [];
-  context.effects.hint({
-    audience: realtimeKeys.organization(context.scope.organizationId),
-    domain: "tasks",
-  });
-  return context.db
-    .insert(taskActivity)
-    .values(
-      actions.map((action) => ({
-        organizationId: context.scope.organizationId,
-        taskEntityId,
-        actorEntityId: context.scope.actorEntityId,
-        action,
-        sourceMessageId,
-      })),
-    )
-    .returning();
+  return context.effects.activity(
+    () =>
+      context.db
+        .insert(taskActivity)
+        .values(
+          actions.map((action) => ({
+            organizationId: context.scope.organizationId,
+            taskEntityId,
+            actorEntityId: context.scope.actorEntityId,
+            action,
+            sourceMessageId,
+          })),
+        )
+        .returning(),
+    { audience: realtimeKeys.organization(context.scope.organizationId), domain: "tasks" },
+  );
 }
 
 export async function notifyAssignment(

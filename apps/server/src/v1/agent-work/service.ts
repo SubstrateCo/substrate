@@ -10,7 +10,6 @@ import { db } from "../../auth/database";
 import { serviceResult } from "../../shared/service-result";
 import { requireOrigin, workspaceSession } from "../../shared/workspace";
 import { publishCommitted } from "../realtime/committed";
-import { ownerChanged } from "./hints";
 import type { z } from "zod";
 
 // Owner scope always comes from the session; the database limits it to the owner's own agents.
@@ -50,9 +49,7 @@ export function respondToRequest(
   return serviceResult(async () => {
     requireOrigin(headers);
     const identity = await owner(headers, input.organizationId);
-    const result = await work.respondToRequest(db, identity, requestId, input.response);
-    await ownerChanged(identity.userId);
-    return result;
+    return publishCommitted(await work.respondToRequest(db, identity, requestId, input.response));
   });
 }
 
@@ -64,8 +61,7 @@ export function approveProposal(
   return serviceResult(async () => {
     requireOrigin(headers);
     const identity = await owner(headers, input.organizationId);
-    const { hints, ...result } = await work.approveProposal(db, identity, requestId);
-    return publishCommitted({ result, hints });
+    return publishCommitted(await work.approveProposal(db, identity, requestId));
   });
 }
 
@@ -77,8 +73,6 @@ export function declineProposal(
   return serviceResult(async () => {
     requireOrigin(headers);
     const identity = await owner(headers, input.organizationId);
-    const result = await work.declineProposal(db, identity, requestId);
-    await ownerChanged(identity.userId);
-    return result;
+    return publishCommitted(await work.declineProposal(db, identity, requestId));
   });
 }

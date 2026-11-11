@@ -1,7 +1,7 @@
 import type { DatabaseExecutor } from "./client";
 import { contactRepository } from "./core/contacts/repository";
 import { registerDevice, touchDevice } from "./core/devices/repository";
-import { RepositoryEffects } from "./core/effects";
+import { RepositoryEffects, commit, commitWrites } from "./core/effects";
 import type { Committed } from "./core/effects";
 import { entityRepository } from "./core/entities/repository";
 import { linkRepository } from "./core/links/repository";
@@ -92,26 +92,134 @@ class WorkspaceRepositories extends ActorRepositories {
   }
 }
 
+function standalone(
+  db: DatabaseExecutor,
+  identity: SessionIdentity,
+  repositories: WorkspaceRepositories,
+) {
+  const transaction = <T>(work: (repositories: WorkspaceRepositories) => Promise<T>) =>
+    commit(db, async (tx) => {
+      const { context } = await workspaceContext(tx, identity);
+      return work(new WorkspaceRepositories(context, identity));
+    });
+  function domain<
+    K extends
+      | "contacts"
+      | "entities"
+      | "links"
+      | "permissions"
+      | "projects"
+      | "tasks"
+      | "messaging"
+      | "context"
+      | "sharing"
+      | "feed"
+      | "files",
+    W extends keyof WorkspaceRepositories[K],
+  >(key: K, writes: readonly W[]) {
+    return commitWrites(repositories[key], writes, (work) => transaction((tx) => work(tx[key])));
+  }
+  return {
+    contacts: domain("contacts", ["create", "update"]),
+    entities: domain("entities", ["softDelete"]),
+    links: domain("links", ["create", "remove"]),
+    permissions: domain("permissions", ["grant", "revoke"]),
+    projects: domain("projects", ["create", "update", "delete", "revoke", "setPicture"]),
+    tasks: domain("tasks", [
+      "create",
+      "update",
+      "delete",
+      "move",
+      "addComment",
+      "addLink",
+      "removeLink",
+    ]),
+    messaging: domain("messaging", [
+      "createConversation",
+      "sendMessage",
+      "toggleReaction",
+      "addAgent",
+      "removeAgent",
+      "addMembers",
+      "joinConversation",
+      "leaveConversation",
+      "transferOwnership",
+      "deleteConversation",
+    ]),
+    context: domain("context", ["createTaskFromMessage", "attach", "detach"]),
+    sharing: domain("sharing", [
+      "invite",
+      "accept",
+      "decline",
+      "revoke",
+      "resend",
+      "disconnect",
+      "remove",
+    ]),
+    feed: domain("feed", ["markRead", "markAllRead", "markGroupRead"]),
+    files: domain("files", ["addTask", "removeTask"]),
+    transaction,
+  };
+}
+
 export function createRepositories(db: DatabaseExecutor) {
   return {
     async forOwnerSession(identity: OwnerSessionIdentity) {
       const owner = await ownerSession(db, identity);
+      const agents = createAgentRepository(db, owner.userId, owner.installationId);
+      const devices = {
+        register: (input: Parameters<typeof registerDevice>[2]) =>
+          registerDevice(db, owner.userId, input),
+        touch: (installationId: string) => touchDevice(db, owner.userId, installationId),
+      };
+      const sharing = {
+        invitation: (id: string) => readSharingInvitation(db, owner.userId, id),
+        decline: (id: string) => declineSharingInvitation(db, owner.userId, id),
+        accept: (id: string, organizationId: string, shareHistory: boolean) =>
+          createSharingService(db, { userId: owner.userId, organizationId }).accept(
+            id,
+            shareHistory,
+          ),
+      };
       return {
-        agents: createAgentRepository(db, owner.userId, owner.installationId),
-        devices: {
-          register: (input: Parameters<typeof registerDevice>[2]) =>
-            registerDevice(db, owner.userId, input),
-          touch: (installationId: string) => touchDevice(db, owner.userId, installationId),
-        },
-        sharing: {
-          invitation: (id: string) => readSharingInvitation(db, owner.userId, id),
-          decline: (id: string) => declineSharingInvitation(db, owner.userId, id),
-        },
+        agents: commitWrites(
+          agents,
+          ["saveAgent", "deleteAgent", "setPicture", "setHomeDevice", "saveTriggers"],
+          (work) =>
+            commit(db, async (tx) => {
+              await ownerSession(tx, identity);
+              return work(createAgentRepository(tx, owner.userId, owner.installationId));
+            }),
+        ),
+        devices: commitWrites(devices, ["register", "touch"], (work) =>
+          commit(db, async (tx) => {
+            await ownerSession(tx, identity);
+            return work({
+              register: (input) => registerDevice(tx, owner.userId, input),
+              touch: (id) => touchDevice(tx, owner.userId, id),
+            });
+          }),
+        ),
+        sharing: commitWrites(sharing, ["decline", "accept"], (work) =>
+          commit(db, async (tx) => {
+            await ownerSession(tx, identity);
+            return work({
+              invitation: (id) => readSharingInvitation(tx, owner.userId, id),
+              decline: (id) => declineSharingInvitation(tx, owner.userId, id),
+              accept: (id, organizationId, shareHistory) =>
+                createSharingService(tx, { userId: owner.userId, organizationId }).accept(
+                  id,
+                  shareHistory,
+                ),
+            });
+          }),
+        ),
       };
     },
     async forSession(identity: SessionIdentity) {
       const { context } = await workspaceContext(db, identity);
-      return new WorkspaceRepositories(context, Object.freeze({ ...identity }));
+      const session = Object.freeze({ ...identity });
+      return standalone(db, session, new WorkspaceRepositories(context, session));
     },
   };
 }

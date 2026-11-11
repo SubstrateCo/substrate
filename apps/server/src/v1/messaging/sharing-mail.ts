@@ -2,44 +2,32 @@ import { claimSharingMail, finishSharingMail } from "@substrate/database/messagi
 
 import { db } from "../../auth/database";
 import { mail } from "../../mail/service";
-import { publishRefresh } from "../realtime/publisher";
+import { publishCommitted } from "../realtime/committed";
+import { SharingMailWorker } from "./sharing-mail-worker";
 
-let flushing: Promise<void> | undefined;
-export function deliverSharingMail() {
-  if (flushing) return flushing;
-  flushing = (async () => {
-    for (let i = 0; i < 30; i++) {
-      const invitation = await claimSharingMail(db);
-      if (!invitation) return;
-      let sent = false;
-      try {
-        await mail.sharingInvitation(invitation.email, {
-          id: invitation.id,
-          organizationName: invitation.organizationName,
-          conversationName: invitation.name,
-        });
-        sent = true;
-      } catch {
-        console.warn("Sharing invitation delivery failed; it will be retried.");
-      }
-      await publishRefresh(await finishSharingMail(db, invitation.id, invitation.attempt, sent));
-    }
-  })()
-    .catch(() =>
-      console.warn("Sharing invitation delivery is unavailable; pending mail will be retried."),
-    )
-    .finally(() => {
-      flushing = undefined;
-    });
-  return flushing;
-}
+export const sharingMailWorker = new SharingMailWorker({
+  claim: async () => publishCommitted(await claimSharingMail(db)),
+  send: (invitation) =>
+    mail.sharingInvitation(invitation.email, {
+      id: invitation.id,
+      organizationName: invitation.organizationName,
+      conversationName: invitation.name,
+    }),
+  finish: async (invitation, sent) => {
+    await publishCommitted(await finishSharingMail(db, invitation.id, invitation.attempt, sent));
+  },
+  reportFailure: (message) => console.warn(message),
+});
 
 export function startSharingMail() {
-  void deliverSharingMail();
-  const timer = setInterval(() => void deliverSharingMail(), 30_000);
+  const trigger = () => {
+    void publishCommitted({ result: null, hints: [], mail: ["sharing"] });
+  };
+  trigger();
+  const timer = setInterval(trigger, 30_000);
   timer.unref();
   return async () => {
     clearInterval(timer);
-    await flushing;
+    await sharingMailWorker.idle();
   };
 }

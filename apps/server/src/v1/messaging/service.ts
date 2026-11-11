@@ -13,14 +13,12 @@ import type {
   addAgentInput,
   removeAgentInput,
 } from "@substrate/contracts/messaging/input";
-import { realtimeKeys } from "@substrate/contracts/realtime";
 import { createRepositories } from "@substrate/database";
 
 import { db } from "../../auth/database";
 import { serviceResult } from "../../shared/service-result";
 import { requireOrigin, workspaceSession } from "../../shared/workspace";
-import { publishRefresh } from "../realtime/publisher";
-import { deliverSharingMail } from "./sharing-mail";
+import { publishCommitted } from "../realtime/committed";
 import type { z } from "zod";
 
 async function serviceForSession(headers: Headers, organizationId: string) {
@@ -57,12 +55,7 @@ export function createConversation(headers: Headers, input: z.output<typeof conv
   return serviceResult(async () => {
     requireOrigin(headers);
     const { service } = await serviceForSession(headers, input.organizationId);
-    const conversation = await service.createConversation(input);
-    void deliverSharingMail();
-    await publishRefresh([
-      { audience: realtimeKeys.conversation(conversation.id), domain: "messaging" },
-    ]);
-    return conversation;
+    return publishCommitted(await service.createConversation(input));
   });
 }
 
@@ -70,17 +63,15 @@ export function sendMessage(headers: Headers, input: z.output<typeof messageInpu
   return serviceResult(async () => {
     requireOrigin(headers);
     const { service } = await serviceForSession(headers, input.organizationId);
-    const message = await service.sendMessage(
-      input.conversationId,
-      input.body,
-      input.threadId,
-      input.requestId,
-      input.attachmentFileIds,
+    return publishCommitted(
+      await service.sendMessage(
+        input.conversationId,
+        input.body,
+        input.threadId,
+        input.requestId,
+        input.attachmentFileIds,
+      ),
     );
-    // Hints include an agent-work hint to the author's desktops when the message woke an agent.
-    const { hints, ...sent } = message;
-    await publishRefresh(hints);
-    return sent;
   });
 }
 
@@ -88,11 +79,7 @@ export function addAgent(headers: Headers, input: z.output<typeof addAgentInput>
   return serviceResult(async () => {
     requireOrigin(headers);
     const { service } = await serviceForSession(headers, input.organizationId);
-    const result = await service.addAgent(input.conversationId, input.agentId);
-    await publishRefresh([
-      { audience: realtimeKeys.conversation(input.conversationId), domain: "messaging" },
-    ]);
-    return result;
+    return publishCommitted(await service.addAgent(input.conversationId, input.agentId));
   });
 }
 
@@ -100,11 +87,7 @@ export function removeAgent(headers: Headers, input: z.output<typeof removeAgent
   return serviceResult(async () => {
     requireOrigin(headers);
     const { service } = await serviceForSession(headers, input.organizationId);
-    const result = await service.removeAgent(input.conversationId, input.actorId);
-    await publishRefresh([
-      { audience: realtimeKeys.conversation(input.conversationId), domain: "messaging" },
-    ]);
-    return result;
+    return publishCommitted(await service.removeAgent(input.conversationId, input.actorId));
   });
 }
 
@@ -119,29 +102,17 @@ export function toggleReaction(headers: Headers, input: z.output<typeof reaction
   return serviceResult(async () => {
     requireOrigin(headers);
     const { service } = await serviceForSession(headers, input.organizationId);
-    const { hints, ...result } = await service.toggleReaction(input.messageId, input.emoji);
-    await publishRefresh(hints);
-    return result;
+    return publishCommitted(await service.toggleReaction(input.messageId, input.emoji));
   });
-}
-
-// Admins may manage conversations they cannot read, so the organization audience also gets the
-// change. It carries no conversation ID or content.
-function managementHints(input: { organizationId: string; conversationId: string }) {
-  return [
-    { audience: realtimeKeys.conversation(input.conversationId), domain: "messaging" as const },
-    { audience: realtimeKeys.organization(input.organizationId), domain: "messaging" as const },
-  ];
 }
 
 export function addMembers(headers: Headers, input: z.output<typeof membersInput>) {
   return serviceResult(async () => {
     requireOrigin(headers);
     const { service } = await serviceForSession(headers, input.organizationId);
-    const result = await service.addMembers(input.conversationId, input.emails, input.shareHistory);
-    void deliverSharingMail();
-    await publishRefresh(managementHints(input));
-    return result;
+    return publishCommitted(
+      await service.addMembers(input.conversationId, input.emails, input.shareHistory),
+    );
   });
 }
 
@@ -159,12 +130,9 @@ export function joinConversation(
   return serviceResult(async () => {
     requireOrigin(headers);
     const { service } = await serviceForSession(headers, input.organizationId);
-    const { changed, ...result } = await service.joinConversation(input.conversationId);
-    // Joining as a current member changes nothing that viewers need to refresh.
-    if (changed)
-      await publishRefresh([
-        { audience: realtimeKeys.conversation(input.conversationId), domain: "messaging" },
-      ]);
+    const { changed: _, ...result } = await publishCommitted(
+      await service.joinConversation(input.conversationId),
+    );
     return result;
   });
 }
@@ -172,14 +140,10 @@ export function joinConversation(
 export function leaveConversation(headers: Headers, input: z.output<typeof leaveInput>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const { service, session } = await serviceForSession(headers, input.organizationId);
-    const result = await service.leaveConversation(input.conversationId, input.newOwnerUserId);
-    // The leaver may no longer pass the conversation audience check.
-    await publishRefresh([
-      ...managementHints(input),
-      { audience: realtimeKeys.user(session.user.id), domain: "messaging" },
-    ]);
-    return result;
+    const { service } = await serviceForSession(headers, input.organizationId);
+    return publishCommitted(
+      await service.leaveConversation(input.conversationId, input.newOwnerUserId),
+    );
   });
 }
 
@@ -187,9 +151,7 @@ export function transferOwnership(headers: Headers, input: z.output<typeof owner
   return serviceResult(async () => {
     requireOrigin(headers);
     const { service } = await serviceForSession(headers, input.organizationId);
-    const result = await service.transferOwnership(input.conversationId, input.userId);
-    await publishRefresh(managementHints(input));
-    return result;
+    return publishCommitted(await service.transferOwnership(input.conversationId, input.userId));
   });
 }
 
@@ -207,8 +169,7 @@ export function deleteConversation(
   return serviceResult(async () => {
     requireOrigin(headers);
     const { service } = await serviceForSession(headers, input.organizationId);
-    const { hints } = await service.deleteConversation(input.conversationId);
-    await publishRefresh(hints);
+    await publishCommitted(await service.deleteConversation(input.conversationId));
     return { deleted: true };
   });
 }

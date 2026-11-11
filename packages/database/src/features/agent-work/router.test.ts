@@ -21,8 +21,11 @@ const wakes = () =>
 
 test("DM messages wake the agent in one session per conversation, once per message", async () => {
   const { alice, dm } = await agentWorkFixture(f);
-  const first = await alice.sendMessage(dm.id, "Summarize the roadmap");
-  expect(first.hints).toContainEqual({ audience: ["user", "alice"], domain: "agent-work" });
+  const sent = await (
+    await f.forSession("alice")
+  ).messaging.sendMessage(dm.id, "Summarize the roadmap");
+  const first = sent.result;
+  expect(sent.hints).toContainEqual({ audience: ["user", "alice"], domain: "agent-work" });
   const reply = await alice.sendMessage(dm.id, "Include risks", first.id);
   expect(await wakes()).toEqual([
     {

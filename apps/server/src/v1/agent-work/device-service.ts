@@ -16,7 +16,7 @@ import { db } from "../../auth/database";
 import { auth } from "../../auth/server";
 import { serviceResult } from "../../shared/service-result";
 import { requireOrigin, requireVerified, workspaceSession } from "../../shared/workspace";
-import { ownerChanged } from "./hints";
+import { publishCommitted } from "../realtime/committed";
 import type { z } from "zod";
 
 // The session decides the person; the database checks the registered device and its agents.
@@ -38,7 +38,7 @@ export function registerDevice(headers: Headers, input: z.output<typeof register
     const owner = await createRepositories(db).forOwnerSession({
       userId: await deviceOwner(headers),
     });
-    const result = await owner.devices.register(input);
+    const result = await publishCommitted(await owner.devices.register(input));
     return { id: result.id };
   });
 }
@@ -48,17 +48,21 @@ export function deviceHeartbeat(headers: Headers, input: z.output<typeof deviceH
     const owner = await createRepositories(db).forOwnerSession({
       userId: await deviceOwner(headers),
     });
-    await owner.devices.touch(input.installationId);
+    await publishCommitted(await owner.devices.touch(input.installationId));
     return {};
   });
 }
 
 export function pullWakes(headers: Headers, input: z.output<typeof pullWakesInput>) {
-  return serviceResult(async () => work.pullWakes(db, await device(headers, input), input.limit));
+  return serviceResult(async () =>
+    publishCommitted(await work.pullWakes(db, await device(headers, input), input.limit)),
+  );
 }
 
 export function ackWakes(headers: Headers, input: z.output<typeof ackWakesInput>) {
-  return serviceResult(async () => work.ackWakes(db, await device(headers, input), input.ids));
+  return serviceResult(async () =>
+    publishCommitted(await work.ackWakes(db, await device(headers, input), input.ids)),
+  );
 }
 
 export function loadSources(headers: Headers, input: z.output<typeof sourcesInput>) {
@@ -71,10 +75,7 @@ export function publishStatus(headers: Headers, input: z.output<typeof publishSt
   return serviceResult(async () => {
     const identity = await device(headers, input);
     const { organizationId: _, installationId: __, ...status } = input;
-    const result = await work.publishStatus(db, identity, status);
-    // A publish that changes nothing the owner sees needs no refresh, so it causes no echo.
-    if (result.changed) await ownerChanged(identity.userId);
-    return result;
+    return publishCommitted(await work.publishStatus(db, identity, status));
   });
 }
 
@@ -82,18 +83,14 @@ export function openRequest(headers: Headers, input: z.output<typeof openRequest
   return serviceResult(async () => {
     const identity = await device(headers, input);
     const { organizationId: _, installationId: __, ...request } = input;
-    const result = await work.openRequest(db, identity, request);
-    await ownerChanged(identity.userId);
-    return result;
+    return publishCommitted(await work.openRequest(db, identity, request));
   });
 }
 
 export function closeRequest(headers: Headers, input: z.output<typeof closeRequestInput>) {
   return serviceResult(async () => {
     const identity = await device(headers, input);
-    const result = await work.closeRequest(db, identity, input.requestId, input.status);
-    if (result.changed) await ownerChanged(identity.userId);
-    return result;
+    return publishCommitted(await work.closeRequest(db, identity, input.requestId, input.status));
   });
 }
 

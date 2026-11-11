@@ -88,7 +88,10 @@ test("MCP and web comments publish the same confirmed notification hints", async
     actorEntityId: f.bob,
     level: "view",
   });
-  const task = await repos.tasks.create({ projectEntityId: project.entityId, title: "Mention" });
+  const { result: task } = await repos.tasks.create({
+    projectEntityId: project.entityId,
+    title: "Mention",
+  });
   const body = `Hello @[person:${f.bob}]`;
   const web = await repos.transaction((tx) => tx.tasks.addComment(task.entityId, body));
   const mcp = await executeAgentTool(

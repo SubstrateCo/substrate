@@ -3,9 +3,11 @@ import {
   type AgentWakeRequestDetail,
   type AgentWakeView,
 } from "@substrate/contracts/agent-work";
+import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
 import { userAgents } from "../../core/actors/user-agents.schema";
+import { effectsFor } from "../../core/effects";
 import { requireDevice, type DeviceIdentity } from "../../core/session/device";
 import { homedAgentIds } from "./device";
 import { agentRequests } from "./requests.schema";
@@ -58,7 +60,7 @@ export function pullWakes(db: DatabaseExecutor, identity: DeviceIdentity, limit:
   return db.transaction(async (tx) => {
     const device = await requireDevice(tx, identity);
     // Driven from the owner's homeless agents, so the wake check uses the per-agent pending index.
-    await tx
+    const adopted = await tx
       .update(userAgents)
       .set({ homeDeviceId: device.id })
       .where(
@@ -79,7 +81,10 @@ export function pullWakes(db: DatabaseExecutor, identity: DeviceIdentity, limit:
               ),
           ),
         ),
-      );
+      )
+      .returning({ id: userAgents.id });
+    if (adopted.length)
+      effectsFor(tx).hint({ audience: realtimeKeys.user(identity.userId), domain: "agents" });
     const rows = await tx
       .select()
       .from(agentWakes)

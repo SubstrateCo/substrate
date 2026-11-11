@@ -8,6 +8,10 @@ test("anonymous callers cannot list workspace conversations", async ({ request }
   expect(response.status()).toBe(401);
   expect(await response.json()).toEqual({
     success: false,
-    error: { code: "UNAUTHENTICATED", message: "Sign in to continue." },
+    error: {
+      code: "UNAUTHENTICATED",
+      message: "Sign in to continue.",
+      userMessage: "Sign in to continue.",
+    },
   });
 });

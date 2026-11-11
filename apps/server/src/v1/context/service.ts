@@ -15,14 +15,12 @@ import type {
   notificationGroupEventsInput,
   notificationGroupReadInput,
 } from "@substrate/contracts/context/notification-groups";
-import { realtimeKeys } from "@substrate/contracts/realtime";
 import { createRepositories } from "@substrate/database";
 
 import { db } from "../../auth/database";
 import { serviceResult } from "../../shared/service-result";
 import { requireOrigin, workspaceSession } from "../../shared/workspace";
 import { publishCommitted } from "../realtime/committed";
-import { publishRefresh } from "../realtime/publisher";
 import type { z } from "zod";
 
 async function sessionServices(headers: Headers, organizationId: string) {
@@ -147,9 +145,8 @@ export function markNotificationGroupRead(
 ) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const { feed, userId } = await sessionServices(headers, input.organizationId);
-    await feed.markGroupRead(input);
-    await publishRefresh([{ audience: realtimeKeys.user(userId), domain: "notifications" }]);
+    const { feed } = await sessionServices(headers, input.organizationId);
+    await publishCommitted(await feed.markGroupRead(input));
     return null;
   });
 }
@@ -170,18 +167,16 @@ export function getNotificationPage(
 export function markRead(headers: Headers, input: z.output<typeof contextNotification>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const { feed, userId } = await sessionServices(headers, input.organizationId);
-    await feed.markRead(input.id);
-    await publishRefresh([{ audience: realtimeKeys.user(userId), domain: "notifications" }]);
+    const { feed } = await sessionServices(headers, input.organizationId);
+    await publishCommitted(await feed.markRead(input.id));
     return null;
   });
 }
 export function markAllRead(headers: Headers, input: z.output<typeof contextWorkspace>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const { feed, userId } = await sessionServices(headers, input.organizationId);
-    await feed.markAllRead();
-    await publishRefresh([{ audience: realtimeKeys.user(userId), domain: "notifications" }]);
+    const { feed } = await sessionServices(headers, input.organizationId);
+    await publishCommitted(await feed.markAllRead());
     return null;
   });
 }

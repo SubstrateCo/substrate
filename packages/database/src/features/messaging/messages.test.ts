@@ -1,5 +1,6 @@
 import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
+import { commit } from "../../core/effects";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { user, member } from "../../schema";
 import { setupDatabase } from "../../testing/database";
@@ -53,25 +54,31 @@ test("send hints come from the write itself and describe only what the message c
   const conversation = realtimeKeys.conversation(channel.id);
   const project = await fixture.forActor(fixture.alice).projects.create({ name: "Launch" });
   const { db, queries } = recordQueries();
-  const chat = (userId: string) =>
-    createMessagingService(db, { userId, organizationId: fixture.orgA });
-  const plain = await chat("alice").sendMessage(channel.id, "plain");
+  const send = (userId: string, body: string) =>
+    commit(db, (tx) =>
+      createMessagingService(tx, { userId, organizationId: fixture.orgA }).sendMessage(
+        channel.id,
+        body,
+      ),
+    );
+  const plain = await send("alice", "plain");
   expect(plain.hints).toEqual([{ audience: conversation, domain: "messaging", scope: "messages" }]);
   // Bob's first post joins the public channel.
-  expect((await chat("bob").sendMessage(channel.id, "joining")).hints).toEqual([
+  expect((await send("bob", "joining")).hints).toEqual([
     { audience: conversation, domain: "messaging" },
   ]);
   queries.length = 0;
-  const mention = await chat("alice").sendMessage(channel.id, `@[person:${fixture.bob}]`);
-  expect(mention.hints).toEqual([
-    { audience: conversation, domain: "messaging", scope: "messages" },
-    { audience: realtimeKeys.actor(fixture.orgA, fixture.bob), domain: "notifications" },
-  ]);
+  const mention = await send("alice", `@[person:${fixture.bob}]`);
+  expect(mention.hints).toEqual(
+    expect.arrayContaining([
+      { audience: conversation, domain: "messaging", scope: "messages" },
+      { audience: realtimeKeys.actor(fixture.orgA, fixture.bob), domain: "notifications" },
+    ]),
+  );
+  expect(mention.hints).toHaveLength(2);
   // The notification insert returns its recipients; nothing reads them back.
   expect(queries.filter((query) => /^select .* from "notifications"/i.test(query))).toEqual([]);
-  expect(
-    (await chat("alice").sendMessage(channel.id, `@[project:${project.entityId}]`)).hints,
-  ).toEqual([
+  expect((await send("alice", `@[project:${project.entityId}]`)).hints).toEqual([
     { audience: conversation, domain: "messaging", scope: "messages" },
     { audience: realtimeKeys.organization(fixture.orgA), domain: "context" },
   ]);
@@ -255,19 +262,26 @@ test("reactions aggregate per emoji, toggle per user and reject inaccessible mes
   const contentOnly: RealtimeHint[] = [
     { audience: realtimeKeys.conversation(channel.id), domain: "messaging", scope: "messages" },
   ];
-  expect(await service("alice").toggleReaction(message.id, "👍")).toEqual({
-    active: true,
+  const toggle = (userId: string) =>
+    commit(fixture.db, (tx) =>
+      createMessagingService(tx, { userId, organizationId: fixture.orgA }).toggleReaction(
+        message.id,
+        "👍",
+      ),
+    );
+  expect(await toggle("alice")).toEqual({
+    result: { active: true },
     hints: contentOnly,
   });
   // Bob's first reaction joins the public channel, so conversation lists must refresh too.
-  expect((await service("bob").toggleReaction(message.id, "👍")).hints).toEqual([
+  expect((await toggle("bob")).hints).toEqual([
     { audience: realtimeKeys.conversation(channel.id), domain: "messaging" },
   ]);
   expect((await service("alice").listMessages(channel.id))[0]?.reactions).toEqual([
     { emoji: "👍", count: 2, reacted: true },
   ]);
-  expect(await service("alice").toggleReaction(message.id, "👍")).toEqual({
-    active: false,
+  expect(await toggle("alice")).toEqual({
+    result: { active: false },
     hints: contentOnly,
   });
   expect((await service("alice").listMessages(channel.id))[0]?.reactions).toEqual([

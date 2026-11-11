@@ -1,4 +1,5 @@
 import type { DatabaseExecutor } from "../../../client";
+import { effectsFor } from "../../../core/effects";
 import { organization } from "../../../core/organizations/schema";
 import { sharingInvitationHints } from "../../realtime/routing";
 import { messagingConversations } from "../schema";
@@ -68,5 +69,7 @@ export async function finishSharingMail(
     )
     .returning();
   // The sharing list shows delivery. A lease lost to another sender changes nothing here.
-  return finished ? sharingInvitationHints(db, finished) : [];
+  const hints = finished ? await sharingInvitationHints(db, finished) : [];
+  for (const hint of hints) effectsFor(db).hint(hint);
+  return null;
 }

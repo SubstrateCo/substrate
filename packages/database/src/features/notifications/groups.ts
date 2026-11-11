@@ -1,6 +1,8 @@
 import { notificationPosition } from "@substrate/contracts/context/notification-groups";
+import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
+import { effectsFor } from "../../core/effects";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
@@ -169,7 +171,7 @@ export function createNotificationGroups(
     async markGroupRead({ groupKey, through }: { groupKey: string; through: string }) {
       const { context: ctx } = await workspaceContext(db, scope);
       const { at, id } = notificationPosition(through);
-      const [result] = await db.execute<{ allowed: boolean }>(sql`
+      const [result] = await db.execute<{ allowed: boolean; changed: boolean }>(sql`
         WITH eligible AS (${eligible(db, ctx, scope)}), updated AS (
           UPDATE ${notifications} SET read_at = now()
           WHERE ${notifications.id} IN (
@@ -177,9 +179,12 @@ export function createNotificationGroups(
               AND (created_at, id) <= (${at}::timestamptz, ${id}::uuid)
           ) RETURNING ${notifications.id}
         )
-        SELECT EXISTS (SELECT 1 FROM eligible WHERE group_key = ${groupKey}) AS allowed
+        SELECT EXISTS (SELECT 1 FROM eligible WHERE group_key = ${groupKey}) AS allowed,
+          EXISTS (SELECT 1 FROM updated) AS changed
       `);
       if (!result?.allowed) throw new AccessDeniedError();
+      if (result.changed)
+        effectsFor(db).hint({ audience: realtimeKeys.user(scope.userId), domain: "notifications" });
     },
   };
 }

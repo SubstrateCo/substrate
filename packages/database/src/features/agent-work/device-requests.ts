@@ -4,8 +4,10 @@ import {
   type AgentRequestOpened,
   type AgentRequestPayload,
 } from "@substrate/contracts/agent-work";
+import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
+import { effectsFor } from "../../core/effects";
 import { requireDevice, type DeviceIdentity } from "../../core/session/device";
 import { AccessDeniedError } from "../../errors";
 import { homedAgentIds, requireHomedAgent } from "./device";
@@ -64,7 +66,10 @@ export function openRequest(
       })
       .onConflictDoNothing()
       .returning({ id: agentRequests.id, status: agentRequests.status });
-    if (created) return created;
+    if (created) {
+      effectsFor(tx).hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });
+      return created;
+    }
     const [existing] = await tx
       .select({ id: agentRequests.id, status: agentRequests.status })
       .from(agentRequests)
@@ -119,6 +124,8 @@ export function closeRequest(
         ),
       )
       .returning({ id: agentRequests.id });
+    if (changed.length)
+      effectsFor(tx).hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });
     return { changed: changed.length > 0 };
   });
 }

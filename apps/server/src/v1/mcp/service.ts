@@ -19,13 +19,15 @@ export function callAgentTool(headers: Headers, call: z.output<typeof mcpCall>) 
       userId: session.user.id,
       userAgentId: call.agentId,
     });
-    const execution = await executeAgentTool(
-      db,
-      { organizationId, userId: session.user.id, actorEntityId: actor.entityId },
-      call.tool,
-      call.input,
-      call.turn,
+    const execution = await publishCommitted(
+      await executeAgentTool(
+        db,
+        { organizationId, userId: session.user.id, actorEntityId: actor.entityId },
+        call.tool,
+        call.input,
+        call.turn,
+      ),
     );
-    return publishCommitted({ result: execution.output, hints: execution.hints });
+    return execution.output;
   });
 }

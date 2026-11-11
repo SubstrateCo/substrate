@@ -1,7 +1,10 @@
+import { realtimeKeys } from "@substrate/contracts/realtime";
+
 import type { DatabaseExecutor } from "../../client";
 import { actorDisplayName } from "../../core/actors/display-name";
 import { actorPicture } from "../../core/actors/picture";
 import { actors } from "../../core/actors/schema";
+import { effectsFor } from "../../core/effects";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
@@ -243,7 +246,7 @@ export function createFeedService(db: DatabaseExecutor, scope: SessionIdentity) 
     },
     async markAllRead() {
       const { context: ctx } = await workspaceContext(db, scope);
-      await db
+      const changed = await db
         .update(notifications)
         .set({ readAt: sql`now()` })
         .where(
@@ -252,10 +255,24 @@ export function createFeedService(db: DatabaseExecutor, scope: SessionIdentity) 
             eq(notifications.recipientActorEntityId, ctx.scope.actorEntityId),
             isNull(notifications.readAt),
           ),
-        );
+        )
+        .returning({ id: notifications.id });
+      if (changed.length)
+        effectsFor(db).hint({ audience: realtimeKeys.user(scope.userId), domain: "notifications" });
     },
     async markRead(id: string) {
       const { context: ctx } = await workspaceContext(db, scope);
+      const [existing] = await db
+        .select({ id: notifications.id })
+        .from(notifications)
+        .where(
+          and(
+            eq(notifications.id, id),
+            eq(notifications.organizationId, scope.organizationId),
+            eq(notifications.recipientActorEntityId, ctx.scope.actorEntityId),
+          ),
+        );
+      if (!existing) throw new AccessDeniedError();
       const [row] = await db
         .update(notifications)
         .set({ readAt: sql`coalesce(${notifications.readAt}, now())` })
@@ -264,11 +281,13 @@ export function createFeedService(db: DatabaseExecutor, scope: SessionIdentity) 
             eq(notifications.id, id),
             eq(notifications.organizationId, scope.organizationId),
             eq(notifications.recipientActorEntityId, ctx.scope.actorEntityId),
+            isNull(notifications.readAt),
           ),
         )
         .returning({ id: notifications.id });
-      if (!row) throw new AccessDeniedError();
-      return row;
+      if (row)
+        effectsFor(db).hint({ audience: realtimeKeys.user(scope.userId), domain: "notifications" });
+      return existing;
     },
   };
   return {

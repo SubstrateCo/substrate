@@ -1,5 +1,8 @@
+import { realtimeKeys } from "@substrate/contracts/realtime";
+
 import type { DatabaseExecutor } from "../../../client";
 import { actors } from "../../../core/actors/schema";
+import { effectsFor } from "../../../core/effects";
 import type { SessionIdentity } from "../../../core/session/identity";
 import { AccessDeniedError } from "../../../errors";
 import { conversationRemovalHints } from "../../realtime/routing";
@@ -53,9 +56,17 @@ export function connectionOperations(db: DatabaseExecutor, scope: SessionIdentit
         await recordSharingEvents(tx, scope, conversationId, "disconnected", [
           { targetOrganizationId: partnerOrganizationId },
         ]);
+        for (const hint of hints) effectsFor(tx).hint({ ...hint, domain: "access" });
+        effectsFor(tx).hint({
+          audience: realtimeKeys.organization(scope.organizationId),
+          domain: "access",
+        });
+        effectsFor(tx).hint({
+          audience: realtimeKeys.organization(partnerOrganizationId),
+          domain: "access",
+        });
         return {
           disconnected: true,
-          hints: hints.map((hint) => ({ ...hint, domain: "access" as const })),
         };
       });
     },
@@ -85,9 +96,9 @@ export function connectionOperations(db: DatabaseExecutor, scope: SessionIdentit
         await recordSharingEvents(tx, scope, conversationId, "removed", [
           { targetOrganizationId: participant.organizationId },
         ]);
+        for (const hint of hints) effectsFor(tx).hint({ ...hint, domain: "access" });
         return {
           removed: true,
-          hints: hints.map((hint) => ({ ...hint, domain: "access" as const })),
         };
       });
     },
@@ -157,6 +168,8 @@ export async function clearMembershipSharing(
           ),
         ),
       );
-    return hints.map((hint) => ({ ...hint, domain: "access" as const }));
+    const changed = hints.map((hint) => ({ ...hint, domain: "access" as const }));
+    for (const hint of changed) effectsFor(tx).hint(hint);
+    return null;
   });
 }

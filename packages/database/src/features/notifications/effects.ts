@@ -1,5 +1,3 @@
-import { realtimeKeys } from "@substrate/contracts/realtime";
-
 import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
@@ -83,27 +81,23 @@ export async function notify(
       ),
     );
   if (!candidates.length) return [];
-  const inserted = await ctx.db
-    .insert(notifications)
-    .values(
-      candidates.map((row) => ({
-        organizationId: row.organizationId,
-        recipientActorEntityId: row.actorId,
-        kind,
-        eventKey: target.eventKey,
-        entityId: "entityId" in target ? target.entityId : undefined,
-        messageId: "messageId" in target ? target.messageId : undefined,
-      })),
-    )
-    .onConflictDoNothing()
-    .returning({
-      organizationId: notifications.organizationId,
-      actorId: notifications.recipientActorEntityId,
-    });
-  for (const row of inserted)
-    ctx.effects.hint({
-      audience: realtimeKeys.actor(row.organizationId, row.actorId),
-      domain: "notifications",
-    });
-  return inserted;
+  return ctx.effects.notify(() =>
+    ctx.db
+      .insert(notifications)
+      .values(
+        candidates.map((row) => ({
+          organizationId: row.organizationId,
+          recipientActorEntityId: row.actorId,
+          kind,
+          eventKey: target.eventKey,
+          entityId: "entityId" in target ? target.entityId : undefined,
+          messageId: "messageId" in target ? target.messageId : undefined,
+        })),
+      )
+      .onConflictDoNothing()
+      .returning({
+        organizationId: notifications.organizationId,
+        actorId: notifications.recipientActorEntityId,
+      }),
+  );
 }

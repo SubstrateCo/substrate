@@ -192,7 +192,7 @@ test("deleting a conversation keeps task history and removes links, references a
   });
   const mention = await chat("alice").sendMessage(other.id, `See @[channel:${channel.id}]`);
 
-  const { hints } = await chat("alice").deleteConversation(channel.id);
+  const { hints } = await (await f.forSession("alice")).messaging.deleteConversation(channel.id);
 
   expect(hints).toEqual(
     expect.arrayContaining([

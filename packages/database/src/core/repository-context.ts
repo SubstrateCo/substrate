@@ -2,7 +2,7 @@ import type { DatabaseExecutor } from "../client";
 import { AccessDeniedError, ValidationError } from "../errors";
 import { activeActorCondition, permissionActorEntityId } from "./actors/access";
 import { actors } from "./actors/schema";
-import { RepositoryEffects } from "./effects";
+import { effectExecutor, effectsFor } from "./effects";
 import { rootEntityValues } from "./entities/identity";
 import { entities } from "./entities/schema";
 import { entityGrants, permissionLevel } from "./permissions/schema";
@@ -25,8 +25,9 @@ export class RepositoryContext {
   constructor(
     readonly db: DatabaseExecutor,
     scope: ActorScope & Partial<Pick<WorkspaceScope, "userId" | "admin">>,
-    readonly effects = new RepositoryEffects(),
+    readonly effects = effectsFor(db),
   ) {
+    this.db = effectExecutor(db, effects);
     this.scope = Object.freeze({
       ...scope,
       organizationId: scope.organizationId,
@@ -35,12 +36,7 @@ export class RepositoryContext {
   }
 
   async transaction<T>(work: (context: RepositoryContext) => Promise<T>) {
-    const effects = new RepositoryEffects();
-    const result = await this.db.transaction((tx) =>
-      work(new RepositoryContext(tx, this.scope, effects)),
-    );
-    this.effects.merge(effects);
-    return result;
+    return this.db.transaction((tx) => work(new RepositoryContext(tx, this.scope)));
   }
 
   async requireActiveActor(actorEntityId = this.scope.actorEntityId) {

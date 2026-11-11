@@ -31,7 +31,7 @@ test("task sessions reject unverified users, missing memberships and inactive ac
   const repositories = await f.forSession("alice");
   expect(
     await repositories.tasks.list(
-      (await repositories.projects.create({ name: "Verified" })).entityId,
+      (await repositories.projects.create({ name: "Verified" })).result.entityId,
     ),
   ).toEqual([]);
   await f.db.update(actors).set({ disabledAt: new Date() }).where(eq(actors.entityId, f.alice));
@@ -68,7 +68,7 @@ test("actorCanAccess checks levels, inherited task access, actor activity and or
 test("session transactions keep messaging and work in the same transaction", async () => {
   await f.verifyEmails();
   const repositories = await f.forSession("alice");
-  const conversation = await repositories.messaging.createConversation({
+  const { result: conversation } = await repositories.messaging.createConversation({
     kind: "channel",
     name: "Launch",
   });

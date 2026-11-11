@@ -11,7 +11,7 @@ import { createStorageRepository } from "@substrate/database/trusted";
 
 import { environment } from "../environment";
 import { mail } from "../mail/service";
-import { publishRefresh } from "../v1/realtime/publisher";
+import { publishCommitted } from "../v1/realtime/committed";
 import { db } from "./database";
 import {
   organizationBody,
@@ -42,8 +42,7 @@ const provisionMember = async (input: {
   organization: { id: string };
   user: { id: string; name: string };
 }) => {
-  const hints = await clearMembershipSharing(db, input.user.id, input.organization.id);
-  await publishRefresh(hints);
+  await publishCommitted(await clearMembershipSharing(db, input.user.id, input.organization.id));
   await ensureHumanActor(db, {
     organizationId: input.organization.id,
     userId: input.user.id,
@@ -158,8 +157,10 @@ export const auth = betterAuth({
           await publishInvitationChange(input);
         },
         afterRemoveMember: async (input) => {
-          const hints = await clearMembershipSharing(db, input.user.id, input.organization.id);
-          await publishMembershipChange(input, hints);
+          await publishCommitted(
+            await clearMembershipSharing(db, input.user.id, input.organization.id),
+          );
+          await publishMembershipChange(input);
         },
         afterUpdateMemberRole: publishMembershipChange,
         afterUpdateOrganization: publishOrganizationChange,
