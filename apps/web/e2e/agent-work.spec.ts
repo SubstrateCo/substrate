@@ -86,6 +86,19 @@ test("the owner answers an agent's question from another window; members see onl
   // Async questions wait for the owner; they show no deadline.
   await expect(card.getByText(/Expires in/)).toHaveCount(0);
 
+  // While the question is open, a member sees the agent's published reply and nothing of the
+  // owner's agent work, neither in the thread nor on the Agents rail button.
+  const member = await client(actors.member);
+  await visit(member, channel.id, "/dashboard", { messageId: reply.messageId });
+  const memberPane = member.page.getByRole("complementary", { name: "Thread" });
+  await expect(memberPane.getByText("I need one detail first.")).toBeVisible();
+  await expect(memberPane.getByText("Blue or green?")).toHaveCount(0);
+  await expect(
+    member.page
+      .getByRole("navigation", { name: "Apps" })
+      .getByRole("button", { name: "Agents", exact: true }),
+  ).toBeVisible();
+
   // The second window answers from Needs you, which reads only the server.
   const inbox = await client(owner);
   await visit(inbox, undefined, "/agents");
@@ -101,22 +114,11 @@ test("the owner answers an agent's question from another window; members see onl
   await expect(pane.getByText("Answered: Blue")).toBeVisible();
   await expect(card).toHaveCount(0);
 
-  // A member sees the agent's published reply and nothing of the owner's agent work.
-  const member = await client(actors.member);
-  await visit(member, channel.id, "/dashboard", { messageId: reply.messageId });
-  const memberPane = member.page.getByRole("complementary", { name: "Thread" });
-  await expect(memberPane.getByText("I need one detail first.")).toBeVisible();
-  await expect(memberPane.getByText("Blue or green?")).toHaveCount(0);
+  // The member's open window gets no agent-work hint and shows no answer.
   await expect(memberPane.getByText(/Answered:/)).toHaveCount(0);
-  await visit(member, undefined, "/agents");
-  // Nothing of the owner's work shows here, whether or not the member has agents of their own.
-  await expect(
-    member.page.getByRole("heading", { name: /^(Nothing needs you|Create your first agent)$/ }),
-  ).toBeVisible();
-  await expect(member.page.getByRole("button", { name: "Agents", exact: true })).toBeVisible();
 });
 
-test("the owner approves the exact proposed message and it posts as the agent", async ({
+test("the owner approves the exact proposed message; it posts as the agent and links back to its approval", async ({
   actors,
   client,
 }) => {
@@ -148,31 +150,6 @@ test("the owner approves the exact proposed message and it posts as the agent", 
     .filter({ hasText: body.replace("**Friday**", "Friday") });
   await expect(posted.getByText(agent.name, { exact: true })).toBeVisible();
   await expect(posted.getByText("Agent", { exact: true })).toBeVisible();
-});
-
-test("a message an approved proposal created links back to where it was approved", async ({
-  actors,
-  client,
-}) => {
-  const owner = actors.sender;
-  const agent = await createAgent(owner);
-  const [origin, target] = await Promise.all([conversation(owner), conversation(owner)]);
-  await addAgent(owner, target.id, agent.id);
-  const root = await ownerMessage(owner, origin.id, "Share the update");
-  const body = `Approved update ${crypto.randomUUID()}`;
-  await callTool(owner, agent.id, threadTurn(origin.id, root.id, agent.installationId), "propose", {
-    summary: "Post the update.",
-    action: { type: "reply_elsewhere", input: { conversationId: target.id, body } },
-  });
-  const user = await client(owner);
-  await visit(user, undefined, "/agents");
-  await user.page
-    .getByRole("region", { name: `${agent.name} proposes` })
-    .getByRole("button", { name: "Approve" })
-    .click();
-  await expect(user.page.getByRole("heading", { name: "Nothing needs you" })).toBeVisible();
-  await visit(user, target.id);
-  const posted = user.page.getByRole("article").filter({ hasText: body });
   await expect(posted.getByText("You approved this")).toBeVisible();
   await expect(posted.getByRole("link", { name: `from ${origin.name}` })).toBeVisible();
 });

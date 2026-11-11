@@ -4,11 +4,12 @@ import { conversation, post, test, visit } from "./test-support/fixtures";
 import { pauseClock, searches } from "./test-support/search";
 import { expect } from "@playwright/test";
 
-test("switching workspaces clears private messages and reconnects in the selected organization", async ({
+test("switching workspaces clears private messages, reconnects in the selected organization, and asks before a draft is lost", async ({
   account,
   client,
 }) => {
   const firstId = account.organizationId;
+  const firstName = account.name;
   const first = await conversation(account);
   const privateBody = `First workspace only ${first.id}`;
   await post(account, "messaging/messages", { conversationId: first.id, body: privateBody });
@@ -29,9 +30,12 @@ test("switching workspaces clears private messages and reconnects in the selecte
   account.organizationId = firstId;
   account.state = await account.request.storageState();
   const user = await client(account);
+  const activeOrganizationId = async () =>
+    (await (await user.page.request.get("/api/v1/session")).json()).data.session
+      .activeOrganizationId;
   await visit(user, first.id);
   await expect(user.page.getByText(privateBody, { exact: true })).toBeVisible();
-  const readyBefore = user.events.filter((event) => event.type === "ready").length;
+  const readyBefore = user.events.length;
   const reconnect = user.page.waitForEvent("websocket", {
     predicate: (socket) => new URL(socket.url()).searchParams.get("organizationId") === second.id,
   });
@@ -40,46 +44,33 @@ test("switching workspaces clears private messages and reconnects in the selecte
   await user.page
     .getByRole("combobox", { name: "Search workspace", exact: true })
     .fill("discard on workspace switch");
-  await user.page.getByRole("button", { name: `${account.name} ▾`, exact: true }).click();
+  await user.page.getByRole("button", { name: `${firstName} ▾`, exact: true }).click();
   await user.page.clock.resume();
   await Promise.all([reconnect, user.page.getByRole("menuitem", { name, exact: true }).click()]);
   await expect(user.page.getByText(secondBody, { exact: true })).toBeVisible();
   await expect(user.page.getByText(privateBody, { exact: true })).toHaveCount(0);
   await expect(user.page.getByRole("button", { name: first.name, exact: true })).toHaveCount(0);
-  await expect
-    .poll(() => user.events.filter((event) => event.type === "ready").length)
-    .toBeGreaterThan(readyBefore);
-  const response = await user.page.request.get("/api/v1/session");
-  expect((await response.json()).data.session.activeOrganizationId).toBe(second.id);
+  await user.waitForEvent(
+    readyBefore,
+    (event) => event.type === "ready",
+    "The WebSocket completes a new ready handshake in the selected organization",
+  );
+  expect(await activeOrganizationId()).toBe(second.id);
   expect(requests.some((request) => request.query === "discard on workspace switch")).toBe(false);
   await user.page.reload();
   await expect(user.page.getByText(secondBody, { exact: true })).toBeVisible();
-});
 
-test("switching workspaces asks before an unsaved draft is lost and changes nothing until confirmed", async ({
-  account,
-  client,
-}) => {
-  const firstId = account.organizationId;
-  const name = `Second ${crypto.randomUUID()}`;
-  await provisionWorkspaceSession(account.request, name, `second-${crypto.randomUUID()}`);
-  const activated = await account.request.post("/api/auth/organization/set-active", {
-    data: { organizationId: firstId },
-  });
-  expect(activated.ok()).toBe(true);
-  account.state = await account.request.storageState();
-  const user = await client(account);
-  await visit(user, undefined, "/settings/user");
-  const activeOrganizationId = async () =>
-    (await (await user.page.request.get("/api/v1/session")).json()).data.session
-      .activeOrganizationId;
-  const switchTo = async () => {
-    await user.page.getByRole("button", { name: `${account.name} ▾`, exact: true }).click();
-    await user.page.getByRole("menuitem", { name, exact: true }).click();
-  };
+  // An unsaved draft asks before the switch back, and nothing changes until it is discarded.
+  await user.page
+    .getByRole("button", { name: `Signed in as ${account.name}`, exact: true })
+    .click();
+  await user.page.getByRole("button", { name: "User settings", exact: true }).click();
   await user.page.getByLabel("Full name", { exact: true }).fill("Unsaved profile name");
-
-  await switchTo();
+  const switchBack = async () => {
+    await user.page.getByRole("button", { name: `${name} ▾`, exact: true }).click();
+    await user.page.getByRole("menuitem", { name: firstName, exact: true }).click();
+  };
+  await switchBack();
   const dialog = user.page.getByRole("dialog", { name: "Discard unsaved changes?" });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "Keep editing" }).click();
@@ -87,11 +78,11 @@ test("switching workspaces asks before an unsaved draft is lost and changes noth
   await expect(user.page.getByLabel("Full name", { exact: true })).toHaveValue(
     "Unsaved profile name",
   );
-  expect(await activeOrganizationId()).toBe(firstId);
+  expect(await activeOrganizationId()).toBe(second.id);
 
-  await switchTo();
+  await switchBack();
   await dialog.getByRole("button", { name: "Discard changes" }).click();
-  await expect.poll(activeOrganizationId).not.toBe(firstId);
+  await expect.poll(activeOrganizationId).toBe(firstId);
 });
 
 test("an owner invites a teammate, who accepts without receiving project access or owner controls", async ({
@@ -105,7 +96,7 @@ test("an owner invites a teammate, who accepts without receiving project access 
   await owner.page.getByRole("button", { name: "Send invitation", exact: true }).click();
   const link = await new Mailpit(account.request).link(
     account.email,
-    `Join ${actors.sender.name} on Startup OS`,
+    `Join ${actors.sender.organizationName} on Startup OS`,
     "/accept-invitation/",
   );
   await invitee.page.goto(link);
@@ -118,7 +109,7 @@ test("an owner invites a teammate, who accepts without receiving project access 
   ).toBeVisible();
   await invitee.page.goto("/dashboard");
   await expect(
-    invitee.page.getByRole("button", { name: `${actors.sender.name} ▾`, exact: true }),
+    invitee.page.getByRole("button", { name: `${actors.sender.organizationName} ▾`, exact: true }),
   ).toBeVisible();
   await invitee.page
     .getByRole("button", { name: `Signed in as ${account.name}`, exact: true })
@@ -134,10 +125,10 @@ test("an owner invites a teammate, who accepts without receiving project access 
 });
 
 test("invitation validation and owner confirmation return to the form", async ({
-  account,
+  actors,
   client,
 }) => {
-  const user = await client(account);
+  const user = await client(actors.sender);
   await visit(user, undefined, "/settings/organization/invitations");
   const send = user.page.getByRole("button", { name: "Send invitation", exact: true });
   const email = user.page.getByLabel("Email", { exact: true });

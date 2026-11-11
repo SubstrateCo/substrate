@@ -91,8 +91,9 @@ test("a completed send preserves a newer draft after leaving and returning", asy
     );
     release();
     await completed;
-    await page.waitForLoadState("networkidle");
     await expect(page.getByRole("article").filter({ hasText: sent })).toBeVisible();
+    // The send settles, and its success handler runs, before the composer is editable again.
+    await expect(editor).toHaveAttribute("contenteditable", "true");
     await expect(editor).toHaveText("newer draft");
     await page.getByRole("button", { name: second.name, exact: true }).click();
     await expect(editor).toHaveText("other destination");

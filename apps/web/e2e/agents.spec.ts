@@ -27,7 +27,7 @@ async function createAgent(user: Client, name: string) {
   await expect(user.page.getByLabel("Agent name", { exact: true })).toHaveValue(name);
 }
 
-test("agent definitions can be created, edited, persisted and deleted without running a provider", async ({
+test("agent definitions can be created, edited, persisted and deleted, and the Agents rail button is current in the Agents app", async ({
   account,
   client,
 }) => {
@@ -93,13 +93,23 @@ test("agent definitions can be created, edited, persisted and deleted without ru
   await user.page.reload();
   await expect(sidebar.getByText("You have no agents yet.", { exact: true })).toBeVisible();
   await expect(firstAgent).toBeVisible();
+
+  const apps = user.page.getByRole("navigation", { name: "Apps", exact: true });
+  const agents = apps.getByRole("button", { name: "Agents", exact: true });
+  const notifications = apps.getByRole("button", { name: /^Notifications/ });
+  await expect(agents).toHaveAttribute("aria-current", "page");
+  await notifications.click();
+  await expect(notifications).toHaveAttribute("aria-current", "page");
+  await agents.click();
+  await expect(agents).toHaveAttribute("aria-current", "page");
+  await expect(firstAgent).toBeVisible();
 });
 
 test("agent run settings persist and the settings section survives back navigation", async ({
-  account,
+  actors,
   client,
 }) => {
-  const user = await client(account);
+  const user = await client(actors.partner);
   await createAgent(user, `Run settings ${crypto.randomUUID()}`);
   await section(user.page, "Run settings").click();
   const directMessage = user.page.getByRole("switch", { name: "Direct message", exact: true });
@@ -120,27 +130,11 @@ test("agent run settings persist and the settings section survives back navigati
   await expect(section(user.page, "Run settings")).toHaveAttribute("aria-current", "page");
 });
 
-test("the Agents rail button is current in the Agents app", async ({ account, client }) => {
-  const user = await client(account);
-  await visit(user, undefined, "/agents");
-  const apps = user.page.getByRole("navigation", { name: "Apps", exact: true });
-  const agents = apps.getByRole("button", { name: "Agents", exact: true });
-  const notifications = apps.getByRole("button", { name: /^Notifications/ });
-  await expect(agents).toHaveAttribute("aria-current", "page");
-  await notifications.click();
-  await expect(notifications).toHaveAttribute("aria-current", "page");
-  await agents.click();
-  await expect(agents).toHaveAttribute("aria-current", "page");
-  await expect(
-    user.page.getByRole("heading", { name: "Create your first agent", exact: true }),
-  ).toBeVisible();
-});
-
 test("a member adds and removes their agent in a channel without an agent search", async ({
-  account,
+  actors,
   client,
 }) => {
-  const user = await client(account);
+  const user = await client(actors.partner);
   const agent = await createHomedAgent(user.actor);
   const channel = await conversation(user.actor);
   const requests = searches(user.page);

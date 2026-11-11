@@ -2,8 +2,6 @@ import { post, test, visit } from "./test-support/fixtures";
 import { detail, project, share } from "./test-support/tasks";
 import { expect, type Page } from "@playwright/test";
 
-test.use({ launchOptions: { slowMo: process.env.E2E_RECORD_VIDEO ? 150 : 0 } });
-
 async function dragCard(page: Page, title: string, status: string, cancel = false) {
   const board = page.getByRole("region", { name: "Task board", exact: true });
   const handle = board.getByRole("button", { name: `Drag ${title}`, exact: true });
@@ -20,8 +18,8 @@ async function dragCard(page: Page, title: string, status: string, cancel = fals
 
 test("board moves persist, filters survive view switches, and cards open the task inspector", async ({
   actors,
-  browser,
-}, testInfo) => {
+  client,
+}) => {
   test.setTimeout(60_000);
   const created = await project(actors.sender);
   await post(actors.sender, "tasks/mutations", {
@@ -31,118 +29,100 @@ test("board moves persist, filters survive view switches, and cards open the tas
     name: "Product launch",
     description: "One backlog, two ways to plan the work.",
   });
-  for (const [title, status, priority] of [
-    ["Design the onboarding flow", "not_started", "high"],
-    ["Connect workspace data", "in_progress", "medium"],
-    ["Review launch checklist", "in_review", "urgent"],
-    ["Set up the project", "completed", "low"],
-  ] as const)
-    await post(actors.sender, "tasks/mutations", {
-      action: "createTask",
-      organizationId: actors.sender.organizationId,
-      projectEntityId: created.entityId,
-      title,
-      status,
-      priority,
-    });
-  const context = await browser.newContext({
-    baseURL: process.env.PLAYWRIGHT_BASE_URL,
-    storageState: actors.sender.state,
-    colorScheme: "dark",
-    viewport: { width: 1600, height: 1000 },
-    recordVideo: process.env.E2E_RECORD_VIDEO
-      ? { dir: testInfo.outputPath("video"), size: { width: 1600, height: 1000 } }
-      : undefined,
+  await Promise.all(
+    (
+      [
+        ["Design the onboarding flow", "not_started", "high"],
+        ["Connect workspace data", "in_progress", "medium"],
+        ["Review launch checklist", "in_review", "urgent"],
+        ["Set up the project", "completed", "low"],
+      ] as const
+    ).map(([title, status, priority]) =>
+      post(actors.sender, "tasks/mutations", {
+        action: "createTask",
+        organizationId: actors.sender.organizationId,
+        projectEntityId: created.entityId,
+        title,
+        status,
+        priority,
+      }),
+    ),
+  );
+  const user = await client(actors.sender);
+  const { page } = user;
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await visit(user, undefined, "/tasks", { projectId: created.entityId });
+  const tasksTab = await page.getByRole("tab", { name: "Tasks", exact: true }).boundingBox();
+  const boardSwitch = await page.getByRole("radio", { name: "Board", exact: true }).boundingBox();
+  if (!tasksTab || !boardSwitch) throw new Error("Project controls are not visible.");
+  expect(boardSwitch.y).toBeLessThan(tasksTab.y + tasksTab.height);
+  expect(boardSwitch.y + boardSwitch.height).toBeGreaterThan(tasksTab.y);
+  expect(boardSwitch.x).toBeGreaterThan(tasksTab.x + tasksTab.width);
+  await page.getByRole("radio", { name: "Board", exact: true }).click();
+  const board = page.getByRole("region", { name: "Task board", exact: true });
+  const progress = board.getByRole("region", { name: "In progress", exact: true });
+  await expect(board.getByRole("region")).toHaveCount(5);
+  await dragCard(page, "Design the onboarding flow", "In progress");
+  await expect(
+    progress.getByRole("button", { name: "Open Design the onboarding flow", exact: true }),
+  ).toBeVisible();
+  await expect
+    .poll(
+      async () =>
+        (await detail(actors.sender, created.entityId)).tasks.find(
+          (task) => task.title === "Design the onboarding flow",
+        )?.status,
+    )
+    .toBe("in_progress");
+  await page.getByRole("searchbox", { name: "Filter tasks" }).fill("onboarding");
+  await page.getByRole("radio", { name: "List", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: /^In progress: Design the onboarding flow/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /In progress: Connect workspace data/ }),
+  ).toHaveCount(0);
+  await page.getByRole("radio", { name: "Board", exact: true }).click();
+  await expect(page.getByRole("searchbox", { name: "Filter tasks" })).toHaveValue("onboarding");
+  await page.getByRole("searchbox", { name: "Filter tasks" }).fill("");
+  await board.getByRole("button", { name: "Open Design the onboarding flow", exact: true }).click();
+  await expect(
+    page
+      .getByRole("region", { name: "Task details", exact: true })
+      .getByRole("heading", { name: "Design the onboarding flow", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Close task", exact: true }).click();
+  const statusMenu = board.getByRole("button", {
+    name: "Change status of Design the onboarding flow: In progress",
+    exact: true,
   });
-  const page = await context.newPage();
-  try {
-    await page.goto(
-      `/tasks?workspaceId=${actors.sender.organizationId}&projectId=${created.entityId}`,
-    );
-    await expect(page.locator("html")).toHaveClass(/dark/);
-    const tasksTab = await page.getByRole("tab", { name: "Tasks", exact: true }).boundingBox();
-    const boardSwitch = await page.getByRole("radio", { name: "Board", exact: true }).boundingBox();
-    if (!tasksTab || !boardSwitch) throw new Error("Project controls are not visible.");
-    expect(boardSwitch.y).toBeLessThan(tasksTab.y + tasksTab.height);
-    expect(boardSwitch.y + boardSwitch.height).toBeGreaterThan(tasksTab.y);
-    expect(boardSwitch.x).toBeGreaterThan(tasksTab.x + tasksTab.width);
-    await page.getByRole("radio", { name: "Board", exact: true }).click();
-    const board = page.getByRole("region", { name: "Task board", exact: true });
-    const progress = board.getByRole("region", { name: "In progress", exact: true });
-    await expect(board.getByRole("region")).toHaveCount(5);
-    await dragCard(page, "Design the onboarding flow", "In progress");
-    await expect(
-      progress.getByRole("button", { name: "Open Design the onboarding flow", exact: true }),
-    ).toBeVisible();
-    await expect
-      .poll(
-        async () =>
-          (await detail(actors.sender, created.entityId)).tasks.find(
-            (task) => task.title === "Design the onboarding flow",
-          )?.status,
-      )
-      .toBe("in_progress");
-    await page.getByRole("searchbox", { name: "Filter tasks" }).fill("onboarding");
-    await page.getByRole("radio", { name: "List", exact: true }).click();
-    await expect(
-      page.getByRole("button", { name: /^In progress: Design the onboarding flow/ }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: /In progress: Connect workspace data/ }),
-    ).toHaveCount(0);
-    await page.getByRole("radio", { name: "Board", exact: true }).click();
-    await expect(page.getByRole("searchbox", { name: "Filter tasks" })).toHaveValue("onboarding");
-    await page.getByRole("searchbox", { name: "Filter tasks" }).fill("");
-    await board
-      .getByRole("button", { name: "Open Design the onboarding flow", exact: true })
-      .click();
-    await expect(
-      page
-        .getByRole("region", { name: "Task details", exact: true })
-        .getByRole("heading", { name: "Design the onboarding flow", exact: true }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: "Close task", exact: true }).click();
-    const statusMenu = board.getByRole("button", {
-      name: "Change status of Design the onboarding flow: In progress",
-      exact: true,
-    });
-    await statusMenu.focus();
-    await statusMenu.press("Enter");
-    await page.getByRole("menuitemradio", { name: "In review", exact: true }).press("Enter");
-    await expect(
-      board
-        .getByRole("region", { name: "In review", exact: true })
-        .getByRole("button", { name: "Open Design the onboarding flow", exact: true }),
-    ).toBeVisible();
-    await expect
-      .poll(
-        async () =>
-          (await detail(actors.sender, created.entityId)).tasks.find(
-            (task) => task.title === "Design the onboarding flow",
-          )?.status,
-      )
-      .toBe("in_review");
-    await page.reload();
-    await page.getByRole("radio", { name: "Board", exact: true }).click();
-    await expect(
-      board
-        .getByRole("region", { name: "In review", exact: true })
-        .getByRole("button", { name: "Open Design the onboarding flow", exact: true }),
-    ).toBeVisible();
-    await page.getByRole("tab", { name: "Discussions", exact: true }).click();
-    await expect(page.getByRole("radio", { name: "Board", exact: true })).toHaveCount(0);
-    await page.getByRole("tab", { name: "Tasks", exact: true }).click();
-    await expect(page.getByRole("radio", { name: "Board", exact: true })).toBeChecked();
-    await page.screenshot({ path: testInfo.outputPath("board-dark.png") });
-  } finally {
-    await context.close();
-    const video = page.video();
-    if (video)
-      await testInfo.attach("Dark mode Kanban demo", {
-        path: await video.path(),
-        contentType: "video/webm",
-      });
-  }
+  await statusMenu.focus();
+  await statusMenu.press("Enter");
+  await page.getByRole("menuitemradio", { name: "In review", exact: true }).press("Enter");
+  await expect(
+    board
+      .getByRole("region", { name: "In review", exact: true })
+      .getByRole("button", { name: "Open Design the onboarding flow", exact: true }),
+  ).toBeVisible();
+  await expect
+    .poll(
+      async () =>
+        (await detail(actors.sender, created.entityId)).tasks.find(
+          (task) => task.title === "Design the onboarding flow",
+        )?.status,
+    )
+    .toBe("in_review");
+  await page.reload();
+  await page.getByRole("radio", { name: "Board", exact: true }).click();
+  await expect(
+    board
+      .getByRole("region", { name: "In review", exact: true })
+      .getByRole("button", { name: "Open Design the onboarding flow", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("tab", { name: "Discussions", exact: true }).click();
+  await expect(page.getByRole("radio", { name: "Board", exact: true })).toHaveCount(0);
+  await page.getByRole("tab", { name: "Tasks", exact: true }).click();
+  await expect(page.getByRole("radio", { name: "Board", exact: true })).toBeChecked();
 });
 
 test("failed and canceled drags keep the saved status, and pending moves cannot overlap", async ({

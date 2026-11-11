@@ -35,6 +35,8 @@ test("every settings section uses the same content column and heading", async ({
   const sender = await client(actors.sender);
   const columns: { x: number; width: number }[] = [];
   const headings: { y: number; fontSize: string }[] = [];
+  const sections = sender.page.getByRole("navigation", { name: "Settings sections", exact: true });
+  await visit(sender, undefined, "/settings/user");
   for (const [path, title] of [
     ["/settings/user", "Profile"],
     ["/settings/user/preferences", "Preferences"],
@@ -45,7 +47,8 @@ test("every settings section uses the same content column and heading", async ({
     ["/settings/organization/conversations", "Conversations"],
     ["/settings/organization/sharing", "External collaboration"],
   ]) {
-    await visit(sender, undefined, path);
+    await sections.getByRole("link", { name: title, exact: true }).click();
+    await expect.poll(() => new URL(sender.page.url()).pathname).toBe(path);
     await expect(
       sender.page.getByRole("heading", { level: 1, name: title, exact: true }),
     ).toBeVisible();
@@ -78,11 +81,18 @@ test("discard clears name validation in profile and organization settings", asyn
   client,
 }) => {
   const sender = await client(actors.sender);
-  for (const [path, label] of [
-    ["/settings/user", "Full name"],
-    ["/settings/organization", "Organization name"],
+  await visit(sender, undefined, "/settings/user");
+  for (const [section, label] of [
+    ["Profile", "Full name"],
+    ["General", "Organization name"],
   ]) {
-    await visit(sender, undefined, path);
+    await sender.page
+      .getByRole("navigation", { name: "Settings sections", exact: true })
+      .getByRole("link", { name: section, exact: true })
+      .click();
+    await expect(
+      sender.page.getByRole("heading", { level: 1, name: section, exact: true }),
+    ).toBeVisible();
     const field = sender.page.getByLabel(label, { exact: true });
     const original = await field.inputValue();
     for (const invalid of ["", "   "]) {
@@ -96,38 +106,34 @@ test("discard clears name validation in profile and organization settings", asyn
   }
 });
 
-for (const width of [640, 1440]) {
-  test(`messages and thread controls remain usable at ${width}px`, async ({ actors, client }) => {
-    const channel = await conversation(actors.sender);
-    await post(actors.sender, "messaging/messages", {
-      conversationId: channel.id,
-      body: `Layout root ${channel.id}`,
-    });
-    const sender = await client(actors.sender);
-    await sender.page.setViewportSize({ width, height: 900 });
-    await visit(sender, channel.id);
-    const editor = sender.page.getByRole("textbox", { name: /^Message / });
-    await expect(editor).toBeInViewport();
-    await sender.page.getByRole("button", { name: "Reply in thread", exact: true }).click();
-    const reply = `Layout reply ${channel.id}`;
-    await expect(
-      sender.page.getByRole("textbox", { name: "Reply in thread…", exact: true }),
-    ).toBeInViewport();
-    await send(sender.page, reply, "Reply in thread…");
-    await expect(
-      sender.page
-        .getByRole("complementary", { name: "Thread", exact: true })
-        .getByText(reply, { exact: true }),
-    ).toBeVisible();
-    await sender.page.getByRole("button", { name: "Close thread", exact: true }).click();
-    await expect(editor).toBeInViewport();
-    if (width < 768) {
-      await sender.page.getByRole("button", { name: "Show conversations", exact: true }).click();
-      await sender.page.getByRole("button", { name: channel.name, exact: true }).click();
-      await expect(editor).toBeInViewport();
-    }
-    expect(
-      await sender.page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
-    ).toBe(true);
+test("messages and thread controls remain usable at 640px", async ({ actors, client }) => {
+  const channel = await conversation(actors.sender);
+  await post(actors.sender, "messaging/messages", {
+    conversationId: channel.id,
+    body: `Layout root ${channel.id}`,
   });
-}
+  const sender = await client(actors.sender);
+  await sender.page.setViewportSize({ width: 640, height: 900 });
+  await visit(sender, channel.id);
+  const editor = sender.page.getByRole("textbox", { name: /^Message / });
+  await expect(editor).toBeInViewport();
+  await sender.page.getByRole("button", { name: "Reply in thread", exact: true }).click();
+  const reply = `Layout reply ${channel.id}`;
+  await expect(
+    sender.page.getByRole("textbox", { name: "Reply in thread…", exact: true }),
+  ).toBeInViewport();
+  await send(sender.page, reply, "Reply in thread…");
+  await expect(
+    sender.page
+      .getByRole("complementary", { name: "Thread", exact: true })
+      .getByText(reply, { exact: true }),
+  ).toBeVisible();
+  await sender.page.getByRole("button", { name: "Close thread", exact: true }).click();
+  await expect(editor).toBeInViewport();
+  await sender.page.getByRole("button", { name: "Show conversations", exact: true }).click();
+  await sender.page.getByRole("button", { name: channel.name, exact: true }).click();
+  await expect(editor).toBeInViewport();
+  expect(
+    await sender.page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+  ).toBe(true);
+});

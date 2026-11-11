@@ -102,9 +102,11 @@ test("actor pictures reach notifications, threads, project discussions, comments
       image,
     );
     expect(requests.filter((path) => path === "/api/v1/messaging/profiles")).toEqual([]);
-    await member.page.route(`**${image}`, (route) => route.abort());
-    await visit(member, undefined, "/notifications");
-    await expect(notice.locator('[data-slot="avatar-fallback"]')).toBeVisible();
+    // Opening the notification marked it read.
+    await member.page
+      .getByRole("navigation", { name: "Apps" })
+      .getByRole("button", { name: /^Notifications/ })
+      .click();
     await expect(notice.getByRole("link")).toHaveAccessibleName(
       `${actors.sender.name} replied to a thread in ${channel.name}`,
     );

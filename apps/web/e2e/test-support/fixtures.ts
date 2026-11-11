@@ -7,6 +7,7 @@ import type { TasksWrite } from "@startup-os/contracts/tasks/input";
 import { provisionVerifiedAccount } from "../../../server/integration/test-support/auth";
 import { Mailpit } from "../../../server/integration/test-support/mailpit";
 import { provisionWorkspaceSession } from "../../../server/integration/test-support/organizations";
+import { expectTimeout } from "./timeouts";
 import {
   expect,
   test as base,
@@ -24,17 +25,36 @@ export interface Actor {
   email: string;
   password: string;
   organizationId: string;
+  /** The active organization's name. Tests may rename the person, so do not derive it from `name`. */
+  organizationName: string;
   state: StorageState;
 }
 export interface Client {
   page: Page;
   actor: Actor;
   events: RealtimeEvent[];
+  /** Waits for a realtime event received at or after index `since` that matches. */
+  waitForEvent: (
+    since: number,
+    match: (event: RealtimeEvent) => boolean,
+    message: string,
+  ) => Promise<void>;
 }
 type Actors = { sender: Actor; member: Actor; partner: Actor };
 
-/** The server accepts writes only from its trusted renderer origin. */
-const trustedOrigin = () => ({ origin: process.env.PLAYWRIGHT_BASE_URL! });
+const changedContexts = new WeakSet<BrowserContext>();
+
+/** Stops a browser context from being reused, after a change that outlives its pages. */
+export function isolateContext(page: Page) {
+  changedContexts.add(page.context());
+}
+
+/**
+ * The server accepts writes only from its trusted renderer origin. Worker contexts sit idle between
+ * tests, and reusing an idle keep-alive socket races the dev server proxy closing it (ECONNRESET),
+ * so each request uses a new connection.
+ */
+const trustedOrigin = () => ({ origin: process.env.PLAYWRIGHT_BASE_URL!, connection: "close" });
 
 /** Invites an email to the actor's organization through Better Auth, as an owner does. */
 export async function inviteMember(
@@ -68,13 +88,19 @@ async function provisionActor(
     email,
     password,
     organizationId: organization?.id ?? "",
+    organizationName: organization ? name : "",
     state: await request.storageState(),
   };
 }
 
 export const test = base.extend<
-  { client: (actor: Actor) => Promise<Client>; account: Actor },
-  { actors: Actors }
+  {
+    client: (actor: Actor) => Promise<Client>;
+    account: Actor;
+    /** Signs the actor in again, for tests that sign out. */
+    freshSession: (actor: Actor) => Promise<Actor>;
+  },
+  { actors: Actors; idleContexts: BrowserContext[] }
 >({
   actors: [
     async ({ playwright }, use, workerInfo) => {
@@ -106,6 +132,7 @@ export const test = base.extend<
         });
         expect(activated.ok()).toBe(true);
         member.organizationId = sender.organizationId;
+        member.organizationName = sender.organizationName;
         member.state = await member.request.storageState();
         await use({ sender, member, partner });
       } finally {
@@ -129,34 +156,121 @@ export const test = base.extend<
     await use(await provisionActor(request, `Account ${randomUUID()}`));
   },
 
-  client: async ({ browser, viewport, video }, use, testInfo) => {
-    const contexts: BrowserContext[] = [];
+  // A new sign-in needs no email, and signing it out leaves the actor's own session valid.
+  freshSession: async ({ playwright }, use) => {
+    const requests: APIRequestContext[] = [];
+    try {
+      await use(async (actor) => {
+        const request = await playwright.request.newContext({
+          baseURL: process.env.PLAYWRIGHT_BASE_URL,
+          extraHTTPHeaders: trustedOrigin(),
+        });
+        requests.push(request);
+        const signedIn = await request.post("/api/auth/sign-in/email", {
+          data: { email: actor.email, password: actor.password },
+        });
+        expect(signedIn.ok(), "The actor signs in to a new session").toBe(true);
+        const activated = await request.post("/api/auth/organization/set-active", {
+          data: { organizationId: actor.organizationId },
+        });
+        expect(activated.ok(), "The new session opens the actor's workspace").toBe(true);
+        return { ...actor, request, state: await request.storageState() };
+      });
+    } finally {
+      await Promise.all(requests.map((request) => request.dispose()));
+    }
+  },
+
+  idleContexts: [
+    // oxlint-disable-next-line no-empty-pattern -- Playwright fixtures must destructure their first argument.
+    async ({}, use) => {
+      const idle: BrowserContext[] = [];
+      await use(idle);
+      await Promise.all(idle.map((context) => context.close()));
+    },
+    { scope: "worker" },
+  ],
+
+  client: async ({ browser, viewport, video, idleContexts }, use, testInfo) => {
+    const taken: BrowserContext[] = [];
+    const recorded: BrowserContext[] = [];
+    const pages: Page[] = [];
     const recordings: Page[] = [];
     try {
       await use(async (actor) => {
         // oxlint-disable-next-line deslop/no-runtime-typeof -- Playwright defines video as a mode string or an options object.
         const record = typeof video === "string" ? video !== "off" : video.mode !== "off";
-        const context = await browser.newContext({
-          viewport,
-          storageState: actor.state,
-          recordVideo: record
-            ? { dir: testInfo.outputPath("videos"), size: viewport ?? undefined }
-            : undefined,
-        });
-        contexts.push(context);
+        let context: BrowserContext;
+        if (record) {
+          context = await browser.newContext({
+            baseURL: process.env.PLAYWRIGHT_BASE_URL,
+            viewport,
+            storageState: actor.state,
+            recordVideo: { dir: testInfo.outputPath("videos"), size: viewport ?? undefined },
+          });
+          recorded.push(context);
+        } else {
+          // Each window takes a context no other window of this test uses, so windows keep separate
+          // storage. Reusing contexts keeps the HTTP cache, which spares the dev server from
+          // serving every module again. API responses are never cached, so only the session
+          // cookies decide who the window is.
+          context =
+            idleContexts.pop() ??
+            (await browser.newContext({ baseURL: process.env.PLAYWRIGHT_BASE_URL, viewport }));
+          taken.push(context);
+          await context.clearCookies();
+          await context.addCookies(actor.state.cookies);
+        }
         const page = await context.newPage();
+        pages.push(page);
         if (record) recordings.push(page);
+        // A reused context keeps local storage. Clear it on this window's first app load only, so
+        // reloads within the test still see what the test stored.
+        await page.addInitScript(() => {
+          try {
+            if (sessionStorage.getItem("e2e-storage-cleared")) return;
+            localStorage.clear();
+            sessionStorage.setItem("e2e-storage-cleared", "true");
+          } catch {
+            // Pages without an origin, such as about:blank, have no storage.
+          }
+        });
         const events: RealtimeEvent[] = [];
+        const listeners = new Set<() => void>();
         page.on("websocket", (socket) => {
           if (new URL(socket.url()).pathname !== "/api/v1/realtime") return;
           socket.on("framereceived", ({ payload }) => {
             events.push(realtimeEvent.parse(JSON.parse(payload.toString())));
+            for (const listener of listeners) listener();
           });
         });
-        return { page, actor, events };
+        const waitForEvent: Client["waitForEvent"] = async (since, match, message) => {
+          const found = () => events.slice(since).some(match);
+          if (!found()) {
+            const { promise, resolve } = Promise.withResolvers<void>();
+            const listener = () => {
+              if (found()) resolve();
+            };
+            listeners.add(listener);
+            // A deadline, not a sleep: the wait ends as soon as the event arrives.
+            const deadline = setTimeout(resolve, expectTimeout);
+            try {
+              await promise;
+            } finally {
+              clearTimeout(deadline);
+              listeners.delete(listener);
+            }
+          }
+          expect(found(), message).toBe(true);
+        };
+        return { page, actor, events, waitForEvent };
       });
     } finally {
-      await Promise.all(contexts.map((context) => context.close()));
+      await Promise.all(pages.map((page) => page.close()));
+      // A context that a test changed for good is closed instead of reused.
+      const changed = taken.filter((context) => changedContexts.has(context));
+      idleContexts.push(...taken.filter((context) => !changedContexts.has(context)));
+      await Promise.all([...changed, ...recorded].map((context) => context.close()));
       for (const [index, page] of recordings.entries()) {
         const path = await page.video()?.path();
         if (path)
@@ -175,12 +289,13 @@ export async function visit(
   const search = new URLSearchParams({ workspaceId: client.actor.organizationId });
   for (const [key, value] of Object.entries({ conversationId, ...params }))
     if (value) search.set(key, value);
+  const since = client.events.length;
   await client.page.goto(`${pathname}?${search}`);
-  await expect
-    .poll(() => client.events.some((event) => event.type === "ready"), {
-      message: "The real authenticated WebSocket completes its ready handshake",
-    })
-    .toBe(true);
+  await client.waitForEvent(
+    since,
+    (event) => event.type === "ready",
+    "The real authenticated WebSocket completes its ready handshake",
+  );
   await expect(
     client.page.getByText(
       /Reconnecting to live updates|Live updates disconnected|some data failed to refresh/,
@@ -251,19 +366,13 @@ export async function expectChange(
   domain: string,
   conversationId?: string,
 ) {
-  await expect
-    .poll(
-      () =>
-        client.events
-          .slice(since)
-          .some(
-            (event) =>
-              event.type === "change" &&
-              event.domain === domain &&
-              event.organizationId === client.actor.organizationId &&
-              (!conversationId || event.conversationId === conversationId),
-          ),
-      { message: `A real ${domain} WebSocket event reaches the recipient's organization` },
-    )
-    .toBe(true);
+  await client.waitForEvent(
+    since,
+    (event) =>
+      event.type === "change" &&
+      event.domain === domain &&
+      event.organizationId === client.actor.organizationId &&
+      (!conversationId || event.conversationId === conversationId),
+    `A real ${domain} WebSocket event reaches the recipient's organization`,
+  );
 }

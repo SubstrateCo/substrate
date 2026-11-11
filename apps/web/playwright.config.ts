@@ -1,3 +1,4 @@
+import { expectTimeout } from "./e2e/test-support/timeouts";
 import { defineConfig } from "@playwright/test";
 
 const baseURL = "http://localhost:3100";
@@ -10,7 +11,7 @@ export default defineConfig({
   fullyParallel: true,
   workers: Number(process.env.E2E_WORKERS ?? 4),
   timeout: 15_000,
-  expect: { timeout: 5_000 },
+  expect: { timeout: expectTimeout },
   retries: 0,
   forbidOnly: !!process.env.CI,
   reporter: [["list"], ["./e2e/test-support/timing-reporter.ts"], ["html", { open: "never" }]],
@@ -23,7 +24,8 @@ export default defineConfig({
     navigationTimeout: 10_000,
     // Auth cookies and signed URLs can appear in traces. Do not collect them by default.
     trace: "off",
-    video: "off",
+    // Set E2E_RECORD_VIDEO to record workflow videos; recording slows every test.
+    video: process.env.E2E_RECORD_VIDEO ? "on" : "off",
     screenshot: "only-on-failure",
   },
   webServer: [

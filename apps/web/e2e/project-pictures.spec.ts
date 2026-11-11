@@ -8,11 +8,11 @@ const png = Buffer.from(
 );
 
 test("project icons use the existing crop upload, survive reload, and clear back to the project symbol", async ({
-  account,
+  actors,
   client,
 }) => {
-  const created = await project(account);
-  const owner = await client(account);
+  const created = await project(actors.sender);
+  const owner = await client(actors.sender);
   await visit(owner, undefined, "/tasks", { projectId: created.entityId });
   await owner.page.getByRole("tab", { name: "Settings", exact: true }).click();
   const upload = owner.page.getByRole("region", { name: "Project icon", exact: true });

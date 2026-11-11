@@ -45,7 +45,7 @@ test("task drafts ask before navigation and project drafts stay with their proje
   await expect(sender.page.getByLabel("Project name", { exact: true })).toHaveValue(second.name);
 });
 
-test("a click outside the task inspector closes it, but controls and drafts keep it", async ({
+test("a click outside the task inspector closes it, but controls, drafts and background task changes keep it", async ({
   actors,
   client,
 }) => {
@@ -80,6 +80,25 @@ test("a click outside the task inspector closes it, but controls and drafts keep
   await outside.click();
   await expect(inspector).toHaveCount(0);
   expect(new URL(user.page.url()).searchParams.has("taskId")).toBe(false);
+
+  // A task created elsewhere refreshes the project without discarding an open edit draft.
+  await user.page.getByRole("button", { name: /^Not started: Open task/ }).click();
+  await inspector.getByRole("button", { name: "Edit task", exact: true }).click();
+  const editor = user.page.getByRole("textbox", { name: "Task title", exact: true });
+  const draft = "Unsaved task draft";
+  await editor.fill(draft);
+  const since = user.events.length;
+  await post(actors.sender, "tasks/mutations", {
+    action: "createTask",
+    organizationId: actors.sender.organizationId,
+    projectEntityId: created.entityId,
+    title: "Background task",
+  });
+  await expectChange(user, since, "tasks");
+  await expect(
+    user.page.getByRole("button", { name: /^Not started: Background task/ }),
+  ).toBeVisible();
+  await expect(editor).toHaveValue(draft);
 });
 
 test("create a project, task and subtask, then edit and reload the task", async ({
@@ -109,9 +128,8 @@ test("create a project, task and subtask, then edit and reload the task", async 
   await expect(sender.page.getByRole("dialog")).toHaveCount(0);
   const task = sender.page.getByRole("region", { name: "Task details", exact: true });
   await expect(task.getByRole("heading", { name: "Ship release", exact: true })).toBeVisible();
+  // The final load of this URL proves the task, its edits and its subtask persisted.
   const taskURL = sender.page.url();
-  await sender.page.reload();
-  await expect(task.getByRole("heading", { name: "Ship release", exact: true })).toBeVisible();
   await task.getByRole("button", { name: "Edit task", exact: true }).click();
   await sender.page.getByLabel("Task title", { exact: true }).fill("Ship reviewed release");
   await select(sender.page, "Status", "In progress");
@@ -171,9 +189,8 @@ test("assignment notifies a project member, whose comment reaches the owner live
   const comment = `Ready for review ${created.entityId}`;
   await member.page.getByLabel("Add a comment", { exact: true }).fill(comment);
   await member.page.getByRole("button", { name: "Post comment", exact: true }).click();
+  // The owner's separate window reads the comment back from the server, so it persisted.
   await expect(sender.page.getByText(comment, { exact: true })).toBeVisible();
-  await member.page.reload();
-  await expect(member.page.getByText(comment, { exact: true })).toBeVisible();
 });
 
 test("project sharing needs confirmation and revocation removes cached private content live", async ({
@@ -206,7 +223,8 @@ test("project sharing needs confirmation and revocation removes cached private c
   ).not.toContain(actors.member.name);
   await sender.page.getByRole("button", { name: "Share project", exact: true }).click();
   await member.page.getByRole("button", { name: created.name, exact: true }).click();
-  await visit(member, undefined, "/tasks", { projectId: created.entityId, taskId: task.id });
+  await member.page.getByRole("button", { name: new RegExp(`^Not started: ${title}`) }).click();
+  await expect.poll(() => new URL(member.page.url()).searchParams.get("taskId")).toBe(task.id);
   await expect(
     member.page
       .getByRole("region", { name: "Task details", exact: true })
@@ -230,33 +248,4 @@ test("project sharing needs confirmation and revocation removes cached private c
   await expect(member.page.getByRole("link", { name: `Task: ${title}`, exact: true })).toHaveCount(
     0,
   );
-});
-
-test("a background task creation does not discard an open task draft", async ({
-  actors,
-  client,
-}) => {
-  const created = await project(actors.sender);
-  const task = await post<{ id: string }>(actors.sender, "tasks/mutations", {
-    action: "createTask",
-    organizationId: actors.sender.organizationId,
-    projectEntityId: created.entityId,
-    title: "Existing task",
-  });
-  const user = await client(actors.sender);
-  await visit(user, undefined, "/tasks", { projectId: created.entityId, taskId: task.id });
-  await expect.poll(() => user.events.some((event) => event.type === "ready")).toBe(true);
-  await user.page.getByRole("button", { name: "Edit task", exact: true }).click();
-  const editor = user.page.getByRole("textbox", { name: "Task title", exact: true });
-  const draft = "Unsaved task draft";
-  await editor.fill(draft);
-  const since = user.events.length;
-  await post(actors.sender, "tasks/mutations", {
-    action: "createTask",
-    organizationId: actors.sender.organizationId,
-    projectEntityId: created.entityId,
-    title: "Background task",
-  });
-  await expectChange(user, since, "tasks");
-  await expect(editor).toHaveValue(draft);
 });

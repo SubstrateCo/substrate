@@ -3,8 +3,6 @@ import { project } from "./test-support/tasks";
 import { expect, type Locator } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
-test.use({ video: "on", launchOptions: { slowMo: 150 } });
-
 async function dropFiles(zone: Locator, name: string, contents: string) {
   const transfer = await zone.page().evaluateHandle(
     ({ name, contents }) => {

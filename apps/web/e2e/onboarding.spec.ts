@@ -4,10 +4,10 @@ import { inviteMember, test, visit } from "./test-support/fixtures";
 import { expect } from "@playwright/test";
 
 test("workspace creation can be canceled and only asks for a name initially", async ({
-  account,
+  actors,
   client,
 }) => {
-  const user = await client(account);
+  const user = await client(actors.partner);
   await user.page.goto("/onboarding");
   const create = user.page.getByRole("button", { name: "Create a workspace", exact: true });
   await create.click();
@@ -27,8 +27,9 @@ test("login moves from email to password by keyboard", async ({ page }) => {
   await expect(page.getByLabel("Password", { exact: true })).toBeFocused();
 });
 
-test("the user menu shows the selected theme", async ({ account, client }) => {
-  const user = await client(account);
+test("the user menu shows the selected theme", async ({ actors, client }) => {
+  // The theme is stored in this browser context only, so the shared actor keeps no change.
+  const user = await client(actors.partner);
   await visit(user);
   await user.page.getByRole("button", { name: /^Signed in as / }).click();
   const theme = user.page.locator('[data-slot="toggle-group"][aria-label="Theme"]');
@@ -104,17 +105,18 @@ test("a visitor creates an organization before installing and can resume setup",
 });
 
 test("a desktop-sent teammate invitation can be accepted by a new user in the browser", async ({
-  account,
+  actors,
   page,
   request,
 }) => {
+  const owner = actors.sender;
   const id = crypto.randomUUID();
   const email = `public-invite-${id}@example.test`;
   const password = `Invite-${id}!`;
-  await inviteMember(account, email, { origin: "https://desktop.startup-os.local" });
+  await inviteMember(owner, email, { origin: "https://desktop.startup-os.local" });
   const invitation = await new Mailpit(request).link(
     email,
-    `Join ${account.name} on Startup OS`,
+    `Join ${owner.organizationName} on Startup OS`,
     "/desktop/open",
   );
   await page.goto(invitation);
@@ -131,11 +133,11 @@ test("a desktop-sent teammate invitation can be accepted by a new user in the br
   await expect(page.getByRole("heading", { name: "Invite your team", exact: true })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Open Startup OS", exact: true })).toHaveAttribute(
     "href",
-    `startupos://open/dashboard?workspaceId=${account.organizationId}`,
+    `startupos://open/dashboard?workspaceId=${owner.organizationId}`,
   );
   const memberships = await page.request.get("/api/auth/organization/list");
   expect((await memberships.json()).map((org: { id: string }) => org.id)).toEqual([
-    account.organizationId,
+    owner.organizationId,
   ]);
 });
 
@@ -157,16 +159,16 @@ test("public setup remains usable on a narrow screen", async ({ page }) => {
 
 test("public downloads preserve a safe destination and do not forward it to the installer host", async ({
   page,
-  request,
 }) => {
   await page.goto("/download?redirect=%2Faccept-invitation%2Finvite-1");
   await expect(page.getByRole("link", { name: "Open Startup OS", exact: true })).toHaveAttribute(
     "href",
     "startupos://open/accept-invitation/invite-1",
   );
-  const download = await request.get("/desktop/download", { maxRedirects: 0 });
-  expect(download.status()).toBe(303);
-  expect(download.headers().location).toBe("https://downloads.example.test/StartupOS.exe");
+  // The server's installer redirect is unit-tested; the page must not pass the destination on.
+  await expect(
+    page.getByRole("link", { name: "Download for Windows", exact: true }),
+  ).toHaveAttribute("href", "/desktop/download");
   await page.goto("/download?redirect=https%3A%2F%2Fevil.example");
   await expect(page.getByRole("link", { name: "Open Startup OS", exact: true })).toHaveAttribute(
     "href",
@@ -200,10 +202,15 @@ test("retrying activation opens the organization that was already created", asyn
   ).toHaveLength(1);
 });
 
-test("switching accounts keeps the intended invitation", async ({ account, client }) => {
+test("switching accounts keeps the intended invitation", async ({
+  actors,
+  client,
+  freshSession,
+}) => {
+  const owner = await freshSession(actors.partner);
   const email = `another-person-${crypto.randomUUID()}@example.test`;
-  const { id } = await inviteMember(account, email);
-  const user = await client(account);
+  const { id } = await inviteMember(owner, email);
+  const user = await client(owner);
   const destination = `/accept-invitation/${id}`;
   await user.page.goto(destination);
   await expect(
@@ -270,9 +277,11 @@ test("an accepted invitation can resume when workspace activation fails", async 
 });
 
 test("browser account switching preserves the desktop authorization and invitation destination", async ({
-  account,
+  actors,
   client,
+  freshSession,
 }) => {
+  const account = await freshSession(actors.partner);
   const user = await client(account);
   const destination = `/accept-sharing/${crypto.randomUUID()}`;
   const search = new URLSearchParams({

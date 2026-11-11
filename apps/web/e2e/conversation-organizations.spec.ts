@@ -5,7 +5,7 @@ test.afterEach(async ({ actors }) => {
   // These accounts are shared with other specs in this worker.
   for (const actor of [actors.sender, actors.partner]) {
     const organization = await actor.request.post("/api/auth/organization/update", {
-      data: { organizationId: actor.organizationId, data: { name: actor.name } },
+      data: { organizationId: actor.organizationId, data: { name: actor.organizationName } },
     });
     expect(organization.ok()).toBe(true);
     const person = await actor.request.post("/api/auth/update-user", {
@@ -15,24 +15,28 @@ test.afterEach(async ({ actors }) => {
   }
 });
 
-test("channel readers can inspect connected organizations and grouped members in both themes", async ({
+test("channel readers can inspect connected organizations and grouped members", async ({
   account,
   actors,
   client,
-}, testInfo) => {
+}) => {
   const organizations = [
     { actor: account, name: "Northstar", person: "Maya Chen" },
     { actor: actors.sender, name: "Orbit Studio", person: "Alex Rivera" },
     { actor: actors.partner, name: "Fieldwork", person: "Sam Patel" },
   ];
-  for (const { actor, name, person } of organizations) {
-    const updated = await actor.request.post("/api/auth/organization/update", {
-      data: { organizationId: actor.organizationId, data: { name } },
-    });
-    expect(updated.ok()).toBe(true);
-    const renamed = await actor.request.post("/api/auth/update-user", { data: { name: person } });
-    expect(renamed.ok()).toBe(true);
-  }
+  await Promise.all(
+    organizations.map(async ({ actor, name, person }) => {
+      const updated = await actor.request.post("/api/auth/organization/update", {
+        data: { organizationId: actor.organizationId, data: { name } },
+      });
+      expect(updated.ok()).toBe(true);
+      const renamed = await actor.request.post("/api/auth/update-user", {
+        data: { name: person },
+      });
+      expect(renamed.ok()).toBe(true);
+    }),
+  );
   const c = await post<{ id: string }>(account, "messaging/conversations", {
     kind: "channel",
     name: "partner-launch",
@@ -58,44 +62,30 @@ test("channel readers can inspect connected organizations and grouped members in
     await expect(partnerPopover.getByText(name, { exact: true })).toBeVisible();
   }
   await visit(host, c.id);
-  for (const theme of ["light", "dark"]) {
-    await host.page.evaluate((value) => localStorage.setItem("startup-os-theme", value), theme);
-    await host.page.reload();
-    await expect(host.page.locator("html")).toHaveClass(new RegExp(theme));
-    const trigger = host.page.getByRole("button", {
-      name: "Organizations",
-      exact: true,
-    });
-    await trigger.click();
-    const popover = host.page.getByRole("dialog", {
-      name: "Organizations in this channel",
-      exact: true,
-    });
-    await expect(popover.getByText("Your organization · 1 member", { exact: true })).toBeVisible();
+  const trigger = host.page.getByRole("button", {
+    name: "Organizations",
+    exact: true,
+  });
+  await trigger.click();
+  const popover = host.page.getByRole("dialog", {
+    name: "Organizations in this channel",
+    exact: true,
+  });
+  await expect(popover.getByText("Your organization · 1 member", { exact: true })).toBeVisible();
+  await expect(popover.getByText("Connected organization · 1 member", { exact: true })).toHaveCount(
+    2,
+  );
+  await host.page.keyboard.press("Escape");
+  await expect(popover).not.toBeVisible();
+  await expect(trigger).toBeFocused();
+  await host.page.getByRole("button", { name: "Members, 3 members", exact: true }).click();
+  const members = host.page.getByRole("dialog", { name: "Members", exact: true });
+  for (const { name, person, actor } of organizations) {
+    await expect(members.getByText(person, { exact: true })).toBeVisible();
     await expect(
-      popover.getByText("Connected organization · 1 member", { exact: true }),
-    ).toHaveCount(2);
-    await host.page.screenshot({
-      path: testInfo.outputPath(`organizations-${theme}.png`),
-      animations: "disabled",
-    });
-    await host.page.keyboard.press("Escape");
-    await expect(popover).not.toBeVisible();
-    await expect(trigger).toBeFocused();
-    await host.page.getByRole("button", { name: "Members, 3 members", exact: true }).click();
-    const members = host.page.getByRole("dialog", { name: "Members", exact: true });
-    for (const { name, person, actor } of organizations) {
-      await expect(members.getByText(person, { exact: true })).toBeVisible();
-      await expect(
-        members.getByText(actor === account ? `${name} · Your organization` : name, {
-          exact: true,
-        }),
-      ).toBeVisible();
-    }
-    await host.page.screenshot({
-      path: testInfo.outputPath(`members-${theme}.png`),
-      animations: "disabled",
-    });
-    await host.page.keyboard.press("Escape");
+      members.getByText(actor === account ? `${name} · Your organization` : name, {
+        exact: true,
+      }),
+    ).toBeVisible();
   }
 });

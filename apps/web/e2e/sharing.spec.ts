@@ -17,15 +17,15 @@ async function accept(page: Page) {
 }
 
 test("a new partner signs up, creates their own org, and accepts a desktop channel invitation", async ({
-  account,
+  actors,
   client,
   page,
   request,
 }) => {
-  const c = await conversation(account);
+  const c = await conversation(actors.sender);
   const history = `Before partner approval ${c.id}`;
-  await post(account, "messaging/messages", { conversationId: c.id, body: history });
-  const sender = await client(account);
+  await post(actors.sender, "messaging/messages", { conversationId: c.id, body: history });
+  const sender = await client(actors.sender);
   await visit(sender, c.id);
   await sender.page.getByRole("button", { name: "Conversation actions", exact: true }).click();
   await sender.page.getByRole("menuitem", { name: "External collaboration", exact: true }).click();
@@ -39,7 +39,7 @@ test("a new partner signs up, creates their own org, and accepts a desktop chann
   await sender.page.getByRole("button", { name: "Send invitation", exact: true }).click();
   const link = await new Mailpit(request).link(
     email,
-    `Collaborate with ${account.name} on Startup OS`,
+    `Collaborate with ${actors.sender.organizationName} on Startup OS`,
     "/desktop/open",
   );
   await page.goto(link);
@@ -72,7 +72,7 @@ test("a new partner signs up, creates their own org, and accepts a desktop chann
   ).toBeVisible();
   const session = await page.request.get("/api/v1/session");
   const organizationId = (await session.json()).data.session.activeOrganizationId;
-  expect(organizationId).not.toBe(account.organizationId);
+  expect(organizationId).not.toBe(actors.sender.organizationId);
   await expect(page.getByRole("link", { name: "Open Startup OS", exact: true })).toHaveAttribute(
     "href",
     `startupos://open/dashboard?workspaceId=${organizationId}&conversationId=${c.id}`,
@@ -105,7 +105,7 @@ test("an ordinary recipient requests org approval and an owner approves without 
   const { data: invitation } = await invited.json();
   const [recipient, approver] = await Promise.all([client(actors.member), client(actors.sender)]);
   await recipient.page.goto(`/accept-sharing/${invitation.id}`);
-  await chooseOrganization(recipient.page, actors.sender.name);
+  await chooseOrganization(recipient.page, actors.sender.organizationName);
   await accept(recipient.page);
   await expect(
     recipient.page.getByRole("status").filter({ hasText: "Approval requested" }),

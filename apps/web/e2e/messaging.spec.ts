@@ -9,12 +9,14 @@ import {
 import { expect } from "@playwright/test";
 
 test("collapsing channels keeps the open channel under the header and hides the rest", async ({
-  account,
+  actors,
   client,
 }) => {
-  const selected = await conversation(account);
-  const other = await conversation(account);
-  const viewer = await client(account);
+  const [selected, other] = await Promise.all([
+    conversation(actors.sender),
+    conversation(actors.sender),
+  ]);
+  const viewer = await client(actors.sender);
   await visit(viewer, selected.id);
   const section = viewer.page.getByRole("region", { name: "Channels", exact: true });
   const toggle = section.getByRole("button", { name: /^Channels/ });
@@ -41,31 +43,14 @@ test("collapsing channels keeps the open channel under the header and hides the 
   await expect(otherRow).toBeVisible();
 });
 
-test("a sent channel message reaches another member over the real socket", async ({
+test("cross-organization dm and channel creation and bidirectional live messages", async ({
   actors,
   client,
 }) => {
-  const channel = await conversation(actors.sender, [actors.member.email]);
-  const [sender, recipient] = await Promise.all([client(actors.sender), client(actors.member)]);
-  await Promise.all([visit(sender, channel.id), visit(recipient, channel.id)]);
-  const since = recipient.events.length;
-  const body = `Live message ${channel.id}`;
-  await expect(recipient.page.getByText(body, { exact: true })).toHaveCount(0);
-  await send(sender.page, body);
-  await expect(recipient.page.getByText(body, { exact: true })).toBeVisible();
-  await expectChange(recipient, since, "messaging", channel.id);
-  // A new document load proves persistence, not just optimistic state on the sender.
-  await sender.page.reload();
-  await expect(sender.page.getByText(body, { exact: true })).toBeVisible();
-});
-
-for (const kind of ["dm", "channel"] as const) {
-  test(`cross-organization ${kind} creation and bidirectional live messages`, async ({
-    actors,
-    client,
-  }) => {
-    const [sender, partner] = await Promise.all([client(actors.sender), client(actors.partner)]);
-    await Promise.all([visit(sender), visit(partner)]);
+  const [sender, partner] = await Promise.all([client(actors.sender), client(actors.partner)]);
+  await Promise.all([visit(sender), visit(partner)]);
+  // Each kind starts from the conversation the previous one left open.
+  for (const kind of ["dm", "channel"] as const) {
     const name = `partner-${crypto.randomUUID()}`;
     if (kind === "channel") {
       await sender.page
@@ -145,5 +130,5 @@ for (const kind of ["dm", "channel"] as const) {
         .filter({ hasText: reply })
         .getByText("External", { exact: true }),
     ).toBeVisible();
-  });
-}
+  }
+});

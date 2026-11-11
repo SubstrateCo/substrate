@@ -42,7 +42,11 @@ export class Mailpit {
           );
           return Boolean(message);
         },
-        { message: `Email with subject "${subject}" reaches its test recipient`, timeout: 30_000 },
+        {
+          message: `Email with subject "${subject}" reaches its test recipient`,
+          timeout: 30_000,
+          intervals: [50],
+        },
       )
       .toBe(true);
 

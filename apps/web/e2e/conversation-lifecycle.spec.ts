@@ -1,5 +1,5 @@
 import { conversation, expectChange, post, test, visit } from "./test-support/fixtures";
-import { project } from "./test-support/tasks";
+import { detail, project } from "./test-support/tasks";
 import { expect } from "@playwright/test";
 
 test("deleting a channel keeps its linked task and removes the channel for every member", async ({
@@ -23,17 +23,19 @@ test("deleting a channel keeps its linked task and removes the channel for every
     requestId: crypto.randomUUID(),
     title,
   });
+  const linked = (await detail(actors.sender, created.entityId)).tasks.find(
+    (item) => item.title === title,
+  );
+  if (!linked) throw new Error("The source task fixture is missing from its project.");
   const [sender, member] = await Promise.all([client(actors.sender), client(actors.member)]);
   await Promise.all([visit(sender, channel.id), visit(member, channel.id)]);
-  await sender.page
-    .getByRole("article")
-    .filter({ hasText: body })
-    .getByRole("link", { name: `${title} Not started · Created here`, exact: true })
-    .click();
-  const task = sender.page.getByRole("region", { name: "Task details", exact: true });
-  await expect(task.getByRole("heading", { name: title, exact: true })).toBeVisible();
-  const taskUrl = sender.page.url();
-  await visit(sender, channel.id);
+  // Following this link is covered in connected-work.spec.ts; here it shows the link exists.
+  await expect(
+    sender.page
+      .getByRole("article")
+      .filter({ hasText: body })
+      .getByRole("link", { name: `${title} Not started · Created here`, exact: true }),
+  ).toBeVisible();
 
   const since = member.events.length;
   await sender.page.getByRole("button", { name: "Conversation actions", exact: true }).click();
@@ -51,7 +53,11 @@ test("deleting a channel keeps its linked task and removes the channel for every
   ).toBeVisible();
   await expect(member.page.getByText(channel.name, { exact: true })).toHaveCount(0);
 
-  await sender.page.goto(taskUrl);
+  await visit(sender, undefined, "/tasks", {
+    projectId: created.entityId,
+    taskId: linked.entityId,
+  });
+  const task = sender.page.getByRole("region", { name: "Task details", exact: true });
   await expect(task.getByRole("heading", { name: title, exact: true })).toBeVisible();
   await expect(
     task.getByRole("link", { name: `Created from a discussion · ${channel.name}`, exact: true }),

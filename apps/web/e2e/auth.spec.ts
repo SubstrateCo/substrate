@@ -18,9 +18,11 @@ test("an unverified account cannot open the workspace until its email is verifie
   await expect(page).toHaveURL(/\/verify-email/);
 });
 test("sign-out removes private content, blocks history navigation, and allows a fresh login", async ({
-  account,
+  actors,
   client,
+  freshSession,
 }) => {
+  const account = await freshSession(actors.partner);
   const channel = await conversation(account);
   const body = `Private session ${channel.id}`;
   await post(account, "messaging/messages", { conversationId: channel.id, body });

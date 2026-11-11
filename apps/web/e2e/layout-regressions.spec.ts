@@ -11,12 +11,22 @@ test("opening a thread keeps message authors at the same left edge", async ({ ac
   await visit(sender, channel.id);
   const message = sender.page.getByTestId("conversation-content").getByText(body, { exact: true });
   await expect(message).toBeVisible();
+  const editor = sender.page.getByRole("textbox", { name: /^Message / });
+  await expect(editor).toBeInViewport();
   const before = (await message.boundingBox())!;
   await sender.page.getByRole("button", { name: "Reply in thread", exact: true }).click();
   await expect(
     sender.page.getByRole("complementary", { name: "Thread", exact: true }),
   ).toBeVisible();
+  await expect(
+    sender.page.getByRole("textbox", { name: "Reply in thread…", exact: true }),
+  ).toBeInViewport();
   await expect.poll(async () => (await message.boundingBox())!.x).toBe(before.x);
+  await sender.page.getByRole("button", { name: "Close thread", exact: true }).click();
+  await expect(editor).toBeInViewport();
+  expect(
+    await sender.page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+  ).toBe(true);
 });
 
 test("opening task details does not resize or move the task list", async ({ actors, client }) => {
@@ -46,24 +56,26 @@ test("opening task details does not resize or move the task list", async ({ acto
   expect((await list.boundingBox())!.x).toBe(before.x);
 });
 
-for (const [path, title, column] of [
-  ["/settings/user/preferences", "Preferences", '[data-slot="settings-content"]'],
-  ["/notifications", "Notifications", '[aria-label="Notification feed"] > div'],
-] as const) {
-  test(`${title} uses a centered content column`, async ({ actors, client }) => {
-    const sender = await client(actors.sender);
-    await sender.page.setViewportSize({ width: 1920, height: 1080 });
-    await visit(sender, undefined, path);
+test("Preferences and Notifications use a centered content column", async ({ actors, client }) => {
+  const sender = await client(actors.sender);
+  await sender.page.setViewportSize({ width: 1920, height: 1080 });
+  const expectCentered = async (title: string, column: string) => {
     await expect(sender.page.getByRole("heading", { name: title, exact: true })).toBeVisible();
-    const content = sender.page.locator(column);
-    const bounds = await content.evaluate((element) => {
+    const bounds = await sender.page.locator(column).evaluate((element) => {
       const box = element.getBoundingClientRect();
       const parent = element.parentElement!.getBoundingClientRect();
       return { center: box.x + box.width / 2, parentCenter: parent.x + parent.width / 2 };
     });
-    expect(Math.abs(bounds.center - bounds.parentCenter)).toBeLessThan(2);
-  });
-}
+    expect(Math.abs(bounds.center - bounds.parentCenter), `${title} is centered`).toBeLessThan(2);
+  };
+  await visit(sender, undefined, "/settings/user/preferences");
+  await expectCentered("Preferences", '[data-slot="settings-content"]');
+  await sender.page
+    .getByRole("navigation", { name: "Apps" })
+    .getByRole("button", { name: /^Notifications/ })
+    .click();
+  await expectCentered("Notifications", '[aria-label="Notification feed"] > div');
+});
 
 test("desktop system theme sends the preference rather than the resolved color", async ({
   actors,
