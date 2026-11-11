@@ -1,6 +1,8 @@
 import { partialMatchKey, type QueryKey } from "@tanstack/react-query";
 
 export const queryKeys = {
+  messageUnread: (organizationId: string) =>
+    [...queryKeys.messaging(organizationId), "unread"] as const,
   desktopRelease: ["desktop", "release"] as const,
   desktopSettings: ["desktop", "settings"] as const,
   sharingInvitations: ["sharing-invitations"] as const,

@@ -130,6 +130,7 @@ function standalone(
     tasks: domain("tasks", ["get", "list", "commentMentions", "listLinks", "listComments"]),
     messaging: domain("messaging", [
       "listConversations",
+      "unreadCounts",
       "deleteImpact",
       "listManagedConversations",
       "listMessages",

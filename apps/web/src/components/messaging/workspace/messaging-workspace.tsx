@@ -14,6 +14,7 @@ import { resourceState } from "@/lib/resource-state";
 import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
 import { useDirectMessage } from "@/queries/messaging/conversations";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
+import { unreadCountsOptions } from "@/queries/messaging/read-state";
 import { workspacePeopleQueryOptions } from "@/queries/organizations/people";
 import { Unlink } from "lucide-react";
 import { toast } from "sonner";
@@ -36,6 +37,7 @@ export function MessagingWorkspace({
   turnId?: string;
 }) {
   const conversations = useQuery(conversationsQueryOptions(organizationId));
+  const unread = useQuery(unreadCountsOptions(organizationId));
   const workspacePeople = useQuery(workspacePeopleQueryOptions(organizationId));
   const people = (workspacePeople.data ?? []).filter((person) => person.id !== userId);
   const catalog = useQuery(agentCatalogQueryOptions(userId));
@@ -66,7 +68,14 @@ export function MessagingWorkspace({
   const resource = resourceState(conversations);
   const visibleConversations = resource.data ?? [];
   // The sidebar lists joined conversations. Other public channels stay reachable by link and search.
-  const sidebarConversations = visibleConversations.filter((conversation) => conversation.joined);
+  const sidebarConversations = visibleConversations
+    .filter((conversation) => conversation.joined)
+    .map((conversation) => ({
+      ...conversation,
+      unreadCount: !unread.error
+        ? (unread.data?.find((row) => row.conversationId === conversation.id)?.unreadCount ?? 0)
+        : 0,
+    }));
   const selected = conversationId
     ? visibleConversations.find((conversation) => conversation.id === conversationId)
     : sidebarConversations[0];

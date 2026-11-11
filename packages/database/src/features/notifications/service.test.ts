@@ -16,6 +16,20 @@ import { eq, sql } from "drizzle-orm";
 const f = setupDatabase();
 const feed = (userId: string) => createFeedService(f.db, { userId, organizationId: f.orgA });
 
+test("a removed notification cursor restarts only the viewer's authorized feed", async () => {
+  const { chat, channel } = await setup();
+  await chat.addMembers(channel.id, ["bob@example.com"]);
+  await chat.sendMessage(channel.id, `@[person:${f.bob}] first`);
+  await chat.sendMessage(channel.id, `@[person:${f.bob}] second`);
+  const service = feed("bob");
+  const first = (await service.list(undefined, { limit: 1 }))[0]!;
+  await f.db.delete(notifications).where(eq(notifications.id, first.id));
+  const remaining = await service.list(first.id);
+  expect(remaining).toHaveLength(1);
+  expect(remaining[0]!.id).not.toBe(first.id);
+  expect(await feed("alice").list(first.id)).toEqual([]);
+});
+
 test("group pages count complete threads, page groups, and keep concurrent arrivals unread", async () => {
   const { chat, channel } = await setup();
   await chat.addMembers(channel.id, ["bob@example.com"]);

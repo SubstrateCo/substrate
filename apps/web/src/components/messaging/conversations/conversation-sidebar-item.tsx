@@ -37,7 +37,17 @@ export function ConversationSidebarItem({
           className="size-4 shrink-0"
         />
       )}
-      <span className="truncate">{conversationName(conversation)}</span>
+      <span className={conversation.unreadCount ? "truncate font-semibold" : "truncate"}>
+        {conversationName(conversation)}
+      </span>
+      {!!conversation.unreadCount && (
+        <span
+          className="ml-auto shrink-0 text-xs font-medium"
+          aria-label={`${conversation.unreadCount} unread ${conversation.unreadCount === 1 ? "message" : "messages"}`}
+        >
+          {conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}
+        </span>
+      )}
       {/* Channels already sit under "Partner channels"; DMs and groups need the cue here. */}
       {conversation.partner && conversation.kind !== "channel" && (
         <Tooltip>

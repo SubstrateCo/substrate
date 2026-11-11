@@ -94,6 +94,8 @@ export const messagingMessages = pgTable(
     threadRoot: boolean("thread_root").default(true).notNull(),
     // The local agent turn that published this reply. Provenance only; it grants no access.
     originTurnId: uuid("origin_turn_id"),
+    editedAt: timestamp("edited_at", { withTimezone: true }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
@@ -121,6 +123,7 @@ export const messagingMessages = pgTable(
     }),
     check("messaging_thread_root_check", sql`${table.threadRoot}`),
     check("messaging_body_check", sql`length(${table.body}) <= 20000`),
+    check("messaging_deleted_body_check", sql`${table.deletedAt} IS NULL OR ${table.body} = ''`),
     // Message search matches words and word prefixes, not substrings inside words.
     index("messaging_messages_search_idx").using("gin", searchDocument(table.body)),
     // Root and thread pages, and the thread root foreign key on root deletion.

@@ -17,6 +17,7 @@ import {
   queryTargetFilter,
   type QueryTarget,
 } from "../targets";
+import { isAccessFailure } from "@/components/feedback/request-failure";
 
 interface RealtimeQueryTarget extends QueryTarget {
   // Skips harness reads that have not failed. See keepsHarnessRead.
@@ -34,6 +35,8 @@ const everything: RealtimeQueryTarget = { queryKey: [], exceptHarness: true };
 
 /** How the cache matches the live state: refreshing after a ready, current, or stale after a failure. */
 export type RealtimeHealth = "syncing" | "fresh" | "stale";
+
+export const realtimeReconcileMs = 30_000;
 
 export function realtimeQueryTargets(
   event: Extract<RealtimeEvent, { type: "change" }>,
@@ -128,6 +131,7 @@ export function createRealtimeCache({
   let routePending = false;
   let accessWork = Promise.resolve();
   let resyncWork: Promise<void> | undefined;
+  let reconcileWork: Promise<void> | undefined;
   // One counter orders fetch starts and event receipt. A fetch that starts after an event
   // arrived reads the committed change, so that event needs no second read for it.
   let clock = 0;
@@ -313,9 +317,54 @@ export function createRealtimeCache({
       });
     return resyncWork;
   }
+  function reconcile() {
+    if (disposed) return Promise.resolve();
+    const failedReads = () =>
+      queryClient.getQueryCache().findAll({
+        predicate: (query) =>
+          query.getObserversCount() > 0 &&
+          !keepsHarnessRead(query, userId) &&
+          query.state.status === "error",
+      });
+    const discardInactive = () => {
+      // A missed removal may leave no mounted query that would fail its access check. Do not
+      // retain idle private snapshots that could be shown before the next authorized read.
+      for (const query of queryClient.getQueryCache().findAll(privateFilter)) {
+        if (query.getObserversCount() !== 0 || query.state.fetchStatus !== "idle") continue;
+        query.reset();
+        queryClient.removeQueries({ queryKey: query.queryKey, exact: true });
+      }
+    };
+    discardInactive();
+    // Pub/sub hints are best-effort. Re-read mounted data without clearing healthy views, even
+    // when the socket stayed connected while the publisher missed a committed write.
+    reconcileWork ??= refresh([everything])
+      .then(async () => {
+        if (disposed) return;
+        const failed = failedReads();
+        if (failed.some((query) => isAccessFailure(query.state.error))) await resetAccess();
+        else await revalidate();
+        if (!isDisposed()) onHealth?.(failed.length ? "stale" : "fresh");
+      })
+      .catch(async (error: Error) => {
+        if (!isDisposed()) {
+          // A pre-existing request can reject out of refresh() before its normal result scan.
+          if (failedReads().some((query) => isAccessFailure(query.state.error)))
+            await resetAccess();
+          if (!isDisposed()) onHealth?.("stale");
+        }
+        throw error;
+      })
+      .finally(() => {
+        if (!isDisposed()) discardInactive();
+        reconcileWork = undefined;
+      });
+    return reconcileWork;
+  }
   return {
     forbidden: revoke,
     resync,
+    reconcile,
     async receive(value: RealtimeEvent) {
       const parsed = realtimeEvent.safeParse(value);
       if (isDisposed() || !parsed.success) return;

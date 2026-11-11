@@ -154,14 +154,15 @@ test("messaging targets all thread variants of one conversation, not another", (
     "user",
   );
   expect(targets).toEqual([
+    { queryKey: queryKeys.messageUnread("org") },
     { queryKey: queryKeys.conversations("org") },
     { queryKey: queryKeys.conversationMessages("org", "conversation") },
     { queryKey: queryKeys.conversationReactions("org", "conversation") },
     { queryKey: queryKeys.related("org") },
     { queryKey: queryKeys.messagePages("org", "conversation") },
     { queryKey: queryKeys.messageTargets("org", "conversation") },
-    { queryKey: queryKeys.search("org"), refetchType: "none" },
-    { queryKey: queryKeys.searchPages("org"), refetchType: "none" },
+    { queryKey: queryKeys.search("org") },
+    { queryKey: queryKeys.searchPages("org") },
   ]);
   expect(realtimeQueryTargets(change("notifications"), "user")).toEqual([
     { queryKey: queryKeys.notifications("org") },
@@ -180,11 +181,18 @@ test("new messages refresh history, not conversation lists or loaded message con
   expect(targets).not.toContainEqual({ queryKey: queryKeys.conversations("org") });
   expect(targets).not.toContainEqual(pages);
   expect(targets).toEqual(
-    realtimeQueryTargets({ ...change("messaging"), conversationId: "conversation" }, "user").filter(
-      (target) =>
-        JSON.stringify(target) !== JSON.stringify({ queryKey: queryKeys.conversations("org") }) &&
-        JSON.stringify(target) !== JSON.stringify(pages),
-    ),
+    realtimeQueryTargets({ ...change("messaging"), conversationId: "conversation" }, "user")
+      .filter(
+        (target) =>
+          JSON.stringify(target) !== JSON.stringify({ queryKey: queryKeys.conversations("org") }) &&
+          JSON.stringify(target) !== JSON.stringify(pages),
+      )
+      .map((target) =>
+        JSON.stringify(target.queryKey) === JSON.stringify(queryKeys.search("org")) ||
+        JSON.stringify(target.queryKey) === JSON.stringify(queryKeys.searchPages("org"))
+          ? { ...target, refetchType: "none" }
+          : target,
+      ),
   );
 });
 
@@ -400,7 +408,7 @@ test("conversation hints refresh only matching mounted context pages, with a bro
   }
 });
 
-test("task activity and related context refresh while task/message search becomes stale without a refetch storm", async () => {
+test("task activity and related context refresh; message changes refresh active search excerpts", async () => {
   for (const domain of ["tasks", "messaging", "context"] as const) {
     const client = new QueryClient();
     const context = queryKeys.context("org");
@@ -434,11 +442,11 @@ test("task activity and related context refresh while task/message search become
     await new Promise((resolve) => setTimeout(resolve, 25));
     expect(client.getQueryState(keys.activity)?.isInvalidated).toBe(domain !== "messaging");
     expect(client.getQueryState(keys.related)?.isInvalidated).toBe(true);
-    expect(client.getQueryState(keys.search)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(keys.search)?.isInvalidated).toBe(domain !== "messaging");
     expect(client.getQueryState(keys.pages)?.isInvalidated).toBe(true);
     // Only task titles appear in existing notifications; new ones send their own hint.
     expect(client.getQueryState(keys.notifications)?.isInvalidated).toBe(domain === "tasks");
-    expect(searchFetches).toBe(0);
+    expect(searchFetches).toBe(domain === "messaging" ? 1 : 0);
     cache.dispose();
     unsubscribe();
     client.clear();

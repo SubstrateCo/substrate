@@ -15,7 +15,7 @@ import { AtSign, Check, ChevronRight, ListTodo, LockKeyhole, MessageSquare } fro
 
 export type Notification = {
   id: string;
-  kind: "assignment" | "mention" | "reply";
+  kind: "assignment" | "mention" | "reply" | "message";
   /** The task or project for assignments. */
   title: string;
   /** Who acted, or null when the server could not name them. */
@@ -34,7 +34,12 @@ export type Notification = {
   mixedKinds?: boolean;
 };
 
-const kindIcons = { assignment: ListTodo, reply: MessageSquare, mention: AtSign };
+const kindIcons = {
+  assignment: ListTodo,
+  reply: MessageSquare,
+  message: MessageSquare,
+  mention: AtSign,
+};
 
 /** Where it happened: "#launch", a private channel by its bare name, a group, or "a direct message". */
 function place(source: Notification["source"]) {
@@ -52,6 +57,10 @@ function sentence(item: Notification) {
   if (item.kind === "mention" && item.source.kind === "project")
     return { verb: "mentioned you in a comment on", object: item.title };
   if (item.kind === "mention") return { verb: "mentioned you in", object: place(item.source) };
+  if (item.kind === "message")
+    return item.source.kind === "dm"
+      ? { verb: "sent you", object: "a direct message" }
+      : { verb: "sent a message in", object: place(item.source) };
   return { verb: "replied to a thread in", object: place(item.source) };
 }
 

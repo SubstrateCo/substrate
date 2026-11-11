@@ -31,6 +31,7 @@ export function WorkspaceShell({
   onRetry,
   children,
   hasUnreadNotifications = false,
+  hasUnreadMessages = false,
   agentsNeedYou = false,
 }: {
   name: string;
@@ -39,6 +40,7 @@ export function WorkspaceShell({
   view: WorkspaceView;
   onViewChange: (view: WorkspaceView) => void;
   hasUnreadNotifications?: boolean;
+  hasUnreadMessages?: boolean;
   /** One of the viewer's agents waits for an answer, an approval, or a decision. */
   agentsNeedYou?: boolean;
   showOrganizationSettings: boolean;
@@ -64,6 +66,8 @@ export function WorkspaceShell({
           icon={MessageSquare}
           shortcut={appShortcutKeys.messages}
           active={view === "messages"}
+          unread={hasUnreadMessages}
+          unreadLabel="unread messages"
           onClick={() => onViewChange("messages")}
         />
         <WorkspaceAppButton

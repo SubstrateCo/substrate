@@ -39,7 +39,8 @@ async function referenceEndpoints(
   target: ReferenceTarget,
   level: "view" | "edit",
 ) {
-  const { message, conversation } = await requireMessage(ctx.db, scope, source.messageId);
+  const { message, conversation } = await requireMessage(ctx.db, scope, source.messageId, "share");
+  if (message.deletedAt && level === "edit") throw new AccessDeniedError();
   if (source.conversationId && message.conversationId !== source.conversationId)
     throw new AccessDeniedError();
   const work = await requireWork(ctx, target.id, level);
@@ -157,7 +158,8 @@ export function createContextService(
     async createTaskFromMessage(input: CreateTaskInput & { requestId: string; messageId: string }) {
       return transaction(async (ctx) => {
         const tx = ctx.db;
-        const { conversation } = await requireMessage(tx, scope, input.messageId);
+        const { conversation, message } = await requireMessage(tx, scope, input.messageId, "share");
+        if (message.deletedAt) throw new AccessDeniedError();
         if (conversation.organizationId !== scope.organizationId) throw new AccessDeniedError();
         const project = await ctx.requireAccess(input.projectEntityId, "edit", true);
         // Project access locking serializes retries, including simultaneous submissions.
@@ -239,7 +241,8 @@ export function createContextService(
           messageId: messagingMessages.id,
           conversationId: messagingConversations.id,
           conversationName: messagingConversations.name,
-          body: messagingMessages.body,
+          body: sql<string>`case when ${messagingMessages.deletedAt} is null then ${messagingMessages.body} else '' end`,
+          deletedAt: messagingMessages.deletedAt,
           threadId: messagingMessages.threadId,
           authorName: actorDisplayName(),
           authorImage: actorPicture(scope),

@@ -4,7 +4,9 @@ import type { listConversations } from "@/api/messaging/requests";
  * A conversation as the server lists it. `joined` marks an active member: public channels the
  * person never joined or left stay readable but leave the sidebar.
  */
-export type Conversation = Awaited<ReturnType<typeof listConversations>>[number];
+export type Conversation = Awaited<ReturnType<typeof listConversations>>[number] & {
+  unreadCount?: number;
+};
 
 /**
  * `agentId` names the agent definition only for the viewer's own agents. `external` marks members

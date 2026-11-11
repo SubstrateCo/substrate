@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { LinkMessageWork } from "../../context/links/link-message-work";
 import { MessageContext, type MessageContextState } from "../../context/references/message-context";
 import { ReferencedMessageBody } from "../../context/references/referenced-message-body";
+import { EditMessageDialog } from "./edit-message-dialog";
 import { messageAttachmentUrl } from "@/api/files/attachments";
 import type { Message } from "@/api/messaging/requests";
 import {
@@ -14,6 +15,7 @@ import {
 } from "@/components/agent-work/agent-work-slot";
 import { AttachmentList } from "@/components/attachments/attachment-list";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { LinkedMessage } from "@/components/messaging/messages/linked-message";
 import { MessageItem as MessageItemView } from "@/components/messaging/messages/message-item-view";
 import { MessageReaction } from "@/components/messaging/messages/message-reaction";
@@ -26,13 +28,15 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCopyText } from "@/hooks/use-copy-text";
 import { useRecordUrl } from "@/hooks/use-record-url";
 import { messageLink } from "@/lib/navigation/record-links";
+import { useMessageMutations } from "@/queries/messaging/message-mutations";
 import { useToggleReaction } from "@/queries/messaging/reactions";
-import { Copy, Ellipsis, Link2, Smile } from "lucide-react";
+import { Copy, Ellipsis, Link2, Pencil, Smile, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 // Messages render only in the dashboard, which owns the linked-message search param.
@@ -59,6 +63,9 @@ export function MessageItem({
   // A thread's root heads its own pane, so it is not marked as the link target there.
   const highlighted = linked && !threadRoot;
   const [linking, setLinking] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const { remove } = useMessageMutations(organizationId, message.id);
   const actionsTrigger = useRef<HTMLButtonElement>(null);
   const [reactionsEmoji, setReactionsEmoji] = useState<string | null>(null);
   const reactionsTrigger = useRef<HTMLElement | null>(null);
@@ -152,9 +159,11 @@ export function MessageItem({
                       <Smile aria-hidden="true" /> View reactions
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onSelect={() => setLinking(true)}>
-                    <Link2 aria-hidden="true" /> Link existing work
-                  </DropdownMenuItem>
+                  {!message.deletedAt && (
+                    <DropdownMenuItem onSelect={() => setLinking(true)}>
+                      <Link2 aria-hidden="true" /> Link existing work
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem
                     onSelect={() => {
                       const link = messageLink(organizationId, message.conversationId, message.id);
@@ -166,6 +175,23 @@ export function MessageItem({
                   >
                     <Copy aria-hidden="true" /> Copy message link
                   </DropdownMenuItem>
+                  {message.canModify && (
+                    <>
+                      <DropdownMenuItem onSelect={() => setEditing(true)}>
+                        <Pencil aria-hidden="true" /> Edit message
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onSelect={() => {
+                          remove.reset();
+                          setDeleting(true);
+                        }}
+                      >
+                        <Trash2 aria-hidden="true" /> Delete message
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </>
@@ -178,12 +204,37 @@ export function MessageItem({
           onReact={react}
           pending={reaction.isPending}
         >
-          <MessageContext
-            organizationId={organizationId}
-            messageId={message.id}
-            context={context}
-          />
+          {!message.deletedAt && (
+            <MessageContext
+              organizationId={organizationId}
+              messageId={message.id}
+              context={context}
+            />
+          )}
           <AgentWorkSlot messageId={message.id} fromAgent={message.authorType === "agent"} />
+          {editing && !message.deletedAt && (
+            <EditMessageDialog
+              organizationId={organizationId}
+              message={message}
+              onClose={() => setEditing(false)}
+              onRestoreFocus={() => actionsTrigger.current?.focus()}
+            />
+          )}
+          {deleting && (
+            <ConfirmDialog
+              destructive
+              title="Delete message?"
+              description="The text and files will be removed. Replies, thread links, and linked work will remain with a deleted message placeholder."
+              confirmLabel="Delete message"
+              pendingLabel="Deleting…"
+              pending={remove.isPending}
+              error={remove.error}
+              errorDescription="Your message couldn’t be deleted. Try again."
+              onConfirm={() => remove.mutate(undefined, { onSuccess: () => setDeleting(false) })}
+              onClose={() => setDeleting(false)}
+              onRestoreFocus={() => actionsTrigger.current?.focus()}
+            />
+          )}
           {linking && (
             <LinkMessageWork
               organizationId={organizationId}

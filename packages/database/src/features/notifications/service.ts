@@ -98,8 +98,10 @@ export function createFeedService(db: DatabaseExecutor, scope: SessionIdentity) 
               eq(notifications.recipientActorEntityId, ctx.scope.actorEntityId),
             ),
           );
-        if (!anchor) throw new AccessDeniedError();
-        boundary = sql`(${notifications.createdAt}, ${notifications.id}) < (select anchor.created_at, anchor.id from ${notifications} anchor where anchor.id = ${anchor.id}::uuid)`;
+        // A deleted message removes its notification. Restart the authorized feed when its cursor
+        // vanished; never resolve an anchor owned by another recipient or workspace.
+        if (anchor)
+          boundary = sql`(${notifications.createdAt}, ${notifications.id}) < (select anchor.created_at, anchor.id from ${notifications} anchor where anchor.id = ${anchor.id}::uuid)`;
       }
       // One statement filters by the target's current access before LIMIT, so hidden targets
       // cost no extra round trips.
@@ -193,6 +195,7 @@ export function createFeedService(db: DatabaseExecutor, scope: SessionIdentity) 
               and(
                 isNull(notifications.entityId),
                 isNotNull(messagingConversations.id),
+                isNull(messagingMessages.deletedAt),
                 visibleConversations(db, scope),
               ),
             ),

@@ -1,5 +1,91 @@
+import { signIn } from "./test-support/auth";
 import { conversation, conversationButton, post, test, visit } from "./test-support/fixtures";
 import { expect } from "@playwright/test";
+
+test("text drafts survive app and settings navigation", async ({ actors, client }) => {
+  const channel = await conversation(actors.sender);
+  const sender = await client(actors.sender);
+  const { page } = sender;
+  await visit(sender, channel.id);
+  const editor = page.getByRole("textbox", { name: /^Message / });
+  await editor.fill("Keep this draft across apps");
+  for (const app of ["Tasks", "Notifications"]) {
+    await page
+      .getByRole("navigation", { name: "Apps", exact: true })
+      .getByRole("button", { name: new RegExp(`^${app}(?:,|$)`) })
+      .click();
+    await expect(editor).toHaveCount(0);
+    await page
+      .getByRole("navigation", { name: "Apps", exact: true })
+      .getByRole("button", { name: "Messages", exact: true })
+      .click();
+    await conversationButton(page, channel.name).click();
+    await expect(editor).toHaveText("Keep this draft across apps");
+  }
+  for (const settings of ["User settings", "Organization settings"]) {
+    await page
+      .getByRole("button", { name: `Signed in as ${actors.sender.name}`, exact: true })
+      .click();
+    await page.getByRole("button", { name: settings, exact: true }).click();
+    await expect(editor).toHaveCount(0);
+    await page
+      .getByRole("navigation", { name: "Apps", exact: true })
+      .getByRole("button", { name: "Messages", exact: true })
+      .click();
+    await conversationButton(page, channel.name).click();
+    await expect(editor).toHaveText("Keep this draft across apps");
+  }
+});
+
+test("retry after a committed send loses its response keeps its request ID across navigation", async ({
+  actors,
+  client,
+}) => {
+  const [first, second] = await Promise.all([
+    conversation(actors.sender),
+    conversation(actors.sender),
+  ]);
+  const sender = await client(actors.sender);
+  const { page } = sender;
+  await visit(sender, first.id);
+  const requestIds: string[] = [];
+  await page.route("**/api/v1/messaging/messages", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    requestIds.push(route.request().postDataJSON().requestId);
+    const response = await route.fetch();
+    expect(response.ok()).toBe(true);
+    if (requestIds.length === 1) return route.abort("failed");
+    return route.fulfill({ response });
+  });
+  const editor = page.getByRole("textbox", { name: /^Message / });
+  const body = `Lost success ${first.id}`;
+  await editor.fill(body);
+  await editor.press("Enter");
+  await expect(editor.locator("xpath=ancestor::form").getByRole("alert")).toBeVisible();
+  await conversationButton(page, second.name).click();
+  await expect(editor).toBeEmpty();
+  await page
+    .getByRole("navigation", { name: "Apps", exact: true })
+    .getByRole("button", { name: "Tasks", exact: true })
+    .click();
+  await page
+    .getByRole("navigation", { name: "Apps", exact: true })
+    .getByRole("button", { name: "Messages", exact: true })
+    .click();
+  await conversationButton(page, first.name).click();
+  await expect(editor).toHaveText(body);
+  await editor.press("Enter");
+  await expect(editor).toBeEmpty();
+  expect(requestIds).toHaveLength(2);
+  expect(requestIds[0]).toBeTruthy();
+  expect(requestIds[1]).toBe(requestIds[0]);
+  const response = await actors.sender.request.get("/api/v1/messaging/messages", {
+    params: { organizationId: actors.sender.organizationId, conversationId: first.id },
+  });
+  expect(response.ok()).toBe(true);
+  const { data } = await response.json();
+  expect(data.filter((message: { body: string }) => message.body === body)).toHaveLength(1);
+});
 
 test("channel and thread drafts stay isolated and restore reference labels", async ({
   actors,
@@ -43,6 +129,73 @@ test("channel and thread drafts stay isolated and restore reference labels", asy
     .getByRole("button", { name: "Reply in thread", exact: true })
     .click();
   await expect(reply).toHaveText("thread draft");
+});
+
+test("revoked conversation drafts do not return when access is granted again", async ({
+  actors,
+  client,
+}) => {
+  const channel = await conversation(actors.sender, [actors.member.email]);
+  const member = await client(actors.member);
+  const { page } = member;
+  await visit(member, channel.id);
+  const editor = page.getByRole("textbox", { name: /^Message / });
+  await editor.fill("Private revoked draft");
+  const response = await actors.sender.request.get("/api/v1/messaging/conversations", {
+    params: { organizationId: actors.sender.organizationId },
+  });
+  expect(response.ok()).toBe(true);
+  const { data } = await response.json();
+  const entry = data.find((item: { id: string }) => item.id === channel.id);
+  const actorId = entry.members.find(
+    (item: { name: string }) => item.name === actors.member.name,
+  ).actorId;
+  const removed = await actors.sender.request.post("/api/v1/messaging/members/remove", {
+    data: { organizationId: actors.sender.organizationId, conversationId: channel.id, actorId },
+  });
+  expect(removed.ok()).toBe(true);
+  await expect(conversationButton(page, channel.name)).toHaveCount(0);
+  await expect(editor).toHaveCount(0);
+  await expect(page.getByText("Private revoked draft", { exact: true })).toHaveCount(0);
+  const added = await actors.sender.request.post("/api/v1/messaging/members", {
+    data: {
+      organizationId: actors.sender.organizationId,
+      conversationId: channel.id,
+      emails: [actors.member.email],
+      shareHistory: true,
+    },
+  });
+  expect(added.ok()).toBe(true);
+  await conversationButton(page, channel.name).click();
+  await expect(editor).toBeEmpty();
+});
+
+test("sign-out clears drafts before another user opens the same conversation", async ({
+  actors,
+  client,
+  freshSession,
+}) => {
+  test.setTimeout(30_000);
+  const account = await freshSession(actors.sender);
+  const channel = await conversation(account, [actors.member.email]);
+  const sender = await client(account);
+  const { page } = sender;
+  await visit(sender, channel.id);
+  const editor = page.getByRole("textbox", { name: /^Message / });
+  await editor.fill("Owner-only unsent draft");
+  const signOut = async (name: string) => {
+    await page.getByRole("button", { name: `Signed in as ${name}`, exact: true }).click();
+    await page.getByRole("button", { name: "Sign out", exact: true }).click();
+    await expect(page).toHaveURL(/\/login/);
+  };
+  await signOut(account.name);
+  await signIn(page, actors.member.email, actors.member.password);
+  await conversationButton(page, channel.name).click();
+  await expect(editor).toBeEmpty();
+  await signOut(actors.member.name);
+  await signIn(page, account.email, account.password);
+  await conversationButton(page, channel.name).click();
+  await expect(editor).toBeEmpty();
 });
 
 test("a completed send preserves a newer draft after leaving and returning", async ({

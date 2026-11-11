@@ -166,7 +166,7 @@ test("notification recipients use one conflict-safe insert-select for one or man
       new RepositoryContext(tx, { organizationId: f.orgA, actorEntityId: f.alice }),
       { userId: "alice", organizationId: f.orgA },
       mentioned,
-      f.orgA,
+      channel,
     ),
   );
   expect(

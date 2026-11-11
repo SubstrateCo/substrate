@@ -24,3 +24,4 @@ export * from "../features/agents/triggers.schema";
 export * from "../features/agent-work/wakes.schema";
 export * from "../features/agent-work/requests.schema";
 export * from "../features/agent-work/status.schema";
+export * from "../features/messaging/read-state.schema";

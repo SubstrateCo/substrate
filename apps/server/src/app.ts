@@ -13,6 +13,7 @@ import { createAttachmentRoutes } from "./v1/files/attachment-routes";
 import { createPictureRoutes } from "./v1/files/picture-routes";
 import { createFilesRoutes } from "./v1/files/routes";
 import { createMcpRoutes } from "./v1/mcp/routes";
+import { createReadRoutes } from "./v1/messaging/read-routes";
 import { createMessagingRoutes } from "./v1/messaging/routes";
 import { createSharingRoutes } from "./v1/messaging/sharing-routes";
 import { createOrganizationRoutes } from "./v1/organizations/routes";
@@ -76,6 +77,7 @@ export function createApp({ auth, services, scopes, trustedOrigins, realtime }: 
     .route("/api/v1/files", createFilesRoutes(services.files, scopes))
     .route("/api/v1/tasks", createTasksRoutes(services.tasks, scopes))
     .route("/api/v1/messaging", createMessagingRoutes(services.messaging, scopes))
+    .route("/api/v1/messaging", createReadRoutes(services.messagingRead, scopes))
     .route("/api/v1/messaging/sharing", createSharingRoutes(services.sharing, scopes))
     .route("/api/v1/mcp", createMcpRoutes(services.mcp, scopes))
     .route("/api/v1/context", createContextRoutes(services.context, scopes))

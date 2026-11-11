@@ -36,7 +36,8 @@ function eligible(db: DatabaseExecutor, ctx: RepositoryContext, scope: SessionId
       AND ${notifications.recipientActorEntityId} = ${ctx.scope.actorEntityId}
       AND (
         (${notifications.entityId} IS NOT NULL AND ${ctx.readable(notifications.entityId)})
-        OR (${notifications.entityId} IS NULL AND ${messagingConversations.id} IS NOT NULL
+         OR (${notifications.entityId} IS NULL AND ${messagingConversations.id} IS NOT NULL
+           AND ${messagingMessages.deletedAt} IS NULL
           AND ${visibleConversations(db, scope)})
       )`;
 }

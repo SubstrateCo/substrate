@@ -29,6 +29,9 @@ test("messaging validates each route before calling services", async () => {
     deleteConversation: mock(services.deleteConversation),
     addAgent: mock(services.addAgent),
     removeAgent: mock(services.removeAgent),
+    removeMember: mock(services.removeMember),
+    editMessage: mock(services.editMessage),
+    deleteMessage: mock(services.deleteMessage),
   };
   const app = createMessagingRoutes(spies);
   for (const [method, path, body] of [
@@ -53,6 +56,14 @@ test("messaging validates each route before calling services", async () => {
     ["POST", "/conversations/delete", { organizationId: "org", conversationId: "x" }],
     ["POST", "/agents/add", { organizationId: "org", conversationId, agentId: "not-a-uuid" }],
     ["POST", "/agents/remove", { organizationId: "org", conversationId }],
+    ["POST", "/members/remove", { organizationId: "org", conversationId, actorId: "invalid" }],
+    [
+      "POST",
+      "/messages/edit",
+      { organizationId: "org", messageId: conversationId, body: "x".repeat(20001) },
+    ],
+    ["POST", "/messages/edit", { organizationId: "org", messageId: conversationId }],
+    ["POST", "/messages/delete", { organizationId: "org", messageId: "invalid" }],
   ] as const) {
     const response = await app.request(path, {
       method,

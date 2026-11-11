@@ -8,11 +8,11 @@ import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { messageReferences } from "../../core/text/references";
 import { mentionablePerson } from "../messaging/access";
-import { messagingConversations } from "../messaging/schema";
+import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { projects } from "../projects/schema";
 import { tasks } from "../tasks/tasks.schema";
 import { messageEntityReferences } from "./schema";
-import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
 // Callers authorize every message before resolving its metadata.
 export async function messageWorkLinks(ctx: RepositoryContext, messageIds: string[]) {
@@ -33,6 +33,13 @@ export async function messageWorkLinks(ctx: RepositoryContext, messageIds: strin
       )`,
     })
     .from(messageEntityReferences)
+    .innerJoin(
+      messagingMessages,
+      and(
+        eq(messagingMessages.id, messageEntityReferences.messageId),
+        isNull(messagingMessages.deletedAt),
+      ),
+    )
     .innerJoin(
       messagingConversations,
       eq(messagingConversations.id, messageEntityReferences.conversationId),

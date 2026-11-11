@@ -1,8 +1,11 @@
+import { useContext } from "react";
+
 import { ReferencePicker } from "../../context/references/reference-picker";
 import { AttachFilesButton, AttachmentDraftList } from "@/components/attachments/attachment-picker";
 import { FileDropZone } from "@/components/attachments/file-drop-zone";
 import { useAttachmentUploads } from "@/components/attachments/use-attachment-uploads";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
+import { ComposerSendRequests } from "@/components/messaging/composer/composer-drafts";
 import { Composer as ComposerView } from "@/components/messaging/composer/composer-view";
 import { useSendMessage } from "@/queries/messaging/messages";
 
@@ -32,6 +35,9 @@ function DestinationComposer({
   label: string;
 }) {
   const uploads = useAttachmentUploads();
+  const requests = useContext(ComposerSendRequests);
+  if (!requests) throw new Error("Composer requires ComposerDraftProvider");
+  const draftKey = `${organizationId}:${conversationId}:${threadId ?? "channel"}`;
   const send = useSendMessage(organizationId, conversationId, threadId, () => uploads.clear());
   return (
     <FileDropZone label="Message attachments" disabled={send.isPending} onFiles={uploads.add}>
@@ -41,7 +47,7 @@ function DestinationComposer({
         description="Your selected files haven’t been sent."
       />
       <ComposerView
-        draftKey={`${organizationId}:${conversationId}:${threadId ?? "channel"}`}
+        draftKey={draftKey}
         label={label}
         hasAttachments={uploads.items.length > 0}
         attachmentsReady={!uploads.items.length || uploads.ready}
@@ -61,11 +67,21 @@ function DestinationComposer({
         pending={send.isPending}
         error={send.error}
         onSend={(body, onSuccess) => {
+          const fingerprint = JSON.stringify([body, uploads.fileIds]);
+          let request = requests.get(draftKey);
+          if (!request || request.body !== fingerprint) {
+            request = { id: crypto.randomUUID(), body: fingerprint };
+            requests.set(draftKey, request);
+          }
+          const requestId = request.id;
           // Not `mutate` callbacks: they skip an unmounted composer, and switching conversations
           // while this sends must still clear the sent draft, which outlives this component.
           void send
-            .mutateAsync({ body, attachmentFileIds: uploads.fileIds })
-            .then(onSuccess)
+            .mutateAsync({ body, attachmentFileIds: uploads.fileIds, requestId })
+            .then(() => {
+              if (requests.get(draftKey)?.id === requestId) requests.delete(draftKey);
+              onSuccess();
+            })
             .catch(() => {});
         }}
       />

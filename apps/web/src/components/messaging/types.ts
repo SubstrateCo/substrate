@@ -7,6 +7,8 @@ export type Message = {
   authorType?: "human" | "agent";
   authorExternal: boolean;
   createdAt: string | Date;
+  editedAt?: string | Date | null;
+  deletedAt?: string | Date | null;
   threadId: string | null;
   replyCount: number;
   reactions: { emoji: string; count: number; reacted: boolean }[];

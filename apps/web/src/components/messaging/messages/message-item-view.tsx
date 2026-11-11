@@ -96,7 +96,14 @@ export function MessageItem({
             {status && <span className="flex min-w-0 self-center">{status}</span>}
           </div>
         )}
-        {body ?? <MessageMarkdown body={message.body} />}
+        {message.deletedAt ? (
+          <p className="text-sm text-muted-foreground italic">Message deleted</p>
+        ) : (
+          (body ?? <MessageMarkdown body={message.body} />)
+        )}
+        {!message.deletedAt && message.editedAt && (
+          <span className="text-xs text-muted-foreground">Edited</span>
+        )}
         <MessageReactions
           message={message}
           onReact={onReact}

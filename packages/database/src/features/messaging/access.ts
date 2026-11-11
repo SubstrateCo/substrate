@@ -297,7 +297,16 @@ export async function requireMessage(
   db: DatabaseExecutor,
   scope: SessionIdentity,
   messageId: string,
+  lock?: "share",
 ) {
+  if (lock) {
+    const [target] = await db
+      .select({ conversationId: messagingMessages.conversationId })
+      .from(messagingMessages)
+      .where(eq(messagingMessages.id, messageId));
+    if (!target) throw new AccessDeniedError();
+    await loadConversation(db, scope, target.conversationId, lock);
+  }
   const [row] = await db
     .select({ message: messagingMessages, conversation: messagingConversations })
     .from(messagingMessages)

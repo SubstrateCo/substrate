@@ -200,3 +200,13 @@ test("sources return bodies the owner can see now, with author kinds, and drop t
   await alice.leaveConversation(channel.id, "bob");
   expect((await loadSources(f.db, agent.identity, [own.id])).inaccessible).toEqual([own.id]);
 });
+
+test("deleted sources are inaccessible to queued agent work, not empty valid inputs", async () => {
+  const { agent, alice, dm } = await agentWorkFixture(f);
+  const sent = await alice.sendMessage(dm.id, "Erase before the desktop reads this");
+  await alice.deleteMessage(sent.id);
+  expect(await loadSources(f.db, agent.identity, [sent.id])).toEqual({
+    messages: [],
+    inaccessible: [sent.id],
+  });
+});

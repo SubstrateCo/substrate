@@ -176,6 +176,20 @@
       "when": 1794432458343,
       "tag": "0024_grant_invariants",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1794435841998,
+      "tag": "0025_messaging_mvp",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1794436085476,
+      "tag": "0026_message_tombstone_content",
+      "breakpoints": true
     }
   ]
 }

@@ -5,12 +5,12 @@ import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { effectsFor } from "../../core/effects";
-import { organization } from "../../core/organizations/schema";
+import { member, organization } from "../../core/organizations/schema";
 import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { messageEntityReferences } from "../context/schema";
 import { withRemovalHints } from "../realtime/routing";
-import { loadConversation, visibleConversations } from "./access";
+import { loadConversation, lockConversation, visibleConversations } from "./access";
 import { findDirectMessage, findExternalDirectMessage } from "./direct-messages";
 import { activeMembers, endParticipation, hasOtherPerson, setOwner, writeMembers } from "./members";
 import {
@@ -58,6 +58,8 @@ export function conversationOperations(db: DatabaseExecutor, scope: Readonly<Ses
   // Admins can find conversations of their organization that they cannot read.
   async function requireManaged(tx: DatabaseExecutor, viewer: Viewer, id: string) {
     if (viewer.agent) throw new AccessDeniedError();
+    await lockConversation(tx, id, "update");
+    viewer = (await authenticate(tx)).viewer;
     const [conversation] = await tx
       .select()
       .from(messagingConversations)
@@ -223,6 +225,50 @@ export function conversationOperations(db: DatabaseExecutor, scope: Readonly<Ses
         if (added.length || external.length) changed(tx, conversationId, true);
         if (external.length) return { added: added.length, invited: external.length };
         return { added: added.length };
+      });
+    },
+
+    async removeMember(conversationId: string, actorId: string) {
+      if (scope.actorEntityId) throw new AccessDeniedError();
+      return db.transaction(async (tx) => {
+        const { actor, viewer } = await authenticate(tx);
+        const conversation = await requireManaged(tx, viewer, conversationId);
+        if (conversation.kind === "dm" || actorId === actor.entityId) throw new AccessDeniedError();
+        const [target] = await tx
+          .select({ userId: actors.userId })
+          .from(messagingParticipants)
+          .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
+          .innerJoin(
+            member,
+            and(eq(member.userId, actors.userId), eq(member.organizationId, actors.organizationId)),
+          )
+          .where(
+            and(
+              eq(messagingParticipants.conversationId, conversationId),
+              eq(messagingParticipants.actorEntityId, actorId),
+              eq(messagingParticipants.actorType, "human"),
+              eq(messagingParticipants.organizationId, conversation.organizationId),
+              isNull(messagingParticipants.leftAt),
+            ),
+          );
+        if (!target || target.userId === conversation.createdBy || target.userId === scope.userId)
+          throw new AccessDeniedError();
+        const accessRevoked = conversation.kind !== "channel" || conversation.private;
+        await endParticipation(
+          tx,
+          and(
+            eq(messagingParticipants.conversationId, conversationId),
+            eq(messagingParticipants.actorEntityId, actorId),
+          ),
+        );
+        changed(tx, conversationId, true);
+        // Removed members no longer receive conversation hints. A user hint also refreshes
+        // their owner's agent sources and clears cached private content after access loss.
+        effectsFor(tx).hint({
+          audience: realtimeKeys.user(target.userId!),
+          domain: accessRevoked ? "access" : "messaging",
+        });
+        return { removed: true, accessRevoked };
       });
     },
 

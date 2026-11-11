@@ -46,8 +46,9 @@ export async function listLinks(
     desc(messageEntityReferences.entityId),
   ];
   if (input.target.type === "message") {
-    const { conversation } = await requireMessage(db, identity, input.target.id);
+    const { conversation, message } = await requireMessage(db, identity, input.target.id);
     if (conversation.organizationId !== scope.organizationId) throw new AccessDeniedError();
+    if (message.deletedAt) return p.page([]);
     const rows = await db
       .select({
         purpose: messageEntityReferences.purpose,
@@ -87,7 +88,7 @@ export async function listLinks(
       conversationId: messagingMessages.conversationId,
       threadId: messagingMessages.threadId,
       author: actorSelection,
-      body: messagingMessages.body,
+      body: sql<string>`case when ${messagingMessages.deletedAt} is not null then 'Message deleted' else ${messagingMessages.body} end`,
       createdAt: messagingMessages.createdAt,
     })
     .from(messageEntityReferences)

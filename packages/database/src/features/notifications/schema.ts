@@ -19,7 +19,7 @@ export const notifications = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     organizationId: text("organization_id").notNull(),
     recipientActorEntityId: uuid("recipient_actor_entity_id").notNull(),
-    kind: text("kind").$type<"assignment" | "mention" | "reply">().notNull(),
+    kind: text("kind").$type<"assignment" | "mention" | "reply" | "message">().notNull(),
     eventKey: text("event_key").notNull(),
     entityId: uuid("entity_id"),
     messageId: uuid("message_id").references(() => messagingMessages.id, { onDelete: "cascade" }),
@@ -40,7 +40,10 @@ export const notifications = pgTable(
       "notification_target_check",
       sql`(${table.entityId} IS NULL) <> (${table.messageId} IS NULL)`,
     ),
-    check("notification_kind_check", sql`${table.kind} IN ('assignment', 'mention', 'reply')`),
+    check(
+      "notification_kind_check",
+      sql`${table.kind} IN ('assignment', 'mention', 'reply', 'message')`,
+    ),
     index("notification_recipient_idx").on(
       table.organizationId,
       table.recipientActorEntityId,

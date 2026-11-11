@@ -12,6 +12,9 @@ import type {
   ownerInput,
   addAgentInput,
   removeAgentInput,
+  removeMemberInput,
+  messageTargetInput,
+  editMessageInput,
 } from "@substrate/contracts/messaging/input";
 
 import type { WorkspaceScope } from "../../shared/scope";
@@ -25,6 +28,23 @@ export function createMessagingService({
   publish: ReturnType<typeof createCommittedPublisher>;
 }) {
   return {
+    editMessage(this: void, scope: WorkspaceScope, input: z.output<typeof editMessageInput>) {
+      return serviceResult(async () =>
+        publish(await scope.repositories.messaging.editMessage(input.messageId, input.body)),
+      );
+    },
+    deleteMessage(this: void, scope: WorkspaceScope, input: z.output<typeof messageTargetInput>) {
+      return serviceResult(async () =>
+        publish(await scope.repositories.messaging.deleteMessage(input.messageId)),
+      );
+    },
+    removeMember(this: void, scope: WorkspaceScope, input: z.output<typeof removeMemberInput>) {
+      return serviceResult(async () =>
+        publish(
+          await scope.repositories.messaging.removeMember(input.conversationId, input.actorId),
+        ),
+      );
+    },
     listConversations(this: void, scope: WorkspaceScope, _input: z.output<typeof workspaceInput>) {
       return serviceResult(() => scope.repositories.messaging.listConversations());
     },

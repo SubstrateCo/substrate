@@ -1,6 +1,30 @@
 import { conversation, expectChange, post, send, test, visit } from "./test-support/fixtures";
 import { expect, type WebSocketRoute } from "@playwright/test";
 
+test("a connected client recovers a committed message when its change hint is lost", async ({
+  actors,
+  client,
+}) => {
+  const channel = await conversation(actors.sender, [actors.member.email]);
+  const recipient = await client(actors.member);
+  await recipient.page.clock.install();
+  await recipient.page.routeWebSocket("**/api/v1/realtime?*", (socket) => {
+    const server = socket.connectToServer();
+    server.onMessage((message) => {
+      const event = JSON.parse(message.toString());
+      if (event.type !== "change") socket.send(message);
+    });
+  });
+  await visit(recipient, channel.id);
+  const readyBefore = recipient.events.filter((event) => event.type === "ready").length;
+  const body = `Committed without a delivered hint ${channel.id}`;
+  await post(actors.sender, "messaging/messages", { conversationId: channel.id, body });
+  await expect(recipient.page.getByText(body, { exact: true })).toHaveCount(0);
+  await recipient.page.clock.fastForward(30_000);
+  await expect(recipient.page.getByText(body, { exact: true })).toBeVisible();
+  expect(recipient.events.filter((event) => event.type === "ready")).toHaveLength(readyBefore);
+});
+
 test("reconnect resyncs messages missed while the socket was disconnected", async ({
   actors,
   client,

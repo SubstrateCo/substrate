@@ -1,7 +1,8 @@
 import type { DatabaseExecutor } from "../../client";
 import { storedFiles } from "../../core/storage/schema";
+import { messagingMessages } from "../messaging/schema";
 import { messageAttachments, taskAttachments } from "./schema";
-import { asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 
 const fileMetadata = {
   fileId: storedFiles.id,
@@ -19,6 +20,13 @@ export async function messageAttachmentMetadata(db: DatabaseExecutor, messageIds
       ...fileMetadata,
     })
     .from(messageAttachments)
+    .innerJoin(
+      messagingMessages,
+      and(
+        eq(messagingMessages.id, messageAttachments.messageId),
+        isNull(messagingMessages.deletedAt),
+      ),
+    )
     .innerJoin(storedFiles, eq(storedFiles.id, messageAttachments.fileId))
     .where(inArray(messageAttachments.messageId, messageIds))
     .orderBy(asc(messageAttachments.position));

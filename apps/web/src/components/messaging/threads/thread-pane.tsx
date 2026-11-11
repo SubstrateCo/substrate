@@ -10,6 +10,7 @@ import { JumpToLatest, OlderMessages } from "@/components/messaging/messages/mes
 import { ThreadPane as ThreadPaneView } from "@/components/messaging/threads/thread-pane-view";
 import { resourceState } from "@/lib/resource-state";
 import { messagePageOptions } from "@/queries/context/links";
+import { useConversationRead } from "@/queries/messaging/read-state";
 
 export function ThreadPane({
   organizationId,
@@ -41,6 +42,13 @@ export function ThreadPane({
     aroundMessageId: targetMessage?.threadId ? targetMessage.id : undefined,
   });
   const rows = replies.data ?? [];
+  useConversationRead(
+    organizationId,
+    conversationId,
+    !replies.error && !replies.isPlaceholderData && !history.hasPrevious
+      ? rows.at(-1)?.id
+      : undefined,
+  );
   const resource = resourceState(replies);
   const reuseContext = !!root && contextMessageIds.includes(root.id);
   const rootMessageIds = root ? [root.id] : [];

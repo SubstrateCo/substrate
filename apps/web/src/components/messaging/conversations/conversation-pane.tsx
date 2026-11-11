@@ -9,7 +9,9 @@ import { useMessageHistory } from "../messages/use-message-history";
 import { ThreadPane } from "../threads/thread-pane";
 import { AddMembersDialog } from "./add-members-dialog";
 import { ConversationActions } from "./conversation-actions";
+import type { HeaderMember } from "./conversation-header";
 import { LeftChannelNotice } from "./left-channel-notice";
+import { RemoveMemberAction, RemoveMemberDialog } from "./remove-member-action";
 import { AgentWorkNotice } from "@/components/agent-work/agent-work-slot";
 import { ConversationAgentWork } from "@/components/agent-work/conversation-agent-work";
 import { ConversationTurnTranscript } from "@/components/agent-work/transcript/conversation-turn-transcript";
@@ -24,6 +26,7 @@ import {
 import { resourceState } from "@/lib/resource-state";
 import { messageTargetOptions } from "@/queries/context/links";
 import { useConversationManagement } from "@/queries/messaging/management";
+import { useConversationRead } from "@/queries/messaging/read-state";
 
 export function ConversationPane({
   organizationId,
@@ -50,12 +53,20 @@ export function ConversationPane({
   });
   const activeThreadId = messageId && !target.error ? target.data?.root.id : undefined;
   const [addingMembers, setAddingMembers] = useState(false);
+  const [removingMember, setRemovingMember] = useState<HeaderMember | null>(null);
   const { messages, history, loadOlder } = useMessageHistory({
     organizationId,
     conversationId: conversation.id,
     aroundMessageId: target.data?.root.id,
   });
   const timeline = messages.data ?? [];
+  useConversationRead(
+    organizationId,
+    conversation.id,
+    !messages.error && !messages.isPlaceholderData && !history.hasPrevious
+      ? timeline.at(-1)?.id
+      : undefined,
+  );
   const resource = resourceState(messages);
   let messageContent;
   if (target.error)
@@ -138,6 +149,16 @@ export function ConversationPane({
       <ConversationPaneView
         conversation={resource.status === "unavailable" ? null : conversation}
         viewerId={userId}
+        memberAction={(member) =>
+          conversation.canManage &&
+          conversation.kind !== "dm" &&
+          member.type === "human" &&
+          member.organizationId === conversation.organizationId &&
+          member.userId !== userId &&
+          member.userId !== conversation.createdBy ? (
+            <RemoveMemberAction member={member} onRemove={() => setRemovingMember(member)} />
+          ) : null
+        }
         state={resource.status}
         error={messages.error}
         onRetry={() => void messages.refetch()}
@@ -180,6 +201,15 @@ export function ConversationPane({
         }
         thread={aside}
       />
+      {removingMember && (
+        <RemoveMemberDialog
+          organizationId={organizationId}
+          conversationId={conversation.id}
+          member={removingMember}
+          publicChannel={conversation.kind === "channel" && !conversation.private}
+          onClose={() => setRemovingMember(null)}
+        />
+      )}
     </ConversationAgentWork>
   );
 }

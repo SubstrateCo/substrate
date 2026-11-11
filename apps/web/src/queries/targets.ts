@@ -61,6 +61,7 @@ export function domainTargets(
   switch (domain) {
     case "messaging":
       return [
+        { queryKey: queryKeys.messageUnread(organizationId) },
         // Message content changes leave membership and conversation details unchanged.
         ...(scope !== "messages" ? [{ queryKey: queryKeys.conversations(organizationId) }] : []),
         { queryKey: queryKeys.conversationMessages(organizationId, conversationId) },
@@ -72,7 +73,11 @@ export function domainTargets(
           ? [{ queryKey: queryKeys.messagePages(organizationId, conversationId) }]
           : []),
         { queryKey: queryKeys.messageTargets(organizationId, conversationId) },
-        ...searchTargets(organizationId),
+        // New posts need not interrupt an open search. General changes include edits and
+        // deletions, so their old excerpts must be replaced in open results as well.
+        ...searchTargets(organizationId).map((target) =>
+          scope === "messages" ? target : { queryKey: target.queryKey },
+        ),
       ];
     case "tasks":
       return [

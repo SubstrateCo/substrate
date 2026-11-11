@@ -113,7 +113,7 @@ for (const trigger of ["tasks", "ready", "messaging"] as const) {
 }
 
 for (const domain of ["messaging", "context"] as const) {
-  test(`${domain} leaves an in-flight search snapshot loaded and stale without a second read`, async () => {
+  test(`${domain === "messaging" ? "new-message" : domain} leaves an in-flight search snapshot loaded and stale without a second read`, async () => {
     const client = new QueryClient();
     const key = [...queryKeys.context("org"), "search", "term"];
     const initial = Promise.withResolvers<string[]>();
@@ -140,6 +140,7 @@ for (const domain of ["messaging", "context"] as const) {
         version: 1,
         type: "change",
         domain,
+        scope: domain === "messaging" ? "messages" : undefined,
         organizationId: "org",
         id: crypto.randomUUID(),
       });

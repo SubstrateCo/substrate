@@ -16,6 +16,7 @@ import { needsYouOptions } from "@/queries/agent-work/server";
 import { useAgentWorkBridgeSync } from "@/queries/agent-work/sync";
 import { sessionQueryOptions } from "@/queries/auth/session";
 import { notificationUnreadOptions } from "@/queries/context/notification-groups";
+import { unreadCountsOptions } from "@/queries/messaging/read-state";
 import {
   activeMemberQueryOptions,
   organizationQueryOptions,
@@ -48,6 +49,10 @@ export function WorkspaceFrame({
     ...notificationUnreadOptions(organizationId ?? ""),
     enabled: !!organizationId,
   });
+  const unreadMessages = useQuery({
+    ...unreadCountsOptions(organizationId ?? ""),
+    enabled: !!organizationId,
+  });
   // Agent notifications are only for work that needs the owner. The server returns nothing for
   // people without agents, so the dot never shows for them.
   const needsYou = useQuery({
@@ -72,6 +77,9 @@ export function WorkspaceFrame({
         image={session.data?.user.image}
         view={view}
         hasUnreadNotifications={!notifications.error && notifications.data?.unread}
+        hasUnreadMessages={
+          !unreadMessages.error && unreadMessages.data?.some((row) => row.unreadCount > 0)
+        }
         agentsNeedYou={!needsYou.error && needsYouCount(needsYou.data) > 0}
         onViewChange={(nextView) => {
           const to = {

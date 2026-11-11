@@ -6,12 +6,13 @@ import { messagingSession } from "../../core/session/messaging";
 import { storedFiles } from "../../core/storage/schema";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { loadConversation } from "../messaging/access";
+import { messagingMessages } from "../messaging/schema";
 import { taskRepository } from "../tasks/repository";
 import type { tasks } from "../tasks/tasks.schema";
 import { taskAttachmentMetadata } from "./metadata";
 import { publishFiles } from "./publication";
 import { messageAttachments, taskAttachments } from "./schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 
 type Task = typeof tasks.$inferSelect;
 
@@ -125,6 +126,13 @@ export function createAttachmentRepository(context: RepositoryContext) {
         const [row] = await tx
           .select({ file: storedFiles })
           .from(messageAttachments)
+          .innerJoin(
+            messagingMessages,
+            and(
+              eq(messagingMessages.id, messageAttachments.messageId),
+              isNull(messagingMessages.deletedAt),
+            ),
+          )
           .innerJoin(storedFiles, eq(storedFiles.id, messageAttachments.fileId))
           .where(
             and(

@@ -53,6 +53,12 @@ export const membersInput = workspaceInput.extend({
 export const conversationTargetInput = workspaceInput.extend({ conversationId: id });
 export const addAgentInput = conversationTargetInput.extend({ agentId: id });
 export const removeAgentInput = conversationTargetInput.extend({ actorId: id });
+export const removeMemberInput = conversationTargetInput.extend({ actorId: id });
+export const messageTargetInput = workspaceInput.extend({ messageId: id });
+export const editMessageInput = messageTargetInput.extend({
+  // Empty text is valid for a message with attachments. The service checks that invariant.
+  body: z.string().trim().max(messagingLimits.body),
+});
 export const leaveInput = conversationTargetInput.extend({
   newOwnerUserId: z.string().min(1).max(200).optional(),
 });

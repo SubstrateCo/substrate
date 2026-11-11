@@ -12,6 +12,9 @@ import {
   ownerInput,
   addAgentInput,
   removeAgentInput,
+  removeMemberInput,
+  messageTargetInput,
+  editMessageInput,
 } from "@substrate/contracts/messaging/input";
 
 import { respond, v } from "../../shared/http";
@@ -36,6 +39,12 @@ export function createMessagingRoutes(services: MessagingService, scopes: Scopes
     .post("/messages", v("json", messageInput), scopes.workspace("json"), async (c) =>
       respond(c, await services.sendMessage(c.var.scope, c.req.valid("json"))),
     )
+    .post("/messages/edit", v("json", editMessageInput), scopes.workspace("json"), async (c) =>
+      respond(c, await services.editMessage(c.var.scope, c.req.valid("json"))),
+    )
+    .post("/messages/delete", v("json", messageTargetInput), scopes.workspace("json"), async (c) =>
+      respond(c, await services.deleteMessage(c.var.scope, c.req.valid("json"))),
+    )
     .get("/reactions", v("query", reactionListInput), scopes.workspace("query"), async (c) =>
       respond(c, await services.listReactions(c.var.scope, c.req.valid("query"))),
     )
@@ -44,6 +53,9 @@ export function createMessagingRoutes(services: MessagingService, scopes: Scopes
     )
     .post("/members", v("json", membersInput), scopes.workspace("json"), async (c) =>
       respond(c, await services.addMembers(c.var.scope, c.req.valid("json"))),
+    )
+    .post("/members/remove", v("json", removeMemberInput), scopes.workspace("json"), async (c) =>
+      respond(c, await services.removeMember(c.var.scope, c.req.valid("json"))),
     )
     .post("/agents/add", v("json", addAgentInput), scopes.workspace("json"), async (c) =>
       respond(c, await services.addAgent(c.var.scope, c.req.valid("json"))),

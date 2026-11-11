@@ -85,7 +85,7 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: SessionIde
         .select({
           id: messagingMessages.id,
           author: authorSelection(identity.userId),
-          body: messagingMessages.body,
+          body: sql<string>`case when ${messagingMessages.deletedAt} is not null then 'Message deleted' else ${messagingMessages.body} end`,
           createdAt: messagingMessages.createdAt,
           replyCount,
           lastReplyAt,
@@ -122,7 +122,7 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: SessionIde
       const columns = {
         id: messagingMessages.id,
         author: authorSelection(identity.userId),
-        body: messagingMessages.body,
+        body: sql<string>`case when ${messagingMessages.deletedAt} is not null then 'Message deleted' else ${messagingMessages.body} end`,
         createdAt: messagingMessages.createdAt,
       };
       const author = eq(actors.entityId, messagingMessages.authorActorEntityId);

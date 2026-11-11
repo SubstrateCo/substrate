@@ -1,7 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { useRef } from "react";
-
 import { invalidateSentMessage } from "./mutations";
 import { messagesQueryOptions } from "./options";
 import { sendMessage } from "@/api/messaging/requests";
@@ -27,31 +25,28 @@ export function useSendMessage(
   onSent?: () => void,
 ) {
   const client = useQueryClient();
-  const request = useRef<{ id: string; body: string } | null>(null);
   return useMutation({
     mutationFn: async ({
       body,
       attachmentFileIds,
+      requestId,
     }: {
       body: string;
       attachmentFileIds: string[];
+      requestId: string;
     }) => {
-      const fingerprint = JSON.stringify([body, attachmentFileIds]);
-      if (!request.current || request.current.body !== fingerprint)
-        request.current = { id: crypto.randomUUID(), body: fingerprint };
       return sendMessage({
         data: {
           organizationId,
           conversationId,
           threadId,
           body,
-          requestId: request.current.id,
+          requestId,
           attachmentFileIds,
         },
       });
     },
     onSuccess: (_, { body }) => {
-      request.current = null;
       onSent?.();
       return invalidateSentMessage(client, organizationId, conversationId, body, threadId);
     },

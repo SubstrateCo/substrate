@@ -34,9 +34,11 @@ function MemberAvatar({ member }: { member: HeaderMember }) {
 function MembersButton({
   members,
   organizations,
+  memberAction,
 }: {
   members: HeaderMember[];
   organizations: ChannelOrganization[];
+  memberAction?: (member: HeaderMember) => ReactNode;
 }) {
   const label = `${members.length} ${members.length === 1 ? "member" : "members"}`;
   const list = useRef<HTMLUListElement>(null);
@@ -77,7 +79,7 @@ function MembersButton({
                 .map((member) => (
                   <li
                     key={member.actorId}
-                    className="flex h-9 items-center gap-2 rounded-md px-2 text-sm"
+                    className="group/row flex h-9 items-center gap-2 rounded-md px-2 text-sm"
                   >
                     <MemberAvatar member={member} />
                     <Tooltip>
@@ -92,6 +94,7 @@ function MembersButton({
                       <TooltipContent>{member.name}</TooltipContent>
                     </Tooltip>
                     {member.type === "agent" && <Tag>Agent</Tag>}
+                    {memberAction?.(member)}
                   </li>
                 )),
             ])}
@@ -110,6 +113,7 @@ export function ConversationHeader({
   addingMembers,
   onToggleMembers,
   actions,
+  memberAction,
 }: {
   title: string;
   /** Omitted while the conversation is unavailable. */
@@ -120,6 +124,7 @@ export function ConversationHeader({
   addingMembers: boolean;
   onToggleMembers?: () => void;
   actions?: ReactNode;
+  memberAction?: (member: HeaderMember) => ReactNode;
 }) {
   const dmMembers =
     kind === "dm" ? members.filter((member) => !viewerId || member.userId !== viewerId) : [];
@@ -135,7 +140,11 @@ export function ConversationHeader({
             <ConversationOrganizations organizations={organizations} members={members} />
           )}
           {members.length > 0 && kind !== "dm" && (
-            <MembersButton members={members} organizations={organizations} />
+            <MembersButton
+              members={members}
+              organizations={organizations}
+              memberAction={memberAction}
+            />
           )}
           {onToggleMembers && (
             <Tooltip>

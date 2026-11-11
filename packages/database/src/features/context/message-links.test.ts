@@ -52,7 +52,8 @@ test("source creation is atomic, concurrent-idempotent, and preserves the exact 
   );
   // The project lock taken for idempotency also covers the task insert.
   expect(queries.filter((query) => query.includes("FOR UPDATE"))).toHaveLength(1);
-  expect(queries).toHaveLength(11);
+  // Source validation now also locks and rechecks the conversation against concurrent deletion.
+  expect(queries).toHaveLength(14);
 });
 
 test("both endpoints are required, membership revocation hides context, and linking never shares", async () => {

@@ -5,6 +5,7 @@ import { PaneState } from "../../feedback/pane-state";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { PageContent, PageLayout } from "@/components/layout/page-layout";
 import { ConversationHeader } from "@/components/messaging/conversations/conversation-header";
+import type { HeaderMember } from "@/components/messaging/conversations/conversation-header";
 import {
   conversationLabel,
   conversationName,
@@ -26,9 +27,11 @@ export function ConversationPane({
   thread,
   actions,
   leftNotice,
+  memberAction,
 }: {
   actions?: ReactNode;
   leftNotice?: ReactNode;
+  memberAction?: (member: HeaderMember) => ReactNode;
   conversation: Conversation | null;
   /** The signed-in user, so a DM header shows the other person. */
   viewerId?: string;
@@ -59,6 +62,7 @@ export function ConversationPane({
             kind={kind}
             viewerId={viewerId}
             members={members}
+            memberAction={!blocked ? memberAction : undefined}
             organizations={conversation?.organizations ?? []}
             addingMembers={addingMembers}
             onToggleMembers={

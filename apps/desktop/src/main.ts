@@ -19,7 +19,7 @@ import { desktopAPITransport } from "./transport/api-transport.js";
 import { configureProtocols } from "./transport/protocols.ts";
 import { resolvePublicConfig } from "./transport/public-config.ts";
 import { emitToRenderer } from "./transport/realtime-events.ts";
-import { app, BrowserWindow, ipcMain, Menu, session, Tray } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, Notification, session, Tray } from "electron";
 import { readFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { join } from "node:path";
@@ -37,6 +37,7 @@ function main() {
   ).href;
   const errorPage = fileURLToPath(errorPageURL);
   app.setName("Substrate");
+  if (process.platform === "win32") app.setAppUserModelId("com.substrate.desktop");
   // Keep the lock identity stable for package, source-file, and smoke-test launches.
   const smokeTest = app.commandLine.hasSwitch("desktop-smoke-test");
   const testID = smokeTest ? process.env.SUBSTRATE_TEST_ID : undefined;
@@ -224,6 +225,27 @@ function main() {
             ? fileURLToPath(new URL("./client-storage-migrations/", import.meta.url))
             : undefined,
           emit: (channel, value) => emitToRenderer(mainWindow, channel, value, rendererURL),
+          showMessageNotification: (onClick) => {
+            if (!Notification.isSupported() || mainWindow?.isFocused()) return () => {};
+            // Keep private message content out of the operating system's notification history.
+            const notification = new Notification({
+              title: "New message",
+              body: "Open Substrate to read it.",
+            });
+            notification.on("click", () => {
+              void onClick().catch(() => {});
+            });
+            notification.show();
+            return () => notification.close();
+          },
+          openMessage: ({ organizationId, conversationId, messageId }) => {
+            const destination = new URL("/dashboard", rendererURL);
+            destination.searchParams.set("workspaceId", organizationId);
+            destination.searchParams.set("conversationId", conversationId);
+            destination.searchParams.set("messageId", messageId);
+            showWindow();
+            void mainWindow?.loadURL(destination.href).catch(() => {});
+          },
         });
         const composed = services;
         ({ agentWork, realtime } = composed);

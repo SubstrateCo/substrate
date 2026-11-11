@@ -1,6 +1,6 @@
 export interface FeedRow {
   id: string;
-  kind: "assignment" | "mention" | "reply";
+  kind: "assignment" | "mention" | "reply" | "message";
   readAt: Date | null;
   createdAt: Date;
   entityId: string | null;
@@ -48,9 +48,15 @@ export function toFeedItem(row: FeedRow) {
     };
   }
   if (!row.messageId || !row.conversationId || !row.conversation) return null;
+  const titles = {
+    mention: "You were mentioned",
+    message: "New message",
+    reply: "New thread reply",
+    assignment: "New thread reply",
+  };
   return {
     ...base,
-    title: row.kind === "mention" ? "You were mentioned" : "New thread reply",
+    title: titles[row.kind],
     entityId: null,
     projectEntityId: null,
     conversationId: row.conversationId,

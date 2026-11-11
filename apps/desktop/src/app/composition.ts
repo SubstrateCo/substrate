@@ -6,6 +6,8 @@ import { createAgentWorkService } from "../agents/service.ts";
 import { createHarnessController } from "../harness/controller/harness-controller.ts";
 import { createHarnessProcess } from "../harness/worker/harness-process.ts";
 import { DesktopSessionAuthority } from "../session/desktop-session-authority.ts";
+import { createMessageNotifications } from "../transport/message-notifications.ts";
+import { readNotificationFeed } from "../transport/notification-feed.ts";
 import { createRealtimeController } from "../transport/realtime-controller.ts";
 import { createLifecycle } from "./lifecycle.ts";
 
@@ -19,6 +21,12 @@ export function composeDesktop(options: {
   workerEntry: string;
   migrationsDirectory?: string;
   emit(channel: string, value: unknown): void;
+  showMessageNotification?: (onClick: () => Promise<void>) => () => void;
+  openMessage?: (target: {
+    organizationId: string;
+    conversationId: string;
+    messageId: string;
+  }) => void;
 }) {
   const authority = new DesktopSessionAuthority(options);
   const agentWork = createAgentWorkService({
@@ -47,14 +55,45 @@ export function composeDesktop(options: {
         localTools,
       ),
   });
-  const realtime = createRealtimeController({
+  let notificationOrganization: string | null = null;
+  const notifications = createMessageNotifications({
+    read: (organizationId) => readNotificationFeed(options, organizationId),
+    sessionKey: () => options.getCookie(),
+    show: options.showMessageNotification ?? (() => () => {}),
+    open: options.openMessage ?? (() => {}),
+  });
+  let notificationRecovery: ReturnType<typeof setInterval> | undefined;
+  const socket = createRealtimeController({
     backend: options.backend,
     getCookie: () => options.getCookie(),
     emit: (event) => {
       options.emit(realtimeEventChannel, event);
       agentWork.onRealtime(event);
+      if (event.type === "ready") void notifications.connect(notificationOrganization);
+      else if (event.type === "status" && event.status !== "connected") notifications.disconnect();
+      else void notifications.receive(event);
     },
   });
+  const realtime = {
+    connect(input: { organizationId: string | null }) {
+      notificationOrganization = input.organizationId;
+      notifications.disconnect();
+      socket.connect(input);
+      // Main remains active while hidden. Recover a missed publish without renderer focus.
+      clearInterval(notificationRecovery);
+      notificationRecovery = setInterval(() => {
+        void notifications.reconcile();
+      }, 30_000);
+      notificationRecovery.unref();
+    },
+    disconnect() {
+      notificationOrganization = null;
+      notifications.disconnect();
+      clearInterval(notificationRecovery);
+      notificationRecovery = undefined;
+      socket.disconnect();
+    },
+  };
   const lifecycle = createLifecycle({
     stopAgentWork: () => agentWork.stop(),
     closeSessions: () => harness.closeSessions(),

@@ -6,7 +6,7 @@ import { visibleConversations } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { messagePeople, messageWorkLinks } from "./message-metadata";
 import { messagingReferencePage } from "./messaging-references";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
 export async function messagePage(
   db: DatabaseExecutor,
@@ -20,7 +20,7 @@ export async function messagePage(
   const messages = await db
     .select({
       id: messagingMessages.id,
-      body: messagingMessages.body,
+      body: sql<string>`case when ${messagingMessages.deletedAt} is null then ${messagingMessages.body} else '' end`,
       conversationId: messagingMessages.conversationId,
     })
     .from(messagingMessages)

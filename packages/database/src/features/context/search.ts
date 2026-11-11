@@ -426,6 +426,7 @@ export async function contextSearch(
           eq(messagingConversations.organizationId, scope.organizationId),
           eq(messagingConversations.kind, "channel"),
           isNull(messagingMessages.threadId),
+          isNull(messagingMessages.deletedAt),
           sql`exists (select 1 from messaging_messages replies where replies.conversation_id = ${messagingMessages.conversationId} and replies.thread_id = ${messagingMessages.id})`,
           relatedMessages,
           query
@@ -477,6 +478,7 @@ export async function contextSearch(
           visibleConversations(db, scope),
           relatedMessages,
           query ? matchesWords(searchDocument(messagingMessages.body), words) : undefined,
+          isNull(messagingMessages.deletedAt),
           input.after ? gt(messagingMessages.id, input.after) : undefined,
         ),
       )

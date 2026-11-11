@@ -14,6 +14,7 @@ import { createAttachmentService } from "./v1/files/attachments";
 import { createPictureService } from "./v1/files/pictures";
 import { createFileService } from "./v1/files/service";
 import { createMcpService } from "./v1/mcp/service";
+import { createReadService } from "./v1/messaging/read-service";
 import { createMessagingService } from "./v1/messaging/service";
 import { createSharingService } from "./v1/messaging/sharing-service";
 import { createOrganizationService } from "./v1/organizations/service";
@@ -48,6 +49,7 @@ export function createServices(deps: {
     }),
     attachments: createAttachmentService(deps),
     messaging: createMessagingService(deps),
+    messagingRead: createReadService(deps.publish),
     sharing: createSharingService(deps),
     tasks: createTasksService({
       ...deps,

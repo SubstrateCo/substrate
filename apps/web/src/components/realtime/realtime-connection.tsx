@@ -10,7 +10,11 @@ import { RealtimeContainerContext } from "@/components/realtime/realtime-contain
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { realtimeBridge } from "@/lib/desktop/bridges";
 import { createBrowserRealtime } from "@/lib/realtime/browser";
-import { createRealtimeCache, type RealtimeHealth } from "@/queries/realtime/cache";
+import {
+  createRealtimeCache,
+  realtimeReconcileMs,
+  type RealtimeHealth,
+} from "@/queries/realtime/cache";
 
 type LiveState = { socket: RealtimeStatus; health: RealtimeHealth };
 
@@ -43,6 +47,7 @@ export function RealtimeConnection({
   useEffect(() => {
     const bridge = realtimeBridge() ?? createBrowserRealtime();
     let active = true;
+    let connected = false;
     const cache = createRealtimeCache({
       queryClient,
       organizationId,
@@ -57,15 +62,28 @@ export function RealtimeConnection({
       // The cache reports failed refreshes through onHealth.
       if (event.type !== "status") void cache.receive(event).catch(() => {});
       else {
+        connected = event.status === "connected";
         dispatch({ socket: event.status });
         if (event.status === "forbidden") void cache.forbidden().catch(() => {});
       }
     });
+    const reconcile = () => {
+      if (active && connected) void cache.reconcile().catch(() => {});
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") reconcile();
+    };
+    const reconcileTimer = setInterval(reconcile, realtimeReconcileMs);
+    window.addEventListener("focus", reconcile);
+    document.addEventListener("visibilitychange", onVisibility);
     void bridge.connect({ organizationId }).catch(() => {
       if (active) dispatch({ socket: "disconnected" });
     });
     return () => {
       active = false;
+      clearInterval(reconcileTimer);
+      window.removeEventListener("focus", reconcile);
+      document.removeEventListener("visibilitychange", onVisibility);
       unsubscribe();
       cache.dispose();
       void bridge.disconnect().catch(() => {});

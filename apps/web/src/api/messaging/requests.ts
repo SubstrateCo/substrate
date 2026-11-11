@@ -11,6 +11,9 @@ import type {
   reactionInput,
   reactionListInput,
   removeAgentInput,
+  removeMemberInput,
+  messageTargetInput,
+  editMessageInput,
   workspaceInput,
 } from "@substrate/contracts/messaging/input";
 
@@ -46,6 +49,12 @@ export const addAgent = ({ data, signal }: ApiInput<z.input<typeof addAgentInput
   readResult(api.messaging.agents.add.$post({ json: data }, { init: { signal } }));
 export const removeAgent = ({ data, signal }: ApiInput<z.input<typeof removeAgentInput>>) =>
   readResult(api.messaging.agents.remove.$post({ json: data }, { init: { signal } }));
+export const removeMember = ({ data, signal }: ApiInput<z.input<typeof removeMemberInput>>) =>
+  readResult(api.messaging.members.remove.$post({ json: data }, { init: { signal } }));
+export const editMessage = ({ data, signal }: ApiInput<z.input<typeof editMessageInput>>) =>
+  readResult(api.messaging.messages.edit.$post({ json: data }, { init: { signal } }));
+export const deleteMessage = ({ data, signal }: ApiInput<z.input<typeof messageTargetInput>>) =>
+  readResult(api.messaging.messages.delete.$post({ json: data }, { init: { signal } }));
 export const getProfile = ({ data, signal }: ApiInput<z.input<typeof profileInput>>) =>
   readResult(api.messaging.profiles.$get({ query: data }, { init: { signal } }));
 

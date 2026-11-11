@@ -1,9 +1,10 @@
 import { actors } from "../../core/actors/schema";
 import { entities } from "../../core/entities/schema";
 import type { RepositoryContext } from "../../core/repository-context";
+import type { SessionIdentity } from "../../core/session/identity";
 import { messageReferences } from "../../core/text/references";
 import { AccessDeniedError, ValidationError } from "../../errors";
-import { liveAgentMember, mentionablePerson } from "../messaging/access";
+import { liveAgentMember, liveApprovedParticipant, mentionablePerson } from "../messaging/access";
 import {
   messagingConversations,
   messagingMessages,
@@ -20,10 +21,13 @@ export async function applyMessageEffects(
   ctx: RepositoryContext,
   scope: SessionIdentity,
   message: typeof messagingMessages.$inferSelect,
-  conversationOrganizationId: string,
+  conversation: Pick<typeof messagingConversations.$inferSelect, "organizationId" | "kind">,
+  options: { delivery?: boolean } = {},
 ): Promise<{ referenced: boolean; notified: { organizationId: string; actorId: string }[] }> {
   const { db } = ctx;
-  const recipients = new Map<string, "mention" | "reply">();
+  const { organizationId: conversationOrganizationId } = conversation;
+  if (message.deletedAt) return { referenced: false, notified: [] };
+  const recipients = new Map<string, "mention" | "reply" | "message">();
   const personIds: string[] = [];
   const agentIds: string[] = [];
   const workReferences: { id: string; kind: "task" | "project" }[] = [];
@@ -109,6 +113,8 @@ export async function applyMessageEffects(
       .onConflictDoNothing();
     referenced = true;
   }
+  // Edits validate and replace derived references, but never deliver a new message event.
+  if (options.delivery === false) return { referenced, notified: [] };
   if (message.threadId) {
     // Members who left get mention alerts only.
     const authors = await db
@@ -125,6 +131,7 @@ export async function applyMessageEffects(
       .where(
         and(
           eq(messagingMessages.conversationId, message.conversationId),
+          isNull(messagingMessages.deletedAt),
           or(
             eq(messagingMessages.id, message.threadId),
             eq(messagingMessages.threadId, message.threadId),
@@ -135,10 +142,31 @@ export async function applyMessageEffects(
     for (const author of authors)
       if (author.userId && !recipients.has(author.userId)) recipients.set(author.userId, "reply");
   }
+  const ordinaryRecipients =
+    conversation.kind === "channel"
+      ? []
+      : await db
+          .selectDistinct({ userId: actors.userId })
+          .from(messagingParticipants)
+          .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
+          .innerJoin(
+            messagingConversations,
+            eq(messagingConversations.id, messagingParticipants.conversationId),
+          )
+          .where(
+            and(
+              eq(messagingConversations.id, message.conversationId),
+              inArray(messagingConversations.kind, ["dm", "group"]),
+              eq(actors.type, "human"),
+              liveApprovedParticipant(db),
+            ),
+          );
+  for (const person of ordinaryRecipients)
+    if (person.userId && !recipients.has(person.userId)) recipients.set(person.userId, "message");
   if (!scope.actorEntityId) recipients.delete(scope.userId);
   if (!recipients.size) return { referenced, notified: [] };
   const notified: { organizationId: string; actorId: string }[] = [];
-  for (const kind of ["mention", "reply"] as const) {
+  for (const kind of ["mention", "reply", "message"] as const) {
     notified.push(
       ...(await notify(
         ctx,
@@ -157,4 +185,3 @@ export async function applyMessageEffects(
   }
   return { referenced, notified };
 }
-import type { SessionIdentity } from "../../core/session/identity";

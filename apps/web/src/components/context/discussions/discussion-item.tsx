@@ -24,6 +24,7 @@ export type Discussion = {
   authorType?: "human" | "agent";
   createdAt: string;
   body: string;
+  deletedAt?: string | null;
   replyCount?: number;
 };
 
@@ -75,7 +76,11 @@ export function DiscussionItem({ item }: { item: Discussion }) {
             <span className="truncate font-medium">{author}</span>
             {item.authorType === "agent" && <Tag className="shrink-0">Agent</Tag>}
           </div>
-          <DiscussionBody body={item.body} />
+          {item.deletedAt ? (
+            <p className="text-sm text-muted-foreground italic">Message deleted</p>
+          ) : (
+            <DiscussionBody body={item.body} />
+          )}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-xs text-muted-foreground">
             {!!item.replyCount && (
               <span className="flex items-center gap-1">

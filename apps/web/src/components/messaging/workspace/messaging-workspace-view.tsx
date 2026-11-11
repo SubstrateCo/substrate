@@ -2,7 +2,6 @@ import { Children, type ReactNode } from "react";
 
 import { PaneState } from "../../feedback/pane-state";
 import { Button } from "../../ui/button";
-import { ComposerDraftProvider } from "../composer/composer-drafts";
 import { ConversationSidebar } from "../conversations/conversation-sidebar";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
@@ -72,57 +71,53 @@ export function MessagingWorkspace({
   const hasContent = Children.toArray(children).length > 0;
   const blocked = state === "error" || state === "unavailable";
   return (
-    <ComposerDraftProvider>
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="shrink-0 border-b px-2 py-1 md:hidden">
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-controls="conversation-sidebar"
-            aria-expanded={sidebarOpen}
-            onClick={() => onSidebarOpenChange(!sidebarOpen)}
-          >
-            {sidebarOpen ? <ArrowLeft /> : <PanelLeft />}
-            {sidebarOpen ? "Back to messages" : "Show conversations"}
-          </Button>
-        </div>
-        <PageLayout
-          id="messages"
-          aria-label="Messages"
-          mobileView={sidebarOpen ? "sidebar" : "content"}
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className="shrink-0 border-b px-2 py-1 md:hidden">
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-controls="conversation-sidebar"
+          aria-expanded={sidebarOpen}
+          onClick={() => onSidebarOpenChange(!sidebarOpen)}
         >
-          <ConversationSidebar
-            state={state}
-            loading={loading}
-            error={blocked ? error : undefined}
-            onRetry={onRetry}
-            conversations={conversations}
-            selectedId={selectedId}
-            people={people}
-            agents={agents}
-            onMessagePerson={onMessagePerson}
-            onMessageAgent={onMessageAgent}
-            onSelect={onSelect}
-            onCreate={create}
-          />
-          <PageContent>
-            {blocked && (
-              <PaneState
-                label="Workspace unavailable"
-                error={error}
-                onRetry={state === "unavailable" ? undefined : onRetry}
-              />
-            )}
-            {state === "stale" && <StaleNotice>Conversations may be out of date.</StaleNotice>}
-            {!blocked && hasContent && children}
-            {!blocked && !hasContent && loading && (
-              <PaneState label="Loading your conversations…" />
-            )}
-            {!blocked && !hasContent && !loading && <WorkspaceEmpty onCreate={create} />}
-          </PageContent>
-        </PageLayout>
-        {creating && renderCreate(creating, { onClose: close, onRestoreFocus: restoreFocus })}
+          {sidebarOpen ? <ArrowLeft /> : <PanelLeft />}
+          {sidebarOpen ? "Back to messages" : "Show conversations"}
+        </Button>
       </div>
-    </ComposerDraftProvider>
+      <PageLayout
+        id="messages"
+        aria-label="Messages"
+        mobileView={sidebarOpen ? "sidebar" : "content"}
+      >
+        <ConversationSidebar
+          state={state}
+          loading={loading}
+          error={blocked ? error : undefined}
+          onRetry={onRetry}
+          conversations={conversations}
+          selectedId={selectedId}
+          people={people}
+          agents={agents}
+          onMessagePerson={onMessagePerson}
+          onMessageAgent={onMessageAgent}
+          onSelect={onSelect}
+          onCreate={create}
+        />
+        <PageContent>
+          {blocked && (
+            <PaneState
+              label="Workspace unavailable"
+              error={error}
+              onRetry={state === "unavailable" ? undefined : onRetry}
+            />
+          )}
+          {state === "stale" && <StaleNotice>Conversations may be out of date.</StaleNotice>}
+          {!blocked && hasContent && children}
+          {!blocked && !hasContent && loading && <PaneState label="Loading your conversations…" />}
+          {!blocked && !hasContent && !loading && <WorkspaceEmpty onCreate={create} />}
+        </PageContent>
+      </PageLayout>
+      {creating && renderCreate(creating, { onClose: close, onRestoreFocus: restoreFocus })}
+    </div>
   );
 }

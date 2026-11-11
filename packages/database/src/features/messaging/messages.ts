@@ -125,7 +125,14 @@ export async function messageViews(
   );
   return rows.map(({ message, authorOwnerUserId, ...author }) => ({
     ...message,
-    attachments: attachments.filter((item) => item.messageId === message.id),
+    canModify:
+      !scope.actorEntityId &&
+      !message.deletedAt &&
+      message.authorActorEntityId === viewerActorEntityId,
+    body: message.deletedAt ? "" : message.body,
+    attachments: message.deletedAt
+      ? []
+      : attachments.filter((item) => item.messageId === message.id),
     // Which agent turn published a reply is private to the agent's owner.
     originTurnId: authorOwnerUserId === scope.userId ? message.originTurnId : null,
     ...author,
@@ -167,6 +174,8 @@ export async function sendMessageAs(
         ),
       );
     if (existing) {
+      if (existing.deletedAt || existing.editedAt)
+        throw new ConflictError("This message has changed since it was sent.");
       const attachments = await messageAttachmentMetadata(tx, [existing.id]);
       const sameAttachments =
         JSON.stringify(attachments.map((item) => item.fileId)) === JSON.stringify(fileIds);
@@ -226,7 +235,7 @@ export async function sendMessageAs(
       })),
     );
   const attachments = await messageAttachmentMetadata(tx, fileIds.length ? [created!.id] : []);
-  const effects = await applyMessageEffects(ctx, scope, created!, conversation.organizationId);
+  const effects = await applyMessageEffects(ctx, scope, created!, conversation);
   const wakeHints = await routeWake(tx, scope, created!, conversation.kind);
   for (const hint of [
     ...messageChangeHints(
@@ -332,6 +341,11 @@ export function messageOperations(db: DatabaseExecutor, scope: Readonly<SessionI
           .where(eq(messagingMessages.id, messageId));
         if (!message) throw new AccessDeniedError();
         await loadConversation(tx, scope, message.conversationId, "share");
+        const [live] = await tx
+          .select({ deletedAt: messagingMessages.deletedAt })
+          .from(messagingMessages)
+          .where(eq(messagingMessages.id, messageId));
+        if (!live || live.deletedAt) throw new AccessDeniedError();
         const joined =
           (
             await writeMembers(

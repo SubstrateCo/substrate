@@ -7,7 +7,7 @@ import { requireDevice, type DeviceIdentity } from "../../core/session/device";
 import { visibleConversations } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 
 /**
  * Message bodies for the home desktop, only while the owner can see their conversation now.
@@ -36,7 +36,13 @@ export function loadSources(db: DatabaseExecutor, identity: DeviceIdentity, mess
         eq(messagingConversations.id, messagingMessages.conversationId),
       )
       .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
-      .where(and(inArray(messagingMessages.id, ids), visibleConversations(tx, identity)));
+      .where(
+        and(
+          inArray(messagingMessages.id, ids),
+          isNull(messagingMessages.deletedAt),
+          visibleConversations(tx, identity),
+        ),
+      );
     const found = new Set(rows.map((row) => row.id));
     return {
       messages: rows

@@ -46,6 +46,7 @@ export async function saveMessagingReferences(
         .where(
           and(
             inArray(messagingMessages.id, threadIds),
+            isNull(messagingMessages.deletedAt),
             isNull(messagingMessages.threadId),
             visibleChannel,
             exists(
@@ -94,7 +95,7 @@ export async function messagingReferencePage(
       kind: messageMessagingReferences.kind,
       conversationId: messageMessagingReferences.targetConversationId,
       threadId: messageMessagingReferences.targetThreadId,
-      title: sql<string>`CASE WHEN ${messageMessagingReferences.kind} = 'channel' THEN ${messagingConversations.name} ELSE left(${messagingMessages.body}, 160) END`,
+      title: sql<string>`CASE WHEN ${messageMessagingReferences.kind} = 'channel' THEN ${messagingConversations.name} WHEN ${messagingMessages.deletedAt} IS NOT NULL THEN 'Message deleted' ELSE left(${messagingMessages.body}, 160) END`,
       conversationName: messagingConversations.name,
     })
     .from(messageMessagingReferences)

@@ -310,3 +310,43 @@ test("database constraints reject wrong task organizations and empty messages af
       .execute(),
   );
 });
+
+test("message tombstones detach file metadata, block old attachment URLs, and reject send retries", async () => {
+  const chat = createAcceptedMessagingService(f.db, scope());
+  const conversation = await chat.createConversation({ kind: "channel", name: "deleted-files" });
+  const file = await staged();
+  const requestId = crypto.randomUUID();
+  const sent = await chat.sendMessage(conversation.id, "", undefined, requestId, [file.id]);
+  const attachmentId = sent.attachments[0]!.id;
+  await chat.deleteMessage(sent.id);
+  expect((await chat.listMessages(conversation.id))[0]).toMatchObject({
+    body: "",
+    attachments: [],
+    deletedAt: expect.any(Date),
+  });
+  expect(await f.db.select().from(messageAttachments)).toEqual([]);
+  expect(
+    await createStorageRepository(f.db, attachmentReferences).getReadable(scope(), file.id),
+  ).toBeNull();
+  expect(
+    await rejection(
+      files().messageContent(scope(), {
+        conversationId: conversation.id,
+        messageId: sent.id,
+        attachmentId,
+      }),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(
+      files().messageContent(
+        { userId: "bob", organizationId: f.orgA },
+        { conversationId: conversation.id, messageId: sent.id, attachmentId },
+      ),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(chat.sendMessage(conversation.id, "", undefined, requestId, [file.id])),
+  ).toBeInstanceOf(ConflictError);
+  expect((await chat.listMessages(conversation.id))[0]!.attachments).toEqual([]);
+});
