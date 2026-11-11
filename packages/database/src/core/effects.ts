@@ -34,6 +34,12 @@ export class RepositoryEffects {
     this.hints.set(JSON.stringify(hint), hint);
   }
 
+  // A replayed request changes nothing. It still publishes the original write's hints, so viewers
+  // recover from a first publish that was lost.
+  replay(hints: Iterable<RealtimeHint>) {
+    for (const hint of hints) this.hint(hint);
+  }
+
   mail(kind: "sharing") {
     this.mailKinds.add(kind);
   }
@@ -55,8 +61,15 @@ export class RepositoryEffects {
 
 const collectors = new WeakMap<DatabaseExecutor, RepositoryEffects>();
 
+export function collectedEffects(db: DatabaseExecutor) {
+  return collectors.get(db);
+}
+
+// A write outside commit() has no collector to publish its hints, so it fails instead.
 export function effectsFor(db: DatabaseExecutor) {
-  return collectors.get(db) ?? new RepositoryEffects();
+  const effects = collectors.get(db);
+  if (!effects) throw new Error("Repository writes must run inside commit().");
+  return effects;
 }
 
 // Every nested database transaction gets its own collector. Merge only after its savepoint succeeds.
@@ -95,31 +108,39 @@ export function committedWrite<A extends unknown[], R>(
   return (db: DatabaseExecutor, ...args: A) => commit(db, (tx) => write(tx, ...args));
 }
 
-export type CommittedMethods<T, K extends keyof T> = {
-  [P in keyof T]: P extends K
-    ? T[P] extends (...args: infer A) => Promise<infer R>
+export type CommittedMethods<T, Reads extends keyof T> = {
+  [P in keyof T]: P extends Reads
+    ? T[P]
+    : T[P] extends (...args: infer A) => Promise<infer R>
       ? (...args: A) => Promise<Committed<R>>
-      : never
-    : T[P];
+      : never;
 };
 
-export function commitWrites<T extends object, K extends keyof T>(
+// Every method not listed as a read runs through `run` and returns its committed effects. A new
+// write is committed by default; a write wrongly listed as a read has no collector and fails.
+export function commitWrites<T extends object, Reads extends keyof T>(
   repository: T,
-  writes: readonly K[],
+  reads: readonly Reads[],
   run: <R>(work: (repository: T) => Promise<R>) => Promise<Committed<R>>,
-): CommittedMethods<T, K> {
-  type WriteResult = T[K] extends (...args: never[]) => Promise<infer R> ? R : never;
+): CommittedMethods<T, Reads> {
+  type WriteResult = T[Exclude<keyof T, Reads>] extends (...args: never[]) => Promise<infer R>
+    ? R
+    : never;
   const result = { ...repository };
-  for (const key of writes) {
+  const skipped = new Set<PropertyKey>(reads);
+  // SAFETY: Object.keys lists the repository's own keys, so each is a key of T.
+  for (const key of Object.keys(repository) as (keyof T)[]) {
+    if (skipped.has(key)) continue;
     Object.defineProperty(result, key, {
       value: (...args: unknown[]) =>
         run((transactionRepository) => {
-          // SAFETY: composition lists only async writes; the mapped API forwards that method's original arguments unchanged.
+          // SAFETY: every unlisted method is an async write (CommittedMethods types others as
+          // never); the wrapper forwards that method's original arguments unchanged.
           const method = transactionRepository[key] as (...args: unknown[]) => Promise<WriteResult>;
           return method.apply(transactionRepository, args);
         }),
     });
   }
-  // SAFETY: reads are unchanged; every listed write now returns its committed result through run.
-  return result as CommittedMethods<T, K>;
+  // SAFETY: reads are unchanged; every other method now returns its committed result through run.
+  return result as CommittedMethods<T, Reads>;
 }

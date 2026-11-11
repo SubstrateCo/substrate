@@ -21,6 +21,7 @@ import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { createMessagingService } from "../messaging/service";
+import { executeAgentTool as executeCommittedTool } from "./committed";
 import { executeAgentTool } from "./service";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
@@ -95,7 +96,7 @@ test("MCP and web comments publish the same confirmed notification hints", async
   });
   const body = `Hello @[person:${f.bob}]`;
   const web = await repos.transaction((tx) => tx.tasks.addComment(task.entityId, body));
-  const mcp = await executeAgentTool(
+  const mcp = await executeCommittedTool(
     f.db,
     identity,
     "add_task_comment",
@@ -201,6 +202,14 @@ test("task tools use the owner's access, attribute writes and keep the source me
       (item) => item.kind,
     ),
   ).toEqual(["origin"]);
+  await f.db
+    .update(entities)
+    .set({ deletedAt: new Date() })
+    .where(eq(entities.entityId, created.id));
+  expect((await call("list_links", { target: { type: "message", id: message.id } })).items).toEqual(
+    [],
+  );
+  await f.db.update(entities).set({ deletedAt: null }).where(eq(entities.entityId, created.id));
   await f
     .forActor(f.bob)
     .permissions.revoke({ entityId: project.entityId, actorEntityId: f.alice });
@@ -385,9 +394,9 @@ test("reply resolves the agent once and does not re-authenticate inside messagin
     body: "Agent note",
     to: { conversationId: channel.id },
   };
-  const sent = await executeAgentTool(db, identity, "reply", input, turn);
+  const sent = await executeCommittedTool(db, identity, "reply", input, turn);
   expect(
-    (await human.listMessages(channel.id)).find((item) => item.id === sent.output.messageId)
+    (await human.listMessages(channel.id)).find((item) => item.id === sent.result.output.messageId)
       ?.authorType,
   ).toBe("agent");
   const identityReads = () => queries.filter((query) => query.includes('from "user"'));
@@ -400,8 +409,8 @@ test("reply resolves the agent once and does not re-authenticate inside messagin
   };
   expect(sent.hints).toContainEqual(conversationHint);
   queries.length = 0;
-  const replay = await executeAgentTool(db, identity, "reply", input, turn);
-  expect(replay.output).toEqual(sent.output);
+  const replay = await executeCommittedTool(db, identity, "reply", input, turn);
+  expect(replay.result.output).toEqual(sent.result.output);
   expect(replay.hints).toEqual([conversationHint]);
   expect(identityReads()).toHaveLength(1);
 });

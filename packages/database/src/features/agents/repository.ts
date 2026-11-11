@@ -82,10 +82,17 @@ export function createAgentRepository(
         })),
       };
     },
-    // The route validates input; repositories do not parse it again.
+    // The route parses input. The repository writes only these fields.
     async saveAgent(input: SaveAgentValues): Promise<AgentConfiguration> {
-      const { id, model, ...fields } = input;
-      const values = { ...fields, model: model ?? null };
+      const { id } = input;
+      const values = {
+        name: input.name,
+        instructions: input.instructions,
+        harness: input.harness,
+        model: input.model ?? null,
+        enabled: input.enabled,
+        useStartupDefaults: input.useStartupDefaults,
+      };
       // A new local agent lives on the desktop that created it.
       const [row] = id
         ? await db

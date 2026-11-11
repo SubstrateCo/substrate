@@ -5,6 +5,7 @@ import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
+import { effectsFor } from "../../core/effects";
 import { member } from "../../core/organizations/schema";
 import { agentRequests } from "../agent-work/requests.schema";
 import {
@@ -163,8 +164,25 @@ export async function sharingInvitationHints(
   ];
 }
 
-// Call before the conversation is deleted. Conversation audiences check the live row, so they
-// cannot reach anyone afterwards; these hints use user, organization, and actor audiences instead.
+// Reads the removal hints, then runs `mutate`, which deletes the conversations or ends
+// participation. The hints are registered only after `mutate` succeeds. A `domain` replaces each
+// hint's domain, such as "access" when the change revokes access.
+export async function withRemovalHints<T>(
+  tx: DatabaseExecutor,
+  conversations: { id: string; organizationId: string }[],
+  mutate: () => Promise<T>,
+  options: { domain?: Exclude<RealtimeHint["domain"], "messaging"> } = {},
+): Promise<T> {
+  const hints = await conversationRemovalHints(tx, conversations);
+  const result = await mutate();
+  const { domain } = options;
+  const effects = effectsFor(tx);
+  for (const hint of hints) effects.hint(domain ? { audience: hint.audience, domain } : hint);
+  return result;
+}
+
+// Use withRemovalHints. Conversation audiences check the live row, so they cannot reach anyone
+// after a removal; these hints use user, organization, and actor audiences instead.
 export async function conversationRemovalHints(
   db: DatabaseExecutor,
   conversations: { id: string; organizationId: string }[],

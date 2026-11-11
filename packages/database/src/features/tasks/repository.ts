@@ -4,13 +4,17 @@ import type { TaskLinkRelation } from "@substrate/contracts/tasks/links";
 
 import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
-import { RepositoryContext, type PermissionLevel } from "../../core/repository-context";
+import {
+  RepositoryContext,
+  type Locked,
+  type LockedAccess,
+  type PermissionLevel,
+} from "../../core/repository-context";
 import { requiredText } from "../../core/validation";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { notifyAssignment, recordTaskActivity } from "../activity/events";
 import { publishFiles } from "../files/publication";
 import { taskAttachments } from "../files/schema";
-import { liveTask } from "./access";
 import { requireAssignee } from "./assignment";
 import { taskChanges } from "./changes";
 import { applyCommentReferences, commentReferences } from "./comment-references";
@@ -22,6 +26,8 @@ import { addTaskLink, linksOfTask, removeTaskLink } from "./links";
 import { queryTasks, queryTaskComments } from "./queries";
 import { tasks } from "./tasks.schema";
 import { and, desc, eq, ne } from "drizzle-orm";
+
+type Task = typeof tasks.$inferSelect;
 
 // Pure field checks run before the assignee query.
 async function validate(
@@ -52,11 +58,10 @@ async function validate(
   }
 }
 
-// The caller must hold `project` from requireAccess(input.projectEntityId, "edit", true)
-// in the current transaction. Locking first keeps the assignee check from revealing projects.
+// Locking the project first keeps the assignee check from revealing projects.
 export async function createTaskInLockedProject(
   ctx: RepositoryContext,
-  project: { entity: { entityId: string; entityType: string } },
+  project: LockedAccess<"edit">,
   input: CreateTaskInput,
 ) {
   if (project.entity.entityType !== "project" || project.entity.entityId !== input.projectEntityId)
@@ -67,7 +72,7 @@ export async function createTaskInLockedProject(
     if (parent.projectEntityId !== input.projectEntityId)
       throw new ValidationError("Subtasks must belong to their parent's project.");
   }
-  const entity = await ctx.createChildEntity("task", input.projectEntityId);
+  const entity = await ctx.createChildEntity("task", project);
   const [task] = await ctx.db
     .insert(tasks)
     .values({
@@ -86,7 +91,7 @@ export async function createTaskInLockedProject(
   const [event] = await recordTaskActivity(ctx, task!.entityId, ["Task created"]);
   const fileIds = input.attachmentFileIds ?? [];
   if (fileIds.length) {
-    await publishFiles(ctx, fileIds);
+    await publishFiles(ctx, project, fileIds);
     await ctx.db.insert(taskAttachments).values(
       fileIds.map((fileId, position) => ({
         organizationId: ctx.scope.organizationId,
@@ -108,14 +113,20 @@ export function taskRepository(context: RepositoryContext) {
     and(eq(tasks.organizationId, scope.organizationId), eq(tasks.entityId, id));
 
   // A task's level is its project's level. The task's lock path includes the project.
-  async function requireTask(entityId: string, level: PermissionLevel = "view", lock = false) {
-    if (lock) await context.lockAccessPath(entityId);
-    const [task] = await db
-      .select()
-      .from(tasks)
-      .where(and(taskWhere(entityId), liveTask()));
+  function requireTask<Level extends PermissionLevel>(
+    entityId: string,
+    level: Level,
+    lock: true,
+  ): Promise<Locked<Task, Level>>;
+  function requireTask(entityId: string, level?: PermissionLevel, lock?: boolean): Promise<Task>;
+  async function requireTask(
+    entityId: string,
+    level: PermissionLevel = "view",
+    lock = false,
+  ): Promise<Task> {
+    await context.requireAccess(entityId, level, lock);
+    const [task] = await db.select().from(tasks).where(taskWhere(entityId));
     if (!task) throw new AccessDeniedError();
-    await context.requireAccess(task.entityId, level);
     return task;
   }
 

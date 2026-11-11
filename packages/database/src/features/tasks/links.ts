@@ -9,7 +9,7 @@ import {
 } from "@substrate/contracts/tasks/links";
 
 import { entities } from "../../core/entities/schema";
-import type { RepositoryContext } from "../../core/repository-context";
+import type { Locked, RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { recordTaskActivity } from "../activity/events";
 import { projects } from "../projects/schema";
@@ -128,10 +128,10 @@ export function linksOfTask(ctx: RepositoryContext, taskEntityId: string) {
   );
 }
 
-// The caller holds `task` at edit level under its access lock, and can view `other`.
+// The caller can view `other`.
 export async function addTaskLink(
   ctx: RepositoryContext,
-  task: Task,
+  task: Locked<Task, "edit">,
   other: Task,
   relation: TaskLinkRelation,
 ) {
@@ -188,8 +188,12 @@ export async function addTaskLink(
   return created!;
 }
 
-// The caller holds `task` at edit level under its access lock. The link must touch the task.
-export async function removeTaskLink(ctx: RepositoryContext, task: Task, linkId: string) {
+// The link must touch the task.
+export async function removeTaskLink(
+  ctx: RepositoryContext,
+  task: Locked<Task, "edit">,
+  linkId: string,
+) {
   const [removed] = await ctx.db
     .delete(taskLinks)
     .where(

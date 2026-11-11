@@ -72,9 +72,10 @@ export function taskLifecycle(context: RepositoryContext) {
     ) {
       return context.transaction(async (ctx) => {
         const tx = ctx.db;
-        // All project locks are taken in the same order for moves in either direction.
-        for (const id of [...new Set([projectId, destinationProjectId])].sort()) {
-          const { entity } = await ctx.requireAccess(id, "edit", true);
+        const projectIds = [...new Set([projectId, destinationProjectId])];
+        await ctx.lockAccessPaths(projectIds);
+        for (const id of projectIds) {
+          const { entity } = await ctx.requireAccess(id, "edit");
           if (entity.entityType !== "project") throw new AccessDeniedError();
         }
         const task = await requireTask(ctx, taskId, projectId);

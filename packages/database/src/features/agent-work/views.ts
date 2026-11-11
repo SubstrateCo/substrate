@@ -1,7 +1,7 @@
 import type {
-  AgentRequestPlace,
   AgentRequestView,
   AgentStatusView,
+  AgentVisibleRequestView,
 } from "@substrate/contracts/agent-work";
 
 import type { agentRequests } from "./requests.schema";
@@ -35,16 +35,8 @@ export function toRequestView(row: {
     resolvedAt: iso(request.resolvedAt),
     expiresAt: iso(request.expiresAt),
   };
-  if (request.conversationId && name === null)
-    return {
-      ...common,
-      sessionKey: null,
-      place: { access: "hidden" },
-      payload: null,
-      response: null,
-      proposal: null,
-    };
-  let place: AgentRequestPlace = { access: "none" };
+  if (request.conversationId && name === null) return { ...common, place: { access: "hidden" } };
+  let place: AgentVisibleRequestView["place"] = { access: "none" };
   if (request.conversationId && name !== null)
     place = {
       access: "visible",

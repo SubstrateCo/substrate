@@ -1,8 +1,9 @@
 import { sessionKeys, type AgentWakeMessageKind } from "@substrate/contracts/agent-work";
+import { agentTriggerPrecedence } from "@substrate/contracts/agents";
 
 /**
- * Why an owner message wakes one of the owner's agents, if it does: a mention first, then a
- * direct message, then a reply in a thread the agent worked in. A disabled trigger stops it.
+ * Why an owner message wakes one of the owner's agents, if it does: the first matching kind in
+ * agentTriggerPrecedence. A disabled trigger stops it.
  */
 export function wakeKind(agent: {
   mentioned: boolean;
@@ -10,10 +11,12 @@ export function wakeKind(agent: {
   workedInThread: boolean;
   disabled: readonly AgentWakeMessageKind[];
 }): AgentWakeMessageKind | undefined {
-  let kind: AgentWakeMessageKind | undefined;
-  if (agent.mentioned) kind = "mention";
-  else if (agent.directMessage) kind = "direct_message";
-  else if (agent.workedInThread) kind = "thread_reply";
+  const matches: Record<AgentWakeMessageKind, boolean> = {
+    mention: agent.mentioned,
+    direct_message: agent.directMessage,
+    thread_reply: agent.workedInThread,
+  };
+  const kind = agentTriggerPrecedence.find((candidate) => matches[candidate]);
   return kind && !agent.disabled.includes(kind) ? kind : undefined;
 }
 

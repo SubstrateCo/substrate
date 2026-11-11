@@ -9,7 +9,7 @@ import { organization } from "../../core/organizations/schema";
 import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { messageEntityReferences } from "../context/schema";
-import { conversationRemovalHints } from "../realtime/routing";
+import { withRemovalHints } from "../realtime/routing";
 import { loadConversation, visibleConversations } from "./access";
 import { findDirectMessage, findExternalDirectMessage } from "./direct-messages";
 import { activeMembers, endParticipation, hasOtherPerson, setOwner, writeMembers } from "./members";
@@ -346,16 +346,14 @@ export function conversationOperations(db: DatabaseExecutor, scope: Readonly<Ses
     },
 
     // Foreign keys remove messages, members, reactions, references and alerts. Task history keeps
-    // its rows without the message link. Hints are collected first because the rows go away.
+    // its rows without the message link.
     async deleteConversation(conversationId: string) {
       return db.transaction(async (tx) => {
         const { viewer } = await authenticate(tx);
         const conversation = await requireManaged(tx, viewer, conversationId);
-        const hints = await conversationRemovalHints(tx, [conversation]);
-        for (const hint of hints) effectsFor(tx).hint(hint);
-        await tx
-          .delete(messagingConversations)
-          .where(eq(messagingConversations.id, conversationId));
+        await withRemovalHints(tx, [conversation], () =>
+          tx.delete(messagingConversations).where(eq(messagingConversations.id, conversationId)),
+        );
         return { deleted: true };
       });
     },

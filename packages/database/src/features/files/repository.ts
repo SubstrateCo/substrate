@@ -1,16 +1,19 @@
 import { MAX_ATTACHMENTS, attachmentFileIds } from "@substrate/contracts/files/attachments";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import { RepositoryContext } from "../../core/repository-context";
+import { RepositoryContext, type Locked } from "../../core/repository-context";
 import { messagingSession } from "../../core/session/messaging";
 import { storedFiles } from "../../core/storage/schema";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { loadConversation } from "../messaging/access";
 import { taskRepository } from "../tasks/repository";
+import type { tasks } from "../tasks/tasks.schema";
 import { taskAttachmentMetadata } from "./metadata";
 import { publishFiles } from "./publication";
 import { messageAttachments, taskAttachments } from "./schema";
 import { and, eq, sql } from "drizzle-orm";
+
+type Task = typeof tasks.$inferSelect;
 
 export const attachmentReferences = sql`exists (select 1 from ${taskAttachments} where ${taskAttachments.fileId} = ${storedFiles.id})
   or exists (select 1 from ${messageAttachments} where ${messageAttachments.fileId} = ${storedFiles.id})`;
@@ -19,15 +22,15 @@ export function createAttachmentRepository(context: RepositoryContext) {
   const { db, scope } = context;
   if (!scope.userId) throw new AccessDeniedError();
   const identity = { userId: scope.userId, organizationId: scope.organizationId };
-  async function taskContext<T>(
+  async function taskContext<T, Level extends "view" | "edit">(
     input: { taskEntityId: string; projectEntityId: string },
-    level: "view" | "edit",
-    run: (ctx: RepositoryContext) => Promise<T>,
+    level: Level,
+    run: (ctx: RepositoryContext, task: Locked<Task, Level>) => Promise<T>,
   ) {
     return context.transaction(async (ctx) => {
       const task = await taskRepository(ctx).get(input.taskEntityId, level, true);
       if (task.projectEntityId !== input.projectEntityId) throw new AccessDeniedError();
-      return run(ctx);
+      return run(ctx, task);
     });
   }
   return {
@@ -40,7 +43,7 @@ export function createAttachmentRepository(context: RepositoryContext) {
       });
     },
     addTask(input: { taskEntityId: string; projectEntityId: string; attachmentFileIds: string[] }) {
-      return taskContext(input, "edit", async (ctx) => {
+      return taskContext(input, "edit", async (ctx, task) => {
         if (
           !input.attachmentFileIds.length ||
           !attachmentFileIds.safeParse(input.attachmentFileIds).success
@@ -51,7 +54,7 @@ export function createAttachmentRepository(context: RepositoryContext) {
           return existing;
         if (existing.length + input.attachmentFileIds.length > MAX_ATTACHMENTS)
           throw new ValidationError("A task can have up to 10 files.");
-        await publishFiles(ctx, input.attachmentFileIds);
+        await publishFiles(ctx, task, input.attachmentFileIds);
         const position = Math.max(-1, ...existing.map((item) => item.position)) + 1;
         await ctx.db.insert(taskAttachments).values(
           input.attachmentFileIds.map((fileId, index) => ({

@@ -1,7 +1,7 @@
 import type { DatabaseExecutor } from "./client";
 import { contactRepository } from "./core/contacts/repository";
 import { registerDevice, touchDevice } from "./core/devices/repository";
-import { RepositoryEffects, commit, commitWrites } from "./core/effects";
+import { RepositoryEffects, collectedEffects, commit, commitWrites } from "./core/effects";
 import type { Committed } from "./core/effects";
 import { entityRepository } from "./core/entities/repository";
 import { linkRepository } from "./core/links/repository";
@@ -35,7 +35,7 @@ export class ActorRepositories {
   constructor(
     protected readonly db: DatabaseExecutor,
     scope: ActorScope,
-    effects = new RepositoryEffects(),
+    effects?: RepositoryEffects,
   ) {
     this.repositoryContext = new RepositoryContext(db, scope, effects);
     this.contacts = contactRepository(this.repositoryContext);
@@ -53,7 +53,7 @@ export class ActorRepositories {
     const result = await this.db.transaction((tx) =>
       work(new ActorRepositories(tx, this.repositoryContext.scope, effects)),
     );
-    this.repositoryContext.effects.merge(effects);
+    collectedEffects(this.repositoryContext.db)?.merge(effects);
     return effects.committed(result);
   }
 }
@@ -69,7 +69,7 @@ class WorkspaceRepositories extends ActorRepositories {
     context: RepositoryContext,
     private readonly identity: SessionIdentity,
   ) {
-    super(context.db, context.scope, context.effects);
+    super(context.db, context.scope, collectedEffects(context.db));
     // TODO: Rename these facades to *Repository and pass the resolved WorkspaceScope.
     // Each operation now re-runs messagingSession/workspaceContext after forSession checked it.
     this.messaging = createMessagingService(context.db, identity);
@@ -89,7 +89,7 @@ class WorkspaceRepositories extends ActorRepositories {
         new WorkspaceRepositories(new RepositoryContext(tx, context.scope, effects), this.identity),
       );
     });
-    this.repositoryContext.effects.merge(effects);
+    collectedEffects(this.repositoryContext.db)?.merge(effects);
     return effects.committed(result);
   }
 }
@@ -117,49 +117,36 @@ function standalone(
       | "sharing"
       | "feed"
       | "files",
-    W extends keyof WorkspaceRepositories[K],
-  >(key: K, writes: readonly W[]) {
-    return commitWrites(repositories[key], writes, (work) => transaction((tx) => work(tx[key])));
+    R extends keyof WorkspaceRepositories[K],
+  >(key: K, reads: readonly R[]) {
+    return commitWrites(repositories[key], reads, (work) => transaction((tx) => work(tx[key])));
   }
   return {
-    contacts: domain("contacts", ["create", "update"]),
-    entities: domain("entities", ["softDelete"]),
-    links: domain("links", ["create", "remove"]),
-    permissions: domain("permissions", ["grant", "revoke"]),
-    projects: domain("projects", ["create", "update", "delete", "revoke", "setPicture"]),
-    tasks: domain("tasks", [
-      "create",
-      "update",
-      "delete",
-      "move",
-      "addComment",
-      "addLink",
-      "removeLink",
-    ]),
+    contacts: domain("contacts", ["get", "list"]),
+    entities: domain("entities", ["get"]),
+    links: domain("links", ["list"]),
+    permissions: domain("permissions", []),
+    projects: domain("projects", ["get", "getPicture", "assignableActors", "getDetail", "list"]),
+    tasks: domain("tasks", ["get", "list", "commentMentions", "listLinks", "listComments"]),
     messaging: domain("messaging", [
-      "createConversation",
-      "sendMessage",
-      "toggleReaction",
-      "addAgent",
-      "removeAgent",
-      "addMembers",
-      "joinConversation",
-      "leaveConversation",
-      "transferOwnership",
-      "deleteConversation",
+      "listConversations",
+      "deleteImpact",
+      "listManagedConversations",
+      "listMessages",
+      "getProfile",
+      "listReactions",
     ]),
-    context: domain("context", ["createTaskFromMessage", "attach", "detach"]),
-    sharing: domain("sharing", [
-      "invite",
-      "accept",
-      "decline",
-      "revoke",
-      "resend",
-      "disconnect",
-      "remove",
+    context: domain("context", [
+      "messagePage",
+      "messageLinks",
+      "messagePeople",
+      "related",
+      "messageTarget",
+      "search",
     ]),
-    feed: domain("feed", ["markRead", "markAllRead", "markGroupRead"]),
-    files: domain("files", ["addTask", "removeTask"]),
+    sharing: domain("sharing", ["list", "listConversations", "inbox"]),
+    feed: domain("feed", ["activity", "list", "groups", "groupEvents", "hasUnread"]),
+    files: domain("files", ["listTask", "taskContent", "messageContent"]),
     transaction,
   };
 }
@@ -184,16 +171,13 @@ export function createRepositories(db: DatabaseExecutor) {
           ),
       };
       return {
-        agents: commitWrites(
-          agents,
-          ["saveAgent", "deleteAgent", "setPicture", "setHomeDevice", "saveTriggers"],
-          (work) =>
-            commit(db, async (tx) => {
-              await ownerSession(tx, identity);
-              return work(createAgentRepository(tx, owner.userId, owner.installationId));
-            }),
+        agents: commitWrites(agents, ["list"], (work) =>
+          commit(db, async (tx) => {
+            await ownerSession(tx, identity);
+            return work(createAgentRepository(tx, owner.userId, owner.installationId));
+          }),
         ),
-        devices: commitWrites(devices, ["register", "touch"], (work) =>
+        devices: commitWrites(devices, [], (work) =>
           commit(db, async (tx) => {
             await ownerSession(tx, identity);
             return work({
@@ -202,7 +186,7 @@ export function createRepositories(db: DatabaseExecutor) {
             });
           }),
         ),
-        sharing: commitWrites(sharing, ["decline", "accept"], (work) =>
+        sharing: commitWrites(sharing, ["invitation"], (work) =>
           commit(db, async (tx) => {
             await ownerSession(tx, identity);
             return work({

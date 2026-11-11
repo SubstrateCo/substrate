@@ -1,4 +1,5 @@
 import { user } from "../../core/authentication/schema";
+import { entities } from "../../core/entities/schema";
 import { entityLinks } from "../../core/links/schema";
 import { AccessDeniedError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
@@ -308,6 +309,11 @@ test("search finds each supported domain without leaking private work, and curso
   expect((await bob.search({ query: "Launch", kind: "message" })).map((row) => row.id)).toEqual([
     message.id,
   ]);
+  await f.db
+    .update(entities)
+    .set({ deletedAt: new Date() })
+    .where(eq(entities.entityId, first[0]!.id));
+  expect(await context.search({ query: "Launch", kind: "task" })).toHaveLength(2);
   await alice.entities.softDelete(project.entityId);
   expect(await context.search({ query: "Launch", kind: "task" })).toEqual([]);
 });

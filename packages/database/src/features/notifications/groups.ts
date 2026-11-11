@@ -10,10 +10,7 @@ import { AccessDeniedError } from "../../errors";
 import { taskActivity } from "../activity/schema";
 import { visibleConversations } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
-import { projects } from "../projects/schema";
-import { liveTask } from "../tasks/access";
 import { taskComments } from "../tasks/comments.schema";
-import { tasks } from "../tasks/tasks.schema";
 import type { toFeedItem } from "./feed-item";
 import { notifications } from "./schema";
 import { sql } from "drizzle-orm";
@@ -23,7 +20,6 @@ type Page = { after?: string; limit: number };
 
 // Keep this relation narrow: access and grouping need no names, bodies, or excerpts.
 function eligible(db: DatabaseExecutor, ctx: RepositoryContext, scope: SessionIdentity) {
-  const project = sql`coalesce(${tasks.projectEntityId}, ${projects.entityId})`;
   return sql`
     SELECT ${notifications.id} AS id, ${notifications.createdAt} AS created_at,
       ${notifications.readAt} AS read_at, ${notifications.kind} AS kind,
@@ -34,17 +30,12 @@ function eligible(db: DatabaseExecutor, ctx: RepositoryContext, scope: SessionId
         ELSE 'thread:' || coalesce(${messagingMessages.threadId}, ${messagingMessages.id})::text
       END AS group_key
     FROM ${notifications}
-    LEFT JOIN ${tasks} ON ${tasks.organizationId} = ${notifications.organizationId}
-      AND ${tasks.entityId} = ${notifications.entityId}
-    LEFT JOIN ${projects} ON ${projects.organizationId} = ${notifications.organizationId}
-      AND ${projects.entityId} = ${notifications.entityId}
     LEFT JOIN ${messagingMessages} ON ${messagingMessages.id} = ${notifications.messageId}
     LEFT JOIN ${messagingConversations} ON ${messagingConversations.id} = ${messagingMessages.conversationId}
     WHERE ${notifications.organizationId} = ${scope.organizationId}
       AND ${notifications.recipientActorEntityId} = ${ctx.scope.actorEntityId}
       AND (
-        (${notifications.entityId} IS NOT NULL AND ${ctx.readable(project)}
-          AND (${tasks.entityId} IS NULL OR ${liveTask()}))
+        (${notifications.entityId} IS NOT NULL AND ${ctx.readable(notifications.entityId)})
         OR (${notifications.entityId} IS NULL AND ${messagingConversations.id} IS NOT NULL
           AND ${visibleConversations(db, scope)})
       )`;

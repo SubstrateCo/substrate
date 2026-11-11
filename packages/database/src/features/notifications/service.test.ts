@@ -109,6 +109,15 @@ test("work groups use entity identity, page tied timestamps after a deleted anch
   expect(
     (await service.groups({ limit: 20, filter: "unread" })).items.map((item) => item.entityId),
   ).toEqual([tasks[1]!.entityId]);
+  for (const entityId of [tasks[1]!.entityId, project.entityId]) {
+    await f.db
+      .update(entities)
+      .set({ deletedAt: new Date() })
+      .where(eq(entities.entityId, entityId));
+    expect(await service.hasUnread()).toBe(false);
+    await f.db.update(entities).set({ deletedAt: null }).where(eq(entities.entityId, entityId));
+  }
+  expect(await service.hasUnread()).toBe(true);
   await alice.permissions.revoke({ entityId: project.entityId, actorEntityId: f.bob });
   expect(await service.hasUnread()).toBe(false);
   expect((await service.groups({ limit: 20, filter: "all" })).items).toEqual([]);

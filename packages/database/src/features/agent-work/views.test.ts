@@ -56,13 +56,9 @@ test("a request in a visible place shows its place, payload and proposal", () =>
 
 test("a request in a hidden place is a placeholder without IDs, text or proposal", () => {
   const view = toRequestView({ request, agent, conversationName: null, targetVisible: true });
-  expect(view).toMatchObject({
-    sessionKey: null,
-    place: { access: "hidden" },
-    payload: null,
-    response: null,
-    proposal: null,
-  });
+  expect(view.place).toEqual({ access: "hidden" });
+  for (const field of ["sessionKey", "payload", "response", "proposal"])
+    expect(view).not.toHaveProperty(field);
   expect(JSON.stringify(view)).not.toContain('conversation"');
 });
 

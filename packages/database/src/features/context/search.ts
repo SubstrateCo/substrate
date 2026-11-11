@@ -27,7 +27,6 @@ import {
   messagingParticipants,
 } from "../messaging/schema";
 import { projects } from "../projects/schema";
-import { liveTask } from "../tasks/access";
 import { taskLinks } from "../tasks/links.schema";
 import { tasks } from "../tasks/tasks.schema";
 import { requireWork } from "./access";
@@ -279,8 +278,7 @@ export async function contextSearch(
   // Branches of kind "all" start here and run concurrently; their rows join `results` in order.
   const branchRows: Promise<SearchResult[]>[] = [];
   if (kind === "all" || kind === "task" || kind === "project") {
-    // Tasks and projects in one statement with one visibility CTE. A task is readable when its
-    // project is and the task is not deleted.
+    // Tasks and projects in one statement with one visibility CTE.
     const minimum = input.editable ? "edit" : "view";
     const types = kind === "all" ? (["task", "project"] as const) : [kind];
     // The task's project already passed the readable check, so its name is safe to show.
@@ -292,7 +290,6 @@ export async function contextSearch(
       const where = and(
         eq(table.organizationId, scope.organizationId),
         readableFromCte(ctx.scope, table.entityId, minimum),
-        type === "task" ? liveTask() : undefined,
         anchorId ? inArray(table.entityId, relatedEntities) : undefined,
         anchorId ? sql`${table.entityId} <> ${anchorId}` : undefined,
         query

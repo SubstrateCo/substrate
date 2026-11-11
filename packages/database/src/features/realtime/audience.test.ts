@@ -159,7 +159,7 @@ test("a delivery resolves the receiver once and checks only conversation audienc
   ]) {
     statements.length = 0;
     const receiver = await resolveReceiver(db, alice);
-    expect(receiver).toEqual({ ...alice, actorId: fixture.alice });
+    expect<object | null>(receiver).toEqual({ ...alice, actorId: fixture.alice });
     expect((await audienceRecipients(db, audience))(receiver!)).toBe(true);
     counts[audience[0]] = statements.length;
   }
@@ -216,7 +216,7 @@ test("a conversation audience resolves in one statement for every receiver, and 
   expect(receivers.map((receiver) => receives(receiver!))).toEqual([true, false, true]);
   // A partner's identity in another workspace is not the participant.
   expect(receives({ ...receivers[2]!, organizationId: fixture.orgA })).toBe(false);
-  expect(receives({ userId: "alice", organizationId: null, actorId: null })).toBe(false);
+  expect(receives({ ...receivers[0]!, organizationId: null, actorId: null })).toBe(false);
   expect(queries).toHaveLength(1);
   expect(
     (await audienceRecipients(db, realtimeKeys.conversation(crypto.randomUUID())))(receivers[0]!),

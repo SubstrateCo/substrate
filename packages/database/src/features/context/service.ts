@@ -4,15 +4,13 @@ import type { DatabaseExecutor } from "../../client";
 import { actorDisplayName } from "../../core/actors/display-name";
 import { actorPicture } from "../../core/actors/picture";
 import { actors } from "../../core/actors/schema";
-import { userAgents } from "../../core/actors/user-agents.schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
 import { ConflictError, AccessDeniedError } from "../../errors";
 import { recordTaskActivity } from "../activity/events";
-import { messageAttachmentMetadata } from "../files/metadata";
 import { requireMessage, visibleConversations } from "../messaging/access";
-import { messageAuthorColumns, messageSummaries } from "../messaging/messages";
+import { messageViews, selectMessages } from "../messaging/messages";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { liveProjectTasks } from "../tasks/access";
 import type { CreateTaskInput } from "../tasks/contracts";
@@ -272,22 +270,12 @@ export function createContextService(
     },
     async messageTarget(conversationId: string, messageId: string) {
       const { actor } = await workspaceContext(db, scope);
-      const author = messageAuthorColumns(scope);
       // Reads the message and its thread root together; each row must be visible.
-      const rows = await db
-        .select({
-          message: messagingMessages,
-          ...author,
-          authorName: sql<string>`coalesce(${author.authorName}, 'Member')`,
-          authorOwnerUserId: userAgents.userId,
-        })
-        .from(messagingMessages)
+      const rows = await selectMessages(db, scope)
         .innerJoin(
           messagingConversations,
           eq(messagingConversations.id, messagingMessages.conversationId),
         )
-        .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
-        .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
         .where(
           and(
             or(
@@ -304,29 +292,14 @@ export function createContextService(
         ? rows.find((row) => row.message.id === target.message.threadId)
         : target;
       if (!root) throw new AccessDeniedError();
-      const summaries = await messageSummaries(
+      const [message, thread] = await messageViews(
         db,
+        scope,
         actor.entityId,
         conversationId,
-        target === root ? [target.message] : [target.message, root.message],
+        target === root ? [target] : [target, root],
       );
-      const attachments = await messageAttachmentMetadata(
-        db,
-        rows.map((row) => row.message.id),
-      );
-      const decorate = ({ message, authorOwnerUserId, ...authorFields }: typeof target) => ({
-        ...message,
-        attachments: attachments.filter((attachment) => attachment.messageId === message.id),
-        // Which agent turn published a reply is private to the agent's owner.
-        originTurnId: authorOwnerUserId === scope.userId ? message.originTurnId : null,
-        ...authorFields,
-        ...summaries.get(message.id)!,
-      });
-      const decoratedMessage = decorate(target);
-      return {
-        message: decoratedMessage,
-        root: target === root ? decoratedMessage : decorate(root),
-      };
+      return { message: message!, root: thread ?? message! };
     },
     search: (input: Parameters<typeof contextSearch>[2]) => contextSearch(db, scope, input),
   };

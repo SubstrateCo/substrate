@@ -156,6 +156,33 @@ test("a denied inactive scope holds no lock on the access path", async () => {
   });
 });
 
+test("lockAccessPaths locks every entity and container in one statement and denies a missing one", async () => {
+  const { parent, child } = await hierarchy();
+  const other = await f.forActor(f.alice).projects.create({ name: "Other" });
+  const scope = { organizationId: f.orgA, actorEntityId: f.alice };
+  const { db, queries } = recordQueries();
+  await db.transaction(async (tx) => {
+    queries.length = 0;
+    await new RepositoryContext(tx, scope).lockAccessPaths([other.entityId, child.entityId]);
+    expect(queries).toHaveLength(1);
+    for (const id of [parent.entityId, child.entityId, other.entityId])
+      expect(
+        await rejection(
+          f.db.execute(
+            sql`SELECT entity_id FROM ${entities} WHERE entity_id = ${id} FOR UPDATE NOWAIT`,
+          ),
+        ),
+      ).toMatchObject({ cause: { code: "55P03" } });
+  });
+  expect(
+    await rejection(
+      f.db.transaction((tx) =>
+        new RepositoryContext(tx, scope).lockAccessPaths([parent.entityId, crypto.randomUUID()]),
+      ),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
+});
+
 for (const inherited of [false, true]) {
   test(`locked access sees ${inherited ? "inherited" : "direct"} revocation committed while waiting for the lock`, async () => {
     const { owner, parent, child } = await hierarchy();

@@ -8,7 +8,7 @@ import {
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
-import { RepositoryEffects, effectsFor } from "../../core/effects";
+import { effectsFor } from "../../core/effects";
 import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
@@ -130,7 +130,6 @@ export function approveProposal(
       .returning();
     if (!claimed) throw new ConflictError(closed);
     let outcome: ProposalOutcome;
-    const effects = new RepositoryEffects();
     const parsed = proposalAction.safeParse(claimed.proposedAction);
     if (!parsed.success || (await proposalActionHash(parsed.data)) !== claimed.actionHash)
       outcome = { status: "failed", error: "The proposed action changed after it was proposed." };
@@ -141,19 +140,18 @@ export function approveProposal(
         actorEntityId: claimed.agentActorEntityId,
       };
       try {
-        // A savepoint, so a failed action leaves no partial writes but the decision is kept.
+        // A savepoint, so a failed action leaves no partial writes but the decision is kept. Its
+        // hints join the transaction only if the savepoint succeeds.
         const result = await tx.transaction(async (sp) => {
           const { context, actor } = await workspaceContext(sp, agent, { lockActor: true });
-          const action = await runProposalAction(context, agent, actor, {
+          return runProposalAction(context, agent, actor, {
             id: claimed.id,
             turnId: claimed.turnId,
             action: parsed.data,
             targetBasis: claimed.targetBasis,
           });
-          return { ...action, effects: context.effects };
         });
         outcome = { status: "executed", receipt: result.receipt };
-        effects.merge(result.effects);
       } catch (error) {
         const failure = error instanceof Error ? proposalFailure(error) : null;
         if (!failure) throw error;
@@ -166,8 +164,7 @@ export function approveProposal(
       .where(eq(agentRequests.id, requestId))
       .returning();
     await wakeForRequest(tx, finished!, "approval_result");
-    effects.hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });
-    effectsFor(tx).merge(effects);
+    effectsFor(tx).hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });
     return { status: finished!.status, outcome };
   });
 }

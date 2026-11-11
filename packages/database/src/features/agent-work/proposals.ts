@@ -20,10 +20,8 @@ import { and, eq } from "drizzle-orm";
 
 type Agent = Parameters<typeof agentActions>[2];
 
-// The editable task or project with its version. With lock, its access path stays locked until
-// the transaction ends, in the same order the task repository locks it.
-async function editableWork(ctx: RepositoryContext, entityId: string, lock: boolean) {
-  if (lock) await ctx.lockAccessPath(entityId);
+// The editable task or project with its version. Callers lock its access path first.
+async function editableWork(ctx: RepositoryContext, entityId: string) {
   const work = await requireWork(ctx, entityId, "edit");
   return { ...work, version: work.updatedAt.toISOString() };
 }
@@ -65,17 +63,19 @@ export async function checkProposalAccess(
       return { type: action.type, conversationId, threadId, ...target };
     }
     case "create_task": {
-      const project = await editableWork(ctx, action.input.projectId, lock);
+      const { projectId, parentTaskId } = action.input;
+      if (lock) await ctx.lockAccessPaths(parentTaskId ? [projectId, parentTaskId] : [projectId]);
+      const project = await editableWork(ctx, projectId);
       if (project.entityType !== "project") throw new AccessDeniedError();
       let parentTaskUpdatedAt = null;
-      if (action.input.parentTaskId)
-        parentTaskUpdatedAt = (await editableWork(ctx, action.input.parentTaskId, lock)).version;
+      if (parentTaskId) parentTaskUpdatedAt = (await editableWork(ctx, parentTaskId)).version;
       if (action.input.sourceMessageId)
         await requireMessage(ctx.db, identity, action.input.sourceMessageId);
       return { type: action.type, projectUpdatedAt: project.version, parentTaskUpdatedAt };
     }
     case "update_task": {
-      const task = await editableWork(ctx, action.input.taskId, lock);
+      if (lock) await ctx.lockAccessPaths([action.input.taskId]);
+      const task = await editableWork(ctx, action.input.taskId);
       if (task.entityType !== "task") throw new AccessDeniedError();
       return { type: action.type, taskUpdatedAt: task.version };
     }

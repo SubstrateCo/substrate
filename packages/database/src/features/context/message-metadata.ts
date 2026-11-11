@@ -10,15 +10,13 @@ import { messageReferences } from "../../core/text/references";
 import { mentionablePerson } from "../messaging/access";
 import { messagingConversations } from "../messaging/schema";
 import { projects } from "../projects/schema";
-import { liveTask } from "../tasks/access";
 import { tasks } from "../tasks/tasks.schema";
 import { messageEntityReferences } from "./schema";
-import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 
 // Callers authorize every message before resolving its metadata.
 export async function messageWorkLinks(ctx: RepositoryContext, messageIds: string[]) {
-  // A task is readable when its project is and the task is not deleted, and the project's level
-  // decides removal rights.
+  // A task inherits its project's level, which decides removal rights.
   const projectEntityId = sql`coalesce(${tasks.projectEntityId}, ${projects.entityId})`;
   const work = await ctx.db
     .select({
@@ -53,10 +51,10 @@ export async function messageWorkLinks(ctx: RepositoryContext, messageIds: strin
         eq(messageEntityReferences.entityType, "project"),
       ),
     )
-    // A page has few references, so each walks up from its project instead of reading the
+    // A page has few references, so each walks up from its entity instead of reading the
     // caller's whole visible set.
     .innerJoin(
-      sql`LATERAL (SELECT ${ctx.accessLevel(projectEntityId)} AS level) work_access`,
+      sql`LATERAL (SELECT ${ctx.accessLevel(messageEntityReferences.entityId)} AS level) work_access`,
       sql`work_access.level IS NOT NULL`,
     )
     .where(
@@ -64,7 +62,6 @@ export async function messageWorkLinks(ctx: RepositoryContext, messageIds: strin
         inArray(messageEntityReferences.messageId, messageIds),
         eq(messageEntityReferences.organizationId, ctx.scope.organizationId),
         eq(messagingConversations.organizationId, ctx.scope.organizationId),
-        or(isNull(tasks.entityId), liveTask()),
       ),
     )
     .orderBy(asc(messageEntityReferences.createdAt));

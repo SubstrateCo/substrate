@@ -1,6 +1,7 @@
 import type { DatabaseExecutor } from "../client";
 import { ensureHumanActor } from "../core/actors/provisioning";
 import { contactRepository } from "../core/contacts/repository";
+import { commit } from "../core/effects";
 import { linkRepository } from "../core/links/repository";
 import { permissionRepository } from "../core/permissions/repository";
 import { RepositoryContext } from "../core/repository-context";
@@ -42,8 +43,9 @@ async function seedMessages(
 }
 
 // Trusted, development-only provisioning. One transaction makes reruns safe without resetting edits.
+// Seeding publishes nothing: no client is connected to a new development database.
 export async function seedDevelopmentDatabase(db: DatabaseExecutor, passwordHash: string) {
-  return db.transaction(async (tx) => {
+  const { result } = await commit(db, async (tx) => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(68520317)`);
     const existing = await tx
       .select()
@@ -273,4 +275,5 @@ export async function seedDevelopmentDatabase(db: DatabaseExecutor, passwordHash
     await seedMessages(messaging, partnerDm.id, developmentPartner.directMessages);
     return true;
   });
+  return result;
 }

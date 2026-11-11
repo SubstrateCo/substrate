@@ -33,14 +33,20 @@ test("agents use their owner's live access, not grants of their own", async () =
   const { repositories: agent, actor } = await assistant();
   const contact = await f.forActor(f.bob).contacts.create({ displayName: "Shared" });
   expect(await rejection(agent.contacts.get(contact.entityId))).toBeInstanceOf(AccessDeniedError);
-  // A grant row for the agent itself does not give access.
-  await f.db.insert(entityGrants).values({
-    organizationId: f.orgA,
-    entityId: contact.entityId,
-    actorEntityId: actor.entityId,
-    level: "owner",
-  });
-  expect(await rejection(agent.contacts.get(contact.entityId))).toBeInstanceOf(AccessDeniedError);
+  // The database holds no grant rows for agents.
+  expect(
+    await rejection(
+      f.db
+        .insert(entityGrants)
+        .values({
+          organizationId: f.orgA,
+          entityId: contact.entityId,
+          actorEntityId: actor.entityId,
+          level: "owner",
+        })
+        .execute(),
+    ),
+  ).toMatchObject({ cause: { code: "23503" } });
   for (const level of ["view", "comment", "edit", "owner"] as const) {
     await f
       .forActor(f.bob)

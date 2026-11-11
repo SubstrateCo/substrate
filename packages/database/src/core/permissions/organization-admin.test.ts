@@ -3,10 +3,11 @@ import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
 import { ensureUserAgentActor } from "../actors/provisioning";
 import { userAgents } from "../actors/user-agents.schema";
+import { entities } from "../entities/schema";
 import { member } from "../organizations/schema";
 import { RepositoryContext } from "../repository-context";
 import { expect, test } from "bun:test";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 const f = setupDatabase();
 
@@ -65,6 +66,34 @@ test("an admin's agent acts with the admin's live access", async () => {
   expect(
     await rejection(context(actor.entityId).requireAccess(contact.entityId, "view")),
   ).toBeInstanceOf(AccessDeniedError);
+});
+
+test("admins inherit owner access from a shared container, not from the child's own type", async () => {
+  const bob = context(f.bob);
+  const project = await bob.createEntity("project");
+  const mailbox = await bob.createEntity("email_account");
+  const [inProject, inMailbox] = await f.db
+    .insert(entities)
+    .values([
+      { organizationId: f.orgA, entityType: "message", accessEntityId: project.entityId },
+      { organizationId: f.orgA, entityType: "task", accessEntityId: mailbox.entityId },
+    ])
+    .returning();
+  const alice = context(f.alice);
+  expect((await alice.requireAccess(inProject!.entityId, "owner")).level).toBe("owner");
+  expect(await rejection(alice.requireAccess(inMailbox!.entityId, "view"))).toBeInstanceOf(
+    AccessDeniedError,
+  );
+  const readable = await f.db
+    .select({ id: entities.entityId })
+    .from(entities)
+    .where(
+      and(
+        inArray(entities.entityId, [inProject!.entityId, inMailbox!.entityId]),
+        alice.readable(entities.entityId),
+      ),
+    );
+  expect(readable.map((row) => row.id)).toEqual([inProject!.entityId]);
 });
 
 test("readable entities include unshared records for admins only", async () => {

@@ -201,7 +201,11 @@ export async function declineSharingInvitation(db: DatabaseExecutor, userId: str
 export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentity) {
   return {
     async invite(conversationId: string, input: { email: string; shareHistory: boolean }) {
+      if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
+        // Check membership before taking the lock, as accept does. The manager check needs the
+        // locked row, so it runs after.
+        await workspaceContext(tx, scope);
         const conversation = await lockConversation(tx, conversationId, "update");
         const [invitation] = await queueSharingInvitations(tx, scope, conversation, {
           emails: [input.email],
@@ -241,8 +245,10 @@ export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentit
               ),
             );
           if (!participant) throw new ValidationError("This invitation no longer grants access.");
-          for (const hint of await sharingInvitationHints(tx, invite)) effectsFor(tx).hint(hint);
-          effectsFor(tx).hint({ audience: realtimeKeys.user(scope.userId), domain: "access" });
+          effectsFor(tx).replay([
+            ...(await sharingInvitationHints(tx, invite)),
+            { audience: realtimeKeys.user(scope.userId), domain: "access" },
+          ]);
           return {
             status: "accepted" as const,
             organizationId: scope.organizationId,

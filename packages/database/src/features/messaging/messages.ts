@@ -21,21 +21,21 @@ import { messagingProfile } from "./profiles";
 import { messagingMessages, messagingReactions } from "./schema";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 
-// Requires a join of `actors` on author_actor_entity_id.
-export function messageAuthorColumns(scope: SessionIdentity) {
+// `author` is the actors table, or its alias, joined on author_actor_entity_id.
+function messageAuthorColumns(scope: SessionIdentity, author: typeof actors = actors) {
   return {
-    authorName: actorDisplayName(),
-    authorImage: actorPicture(scope),
-    authorType: sql<"human" | "agent">`${actors.type}`,
-    authorExternal: sql<boolean>`${actors.type} <> 'agent' AND not exists (
+    authorName: actorDisplayName(author),
+    authorImage: actorPicture(scope, author),
+    authorType: sql<"human" | "agent">`${author.type}`,
+    authorExternal: sql<boolean>`${author.type} <> 'agent' AND not exists (
       select 1 from ${member}
-      where ${member.userId} = ${actors.userId}
+      where ${member.userId} = ${author.userId}
         and ${member.organizationId} = ${scope.organizationId}
     )`,
   };
 }
 
-export async function messageSummaries(
+async function messageSummaries(
   db: DatabaseExecutor,
   viewerActorEntityId: string,
   conversationId: string,
@@ -91,6 +91,48 @@ export async function messageSummaries(
   );
 }
 
+// Messages with their author. Callers add the filters that authorize each message.
+export function selectMessages(db: DatabaseExecutor, scope: SessionIdentity) {
+  return db
+    .select({
+      message: messagingMessages,
+      ...messageAuthorColumns(scope),
+      authorOwnerUserId: userAgents.userId,
+    })
+    .from(messagingMessages)
+    .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
+    .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+    .$dynamic();
+}
+
+// Adds attachments, reactions and reply counts to authorized messages of one conversation.
+export async function messageViews(
+  db: DatabaseExecutor,
+  scope: SessionIdentity,
+  viewerActorEntityId: string,
+  conversationId: string,
+  rows: Awaited<ReturnType<typeof selectMessages>>,
+) {
+  const attachments = await messageAttachmentMetadata(
+    db,
+    rows.map((row) => row.message.id),
+  );
+  const summaries = await messageSummaries(
+    db,
+    viewerActorEntityId,
+    conversationId,
+    rows.map((row) => row.message),
+  );
+  return rows.map(({ message, authorOwnerUserId, ...author }) => ({
+    ...message,
+    attachments: attachments.filter((item) => item.messageId === message.id),
+    // Which agent turn published a reply is private to the agent's owner.
+    originTurnId: authorOwnerUserId === scope.userId ? message.originTurnId : null,
+    ...author,
+    ...summaries.get(message.id)!,
+  }));
+}
+
 // Trusted callers pass the context and author already resolved by workspaceContext.
 export async function sendMessageAs(
   ctx: RepositoryContext,
@@ -136,11 +178,12 @@ export async function sendMessageAs(
       )
         throw new ConflictError("This request was already used for another message.");
       const reactions: { emoji: string; count: number; reacted: boolean }[] = [];
-      for (const hint of messageChangeHints(
-        { conversationId, organizationId: scope.organizationId },
-        { joined: false },
-      ))
-        ctx.effects.hint(hint);
+      ctx.effects.replay(
+        messageChangeHints(
+          { conversationId, organizationId: scope.organizationId },
+          { joined: false },
+        ),
+      );
       return {
         ...existing,
         attachments,
@@ -152,7 +195,7 @@ export async function sendMessageAs(
     }
   }
   if (threadId) await requireThreadRoot(tx, conversationId, threadId);
-  await publishFiles(ctx, fileIds);
+  await publishFiles(ctx, conversation, fileIds);
   let joined = false;
   // Posting rejoins a public channel the person left. Private conversations are not visible after
   // leaving, so the access check fails first.
@@ -238,15 +281,7 @@ export function messageOperations(db: DatabaseExecutor, scope: Readonly<SessionI
             ? sql`(${messagingMessages.createdAt}, ${messagingMessages.id}) < (select anchor.created_at, anchor.id from ${messagingMessages} anchor where anchor.id = ${anchor.id}::uuid)`
             : sql`(${messagingMessages.createdAt}, ${messagingMessages.id}) <= (select anchor.created_at, anchor.id from ${messagingMessages} anchor where anchor.id = ${anchor.id}::uuid)`;
         }
-        const rows = await tx
-          .select({
-            message: messagingMessages,
-            ...messageAuthorColumns(scope),
-            authorOwnerUserId: userAgents.userId,
-          })
-          .from(messagingMessages)
-          .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
-          .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+        const rows = await selectMessages(tx, scope)
           .where(
             and(
               eq(messagingMessages.conversationId, conversationId),
@@ -259,36 +294,7 @@ export function messageOperations(db: DatabaseExecutor, scope: Readonly<SessionI
           .orderBy(desc(messagingMessages.createdAt), desc(messagingMessages.id))
           .limit(50);
         rows.reverse();
-        const attachments = await messageAttachmentMetadata(
-          tx,
-          rows.map((row) => row.message.id),
-        );
-        const summaries = await messageSummaries(
-          tx,
-          actor.entityId,
-          conversationId,
-          rows.map((row) => row.message),
-        );
-        return rows.map(
-          ({
-            message,
-            authorName,
-            authorImage,
-            authorExternal,
-            authorType,
-            authorOwnerUserId,
-          }) => ({
-            ...message,
-            attachments: attachments.filter((item) => item.messageId === message.id),
-            // Which agent turn published a reply is private to the agent's owner.
-            originTurnId: authorOwnerUserId === scope.userId ? message.originTurnId : null,
-            authorName,
-            authorImage,
-            authorExternal,
-            authorType,
-            ...summaries.get(message.id)!,
-          }),
-        );
+        return messageViews(tx, scope, actor.entityId, conversationId, rows);
       });
     },
     async getProfile(conversationId: string, actorEntityId: string) {

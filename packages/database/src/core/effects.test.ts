@@ -1,5 +1,14 @@
-import { RepositoryEffects } from "./effects";
+import type { DatabaseExecutor } from "../client";
+import { RepositoryEffects, effectExecutor, effectsFor } from "./effects";
 import { expect, test } from "bun:test";
+
+test("effects on an executor outside a committed write are rejected, not dropped", () => {
+  // SAFETY: effectsFor only uses the executor as a key; no query runs.
+  const db = {} as DatabaseExecutor;
+  expect(() => effectsFor(db)).toThrow();
+  const effects = new RepositoryEffects();
+  expect(effectsFor(effectExecutor(db, effects))).toBe(effects);
+});
 
 test("merging committed savepoint effects deduplicates hints and mail", () => {
   const effects = new RepositoryEffects();

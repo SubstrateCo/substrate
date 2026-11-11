@@ -2,11 +2,11 @@ import type { DatabaseExecutor } from "../client";
 import { AccessDeniedError, ValidationError } from "../errors";
 import { activeActorCondition, permissionActorEntityId } from "./actors/access";
 import { actors } from "./actors/schema";
-import { effectExecutor, effectsFor } from "./effects";
+import { effectExecutor, effectsFor, type RepositoryEffects } from "./effects";
 import { rootEntityValues } from "./entities/identity";
 import { entities } from "./entities/schema";
 import { entityGrants, permissionLevel } from "./permissions/schema";
-import { entityAccessLevel, lockAccessPath, readableCondition } from "./permissions/visibility";
+import { entityAccessLevel, lockAccessPaths, readableCondition } from "./permissions/visibility";
 import type { WorkspaceScope } from "./session/identity";
 import { and, eq, exists, isNull, sql, type SQLWrapper } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -19,20 +19,42 @@ export interface ActorScope {
 export type PermissionLevel = (typeof permissionLevel.enumValues)[number];
 const permissionRank: Record<PermissionLevel, number> = { view: 0, comment: 1, edit: 2, owner: 3 };
 
+type AtLeast = {
+  view: PermissionLevel;
+  comment: "comment" | "edit" | "owner";
+  edit: "edit" | "owner";
+  owner: "owner";
+};
+declare const lockedAt: unique symbol;
+/** Read after requireAccess(entityId, minimum, true) locked the access path in this transaction. */
+export type Locked<T, Minimum extends PermissionLevel> = T & {
+  readonly [lockedAt]: AtLeast[Minimum];
+};
+export interface EntityAccess {
+  entity: typeof entities.$inferSelect;
+  level: PermissionLevel;
+}
+export type LockedAccess<Minimum extends PermissionLevel> = Locked<EntityAccess, Minimum>;
+
 export class RepositoryContext {
   readonly scope: Readonly<ActorScope & Partial<Pick<WorkspaceScope, "userId" | "admin">>>;
 
   constructor(
     readonly db: DatabaseExecutor,
     scope: ActorScope & Partial<Pick<WorkspaceScope, "userId" | "admin">>,
-    readonly effects = effectsFor(db),
+    effects?: RepositoryEffects,
   ) {
-    this.db = effectExecutor(db, effects);
+    this.db = effects ? effectExecutor(db, effects) : db;
     this.scope = Object.freeze({
       ...scope,
       organizationId: scope.organizationId,
       actorEntityId: scope.actorEntityId,
     });
+  }
+
+  // Reads need no collector. A write without one fails in effectsFor instead of dropping hints.
+  get effects() {
+    return effectsFor(this.db);
   }
 
   async transaction<T>(work: (context: RepositoryContext) => Promise<T>) {
@@ -62,16 +84,35 @@ export class RepositoryContext {
     return actor;
   }
 
-  // Locks the entity and its access ancestors. Read grants in a later statement, after any
-  // competing writer commits.
-  async lockAccessPath(entityId: string) {
+  // Locks the entities and their access containers in one statement and one global order. Read
+  // grants in a later statement, after any competing writer commits.
+  async lockAccessPaths(entityIds: string[]) {
+    if (!entityIds.length) return;
     // Inactive or forged scopes take no locks: the statement locks only for an active actor.
-    // No row also means a missing entity, which every caller denies.
-    const locked = await this.db.execute(lockAccessPath(this.scope, entityId));
-    if (!locked.length) throw new AccessDeniedError();
+    // A missing row also means a missing entity, which every caller denies.
+    const locked = new Set(
+      (await this.db.execute<{ entityId: string }>(lockAccessPaths(this.scope, entityIds))).map(
+        (row) => row.entityId,
+      ),
+    );
+    if (entityIds.some((id) => !locked.has(id))) throw new AccessDeniedError();
   }
 
-  async requireAccess(entityId: string, minimum: PermissionLevel, lock = false) {
+  async lockAccessPath(entityId: string) {
+    await this.lockAccessPaths([entityId]);
+  }
+
+  requireAccess<Minimum extends PermissionLevel>(
+    entityId: string,
+    minimum: Minimum,
+    lock: true,
+  ): Promise<LockedAccess<Minimum>>;
+  requireAccess(entityId: string, minimum: PermissionLevel, lock?: boolean): Promise<EntityAccess>;
+  async requireAccess(
+    entityId: string,
+    minimum: PermissionLevel,
+    lock = false,
+  ): Promise<EntityAccess> {
     // Fail closed: an unknown level would otherwise compare as granted.
     if (!Object.hasOwn(permissionRank, minimum)) throw new AccessDeniedError();
     if (lock) await this.lockAccessPath(entityId);
@@ -154,18 +195,17 @@ export class RepositoryContext {
     return entity!;
   }
 
-  // The caller must already hold requireAccess(parentEntityId, "edit", true) in this transaction.
   // The child takes the parent's container, so a child of a child shares the root container.
   async createChildEntity(
     entityType: typeof entities.$inferInsert.entityType,
-    parentEntityId: string,
+    parent: LockedAccess<"edit">,
   ) {
     const [entity] = await this.db
       .insert(entities)
       .values({
         organizationId: this.scope.organizationId,
         entityType,
-        accessEntityId: sql`(SELECT access_entity_id FROM ${entities} WHERE organization_id = ${this.scope.organizationId} AND entity_id = ${parentEntityId})`,
+        accessEntityId: sql`(SELECT access_entity_id FROM ${entities} WHERE organization_id = ${this.scope.organizationId} AND entity_id = ${parent.entity.entityId})`,
       })
       .returning();
     return entity!;

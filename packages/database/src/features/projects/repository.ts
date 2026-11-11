@@ -53,8 +53,6 @@ export function projectRepository(context: RepositoryContext) {
         and(
           eq(entityGrants.organizationId, scope.organizationId),
           eq(entityGrants.entityId, projectEntityId),
-          // Agents use their owner's access, so old agent grants are not memberships.
-          eq(actors.type, "human"),
         ),
       )
       .orderBy(asc(actorDisplayName()), asc(actors.entityId));

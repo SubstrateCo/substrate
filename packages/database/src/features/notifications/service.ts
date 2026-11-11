@@ -16,7 +16,6 @@ import { visibleConversations } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { projects } from "../projects/schema";
-import { liveTask } from "../tasks/access";
 import { taskComments } from "../tasks/comments.schema";
 import { tasks } from "../tasks/tasks.schema";
 import { toFeedItem } from "./feed-item";
@@ -103,7 +102,7 @@ export function createFeedService(db: DatabaseExecutor, scope: SessionIdentity) 
         boundary = sql`(${notifications.createdAt}, ${notifications.id}) < (select anchor.created_at, anchor.id from ${notifications} anchor where anchor.id = ${anchor.id}::uuid)`;
       }
       // One statement filters by the target's current access before LIMIT, so hidden targets
-      // cost no extra round trips. A task is readable when its project is and it is not deleted.
+      // cost no extra round trips.
       const projectEntityId = sql`coalesce(${tasks.projectEntityId}, ${projects.entityId})`;
       // Who acted: the message author, or whoever recorded the assignment event.
       const actor = alias(actors, "notice_actor");
@@ -190,11 +189,7 @@ export function createFeedService(db: DatabaseExecutor, scope: SessionIdentity) 
             ids ? inArray(notifications.id, ids) : undefined,
             boundary,
             or(
-              and(
-                isNotNull(notifications.entityId),
-                ctx.readable(projectEntityId),
-                or(isNull(tasks.entityId), liveTask()),
-              ),
+              and(isNotNull(notifications.entityId), ctx.readable(notifications.entityId)),
               and(
                 isNull(notifications.entityId),
                 isNotNull(messagingConversations.id),

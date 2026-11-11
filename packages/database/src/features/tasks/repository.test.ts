@@ -4,6 +4,7 @@ import { member } from "../../core/organizations/schema";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { ActorRepositories } from "../../repositories";
 import * as schema from "../../schema";
+import { discardEffects } from "../../testing/connection";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
 import { taskComments } from "./comments.schema";
@@ -276,10 +277,12 @@ test("task create locks the project once and update batches activity with one as
     level: "view",
   });
   const statements: string[] = [];
-  const db = drizzle(fixture.db.$client, {
-    schema,
-    logger: { logQuery: (query) => statements.push(query) },
-  });
+  const db = discardEffects(
+    drizzle(fixture.db.$client, {
+      schema,
+      logger: { logQuery: (query) => statements.push(query) },
+    }),
+  );
   const repos = new ActorRepositories(db, {
     organizationId: fixture.orgA,
     actorEntityId: fixture.alice,

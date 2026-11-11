@@ -1,13 +1,18 @@
 import { attachmentFileIds } from "@substrate/contracts/files/attachments";
 
 import { actors } from "../../core/actors/schema";
-import type { RepositoryContext } from "../../core/repository-context";
+import type { Locked, RepositoryContext } from "../../core/repository-context";
 import { storedFiles } from "../../core/storage/schema";
 import { AccessDeniedError, ValidationError } from "../../errors";
+import type { LockedConversation } from "../messaging/access";
 import { and, eq, inArray } from "drizzle-orm";
 
-// Caller holds the destination's access lock. File locks serialize publication with deletion.
-export async function publishFiles(ctx: RepositoryContext, ids: string[]) {
+// The locked destination proves its access lock. File locks serialize publication with deletion.
+export async function publishFiles(
+  ctx: RepositoryContext,
+  _destination: Locked<unknown, "edit"> | LockedConversation,
+  ids: string[],
+) {
   if (!attachmentFileIds.safeParse(ids).success)
     throw new ValidationError("Select up to 10 distinct files.");
   if (!ids.length) return;

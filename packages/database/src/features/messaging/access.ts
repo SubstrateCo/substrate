@@ -8,10 +8,25 @@ import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { messagingConversations, messagingMessages, messagingParticipants } from "./schema";
 import { messagingConnections } from "./sharing.schema";
-import { and, eq, exists, inArray, isNotNull, isNull, lte, or, type SQLWrapper } from "drizzle-orm";
+import {
+  and,
+  eq,
+  exists,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  or,
+  sql,
+  type SQLWrapper,
+} from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
-export function approvedParticipant(db: DatabaseExecutor) {
+// `conversation` is the participant's conversation row, or its alias.
+export function approvedParticipant(
+  db: DatabaseExecutor,
+  conversation: typeof messagingConversations = messagingConversations,
+) {
   const ownerParticipant = alias(messagingParticipants, "sharing_owner_participant");
   const participantAgent = alias(actors, "sharing_participant_agent");
   const ownerActor = alias(actors, "sharing_owner_actor");
@@ -67,7 +82,7 @@ export function approvedParticipant(db: DatabaseExecutor) {
       ),
   );
   return or(
-    eq(messagingParticipants.organizationId, messagingConversations.organizationId),
+    eq(messagingParticipants.organizationId, conversation.organizationId),
     and(
       or(
         and(isNotNull(messagingParticipants.consentedAt), consentingHuman),
@@ -89,6 +104,24 @@ export function approvedParticipant(db: DatabaseExecutor) {
   );
 }
 
+/** The conversation is a public channel, which its own workspace sees. */
+export function publicChannel(
+  conversation: typeof messagingConversations = messagingConversations,
+) {
+  return sql<boolean>`(${eq(conversation.kind, "channel")} and ${eq(conversation.private, false)})`;
+}
+
+/**
+ * The participant row is live and approved, so the conversation is visible in the participant's
+ * workspace. `conversation` is the participant's conversation row, or its alias.
+ */
+export function liveApprovedParticipant(
+  db: DatabaseExecutor,
+  conversation: typeof messagingConversations = messagingConversations,
+) {
+  return and(isNull(messagingParticipants.leftAt), approvedParticipant(db, conversation));
+}
+
 // A person's membership is held by their human actor in their own organization. The alias keeps
 // callers' correlated columns, such as an outer actors.user_id, bound to the outer row.
 const participantActor = alias(actors, "participant_actor");
@@ -104,11 +137,7 @@ export function visibleConversations(
   scope: { userId: string | SQLWrapper; organizationId: string | SQLWrapper },
 ) {
   return or(
-    and(
-      eq(messagingConversations.kind, "channel"),
-      eq(messagingConversations.private, false),
-      eq(messagingConversations.organizationId, scope.organizationId),
-    ),
+    and(publicChannel(), eq(messagingConversations.organizationId, scope.organizationId)),
     inArray(
       messagingConversations.id,
       db
@@ -130,8 +159,7 @@ export function visibleConversations(
         .where(
           and(
             eq(messagingParticipants.organizationId, scope.organizationId),
-            isNull(messagingParticipants.leftAt),
-            approvedParticipant(db),
+            liveApprovedParticipant(db),
           ),
         ),
     ),
@@ -150,31 +178,39 @@ export function visibleConversationIds(
 }
 
 /**
- * An active person of the organization who can see the outer conversation, as mentions and the
- * mention picker require. Needs `actors`, `entities` on the actor, and `messaging_conversations`
- * in the outer query.
+ * An active person of the organization who can see the outer `messaging_conversations` row, as
+ * mentions and the mention picker require. `entity` is the actor's entity row.
  */
-export function mentionablePerson(db: DatabaseExecutor, organizationId: string) {
+export function mentionablePerson(
+  db: DatabaseExecutor,
+  organizationId: string,
+  { actor = actors, entity = entities }: { actor?: typeof actors; entity?: typeof entities } = {},
+) {
   return and(
-    eq(actors.organizationId, organizationId),
-    isNotNull(actors.userId),
-    activeActorCondition(),
-    isNull(entities.deletedAt),
-    visibleConversations(db, { userId: actors.userId, organizationId }),
+    eq(actor.organizationId, organizationId),
+    isNotNull(actor.userId),
+    activeActorCondition(actor),
+    isNull(entity.deletedAt),
+    visibleConversations(db, { userId: actor.userId, organizationId }),
   );
 }
 
 /**
  * A live, active agent member of the conversation. Agent rows never grant access; callers add
- * the owner when only the owner may address the agent. Needs `messaging_participants` and
- * `actors` on the participant's actor in the outer query.
+ * the owner when only the owner may address the agent. `actor` is the participant's actor.
  */
-export function liveAgentMember(conversationId: string) {
+export function liveAgentMember(
+  conversationId: string,
+  {
+    participant = messagingParticipants,
+    actor = actors,
+  }: { participant?: typeof messagingParticipants; actor?: typeof actors } = {},
+) {
   return and(
-    eq(messagingParticipants.conversationId, conversationId),
-    eq(messagingParticipants.actorType, "agent"),
-    isNull(messagingParticipants.leftAt),
-    activeActorCondition(),
+    eq(participant.conversationId, conversationId),
+    eq(participant.actorType, "agent"),
+    isNull(participant.leftAt),
+    activeActorCondition(actor),
   );
 }
 
@@ -199,16 +235,26 @@ export async function requireThreadRoot(
 }
 
 export type Conversation = typeof messagingConversations.$inferSelect;
+declare const conversationLock: unique symbol;
+/** A conversation row locked in this transaction. */
+export type LockedConversation = Conversation & {
+  readonly [conversationLock]: "update" | "share";
+};
 
 /** Locks a conversation without an access check. The caller authorizes. */
-export async function lockConversation(db: DatabaseExecutor, id: string, lock: "update" | "share") {
+export async function lockConversation(
+  db: DatabaseExecutor,
+  id: string,
+  lock: "update" | "share",
+): Promise<LockedConversation> {
   const [row] = await db
     .select()
     .from(messagingConversations)
     .where(eq(messagingConversations.id, id))
     .for(lock);
   if (!row) throw new AccessDeniedError();
-  return row;
+  // SAFETY: the row was just selected with the lock, which holds until the transaction ends.
+  return row as LockedConversation;
 }
 
 /**
@@ -220,12 +266,24 @@ export async function lockConversation(db: DatabaseExecutor, id: string, lock: "
  * after a lock wait, but not the subqueries that grant visibility, so one statement would miss a
  * disconnect or removal that committed during the wait.
  */
+export function loadConversation(
+  db: DatabaseExecutor,
+  scope: SessionIdentity,
+  id: string,
+  lock: "update" | "share",
+): Promise<LockedConversation>;
+export function loadConversation(
+  db: DatabaseExecutor,
+  scope: SessionIdentity,
+  id: string,
+  lock?: "update" | "share",
+): Promise<Conversation>;
 export async function loadConversation(
   db: DatabaseExecutor,
   scope: SessionIdentity,
   id: string,
   lock?: "update" | "share",
-) {
+): Promise<Conversation> {
   if (lock) await lockConversation(db, id, lock);
   const [conversation] = await db
     .select()

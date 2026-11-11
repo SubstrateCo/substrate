@@ -1,6 +1,7 @@
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { user } from "../../core/authentication/schema";
+import { RepositoryEffects } from "../../core/effects";
 import { RepositoryContext } from "../../core/repository-context";
 import { ValidationError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
@@ -50,7 +51,11 @@ test("an inaccessible mention rolls back the comment and its effects", async () 
   const repos = f.forActor(f.alice);
   const project = await repos.projects.create({ name: "Private" });
   const task = await repos.tasks.create({ projectEntityId: project.entityId, title: "Private" });
-  const ctx = new RepositoryContext(f.db, { organizationId: f.orgA, actorEntityId: f.alice });
+  const ctx = new RepositoryContext(
+    f.db,
+    { organizationId: f.orgA, actorEntityId: f.alice },
+    new RepositoryEffects(),
+  );
   expect(
     await rejection(
       ctx.transaction(async (tx) => {

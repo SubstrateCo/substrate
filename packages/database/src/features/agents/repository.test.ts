@@ -30,6 +30,16 @@ const avatar = () => ({
   sha256: "a".repeat(64),
 });
 
+test("saving an agent writes only its configuration fields", async () => {
+  const owner = createAgentRepository(f.db, "alice");
+  const saved = await owner.saveAgent(agent);
+  const extra = { userId: "bob", deletedAt: new Date(), homeDeviceId: null };
+  // SAFETY: the extra fields skip route parsing on purpose, to test the repository whitelist.
+  await owner.saveAgent({ ...agent, ...extra, id: saved.id, name: "Renamed" } as typeof agent);
+  const [row] = await f.db.select().from(userAgents).where(eq(userAgents.id, saved.id));
+  expect(row).toMatchObject({ name: "Renamed", userId: "alice", deletedAt: null });
+});
+
 test("agent pictures require a live owned agent and a completed owned avatar", async () => {
   const owner = createAgentRepository(f.db, "alice");
   const saved = await owner.saveAgent(agent);

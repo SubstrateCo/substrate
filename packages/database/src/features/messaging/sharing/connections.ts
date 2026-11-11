@@ -5,7 +5,7 @@ import { actors } from "../../../core/actors/schema";
 import { effectsFor } from "../../../core/effects";
 import type { SessionIdentity } from "../../../core/session/identity";
 import { AccessDeniedError } from "../../../errors";
-import { conversationRemovalHints } from "../../realtime/routing";
+import { withRemovalHints } from "../../realtime/routing";
 import { lockConversation } from "../access";
 import { endParticipation } from "../members";
 import { partnerTargetAllowed } from "../policy";
@@ -22,22 +22,28 @@ export function connectionOperations(db: DatabaseExecutor, scope: SessionIdentit
         const viewer = await requireSharingManager(tx, scope, conversation);
         if (!partnerTargetAllowed(conversation, viewer, partnerOrganizationId))
           throw new AccessDeniedError();
-        const hints = await conversationRemovalHints(tx, [conversation]);
-        await tx
-          .update(messagingConnections)
-          .set({ disconnectedAt: new Date() })
-          .where(
-            and(
-              eq(messagingConnections.conversationId, conversationId),
-              eq(messagingConnections.organizationId, partnerOrganizationId),
-            ),
-          );
-        await endParticipation(
+        await withRemovalHints(
           tx,
-          and(
-            eq(messagingParticipants.conversationId, conversationId),
-            eq(messagingParticipants.organizationId, partnerOrganizationId),
-          ),
+          [conversation],
+          async () => {
+            await tx
+              .update(messagingConnections)
+              .set({ disconnectedAt: new Date() })
+              .where(
+                and(
+                  eq(messagingConnections.conversationId, conversationId),
+                  eq(messagingConnections.organizationId, partnerOrganizationId),
+                ),
+              );
+            await endParticipation(
+              tx,
+              and(
+                eq(messagingParticipants.conversationId, conversationId),
+                eq(messagingParticipants.organizationId, partnerOrganizationId),
+              ),
+            );
+          },
+          { domain: "access" },
         );
         // Invitations to other partners and host invitations without a target stay pending.
         await tx
@@ -56,7 +62,6 @@ export function connectionOperations(db: DatabaseExecutor, scope: SessionIdentit
         await recordSharingEvents(tx, scope, conversationId, "disconnected", [
           { targetOrganizationId: partnerOrganizationId },
         ]);
-        for (const hint of hints) effectsFor(tx).hint({ ...hint, domain: "access" });
         effectsFor(tx).hint({
           audience: realtimeKeys.organization(scope.organizationId),
           domain: "access",
@@ -85,18 +90,22 @@ export function connectionOperations(db: DatabaseExecutor, scope: SessionIdentit
           );
         if (!participant || !partnerTargetAllowed(conversation, viewer, participant.organizationId))
           throw new AccessDeniedError();
-        const hints = await conversationRemovalHints(tx, [conversation]);
-        await endParticipation(
+        await withRemovalHints(
           tx,
-          and(
-            eq(messagingParticipants.conversationId, conversationId),
-            eq(messagingParticipants.actorEntityId, actorId),
-          ),
+          [conversation],
+          () =>
+            endParticipation(
+              tx,
+              and(
+                eq(messagingParticipants.conversationId, conversationId),
+                eq(messagingParticipants.actorEntityId, actorId),
+              ),
+            ),
+          { domain: "access" },
         );
         await recordSharingEvents(tx, scope, conversationId, "removed", [
           { targetOrganizationId: participant.organizationId },
         ]);
-        for (const hint of hints) effectsFor(tx).hint({ ...hint, domain: "access" });
         return {
           removed: true,
         };
@@ -135,21 +144,27 @@ export async function clearMembershipSharing(
       .orderBy(asc(messagingConversations.id))
       .for("update");
     const ids = conversations.map((row) => row.id);
-    const hints = await conversationRemovalHints(tx, conversations);
-    if (ids.length)
-      await endParticipation(
-        tx,
-        and(
-          inArray(messagingParticipants.conversationId, ids),
-          inArray(
-            messagingParticipants.actorEntityId,
-            tx
-              .select({ id: actors.entityId })
-              .from(actors)
-              .where(and(eq(actors.userId, userId), eq(actors.organizationId, organizationId))),
-          ),
-        ),
-      );
+    await withRemovalHints(
+      tx,
+      conversations,
+      async () => {
+        if (ids.length)
+          await endParticipation(
+            tx,
+            and(
+              inArray(messagingParticipants.conversationId, ids),
+              inArray(
+                messagingParticipants.actorEntityId,
+                tx
+                  .select({ id: actors.entityId })
+                  .from(actors)
+                  .where(and(eq(actors.userId, userId), eq(actors.organizationId, organizationId))),
+              ),
+            ),
+          );
+      },
+      { domain: "access" },
+    );
     await tx
       .update(messagingInvitations)
       .set({ status: "revoked" })
@@ -168,8 +183,6 @@ export async function clearMembershipSharing(
           ),
         ),
       );
-    const changed = hints.map((hint) => ({ ...hint, domain: "access" as const }));
-    for (const hint of changed) effectsFor(tx).hint(hint);
     return null;
   });
 }

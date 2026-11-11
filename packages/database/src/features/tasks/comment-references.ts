@@ -2,7 +2,7 @@ import { activeActorCondition, visibleActorCondition } from "../../core/actors/a
 import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { entities } from "../../core/entities/schema";
-import { RepositoryContext } from "../../core/repository-context";
+import { RepositoryContext, type Locked } from "../../core/repository-context";
 import { messageReferences, type Reference } from "../../core/text/references";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { notify } from "../notifications/effects";
@@ -34,11 +34,11 @@ function byKind(references: Reference[]) {
   };
 }
 
-// Saves the comment's task and project references and alerts the people it mentions. The caller
-// holds comment access to `task` under its access lock. Returns the actors who got an alert.
+// Saves the comment's task and project references and alerts the people it mentions. Returns the
+// actors who got an alert.
 export async function applyCommentReferences(
   ctx: RepositoryContext,
-  task: typeof tasks.$inferSelect,
+  task: Locked<typeof tasks.$inferSelect, "comment">,
   comment: typeof taskComments.$inferSelect,
 ) {
   const { db, scope } = ctx;

@@ -343,14 +343,11 @@ test("after the owner leaves, a request is a placeholder without IDs, text or pr
 
   const views = (await listNeedsYou(f.db, owner)).requests;
   const byId = new Map(views.map((view) => [view.id, view]));
-  for (const id of [asked.questionId!, proposed.proposalId])
-    expect(byId.get(id)).toMatchObject({
-      sessionKey: null,
-      place: { access: "hidden" },
-      payload: null,
-      response: null,
-      proposal: null,
-    });
+  for (const id of [asked.questionId!, proposed.proposalId]) {
+    expect(byId.get(id)!.place).toEqual({ access: "hidden" });
+    for (const field of ["sessionKey", "payload", "response", "proposal"])
+      expect(byId.get(id)).not.toHaveProperty(field);
+  }
   expect(byId.get(fromDm.proposalId)).toMatchObject({
     place: { access: "visible", conversationId: dm.id },
     payload: { type: "proposal", summary: "Post the update" },

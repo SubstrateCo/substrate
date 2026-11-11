@@ -1,6 +1,6 @@
 import { activeActorCondition, permissionActorEntityId } from "../actors/access";
 import { actors } from "../actors/schema";
-import { entities } from "../entities/schema";
+import { entities, type entityType } from "../entities/schema";
 import { adminRoleCondition } from "../organizations/roles";
 import { member } from "../organizations/schema";
 import type { ActorScope, PermissionLevel } from "../repository-context";
@@ -9,8 +9,22 @@ import { sql, type SQL, type SQLWrapper } from "drizzle-orm";
 
 // Organization owners and admins are super users. People and personal mailbox or calendar
 // records are excluded. Add a type here only when its domain is shared with the organization.
+// A child inherits admin access from its container's type.
 const adminEntityTypes = sql.raw(
-  `'contact', 'company', 'project', 'task', 'file', 'folder', 'pipeline', 'deal'`,
+  (
+    [
+      "contact",
+      "company",
+      "project",
+      "task",
+      "file",
+      "folder",
+      "pipeline",
+      "deal",
+    ] as const satisfies readonly (typeof entityType.enumValues)[number][]
+  )
+    .map((type) => `'${type}'`)
+    .join(", "),
 );
 
 // The role is read on every query, so promotion and demotion take effect at once. Agents resolve to
@@ -56,16 +70,14 @@ export function readableFromCte(
     OR ${adminOwnsCondition(scope, entityId)})`;
 }
 
-// Admins own every live entity of a shared type. Every child type is a shared type today (tasks
-// in projects), so checking the entity's own type equals inheriting admin access from its
-// container. Revisit this when a non-shared type gets a shared-type container.
+// Admins own every live entity in a live container of a shared type.
 export function adminOwnsCondition(scope: ActorScope, entityId: SQLWrapper) {
   return sql`(${organizationAdminCondition(scope)} AND EXISTS (
     SELECT 1 FROM ${entities} ae
     JOIN ${entities} ac ON ac.organization_id = ae.organization_id AND ac.entity_id = ae.access_entity_id
       AND ac.deleted_at IS NULL
     WHERE ae.organization_id = ${scope.organizationId} AND ae.entity_id = ${entityId}
-      AND ae.deleted_at IS NULL AND ae.entity_type IN (${adminEntityTypes})
+      AND ae.deleted_at IS NULL AND ac.entity_type IN (${adminEntityTypes})
   ))`;
 }
 
@@ -83,8 +95,8 @@ export function readableCondition(
 }
 
 // The actor's strongest level on one entity. It comes from grants on the entity's container, and
-// the entity and its container must be live. An admin owns a live entity of a shared type, the
-// same check as adminOwnsCondition.
+// the entity and its container must be live. An admin owns it when its container has a shared
+// type, the same check as adminOwnsCondition.
 export function entityAccessLevel(scope: ActorScope, entityId: SQLWrapper | string) {
   return sql`(SELECT max(level) FROM (
     SELECT g.level FROM ${entities} e
@@ -98,20 +110,23 @@ export function entityAccessLevel(scope: ActorScope, entityId: SQLWrapper | stri
     JOIN ${entities} c ON c.organization_id = e.organization_id AND c.entity_id = e.access_entity_id
       AND c.deleted_at IS NULL
     WHERE e.organization_id = ${scope.organizationId} AND e.entity_id = ${entityId}
-      AND e.deleted_at IS NULL AND e.entity_type IN (${adminEntityTypes})
+      AND e.deleted_at IS NULL AND c.entity_type IN (${adminEntityTypes})
       AND ${organizationAdminCondition(scope)}
   ) levels)`;
 }
 
-// Locks the container before its child, like project lifecycle writes. Locks nothing unless the actor
-// is active.
-export function lockAccessPath(scope: ActorScope, entityId: string) {
-  return sql`SELECT e.entity_id FROM ${entities} e
-  WHERE e.organization_id = ${scope.organizationId} AND e.entity_id IN (
-      ${entityId},
-      (SELECT access_entity_id FROM ${entities}
-        WHERE organization_id = ${scope.organizationId} AND entity_id = ${entityId})
-    )
+// Locks the entities and their containers in one order: containers, then children, each by ID.
+// Writers that lock in one statement cannot deadlock each other. Locks nothing unless the actor is
+// active.
+export function lockAccessPaths(scope: ActorScope, entityIds: string[]) {
+  const ids = sql.join(
+    entityIds.map((id) => sql`${id}::uuid`),
+    sql`, `,
+  );
+  return sql`SELECT e.entity_id AS "entityId" FROM ${entities} e
+  WHERE e.organization_id = ${scope.organizationId} AND (e.entity_id IN (${ids})
+      OR e.entity_id IN (SELECT access_entity_id FROM ${entities}
+        WHERE organization_id = ${scope.organizationId} AND entity_id IN (${ids})))
     AND EXISTS (
       SELECT 1 FROM ${actors}
       JOIN ${entities} actor_entity ON actor_entity.entity_id = ${actors.entityId}

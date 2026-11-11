@@ -9,8 +9,17 @@ const f = setupDatabase();
 test("a root is its own owned container, and children share the root's container without grants", async () => {
   const context = new RepositoryContext(f.db, { organizationId: f.orgA, actorEntityId: f.alice });
   const root = await context.createEntity("project");
-  const child = await context.createChildEntity("task", root.entityId);
-  const grandchild = await context.createChildEntity("task", child.entityId);
+  const [child, grandchild] = await context.transaction(async (tx) => {
+    const child = await tx.createChildEntity(
+      "task",
+      await tx.requireAccess(root.entityId, "edit", true),
+    );
+    const grandchild = await tx.createChildEntity(
+      "task",
+      await tx.requireAccess(child.entityId, "edit", true),
+    );
+    return [child, grandchild];
+  });
   expect(root.accessEntityId).toBe(root.entityId);
   expect(child.accessEntityId).toBe(root.entityId);
   expect(grandchild.accessEntityId).toBe(root.entityId);

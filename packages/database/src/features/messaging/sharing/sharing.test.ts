@@ -650,3 +650,25 @@ test("external DMs and groups require individual consent but not an organization
     ).find((conversation) => conversation.id === internal.id)!.canShare,
   ).toBe(false);
 });
+
+test("an invite from a non-member is rejected before it waits for the conversation lock", async () => {
+  const c = await channel();
+  const waited = Symbol("waited");
+  const outcome = await f.db.transaction(async (tx) => {
+    await tx
+      .select()
+      .from(schema.messagingConversations)
+      .where(eq(schema.messagingConversations.id, c.id))
+      .for("update");
+    return Promise.race([
+      rejection(
+        sharing("outsider", f.orgA).invite(c.id, {
+          email: "bob@example.com",
+          shareHistory: true,
+        }),
+      ),
+      Bun.sleep(2_000).then(() => waited),
+    ]);
+  });
+  expect(outcome).toBeInstanceOf(AccessDeniedError);
+});
