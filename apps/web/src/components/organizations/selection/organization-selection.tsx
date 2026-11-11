@@ -17,7 +17,7 @@ export function OrganizationSelection({ destination = "/dashboard" }: { destinat
       organizations={resourceState(organizations).data}
       state={resourceState(organizations).status}
       loading={organizations.isPending}
-      pending={select.isPending}
+      openingId={select.isPending ? select.variables : undefined}
       loadError={organizations.error}
       onRetry={() => void organizations.refetch()}
       onSelect={(id) =>

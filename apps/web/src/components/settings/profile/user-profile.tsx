@@ -27,13 +27,12 @@ export function UserProfile() {
         kind="avatar"
         value={user?.image}
         name={user?.name}
-        disabled={session.isPending || upload.isPending || remove.isPending}
-        onUpload={async (file, { signal, onCommit }) => {
-          await upload.mutateAsync({ file, signal, onCommit });
-        }}
-        onRemove={async () => {
-          await remove.mutateAsync();
-        }}
+        disabled={session.isPending}
+        uploading={upload.isPending}
+        uploadError={upload.error}
+        onUpload={(input, options) => upload.mutate(input, options)}
+        removing={remove.isPending}
+        onRemove={(options) => remove.mutate(undefined, options)}
       />
       {user && (
         <>

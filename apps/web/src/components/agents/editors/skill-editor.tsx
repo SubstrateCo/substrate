@@ -4,8 +4,6 @@ import type { HarnessSkill } from "@substrate/contracts/harness";
 
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 
-import { useState } from "react";
-
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { FormTextField } from "@/components/forms/form-text-field";
@@ -54,16 +52,24 @@ function contentHint(length: number) {
 
 export function SkillEditor({
   skill,
+  pending,
+  error: saveError,
   onClose,
   onSave,
   onRestoreFocus,
 }: {
   skill?: HarnessSkill;
+  /** The save mutation's state. */
+  pending: boolean;
+  error?: Error | null;
   onClose: () => void;
-  onSave: (input: SaveSkillInput) => Promise<void>;
+  /** Starts the save mutation. */
+  onSave: (input: SaveSkillInput) => void;
   onRestoreFocus?: () => void;
 }) {
-  const [error, setError] = useState<string>();
+  const error = saveError
+    ? actionErrorMessage(saveError, "We couldn’t save this skill. Try again.")
+    : undefined;
   const form = useForm({
     defaultValues: {
       name: openingName(skill),
@@ -72,15 +78,10 @@ export function SkillEditor({
     },
     validationLogic: revalidateLogic({ mode: "blur", modeAfterSubmission: "change" }),
     validators: { onDynamic: skillFields },
-    onSubmit: async ({ value }) => {
-      setError(undefined);
+    onSubmit: ({ value }) => {
+      if (pending) return;
       const parsed = skillFields.parse(value);
-      try {
-        await onSave(skill?.id ? { ...parsed, id: skill.id } : parsed);
-      } catch (cause) {
-        const fallback = "We couldn’t save this skill. Try again.";
-        setError(cause instanceof Error ? actionErrorMessage(cause, fallback) : fallback);
-      }
+      onSave(skill?.id ? { ...parsed, id: skill.id } : parsed);
     },
   });
   return (
@@ -90,7 +91,7 @@ export function SkillEditor({
           title={skill ? `Edit ${openingName(skill)}` : "New skill"}
           saveLabel={skill ? "Save skill" : "Create skill"}
           description="A skill is a short guide the agent opens when a task matches its description. It’s saved as a file in this agent’s folder on this desktop."
-          pending={isSubmitting}
+          pending={pending || isSubmitting}
           onClose={onClose}
           onSubmit={() => form.handleSubmit()}
           error={error}

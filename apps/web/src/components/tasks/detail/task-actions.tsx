@@ -53,22 +53,23 @@ export function TaskActions({
           errorDescription="Couldn’t delete this task. Try again."
           onClose={() => setAction(null)}
           onRestoreFocus={restoreFocus}
-          onConfirm={() => {
-            void remove
-              .mutateAsync({
+          onConfirm={() =>
+            remove.mutate(
+              {
                 action: "deleteTask",
                 organizationId,
                 projectEntityId: detail.project.entityId,
                 taskEntityId: task.entityId,
-              })
-              .then(() =>
-                navigate({
-                  to: "/tasks",
-                  search: { workspaceId: organizationId, projectId: detail.project.entityId },
-                }),
-              )
-              .catch(() => {});
-          }}
+              },
+              {
+                onSuccess: () =>
+                  void navigate({
+                    to: "/tasks",
+                    search: { workspaceId: organizationId, projectId: detail.project.entityId },
+                  }),
+              },
+            )
+          }
         />
       )}
     </>

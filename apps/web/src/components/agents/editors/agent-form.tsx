@@ -4,7 +4,7 @@ import type { HarnessKind } from "@substrate/contracts/harness";
 
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 
-import { useId, useState, type ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 
 import { HarnessAvailability } from "../model-picker/harness-availability";
 import { ModelPicker } from "../model-picker/model-picker";
@@ -68,7 +68,12 @@ type AgentFormProps = {
   deleteAction?: ReactNode;
   pending: boolean;
   renderCreate?: (editor: FormDialogEditor) => ReactNode;
-  onSave: (input: SaveAgentInput) => Promise<void>;
+  /** Starts the save mutation. Call `onSuccess` once the agent is stored. */
+  onSave: (input: SaveAgentInput, options: { onSuccess: () => void }) => void;
+  /** The save mutation's error. */
+  error?: Error | null;
+  /** Clears the save mutation's error. */
+  onResetError?: () => void;
   renderConfiguration: (props: {
     harness: HarnessKind;
     section: AgentSection;
@@ -95,9 +100,13 @@ export function AgentForm({
   pending,
   renderCreate,
   onSave,
+  error: saveError,
+  onResetError,
   renderConfiguration,
 }: AgentFormProps) {
-  const [error, setError] = useState<string>();
+  const error = saveError
+    ? actionErrorMessage(saveError, "We couldn’t save this agent. Try again.")
+    : undefined;
   const formId = useId();
   const defaultValues: SaveAgentInput = agent
     ? {
@@ -125,19 +134,9 @@ export function AgentForm({
       modeAfterSubmission: "change",
     }),
     validators: { onDynamic: agentFields },
-    onSubmit: async ({ value }) => {
+    onSubmit: ({ value }) => {
       if (pending) return;
-      setError(undefined);
-      try {
-        await onSave(agentFields.parse(value));
-        form.reset(value);
-      } catch (cause) {
-        setError(
-          cause instanceof Error
-            ? actionErrorMessage(cause, "We couldn’t save this agent. Try again.")
-            : "We couldn’t save this agent. Try again.",
-        );
-      }
+      onSave(agentFields.parse(value), { onSuccess: () => form.reset(value) });
     },
     onSubmitInvalid: ({ formApi }) => {
       // Show the section that holds the first error.
@@ -239,7 +238,7 @@ export function AgentForm({
             form={formId}
             onDiscard={() => {
               form.reset();
-              setError(undefined);
+              onResetError?.();
             }}
           />
         );
@@ -359,7 +358,7 @@ export function AgentForm({
               onSectionChange={(next) => onSectionChange?.(next)}
               onDiscardAll={() => {
                 form.reset();
-                setError(undefined);
+                onResetError?.();
                 if (runSettingsDirty) onDiscardRunSettings?.();
               }}
             />

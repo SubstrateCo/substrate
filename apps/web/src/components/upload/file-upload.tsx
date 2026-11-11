@@ -18,8 +18,10 @@ interface FileUploadProps {
   actions?: ReactNode;
   /** An error from the caller, such as an image that could not be opened. */
   error?: string | null;
+  /** True while the caller's mutation checks the chosen files. */
+  pending?: boolean;
   chooseButtonRef?: Ref<HTMLButtonElement>;
-  onFiles: (files: File[]) => void | Promise<void>;
+  onFiles: (files: File[]) => void;
 }
 
 /**
@@ -35,32 +37,21 @@ export function FileUpload({
   preview,
   actions,
   error: externalError,
+  pending = false,
   chooseButtonRef,
   onFiles,
 }: FileUploadProps) {
   const input = useRef<HTMLInputElement>(null);
   const id = useId();
   const [ownError, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const busy = useRef(false);
   const error = ownError ?? externalError ?? null;
   const blocked = disabled || pending;
-  async function select(files: File[]) {
-    if (disabled || busy.current || !files.length) return;
+  function select(files: File[]) {
+    if (blocked || !files.length) return;
     const invalid = validateFiles(files, { accept, maxSize });
     setError(invalid);
-    if (invalid) return;
-    busy.current = true;
-    setPending(true);
-    try {
-      await onFiles(files);
-    } catch {
-      setError("We couldn’t select these files. Please try again.");
-    } finally {
-      busy.current = false;
-      setPending(false);
-    }
+    if (!invalid) onFiles(files);
   }
   const describedBy = error ? `${id} ${id}-error` : id;
   return (
@@ -84,7 +75,7 @@ export function FileUpload({
         onDrop={(event) => {
           event.preventDefault();
           setDragging(false);
-          void select(Array.from(event.dataTransfer.files));
+          select(Array.from(event.dataTransfer.files));
         }}
       >
         {preview}
@@ -102,7 +93,7 @@ export function FileUpload({
             onChange={(event) => {
               const files = Array.from(event.target.files ?? []);
               event.target.value = "";
-              void select(files);
+              select(files);
             }}
           />
           <div className="flex flex-wrap items-center gap-2">

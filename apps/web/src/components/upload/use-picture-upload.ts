@@ -1,64 +1,72 @@
+import { useMutation } from "@tanstack/react-query";
+
 import { useEffect, useRef, useState } from "react";
 
 import { cropImage, type CropArea } from "@/components/upload/crop-image";
 import type { ImageCropDialogProps } from "@/components/upload/image-crop-dialog";
 
+/**
+ * Crops the picture, then hands the PNG to the caller's upload mutation. Both steps share one
+ * abort signal, so Cancel upload stops either one until the upload commits.
+ */
 export function usePictureUpload({
   file,
   area,
   rotation,
   mode,
-  onConfirm,
-}: Pick<ImageCropDialogProps, "file" | "onConfirm"> & {
+  uploading,
+  uploadError,
+  onUpload,
+}: Pick<ImageCropDialogProps, "file" | "uploading" | "uploadError" | "onUpload"> & {
   area: CropArea | null;
   rotation: number;
   mode: "fit" | "fill";
 }) {
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
   const [committing, setCommitting] = useState(false);
-  const committed = useRef(false);
-  const controller = useRef<AbortController | null>(null);
-  const busy = useRef(false);
+  // The dialog closes without asking while an upload runs only when its page goes away.
+  const attempt = useRef<{ controller: AbortController; committed: boolean } | null>(null);
   useEffect(
     () => () => {
-      if (!committed.current) controller.current?.abort();
+      if (!attempt.current?.committed) attempt.current?.controller.abort();
     },
     [],
   );
-  function cancelUpload() {
-    if (!committed.current) controller.current?.abort();
-  }
-  async function confirm() {
-    if (busy.current) return;
-    busy.current = true;
-    committed.current = false;
-    setCommitting(false);
-    const request = new AbortController();
-    controller.current = request;
-    setPending(true);
-    setError(null);
-    try {
+  const crop = useMutation({
+    mutationFn: async ({ controller }: { controller: AbortController }) => {
       const blob = await cropImage(file, area, rotation, mode);
-      request.signal.throwIfAborted();
-      await onConfirm(blob, {
-        signal: request.signal,
-        onCommit: () => {
-          committed.current = true;
-          setCommitting(true);
-        },
-      });
-    } catch {
-      setError(
-        request.signal.aborted
-          ? "Upload cancelled. Your crop is still here."
-          : "We couldn’t save this picture. Your crop is still here. Please try again.",
-      );
-    } finally {
-      busy.current = false;
-      controller.current = null;
-      setPending(false);
-    }
+      controller.signal.throwIfAborted();
+      return blob;
+    },
+  });
+  const pending = crop.isPending || uploading;
+  // An upload error belongs to this dialog only after its crop was handed off.
+  const failure = crop.error ?? (crop.isSuccess ? uploadError : null);
+  let error: string | null = null;
+  if (failure)
+    error = crop.variables?.controller.signal.aborted
+      ? "Upload cancelled. Your crop is still here."
+      : "We couldn’t save this picture. Your crop is still here. Please try again.";
+  function confirm() {
+    if (pending) return;
+    const current = { controller: new AbortController(), committed: false };
+    attempt.current = current;
+    setCommitting(false);
+    crop.mutate(
+      { controller: current.controller },
+      {
+        onSuccess: (blob) =>
+          onUpload(blob, {
+            signal: current.controller.signal,
+            onCommit: () => {
+              current.committed = true;
+              setCommitting(true);
+            },
+          }),
+      },
+    );
   }
-  return { error, setError, pending, committing, busy, confirm, cancelUpload };
+  function cancelUpload() {
+    if (!attempt.current?.committed) attempt.current?.controller.abort();
+  }
+  return { error, clearError: crop.reset, pending, committing, confirm, cancelUpload };
 }

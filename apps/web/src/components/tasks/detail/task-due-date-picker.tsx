@@ -24,90 +24,95 @@ export function TaskDueDatePicker({
   onChange: (value: string | null) => void;
   children: ReactNode;
 }) {
-  const id = useId();
   const [open, setOpen] = useState(false);
-  const [today, setToday] = useState(() => new Date());
-  const [text, setText] = useState("");
-  const [invalid, setInvalid] = useState(false);
   const choose = (next: string | null) => {
     setOpen(false);
     if (next !== value) onChange(next);
   };
   return (
-    <Popover
-      open={open}
-      onOpenChange={(next) => {
-        if (next) {
-          setToday(new Date());
-          setText("");
-          setInvalid(false);
-        }
-        setOpen(next);
-      }}
-    >
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent variant="menu" align="start" className="w-auto">
-        {quick.map((option) => {
-          const date = new Date(today);
-          date.setDate(date.getDate() + option.days(date));
-          return (
-            <Button
-              key={option.label}
-              type="button"
-              variant="property"
-              size="sm"
-              onClick={() => {
-                choose(dateOnly(date));
-              }}
-            >
-              {option.label}
-              <span className="ml-auto text-xs text-muted-foreground">{formatShortDate(date)}</span>
-            </Button>
-          );
-        })}
-        <div className="mt-1 grid gap-1.5 border-t px-1 pt-2 pb-1">
-          <label htmlFor={id} className="text-xs text-muted-foreground">
-            Type a date
-          </label>
-          <Input
-            id={id}
-            placeholder="Tomorrow, Fri, or Nov 20"
-            value={text}
-            aria-invalid={invalid}
-            aria-describedby={invalid ? `${id}-error` : undefined}
-            onChange={(event) => {
-              setText(event.target.value);
-              setInvalid(false);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                const next = parseTaskDate(text, today);
-                if (next) choose(next);
-                else setInvalid(true);
-              }
-            }}
-          />
-          {invalid && (
-            <p id={`${id}-error`} role="alert" className="text-xs text-destructive">
-              Enter a date, like Nov 20.
-            </p>
-          )}
-        </div>
-        <Calendar
-          mode="single"
-          selected={value ? parseDateOnly(value) : undefined}
-          defaultMonth={value ? parseDateOnly(value) : today}
-          onSelect={(date) => {
-            if (date) choose(dateOnly(date));
-          }}
-        />
-        {value && (
-          <Button type="button" variant="property" size="sm" onClick={() => choose(null)}>
-            Clear due date
-          </Button>
-        )}
+        <DueDateChoices value={value} onChoose={choose} />
       </PopoverContent>
     </Popover>
+  );
+}
+
+/** The popover's content. It mounts on each open, so today and the typed date start fresh. */
+function DueDateChoices({
+  value,
+  onChoose: choose,
+}: {
+  value: string | null;
+  onChoose: (value: string | null) => void;
+}) {
+  const id = useId();
+  const [today] = useState(() => new Date());
+  const [text, setText] = useState("");
+  const [invalid, setInvalid] = useState(false);
+  return (
+    <>
+      {quick.map((option) => {
+        const date = new Date(today);
+        date.setDate(date.getDate() + option.days(date));
+        return (
+          <Button
+            key={option.label}
+            type="button"
+            variant="property"
+            size="sm"
+            onClick={() => {
+              choose(dateOnly(date));
+            }}
+          >
+            {option.label}
+            <span className="ml-auto text-xs text-muted-foreground">{formatShortDate(date)}</span>
+          </Button>
+        );
+      })}
+      <div className="mt-1 grid gap-1.5 border-t px-1 pt-2 pb-1">
+        <label htmlFor={id} className="text-xs text-muted-foreground">
+          Type a date
+        </label>
+        <Input
+          id={id}
+          placeholder="Tomorrow, Fri, or Nov 20"
+          value={text}
+          aria-invalid={invalid}
+          aria-describedby={invalid ? `${id}-error` : undefined}
+          onChange={(event) => {
+            setText(event.target.value);
+            setInvalid(false);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              const next = parseTaskDate(text, today);
+              if (next) choose(next);
+              else setInvalid(true);
+            }
+          }}
+        />
+        {invalid && (
+          <p id={`${id}-error`} role="alert" className="text-xs text-destructive">
+            Enter a date, like Nov 20.
+          </p>
+        )}
+      </div>
+      <Calendar
+        mode="single"
+        selected={value ? parseDateOnly(value) : undefined}
+        defaultMonth={value ? parseDateOnly(value) : today}
+        onSelect={(date) => {
+          if (date) choose(dateOnly(date));
+        }}
+      />
+      {value && (
+        <Button type="button" variant="property" size="sm" onClick={() => choose(null)}>
+          Clear due date
+        </Button>
+      )}
+    </>
   );
 }

@@ -225,12 +225,21 @@ export function AgentConfiguration({
       {editing && (
         <SkillEditor
           skill={skill}
+          pending={save.isPending}
+          error={save.error}
           onRestoreFocus={restoreFocus}
-          onClose={() => setEditing(undefined)}
-          onSave={async (input) => {
-            await save.mutateAsync(input, { onSuccess: () => toast.success("Skill saved.") });
+          onClose={() => {
             setEditing(undefined);
+            save.reset();
           }}
+          onSave={(input) =>
+            save.mutate(input, {
+              onSuccess: () => {
+                toast.success("Skill saved.");
+                setEditing(undefined);
+              },
+            })
+          }
         />
       )}
       {resetting && (

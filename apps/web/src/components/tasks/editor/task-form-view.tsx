@@ -1,6 +1,6 @@
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 
-import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from "react";
+import { useId, useRef, type KeyboardEvent, type ReactNode } from "react";
 
 import { PendingButton } from "../../feedback/pending-button";
 import { Button } from "../../ui/button";
@@ -86,18 +86,15 @@ export function TaskForm({
 }) {
   const id = useId();
   const initial = useRef(task);
-  const latest = useRef(task);
-  useEffect(() => {
-    latest.current = task;
-  });
   const assignees = assignableActors(detail, task?.assigneeActorEntityId);
   const form = useTaskForm({
     task,
     assignees,
     pending: pending || !attachmentsReady,
     initialStatus,
+    // The form reads its options again after each render, so `task` here is the latest one.
     onSubmit: (draft) => {
-      const current = latest.current;
+      const current = task;
       onSubmit(
         current && !renderCreate
           ? {

@@ -1,5 +1,4 @@
 import type { AgentRoutineView } from "@substrate/contracts/agent-work";
-import { createRoutineInput, updateRoutineInput } from "@substrate/contracts/agent-work";
 
 import { useQuery } from "@tanstack/react-query";
 
@@ -42,7 +41,7 @@ export function Routines({
   const actions = useRoutineActions(userId, organizationId);
   const [editingId, setEditingId] = useState<string>();
   const [deleting, setDeleting] = useState<AgentRoutineView>();
-  const [error, setError] = useState<string | null>(null);
+  const saveError = actions.create.error ?? actions.update.error;
   const editing = routines.data?.find((routine) => routine.id === editingId);
   // Dialogs here are mounted from state, so they cannot find their launcher. Remember it, and
   // fall back to the section when the launcher is gone, such as after a delete.
@@ -50,25 +49,24 @@ export function Routines({
   const { remember, restore: restoreFocus } = useFocusReturn(region);
   const close = () => {
     setEditingId(undefined);
-    setError(null);
+    actions.create.reset();
+    actions.update.reset();
   };
   const onSaved = (verb: string) => () => {
     toast.success(`Routine ${verb}. Approve it to start running it.`);
     close();
   };
-  const onError = (failure: Error) => setError(actionErrorMessage(failure, saveFailed));
-  // The editor checks each field first; this only guards the contract.
   const save = (draft: RoutineDraft) => {
-    setError(null);
-    if (editing) {
-      const input = updateRoutineInput.safeParse({ routineId: editing.id, changes: draft });
-      if (!input.success) return setError(saveFailed);
-      actions.update.mutate(input.data, { onSuccess: onSaved("saved"), onError });
-    } else {
-      const input = createRoutineInput.safeParse({ agentId, destination: null, ...draft });
-      if (!input.success) return setError(saveFailed);
-      actions.create.mutate(input.data, { onSuccess: onSaved("created"), onError });
-    }
+    if (editing)
+      actions.update.mutate(
+        { routineId: editing.id, changes: draft },
+        { onSuccess: onSaved("saved") },
+      );
+    else
+      actions.create.mutate(
+        { agentId, destination: null, ...draft },
+        { onSuccess: onSaved("created") },
+      );
   };
   return (
     <div ref={region} tabIndex={-1} className="outline-none">
@@ -119,7 +117,7 @@ export function Routines({
               : blank()
           }
           pending={actions.create.isPending || actions.update.isPending}
-          error={error}
+          error={saveError && actionErrorMessage(saveError, saveFailed)}
           onSave={save}
           onCancel={close}
           onRestoreFocus={restoreFocus}

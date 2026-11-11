@@ -23,14 +23,16 @@ export function ProjectDelete({
       error={remove.error}
       errorDescription="Couldn’t delete this project. Try again."
       onReset={() => remove.reset()}
-      onDelete={() =>
-        remove
-          .mutateAsync({
-            action: "deleteProject",
-            organizationId,
-            projectEntityId: project.entityId,
-          })
-          .then(() => navigate({ to: "/tasks", search: { workspaceId: organizationId } }))
+      onDelete={(onDeleted) =>
+        remove.mutate(
+          { action: "deleteProject", organizationId, projectEntityId: project.entityId },
+          {
+            onSuccess: () => {
+              onDeleted();
+              void navigate({ to: "/tasks", search: { workspaceId: organizationId } });
+            },
+          },
+        )
       }
     />
   );

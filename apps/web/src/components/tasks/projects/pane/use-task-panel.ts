@@ -3,6 +3,7 @@ import type { TaskStatus } from "@substrate/contracts/tasks";
 import { useEffect, useRef, useState } from "react";
 
 import { useFocusReturn } from "@/components/feedback/use-focus-return";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 export function useTaskPanel({
   selectedTaskId,
@@ -24,25 +25,15 @@ export function useTaskPanel({
   const restoreSelectionFocus = selectionFocus.restore;
   const creationFocus = useFocusReturn(newTaskButton);
   const previousId = useRef<string | null | undefined>(undefined);
-  const mounted = useRef(false);
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
+  const wide = useMediaQuery("(min-width: 1024px)");
   useEffect(() => {
     if (!ready) return;
     // Beside the list, focus stays where the person is working. Below `lg` the inspector covers
     // the list, so it takes focus.
-    if (
-      selectedTaskId &&
-      selectedTaskId !== previousId.current &&
-      !window.matchMedia("(min-width: 1024px)").matches
-    )
+    if (selectedTaskId && selectedTaskId !== previousId.current && !wide)
       inspector.current?.focus({ preventScroll: true });
     previousId.current = selectedTaskId;
-  }, [selectedTaskId, ready]);
+  }, [selectedTaskId, ready, wide]);
   useEffect(() => {
     if (restore && !selectedTaskId) restoreSelectionFocus();
   }, [restore, selectedTaskId, restoreSelectionFocus]);
@@ -80,8 +71,8 @@ export function useTaskPanel({
         onSelectTask(id);
         setCreating(null);
       },
+      // The form saves with `mutate` callbacks, which skip an unmounted pane.
       saved: (id: string) => {
-        if (!mounted.current) return;
         onSelectTask(id);
         setCreating(null);
       },

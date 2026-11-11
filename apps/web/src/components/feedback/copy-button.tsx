@@ -1,4 +1,6 @@
-import { useEffect, useId, useRef, useState, type ComponentProps } from "react";
+import { useMutation } from "@tanstack/react-query";
+
+import { useId, type ComponentProps } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -23,32 +25,13 @@ export function CopyButton({
   className?: string;
   grouped?: boolean;
 }) {
-  const [status, setStatus] = useState<"idle" | "pending" | "copied">("idle");
   const toastId = useId();
-  const copying = useRef(false);
-  const copied = status === "copied";
-
-  useEffect(() => {
-    if (!copied) return;
-    const timeout = window.setTimeout(() => setStatus("idle"), 1500);
-    return () => window.clearTimeout(timeout);
-  }, [copied]);
-
-  async function copy() {
-    if (copying.current || copied) return;
-    copying.current = true;
-    setStatus("pending");
-    try {
-      await onCopy();
-      toast.dismiss(toastId);
-      setStatus("copied");
-    } catch {
-      setStatus("idle");
-      toast.error(errorMessage, { id: toastId });
-    } finally {
-      copying.current = false;
-    }
-  }
+  const copy = useMutation({
+    mutationFn: async () => onCopy(),
+    onSuccess: () => toast.dismiss(toastId),
+    onError: () => toast.error(errorMessage, { id: toastId }),
+  });
+  const copied = copy.isSuccess;
 
   const button = (
     <Button
@@ -57,8 +40,12 @@ export function CopyButton({
       variant="ghost"
       className={className}
       aria-label={label}
-      aria-busy={status === "pending"}
-      onClick={() => void copy()}
+      aria-busy={copy.isPending}
+      onClick={() => {
+        if (copy.isPending || copied) return;
+        // The check mark shows briefly, then the button can copy again.
+        copy.mutate(undefined, { onSuccess: () => window.setTimeout(copy.reset, 1500) });
+      }}
     >
       <span aria-hidden="true" className="relative inline-grid shrink-0 place-items-center">
         <Copy

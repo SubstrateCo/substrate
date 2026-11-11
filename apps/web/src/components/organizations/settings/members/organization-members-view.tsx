@@ -49,7 +49,7 @@ export function OrganizationMembers({
   onRemove: (memberId: string, onDone: () => void) => void;
   onResetChange: () => void;
 }) {
-  const [pending, setPending] = useState<PendingChange>();
+  const [confirming, setConfirming] = useState<PendingChange>();
   const launcher = useRef<HTMLElement | null>(null);
   const list = useRef<HTMLDivElement>(null);
   const restoreFocus = () => {
@@ -60,7 +60,7 @@ export function OrganizationMembers({
   const blocked = state === "unavailable";
   const visibleMembers = members;
   const close = () => {
-    setPending(undefined);
+    setConfirming(undefined);
     onResetChange();
   };
   const count = visibleMembers?.length;
@@ -102,35 +102,35 @@ export function OrganizationMembers({
                 disabled={changing}
                 onRoleChange={(role, target) => {
                   launcher.current = target;
-                  setPending({ kind: "role", member, role });
+                  setConfirming({ kind: "role", member, role });
                 }}
                 onRemove={(target) => {
                   launcher.current = target;
-                  setPending({ kind: "remove", member });
+                  setConfirming({ kind: "remove", member });
                 }}
               />
             ))}
           </ul>
         )}
       </div>
-      {!blocked && pending?.kind === "role" && (
+      {!blocked && confirming?.kind === "role" && (
         <ConfirmDialog
-          title={`Make ${pending.member.name} ${pending.role === "admin" ? "an" : "a"} ${roleLabel(pending.role).toLowerCase()}?`}
-          description={`${pending.member.name} is ${roleLabel(pending.member.role).toLowerCase() === "admin" ? "an" : "a"} ${roleLabel(pending.member.role).toLowerCase()} now. As ${pending.role === "admin" ? "an" : "a"} ${pending.role}, they can ${roleCapabilities[pending.role]}`}
-          confirmLabel={`Make ${pending.role}`}
+          title={`Make ${confirming.member.name} ${confirming.role === "admin" ? "an" : "a"} ${roleLabel(confirming.role).toLowerCase()}?`}
+          description={`${confirming.member.name} is ${roleLabel(confirming.member.role).toLowerCase() === "admin" ? "an" : "a"} ${roleLabel(confirming.member.role).toLowerCase()} now. As ${confirming.role === "admin" ? "an" : "a"} ${confirming.role}, they can ${roleCapabilities[confirming.role]}`}
+          confirmLabel={`Make ${confirming.role}`}
           pendingLabel="Changing"
           pending={changing}
           error={changeError}
           errorDescription="We couldn’t change this role. Please try again."
           onClose={close}
           onRestoreFocus={restoreFocus}
-          onConfirm={() => onChangeRole(pending.member.id, pending.role, close)}
+          onConfirm={() => onChangeRole(confirming.member.id, confirming.role, close)}
         />
       )}
-      {!blocked && pending?.kind === "remove" && (
+      {!blocked && confirming?.kind === "remove" && (
         <ConfirmDialog
           destructive
-          title={`Remove ${pending.member.name}?`}
+          title={`Remove ${confirming.member.name}?`}
           description="They lose access to this organization’s conversations, projects, and tasks right away. You can invite them again later."
           confirmLabel="Remove member"
           pendingLabel="Removing"
@@ -139,7 +139,7 @@ export function OrganizationMembers({
           errorDescription="We couldn’t remove this member. Please try again."
           onClose={close}
           onRestoreFocus={restoreFocus}
-          onConfirm={() => onRemove(pending.member.id, close)}
+          onConfirm={() => onRemove(confirming.member.id, close)}
         />
       )}
     </SettingsPanel>

@@ -28,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useCopyText } from "@/hooks/use-copy-text";
 import { useRecordUrl } from "@/hooks/use-record-url";
 import { messageLink } from "@/lib/navigation/record-links";
 import { useToggleReaction } from "@/queries/messaging/reactions";
@@ -53,6 +54,7 @@ export function MessageItem({
   context: MessageContextState;
 }) {
   const recordUrl = useRecordUrl();
+  const copyText = useCopyText();
   const linked = dashboard.useSearch({ select: (search) => search.messageId === message.id });
   // A thread's root heads its own pane, so it is not marked as the link target there.
   const highlighted = linked && !threadRoot;
@@ -156,10 +158,10 @@ export function MessageItem({
                   <DropdownMenuItem
                     onSelect={() => {
                       const link = messageLink(organizationId, message.conversationId, message.id);
-                      void navigator.clipboard.writeText(recordUrl(link)).then(
-                        () => toast.success("Link copied"),
-                        () => toast.error("Couldn’t copy link"),
-                      );
+                      copyText.mutate(recordUrl(link), {
+                        onSuccess: () => toast.success("Link copied"),
+                        onError: () => toast.error("Couldn’t copy link"),
+                      });
                     }}
                   >
                     <Copy aria-hidden="true" /> Copy message link

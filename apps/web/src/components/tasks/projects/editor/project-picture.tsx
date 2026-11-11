@@ -21,14 +21,12 @@ export function ProjectPicture({
       description="Shown beside this project’s name. Anyone who can view the project can see its icon."
       kind="project-icon"
       value={project.image}
-      disabled={upload.isPending || remove.isPending}
       onRetry={() => void refresh()}
-      onUpload={async (file, context) => {
-        await upload.mutateAsync({ file, ...context });
-      }}
-      onRemove={async () => {
-        await remove.mutateAsync();
-      }}
+      uploading={upload.isPending}
+      uploadError={upload.error}
+      onUpload={(input, options) => upload.mutate(input, options)}
+      removing={remove.isPending}
+      onRemove={(options) => remove.mutate(undefined, options)}
     />
   );
 }

@@ -5,6 +5,7 @@ import type {
   ProposalAction,
   UpdateRoutineInput,
 } from "@substrate/contracts/agent-work";
+import { createRoutineInput, updateRoutineInput } from "@substrate/contracts/agent-work";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -88,13 +89,16 @@ export const useNewTopic = (userId: string, organizationId: string) =>
 export function useRoutineActions(userId: string, organizationId: string) {
   const refresh = useRefresh(userId, organizationId);
   const settled = () => refresh({ kind: "routines" });
+  // Editors check each field first; parsing here guards the bridge contract.
   return {
     create: useMutation({
-      mutationFn: (input: CreateRoutineInput) => agentWorkBridge().routines.create(input),
+      mutationFn: (input: CreateRoutineInput) =>
+        agentWorkBridge().routines.create(createRoutineInput.parse(input)),
       onSettled: settled,
     }),
     update: useMutation({
-      mutationFn: (input: UpdateRoutineInput) => agentWorkBridge().routines.update(input),
+      mutationFn: (input: UpdateRoutineInput) =>
+        agentWorkBridge().routines.update(updateRoutineInput.parse(input)),
       onSettled: settled,
     }),
     approve: useMutation({

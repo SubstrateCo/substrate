@@ -80,25 +80,25 @@ export function TaskMoveDialog({
         void projects.refetch();
         void destination.refetch();
       }}
-      onSubmit={() => {
-        void move
-          .mutateAsync({
+      onSubmit={() =>
+        move.mutate(
+          {
             action: "moveTask",
             organizationId,
             projectEntityId: detail.project.entityId,
             taskEntityId: task.entityId,
             destinationProjectEntityId: projectId,
             parentTaskEntityId: parentId === "none" ? null : parentId,
-          })
-          .then(() =>
-            navigate({
-              to: "/tasks",
-              search: { workspaceId: organizationId, projectId, taskId: task.entityId },
-            }),
-          )
-          .then(onClose)
-          .catch(() => {});
-      }}
+          },
+          {
+            onSuccess: () =>
+              void navigate({
+                to: "/tasks",
+                search: { workspaceId: organizationId, projectId, taskId: task.entityId },
+              }).then(onClose),
+          },
+        )
+      }
     />
   );
 }

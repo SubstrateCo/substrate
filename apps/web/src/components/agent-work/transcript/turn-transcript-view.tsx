@@ -7,6 +7,7 @@ import { PageAside } from "@/components/layout/page-layout";
 import { Timestamp } from "@/components/time/timestamp";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import type { WorkTone } from "@/lib/agent-work/status";
 import { cn } from "cn";
 import { Bot, Square, X } from "lucide-react";
@@ -61,10 +62,11 @@ export function TurnTranscriptView({
   stopping: boolean;
 }) {
   const close = useRef<HTMLButtonElement>(null);
+  const wide = useMediaQuery("(min-width: 1024px)");
   useEffect(() => {
     // Below `lg` the panel covers the page, so focus moves into it.
-    if (!window.matchMedia("(min-width: 1024px)").matches) close.current?.focus();
-  }, []);
+    if (!wide) close.current?.focus();
+  }, [wide]);
   let body: ReactNode;
   if (unavailable) body = <PaneState label={unavailable} />;
   else if (timeline)

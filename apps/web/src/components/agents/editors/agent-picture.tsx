@@ -19,13 +19,11 @@ export function AgentPicture({
       kind="avatar"
       name={name}
       value={image}
-      disabled={upload.isPending || remove.isPending}
-      onUpload={async (file, context) => {
-        await upload.mutateAsync({ file, ...context });
-      }}
-      onRemove={async () => {
-        await remove.mutateAsync();
-      }}
+      uploading={upload.isPending}
+      uploadError={upload.error}
+      onUpload={(input, options) => upload.mutate(input, options)}
+      removing={remove.isPending}
+      onRemove={(options) => remove.mutate(undefined, options)}
     />
   );
 }

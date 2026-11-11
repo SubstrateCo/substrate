@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useId, useState } from "react";
 
 import { Tag } from "@/components/feedback/tag";
 import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
@@ -93,11 +93,8 @@ export function DiscussionItem({ item }: { item: Discussion }) {
 
 // Render the message like chat, but cap its height and fade it out when it overflows.
 function DiscussionBody({ body }: { body: string }) {
-  const ref = useRef<HTMLDivElement>(null);
   const [overflows, setOverflows] = useState(false);
-  useEffect(() => {
-    const element = ref.current;
-    if (!element) return;
+  const ref = useCallback((element: HTMLDivElement) => {
     const observer = new ResizeObserver(() =>
       setOverflows(element.scrollHeight > element.clientHeight),
     );

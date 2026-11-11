@@ -5,6 +5,7 @@ import { Button } from "../../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { PageAside } from "@/components/layout/page-layout";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import type { ResourceStatus } from "@/lib/resource-state";
 import { X } from "lucide-react";
 
@@ -31,19 +32,18 @@ export function ThreadPane({
 }) {
   const blocked = state === "error" || state === "unavailable";
   const close = useRef<HTMLButtonElement>(null);
+  const wide = useMediaQuery("(min-width: 1024px)");
+  // Runs before the focus effect below, so it remembers where focus was before the thread opened.
   useEffect(() => {
     const previous = document.activeElement;
-    const media = window.matchMedia("(min-width: 1024px)");
-    const focusOverlay = () => {
-      if (!media.matches) close.current?.focus();
-    };
-    focusOverlay();
-    media.addEventListener("change", focusOverlay);
     return () => {
-      media.removeEventListener("change", focusOverlay);
       if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
     };
   }, []);
+  // Below `lg` the thread covers the page, so focus moves into it.
+  useEffect(() => {
+    if (!wide) close.current?.focus();
+  }, [wide]);
   return (
     <PageAside aria-label="Thread">
       <header className="flex h-12 shrink-0 items-center justify-between border-b bg-card/60 px-4">

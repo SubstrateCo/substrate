@@ -1,5 +1,7 @@
 import type { PictureKind } from "@substrate/contracts/files/pictures";
 
+import { useMutation } from "@tanstack/react-query";
+
 import { useRef, useState } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
@@ -18,9 +20,17 @@ import { toast } from "sonner";
 export interface PictureUploadProps {
   value?: string | null;
   kind: PictureKind;
-  /** Receives a 512 × 512 PNG; reject to preserve the crop for retry. */
-  onUpload: (file: File, context: PictureUploadContext) => Promise<void>;
-  onRemove: () => Promise<void>;
+  /** The caller's upload mutation state. */
+  uploading: boolean;
+  uploadError?: Error | null;
+  /** Starts the upload mutation with a 512 × 512 PNG. A failure keeps the crop for retry. */
+  onUpload: (
+    input: PictureUploadContext & { file: File },
+    options: { onSuccess: () => void },
+  ) => void;
+  /** The caller's remove mutation state. */
+  removing: boolean;
+  onRemove: (options: { onError: () => void }) => void;
   disabled?: boolean;
   /** Whose picture this is. Without a picture, the preview shows the initials people see elsewhere. */
   name?: string;
@@ -29,32 +39,29 @@ export interface PictureUploadProps {
 export function PictureUpload({
   value,
   kind,
+  uploading,
+  uploadError,
   onUpload,
+  removing,
   onRemove,
   disabled = false,
   name: owner,
 }: PictureUploadProps) {
   const [source, setSource] = useState<File | null>(null);
   const chooseButton = useRef<HTMLButtonElement | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [removing, setRemoving] = useState(false);
+  // Opening checks the image before the crop dialog shows it.
+  const open = useMutation({
+    mutationFn: async (file: File) => {
+      (await openPicture(file)).close();
+      return file;
+    },
+    onSuccess: setSource,
+  });
   const name = {
     avatar: "Profile picture",
     "organization-logo": "Organization logo",
     "project-icon": "Project icon",
   }[kind];
-  async function remove() {
-    if (removing) return;
-    setRemoving(true);
-    setError(null);
-    try {
-      await onRemove();
-    } catch {
-      toast.error("We couldn’t remove this picture. Please try again.");
-    } finally {
-      setRemoving(false);
-    }
-  }
   const fallback = owner?.trim() ? (
     <span className="text-lg font-medium text-muted-foreground">{initials(owner)}</span>
   ) : (
@@ -69,10 +76,12 @@ export function PictureUpload({
         chooseButtonRef={chooseButton}
         accept={pictureAccept}
         maxSize={pictureMaxSize}
-        disabled={disabled || removing || !!source}
+        disabled={disabled || removing || uploading || !!source}
+        pending={open.isPending}
         label={value ? "Replace picture" : "Choose picture"}
         description="Drop an image here. JPEG, PNG, or WebP, up to 5 MB."
-        error={error}
+        // oxlint-disable-next-line design/no-raw-error-message -- openPicture throws only its own reviewed copy, such as the size and format limits.
+        error={open.error && (open.error.message || "This image could not be opened.")}
         preview={
           kind === "avatar" ? (
             <Avatar variant="picture" className="size-16 shrink-0">
@@ -98,10 +107,16 @@ export function PictureUpload({
                   type="button"
                   variant="destructive-ghost"
                   size="icon"
-                  disabled={disabled || !!source || removing}
+                  disabled={disabled || !!source || removing || uploading}
                   aria-busy={removing}
                   aria-label={removing ? "Removing picture." : "Remove picture"}
-                  onClick={() => void remove()}
+                  onClick={() => {
+                    open.reset();
+                    onRemove({
+                      onError: () =>
+                        toast.error("We couldn’t remove this picture. Please try again."),
+                    });
+                  }}
                 >
                   {removing ? (
                     <Spinner aria-hidden="true" role="presentation" />
@@ -114,34 +129,22 @@ export function PictureUpload({
             </Tooltip>
           )
         }
-        onFiles={async ([file]) => {
-          setError(null);
-          try {
-            const image = await openPicture(file);
-            image.close();
-            setSource(file);
-          } catch (failure) {
-            setError(
-              failure instanceof Error ? failure.message : "This image could not be opened.",
-            );
-          }
-        }}
+        onFiles={([file]) => open.mutate(file)}
       />
       {source && (
         <ImageCropDialog
           file={source}
           kind={kind}
+          uploading={uploading}
+          uploadError={uploadError}
           onRestoreFocus={() => chooseButton.current?.focus()}
           onCancel={() => setSource(null)}
-          onConfirm={async (blob, context) => {
-            await onUpload(
-              new File([blob], `${kind}.png`, {
-                type: "image/png",
-              }),
-              context,
-            );
-            setSource(null);
-          }}
+          onUpload={(blob, context) =>
+            onUpload(
+              { file: new File([blob], `${kind}.png`, { type: "image/png" }), ...context },
+              { onSuccess: () => setSource(null) },
+            )
+          }
         />
       )}
     </section>

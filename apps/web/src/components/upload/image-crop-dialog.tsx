@@ -21,7 +21,11 @@ import { usePictureUpload } from "@/components/upload/use-picture-upload";
 export interface ImageCropDialogProps {
   file: File;
   kind: PictureKind;
-  onConfirm: (blob: Blob, context: PictureUploadContext) => Promise<void>;
+  /** The caller's upload mutation state. */
+  uploading: boolean;
+  uploadError?: Error | null;
+  /** Starts the upload mutation. Unmount the dialog when it succeeds; on failure the crop stays. */
+  onUpload: (blob: Blob, context: PictureUploadContext) => void;
   onCancel: () => void;
   onRestoreFocus?: () => void;
 }
@@ -46,7 +50,9 @@ function cropDescription(kind: ImageCropDialogProps["kind"], mode: "fit" | "fill
 export function ImageCropDialog({
   file,
   kind,
-  onConfirm,
+  uploading,
+  uploadError,
+  onUpload,
   onCancel,
   onRestoreFocus,
 }: ImageCropDialogProps) {
@@ -57,13 +63,19 @@ export function ImageCropDialog({
   const [mode, setMode] = useState<"fit" | "fill">(kind === "organization-logo" ? "fit" : "fill");
   const [area, setArea] = useState<CropArea | null>(null);
   const [mediaFailed, setMediaFailed] = useState(false);
-  const { error, setError, pending, committing, busy, confirm, cancelUpload } = usePictureUpload({
+  const upload = usePictureUpload({
     file,
     area,
     rotation,
     mode,
-    onConfirm,
+    uploading,
+    uploadError,
+    onUpload,
   });
+  const { pending, committing, confirm, cancelUpload } = upload;
+  const error = mediaFailed
+    ? "This image could not be opened. Choose another image."
+    : upload.error;
   useEffect(() => {
     const url = URL.createObjectURL(file);
     // Synchronize the external object URL with the image element; revoke it on cleanup.
@@ -75,13 +87,13 @@ export function ImageCropDialog({
     setCrop({ x: 0, y: 0 });
     setZoom(1);
     setRotation(0);
-    setError(null);
+    upload.clearError();
   }
   return (
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open && !busy.current) onCancel();
+        if (!open && !pending) onCancel();
       }}
     >
       <DialogContent
@@ -92,10 +104,10 @@ export function ImageCropDialog({
           }
         }}
         onEscapeKeyDown={(event) => {
-          if (busy.current) event.preventDefault();
+          if (pending) event.preventDefault();
         }}
         onPointerDownOutside={(event) => {
-          if (busy.current) event.preventDefault();
+          if (pending) event.preventDefault();
         }}
       >
         <DialogHeader>
@@ -124,10 +136,7 @@ export function ImageCropDialog({
                   onCropChange={setCrop}
                   onZoomChange={setZoom}
                   onCropComplete={setArea}
-                  onError={() => {
-                    setMediaFailed(true);
-                    setError("This image could not be opened. Choose another image.");
-                  }}
+                  onError={() => setMediaFailed(true)}
                 />
               </div>
             )}
@@ -171,7 +180,7 @@ export function ImageCropDialog({
             type="button"
             aria-busy={pending}
             disabled={pending || mediaFailed || !src || (mode === "fill" && !area)}
-            onClick={() => void confirm()}
+            onClick={confirm}
           >
             Save picture
           </Button>

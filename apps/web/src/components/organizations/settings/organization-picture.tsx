@@ -20,13 +20,11 @@ export function OrganizationPicture({ organizationId }: { organizationId: string
       loading={organization.isPending}
       error={organization.error}
       onRetry={() => void organization.refetch()}
-      disabled={upload.isPending || remove.isPending}
-      onUpload={async (file, { signal, onCommit }) => {
-        await upload.mutateAsync({ file, signal, onCommit });
-      }}
-      onRemove={async () => {
-        await remove.mutateAsync();
-      }}
+      uploading={upload.isPending}
+      uploadError={upload.error}
+      onUpload={(input, options) => upload.mutate(input, options)}
+      removing={remove.isPending}
+      onRemove={(options) => remove.mutate(undefined, options)}
     />
   );
 }

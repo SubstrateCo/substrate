@@ -28,7 +28,8 @@ export function DeleteRecordCard({
   pending: boolean;
   error?: Error | string | null;
   errorDescription: string;
-  onDelete: () => Promise<void>;
+  /** Starts the delete mutation. Call `onDeleted` once the record is gone. */
+  onDelete: (onDeleted: () => void) => void;
   onReset: () => void;
   onRestoreFocus?: () => void;
 }) {
@@ -72,11 +73,7 @@ export function DeleteRecordCard({
             setConfirming(false);
             onReset();
           }}
-          onConfirm={() => {
-            void onDelete()
-              .then(() => setConfirming(false))
-              .catch(() => {});
-          }}
+          onConfirm={() => onDelete(() => setConfirming(false))}
         />
       )}
     </>

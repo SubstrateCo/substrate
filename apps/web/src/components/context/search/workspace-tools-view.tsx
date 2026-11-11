@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
 
 import { Command, CommandInput } from "../../ui/command";
 import { Kbd, KbdGroup } from "../../ui/kbd";
@@ -40,29 +40,30 @@ export function WorkspaceTools({
   useEffect(() => {
     if (focusRequest) input.current?.focus();
   }, [focusRequest]);
+  const onPointerDown = useEffectEvent((event: PointerEvent) => {
+    if (event.target instanceof Node && !container.current?.contains(event.target)) setOpen(false);
+  });
   useEffect(() => {
-    const dismiss = (event: PointerEvent) => {
-      if (event.target instanceof Node && !container.current?.contains(event.target))
-        setOpen(false);
-    };
+    const dismiss = (event: PointerEvent) => onPointerDown(event);
     document.addEventListener("pointerdown", dismiss);
     return () => document.removeEventListener("pointerdown", dismiss);
-  }, [setOpen]);
+  }, []);
+  const onShortcut = useEffectEvent((event: KeyboardEvent) => {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+      event.preventDefault();
+      input.current?.focus();
+      setOpen(true);
+    }
+    if (event.key === "Escape" && open && !event.defaultPrevented) {
+      event.preventDefault();
+      close();
+    }
+  });
   useEffect(() => {
-    const handle = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        input.current?.focus();
-        setOpen(true);
-      }
-      if (event.key === "Escape" && open && !event.defaultPrevented) {
-        event.preventDefault();
-        close();
-      }
-    };
+    const handle = (event: KeyboardEvent) => onShortcut(event);
     window.addEventListener("keydown", handle);
     return () => window.removeEventListener("keydown", handle);
-  }, [close, open, setOpen]);
+  }, []);
   return (
     <div
       ref={container}

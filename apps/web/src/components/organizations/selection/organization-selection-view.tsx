@@ -18,7 +18,7 @@ export function OrganizationSelection({
   organizations,
   state,
   loading = false,
-  pending = false,
+  openingId,
   loadError,
   onRetry,
   onSelect,
@@ -28,7 +28,8 @@ export function OrganizationSelection({
   organizations?: { id: string; name: string }[];
   state: ResourceStatus;
   loading?: boolean;
-  pending?: boolean;
+  /** The workspace being opened, while it opens. */
+  openingId?: string;
   loadError?: Error | null;
   onRetry: () => void;
   onSelect: (id: string) => void;
@@ -39,7 +40,6 @@ export function OrganizationSelection({
   const firstChoice = useRef<HTMLButtonElement | null>(null);
   const creationHeading = useRef<HTMLHeadingElement | null>(null);
   const createTrigger = useRef<HTMLButtonElement | null>(null);
-  const [selectedId, setSelectedId] = useState<string>();
   const [creating, setCreating] = useState(false);
   useEffect(() => {
     const origin = retryOrigin.current;
@@ -89,7 +89,7 @@ export function OrganizationSelection({
       {listed.length > 0 && (
         <ul aria-label="Your workspaces" className="-mx-2.5 max-h-72 space-y-0.5 overflow-y-auto">
           {listed.map((organization, index) => {
-            const opening = pending && selectedId === organization.id;
+            const opening = openingId === organization.id;
             return (
               <li key={organization.id}>
                 <Item asChild size="xs">
@@ -97,12 +97,9 @@ export function OrganizationSelection({
                     ref={index === 0 ? firstChoice : undefined}
                     type="button"
                     className="flex-nowrap text-left font-medium hover:bg-row-hover disabled:pointer-events-none disabled:opacity-60 aria-busy:opacity-100"
-                    disabled={pending}
+                    disabled={openingId !== undefined}
                     aria-busy={opening}
-                    onClick={() => {
-                      setSelectedId(organization.id);
-                      onSelect(organization.id);
-                    }}
+                    onClick={() => onSelect(organization.id)}
                   >
                     <span
                       aria-hidden="true"

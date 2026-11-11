@@ -61,43 +61,13 @@ export function EmojiPicker({
 }) {
   const [open, setOpen] = useState(false);
   const content = useRef<HTMLDivElement>(null);
-  const [query, setQuery] = useState("");
-  const [recent, setRecent] = useState<Emoji[]>([]);
-  const [active, setActive] = useState(0);
-  const list = useRef<HTMLDivElement>(null);
-  const search = query.trim().toLowerCase();
-  const matches = search
-    ? emojiCategories
-        .flatMap((category) => category.emojis)
-        .filter((item) => item.name.includes(search))
-    : [];
   const pick = (emoji: string) => {
     rememberEmoji(emoji);
     onSelect(emoji);
     setOpen(false);
   };
-  let groups = [...(recent.length ? [{ name: "Recent", emojis: recent }] : []), ...emojiCategories];
-  if (search) groups = matches.length ? [{ name: "Results", emojis: matches }] : [];
-  let offset = 0;
-  const focusOption = (index: number) => {
-    const buttons = list.current?.querySelectorAll<HTMLButtonElement>("[data-emoji-option]");
-    if (!buttons?.length) return;
-    const next = Math.max(0, Math.min(index, buttons.length - 1));
-    setActive(next);
-    buttons[next]?.focus();
-  };
   return (
-    <Popover
-      open={open}
-      onOpenChange={(next) => {
-        if (next) {
-          setQuery("");
-          setActive(0);
-          setRecent(recentEmojis());
-        }
-        setOpen(next);
-      }}
-    >
+    <Popover open={open} onOpenChange={setOpen}>
       <Tooltip>
         <TooltipTrigger asChild>
           <PopoverTrigger asChild>
@@ -128,61 +98,90 @@ export function EmojiPicker({
             event.preventDefault();
         }}
       >
-        <div className="border-b p-2">
-          <Input
-            type="search"
-            aria-label="Search emoji"
-            placeholder="Search emoji"
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setActive(0);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "ArrowDown") {
-                event.preventDefault();
-                focusOption(0);
-              }
-              if (event.key === "Enter" && matches[0]) {
-                event.preventDefault();
-                pick(matches[0].emoji);
-              }
-            }}
-          />
-        </div>
-        <div
-          ref={list}
-          className={`${search ? "max-h-72" : "h-72 max-h-(--radix-popover-content-available-height)"} space-y-3 overflow-y-auto p-2`}
-          onKeyDown={(event) => {
-            const delta = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -8, ArrowDown: 8 }[event.key];
-            if (delta !== undefined) {
-              event.preventDefault();
-              focusOption(active + delta);
-            }
-          }}
-        >
-          {search && matches.length === 0 && (
-            <p className="px-1 py-6 text-center text-sm text-muted-foreground">
-              No emoji match “{query.trim()}”
-            </p>
-          )}
-          {groups.map((category) => {
-            const groupOffset = offset;
-            offset += category.emojis.length;
-            return (
-              <EmojiGrid
-                key={category.name}
-                label={category.name}
-                emojis={category.emojis}
-                onPick={pick}
-                offset={groupOffset}
-                active={active}
-                onFocus={setActive}
-              />
-            );
-          })}
-        </div>
+        <EmojiPanel onPick={pick} />
       </PopoverContent>
     </Popover>
+  );
+}
+
+/** The popover's content. It mounts on each open, so search and recent picks start fresh. */
+function EmojiPanel({ onPick: pick }: { onPick: (emoji: string) => void }) {
+  const [query, setQuery] = useState("");
+  const [recent] = useState(recentEmojis);
+  const [active, setActive] = useState(0);
+  const list = useRef<HTMLDivElement>(null);
+  const search = query.trim().toLowerCase();
+  const matches = search
+    ? emojiCategories
+        .flatMap((category) => category.emojis)
+        .filter((item) => item.name.includes(search))
+    : [];
+  let groups = [...(recent.length ? [{ name: "Recent", emojis: recent }] : []), ...emojiCategories];
+  if (search) groups = matches.length ? [{ name: "Results", emojis: matches }] : [];
+  let offset = 0;
+  const focusOption = (index: number) => {
+    const buttons = list.current?.querySelectorAll<HTMLButtonElement>("[data-emoji-option]");
+    if (!buttons?.length) return;
+    const next = Math.max(0, Math.min(index, buttons.length - 1));
+    setActive(next);
+    buttons[next]?.focus();
+  };
+  return (
+    <>
+      <div className="border-b p-2">
+        <Input
+          type="search"
+          aria-label="Search emoji"
+          placeholder="Search emoji"
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setActive(0);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowDown") {
+              event.preventDefault();
+              focusOption(0);
+            }
+            if (event.key === "Enter" && matches[0]) {
+              event.preventDefault();
+              pick(matches[0].emoji);
+            }
+          }}
+        />
+      </div>
+      <div
+        ref={list}
+        className={`${search ? "max-h-72" : "h-72 max-h-(--radix-popover-content-available-height)"} space-y-3 overflow-y-auto p-2`}
+        onKeyDown={(event) => {
+          const delta = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -8, ArrowDown: 8 }[event.key];
+          if (delta !== undefined) {
+            event.preventDefault();
+            focusOption(active + delta);
+          }
+        }}
+      >
+        {search && matches.length === 0 && (
+          <p className="px-1 py-6 text-center text-sm text-muted-foreground">
+            No emoji match “{query.trim()}”
+          </p>
+        )}
+        {groups.map((category) => {
+          const groupOffset = offset;
+          offset += category.emojis.length;
+          return (
+            <EmojiGrid
+              key={category.name}
+              label={category.name}
+              emojis={category.emojis}
+              onPick={pick}
+              offset={groupOffset}
+              active={active}
+              onFocus={setActive}
+            />
+          );
+        })}
+      </div>
+    </>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
 
 /** Keys pressed after G, Linear style: G then M opens Messages. */
 export const appShortcutKeys = {
@@ -24,10 +24,7 @@ function busy(target: EventTarget | null) {
 /** Listens for G then an app key outside text fields and calls `onOpen` with the app. */
 export function useAppShortcuts(onOpen: (app: ShortcutApp) => void) {
   const pressed = useRef(0);
-  const open = useRef(onOpen);
-  useEffect(() => {
-    open.current = onOpen;
-  });
+  const open = useEffectEvent(onOpen);
   useEffect(() => {
     const handle = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.repeat || busy(event.target)) return;
@@ -43,7 +40,7 @@ export function useAppShortcuts(onOpen: (app: ShortcutApp) => void) {
       const app = apps.find((name) => appShortcutKeys[name] === key);
       if (!app) return;
       event.preventDefault();
-      open.current(app);
+      open(app);
     };
     window.addEventListener("keydown", handle);
     return () => window.removeEventListener("keydown", handle);

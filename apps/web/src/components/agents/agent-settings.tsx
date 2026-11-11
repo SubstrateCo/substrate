@@ -49,14 +49,17 @@ export function AgentSettings({
   const pending = save.isPending || remove.isPending;
   const agent = catalog.data?.agents.find((item) => item.id === agentId);
   const runSettings = catalog.data?.runSettings.find((item) => item.agentId === agentId);
-  async function onSave(input: SaveAgentInput) {
-    const saved = await save.mutateAsync(input, {
+  function onSave(input: SaveAgentInput, options: { onSuccess: () => void }) {
+    save.mutate(input, {
       // An edit shows its save in the settings footer. A new agent opens in its own page.
-      onSuccess: () => {
-        if (!input.id) toast.success("Agent created.");
+      onSuccess: (saved) => {
+        if (!input.id) {
+          toast.success("Agent created.");
+          onCreated?.(saved.id);
+        }
+        options.onSuccess();
       },
     });
-    if (!input.id) onCreated?.(saved.id);
   }
   const renderConfiguration = ({
     harness,
@@ -110,6 +113,9 @@ export function AgentSettings({
           renderConfiguration={renderConfiguration}
           pending={pending}
           onSave={onSave}
+          // The mutation outlives each agent's form; show only this agent's failure.
+          error={save.variables?.id === agent.id ? save.error : null}
+          onResetError={() => save.reset()}
           runSettingsDirty={runSettingsDirty}
           // A new key remounts run settings, which drops their draft.
           onDiscardRunSettings={() => setRunSettingsDraft((count) => count + 1)}
@@ -137,12 +143,15 @@ export function AgentSettings({
               onRestoreFocus={() =>
                 document.querySelector<HTMLButtonElement>('button[aria-label="New agent"]')?.focus()
               }
-              onDelete={async () => {
-                await remove.mutateAsync(agent.id, {
-                  onSuccess: () => toast.success("Agent deleted."),
-                });
-                onClose();
-              }}
+              onDelete={(onDeleted) =>
+                remove.mutate(agent.id, {
+                  onSuccess: () => {
+                    toast.success("Agent deleted.");
+                    onDeleted();
+                    onClose();
+                  },
+                })
+              }
             />
           }
         />
@@ -153,6 +162,8 @@ export function AgentSettings({
           organizationId={organizationId}
           renderConfiguration={renderConfiguration}
           pending={pending}
+          error={save.variables && !save.variables.id ? save.error : null}
+          onResetError={() => save.reset()}
           renderCreate={({ fields, ...editor }) => (
             <FormDialog
               {...editor}
@@ -166,10 +177,14 @@ export function AgentSettings({
               {fields}
             </FormDialog>
           )}
-          onSave={async (input) => {
-            await onSave(input);
-            onClose();
-          }}
+          onSave={(input, options) =>
+            onSave(input, {
+              onSuccess: () => {
+                options.onSuccess();
+                onClose();
+              },
+            })
+          }
         />
       )}
     </section>

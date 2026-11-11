@@ -12,6 +12,30 @@ export function useDesktopSignIn() {
   });
 }
 
+/**
+ * Waits for the desktop app to report how the browser sign-in ended. Start it after the browser
+ * opens; it stays pending while the person signs in there.
+ */
+export function useDesktopSignInResult() {
+  return useMutation({
+    mutationFn: () =>
+      new Promise<void>((resolve, reject) => {
+        const stop = () => {
+          authenticated();
+          failed();
+        };
+        const authenticated = window.onAuthenticated!(() => {
+          stop();
+          resolve();
+        });
+        const failed = window.onAuthError!(() => {
+          stop();
+          reject(new Error("Could not complete sign-in. Please try again."));
+        });
+      }),
+  });
+}
+
 export function useElectronTransfer() {
   return useMutation({
     mutationFn: async (query: ElectronAuthorization | undefined) => {

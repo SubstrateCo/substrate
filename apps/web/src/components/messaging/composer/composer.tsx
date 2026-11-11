@@ -61,6 +61,8 @@ function DestinationComposer({
         pending={send.isPending}
         error={send.error}
         onSend={(body, onSuccess) => {
+          // Not `mutate` callbacks: they skip an unmounted composer, and switching conversations
+          // while this sends must still clear the sent draft, which outlives this component.
           void send
             .mutateAsync({ body, attachmentFileIds: uploads.fileIds })
             .then(onSuccess)

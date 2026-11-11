@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { Navigate, useNavigate } from "@tanstack/react-router";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { ProjectForm } from "../projects/editor/project-form";
 import { ProjectPane } from "../projects/project-pane";
@@ -24,19 +24,11 @@ export function TasksWorkspace({
     ...taskLocationQueryOptions(organizationId, taskId ?? ""),
     enabled: !!taskId,
   });
-  useEffect(() => {
-    const resolvedLocation = !taskLocation.error ? taskLocation.data : undefined;
-    if (taskId && resolvedLocation && resolvedLocation.projectEntityId !== projectId)
-      void navigate({
-        to: "/tasks",
-        replace: true,
-        search: {
-          workspaceId: organizationId,
-          projectId: resolvedLocation.projectEntityId,
-          taskId,
-        },
-      });
-  }, [navigate, organizationId, taskId, projectId, taskLocation.data, taskLocation.error]);
+  // A task link can name an old project or none. Open the task in the project that holds it now.
+  const relocatedProjectId =
+    taskId && !taskLocation.error && taskLocation.data?.projectEntityId !== projectId
+      ? taskLocation.data?.projectEntityId
+      : undefined;
   const [lastSelection, setLastSelection] = useState<{
     organizationId: string;
     projectId?: string;
@@ -54,36 +46,45 @@ export function TasksWorkspace({
   )
     setLastSelection({ organizationId, projectId: selectedProjectId });
   return (
-    <TasksWorkspaceView
-      state={resource.status}
-      projects={resource.data ?? []}
-      selectedProjectId={selectedProjectId}
-      onSelectProject={(selected) =>
-        void navigate({
-          to: "/tasks",
-          search: { workspaceId: organizationId, projectId: selected },
-        })
-      }
-      loading={projects.isPending}
-      error={projects.error}
-      onRetry={() => void projects.refetch()}
-      renderCreate={({ onSaved, renderCreate }) => (
-        <ProjectForm
-          organizationId={organizationId}
-          onSaved={onSaved}
-          renderCreate={renderCreate}
+    <>
+      {relocatedProjectId && (
+        <Navigate
+          to="/tasks"
+          replace
+          search={{ workspaceId: organizationId, projectId: relocatedProjectId, taskId }}
         />
       )}
-      project={
-        selectedProjectId && (
-          <ProjectPane
-            key={`${organizationId}:${selectedProjectId}`}
+      <TasksWorkspaceView
+        state={resource.status}
+        projects={resource.data ?? []}
+        selectedProjectId={selectedProjectId}
+        onSelectProject={(selected) =>
+          void navigate({
+            to: "/tasks",
+            search: { workspaceId: organizationId, projectId: selected },
+          })
+        }
+        loading={projects.isPending}
+        error={projects.error}
+        onRetry={() => void projects.refetch()}
+        renderCreate={({ onSaved, renderCreate }) => (
+          <ProjectForm
             organizationId={organizationId}
-            projectEntityId={selectedProjectId}
-            taskId={taskId}
+            onSaved={onSaved}
+            renderCreate={renderCreate}
           />
-        )
-      }
-    />
+        )}
+        project={
+          selectedProjectId && (
+            <ProjectPane
+              key={`${organizationId}:${selectedProjectId}`}
+              organizationId={organizationId}
+              projectEntityId={selectedProjectId}
+              taskId={taskId}
+            />
+          )
+        }
+      />
+    </>
   );
 }

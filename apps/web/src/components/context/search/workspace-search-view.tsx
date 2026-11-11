@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from "react";
 
 import { Kbd } from "../../ui/kbd";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
@@ -73,19 +73,20 @@ export function WorkspaceSearch({
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, []);
+  const switchKind = useEffectEvent((event: KeyboardEvent) => {
+    // The search input sits outside this panel, in the same search container.
+    const container = panel.current?.closest("[data-workspace-search]");
+    if (!(event.target instanceof Node) || !container?.contains(event.target)) return;
+    const step = tabStep(event);
+    if (!step) return;
+    event.preventDefault();
+    onKindChange(kinds[(kinds.indexOf(kind) + step + kinds.length) % kinds.length]!);
+  });
   useEffect(() => {
-    const handle = (event: KeyboardEvent) => {
-      // The search input sits outside this panel, in the same search container.
-      const container = panel.current?.closest("[data-workspace-search]");
-      if (!(event.target instanceof Node) || !container?.contains(event.target)) return;
-      const step = tabStep(event);
-      if (!step) return;
-      event.preventDefault();
-      onKindChange(kinds[(kinds.indexOf(kind) + step + kinds.length) % kinds.length]!);
-    };
+    const handle = (event: KeyboardEvent) => switchKind(event);
     document.addEventListener("keydown", handle);
     return () => document.removeEventListener("keydown", handle);
-  }, [kind, onKindChange]);
+  }, []);
   return (
     <section
       ref={panel}

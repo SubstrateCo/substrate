@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { queryKeys } from "@/queries/keys";
 import { useInvalidateLatestMessages } from "@/queries/messaging/messages";
@@ -11,6 +11,8 @@ type HistoryPosition = {
   target?: string;
   aroundMessageId?: string;
   beforeMessageId?: string;
+  /** The person's last move through history, and when they made it. */
+  request?: { kind: "older" | "latest"; at: number };
 };
 
 export function useMessageHistory({
@@ -34,7 +36,6 @@ export function useMessageHistory({
   const [position, setPosition] = useState(initialPosition);
   const current = position.scope === scope ? position : initialPosition;
   if (position.scope !== scope) setPosition(current);
-  const [historyRequest, setHistoryRequest] = useState<"older" | "latest">();
   const messages = useQuery({
     ...messagesQueryOptions(organizationId, conversationId, threadId, {
       beforeMessageId: current.beforeMessageId,
@@ -63,10 +64,12 @@ export function useMessageHistory({
     }
     setPosition(next);
   }
-  const pending = messages.isFetching ? historyRequest : undefined;
-  useEffect(() => {
-    if (messages.isFetching) return () => setHistoryRequest(undefined);
-  }, [messages.isFetching]);
+  // A move is pending until its page arrives. Later background refreshes are not the person's.
+  const { request } = current;
+  const pending =
+    request && messages.isFetching && messages.dataUpdatedAt < request.at
+      ? request.kind
+      : undefined;
 
   return {
     messages,
@@ -80,13 +83,20 @@ export function useMessageHistory({
           latest.data.at(-1)?.id !== messages.data.at(-1)?.id),
       onLatest: () => {
         void invalidateLatest();
-        setHistoryRequest("latest");
-        setPosition({ ...current, beforeMessageId: undefined, aroundMessageId: undefined });
+        setPosition({
+          ...current,
+          beforeMessageId: undefined,
+          aroundMessageId: undefined,
+          request: { kind: "latest", at: Date.now() },
+        });
       },
     },
-    loadOlder: (messageId: string | undefined) => {
-      setHistoryRequest("older");
-      setPosition({ ...current, beforeMessageId: messageId, aroundMessageId: undefined });
-    },
+    loadOlder: (messageId: string | undefined) =>
+      setPosition({
+        ...current,
+        beforeMessageId: messageId,
+        aroundMessageId: undefined,
+        request: { kind: "older", at: Date.now() },
+      }),
   };
 }

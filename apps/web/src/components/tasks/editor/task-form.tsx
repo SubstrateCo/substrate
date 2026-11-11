@@ -71,27 +71,28 @@ export function TaskForm({
           onSaved(task.entityId);
           return;
         }
-        void save
-          .mutateAsync(
-            task
-              ? {
-                  action: "updateTask",
-                  organizationId,
-                  projectEntityId: detail.project.entityId,
-                  ...changes,
-                  taskEntityId: task.entityId,
-                }
-              : {
-                  action: "createTask",
-                  ...fields,
-                  parentTaskEntityId,
-                  attachmentFileIds: uploads.fileIds,
-                },
-          )
-          .then(({ id }) => {
-            if (router.latestLocation.href === destination) onSaved(id);
-          })
-          .catch(() => {});
+        save.mutate(
+          task
+            ? {
+                action: "updateTask",
+                organizationId,
+                projectEntityId: detail.project.entityId,
+                ...changes,
+                taskEntityId: task.entityId,
+              }
+            : {
+                action: "createTask",
+                ...fields,
+                parentTaskEntityId,
+                attachmentFileIds: uploads.fileIds,
+              },
+          {
+            // Opening the saved task would undo a move the person made while it saved.
+            onSuccess: ({ id }) => {
+              if (router.latestLocation.href === destination) onSaved(id);
+            },
+          },
+        );
       }}
     />
   );
