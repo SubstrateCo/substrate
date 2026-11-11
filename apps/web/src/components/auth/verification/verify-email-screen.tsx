@@ -1,10 +1,7 @@
-import { useMutation } from "@tanstack/react-query";
-
 import { formText } from "../form-values";
-import { authError } from "@/api/auth/error";
 import { VerifyEmailScreen as VerifyEmailScreenView } from "@/components/auth/verification/verify-email-screen-view";
 import { authHref } from "@/lib/auth/browser-links";
-import { authClient } from "@/lib/auth/client";
+import { useSendVerificationEmail } from "@/queries/auth/mutations";
 
 export function VerifyEmailScreen({
   redirect,
@@ -15,24 +12,15 @@ export function VerifyEmailScreen({
   email: string;
   error: string;
 }) {
-  const resend = useMutation({
-    mutationFn: async (form: FormData) => {
-      const email = formText(form, "email");
-      const result = await authClient.sendVerificationEmail({
-        email,
-        callbackURL: authHref("/login", redirect, email),
-      });
-      if (result.error) throw authError(result.error);
-    },
-  });
+  const resend = useSendVerificationEmail((email) => authHref("/login", redirect, email));
   return (
     <VerifyEmailScreenView
       email={email}
       invalid={Boolean(error)}
       pending={resend.isPending}
-      sentTo={resend.isSuccess ? formText(resend.variables, "email") : undefined}
+      sentTo={resend.isSuccess ? resend.variables : undefined}
       error={resend.error}
-      onSubmit={(form) => resend.mutate(form)}
+      onSubmit={(form) => resend.mutate(formText(form, "email"))}
       onReset={() => resend.reset()}
       loginHref={authHref("/login", redirect, email)}
     />

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { useRef, useState } from "react";
 
@@ -6,18 +6,14 @@ import { AttachmentList } from "./attachment-list";
 import { AttachFilesButton, AttachmentDraftList } from "./attachment-picker";
 import { FileDropZone } from "./file-drop-zone";
 import { useAttachmentUploads } from "./use-attachment-uploads";
-import {
-  attachTaskFiles,
-  removeTaskAttachment,
-  taskAttachmentUrl,
-  type TaskAttachmentTarget,
-} from "@/api/files/attachments";
+import { taskAttachmentUrl, type TaskAttachmentTarget } from "@/api/files/attachments";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { FormMessage } from "@/components/feedback/form-message";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
 import { Button } from "@/components/ui/button";
+import { useTaskAttachmentMutations } from "@/queries/attachments/mutations";
 import { taskAttachmentsOptions } from "@/queries/files/attachments";
 import { Trash2 } from "lucide-react";
 
@@ -30,26 +26,12 @@ export function TaskAttachments({
   canEdit: boolean;
   visible: boolean;
 }) {
-  const queryClient = useQueryClient();
   const heading = useRef<HTMLHeadingElement>(null);
   const options = taskAttachmentsOptions(target);
   const query = useQuery({ ...options, enabled: visible });
   const uploads = useAttachmentUploads(query.data?.length ?? 0);
   const [removing, setRemoving] = useState<{ id: string; filename: string } | null>(null);
-  const add = useMutation({
-    mutationFn: () => attachTaskFiles({ ...target, attachmentFileIds: uploads.fileIds }),
-    onSuccess: async () => {
-      uploads.clear();
-      await queryClient.invalidateQueries({ queryKey: options.queryKey });
-    },
-  });
-  const remove = useMutation({
-    mutationFn: (attachmentId: string) => removeTaskAttachment({ ...target, attachmentId }),
-    onSuccess: async () => {
-      setRemoving(null);
-      await queryClient.invalidateQueries({ queryKey: options.queryKey });
-    },
-  });
+  const { add, remove } = useTaskAttachmentMutations(target);
   return (
     <FileDropZone
       label="Task attachments"
@@ -125,7 +107,7 @@ export function TaskAttachments({
               pending={add.isPending}
               pendingLabel="Attaching…"
               disabled={!canEdit || !query.isSuccess || !uploads.ready}
-              onClick={() => add.mutate()}
+              onClick={() => add.mutate(uploads.fileIds, { onSuccess: () => uploads.clear() })}
             >
               Attach files to task
             </PendingButton>
@@ -148,7 +130,7 @@ export function TaskAttachments({
           pending={remove.isPending}
           error={remove.error}
           errorDescription="Couldn’t remove this attachment. Try again."
-          onConfirm={() => remove.mutate(removing.id)}
+          onConfirm={() => remove.mutate(removing.id, { onSuccess: () => setRemoving(null) })}
         />
       )}
     </FileDropZone>

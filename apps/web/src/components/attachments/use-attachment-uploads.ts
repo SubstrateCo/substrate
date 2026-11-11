@@ -3,7 +3,7 @@ import { MAX_FILE_BYTES } from "@substrate/contracts/files/input";
 
 import { useEffect, useRef, useState } from "react";
 
-import { uploadAttachment } from "@/api/files/attachments";
+import { useAttachmentUpload } from "@/queries/attachments/mutations";
 
 export interface AttachmentDraft {
   id: string;
@@ -13,6 +13,7 @@ export interface AttachmentDraft {
   fileId?: string;
 }
 export function useAttachmentUploads(existingCount = 0) {
+  const { mutateAsync: upload } = useAttachmentUpload();
   const [items, setItems] = useState<AttachmentDraft[]>([]);
   const current = useRef(items);
   const controllers = useRef(new Map<string, AbortController>());
@@ -37,7 +38,11 @@ export function useAttachmentUploads(existingCount = 0) {
           current.current.map((entry) => (entry.id === item.id ? { ...entry, ...patch } : entry)),
         );
     };
-    void uploadAttachment(item.file, controller.signal, (progress) => update({ progress }))
+    void upload({
+      file: item.file,
+      signal: controller.signal,
+      onProgress: (progress) => update({ progress }),
+    })
       .then((fileId) => update({ status: "ready", fileId, progress: 100 }))
       .catch(() => update({ status: "failed" }))
       .finally(() => {

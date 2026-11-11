@@ -1,28 +1,15 @@
-import { useMutation } from "@tanstack/react-query";
-
 import { formText } from "@/components/auth/form-values";
 import { FormMessage } from "@/components/feedback/form-message";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { CreateOrganizationForm as CreateOrganizationFormView } from "@/components/organizations/selection/create-organization-form-view";
-import { authClient } from "@/lib/auth/client";
-import { activateOrganization } from "@/lib/auth/organization";
-import { unwrap } from "@/lib/auth/result";
+import {
+  useActivateOrganization,
+  useCreateOrganization,
+} from "@/queries/organizations/selection-mutations";
 
 export function CreateOrganizationForm({ destination = "/dashboard" }: { destination?: string }) {
-  const activate = useMutation({
-    mutationFn: (organizationId: string) => activateOrganization(organizationId, destination),
-  });
-  const create = useMutation({
-    mutationFn: async (form: FormData) => {
-      return unwrap(
-        await authClient.organization.create({
-          name: formText(form, "name").trim(),
-          slug: formText(form, "slug").trim(),
-        }),
-      );
-    },
-    onSuccess: (organization) => activate.mutate(organization.id),
-  });
+  const activate = useActivateOrganization(destination);
+  const create = useCreateOrganization();
   const created = create.data;
   if (created) {
     return (
@@ -46,7 +33,15 @@ export function CreateOrganizationForm({ destination = "/dashboard" }: { destina
     <CreateOrganizationFormView
       pending={create.isPending}
       error={create.error}
-      onSubmit={(form) => create.mutate(form)}
+      onSubmit={(form) =>
+        create.mutate(
+          {
+            name: formText(form, "name").trim(),
+            slug: formText(form, "slug").trim(),
+          },
+          { onSuccess: (organization) => activate.mutate(organization.id) },
+        )
+      }
     />
   );
 }

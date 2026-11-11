@@ -1,8 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
 
-import { attachWork } from "@/api/context/links";
 import {
   LinkMessageWork as LinkMessageWorkView,
   type LinkableWork,
@@ -10,7 +9,7 @@ import {
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { resourceState } from "@/lib/resource-state";
-import { invalidateMessageWork } from "@/queries/context/mutations";
+import { useAttachMessageWork } from "@/queries/context/link-mutations";
 import { searchOptions } from "@/queries/context/search";
 import { projectsQueryOptions } from "@/queries/tasks/options";
 import { toast } from "sonner";
@@ -37,46 +36,21 @@ export function LinkMessageWork({
   const projectNames = new Map(
     (projects.data ?? []).map((project) => [project.entityId, project.name]),
   );
-  const client = useQueryClient();
-  const attach = useMutation({
-    // The API links one item per request. Each request settles on its own, so earlier links stay.
-    mutationFn: async (items: LinkableWork[]) => {
-      const settled = await Promise.allSettled(
-        items.map((item) => attachWork({ data: { organizationId, messageId, entityId: item.id } })),
-      );
-      const failures: { item: LinkableWork; error: Error }[] = [];
-      const refreshes: Promise<unknown>[] = [];
-      items.forEach((item, index) => {
-        const result = settled[index]!;
-        if (result.status === "fulfilled")
-          refreshes.push(
-            invalidateMessageWork(client, organizationId, messageId, item.id, item.projectEntityId),
-          );
-        else
-          failures.push({
-            item,
-            error:
-              result.reason instanceof Error ? result.reason : new Error(String(result.reason)),
-          });
-      });
-      await Promise.all(refreshes);
-      return failures;
-    },
-    onSuccess: (failures, items) => {
-      if (!failures.length) {
-        toast.success(items.length === 1 ? "Linked 1 item." : `Linked ${items.length} items.`);
-        onClose();
-        return;
-      }
-      const names = failures.map(({ item }) => `“${item.title}”`).join(", ");
-      toast.error(
-        actionErrorMessage(
-          failures[0]!.error,
-          `Couldn’t link ${names}. Check that you still have access.`,
-        ),
-      );
-    },
-  });
+  const attach = useAttachMessageWork<LinkableWork>(organizationId, messageId);
+  const onSuccess = (failures: { item: LinkableWork; error: Error }[], items: LinkableWork[]) => {
+    if (!failures.length) {
+      toast.success(items.length === 1 ? "Linked 1 item." : `Linked ${items.length} items.`);
+      onClose();
+      return;
+    }
+    const names = failures.map(({ item }) => `“${item.title}”`).join(", ");
+    toast.error(
+      actionErrorMessage(
+        failures[0]!.error,
+        `Couldn’t link ${names}. Check that you still have access.`,
+      ),
+    );
+  };
   return (
     <LinkMessageWorkView
       state={resourceState(results).status}
@@ -102,7 +76,7 @@ export function LinkMessageWork({
         if (!search.pending) void results.refetch();
       }}
       onLink={(items) => {
-        if (items.length) attach.mutate(items);
+        if (items.length) attach.mutate(items, { onSuccess });
       }}
       onClose={onClose}
     />

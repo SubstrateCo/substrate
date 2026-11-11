@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
 
@@ -10,8 +10,7 @@ import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { messageHref, workHref } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
-import { searchPagesOptions } from "@/queries/context/search";
-import { useConversationManagement } from "@/queries/messaging/management";
+import { searchPagesOptions, useJoinSearchConversation } from "@/queries/context/search";
 import { toast } from "sonner";
 
 export function WorkspaceSearch({
@@ -24,11 +23,10 @@ export function WorkspaceSearch({
   query: string;
 }) {
   const [kind, setKind] = useState<SearchKind>(initialKind);
-  const { join } = useConversationManagement(organizationId);
   const search = useSearchDebounce(query, JSON.stringify([organizationId, kind]));
+  const join = useJoinSearchConversation({ organizationId, query: search.query, kind });
   const pages = searchPagesOptions({ organizationId, query: search.query, kind });
   const results = useInfiniteQuery({ ...pages, enabled: !search.pending });
-  const client = useQueryClient();
   return (
     <WorkspaceSearchView
       query={query}
@@ -57,22 +55,6 @@ export function WorkspaceSearch({
       joiningId={join.isPending ? join.variables : undefined}
       onJoin={(conversationId) =>
         join.mutate(conversationId, {
-          // Mark the joined row in place instead of refetching every loaded page.
-          onSuccess: () =>
-            client.setQueryData(
-              pages.queryKey,
-              (data) =>
-                data && {
-                  ...data,
-                  pages: data.pages.map((page) =>
-                    page.map((item) =>
-                      item.conversationId === conversationId && item.membership
-                        ? { ...item, membership: "joined" as const }
-                        : item,
-                    ),
-                  ),
-                },
-            ),
           onError: (error) =>
             toast.error(
               actionErrorMessage(error, "We couldn’t join the channel. Please try again."),
