@@ -1,0 +1,80 @@
+import { useRef, useState, type ReactNode } from "react";
+
+import { ConfirmDialog } from "./confirm-dialog";
+import { useFocusReturn } from "./use-focus-return";
+import { SettingsCard } from "@/components/layout/settings-section";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
+
+export function DeleteRecordCard({
+  title,
+  description,
+  confirmTitle,
+  confirmDescription,
+  pending,
+  error,
+  errorDescription,
+  onDelete,
+  onReset,
+  onRestoreFocus,
+}: {
+  title: string;
+  description: ReactNode;
+  confirmTitle: string;
+  confirmDescription: ReactNode;
+  pending: boolean;
+  error?: Error | string | null;
+  errorDescription: string;
+  onDelete: () => Promise<void>;
+  onReset: () => void;
+  onRestoreFocus?: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const button = useRef<HTMLButtonElement>(null);
+  const focusReturn = useFocusReturn(button);
+  return (
+    <>
+      <SettingsCard tone="destructive" title={title} description={description}>
+        <Button
+          ref={button}
+          className="w-fit"
+          variant="destructive-ghost"
+          disabled={pending}
+          onClick={() => {
+            focusReturn.remember();
+            onReset();
+            setConfirming(true);
+          }}
+        >
+          <Trash2 aria-hidden="true" />
+          {title}
+        </Button>
+      </SettingsCard>
+      {confirming && (
+        <ConfirmDialog
+          title={confirmTitle}
+          description={confirmDescription}
+          destructive
+          confirmLabel={title}
+          pendingLabel="Deleting…"
+          pending={pending}
+          error={error}
+          errorDescription={errorDescription}
+          onRestoreFocus={() => {
+            if (button.current?.isConnected) focusReturn.restore();
+            else onRestoreFocus?.();
+          }}
+          onClose={() => {
+            setConfirming(false);
+            onReset();
+          }}
+          onConfirm={() => {
+            void onDelete()
+              .then(() => setConfirming(false))
+              .catch(() => {});
+          }}
+        />
+      )}
+    </>
+  );
+}

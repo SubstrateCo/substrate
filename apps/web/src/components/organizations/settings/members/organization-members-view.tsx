@@ -5,9 +5,10 @@ import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
-import { isAccessFailure } from "@/components/feedback/request-failure";
+import { StaleNotice } from "@/components/feedback/stale-notice";
 import { SettingsPanel } from "@/components/layout/settings-page";
 import { roleLabel, type OrganizationRole } from "@/lib/organizations/member-policy";
+import type { ResourceStatus } from "@/lib/resource-state";
 import { Users } from "lucide-react";
 
 type PendingChange =
@@ -23,6 +24,7 @@ const roleCapabilities: Record<OrganizationRole, string> = {
 export function OrganizationMembers({
   organizationName,
   members,
+  state,
   loading,
   error,
   onRetry,
@@ -35,6 +37,7 @@ export function OrganizationMembers({
 }: {
   organizationName?: string;
   members?: MemberRowData[];
+  state: ResourceStatus;
   loading: boolean;
   error?: Error | null;
   onRetry: () => void;
@@ -54,8 +57,8 @@ export function OrganizationMembers({
       launcher.current.focus();
     else list.current?.focus();
   };
-  const blocked = isAccessFailure(error);
-  const visibleMembers = blocked ? undefined : members;
+  const blocked = state === "unavailable";
+  const visibleMembers = members;
   const close = () => {
     setPending(undefined);
     onResetChange();
@@ -75,13 +78,8 @@ export function OrganizationMembers({
         {error && (!members || blocked) && (
           <ErrorState title="Couldn’t load members" onRetry={blocked ? undefined : onRetry} />
         )}
-        {error && members && !blocked && (
-          <ErrorState
-            compact
-            title="Couldn’t refresh members"
-            description="This list may be out of date."
-            onRetry={onRetry}
-          />
+        {state === "stale" && (
+          <StaleNotice onRetry={onRetry}>This list may be out of date.</StaleNotice>
         )}
         {visibleMembers?.length === 0 && (
           <div className="rounded-xl border">

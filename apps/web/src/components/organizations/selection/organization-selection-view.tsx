@@ -5,17 +5,18 @@ import { AuthNavLink } from "../../auth/auth-link";
 import { ContentNotice } from "../../feedback/content-notice";
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
-import { isAccessFailure } from "../../feedback/request-failure";
 import { Button } from "../../ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
 import { Item } from "../../ui/item";
 import { Separator } from "../../ui/separator";
 import { Spinner } from "../../ui/spinner";
 import { initials } from "@/lib/people/initials";
+import type { ResourceStatus } from "@/lib/resource-state";
 import { Building2, ChevronRight, Plus } from "lucide-react";
 
 export function OrganizationSelection({
   organizations,
+  state,
   loading = false,
   pending = false,
   loadError,
@@ -25,6 +26,7 @@ export function OrganizationSelection({
   createForm,
 }: {
   organizations?: { id: string; name: string }[];
+  state: ResourceStatus;
   loading?: boolean;
   pending?: boolean;
   loadError?: Error | null;
@@ -48,10 +50,7 @@ export function OrganizationSelection({
     retryOrigin.current = null;
   }, [loading, loadError, organizations]);
 
-  const listed =
-    !isAccessFailure(loadError) && (!loadError || organizations !== undefined)
-      ? (organizations ?? [])
-      : [];
+  const listed = organizations ?? [];
   // With workspaces to open, creating another is a secondary, collapsed step.
   const showCreate = creating || (!loading && listed.length === 0);
 
@@ -66,7 +65,7 @@ export function OrganizationSelection({
         </>
       }
     >
-      {loading && !organizations?.length && !isAccessFailure(loadError) && (
+      {state === "loading" && !organizations?.length && (
         <LoadingState label="Loading workspaces." rows={2} />
       )}
       {loadError && (

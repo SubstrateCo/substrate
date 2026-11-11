@@ -1,17 +1,14 @@
 import type { AgentStatusView } from "@substrate/contracts/agent-work";
 
-import { useState } from "react";
+import type { ComponentProps } from "react";
 
 import { Routines } from "../routines/routines";
 import { AgentActivity } from "./agent-activity";
 import { AgentPageView } from "./agent-page-view";
-import {
-  isAgentSettingsSection,
-  type AgentPageSection,
-  type AgentSettingsSection,
-} from "./agent-sections";
+import { isAgentSettingsSection, type AgentPageSection } from "./agent-sections";
 import { AgentSettings } from "@/components/agents/agent-settings";
 import { ContentNotice } from "@/components/feedback/content-notice";
+import { UnsavedDraftsProvider, useDraftKeys } from "@/components/feedback/unsaved-drafts";
 import { SettingsContent } from "@/components/layout/settings-page";
 import { Button } from "@/components/ui/button";
 import { agentStatus, noDesktopLabel } from "@/lib/agent-work/status";
@@ -21,7 +18,15 @@ import { Laptop } from "lucide-react";
  * One agent's page. Activity and routines live on the agent's home desktop; other devices say
  * where to open them. Settings work on every device.
  */
-export function AgentPage({
+export function AgentPage(props: ComponentProps<typeof AgentPageContent>) {
+  return (
+    <UnsavedDraftsProvider key={props.agentId}>
+      <AgentPageContent {...props} />
+    </UnsavedDraftsProvider>
+  );
+}
+
+function AgentPageContent({
   userId,
   organizationId,
   agentId,
@@ -46,7 +51,7 @@ export function AgentPage({
   onTranscript: (turnId: string) => void;
   onDeleted: () => void;
 }) {
-  const [unsaved, setUnsaved] = useState<readonly AgentSettingsSection[]>([]);
+  const unsaved = useDraftKeys().filter(isAgentSettingsSection);
   const device = status?.device;
   const unavailable = !homedHere && (
     <ContentNotice
@@ -76,7 +81,7 @@ export function AgentPage({
           agentId={agentId}
           section={section}
           onSectionChange={onSectionChange}
-          onUnsavedSectionsChange={setUnsaved}
+          runSettingsDirty={unsaved.includes("run")}
           onClose={onDeleted}
         />
       </SettingsContent>

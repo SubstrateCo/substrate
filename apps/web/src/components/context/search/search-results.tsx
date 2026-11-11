@@ -3,7 +3,6 @@ import { SearchResult, type SearchResultItem } from "@/components/context/search
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { PendingButton } from "@/components/feedback/pending-button";
-import { isAccessFailure } from "@/components/feedback/request-failure";
 import { CommandGroup, CommandList } from "@/components/ui/command";
 
 export function SearchResults({
@@ -34,7 +33,7 @@ export function SearchResults({
   loadingMore: boolean;
   onMore: () => void;
 }) {
-  const visible = isAccessFailure(error) ? [] : results;
+  const visible = results;
   const trimmed = query.trim();
   let heading = trimmed ? "Results" : "Jump to";
   if (browsing) heading = "Browse channels";
@@ -82,7 +81,7 @@ export function SearchResults({
           )}
         </CommandGroup>
       )}
-      {!isAccessFailure(error) && visible.length > 0 && hasMore && (
+      {visible.length > 0 && hasMore && (
         <div className="px-2 pb-2 text-center">
           <PendingButton
             variant="ghost"

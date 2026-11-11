@@ -1,6 +1,7 @@
 import { useRef } from "react";
 
 import type { AttachmentDraft, AttachmentUploads } from "./use-attachment-uploads";
+import { FormMessage } from "@/components/feedback/form-message";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { FileText, Paperclip, RefreshCw, X } from "lucide-react";
@@ -113,11 +114,7 @@ export function AttachmentDraftList({
           ))}
         </ul>
       )}
-      {uploads.error && (
-        <p role="alert" className="text-sm text-destructive">
-          {uploads.error}
-        </p>
-      )}
+      <FormMessage error={uploads.error} />
     </>
   );
 }

@@ -1,6 +1,5 @@
 import type { KeyboardEvent } from "react";
 
-import { isAccessFailure } from "../../feedback/request-failure";
 import {
   PageSidebar,
   PageSidebarContent,
@@ -11,6 +10,7 @@ import type { DirectMessageAgent } from "@/components/messaging/conversations/co
 import { ConversationSection } from "@/components/messaging/conversations/conversation-section";
 import type { Conversation } from "@/lib/messaging/conversations";
 import type { PickerPerson } from "@/lib/people/people-picker";
+import type { ResourceStatus } from "@/lib/resource-state";
 
 /** ArrowUp and ArrowDown move focus between conversations, across sections. */
 function moveBetweenConversations(event: KeyboardEvent<HTMLDivElement>) {
@@ -28,6 +28,7 @@ function moveBetweenConversations(event: KeyboardEvent<HTMLDivElement>) {
 
 export function ConversationSidebar({
   conversations,
+  state,
   selectedId,
   people,
   agents,
@@ -40,6 +41,7 @@ export function ConversationSidebar({
   onRetry,
 }: {
   conversations: Conversation[];
+  state: ResourceStatus;
   selectedId?: string;
   people?: PickerPerson[];
   agents?: DirectMessageAgent[];
@@ -52,9 +54,13 @@ export function ConversationSidebar({
   onRetry?: () => void;
 }) {
   const errorState = error && (
-    <PageSidebarErrorState title="Couldn’t load conversations" error={error} onRetry={onRetry} />
+    <PageSidebarErrorState
+      title="Couldn’t load conversations"
+      unavailable={state === "unavailable"}
+      onRetry={state === "unavailable" ? undefined : onRetry}
+    />
   );
-  const showList = !isAccessFailure(error) && (!error || conversations.length > 0);
+  const showList = state !== "unavailable" && (!error || conversations.length > 0);
   return (
     <PageSidebar id="conversation-sidebar" aria-label="Conversations" aria-busy={loading}>
       <PageSidebarHeader title="Messages" />

@@ -4,10 +4,11 @@ import {
   type AgentTriggerSetting,
 } from "@substrate/contracts/agents";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { PendingButton } from "@/components/feedback/pending-button";
+import { useRegisterDraft } from "@/components/feedback/unsaved-drafts";
 import {
   SettingsCard,
   SettingsFooter,
@@ -27,7 +28,6 @@ export function AgentRunSettingsView({
   error,
   onRunHere,
   onSave,
-  onDirtyChange,
 }: {
   name: string;
   settings: AgentRunSettings;
@@ -38,7 +38,6 @@ export function AgentRunSettingsView({
   error?: Error | null;
   onRunHere: () => void;
   onSave: (triggers: AgentTriggerSetting[]) => void;
-  onDirtyChange: (dirty: boolean) => void;
 }) {
   const [triggers, setTriggers] = useState(settings.triggers);
   const update = (kind: AgentTriggerSetting["kind"], change: Partial<AgentTriggerSetting>) =>
@@ -50,10 +49,7 @@ export function AgentRunSettingsView({
     (trigger) =>
       settings.triggers.find((saved) => saved.kind === trigger.kind)?.enabled !== trigger.enabled,
   );
-  useEffect(() => {
-    onDirtyChange(dirty);
-    return () => onDirtyChange(false);
-  }, [dirty, onDirtyChange]);
+  useRegisterDraft("run", dirty);
   return (
     <SettingsSection
       title="Run settings"

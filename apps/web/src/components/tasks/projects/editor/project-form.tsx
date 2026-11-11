@@ -1,3 +1,5 @@
+import type { ComponentProps } from "react";
+
 import { ProjectForm as ProjectFormView } from "@/components/tasks/projects/editor/project-form-view";
 import type { Project } from "@/components/tasks/types";
 import { useTasksMutation } from "@/queries/tasks/mutations";
@@ -6,12 +8,12 @@ export function ProjectForm({
   organizationId,
   project,
   onSaved,
-  onCancel,
+  renderCreate,
 }: {
   organizationId: string;
   project?: Project;
   onSaved?: (id: string) => void;
-  onCancel?: () => void;
+  renderCreate?: ComponentProps<typeof ProjectFormView>["renderCreate"];
 }) {
   const save = useTasksMutation(organizationId);
   return (
@@ -19,7 +21,7 @@ export function ProjectForm({
       project={project}
       pending={save.isPending}
       error={save.error}
-      onCancel={onCancel}
+      renderCreate={renderCreate}
       onSubmit={(draft) =>
         save.mutate(
           project

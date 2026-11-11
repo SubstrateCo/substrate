@@ -1,17 +1,18 @@
 import type { TaskStatus } from "@substrate/contracts/tasks";
 
-import { useRef, useState, type ReactNode, type RefObject } from "react";
+import { useRef, useState, type ComponentProps, type ReactNode, type RefObject } from "react";
 
-import { TaskInspectorActive } from "../detail/task-detail";
+import { TaskInspectorActive } from "../detail/task-inspector-context";
 import { TaskList } from "../list/task-list";
 import type { ProjectDetail, Task } from "../types";
-import { TaskCreationDialog } from "./pane/task-creation-dialog";
 import { useTaskPanel } from "./pane/use-task-panel";
 import { ProjectIcon } from "./project-icon";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
-import { isAccessFailure } from "@/components/feedback/request-failure";
+import { FormDialog, type FormDialogEditor } from "@/components/feedback/form-dialog";
+import { StaleNotice } from "@/components/feedback/stale-notice";
+import { UnsavedDraftsProvider, useDraftKeys } from "@/components/feedback/unsaved-drafts";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageAside, PageContent } from "@/components/layout/page-layout";
@@ -20,6 +21,8 @@ import { ProjectLoading } from "@/components/tasks/projects/project-loading";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import type { ResourceStatus } from "@/lib/resource-state";
+import type { ProjectCapabilities } from "@/lib/tasks/project-capabilities";
 import { Columns3, ListTodo, Plus, Unlink, X } from "lucide-react";
 
 const viewOptions = [
@@ -31,10 +34,18 @@ const viewOptions = [
  * A project page and, when a task is open, the task inspector beside it. It renders the page's
  * content pane and aside, so it sits directly inside a PageLayout.
  */
-export function ProjectPane({
+export function ProjectPane(props: ComponentProps<typeof ProjectPaneContent>) {
+  return (
+    <UnsavedDraftsProvider>
+      <ProjectPaneContent {...props} />
+    </UnsavedDraftsProvider>
+  );
+}
+
+function ProjectPaneContent({
   data,
-  loading = false,
-  error,
+  state,
+  capabilities,
   onRetry,
   editor,
   sharing,
@@ -48,28 +59,29 @@ export function ProjectPane({
   statusPending = false,
 }: {
   data?: ProjectDetail;
-  loading?: boolean;
+  state: ResourceStatus;
+  capabilities: ProjectCapabilities;
   error?: Error | null;
   onRetry: () => void;
   /** Project name and description editor, shown to editors in Settings. */
   editor: ReactNode;
   /** Project access, shown in Settings. */
   sharing: ReactNode;
-  renderTaskForm: (
-    detail: ProjectDetail,
-    parentTaskEntityId: string | undefined,
-    onSaved: (id: string) => void,
-    onCancel: () => void,
-    status?: TaskStatus,
-  ) => ReactNode;
-  renderTaskDetail: (
-    detail: ProjectDetail,
-    task: Task,
-    onClose: () => void,
-    onSubtask: () => void,
-    onSelectTask: (id: string) => void,
-    onDirtyChange: (dirty: boolean) => void,
-  ) => ReactNode;
+  renderTaskForm: (props: {
+    detail: ProjectDetail;
+    parentTaskEntityId: string | undefined;
+    onSaved: (id: string) => void;
+    onCancel: () => void;
+    status?: TaskStatus;
+    renderCreate: (editor: FormDialogEditor) => ReactNode;
+  }) => ReactNode;
+  renderTaskDetail: (props: {
+    detail: ProjectDetail;
+    task: Task;
+    onClose: () => void;
+    onSubtask: () => void;
+    onSelectTask: (id: string) => void;
+  }) => ReactNode;
   selectedTaskId: string | null;
   onSelectTask: (id: string | null) => void;
   onTaskStatusChange: (task: Task, status: TaskStatus) => void;
@@ -79,12 +91,12 @@ export function ProjectPane({
 }) {
   const [tab, setTab] = useState("tasks");
   const [view, setView] = useState<"list" | "board">("list");
-  const [taskDirty, setTaskDirty] = useState(false);
+  const taskDirty = useDraftKeys().length > 0;
   const [pendingTab, setPendingTab] = useState<string | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
   const lastInspectorFocus = useRef<HTMLElement | null>(null);
   const restoreDestination = useRef(false);
-  const detail = isAccessFailure(error) ? undefined : data;
+  const detail = data;
   const { panel, inspector, newTaskButton, restoreFocus } = useTaskPanel({
     selectedTaskId,
     onSelectTask,
@@ -93,28 +105,31 @@ export function ProjectPane({
   if (!detail)
     return (
       <PageContent>
-        {loading ? (
+        {state === "loading" ? (
           <ProjectLoading />
         ) : (
           <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-6">
             <ErrorState
-              title={isAccessFailure(error) ? "Project unavailable" : "Couldn’t load project"}
+              title={state === "unavailable" ? "Project unavailable" : "Couldn’t load project"}
               description={
-                isAccessFailure(error)
+                state === "unavailable"
                   ? "This project was removed or you no longer have access."
                   : undefined
               }
-              onRetry={isAccessFailure(error) ? undefined : onRetry}
+              onRetry={state === "unavailable" ? undefined : onRetry}
             />
           </div>
         )}
       </PageContent>
     );
-  const canEdit = detail.level === "edit" || detail.level === "owner";
+  const { canEdit } = capabilities;
   const { selectedTaskId: openTaskId } = panel;
   const selected = detail.tasks.find((task) => task.entityId === openTaskId);
   const tasksById = new Map(detail.tasks.map((task) => [task.entityId, task] as const));
   const creatingParent = panel.creating?.parentTaskEntityId;
+  const creationPlace = creatingParent
+    ? `In ${detail.project.name}, under ${tasksById.get(creatingParent)?.title ?? "a task you can’t open"}`
+    : `In ${detail.project.name}`;
   return (
     <>
       <PageContent>
@@ -189,10 +204,8 @@ export function ProjectPane({
                 )}
               </div>
             </div>
-            {error && (
-              <p role="status" className="border-b px-6 py-2 text-xs text-muted-foreground">
-                This project may be out of date.
-              </p>
+            {state === "stale" && (
+              <StaleNotice className="border-b px-6">This project may be out of date.</StaleNotice>
             )}
             <TabsContent
               value="tasks"
@@ -243,14 +256,13 @@ export function ProjectPane({
         }}
       >
         {selected ? (
-          renderTaskDetail(
+          renderTaskDetail({
             detail,
-            selected,
-            panel.close,
-            () => panel.createSubtask(selected.entityId),
-            panel.select,
-            setTaskDirty,
-          )
+            task: selected,
+            onClose: panel.close,
+            onSubtask: () => panel.createSubtask(selected.entityId),
+            onSelectTask: panel.select,
+          })
         ) : (
           <>
             <header className="flex h-12 shrink-0 items-center justify-end border-b px-4">
@@ -276,26 +288,31 @@ export function ProjectPane({
           </>
         )}
       </TaskAside>
-      {panel.creating && canEdit && (
-        <TaskCreationDialog
-          subtask={!!creatingParent}
-          projectName={detail.project.name}
-          parentTitle={creatingParent ? tasksById.get(creatingParent)?.title : undefined}
-          onCancel={panel.cancel}
-          onRestoreFocus={restoreFocus}
-        >
-          {renderTaskForm(
-            detail,
-            creatingParent,
-            (id) => {
-              setTab("tasks");
-              panel.saved(id);
-            },
-            panel.cancel,
-            panel.creating.status,
-          )}
-        </TaskCreationDialog>
-      )}
+      {panel.creating &&
+        canEdit &&
+        renderTaskForm({
+          detail,
+          parentTaskEntityId: creatingParent,
+          onSaved: (id) => {
+            setTab("tasks");
+            panel.saved(id);
+          },
+          onCancel: panel.cancel,
+          status: panel.creating.status,
+          renderCreate: ({ fields, ...editor }) => (
+            <FormDialog
+              {...editor}
+              title={creatingParent ? "New subtask" : "New task"}
+              description={<span title={creationPlace}>{creationPlace}</span>}
+              saveLabel={creatingParent ? "Create subtask" : "Create task"}
+              pendingLabel="Saving task…"
+              onClose={panel.cancel}
+              onRestoreFocus={restoreFocus}
+            >
+              {fields}
+            </FormDialog>
+          ),
+        })}
       {pendingTab && (
         <ConfirmDialog
           title="Discard unsaved changes?"
@@ -317,7 +334,6 @@ export function ProjectPane({
           }}
           onConfirm={() => {
             restoreDestination.current = true;
-            setTaskDirty(false);
             setTab(pendingTab);
             setPendingTab(null);
           }}

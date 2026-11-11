@@ -9,6 +9,7 @@ import {
 } from "@/components/context/links/link-message-work-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
+import { resourceState } from "@/lib/resource-state";
 import { invalidateMessageWork } from "@/queries/context/mutations";
 import { searchOptions } from "@/queries/context/search";
 import { projectsQueryOptions } from "@/queries/tasks/options";
@@ -78,9 +79,10 @@ export function LinkMessageWork({
   });
   return (
     <LinkMessageWorkView
+      state={resourceState(results).status}
       query={query}
       kind={kind}
-      results={(search.pending ? [] : (results.data ?? [])).map((item) => ({
+      results={(search.pending ? [] : (resourceState(results).data ?? [])).map((item) => ({
         id: item.id,
         kind,
         title: item.title,

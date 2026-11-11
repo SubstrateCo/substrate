@@ -4,7 +4,6 @@ import { useState } from "react";
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
 import { PendingButton } from "../../feedback/pending-button";
-import { isAccessFailure } from "../../feedback/request-failure";
 import { Button } from "../../ui/button";
 import { Command, CommandEmpty, CommandInput, CommandList } from "../../ui/command";
 import {
@@ -18,6 +17,7 @@ import {
 } from "../../ui/dialog";
 import { LinkWorkItem } from "./link-work-item";
 import { SegmentedControl } from "@/components/forms/segmented-control";
+import type { ResourceStatus } from "@/lib/resource-state";
 import { Link2 } from "lucide-react";
 
 const kindOptions = [
@@ -35,6 +35,7 @@ export type LinkableWork = {
 
 export function LinkMessageWork({
   query,
+  state,
   kind,
   results,
   linkedIds,
@@ -48,6 +49,7 @@ export function LinkMessageWork({
   onClose,
 }: {
   query: string;
+  state: ResourceStatus;
   kind: "task" | "project";
   results: LinkableWork[];
   linkedIds: ReadonlySet<string>;
@@ -62,11 +64,10 @@ export function LinkMessageWork({
 }) {
   // Selection survives tab and search changes, so tasks and projects can be linked together.
   const [chosen, setChosen] = useState(() => new Map<string, LinkableWork>());
-  const visible = isAccessFailure(error) ? [] : results;
+  const visible = results;
   // Items that became linked, for example after a partial failure, leave the selection.
-  const selection = isAccessFailure(error)
-    ? []
-    : [...chosen.values()].filter((item) => !linkedIds.has(item.id));
+  const selection =
+    state === "unavailable" ? [] : [...chosen.values()].filter((item) => !linkedIds.has(item.id));
   const toggle = (item: LinkableWork) =>
     setChosen((current) => {
       const next = new Map(current);

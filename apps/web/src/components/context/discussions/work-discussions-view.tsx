@@ -3,7 +3,6 @@ import { useState, type ReactNode } from "react";
 import { ContentNotice } from "../../feedback/content-notice";
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
-import { isAccessFailure } from "../../feedback/request-failure";
 import { Button } from "../../ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
 import { DiscussionItem, type Discussion } from "./discussion-item";
@@ -31,7 +30,7 @@ export function WorkDiscussions({
   children?: ReactNode;
 }) {
   const [open, setOpen] = useState<boolean>();
-  const rows = isAccessFailure(error) ? [] : items;
+  const rows = items;
   const seen = new Set<string>();
   const uniqueRows = rows.filter((item) => {
     const key = `${item.messageId}:${item.purpose}`;

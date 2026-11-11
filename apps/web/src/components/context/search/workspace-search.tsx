@@ -9,6 +9,7 @@ import {
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { messageHref, workHref } from "@/lib/navigation/record-links";
+import { resourceState } from "@/lib/resource-state";
 import { searchPagesOptions } from "@/queries/context/search";
 import { useConversationManagement } from "@/queries/messaging/management";
 import { toast } from "sonner";
@@ -32,20 +33,22 @@ export function WorkspaceSearch({
     <WorkspaceSearchView
       query={query}
       kind={kind}
-      results={(search.pending ? [] : (results.data?.pages.flat() ?? [])).map((item) => ({
-        ...item,
-        href: item.conversationId
-          ? messageHref(
-              organizationId,
-              item.conversationId,
-              item.kind === "message" ? item.id : undefined,
-            )
-          : workHref(
-              organizationId,
-              item.projectEntityId!,
-              item.kind === "task" ? item.id : undefined,
-            ),
-      }))}
+      results={(search.pending ? [] : (resourceState(results).data?.pages.flat() ?? [])).map(
+        (item) => ({
+          ...item,
+          href: item.conversationId
+            ? messageHref(
+                organizationId,
+                item.conversationId,
+                item.kind === "message" ? item.id : undefined,
+              )
+            : workHref(
+                organizationId,
+                item.projectEntityId!,
+                item.kind === "task" ? item.id : undefined,
+              ),
+        }),
+      )}
       loading={search.pending || results.isPending}
       error={search.pending ? null : results.error}
       hasMore={!search.pending && results.hasNextPage}

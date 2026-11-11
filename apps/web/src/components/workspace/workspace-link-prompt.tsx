@@ -1,5 +1,5 @@
-import { FormMessage } from "../auth/form-message";
 import { PendingButton } from "../feedback/pending-button";
+import { FormMessage } from "@/components/feedback/form-message";
 import { PageHeader } from "@/components/layout/page-header";
 
 export function WorkspaceLinkPrompt({

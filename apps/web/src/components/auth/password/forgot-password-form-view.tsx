@@ -3,7 +3,7 @@ import { EmailField, NativeForm } from "../../forms/native-form";
 import { Button } from "../../ui/button";
 import { AuthFrame } from "../auth-frame";
 import { AuthLink } from "../auth-link";
-import { FormMessage } from "../form-message";
+import { FormMessage } from "@/components/feedback/form-message";
 
 export function ForgotPasswordForm({
   pending = false,

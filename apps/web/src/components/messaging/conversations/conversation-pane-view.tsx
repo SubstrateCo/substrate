@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { ContentNotice } from "../../feedback/content-notice";
 import { PaneState } from "../../feedback/pane-state";
-import { isAccessFailure } from "../../feedback/request-failure";
+import { StaleNotice } from "@/components/feedback/stale-notice";
 import { PageContent, PageLayout } from "@/components/layout/page-layout";
 import { ConversationHeader } from "@/components/messaging/conversations/conversation-header";
 import {
@@ -10,18 +10,18 @@ import {
   conversationName,
   type Conversation,
 } from "@/lib/messaging/conversations";
+import type { ResourceStatus } from "@/lib/resource-state";
 
 export function ConversationPane({
   conversation,
   viewerId,
-  loading = false,
+  state,
   error,
   onRetry,
   addingMembers = false,
   onToggleMembers,
   membersForm,
   messages,
-  hasLoaded = !!messages,
   composer,
   thread,
   actions,
@@ -29,32 +29,27 @@ export function ConversationPane({
 }: {
   actions?: ReactNode;
   leftNotice?: ReactNode;
-  conversation: Conversation;
+  conversation: Conversation | null;
   /** The signed-in user, so a DM header shows the other person. */
   viewerId?: string;
-  loading?: boolean;
+  state: ResourceStatus;
   error?: Error | null;
   onRetry: () => void;
   addingMembers?: boolean;
   onToggleMembers: () => void;
   membersForm?: ReactNode;
   messages?: ReactNode;
-  hasLoaded?: boolean;
   composer: ReactNode;
   thread?: ReactNode;
 }) {
-  const title = isAccessFailure(error)
-    ? "Conversation unavailable"
-    : conversationName(conversation);
-  const blocked = !!error && (!hasLoaded || isAccessFailure(error));
-  const initialLoading = loading && !hasLoaded;
+  const title = conversation ? conversationName(conversation) : "Conversation unavailable";
+  const blocked = state === "error" || state === "unavailable";
+  const initialLoading = state === "loading";
   const showThread = !blocked && !initialLoading && !!thread;
-  const hidden = isAccessFailure(error);
   let kind: "private" | "public" | "group" | "dm" | undefined;
-  if (!hidden && conversation.kind === "channel")
-    kind = conversation.private ? "private" : "public";
-  if (!hidden && conversation.kind !== "channel") kind = conversation.kind;
-  const members = hidden ? [] : conversation.members;
+  if (conversation?.kind === "channel") kind = conversation.private ? "private" : "public";
+  if (conversation && conversation.kind !== "channel") kind = conversation.kind;
+  const members = conversation?.members ?? [];
   return (
     <PageLayout id="conversation" aria-label="Conversation">
       <PageContent>
@@ -64,27 +59,27 @@ export function ConversationPane({
             kind={kind}
             viewerId={viewerId}
             members={members}
-            organizations={hidden ? [] : conversation.organizations}
+            organizations={conversation?.organizations ?? []}
             addingMembers={addingMembers}
             onToggleMembers={
-              !blocked && conversation.kind !== "dm" && conversation.canManage
+              !blocked && conversation && conversation.kind !== "dm" && conversation.canManage
                 ? onToggleMembers
                 : undefined
             }
             actions={!blocked && actions}
           />
           {!blocked && addingMembers && membersForm}
-          {error && !blocked && (
-            <p role="status" className="px-4 pt-3 text-xs text-muted-foreground">
-              Messages may be out of date.
-            </p>
-          )}
+          {state === "stale" && <StaleNotice>Messages may be out of date.</StaleNotice>}
           {blocked && (
-            <PaneState label="Conversation unavailable" error={error} onRetry={onRetry} />
+            <PaneState
+              label="Conversation unavailable"
+              error={error}
+              onRetry={state === "unavailable" ? undefined : onRetry}
+            />
           )}
           {!blocked && initialLoading && <PaneState label="Loading messages…" />}
           {!blocked && !initialLoading && messages}
-          {!blocked && !initialLoading && !messages && (
+          {!blocked && !initialLoading && !messages && conversation && (
             <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center overflow-y-auto p-4 wrap-anywhere">
               <ContentNotice
                 title={
@@ -98,7 +93,7 @@ export function ConversationPane({
           )}
           {!blocked && (
             <div className="mt-auto shrink-0">
-              {!conversation.joined && leftNotice}
+              {conversation && !conversation.joined && leftNotice}
               {composer}
             </div>
           )}

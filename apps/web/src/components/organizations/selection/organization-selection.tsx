@@ -5,6 +5,7 @@ import { SignOutButton } from "@/components/auth/sign-out/sign-out-button";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { OrganizationSelection as OrganizationSelectionView } from "@/components/organizations/selection/organization-selection-view";
 import { activateOrganization } from "@/lib/auth/organization";
+import { resourceState } from "@/lib/resource-state";
 import { organizationsQueryOptions } from "@/queries/organizations/options";
 import { toast } from "sonner";
 
@@ -19,7 +20,8 @@ export function OrganizationSelection({ destination = "/dashboard" }: { destinat
   });
   return (
     <OrganizationSelectionView
-      organizations={organizations.data}
+      organizations={resourceState(organizations).data}
+      state={resourceState(organizations).status}
       loading={organizations.isPending}
       pending={select.isPending}
       loadError={organizations.error}

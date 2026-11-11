@@ -30,6 +30,7 @@ export function ProjectPicture({
   });
   return (
     <PictureSettings
+      state="ready"
       title="Project icon"
       description="Shown beside this project’s name. Anyone who can view the project can see its icon."
       kind="project-icon"

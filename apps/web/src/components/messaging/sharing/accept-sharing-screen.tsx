@@ -6,9 +6,9 @@ import { acceptSharingInvitation, declineSharingInvitation } from "@/api/messagi
 import { ApiError } from "@/api/result";
 import { AuthFrame } from "@/components/auth/auth-frame";
 import { AuthNavLink } from "@/components/auth/auth-link";
-import { FormMessage } from "@/components/auth/form-message";
 import { SignOutButton } from "@/components/auth/sign-out/sign-out-button";
 import { ErrorState } from "@/components/feedback/error-state";
+import { FormMessage } from "@/components/feedback/form-message";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { SharingAcceptanceForm } from "@/components/messaging/sharing/sharing-acceptance-form";

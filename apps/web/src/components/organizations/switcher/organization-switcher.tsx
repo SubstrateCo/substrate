@@ -5,6 +5,7 @@ import { useState } from "react";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { OrganizationSwitcher as OrganizationSwitcherView } from "@/components/organizations/switcher/organization-switcher-view";
 import { activateOrganization } from "@/lib/auth/organization";
+import { resourceState } from "@/lib/resource-state";
 import { organizationsQueryOptions } from "@/queries/organizations/options";
 import { toast } from "sonner";
 
@@ -37,7 +38,8 @@ export function OrganizationSwitcher({
       logo={logo}
       open={open}
       onOpenChange={setOpen}
-      organizations={organizations.data || []}
+      organizations={resourceState(organizations).data ?? []}
+      state={resourceState(organizations).status}
       pending={switchOrganization.isPending}
       loading={organizations.isPending}
       loadError={organizations.error}

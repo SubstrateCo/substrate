@@ -2,7 +2,6 @@ import { Link } from "@tanstack/react-router";
 
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
-import { isAccessFailure } from "../../feedback/request-failure";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +11,7 @@ import {
 } from "../../ui/dropdown-menu";
 import { OrganizationSwitcherItem } from "./organization-switcher-item";
 import { SwitcherTrigger } from "@/components/organizations/switcher/switcher-trigger";
+import type { ResourceStatus } from "@/lib/resource-state";
 import { Settings } from "lucide-react";
 
 export function OrganizationSwitcher({
@@ -21,8 +21,8 @@ export function OrganizationSwitcher({
   open,
   onOpenChange,
   organizations,
+  state,
   pending = false,
-  loading = false,
   loadError,
   onRetry,
   onSelect,
@@ -34,6 +34,7 @@ export function OrganizationSwitcher({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   organizations: { id: string; name: string; logo?: string | null }[];
+  state: ResourceStatus;
   pending?: boolean;
   loading?: boolean;
   loadError?: Error | null;
@@ -47,7 +48,7 @@ export function OrganizationSwitcher({
         <SwitcherTrigger name={name} logo={logo} pending={pending} />
         <DropdownMenuContent align="start" side="right" sideOffset={12}>
           <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
-          {loading && !organizations.length && !isAccessFailure(loadError) && (
+          {state === "loading" && !organizations.length && (
             <LoadingState label="Loading workspaces…" variant="compact" />
           )}
           {loadError && (
@@ -58,15 +59,14 @@ export function OrganizationSwitcher({
               onRetry={onRetry}
             />
           )}
-          {!isAccessFailure(loadError) &&
-            organizations.map((organization) => (
-              <OrganizationSwitcherItem
-                key={organization.id}
-                organization={organization}
-                current={organization.id === organizationId}
-                onSelect={() => onSelect(organization.id)}
-              />
-            ))}
+          {organizations.map((organization) => (
+            <OrganizationSwitcherItem
+              key={organization.id}
+              organization={organization}
+              current={organization.id === organizationId}
+              onSelect={() => onSelect(organization.id)}
+            />
+          ))}
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
             <Link to={manageHref} className="gap-3 px-2 py-2">

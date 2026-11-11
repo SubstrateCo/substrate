@@ -2,7 +2,7 @@ import { PendingButton } from "../../feedback/pending-button";
 import { EmailField, NativeField, NativeForm } from "../../forms/native-form";
 import { AuthFrame } from "../auth-frame";
 import { AuthLink } from "../auth-link";
-import { FormMessage } from "../form-message";
+import { FormMessage } from "@/components/feedback/form-message";
 
 export function SignupForm({
   pending = false,

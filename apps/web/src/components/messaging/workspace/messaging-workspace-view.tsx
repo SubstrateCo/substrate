@@ -1,15 +1,16 @@
 import { Children, useState, type ReactNode } from "react";
 
 import { PaneState } from "../../feedback/pane-state";
-import { isAccessFailure } from "../../feedback/request-failure";
 import { Button } from "../../ui/button";
 import { ComposerDraftProvider } from "../composer/composer-drafts";
 import { ConversationSidebar } from "../conversations/conversation-sidebar";
+import { StaleNotice } from "@/components/feedback/stale-notice";
 import { PageContent, PageLayout } from "@/components/layout/page-layout";
 import type { DirectMessageAgent } from "@/components/messaging/conversations/conversation-create-menu";
 import { WorkspaceEmpty } from "@/components/messaging/workspace/workspace-empty";
 import type { Conversation } from "@/lib/messaging/conversations";
 import type { PickerPerson } from "@/lib/people/people-picker";
+import type { ResourceStatus } from "@/lib/resource-state";
 import { ArrowLeft, PanelLeft } from "lucide-react";
 
 export function MessagingWorkspace({
@@ -24,7 +25,7 @@ export function MessagingWorkspace({
   onMessageAgent,
   renderCreate,
   loading = false,
-  hasLoaded,
+  state,
   error,
   onRetry,
   children,
@@ -47,7 +48,7 @@ export function MessagingWorkspace({
     handlers: { onClose: () => void; onRestoreFocus: () => void },
   ) => ReactNode;
   loading?: boolean;
-  hasLoaded: boolean;
+  state: ResourceStatus;
   error?: Error | null;
   onRetry: () => void;
   children?: ReactNode;
@@ -72,7 +73,7 @@ export function MessagingWorkspace({
     }
   };
   const hasContent = Children.toArray(children).length > 0;
-  const blocked = !!error && (!hasLoaded || isAccessFailure(error));
+  const blocked = state === "error" || state === "unavailable";
   return (
     <ComposerDraftProvider>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -94,6 +95,7 @@ export function MessagingWorkspace({
           mobileView={sidebarOpen ? "sidebar" : "content"}
         >
           <ConversationSidebar
+            state={state}
             loading={loading}
             error={blocked ? error : undefined}
             onRetry={onRetry}
@@ -107,12 +109,14 @@ export function MessagingWorkspace({
             onCreate={create}
           />
           <PageContent>
-            {blocked && <PaneState label="Workspace unavailable" error={error} onRetry={onRetry} />}
-            {!blocked && error && (
-              <p role="status" className="p-3 text-xs text-muted-foreground">
-                Conversations may be out of date.
-              </p>
+            {blocked && (
+              <PaneState
+                label="Workspace unavailable"
+                error={error}
+                onRetry={state === "unavailable" ? undefined : onRetry}
+              />
             )}
+            {state === "stale" && <StaleNotice>Conversations may be out of date.</StaleNotice>}
             {!blocked && hasContent && children}
             {!blocked && !hasContent && loading && (
               <PaneState label="Loading your conversations…" />

@@ -1,6 +1,6 @@
 import { PendingButton } from "../../feedback/pending-button";
 import { AuthFrame } from "../auth-frame";
-import { FormMessage } from "../form-message";
+import { FormMessage } from "@/components/feedback/form-message";
 
 export function DesktopSignIn({
   pending,

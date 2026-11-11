@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { WorkDiscussions } from "../discussions/work-discussions";
 import { TaskActivity } from "@/components/context/activity/task-activity";
 import { messageHref } from "@/lib/navigation/record-links";
+import { resourceState } from "@/lib/resource-state";
 import { activityOptions } from "@/queries/context/activity";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
 
@@ -24,7 +25,7 @@ export function TaskContext({
     <>
       <WorkDiscussions organizationId={organizationId} entityId={taskEntityId} visible={visible} />
       <TaskActivity
-        items={(activity.data ?? []).map(({ source, ...event }) => ({
+        items={(resourceState(activity).data ?? []).map(({ source, ...event }) => ({
           ...event,
           source: source && {
             href: messageHref(organizationId, source.conversationId, source.messageId),

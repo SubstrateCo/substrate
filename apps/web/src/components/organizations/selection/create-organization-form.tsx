@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 
-import { FormMessage } from "@/components/auth/form-message";
 import { formText } from "@/components/auth/form-values";
+import { FormMessage } from "@/components/feedback/form-message";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { CreateOrganizationForm as CreateOrganizationFormView } from "@/components/organizations/selection/create-organization-form-view";
 import { authClient } from "@/lib/auth/client";

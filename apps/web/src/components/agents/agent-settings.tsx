@@ -3,7 +3,7 @@ import type { HarnessKind } from "@substrate/contracts/harness";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import { AgentConfiguration } from "./device/agent-configuration";
 import { AgentForm, type AgentSection } from "./editors/agent-form";
@@ -11,18 +11,11 @@ import { AgentPicture } from "./editors/agent-picture";
 import { AgentRunSettings } from "./run-settings/agent-run-settings";
 import { saveAgent, deleteAgent } from "@/api/agents/requests";
 import type { AgentSettingsSection } from "@/components/agent-work/app/agent-sections";
-import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+import { DeleteRecordCard } from "@/components/feedback/delete-record-card";
 import { ErrorState } from "@/components/feedback/error-state";
+import { FormDialog } from "@/components/feedback/form-dialog";
 import { LoadingState } from "@/components/feedback/loading-state";
-import { SettingsCard } from "@/components/layout/settings-section";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { useFocusReturn } from "@/components/feedback/use-focus-return";
 import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
 import { queryKeys } from "@/queries/keys";
 import { toast } from "sonner";
@@ -37,7 +30,7 @@ export function AgentSettings({
   agentId,
   section = "general",
   onSectionChange,
-  onUnsavedSectionsChange,
+  runSettingsDirty = false,
   onClose,
   onCreated,
 }: {
@@ -46,8 +39,7 @@ export function AgentSettings({
   agentId?: string;
   section?: AgentSettingsSection;
   onSectionChange?: (section: AgentSettingsSection) => void;
-  /** The sections of this agent with unsaved changes, for the page's section list. */
-  onUnsavedSectionsChange?: (sections: readonly AgentSettingsSection[]) => void;
+  runSettingsDirty?: boolean;
   onClose: () => void;
   onCreated?: (id: string) => void;
 }) {
@@ -69,12 +61,7 @@ export function AgentSettings({
       await invalidate();
     },
   });
-  const [deleting, setDeleting] = useState(false);
-  const deleteLauncher = useRef<HTMLButtonElement>(null);
-  const createLauncher = useRef(
-    document.activeElement instanceof HTMLElement ? document.activeElement : null,
-  );
-  const [runSettingsDirty, setRunSettingsDirty] = useState(false);
+  const createFocus = useFocusReturn();
   const [runSettingsDraft, setRunSettingsDraft] = useState(0);
   const pending = save.isPending || remove.isPending;
   const agent = catalog.data?.agents.find((item) => item.id === agentId);
@@ -83,12 +70,17 @@ export function AgentSettings({
     const saved = await save.mutateAsync(input);
     if (!input.id) onCreated?.(saved.id);
   }
-  const renderConfiguration = (
-    harness: HarnessKind,
-    configured: AgentSection,
-    defaults: boolean,
-    configuredAgentId?: string,
-  ) => (
+  const renderConfiguration = ({
+    harness,
+    section: configured,
+    defaults,
+    agentId: configuredAgentId,
+  }: {
+    harness: HarnessKind;
+    section: AgentSection;
+    defaults: boolean;
+    agentId?: string;
+  }) => (
     <AgentConfiguration
       key={`${harness}/${configured}`}
       userId={userId}
@@ -119,7 +111,6 @@ export function AgentSettings({
           agent={agent}
           section={section}
           onSectionChange={onSectionChange}
-          onUnsavedSectionsChange={onUnsavedSectionsChange}
           picture={
             <AgentPicture
               userId={userId}
@@ -141,97 +132,52 @@ export function AgentSettings({
                 userId={userId}
                 name={agent.name}
                 settings={runSettings}
-                onDirtyChange={setRunSettingsDirty}
               />
             )
           }
           deleteAction={
-            <SettingsCard label="Delete agent" tone="destructive" className="py-4">
-              <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-                <div className="min-w-0 flex-1 space-y-0.5">
-                  <p className="text-sm font-medium">Delete agent</p>
-                  <p className="text-sm text-muted-foreground">
-                    Removes {agent.name} and its settings. Messages it posted stay.
-                  </p>
-                </div>
-                <Button
-                  ref={deleteLauncher}
-                  size="sm"
-                  variant="destructive-ghost"
-                  disabled={pending}
-                  aria-label={`Delete ${agent.name}`}
-                  onClick={() => setDeleting(true)}
-                >
-                  Delete agent
-                </Button>
-              </div>
-            </SettingsCard>
+            <DeleteRecordCard
+              title="Delete agent"
+              description={`Removes ${agent.name} and its settings. Messages it posted stay.`}
+              confirmTitle={`Delete ${agent.name}?`}
+              confirmDescription={`This removes ${agent.name} and its settings. Messages it already posted stay in their conversations. You can’t undo this.`}
+              pending={pending}
+              error={remove.error}
+              errorDescription="We couldn’t delete this agent. Try again."
+              onReset={() => remove.reset()}
+              onRestoreFocus={() =>
+                document.querySelector<HTMLButtonElement>('button[aria-label="New agent"]')?.focus()
+              }
+              onDelete={async () => {
+                await remove.mutateAsync(agent.id);
+                onClose();
+              }}
+            />
           }
         />
       )}
       {!agentId && (
-        <Dialog
-          open
-          onOpenChange={(open) => {
-            if (!open && !pending) onClose();
-          }}
-        >
-          <DialogContent
-            size="lg"
-            onCloseAutoFocus={(event) => {
-              if (createLauncher.current?.isConnected) {
-                event.preventDefault();
-                createLauncher.current.focus();
-              }
-            }}
-          >
-            <DialogHeader>
-              <DialogTitle>New agent</DialogTitle>
-              <DialogDescription>
-                An agent answers your messages and helps in conversations you add it to. It runs on
-                your desktop, and you can change everything later.
-              </DialogDescription>
-            </DialogHeader>
-            <AgentForm
-              userId={userId}
-              organizationId={organizationId}
-              renderConfiguration={renderConfiguration}
-              pending={pending}
-              onCancel={onClose}
-              onSave={async (input) => {
-                await onSave(input);
-                onClose();
-              }}
-            />
-          </DialogContent>
-        </Dialog>
-      )}
-      {agent && deleting && (
-        <ConfirmDialog
-          title={`Delete ${agent.name}?`}
-          description={`This removes ${agent.name} and its settings. Messages it already posted stay in their conversations. You can’t undo this.`}
-          confirmLabel="Delete agent"
-          pendingLabel="Deleting…"
-          destructive
+        <AgentForm
+          userId={userId}
+          organizationId={organizationId}
+          renderConfiguration={renderConfiguration}
           pending={pending}
-          error={remove.error}
-          errorDescription="We couldn’t delete this agent. Try again."
-          onRestoreFocus={() => {
-            if (deleteLauncher.current?.isConnected) deleteLauncher.current.focus();
-            else
-              document.querySelector<HTMLButtonElement>('button[aria-label="New agent"]')?.focus();
-          }}
-          onConfirm={() =>
-            remove.mutate(agent.id, {
-              onSuccess: () => {
-                setDeleting(false);
-                onClose();
-              },
-            })
-          }
-          onClose={() => {
-            setDeleting(false);
-            remove.reset();
+          renderCreate={({ fields, ...editor }) => (
+            <FormDialog
+              {...editor}
+              title="New agent"
+              description="An agent answers your messages and helps in conversations you add it to. It runs on your desktop, and you can change everything later."
+              saveLabel="Create agent"
+              pendingLabel="Creating…"
+              onClose={onClose}
+              onRestoreFocus={createFocus.restore}
+            >
+              {fields}
+            </FormDialog>
+          )}
+          onSave={async (input) => {
+            await onSave(input);
+            onClose();
           }}
         />
       )}

@@ -2,7 +2,6 @@ import { useContext, type ReactNode } from "react";
 
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
-import { isAccessFailure } from "../feedback/request-failure";
 import { appShortcutKeys, useAppShortcuts } from "./use-app-shortcuts";
 import { UserMenu } from "./user-menu";
 import { RealtimeContainerContext } from "@/components/realtime/realtime-container-context";
@@ -19,6 +18,7 @@ export type WorkspaceView =
 
 export function WorkspaceShell({
   name,
+  unavailable,
   image,
   view,
   onViewChange,
@@ -34,6 +34,7 @@ export function WorkspaceShell({
   agentsNeedYou = false,
 }: {
   name: string;
+  unavailable: boolean;
   image?: string | null;
   view: WorkspaceView;
   onViewChange: (view: WorkspaceView) => void;
@@ -122,7 +123,7 @@ export function WorkspaceShell({
             />
           </div>
         )}
-        {!isAccessFailure(error) && children}
+        {!unavailable && children}
       </div>
     </main>
   );

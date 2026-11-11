@@ -7,7 +7,7 @@ import { Field, FieldDescription, FieldError, FieldLabel } from "../../ui/field"
 import { Input } from "../../ui/input";
 import { AuthFrame } from "../auth-frame";
 import { AuthLink } from "../auth-link";
-import { FormMessage } from "../form-message";
+import { FormMessage } from "@/components/feedback/form-message";
 
 export function ResetPasswordForm({
   invalid = false,

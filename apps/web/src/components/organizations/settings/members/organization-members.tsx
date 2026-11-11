@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { OrganizationMembers as OrganizationMembersView } from "./organization-members-view";
 import { Button } from "@/components/ui/button";
 import { memberActions, primaryRole } from "@/lib/organizations/member-policy";
+import { resourceState } from "@/lib/resource-state";
 import { sessionQueryOptions } from "@/queries/auth/session";
 import { useOrganizationMutations } from "@/queries/organizations/mutations";
 import {
@@ -22,7 +23,8 @@ export function OrganizationMembers({ organizationId }: { organizationId: string
   const { changeRole, removeMember } = useOrganizationMutations(organizationId);
   const viewerUserId = session.data?.user.id ?? "";
   const viewerRole = viewer.data?.role ?? "member";
-  const members = organization.data?.members.map((member) => ({
+  const resource = resourceState(organization);
+  const members = resource.data?.members.map((member) => ({
     id: member.id,
     name: member.user.name,
     email: member.user.email,
@@ -44,7 +46,8 @@ export function OrganizationMembers({ organizationId }: { organizationId: string
   );
   return (
     <OrganizationMembersView
-      organizationName={organization.data?.name}
+      organizationName={resource.data?.name}
+      state={resource.status}
       members={members}
       loading={organization.isPending}
       error={organization.error}

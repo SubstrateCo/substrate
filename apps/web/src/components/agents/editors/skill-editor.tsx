@@ -6,8 +6,8 @@ import { revalidateLogic, useForm } from "@tanstack/react-form";
 
 import { useState } from "react";
 
-import { EditorDialog } from "./editor-dialog";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
+import { FormDialog } from "@/components/feedback/form-dialog";
 import { FormTextField } from "@/components/forms/form-text-field";
 import { z } from "zod";
 
@@ -86,7 +86,7 @@ export function SkillEditor({
   return (
     <form.Subscribe selector={(state) => state.isSubmitting}>
       {(isSubmitting) => (
-        <EditorDialog
+        <FormDialog
           title={skill ? `Edit ${openingName(skill)}` : "New skill"}
           saveLabel={skill ? "Save skill" : "Create skill"}
           description="A skill is a short guide the agent opens when a task matches its description. It’s saved as a file in this agent’s folder on this desktop."
@@ -150,7 +150,7 @@ export function SkillEditor({
               />
             )}
           </form.Field>
-        </EditorDialog>
+        </FormDialog>
       )}
     </form.Subscribe>
   );

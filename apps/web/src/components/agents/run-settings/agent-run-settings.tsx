@@ -13,12 +13,10 @@ export function AgentRunSettings({
   userId,
   name,
   settings,
-  onDirtyChange,
 }: {
   userId: string;
   name: string;
   settings: AgentRunSettingsData;
-  onDirtyChange: (dirty: boolean) => void;
 }) {
   const client = useQueryClient();
   const invalidate = () => client.invalidateQueries({ queryKey: queryKeys.agents(userId) });
@@ -38,7 +36,6 @@ export function AgentRunSettings({
     <AgentRunSettingsView
       name={name}
       settings={settings}
-      onDirtyChange={onDirtyChange}
       canRunHere={isDesktop()}
       moving={home.isPending}
       saving={triggers.isPending}

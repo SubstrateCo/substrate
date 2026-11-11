@@ -1,14 +1,15 @@
-import { FormMessage } from "../../auth/form-message";
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
-import { isAccessFailure } from "../../feedback/request-failure";
 import { SettingsCard } from "../../layout/settings-section";
 import { Button } from "../../ui/button";
 import { PictureUpload, type PictureUploadProps } from "../../upload/picture-upload";
+import { FormMessage } from "@/components/feedback/form-message";
+import type { ResourceStatus } from "@/lib/resource-state";
 
 /** A settings card for a profile picture or logo. Changes save as soon as the crop is saved. */
 export function PictureSettings({
   title,
+  state,
   description,
   loading = false,
   error,
@@ -16,12 +17,13 @@ export function PictureSettings({
   ...upload
 }: PictureUploadProps & {
   title: string;
+  state: ResourceStatus;
   description: string;
   loading?: boolean;
   error?: Error | null;
   onRetry: () => void;
 }) {
-  const blocked = isAccessFailure(error);
+  const blocked = state === "unavailable";
   const subject = title.toLowerCase();
   return (
     <SettingsCard title={title} description={description}>

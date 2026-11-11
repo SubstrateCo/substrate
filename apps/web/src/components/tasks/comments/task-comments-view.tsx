@@ -2,13 +2,14 @@ import type { ComponentProps } from "react";
 
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
-import { isAccessFailure } from "../../feedback/request-failure";
 import type { TaskComment as Comment } from "../types";
 import { TaskComment } from "./task-comment";
 import { TaskCommentForm } from "./task-comment-form";
+import type { ResourceStatus } from "@/lib/resource-state";
 
 export function TaskComments({
   canComment,
+  state,
   comments,
   loading = false,
   error,
@@ -20,6 +21,7 @@ export function TaskComments({
   renderReferences,
 }: {
   canComment: boolean;
+  state: ResourceStatus;
   comments: Comment[];
   loading?: boolean;
   error?: Error | null;
@@ -30,7 +32,7 @@ export function TaskComments({
   onDirtyChange: (dirty: boolean) => void;
   renderReferences?: ComponentProps<typeof TaskCommentForm>["renderReferences"];
 }) {
-  const unavailable = isAccessFailure(error);
+  const unavailable = state === "unavailable";
   return (
     <section aria-label="Task comments" className="space-y-3">
       <h3 className="flex h-7 items-center gap-1.5 text-xs font-medium text-muted-foreground">
@@ -44,7 +46,7 @@ export function TaskComments({
         <ErrorState
           compact
           title={unavailable ? "Comments unavailable" : "Couldn’t load comments"}
-          onRetry={onRetry}
+          onRetry={unavailable ? undefined : onRetry}
         />
       )}
       {!unavailable && !!comments.length && (

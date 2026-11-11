@@ -16,6 +16,7 @@ import { McpServerRow, StartupSkills } from "./startup-configuration";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
+import { useFocusReturn } from "@/components/feedback/use-focus-return";
 import { SettingsList, SettingsNote, SettingsSection } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -57,17 +58,8 @@ export function AgentConfiguration({
   const available = !!controller && !!organizationId;
   const [editing, setEditing] = useState<{ id?: string }>();
   const [deleting, setDeleting] = useState<{ id: string; name: string }>();
-  const launcher = useRef<HTMLElement | null>(null);
   const container = useRef<HTMLDivElement>(null);
-  const rememberLauncher = () => {
-    launcher.current =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
-  };
-  const restoreFocus = () => {
-    if (launcher.current?.isConnected && !launcher.current.matches(":disabled"))
-      launcher.current.focus();
-    else container.current?.focus();
-  };
+  const { remember: rememberLauncher, restore: restoreFocus } = useFocusReturn(container);
   const configuration = useQuery({
     queryKey: key,
     queryFn: controller && organizationId ? () => controller.scan() : skipToken,

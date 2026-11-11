@@ -3,7 +3,6 @@ import type { TaskStatus } from "@substrate/contracts/tasks";
 import { useState } from "react";
 
 import { ErrorState } from "../../feedback/error-state";
-import { isAccessFailure } from "../../feedback/request-failure";
 import { Button } from "../../ui/button";
 import { MessageWorkTile } from "./message-work-tile";
 
@@ -36,13 +35,13 @@ export function MessageWork({
   removing?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
-  if (error && !isAccessFailure(error))
+  if (error)
     return (
       <div className="mt-1.5 max-w-120">
         <ErrorState compact title="Couldn’t load linked work" onRetry={onRetry} />
       </div>
     );
-  if (error || !links.length) return null;
+  if (!links.length) return null;
   const hidden = links.length - collapsedCount;
   const shown = expanded || hidden <= 0 ? links : links.slice(0, collapsedCount);
   return (

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useRef, useState } from "react";
 
+import { SharingInvitationForm } from "./sharing-invitation-form";
 import {
   disconnectSharing,
   inviteSharing,
@@ -10,29 +11,14 @@ import {
   revokeSharing,
   type SharingDetails,
 } from "@/api/messaging/sharing";
-import { FormMessage } from "@/components/auth/form-message";
-import { formText } from "@/components/auth/form-values";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
-import { PendingButton } from "@/components/feedback/pending-button";
 import { isAccessFailure } from "@/components/feedback/request-failure";
-import { NativeField, NativeForm } from "@/components/forms/native-form";
+import { StaleNotice } from "@/components/feedback/stale-notice";
+import { useFocusReturn } from "@/components/feedback/use-focus-return";
 import { SharingDetailsView } from "@/components/messaging/sharing/sharing-details-view";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Field, FieldLabel } from "@/components/ui/field";
-import { Separator } from "@/components/ui/separator";
 import { useExpiryTime } from "@/hooks/use-expiry-time";
 import { queryKeys } from "@/queries/keys";
 import { sharingOptions } from "@/queries/messaging/sharing";
@@ -96,28 +82,18 @@ export function SharingManager({
   const data = blocked ? undefined : details.data;
   const now = useExpiryTime(data?.invitations.map((invite) => invite.expiresAt));
   const queryClient = useQueryClient();
-  const [email, setEmail] = useState("");
-  const [confirmed, setConfirmed] = useState(false);
   const [confirmation, setConfirmation] = useState<Confirmation>();
   // The confirmation is mounted by state, so it has no trigger of its own: remember the row
   // button, and fall back to the invite field once that row is gone.
-  const confirmLauncher = useRef<HTMLElement | null>(null);
+  const confirmFallback = useRef<HTMLElement>(null);
+  const confirmFocus = useFocusReturn(confirmFallback);
   const confirm = (next: Confirmation) => {
-    confirmLauncher.current =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    confirmFocus.remember();
     setConfirmation(next);
   };
   const restoreConfirmFocus = () => {
-    if (confirmLauncher.current?.isConnected) confirmLauncher.current.focus();
-    else document.getElementById("sharing-email")?.focus();
+    confirmFocus.restore();
   };
-  // Drafts and a pending confirmation belong to authority that is gone: drop them, so they do not
-  // come back if access does.
-  if (blocked && (confirmation || email || confirmed)) {
-    setConfirmation(undefined);
-    setEmail("");
-    setConfirmed(false);
-  }
   const action = useMutation({
     mutationFn: async (input: Action) => {
       const base = { organizationId, conversationId };
@@ -146,190 +122,87 @@ export function SharingManager({
       ]);
     },
   });
+  if (blocked && confirmation) setConfirmation(undefined);
   const copy = confirmation && !blocked && confirmCopy[confirmation.kind];
   return (
     <>
-      <Dialog
-        open
-        onOpenChange={(open) => {
-          if (!open) onClose();
-        }}
+      <SharingInvitationForm
+        key={blocked ? "unavailable" : "available"}
+        available={!!data}
+        hint={data ? inviteHint(data) : undefined}
+        inputRef={confirmFallback}
+        pending={action.isPending}
+        onClose={onClose}
+        onRestoreFocus={onRestoreFocus}
+        onInvite={(email, onSuccess) => action.mutate({ kind: "invite", email }, { onSuccess })}
+        error={action.variables?.kind === "invite" ? action.error : undefined}
       >
-        <DialogContent
-          size="lg"
-          onCloseAutoFocus={(event) => {
-            if (!onRestoreFocus) return;
-            event.preventDefault();
-            onRestoreFocus();
-          }}
-        >
-          {/* The acknowledgement only enables Send. A missing or incomplete address gets inline copy. */}
-          <NativeForm
-            pending={action.isPending}
-            className=""
-            onSubmit={(form) => {
-              // Enter in the address field can reach here without the acknowledgement: take the
-              // person to it instead of ignoring the key.
-              if (!confirmed) {
-                document.getElementById("sharing-history")?.focus();
-                return;
+        {details.isPending && <LoadingState label="Loading sharing…" rows={2} />}
+        {details.error && !data && (
+          <ErrorState
+            title="Sharing unavailable"
+            description={
+              blocked
+                ? "Only the people who manage this conversation, and organization admins, can manage sharing."
+                : "We couldn’t load sharing. Check your connection and try again."
+            }
+            // Missing permission does not change by asking again.
+            onRetry={blocked ? undefined : () => void details.refetch()}
+          />
+        )}
+        {details.error && data && (
+          <StaleNotice onRetry={() => void details.refetch()}>
+            This list is from earlier and may be out of date.
+          </StaleNotice>
+        )}
+        {data && (
+          <>
+            <SharingDetailsView
+              details={data}
+              organizationId={organizationId}
+              now={now}
+              pending={action.isPending}
+              onDisconnect={(id) =>
+                confirm({
+                  kind: "disconnect",
+                  id,
+                  name:
+                    data.connections.find((connection) => connection.organizationId === id)?.name ??
+                    "this organization",
+                })
               }
-              action.mutate(
-                { kind: "invite", email: formText(form, "email") },
-                {
-                  // The acknowledgement holds for the rest of this dialog, so the next invitation
-                  // needs only an address.
-                  onSuccess: () => {
-                    setEmail("");
-                    // The field is disabled until the request settles.
-                    requestAnimationFrame(() => document.getElementById("sharing-email")?.focus());
+              onRemove={(id) =>
+                confirm({
+                  kind: "remove",
+                  id,
+                  name:
+                    data.participants.find((person) => person.actorId === id)?.name ??
+                    "this person",
+                })
+              }
+              onResend={(id) =>
+                action.mutate(
+                  { kind: "resend", id },
+                  {
+                    onSuccess: () => toast.success("Invitation email resent."),
+                    onError: (error) =>
+                      toast.error(
+                        actionErrorMessage(error, "We couldn’t resend this invitation. Try again."),
+                      ),
                   },
-                },
-              );
-            }}
-          >
-            <DialogHeader>
-              <DialogTitle>External collaboration</DialogTitle>
-              <DialogDescription>
-                Work with people from other organizations. They see this conversation only, never
-                your workspace or its private records.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogBody>
-              {details.isPending && <LoadingState label="Loading sharing…" rows={2} />}
-              {details.error && !data && (
-                <ErrorState
-                  title="Sharing unavailable"
-                  description={
-                    blocked
-                      ? "Only the people who manage this conversation, and organization admins, can manage sharing."
-                      : "We couldn’t load sharing. Check your connection and try again."
-                  }
-                  // Missing permission does not change by asking again.
-                  onRetry={blocked ? undefined : () => void details.refetch()}
-                />
-              )}
-              {details.error && data && (
-                <ErrorState
-                  compact
-                  title="Couldn’t refresh sharing"
-                  description="This list is from earlier and may be out of date."
-                  onRetry={() => void details.refetch()}
-                />
-              )}
-              {data && (
-                <>
-                  <NativeField
-                    id="sharing-email"
-                    name="email"
-                    type="email"
-                    label="Invite by email"
-                    required
-                    missingMessage="Enter an email address."
-                    placeholder="name@partner.com"
-                    autoComplete="off"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    disabled={action.isPending}
-                    description={inviteHint(data)}
-                  />
-                  <Separator />
-                  <SharingDetailsView
-                    details={data}
-                    organizationId={organizationId}
-                    now={now}
-                    pending={action.isPending}
-                    onDisconnect={(id) =>
-                      confirm({
-                        kind: "disconnect",
-                        id,
-                        name:
-                          data.connections.find((connection) => connection.organizationId === id)
-                            ?.name ?? "this organization",
-                      })
-                    }
-                    onRemove={(id) =>
-                      confirm({
-                        kind: "remove",
-                        id,
-                        name:
-                          data.participants.find((person) => person.actorId === id)?.name ??
-                          "this person",
-                      })
-                    }
-                    onResend={(id) =>
-                      action.mutate(
-                        { kind: "resend", id },
-                        {
-                          onSuccess: () => toast.success("Invitation email resent."),
-                          onError: (error) =>
-                            toast.error(
-                              actionErrorMessage(
-                                error,
-                                "We couldn’t resend this invitation. Try again.",
-                              ),
-                            ),
-                        },
-                      )
-                    }
-                    onRevoke={(id) =>
-                      confirm({
-                        kind: "revoke",
-                        id,
-                        name:
-                          data.invitations.find((invite) => invite.id === id)?.email ??
-                          "this person",
-                      })
-                    }
-                  />
-                </>
-              )}
-              {/* Row actions report in a toast or their confirmation; only the form's own
-                  submit fails here. */}
-              {action.variables?.kind === "invite" && (
-                <FormMessage
-                  error={action.error}
-                  errorDescription="We couldn’t send this invitation. Try again."
-                />
-              )}
-            </DialogBody>
-            <DialogFooter className="items-center sm:justify-between">
-              {/* Inviting always shares the full history, so this is a required acknowledgement
-                  next to Send, not an option. */}
-              {data ? (
-                <Field orientation="horizontal" className="w-auto">
-                  <Checkbox
-                    id="sharing-history"
-                    checked={confirmed}
-                    onCheckedChange={(value) => setConfirmed(value === true)}
-                    disabled={action.isPending}
-                  />
-                  <FieldLabel htmlFor="sharing-history">
-                    I understand invited people can read all earlier messages
-                  </FieldLabel>
-                </Field>
-              ) : (
-                <span />
-              )}
-              <div className="flex flex-col-reverse gap-2 sm:flex-row">
-                <Button type="button" variant="outline" onClick={onClose}>
-                  Cancel
-                </Button>
-                {data && (
-                  <PendingButton
-                    type="submit"
-                    pending={action.isPending && action.variables.kind === "invite"}
-                    pendingLabel="Sending…"
-                    disabled={!confirmed}
-                  >
-                    Send invitation
-                  </PendingButton>
-                )}
-              </div>
-            </DialogFooter>
-          </NativeForm>
-        </DialogContent>
-      </Dialog>
+                )
+              }
+              onRevoke={(id) =>
+                confirm({
+                  kind: "revoke",
+                  id,
+                  name: data.invitations.find((invite) => invite.id === id)?.email ?? "this person",
+                })
+              }
+            />
+          </>
+        )}
+      </SharingInvitationForm>
       {confirmation && copy && (
         <ConfirmDialog
           title={copy.title(confirmation.name)}

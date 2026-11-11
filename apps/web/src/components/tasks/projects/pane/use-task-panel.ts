@@ -2,6 +2,8 @@ import type { TaskStatus } from "@substrate/contracts/tasks";
 
 import { useEffect, useRef, useState } from "react";
 
+import { useFocusReturn } from "@/components/feedback/use-focus-return";
+
 export function useTaskPanel({
   selectedTaskId,
   onSelectTask,
@@ -17,9 +19,10 @@ export function useTaskPanel({
   } | null>(null);
   const [restore, setRestore] = useState(0);
   const inspector = useRef<HTMLElement>(null);
-  const trigger = useRef<HTMLElement | null>(null);
-  const creationTrigger = useRef<HTMLElement | null>(null);
   const newTaskButton = useRef<HTMLButtonElement>(null);
+  const selectionFocus = useFocusReturn(newTaskButton);
+  const restoreSelectionFocus = selectionFocus.restore;
+  const creationFocus = useFocusReturn(newTaskButton);
   const previousId = useRef<string | null | undefined>(undefined);
   const mounted = useRef(false);
   useEffect(() => {
@@ -41,9 +44,8 @@ export function useTaskPanel({
     previousId.current = selectedTaskId;
   }, [selectedTaskId, ready]);
   useEffect(() => {
-    if (restore && !selectedTaskId)
-      (trigger.current?.isConnected ? trigger.current : newTaskButton.current)?.focus();
-  }, [restore, selectedTaskId]);
+    if (restore && !selectedTaskId) restoreSelectionFocus();
+  }, [restore, selectedTaskId, restoreSelectionFocus]);
   useEffect(() => {
     if (!selectedTaskId) return;
     // A click on the page outside the inspector closes it. Controls keep their own action, such
@@ -65,24 +67,16 @@ export function useTaskPanel({
   return {
     inspector,
     newTaskButton,
-    restoreFocus: () =>
-      (creationTrigger.current?.isConnected
-        ? creationTrigger.current
-        : newTaskButton.current
-      )?.focus(),
+    restoreFocus: creationFocus.restore,
     panel: {
       creating,
       selectedTaskId,
       create: (status?: TaskStatus) => {
-        creationTrigger.current =
-          document.activeElement instanceof HTMLElement
-            ? document.activeElement
-            : newTaskButton.current;
+        creationFocus.remember();
         setCreating({ status });
       },
       select: (id: string) => {
-        trigger.current =
-          document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        selectionFocus.remember();
         onSelectTask(id);
         setCreating(null);
       },
@@ -99,8 +93,7 @@ export function useTaskPanel({
         setRestore((count) => count + 1);
       },
       createSubtask: (parentTaskEntityId: string) => {
-        creationTrigger.current =
-          document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        creationFocus.remember();
         setCreating({ parentTaskEntityId });
       },
     },

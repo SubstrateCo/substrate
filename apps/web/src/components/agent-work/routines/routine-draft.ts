@@ -1,3 +1,4 @@
+import { z } from "zod";
 export type RoutineDraft = {
   name: string;
   prompt: string;
@@ -8,6 +9,23 @@ export type RoutineDraft = {
 
 export type RoutineField = "name" | "prompt" | "cron" | "timezone";
 export type RoutineErrors = Partial<Record<RoutineField, string>>;
+const messages = {
+  name: "Enter a routine name.",
+  prompt: "Say what this routine should do.",
+  cron: "Use five fields: minute, hour, day, month, and weekday.",
+  timezone: "Choose a time zone.",
+};
+
+export const routineDraftSchema = z.object({
+  name: z.string().trim().min(1, messages.name),
+  prompt: z.string().trim().min(1, messages.prompt),
+  cron: z
+    .string()
+    .trim()
+    .regex(/^\S+(\s+\S+){4}$/, messages.cron),
+  timezone: z.string().refine((zone) => !!zone && knownZone(zone), messages.timezone),
+  enabled: z.boolean(),
+});
 
 function knownZone(zone: string) {
   try {
@@ -24,10 +42,13 @@ function knownZone(zone: string) {
  */
 export function routineErrors(draft: RoutineDraft): RoutineErrors {
   const errors: RoutineErrors = {};
-  if (!draft.name.trim()) errors.name = "Enter a routine name.";
-  if (!draft.prompt.trim()) errors.prompt = "Say what this routine should do.";
-  if (!/^\S+(\s+\S+){4}$/.test(draft.cron.trim()))
-    errors.cron = "Use five fields: minute, hour, day, month, and weekday.";
-  if (!draft.timezone || !knownZone(draft.timezone)) errors.timezone = "Choose a time zone.";
+  const result = routineDraftSchema.safeParse(draft);
+  if (!result.success)
+    for (const issue of result.error.issues) {
+      const field = (["name", "prompt", "cron", "timezone"] as const).find(
+        (name) => name === issue.path[0],
+      );
+      if (field) errors[field] = messages[field];
+    }
   return errors;
 }

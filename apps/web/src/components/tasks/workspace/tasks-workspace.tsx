@@ -5,8 +5,8 @@ import { useEffect, useState } from "react";
 
 import { ProjectForm } from "../projects/editor/project-form";
 import { ProjectPane } from "../projects/project-pane";
-import { isAccessFailure } from "@/components/feedback/request-failure";
 import { TasksWorkspace as TasksWorkspaceView } from "@/components/tasks/workspace/tasks-workspace-view";
+import { resourceState } from "@/lib/resource-state";
 import { projectsQueryOptions, taskLocationQueryOptions } from "@/queries/tasks/options";
 
 export function TasksWorkspace({ organizationId }: { organizationId: string }) {
@@ -41,9 +41,8 @@ export function TasksWorkspace({ organizationId }: { organizationId: string }) {
     organizationId: string;
     projectId?: string;
   }>({ organizationId });
-  const defaultProjectId = isAccessFailure(projects.error)
-    ? undefined
-    : projects.data?.[0]?.entityId;
+  const resource = resourceState(projects);
+  const defaultProjectId = resource.data?.[0]?.entityId;
   const selectedProjectId =
     search.projectId ??
     (projects.isPending && lastSelection.organizationId === organizationId
@@ -56,7 +55,8 @@ export function TasksWorkspace({ organizationId }: { organizationId: string }) {
     setLastSelection({ organizationId, projectId: selectedProjectId });
   return (
     <TasksWorkspaceView
-      projects={projects.data ?? []}
+      state={resource.status}
+      projects={resource.data ?? []}
       selectedProjectId={selectedProjectId}
       onSelectProject={(projectId) =>
         void navigate({ to: "/tasks", search: { workspaceId: organizationId, projectId } })
@@ -64,8 +64,12 @@ export function TasksWorkspace({ organizationId }: { organizationId: string }) {
       loading={projects.isPending}
       error={projects.error}
       onRetry={() => void projects.refetch()}
-      renderCreate={(onSaved, onCancel) => (
-        <ProjectForm organizationId={organizationId} onSaved={onSaved} onCancel={onCancel} />
+      renderCreate={({ onSaved, renderCreate }) => (
+        <ProjectForm
+          organizationId={organizationId}
+          onSaved={onSaved}
+          renderCreate={renderCreate}
+        />
       )}
       project={
         selectedProjectId && (

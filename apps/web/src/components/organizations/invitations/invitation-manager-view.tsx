@@ -1,12 +1,12 @@
 import { useState } from "react";
 
-import { FormMessage } from "../../auth/form-message";
 import { ConfirmDialog } from "../../feedback/confirm-dialog";
 import { ContentNotice } from "../../feedback/content-notice";
 import { GroupTitle, SettingsCard } from "../../layout/settings-section";
 import { Spinner } from "../../ui/spinner";
 import { InvitationForm } from "./invitation-form";
 import { InvitationTable } from "./invitation-table";
+import { FormMessage } from "@/components/feedback/form-message";
 import { Send } from "lucide-react";
 
 export type InvitationRole = "owner" | "admin" | "member";

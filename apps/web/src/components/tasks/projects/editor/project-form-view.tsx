@@ -1,16 +1,14 @@
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 
-import { useId } from "react";
+import { useId, type ReactNode } from "react";
 
-import { FormMessage } from "../../../auth/form-message";
-import { PendingButton } from "../../../feedback/pending-button";
-import { Button } from "../../../ui/button";
 import { projectFormSchema } from "../../editor/task-form-validation";
 import type { Project } from "../../types";
+import type { FormDialogEditor } from "@/components/feedback/form-dialog";
+import { FormMessage } from "@/components/feedback/form-message";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { FormTextField } from "@/components/forms/form-text-field";
 import { SettingsCard, SettingsFooter } from "@/components/layout/settings-section";
-import { DialogBody, DialogFooter } from "@/components/ui/dialog";
 
 /**
  * A new project's name and description inside a dialog, or an existing project's details as a
@@ -19,13 +17,13 @@ import { DialogBody, DialogFooter } from "@/components/ui/dialog";
 export function ProjectForm({
   project,
   onSubmit,
-  onCancel,
+  renderCreate,
   pending = false,
   error,
 }: {
   project?: Project;
   onSubmit: (draft: { name: string; description: string }) => void;
-  onCancel?: () => void;
+  renderCreate?: (editor: FormDialogEditor) => ReactNode;
   pending?: boolean;
   error?: Error | null;
 }) {
@@ -39,7 +37,7 @@ export function ProjectForm({
     },
   });
   const fields = (
-    <fieldset disabled={pending} className="grid min-w-0 gap-4">
+    <>
       <form.Field name="name">
         {(field) => (
           <FormTextField
@@ -63,27 +61,14 @@ export function ProjectForm({
           />
         )}
       </form.Field>
-      <FormMessage error={error} />
-    </fieldset>
+    </>
   );
   const onFormSubmit = (event: { preventDefault: () => void }) => {
     event.preventDefault();
     if (!pending) void form.handleSubmit();
   };
   if (!project)
-    return (
-      <form noValidate aria-label="New project" onSubmit={onFormSubmit}>
-        <DialogBody>{fields}</DialogBody>
-        <DialogFooter>
-          <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
-            Cancel
-          </Button>
-          <PendingButton pending={pending} pendingLabel="Creating project.">
-            Create project
-          </PendingButton>
-        </DialogFooter>
-      </form>
-    );
+    return renderCreate?.({ fields, pending, error, onSubmit: () => form.handleSubmit() });
   return (
     <form noValidate aria-label="Project details" onSubmit={onFormSubmit}>
       <form.Subscribe selector={(state) => state.values}>
@@ -105,7 +90,10 @@ export function ProjectForm({
                   />
                 }
               >
-                {fields}
+                <fieldset disabled={pending} className="grid min-w-0 gap-4">
+                  {fields}
+                  <FormMessage error={error} />
+                </fieldset>
               </SettingsCard>
             </>
           );

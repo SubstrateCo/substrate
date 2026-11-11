@@ -2,19 +2,8 @@ import type { ReactNode } from "react";
 
 import { TaskSelect } from "../task-select";
 import type { Project, Task } from "../types";
-import { FormMessage } from "@/components/auth/form-message";
 import { ErrorState } from "@/components/feedback/error-state";
-import { PendingButton } from "@/components/feedback/pending-button";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { FormDialog } from "@/components/feedback/form-dialog";
 
 export function TaskMoveDialog({
   title,
@@ -84,65 +73,38 @@ export function TaskMoveDialog({
       </p>
     );
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open && !pending) onClose();
+    <FormDialog
+      title="Move task"
+      description={<>Choose a project and parent for “{title}”. Its subtasks move with it.</>}
+      size="default"
+      saveLabel="Move task"
+      pendingLabel="Moving task…"
+      pending={pending}
+      disabled={!canSubmit}
+      error={error}
+      errorDescription="Couldn’t move this task. Check the destination and try again."
+      onClose={onClose}
+      onRestoreFocus={onRestoreFocus}
+      onSubmit={() => {
+        if (canSubmit) onSubmit();
       }}
     >
-      <DialogContent
-        onCloseAutoFocus={(event) => {
-          event.preventDefault();
-          onRestoreFocus();
-        }}
-      >
-        <DialogHeader>
-          <DialogTitle>Move task</DialogTitle>
-          <DialogDescription>
-            Choose a project and parent for “{title}”. Its subtasks move with it.
-          </DialogDescription>
-        </DialogHeader>
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (canSubmit) onSubmit();
-          }}
-        >
-          <DialogBody>
-            <fieldset disabled={pending} className="grid gap-4">
-              <TaskSelect
-                label="Destination project"
-                value={projectId}
-                onChange={onProjectChange}
-                options={projects.map((project) => ({
-                  value: project.entityId,
-                  label: project.name,
-                }))}
-              />
-              {destination}
-              {changesAccess && (
-                <p className="text-sm text-muted-foreground">
-                  The task, its subtasks, comments, and attachments will use the destination
-                  project’s access. People there may gain access, and people in the original project
-                  may lose it.
-                </p>
-              )}
-              <FormMessage
-                error={error}
-                errorDescription="Couldn’t move this task. Check the destination and try again."
-              />
-            </fieldset>
-          </DialogBody>
-          <DialogFooter>
-            <Button type="button" variant="outline" disabled={pending} onClick={onClose}>
-              Cancel
-            </Button>
-            <PendingButton pending={pending} pendingLabel="Moving task…" disabled={!canSubmit}>
-              Move task
-            </PendingButton>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+      <TaskSelect
+        label="Destination project"
+        value={projectId}
+        onChange={onProjectChange}
+        options={projects.map((project) => ({
+          value: project.entityId,
+          label: project.name,
+        }))}
+      />
+      {destination}
+      {changesAccess && (
+        <p className="text-sm text-muted-foreground">
+          The task, its subtasks, comments, and attachments will use the destination project’s
+          access. People there may gain access, and people in the original project may lose it.
+        </p>
+      )}
+    </FormDialog>
   );
 }

@@ -7,12 +7,12 @@ import { ConversationPane } from "../conversations/conversation-pane";
 import { createConversation } from "@/api/messaging/requests";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { ContentNotice } from "@/components/feedback/content-notice";
-import { isAccessFailure } from "@/components/feedback/request-failure";
 import type { DirectMessageAgent } from "@/components/messaging/conversations/conversation-create-menu";
 import { CreateConversationDialog } from "@/components/messaging/conversations/create-conversation-dialog";
 import { MessagingWorkspace as MessagingWorkspaceView } from "@/components/messaging/workspace/messaging-workspace-view";
 import { agentDirectMessage } from "@/lib/messaging/conversations";
 import type { PickerPerson } from "@/lib/people/people-picker";
+import { resourceState } from "@/lib/resource-state";
 import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
 import { queryKeys } from "@/queries/keys";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
@@ -75,7 +75,8 @@ export function MessagingWorkspace({
     onError: (error) =>
       toast.error(actionErrorMessage(error, "We couldn’t open this conversation. Try again.")),
   });
-  const visibleConversations = isAccessFailure(conversations.error) ? [] : conversations.data || [];
+  const resource = resourceState(conversations);
+  const visibleConversations = resource.data ?? [];
   // The sidebar lists joined conversations. Other public channels stay reachable by link and search.
   const sidebarConversations = visibleConversations.filter((conversation) => conversation.joined);
   const selected = search.conversationId
@@ -83,13 +84,13 @@ export function MessagingWorkspace({
     : sidebarConversations[0];
   return (
     <MessagingWorkspaceView
+      state={resource.status}
       conversations={sidebarConversations}
       selectedId={selected?.id}
       sidebarOpen={sidebarOpen}
       onSidebarOpenChange={setSidebarOpen}
       onSelect={open}
       loading={conversations.isPending}
-      hasLoaded={conversations.data !== undefined}
       error={conversations.error}
       onRetry={() => void conversations.refetch()}
       people={people}

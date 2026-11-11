@@ -5,6 +5,8 @@ import { useState } from "react";
 
 import { TaskMoveDialog as TaskMoveDialogView } from "./task-move-dialog-view";
 import type { ProjectDetail, Task } from "@/components/tasks/types";
+import { resourceState } from "@/lib/resource-state";
+import { projectCapabilities } from "@/lib/tasks/project-capabilities";
 import { useTasksMutation } from "@/queries/tasks/mutations";
 import { projectQueryOptions, projectsQueryOptions } from "@/queries/tasks/options";
 
@@ -41,15 +43,17 @@ export function TaskMoveDialog({
       }
     }
   }
-  const canEdit = destination.data?.level === "owner" || destination.data?.level === "edit";
+  const destinationResource = resourceState(destination);
+  const { canEdit } = projectCapabilities(destinationResource.data?.level);
   return (
     <TaskMoveDialogView
       title={task.title}
       projectId={projectId}
       parentId={parentId}
-      projects={projects.data ?? [detail.project]}
+      projects={resourceState(projects).data ?? [detail.project]}
       parents={
-        destination.data?.tasks.filter((candidate) => !excluded.has(candidate.entityId)) ?? []
+        destinationResource.data?.tasks.filter((candidate) => !excluded.has(candidate.entityId)) ??
+        []
       }
       loading={destination.isPending}
       loadError={projects.error ?? destination.error}

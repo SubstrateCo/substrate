@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { PendingButton } from "@/components/feedback/pending-button";
+import { useFocusReturn } from "@/components/feedback/use-focus-return";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Spinner } from "@/components/ui/spinner";
@@ -44,14 +45,7 @@ export function AgentMembersDialog({
   // button. It is replaced by a spinner while the agent is removed, so then the list is the
   // nearest place left.
   const list = useRef<HTMLUListElement>(null);
-  const launcher = useRef<HTMLElement | null>(null);
-  const restoreRowFocus = () => {
-    if (launcher.current?.isConnected) launcher.current.focus();
-    else {
-      const target = list.current?.querySelector<HTMLElement>("button:not(:disabled)");
-      (target ?? list.current?.closest<HTMLElement>('[role="dialog"]'))?.focus();
-    }
-  };
+  const rowFocus = useFocusReturn(list);
   const common = {
     title: `Your agents in ${name}`,
     description:
@@ -79,7 +73,7 @@ export function AgentMembersDialog({
       <ConfirmDialog {...common}>
         {loading && <Spinner aria-label="Loading your agents" className="mx-auto" />}
         {!loading && (
-          <ul ref={list} aria-label="Your agents" className="-mx-2 grid gap-0.5">
+          <ul ref={list} tabIndex={-1} aria-label="Your agents" className="-mx-2 grid gap-0.5">
             {agents.map((agent) => (
               <li
                 key={agent.agentId}
@@ -100,10 +94,7 @@ export function AgentMembersDialog({
                       destructive
                       disabled={!!busyId}
                       onClick={() => {
-                        launcher.current =
-                          document.activeElement instanceof HTMLElement
-                            ? document.activeElement
-                            : null;
+                        rowFocus.remember();
                         setRemoving(agent);
                       }}
                     >
@@ -136,7 +127,7 @@ export function AgentMembersDialog({
           pendingLabel="Removing…"
           destructive
           onClose={() => setRemoving(undefined)}
-          onRestoreFocus={restoreRowFocus}
+          onRestoreFocus={rowFocus.restore}
           onConfirm={() => {
             onRemove(removing.actorId!);
             setRemoving(undefined);

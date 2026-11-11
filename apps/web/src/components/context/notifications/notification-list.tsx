@@ -9,6 +9,7 @@ import { notificationPresentation } from "./notification-presentation";
 import { markAllRead, markGroupRead } from "@/api/context/notifications";
 import { NotificationList as NotificationListView } from "@/components/context/notifications/notification-list-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
+import { resourceState } from "@/lib/resource-state";
 import {
   markNotificationGroupsRead,
   notificationGroupsOptions,
@@ -26,6 +27,7 @@ export function NotificationList({
 }) {
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const feed = useInfiniteQuery(notificationGroupsOptions(organizationId, filter));
+  const resource = resourceState(feed);
   const client = useQueryClient();
   const navigate = useNavigate();
   // Read state changes at once. A failed write reloads the feed, so the row shows unread again.
@@ -45,7 +47,7 @@ export function NotificationList({
   });
   // A group can move above a saved cursor while older pages load. Keep its first occurrence.
   const groups = new Map<string, NonNullable<typeof feed.data>["pages"][number]["items"][number]>();
-  for (const page of feed.data?.pages ?? [])
+  for (const page of resource.data?.pages ?? [])
     for (const item of page.items) if (!groups.has(item.groupKey)) groups.set(item.groupKey, item);
   const items = [...groups.values()].map((item) => ({
     ...notificationPresentation(organizationId, item),
@@ -65,6 +67,7 @@ export function NotificationList({
   };
   return (
     <NotificationListView
+      state={resource.status}
       items={items}
       loading={feed.isPending}
       error={feed.error}

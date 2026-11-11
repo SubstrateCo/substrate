@@ -1,6 +1,6 @@
 import { AuthFrame } from "@/components/auth/auth-frame";
 import { AuthNavLink } from "@/components/auth/auth-link";
-import { FormMessage } from "@/components/auth/form-message";
+import { FormMessage } from "@/components/feedback/form-message";
 import { PendingButton } from "@/components/feedback/pending-button";
 
 export function InvitationAcceptedView({

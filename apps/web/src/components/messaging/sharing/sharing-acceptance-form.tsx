@@ -1,6 +1,6 @@
 import type { getSharingInvitation } from "@/api/messaging/sharing";
 import { AuthLink } from "@/components/auth/auth-link";
-import { FormMessage } from "@/components/auth/form-message";
+import { FormMessage } from "@/components/feedback/form-message";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";

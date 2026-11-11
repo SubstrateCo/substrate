@@ -4,16 +4,11 @@ import type { ProjectDetail, ProjectPermission } from "../../types";
 import { ProjectAccessForm } from "./project-access-form";
 import { ProjectMemberRow } from "./project-member-row";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+import { FormDialog } from "@/components/feedback/form-dialog";
+import { useFocusReturn } from "@/components/feedback/use-focus-return";
 import { GroupTitle, SettingsCard } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import type { ProjectCapabilities } from "@/lib/tasks/project-capabilities";
 import { UserPlus } from "lucide-react";
 
 const permissionRank = { view: 0, comment: 1, edit: 2, owner: 3 };
@@ -38,6 +33,7 @@ export type AccessChange = {
  */
 export function ProjectSharing({
   detail,
+  capabilities,
   pending = false,
   error,
   onShare,
@@ -45,6 +41,7 @@ export function ProjectSharing({
   onClearError,
 }: {
   detail: ProjectDetail;
+  capabilities: ProjectCapabilities;
   pending?: boolean;
   error?: Error | null;
   onShare: (change: AccessChange, onSuccess?: () => void) => void;
@@ -58,8 +55,9 @@ export function ProjectSharing({
     level: ProjectPermission | null;
   } | null>(null);
   const addButton = useRef<HTMLButtonElement>(null);
-  const reviewOrigin = useRef<HTMLElement | null>(null);
-  const canManage = detail.level === "owner";
+  const reviewFocus = useFocusReturn(addButton);
+  const addFocus = useFocusReturn(addButton);
+  const { canManage } = capabilities;
   const ownerCount = detail.members.filter((member) => member.level === "owner").length;
   const canAdd = detail.actors.some(
     (actor) =>
@@ -67,8 +65,7 @@ export function ProjectSharing({
       !detail.members.some((member) => member.actorEntityId === actor.entityId),
   );
   const openReview = (actorEntityId: string, name: string, level: ProjectPermission | null) => {
-    reviewOrigin.current =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    reviewFocus.remember();
     onClearError();
     setReview({ actorEntityId, name, level });
   };
@@ -81,38 +78,49 @@ export function ProjectSharing({
           description="These people have direct access, as do their agents. Organization owners and admins and their agents can also access this project."
         />
         {canManage && canAdd && (
-          <Dialog
-            open={adding}
-            onOpenChange={(open) => {
-              if (pending) return;
+          <Button
+            ref={addButton}
+            variant="outline"
+            size="sm"
+            disabled={pending}
+            onClick={() => {
+              addFocus.remember();
               onClearError();
-              setAdding(open);
+              setAdding(true);
             }}
           >
-            <DialogTrigger asChild>
-              <Button ref={addButton} variant="outline" size="sm" disabled={pending}>
-                <UserPlus aria-hidden="true" />
-                Add people
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Share {project}</DialogTitle>
-                <DialogDescription>Give a person in this workspace access.</DialogDescription>
-              </DialogHeader>
-              <ProjectAccessForm
-                detail={detail}
-                pending={pending}
-                error={error}
-                onShare={(actorEntityId, name, level) =>
-                  onShare({ actorEntityId, name, level }, () => setAdding(false))
-                }
-                onCancel={() => setAdding(false)}
-              />
-            </DialogContent>
-          </Dialog>
+            <UserPlus aria-hidden="true" />
+            Add people
+          </Button>
         )}
       </div>
+      {adding && canManage && canAdd && (
+        <ProjectAccessForm
+          detail={detail}
+          pending={pending}
+          error={error}
+          onShare={(actorEntityId, name, level) =>
+            onShare({ actorEntityId, name, level }, () => setAdding(false))
+          }
+          renderDialog={({ fields, ...editor }) => (
+            <FormDialog
+              {...editor}
+              title={`Share ${project}`}
+              description="Give a person in this workspace access."
+              size="default"
+              saveLabel="Share project"
+              pendingLabel="Sharing…"
+              onClose={() => {
+                onClearError();
+                setAdding(false);
+              }}
+              onRestoreFocus={addFocus.restore}
+            >
+              {fields}
+            </FormDialog>
+          )}
+        />
+      )}
       <ul className="-mx-5 divide-y border-t">
         {detail.members.map((member) => (
           <ProjectMemberRow
@@ -155,9 +163,7 @@ export function ProjectSharing({
           error={error}
           errorDescription="Couldn’t change access. Try again."
           onClose={() => setReview(null)}
-          onRestoreFocus={() =>
-            (reviewOrigin.current?.isConnected ? reviewOrigin.current : addButton.current)?.focus()
-          }
+          onRestoreFocus={reviewFocus.restore}
           onConfirm={() => {
             if (pending) return;
             if (review.level)

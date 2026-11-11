@@ -1,7 +1,6 @@
 import { useContext, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
-import { FormMessage } from "../../auth/form-message";
 import { PendingButton } from "../../feedback/pending-button";
 import { Field } from "../../ui/field";
 import { InputGroup, InputGroupAddon } from "../../ui/input-group";
@@ -14,6 +13,7 @@ import type { ReferenceQuery } from "../references/reference-query";
 import { ComposerDraftReferences } from "./composer-drafts";
 import { ComposerToolbar, composerFormats } from "./composer-toolbar";
 import { EmojiPicker } from "./emoji-picker";
+import { FormMessage } from "@/components/feedback/form-message";
 import {
   messageMaxLength,
   useComposerDraft,

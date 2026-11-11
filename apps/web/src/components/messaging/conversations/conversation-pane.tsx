@@ -21,6 +21,7 @@ import {
   conversationName,
   type Conversation,
 } from "@/lib/messaging/conversations";
+import { resourceState } from "@/lib/resource-state";
 import { messageTargetOptions } from "@/queries/context/links";
 import { useConversationManagement } from "@/queries/messaging/management";
 
@@ -52,6 +53,7 @@ export function ConversationPane({
     aroundMessageId: target.data?.root.id,
   });
   const timeline = messages.data ?? [];
+  const resource = resourceState(messages);
   let messageContent;
   if (target.error)
     messageContent = (
@@ -131,11 +133,10 @@ export function ConversationPane({
       onTranscript={transcript}
     >
       <ConversationPaneView
-        conversation={conversation}
+        conversation={resource.status === "unavailable" ? null : conversation}
         viewerId={userId}
-        loading={messages.isPending}
+        state={resource.status}
         error={messages.error}
-        hasLoaded={messages.data !== undefined}
         onRetry={() => void messages.refetch()}
         addingMembers={addingMembers}
         onToggleMembers={() => setAddingMembers(!addingMembers)}

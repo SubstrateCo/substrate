@@ -1,9 +1,8 @@
 import { useRef } from "react";
 
 import { ContentNotice } from "@/components/feedback/content-notice";
-import { ErrorState } from "@/components/feedback/error-state";
 import { PaneState } from "@/components/feedback/pane-state";
-import { isAccessFailure } from "@/components/feedback/request-failure";
+import { StaleNotice } from "@/components/feedback/stale-notice";
 import { Tag } from "@/components/feedback/tag";
 import { RowActions } from "@/components/layout/row-actions";
 import { ConversationActionsMenu } from "@/components/messaging/conversations/actions/conversation-actions-menu";
@@ -20,6 +19,7 @@ import {
 } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ConversationMember } from "@/lib/messaging/conversations";
+import type { ResourceStatus } from "@/lib/resource-state";
 import { Hash, LockKeyhole, UserPlus, Users } from "lucide-react";
 
 export interface ManagedConversationRow {
@@ -90,6 +90,7 @@ function MemberSummary({ members }: { members: ConversationMember[] }) {
 // Admins see names and members only. Nothing here opens the messages.
 export function ManagedConversations({
   rows,
+  state,
   loading,
   error,
   onRetry,
@@ -98,6 +99,7 @@ export function ManagedConversations({
   onDelete,
 }: {
   rows?: ManagedConversationRow[];
+  state: ResourceStatus;
   loading: boolean;
   error?: Error | null;
   onRetry: () => void;
@@ -106,12 +108,12 @@ export function ManagedConversations({
   onDelete: (id: string, launcher: HTMLElement | null) => void;
 }) {
   const menuTriggers = useRef(new Map<string, HTMLButtonElement>());
-  if (error && (!rows || isAccessFailure(error)))
+  if (state === "error" || state === "unavailable")
     return (
       <PaneState
         label="Conversations unavailable"
         error={error}
-        onRetry={isAccessFailure(error) ? undefined : onRetry}
+        onRetry={state === "unavailable" ? undefined : onRetry}
       />
     );
   if (loading && !rows) return <PaneState label="Loading conversations." />;
@@ -127,13 +129,8 @@ export function ManagedConversations({
     );
   return (
     <div className="space-y-3">
-      {error && (
-        <ErrorState
-          compact
-          title="Couldn’t refresh conversations"
-          description="This list may be out of date."
-          onRetry={onRetry}
-        />
+      {state === "stale" && (
+        <StaleNotice onRetry={onRetry}>This list may be out of date.</StaleNotice>
       )}
       <div className="overflow-hidden rounded-xl border bg-card">
         <Table aria-label="Channels and group messages">

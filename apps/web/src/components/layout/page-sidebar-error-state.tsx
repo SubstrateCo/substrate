@@ -1,4 +1,3 @@
-import { isAccessFailure } from "@/components/feedback/request-failure";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -14,18 +13,18 @@ import { CircleAlert, RefreshCw } from "lucide-react";
 // in the free space, or inside PageSidebarContent to show it above stale items.
 export function PageSidebarErrorState({
   title,
-  error,
+  unavailable = false,
   description,
   onRetry,
 }: {
   title: string;
-  error?: Error | null;
+  unavailable?: boolean;
   description?: string;
   onRetry?: () => void;
 }) {
   const message =
     description ??
-    (isAccessFailure(error)
+    (unavailable
       ? "Check that you still have access to this workspace."
       : "Check your connection and try again.");
 

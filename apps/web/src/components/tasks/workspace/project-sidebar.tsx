@@ -1,7 +1,6 @@
 import type { Ref } from "react";
 
 import { LoadingState } from "../../feedback/loading-state";
-import { isAccessFailure } from "../../feedback/request-failure";
 import { Button } from "../../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { ProjectIcon } from "../projects/project-icon";
@@ -12,10 +11,12 @@ import {
   PageSidebarHeader,
 } from "@/components/layout/page-layout";
 import { PageSidebarErrorState } from "@/components/layout/page-sidebar-error-state";
+import type { ResourceStatus } from "@/lib/resource-state";
 import { Plus } from "lucide-react";
 
 export function ProjectSidebar({
   projects,
+  state,
   selectedId,
   loading,
   error,
@@ -25,6 +26,7 @@ export function ProjectSidebar({
   createButtonRef,
 }: {
   projects: Project[];
+  state: ResourceStatus;
   selectedId?: string;
   loading: boolean;
   error?: Error | null;
@@ -33,12 +35,12 @@ export function ProjectSidebar({
   onSelect: (id: string) => void;
   createButtonRef?: Ref<HTMLButtonElement>;
 }) {
-  const visible = isAccessFailure(error) ? [] : projects;
+  const visible = projects;
   const errorState = error && (
     <PageSidebarErrorState
-      title={isAccessFailure(error) ? "Projects unavailable" : "Couldn’t load projects"}
-      error={error}
-      onRetry={onRetry}
+      title={state === "unavailable" ? "Projects unavailable" : "Couldn’t load projects"}
+      unavailable={state === "unavailable"}
+      onRetry={state === "unavailable" ? undefined : onRetry}
     />
   );
   return (

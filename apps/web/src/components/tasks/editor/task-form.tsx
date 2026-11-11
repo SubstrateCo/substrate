@@ -1,5 +1,7 @@
 import { useRouter } from "@tanstack/react-router";
 
+import type { ComponentProps } from "react";
+
 import { changedTaskFields } from "./task-patch";
 import { AttachFilesButton, AttachmentDraftList } from "@/components/attachments/attachment-picker";
 import { FileDropZone } from "@/components/attachments/file-drop-zone";
@@ -16,7 +18,7 @@ export function TaskForm({
   onSaved,
   onCancel,
   initialStatus,
-  variant,
+  renderCreate,
   onDirtyChange,
 }: {
   organizationId: string;
@@ -26,7 +28,7 @@ export function TaskForm({
   onSaved: (id: string) => void;
   onCancel: () => void;
   initialStatus?: Task["status"];
-  variant?: "inline" | "dialog";
+  renderCreate?: ComponentProps<typeof TaskFormView>["renderCreate"];
   onDirtyChange?: (dirty: boolean) => void;
 }) {
   const save = useTasksMutation(organizationId);
@@ -38,7 +40,7 @@ export function TaskForm({
       task={task}
       parentTaskEntityId={parentTaskEntityId}
       initialStatus={initialStatus}
-      variant={variant}
+      renderCreate={renderCreate}
       onDirtyChange={onDirtyChange}
       pending={save.isPending}
       error={save.error}

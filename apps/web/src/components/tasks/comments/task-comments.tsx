@@ -4,6 +4,7 @@ import { TaskReferencePicker } from "./task-reference-picker";
 import { TaskComments as TaskCommentsView } from "@/components/tasks/comments/task-comments-view";
 import type { ProjectDetail } from "@/components/tasks/types";
 import { workHref } from "@/lib/navigation/record-links";
+import { resourceState } from "@/lib/resource-state";
 import { useTasksMutation } from "@/queries/tasks/mutations";
 import { taskCommentsQueryOptions } from "@/queries/tasks/options";
 
@@ -30,8 +31,9 @@ export function TaskComments({
   const send = useTasksMutation(organizationId);
   return (
     <TaskCommentsView
+      state={resourceState(comments).status}
       canComment={canComment}
-      comments={(comments.data ?? []).map((comment) => ({
+      comments={(resourceState(comments).data ?? []).map((comment) => ({
         ...comment,
         references: comment.references.map(({ projectEntityId: project, ...reference }) => ({
           ...reference,

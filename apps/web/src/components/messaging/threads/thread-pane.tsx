@@ -8,6 +8,7 @@ import type { Message } from "@/api/messaging/requests";
 import { AgentWorkNotice } from "@/components/agent-work/agent-work-slot";
 import { JumpToLatest, OlderMessages } from "@/components/messaging/messages/message-history";
 import { ThreadPane as ThreadPaneView } from "@/components/messaging/threads/thread-pane-view";
+import { resourceState } from "@/lib/resource-state";
 import { messagePageOptions } from "@/queries/context/links";
 
 export function ThreadPane({
@@ -40,6 +41,7 @@ export function ThreadPane({
     aroundMessageId: targetMessage?.threadId ? targetMessage.id : undefined,
   });
   const rows = replies.data ?? [];
+  const resource = resourceState(replies);
   const reuseContext = !!root && contextMessageIds.includes(root.id);
   const rootMessageIds = root ? [root.id] : [];
   const rootContext = useQuery({
@@ -52,6 +54,7 @@ export function ThreadPane({
   });
   return (
     <ThreadPaneView
+      state={resource.status}
       conversationLabel={conversationLabel}
       loading={replies.isPending}
       error={replies.error}
@@ -73,7 +76,7 @@ export function ThreadPane({
       }
       onClose={onClose}
       replies={
-        replies.data && (
+        resource.data && (
           <MessageList
             messages={rows.filter((message) => message.id !== threadId)}
             organizationId={organizationId}

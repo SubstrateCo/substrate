@@ -11,6 +11,7 @@ import { RoutineListView } from "./routine-list-view";
 import { describeSchedule } from "./schedule";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+import { useFocusReturn } from "@/components/feedback/use-focus-return";
 import { routinesOptions } from "@/queries/agent-work/local";
 import { useRoutineActions } from "@/queries/agent-work/mutations";
 import { toast } from "sonner";
@@ -46,16 +47,7 @@ export function Routines({
   // Dialogs here are mounted from state, so they cannot find their launcher. Remember it, and
   // fall back to the section when the launcher is gone, such as after a delete.
   const region = useRef<HTMLDivElement>(null);
-  const launcher = useRef<HTMLElement | null>(null);
-  const remember = () => {
-    launcher.current =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
-  };
-  const restoreFocus = () => {
-    const target = launcher.current?.isConnected ? launcher.current : region.current;
-    target?.focus();
-    launcher.current = null;
-  };
+  const { remember, restore: restoreFocus } = useFocusReturn(region);
   const close = () => {
     setEditingId(undefined);
     setError(null);

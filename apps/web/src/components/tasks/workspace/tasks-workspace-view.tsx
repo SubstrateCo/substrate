@@ -1,22 +1,18 @@
 import { useRef, useState, type ReactNode } from "react";
 
 import { ContentNotice } from "../../feedback/content-notice";
-import { isAccessFailure } from "../../feedback/request-failure";
 import { Button } from "../../ui/button";
 import type { Project } from "../types";
 import { ProjectSidebar } from "./project-sidebar";
+import { FormDialog, type FormDialogEditor } from "@/components/feedback/form-dialog";
+import { useFocusReturn } from "@/components/feedback/use-focus-return";
 import { PageContent, PageLayout } from "@/components/layout/page-layout";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import type { ResourceStatus } from "@/lib/resource-state";
 import { FolderKanban, Unlink } from "lucide-react";
 
 export function TasksWorkspace({
   projects,
+  state,
   loading = false,
   error,
   onRetry,
@@ -26,24 +22,27 @@ export function TasksWorkspace({
   onSelectProject,
 }: {
   projects: Project[];
+  state: ResourceStatus;
   loading?: boolean;
   error?: Error | null;
   onRetry: () => void;
-  renderCreate: (onSaved: (id: string) => void, onCancel: () => void) => ReactNode;
+  renderCreate: (props: {
+    onSaved: (id: string) => void;
+    renderCreate: (editor: FormDialogEditor) => ReactNode;
+  }) => ReactNode;
   /** The selected project's content pane and task inspector. */
   project: ReactNode;
   selectedProjectId?: string;
   onSelectProject: (id: string) => void;
 }) {
   const [creating, setCreating] = useState(false);
-  const createTrigger = useRef<HTMLElement | null>(null);
   const createProjectButton = useRef<HTMLButtonElement>(null);
+  const focusReturn = useFocusReturn(createProjectButton);
   const openCreate = () => {
-    createTrigger.current =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    focusReturn.remember();
     setCreating(true);
   };
-  const visible = isAccessFailure(error) ? [] : projects;
+  const visible = projects;
   const selectProject = (id: string) => {
     onSelectProject(id);
     setCreating(false);
@@ -51,6 +50,7 @@ export function TasksWorkspace({
   return (
     <PageLayout id="tasks" aria-label="Tasks application">
       <ProjectSidebar
+        state={state}
         projects={visible}
         selectedId={selectedProjectId}
         loading={loading}
@@ -77,26 +77,24 @@ export function TasksWorkspace({
           )}
         </PageContent>
       )}
-      <Dialog open={creating} onOpenChange={setCreating}>
-        <DialogContent
-          onCloseAutoFocus={(event) => {
-            event.preventDefault();
-            (createTrigger.current?.isConnected
-              ? createTrigger.current
-              : createProjectButton.current
-            )?.focus();
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle>New project</DialogTitle>
-            <DialogDescription>
-              Organization owners and admins can access every project. Share this project to give
-              others access to its tasks.
-            </DialogDescription>
-          </DialogHeader>
-          {creating && renderCreate(selectProject, () => setCreating(false))}
-        </DialogContent>
-      </Dialog>
+      {creating &&
+        renderCreate({
+          onSaved: selectProject,
+          renderCreate: ({ fields, ...editor }) => (
+            <FormDialog
+              {...editor}
+              title="New project"
+              description="Organization owners and admins can access every project. Share this project to give others access to its tasks."
+              size="default"
+              saveLabel="Create project"
+              pendingLabel="Creating project…"
+              onClose={() => setCreating(false)}
+              onRestoreFocus={focusReturn.restore}
+            >
+              {fields}
+            </FormDialog>
+          ),
+        })}
     </PageLayout>
   );
 }

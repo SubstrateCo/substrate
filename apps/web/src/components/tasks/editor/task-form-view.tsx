@@ -2,14 +2,14 @@ import { revalidateLogic, useForm } from "@tanstack/react-form";
 
 import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from "react";
 
-import { FormMessage } from "../../auth/form-message";
 import { PendingButton } from "../../feedback/pending-button";
 import { Button } from "../../ui/button";
-import { DialogBody, DialogFooter } from "../../ui/dialog";
 import { assignableActors } from "../assignee/assignable";
 import type { ProjectDetail, Task, TaskDraft } from "../types";
 import { taskFormSchema } from "./task-form-validation";
 import { TaskScheduleFields } from "./task-schedule-fields";
+import type { FormDialogEditor } from "@/components/feedback/form-dialog";
+import { FormMessage } from "@/components/feedback/form-message";
 import { FormTextField } from "@/components/forms/form-text-field";
 
 function useTaskForm({
@@ -66,7 +66,7 @@ export function TaskForm({
   pending = false,
   error,
   initialStatus,
-  variant = "inline",
+  renderCreate,
   onDirtyChange,
   attachments,
   attachmentsReady = true,
@@ -79,8 +79,7 @@ export function TaskForm({
   pending?: boolean;
   error?: Error | null;
   initialStatus?: Task["status"];
-  /** In a dialog, the form renders the dialog's body and its Cancel and submit footer. */
-  variant?: "inline" | "dialog";
+  renderCreate?: (editor: FormDialogEditor) => ReactNode;
   onDirtyChange?: (dirty: boolean) => void;
   attachments?: ReactNode;
   attachmentsReady?: boolean;
@@ -100,7 +99,7 @@ export function TaskForm({
     onSubmit: (draft) => {
       const current = latest.current;
       onSubmit(
-        current && variant === "inline"
+        current && !renderCreate
           ? {
               ...draft,
               title: draft.title === initial.current?.title ? current.title : draft.title,
@@ -127,17 +126,17 @@ export function TaskForm({
     if (!pending && attachmentsReady) void form.handleSubmit();
   };
   // Ctrl+Enter (Cmd+Enter on macOS) saves from any field. Escape cancels an inline edit.
-  const onKeyDown = (event: KeyboardEvent<HTMLFormElement>) => {
+  const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
       event.preventDefault();
       submit();
-    } else if (event.key === "Escape" && variant === "inline" && !pending) {
+    } else if (event.key === "Escape" && !renderCreate && !pending) {
       event.preventDefault();
       onCancel();
     }
   };
   const fields = (
-    <fieldset disabled={pending} className="min-w-0 space-y-4">
+    <>
       <form.Field name="title">
         {(field) => (
           <FormTextField
@@ -161,16 +160,24 @@ export function TaskForm({
           />
         )}
       </form.Field>
-      {variant === "dialog" && (
+      {renderCreate && (
         <TaskScheduleFields form={form} assignees={assignees} actors={detail.actors} />
       )}
-      <FormMessage
-        error={error}
-        errorDescription="Couldn’t save this task. Check its fields and make sure the assignee still has project access."
-      />
       {attachments}
-    </fieldset>
+    </>
   );
+  const errorDescription =
+    "Couldn’t save this task. Check its fields and make sure the assignee still has project access.";
+  if (renderCreate)
+    return renderCreate({
+      fields: <div className="@container min-w-0 space-y-4">{fields}</div>,
+      onKeyDown,
+      pending,
+      disabled: !attachmentsReady,
+      error,
+      errorDescription,
+      onSubmit: submit,
+    });
   const actions = (
     <>
       <Button
@@ -207,17 +214,11 @@ export function TaskForm({
         submit();
       }}
     >
-      {variant === "dialog" ? (
-        <>
-          <DialogBody className="@container">{fields}</DialogBody>
-          <DialogFooter>{actions}</DialogFooter>
-        </>
-      ) : (
-        <>
-          {fields}
-          <div className="flex justify-end gap-2">{actions}</div>
-        </>
-      )}
+      <fieldset disabled={pending} className="min-w-0 space-y-4">
+        {fields}
+        <FormMessage error={error} errorDescription={errorDescription} />
+      </fieldset>
+      <div className="flex justify-end gap-2">{actions}</div>
     </form>
   );
 }

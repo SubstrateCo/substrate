@@ -6,6 +6,7 @@ import { ProjectIcon } from "../projects/project-icon";
 import type { ProjectDetail, Task, TaskDraft } from "../types";
 import { TaskProperties } from "./task-properties";
 import { TaskSubtasks } from "./task-subtasks";
+import type { ProjectCapabilities } from "@/lib/tasks/project-capabilities";
 import { ChevronRight, Pencil, X } from "lucide-react";
 
 /**
@@ -14,6 +15,7 @@ import { ChevronRight, Pencil, X } from "lucide-react";
  */
 export function TaskDetail({
   detail,
+  capabilities,
   task,
   onClose,
   onSelectTask,
@@ -25,6 +27,7 @@ export function TaskDetail({
   children,
 }: {
   detail: ProjectDetail;
+  capabilities: ProjectCapabilities;
   task: Task;
   onClose: () => void;
   onSelectTask: (id: string) => void;
@@ -43,7 +46,7 @@ export function TaskDetail({
     if (!editing && wasEditing.current) editButton.current?.focus();
     wasEditing.current = editing;
   }, [editing]);
-  const canEdit = detail.level === "edit" || detail.level === "owner";
+  const { canEdit } = capabilities;
   const parent = task.parentTaskEntityId
     ? detail.tasks.find((candidate) => candidate.entityId === task.parentTaskEntityId)
     : undefined;

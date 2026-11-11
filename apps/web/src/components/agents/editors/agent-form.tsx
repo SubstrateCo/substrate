@@ -4,19 +4,22 @@ import type { HarnessKind } from "@substrate/contracts/harness";
 
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 
-import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 
 import { HarnessAvailability } from "../model-picker/harness-availability";
 import { ModelPicker } from "../model-picker/model-picker";
 import { AgentInstructions } from "./agent-instructions";
-import { UnsavedChangesGuard } from "./unsaved-changes-guard";
 import { UnsavedSectionsBar } from "./unsaved-sections-bar";
 import {
   agentSettingsSections,
+  isAgentSettingsSection,
+  listSections,
   type AgentSettingsSection,
 } from "@/components/agent-work/app/agent-sections";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
-import { PendingButton } from "@/components/feedback/pending-button";
+import type { FormDialogEditor } from "@/components/feedback/form-dialog";
+import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
+import { RegisterDraft } from "@/components/feedback/unsaved-drafts";
 import { FormTextField } from "@/components/forms/form-text-field";
 import {
   GroupTitle,
@@ -24,8 +27,6 @@ import {
   SettingsFooter,
   SettingsSection,
 } from "@/components/layout/settings-section";
-import { Button } from "@/components/ui/button";
-import { DialogBody, DialogFooter } from "@/components/ui/dialog";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { z } from "zod";
 
@@ -52,26 +53,6 @@ function definitionChanges(values: SaveAgentInput, saved: SaveAgentInput) {
   return changed.join(",");
 }
 
-/** Tells the page which sections have unsaved changes, so its section list can mark them. */
-function ReportUnsaved({
-  sections,
-  onChange,
-}: {
-  sections: readonly AgentSettingsSection[];
-  onChange?: (sections: readonly AgentSettingsSection[]) => void;
-}) {
-  const key = sections.join(",");
-  const stable = useMemo(
-    () => agentSettingsSections.filter((item) => key.split(",").includes(item)),
-    [key],
-  );
-  useEffect(() => {
-    onChange?.(stable);
-    return () => onChange?.([]);
-  }, [onChange, stable]);
-  return null;
-}
-
 type AgentFormProps = {
   userId: string;
   organizationId?: string | null;
@@ -84,17 +65,16 @@ type AgentFormProps = {
   runSettingsDirty?: boolean;
   /** Drops the unsaved run settings, which keep their own draft. */
   onDiscardRunSettings?: () => void;
-  onUnsavedSectionsChange?: (sections: readonly AgentSettingsSection[]) => void;
   deleteAction?: ReactNode;
   pending: boolean;
-  onCancel?: () => void;
+  renderCreate?: (editor: FormDialogEditor) => ReactNode;
   onSave: (input: SaveAgentInput) => Promise<void>;
-  renderConfiguration: (
-    harness: HarnessKind,
-    section: AgentSection,
-    defaults: boolean,
-    agentId?: string,
-  ) => ReactNode;
+  renderConfiguration: (props: {
+    harness: HarnessKind;
+    section: AgentSection;
+    defaults: boolean;
+    agentId?: string;
+  }) => ReactNode;
 };
 
 /**
@@ -111,10 +91,9 @@ export function AgentForm({
   runSettings,
   runSettingsDirty = false,
   onDiscardRunSettings,
-  onUnsavedSectionsChange,
   deleteAction,
   pending,
-  onCancel,
+  renderCreate,
   onSave,
   renderConfiguration,
 }: AgentFormProps) {
@@ -264,21 +243,6 @@ export function AgentForm({
             }}
           />
         );
-        const createFooter = (
-          <>
-            {error && (
-              <p role="alert" className="mr-auto text-sm text-destructive">
-                {error}
-              </p>
-            )}
-            <Button type="button" variant="outline" disabled={busy} onClick={onCancel}>
-              Cancel
-            </Button>
-            <PendingButton type="submit" form={formId} pending={busy} pendingLabel="Creating…">
-              Create agent
-            </PendingButton>
-          </>
-        );
         const formElement = (
           <form
             id={formId}
@@ -291,32 +255,43 @@ export function AgentForm({
         );
 
         if (!agent)
-          // Creation runs in a dialog: the fields scroll and the footer stays in view.
-          return (
-            <>
-              {formElement}
-              <DialogBody>
-                <fieldset disabled={busy} className="grid min-w-0 gap-5">
-                  {nameField}
-                  <Field>
-                    <FieldLabel htmlFor={`${formId}-model`}>Model</FieldLabel>
-                    <FieldDescription>
-                      The model it thinks with. Leave the default if you’re not sure.
-                    </FieldDescription>
-                    {modelField}
-                  </Field>
-                  {instructionsField}
-                </fieldset>
-              </DialogBody>
-              <DialogFooter>{createFooter}</DialogFooter>
-            </>
-          );
+          return renderCreate?.({
+            formId,
+            pending: busy,
+            error,
+            onSubmit: () => form.handleSubmit(),
+            fields: (
+              <>
+                {nameField}
+                <Field>
+                  <FieldLabel htmlFor={`${formId}-model`}>Model</FieldLabel>
+                  <FieldDescription>
+                    The model it thinks with. Leave the default if you’re not sure.
+                  </FieldDescription>
+                  {modelField}
+                </Field>
+                {instructionsField}
+              </>
+            ),
+          });
 
         return (
           <div className="min-w-0">
             {formElement}
-            <ReportUnsaved sections={unsaved} onChange={onUnsavedSectionsChange} />
-            <UnsavedChangesGuard sections={unsaved} agentId={agent.id} />
+            {agentSettingsSections
+              .filter((name) => name !== "run")
+              .map((name) => (
+                <RegisterDraft key={name} name={name} dirty={unsaved.includes(name)} />
+              ))}
+            <UnsavedChangesGuard
+              dirty={unsaved.length > 0}
+              description={`Your changes in ${listSections(unsaved)} aren’t saved.`}
+              name={`Agent settings: ${listSections(unsaved)}`}
+              shouldBlock={({ next }) =>
+                next.routeId !== "/_authenticated/_frame/_workspace/agents" ||
+                !(next.search.agentId === agent.id && isAgentSettingsSection(next.search.section))
+              }
+            />
             {section === "general" && (
               <SettingsSection
                 title="General"
@@ -370,7 +345,12 @@ export function AgentForm({
                     )
                   }
                 </form.Subscribe>
-                {renderConfiguration(agent.harness, section, agent.useStartupDefaults, agent.id)}
+                {renderConfiguration({
+                  harness: agent.harness,
+                  section,
+                  defaults: agent.useStartupDefaults,
+                  agentId: agent.id,
+                })}
               </>
             )}
             <div hidden={section !== "run"}>{runSettings}</div>

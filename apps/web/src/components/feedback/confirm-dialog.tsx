@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { FormMessage } from "@/components/auth/form-message";
+import { FormMessage } from "@/components/feedback/form-message";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,7 +44,7 @@ export function ConfirmDialog({
   destructive?: boolean;
   confirmDisabled?: boolean;
   pending?: boolean;
-  error?: Error | null;
+  error?: Error | string | null;
   /** Shown when the error is not a reviewed, user-facing message. */
   errorDescription?: string;
   onClose: () => void;

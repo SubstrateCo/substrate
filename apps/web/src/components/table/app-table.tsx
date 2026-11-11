@@ -5,7 +5,6 @@ import type { ReactNode } from "react";
 import { ContentNotice } from "../feedback/content-notice";
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
-import { isAccessFailure } from "../feedback/request-failure";
 import { Table, TableBody, TableCell, TableRow } from "../ui/table";
 import { AppTableHeader } from "./app-table-header";
 import type { AppTableInstance } from "./table";
@@ -41,9 +40,8 @@ export function AppTable<TData extends RowData>({
   renderMobileRow?: (row: TData) => ReactNode;
 }) {
   const rows = table.getRowModel().rows;
-  const blocked = isAccessFailure(error);
   // With no rows, show only the notice: sortable headers over nothing are noise.
-  const empty = (blocked || rows.length === 0) && !loading;
+  const empty = rows.length === 0 && !loading;
   let emptyContent = (
     <ContentNotice title={emptyMessage} description={emptyDescription} icon={emptyIcon} />
   );
@@ -57,17 +55,17 @@ export function AppTable<TData extends RowData>({
   return (
     <table.AppTable>
       <div className="@container min-w-0 space-y-3">
-        {loading && rows.length > 0 && !blocked && (
+        {loading && rows.length > 0 && (
           <span role="status" className="sr-only">
             {loadingMessage}
           </span>
         )}
-        {error && rows.length > 0 && !blocked && (
+        {error && rows.length > 0 && (
           <ErrorState compact title={errorTitle} description={errorDescription} onRetry={onRetry} />
         )}
         {renderMobileRow && (
           <div className="space-y-3 @min-[40rem]:hidden">
-            {blocked || rows.length === 0 ? (
+            {rows.length === 0 ? (
               emptyContent
             ) : (
               <ul aria-label={name} className="space-y-3">
@@ -90,10 +88,10 @@ export function AppTable<TData extends RowData>({
           <div
             className={`min-w-0 rounded-lg border${renderMobileRow ? " hidden @min-[40rem]:block" : ""}`}
           >
-            <Table aria-label={name} aria-busy={loading && !blocked}>
+            <Table aria-label={name} aria-busy={loading}>
               <AppTableHeader table={table} />
               <TableBody>
-                {blocked || rows.length === 0 ? (
+                {rows.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={table.getAllLeafColumns().length}>{emptyContent}</TableCell>
                   </TableRow>
@@ -114,7 +112,7 @@ export function AppTable<TData extends RowData>({
             </Table>
           </div>
         )}
-        {!blocked && rows.length > 0 && table.getPageCount() > 1 && (
+        {rows.length > 0 && table.getPageCount() > 1 && (
           <TablePagination table={table} name={name} />
         )}
       </div>

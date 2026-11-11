@@ -1,14 +1,16 @@
 import { useEffect, useRef, type ReactNode } from "react";
 
 import { PaneState } from "../../feedback/pane-state";
-import { isAccessFailure } from "../../feedback/request-failure";
 import { Button } from "../../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
+import { StaleNotice } from "@/components/feedback/stale-notice";
 import { PageAside } from "@/components/layout/page-layout";
+import type { ResourceStatus } from "@/lib/resource-state";
 import { X } from "lucide-react";
 
 export function ThreadPane({
   root,
+  state,
   conversationLabel,
   onClose,
   loading = false,
@@ -18,6 +20,7 @@ export function ThreadPane({
   composer,
 }: {
   root?: ReactNode;
+  state: ResourceStatus;
   conversationLabel: string;
   onClose: () => void;
   loading?: boolean;
@@ -26,7 +29,7 @@ export function ThreadPane({
   replies?: ReactNode;
   composer: ReactNode;
 }) {
-  const blocked = !!error && (!replies || isAccessFailure(error));
+  const blocked = state === "error" || state === "unavailable";
   const close = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     const previous = document.activeElement;
@@ -66,14 +69,14 @@ export function ThreadPane({
         </Tooltip>
       </header>
       {blocked ? (
-        <PaneState label="Thread unavailable" error={error} onRetry={onRetry} />
+        <PaneState
+          label="Thread unavailable"
+          error={error}
+          onRetry={state === "unavailable" ? undefined : onRetry}
+        />
       ) : (
         <>
-          {error && (
-            <p role="status" className="p-3 text-xs text-muted-foreground">
-              Replies may be out of date.
-            </p>
-          )}
+          {state === "stale" && <StaleNotice>Replies may be out of date.</StaleNotice>}
           {root && (
             <div className="max-h-7/20 shrink-0 overflow-y-auto border-b pt-4 pb-2">{root}</div>
           )}

@@ -8,6 +8,7 @@ import {
 } from "@/components/organizations/invitations/invitation-manager-view";
 import { useExpiryTime } from "@/hooks/use-expiry-time";
 import { authClient } from "@/lib/auth/client";
+import { resourceState } from "@/lib/resource-state";
 import { queryKeys } from "@/queries/keys";
 import { invitationsQueryOptions } from "@/queries/organizations/invitations";
 import { toast } from "sonner";
@@ -81,7 +82,7 @@ export function InvitationManager({
   return (
     <InvitationManagerView
       framed={framed}
-      invitations={invitations.data?.map((invitation) => ({
+      invitations={resourceState(invitations).data?.map((invitation) => ({
         ...invitation,
         expired: new Date(invitation.expiresAt).getTime() < now,
       }))}

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { useContext, useState } from "react";
 
 import { CopyLink } from "../../context/links/copy-link";
 import { TaskContext } from "../../context/references/task-context";
@@ -7,16 +7,17 @@ import { TaskComments } from "../comments/task-comments";
 import { TaskForm } from "../editor/task-form";
 import { TaskLinks } from "../links/task-links";
 import { TaskActions } from "./task-actions";
+import { TaskInspectorActive } from "./task-inspector-context";
 import { TaskAttachments } from "@/components/attachments/task-attachments";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
+import { useRegisterDraft } from "@/components/feedback/unsaved-drafts";
 import { TaskDetail as TaskDetailView } from "@/components/tasks/detail/task-detail-view";
 import type { ProjectDetail, Task } from "@/components/tasks/types";
 import { workHref } from "@/lib/navigation/record-links";
+import { projectCapabilities } from "@/lib/tasks/project-capabilities";
 import { useTaskUpdate } from "@/queries/tasks/mutations";
 import { toast } from "sonner";
-
-export const TaskInspectorActive = createContext(true);
 
 export function TaskDetail({
   organizationId,
@@ -26,7 +27,6 @@ export function TaskDetail({
   onSelectTask,
   onSubtask,
   visible,
-  onDirtyChange,
 }: {
   organizationId: string;
   detail: ProjectDetail;
@@ -35,17 +35,14 @@ export function TaskDetail({
   onSelectTask: (id: string) => void;
   onSubtask: () => void;
   visible: boolean;
-  onDirtyChange: (dirty: boolean) => void;
 }) {
   const update = useTaskUpdate(organizationId, detail.project.entityId);
+  const capabilities = projectCapabilities(detail.level);
   const [editDirty, setEditDirty] = useState(false);
   const [commentDirty, setCommentDirty] = useState(false);
   const active = useContext(TaskInspectorActive);
   const dirty = active && (editDirty || commentDirty);
-  useEffect(() => {
-    onDirtyChange(dirty);
-    return () => onDirtyChange(false);
-  }, [dirty, onDirtyChange]);
+  useRegisterDraft(task.entityId, dirty);
   return (
     <>
       <UnsavedChangesGuard
@@ -54,6 +51,7 @@ export function TaskDetail({
         name={`Task “${task.title}”`}
       />
       <TaskDetailView
+        capabilities={capabilities}
         detail={detail}
         task={task}
         onClose={onClose}
@@ -80,7 +78,7 @@ export function TaskDetail({
               label="Copy task link"
               href={workHref(organizationId, detail.project.entityId, task.entityId)}
             />
-            {(detail.level === "edit" || detail.level === "owner") && (
+            {capabilities.canEdit && (
               <TaskActions organizationId={organizationId} detail={detail} task={task} />
             )}
           </>
@@ -117,7 +115,7 @@ export function TaskDetail({
             projectEntityId: detail.project.entityId,
             taskEntityId: task.entityId,
           }}
-          canEdit={detail.level === "edit" || detail.level === "owner"}
+          canEdit={capabilities.canEdit}
           visible={visible}
         />
         <TaskContext
@@ -135,7 +133,7 @@ export function TaskDetail({
           organizationId={organizationId}
           detail={detail}
           taskEntityId={task.entityId}
-          canComment={detail.level !== "view"}
+          canComment={capabilities.canComment}
           onDirtyChange={setCommentDirty}
         />
       </TaskDetailView>

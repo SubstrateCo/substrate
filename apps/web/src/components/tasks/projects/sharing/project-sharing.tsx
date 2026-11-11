@@ -4,6 +4,7 @@ import {
   type AccessChange,
 } from "@/components/tasks/projects/sharing/project-sharing-view";
 import type { ProjectDetail, ProjectPermission } from "@/components/tasks/types";
+import { projectCapabilities } from "@/lib/tasks/project-capabilities";
 import { useTasksMutation } from "@/queries/tasks/mutations";
 import { toast } from "sonner";
 
@@ -47,6 +48,7 @@ export function ProjectSharing({
     );
   return (
     <ProjectSharingView
+      capabilities={projectCapabilities(detail.level)}
       detail={detail}
       pending={share.isPending}
       error={share.error}

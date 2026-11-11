@@ -1,6 +1,5 @@
 import { ErrorState } from "./error-state";
 import { LoadingState } from "./loading-state";
-import { isAccessFailure } from "./request-failure";
 
 export function PaneState({
   label,
@@ -17,16 +16,7 @@ export function PaneState({
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-6">
         <div className="w-full max-w-sm">
-          <ErrorState
-            title={label}
-            description={
-              description ??
-              (isAccessFailure(error)
-                ? "Check that you’re signed in to the right workspace and still have access, then try again."
-                : undefined)
-            }
-            onRetry={onRetry}
-          />
+          <ErrorState title={label} description={description} onRetry={onRetry} />
         </div>
       </div>
     );

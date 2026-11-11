@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { UserInvitationsTable } from "./user-invitations-table";
 import { SettingsPanel } from "@/components/layout/settings-page";
 import { useExpiryTime } from "@/hooks/use-expiry-time";
+import { resourceState } from "@/lib/resource-state";
 import { userInvitationsQueryOptions } from "@/queries/organizations/invitations";
 
 export function UserInvitations() {
@@ -14,7 +15,7 @@ export function UserInvitations() {
       description="Invitations to join other workspaces, sent to your email address."
     >
       <UserInvitationsTable
-        invitations={invitations.data?.map((item) => ({
+        invitations={resourceState(invitations).data?.map((item) => ({
           ...item,
           href: `/accept-invitation/${encodeURIComponent(item.id)}`,
         }))}

@@ -107,11 +107,7 @@ export function MemberRow({
             label={`Remove ${member.name}`}
             destructive
             disabled={disabled}
-            onClick={() =>
-              onRemove(
-                document.activeElement instanceof HTMLElement ? document.activeElement : null,
-              )
-            }
+            onClick={(event) => onRemove(event.currentTarget)}
           >
             <UserMinus aria-hidden="true" />
           </RowAction>

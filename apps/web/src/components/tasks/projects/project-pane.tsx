@@ -11,6 +11,8 @@ import { ProjectPicture } from "./editor/project-picture";
 import { ProjectSharing } from "./sharing/project-sharing";
 import { ProjectPane as ProjectPaneView } from "@/components/tasks/projects/project-pane-view";
 import { workHref } from "@/lib/navigation/record-links";
+import { resourceState } from "@/lib/resource-state";
+import { projectCapabilities } from "@/lib/tasks/project-capabilities";
 import { useTaskUpdate } from "@/queries/tasks/mutations";
 import { projectQueryOptions } from "@/queries/tasks/options";
 import { toast } from "sonner";
@@ -23,12 +25,16 @@ export function ProjectPane({
   projectEntityId: string;
 }) {
   const project = useQuery(projectQueryOptions(organizationId, projectEntityId));
+  const resource = resourceState(project);
+  const capabilities = projectCapabilities(resource.data?.level);
   const update = useTaskUpdate(organizationId, projectEntityId);
   const search = useSearch({ strict: false });
   const navigate = useNavigate();
   return (
     <ProjectPaneView
-      data={project.data}
+      data={resource.data}
+      state={resource.status}
+      capabilities={capabilities}
       statusPending={update.isPending}
       selectedTaskId={search.taskId ?? null}
       onSelectTask={(taskId) =>
@@ -68,24 +74,30 @@ export function ProjectPane({
           />
         )
       }
-      loading={project.isPending}
       error={project.error}
       onRetry={() => void project.refetch()}
       editor={
-        project.data && (
+        resource.data && (
           <>
-            <ProjectPicture organizationId={organizationId} project={project.data.project} />
-            <ProjectForm organizationId={organizationId} project={project.data.project} />
-            {project.data.level === "owner" && (
-              <ProjectDelete organizationId={organizationId} project={project.data.project} />
+            <ProjectPicture organizationId={organizationId} project={resource.data.project} />
+            <ProjectForm organizationId={organizationId} project={resource.data.project} />
+            {capabilities.canManage && (
+              <ProjectDelete organizationId={organizationId} project={resource.data.project} />
             )}
           </>
         )
       }
       sharing={
-        project.data && <ProjectSharing organizationId={organizationId} detail={project.data} />
+        resource.data && <ProjectSharing organizationId={organizationId} detail={resource.data} />
       }
-      renderTaskForm={(detail, parentTaskEntityId, onSaved, onCancel, initialStatus) => (
+      renderTaskForm={({
+        detail,
+        parentTaskEntityId,
+        onSaved,
+        onCancel,
+        status: initialStatus,
+        renderCreate,
+      }) => (
         <TaskForm
           organizationId={organizationId}
           detail={detail}
@@ -93,10 +105,10 @@ export function ProjectPane({
           onSaved={onSaved}
           onCancel={onCancel}
           initialStatus={initialStatus}
-          variant="dialog"
+          renderCreate={renderCreate}
         />
       )}
-      renderTaskDetail={(detail, task, onClose, onSubtask, onSelectTask, onDirtyChange) => (
+      renderTaskDetail={({ detail, task, onClose, onSubtask, onSelectTask }) => (
         <TaskDetail
           visible
           key={task.entityId}
@@ -106,7 +118,6 @@ export function ProjectPane({
           onClose={onClose}
           onSubtask={onSubtask}
           onSelectTask={onSelectTask}
-          onDirtyChange={onDirtyChange}
         />
       )}
     />

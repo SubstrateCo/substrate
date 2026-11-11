@@ -3,12 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 
 import { ManagedConversations as ManagedConversationsView } from "./managed-conversations-view";
-import { isAccessFailure } from "@/components/feedback/request-failure";
 import { SettingsPanel } from "@/components/layout/settings-page";
 import { DeleteConversationDialog } from "@/components/messaging/conversations/actions/delete-conversation-dialog";
 import { OwnerDialog } from "@/components/messaging/conversations/actions/owner-dialog";
 import { AddMembersDialog } from "@/components/messaging/conversations/add-members-dialog";
 import { conversationLabel, humanMembers } from "@/lib/messaging/conversations";
+import { resourceState } from "@/lib/resource-state";
 import { useConversationManagement } from "@/queries/messaging/management";
 import {
   deleteImpactQueryOptions,
@@ -26,9 +26,8 @@ export function ManagedConversations({ organizationId }: { organizationId: strin
     ...deleteImpactQueryOptions(organizationId, dialog?.id ?? ""),
     enabled: dialog?.kind === "delete",
   });
-  const target = isAccessFailure(list.error)
-    ? undefined
-    : list.data?.find((row) => row.id === dialog?.id);
+  const resource = resourceState(list);
+  const target = resource.data?.find((row) => row.id === dialog?.id);
   const name = target
     ? conversationLabel({ ...target, name: target.name ?? "this group message" })
     : "this group message";
@@ -53,7 +52,8 @@ export function ManagedConversations({ organizationId }: { organizationId: strin
     >
       <div ref={fallback} tabIndex={-1}>
         <ManagedConversationsView
-          rows={list.data}
+          rows={resource.data}
+          state={resource.status}
           loading={list.isPending}
           error={list.error}
           onRetry={() => void list.refetch()}

@@ -12,8 +12,8 @@ import {
   taskAttachmentUrl,
   type TaskAttachmentTarget,
 } from "@/api/files/attachments";
-import { FormMessage } from "@/components/auth/form-message";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+import { FormMessage } from "@/components/feedback/form-message";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { RowAction, RowActions } from "@/components/layout/row-actions";

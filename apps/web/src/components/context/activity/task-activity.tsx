@@ -2,7 +2,6 @@ import { useState } from "react";
 
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
-import { isAccessFailure } from "../../feedback/request-failure";
 import { Button } from "../../ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
 import { ActivityRow, type ActivityEvent } from "./activity-row";
@@ -24,7 +23,7 @@ export function TaskActivity({
 }) {
   const [open, setOpen] = useState(true);
   const [expanded, setExpanded] = useState(false);
-  const visible = isAccessFailure(error) ? [] : items;
+  const visible = items;
   const hidden = visible.length - collapsedCount;
   const shown = expanded || hidden <= 0 ? visible : visible.slice(0, collapsedCount);
   return (

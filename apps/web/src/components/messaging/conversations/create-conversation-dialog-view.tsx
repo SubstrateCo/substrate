@@ -1,23 +1,12 @@
-import { revalidateLogic, useForm } from "@tanstack/react-form";
+import { revalidateLogic, useForm, useSelector } from "@tanstack/react-form";
 
 import { useState } from "react";
 
-import { FormMessage } from "../../auth/form-message";
-import { PendingButton } from "../../feedback/pending-button";
-import { Button } from "../../ui/button";
 import { Checkbox } from "../../ui/checkbox";
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "../../ui/dialog";
 import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from "../../ui/field";
 import { createConversationDraftSchema } from "./create-conversation-validation";
 import { ShareHistoryField } from "./share-history-field";
+import { FormDialog } from "@/components/feedback/form-dialog";
 import { FormTextField } from "@/components/forms/form-text-field";
 import { PeoplePicker } from "@/components/people/people-picker";
 import type { Conversation } from "@/lib/messaging/conversations";
@@ -96,6 +85,8 @@ export function CreateConversationDialog({
     },
   });
   const text = copy[kind];
+  const chosen = useSelector(form.store, (state) => state.values.recipients.length);
+  const missing = Math.max(0, minimumRecipients[kind] - chosen);
   const limit = kind === "dm" ? "Choose one person for a direct message." : undefined;
   const nameField = kind !== "dm" && (
     <form.Field name="name">
@@ -113,156 +104,109 @@ export function CreateConversationDialog({
     </form.Field>
   );
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open && !pending) onClose();
+    <FormDialog
+      title={text.title}
+      description={text.description}
+      size="default"
+      saveLabel={text.submit}
+      pending={pending}
+      pendingLabel="Creating…"
+      disabled={missing > 0 && !pendingText.trim()}
+      status={missing > 0 ? recipientStatus(kind, chosen) : null}
+      error={error}
+      errorDescription="We couldn’t create this conversation. Check the people and try again."
+      onClose={onClose}
+      onRestoreFocus={onRestoreFocus}
+      onSubmit={() => {
+        if (unfinishedRecipientMessage(pendingText, limit)) {
+          setRefused(true);
+          document.getElementById("conversation-recipients")?.focus();
+          return;
+        }
+        return form.handleSubmit();
       }}
     >
-      <DialogContent
-        onCloseAutoFocus={(event) => {
-          if (!onRestoreFocus) return;
-          event.preventDefault();
-          onRestoreFocus();
-        }}
-      >
-        <form
-          noValidate
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (unfinishedRecipientMessage(pendingText, limit)) {
-              setRefused(true);
-              event.currentTarget
-                .querySelector<HTMLInputElement>("#conversation-recipients")
-                ?.focus();
-              return;
-            }
-            void form.handleSubmit();
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle>{text.title}</DialogTitle>
-            <DialogDescription>{text.description}</DialogDescription>
-          </DialogHeader>
-          <DialogBody>
-            {kind === "channel" && nameField}
-            <form.Field name="recipients">
-              {(field) => {
-                const unfinished = refused
-                  ? unfinishedRecipientMessage(pendingText, limit)
-                  : undefined;
-                const invalid = !field.state.meta.isValid || !!unfinished;
-                const invited = invitedRecipients(field.state.value).length;
-                return (
-                  <>
-                    <Field data-invalid={invalid}>
-                      <FieldLabel htmlFor="conversation-recipients">
-                        {kind === "channel" ? "Members" : "To"}
-                      </FieldLabel>
-                      <PeoplePicker
-                        id="conversation-recipients"
-                        people={people}
-                        value={field.state.value}
-                        max={kind === "dm" ? 1 : undefined}
-                        limitText={limit}
-                        placeholder={
-                          kind === "dm"
-                            ? "Search by name or email"
-                            : "Search people, or type an email to invite"
-                        }
-                        disabled={pending}
-                        invalid={invalid}
-                        describedBy={invalid ? "conversation-recipients-error" : undefined}
-                        onValueChange={field.handleChange}
-                        onPendingTextChange={(text) => {
-                          setPendingText(text);
-                          setRefused(false);
-                        }}
-                        onBlur={field.handleBlur}
-                      />
-                      {unfinished ? (
-                        <FieldError id="conversation-recipients-error">{unfinished}</FieldError>
-                      ) : (
-                        invalid && (
-                          <FieldError
-                            id="conversation-recipients-error"
-                            errors={field.state.meta.errors}
-                          />
-                        )
-                      )}
-                    </Field>
-                    {invited > 0 && (
-                      <ShareHistoryField
-                        id="create-sharing-history"
-                        invited={invited}
-                        channel={kind === "channel"}
-                        checked={shareHistory}
-                        onCheckedChange={setShareHistory}
-                        disabled={pending}
-                      />
-                    )}
-                  </>
-                );
-              }}
-            </form.Field>
-            {kind === "group" && nameField}
-            {kind === "channel" && (
-              <form.Field name="isPrivate">
-                {(field) => (
-                  <Field orientation="horizontal">
-                    <Checkbox
-                      id="conversation-private"
-                      checked={field.state.value}
-                      onCheckedChange={(checked) => field.handleChange(checked === true)}
-                      onBlur={field.handleBlur}
-                      disabled={pending}
-                      aria-describedby="conversation-private-description"
+      {kind === "channel" && nameField}
+      <form.Field name="recipients">
+        {(field) => {
+          const unfinished = refused ? unfinishedRecipientMessage(pendingText, limit) : undefined;
+          const invalid = !field.state.meta.isValid || !!unfinished;
+          const invited = invitedRecipients(field.state.value).length;
+          return (
+            <>
+              <Field data-invalid={invalid}>
+                <FieldLabel htmlFor="conversation-recipients">
+                  {kind === "channel" ? "Members" : "To"}
+                </FieldLabel>
+                <PeoplePicker
+                  id="conversation-recipients"
+                  people={people}
+                  value={field.state.value}
+                  max={kind === "dm" ? 1 : undefined}
+                  limitText={limit}
+                  placeholder={
+                    kind === "dm"
+                      ? "Search by name or email"
+                      : "Search people, or type an email to invite"
+                  }
+                  disabled={pending}
+                  invalid={invalid}
+                  describedBy={invalid ? "conversation-recipients-error" : undefined}
+                  onValueChange={field.handleChange}
+                  onPendingTextChange={(text) => {
+                    setPendingText(text);
+                    setRefused(false);
+                  }}
+                  onBlur={field.handleBlur}
+                />
+                {unfinished ? (
+                  <FieldError id="conversation-recipients-error">{unfinished}</FieldError>
+                ) : (
+                  invalid && (
+                    <FieldError
+                      id="conversation-recipients-error"
+                      errors={field.state.meta.errors}
                     />
-                    <FieldContent>
-                      <FieldLabel htmlFor="conversation-private">
-                        Make this channel private
-                      </FieldLabel>
-                      <FieldDescription id="conversation-private-description">
-                        Only people who are added can find and read it.
-                      </FieldDescription>
-                    </FieldContent>
-                  </Field>
+                  )
                 )}
-              </form.Field>
-            )}
-            <FormMessage
-              error={error}
-              errorDescription="We couldn’t create this conversation. Check the people and try again."
-            />
-          </DialogBody>
-          <form.Subscribe selector={(state) => state.values.recipients.length}>
-            {(chosen) => {
-              const missing = Math.max(0, minimumRecipients[kind] - chosen);
-              return (
-                <DialogFooter className="items-center sm:justify-between">
-                  <p className="text-sm text-muted-foreground" aria-live="polite">
-                    {missing > 0 ? recipientStatus(kind, chosen) : null}
-                  </p>
-                  <div className="flex flex-col-reverse gap-2 sm:flex-row">
-                    <Button type="button" variant="outline" disabled={pending} onClick={onClose}>
-                      Cancel
-                    </Button>
-                    <PendingButton
-                      type="submit"
-                      pending={pending}
-                      pendingLabel="Creating…"
-                      // Text still in the field is added, or explained, by the submit.
-                      disabled={missing > 0 && !pendingText.trim()}
-                    >
-                      {text.submit}
-                    </PendingButton>
-                  </div>
-                </DialogFooter>
-              );
-            }}
-          </form.Subscribe>
-        </form>
-      </DialogContent>
-    </Dialog>
+              </Field>
+              {invited > 0 && (
+                <ShareHistoryField
+                  id="create-sharing-history"
+                  invited={invited}
+                  channel={kind === "channel"}
+                  checked={shareHistory}
+                  onCheckedChange={setShareHistory}
+                  disabled={pending}
+                />
+              )}
+            </>
+          );
+        }}
+      </form.Field>
+      {kind === "group" && nameField}
+      {kind === "channel" && (
+        <form.Field name="isPrivate">
+          {(field) => (
+            <Field orientation="horizontal">
+              <Checkbox
+                id="conversation-private"
+                checked={field.state.value}
+                onCheckedChange={(checked) => field.handleChange(checked === true)}
+                onBlur={field.handleBlur}
+                disabled={pending}
+                aria-describedby="conversation-private-description"
+              />
+              <FieldContent>
+                <FieldLabel htmlFor="conversation-private">Make this channel private</FieldLabel>
+                <FieldDescription id="conversation-private-description">
+                  Only people who are added can find and read it.
+                </FieldDescription>
+              </FieldContent>
+            </Field>
+          )}
+        </form.Field>
+      )}
+    </FormDialog>
   );
 }

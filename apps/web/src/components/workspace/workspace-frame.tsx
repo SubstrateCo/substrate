@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 import { SignOutButton } from "@/components/auth/sign-out/sign-out-button";
 import { WorkspaceSearchProvider } from "@/components/context/search/workspace-search-context";
 import { WorkspaceTools } from "@/components/context/search/workspace-tools";
+import { isAccessFailure } from "@/components/feedback/request-failure";
 import { OrganizationSwitcher } from "@/components/organizations/switcher/organization-switcher";
 import { WorkspaceShell, type WorkspaceView } from "@/components/workspace/workspace-shell";
 import { needsYouCount } from "@/lib/agent-work/needs-you";
@@ -66,6 +67,7 @@ export function WorkspaceFrame({
   return (
     <WorkspaceSearchProvider>
       <WorkspaceShell
+        unavailable={isAccessFailure(organization.error) || isAccessFailure(member.error)}
         name={name}
         image={session.data?.user.image}
         view={view}

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import { FormMessage } from "../../auth/form-message";
 import { PendingButton } from "../../feedback/pending-button";
 import { Field } from "../../ui/field";
 import { InputGroup } from "../../ui/input-group";
 import { Popover, PopoverAnchor, PopoverContent } from "../../ui/popover";
+import { FormMessage } from "@/components/feedback/form-message";
 import type { WorkspaceReference } from "@/components/messaging/references/entity-reference";
 import {
   ReferenceEditor,

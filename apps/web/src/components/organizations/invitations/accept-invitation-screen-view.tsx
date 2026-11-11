@@ -2,11 +2,11 @@ import type { ReactNode } from "react";
 
 import { AuthFrame } from "../../auth/auth-frame";
 import { AuthNavLink } from "../../auth/auth-link";
-import { FormMessage } from "../../auth/form-message";
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
 import { PendingButton } from "../../feedback/pending-button";
 import { Button } from "../../ui/button";
+import { FormMessage } from "@/components/feedback/form-message";
 import { initials } from "@/lib/people/initials";
 
 /** "admin,member" -> "Admin, Member". */

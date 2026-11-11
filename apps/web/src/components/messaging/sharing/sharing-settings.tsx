@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { isAccessFailure } from "@/components/feedback/request-failure";
+import { StaleNotice } from "@/components/feedback/stale-notice";
 import { SettingsPanel } from "@/components/layout/settings-page";
 import { SettingsCard, SettingsNote } from "@/components/layout/settings-section";
 import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
@@ -20,11 +21,7 @@ export function SharingSettings({ organizationId }: { organizationId: string }) 
   const [selected, setSelected] = useState<string>();
   const launcher = useRef<HTMLButtonElement | null>(null);
   const blocked = isAccessFailure(conversations.error) || isAccessFailure(inbox.error);
-  useEffect(() => {
-    // Close the selected dialog permanently when a refresh revokes access.
-    // oxlint-disable-next-line react/set-state-in-effect -- The query error is an external authority change.
-    if (blocked) setSelected(undefined);
-  }, [blocked]);
+  if (blocked && selected !== undefined) setSelected(undefined);
   return (
     <SettingsPanel
       title="External collaboration"
@@ -33,7 +30,17 @@ export function SharingSettings({ organizationId }: { organizationId: string }) 
       {(conversations.isPending || inbox.isPending) && (
         <LoadingState label="Loading collaboration…" rows={2} />
       )}
-      {(conversations.error || inbox.error) && (
+      {(conversations.error || inbox.error) && !blocked && conversations.data && inbox.data && (
+        <StaleNotice
+          onRetry={() => {
+            void conversations.refetch();
+            void inbox.refetch();
+          }}
+        >
+          This information may be out of date.
+        </StaleNotice>
+      )}
+      {(conversations.error || inbox.error) && (blocked || !conversations.data || !inbox.data) && (
         <ErrorState
           title="Couldn’t load collaboration"
           description={

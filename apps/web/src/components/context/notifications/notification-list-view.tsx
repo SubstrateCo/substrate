@@ -4,14 +4,15 @@ import { ContentNotice } from "../../feedback/content-notice";
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
 import { PendingButton } from "../../feedback/pending-button";
-import { isAccessFailure } from "../../feedback/request-failure";
 import { SegmentedControl } from "../../forms/segmented-control";
 import { Button } from "../../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { NotificationItem, type Notification } from "./notification-item";
+import { StaleNotice } from "@/components/feedback/stale-notice";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageContent, PageLayout } from "@/components/layout/page-layout";
 import { formatDayLabel } from "@/lib/format/date";
+import type { ResourceStatus } from "@/lib/resource-state";
 import { Bell, CheckCheck, X } from "lucide-react";
 
 const filterOptions = [
@@ -46,6 +47,7 @@ function moveBetweenRows(event: KeyboardEvent<HTMLUListElement>) {
 
 export function NotificationList({
   items,
+  state,
   loading,
   error,
   filter,
@@ -62,6 +64,7 @@ export function NotificationList({
   renderEvents,
 }: {
   items: Notification[];
+  state: ResourceStatus;
   loading: boolean;
   error?: Error | null;
   filter: "all" | "unread";
@@ -77,8 +80,8 @@ export function NotificationList({
   onClose?: () => void;
   renderEvents: (item: Notification) => ReactNode;
 }) {
-  const visible = isAccessFailure(error) ? [] : items;
-  const failed = !!error && !visible.length;
+  const visible = items;
+  const failed = state === "error" || state === "unavailable";
   const empty = !failed && !loading && !visible.length;
   const unread = visible.some((item) => !item.read);
   return (
@@ -131,19 +134,22 @@ export function NotificationList({
               onValueChange={onFilter}
             />
             <div className="flex flex-1 flex-col gap-4">
+              {state === "stale" && (
+                <StaleNotice onRetry={onRetry}>Notifications may be out of date.</StaleNotice>
+              )}
               {failed && (
                 <ErrorState
                   title={
-                    isAccessFailure(error)
+                    state === "unavailable"
                       ? "Notifications unavailable"
                       : "Couldn’t load notifications"
                   }
                   description={
-                    isAccessFailure(error)
+                    state === "unavailable"
                       ? "Check that you still have access to this workspace."
                       : undefined
                   }
-                  onRetry={isAccessFailure(error) ? undefined : onRetry}
+                  onRetry={state === "unavailable" ? undefined : onRetry}
                 />
               )}
               {loading && <LoadingState label="Loading notifications" variant="compact" />}
@@ -169,9 +175,6 @@ export function NotificationList({
               )}
               {!failed && visible.length > 0 && (
                 <>
-                  {error && (
-                    <ErrorState compact title="Couldn’t refresh notifications" onRetry={onRetry} />
-                  )}
                   <ul
                     aria-label="Notification activity"
                     className="-mx-3 flex flex-col gap-px"

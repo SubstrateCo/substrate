@@ -15,6 +15,7 @@ import {
 import type { CropArea } from "./crop-image";
 import { ImageCropControls } from "./image-crop-controls";
 import { ImageCropper } from "./image-cropper";
+import { FormMessage } from "@/components/feedback/form-message";
 import { usePictureUpload } from "@/components/upload/use-picture-upload";
 
 export interface ImageCropDialogProps {
@@ -149,11 +150,7 @@ export function ImageCropDialog({
               onReset={reset}
             />
           </fieldset>
-          {error && (
-            <p role="alert" className="text-sm text-destructive">
-              {error}
-            </p>
-          )}
+          <FormMessage error={error} />
           {pending && (
             <div className="space-y-2">
               <progress

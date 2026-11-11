@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { WorkDiscussions as WorkDiscussionsView } from "@/components/context/discussions/work-discussions-view";
 import { messageHref } from "@/lib/navigation/record-links";
+import { resourceState } from "@/lib/resource-state";
 import { relatedContextOptions } from "@/queries/context/links";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
 
@@ -32,7 +33,7 @@ export function WorkDiscussions({
   });
   return (
     <WorkDiscussionsView
-      items={(related.data ?? []).map((item) => {
+      items={(resourceState(related).data ?? []).map((item) => {
         const conversation = conversations.data?.find((entry) => entry.id === item.conversationId);
         return {
           ...item,
