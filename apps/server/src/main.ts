@@ -1,4 +1,4 @@
-import { pruneRecords } from "@substrate/database/maintenance";
+import { pruneRecords } from "@substrate/database/trusted";
 
 import { createApp } from "./app";
 import { closeDatabase, db } from "./auth/database";

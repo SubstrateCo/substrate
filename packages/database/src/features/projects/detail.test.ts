@@ -1,7 +1,7 @@
 import { entities } from "../../core/entities/schema";
 import { member } from "../../core/organizations/schema";
 import { AccessDeniedError } from "../../errors";
-import { createRepositories } from "../../repositories";
+import { ActorRepositories } from "../../repositories";
 import * as schema from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
@@ -32,8 +32,10 @@ test("project detail preserves protected output with five SELECT statements", as
     schema,
     logger: { logQuery: (query) => statements.push(query) },
   });
-  const repos = createRepositories(db).forActor({ organizationId: f.orgA, actorEntityId: f.alice });
-  const actual = await repos.transaction((tx) => tx.projects.getDetail(project.entityId));
+  const repos = new ActorRepositories(db, { organizationId: f.orgA, actorEntityId: f.alice });
+  const { result: actual } = await repos.transaction((tx) =>
+    tx.projects.getDetail(project.entityId),
+  );
   // Detail performs one access check, reducing its budget from six reads to five.
   expect(statements.filter((query) => /^(select|with)\b/i.test(query))).toHaveLength(5);
   expect(actual.project).toEqual(await alice.projects.get(project.entityId));

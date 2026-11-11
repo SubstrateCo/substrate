@@ -1,147 +1,25 @@
 import { taskStatusLabels } from "@substrate/contracts/tasks";
 
-import type { DatabaseExecutor } from "../../client";
-import { activeActorCondition } from "../../core/actors/access";
-import { actorDisplayName } from "../../core/actors/display-name";
-import { ensureHumanActor } from "../../core/actors/provisioning";
-import { actors } from "../../core/actors/schema";
-import { userAgents } from "../../core/actors/user-agents.schema";
-import { user } from "../../core/authentication/schema";
-import { entities } from "../../core/entities/schema";
-import { adminRoleCondition } from "../../core/organizations/roles";
-import { member } from "../../core/organizations/schema";
-import { RepositoryContext } from "../../core/repository-context";
+import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError } from "../../errors";
-import type { MessagingIdentity } from "../messaging/access";
 import { projects } from "../projects/schema";
 import { tasks } from "../tasks/tasks.schema";
-import { and, eq, isNull, sql } from "drizzle-orm";
-
-const actorSelection = { entityId: actors.entityId, name: actorDisplayName(), type: actors.type };
-const adminSelection = sql<boolean>`${adminRoleCondition(member.role)}`;
-
-// Verifies the session identity, membership and active actor in one statement, and reads
-// whether the user is an owner or admin of the organization now. Only a human's first workspace
-// use takes the provisioning lock.
-export async function workspaceContext(
-  db: DatabaseExecutor,
-  scope: MessagingIdentity,
-  options: { lockActor?: boolean } = {},
-) {
-  const identity = and(
-    eq(user.id, scope.userId),
-    eq(user.emailVerified, true),
-    eq(member.organizationId, scope.organizationId),
-  );
-  let actor: { entityId: string; name: string; type: "human" | "agent" } | undefined;
-  let userName: string;
-  let admin: boolean;
-  if (scope.actorEntityId) {
-    const query = db
-      .select({ userName: user.name, actor: actorSelection, admin: adminSelection })
-      .from(user)
-      .innerJoin(member, eq(member.userId, user.id))
-      .innerJoin(
-        actors,
-        and(
-          eq(actors.entityId, scope.actorEntityId),
-          eq(actors.organizationId, member.organizationId),
-          eq(actors.type, "agent"),
-        ),
-      )
-      .innerJoin(
-        userAgents,
-        and(eq(userAgents.id, actors.userAgentId), eq(userAgents.userId, user.id)),
-      )
-      .innerJoin(
-        entities,
-        and(
-          eq(entities.entityId, actors.entityId),
-          eq(entities.organizationId, actors.organizationId),
-        ),
-      )
-      .where(and(identity, activeActorCondition(), isNull(entities.deletedAt)));
-    const [row] = await (options.lockActor ? query.for("update", { of: actors }) : query);
-    if (!row) throw new AccessDeniedError();
-    ({ actor, userName, admin } = row);
-  } else {
-    const [row] = await db
-      .select({
-        userName: user.name,
-        actor: actorSelection,
-        admin: adminSelection,
-        disabledAt: actors.disabledAt,
-        deletedAt: entities.deletedAt,
-      })
-      .from(user)
-      .innerJoin(member, eq(member.userId, user.id))
-      .leftJoin(
-        actors,
-        and(eq(actors.organizationId, member.organizationId), eq(actors.userId, user.id)),
-      )
-      .leftJoin(
-        entities,
-        and(
-          eq(entities.entityId, actors.entityId),
-          eq(entities.organizationId, actors.organizationId),
-        ),
-      )
-      .where(identity);
-    if (!row || row.disabledAt || row.deletedAt) throw new AccessDeniedError();
-    ({ userName, admin } = row);
-    actor = row.actor ?? undefined;
-    if (!actor) {
-      const created = await ensureHumanActor(db, scope);
-      actor = { entityId: created.entityId, name: userName, type: created.type };
-      await new RepositoryContext(db, {
-        organizationId: scope.organizationId,
-        actorEntityId: actor.entityId,
-      }).requireActiveActor();
-    }
-  }
-  const context = new RepositoryContext(db, {
-    organizationId: scope.organizationId,
-    actorEntityId: actor.entityId,
-  });
-  return { context, actor, userName, admin };
-}
+import { and, eq } from "drizzle-orm";
 
 export async function requireWork(
   context: RepositoryContext,
   entityId: string,
-  level: "view" | "edit" | "owner" = "view",
+  minimum: "view" | "edit" | "owner" = "view",
 ) {
-  const { db, scope } = context;
-  const [row] = await db
-    .select({
-      entityType: entities.entityType,
-      updatedAt: entities.updatedAt,
-      task: { title: tasks.title, projectEntityId: tasks.projectEntityId, status: tasks.status },
-      projectName: projects.name,
-    })
-    .from(entities)
-    .leftJoin(
-      tasks,
-      and(eq(tasks.organizationId, entities.organizationId), eq(tasks.entityId, entities.entityId)),
-    )
-    .leftJoin(
-      projects,
-      and(
-        eq(projects.organizationId, entities.organizationId),
-        eq(projects.entityId, entities.entityId),
-      ),
-    )
-    .where(
-      and(
-        eq(entities.organizationId, scope.organizationId),
-        eq(entities.entityId, entityId),
-        isNull(entities.deletedAt),
-      ),
-    );
-  if (row?.entityType === "task" && row.task) {
-    // A task's level is its project's level; the task itself was checked as not deleted above.
-    const { task } = row;
-    const project = await context.requireAccess(task.projectEntityId, level);
+  const { entity, level } = await context.requireAccess(entityId, minimum);
+  if (entity.entityType === "task") {
+    const [task] = await context.db
+      .select()
+      .from(tasks)
+      .where(
+        and(eq(tasks.organizationId, context.scope.organizationId), eq(tasks.entityId, entityId)),
+      );
+    if (!task) throw new AccessDeniedError();
     return {
       entityId,
       entityType: "task" as const,
@@ -149,21 +27,30 @@ export async function requireWork(
       projectEntityId: task.projectEntityId,
       status: task.status,
       statusName: taskStatusLabels[task.status],
-      level: project.level,
-      updatedAt: row.updatedAt,
+      level,
+      updatedAt: entity.updatedAt,
     };
   }
-  if (row?.entityType === "project" && row.projectName !== null) {
-    const { level: projectLevel } = await context.requireAccess(entityId, level);
+  if (entity.entityType === "project") {
+    const [project] = await context.db
+      .select()
+      .from(projects)
+      .where(
+        and(
+          eq(projects.organizationId, context.scope.organizationId),
+          eq(projects.entityId, entityId),
+        ),
+      );
+    if (!project) throw new AccessDeniedError();
     return {
       entityId,
       entityType: "project" as const,
-      title: row.projectName,
+      title: project.name,
       projectEntityId: entityId,
       status: null,
       statusName: null,
-      level: projectLevel,
-      updatedAt: row.updatedAt,
+      level,
+      updatedAt: entity.updatedAt,
     };
   }
   throw new AccessDeniedError();

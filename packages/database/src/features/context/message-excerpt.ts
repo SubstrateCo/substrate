@@ -1,6 +1,6 @@
 import type { DatabaseExecutor } from "../../client";
 import type { RepositoryContext } from "../../core/repository-context";
-import type { MessagingIdentity } from "../messaging/access";
+import type { SessionIdentity } from "../../core/session/identity";
 import { messagePeople, messageWorkLinks } from "./message-metadata";
 import { messagingReferencePage } from "./messaging-references";
 
@@ -47,7 +47,7 @@ export function excerptText(body: string, labels: ReadonlyMap<string, string>, l
 export async function messageExcerpts(
   ctx: RepositoryContext,
   db: DatabaseExecutor,
-  scope: MessagingIdentity,
+  scope: SessionIdentity,
   messages: { id: string; body: string; conversationId: string }[],
   length?: number,
 ) {

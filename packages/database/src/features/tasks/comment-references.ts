@@ -3,9 +3,9 @@ import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { entities } from "../../core/entities/schema";
 import { RepositoryContext } from "../../core/repository-context";
+import { messageReferences, type Reference } from "../../core/text/references";
 import { AccessDeniedError, ValidationError } from "../../errors";
-import { messageReferences, type Reference } from "../context/references";
-import { notifications } from "../notifications/schema";
+import { notify } from "../notifications/effects";
 import { readableWorkTargets } from "../notifications/targets";
 import { taskCommentReferences } from "./comment-references.schema";
 import type { taskComments } from "./comments.schema";
@@ -100,31 +100,17 @@ export async function applyCommentReferences(
   const unreachable = new ValidationError("Mention only people who can open this task.");
   if (mentioned.length !== people.length) throw unreachable;
   for (const person of mentioned) {
-    try {
-      await new RepositoryContext(db, {
-        organizationId: scope.organizationId,
-        actorEntityId: person.entityId,
-      }).requireAccess(task.projectEntityId, "view");
-    } catch (error) {
-      throw error instanceof AccessDeniedError ? unreachable : error;
-    }
+    if (!(await ctx.actorCanAccess(person.entityId, task.entityId, "view"))) throw unreachable;
   }
   const recipients = people.filter((id) => id !== scope.actorEntityId);
   if (!recipients.length) return [];
-  const notified = await db
-    .insert(notifications)
-    .values(
-      recipients.map((recipientActorEntityId) => ({
-        organizationId: scope.organizationId,
-        recipientActorEntityId,
-        kind: "mention" as const,
-        entityId: task.entityId,
-        eventKey: comment.id,
-      })),
-    )
-    .onConflictDoNothing()
-    .returning({ actorEntityId: notifications.recipientActorEntityId });
-  return notified.map((row) => row.actorEntityId);
+  const notified = await notify(
+    ctx,
+    "mention",
+    recipients.map((actorEntityId) => ({ actorEntityId })),
+    { entityId: task.entityId, eventKey: comment.id },
+  );
+  return notified.map((row) => row.actorId);
 }
 
 function parsed(body: string) {

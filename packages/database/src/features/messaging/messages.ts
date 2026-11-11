@@ -5,6 +5,7 @@ import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
+import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { routeWake } from "../agent-work/router";
 import { applyMessageEffects } from "../context/message-effects";
@@ -12,12 +13,7 @@ import { messageAttachmentMetadata } from "../files/metadata";
 import { publishFiles } from "../files/publication";
 import { messageAttachments } from "../files/schema";
 import { messageChangeHints } from "../realtime/routing";
-import {
-  loadConversation,
-  requireThreadRoot,
-  type MessagingIdentity,
-  messagingSession,
-} from "./access";
+import { loadConversation, requireThreadRoot } from "./access";
 import { writeMembers } from "./members";
 import { validateBody, validateEmoji } from "./policy";
 import { messagingProfile } from "./profiles";
@@ -25,7 +21,7 @@ import { messagingMessages, messagingReactions } from "./schema";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 
 // Requires a join of `actors` on author_actor_entity_id.
-export function messageAuthorColumns(scope: MessagingIdentity) {
+export function messageAuthorColumns(scope: SessionIdentity) {
   return {
     authorName: actorDisplayName(),
     authorImage: actorPicture(scope),
@@ -97,7 +93,7 @@ export async function messageSummaries(
 // Trusted callers pass the context and author already resolved by workspaceContext.
 export async function sendMessageAs(
   ctx: RepositoryContext,
-  scope: MessagingIdentity,
+  scope: SessionIdentity,
   author: { actor: { entityId: string; type: "human" | "agent" }; authorName: string },
   message: {
     conversationId: string;
@@ -208,7 +204,7 @@ export async function sendMessageAs(
 }
 
 // Reading, posting and reacting. Scope comes from the authenticated session.
-export function messageOperations(db: DatabaseExecutor, scope: Readonly<MessagingIdentity>) {
+export function messageOperations(db: DatabaseExecutor, scope: Readonly<SessionIdentity>) {
   const authenticate = (tx: DatabaseExecutor) => messagingSession(tx, scope);
 
   return {
@@ -368,3 +364,4 @@ export function messageOperations(db: DatabaseExecutor, scope: Readonly<Messagin
     },
   };
 }
+import { messagingSession } from "../../core/session/messaging";

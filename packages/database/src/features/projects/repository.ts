@@ -1,26 +1,23 @@
 import { profilePicturePath, projectIcon } from "@substrate/contracts/files/pictures";
+import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { activeActorCondition, visibleActorCondition } from "../../core/actors/access";
 import { actorDisplayName } from "../../core/actors/display-name";
 import { actorPicture } from "../../core/actors/picture";
 import { actors } from "../../core/actors/schema";
-import { userAgents } from "../../core/actors/user-agents.schema";
 import { entities } from "../../core/entities/schema";
 import { permissionRepository } from "../../core/permissions/repository";
 import { entityGrants } from "../../core/permissions/schema";
 import { RepositoryContext } from "../../core/repository-context";
+import { requiredText } from "../../core/validation";
 import { AccessDeniedError, ValidationError } from "../../errors";
-import { liveTask } from "../tasks/access";
+import { liveProjectTasks } from "../tasks/access";
+import { requireUnassignedProjectActor } from "../tasks/assignment";
 import { projectTaskLinks } from "../tasks/links";
 import { tasks } from "../tasks/tasks.schema";
+import { queryProjects } from "./queries";
 import { projects } from "./schema";
 import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
-
-export function requiredText(value: string, maximum: number) {
-  if (!value.trim() || value.trim().length > maximum)
-    throw new ValidationError(`Enter text between 1 and ${maximum} characters.`);
-  return value.trim();
-}
 
 export function projectRepository(context: RepositoryContext) {
   const { db, scope } = context;
@@ -69,13 +66,7 @@ export function projectRepository(context: RepositoryContext) {
     const assignedAgents = db
       .select({ id: tasks.assigneeActorEntityId })
       .from(tasks)
-      .where(
-        and(
-          eq(tasks.organizationId, scope.organizationId),
-          eq(tasks.projectEntityId, projectEntityId),
-          liveTask(),
-        ),
-      );
+      .where(liveProjectTasks(scope, projectEntityId));
     return db
       .select({
         entityId: actors.entityId,
@@ -98,10 +89,14 @@ export function projectRepository(context: RepositoryContext) {
   return {
     get,
     async delete(entityId: string) {
-      return db.transaction(async (tx) => {
-        const ctx = new RepositoryContext(tx, scope);
+      return context.transaction(async (ctx) => {
+        const tx = ctx.db;
         const { entity } = await ctx.requireAccess(entityId, "owner", true);
         if (entity.entityType !== "project") throw new AccessDeniedError();
+        ctx.effects.hint({
+          audience: realtimeKeys.organization(scope.organizationId),
+          domain: "access",
+        });
         await tx
           .update(entities)
           .set({ deletedAt: new Date(), updatedAt: new Date() })
@@ -114,46 +109,10 @@ export function projectRepository(context: RepositoryContext) {
       });
     },
     async revoke(entityId: string, actorEntityId: string) {
-      return db.transaction(async (tx) => {
-        const ctx = new RepositoryContext(tx, scope);
+      return context.transaction(async (ctx) => {
         const { entity } = await ctx.requireAccess(entityId, "owner", true);
         if (entity.entityType !== "project") throw new AccessDeniedError();
-        const [target] = await tx
-          .select({ userId: actors.userId })
-          .from(actors)
-          .where(
-            and(
-              eq(actors.organizationId, scope.organizationId),
-              eq(actors.entityId, actorEntityId),
-            ),
-          );
-        const [assigned] = await tx
-          .select({ id: tasks.entityId })
-          .from(tasks)
-          .innerJoin(
-            actors,
-            and(
-              eq(actors.organizationId, tasks.organizationId),
-              eq(actors.entityId, tasks.assigneeActorEntityId),
-            ),
-          )
-          .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
-          .where(
-            and(
-              eq(tasks.organizationId, scope.organizationId),
-              eq(tasks.projectEntityId, entityId),
-              liveTask(),
-              or(
-                eq(actors.entityId, actorEntityId),
-                target?.userId ? eq(userAgents.userId, target.userId) : undefined,
-              ),
-            ),
-          )
-          .limit(1);
-        if (assigned)
-          throw new ValidationError(
-            "Reassign or unassign this person’s and their agents’ tasks before removing project access.",
-          );
+        await requireUnassignedProjectActor(ctx, entityId, actorEntityId);
         await permissionRepository(ctx).revoke({ entityId, actorEntityId });
       });
     },
@@ -173,8 +132,8 @@ export function projectRepository(context: RepositoryContext) {
         (image !== null && !image.startsWith(`${profilePicturePath("project-icon", entityId)}?v=`))
       )
         throw new ValidationError("Use an uploaded icon for this project.");
-      return db.transaction(async (tx) => {
-        const ctx = new RepositoryContext(tx, scope);
+      return context.transaction(async (ctx) => {
+        const tx = ctx.db;
         await ctx.requireAccess(entityId, "edit", true);
         const [project] = await tx
           .update(projects)
@@ -183,6 +142,10 @@ export function projectRepository(context: RepositoryContext) {
           .returning();
         if (!project) throw new AccessDeniedError();
         await ctx.touch(entityId);
+        ctx.effects.hint({
+          audience: realtimeKeys.organization(scope.organizationId),
+          domain: "tasks",
+        });
         return project;
       });
     },
@@ -200,13 +163,7 @@ export function projectRepository(context: RepositoryContext) {
         db
           .select()
           .from(tasks)
-          .where(
-            and(
-              eq(tasks.organizationId, scope.organizationId),
-              eq(tasks.projectEntityId, projectEntityId),
-              liveTask(),
-            ),
-          )
+          .where(liveProjectTasks(scope, projectEntityId))
           .orderBy(asc(tasks.entityId)),
         projectTaskLinks(context, projectEntityId),
       ]);
@@ -221,8 +178,9 @@ export function projectRepository(context: RepositoryContext) {
     },
     async create(input: { name: string; description?: string }) {
       const name = requiredText(input.name, 200);
-      return db.transaction(async (tx) => {
-        const entity = await new RepositoryContext(tx, scope).createEntity("project");
+      return context.transaction(async (ctx) => {
+        const tx = ctx.db;
+        const entity = await ctx.createEntity("project");
         const [project] = await tx
           .insert(projects)
           .values({
@@ -232,26 +190,20 @@ export function projectRepository(context: RepositoryContext) {
             description: input.description ?? "",
           })
           .returning();
+        ctx.effects.hint({
+          audience: realtimeKeys.organization(scope.organizationId),
+          domain: "tasks",
+        });
         return project!;
       });
     },
     async list() {
-      await context.requireActiveActor();
-      return db
-        .select()
-        .from(projects)
-        .where(
-          and(
-            eq(projects.organizationId, scope.organizationId),
-            context.readable(projects.entityId),
-          ),
-        )
-        .orderBy(asc(projects.name), asc(projects.entityId));
+      return queryProjects(context);
     },
     async update(entityId: string, input: { name: string; description: string }) {
       const name = requiredText(input.name, 200);
-      return db.transaction(async (tx) => {
-        const ctx = new RepositoryContext(tx, scope);
+      return context.transaction(async (ctx) => {
+        const tx = ctx.db;
         await ctx.requireAccess(entityId, "edit", true);
         const [project] = await tx
           .update(projects)
@@ -260,6 +212,10 @@ export function projectRepository(context: RepositoryContext) {
           .returning();
         if (!project) throw new AccessDeniedError();
         await ctx.touch(entityId);
+        ctx.effects.hint({
+          audience: realtimeKeys.organization(scope.organizationId),
+          domain: "tasks",
+        });
         return project;
       });
     },

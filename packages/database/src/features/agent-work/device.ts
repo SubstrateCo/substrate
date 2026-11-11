@@ -2,29 +2,9 @@ import type { DatabaseExecutor } from "../../client";
 import { activeActorCondition } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
-import { touchDevice } from "../../core/devices/repository";
+import type { DeviceIdentity } from "../../core/session/device";
 import { AccessDeniedError } from "../../errors";
-import { workspaceContext } from "../context/access";
 import { and, eq } from "drizzle-orm";
-
-/** From the authenticated session. The installation ID names a registered device of that user. */
-export interface DeviceIdentity {
-  userId: string;
-  organizationId: string;
-  installationId: string;
-}
-
-/** From the authenticated session, for owner views and actions on any device. */
-export interface OwnerIdentity {
-  userId: string;
-  organizationId: string;
-}
-
-// Verifies membership and the registered device in the caller's transaction.
-export async function requireDevice(db: DatabaseExecutor, identity: DeviceIdentity) {
-  await workspaceContext(db, { userId: identity.userId, organizationId: identity.organizationId });
-  return touchDevice(db, identity.userId, identity.installationId);
-}
 
 /**
  * The owner's active agents whose home is this device, with their actor in the organization.

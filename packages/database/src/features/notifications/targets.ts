@@ -1,8 +1,9 @@
 import type { DatabaseExecutor } from "../../client";
 import { entities } from "../../core/entities/schema";
-import { adminOwnsCondition, visibilityCte } from "../../core/permissions/visibility";
+import { readableFromCte, withVisibility } from "../../core/permissions/visibility";
 import type { RepositoryContext } from "../../core/repository-context";
-import { visibleConversations, type MessagingIdentity } from "../messaging/access";
+import type { SessionIdentity } from "../../core/session/identity";
+import { visibleConversations } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { projects } from "../projects/schema";
 import { tasks } from "../tasks/tasks.schema";
@@ -19,8 +20,10 @@ export async function readableWorkTargets(ctx: RepositoryContext, ids: string[])
     entityType: "task" | "project";
     title: string;
     projectEntityId: string;
-  }>(sql`
-    ${visibilityCte(ctx.scope)}
+  }>(
+    withVisibility(
+      ctx.scope,
+      sql`
     SELECT ${tasks.entityId} AS "entityId", 'task' AS "entityType", ${tasks.title} AS title,
       ${tasks.projectEntityId} AS "projectEntityId"
     FROM ${tasks}
@@ -29,8 +32,7 @@ export async function readableWorkTargets(ctx: RepositoryContext, ids: string[])
     WHERE ${tasks.organizationId} = ${ctx.scope.organizationId}
       AND ${inArray(tasks.entityId, ids)} AND e.deleted_at IS NULL AND p.deleted_at IS NULL
       AND e.entity_type = 'task'
-      AND (${tasks.projectEntityId} IN (SELECT entity_id FROM visible_entities)
-        OR ${adminOwnsCondition(ctx.scope, tasks.projectEntityId)})
+      AND ${readableFromCte(ctx.scope, tasks.entityId)}
     UNION ALL
     SELECT ${projects.entityId} AS "entityId", 'project' AS "entityType", ${projects.name} AS title,
       ${projects.entityId} AS "projectEntityId"
@@ -38,15 +40,16 @@ export async function readableWorkTargets(ctx: RepositoryContext, ids: string[])
     JOIN ${entities} e ON e.entity_id = ${projects.entityId} AND e.organization_id = ${projects.organizationId}
     WHERE ${projects.organizationId} = ${ctx.scope.organizationId}
       AND ${inArray(projects.entityId, ids)} AND e.deleted_at IS NULL AND e.entity_type = 'project'
-      AND (${projects.entityId} IN (SELECT entity_id FROM visible_entities)
-        OR ${adminOwnsCondition(ctx.scope, projects.entityId)})
-  `);
+      AND ${readableFromCte(ctx.scope, projects.entityId)}
+  `,
+    ),
+  );
   return new Map(rows.map((row) => [row.entityId, row]));
 }
 
 export async function readableMessageTargets(
   db: DatabaseExecutor,
-  scope: MessagingIdentity,
+  scope: SessionIdentity,
   ids: string[],
 ) {
   if (!ids.length)

@@ -1,31 +1,24 @@
 import { actors } from "../../core/actors/schema";
-import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
-import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
+import { messageReferences } from "../../core/text/references";
 import { AccessDeniedError, ValidationError } from "../../errors";
-import {
-  liveAgentMember,
-  mentionablePerson,
-  visibleConversations,
-  type MessagingIdentity,
-} from "../messaging/access";
+import { liveAgentMember, mentionablePerson } from "../messaging/access";
 import {
   messagingConversations,
   messagingMessages,
   messagingParticipants,
 } from "../messaging/schema";
-import { notifications } from "../notifications/schema";
+import { notify } from "../notifications/effects";
 import { readableWorkTargets } from "../notifications/targets";
 import { saveMessagingReferences } from "./messaging-references";
-import { messageReferences } from "./references";
 import { messageEntityReferences } from "./schema";
 import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
 // `referenced` reports saved work or messaging references. `notified` lists the alerts created.
 export async function applyMessageEffects(
   ctx: RepositoryContext,
-  scope: MessagingIdentity,
+  scope: SessionIdentity,
   message: typeof messagingMessages.$inferSelect,
   conversationOrganizationId: string,
 ): Promise<{ referenced: boolean; notified: { organizationId: string; actorId: string }[] }> {
@@ -144,26 +137,24 @@ export async function applyMessageEffects(
   }
   if (!scope.actorEntityId) recipients.delete(scope.userId);
   if (!recipients.size) return { referenced, notified: [] };
-  const notified = await db.execute<{ organizationId: string; actorId: string }>(sql`
-      INSERT INTO ${notifications} (organization_id, recipient_actor_entity_id, kind, event_key, message_id)
-      SELECT ${actors.organizationId}, ${actors.entityId}, recipient.kind, ${message.id}, ${message.id}::uuid
-      FROM ${actors}
-      JOIN (VALUES ${sql.join(
-        [...recipients].map(([userId, kind]) => sql`(${userId}::text, ${kind}::text)`),
-        sql`, `,
-      )}) AS recipient(user_id, kind) ON recipient.user_id = ${actors.userId}
-      JOIN ${user} ON ${user.id} = ${actors.userId} AND ${user.emailVerified} = true
-      JOIN ${entities} ON ${entities.entityId} = ${actors.entityId}
-        AND ${entities.organizationId} = ${actors.organizationId} AND ${entities.deletedAt} IS NULL
-      JOIN ${member} ON ${member.userId} = ${user.id} AND ${member.organizationId} = ${actors.organizationId}
-      JOIN ${messagingConversations} ON ${messagingConversations.id} = ${message.conversationId}::uuid
-        AND ${visibleConversations(db, { userId: actors.userId, organizationId: actors.organizationId })}
-      LEFT JOIN ${messagingParticipants} ON ${messagingParticipants.conversationId} = ${messagingConversations.id}
-        AND ${messagingParticipants.actorEntityId} = ${actors.entityId}
-      WHERE ${actors.disabledAt} IS NULL
-        AND (${actors.organizationId} = ${conversationOrganizationId} OR ${messagingParticipants.actorEntityId} IS NOT NULL)
-      ON CONFLICT DO NOTHING
-      RETURNING organization_id AS "organizationId", recipient_actor_entity_id AS "actorId"
-    `);
-  return { referenced, notified: [...notified] };
+  const notified: { organizationId: string; actorId: string }[] = [];
+  for (const kind of ["mention", "reply"] as const) {
+    notified.push(
+      ...(await notify(
+        ctx,
+        kind,
+        [...recipients].flatMap(([userId, recipientKind]) =>
+          recipientKind === kind ? [{ userId }] : [],
+        ),
+        {
+          messageId: message.id,
+          conversationId: message.conversationId,
+          conversationOrganizationId,
+          eventKey: message.id,
+        },
+      )),
+    );
+  }
+  return { referenced, notified };
 }
+import type { SessionIdentity } from "../../core/session/identity";

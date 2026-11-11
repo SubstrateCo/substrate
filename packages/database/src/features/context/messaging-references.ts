@@ -1,8 +1,9 @@
 import type { DatabaseExecutor } from "../../client";
+import type { SessionIdentity } from "../../core/session/identity";
+import type { Reference } from "../../core/text/references";
 import { AccessDeniedError } from "../../errors";
-import { visibleConversations, type MessagingIdentity } from "../messaging/access";
+import { visibleConversations } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
-import type { Reference } from "./references";
 import { messageMessagingReferences } from "./schema";
 import { and, asc, eq, exists, inArray, isNull, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -11,7 +12,7 @@ import { alias } from "drizzle-orm/pg-core";
 // A thread is a root message with at least one reply. Any other target rejects the message.
 export async function saveMessagingReferences(
   db: DatabaseExecutor,
-  scope: MessagingIdentity,
+  scope: SessionIdentity,
   message: typeof messagingMessages.$inferSelect,
   conversationOrganizationId: string,
   references: (Reference & { kind: "channel" | "thread" })[],
@@ -83,7 +84,7 @@ export async function saveMessagingReferences(
 // The caller has checked access to every source message. Resolve target metadata with live access.
 export async function messagingReferencePage(
   db: DatabaseExecutor,
-  scope: MessagingIdentity,
+  scope: SessionIdentity,
   messageIds: string[],
 ) {
   return db

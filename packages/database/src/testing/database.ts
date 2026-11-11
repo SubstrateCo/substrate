@@ -1,8 +1,10 @@
 import { rootEntityValues } from "../core/entities/identity";
 import { RepositoryContext } from "../core/repository-context";
-import { createRepositories } from "../repositories";
+import { createContextService } from "../features/context/service";
+import { ActorRepositories, createRepositories } from "../repositories";
 import * as schema from "../schema";
 import { resetTestData, testDatabase } from "./connection";
+import { createAcceptedMessagingService } from "./messaging";
 import { beforeEach } from "bun:test";
 import { sql } from "drizzle-orm";
 
@@ -71,7 +73,14 @@ export function setupDatabase() {
 
   return Object.assign(fixture, {
     forActor: (actorEntityId: string, organizationId = fixture.orgA) =>
-      createRepositories(testDatabase).forActor({ organizationId, actorEntityId }),
+      new ActorRepositories(testDatabase, { organizationId, actorEntityId }),
+    forSession: (userId: string, organizationId = fixture.orgA) =>
+      createRepositories(testDatabase).forSession({ userId, organizationId }),
+    messaging: (userId: string, organizationId = fixture.orgA, actorEntityId?: string) =>
+      createAcceptedMessagingService(testDatabase, { userId, organizationId, actorEntityId }),
+    context: (userId = "alice", organizationId = fixture.orgA) =>
+      createContextService(testDatabase, { userId, organizationId }),
+    verifyEmails: () => testDatabase.update(schema.user).set({ emailVerified: true }),
     /** The actor's level on the entity, through the access check that repositories use. */
     accessLevel: async (actorEntityId: string, entityId: string) =>
       (

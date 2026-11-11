@@ -1,5 +1,5 @@
 import { AccessDeniedError, ValidationError, type PermissionLevel } from "../../index";
-import { createRepositories } from "../../repositories";
+import { ActorRepositories } from "../../repositories";
 import { actors, entityGrants, member } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
@@ -88,9 +88,10 @@ describe("access controls", () => {
     });
     const { db, queries } = recordQueries();
     queries.length = 0;
-    await createRepositories(db)
-      .forActor({ organizationId: f.orgA, actorEntityId: f.alice })
-      .permissions.revoke({ entityId: contact.entityId, actorEntityId: f.alice });
+    await new ActorRepositories(db, {
+      organizationId: f.orgA,
+      actorEntityId: f.alice,
+    }).permissions.revoke({ entityId: contact.entityId, actorEntityId: f.alice });
     // Lock path (2), target grant, one remaining-owner check, delete.
     expect(queries).toHaveLength(5);
     expect(await f.accessLevel(f.bob, contact.entityId)).toBe("owner");

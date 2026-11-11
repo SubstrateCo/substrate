@@ -1,60 +1,22 @@
-import type { McpInput } from "@substrate/contracts/harness/tools";
-
 import type { RepositoryContext } from "../../core/repository-context";
-import { AccessDeniedError } from "../../errors";
-import { recordTaskSource } from "../context/service";
-import { requireMessage, type MessagingIdentity } from "../messaging/access";
-import { sendMessageAs } from "../messaging/messages";
-import { taskRepository } from "../tasks/repository";
+import type { SessionIdentity } from "../../core/session/identity";
+import { agentActions } from "../agent-work/actions";
 import { mcpTaskQueries } from "./tasks";
 
-type Agent = { entityId: string; name: string; type: "human" | "agent" };
-
-/**
- * Writes an agent makes as its own actor with its owner's access. MCP tools and approved
- * proposals both use these, so an approval runs exactly the checks the tool runs.
- */
-export function agentWrites(ctx: RepositoryContext, identity: MessagingIdentity, agent: Agent) {
-  const { db: tx } = ctx;
-  const tasks = taskRepository(ctx);
+export function agentWrites(
+  ctx: RepositoryContext,
+  identity: SessionIdentity,
+  agent: Parameters<typeof agentActions>[2],
+) {
+  const actions = agentActions(ctx, identity, agent);
   const queries = mcpTaskQueries(ctx, identity);
   return {
-    async createTask({
-      sourceMessageId,
-      ...value
-    }: Omit<McpInput<"create_task">, "requestId"> & { requestId?: string }) {
-      let source;
-      if (sourceMessageId) {
-        source = await requireMessage(tx, identity, sourceMessageId);
-        if (source.conversation.organizationId !== identity.organizationId)
-          throw new AccessDeniedError();
-      }
-      const task = await tasks.create({
-        ...value,
-        projectEntityId: value.projectId,
-        parentTaskEntityId: value.parentTaskId,
-        assigneeActorEntityId: value.assigneeActorId,
-      });
-      if (source)
-        await recordTaskSource(
-          ctx,
-          { messageId: source.message.id, conversationId: source.conversation.id },
-          task.entityId,
-        );
-      return queries.getTask(task.entityId);
+    async createTask(input: Parameters<typeof actions.createTask>[0]) {
+      return queries.getTask((await actions.createTask(input)).entityId);
     },
-    async updateTask({ taskId, changes }: Pick<McpInput<"update_task">, "taskId" | "changes">) {
-      await tasks.update(taskId, { ...changes, assigneeActorEntityId: changes.assigneeActorId });
-      return queries.getTask(taskId);
+    async updateTask(input: Parameters<typeof actions.updateTask>[0]) {
+      return queries.getTask((await actions.updateTask(input)).entityId);
     },
-    postMessage(message: {
-      conversationId: string;
-      threadId?: string;
-      body: string;
-      requestId: string;
-      originTurnId: string;
-    }) {
-      return sendMessageAs(ctx, identity, { actor: agent, authorName: agent.name }, message);
-    },
+    postMessage: actions.postMessage,
   };
 }

@@ -1,19 +1,55 @@
+import type { SessionIdentity } from "../../core/session/identity";
 import { createStorageRepository } from "../../core/storage/repository";
 import { storedFiles } from "../../core/storage/schema";
 import { AccessDeniedError, ConflictError } from "../../errors";
+import { createRepositories } from "../../repositories";
 import { member, user } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { createAcceptedMessagingService } from "../../testing/messaging";
 import { rejection } from "../../testing/rejection";
 import { messagingMessages } from "../messaging/schema";
-import { createAttachmentRepository, attachmentReferences } from "./repository";
+import { attachmentReferences } from "./repository";
 import { messageAttachments, taskAttachments } from "./schema";
-import { expect, test } from "bun:test";
+import { beforeEach, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
 const scope = () => ({ userId: "alice", organizationId: f.orgA });
-const files = () => createAttachmentRepository(f.db);
+beforeEach(async () => {
+  await f.verifyEmails();
+});
+const files = () => ({
+  async addTask(
+    identity: SessionIdentity,
+    input: { taskEntityId: string; projectEntityId: string; attachmentFileIds: string[] },
+  ) {
+    return (await createRepositories(f.db).forSession(identity)).files.addTask(input);
+  },
+  async listTask(
+    identity: SessionIdentity,
+    input: { taskEntityId: string; projectEntityId: string },
+  ) {
+    return (await createRepositories(f.db).forSession(identity)).files.listTask(input);
+  },
+  async removeTask(
+    identity: SessionIdentity,
+    input: { taskEntityId: string; projectEntityId: string; attachmentId: string },
+  ) {
+    return (await createRepositories(f.db).forSession(identity)).files.removeTask(input);
+  },
+  async taskContent(
+    identity: SessionIdentity,
+    input: { taskEntityId: string; projectEntityId: string; attachmentId: string },
+  ) {
+    return (await createRepositories(f.db).forSession(identity)).files.taskContent(input);
+  },
+  async messageContent(
+    identity: SessionIdentity,
+    input: { conversationId: string; messageId: string; attachmentId: string },
+  ) {
+    return (await createRepositories(f.db).forSession(identity)).files.messageContent(input);
+  },
+});
 async function staged(userId = "alice", organizationId = f.orgA) {
   const [file] = await f.db
     .insert(storedFiles)
@@ -182,13 +218,11 @@ test("cleanup retains published references after uploader deletion and collects 
 test("creating a task and its files is atomic, and a published file cannot be republished", async () => {
   const project = await f.forActor(f.alice).projects.create({ name: "Launch" });
   const file = await staged();
-  const created = await f
-    .forActor(f.alice)
-    .tasks.create({
-      projectEntityId: project.entityId,
-      title: "With file",
-      attachmentFileIds: [file.id],
-    });
+  const created = await f.forActor(f.alice).tasks.create({
+    projectEntityId: project.entityId,
+    title: "With file",
+    attachmentFileIds: [file.id],
+  });
   expect(
     await files().listTask(scope(), {
       projectEntityId: project.entityId,

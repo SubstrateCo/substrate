@@ -14,7 +14,7 @@ import type {
   removeAgentInput,
 } from "@substrate/contracts/messaging/input";
 import { realtimeKeys } from "@substrate/contracts/realtime";
-import { createMessagingService } from "@substrate/database/messaging";
+import { createRepositories } from "@substrate/database";
 
 import { db } from "../../auth/database";
 import { serviceResult } from "../../shared/service-result";
@@ -26,7 +26,8 @@ import type { z } from "zod";
 async function serviceForSession(headers: Headers, organizationId: string) {
   const { session } = await workspaceSession(headers, organizationId);
   return {
-    service: createMessagingService(db, { userId: session.user.id, organizationId }),
+    service: (await createRepositories(db).forSession({ userId: session.user.id, organizationId }))
+      .messaging,
     session,
   };
 }

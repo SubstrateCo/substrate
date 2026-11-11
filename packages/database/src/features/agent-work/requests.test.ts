@@ -384,7 +384,7 @@ test("an approval runs only while the target is as it was proposed", async () =>
   expect(await approveProposal(f.db, owner, update.proposalId)).toEqual({
     status: "failed",
     outcome: stale,
-    hints: [],
+    hints: [{ audience: ["user", "alice"], domain: "agent-work" }],
   });
   const [row] = await f.db.select().from(tasks).where(eq(tasks.entityId, task.entityId));
   expect(row).toMatchObject({ status: "not_started", priority: "high" });

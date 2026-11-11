@@ -2,10 +2,12 @@ import type { DatabaseExecutor } from "../client";
 import { AccessDeniedError, ValidationError } from "../errors";
 import { activeActorCondition, permissionActorEntityId } from "./actors/access";
 import { actors } from "./actors/schema";
+import { RepositoryEffects } from "./effects";
 import { rootEntityValues } from "./entities/identity";
 import { entities } from "./entities/schema";
 import { entityGrants, permissionLevel } from "./permissions/schema";
 import { entityAccessLevel, lockAccessPath, readableCondition } from "./permissions/visibility";
+import type { WorkspaceScope } from "./session/identity";
 import { and, eq, exists, isNull, sql, type SQLWrapper } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
@@ -18,16 +20,27 @@ export type PermissionLevel = (typeof permissionLevel.enumValues)[number];
 const permissionRank: Record<PermissionLevel, number> = { view: 0, comment: 1, edit: 2, owner: 3 };
 
 export class RepositoryContext {
-  readonly scope: Readonly<ActorScope>;
+  readonly scope: Readonly<ActorScope & Partial<Pick<WorkspaceScope, "userId" | "admin">>>;
 
   constructor(
     readonly db: DatabaseExecutor,
-    scope: ActorScope,
+    scope: ActorScope & Partial<Pick<WorkspaceScope, "userId" | "admin">>,
+    readonly effects = new RepositoryEffects(),
   ) {
     this.scope = Object.freeze({
+      ...scope,
       organizationId: scope.organizationId,
       actorEntityId: scope.actorEntityId,
     });
+  }
+
+  async transaction<T>(work: (context: RepositoryContext) => Promise<T>) {
+    const effects = new RepositoryEffects();
+    const result = await this.db.transaction((tx) =>
+      work(new RepositoryContext(tx, this.scope, effects)),
+    );
+    this.effects.merge(effects);
+    return result;
   }
 
   async requireActiveActor(actorEntityId = this.scope.actorEntityId) {
@@ -103,6 +116,30 @@ export class RepositoryContext {
     if (!access || !access.level || permissionRank[access.level] < permissionRank[minimum])
       throw new AccessDeniedError();
     return { entity: access.entity, level: access.level };
+  }
+
+  async actorCanAccess(actorEntityId: string, entityId: string, minimum: PermissionLevel) {
+    if (!Object.hasOwn(permissionRank, minimum)) return false;
+    const scope = { organizationId: this.scope.organizationId, actorEntityId };
+    const [row] = await this.db
+      .select({ level: sql<PermissionLevel | null>`${entityAccessLevel(scope, entityId)}` })
+      .from(actors)
+      .innerJoin(
+        entities,
+        and(
+          eq(entities.organizationId, actors.organizationId),
+          eq(entities.entityId, actors.entityId),
+        ),
+      )
+      .where(
+        and(
+          eq(actors.organizationId, scope.organizationId),
+          eq(actors.entityId, actorEntityId),
+          activeActorCondition(),
+          isNull(entities.deletedAt),
+        ),
+      );
+    return !!row?.level && permissionRank[row.level] >= permissionRank[minimum];
   }
 
   // A root entity owned by the actor's person. Children use createChildEntity.

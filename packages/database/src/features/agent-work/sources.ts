@@ -3,10 +3,10 @@ import type { AgentSourcesResult } from "@substrate/contracts/agent-work";
 import type { DatabaseExecutor } from "../../client";
 import { actorAuthorKind, actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
+import { requireDevice, type DeviceIdentity } from "../../core/session/device";
 import { visibleConversations } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
-import { requireDevice, type DeviceIdentity } from "./device";
 import { and, eq, inArray } from "drizzle-orm";
 
 /**

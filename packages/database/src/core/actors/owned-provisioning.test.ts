@@ -4,7 +4,8 @@ import { actors, entities, member, userAgents } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
-import { ensureOwnedAgentActors, ensureUserAgentActor, resolveHumanActor } from "./provisioning";
+import { workspaceContext } from "../session/workspace";
+import { ensureOwnedAgentActors, ensureUserAgentActor } from "./provisioning";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -123,11 +124,12 @@ test("bulk and single provisioning serialize and keep organization identities se
 });
 
 test("existing agent and human actors resolve in one lock-free statement that checks membership", async () => {
+  await f.verifyEmails();
   const [agent] = await profiles(1);
   const created = await ensureUserAgentActor(f.db, { ...input, userAgentId: agent!.id });
   const { db, queries } = recordQueries();
   expect(await ensureUserAgentActor(db, { ...input, userAgentId: agent!.id })).toEqual(created);
-  expect((await resolveHumanActor(db, input)).entityId).toBe(f.alice);
+  expect((await workspaceContext(db, input)).actor.entityId).toBe(f.alice);
   expect(queries).toHaveLength(2);
   expect(queries.some((query) => query.includes("for update"))).toBe(false);
   await f.db.update(userAgents).set({ enabled: false }).where(eq(userAgents.id, agent!.id));
@@ -139,7 +141,7 @@ test("existing agent and human actors resolve in one lock-free statement that ch
   expect(
     await rejection(ensureUserAgentActor(f.db, { ...input, userAgentId: agent!.id })),
   ).toBeInstanceOf(AccessDeniedError);
-  expect(await rejection(resolveHumanActor(f.db, input))).toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(workspaceContext(f.db, input))).toBeInstanceOf(AccessDeniedError);
 });
 
 test("membership loss denies batches including owners with no profiles", async () => {

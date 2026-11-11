@@ -1,6 +1,6 @@
 export { approveProposal, declineProposal, respondToRequest } from "./decisions";
-export { registerDevice, touchDevice } from "../../core/devices/repository";
-export type { DeviceIdentity, OwnerIdentity } from "./device";
+export type { DeviceIdentity } from "../../core/session/device";
+export type { SessionIdentity as OwnerIdentity } from "../../core/session/identity";
 export {
   closeRequest,
   openRequest,

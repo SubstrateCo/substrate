@@ -1,6 +1,10 @@
-export { createDatabase } from "./client";
 export type { Database, Transaction } from "./client";
 export { createRepositories } from "./repositories";
-export type { ActorScope, PermissionLevel } from "./core/repository-context";
+export type { PermissionLevel } from "./core/repository-context";
+export type { Committed } from "./core/effects";
+export type {
+  SessionIdentity,
+  WorkspaceScope,
+  OwnerSessionIdentity,
+} from "./core/session/identity";
 export { AccessDeniedError, ValidationError, ConflictError } from "./errors";
-export { migrateDatabase } from "./migrations";

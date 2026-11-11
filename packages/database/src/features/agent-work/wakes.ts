@@ -6,7 +6,8 @@ import {
 
 import type { DatabaseExecutor } from "../../client";
 import { userAgents } from "../../core/actors/user-agents.schema";
-import { homedAgentIds, requireDevice, type DeviceIdentity } from "./device";
+import { requireDevice, type DeviceIdentity } from "../../core/session/device";
+import { homedAgentIds } from "./device";
 import { agentRequests } from "./requests.schema";
 import { agentWakes } from "./wakes.schema";
 import { and, asc, eq, exists, inArray, isNull, sql } from "drizzle-orm";

@@ -1,7 +1,8 @@
 import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
-import { approvedParticipant, type MessagingIdentity } from "./access";
+import type { SessionIdentity } from "../../core/session/identity";
+import { approvedParticipant } from "./access";
 import { messagingConversations, messagingParticipants } from "./schema";
 import { messagingInvitations } from "./sharing.schema";
 import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
@@ -50,7 +51,7 @@ export async function findDirectMessage(
  */
 export async function findExternalDirectMessage(
   db: DatabaseExecutor,
-  scope: MessagingIdentity,
+  scope: SessionIdentity,
   email: string,
 ) {
   await lockDirectMessage(

@@ -16,21 +16,23 @@ import type {
   notificationGroupReadInput,
 } from "@substrate/contracts/context/notification-groups";
 import { realtimeKeys } from "@substrate/contracts/realtime";
-import type { RealtimeHint } from "@substrate/contracts/realtime";
-import { createContextService, createFeedService } from "@substrate/database/context";
+import { createRepositories } from "@substrate/database";
 
 import { db } from "../../auth/database";
 import { serviceResult } from "../../shared/service-result";
 import { requireOrigin, workspaceSession } from "../../shared/workspace";
+import { publishCommitted } from "../realtime/committed";
 import { publishRefresh } from "../realtime/publisher";
 import type { z } from "zod";
 
 async function sessionServices(headers: Headers, organizationId: string) {
   const { session } = await workspaceSession(headers, organizationId);
   const scope = { organizationId, userId: session.user.id };
+  const repositories = await createRepositories(db).forSession(scope);
   return {
-    context: createContextService(db, scope),
-    feed: createFeedService(db, scope),
+    context: repositories.context,
+    repositories,
+    feed: repositories.feed,
     userId: session.user.id,
   };
 }
@@ -73,40 +75,33 @@ export function searchContext(headers: Headers, input: z.output<typeof contextSe
 export function createTaskFromMessage(headers: Headers, input: z.output<typeof contextSourceTask>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const { context } = await sessionServices(headers, input.organizationId);
-    const task = await context.createTaskFromMessage(input);
-    const hints: RealtimeHint[] = [
-      { audience: realtimeKeys.organization(input.organizationId), domain: "tasks" },
-      { audience: realtimeKeys.organization(input.organizationId), domain: "context" },
-    ];
-    if (input.assigneeActorEntityId)
-      hints.push({
-        audience: realtimeKeys.actor(input.organizationId, input.assigneeActorEntityId),
-        domain: "notifications",
-      });
-    await publishRefresh(hints);
-    return task;
+    const { repositories } = await sessionServices(headers, input.organizationId);
+    return publishCommitted(
+      await repositories.transaction((repos) => repos.context.createTaskFromMessage(input)),
+    );
   });
 }
 export function attachWork(headers: Headers, input: z.output<typeof contextLink>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const { context } = await sessionServices(headers, input.organizationId);
-    await context.attach(input.messageId, input.entityId);
-    await publishRefresh([
-      { audience: realtimeKeys.organization(input.organizationId), domain: "context" },
-    ]);
+    const { repositories } = await sessionServices(headers, input.organizationId);
+    await publishCommitted(
+      await repositories.transaction((repos) =>
+        repos.context.attach(input.messageId, input.entityId),
+      ),
+    );
     return null;
   });
 }
 export function detachWork(headers: Headers, input: z.output<typeof contextLink>) {
   return serviceResult(async () => {
     requireOrigin(headers);
-    const { context } = await sessionServices(headers, input.organizationId);
-    await context.detach(input.messageId, input.entityId);
-    await publishRefresh([
-      { audience: realtimeKeys.organization(input.organizationId), domain: "context" },
-    ]);
+    const { repositories } = await sessionServices(headers, input.organizationId);
+    await publishCommitted(
+      await repositories.transaction((repos) =>
+        repos.context.detach(input.messageId, input.entityId),
+      ),
+    );
     return null;
   });
 }

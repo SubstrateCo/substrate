@@ -5,7 +5,8 @@ import type {
   setAgentPictureInput,
 } from "@substrate/contracts/agents";
 import { desktopInstallationHeader } from "@substrate/contracts/desktop/links";
-import { createAgentRepository } from "@substrate/database/agents";
+import { createRepositories } from "@substrate/database";
+import type { AgentRepository } from "@substrate/database/agents";
 import { agentRefreshHints } from "@substrate/database/realtime";
 
 import { db } from "../../auth/database";
@@ -19,7 +20,7 @@ interface Dependencies {
   getSession: (input: {
     headers: Headers;
   }) => Promise<{ user: { id: string; emailVerified: boolean } } | null>;
-  forUser: (userId: string, installationId?: string) => ReturnType<typeof createAgentRepository>;
+  forUser: (userId: string, installationId?: string) => AgentRepository | Promise<AgentRepository>;
   requireOrigin: (headers: Headers) => void;
   changed: (userId: string) => Promise<void>;
 }
@@ -33,7 +34,7 @@ export function createAgentService(dependencies: Dependencies) {
     // The desktop main process adds its installation ID. It names a device of this user only.
     const installationId = installation.safeParse(headers.get(desktopInstallationHeader)).data;
     return {
-      repository: dependencies.forUser(session.user.id, installationId),
+      repository: await dependencies.forUser(session.user.id, installationId),
       userId: session.user.id,
     };
   }
@@ -99,7 +100,8 @@ export const {
   setAgentHomeDevice,
 } = createAgentService({
   getSession: (input) => auth.api.getSession(input),
-  forUser: (userId, installationId) => createAgentRepository(db, userId, installationId),
+  forUser: async (userId, installationId) =>
+    (await createRepositories(db).forOwnerSession({ userId, installationId })).agents,
   requireOrigin,
   changed: (userId) => publishRefresh(agentRefreshHints(db, userId)),
 });

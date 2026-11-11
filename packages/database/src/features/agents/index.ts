@@ -1,1 +1,1 @@
-export { createAgentRepository } from "./repository";
+export type AgentRepository = ReturnType<typeof import("./repository").createAgentRepository>;

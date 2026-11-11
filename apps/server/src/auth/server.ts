@@ -5,9 +5,9 @@ import {
   rememberOrganization,
 } from "@substrate/database/authentication";
 import { clearMembershipSharing } from "@substrate/database/messaging";
-import { ensureHumanActor } from "@substrate/database/provisioning";
 import * as schema from "@substrate/database/schema";
-import { createStorageRepository } from "@substrate/database/storage";
+import { ensureHumanActor } from "@substrate/database/trusted";
+import { createStorageRepository } from "@substrate/database/trusted";
 
 import { environment } from "../environment";
 import { mail } from "../mail/service";

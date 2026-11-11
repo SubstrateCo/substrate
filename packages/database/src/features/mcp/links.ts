@@ -2,10 +2,11 @@ import type { McpInput, McpOutput } from "@substrate/contracts/harness/tools";
 
 import { actors } from "../../core/actors/schema";
 import type { RepositoryContext } from "../../core/repository-context";
+import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError } from "../../errors";
 import { requireWork } from "../context/access";
 import { messageEntityReferences } from "../context/schema";
-import { requireMessage, visibleConversations, type MessagingIdentity } from "../messaging/access";
+import { requireMessage, visibleConversations } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { projects } from "../projects/schema";
 import { liveTask } from "../tasks/access";
@@ -31,7 +32,7 @@ const purposes: Record<LinkKind, Purpose> = {
 
 export async function listLinks(
   ctx: RepositoryContext,
-  identity: MessagingIdentity,
+  identity: SessionIdentity,
   input: McpInput<"list_links">,
 ): Promise<McpOutput<"list_links">> {
   const { db, scope } = ctx;

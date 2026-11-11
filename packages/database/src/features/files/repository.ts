@@ -1,12 +1,11 @@
 import { MAX_ATTACHMENTS, attachmentFileIds } from "@substrate/contracts/files/attachments";
+import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import type { Database } from "../../client";
-import { resolveHumanActor } from "../../core/actors/provisioning";
 import { RepositoryContext } from "../../core/repository-context";
-import type { StorageScope } from "../../core/storage/repository";
+import { messagingSession } from "../../core/session/messaging";
 import { storedFiles } from "../../core/storage/schema";
 import { AccessDeniedError, ValidationError } from "../../errors";
-import { messagingSession, loadConversation } from "../messaging/access";
+import { loadConversation } from "../messaging/access";
 import { taskRepository } from "../tasks/repository";
 import { taskAttachmentMetadata } from "./metadata";
 import { publishFiles } from "./publication";
@@ -16,44 +15,32 @@ import { and, eq, sql } from "drizzle-orm";
 export const attachmentReferences = sql`exists (select 1 from ${taskAttachments} where ${taskAttachments.fileId} = ${storedFiles.id})
   or exists (select 1 from ${messageAttachments} where ${messageAttachments.fileId} = ${storedFiles.id})`;
 
-export function createAttachmentRepository(db: Database) {
-  async function context(scope: StorageScope) {
-    if (!scope.organizationId) throw new AccessDeniedError();
-    const actor = await resolveHumanActor(db, {
-      userId: scope.userId,
-      organizationId: scope.organizationId,
-    });
-    return { organizationId: scope.organizationId, actorEntityId: actor.entityId };
-  }
+export function createAttachmentRepository(context: RepositoryContext) {
+  const { db, scope } = context;
+  if (!scope.userId) throw new AccessDeniedError();
+  const identity = { userId: scope.userId, organizationId: scope.organizationId };
   async function taskContext<T>(
-    scope: StorageScope,
     input: { taskEntityId: string; projectEntityId: string },
     level: "view" | "edit",
     run: (ctx: RepositoryContext) => Promise<T>,
   ) {
-    const actor = await context(scope);
-    return db.transaction(async (tx) => {
-      const ctx = new RepositoryContext(tx, actor);
+    return context.transaction(async (ctx) => {
       const task = await taskRepository(ctx).get(input.taskEntityId, level, true);
       if (task.projectEntityId !== input.projectEntityId) throw new AccessDeniedError();
       return run(ctx);
     });
   }
   return {
-    async listTask(scope: StorageScope, input: { taskEntityId: string; projectEntityId: string }) {
-      const actor = await context(scope);
+    async listTask(input: { taskEntityId: string; projectEntityId: string }) {
       return db.transaction(async (tx) => {
-        const ctx = new RepositoryContext(tx, actor);
+        const ctx = new RepositoryContext(tx, scope);
         const task = await taskRepository(ctx).get(input.taskEntityId);
         if (task.projectEntityId !== input.projectEntityId) throw new AccessDeniedError();
         return taskAttachmentMetadata(tx, task.entityId);
       });
     },
-    addTask(
-      scope: StorageScope,
-      input: { taskEntityId: string; projectEntityId: string; attachmentFileIds: string[] },
-    ) {
-      return taskContext(scope, input, "edit", async (ctx) => {
+    addTask(input: { taskEntityId: string; projectEntityId: string; attachmentFileIds: string[] }) {
+      return taskContext(input, "edit", async (ctx) => {
         if (
           !input.attachmentFileIds.length ||
           !attachmentFileIds.safeParse(input.attachmentFileIds).success
@@ -76,14 +63,15 @@ export function createAttachmentRepository(db: Database) {
             position: position + index,
           })),
         );
+        ctx.effects.hint({
+          audience: realtimeKeys.organization(scope.organizationId),
+          domain: "tasks",
+        });
         return taskAttachmentMetadata(ctx.db, input.taskEntityId);
       });
     },
-    removeTask(
-      scope: StorageScope,
-      input: { taskEntityId: string; projectEntityId: string; attachmentId: string },
-    ) {
-      return taskContext(scope, input, "edit", async (ctx) => {
+    removeTask(input: { taskEntityId: string; projectEntityId: string; attachmentId: string }) {
+      return taskContext(input, "edit", async (ctx) => {
         const removed = await ctx.db
           .delete(taskAttachments)
           .where(
@@ -94,16 +82,20 @@ export function createAttachmentRepository(db: Database) {
           )
           .returning();
         if (!removed.length) throw new AccessDeniedError();
+        ctx.effects.hint({
+          audience: realtimeKeys.organization(scope.organizationId),
+          domain: "tasks",
+        });
         return { id: input.attachmentId };
       });
     },
-    async taskContent(
-      scope: StorageScope,
-      input: { taskEntityId: string; projectEntityId: string; attachmentId: string },
-    ) {
-      const actor = await context(scope);
+    async taskContent(input: {
+      taskEntityId: string;
+      projectEntityId: string;
+      attachmentId: string;
+    }) {
       return db.transaction(async (tx) => {
-        const task = await taskRepository(new RepositoryContext(tx, actor)).get(input.taskEntityId);
+        const task = await taskRepository(new RepositoryContext(tx, scope)).get(input.taskEntityId);
         if (task.projectEntityId !== input.projectEntityId) throw new AccessDeniedError();
         const [row] = await tx
           .select({ file: storedFiles })
@@ -119,12 +111,11 @@ export function createAttachmentRepository(db: Database) {
         return row.file;
       });
     },
-    async messageContent(
-      scope: StorageScope,
-      input: { conversationId: string; messageId: string; attachmentId: string },
-    ) {
-      if (!scope.organizationId) throw new AccessDeniedError();
-      const identity = { userId: scope.userId, organizationId: scope.organizationId };
+    async messageContent(input: {
+      conversationId: string;
+      messageId: string;
+      attachmentId: string;
+    }) {
       return db.transaction(async (tx) => {
         await messagingSession(tx, identity);
         await loadConversation(tx, identity, input.conversationId);

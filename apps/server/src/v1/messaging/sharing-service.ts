@@ -1,7 +1,4 @@
-import type {
-  conversationTargetInput,
-  workspaceInput,
-} from "@substrate/contracts/messaging/input";
+import type { conversationTargetInput, workspaceInput } from "@substrate/contracts/messaging/input";
 import type {
   sharingAcceptInput,
   sharingActionInput,
@@ -11,7 +8,7 @@ import type {
   sharingRemoveInput,
 } from "@substrate/contracts/messaging/sharing";
 import { realtimeKeys } from "@substrate/contracts/realtime";
-import { createSharingService, readSharingInvitation } from "@substrate/database/messaging";
+import { createRepositories } from "@substrate/database";
 
 import { db } from "../../auth/database";
 import { auth } from "../../auth/server";
@@ -28,7 +25,8 @@ async function service(headers: Headers, organizationId: string) {
   const { session } = await workspaceSession(headers, organizationId);
   // Invitations lock the conversation before the manager check, so check membership first.
   await auth.api.getActiveMemberRole({ headers, query: { organizationId } });
-  return createSharingService(db, { userId: session.user.id, organizationId });
+  return (await createRepositories(db).forSession({ userId: session.user.id, organizationId }))
+    .sharing;
 }
 function changed(organizationId: string, userId?: string) {
   return [
@@ -38,17 +36,21 @@ function changed(organizationId: string, userId?: string) {
 }
 export function getInvitation(headers: Headers, input: z.output<typeof sharingInvitationInput>) {
   return serviceResult(async () =>
-    readSharingInvitation(db, (await verified(headers)).user.id, input.invitationId),
+    (
+      await createRepositories(db).forOwnerSession({ userId: (await verified(headers)).user.id })
+    ).sharing.invitation(input.invitationId),
   );
 }
 export function acceptInvitation(headers: Headers, input: z.output<typeof sharingAcceptInput>) {
   return serviceResult(async () => {
     requireOrigin(headers);
     const session = await verified(headers);
-    const { hints, ...result } = await createSharingService(db, {
-      userId: session.user.id,
-      organizationId: input.organizationId,
-    }).accept(input.invitationId, input.shareHistory);
+    const { hints, ...result } = await (
+      await createRepositories(db).forSession({
+        userId: session.user.id,
+        organizationId: input.organizationId,
+      })
+    ).sharing.accept(input.invitationId, input.shareHistory);
     await publishRefresh([...hints, ...changed(input.organizationId, session.user.id)]);
     return result;
   });
@@ -60,10 +62,9 @@ export function declineInvitation(
   return serviceResult(async () => {
     requireOrigin(headers);
     const session = await verified(headers);
-    const { hints, ...result } = await createSharingService(db, {
-      userId: session.user.id,
-      organizationId: session.session.activeOrganizationId ?? "",
-    }).decline(input.invitationId);
+    const { hints, ...result } = await (
+      await createRepositories(db).forOwnerSession({ userId: session.user.id })
+    ).sharing.decline(input.invitationId);
     await publishRefresh(hints);
     return result;
   });

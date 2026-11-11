@@ -1,17 +1,17 @@
+import { realtimeKeys } from "@substrate/contracts/realtime";
 import { taskPriorityValues, taskStatusValues } from "@substrate/contracts/tasks";
 import type { TaskLinkRelation } from "@substrate/contracts/tasks/links";
 
-import { visibleActorCondition } from "../../core/actors/access";
 import { actorDisplayName } from "../../core/actors/display-name";
-import { actorPicture } from "../../core/actors/picture";
 import { actors } from "../../core/actors/schema";
 import { RepositoryContext, type PermissionLevel } from "../../core/repository-context";
+import { requiredText } from "../../core/validation";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { notifyAssignment, recordTaskActivity } from "../activity/events";
 import { publishFiles } from "../files/publication";
 import { taskAttachments } from "../files/schema";
-import { projectRepository, requiredText } from "../projects/repository";
 import { liveTask } from "./access";
+import { requireAssignee } from "./assignment";
 import { taskChanges } from "./changes";
 import { applyCommentReferences, commentReferences } from "./comment-references";
 import { taskCommentReferences } from "./comment-references.schema";
@@ -19,8 +19,9 @@ import { taskComments } from "./comments.schema";
 import type { CreateTaskInput, TaskFields } from "./contracts";
 import { taskLifecycle } from "./lifecycle";
 import { addTaskLink, linksOfTask, removeTaskLink } from "./links";
+import { queryTasks, queryTaskComments } from "./queries";
 import { tasks } from "./tasks.schema";
-import { and, asc, desc, eq, ne } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 
 // Pure field checks run before the assignee query.
 async function validate(
@@ -42,25 +43,12 @@ async function validate(
   if (input.status !== undefined && !taskStatusValues.includes(input.status))
     throw new ValidationError("Select a standard task status.");
   if (input.assigneeActorEntityId) {
-    // Only the owner and the owner's agents can assign a local agent. Keeping an existing
-    // assignee is not a new assignment.
-    const [assignee] = await ctx.db
-      .select({ entityId: actors.entityId })
-      .from(actors)
-      .where(
-        and(
-          eq(actors.organizationId, ctx.scope.organizationId),
-          eq(actors.entityId, input.assigneeActorEntityId),
-          input.assigneeActorEntityId === currentAssigneeActorEntityId
-            ? undefined
-            : visibleActorCondition(ctx.scope),
-        ),
-      );
-    if (!assignee) throw new AccessDeniedError();
-    await new RepositoryContext(ctx.db, {
-      organizationId: ctx.scope.organizationId,
-      actorEntityId: input.assigneeActorEntityId,
-    }).requireAccess(projectEntityId, "view");
+    await requireAssignee(
+      ctx,
+      projectEntityId,
+      input.assigneeActorEntityId,
+      currentAssigneeActorEntityId,
+    );
   }
 }
 
@@ -127,7 +115,7 @@ export function taskRepository(context: RepositoryContext) {
       .from(tasks)
       .where(and(taskWhere(entityId), liveTask()));
     if (!task) throw new AccessDeniedError();
-    await context.requireAccess(task.projectEntityId, level);
+    await context.requireAccess(task.entityId, level);
     return task;
   }
 
@@ -135,29 +123,19 @@ export function taskRepository(context: RepositoryContext) {
     ...taskLifecycle(context),
     get: requireTask,
     async create(input: CreateTaskInput) {
-      return db.transaction(async (tx) => {
-        const ctx = new RepositoryContext(tx, scope);
+      return context.transaction(async (ctx) => {
         const project = await ctx.requireAccess(input.projectEntityId, "edit", true);
         return createTaskInLockedProject(ctx, project, input);
       });
     },
     async list(projectEntityId: string) {
-      await projectRepository(context).get(projectEntityId);
-      return db
-        .select()
-        .from(tasks)
-        .where(
-          and(
-            eq(tasks.organizationId, scope.organizationId),
-            eq(tasks.projectEntityId, projectEntityId),
-            liveTask(),
-          ),
-        )
-        .orderBy(asc(tasks.entityId));
+      return (await queryTasks(context, { projectEntityId, ascending: true })).map(
+        (row) => row.task,
+      );
     },
     async update(entityId: string, input: Partial<TaskFields>, expectedProjectEntityId?: string) {
-      return db.transaction(async (tx) => {
-        const ctx = new RepositoryContext(tx, scope);
+      return context.transaction(async (ctx) => {
+        const tx = ctx.db;
         const task = await taskRepository(ctx).get(entityId, "edit", true);
         if (expectedProjectEntityId && task.projectEntityId !== expectedProjectEntityId)
           throw new AccessDeniedError();
@@ -185,8 +163,8 @@ export function taskRepository(context: RepositoryContext) {
     },
     async addComment(entityId: string, body: string, expectedProjectEntityId?: string) {
       const text = requiredText(body, 20000);
-      return db.transaction(async (tx) => {
-        const ctx = new RepositoryContext(tx, scope);
+      return context.transaction(async (ctx) => {
+        const tx = ctx.db;
         const task = await taskRepository(ctx).get(entityId, "comment", true);
         if (expectedProjectEntityId && task.projectEntityId !== expectedProjectEntityId)
           throw new AccessDeniedError();
@@ -200,6 +178,10 @@ export function taskRepository(context: RepositoryContext) {
           })
           .returning();
         const notified = await applyCommentReferences(ctx, task, comment!);
+        ctx.effects.hint({
+          audience: realtimeKeys.organization(scope.organizationId),
+          domain: "tasks",
+        });
         return { ...comment!, notified };
       });
     },
@@ -210,8 +192,7 @@ export function taskRepository(context: RepositoryContext) {
       otherEntityId: string,
       expectedProjectEntityId?: string,
     ) {
-      return db.transaction(async (tx) => {
-        const ctx = new RepositoryContext(tx, scope);
+      return context.transaction(async (ctx) => {
         const repository = taskRepository(ctx);
         const task = await repository.get(entityId, "edit", true);
         if (expectedProjectEntityId && task.projectEntityId !== expectedProjectEntityId)
@@ -220,8 +201,7 @@ export function taskRepository(context: RepositoryContext) {
       });
     },
     async removeLink(entityId: string, linkId: string, expectedProjectEntityId?: string) {
-      return db.transaction(async (tx) => {
-        const ctx = new RepositoryContext(tx, scope);
+      return context.transaction(async (ctx) => {
         const task = await taskRepository(ctx).get(entityId, "edit", true);
         if (expectedProjectEntityId && task.projectEntityId !== expectedProjectEntityId)
           throw new AccessDeniedError();
@@ -274,30 +254,13 @@ export function taskRepository(context: RepositoryContext) {
     async listComments(entityId: string, projectEntityId: string) {
       const task = await requireTask(entityId);
       if (task.projectEntityId !== projectEntityId) throw new AccessDeniedError();
-      const comments = await db
-        .select({
-          id: taskComments.id,
-          body: taskComments.body,
-          createdAt: taskComments.createdAt,
-          authorName: actorDisplayName(),
-          authorImage: actorPicture(scope),
-          authorType: actors.type,
-        })
-        .from(taskComments)
-        .innerJoin(
-          actors,
-          and(
-            eq(actors.organizationId, taskComments.organizationId),
-            eq(actors.entityId, taskComments.authorActorEntityId),
-          ),
-        )
-        .where(
-          and(
-            eq(taskComments.organizationId, scope.organizationId),
-            eq(taskComments.taskEntityId, entityId),
-          ),
-        )
-        .orderBy(asc(taskComments.createdAt), asc(taskComments.id));
+      const comments = (
+        await queryTaskComments(context, entityId, scope.userId ?? "", { ascending: true })
+      ).map(({ author, ...comment }) => ({
+        ...comment,
+        authorName: author.name,
+        authorType: author.type,
+      }));
       const references = await commentReferences(
         context,
         comments.map((comment) => comment.body),

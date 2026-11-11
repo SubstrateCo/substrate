@@ -1,10 +1,11 @@
 import { ensureUserAgentActor } from "../../core/actors/provisioning";
+import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError } from "../../errors";
 import { actors, entities, entityGrants, member, user, userAgents } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
-import { requireWork, workspaceContext } from "./access";
+import { requireWork } from "./access";
 import { expect, test } from "bun:test";
 import { and, eq } from "drizzle-orm";
 
@@ -19,7 +20,12 @@ test("an existing human actor is verified in one statement without the provision
     userId: "alice",
     organizationId: f.orgA,
   });
-  expect(context.scope).toEqual({ organizationId: f.orgA, actorEntityId: f.alice });
+  expect(context.scope).toEqual({
+    userId: "alice",
+    organizationId: f.orgA,
+    actorEntityId: f.alice,
+    admin: true,
+  });
   expect(actor).toEqual({ entityId: f.alice, name: "Alice", type: "human" });
   expect(userName).toBe("Alice");
   expect(queries).toHaveLength(1);

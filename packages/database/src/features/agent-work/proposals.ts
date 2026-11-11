@@ -8,16 +8,17 @@ import {
 } from "@substrate/contracts/agent-work";
 
 import type { RepositoryContext } from "../../core/repository-context";
+import type { SessionIdentity } from "../../core/session/identity";
+import { messageReferences } from "../../core/text/references";
 import { AccessDeniedError, ConflictError } from "../../errors";
-import { requirePlace } from "../agent-work/place";
 import { requireWork } from "../context/access";
-import { messageReferences } from "../context/references";
-import { requireMessage, type MessagingIdentity } from "../messaging/access";
+import { requireMessage } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
-import { agentWrites } from "./writes";
+import { agentActions } from "./actions";
+import { requirePlace } from "./place";
 import { and, eq } from "drizzle-orm";
 
-type Agent = Parameters<typeof agentWrites>[2];
+type Agent = Parameters<typeof agentActions>[2];
 
 // The editable task or project with its version. With lock, its access path stays locked until
 // the transaction ends, in the same order the task repository locks it.
@@ -34,7 +35,7 @@ async function editableWork(ctx: RepositoryContext, entityId: string, lock: bool
  */
 export async function checkProposalAccess(
   ctx: RepositoryContext,
-  identity: MessagingIdentity,
+  identity: SessionIdentity,
   action: ProposalAction,
   lock = false,
 ): Promise<ProposalTargetBasis> {
@@ -87,7 +88,7 @@ export async function checkProposalAccess(
  */
 export async function runProposalAction(
   ctx: RepositoryContext,
-  identity: MessagingIdentity,
+  identity: SessionIdentity,
   agent: Agent,
   proposal: { id: string; turnId: string; action: ProposalAction; targetBasis: unknown },
 ) {
@@ -95,7 +96,7 @@ export async function runProposalAction(
   const proposed = proposalTargetBasis.safeParse(proposal.targetBasis);
   if (!proposed.success || canonicalJson(proposed.data) !== canonicalJson(current))
     throw new ConflictError(staleProposalError);
-  const writes = agentWrites(ctx, identity, agent);
+  const writes = agentActions(ctx, identity, agent);
   const { action } = proposal;
   switch (action.type) {
     case "reply_elsewhere": {
@@ -115,14 +116,14 @@ export async function runProposalAction(
     case "create_task": {
       const task = await writes.createTask(action.input);
       return {
-        receipt: { kind: "task" as const, id: task.id, projectId: task.project.id },
+        receipt: { kind: "task" as const, id: task.entityId, projectId: task.projectEntityId },
         hints: [],
       };
     }
     case "update_task": {
       const task = await writes.updateTask(action.input);
       return {
-        receipt: { kind: "task" as const, id: task.id, projectId: task.project.id },
+        receipt: { kind: "task" as const, id: task.entityId, projectId: task.projectEntityId },
         hints: [],
       };
     }

@@ -1,7 +1,6 @@
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { user, member, entityGrants, actors } from "../../schema";
 import { setupDatabase } from "../../testing/database";
-import { createAcceptedMessagingService } from "../../testing/messaging";
 import { rejection } from "../../testing/rejection";
 import { messagingConversations, messagingMessages, messagingParticipants } from "./schema";
 import { createMessagingService } from "./service";
@@ -9,11 +8,8 @@ import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 const fixture = setupDatabase();
-const service = (userId: string, organizationId = fixture.orgA) =>
-  createAcceptedMessagingService(fixture.db, { userId, organizationId });
-async function verified() {
-  await fixture.db.update(user).set({ emailVerified: true });
-}
+const service = fixture.messaging;
+const verified = fixture.verifyEmails;
 
 test("cross-org DMs use explicit participants without adding entity grants", async () => {
   await verified();

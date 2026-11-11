@@ -1,8 +1,9 @@
 import type { DatabaseExecutor } from "../../../client";
 import { actors } from "../../../core/actors/schema";
+import type { SessionIdentity } from "../../../core/session/identity";
 import { AccessDeniedError } from "../../../errors";
 import { conversationRemovalHints } from "../../realtime/routing";
-import { lockConversation, type MessagingIdentity } from "../access";
+import { lockConversation } from "../access";
 import { endParticipation } from "../members";
 import { partnerTargetAllowed } from "../policy";
 import { messagingConversations, messagingParticipants } from "../schema";
@@ -10,7 +11,7 @@ import { messagingConnections, messagingInvitations } from "../sharing.schema";
 import { requireSharingManager, recordSharingEvents } from "./access";
 import { and, eq, inArray, ne, or, asc } from "drizzle-orm";
 
-export function connectionOperations(db: DatabaseExecutor, scope: MessagingIdentity) {
+export function connectionOperations(db: DatabaseExecutor, scope: SessionIdentity) {
   return {
     async disconnect(conversationId: string, partnerOrganizationId: string) {
       return db.transaction(async (tx) => {

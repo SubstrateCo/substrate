@@ -2,10 +2,10 @@ import { parseSessionKey } from "@substrate/contracts/agent-work";
 import type { TurnContext } from "@substrate/contracts/harness/mcp";
 
 import type { DatabaseExecutor } from "../../client";
+import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { requirePlace } from "../agent-work/place";
 import { agentRequests } from "../agent-work/requests.schema";
-import type { MessagingIdentity } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { agentToolRequests } from "./schema";
 import { and, eq, exists, ne, sql } from "drizzle-orm";
@@ -23,7 +23,7 @@ const samePlace = (a: TurnPlace | null, b: TurnPlace) =>
  */
 export async function requireTurn(
   db: DatabaseExecutor,
-  identity: MessagingIdentity,
+  identity: SessionIdentity,
   agent: { actorId: string; userAgentId: string },
   turn: TurnContext,
 ) {

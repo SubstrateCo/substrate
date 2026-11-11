@@ -2,7 +2,6 @@ import { ensureUserAgentActor } from "../../core/actors/provisioning";
 import { AccessDeniedError } from "../../errors";
 import { user, userAgents } from "../../schema";
 import { setupDatabase } from "../../testing/database";
-import { createAcceptedMessagingService } from "../../testing/messaging";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { createMessagingService } from "./service";
@@ -10,8 +9,7 @@ import { expect, test } from "bun:test";
 
 const f = setupDatabase();
 
-const chat = (userId: string, organizationId = f.orgA, actorEntityId?: string) =>
-  createAcceptedMessagingService(f.db, { organizationId, userId, actorEntityId });
+const chat = f.messaging;
 
 test("person profiles show contact details only to workspace members who share the conversation", async () => {
   await f.db.update(user).set({ emailVerified: true });

@@ -3,15 +3,11 @@ import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { organization } from "../../core/organizations/schema";
+import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { messageEntityReferences } from "../context/schema";
 import { conversationRemovalHints } from "../realtime/routing";
-import {
-  loadConversation,
-  visibleConversations,
-  type MessagingIdentity,
-  messagingSession,
-} from "./access";
+import { loadConversation, visibleConversations } from "./access";
 import { findDirectMessage, findExternalDirectMessage } from "./direct-messages";
 import { activeMembers, endParticipation, hasOtherPerson, setOwner, writeMembers } from "./members";
 import {
@@ -44,7 +40,7 @@ function displayName(name: string | null, members: { name: string }[]) {
 }
 
 // Conversation membership and management. Scope comes from the authenticated session.
-export function conversationOperations(db: DatabaseExecutor, scope: Readonly<MessagingIdentity>) {
+export function conversationOperations(db: DatabaseExecutor, scope: Readonly<SessionIdentity>) {
   const authenticate = (tx: DatabaseExecutor) => messagingSession(tx, scope);
 
   // Admins can find conversations of their organization that they cannot read.
@@ -383,3 +379,4 @@ export function conversationOperations(db: DatabaseExecutor, scope: Readonly<Mes
     },
   };
 }
+import { messagingSession } from "../../core/session/messaging";

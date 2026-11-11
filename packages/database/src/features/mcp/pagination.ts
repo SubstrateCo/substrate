@@ -1,6 +1,6 @@
 import type { ActorScope } from "../../core/repository-context";
+import { uuidPattern } from "../../core/text/references";
 import { ValidationError } from "../../errors";
-import { uuidPattern } from "../context/references";
 import { createHash } from "node:crypto";
 
 const maximumOffset = 1_000_000;

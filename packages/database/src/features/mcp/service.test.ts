@@ -80,6 +80,36 @@ async function setCreatedAt(id: string, createdAt: string) {
     .where(eq(messagingMessages.id, id));
 }
 
+test("MCP and web comments publish the same confirmed notification hints", async () => {
+  const { identity, project } = await fixture();
+  const repos = await f.forSession("alice");
+  await repos.permissions.grant({
+    entityId: project.entityId,
+    actorEntityId: f.bob,
+    level: "view",
+  });
+  const task = await repos.tasks.create({ projectEntityId: project.entityId, title: "Mention" });
+  const body = `Hello @[person:${f.bob}]`;
+  const web = await repos.transaction((tx) => tx.tasks.addComment(task.entityId, body));
+  const mcp = await executeAgentTool(
+    f.db,
+    identity,
+    "add_task_comment",
+    {
+      taskId: task.entityId,
+      body,
+      requestId: crypto.randomUUID(),
+    },
+    turn,
+  );
+  expect(web.result.notified).toEqual([f.bob]);
+  expect(mcp.hints).toEqual(web.hints);
+  expect(mcp.hints).toContainEqual({
+    audience: realtimeKeys.actor(f.orgA, f.bob),
+    domain: "notifications",
+  });
+});
+
 test("task tools use the owner's access, attribute writes and keep the source message across retries", async () => {
   const { actor, human, call } = await fixture();
   await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "alice"));

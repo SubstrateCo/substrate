@@ -4,19 +4,12 @@ import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { entities } from "../../core/entities/schema";
 import { member } from "../../core/organizations/schema";
+import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError, ValidationError } from "../../errors";
-import { workspaceContext } from "../context/access";
-import { viewerOf } from "./policy";
 import { messagingConversations, messagingMessages, messagingParticipants } from "./schema";
 import { messagingConnections } from "./sharing.schema";
 import { and, eq, exists, inArray, isNotNull, isNull, lte, or, type SQLWrapper } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
-
-export interface MessagingIdentity {
-  userId: string;
-  organizationId: string;
-  actorEntityId?: string;
-}
 
 export function approvedParticipant(db: DatabaseExecutor) {
   const ownerParticipant = alias(messagingParticipants, "sharing_owner_participant");
@@ -205,17 +198,6 @@ export async function requireThreadRoot(
   if (!root) throw new ValidationError("Thread must be a root message in this conversation.");
 }
 
-/** Verifies the session and returns the author and policy viewer for messaging operations. */
-export async function messagingSession(db: DatabaseExecutor, scope: MessagingIdentity) {
-  const { context, actor, admin } = await workspaceContext(db, scope);
-  return {
-    context,
-    actor,
-    authorName: actor.name,
-    viewer: viewerOf(scope, admin),
-  };
-}
-
 export type Conversation = typeof messagingConversations.$inferSelect;
 
 /** Locks a conversation without an access check. The caller authorizes. */
@@ -240,7 +222,7 @@ export async function lockConversation(db: DatabaseExecutor, id: string, lock: "
  */
 export async function loadConversation(
   db: DatabaseExecutor,
-  scope: MessagingIdentity,
+  scope: SessionIdentity,
   id: string,
   lock?: "update" | "share",
 ) {
@@ -255,7 +237,7 @@ export async function loadConversation(
 
 export async function requireMessage(
   db: DatabaseExecutor,
-  scope: MessagingIdentity,
+  scope: SessionIdentity,
   messageId: string,
 ) {
   const [row] = await db

@@ -9,16 +9,16 @@ import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import { entityLinks } from "../../core/links/schema";
-import { adminOwnsCondition, visibilityCte } from "../../core/permissions/visibility";
+import { readableFromCte, withVisibility } from "../../core/permissions/visibility";
 import { pageSize } from "../../core/repository-context";
 import { searchDocument, trigramKey } from "../../core/search/indexing";
+import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError } from "../../errors";
 import {
   approvedParticipant,
   liveAgentMember,
   mentionablePerson,
   visibleConversations,
-  type MessagingIdentity,
 } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";
 import {
@@ -30,7 +30,7 @@ import { projects } from "../projects/schema";
 import { liveTask } from "../tasks/access";
 import { taskLinks } from "../tasks/links.schema";
 import { tasks } from "../tasks/tasks.schema";
-import { workspaceContext, requireWork } from "./access";
+import { requireWork } from "./access";
 import { messageExcerpts } from "./message-excerpt";
 import { messageEntityReferences, messageMessagingReferences } from "./schema";
 import { and, asc, eq, gt, inArray, isNull, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
@@ -91,7 +91,7 @@ function matchesWords(document: SQL, words: SQL) {
 
 export async function contextSearch(
   db: DatabaseExecutor,
-  scope: MessagingIdentity,
+  scope: SessionIdentity,
   input: {
     query: string;
     kind?: ContextSearchKind;
@@ -282,9 +282,6 @@ export async function contextSearch(
     // Tasks and projects in one statement with one visibility CTE. A task is readable when its
     // project is and the task is not deleted.
     const minimum = input.editable ? "edit" : "view";
-    const readableProject = (entityId: SQLWrapper) =>
-      sql`(${entityId} IN (SELECT entity_id FROM visible_entities WHERE level >= ${minimum}::permission_level)
-        OR ${adminOwnsCondition(ctx.scope, entityId)})`;
     const types = kind === "all" ? (["task", "project"] as const) : [kind];
     // The task's project already passed the readable check, so its name is safe to show.
     const taskProject = alias(projects, "task_project");
@@ -294,7 +291,7 @@ export async function contextSearch(
       const projectEntityId = type === "task" ? tasks.projectEntityId : projects.entityId;
       const where = and(
         eq(table.organizationId, scope.organizationId),
-        readableProject(projectEntityId),
+        readableFromCte(ctx.scope, table.entityId, minimum),
         type === "task" ? liveTask() : undefined,
         anchorId ? inArray(table.entityId, relatedEntities) : undefined,
         anchorId ? sql`${table.entityId} <> ${anchorId}` : undefined,
@@ -327,7 +324,7 @@ export async function contextSearch(
           kind: "task" | "project";
           projectName: string | null;
           status: TaskStatus | null;
-        }>(sql`${visibilityCte(ctx.scope)} ${sql.join(branches, sql` UNION ALL `)}`)
+        }>(withVisibility(ctx.scope, sql.join(branches, sql` UNION ALL `)))
         .then((rows) =>
           rows.map(({ projectName, status, ...row }) =>
             row.kind === "task"
@@ -573,3 +570,4 @@ export async function contextSearch(
     return excerpt === undefined ? row : { ...row, excerpt };
   });
 }
+import type { SessionIdentity } from "../../core/session/identity";

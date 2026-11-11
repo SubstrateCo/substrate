@@ -5,8 +5,9 @@ import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { member } from "../../core/organizations/schema";
+import type { SessionIdentity } from "../../core/session/identity";
 import { ValidationError } from "../../errors";
-import { approvedParticipant, type Conversation, type MessagingIdentity } from "./access";
+import { approvedParticipant, type Conversation } from "./access";
 import { messagingConversations, messagingParticipants } from "./schema";
 import { and, asc, eq, inArray, isNotNull, isNull, ne, sql, type SQL } from "drizzle-orm";
 
@@ -79,7 +80,7 @@ export function endParticipation(db: DatabaseExecutor, condition: SQL | undefine
 export async function activeMembers(
   db: DatabaseExecutor,
   conversationIds: string[],
-  scope: MessagingIdentity,
+  scope: SessionIdentity,
 ) {
   const name = actorDisplayName();
   const rows = conversationIds.length

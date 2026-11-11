@@ -2,12 +2,13 @@ import { askRequestPayload, proposalActionHash } from "@substrate/contracts/agen
 import type { TurnContext } from "@substrate/contracts/harness/mcp";
 import type { McpInput, McpOutput } from "@substrate/contracts/harness/tools";
 import type { RealtimeHint } from "@substrate/contracts/realtime";
+import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import type { RepositoryContext } from "../../core/repository-context";
+import type { SessionIdentity } from "../../core/session/identity";
 import { ValidationError } from "../../errors";
 import { createAsyncRequest } from "../agent-work/async-requests";
-import type { MessagingIdentity } from "../messaging/access";
-import { checkProposalAccess } from "./proposals";
+import { checkProposalAccess } from "../agent-work/proposals";
 import { replyTarget, turnPlace } from "./turn";
 import { agentWrites } from "./writes";
 
@@ -16,7 +17,7 @@ type Agent = Parameters<typeof agentWrites>[2];
 /** reply and propose: the only ways an agent publishes to its owner or asks for approval. */
 export function publishingTools(
   ctx: RepositoryContext,
-  identity: MessagingIdentity,
+  identity: SessionIdentity,
   agent: Agent & { userAgentId: string },
   turn: TurnContext,
 ) {
@@ -54,6 +55,7 @@ export function publishingTools(
             request: { kind: "question", payload: askRequestPayload(input.ask) },
           })
         : null;
+      ctx.effects.hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });
       return {
         messageId: message.id,
         conversationId: message.conversationId,
@@ -83,6 +85,7 @@ export function publishingTools(
           targetBasis,
         },
       });
+      ctx.effects.hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });
       return { proposalId, status: "pending" };
     },
   };

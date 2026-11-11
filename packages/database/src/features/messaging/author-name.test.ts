@@ -6,8 +6,7 @@ import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
-const service = (userId: string, organizationId = f.orgA) =>
-  createAcceptedMessagingService(f.db, { userId, organizationId });
+const service = f.messaging;
 
 test("renamed human authors agree across send, read, and replay for roots and replies", async () => {
   await f.db.update(user).set({ emailVerified: true });

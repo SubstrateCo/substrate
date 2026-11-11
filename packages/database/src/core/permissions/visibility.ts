@@ -5,7 +5,7 @@ import { adminRoleCondition } from "../organizations/roles";
 import { member } from "../organizations/schema";
 import type { ActorScope, PermissionLevel } from "../repository-context";
 import { entityGrants } from "./schema";
-import { sql, type SQLWrapper } from "drizzle-orm";
+import { sql, type SQL, type SQLWrapper } from "drizzle-orm";
 
 // Organization owners and admins are super users. People and personal mailbox or calendar
 // records are excluded. Add a type here only when its domain is shared with the organization.
@@ -42,12 +42,28 @@ export function visibilityCte(scope: ActorScope) {
   return sql`WITH visible_entities(entity_id, level) AS (${visibleEntitiesQuery(scope)})`;
 }
 
+export function withVisibility(scope: ActorScope, query: SQL) {
+  return sql`${visibilityCte(scope)} ${query}`;
+}
+
+export function readableFromCte(
+  scope: ActorScope,
+  entityId: SQLWrapper,
+  minimum: PermissionLevel = "view",
+) {
+  return sql`(${entityId} IN (SELECT entity_id FROM visible_entities
+    WHERE level >= ${minimum}::permission_level)
+    OR ${adminOwnsCondition(scope, entityId)})`;
+}
+
 // Admins own every live entity of a shared type. Every child type is a shared type today (tasks
 // in projects), so checking the entity's own type equals inheriting admin access from its
 // container. Revisit this when a non-shared type gets a shared-type container.
 export function adminOwnsCondition(scope: ActorScope, entityId: SQLWrapper) {
   return sql`(${organizationAdminCondition(scope)} AND EXISTS (
     SELECT 1 FROM ${entities} ae
+    JOIN ${entities} ac ON ac.organization_id = ae.organization_id AND ac.entity_id = ae.access_entity_id
+      AND ac.deleted_at IS NULL
     WHERE ae.organization_id = ${scope.organizationId} AND ae.entity_id = ${entityId}
       AND ae.deleted_at IS NULL AND ae.entity_type IN (${adminEntityTypes})
   ))`;
@@ -79,6 +95,8 @@ export function entityAccessLevel(scope: ActorScope, entityId: SQLWrapper | stri
       AND e.deleted_at IS NULL AND g.actor_entity_id = ${permissionActorEntityId(scope)}
     UNION ALL
     SELECT 'owner'::permission_level FROM ${entities} e
+    JOIN ${entities} c ON c.organization_id = e.organization_id AND c.entity_id = e.access_entity_id
+      AND c.deleted_at IS NULL
     WHERE e.organization_id = ${scope.organizationId} AND e.entity_id = ${entityId}
       AND e.deleted_at IS NULL AND e.entity_type IN (${adminEntityTypes})
       AND ${organizationAdminCondition(scope)}

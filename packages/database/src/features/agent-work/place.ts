@@ -1,10 +1,6 @@
 import type { DatabaseExecutor } from "../../client";
 import { AccessDeniedError, ValidationError } from "../../errors";
-import {
-  requireThreadRoot,
-  visibleConversations,
-  type MessagingIdentity,
-} from "../messaging/access";
+import { requireThreadRoot, visibleConversations } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { and, eq } from "drizzle-orm";
 
@@ -20,7 +16,7 @@ export interface Place {
  */
 export async function requirePlace(
   db: DatabaseExecutor,
-  scope: MessagingIdentity,
+  scope: SessionIdentity,
   input: {
     conversationId?: string | null;
     threadId?: string | null;
@@ -59,3 +55,4 @@ export async function requirePlace(
   }
   return place;
 }
+import type { SessionIdentity } from "../../core/session/identity";

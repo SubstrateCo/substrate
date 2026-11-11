@@ -5,12 +5,13 @@ import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { entities } from "../../core/entities/schema";
 import type { RepositoryContext } from "../../core/repository-context";
-import { mentionablePerson, type MessagingIdentity } from "../messaging/access";
+import type { SessionIdentity } from "../../core/session/identity";
+import { messageReferences } from "../../core/text/references";
+import { mentionablePerson } from "../messaging/access";
 import { messagingConversations } from "../messaging/schema";
 import { projects } from "../projects/schema";
 import { liveTask } from "../tasks/access";
 import { tasks } from "../tasks/tasks.schema";
-import { messageReferences } from "./references";
 import { messageEntityReferences } from "./schema";
 import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
@@ -79,7 +80,7 @@ export async function messageWorkLinks(ctx: RepositoryContext, messageIds: strin
 
 export async function messagePeople(
   db: DatabaseExecutor,
-  scope: MessagingIdentity,
+  scope: SessionIdentity,
   messages: { id: string; body: string; conversationId: string }[],
 ) {
   const tokens = new Map<string, Set<string>>();

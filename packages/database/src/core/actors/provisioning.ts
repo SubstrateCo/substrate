@@ -141,25 +141,6 @@ export function ensureHumanActor(
   });
 }
 
-// Trusted, already verified session identity only. One statement checks membership and reads
-// the actor; only a missing actor takes the provisioning lock. Repositories still check that the
-// actor is active.
-export async function resolveHumanActor(
-  db: DatabaseExecutor,
-  input: { organizationId: string; userId: string },
-) {
-  const [row] = await db
-    .select({ actor: actors })
-    .from(member)
-    .leftJoin(
-      actors,
-      and(eq(actors.organizationId, member.organizationId), eq(actors.userId, member.userId)),
-    )
-    .where(and(eq(member.organizationId, input.organizationId), eq(member.userId, input.userId)));
-  if (!row) throw new AccessDeniedError();
-  return row.actor ?? ensureHumanActor(db, input);
-}
-
 // Reads take one lock-free statement when every enabled agent already has an actor here. Only a
 // missing actor takes the provisioning locks.
 export async function ensureOwnedAgentActors(

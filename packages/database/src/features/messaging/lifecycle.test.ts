@@ -13,17 +13,14 @@ import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
-const chat = (userId: string, organizationId = f.orgA) =>
-  createAcceptedMessagingService(f.db, { userId, organizationId });
+const chat = f.messaging;
 const listed = async (userId: string, organizationId = f.orgA) =>
   (await chat(userId, organizationId).listConversations()).map((row) => ({
     id: row.id,
     joined: row.joined,
   }));
 
-async function verified() {
-  await f.db.update(user).set({ emailVerified: true });
-}
+const verified = f.verifyEmails;
 
 test("leaving a private conversation removes access until the owner adds the member back", async () => {
   await verified();

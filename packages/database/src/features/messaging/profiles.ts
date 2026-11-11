@@ -8,8 +8,9 @@ import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import { member } from "../../core/organizations/schema";
+import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError } from "../../errors";
-import { visibleConversations, type MessagingIdentity } from "./access";
+import { visibleConversations } from "./access";
 import { directConversationId } from "./direct-messages";
 import { messagingConversations, messagingMessages, messagingReactions } from "./schema";
 import { and, eq, exists, isNull, or } from "drizzle-orm";
@@ -30,7 +31,7 @@ interface MessagingProfile {
 
 // The actor with what the viewer may learn about it: contact details of fellow workspace members,
 // and an agent's definition and owner. The caller decides what to reveal.
-async function profileActor(db: DatabaseExecutor, scope: MessagingIdentity, actorEntityId: string) {
+async function profileActor(db: DatabaseExecutor, scope: SessionIdentity, actorEntityId: string) {
   const personMember = alias(member, "person_member");
   const personUser = alias(user, "person_user");
   const ownerMember = alias(member, "owner_member");
@@ -80,7 +81,7 @@ async function profileActor(db: DatabaseExecutor, scope: MessagingIdentity, acto
 // only its owner can resolve it; it sees what its owner sees.
 async function requireProfileContext(
   db: DatabaseExecutor,
-  scope: MessagingIdentity,
+  scope: SessionIdentity,
   conversationId: string,
   { actor, definition }: Awaited<ReturnType<typeof profileActor>>,
 ) {
@@ -144,7 +145,7 @@ async function requireProfileContext(
 // The caller has authenticated the session scope and resolved the viewer's actor.
 export async function messagingProfile(
   tx: DatabaseExecutor,
-  scope: MessagingIdentity,
+  scope: SessionIdentity,
   viewerActorEntityId: string,
   conversationId: string,
   actorEntityId: string,

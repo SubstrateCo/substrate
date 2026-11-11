@@ -45,6 +45,7 @@ test("a comment saves its work references and returns them with labels", async (
 });
 
 test("a mention alerts the person once, on the task, and never the author", async () => {
+  await fixture.verifyEmails();
   const { alice, task } = await workspace();
   const comment = await alice.tasks.addComment(
     task.entityId,

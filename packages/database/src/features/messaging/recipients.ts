@@ -5,8 +5,8 @@ import { ensureHumanActor, ensureOwnedAgentActors } from "../../core/actors/prov
 import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
 import { member } from "../../core/organizations/schema";
+import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError, ValidationError } from "../../errors";
-import type { MessagingIdentity } from "./access";
 import type { MemberActor } from "./members";
 import { and, eq, inArray } from "drizzle-orm";
 
@@ -22,7 +22,7 @@ function normalizeEmail(email: string) {
  * invitations. People join through their human actor here. One statement reads the people and
  * their actors; only a person's first workspace use provisions an actor.
  */
-export async function recipients(db: DatabaseExecutor, scope: MessagingIdentity, emails: string[]) {
+export async function recipients(db: DatabaseExecutor, scope: SessionIdentity, emails: string[]) {
   if (emails.length > messagingLimits.recipients)
     throw new ValidationError(`At most ${messagingLimits.recipients} recipients are allowed.`);
   const normalized = [...new Set(emails.map(normalizeEmail))];
@@ -61,7 +61,7 @@ export async function recipients(db: DatabaseExecutor, scope: MessagingIdentity,
 /** Only the owner adds their agent, and only an enabled agent, with its actor here. */
 export async function ownedAgents(
   db: DatabaseExecutor,
-  scope: MessagingIdentity,
+  scope: SessionIdentity,
   agentIds: string[],
 ): Promise<MemberActor[]> {
   if (agentIds.length > messagingLimits.agents)

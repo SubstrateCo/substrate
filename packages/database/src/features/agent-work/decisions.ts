@@ -6,12 +6,14 @@ import {
   type ProposalOutcome,
 } from "@substrate/contracts/agent-work";
 import type { RealtimeHint } from "@substrate/contracts/realtime";
+import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
+import { RepositoryEffects } from "../../core/effects";
+import type { SessionIdentity } from "../../core/session/identity";
+import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
-import { workspaceContext } from "../context/access";
-import { runProposalAction } from "../mcp/proposals";
-import type { OwnerIdentity } from "./device";
+import { runProposalAction } from "./proposals";
 import { answerableRequest, ownedRequests } from "./request-views";
 import { agentRequests } from "./requests.schema";
 import { wakeForRequest } from "./wakes";
@@ -21,7 +23,7 @@ const closed = "This request was already answered or has closed.";
 
 async function requireOwnedRequest(
   db: DatabaseExecutor,
-  identity: OwnerIdentity,
+  identity: SessionIdentity,
   requestId: string,
   kinds: ("permission" | "question" | "proposal")[],
 ) {
@@ -46,7 +48,7 @@ async function requireOwnedRequest(
  */
 export function respondToRequest(
   db: DatabaseExecutor,
-  identity: OwnerIdentity,
+  identity: SessionIdentity,
   requestId: string,
   response: AgentRequestResponse,
 ) {
@@ -72,7 +74,11 @@ export function respondToRequest(
 }
 
 /** Declines a proposal. Nothing runs; the agent learns the decision in its session. */
-export function declineProposal(db: DatabaseExecutor, identity: OwnerIdentity, requestId: string) {
+export function declineProposal(
+  db: DatabaseExecutor,
+  identity: SessionIdentity,
+  requestId: string,
+) {
   return db.transaction(async (tx) => {
     await workspaceContext(tx, identity);
     await requireOwnedRequest(tx, identity, requestId, ["proposal"]);
@@ -108,7 +114,11 @@ export function proposalFailure(error: Error): ProposalOutcome | null {
   return null;
 }
 
-export function approveProposal(db: DatabaseExecutor, identity: OwnerIdentity, requestId: string) {
+export function approveProposal(
+  db: DatabaseExecutor,
+  identity: SessionIdentity,
+  requestId: string,
+) {
   return db.transaction(async (tx) => {
     await workspaceContext(tx, identity);
     await requireOwnedRequest(tx, identity, requestId, ["proposal"]);
@@ -120,6 +130,7 @@ export function approveProposal(db: DatabaseExecutor, identity: OwnerIdentity, r
     if (!claimed) throw new ConflictError(closed);
     let outcome: ProposalOutcome;
     let hints: RealtimeHint[] = [];
+    const effects = new RepositoryEffects();
     const parsed = proposalAction.safeParse(claimed.proposedAction);
     if (!parsed.success || (await proposalActionHash(parsed.data)) !== claimed.actionHash)
       outcome = { status: "failed", error: "The proposed action changed after it was proposed." };
@@ -133,15 +144,17 @@ export function approveProposal(db: DatabaseExecutor, identity: OwnerIdentity, r
         // A savepoint, so a failed action leaves no partial writes but the decision is kept.
         const result = await tx.transaction(async (sp) => {
           const { context, actor } = await workspaceContext(sp, agent, { lockActor: true });
-          return runProposalAction(context, agent, actor, {
+          const action = await runProposalAction(context, agent, actor, {
             id: claimed.id,
             turnId: claimed.turnId,
             action: parsed.data,
             targetBasis: claimed.targetBasis,
           });
+          return { ...action, effects: context.effects };
         });
         outcome = { status: "executed", receipt: result.receipt };
         hints = result.hints;
+        effects.merge(result.effects);
       } catch (error) {
         const failure = error instanceof Error ? proposalFailure(error) : null;
         if (!failure) throw error;
@@ -154,6 +167,8 @@ export function approveProposal(db: DatabaseExecutor, identity: OwnerIdentity, r
       .where(eq(agentRequests.id, requestId))
       .returning();
     await wakeForRequest(tx, finished!, "approval_result");
-    return { status: finished!.status, outcome, hints };
+    effects.hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });
+    for (const hint of hints) effects.hint(hint);
+    return { status: finished!.status, outcome, hints: effects.committed(null).hints };
   });
 }

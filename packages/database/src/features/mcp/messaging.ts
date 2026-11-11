@@ -2,8 +2,9 @@ import type { McpInput, McpOutput } from "@substrate/contracts/harness/tools";
 
 import { actors } from "../../core/actors/schema";
 import type { RepositoryContext } from "../../core/repository-context";
+import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError } from "../../errors";
-import { requireMessage, visibleConversations, type MessagingIdentity } from "../messaging/access";
+import { requireMessage, visibleConversations } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { excerpt, iso } from "./formatting";
@@ -11,7 +12,7 @@ import { pagination } from "./pagination";
 import { authorSelection } from "./tasks";
 import { and, asc, desc, eq, sql, type SQL } from "drizzle-orm";
 
-export function mcpMessagingQueries(ctx: RepositoryContext, identity: MessagingIdentity) {
+export function mcpMessagingQueries(ctx: RepositoryContext, identity: SessionIdentity) {
   const { db, scope } = ctx;
   const replies = (rest: SQL = sql``) =>
     sql`from ${messagingMessages} r where r.conversation_id = ${messagingMessages.conversationId} and r.thread_id = ${messagingMessages.id} ${rest}`;

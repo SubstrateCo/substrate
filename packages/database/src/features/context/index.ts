@@ -1,2 +1,1 @@
-export { createContextService } from "./service";
-export { createFeedService } from "../notifications/service";
+export type ContextRepository = ReturnType<typeof import("./service").createContextService>;

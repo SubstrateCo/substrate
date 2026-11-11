@@ -1,4 +1,4 @@
-import { createDatabase, migrateDatabase } from "@substrate/database";
+import { createDatabase, migrateDatabase } from "@substrate/database/trusted";
 
 import { sql } from "drizzle-orm";
 

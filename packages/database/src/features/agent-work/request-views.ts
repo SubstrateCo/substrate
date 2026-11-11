@@ -3,11 +3,11 @@ import type { AgentNeedsYou, AgentRequestView } from "@substrate/contracts/agent
 import type { DatabaseExecutor } from "../../client";
 import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
-import { workspaceContext } from "../context/access";
+import type { SessionIdentity } from "../../core/session/identity";
+import { workspaceContext } from "../../core/session/workspace";
 import { visibleConversations } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";
 import { messagingConversations } from "../messaging/schema";
-import type { OwnerIdentity } from "./device";
 import { agentRequests } from "./requests.schema";
 import { statusViews } from "./status";
 import { agentStatus } from "./status.schema";
@@ -15,7 +15,7 @@ import { toRequestView } from "./views";
 import { and, desc, eq, gt, inArray, or, sql, type SQL } from "drizzle-orm";
 
 /** Requests of the owner's own agents in the organization. */
-export function ownedRequests(identity: OwnerIdentity) {
+export function ownedRequests(identity: SessionIdentity) {
   return and(
     eq(agentRequests.ownerUserId, identity.userId),
     eq(agentRequests.organizationId, identity.organizationId),
@@ -27,7 +27,7 @@ export function ownedRequests(identity: OwnerIdentity) {
 // conversation the owner cannot open is not shown either.
 async function requestViews(
   db: DatabaseExecutor,
-  identity: OwnerIdentity,
+  identity: SessionIdentity,
   where: SQL | undefined,
 ): Promise<AgentRequestView[]> {
   const visibleIds = db
@@ -78,7 +78,7 @@ export const answerableRequest = and(
  */
 export function listConversationRequests(
   db: DatabaseExecutor,
-  identity: OwnerIdentity,
+  identity: SessionIdentity,
   conversationId: string,
 ) {
   return db.transaction(async (tx) => {
@@ -110,7 +110,7 @@ export function listConversationRequests(
 }
 
 /** Everything that waits for the owner: open requests and agents that report needs_you. */
-export function listNeedsYou(db: DatabaseExecutor, identity: OwnerIdentity) {
+export function listNeedsYou(db: DatabaseExecutor, identity: SessionIdentity) {
   return db.transaction(async (tx): Promise<AgentNeedsYou> => {
     await workspaceContext(tx, identity);
     return {

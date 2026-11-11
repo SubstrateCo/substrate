@@ -1,1 +1,1 @@
-export { createAttachmentRepository, attachmentReferences } from "./repository";
+export { attachmentReferences } from "./repository";

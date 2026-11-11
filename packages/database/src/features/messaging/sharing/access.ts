@@ -1,9 +1,10 @@
 import type { DatabaseExecutor } from "../../../client";
 import { user } from "../../../core/authentication/schema";
 import { isOrganizationAdmin } from "../../../core/organizations/roles";
+import type { SessionIdentity } from "../../../core/session/identity";
+import { workspaceContext } from "../../../core/session/workspace";
 import { AccessDeniedError } from "../../../errors";
-import { workspaceContext } from "../../context/access";
-import { visibleConversations, type Conversation, type MessagingIdentity } from "../access";
+import { visibleConversations, type Conversation } from "../access";
 import { canShare, hosts, viewerOf } from "../policy";
 import { messagingConversations } from "../schema";
 import {
@@ -33,7 +34,7 @@ export async function hasSharingConnection(
 
 export async function requireSharingManager(
   db: DatabaseExecutor,
-  scope: MessagingIdentity,
+  scope: SessionIdentity,
   conversation: Conversation,
 ) {
   if (scope.actorEntityId) throw new AccessDeniedError();
@@ -58,7 +59,7 @@ export async function requireSharingManager(
 
 export async function recordSharingEvents(
   db: DatabaseExecutor,
-  scope: MessagingIdentity,
+  scope: SessionIdentity,
   conversationId: string,
   action: typeof messagingSharingEvents.$inferInsert.action,
   inputs: { invitationId?: string; targetOrganizationId?: string }[],

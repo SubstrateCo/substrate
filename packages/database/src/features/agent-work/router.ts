@@ -4,9 +4,10 @@ import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
+import type { SessionIdentity } from "../../core/session/identity";
+import { messageReferences } from "../../core/text/references";
 import { userAgentTriggers } from "../agents/triggers.schema";
-import { messageReferences } from "../context/references";
-import { liveAgentMember, type MessagingIdentity } from "../messaging/access";
+import { liveAgentMember } from "../messaging/access";
 import { messagingMessages, messagingParticipants } from "../messaging/schema";
 import { agentRequests } from "./requests.schema";
 import { wakeKind, wakeSessionKey } from "./wake-kind";
@@ -64,7 +65,7 @@ async function agentsThatWorked(
  */
 export async function routeWake(
   db: DatabaseExecutor,
-  scope: MessagingIdentity,
+  scope: SessionIdentity,
   message: typeof messagingMessages.$inferSelect,
   conversationKind: "dm" | "group" | "channel",
 ): Promise<RealtimeHint[]> {

@@ -3,15 +3,15 @@ import type { McpInput, McpOutput } from "@substrate/contracts/harness/tools";
 import { actors } from "../../core/actors/schema";
 import { organization } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
+import type { SessionIdentity } from "../../core/session/identity";
 import { contextSearch } from "../context/search";
-import type { MessagingIdentity } from "../messaging/access";
 import { projectRepository } from "../projects/repository";
 import { keysetPagination } from "./pagination";
 import { and, eq } from "drizzle-orm";
 
 type Actor = { id: string; name: string; type: "human" | "agent" };
 
-export function mcpContextQueries(ctx: RepositoryContext, identity: MessagingIdentity) {
+export function mcpContextQueries(ctx: RepositoryContext, identity: SessionIdentity) {
   const { db, scope } = ctx;
   return {
     async getMe(actor: Actor, ownerName: string): Promise<McpOutput<"get_me">> {

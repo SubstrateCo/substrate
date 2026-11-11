@@ -1,20 +1,24 @@
+import { realtimeKeys } from "@substrate/contracts/realtime";
+
 import type { DatabaseExecutor } from "../../client";
 import { actorDisplayName } from "../../core/actors/display-name";
 import { actorPicture } from "../../core/actors/picture";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import type { RepositoryContext } from "../../core/repository-context";
+import type { SessionIdentity } from "../../core/session/identity";
+import { workspaceContext } from "../../core/session/workspace";
 import { ConflictError, AccessDeniedError } from "../../errors";
 import { recordTaskActivity } from "../activity/events";
 import { messageAttachmentMetadata } from "../files/metadata";
-import { requireMessage, visibleConversations, type MessagingIdentity } from "../messaging/access";
+import { requireMessage, visibleConversations } from "../messaging/access";
 import { messageAuthorColumns, messageSummaries } from "../messaging/messages";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
-import { liveTask } from "../tasks/access";
+import { liveProjectTasks } from "../tasks/access";
 import type { CreateTaskInput } from "../tasks/contracts";
 import { createTaskInLockedProject, taskRepository } from "../tasks/repository";
 import { tasks } from "../tasks/tasks.schema";
-import { workspaceContext, requireWork } from "./access";
+import { requireWork } from "./access";
 import { messagePeople, messageWorkLinks } from "./message-metadata";
 import { messagePage } from "./message-page";
 import { messageEntityReferences, sourceTaskRequests } from "./schema";
@@ -32,7 +36,7 @@ interface ReferenceTarget {
 
 async function referenceEndpoints(
   ctx: RepositoryContext,
-  scope: MessagingIdentity,
+  scope: SessionIdentity,
   source: ReferenceMessage,
   target: ReferenceTarget,
   level: "view" | "edit",
@@ -48,7 +52,7 @@ async function referenceEndpoints(
 // Callers resolve the workspace context; this performs the message and work checks once.
 export async function attachReference(
   ctx: RepositoryContext,
-  scope: MessagingIdentity,
+  scope: SessionIdentity,
   source: ReferenceMessage,
   target: ReferenceTarget,
 ) {
@@ -69,12 +73,17 @@ export async function attachReference(
     .returning();
   if (rows.length && work.entityType === "task")
     await recordTaskActivity(ctx, target.id, ["Discussion linked"], source.messageId);
+  if (rows.length)
+    ctx.effects.hint({
+      audience: realtimeKeys.organization(scope.organizationId),
+      domain: "context",
+    });
   return rows.length > 0;
 }
 
 export async function detachReference(
   ctx: RepositoryContext,
-  scope: MessagingIdentity,
+  scope: SessionIdentity,
   source: ReferenceMessage,
   target: ReferenceTarget,
 ) {
@@ -106,6 +115,11 @@ export async function detachReference(
     .returning();
   if (rows.length && work.entityType === "task")
     await recordTaskActivity(ctx, target.id, ["Discussion unlinked"], source.messageId);
+  if (rows.length)
+    ctx.effects.hint({
+      audience: realtimeKeys.organization(scope.organizationId),
+      domain: "context",
+    });
   return rows.length > 0;
 }
 
@@ -125,14 +139,26 @@ export async function recordTaskSource(
     createdByActorEntityId: ctx.scope.actorEntityId,
   });
   await recordTaskActivity(ctx, taskEntityId, ["Created from a discussion"], source.messageId);
+  ctx.effects.hint({
+    audience: realtimeKeys.organization(ctx.scope.organizationId),
+    domain: "context",
+  });
 }
 
-export function createContextService(db: DatabaseExecutor, scope: MessagingIdentity) {
+export function createContextService(
+  db: DatabaseExecutor,
+  scope: SessionIdentity,
+  context?: RepositoryContext,
+) {
+  const transaction = async <T>(work: (ctx: RepositoryContext) => Promise<T>) => {
+    if (context) return context.transaction(work);
+    return db.transaction(async (tx) => work((await workspaceContext(tx, scope)).context));
+  };
   return {
     messagePage: (messageIds: string[]) => messagePage(db, scope, messageIds),
     async createTaskFromMessage(input: CreateTaskInput & { requestId: string; messageId: string }) {
-      return db.transaction(async (tx) => {
-        const { context: ctx } = await workspaceContext(tx, scope);
+      return transaction(async (ctx) => {
+        const tx = ctx.db;
         const { conversation } = await requireMessage(tx, scope, input.messageId);
         if (conversation.organizationId !== scope.organizationId) throw new AccessDeniedError();
         const project = await ctx.requireAccess(input.projectEntityId, "edit", true);
@@ -180,14 +206,12 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
       });
     },
     async attach(messageId: string, entityId: string) {
-      return db.transaction(async (tx) => {
-        const { context: ctx } = await workspaceContext(tx, scope);
+      return transaction(async (ctx) => {
         return attachReference(ctx, scope, { messageId }, { id: entityId });
       });
     },
     async detach(messageId: string, entityId: string) {
-      return db.transaction(async (tx) => {
-        const { context: ctx } = await workspaceContext(tx, scope);
+      return transaction(async (ctx) => {
         return detachReference(ctx, scope, { messageId }, { id: entityId });
       });
     },
@@ -210,13 +234,7 @@ export function createContextService(db: DatabaseExecutor, scope: MessagingIdent
           ? db
               .select({ entityId: tasks.entityId })
               .from(tasks)
-              .where(
-                and(
-                  eq(tasks.organizationId, scope.organizationId),
-                  eq(tasks.projectEntityId, entityId),
-                  liveTask(),
-                ),
-              )
+              .where(liveProjectTasks(scope, entityId))
           : undefined;
       return db
         .select({

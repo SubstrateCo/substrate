@@ -7,7 +7,7 @@ import {
 } from "@substrate/contracts/agents";
 import { managedPicturePath } from "@substrate/contracts/files/pictures";
 
-import type { Database } from "../../client";
+import type { DatabaseExecutor } from "../../client";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { deviceOnline, findDevice } from "../../core/devices/repository";
 import { desktopDevices } from "../../core/devices/schema";
@@ -31,7 +31,11 @@ function configuration(row: typeof userAgents.$inferSelect): AgentConfiguration 
 }
 
 /** `installationId` names the calling desktop, when the request came from one. */
-export function createAgentRepository(db: Database, userId: string, installationId?: string) {
+export function createAgentRepository(
+  db: DatabaseExecutor,
+  userId: string,
+  installationId?: string,
+) {
   async function currentDevice() {
     return installationId ? findDevice(db, userId, installationId) : null;
   }

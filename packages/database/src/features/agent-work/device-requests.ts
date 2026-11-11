@@ -6,8 +6,9 @@ import {
 } from "@substrate/contracts/agent-work";
 
 import type { DatabaseExecutor } from "../../client";
+import { requireDevice, type DeviceIdentity } from "../../core/session/device";
 import { AccessDeniedError } from "../../errors";
-import { homedAgentIds, requireDevice, requireHomedAgent, type DeviceIdentity } from "./device";
+import { homedAgentIds, requireHomedAgent } from "./device";
 import { requirePlace } from "./place";
 import { agentRequests } from "./requests.schema";
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";

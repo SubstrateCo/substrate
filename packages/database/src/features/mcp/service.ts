@@ -11,11 +11,12 @@ import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { findDevice } from "../../core/devices/repository";
+import { RepositoryEffects } from "../../core/effects";
+import type { SessionIdentity } from "../../core/session/identity";
+import { workspaceContext } from "../../core/session/workspace";
 import { ConflictError, AccessDeniedError, ValidationError } from "../../errors";
 import { agentRequests } from "../agent-work/requests.schema";
-import { workspaceContext } from "../context/access";
 import { attachReference, detachReference } from "../context/service";
-import type { MessagingIdentity } from "../messaging/access";
 import { requireMessage } from "../messaging/access";
 import { messageChangeHints } from "../realtime/routing";
 import { taskRepository } from "../tasks/repository";
@@ -56,7 +57,7 @@ function requestIdOf(input: McpInput<ServerToolName>) {
 
 export async function executeAgentTool<K extends ServerToolName>(
   db: DatabaseExecutor,
-  identity: MessagingIdentity & { actorEntityId: string },
+  identity: SessionIdentity & { actorEntityId: string },
   tool: K,
   raw: WorkspaceApiRequest["input"],
   turn: TurnContext,
@@ -66,6 +67,7 @@ export async function executeAgentTool<K extends ServerToolName>(
   const input = definition.input.parse(raw) as McpInput<K>;
   // Message hints a write built in its transaction, published by the caller after commit.
   const hints: RealtimeHint[] = [];
+  const effects = new RepositoryEffects();
   const output = await db.transaction(async (tx) => {
     // Writes lock the agent's actor row so one agent's writes run one at a time. Reads run in
     // parallel.
@@ -229,8 +231,13 @@ export async function executeAgentTool<K extends ServerToolName>(
         turnId: turn.turnId,
         attempt: turn.attempt,
       });
+    effects.merge(ctx.effects);
     return result;
   });
+  for (const hint of hints) effects.hint(hint);
   // SAFETY: input and output were parsed with the registry entry for the same tool.
-  return { tool, input, output, hints } as Extract<AgentToolExecution, { tool: K }>;
+  return { tool, input, output, hints: effects.committed(output).hints } as Extract<
+    AgentToolExecution,
+    { tool: K }
+  >;
 }

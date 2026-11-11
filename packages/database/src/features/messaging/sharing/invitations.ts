@@ -5,15 +5,10 @@ import { ensureHumanActor } from "../../../core/actors/provisioning";
 import { actors } from "../../../core/actors/schema";
 import { user } from "../../../core/authentication/schema";
 import { member, organization } from "../../../core/organizations/schema";
+import { workspaceContext } from "../../../core/session/workspace";
 import { AccessDeniedError, ValidationError } from "../../../errors";
-import { workspaceContext } from "../../context/access";
 import { sharingInvitationHints } from "../../realtime/routing";
-import {
-  lockConversation,
-  visibleConversations,
-  type Conversation,
-  type MessagingIdentity,
-} from "../access";
+import { lockConversation, visibleConversations, type Conversation } from "../access";
 import { writeMembers } from "../members";
 import { canShare, invitationTarget, validateExternalInvitations, type Viewer } from "../policy";
 import { messagingConversations, messagingParticipants } from "../schema";
@@ -33,7 +28,7 @@ import { and, eq, gt, inArray, ne, sql } from "drizzle-orm";
  */
 export async function queueSharingInvitations(
   db: DatabaseExecutor,
-  scope: MessagingIdentity,
+  scope: SessionIdentity,
   conversation: Conversation,
   input: { emails: string[]; shareHistory: boolean },
   authorized?: Viewer,
@@ -163,7 +158,39 @@ export async function readSharingInvitation(db: DatabaseExecutor, userId: string
   };
 }
 
-export function invitationOperations(db: DatabaseExecutor, scope: MessagingIdentity) {
+export async function declineSharingInvitation(db: DatabaseExecutor, userId: string, id: string) {
+  return db.transaction(async (tx) => {
+    const [lookup] = await tx
+      .select()
+      .from(messagingInvitations)
+      .where(eq(messagingInvitations.id, id));
+    if (!lookup) throw new AccessDeniedError();
+    await lockConversation(tx, lookup.conversationId, "update");
+    const [invite] = await tx
+      .select()
+      .from(messagingInvitations)
+      .where(eq(messagingInvitations.id, id))
+      .for("update");
+    if (!invite) throw new AccessDeniedError();
+    await requireSharingRecipient(tx, userId, invite);
+    if (invite.status !== "pending")
+      throw new ValidationError("This invitation is no longer available.");
+    await tx
+      .update(messagingInvitations)
+      .set({ status: "declined" })
+      .where(eq(messagingInvitations.id, id));
+    await recordSharingEvents(
+      tx,
+      { userId, organizationId: invite.hostOrganizationId },
+      invite.conversationId,
+      "declined",
+      [{ invitationId: id }],
+    );
+    return { declined: true, hints: await sharingInvitationHints(tx, invite) };
+  });
+}
+
+export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentity) {
   return {
     async invite(conversationId: string, input: { email: string; shareHistory: boolean }) {
       return db.transaction(async (tx) => {
@@ -306,37 +333,7 @@ export function invitationOperations(db: DatabaseExecutor, scope: MessagingIdent
         };
       });
     },
-    async decline(id: string) {
-      return db.transaction(async (tx) => {
-        const [lookup] = await tx
-          .select()
-          .from(messagingInvitations)
-          .where(eq(messagingInvitations.id, id));
-        if (!lookup) throw new AccessDeniedError();
-        await lockConversation(tx, lookup.conversationId, "update");
-        const [invite] = await tx
-          .select()
-          .from(messagingInvitations)
-          .where(eq(messagingInvitations.id, id))
-          .for("update");
-        if (!invite) throw new AccessDeniedError();
-        await requireSharingRecipient(tx, scope.userId, invite);
-        if (invite.status !== "pending")
-          throw new ValidationError("This invitation is no longer available.");
-        await tx
-          .update(messagingInvitations)
-          .set({ status: "declined" })
-          .where(eq(messagingInvitations.id, id));
-        await recordSharingEvents(
-          tx,
-          { ...scope, organizationId: invite.hostOrganizationId },
-          invite.conversationId,
-          "declined",
-          [{ invitationId: id }],
-        );
-        return { declined: true, hints: await sharingInvitationHints(tx, invite) };
-      });
-    },
+    decline: (id: string) => declineSharingInvitation(db, scope.userId, id),
     async revoke(id: string) {
       return db.transaction(async (tx) => {
         const [invite] = await tx
@@ -385,3 +382,4 @@ export function invitationOperations(db: DatabaseExecutor, scope: MessagingIdent
     },
   };
 }
+import type { SessionIdentity } from "../../../core/session/identity";

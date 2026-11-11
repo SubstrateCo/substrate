@@ -1,3 +1,5 @@
+import { realtimeKeys } from "@substrate/contracts/realtime";
+
 import { entities } from "../../core/entities/schema";
 import { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
@@ -39,11 +41,15 @@ export function taskLifecycle(context: RepositoryContext) {
   }
   return {
     async delete(taskId: string, projectId: string) {
-      return context.db.transaction(async (tx) => {
-        const ctx = new RepositoryContext(tx, scope);
+      return context.transaction(async (ctx) => {
+        const tx = ctx.db;
         await ctx.requireAccess(projectId, "edit", true);
         await requireTask(ctx, taskId, projectId);
         const subtree = await taskSubtree(ctx, projectId, taskId);
+        ctx.effects.hint({
+          audience: realtimeKeys.organization(scope.organizationId),
+          domain: "access",
+        });
         await tx
           .update(entities)
           .set({ deletedAt: new Date(), updatedAt: new Date() })
@@ -64,8 +70,8 @@ export function taskLifecycle(context: RepositoryContext) {
       destinationProjectId: string,
       parentTaskId: string | null,
     ) {
-      return context.db.transaction(async (tx) => {
-        const ctx = new RepositoryContext(tx, scope);
+      return context.transaction(async (ctx) => {
+        const tx = ctx.db;
         // All project locks are taken in the same order for moves in either direction.
         for (const id of [...new Set([projectId, destinationProjectId])].sort()) {
           const { entity } = await ctx.requireAccess(id, "edit", true);
@@ -103,21 +109,11 @@ export function taskLifecycle(context: RepositoryContext) {
                 liveTask(),
               ),
             );
-          for (const assignee of new Set(
-            live.flatMap((row) => (row.assignee ? [row.assignee] : [])),
-          )) {
-            try {
-              await new RepositoryContext(tx, {
-                organizationId: scope.organizationId,
-                actorEntityId: assignee,
-              }).requireAccess(destinationProjectId, "view");
-            } catch (error) {
-              if (!(error instanceof AccessDeniedError)) throw error;
-              throw new ValidationError(
-                "Reassign or unassign tasks whose assignees cannot access the destination project.",
-              );
-            }
-          }
+          await requireMovingAssignees(
+            ctx,
+            destinationProjectId,
+            live.map((row) => row.assignee),
+          );
           // A single statement keeps the entity-container and same-project parent FKs valid.
           // Include deleted descendants too: their structural references must remain aligned.
           await tx.execute(sql`
@@ -137,6 +133,11 @@ export function taskLifecycle(context: RepositoryContext) {
             .where(and(eq(tasks.organizationId, scope.organizationId), eq(tasks.entityId, taskId)));
           await ctx.touch(taskId);
         }
+        if (projectId !== destinationProjectId)
+          ctx.effects.hint({
+            audience: realtimeKeys.organization(scope.organizationId),
+            domain: "access",
+          });
         if (
           task.projectEntityId !== destinationProjectId ||
           task.parentTaskEntityId !== parentTaskId
@@ -148,3 +149,4 @@ export function taskLifecycle(context: RepositoryContext) {
     },
   };
 }
+import { requireMovingAssignees } from "./assignment";

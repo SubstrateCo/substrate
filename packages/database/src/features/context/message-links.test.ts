@@ -11,8 +11,7 @@ import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
-const context = (userId = "alice", organizationId = f.orgA) =>
-  createContextService(f.db, { userId, organizationId });
+const context = f.context;
 
 const setup = () => contextConversation(f);
 

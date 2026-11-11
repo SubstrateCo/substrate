@@ -1,5 +1,5 @@
 import { attachmentReferences } from "@substrate/database/files";
-import { createStorageRepository } from "@substrate/database/storage";
+import { createStorageRepository } from "@substrate/database/trusted";
 
 import { db } from "../../auth/database";
 import { auth } from "../../auth/server";

@@ -1,12 +1,11 @@
 import type { mcpCall } from "@substrate/contracts/harness/tools";
 import { executeAgentTool } from "@substrate/database/mcp";
-import { ensureUserAgentActor } from "@substrate/database/provisioning";
+import { ensureUserAgentActor } from "@substrate/database/trusted";
 
 import { db } from "../../auth/database";
 import { serviceResult } from "../../shared/service-result";
 import { requireOrigin, workspaceSession } from "../../shared/workspace";
-import { publishRefresh } from "../realtime/publisher";
-import { toolHints } from "./hints";
+import { publishCommitted } from "../realtime/committed";
 import type { z } from "zod";
 
 // The route validates the call envelope, including the turn context the desktop host attached.
@@ -27,8 +26,6 @@ export function callAgentTool(headers: Headers, call: z.output<typeof mcpCall>) 
       call.input,
       call.turn,
     );
-    const hints = toolHints(execution, { organizationId, userId: session.user.id });
-    if (hints.length) await publishRefresh(hints);
-    return execution.output;
+    return publishCommitted({ result: execution.output, hints: execution.hints });
   });
 }

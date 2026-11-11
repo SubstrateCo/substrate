@@ -4,12 +4,12 @@ import type {
   ownerScopeInput,
   respondRequestInput,
 } from "@substrate/contracts/agent-work";
-import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 import * as work from "@substrate/database/agent-work";
 
 import { db } from "../../auth/database";
 import { serviceResult } from "../../shared/service-result";
 import { requireOrigin, workspaceSession } from "../../shared/workspace";
+import { publishCommitted } from "../realtime/committed";
 import { ownerChanged } from "./hints";
 import type { z } from "zod";
 
@@ -65,13 +65,7 @@ export function approveProposal(
     requireOrigin(headers);
     const identity = await owner(headers, input.organizationId);
     const { hints, ...result } = await work.approveProposal(db, identity, requestId);
-    const changed: RealtimeHint[] = [...hints];
-    if (result.outcome.status === "executed" && result.outcome.receipt.kind === "task") {
-      const audience = realtimeKeys.organization(identity.organizationId);
-      changed.push({ audience, domain: "tasks" }, { audience, domain: "context" });
-    }
-    await ownerChanged(identity.userId, changed);
-    return result;
+    return publishCommitted({ result, hints });
   });
 }
 

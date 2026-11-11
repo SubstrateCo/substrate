@@ -1,6 +1,6 @@
 import type { DatabaseExecutor } from "../client";
 import { actors } from "../core/actors/schema";
-import type { MessagingIdentity } from "../features/messaging/access";
+import type { SessionIdentity } from "../core/session/identity";
 import { messagingConversations, messagingParticipants } from "../features/messaging/schema";
 import { createMessagingService } from "../features/messaging/service";
 import { messagingInvitations } from "../features/messaging/sharing.schema";
@@ -71,7 +71,7 @@ export async function approveFixtureParticipants(db: DatabaseExecutor, conversat
   await acceptFixtureInvitations(db, conversationId);
 }
 
-export function createAcceptedMessagingService(db: DatabaseExecutor, scope: MessagingIdentity) {
+export function createAcceptedMessagingService(db: DatabaseExecutor, scope: SessionIdentity) {
   const service = createMessagingService(db, scope);
   return {
     ...service,

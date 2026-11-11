@@ -3,11 +3,13 @@ import { actorDisplayName } from "../../core/actors/display-name";
 import { actorPicture } from "../../core/actors/picture";
 import { actors } from "../../core/actors/schema";
 import type { RepositoryContext } from "../../core/repository-context";
+import type { SessionIdentity } from "../../core/session/identity";
+import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError } from "../../errors";
 import { taskActivity } from "../activity/schema";
-import { workspaceContext, requireWork } from "../context/access";
+import { requireWork } from "../context/access";
 import { messageExcerpts } from "../context/message-excerpt";
-import { visibleConversations, type MessagingIdentity } from "../messaging/access";
+import { visibleConversations } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { projects } from "../projects/schema";
@@ -21,7 +23,7 @@ import { readableMessageTargets } from "./targets";
 import { and, desc, eq, inArray, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
-export function createFeedService(db: DatabaseExecutor, scope: MessagingIdentity) {
+export function createFeedService(db: DatabaseExecutor, scope: SessionIdentity) {
   const service = {
     async activity(taskEntityId: string) {
       const { context: ctx } = await workspaceContext(db, scope);

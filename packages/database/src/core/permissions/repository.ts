@@ -1,18 +1,20 @@
+import { realtimeKeys } from "@substrate/contracts/realtime";
+
 import { ValidationError } from "../../errors";
 import { RepositoryContext, type PermissionLevel } from "../repository-context";
 import { entityGrants, permissionLevel } from "./schema";
 import { and, eq, sql } from "drizzle-orm";
 
 export function permissionRepository(context: RepositoryContext) {
-  const { scope, db } = context;
+  const { scope } = context;
 
   async function change(input: {
     entityId: string;
     actorEntityId: string;
     level?: PermissionLevel;
   }) {
-    await db.transaction(async (tx) => {
-      const ctx = new RepositoryContext(tx, scope);
+    await context.transaction(async (ctx) => {
+      const tx = ctx.db;
       const { entity } = await ctx.requireAccess(input.entityId, "owner", true);
       if (entity.accessEntityId !== input.entityId)
         throw new ValidationError("This record inherits its access. Share its parent instead.");
@@ -64,6 +66,16 @@ export function permissionRepository(context: RepositoryContext) {
           });
       } else {
         await tx.delete(entityGrants).where(target);
+      }
+      if (existing?.level !== input.level) {
+        ctx.effects.hint({
+          audience: realtimeKeys.actor(scope.organizationId, input.actorEntityId),
+          domain: "access",
+        });
+        ctx.effects.hint({
+          audience: realtimeKeys.organization(scope.organizationId),
+          domain: entity.entityType === "project" ? "tasks" : "access",
+        });
       }
     });
   }

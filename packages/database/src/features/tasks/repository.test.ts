@@ -2,7 +2,7 @@ import { entities } from "../../core/entities/schema";
 import { entityLinks } from "../../core/links/schema";
 import { member } from "../../core/organizations/schema";
 import { AccessDeniedError, ValidationError } from "../../errors";
-import { createRepositories } from "../../repositories";
+import { ActorRepositories } from "../../repositories";
 import * as schema from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
@@ -267,6 +267,7 @@ describe("projects and tasks", () => {
 });
 
 test("task create locks the project once and update batches activity with one assignment notification", async () => {
+  await fixture.verifyEmails();
   const alice = fixture.forActor(fixture.alice);
   const project = await alice.projects.create({ name: "Counted" });
   await alice.permissions.grant({
@@ -279,7 +280,7 @@ test("task create locks the project once and update batches activity with one as
     schema,
     logger: { logQuery: (query) => statements.push(query) },
   });
-  const repos = createRepositories(db).forActor({
+  const repos = new ActorRepositories(db, {
     organizationId: fixture.orgA,
     actorEntityId: fixture.alice,
   });
@@ -295,7 +296,7 @@ test("task create locks the project once and update batches activity with one as
   });
   // The task's lock path covers its project, so the update locks once.
   expect(statements.filter((query) => query.includes("FOR UPDATE"))).toHaveLength(1);
-  expect(statements).toHaveLength(9);
+  expect(statements).toHaveLength(10);
   const activity = await fixture.db
     .select()
     .from(schema.taskActivity)
@@ -330,7 +331,7 @@ test("task comments require their actual project and use three repository statem
     schema,
     logger: { logQuery: (query) => statements.push(query) },
   });
-  const repos = createRepositories(db).forActor({
+  const repos = new ActorRepositories(db, {
     organizationId: fixture.orgA,
     actorEntityId: fixture.alice,
   });

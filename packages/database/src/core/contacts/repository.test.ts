@@ -49,7 +49,7 @@ describe("contacts and transactions", () => {
   });
 
   test("commits a transaction with links between its new entities", async () => {
-    const ids = await f.forActor(f.alice).transaction(async (tx) => {
+    const { result: ids } = await f.forActor(f.alice).transaction(async (tx) => {
       const a = await tx.contacts.create({ displayName: "One" });
       const b = await tx.contacts.create({ displayName: "Two" });
       await tx.links.create({

@@ -3,9 +3,10 @@ import { actorPicture } from "../../../core/actors/picture";
 import { actors } from "../../../core/actors/schema";
 import { user } from "../../../core/authentication/schema";
 import { organization } from "../../../core/organizations/schema";
+import type { SessionIdentity } from "../../../core/session/identity";
+import { workspaceContext } from "../../../core/session/workspace";
 import { AccessDeniedError } from "../../../errors";
-import { workspaceContext } from "../../context/access";
-import { visibleConversations, type MessagingIdentity } from "../access";
+import { visibleConversations } from "../access";
 import { messagingConversations, messagingParticipants } from "../schema";
 import {
   messagingConnections,
@@ -15,7 +16,7 @@ import {
 import { requireSharingManager } from "./access";
 import { and, desc, eq, gt, inArray, isNull, ne, or } from "drizzle-orm";
 
-export function sharingQueries(db: DatabaseExecutor, scope: MessagingIdentity) {
+export function sharingQueries(db: DatabaseExecutor, scope: SessionIdentity) {
   return {
     async list(conversationId: string) {
       return db.transaction(async (tx) => {

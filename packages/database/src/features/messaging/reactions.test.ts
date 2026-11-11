@@ -1,13 +1,11 @@
 import { AccessDeniedError } from "../../errors";
 import { user } from "../../schema";
 import { setupDatabase } from "../../testing/database";
-import { createAcceptedMessagingService } from "../../testing/messaging";
 import { rejection } from "../../testing/rejection";
 import { expect, test } from "bun:test";
 
 const fixture = setupDatabase();
-const service = (userId: string, organizationId = fixture.orgA) =>
-  createAcceptedMessagingService(fixture.db, { userId, organizationId });
+const service = fixture.messaging;
 
 test("reactor pages are bounded, message-local, filterable and deduplicate people", async () => {
   await fixture.db.update(user).set({ emailVerified: true });

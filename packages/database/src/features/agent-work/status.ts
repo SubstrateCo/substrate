@@ -6,15 +6,12 @@ import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { deviceOnline } from "../../core/devices/repository";
 import { desktopDevices } from "../../core/devices/schema";
-import { workspaceContext } from "../context/access";
+import { requireDevice, type DeviceIdentity } from "../../core/session/device";
+import type { SessionIdentity } from "../../core/session/identity";
+import { workspaceContext } from "../../core/session/workspace";
 import { threadRoot, visibleConversationIds, visibleConversations } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
-import {
-  requireDevice,
-  requireHomedAgent,
-  type DeviceIdentity,
-  type OwnerIdentity,
-} from "./device";
+import { requireHomedAgent } from "./device";
 import { agentStatus } from "./status.schema";
 import { toStatusView } from "./views";
 import { and, asc, eq, inArray, sql, type SQL } from "drizzle-orm";
@@ -105,7 +102,7 @@ export function publishStatus(
 /** Status rows of the owner's agents in the organization, with each agent's home desktop. */
 export async function statusViews(
   db: DatabaseExecutor,
-  identity: OwnerIdentity,
+  identity: SessionIdentity,
   where?: SQL,
 ): Promise<AgentStatusView[]> {
   const visible = inArray(agentStatus.liveConversationId, visibleConversationIds(db, identity));
@@ -141,7 +138,7 @@ export async function statusViews(
 }
 
 /** The owner's agents' published status. */
-export function listStatus(db: DatabaseExecutor, identity: OwnerIdentity) {
+export function listStatus(db: DatabaseExecutor, identity: SessionIdentity) {
   return db.transaction(async (tx) => {
     await workspaceContext(tx, identity);
     return statusViews(tx, identity);

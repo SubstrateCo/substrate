@@ -2,10 +2,11 @@ import { notificationPosition } from "@substrate/contracts/context/notification-
 
 import type { DatabaseExecutor } from "../../client";
 import type { RepositoryContext } from "../../core/repository-context";
+import type { SessionIdentity } from "../../core/session/identity";
+import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError } from "../../errors";
 import { taskActivity } from "../activity/schema";
-import { workspaceContext } from "../context/access";
-import { visibleConversations, type MessagingIdentity } from "../messaging/access";
+import { visibleConversations } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { projects } from "../projects/schema";
 import { liveTask } from "../tasks/access";
@@ -19,7 +20,7 @@ type FeedItem = NonNullable<ReturnType<typeof toFeedItem>>;
 type Page = { after?: string; limit: number };
 
 // Keep this relation narrow: access and grouping need no names, bodies, or excerpts.
-function eligible(db: DatabaseExecutor, ctx: RepositoryContext, scope: MessagingIdentity) {
+function eligible(db: DatabaseExecutor, ctx: RepositoryContext, scope: SessionIdentity) {
   const project = sql`coalesce(${tasks.projectEntityId}, ${projects.entityId})`;
   return sql`
     SELECT ${notifications.id} AS id, ${notifications.createdAt} AS created_at,
@@ -58,7 +59,7 @@ function boundary(after?: string) {
 
 export function createNotificationGroups(
   db: DatabaseExecutor,
-  scope: MessagingIdentity,
+  scope: SessionIdentity,
   load: (ids: string[], context: RepositoryContext) => Promise<FeedItem[]>,
 ) {
   return {

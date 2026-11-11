@@ -3,7 +3,6 @@ import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { user, member } from "../../schema";
 import { setupDatabase } from "../../testing/database";
-import { createAcceptedMessagingService } from "../../testing/messaging";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { messagingMessages, messagingReactions } from "./schema";
@@ -12,11 +11,8 @@ import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 const fixture = setupDatabase();
-const service = (userId: string, organizationId = fixture.orgA) =>
-  createAcceptedMessagingService(fixture.db, { userId, organizationId });
-async function verified() {
-  await fixture.db.update(user).set({ emailVerified: true });
-}
+const service = fixture.messaging;
+const verified = fixture.verifyEmails;
 
 test("send and replay reuse authenticated identity and the locked conversation", async () => {
   await verified();

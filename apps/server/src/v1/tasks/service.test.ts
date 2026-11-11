@@ -1,8 +1,7 @@
 import { publicFailure } from "@substrate/contracts/result";
 import * as database from "@substrate/database";
-import * as provisioning from "@substrate/database/provisioning";
+import * as provisioning from "@substrate/database/trusted";
 
-import { db } from "../../auth/database";
 import { auth } from "../../auth/server";
 import { getProject } from "./service";
 import { afterEach, expect, mock, spyOn, test } from "bun:test";
@@ -34,63 +33,16 @@ function projectFixture() {
     },
   };
   const getSession = spyOn(auth.api, "getSession").mockResolvedValue(session);
-  const actor = {
-    entityId: crypto.randomUUID(),
-    organizationId: input.organizationId,
-    entityType: "actor" as const,
-    name: session.user.name,
-    type: "human" as const,
-    userId: session.user.id,
-    userAgentId: null,
-    agentConfig: null,
-    disabledAt: null,
-  };
-  const resolveHumanActor = spyOn(provisioning, "resolveHumanActor").mockResolvedValue(actor);
   const ensureOwnedAgentActors = spyOn(provisioning, "ensureOwnedAgentActors").mockResolvedValue(
     [],
   );
-  const factory = database.createRepositories(db);
-  const repositories = factory.forActor({
-    organizationId: input.organizationId,
-    actorEntityId: actor.entityId,
-  });
-  const detail: Awaited<ReturnType<typeof repositories.projects.getDetail>> = {
-    project: {
-      entityId: input.projectEntityId,
-      organizationId: input.organizationId,
-      entityType: "project",
-      name: "Launch",
-      description: "Ship the desktop app",
-      image: null,
-    },
-    level: "view",
-    members: [
-      {
-        actorEntityId: actor.entityId,
-        name: actor.name,
-        image: null,
-        type: "human",
-        level: "view",
-      },
-    ],
-    actors: [
-      { entityId: actor.entityId, name: actor.name, image: null, type: "human", assignable: true },
-    ],
-    tasks: [],
-    links: [],
-  };
-  const getDetail = spyOn(repositories.projects, "getDetail").mockResolvedValue(detail);
-
-  const forActor = spyOn(factory, "forActor").mockReturnValue(repositories);
-  spyOn(database, "createRepositories").mockReturnValue(factory);
+  const createRepositories = spyOn(database, "createRepositories");
   return {
     input,
     session,
     getSession,
-    resolveHumanActor,
     ensureOwnedAgentActors,
-    getDetail,
-    forActor,
+    createRepositories,
   };
 }
 
@@ -120,9 +72,7 @@ for (const denial of ["signed out", "unverified", "workspace mismatch"] as const
         break;
     }
     expect(await getProject(new Headers(), fixture.input)).toEqual(expected);
-    expect(fixture.resolveHumanActor).not.toHaveBeenCalled();
     expect(fixture.ensureOwnedAgentActors).not.toHaveBeenCalled();
-    expect(fixture.forActor).not.toHaveBeenCalled();
-    expect(fixture.getDetail).not.toHaveBeenCalled();
+    expect(fixture.createRepositories).not.toHaveBeenCalled();
   });
 }

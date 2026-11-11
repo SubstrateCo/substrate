@@ -2,12 +2,14 @@ import type { DatabaseExecutor } from "../../client";
 import { actorDisplayName } from "../../core/actors/display-name";
 import { actorPicture } from "../../core/actors/picture";
 import { actors } from "../../core/actors/schema";
+import type { SessionIdentity } from "../../core/session/identity";
+import { messagingSession } from "../../core/session/messaging";
 import { AccessDeniedError } from "../../errors";
-import { loadConversation, messagingSession, type MessagingIdentity } from "./access";
+import { loadConversation } from "./access";
 import { messagingMessages, messagingReactions } from "./schema";
 import { and, asc, eq, gt, sql } from "drizzle-orm";
 
-export function reactionOperations(db: DatabaseExecutor, scope: Readonly<MessagingIdentity>) {
+export function reactionOperations(db: DatabaseExecutor, scope: Readonly<SessionIdentity>) {
   return {
     async listReactions(
       messageId: string,

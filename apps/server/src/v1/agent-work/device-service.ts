@@ -9,6 +9,7 @@ import type {
   requestAnswersInput,
   sourcesInput,
 } from "@substrate/contracts/agent-work";
+import { createRepositories } from "@substrate/database";
 import * as work from "@substrate/database/agent-work";
 
 import { db } from "../../auth/database";
@@ -34,14 +35,20 @@ async function deviceOwner(headers: Headers) {
 
 export function registerDevice(headers: Headers, input: z.output<typeof registerDeviceInput>) {
   return serviceResult(async () => {
-    const result = await work.registerDevice(db, await deviceOwner(headers), input);
+    const owner = await createRepositories(db).forOwnerSession({
+      userId: await deviceOwner(headers),
+    });
+    const result = await owner.devices.register(input);
     return { id: result.id };
   });
 }
 
 export function deviceHeartbeat(headers: Headers, input: z.output<typeof deviceHeartbeatInput>) {
   return serviceResult(async () => {
-    await work.touchDevice(db, await deviceOwner(headers), input.installationId);
+    const owner = await createRepositories(db).forOwnerSession({
+      userId: await deviceOwner(headers),
+    });
+    await owner.devices.touch(input.installationId);
     return {};
   });
 }
