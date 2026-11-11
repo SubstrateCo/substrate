@@ -11,6 +11,103 @@ import { eq } from "drizzle-orm";
 describe("development seed", () => {
   const fixture = setupDatabase();
 
+  test("seeds connected work, task relationships, contact identifiers, and inactive local agent definitions", async () => {
+    await seedDevelopmentDatabase(fixture.db, "development-password-hash");
+    for (const organizationId of ["dev-northstar", "dev-orbit"]) {
+      const tasks = await fixture.db
+        .select()
+        .from(schema.tasks)
+        .where(eq(schema.tasks.organizationId, organizationId));
+      const links = await fixture.db
+        .select()
+        .from(schema.taskLinks)
+        .where(eq(schema.taskLinks.organizationId, organizationId));
+      expect(new Set(links.map((link) => link.kind))).toEqual(
+        new Set(["blocks", "duplicates", "relates_to"]),
+      );
+      for (const link of links) {
+        expect(tasks.some((task) => task.entityId === link.sourceTaskEntityId)).toBe(true);
+        expect(tasks.some((task) => task.entityId === link.targetTaskEntityId)).toBe(true);
+      }
+      const children = tasks.filter((task) => task.parentTaskEntityId);
+      expect(children).toHaveLength(4);
+      const entities = await fixture.db
+        .select()
+        .from(schema.entities)
+        .where(eq(schema.entities.organizationId, organizationId));
+      for (const child of children) {
+        const parent = tasks.find((task) => task.entityId === child.parentTaskEntityId)!;
+        expect(child.projectEntityId).toBe(parent.projectEntityId);
+        expect(entities.find((entity) => entity.entityId === child.entityId)!.accessEntityId).toBe(
+          parent.projectEntityId,
+        );
+      }
+      const references = await fixture.db
+        .select()
+        .from(schema.taskCommentReferences)
+        .where(eq(schema.taskCommentReferences.organizationId, organizationId));
+      expect(new Set(references.map((reference) => reference.entityType))).toEqual(
+        new Set(["task", "project"]),
+      );
+      const notifications = await fixture.db
+        .select()
+        .from(schema.notifications)
+        .where(eq(schema.notifications.organizationId, organizationId));
+      expect(notifications.some((notification) => notification.kind === "mention")).toBe(true);
+      const sources = await fixture.db
+        .select()
+        .from(schema.messageEntityReferences)
+        .where(eq(schema.messageEntityReferences.organizationId, organizationId));
+      expect(new Set(sources.map((source) => source.purpose))).toEqual(
+        new Set(["source", "mention", "association"]),
+      );
+      const requests = await fixture.db
+        .select()
+        .from(schema.sourceTaskRequests)
+        .where(eq(schema.sourceTaskRequests.organizationId, organizationId));
+      expect(requests).toHaveLength(1);
+      expect(
+        sources.some(
+          (source) => source.purpose === "source" && source.entityId === requests[0]!.taskEntityId,
+        ),
+      ).toBe(true);
+      const contacts = await fixture.db
+        .select()
+        .from(schema.contacts)
+        .where(eq(schema.contacts.organizationId, organizationId));
+      expect(contacts).toHaveLength(2);
+      const identifiers = await fixture.db
+        .select()
+        .from(schema.contactIdentifiers)
+        .where(eq(schema.contactIdentifiers.organizationId, organizationId));
+      expect(new Set(identifiers.map((identifier) => identifier.contactEntityId))).toEqual(
+        new Set(contacts.map((contact) => contact.entityId)),
+      );
+      const contextLinks = await fixture.db
+        .select()
+        .from(schema.entityLinks)
+        .where(eq(schema.entityLinks.organizationId, organizationId));
+      for (const contact of contacts) {
+        expect(
+          contextLinks.some(
+            (link) =>
+              link.targetEntityId === contact.entityId &&
+              tasks.some((task) => task.entityId === link.sourceEntityId),
+          ),
+        ).toBe(true);
+      }
+    }
+    const agents = await fixture.db.select().from(schema.userAgents);
+    expect(agents).toHaveLength(6);
+    for (const agent of agents) {
+      expect(agent.enabled).toBe(false);
+      expect(agent.homeDeviceId).toBeNull();
+      expect(agent.userId.startsWith("dev-")).toBe(true);
+    }
+    expect(await fixture.db.select().from(schema.storedFiles)).toHaveLength(0);
+    expect(await fixture.db.select().from(schema.agentWakes)).toHaveLength(0);
+  });
+
   test("creates usable teams, assigned projects, and shared conversations; reruns preserve edits without duplicating data or resetting passwords", async () => {
     expect(await seedDevelopmentDatabase(fixture.db, "development-password-hash")).toBe(true);
     for (const organizationId of ["dev-northstar", "dev-orbit"]) {
@@ -103,8 +200,12 @@ describe("development seed", () => {
       .set({ title: "My edited task" })
       .where(eq(schema.tasks.entityId, task!.entityId));
     const before = await fixture.db.select().from(schema.messagingMessages);
+    const workBefore = await fixture.db.select().from(schema.taskLinks);
+    const agentsBefore = await fixture.db.select().from(schema.userAgents);
     expect(await seedDevelopmentDatabase(fixture.db, "replacement-hash")).toBe(false);
     expect(await fixture.db.select().from(schema.messagingMessages)).toEqual(before);
+    expect(await fixture.db.select().from(schema.taskLinks)).toEqual(workBefore);
+    expect(await fixture.db.select().from(schema.userAgents)).toEqual(agentsBefore);
     expect(
       (
         await fixture.db

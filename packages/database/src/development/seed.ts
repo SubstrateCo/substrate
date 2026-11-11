@@ -1,47 +1,45 @@
-import { taskStatusValues } from "@substrate/contracts/tasks";
-
 import type { DatabaseExecutor } from "../client";
 import { ensureHumanActor } from "../core/actors/provisioning";
+import { contactRepository } from "../core/contacts/repository";
+import { linkRepository } from "../core/links/repository";
 import { permissionRepository } from "../core/permissions/repository";
 import { RepositoryContext } from "../core/repository-context";
+import { createContextService } from "../features/context/service";
 import { createMessagingService } from "../features/messaging/service";
 import { messagingInvitations } from "../features/messaging/sharing.schema";
 import { createSharingService } from "../features/messaging/sharing/service";
 import { projectRepository } from "../features/projects/repository";
 import { taskRepository } from "../features/tasks/repository";
-import { account, member, organization, user } from "../schema";
+import { account, contactIdentifiers, member, organization, user, userAgents } from "../schema";
+import {
+  developmentAgent,
+  developmentConversations,
+  developmentPartner,
+  developmentTeams,
+  developmentWork,
+  type DevelopmentMessage,
+} from "./data";
 import { eq, inArray, sql } from "drizzle-orm";
 
-export const developmentTeams = [
-  {
-    id: "dev-northstar",
-    name: "Northstar Labs",
-    slug: "dev-northstar",
-    people: [
-      { id: "dev-alice", name: "Alice Morgan", email: "alice@northstar.test", role: "owner" },
-      { id: "dev-bob", name: "Bob Chen", email: "bob@northstar.test", role: "admin" },
-      { id: "dev-carol", name: "Carol Rivera", email: "carol@northstar.test", role: "member" },
-    ],
-    projects: [
-      { name: "Customer portal", description: "Ship a simpler onboarding and account experience." },
-      { name: "Autumn launch", description: "Coordinate the product release with Orbit Studio." },
-    ],
-  },
-  {
-    id: "dev-orbit",
-    name: "Orbit Studio",
-    slug: "dev-orbit",
-    people: [
-      { id: "dev-dana", name: "Dana Patel", email: "dana@orbit.test", role: "owner" },
-      { id: "dev-eli", name: "Eli Brooks", email: "eli@orbit.test", role: "admin" },
-      { id: "dev-farah", name: "Farah Ahmed", email: "farah@orbit.test", role: "member" },
-    ],
-    projects: [
-      { name: "Brand refresh", description: "Refresh the visual identity and marketing assets." },
-      { name: "Partner campaign", description: "Prepare the joint Northstar launch campaign." },
-    ],
-  },
-] as const;
+export { developmentTeams } from "./data";
+
+async function seedMessages(
+  messaging: (author: number) => ReturnType<typeof createMessagingService>,
+  conversationId: string,
+  messages: readonly DevelopmentMessage[],
+) {
+  const ids = new Map<string, string>();
+  for (const input of messages) {
+    const parentId = input.replyTo ? ids.get(input.replyTo) : undefined;
+    if (input.replyTo && !parentId) throw new Error(`Missing seed thread: ${input.replyTo}`);
+    const message = await messaging(input.author).sendMessage(conversationId, input.body, parentId);
+    ids.set(input.key, message.id);
+    for (const reaction of input.reactions ?? []) {
+      await messaging(reaction.author).toggleReaction(message.id, reaction.emoji);
+    }
+  }
+  return ids;
+}
 
 // Trusted, development-only provisioning. One transaction makes reruns safe without resetting edits.
 export async function seedDevelopmentDatabase(db: DatabaseExecutor, passwordHash: string) {
@@ -89,20 +87,42 @@ export async function seedDevelopmentDatabase(db: DatabaseExecutor, passwordHash
           organizationId: team.id,
           role: person.role,
         });
-        actors.push(
-          await ensureHumanActor(tx, {
-            organizationId: team.id,
-            userId: person.id,
-          }),
-        );
+        actors.push(await ensureHumanActor(tx, { organizationId: team.id, userId: person.id }));
+        await tx.insert(userAgents).values({
+          ...developmentAgent,
+          name: developmentAgent.name(person.name),
+          userId: person.id,
+        });
       }
       const context = new RepositoryContext(tx, {
         organizationId: team.id,
         actorEntityId: actors[0]!.entityId,
       });
-      const seededTasks: { entityId: string; title: string }[] = [];
+      const contacts = [];
+      for (const input of team.contacts) {
+        const contact = await contactRepository(context).create({ displayName: input.name });
+        await tx.insert(contactIdentifiers).values({
+          organizationId: team.id,
+          contactEntityId: contact.entityId,
+          type: "email",
+          value: input.email,
+        });
+        for (const actor of actors.slice(1)) {
+          await permissionRepository(context).grant({
+            entityId: contact.entityId,
+            actorEntityId: actor.entityId,
+            level: "view",
+          });
+        }
+        contacts.push(contact);
+      }
+      const seededTasks: { entityId: string; title: string; projectEntityId: string }[] = [];
+      const tasks = taskRepository(context);
       for (const [projectIndex, input] of team.projects.entries()) {
-        const project = await projectRepository(context).create(input);
+        const project = await projectRepository(context).create({
+          name: input.name,
+          description: input.description,
+        });
         for (const actor of actors.slice(1)) {
           await permissionRepository(context).grant({
             entityId: project.entityId,
@@ -110,243 +130,147 @@ export async function seedDevelopmentDatabase(db: DatabaseExecutor, passwordHash
             level: "edit",
           });
         }
-        const titles = [
-          "Plan the next iteration",
-          "Implement the first milestone",
-          "Review the release assets",
-          "Confirm project requirements",
-          "Retire the old approach",
-        ];
-        const priorities = ["low", "high", "urgent", "medium", "none"] as const;
-        for (const [index, status] of taskStatusValues.entries()) {
-          const task = await taskRepository(context).create({
+        const projectTasks = [];
+        for (const [index, stage] of developmentWork.stages.entries()) {
+          const title = input.tasks[index]!;
+          const task = await tasks.create({
             projectEntityId: project.entityId,
-            title: titles[index]!,
-            status,
-            description: `${input.name}: ${titles[index]!.toLowerCase()}. Coordinate with the project team and record the outcome here.`,
-            priority: priorities[index],
-            dueDate: date(index * 3 - 4),
+            title,
+            status: stage.status,
+            description: developmentWork.description(title),
+            priority: stage.priority,
+            dueDate: date(stage.dueInDays),
             assigneeActorEntityId: actors[(index + projectIndex) % actors.length]!.entityId,
           });
           seededTasks.push(task);
-          if (status === "in_progress") {
-            await taskRepository(context).addComment(
-              task.entityId,
-              "The requirements are agreed. Please add your progress and any blockers here.",
-            );
-          }
+          projectTasks.push(task);
+          if (stage.status === "in_progress")
+            await tasks.addComment(task.entityId, developmentWork.progressComment);
         }
-        await taskRepository(context).create({
-          projectEntityId: project.entityId,
-          title: "Triage follow-up feedback",
-          description: "Pick an owner at the next team planning session.",
-          status: "not_started",
+        projectTasks.push(
+          await tasks.create({ ...developmentWork.followup, projectEntityId: project.entityId }),
+        );
+        for (const link of developmentWork.links) {
+          await tasks.addLink(
+            projectTasks[link.source]!.entityId,
+            link.relation,
+            projectTasks[link.target]!.entityId,
+          );
+        }
+        for (const [index, title] of input.subtasks.entries()) {
+          const stage = developmentWork.subtasks[index]!;
+          await tasks.create({
+            projectEntityId: project.entityId,
+            parentTaskEntityId: projectTasks[1]!.entityId,
+            title,
+            status: stage.status,
+            priority: stage.priority,
+            assigneeActorEntityId: actors[1]!.entityId,
+            dueDate: date(stage.dueInDays),
+          });
+        }
+        await tasks.addComment(
+          projectTasks[1]!.entityId,
+          developmentWork.reviewComment(
+            actors[1]!.entityId,
+            projectTasks[0]!.entityId,
+            project.entityId,
+          ),
+        );
+        const reviewer = new RepositoryContext(tx, {
+          organizationId: team.id,
+          actorEntityId: actors[1]!.entityId,
         });
+        await taskRepository(reviewer).addComment(
+          projectTasks[1]!.entityId,
+          developmentWork.reviewerReply,
+        );
+        await linkRepository(context).create({
+          sourceEntityId: projectTasks[0]!.entityId,
+          targetEntityId: contacts[projectIndex]!.entityId,
+          relationType: "related_to",
+        });
+        if (projectIndex === 1) {
+          const link = developmentWork.crossProjectLink;
+          await tasks.addLink(
+            seededTasks[link.source]!.entityId,
+            link.relation,
+            projectTasks[link.target]!.entityId,
+          );
+        }
       }
 
       const messaging = (index: number) =>
-        createMessagingService(tx, {
-          userId: team.people[index]!.id,
-          organizationId: team.id,
-        });
+        createMessagingService(tx, { userId: team.people[index]!.id, organizationId: team.id });
+      const conversations = developmentConversations(team, actors, seededTasks);
       const channel = await messaging(0).createConversation({
         kind: "channel",
-        name: "team-updates",
+        name: conversations.updates.name,
         emails: team.people.slice(1).map((person) => person.email),
       });
-      const root = await messaging(0).sendMessage(
-        channel.id,
-        `Welcome to ${team.name}! Project boards are ready. Please review your assigned tasks before our planning session.`,
-      );
-      await messaging(1).sendMessage(
-        channel.id,
-        "I have started the implementation milestone and will post a progress update today.",
-      );
-      await messaging(2).sendMessage(
-        channel.id,
-        "Release assets are ready for review. Feedback is welcome.",
-      );
-      await messaging(1).sendMessage(channel.id, "The task assignments look good to me.", root.id);
-      await messaging(2).toggleReaction(root.id, "👍");
-      await messaging(1).toggleReaction(root.id, "🎉");
-      await messaging(0).toggleReaction(root.id, "👍");
-      const review = await messaging(1).sendMessage(
-        channel.id,
-        `@[person:${actors[2]!.entityId}] could you review @[task:${seededTasks[1]!.entityId}]? The first milestone is ready for a walkthrough.`,
-      );
-      await messaging(2).sendMessage(
-        channel.id,
-        "I tested the happy path. Two small changes: keep the confirmation visible and shorten the empty-state copy.",
-        review.id,
-      );
-      await messaging(1).sendMessage(
-        channel.id,
-        "Both changes are in. I also checked the keyboard flow and the narrow layout.",
-        review.id,
-      );
-      await messaging(0).sendMessage(
-        channel.id,
-        "Reviewed and approved. Let’s include this in the Friday demo.",
-        review.id,
-      );
-      await messaging(2).toggleReaction(review.id, "👀");
-      await messaging(0).toggleReaction(review.id, "✅");
-      const planning = await messaging(2).sendMessage(
-        channel.id,
-        `Release checklist: @[task:${seededTasks[2]!.entityId}]. @[person:${actors[0]!.entityId}] can you confirm the final review slot?`,
-      );
-      await messaging(0).sendMessage(
-        channel.id,
-        "Thursday at 14:00 works. Please bring the latest screenshots and any open questions.",
-        planning.id,
-      );
-      await messaging(1).sendMessage(
-        channel.id,
-        "I’ll bring the implementation notes and a short demo.",
-        planning.id,
-      );
-      await messaging(0).toggleReaction(planning.id, "📌");
-      const updates = [
-        "Today’s focus: close the review feedback before starting new work. Flag blockers in a thread so we can help.",
-        "Quick progress update: the core flow is complete. I’m checking edge cases and error recovery next.",
-        "The updated assets are ready. I checked contrast, spacing, and the light and dark variants.",
-        "Customer feedback: the simpler navigation is much easier to follow. Let’s keep the release scope focused.",
-        "All review comments have owners now. No new blockers from me.",
-        "Friday demo agenda: onboarding, project handoff, and partner launch readiness. Add questions below.",
-        "Thanks everyone! The release checklist is looking good. We’ll make the final go/no-go decision after the demo.",
-      ];
-      for (const [index, body] of updates.entries()) {
-        const message = await messaging(index % 3).sendMessage(channel.id, body);
-        await messaging((index + 1) % 3).toggleReaction(message.id, ["🙌", "🚀", "✅"][index % 3]!);
-      }
+      const messages = await seedMessages(messaging, channel.id, conversations.updates.messages);
+      const workContext = createContextService(tx, {
+        userId: team.people[0].id,
+        organizationId: team.id,
+      });
+      const feedbackTask = await workContext.createTaskFromMessage({
+        ...developmentWork.feedbackTask,
+        requestId: crypto.randomUUID(),
+        messageId: messages.get("feedback")!,
+        projectEntityId: seededTasks[0]!.projectEntityId,
+        assigneeActorEntityId: actors[1]!.entityId,
+      });
+      await workContext.attach(messages.get("review")!, feedbackTask.entityId);
       const projectChannel = await messaging(0).createConversation({
         kind: "channel",
-        name: team.id === "dev-northstar" ? "product-engineering" : "design-studio",
+        name: conversations.project.name,
         emails: team.people.slice(1).map((person) => person.email),
       });
-      for (const [index, task] of seededTasks.slice(0, 5).entries()) {
-        const message = await messaging(index % 3).sendMessage(
-          projectChannel.id,
-          `Work update on @[task:${task.entityId}]: ${task.title}. Please keep review notes in this thread.`,
-        );
-        await messaging((index + 1) % 3).sendMessage(
-          projectChannel.id,
-          "I’ve checked the latest changes. The scope looks right; I’ll add my detailed notes after the walkthrough.",
-          message.id,
-        );
-        await messaging((index + 2) % 3).toggleReaction(message.id, "👍");
-      }
+      await seedMessages(messaging, projectChannel.id, conversations.project.messages);
       const dm = await messaging(0).createConversation({
         kind: "dm",
         emails: [team.people[1].email],
       });
-      await messaging(0).sendMessage(
-        dm.id,
-        "Can you review the high-priority task before tomorrow's sync?",
-      );
-      await messaging(1).sendMessage(
-        dm.id,
-        "Yes. I will add my notes to the project this afternoon.",
-      );
+      await seedMessages(messaging, dm.id, conversations.dm);
     }
 
-    const alice = createMessagingService(tx, {
-      userId: "dev-alice",
-      organizationId: "dev-northstar",
-    });
-    const dana = createMessagingService(tx, { userId: "dev-dana", organizationId: "dev-orbit" });
-    const carol = createMessagingService(tx, {
-      userId: "dev-carol",
-      organizationId: "dev-northstar",
-    });
-    const farah = createMessagingService(tx, { userId: "dev-farah", organizationId: "dev-orbit" });
-    const shared = await alice.createConversation({
-      kind: "channel",
-      name: "Partner launch",
-      shareHistory: true,
-      private: true,
-      emails: [
-        "bob@northstar.test",
-        "carol@northstar.test",
-        "dana@orbit.test",
-        "eli@orbit.test",
-        "farah@orbit.test",
-      ],
+    const [host, partner] = developmentTeams;
+    const identities = [
+      { userId: host.people[0].id, organizationId: host.id },
+      { userId: partner.people[0].id, organizationId: partner.id },
+      { userId: host.people[2].id, organizationId: host.id },
+      { userId: partner.people[2].id, organizationId: partner.id },
+    ];
+    const messaging = (index: number) => createMessagingService(tx, identities[index]!);
+    const shared = await messaging(0).createConversation({
+      ...developmentPartner.channel,
+      emails: [...host.people.slice(1), ...partner.people].map((person) => person.email),
     });
     const sharedInvites = await tx
       .select()
       .from(messagingInvitations)
       .where(eq(messagingInvitations.conversationId, shared.id));
     for (const invite of sharedInvites) {
-      const person = developmentTeams[1].people.find((person) => person.email === invite.email);
+      const person = partner.people.find((person) => person.email === invite.email);
       if (!person) throw new Error("Missing seed invitation recipient.");
       const accepted = await createSharingService(tx, {
         userId: person.id,
-        organizationId: "dev-orbit",
+        organizationId: partner.id,
       }).accept(invite.id, true);
       if (accepted.status === "approval-required")
-        await createSharingService(tx, { userId: "dev-dana", organizationId: "dev-orbit" }).accept(
-          invite.id,
-          true,
-        );
+        await createSharingService(tx, identities[1]!).accept(invite.id, true);
     }
-    await alice.sendMessage(
-      shared.id,
-      "Welcome, Orbit team! Let's use this shared channel to coordinate the autumn launch.",
-    );
-    await dana.sendMessage(
-      shared.id,
-      "Thanks, Alice. Our brand refresh and campaign work are underway.",
-    );
-    const update = await carol.sendMessage(
-      shared.id,
-      "The draft release assets are ready. Can you review the campaign copy?",
-    );
-    await farah.sendMessage(
-      shared.id,
-      "I will review the copy today and share feedback here.",
-      update.id,
-    );
-    await carol.sendMessage(
-      shared.id,
-      "I’ve incorporated the copy feedback. The final asset review is Thursday, with the joint demo on Friday.",
-      update.id,
-    );
-    await dana.toggleReaction(update.id, "👀");
-    await farah.toggleReaction(update.id, "✅");
-    const launchPlan = await dana.sendMessage(
-      shared.id,
-      "Partner launch plan: Orbit owns the campaign creative; Northstar owns the product demo. Let’s use this thread for launch-day dependencies.",
-    );
-    await alice.sendMessage(
-      shared.id,
-      "Confirmed. Our demo environment will be ready by Thursday afternoon.",
-      launchPlan.id,
-    );
-    await farah.sendMessage(
-      shared.id,
-      "Campaign creative is approved. I’ll share the final messaging checklist after the review.",
-      launchPlan.id,
-    );
-    await carol.toggleReaction(launchPlan.id, "🚀");
-    const partnerDm = await alice.createConversation({
-      kind: "dm",
-      emails: ["dana@orbit.test"],
-      shareHistory: true,
+    await seedMessages(messaging, shared.id, developmentPartner.messages);
+    const partnerDm = await messaging(0).createConversation({
+      ...developmentPartner.dm,
+      emails: [partner.people[0].email],
     });
     const [dmInvite] = await tx
       .select()
       .from(messagingInvitations)
       .where(eq(messagingInvitations.conversationId, partnerDm.id));
-    await createSharingService(tx, { userId: "dev-dana", organizationId: "dev-orbit" }).accept(
-      dmInvite!.id,
-      true,
-    );
-    await alice.sendMessage(
-      partnerDm.id,
-      "Are we still on for the partner launch review on Friday?",
-    );
-    await dana.sendMessage(partnerDm.id, "Confirmed. I will bring the latest campaign plan.");
+    await createSharingService(tx, identities[1]!).accept(dmInvite!.id, true);
+    await seedMessages(messaging, partnerDm.id, developmentPartner.directMessages);
     return true;
   });
 }
