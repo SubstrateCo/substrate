@@ -1,4 +1,4 @@
-import type { contextWorkspace, contextNotificationPage } from "@substrate/contracts/context/input";
+import type { contextWorkspace } from "@substrate/contracts/context/input";
 import type {
   notificationGroupsInput,
   notificationGroupEventsInput,
@@ -40,17 +40,5 @@ export const markGroupRead = ({
 }: ApiInput<z.output<typeof notificationGroupReadInput>>) =>
   readResult(api.context.notifications["read-group"].$post({ json: data }, { init: { signal } }));
 
-export const getNotifications = ({ data, signal }: ApiInput<z.input<typeof contextWorkspace>>) =>
-  readResult(api.context.notifications.$get({ query: data }, { init: { signal } }));
-export const getNotificationPage = ({
-  data,
-  signal,
-}: ApiInput<z.output<typeof contextNotificationPage>>) =>
-  readResult(
-    api.context.notifications.page.$get(
-      { query: { ...data, limit: String(data.limit) } },
-      { init: { signal } },
-    ),
-  );
 export const markAllRead = ({ data, signal }: ApiInput<z.input<typeof contextWorkspace>>) =>
   readResult(api.context.notifications["read-all"].$post({ json: data }, { init: { signal } }));

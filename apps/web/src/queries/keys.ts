@@ -67,8 +67,6 @@ export const queryKeys = {
     Array.isArray(queryKey[5]) ? queryKey[5] : [],
   notifications: (organizationId: string) =>
     [...queryKeys.context(organizationId), "notifications"] as const,
-  notificationPages: (organizationId: string) =>
-    [...queryKeys.notifications(organizationId), "page"] as const,
   search: (organizationId: string) => [...queryKeys.context(organizationId), "search"] as const,
   searchPages: (organizationId: string) =>
     [...queryKeys.context(organizationId), "search-pages"] as const,
