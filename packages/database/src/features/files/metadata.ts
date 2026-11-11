@@ -3,7 +3,7 @@ import { storedFiles } from "../../core/storage/schema";
 import { messageAttachments, taskAttachments } from "./schema";
 import { asc, eq, inArray } from "drizzle-orm";
 
-export const fileMetadata = {
+const fileMetadata = {
   fileId: storedFiles.id,
   filename: storedFiles.filename,
   size: storedFiles.size,

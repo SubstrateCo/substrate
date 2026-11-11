@@ -1,8 +1,4 @@
-import type {
-  contextWorkspace,
-  contextNotification,
-  contextNotificationPage,
-} from "@substrate/contracts/context/input";
+import type { contextWorkspace, contextNotificationPage } from "@substrate/contracts/context/input";
 import type {
   notificationGroupsInput,
   notificationGroupEventsInput,
@@ -56,7 +52,5 @@ export const getNotificationPage = ({
       { init: { signal } },
     ),
   );
-export const markRead = ({ data, signal }: ApiInput<z.input<typeof contextNotification>>) =>
-  readResult(api.context.notifications.read.$post({ json: data }, { init: { signal } }));
 export const markAllRead = ({ data, signal }: ApiInput<z.input<typeof contextWorkspace>>) =>
   readResult(api.context.notifications["read-all"].$post({ json: data }, { init: { signal } }));

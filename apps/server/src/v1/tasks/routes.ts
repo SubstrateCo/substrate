@@ -7,11 +7,19 @@ import {
 } from "@substrate/contracts/tasks/input";
 
 import { respond, validationHook } from "../../shared/http";
-import * as defaultServices from "./service";
+import {
+  listProjects,
+  getProject,
+  listTaskComments,
+  listCommentMentions,
+  mutateTasks,
+} from "./service";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 
-export function createTasksRoutes(services = defaultServices) {
+export function createTasksRoutes(
+  services = { listProjects, getProject, listTaskComments, listCommentMentions, mutateTasks },
+) {
   return new Hono()
     .get("/projects", zValidator("query", tasksWorkspace, validationHook), async (c) =>
       respond(c, await services.listProjects(c.req.raw.headers, c.req.valid("query"))),
