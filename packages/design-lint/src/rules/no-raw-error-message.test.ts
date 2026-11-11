@@ -18,7 +18,7 @@ ruleTester.run("no-raw-error-message", noRawErrorMessage, {
       errors: [
         {
           message:
-            'error.message shows raw server or library text ("Request failed with status 409"). Pass the error to <FormMessage error={…} errorDescription="<what failed, in plain words>"> from "@/components/auth/form-message", or render actionErrorMessage(error, "<specific fallback>") from "@/components/feedback/action-error-message" (also inside toast.error). See apps/web/DESIGN.md § 1 Destructive flow.',
+            'error.message shows raw server or library text ("Request failed with status 409"). Pass the error to <FormMessage error={…} errorDescription="<what failed, in plain words>"> from "@/components/feedback/form-message", or render actionErrorMessage(error, "<specific fallback>") from "@/components/feedback/action-error-message" (also inside toast.error). See apps/web/DESIGN.md § 1 Destructive flow.',
         },
       ],
     },

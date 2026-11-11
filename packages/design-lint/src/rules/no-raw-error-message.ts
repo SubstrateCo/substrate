@@ -54,7 +54,7 @@ export const noRawErrorMessage: Rule = {
     type: "suggestion",
     docs: { description: "Show reviewed error copy, not the raw text of a caught error." },
     messages: {
-      raw: `{{source}}.message shows raw server or library text ("Request failed with status 409"). Pass the error to <FormMessage error={…} errorDescription="<what failed, in plain words>"> from "@/components/auth/form-message", or render actionErrorMessage({{source}}, "<specific fallback>") from "@/components/feedback/action-error-message" (also inside toast.error). ${see("1 Destructive flow")}`,
+      raw: `{{source}}.message shows raw server or library text ("Request failed with status 409"). Pass the error to <FormMessage error={…} errorDescription="<what failed, in plain words>"> from "@/components/feedback/form-message", or render actionErrorMessage({{source}}, "<specific fallback>") from "@/components/feedback/action-error-message" (also inside toast.error). ${see("1 Destructive flow")}`,
     },
     schema: [],
   },

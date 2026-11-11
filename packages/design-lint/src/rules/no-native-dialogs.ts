@@ -12,7 +12,7 @@ export const noNativeDialogs: Rule = {
     },
     messages: {
       confirm: `{{call}}() opens the browser's dialog, which ignores the app theme, focus return, and copy rules. Use <ConfirmDialog> from "@/components/feedback/confirm-dialog": add destructive for delete, remove, leave, or disconnect, and a confirmLabel that names the object ("Delete conversation"). ${see("1 Destructive flow")}`,
-      other: `{{call}}() opens the browser's dialog, which ignores the app theme, focus return, and copy rules. Show the outcome inline with <FormMessage> from "@/components/auth/form-message", ask for input in a Dialog form, or confirm with <ConfirmDialog> from "@/components/feedback/confirm-dialog". ${see("1 Destructive flow")}`,
+      other: `{{call}}() opens the browser's dialog, which ignores the app theme, focus return, and copy rules. Show the outcome inline with <FormMessage> from "@/components/feedback/form-message", ask for input in a Dialog form, or confirm with <ConfirmDialog> from "@/components/feedback/confirm-dialog". ${see("1 Destructive flow")}`,
     },
     schema: [],
   },
