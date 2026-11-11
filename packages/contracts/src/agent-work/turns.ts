@@ -38,8 +38,9 @@ export const inboxSources = [
 ] as const;
 export type InboxSource = (typeof inboxSources)[number];
 
-/** Claim order. Background items move up one lane for every 10 minutes they wait. */
+/** Claim order. Background items move up one lane for every inboxLaneAgingMs they wait. */
 export const inboxLanes = ["owner", "system", "background"] as const;
+export const inboxLaneAgingMs = 10 * 60_000;
 export type InboxLane = (typeof inboxLanes)[number];
 
 export const inboxStatuses = [

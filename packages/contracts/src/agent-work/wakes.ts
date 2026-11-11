@@ -14,10 +14,7 @@ const id = z.uuid();
 export const agentWakeSources = ["owner_message", "answer", "approval_result"] as const;
 export type AgentWakeSource = (typeof agentWakeSources)[number];
 
-/**
- * Why an owner message woke the agent: the owner's triggers. One wake per message: mention > DM >
- * thread reply.
- */
+/** Why an owner message woke the agent: the owner's triggers, in agentTriggerPrecedence order. */
 export const agentWakeMessageKinds = agentTriggerKinds;
 export type AgentWakeMessageKind = (typeof agentWakeMessageKinds)[number];
 
@@ -59,12 +56,15 @@ export const sessionKey = z
   .max(200)
   .refine((key) => parseSessionKey(key) !== null, "Invalid session key");
 
+/** The prefix of each wake dedupe key, for queries that build keys in SQL. */
+export const wakeDedupePrefixes = { message: "msg:", answer: "answer:", approval: "approval:" };
+
 /** Unique per agent, so a repeated event never creates a second wake. */
 export const wakeDedupeKeys = {
-  message: (messageId: string) => `msg:${messageId}`,
-  answer: (requestId: string) => `answer:${requestId}`,
-  approval: (requestId: string) => `approval:${requestId}`,
-};
+  message: (messageId: string) => `${wakeDedupePrefixes.message}${messageId}`,
+  answer: (requestId: string) => `${wakeDedupePrefixes.answer}${requestId}`,
+  approval: (requestId: string) => `${wakeDedupePrefixes.approval}${requestId}`,
+} satisfies Record<keyof typeof wakeDedupePrefixes, (id: string) => string>;
 
 /**
  * The decided request behind an answer or approval_result wake, for the agent's own home device:

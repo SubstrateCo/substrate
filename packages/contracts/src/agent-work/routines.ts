@@ -2,30 +2,35 @@ import { z } from "zod";
 
 const id = z.uuid();
 
+/** The longest value each routine text field accepts. */
+export const routineLimits = { name: 200, prompt: 20_000, cron: 100, timezone: 100 } as const;
+
 /** Five cron fields: minute hour day-of-month month day-of-week. */
 const cron = z
   .string()
   .trim()
-  .max(100)
+  .max(routineLimits.cron)
   .regex(/^\S+(\s+\S+){4}$/, "Use five cron fields: minute hour day month weekday");
 
-/** An IANA time zone that this runtime knows, such as Europe/Berlin. */
+/** Whether this runtime knows an IANA time zone, such as Europe/Berlin. */
+export function knownTimeZone(zone: string) {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: zone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const timezone = z
   .string()
   .min(1)
-  .max(100)
-  .refine((zone) => {
-    try {
-      new Intl.DateTimeFormat("en-US", { timeZone: zone });
-      return true;
-    } catch {
-      return false;
-    }
-  }, "Unknown time zone");
+  .max(routineLimits.timezone)
+  .refine(knownTimeZone, "Unknown time zone");
 
-const routineFields = {
-  name: z.string().trim().min(1).max(200),
-  prompt: z.string().trim().min(1).max(20_000),
+export const routineFields = {
+  name: z.string().trim().min(1).max(routineLimits.name),
+  prompt: z.string().trim().min(1).max(routineLimits.prompt),
   cron,
   timezone,
   /** Null posts to the owner's direct conversation with the agent. */

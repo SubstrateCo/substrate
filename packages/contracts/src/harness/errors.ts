@@ -51,6 +51,7 @@ export const harnessErrors = {
   "secret-configuration": ["definitive"],
   "session-boundary": ["definitive"],
   "session-changed": ["transient"],
+  "session-closing": ["transient"],
   "session-conflict": ["definitive"],
   "steer-unsupported": ["definitive", "undelivered"],
   timeout: ["transient"],

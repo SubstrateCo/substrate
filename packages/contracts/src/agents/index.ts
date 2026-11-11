@@ -9,6 +9,7 @@ export {
 } from "./input";
 export {
   agentTriggerKinds,
+  agentTriggerPrecedence,
   agentTriggers,
   saveAgentTriggersInput,
   type AgentTriggerKind,

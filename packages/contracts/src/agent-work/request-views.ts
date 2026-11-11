@@ -26,34 +26,46 @@ export type AgentRequestPlace =
   | { access: "hidden" }
   | { access: "none" };
 
-/**
- * A request as its owner may see it now. When the place is hidden, the view is a placeholder:
- * sessionKey, payload, response and proposal are null, because each can name or quote the
- * conversation. A proposal whose target conversation the owner cannot open also has no proposal.
- */
-export interface AgentRequestView {
+interface AgentRequestViewBase {
   id: string;
   userAgentId: string;
   agent: { actorId: string; name: string };
-  /** Null when the place is hidden: a session key contains conversation or thread IDs. */
-  sessionKey: string | null;
   turnId: string;
   kind: AgentRequestKind;
   mode: AgentRequestMode;
   status: AgentRequestStatus;
-  place: AgentRequestPlace;
-  /** Null when the place is hidden. */
-  payload: AgentRequestPayload | null;
-  response: AgentRequestResponse | null;
-  /**
-   * Proposals only. Approval executes exactly this action. Null when the place or the action's
-   * target conversation is hidden.
-   */
-  proposal: { action: ProposalAction; actionHash: string; outcome: ProposalOutcome | null } | null;
   createdAt: string;
   resolvedAt: string | null;
   expiresAt: string | null;
 }
+
+/** A request in a conversation the owner can open, or in no conversation. */
+export interface AgentVisibleRequestView extends AgentRequestViewBase {
+  place: Exclude<AgentRequestPlace, { access: "hidden" }>;
+  sessionKey: string;
+  payload: AgentRequestPayload;
+  response: AgentRequestResponse | null;
+  /**
+   * Proposals only. Approval executes exactly this action. Null when the action's target
+   * conversation is hidden.
+   */
+  proposal: { action: ProposalAction; actionHash: string; outcome: ProposalOutcome | null } | null;
+}
+
+/**
+ * A placeholder for a request in a conversation the owner cannot open. It has no session key,
+ * payload, response or proposal, because each can name or quote the conversation.
+ */
+export interface AgentHiddenRequestView extends AgentRequestViewBase {
+  place: { access: "hidden" };
+  sessionKey?: never;
+  payload?: never;
+  response?: never;
+  proposal?: never;
+}
+
+/** A request as its owner may see it now. */
+export type AgentRequestView = AgentVisibleRequestView | AgentHiddenRequestView;
 
 export interface AgentNeedsYou {
   requests: AgentRequestView[];

@@ -1,3 +1,4 @@
+import { sessionKey } from "../agent-work/wakes.ts";
 import { z } from "zod";
 
 export const turnKinds = ["interactive", "unattended"] as const;
@@ -15,7 +16,7 @@ export type TurnPlace = z.infer<typeof place>;
 export const turnContextSchema = z.strictObject({
   turnId: z.uuid(),
   attempt: z.number().int().min(1).max(1000),
-  sessionKey: z.string().min(1).max(200),
+  sessionKey,
   /** Where the work came from. Null for routine and helper sessions, which have no source message. */
   origin: place.nullable(),
   kind: z.enum(turnKinds),

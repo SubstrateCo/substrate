@@ -39,11 +39,14 @@ export type RealtimeDomain = z.infer<typeof realtimeDomain>;
 export const realtimeScope = z.enum(["messages"]);
 export type RealtimeScope = z.infer<typeof realtimeScope>;
 
-export interface RealtimeHint {
-  audience: Readonly<RealtimeAudience>;
-  domain: RealtimeDomain;
-  scope?: RealtimeScope;
-}
+/** Only messaging changes have a scope. */
+export type RealtimeHint =
+  | { audience: Readonly<RealtimeAudience>; domain: "messaging"; scope?: RealtimeScope }
+  | {
+      audience: Readonly<RealtimeAudience>;
+      domain: Exclude<RealtimeDomain, "messaging">;
+      scope?: never;
+    };
 
 export const realtimeEvent = z.discriminatedUnion("type", [
   z.object({ version: z.literal(1), type: z.literal("ready") }),

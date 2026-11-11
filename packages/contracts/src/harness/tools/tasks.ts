@@ -71,8 +71,7 @@ export const taskResult = z.object({
   source: messageRef.nullable().describe("The message this task was created from."),
   commentCount: z.number().int(),
   linkedMessageCount: z.number().int(),
-  // Results stored before task links existed have no list.
-  links: z.array(taskLink).default([]).describe("Links to other tasks."),
+  links: z.array(taskLink).describe("Links to other tasks."),
   createdAt: timestamp,
   updatedAt: timestamp,
 });
