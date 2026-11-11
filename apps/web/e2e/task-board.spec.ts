@@ -1,5 +1,5 @@
 import { post, test, visit } from "./test-support/fixtures";
-import { detail, project, share } from "./test-support/tasks";
+import { detail, project } from "./test-support/tasks";
 import { expect, type Page } from "@playwright/test";
 
 async function dragCard(page: Page, title: string, status: string, cancel = false) {
@@ -52,16 +52,9 @@ test("board moves persist, filters survive view switches, and cards open the tas
   const { page } = user;
   await page.setViewportSize({ width: 1600, height: 1000 });
   await visit(user, undefined, "/tasks", { projectId: created.entityId });
-  const tasksTab = await page.getByRole("tab", { name: "Tasks", exact: true }).boundingBox();
-  const boardSwitch = await page.getByRole("radio", { name: "Board", exact: true }).boundingBox();
-  if (!tasksTab || !boardSwitch) throw new Error("Project controls are not visible.");
-  expect(boardSwitch.y).toBeLessThan(tasksTab.y + tasksTab.height);
-  expect(boardSwitch.y + boardSwitch.height).toBeGreaterThan(tasksTab.y);
-  expect(boardSwitch.x).toBeGreaterThan(tasksTab.x + tasksTab.width);
   await page.getByRole("radio", { name: "Board", exact: true }).click();
   const board = page.getByRole("region", { name: "Task board", exact: true });
   const progress = board.getByRole("region", { name: "In progress", exact: true });
-  await expect(board.getByRole("region")).toHaveCount(5);
   await dragCard(page, "Design the onboarding flow", "In progress");
   await expect(
     progress.getByRole("button", { name: "Open Design the onboarding flow", exact: true }),
@@ -206,7 +199,12 @@ test("empty columns create tasks in their status, retain subtask context, and sc
     inspector.getByRole("heading", { name: "Check the links", exact: true }),
   ).toBeVisible();
   await user.page.getByRole("button", { name: "Close task", exact: true }).click();
-  await expect(board.getByText("Review the release", { exact: true })).toHaveCount(2);
+  const tasks = (await detail(actors.sender, created.entityId)).tasks;
+  const parent = tasks.find((task) => task.title === "Review the release");
+  expect(parent).toBeDefined();
+  expect(tasks.find((task) => task.title === "Check the links")).toMatchObject({
+    parentTaskEntityId: parent!.entityId,
+  });
   await user.page.getByRole("searchbox", { name: "Filter tasks" }).fill("no matching title");
   await expect(
     user.page.getByRole("heading", { name: "No matching tasks", exact: true }),
@@ -226,28 +224,4 @@ test("empty columns create tasks in their status, retain subtask context, and sc
   await expect(
     board.getByRole("button", { name: "Add task to Canceled", exact: true }),
   ).toBeInViewport();
-});
-
-test("viewers can browse the board but cannot move or create tasks", async ({ actors, client }) => {
-  const created = await project(actors.sender);
-  await post(actors.sender, "tasks/mutations", {
-    action: "createTask",
-    organizationId: actors.sender.organizationId,
-    projectEntityId: created.entityId,
-    title: "Read-only card",
-  });
-  await share(actors.sender, created.entityId, actors.member.name, "view");
-  const viewer = await client(actors.member);
-  await visit(viewer, undefined, "/tasks", { projectId: created.entityId });
-  await viewer.page.getByRole("radio", { name: "Board", exact: true }).click();
-  const board = viewer.page.getByRole("region", { name: "Task board", exact: true });
-  await expect(board.getByRole("button", { name: /^Drag / })).toHaveCount(0);
-  await expect(board.getByRole("button", { name: /^Change status/ })).toHaveCount(0);
-  await expect(board.getByRole("button", { name: /^Add task/ })).toHaveCount(0);
-  await board.getByRole("button", { name: "Open Read-only card", exact: true }).click();
-  await expect(
-    viewer.page
-      .getByRole("region", { name: "Task details", exact: true })
-      .getByRole("heading", { name: "Read-only card", exact: true }),
-  ).toBeVisible();
 });

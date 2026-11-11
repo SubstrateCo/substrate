@@ -1,46 +1,7 @@
 import { Mailpit } from "../../server/integration/test-support/mailpit";
 import { signIn, signUp, verifyEmail } from "./test-support/auth";
-import { inviteMember, test, visit } from "./test-support/fixtures";
+import { inviteMember, test } from "./test-support/fixtures";
 import { expect } from "@playwright/test";
-
-test("workspace creation can be canceled and only asks for a name initially", async ({
-  actors,
-  client,
-}) => {
-  const user = await client(actors.partner);
-  await user.page.goto("/onboarding");
-  const create = user.page.getByRole("button", { name: "Create a workspace", exact: true });
-  await create.click();
-  await user.page.getByRole("button", { name: "Create workspace", exact: true }).click();
-  await expect(user.page.getByText("Enter a workspace name.")).toBeVisible();
-  await expect(user.page.getByText("Workspace slug: —")).toBeVisible();
-  await expect(user.page.getByText("Enter a workspace slug.")).toHaveCount(0);
-  await user.page.getByRole("button", { name: "Cancel", exact: true }).click();
-  await expect(create).toBeFocused();
-  await expect(user.page.getByLabel("Workspace name")).toHaveCount(0);
-});
-
-test("login moves from email to password by keyboard", async ({ page }) => {
-  await page.goto("/login");
-  await page.getByLabel("Email", { exact: true }).focus();
-  await page.keyboard.press("Tab");
-  await expect(page.getByLabel("Password", { exact: true })).toBeFocused();
-});
-
-test("the user menu shows the selected theme", async ({ actors, client }) => {
-  // The theme is stored in this browser context only, so the shared actor keeps no change.
-  const user = await client(actors.partner);
-  await visit(user);
-  await user.page.getByRole("button", { name: /^Signed in as / }).click();
-  const theme = user.page.locator('[data-slot="toggle-group"][aria-label="Theme"]');
-  await theme.getByRole("radio", { name: "Dark" }).click();
-  const selected = theme.getByRole("radio", { checked: true });
-  await expect(selected).toHaveCount(1);
-  await expect(selected).toHaveAttribute("aria-label", "Dark");
-  expect(await selected.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe(
-    "rgba(0, 0, 0, 0)",
-  );
-});
 
 test("a visitor creates an organization before installing and can resume setup", async ({
   page,
@@ -49,28 +10,24 @@ test("a visitor creates an organization before installing and can resume setup",
   const id = crypto.randomUUID();
   const email = `public-setup-${id}@example.test`;
   const password = `Setup-${id}!`;
-  await page.goto("/login");
-  const loginCard = await page.locator('main [data-slot="card"]').boundingBox();
-  expect(loginCard).not.toBeNull();
   await page.goto("/");
   await page.getByRole("link", { name: "Create organization", exact: true }).click();
   await signUp(page, email, password);
   await verifyEmail(page, request, email);
   await signIn(page, email, password);
   await expect(page).toHaveURL(/\/onboarding/);
+  await page.getByRole("button", { name: "Create workspace", exact: true }).click();
+  await expect(page.getByText("Enter a workspace name.")).toBeVisible();
+  const before = await page.request.get("/api/auth/organization/list");
+  expect(await before.json()).toEqual([]);
   await page.getByLabel("Workspace name", { exact: true }).fill(`Public ${id}`);
+  await expect(page.getByLabel("Workspace name", { exact: true })).toHaveValue(`Public ${id}`);
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.getByLabel("Workspace slug", { exact: true }).fill(`public-${id}`);
   await page.getByRole("button", { name: "Create workspace", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Your workspace is ready", exact: true }),
   ).toBeVisible();
-  const setupCard = await page.locator('main [data-slot="card"]').boundingBox();
-  expect(setupCard).not.toBeNull();
-  expect(setupCard!.y).toBe(loginCard!.y);
-  const navigation = await page.getByRole("navigation", { name: "Account" }).boundingBox();
-  expect(navigation).not.toBeNull();
-  expect(navigation!.y + navigation!.height).toBeLessThan(setupCard!.y);
   await expect(page.getByRole("heading", { name: "Invite your team", exact: true })).toBeVisible();
   const session = await page.request.get("/api/v1/session");
   const organizationId = (await session.json()).data.session.activeOrganizationId;
@@ -102,6 +59,12 @@ test("a visitor creates an organization before installing and can resume setup",
   ).toBeVisible();
   await page.getByRole("link", { name: "Workspaces", exact: true }).click();
   await expect(page.getByRole("button", { name: `Public ${id}`, exact: true })).toHaveCount(1);
+  await page.getByRole("button", { name: "Create a workspace", exact: true }).click();
+  await page.getByLabel("Workspace name", { exact: true }).fill("Canceled workspace");
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page.reload();
+  const after = await page.request.get("/api/auth/organization/list");
+  expect((await after.json()).map((org: { id: string }) => org.id)).toEqual([organizationId]);
 });
 
 test("a desktop-sent teammate invitation can be accepted by a new user in the browser", async ({

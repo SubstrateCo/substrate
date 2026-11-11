@@ -360,6 +360,13 @@ export async function send(page: Page, body: string, label: string | RegExp = /^
   await editor.press("Enter");
 }
 
+export function conversationButton(page: Page, name: string) {
+  return page
+    .getByRole("complementary", { name: "Conversations", exact: true })
+    .getByRole("button")
+    .filter({ has: page.getByText(name, { exact: true }) });
+}
+
 export async function expectChange(
   client: Client,
   since: number,

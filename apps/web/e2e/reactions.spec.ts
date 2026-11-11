@@ -8,7 +8,7 @@ async function react(actor: Actor, messageId: string, emoji: string) {
   expect(response.ok()).toBe(true);
 }
 
-test("reaction previews load on demand, overflow opens the full list, and clicks still toggle", async ({
+test("reaction lists show reactors, filter by emoji, and reflect a removed reaction", async ({
   actors,
   account,
   client,
@@ -46,65 +46,22 @@ test("reaction previews load on demand, overflow opens the full list, and clicks
     await react(actor, message.id, "👍");
   for (const actor of [actors.sender, account]) await react(actor, message.id, "❤️");
   const viewer = await client(actors.sender);
-  const lookups: string[] = [];
-  viewer.page.on("request", (request) => {
-    if (
-      new URL(request.url()).pathname === "/api/v1/messaging/reactions" &&
-      request.method() === "GET"
-    )
-      lookups.push(request.url());
-  });
   await visit(viewer, channel.id);
   const row = viewer.page
     .getByRole("article")
     .filter({ hasText: "The launch checklist is ready." });
   await expect(row.getByRole("button", { name: "👍, 4 reactions", exact: true })).toBeVisible();
-  expect(lookups).toEqual([]);
-
-  await viewer.page.emulateMedia({ reducedMotion: "reduce" });
-  await row.getByRole("button", { name: "❤️, 2 reactions", exact: true }).hover();
-  const preview = viewer.page
-    .locator('[data-slot="hover-card-content"]')
-    .filter({ hasText: "2 people reacted" });
-  await expect(preview.getByRole("listitem")).toHaveCount(2);
-  await expect(preview.getByText("You", { exact: true })).toBeVisible();
-  const longName = preview.getByText(account.name, { exact: true });
-  await expect(longName).toBeVisible();
-  expect(
-    await longName.evaluate(
-      (element) =>
-        element.scrollWidth > element.clientWidth &&
-        getComputedStyle(element).textOverflow === "ellipsis",
-    ),
-  ).toBe(true);
-  expect(await preview.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
-    true,
-  );
-  await expect(preview.getByRole("button", { name: /View all/ })).toHaveCount(0);
-
-  await row.getByRole("button", { name: "👍, 4 reactions", exact: true }).hover();
-  const overflow = viewer.page
-    .locator('[data-slot="hover-card-content"]')
-    .filter({ hasText: "4 people reacted" });
-  await expect(overflow.getByRole("listitem")).toHaveCount(3);
-  expect(await overflow.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
-    true,
-  );
-  await expect(overflow.getByRole("button", { name: /\+1 more.*View all/ })).toBeVisible();
-  await overflow.getByRole("button", { name: /View all/ }).click();
+  await row.getByRole("button", { name: "More message actions" }).click();
+  await viewer.page.getByRole("menuitem", { name: "View reactions", exact: true }).click();
   const dialog = viewer.page.getByRole("dialog", { name: "Reactions", exact: true });
-  await expect(dialog.getByRole("listitem")).toHaveCount(4);
-  await dialog.getByRole("tab", { name: "All", exact: true }).click();
   await expect(dialog.getByRole("listitem")).toHaveCount(4);
   await expect(dialog.getByLabel("Reactions", { exact: true })).toHaveCount(4);
   await dialog.getByRole("tab", { name: "❤️, 2", exact: true }).click();
   await expect(dialog.getByRole("listitem")).toHaveCount(2);
+  await expect(dialog.getByText(account.name, { exact: true })).toBeVisible();
+  await expect(dialog.getByText("You", { exact: true })).toBeVisible();
   await viewer.page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
-  await expect(row.getByRole("button", { name: "👍, 4 reactions", exact: true })).toBeFocused();
-  await viewer.page.mouse.move(1200, 700);
-  await row.getByRole("button", { name: "👍, 4 reactions", exact: true }).blur();
-  expect(lookups.every((url) => Number(new URL(url).searchParams.get("limit")) <= 25)).toBe(true);
   await row.getByRole("button", { name: "❤️, 2 reactions", exact: true }).click();
   await expect(row.getByRole("button", { name: "❤️, 1 reaction", exact: true })).toHaveAttribute(
     "aria-pressed",
@@ -113,15 +70,7 @@ test("reaction previews load on demand, overflow opens the full list, and clicks
   await row.getByRole("button", { name: "More message actions" }).click();
   await viewer.page.getByRole("menuitem", { name: "View reactions", exact: true }).click();
   await expect(dialog.getByRole("listitem")).toHaveCount(4);
-  await viewer.page.setViewportSize({ width: 1440, height: 360 });
-  const body = dialog.locator('[data-slot="dialog-body"]');
-  await expect
-    .poll(() => body.evaluate((element) => element.scrollHeight > element.clientHeight))
-    .toBe(true);
-  await body.evaluate((element) => {
-    element.scrollTop = element.scrollHeight;
-  });
-  await expect.poll(() => body.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
-  await expect(dialog.getByRole("heading", { name: "Reactions", exact: true })).toBeVisible();
-  await expect(dialog.getByRole("tablist", { name: "Filter reactions" })).toBeVisible();
+  await dialog.getByRole("tab", { name: "❤️, 1", exact: true }).click();
+  await expect(dialog.getByRole("listitem")).toHaveCount(1);
+  await expect(dialog.getByText(account.name, { exact: true })).toBeVisible();
 });

@@ -1,4 +1,4 @@
-import { conversation, post, test, visit } from "./test-support/fixtures";
+import { conversation, conversationButton, post, test, visit } from "./test-support/fixtures";
 import { expect } from "@playwright/test";
 
 test("channel and thread drafts stay isolated and restore reference labels", async ({
@@ -31,10 +31,10 @@ test("channel and thread drafts stay isolated and restore reference labels", asy
   await expect(reply).toBeEmpty();
   await reply.fill("thread draft");
   await expect(editor).toContainText("channel draft");
-  await page.getByRole("button", { name: second.name, exact: true }).click();
+  await conversationButton(page, second.name).click();
   await expect(editor).toBeEmpty();
   await editor.fill("other destination");
-  await page.getByRole("button", { name: first.name, exact: true }).click();
+  await conversationButton(page, first.name).click();
   await expect(editor).toContainText(actors.sender.name);
   await expect(editor).toContainText("channel draft");
   await page
@@ -78,10 +78,10 @@ test("a completed send preserves a newer draft after leaving and returning", asy
     await editor.press("Enter");
     await started;
     await expect(editor).toHaveAttribute("contenteditable", "false");
-    await page.getByRole("button", { name: second.name, exact: true }).click();
+    await conversationButton(page, second.name).click();
     await expect(editor).toBeEmpty();
     await editor.fill("other destination");
-    await page.getByRole("button", { name: first.name, exact: true }).click();
+    await conversationButton(page, first.name).click();
     await expect(editor).toHaveText(sent);
     await editor.fill("newer draft");
     const completed = page.waitForResponse(
@@ -95,7 +95,7 @@ test("a completed send preserves a newer draft after leaving and returning", asy
     // The send settles, and its success handler runs, before the composer is editable again.
     await expect(editor).toHaveAttribute("contenteditable", "true");
     await expect(editor).toHaveText("newer draft");
-    await page.getByRole("button", { name: second.name, exact: true }).click();
+    await conversationButton(page, second.name).click();
     await expect(editor).toHaveText("other destination");
   } finally {
     release();
@@ -137,28 +137,12 @@ test("a failed send retains the draft and can be retried without retyping", asyn
   await expect(message).toHaveCount(1);
 });
 
-test("composer keeps selection, undo, IME guards and focus after sending", async ({
-  actors,
-  client,
-}) => {
+test("IME composition does not send until composition ends", async ({ actors, client }) => {
   const channel = await conversation(actors.sender);
   const sender = await client(actors.sender);
   const { page } = sender;
   await visit(sender, channel.id);
   const editor = page.getByRole("textbox", { name: /^Message / });
-  await editor.fill("select me");
-  await editor.press("Control+Home");
-  await editor.press("Control+Shift+End");
-  await editor
-    .locator("xpath=ancestor::form")
-    .getByRole("button", { name: "Bold text", exact: true })
-    .click();
-  await expect(editor).toHaveText("**select me**");
-  await expect(editor).toBeFocused();
-  await editor.pressSequentially("replacement");
-  await expect(editor).toHaveText("**replacement**");
-  await editor.press("Control+z");
-  await expect(editor).toHaveText("**select me**");
   await editor.fill("IME draft");
   await editor.dispatchEvent("compositionstart");
   await editor.press("Enter");

@@ -1,10 +1,11 @@
 import { Mailpit } from "../../server/integration/test-support/mailpit";
-import { signIn, signUp } from "./test-support/auth";
+import { signIn, signUp, verifyEmail } from "./test-support/auth";
 import { conversation, post, test, visit } from "./test-support/fixtures";
 import { expect } from "@playwright/test";
 
 test("an unverified account cannot open the workspace until its email is verified", async ({
   page,
+  request,
 }) => {
   const id = crypto.randomUUID();
   const email = `unverified-${id}@example.test`;
@@ -16,6 +17,10 @@ test("an unverified account cannot open the workspace until its email is verifie
   await page.goto("/login");
   await signIn(page, email, password);
   await expect(page).toHaveURL(/\/verify-email/);
+  await verifyEmail(page, request, email);
+  await page.goto("/login");
+  await signIn(page, email, password);
+  await expect(page).toHaveURL(/\/onboarding/);
 });
 test("sign-out removes private content, blocks history navigation, and allows a fresh login", async ({
   actors,

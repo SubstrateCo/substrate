@@ -1,6 +1,13 @@
 import { Mailpit } from "../../server/integration/test-support/mailpit";
 import { signIn, signUp, verifyEmail } from "./test-support/auth";
-import { acceptCollaboration, conversation, post, test, visit } from "./test-support/fixtures";
+import {
+  acceptCollaboration,
+  conversation,
+  conversationButton,
+  post,
+  test,
+  visit,
+} from "./test-support/fixtures";
 import { expect, type Page } from "@playwright/test";
 
 async function chooseOrganization(page: Page, name: string) {
@@ -85,6 +92,29 @@ test("a new partner signs up, creates their own org, and accepts a desktop chann
   expect((await messages.json()).data).toEqual(
     expect.arrayContaining([expect.objectContaining({ body: history })]),
   );
+  await page.goto(`/dashboard?workspaceId=${organizationId}&conversationId=${c.id}`);
+  await page.getByRole("button", { name: "Organizations", exact: true }).click();
+  const organizations = page.getByRole("dialog", {
+    name: "Organizations in this channel",
+    exact: true,
+  });
+  await expect(organizations.getByText(name, { exact: true })).toBeVisible();
+  await expect(
+    organizations.getByText(actors.sender.organizationName, { exact: true }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Members, 2 members", exact: true }).click();
+  const members = page.getByRole("dialog", { name: "Members", exact: true });
+  await expect(members.getByText(`${name} · Your organization`, { exact: true })).toBeVisible();
+  await expect(
+    members
+      .getByText(actors.sender.organizationName, { exact: true })
+      .and(members.getByRole("listitem")),
+  ).toBeVisible();
+  await expect(
+    members.getByText(actors.sender.name, { exact: true }).and(members.locator("span")),
+  ).toBeVisible();
+  await expect(members.getByText("New partner", { exact: true })).toBeVisible();
 });
 
 test("an ordinary recipient requests org approval and an owner approves without gaining message access", async ({
@@ -150,7 +180,7 @@ test("disconnecting clears a partner’s open messages without a reload", async 
   // The sender's own access hint refreshes the open sharing details.
   await expect(sender.page.getByRole("button", { name: "Disconnect", exact: true })).toHaveCount(0);
   await expect(partner.page.getByText(body, { exact: true })).toHaveCount(0);
-  await expect(partner.page.getByRole("button", { name: c.name, exact: true })).toHaveCount(0);
+  await expect(conversationButton(partner.page, c.name)).toHaveCount(0);
   const messages = await partner.page.request.get("/api/v1/messaging/messages", {
     params: { organizationId: actors.partner.organizationId, conversationId: c.id },
   });

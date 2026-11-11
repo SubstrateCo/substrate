@@ -24,7 +24,7 @@ export function NativeForm({
       <form
         className={className}
         onInvalidCapture={validation.onInvalid}
-        onInputCapture={validation.onInput}
+        onInput={validation.onInput}
         onSubmit={(event) => {
           event.preventDefault();
           if (pending) return;

@@ -1,6 +1,6 @@
 import { addAgent, callTool, createAgent, threadTurn } from "./test-support/agent-work";
 import { conversation, post, test, visit } from "./test-support/fixtures";
-import { project } from "./test-support/tasks";
+import { detail, project } from "./test-support/tasks";
 import { expect } from "@playwright/test";
 
 async function ownerMessage(
@@ -11,7 +11,7 @@ async function ownerMessage(
   return post<{ id: string }>(actor, "messaging/messages", { conversationId, body });
 }
 
-test("agents act with their owner's access and their messages, comments and activity are labelled", async ({
+test("agent messages, comments and activity retain attribution and source links", async ({
   actors,
   client,
 }) => {
@@ -171,4 +171,5 @@ test("a declined proposal changes nothing", async ({ actors, client }) => {
   await expect(user.page.getByRole("heading", { name: "Nothing needs you" })).toBeVisible();
   await visit(user, undefined, "/tasks", { projectId: created.entityId });
   await expect(user.page.getByText("Never created")).toHaveCount(0);
+  expect((await detail(owner, created.entityId)).tasks).toEqual([]);
 });

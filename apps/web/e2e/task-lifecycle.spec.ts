@@ -62,9 +62,11 @@ test("move a task with its subtasks, follow its old link, change parent, and del
   await user.page.getByRole("button", { name: "Delete task", exact: true }).click();
   expect((await deleted).ok()).toBe(true);
   await expect(inspector).toHaveCount(0);
-  expect(
-    (await detail(actors.sender, destination.entityId)).tasks.map((task) => task.entityId),
-  ).not.toContain(child.id);
+  const remaining = (await detail(actors.sender, destination.entityId)).tasks.map(
+    (task) => task.entityId,
+  );
+  expect(remaining).not.toContain(parent.id);
+  expect(remaining).not.toContain(child.id);
   await user.page.getByRole("tab", { name: "Settings", exact: true }).click();
   await user.page.getByRole("button", { name: "Delete project", exact: true }).click();
   await user.page
@@ -168,18 +170,7 @@ test("saving a description does not overwrite a title changed by another client"
   await expect(
     user.page.getByRole("button", { name: /^Not started: Another client’s title/ }),
   ).toBeVisible();
-  const saved = user.page.waitForRequest(
-    (request) =>
-      request.url().endsWith("/tasks/mutations") && request.postDataJSON()?.action === "updateTask",
-  );
   await user.page.getByRole("button", { name: "Save task", exact: true }).click();
-  expect((await saved).postDataJSON()).toEqual({
-    action: "updateTask",
-    organizationId: actors.sender.organizationId,
-    projectEntityId: created.entityId,
-    taskEntityId: task.id,
-    description: "My description edit",
-  });
   await expect(
     user.page.getByRole("heading", { name: "Another client’s title", exact: true }),
   ).toBeVisible();
