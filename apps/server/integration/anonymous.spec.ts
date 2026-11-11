@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { test } from "./test-support/fixtures";
+import { expect } from "@playwright/test";
 
 test("anonymous callers cannot list workspace conversations", async ({ request }) => {
   const response = await request.get("/api/v1/messaging/conversations", {

@@ -5,7 +5,8 @@ export default defineConfig({
   testDir: "./integration",
   fullyParallel: true,
   workers: 4,
-  timeout: 60_000,
+  // Accounts are created once per worker by a fixture with its own timeout.
+  timeout: 20_000,
   expect: { timeout: 15_000 },
   reporter: "./scripts/errors-reporter.ts",
   use: {

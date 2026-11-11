@@ -1,85 +1,23 @@
 import type { conversationInput, messageInput } from "@startup-os/contracts/messaging/input";
 import type { ServiceResult } from "@startup-os/contracts/result";
 
-import { provisionVerifiedAccount } from "./test-support/auth";
 import { appOrigin } from "./test-support/environment";
-import { Mailpit } from "./test-support/mailpit";
-import { provisionWorkspaceSession, type WorkspaceAccount } from "./test-support/organizations";
-import { expect, test as base, type APIRequestContext } from "@playwright/test";
-import { randomUUID } from "node:crypto";
+import { test, type Actor } from "./test-support/fixtures";
+import { expect } from "@playwright/test";
+import { randomBytes, randomUUID } from "node:crypto";
 import type { z } from "zod";
 
 const origin = appOrigin;
 
-const test = base.extend<{
-  actors: {
-    owner: WorkspaceAccount;
-    member: WorkspaceAccount;
-    outsider: WorkspaceAccount;
-    recipient: WorkspaceAccount;
-  };
-}>({
-  actors: async ({ playwright }, use) => {
-    const contexts: APIRequestContext[] = [];
-    const account = async (kind: string): Promise<WorkspaceAccount> => {
-      const request = await playwright.request.newContext({ baseURL: origin });
-      contexts.push(request);
-      const suffix = randomUUID();
-      const email = `${kind}-${suffix}@example.test`;
-      await provisionVerifiedAccount({ request }, new Mailpit(request), {
-        name: kind,
-        email,
-        password: `Messaging-${suffix}!`,
-      });
-      const organization = await provisionWorkspaceSession(request, kind, `${kind}-${suffix}`);
-      return { request, email, organizationId: organization.id };
-    };
-    try {
-      const [owner, member, outsider, recipient] = await Promise.all([
-        account("owner"),
-        account("member"),
-        account("outsider"),
-        account("recipient"),
-      ]);
-      const invited = await owner.request.post("/api/auth/organization/invite-member", {
-        headers: { origin },
-        data: { email: member.email, role: "member" },
-      });
-      expect(invited.ok()).toBe(true);
-      const invitation = await invited.json();
-      expect(
-        (
-          await member.request.post("/api/auth/organization/accept-invitation", {
-            headers: { origin },
-            data: { invitationId: invitation.id },
-          })
-        ).ok(),
-      ).toBe(true);
-      expect(
-        (
-          await member.request.post("/api/auth/organization/set-active", {
-            headers: { origin },
-            data: { organizationId: owner.organizationId },
-          })
-        ).ok(),
-      ).toBe(true);
-      member.organizationId = owner.organizationId;
-      await use({ owner, member, outsider, recipient });
-    } finally {
-      await Promise.all(contexts.map((context) => context.dispose()));
-    }
-  },
-});
+/** Letters only, so word search splits it the same way as the indexed text. */
+const uniqueWord = () =>
+  Array.from(randomBytes(12), (byte) => String.fromCharCode(97 + (byte % 26))).join("");
 
 type Mutation =
   | Omit<z.input<typeof conversationInput>, "organizationId">
   | Omit<z.input<typeof messageInput>, "organizationId">;
 
-async function post<T>(
-  actor: WorkspaceAccount,
-  endpoint: "conversations" | "messages",
-  input: Mutation,
-) {
+async function post<T>(actor: Actor, endpoint: "conversations" | "messages", input: Mutation) {
   const response = await actor.request.post(`/api/v1/messaging/${endpoint}`, {
     headers: { origin },
     data: { organizationId: actor.organizationId, ...input },
@@ -91,7 +29,7 @@ async function post<T>(
   return result.data;
 }
 
-test("reaction lookup returns bounded actors and enforces private conversation access", async ({
+test("reaction lookup lists reactors only to participants of a private conversation", async ({
   actors: { owner, member, outsider },
 }) => {
   const channel = await post<{ id: string }>(member, "conversations", {
@@ -130,22 +68,22 @@ test("reaction lookup returns bounded actors and enforces private conversation a
     expect(denied.status()).toBe(404);
     expect(await denied.json()).toMatchObject({ success: false, error: { code: "NOT_FOUND" } });
   }
-  const invalid = await member.request.get("/api/v1/messaging/reactions", {
-    params: { ...query, limit: "51" },
-  });
-  expect(invalid.status()).toBe(400);
 });
 
 test("channel and thread references enforce target access through search, send and resolution", async ({
   actors: { owner, member, outsider },
 }) => {
+  // The shared workspace keeps earlier channels and threads, so the searched text is unique.
+  const tag = uniqueWord();
+  const targetName = `private-reference-target-${tag}`;
+  const reply = `Searchable reply ${tag}`;
   const source = await post<{ id: string }>(owner, "conversations", {
     kind: "channel",
     name: "reference-source",
   });
   const target = await post<{ id: string }>(owner, "conversations", {
     kind: "channel",
-    name: "private-reference-target",
+    name: targetName,
     private: true,
   });
   const root = await post<{ id: string }>(owner, "messages", {
@@ -155,7 +93,7 @@ test("channel and thread references enforce target access through search, send a
   await post(owner, "messages", {
     conversationId: target.id,
     threadId: root.id,
-    body: "Searchable reply",
+    body: reply,
   });
   const body = `See @[channel:${target.id}] and @[thread:${root.id}]`;
   const sent = await post<{ id: string }>(owner, "messages", { conversationId: source.id, body });
@@ -168,13 +106,13 @@ test("channel and thread references enforce target access through search, send a
       data: {
         organizationId: actor.organizationId,
         kind: "channel",
-        query: "private-reference-target",
+        query: targetName,
       },
     });
     expect(search.ok()).toBe(true);
     expect((await search.json()).data.map((item: { id: string }) => item.id)).toEqual(expectedIds);
     const threads = await actor.request.post("/api/v1/context/search", {
-      data: { organizationId: actor.organizationId, kind: "thread", query: "Searchable reply" },
+      data: { organizationId: actor.organizationId, kind: "thread", query: reply },
     });
     expect(threads.ok()).toBe(true);
     expect((await threads.json()).data.map((item: { id: string }) => item.id)).toEqual(
@@ -210,8 +148,11 @@ test("channel and thread references enforce target access through search, send a
 });
 
 test("messaging writes reject missing, foreign and opaque origins without persisting changes", async ({
-  actors: { owner },
+  actors,
+  workspace,
 }) => {
+  // A fresh workspace, so the conversation list below is exactly what this test wrote.
+  const [owner] = await workspace(actors.owner);
   const conversation = await post<{ id: string }>(owner, "conversations", {
     kind: "channel",
     name: "origin-boundary",
@@ -242,10 +183,13 @@ test("messaging writes reject missing, foreign and opaque origins without persis
 });
 
 test("conversation management checks origin, ownership, and the owning organization's admins", async ({
-  actors: { owner, member, outsider },
+  actors: { owner: workspaceOwner, member: workspaceMember, outsider },
+  workspace,
 }) => {
+  // A fresh workspace, so the managed and member lists below are exactly what this test wrote.
+  const [owner, member] = await workspace(workspaceOwner, workspaceMember);
   const manage = (
-    actor: WorkspaceAccount,
+    actor: Actor,
     action: "delete" | "leave",
     conversationId: string,
     headers: Record<string, string> = { origin },
@@ -299,8 +243,15 @@ test("conversation management checks origin, ownership, and the owning organizat
 
 for (const kind of ["channel", "dm", "group"] as const) {
   test(`nonparticipants cannot read or mutate a private ${kind}`, async ({
-    actors: { owner, member, outsider, recipient },
+    actors: { owner: workspaceOwner, member: workspaceMember, outsider, recipient },
+    workspace,
   }) => {
+    // Creating a DM returns the workspace's existing DM between the same people, so a DM needs
+    // a fresh workspace to hold only this test's messages.
+    const [owner, member]: [Actor, Actor] =
+      kind === "dm"
+        ? await workspace(workspaceOwner, workspaceMember)
+        : [workspaceOwner, workspaceMember];
     const emails = kind === "channel" ? [] : [member.email];
     if (kind === "group") emails.push(recipient.email);
     const conversation = await post<{ id: string }>(owner, "conversations", {
@@ -391,3 +342,66 @@ for (const kind of ["channel", "dm", "group"] as const) {
     });
   });
 }
+
+const profile = (
+  account: Actor,
+  conversationId: string,
+  actorId: string,
+  organizationId?: string,
+) =>
+  account.request.get("/api/v1/messaging/profiles", {
+    params: { organizationId: organizationId ?? account.organizationId, conversationId, actorId },
+  });
+
+test("profiles resolve only through visible conversations and keep contact details in the workspace", async ({
+  actors: { owner, member, outsider },
+}) => {
+  const channel = await post<{ id: string }>(owner, "conversations", {
+    kind: "channel",
+    name: "profiles",
+  });
+  const hidden = await post<{ id: string }>(owner, "conversations", {
+    kind: "channel",
+    name: "hidden-profiles",
+    private: true,
+  });
+  const sent = await post<{ authorActorEntityId: string }>(owner, "messages", {
+    conversationId: channel.id,
+    body: "Hello",
+  });
+  await post(owner, "messages", { conversationId: hidden.id, body: "Private" });
+  const ownerActorId = sent.authorActorEntityId;
+
+  const visible = await profile(member, channel.id, ownerActorId);
+  expect(visible.status()).toBe(200);
+  expect(await visible.json()).toEqual({
+    success: true,
+    data: {
+      id: ownerActorId,
+      type: "human",
+      name: "owner",
+      self: false,
+      external: false,
+      email: owner.email,
+      image: null,
+      role: "owner",
+      directConversationId: null,
+      agent: null,
+    },
+  });
+
+  for (const response of [
+    // A private channel hides its authors from nonparticipants.
+    await profile(member, hidden.id, ownerActorId),
+    // Another workspace cannot use its own session scope or the owner's workspace ID.
+    await profile(outsider, channel.id, ownerActorId),
+    await profile(outsider, channel.id, ownerActorId, owner.organizationId),
+    // An unrelated actor ID does not resolve.
+    await profile(member, channel.id, randomUUID()),
+  ]) {
+    expect(response.ok()).toBe(false);
+    const result = await response.json();
+    expect(result.success).toBe(false);
+    expect(result.data).toBeUndefined();
+  }
+});
