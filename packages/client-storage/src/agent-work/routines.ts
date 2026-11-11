@@ -3,7 +3,7 @@ import type { HarnessKind } from "@substrate/contracts/harness";
 
 import type { RunTransaction } from "../database.ts";
 import { inbox, routines, sessions } from "../schema/index.ts";
-import { insertItem, setItemStatus } from "./inbox.ts";
+import { insertItem, localDedupeKeys, setItemStatus } from "./inbox.ts";
 import { ensureSession } from "./sessions.ts";
 import { and, desc, eq, isNotNull, lte } from "drizzle-orm";
 
@@ -107,7 +107,7 @@ export function routineRepository(run: RunTransaction) {
           .orderBy(desc(routines.createdAt))
           .all(),
       ),
-    /** Enabled routines whose next fire time passed. The caller checks approval. */
+    /** Enabled routines whose next fire time passed and whose latest revision is approved. */
     due: (organizationId: string, now: number) =>
       run((tx) =>
         tx
@@ -117,6 +117,7 @@ export function routineRepository(run: RunTransaction) {
             and(
               eq(routines.organizationId, organizationId),
               eq(routines.enabled, true),
+              eq(routines.approvedRevision, routines.revision),
               isNotNull(routines.nextFireAt),
               lte(routines.nextFireAt, now),
             ),
@@ -197,7 +198,7 @@ export function routineRepository(run: RunTransaction) {
               scheduledAt,
             },
             lane: "background",
-            dedupeKey: `routine:${routine.id}:${routine.revision}:${scheduledAt}`,
+            dedupeKey: localDedupeKeys.routine(routine.id, routine.revision, scheduledAt),
             body: routine.prompt,
           },
           now,

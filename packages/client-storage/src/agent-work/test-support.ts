@@ -1,6 +1,10 @@
-import type { AgentSessionKind } from "@substrate/contracts/agent-work";
+import {
+  sessionKeys,
+  wakeDedupeKeys,
+  type AgentSessionKind,
+} from "@substrate/contracts/agent-work";
 
-import type { NewInboxItem } from "./inbox.ts";
+import { localDedupeKeys, type NewInboxItem } from "./inbox.ts";
 import { AgentWorkStore } from "./store.ts";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -22,16 +26,22 @@ export async function openTestStore() {
 
 export async function createSession(
   store: AgentWorkStore,
-  input: { userAgentId?: string; key?: string; kind?: AgentSessionKind; now?: number } = {},
+  input: {
+    organizationId?: string;
+    userAgentId?: string;
+    key?: string;
+    kind?: AgentSessionKind;
+    now?: number;
+  } = {},
 ) {
   const kind = input.kind ?? "dm";
   const userAgentId = input.userAgentId ?? "agent-1";
   return store.sessions.ensure(
     {
-      organizationId: "org-1",
+      organizationId: input.organizationId ?? "org-1",
       userAgentId,
       agentId: userAgentId,
-      key: input.key ?? `${kind}:${crypto.randomUUID()}`,
+      key: input.key ?? sessionKeys[kind](crypto.randomUUID()),
       kind,
       harness: "claude",
       origin: kind === "dm" ? { conversationId: crypto.randomUUID(), threadId: null } : null,
@@ -52,7 +62,7 @@ export function item(
     source: "answer",
     sourceRef: { source: "answer", requestId, anchorMessageId: null, request: null },
     lane: "owner",
-    dedupeKey: `answer:${requestId}`,
+    dedupeKey: wakeDedupeKeys.answer(requestId),
     ...overrides,
   };
 }
@@ -67,16 +77,17 @@ export function ownerMessage(session: { id: string; userAgentId: string }) {
       conversationId: crypto.randomUUID(),
       threadId: null,
     },
-    dedupeKey: `msg:${messageId}`,
+    dedupeKey: wakeDedupeKeys.message(messageId),
   });
 }
 
 export function background(session: { id: string; userAgentId: string }) {
   const routineId = crypto.randomUUID();
+  const scheduledAt = "2026-01-01T00:00:00Z";
   return item(session, {
     source: "routine",
-    sourceRef: { source: "routine", routineId, revision: 1, scheduledAt: "2026-01-01T00:00:00Z" },
+    sourceRef: { source: "routine", routineId, revision: 1, scheduledAt },
     lane: "background",
-    dedupeKey: `routine:${routineId}`,
+    dedupeKey: localDedupeKeys.routine(routineId, 1, scheduledAt),
   });
 }

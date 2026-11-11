@@ -1,3 +1,5 @@
+import { wakeDedupePrefixes } from "@substrate/contracts/agent-work";
+
 import type { RunTransaction } from "../database.ts";
 import { inbox, outputs, turns } from "../schema/index.ts";
 import { appendEvents, type NewTurnEvent } from "./events.ts";
@@ -55,8 +57,14 @@ export function outputRepository(run: RunTransaction) {
                         and(
                           eq(inbox.userAgentId, turns.userAgentId),
                           or(
-                            eq(inbox.dedupeKey, sql`'answer:' || ${outputs.targetId}`),
-                            eq(inbox.dedupeKey, sql`'approval:' || ${outputs.targetId}`),
+                            eq(
+                              inbox.dedupeKey,
+                              sql`${wakeDedupePrefixes.answer} || ${outputs.targetId}`,
+                            ),
+                            eq(
+                              inbox.dedupeKey,
+                              sql`${wakeDedupePrefixes.approval} || ${outputs.targetId}`,
+                            ),
                           ),
                         ),
                       ),

@@ -1,4 +1,9 @@
-import type { TurnEventData, TurnEventKind, TurnEventView } from "@substrate/contracts/agent-work";
+import {
+  agentActivityMaxLength,
+  type TurnEventData,
+  type TurnEventKind,
+  type TurnEventView,
+} from "@substrate/contracts/agent-work";
 
 import type { LocalTransaction, RunTransaction } from "../database.ts";
 import { turnEvents, turns } from "../schema/index.ts";
@@ -7,8 +12,6 @@ import { and, asc, eq, gt, inArray } from "drizzle-orm";
 export type NewTurnEvent = {
   [K in TurnEventKind]: { kind: K; data: TurnEventData[K]; itemId?: string | null };
 }[TurnEventKind];
-
-const activityMaxLength = 200;
 
 /**
  * Appends events with the next sequence numbers of the turn, in the caller's transaction, so
@@ -43,7 +46,7 @@ export async function appendEvents(
     if (event.kind === "tool_started" || event.kind === "activity")
       activity = (event.kind === "tool_started" ? event.data.title : event.data.text).slice(
         0,
-        activityMaxLength,
+        agentActivityMaxLength,
       );
   }
   const changes: Partial<typeof turns.$inferInsert> = {

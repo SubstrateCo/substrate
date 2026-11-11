@@ -1,9 +1,10 @@
-import type {
-  InboxLane,
-  InboxSource,
-  InboxSourceRef,
-  InboxStatus,
-  TurnStatus,
+import {
+  sessionKeys,
+  type InboxLane,
+  type InboxSource,
+  type InboxSourceRef,
+  type InboxStatus,
+  type TurnStatus,
 } from "@substrate/contracts/agent-work";
 
 import type { LocalTransaction, RunTransaction } from "../database.ts";
@@ -13,6 +14,19 @@ import { settleUncertainTurn } from "./uncertain.ts";
 import { and, eq, inArray, isNull, lte, sql } from "drizzle-orm";
 
 export type InboxRow = typeof inbox.$inferSelect;
+
+/** Dedupe keys of items the desktop creates itself. Server wakes use wakeDedupeKeys. */
+export const localDedupeKeys = {
+  routine: (routineId: string, revision: number, scheduledAt: string) =>
+    `${sessionKeys.routine(routineId)}:${revision}:${scheduledAt}`,
+  helperTask: (helperId: string) => `${sessionKeys.helper(helperId)}:task`,
+  /** Unique for every message, because the parent may send the same text again. */
+  helperMessage: (helperId: string) =>
+    `${sessionKeys.helper(helperId)}:message:${crypto.randomUUID()}`,
+  helperResult: (helperId: string) => `${sessionKeys.helper(helperId)}:result`,
+  recovery: (turnId: string, attempt: number) => `recovery:${turnId}:${attempt}`,
+  epoch: (sessionId: string, epoch: number) => `epoch:${sessionId}:${epoch}`,
+};
 
 /** An owner message waits this long for more messages before its turn can start. */
 export const ownerMessageDebounceMs = 500;
@@ -38,10 +52,17 @@ export interface NewInboxItem {
 }
 
 /**
- * Inserts an item unless the agent already has one with its dedupe key. Owner messages wait
- * for more messages: each new one moves the batch 500 ms out, up to 2 s after the first.
+ * Inserts an item unless the agent already has one with its dedupe key. The item takes its
+ * session's organization. Owner messages wait for more messages: each new one moves the batch
+ * 500 ms out, up to 2 s after the first.
  */
 export async function insertItem(tx: LocalTransaction, item: NewInboxItem, now: number) {
+  const session = await tx
+    .select({ organizationId: sessions.organizationId })
+    .from(sessions)
+    .where(eq(sessions.id, item.sessionId))
+    .get();
+  if (!session) throw new Error("Session not found.");
   let availableAt = item.availableAt ?? now;
   let deadlineAt = availableAt;
   const debounced = item.source === "owner_message";
@@ -69,6 +90,7 @@ export async function insertItem(tx: LocalTransaction, item: NewInboxItem, now: 
     .insert(inbox)
     .values({
       id: crypto.randomUUID(),
+      organizationId: session.organizationId,
       sessionId: item.sessionId,
       userAgentId: item.userAgentId,
       source: item.source,
@@ -104,14 +126,6 @@ export async function setItemStatus(
       .where(inArray(inbox.id, ids));
 }
 
-/** The organization's sessions, to scope inbox queries: inbox rows have no organization. */
-function organizationSessions(tx: LocalTransaction, organizationId: string) {
-  return tx
-    .select({ id: sessions.id })
-    .from(sessions)
-    .where(eq(sessions.organizationId, organizationId));
-}
-
 /** Live turns that can take steered input. A stopping turn is ending. */
 const steerableTurnStatuses: TurnStatus[] = ["assigned", "running", "waiting"];
 
@@ -133,9 +147,22 @@ export function inboxRepository(run: RunTransaction) {
         }
         return created;
       }),
-    get: (id: string) => run((tx) => tx.select().from(inbox).where(eq(inbox.id, id)).get()),
-    forTurn: (turnId: string) =>
-      run((tx) => tx.select().from(inbox).where(eq(inbox.turnId, turnId)).all()),
+    get: (organizationId: string, id: string) =>
+      run((tx) =>
+        tx
+          .select()
+          .from(inbox)
+          .where(and(eq(inbox.organizationId, organizationId), eq(inbox.id, id)))
+          .get(),
+      ),
+    forTurn: (organizationId: string, turnId: string) =>
+      run((tx) =>
+        tx
+          .select()
+          .from(inbox)
+          .where(and(eq(inbox.organizationId, organizationId), eq(inbox.turnId, turnId)))
+          .all(),
+      ),
     /** Open items of these sessions, oldest first. */
     openForSessions: (sessionIds: string[]) =>
       run(async (tx) =>
@@ -156,7 +183,7 @@ export function inboxRepository(run: RunTransaction) {
           .from(inbox)
           .where(
             and(
-              inArray(inbox.sessionId, organizationSessions(tx, organizationId)),
+              eq(inbox.organizationId, organizationId),
               eq(inbox.lane, "owner"),
               inArray(inbox.status, claimableStatuses),
               lte(inbox.availableAt, now),
@@ -219,9 +246,13 @@ export function inboxRepository(run: RunTransaction) {
             ),
           ),
       ),
-    hold: (ids: string[]) =>
+    hold: (organizationId: string, ids: string[]) =>
       run(async (tx) => {
-        if (ids.length) await tx.update(inbox).set({ held: true }).where(inArray(inbox.id, ids));
+        if (ids.length)
+          await tx
+            .update(inbox)
+            .set({ held: true })
+            .where(and(eq(inbox.organizationId, organizationId), inArray(inbox.id, ids)));
       }),
     /**
      * The harness reported that it read the item. Evidence that arrives after the turn settled
@@ -269,8 +300,20 @@ export function inboxRepository(run: RunTransaction) {
         if (row.turnId) await settleUncertainTurn(tx, row.turnId, now);
         return row;
       }),
-    drop: (ids: string[], reason: string) =>
-      run((tx) => setItemStatus(tx, ids, "dropped", { reason, held: false })),
+    drop: (organizationId: string, ids: string[], reason: string) =>
+      run(async (tx) => {
+        const owned = await tx
+          .select({ id: inbox.id })
+          .from(inbox)
+          .where(and(eq(inbox.organizationId, organizationId), inArray(inbox.id, ids)))
+          .all();
+        await setItemStatus(
+          tx,
+          owned.map((row) => row.id),
+          "dropped",
+          { reason, held: false },
+        );
+      }),
     /** Counts claimable items per agent, for status. */
     queuedCounts: (organizationId: string) =>
       run(async (tx) => {
@@ -278,10 +321,7 @@ export function inboxRepository(run: RunTransaction) {
           .select({ userAgentId: inbox.userAgentId, count: sql<number>`count(*)` })
           .from(inbox)
           .where(
-            and(
-              inArray(inbox.sessionId, organizationSessions(tx, organizationId)),
-              inArray(inbox.status, claimableStatuses),
-            ),
+            and(eq(inbox.organizationId, organizationId), inArray(inbox.status, claimableStatuses)),
           )
           .groupBy(inbox.userAgentId)
           .all();
@@ -293,12 +333,7 @@ export function inboxRepository(run: RunTransaction) {
         const rows = await tx
           .select({ userAgentId: inbox.userAgentId, count: sql<number>`count(*)` })
           .from(inbox)
-          .where(
-            and(
-              inArray(inbox.sessionId, organizationSessions(tx, organizationId)),
-              eq(inbox.status, "uncertain"),
-            ),
-          )
+          .where(and(eq(inbox.organizationId, organizationId), eq(inbox.status, "uncertain")))
           .groupBy(inbox.userAgentId)
           .all();
         return new Map(rows.map((row) => [row.userAgentId, Number(row.count)]));

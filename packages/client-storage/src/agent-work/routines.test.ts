@@ -55,8 +55,8 @@ test("a newer tick supersedes the routine's older pending tick", async () => {
     { routineId: routine.id, revision: 1, occurrence: 2000, nextFireAt: 3000, ...target },
     2000,
   );
-  expect((await store.inbox.get(first!.id))!.status).toBe("superseded");
-  expect((await store.inbox.get(second!.id))!.status).toBe("pending");
+  expect((await store.inbox.get("org-1", first!.id))!.status).toBe("superseded");
+  expect((await store.inbox.get("org-1", second!.id))!.status).toBe("pending");
   expect((await store.routines.get(routine.id))!.nextFireAt).toBe(3000);
 });
 
@@ -74,4 +74,12 @@ test("an edit creates a revision that does not run until it is approved", async 
   // oxlint-disable-next-line typescript/await-thenable -- Bun rejection assertions are asynchronous despite their assertion return declarations.
   await expect(store.routines.approve(routine.id, 1, 1000)).rejects.toThrow();
   expect((await store.routines.update(routine.id, { enabled: false }, null)).revision).toBe(2);
+});
+
+test("only the approved revision of a routine is due", async () => {
+  const { store } = fixture;
+  const routine = await approvedRoutine();
+  expect((await store.routines.due("org-1", 1000)).map((row) => row.id)).toEqual([routine.id]);
+  await store.routines.update(routine.id, { prompt: "Changed." }, 1000);
+  expect(await store.routines.due("org-1", 1000)).toEqual([]);
 });

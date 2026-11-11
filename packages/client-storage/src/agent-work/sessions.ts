@@ -27,10 +27,19 @@ export interface EnsureSessionInput {
   destination?: TurnPlace | null;
 }
 
+/** Keys of the slots turns run in. One live turn per folder. */
+export const folderKeys = {
+  main: (userAgentId: string) => `main:${userAgentId}`,
+  /** A helper's folder key is its session key. */
+  helper: sessionKeys.helper,
+};
+
 /** The slot a session's turns run in: the agent's main folder, or a helper's own folder. */
 export function folderKey(session: Pick<SessionRow, "kind" | "key" | "userAgentId">) {
   const folder = folderOf(session);
-  return folder === "main" ? `main:${session.userAgentId}` : sessionKeys.helper(folder.helperId);
+  return folder === "main"
+    ? folderKeys.main(session.userAgentId)
+    : folderKeys.helper(folder.helperId);
 }
 
 export function folderOf(session: Pick<SessionRow, "kind" | "key">): HarnessFolder {

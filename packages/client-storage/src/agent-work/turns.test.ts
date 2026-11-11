@@ -1,7 +1,6 @@
-import { sessionKeys } from "@substrate/contracts/agent-work";
+import { inboxLaneAgingMs, sessionKeys } from "@substrate/contracts/agent-work";
 
 import { background, createSession, item, openTestStore } from "./test-support.ts";
-import { laneAgingMs } from "./turns.ts";
 import { afterEach, beforeEach, expect, test } from "bun:test";
 
 let fixture: Awaited<ReturnType<typeof openTestStore>>;
@@ -61,7 +60,7 @@ test("background work moves up one lane for every ten minutes it waits", async (
   const waiting = await createSession(store, { userAgentId: "waiting" });
   const fresh = await createSession(store, { userAgentId: "fresh" });
   await store.inbox.intake([background(waiting)], 0);
-  const now = 2 * laneAgingMs;
+  const now = 2 * inboxLaneAgingMs;
   await store.inbox.intake([item(fresh, { lane: "system", dedupeKey: "system" })], now);
   const claimed = await store.turns.claim(now, { organizationId: "org-1", deviceCap: 1 });
   expect(claimed.map((entry) => entry.session.userAgentId)).toEqual(["waiting"]);
@@ -85,7 +84,7 @@ test("a claim batches the session's available items and marks owner work interac
   const [claimed] = await store.turns.claim(1, { organizationId: "org-1", batchLimit: 20 });
   expect(claimed!.items).toHaveLength(3);
   expect(claimed!.turn.kind).toBe("interactive");
-  expect((await store.inbox.forTurn(claimed!.turn.id)).map((row) => row.status)).toEqual([
+  expect((await store.inbox.forTurn("org-1", claimed!.turn.id)).map((row) => row.status)).toEqual([
     "submitted",
     "submitted",
     "submitted",
@@ -158,7 +157,7 @@ test("steered items settle by receipt: consumed, requeued to the front, or uncer
   const [consumed, queued, unknown] = steered as [string, string, string];
   await store.inbox.consumed(turnId, consumed, 3);
   await store.turns.finish(turnId, { status: "interrupted", stillQueuedInputIds: [queued] }, 3);
-  const status = async (id: string) => (await store.inbox.get(id))!.status;
+  const status = async (id: string) => (await store.inbox.get("org-1", id))!.status;
   expect(await status(batch[0]!.id)).toBe("consumed");
   expect(await status(consumed)).toBe("consumed");
   expect(await status(queued)).toBe("confirmed_unconsumed");
@@ -225,7 +224,7 @@ test("recovery asks the owner when steered input was not confirmed, and marks it
   expect(await store.turns.recover(4, "org-1")).toEqual([
     { turnId, action: "needs_attention", reason: "uncertain_input" },
   ]);
-  expect((await store.inbox.get(steered[0]!))!.status).toBe("uncertain");
+  expect((await store.inbox.get("org-1", steered[0]!))!.status).toBe("uncertain");
 });
 
 test("recovery puts the items of a turn that never started back in the inbox", async () => {
@@ -246,10 +245,10 @@ test("dismissing a needs-attention turn drops its items", async () => {
   await store.inbox.intake([item(session)], 0);
   const [claimed] = await store.turns.claim(1, { organizationId: "org-1" });
   await store.turns.attention(claimed!.turn.id, "failed", "Harness failed.", 2);
-  expect((await store.inbox.get(claimed!.items[0]!.id))!.status).toBe("submitted");
+  expect((await store.inbox.get("org-1", claimed!.items[0]!.id))!.status).toBe("submitted");
   await store.turns.dismiss(claimed!.turn.id, 3);
   expect((await store.turns.get(claimed!.turn.id))!.status).toBe("cancelled");
-  expect((await store.inbox.get(claimed!.items[0]!.id))!.status).toBe("dropped");
+  expect((await store.inbox.get("org-1", claimed!.items[0]!.id))!.status).toBe("dropped");
 });
 
 test("a claim takes only the active organization's work", async () => {
@@ -286,7 +285,7 @@ test("a turn's status change and its events land in one transaction", async () =
     { kind: "request", data: { requestId: "request-1", kind: "question" } },
   ]);
   expect((await store.turns.get(turnId))!.status).toBe("waiting");
-  expect((await store.inbox.get(input!.id))!.status).toBe("consumed");
+  expect((await store.inbox.get("org-1", input!.id))!.status).toBe("consumed");
   expect((await store.events.list(turnId)).map((event) => [event.seq, event.kind])).toEqual([
     [1, "turn_started"],
     [2, "input_consumed"],

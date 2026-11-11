@@ -29,6 +29,13 @@
       "when": 1794282032080,
       "tag": "0003_status_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1794432286595,
+      "tag": "0004_inbox_organization",
+      "breakpoints": true
     }
   ]
 }

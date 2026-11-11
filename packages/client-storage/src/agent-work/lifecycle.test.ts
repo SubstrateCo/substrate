@@ -23,13 +23,13 @@ test("a steer is recorded only while its turn is live, and a failed steer puts t
   const { session, turnId } = await liveTurn();
   const [message] = await store.inbox.intake([item(session)], 3);
   expect(await store.inbox.submitSteer(message!.id, turnId)).toBe(true);
-  expect(await store.inbox.get(message!.id)).toMatchObject({
+  expect(await store.inbox.get("org-1", message!.id)).toMatchObject({
     status: "submitted",
     steered: true,
     turnId,
   });
   await store.inbox.revertSteer(message!.id, turnId, 3);
-  expect(await store.inbox.get(message!.id)).toMatchObject({
+  expect(await store.inbox.get("org-1", message!.id)).toMatchObject({
     status: "pending",
     steered: false,
     turnId: null,
@@ -37,7 +37,7 @@ test("a steer is recorded only while its turn is live, and a failed steer puts t
 
   await store.turns.finish(turnId, { status: "completed" }, 4);
   expect(await store.inbox.submitSteer(message!.id, turnId)).toBe(false);
-  expect((await store.inbox.get(message!.id))!.status).toBe("pending");
+  expect((await store.inbox.get("org-1", message!.id))!.status).toBe("pending");
 });
 
 test("a stopping turn does not take steered input", async () => {
@@ -54,9 +54,9 @@ test("consumption evidence that arrives after the turn settled still marks the i
   const [message] = await store.inbox.intake([item(session)], 3);
   await store.inbox.submitSteer(message!.id, turnId);
   await store.turns.finish(turnId, { status: "completed" }, 4);
-  expect((await store.inbox.get(message!.id))!.status).toBe("uncertain");
+  expect((await store.inbox.get("org-1", message!.id))!.status).toBe("uncertain");
   await store.inbox.consumed(turnId, message!.id, 3);
-  expect((await store.inbox.get(message!.id))!.status).toBe("consumed");
+  expect((await store.inbox.get("org-1", message!.id))!.status).toBe("consumed");
 });
 
 test("a turn that ends with uncertain input needs the owner until each item is resent or discarded", async () => {
@@ -70,12 +70,12 @@ test("a turn that ends with uncertain input needs the owner until each item is r
     attentionReason: "uncertain_input",
     outcome: "replied",
   });
-  expect((await store.inbox.get(batch[0]!.id))!.status).toBe("consumed");
+  expect((await store.inbox.get("org-1", batch[0]!.id))!.status).toBe("consumed");
 
   // SAFETY: two items were steered above.
   const [resent, discarded] = steered as [(typeof steered)[0], (typeof steered)[0]];
   await store.inbox.resend(resent.id, 5);
-  expect(await store.inbox.get(resent.id)).toMatchObject({
+  expect(await store.inbox.get("org-1", resent.id)).toMatchObject({
     status: "pending",
     steered: false,
     turnId: null,
@@ -83,7 +83,7 @@ test("a turn that ends with uncertain input needs the owner until each item is r
   });
   expect((await store.turns.get(turnId))!.status).toBe("needs_attention");
   await store.inbox.discard(discarded.id, 6);
-  expect((await store.inbox.get(discarded.id))!.status).toBe("dropped");
+  expect((await store.inbox.get("org-1", discarded.id))!.status).toBe("dropped");
   expect((await store.turns.get(turnId))!.status).toBe("completed");
 
   const [next] = await store.turns.claim(7, { organizationId: "org-1" });
@@ -98,7 +98,7 @@ test("retrying an uncertain-input turn resends its uncertain items instead of ru
   await store.turns.finish(turnId, { status: "completed" }, 4);
   await store.turns.retry(turnId, 5);
   expect((await store.turns.get(turnId))!.status).toBe("completed");
-  expect((await store.inbox.get(message!.id))!.status).toBe("pending");
+  expect((await store.inbox.get("org-1", message!.id))!.status).toBe("pending");
 });
 
 test("later items of a session wait while its turn needs the owner; other sessions run", async () => {

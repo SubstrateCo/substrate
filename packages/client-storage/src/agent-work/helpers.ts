@@ -2,7 +2,7 @@ import { maxLiveHelpers, sessionKeys } from "@substrate/contracts/agent-work";
 
 import type { LocalTransaction, RunTransaction } from "../database.ts";
 import { helpers, inbox } from "../schema/index.ts";
-import { insertItem, setItemStatus } from "./inbox.ts";
+import { insertItem, localDedupeKeys, setItemStatus } from "./inbox.ts";
 import { ensureSession, sessionById } from "./sessions.ts";
 import { and, desc, eq } from "drizzle-orm";
 
@@ -120,7 +120,7 @@ export function helperRepository(run: RunTransaction) {
             createdAt: now,
           })
           .returning();
-        await queueHelperInput(tx, helper!, input.task, `helper:${id}:task`, now);
+        await queueHelperInput(tx, helper!, input.task, localDedupeKeys.helperTask(id), now);
         return helper!;
       }),
     get: (id: string) => run((tx) => tx.select().from(helpers).where(eq(helpers.id, id)).get()),
@@ -152,7 +152,7 @@ export function helperRepository(run: RunTransaction) {
           tx,
           helper,
           text,
-          `helper:${helperId}:message:${crypto.randomUUID()}`,
+          localDedupeKeys.helperMessage(helperId),
           now,
         );
         return item!;
@@ -175,7 +175,7 @@ export function helperRepository(run: RunTransaction) {
             source: "helper_result",
             sourceRef: { source: "helper_result", helperId: helper.id },
             lane: "background",
-            dedupeKey: `helper:${helper.id}:result`,
+            dedupeKey: localDedupeKeys.helperResult(helper.id),
             body: report ?? "The helper ended without a report.",
           },
           now,

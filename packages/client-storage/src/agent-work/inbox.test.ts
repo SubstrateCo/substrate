@@ -43,3 +43,19 @@ test("answers are available at once", async () => {
   await store.inbox.intake([item(session)], 0);
   expect(await store.turns.claim(0, { organizationId: "org-1" })).toHaveLength(1);
 });
+
+test("items belong to their session's organization and other organizations cannot reach them", async () => {
+  const { store } = fixture;
+  const session = await createSession(store, { organizationId: "org-2" });
+  const [created] = await store.inbox.intake([item(session)], 0);
+  expect(created!.organizationId).toBe("org-2");
+  expect(await store.inbox.get("org-1", created!.id)).toBeUndefined();
+  await store.inbox.hold("org-1", [created!.id]);
+  await store.inbox.drop("org-1", [created!.id], "test");
+  expect(await store.inbox.get("org-2", created!.id)).toMatchObject({
+    status: "pending",
+    held: false,
+  });
+  expect((await store.inbox.queuedCounts("org-1")).size).toBe(0);
+  expect((await store.inbox.queuedCounts("org-2")).get(session.userAgentId)).toBe(1);
+});

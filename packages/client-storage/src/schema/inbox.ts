@@ -5,13 +5,22 @@ import type {
   InboxStatus,
 } from "@substrate/contracts/agent-work";
 
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { sessions } from "./sessions.ts";
+import {
+  foreignKey,
+  index,
+  integer,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
 
 /** Anything that may start or steer a turn. Times are epoch ms. */
 export const inbox = sqliteTable(
   "inbox",
   {
     id: text("id").primaryKey(),
+    organizationId: text("organization_id").notNull(),
     sessionId: text("session_id").notNull(),
     userAgentId: text("user_agent_id").notNull(),
     source: text("source").$type<InboxSource>().notNull(),
@@ -34,8 +43,13 @@ export const inbox = sqliteTable(
     createdAt: integer("created_at").notNull(),
   },
   (table) => [
+    foreignKey({
+      columns: [table.organizationId, table.sessionId],
+      foreignColumns: [sessions.organizationId, sessions.id],
+    }),
     uniqueIndex("inbox_agent_dedupe").on(table.userAgentId, table.dedupeKey),
     index("inbox_session_status").on(table.sessionId, table.status),
+    index("inbox_organization_status").on(table.organizationId, table.status),
     index("inbox_turn").on(table.turnId),
   ],
 );

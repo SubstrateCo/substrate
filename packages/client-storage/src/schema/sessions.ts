@@ -37,6 +37,8 @@ export const sessions = sqliteTable(
   },
   (table) => [
     uniqueIndex("sessions_agent_key").on(table.userAgentId, table.key),
+    // The target of composite foreign keys that keep rows in their session's organization.
+    uniqueIndex("sessions_organization_id").on(table.organizationId, table.id),
     index("sessions_organization_agent").on(table.organizationId, table.userAgentId),
     index("sessions_origin_conversation").on(table.originConversationId),
     index("sessions_destination_conversation").on(table.destinationConversationId),

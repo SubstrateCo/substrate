@@ -1,4 +1,5 @@
 import {
+  inboxLaneAgingMs,
   inboxLanes,
   liveTurnStatuses,
   type InboxSource,
@@ -12,7 +13,13 @@ import type { Usage } from "@substrate/contracts/harness";
 import type { LocalTransaction, RunTransaction } from "../database.ts";
 import { inbox, sessions, turnEvents, turns, type TurnInterruption } from "../schema/index.ts";
 import { appendEvents, type NewTurnEvent } from "./events.ts";
-import { claimableStatuses, insertItem, setItemStatus, type InboxRow } from "./inbox.ts";
+import {
+  claimableStatuses,
+  insertItem,
+  localDedupeKeys,
+  setItemStatus,
+  type InboxRow,
+} from "./inbox.ts";
 import { folderKey, rotateEpoch, sessionById, type SessionRow } from "./sessions.ts";
 import { settleUncertainTurn } from "./uncertain.ts";
 import { and, desc, eq, inArray, lt, lte, ne, or } from "drizzle-orm";
@@ -23,9 +30,6 @@ export type TurnRow = typeof turns.$inferSelect;
 const deviceTurnCap = 3;
 /** Items batched into one turn. */
 const turnBatchLimit = 20;
-/** Background items move up one lane for every 10 minutes they wait. */
-export const laneAgingMs = 10 * 60_000;
-
 const ownerSources: ReadonlySet<InboxSource> = new Set([
   "owner_message",
   "answer",
@@ -56,7 +60,7 @@ export interface ClaimedTurn {
 function effectiveLane(item: InboxRow, now: number) {
   const lane = inboxLanes.indexOf(item.lane);
   if (item.lane !== "background") return lane;
-  return Math.max(0, lane - Math.floor(Math.max(0, now - item.availableAt) / laneAgingMs));
+  return Math.max(0, lane - Math.floor(Math.max(0, now - item.availableAt) / inboxLaneAgingMs));
 }
 
 /** Claim order inside a lane: requeued items first, then the longest waiting. */
@@ -254,7 +258,7 @@ async function queueResume(tx: LocalTransaction, turn: TurnRow, body: string, no
       source: "recovery",
       sourceRef: { source: "recovery", turnId: turn.id },
       lane: "system",
-      dedupeKey: `recovery:${turn.id}:${turn.attempt}`,
+      dedupeKey: localDedupeKeys.recovery(turn.id, turn.attempt),
       body,
     },
     now,
