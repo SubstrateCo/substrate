@@ -3,7 +3,7 @@ import { entityLinks } from "../../core/links/schema";
 import { AccessDeniedError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
 import { createAcceptedMessagingService } from "../../testing/messaging";
-import { maxRecursiveCtes, recordQueries } from "../../testing/queries";
+import { recordQueries } from "../../testing/queries";
 import { messagingParticipants } from "../messaging/schema";
 import { createContextService } from "./service";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
@@ -77,7 +77,7 @@ test("channel browse lists readable channels by name with membership and live me
   expect(await browse(first[1]!.id)).toEqual([channel(zeta, "none", 1)]);
 });
 
-test("task, project and combined work search each run one statement with one visibility CTE", async () => {
+test("task, project and combined work search each run one statement", async () => {
   await f.db.update(user).set({ emailVerified: true });
   const alice = f.forActor(f.alice);
   const project = await alice.projects.create({ name: "Search project" });
@@ -122,7 +122,6 @@ test("task, project and combined work search each run one statement with one vis
   expect(workQueries).toHaveLength(1);
   expect(workQueries[0]).toContain('FROM "tasks"');
   expect(workQueries[0]).toContain('FROM "projects"');
-  expect(maxRecursiveCtes(queries)).toBe(1);
 });
 
 test("short fields match substrings, and words match by prefix", async () => {

@@ -1,6 +1,7 @@
 import { AccessDeniedError } from "../../errors";
 import { actors, entities, member, userAgents } from "../../schema";
 import { setupDatabase } from "../../testing/database";
+import { rootEntityValues } from "../entities/identity";
 import { createActor, ensureHumanActor, ensureUserAgentActor } from "./provisioning";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { describe, expect, test } from "bun:test";
@@ -225,7 +226,7 @@ describe("actor provisioning", () => {
   test("database rejects invalid human and agent identity combinations", async () => {
     const [entity] = await f.db
       .insert(entities)
-      .values({ organizationId: f.orgA, entityType: "actor" })
+      .values(rootEntityValues(f.orgA, "actor"))
       .returning();
     const identity = { organizationId: f.orgA, entityId: entity!.entityId };
     await expect(

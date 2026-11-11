@@ -2,8 +2,8 @@ import type { DatabaseExecutor } from "../client";
 import { AccessDeniedError, ValidationError } from "../errors";
 import { activeActorCondition, permissionActorEntityId } from "./actors/access";
 import { actors } from "./actors/schema";
+import { rootEntityValues } from "./entities/identity";
 import { entities } from "./entities/schema";
-import { entityAccessParents } from "./permissions/access-parents";
 import { entityGrants, permissionLevel } from "./permissions/schema";
 import { entityAccessLevel, lockAccessPath, readableCondition } from "./permissions/visibility";
 import { and, eq, exists, isNull, sql, type SQLWrapper } from "drizzle-orm";
@@ -110,7 +110,7 @@ export class RepositoryContext {
     await this.requireActiveActor();
     const [entity] = await this.db
       .insert(entities)
-      .values({ organizationId: this.scope.organizationId, entityType })
+      .values(rootEntityValues(this.scope.organizationId, entityType))
       .returning();
     await this.db.insert(entityGrants).values({
       organizationId: this.scope.organizationId,
@@ -122,19 +122,19 @@ export class RepositoryContext {
   }
 
   // The caller must already hold requireAccess(parentEntityId, "edit", true) in this transaction.
+  // The child takes the parent's container, so a child of a child shares the root container.
   async createChildEntity(
     entityType: typeof entities.$inferInsert.entityType,
     parentEntityId: string,
   ) {
     const [entity] = await this.db
       .insert(entities)
-      .values({ organizationId: this.scope.organizationId, entityType })
+      .values({
+        organizationId: this.scope.organizationId,
+        entityType,
+        accessEntityId: sql`(SELECT access_entity_id FROM ${entities} WHERE organization_id = ${this.scope.organizationId} AND entity_id = ${parentEntityId})`,
+      })
       .returning();
-    await this.db.insert(entityAccessParents).values({
-      organizationId: this.scope.organizationId,
-      entityId: entity!.entityId,
-      parentEntityId,
-    });
     return entity!;
   }
 

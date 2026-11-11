@@ -1,5 +1,6 @@
 import type { DatabaseExecutor } from "../../client";
 import { AccessDeniedError, ValidationError } from "../../errors";
+import { rootEntityValues } from "../entities/identity";
 import { entities } from "../entities/schema";
 import { member } from "../organizations/schema";
 import { entityGrants } from "../permissions/schema";
@@ -26,7 +27,7 @@ export function createActor(db: DatabaseExecutor, input: ActorInput) {
     }
     const [entity] = await tx
       .insert(entities)
-      .values({ organizationId: input.organizationId, entityType: "actor" })
+      .values(rootEntityValues(input.organizationId, "actor"))
       .returning();
     const [actor] = await tx
       .insert(actors)

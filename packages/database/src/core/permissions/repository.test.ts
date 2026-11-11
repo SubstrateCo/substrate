@@ -1,10 +1,9 @@
-import { AccessDeniedError, type PermissionLevel } from "../../index";
+import { AccessDeniedError, ValidationError, type PermissionLevel } from "../../index";
 import { createRepositories } from "../../repositories";
 import { actors, entityGrants, member } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { createActor } from "../actors/provisioning";
-import { entityAccessParents } from "./access-parents";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
@@ -87,28 +86,23 @@ describe("access controls", () => {
     expect(await f.accessLevel(f.bob, contact.entityId)).toBe("owner");
   });
 
-  test("an inherited owner allows removing the last direct owner of a child", async () => {
+  test("grants and revocations on a child reject; the container keeps its last owner", async () => {
     const alice = f.forActor(f.alice);
-    const parent = await alice.contacts.create({ displayName: "Parent" });
-    const child = await alice.contacts.create({ displayName: "Child" });
-    await f.db.delete(entityGrants).where(eq(entityGrants.entityId, child.entityId));
-    await f.db.insert(entityAccessParents).values({
-      organizationId: f.orgA,
-      entityId: child.entityId,
-      parentEntityId: parent.entityId,
-    });
-    await alice.permissions.grant({
-      entityId: child.entityId,
-      actorEntityId: f.bob,
-      level: "owner",
-    });
-    await alice.permissions.revoke({ entityId: child.entityId, actorEntityId: f.bob });
+    const project = await alice.projects.create({ name: "Container" });
+    const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "Child" });
+    await expect(
+      alice.permissions.grant({ entityId: task.entityId, actorEntityId: f.bob, level: "owner" }),
+    ).rejects.toBeInstanceOf(ValidationError);
+    await expect(
+      alice.permissions.revoke({ entityId: task.entityId, actorEntityId: f.alice }),
+    ).rejects.toBeInstanceOf(ValidationError);
     expect(
-      await f.db.select().from(entityGrants).where(eq(entityGrants.entityId, child.entityId)),
+      await f.db.select().from(entityGrants).where(eq(entityGrants.entityId, task.entityId)),
     ).toEqual([]);
     await expect(
-      alice.permissions.revoke({ entityId: parent.entityId, actorEntityId: f.alice }),
+      alice.permissions.revoke({ entityId: project.entityId, actorEntityId: f.alice }),
     ).rejects.toThrow("last owner");
+    expect(await f.accessLevel(f.alice, task.entityId)).toBe("owner");
   });
 
   test("concurrent owners cannot revoke each other and leave an unowned entity", async () => {

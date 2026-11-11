@@ -1,8 +1,8 @@
-import { AccessDeniedError } from "../../errors";
+import { AccessDeniedError, ValidationError } from "../../errors";
 import { entities, member, actors } from "../../schema";
 import { contextConversation } from "../../testing/context";
 import { setupDatabase } from "../../testing/database";
-import { maxRecursiveCtes, recordQueries } from "../../testing/queries";
+import { recordQueries } from "../../testing/queries";
 import { messagingMessages, messagingParticipants } from "../messaging/schema";
 import { messageEntityReferences } from "./schema";
 import { createContextService } from "./service";
@@ -83,7 +83,6 @@ test("page context uses constant reads for one or fifty messages, including empt
   expect(page.result.every((row) => row.links[0]?.title === "Launch")).toBe(true);
   expect(page.count).toBe(one.count);
   expect(page.count).toBe(3);
-  expect(maxRecursiveCtes(queries)).toBe(1);
   queries.length = 0;
   expect((await service.messageLinks(rows[0]!.id))[0]?.title).toBe("Launch");
   expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(3);
@@ -177,7 +176,7 @@ test("page context preserves purposes, removal rights and both work visibility b
   expect((await checkedPage(ids)).every((row) => row.links.length === 0)).toBe(true);
 });
 
-test("a task grant never raises task access above the project, so removal rights match detach", async () => {
+test("a task cannot be shared above its project, so removal rights match detach", async () => {
   const { chat, conversation, root, project, repos } = await setup();
   await chat.addMembers(conversation.id, ["bob@example.com"]);
   const task = await repos.tasks.create({ projectEntityId: project.entityId, title: "Linked" });
@@ -187,7 +186,9 @@ test("a task grant never raises task access above the project, so removal rights
     actorEntityId: f.bob,
     level: "view",
   });
-  await repos.permissions.grant({ entityId: task.entityId, actorEntityId: f.bob, level: "owner" });
+  await expect(
+    repos.permissions.grant({ entityId: task.entityId, actorEntityId: f.bob, level: "owner" }),
+  ).rejects.toBeInstanceOf(ValidationError);
   const [link] = (await checkedPage([root.id], "bob"))[0]!.links;
   expect(link).toMatchObject({ entityId: task.entityId, canRemove: false });
   await expect(context("bob").detach(root.id, task.entityId)).rejects.toBeInstanceOf(

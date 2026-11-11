@@ -3,7 +3,6 @@ import { setupDatabase } from "../../testing/database";
 import { contacts } from "../contacts/schema";
 import { entities } from "../entities/schema";
 import { member } from "../organizations/schema";
-import { entityAccessParents } from "./access-parents";
 import { entityGrants } from "./schema";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
@@ -17,15 +16,12 @@ test("inherited access applies to reads, lists, edits, and revocations", async (
   const parent = await owner.contacts.create({ displayName: "Parent" });
   const [entity] = await f.db
     .insert(entities)
-    .values({ organizationId: f.orgA, entityType: "contact" })
+    .values({ organizationId: f.orgA, entityType: "contact", accessEntityId: parent.entityId })
     .returning();
   const childId = entity!.entityId;
   await f.db
     .insert(contacts)
     .values({ entityId: childId, organizationId: f.orgA, displayName: "Child" });
-  await f.db
-    .insert(entityAccessParents)
-    .values({ organizationId: f.orgA, entityId: childId, parentEntityId: parent.entityId });
   await owner.permissions.grant({ entityId: parent.entityId, actorEntityId: f.bob, level: "edit" });
   expect(await f.accessLevel(f.bob, childId)).toBe("edit");
   expect(await f.forActor(f.bob).contacts.list()).toHaveLength(2);
@@ -41,18 +37,23 @@ test("inherited access applies to reads, lists, edits, and revocations", async (
   await expect(owner.entities.get(childId)).rejects.toBeInstanceOf(AccessDeniedError);
 });
 
-test("revoking a child owner grant falls back to inherited access without stranding the item", async () => {
-  const owner = f.forActor(f.alice);
-  const parent = await owner.contacts.create({ displayName: "Parent" });
-  const child = await owner.contacts.create({ displayName: "Child" });
+test("a grant row on a child gives no access; only its container's grants count", async () => {
+  const alice = f.forActor(f.alice);
+  const parent = await alice.contacts.create({ displayName: "Parent" });
+  const [entity] = await f.db
+    .insert(entities)
+    .values({ organizationId: f.orgA, entityType: "contact", accessEntityId: parent.entityId })
+    .returning();
+  const childId = entity!.entityId;
   await f.db
-    .insert(entityAccessParents)
-    .values({ organizationId: f.orgA, entityId: child.entityId, parentEntityId: parent.entityId });
-  await f.db.delete(entityGrants).where(eq(entityGrants.entityId, child.entityId));
-  await owner.permissions.grant({ entityId: parent.entityId, actorEntityId: f.bob, level: "view" });
-  await owner.permissions.grant({ entityId: child.entityId, actorEntityId: f.bob, level: "owner" });
-  expect(await f.accessLevel(f.bob, child.entityId)).toBe("owner");
-  await owner.permissions.revoke({ entityId: child.entityId, actorEntityId: f.bob });
-  expect(await f.accessLevel(f.bob, child.entityId)).toBe("view");
-  expect(await f.accessLevel(f.alice, child.entityId)).toBe("owner");
+    .insert(contacts)
+    .values({ entityId: childId, organizationId: f.orgA, displayName: "Child" });
+  await f.db
+    .insert(entityGrants)
+    .values({ organizationId: f.orgA, entityId: childId, actorEntityId: f.bob, level: "owner" });
+  await expect(f.accessLevel(f.bob, childId)).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await f.forActor(f.bob).contacts.list()).toEqual([]);
+  await alice.permissions.grant({ entityId: parent.entityId, actorEntityId: f.bob, level: "view" });
+  expect(await f.accessLevel(f.bob, childId)).toBe("view");
+  expect(await f.forActor(f.bob).contacts.list()).toHaveLength(2);
 });

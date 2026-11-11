@@ -1,7 +1,6 @@
 import { entities } from "../../core/entities/schema";
 import { entityLinks } from "../../core/links/schema";
 import { member } from "../../core/organizations/schema";
-import { entityAccessParents } from "../../core/permissions/access-parents";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { createRepositories } from "../../repositories";
 import * as schema from "../../schema";
@@ -208,9 +207,9 @@ describe("projects and tasks", () => {
     });
     await expect(
       fixture.db
-        .update(entityAccessParents)
-        .set({ parentEntityId: other.entityId })
-        .where(eq(entityAccessParents.entityId, task.entityId))
+        .update(entities)
+        .set({ accessEntityId: other.entityId })
+        .where(eq(entities.entityId, task.entityId))
         .execute(),
     ).rejects.toMatchObject({ cause: { code: "23503" } });
     await expect(
@@ -260,7 +259,7 @@ test("task create locks the project once and update batches activity with one as
   });
   const task = await repos.tasks.create({ projectEntityId: project.entityId, title: "Count" });
   expect(statements.filter((query) => query.includes("FOR UPDATE"))).toHaveLength(1);
-  expect(statements).toHaveLength(6);
+  expect(statements).toHaveLength(5);
   statements.length = 0;
   await repos.tasks.update(task.entityId, {
     title: "Counted",

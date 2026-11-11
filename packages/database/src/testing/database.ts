@@ -1,3 +1,4 @@
+import { rootEntityValues } from "../core/entities/identity";
 import { RepositoryContext } from "../core/repository-context";
 import { createRepositories } from "../repositories";
 import * as schema from "../schema";
@@ -41,13 +42,11 @@ export function setupDatabase() {
         { id: "bob-a", userId: "bob", organizationId: fixture.orgA, role: "member" },
         { id: "outsider-b", userId: "outsider", organizationId: fixture.orgB, role: "owner" },
       ]),
-      testDatabase.insert(schema.entities).values(
-        actors.map((actor) => ({
-          entityId: actor.entityId,
-          organizationId: actor.organizationId,
-          entityType: "actor" as const,
-        })),
-      ),
+      testDatabase
+        .insert(schema.entities)
+        .values(
+          actors.map((actor) => rootEntityValues(actor.organizationId, "actor", actor.entityId)),
+        ),
       testDatabase
         .insert(schema.actors)
         .values(actors.map((actor) => ({ ...actor, type: "human" as const }))),

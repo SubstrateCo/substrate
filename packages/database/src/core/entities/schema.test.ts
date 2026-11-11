@@ -1,5 +1,6 @@
 import { contacts, entities, entityGrants, entityLinks } from "../../schema";
 import { setupDatabase } from "../../testing/database";
+import { rootEntityValues } from "./identity";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { describe, expect, test } from "bun:test";
 import { sql } from "drizzle-orm";
@@ -9,8 +10,9 @@ const f = setupDatabase();
 describe("database integrity", () => {
   test("entities require an organization", async () => {
     const insert = async () => {
+      const entityId = crypto.randomUUID();
       await f.db.execute(
-        sql`INSERT INTO entities (entity_type, organization_id) VALUES ('contact', NULL)`,
+        sql`INSERT INTO entities (entity_id, entity_type, organization_id, access_entity_id) VALUES (${entityId}, 'contact', NULL, ${entityId})`,
       );
     };
     await expect(insert()).rejects.toMatchObject({ cause: { code: "23502" } });
@@ -24,7 +26,7 @@ describe("database integrity", () => {
     ).rejects.toMatchObject({ cause: { code: "23503" } });
     const [entity] = await f.db
       .insert(entities)
-      .values({ organizationId: f.orgA, entityType: "contact" })
+      .values(rootEntityValues(f.orgA, "contact"))
       .returning();
     await expect(
       f.db

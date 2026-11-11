@@ -1,3 +1,4 @@
+import { rootEntityValues } from "./core/entities/identity";
 import { pruneRecords } from "./maintenance";
 import { agentWakes, entities, notifications } from "./schema";
 import { agentWorkFixture } from "./testing/agent-work";
@@ -49,13 +50,9 @@ test("each rule deletes in bounded batches and the next run continues", async ()
 
 test("read notifications older than 90 days and notifications of deleted records are deleted", async () => {
   const [live, deleted] = [crypto.randomUUID(), crypto.randomUUID()];
-  await f.db.insert(entities).values(
-    [live, deleted].map((entityId) => ({
-      entityId,
-      organizationId: f.orgA,
-      entityType: "project" as const,
-    })),
-  );
+  await f.db
+    .insert(entities)
+    .values([live, deleted].map((entityId) => rootEntityValues(f.orgA, "project", entityId)));
   const notification = (entityId: string, createdDays: number, readDays: number | null) => ({
     organizationId: f.orgA,
     recipientActorEntityId: f.alice,

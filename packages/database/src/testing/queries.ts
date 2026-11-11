@@ -16,9 +16,3 @@ export function recordQueries() {
   });
   return { db, queries, parameters };
 }
-
-// PostgreSQL evaluates each WITH RECURSIVE subquery on its own, so a statement that repeats the
-// visibility CTE computes the visible set again. Statement counts cannot see this.
-export function maxRecursiveCtes(queries: string[]) {
-  return Math.max(0, ...queries.map((query) => query.match(/with recursive/gi)?.length ?? 0));
-}

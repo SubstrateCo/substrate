@@ -1,7 +1,6 @@
 import { ValidationError } from "../../errors";
 import { RepositoryContext, type PermissionLevel } from "../repository-context";
 import { entityGrants, permissionLevel } from "./schema";
-import { inheritedOwnerQuery } from "./visibility";
 import { and, eq, sql } from "drizzle-orm";
 
 export function permissionRepository(context: RepositoryContext) {
@@ -14,7 +13,9 @@ export function permissionRepository(context: RepositoryContext) {
   }) {
     await db.transaction(async (tx) => {
       const ctx = new RepositoryContext(tx, scope);
-      await ctx.requireAccess(input.entityId, "owner", true);
+      const { entity } = await ctx.requireAccess(input.entityId, "owner", true);
+      if (entity.accessEntityId !== input.entityId)
+        throw new ValidationError("This record inherits its access. Share its parent instead.");
       if (input.level) {
         const target = await ctx.requireActiveActor(input.actorEntityId);
         if (target.type !== "human")
@@ -39,7 +40,7 @@ export function permissionRepository(context: RepositoryContext) {
               AND ${entityGrants.entityId} = ${input.entityId}
               AND ${entityGrants.level} = 'owner'
               AND ${entityGrants.actorEntityId} <> ${input.actorEntityId}
-          ) OR EXISTS (${inheritedOwnerQuery(scope, input.entityId)}) AS remaining
+          ) AS remaining
         `);
         if (!owners?.remaining)
           throw new ValidationError("Cannot remove or downgrade the last owner.");

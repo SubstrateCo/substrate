@@ -3,7 +3,6 @@ import { taskStatusValues } from "@startup-os/contracts/tasks";
 import { actors } from "../../core/actors/schema";
 import { entityIdentity } from "../../core/entities/identity";
 import { entities } from "../../core/entities/schema";
-import { entityAccessParents } from "../../core/permissions/access-parents";
 import { searchDocument, trigramKey } from "../../core/search/indexing";
 import { projects } from "../projects/schema";
 import { sql } from "drizzle-orm";
@@ -42,11 +41,7 @@ export const tasks = pgTable(
     }),
     foreignKey({
       columns: [table.organizationId, table.entityId, table.projectEntityId],
-      foreignColumns: [
-        entityAccessParents.organizationId,
-        entityAccessParents.entityId,
-        entityAccessParents.parentEntityId,
-      ],
+      foreignColumns: [entities.organizationId, entities.entityId, entities.accessEntityId],
     }),
     foreignKey({
       columns: [table.organizationId, table.projectEntityId, table.parentTaskEntityId],
