@@ -25,7 +25,7 @@ const renderer = Bun.spawn([process.execPath, "run", "build"], {
 });
 if ((await renderer.exited) !== 0) throw new Error("Renderer build failed.");
 const result = await Bun.build({
-  entrypoints: [fileURLToPath(new URL("../src/main.js", import.meta.url))],
+  entrypoints: [fileURLToPath(new URL("../src/main.ts", import.meta.url))],
   outdir: `${desktop}/dist`,
   target: "node",
   format: "esm",

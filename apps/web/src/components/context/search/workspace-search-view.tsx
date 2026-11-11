@@ -66,7 +66,7 @@ export function WorkspaceSearch({
 }) {
   const panel = useRef<HTMLElement>(null);
   const [panelTop, setPanelTop] = useState(0);
-  const isMac = window.substrateWindow?.platform === "darwin";
+  const isMac = desktopPlatform() === "darwin";
   useLayoutEffect(() => {
     const measure = () => setPanelTop(panel.current?.getBoundingClientRect().top ?? 0);
     measure();
@@ -157,3 +157,4 @@ export function WorkspaceSearch({
     </section>
   );
 }
+import { desktopPlatform } from "@/lib/desktop/bridges";

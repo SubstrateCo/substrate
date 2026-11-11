@@ -47,7 +47,7 @@ try {
     if (typeof executable !== "string")
       throw new Error("Electron did not provide an executable path.");
     windowProcess = Bun.spawn(
-      [executable, fileURLToPath(new URL("../src/main.js", import.meta.url))],
+      [executable, fileURLToPath(new URL("../src/main.ts", import.meta.url))],
       {
         cwd: desktop,
         env,

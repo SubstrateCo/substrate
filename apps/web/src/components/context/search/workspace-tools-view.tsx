@@ -31,8 +31,8 @@ export function WorkspaceTools({
   }
   const input = useRef<HTMLInputElement>(null);
   const container = useRef<HTMLDivElement>(null);
-  const desktop = !!window.substrateWindow;
-  const isMac = window.substrateWindow?.platform === "darwin";
+  const desktop = !!desktopPlatform();
+  const isMac = desktopPlatform() === "darwin";
   const close = useCallback(() => {
     setOpen(false);
     setFocusRequest((value) => value + 1);
@@ -126,3 +126,4 @@ export function WorkspaceTools({
     </div>
   );
 }
+import { desktopPlatform } from "@/lib/desktop/bridges";

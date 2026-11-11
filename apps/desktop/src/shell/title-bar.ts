@@ -1,10 +1,12 @@
+import { handleBridge } from "@substrate/contracts/desktop/ipc";
 import { fullscreenChannel, windowChannel } from "@substrate/contracts/desktop/window";
+import { methods } from "@substrate/contracts/desktop/window-ipc";
 
 import { trustedSender } from "./trusted-sender.ts";
 import {
   ipcMain,
   nativeTheme,
-  type BrowserWindow,
+  BrowserWindow,
   type BrowserWindowConstructorOptions,
 } from "electron";
 
@@ -29,7 +31,21 @@ export function titleBarOptions(): BrowserWindowConstructorOptions {
   };
 }
 
-export function attachTitleBar(window: BrowserWindow, rendererURL: string) {
+export function registerWindowBridge(rendererURL: string) {
+  ipcMain.handle(windowChannel, (event, method, value) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (!window || !trustedSender(event, window.webContents, rendererURL))
+      throw new Error("Untrusted window request.");
+    return handleBridge(windowChannel, methods, {
+      isFullscreen: () => window.isFullScreen(),
+      setTheme: (theme) => {
+        nativeTheme.themeSource = theme;
+      },
+    })(method, value);
+  });
+}
+
+export function attachTitleBar(window: BrowserWindow, _rendererURL: string) {
   const sync = () => {
     if (window.isDestroyed()) return;
     if (process.platform === "darwin") {
@@ -43,17 +59,6 @@ export function attachTitleBar(window: BrowserWindow, rendererURL: string) {
       window.setTitleBarOverlay(overlayOptions());
     }
   };
-  ipcMain.handle(windowChannel, (event, method, theme) => {
-    if (!trustedSender(event, window.webContents, rendererURL)) {
-      throw new Error("Untrusted window request.");
-    }
-    if (method === "fullscreen") return window.isFullScreen();
-    if (method !== "theme" || (theme !== "light" && theme !== "dark" && theme !== "system")) {
-      throw new Error("Invalid window request.");
-    }
-    if (nativeTheme.themeSource !== theme) nativeTheme.themeSource = theme;
-    if (process.platform === "darwin") sync();
-  });
   const fullscreen = (value: boolean) => {
     if (process.platform === "darwin") sync();
     window.webContents.send(fullscreenChannel, value);
@@ -64,6 +69,5 @@ export function attachTitleBar(window: BrowserWindow, rendererURL: string) {
   nativeTheme.on("updated", sync);
   window.on("closed", () => {
     nativeTheme.removeListener("updated", sync);
-    ipcMain.removeHandler(windowChannel);
   });
 }

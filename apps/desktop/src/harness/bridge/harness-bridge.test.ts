@@ -1,4 +1,5 @@
-import { parseHarnessCommand } from "./harness-bridge.ts";
+import { commandSchema } from "@substrate/contracts/harness";
+
 import { expect, test } from "bun:test";
 
 test("commands cannot smuggle paths or catalog configuration", () => {
@@ -11,16 +12,16 @@ test("commands cannot smuggle paths or catalog configuration", () => {
     epoch: 0,
     prefix: "",
   };
-  expect(parseHarnessCommand(open)).toEqual(open);
+  expect(commandSchema.parse(open)).toEqual(open);
   const { epoch: _epoch, ...withoutEpoch } = open;
-  expect(() => parseHarnessCommand(withoutEpoch)).toThrow();
-  expect(() => parseHarnessCommand({ ...open, cwd: "C:/other" })).toThrow();
-  expect(() => parseHarnessCommand({ ...open, folder: { helperId: "../escape" } })).toThrow();
+  expect(() => commandSchema.parse(withoutEpoch)).toThrow();
+  expect(() => commandSchema.parse({ ...open, cwd: "C:/other" })).toThrow();
+  expect(() => commandSchema.parse({ ...open, folder: { helperId: "../escape" } })).toThrow();
   expect(() =>
-    parseHarnessCommand({ type: "configure", organizationId: "org", agents: [] }),
+    commandSchema.parse({ type: "configure", organizationId: "org", agents: [] }),
   ).toThrow();
   expect(() =>
-    parseHarnessCommand({
+    commandSchema.parse({
       type: "steer",
       organizationId: "org",
       sessionId: "session",

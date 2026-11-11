@@ -78,7 +78,7 @@ export function createBridgeChangeBatcher(
 export function useAgentWorkBridgeSync(userId: string | undefined, organizationId?: string | null) {
   const client = useQueryClient();
   useEffect(() => {
-    const bridge = window.substrateAgentWork;
+    const bridge = agentWorkBridge();
     if (!bridge || !userId || !organizationId) return;
     const batcher = createBridgeChangeBatcher(userId, organizationId, (queryKey) => {
       void client.invalidateQueries({ queryKey });
@@ -90,3 +90,4 @@ export function useAgentWorkBridgeSync(userId: string | undefined, organizationI
     };
   }, [client, userId, organizationId]);
 }
+import { agentWorkBridge } from "@/lib/desktop/bridges";

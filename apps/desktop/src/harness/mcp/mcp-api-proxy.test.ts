@@ -135,3 +135,19 @@ test("API permission failures pass through without a fallback or retry", async (
   expect(await f.proxy(projects)).toEqual(denied);
   expect(f.requests).toHaveLength(1);
 });
+
+test("the explicit result sink receives the verified request and its result before completion", async () => {
+  const received: { request: WorkspaceApiRequest; result: WorkspaceApiResult }[] = [];
+  const result: WorkspaceApiResult = { success: true, data: { id: "task" } };
+  const proxy = createMcpApiProxy({
+    backend: "https://api.example.com",
+    isActive: () => true,
+    fetchAPI: async () => Response.json(result),
+    onResult: async (request, value) => {
+      await Promise.resolve();
+      received.push({ request, result: value });
+    },
+  });
+  expect(await proxy(createProject)).toEqual(result);
+  expect(received).toEqual([{ request: createProject, result }]);
+});

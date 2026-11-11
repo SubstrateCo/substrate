@@ -4,7 +4,7 @@ import type { HarnessEvent } from "@substrate/contracts/harness";
 import type { WorkspaceApiResult } from "@substrate/contracts/harness/mcp";
 import type { RealtimeUpdate } from "@substrate/contracts/realtime";
 
-import { createHarnessAuthority } from "../harness/controller/harness-authority.ts";
+import { DesktopSessionAuthority } from "../session/desktop-session-authority.ts";
 import { dispatchAgentWork } from "./bridge/agent-work-bridge.ts";
 import type { AgentDirectory, HarnessPort } from "./runtime/context.ts";
 import { createAgentWorkRuntime, type AgentWorkRuntime } from "./runtime/runtime.ts";
@@ -64,6 +64,7 @@ export function createAgentWorkService(options: {
   installationId: string;
   device: { name: string; platform: string };
   fetchAPI: (url: string, init: RequestInit) => Promise<Response>;
+  authority: DesktopSessionAuthority;
   harness: HarnessPort;
   accountsDirectory: string;
   migrationsDirectory?: string;
@@ -71,7 +72,7 @@ export function createAgentWorkService(options: {
   log?: (message: string) => void;
 }) {
   const log = options.log ?? (() => {});
-  const authority = createHarnessAuthority(options);
+  const authority = options.authority;
   /**
    * Counts events that may change the session: session, access and organization hints, a
    * realtime reconnect, and a denied server call. The active runtime is verified while the
@@ -80,9 +81,16 @@ export function createAgentWorkService(options: {
   let sessionChanges = 0;
   let verifiedAt = -1;
   const sessionChanged = () => {
-    sessionChanges++;
+    authority.invalidate();
   };
-  const server = createAgentWorkServer({ ...options, onDenied: sessionChanged });
+  authority.onChange(() => {
+    sessionChanges++;
+  });
+  const server = createAgentWorkServer({
+    ...options,
+    onDenied: sessionChanged,
+    catalog: () => authority.catalog(),
+  });
   const agents = agentDirectory(server);
   let active: Active | undefined;
   let ensuring: Promise<Active | undefined> | undefined;
@@ -181,9 +189,10 @@ export function createAgentWorkService(options: {
       stopped = false;
       void ensure();
     },
-    stop() {
+    async stop() {
       stopped = true;
-      shutdown();
+      if (active) await retire(active);
+      else shutdown();
     },
     onRealtime(event: RealtimeUpdate) {
       if (event.type === "status") realtimeConnected = event.status === "connected";
@@ -206,6 +215,7 @@ export function createAgentWorkService(options: {
       if (event.domain === "access") void ensure();
       if (event.domain === "agents") {
         // An agent may have moved to or from this desktop.
+        authority.invalidateCatalog();
         agents.invalidate();
         const current = active;
         current?.runtime.agentsChanged();
@@ -223,7 +233,7 @@ export function createAgentWorkService(options: {
       active?.runtime.onHarnessEvent(event);
     },
     observeToolCall(request: unknown, result: unknown) {
-      void active?.runtime.observeToolCall(request, result).catch(() => {});
+      return active?.runtime.observeToolCall(request, result);
     },
     async handleLocalTool(request: unknown): Promise<WorkspaceApiResult> {
       if (!active)

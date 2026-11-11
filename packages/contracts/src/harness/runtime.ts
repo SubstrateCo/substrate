@@ -6,8 +6,9 @@ import type {
   HarnessMcpServer,
   HarnessSkill,
 } from "./local.ts";
+import { harnessIdSchema } from "./local.ts";
 import type { HarnessModelCatalog } from "./models.ts";
-import type { TurnContext, TurnKind } from "./turn-context.ts";
+import { turnContextSchema, turnKinds } from "./turn-context.ts";
 import { z } from "zod";
 
 export interface HarnessLocalScope {
@@ -32,13 +33,14 @@ export const adapterCapabilitiesSchema = z.object({
 export type AdapterCapabilities = z.infer<typeof adapterCapabilitiesSchema>;
 
 /** Token counts as reported. contextUsed and contextWindow drive epoch rotation. */
-export interface Usage {
-  inputTokens?: number;
-  outputTokens?: number;
-  cachedInputTokens?: number;
-  contextUsed?: number;
-  contextWindow?: number;
-}
+const usageSchema = z.object({
+  inputTokens: z.number().optional(),
+  outputTokens: z.number().optional(),
+  cachedInputTokens: z.number().optional(),
+  contextUsed: z.number().optional(),
+  contextWindow: z.number().optional(),
+});
+export type Usage = z.infer<typeof usageSchema>;
 
 export interface TurnInput {
   /** Local inbox item IDs batched into this input. */
@@ -58,7 +60,11 @@ export interface InterruptReceipt {
 }
 
 /** The main agent folder, or a helper's sibling folder. Each folder is one slot. */
-export type HarnessFolder = "main" | { helperId: string };
+export const harnessFolderSchema = z.union([
+  z.literal("main"),
+  z.strictObject({ helperId: harnessIdSchema }),
+]);
+export type HarnessFolder = z.infer<typeof harnessFolderSchema>;
 
 /** A native session that the host keeps open for a local agent-work session. */
 export const harnessSessionRefSchema = z.object({
@@ -68,50 +74,51 @@ export const harnessSessionRefSchema = z.object({
   agentId: z.string(),
   harness: z.enum(harnessKinds),
   nativeSessionId: z.string(),
-  folder: z.union([z.literal("main"), z.object({ helperId: z.string() })]),
+  folder: harnessFolderSchema,
   capabilities: adapterCapabilitiesSchema,
   /** False when a new native session started instead of resuming nativeSessionId. */
   resumed: z.boolean(),
 });
 export type HarnessSessionRef = z.infer<typeof harnessSessionRefSchema>;
 
-interface SessionCommand {
-  organizationId: string;
-  /** The local agent-work session ID. */
-  sessionId: string;
-}
-
-export type HarnessCommand =
-  | (SessionCommand & {
-      type: "open";
-      agentId: string;
-      folder: HarnessFolder;
-      nativeSessionId?: string;
-      /**
-       * The local session's epoch. An open session of another epoch, or of another
-       * nativeSessionId when one is given, is closed and replaced by a fresh one.
-       */
-      epoch: number;
-      /** Fail with resume-failed instead of starting a new native session. */
-      requireResume?: boolean;
-      /** Managed policy prefix for this epoch. Byte-stable within an epoch. */
-      prefix: string;
-    })
-  | (SessionCommand & {
-      type: "turn";
-      turnId: string;
-      generation: number;
-      mode: TurnKind;
-      input: TurnInput;
-      /** Attached to every MCP call made from this turn's lease. */
-      context: TurnContext;
-    })
-  | (SessionCommand & { type: "steer"; turnId: string; inputId: string; text: string })
-  /** Fails with no-live-turn when that turn is not live in the session. */
-  | (SessionCommand & { type: "interrupt"; turnId: string })
-  | (SessionCommand & { type: "respond"; requestId: string; response: unknown })
-  | (SessionCommand & { type: "compact" })
-  | (SessionCommand & { type: "close" });
+const session = { organizationId: harnessIdSchema, sessionId: z.string().min(1).max(200) };
+const inputId = z.string().min(1).max(200);
+const text = z.string().min(1).max(1_000_000);
+export const commandSchema = z.discriminatedUnion("type", [
+  z.strictObject({
+    type: z.literal("open"),
+    ...session,
+    agentId: harnessIdSchema,
+    folder: harnessFolderSchema,
+    nativeSessionId: z.string().min(1).max(500).optional(),
+    epoch: z.number().int().min(0),
+    requireResume: z.boolean().optional(),
+    prefix: z.string().max(100_000),
+  }),
+  z.strictObject({
+    type: z.literal("turn"),
+    ...session,
+    turnId: z.uuid(),
+    generation: z.number().int().min(0),
+    mode: z.enum(turnKinds),
+    input: z.strictObject({ inputIds: z.array(inputId).min(1).max(64), text }),
+    context: turnContextSchema,
+  }),
+  z.strictObject({ type: z.literal("steer"), ...session, turnId: z.uuid(), inputId, text }),
+  z.strictObject({ type: z.literal("interrupt"), ...session, turnId: z.uuid() }),
+  z.strictObject({
+    type: z.literal("respond"),
+    ...session,
+    requestId: z.string().min(1).max(500),
+    response: z
+      .json()
+      .optional()
+      .refine((value) => value === undefined || JSON.stringify(value).length <= 100000),
+  }),
+  z.strictObject({ type: z.literal("compact"), ...session }),
+  z.strictObject({ type: z.literal("close"), ...session }),
+]);
+export type HarnessCommand = z.infer<typeof commandSchema>;
 
 /** turn and steer acknowledge at once; their outcome arrives as events. */
 export interface HarnessCommandResults {
@@ -127,42 +134,56 @@ export type HarnessCommandResult<C extends HarnessCommand = HarnessCommand> =
   HarnessCommandResults[C["type"]];
 
 /** Canonical events. Raw native payloads stay inside adapters, except request data. */
-export type HarnessEventBody =
-  | { type: "turn.started" }
-  | { type: "turn.completed"; result: TurnResult }
-  | { type: "text"; text: string }
-  | { type: "item.started"; itemId: string; itemType: string; title: string }
-  | { type: "item.completed"; itemId: string; status: "completed" | "failed" }
-  | {
-      type: "request.opened";
-      requestId: string;
-      kind: "permission" | "input";
-      /** Native request data. normalizeHarnessRequest converts it for display. */
-      data: unknown;
-    }
-  | { type: "input.consumed"; inputId: string }
-  | { type: "usage.updated"; usage: Usage }
-  | { type: "compaction" }
-  | { type: "error"; code: string; message: string }
-  | {
-      type: "session.closed";
-      /**
-       * idle: the keep-alive reaper closed it. closed: a close command, a replacing open, or host
-       * disposal. worker_exited: the harness process stopped; main emits this for every open
-       * session, with that session's live turn, if any. configuration: the agent's
-       * configuration changed; a session with a live turn closes after that turn ends.
-       */
-      reason: "idle" | "closed" | "worker_exited" | "configuration";
-    };
-
-export type HarnessEvent = {
-  sessionId: string;
-  organizationId: string;
-  /** Null for native output outside any turn of ours, and for session events. */
-  turnId: string | null;
-  generation: number | null;
-  timestamp: number;
-} & HarnessEventBody;
+const harnessEventBodySchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("turn.started") }),
+  z.object({
+    type: z.literal("turn.completed"),
+    result: z.object({
+      status: z.enum(["completed", "interrupted", "failed"]),
+      error: z.string().optional(),
+      consumedInputIds: z.array(z.string()).optional(),
+      usage: usageSchema.optional(),
+    }),
+  }),
+  z.object({ type: z.literal("text"), text: z.string() }),
+  z.object({
+    type: z.literal("item.started"),
+    itemId: z.string(),
+    itemType: z.string(),
+    title: z.string(),
+  }),
+  z.object({
+    type: z.literal("item.completed"),
+    itemId: z.string(),
+    status: z.enum(["completed", "failed"]),
+  }),
+  z.object({
+    type: z.literal("request.opened"),
+    requestId: z.string(),
+    kind: z.enum(["permission", "input"]),
+    data: z.unknown(),
+  }),
+  z.object({ type: z.literal("input.consumed"), inputId: z.string() }),
+  z.object({ type: z.literal("usage.updated"), usage: usageSchema }),
+  z.object({ type: z.literal("compaction") }),
+  z.object({ type: z.literal("error"), code: z.string(), message: z.string() }),
+  z.object({
+    type: z.literal("session.closed"),
+    reason: z.enum(["idle", "closed", "worker_exited", "configuration"]),
+  }),
+]);
+export type HarnessEventBody = z.infer<typeof harnessEventBodySchema>;
+export const harnessEventSchema = z.intersection(
+  z.object({
+    sessionId: z.string(),
+    organizationId: z.string(),
+    turnId: z.string().nullable(),
+    generation: z.number().int().min(0).nullable(),
+    timestamp: z.number(),
+  }),
+  harnessEventBodySchema,
+);
+export type HarnessEvent = z.infer<typeof harnessEventSchema>;
 
 export interface HarnessHost {
   listModels(

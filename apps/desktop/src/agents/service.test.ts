@@ -1,5 +1,6 @@
 import type { RealtimeDomain, RealtimeUpdate } from "@substrate/contracts/realtime";
 
+import { DesktopSessionAuthority } from "../session/desktop-session-authority.ts";
 import { createAgentWorkService } from "./service.ts";
 import { afterEach, expect, jest, test } from "bun:test";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
@@ -39,7 +40,7 @@ async function serviceFixture() {
   /** Paths that answer UNAUTHENTICATED once, as when the session ended. */
   const deniedOnce = new Set<string>();
   const ok = (data: unknown) => Response.json({ success: true, data });
-  const service = createAgentWorkService({
+  const serviceOptions = {
     backend,
     installationId: "00000000-0000-4000-8000-0000000000d1",
     device: { name: "Laptop", platform: "win32" },
@@ -53,7 +54,7 @@ async function serviceFixture() {
       closeOrganization: async () => {},
       readProfile: async () => "",
     },
-    async fetchAPI(url) {
+    async fetchAPI(url: string) {
       const path = new URL(url).pathname;
       requests.push(path);
       if (deniedOnce.delete(path))
@@ -73,9 +74,13 @@ async function serviceFixture() {
       if (path.endsWith("/wakes/pull") || path.endsWith("/requests/answers")) return ok([]);
       return ok(null);
     },
+  };
+  const service = createAgentWorkService({
+    ...serviceOptions,
+    authority: new DesktopSessionAuthority(serviceOptions),
   });
   cleanup = async () => {
-    service.stop();
+    await service.stop();
     await rm(root, { recursive: true, force: true });
   };
   return {

@@ -4,9 +4,12 @@ import {
   harnessLocalConfigurationSchema,
   harnessModelCatalogSchema,
   harnessSessionRefSchema,
+  commandSchema,
   type HarnessCommand,
   type HarnessCommandResult,
 } from "@substrate/contracts/harness";
+import { harnessMethods, localHarnessMethods } from "@substrate/contracts/harness/ipc";
+import type { HarnessMethod } from "@substrate/contracts/harness/ipc";
 import {
   localToolRequest,
   workspaceApiResult,
@@ -16,18 +19,11 @@ import {
 import { mcpTools } from "@substrate/contracts/harness/tools";
 
 import {
-  harnessMethods,
-  localHarnessMethods,
-  parseHarnessCommand,
-} from "../bridge/harness-bridge.ts";
-import type { HarnessMethod } from "../bridge/harness-bridge.ts";
+  DesktopSessionAuthority,
+  HarnessAccessDenied,
+} from "../../session/desktop-session-authority.ts";
 import { createMcpApiProxy } from "../mcp/mcp-api-proxy.ts";
 import { HarnessWorkerError, type HarnessWorker } from "../worker/protocol.ts";
-import {
-  createHarnessAuthority,
-  HarnessAccessDenied,
-  readVerifiedSession,
-} from "./harness-authority.ts";
 import { prepareLocalInput } from "./local-configuration.ts";
 import { join } from "node:path";
 /* oxlint-disable deslop/no-unknown-parameters, deslop/no-unknown-returns -- Main parses IPC and worker response payloads at this boundary. The injected transport carries structured-clone values. */
@@ -55,32 +51,36 @@ class HarnessCommandError extends Error {
   }
 }
 
-type Authorization = Awaited<ReturnType<ReturnType<typeof createHarnessAuthority>["verify"]>>;
+type Authorization = Awaited<ReturnType<DesktopSessionAuthority["verify"]>>;
 
 /** Main-only authority. Never accepts an account path or a catalog from IPC. */
 export function createHarnessController(options: {
   backend: string;
   accountsDirectory: string;
   fetchAPI: (url: string, init: RequestInit) => Promise<Response>;
+  authority: DesktopSessionAuthority;
+  localToolHandler?: LocalToolProxy;
+  onResult?: Parameters<typeof createMcpApiProxy>[0]["onResult"];
   createWorker: (
     accountDirectory: string,
     proxy: WorkspaceApiProxy,
     localTools: LocalToolProxy,
   ) => HarnessWorker;
 }) {
-  const authority = createHarnessAuthority(options);
+  const authority = options.authority;
   let worker: HarnessWorker | undefined;
   let identity: string | undefined;
   let generation = 0;
   let queue = Promise.resolve<unknown>(undefined);
   let syncing: Promise<unknown> | undefined;
-  let verified: { generation: number; authorization: Promise<Authorization> } | undefined;
-  let localToolHandler: LocalToolProxy | undefined;
+  const localToolHandler = options.localToolHandler;
+  authority.onChange(() => {
+    syncing = undefined;
+  });
 
   function disconnect() {
     generation++;
     syncing = undefined;
-    verified = undefined;
     worker?.dispose();
     worker = undefined;
     identity = undefined;
@@ -88,18 +88,12 @@ export function createHarnessController(options: {
 
   /** Session commands verify once per generation, and again after refreshAuthority(). */
   function authorized(): Promise<Authorization> {
-    if (verified?.generation === generation) return verified.authorization;
     const epoch = generation;
-    const authorization = authority.verify().then((auth) => {
+    return authority.verify().then((auth) => {
       if (epoch !== generation) throw new Error("Session changed.");
       if (identity && identity !== auth.identity) throw new HarnessAccessDenied("Account changed.");
       return auth;
     });
-    verified = { generation: epoch, authorization };
-    authorization.catch(() => {
-      if (verified?.authorization === authorization) verified = undefined;
-    });
-    return authorization;
   }
 
   function localTools(current: number): LocalToolProxy {
@@ -118,22 +112,20 @@ export function createHarnessController(options: {
       const auth = await authority.verify();
       if (epoch !== generation) throw new Error("Session changed.");
       if (identity && identity !== auth.identity) disconnect();
-      verified = { generation, authorization: Promise.resolve(auth) };
       if (method === "synchronize") {
         const current = generation;
-        const agents = await authority.catalog();
+        const { agents } = await authority.catalog();
         // Renderer organization switches do not bump the generation; reread only the session.
         // Membership was verified for this organization before the catalog request.
-        const latest = await readVerifiedSession(options.fetchAPI, options.backend);
-        if (latest.user.id !== auth.userId) throw new HarnessAccessDenied("Account changed.");
-        if (current !== generation || latest.session.activeOrganizationId !== auth.organizationId)
-          throw new Error("Session changed.");
+        await authority.confirm(auth);
+        if (current !== generation) throw new Error("Session changed.");
         worker ??= options.createWorker(
           join(options.accountsDirectory, auth.accountKey),
           createMcpApiProxy({
             backend: options.backend,
             fetchAPI: options.fetchAPI,
             isActive: () => current === generation,
+            onResult: options.onResult,
           }),
           localTools(current),
         );
@@ -222,6 +214,11 @@ export function createHarnessController(options: {
 
   return {
     disconnect,
+    async closeSessions() {
+      if (!worker) return;
+      const auth = await authority.verify();
+      await worker.request("closeOrganization", auth.organizationId);
+    },
     /** The renderer IPC allowlist. Renderer values are parsed again in perform(). */
     run(method: unknown, value?: unknown) {
       const parsed = methodSchema.safeParse(method);
@@ -250,7 +247,7 @@ export function createHarnessController(options: {
     async execute<C extends HarnessCommand>(command: C): Promise<HarnessCommandResult<C>> {
       let parsed: HarnessCommand;
       try {
-        parsed = parseHarnessCommand(command);
+        parsed = commandSchema.parse(command);
       } catch {
         throw new HarnessCommandError("invalid-command");
       }
@@ -290,14 +287,7 @@ export function createHarnessController(options: {
     },
     /** Verify the session again before the next command. Call on session or access hints. */
     refreshAuthority() {
-      verified = undefined;
-    },
-    /**
-     * Registers main's agent-work handler for local tool calls (save_handoff and the helper
-     * tools). Requests arrive validated; undefined rejects every local call.
-     */
-    setLocalToolHandler(handler: LocalToolProxy | undefined) {
-      localToolHandler = handler;
+      authority.invalidate();
     },
   };
 }

@@ -10,6 +10,10 @@ export function createMcpApiProxy(options: {
   /** False once main disconnects this worker generation, such as on sign-out or session change. */
   isActive: () => boolean;
   fetchAPI: (url: string, init: RequestInit) => Promise<Response>;
+  onResult?: (
+    request: Parameters<WorkspaceApiProxy>[0],
+    result: Awaited<ReturnType<WorkspaceApiProxy>>,
+  ) => void | Promise<void>;
 }): WorkspaceApiProxy {
   return async (raw) => {
     const request = workspaceApiRequest.parse(raw);
@@ -35,6 +39,7 @@ export function createMcpApiProxy(options: {
           message: "Workspace changed. Start a new agent run in this workspace.",
         },
       };
+    await options.onResult?.(request, result);
     return result;
   };
 }

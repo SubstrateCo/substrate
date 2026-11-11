@@ -1,7 +1,6 @@
 /* oxlint-disable deslop/no-unknown-parameters -- Local configuration payloads arrive from renderer IPC. */
 import { harnessIdSchema } from "@substrate/contracts/harness";
-
-import { rendererLocalSchemas, type LocalHarnessMethod } from "../bridge/harness-bridge.ts";
+import { rendererLocalSchemas, type LocalHarnessMethod } from "@substrate/contracts/harness/ipc";
 
 export function prepareLocalInput(
   method: LocalHarnessMethod,

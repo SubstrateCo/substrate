@@ -8,12 +8,13 @@ import {
   type openRequestInput,
   type publishStatusInput,
 } from "@substrate/contracts/agent-work";
-import { harnessKinds } from "@substrate/contracts/harness";
+import { harnessKinds, desktopAgentCatalogSchema } from "@substrate/contracts/harness";
 
 /* oxlint-disable deslop/no-unknown-parameters -- Server responses are parsed at this boundary. */
 import { z } from "zod";
 
 type Fetch = (url: string, init: RequestInit) => Promise<Response>;
+const id = z.string().min(1);
 
 const result = <T extends z.ZodType>(data: T) =>
   z.union([
@@ -23,16 +24,6 @@ const result = <T extends z.ZodType>(data: T) =>
       error: z.object({ code: z.string(), message: z.string().optional() }),
     }),
   ]);
-
-const id = z.string().min(1);
-const catalogSchema = z.object({
-  agents: z.array(
-    z.object({ id, name: z.string(), harness: z.enum(harnessKinds), enabled: z.boolean() }),
-  ),
-  runSettings: z.array(
-    z.object({ agentId: id, homeDevice: z.object({ current: z.boolean() }).nullable() }),
-  ),
-});
 
 class AgentWorkServerError extends Error {
   readonly code: string;
@@ -85,6 +76,7 @@ export function createAgentWorkServer(options: {
   fetchAPI: Fetch;
   /** The server denied a call: the session or the membership may have changed. */
   onDenied?: () => void;
+  catalog: () => Promise<z.output<typeof desktopAgentCatalogSchema>>;
 }): AgentWorkServer {
   async function call<T extends z.ZodType>(
     path: string,
@@ -134,7 +126,7 @@ export function createAgentWorkServer(options: {
       );
     },
     async catalog() {
-      const catalog = await call("/agents/list", {}, catalogSchema);
+      const catalog = await options.catalog();
       // The server marks the home device that matches this installation as current.
       const home = new Set(
         catalog.runSettings

@@ -10,6 +10,12 @@ export interface ToolDefinition {
   destructive?: boolean;
   input: z.ZodType;
   output: z.ZodType;
+  /** Records created or published by a successful call, named by fields in its output. */
+  publishes?: readonly (
+    | { kind: "message"; id: string; conversationId: string; threadId: string }
+    | { kind: "task"; id: string }
+    | { kind: "request"; id: string; requestKind: "question" | "proposal" }
+  )[];
 }
 
 export const id = z.uuid();

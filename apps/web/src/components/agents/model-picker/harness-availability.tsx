@@ -18,7 +18,7 @@ export function HarnessAvailability({
   organizationId?: string | null;
   harness: HarnessKind;
 }) {
-  const desktop = !!window.substrateHarness && !!organizationId;
+  const desktop = !!harnessBridge() && !!organizationId;
   const status = useQuery({
     ...harnessStatusQueryOptions(userId, organizationId ?? ""),
     enabled: desktop,
@@ -38,3 +38,4 @@ export function HarnessAvailability({
     />
   );
 }
+import { harnessBridge } from "@/lib/desktop/bridges";

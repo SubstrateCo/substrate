@@ -67,6 +67,10 @@ export const messagingTools = {
     output: z.object({ conversationId: id, root: message, replies: page(message) }),
   },
   reply: {
+    publishes: [
+      { kind: "message", id: "messageId", conversationId: "conversationId", threadId: "threadId" },
+      { kind: "request", id: "questionId", requestKind: "question" },
+    ],
     title: "Reply",
     description:
       "Publish your result to your owner. By default it posts where the turn's work came from: top level in a direct message conversation, or in the turn's thread. Set ask to ask your owner one question; the answer arrives in a later turn, so end your turn after asking. In interactive turns only, set to to post in another conversation you can access; background turns must use propose for that.",
@@ -95,6 +99,7 @@ export const messagingTools = {
     output: replyResult,
   },
   propose: {
+    publishes: [{ kind: "request", id: "proposalId", requestKind: "proposal" }],
     title: "Propose an action",
     description:
       "Ask your owner to approve one exact action: reply_elsewhere (post in another conversation or thread), create_task or update_task. Your owner approves or declines exactly this action, and approval runs it as you. The result arrives in a later turn, so end your turn after proposing.",

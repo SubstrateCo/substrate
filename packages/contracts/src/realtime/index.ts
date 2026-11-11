@@ -4,10 +4,9 @@ export {
   realtimeDomain,
   realtimeScope,
   realtimeEvent,
-  realtimeConnectInput,
-  realtimeChannel,
   realtimeEventChannel,
 } from "./protocol.ts";
+export { realtimeConnectInput, channel as realtimeChannel } from "./ipc.ts";
 export type {
   RealtimeAudience,
   RealtimeDomain,

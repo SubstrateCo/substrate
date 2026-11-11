@@ -1,13 +1,12 @@
-import type {} from "@substrate/contracts/desktop/window";
-
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
-import "./desktop-frame.css";
 import { DesktopTitleBarContext } from "@/components/desktop/desktop-title-bar-content";
+import "./desktop-frame.css";
 import { useTheme } from "@/components/theme/theme-provider";
+import { windowBridge } from "@/lib/desktop/bridges";
 
 export function DesktopFrame({ children }: { children: ReactNode }) {
-  const bridge = window.substrateWindow;
+  const bridge = windowBridge();
   const { theme } = useTheme();
   const [fullscreen, setFullscreen] = useState(false);
   const [titleBarTarget, setTitleBarTarget] = useState<HTMLDivElement | null>(null);
@@ -20,6 +19,7 @@ export function DesktopFrame({ children }: { children: ReactNode }) {
       if (active) setFullscreen(value);
     });
     return () => {
+      // oxlint-disable-next-line react/immutability -- This effect-local flag prevents an async result from updating an unmounted component.
       active = false;
       unsubscribe();
     };

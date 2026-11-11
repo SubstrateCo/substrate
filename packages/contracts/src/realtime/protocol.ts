@@ -1,3 +1,4 @@
+import type { RealtimeMethods } from "./ipc.ts";
 import { z } from "zod";
 
 const identifier = z.string().min(1).max(200);
@@ -59,12 +60,8 @@ export const realtimeEvent = z.discriminatedUnion("type", [
 export type RealtimeEvent = z.infer<typeof realtimeEvent>;
 export type RealtimeStatus = "connecting" | "connected" | "disconnected" | "forbidden";
 export type RealtimeUpdate = RealtimeEvent | { type: "status"; status: RealtimeStatus };
-export const realtimeConnectInput = z.object({ organizationId: identifier.nullable() });
 
-export const realtimeChannel = "substrate:realtime";
 export const realtimeEventChannel = "substrate:realtime:event";
-export interface RealtimeAPI {
-  connect(input: z.infer<typeof realtimeConnectInput>): Promise<void>;
-  disconnect(): Promise<void>;
+export interface RealtimeAPI extends RealtimeMethods {
   onEvent(callback: (event: RealtimeUpdate) => void): () => void;
 }

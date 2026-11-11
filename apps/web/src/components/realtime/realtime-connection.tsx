@@ -8,7 +8,7 @@ import { createPortal } from "react-dom";
 
 import { RealtimeContainerContext } from "@/components/realtime/realtime-container-context";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import "@/lib/desktop/realtime";
+import { realtimeBridge } from "@/lib/desktop/bridges";
 import { createBrowserRealtime } from "@/lib/realtime/browser";
 import { createRealtimeCache } from "@/queries/realtime/cache";
 
@@ -27,7 +27,7 @@ export function RealtimeConnection({
   const [status, setStatus] = useState<RealtimeStatus | "stale">("connecting");
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   useEffect(() => {
-    const bridge = window.substrateRealtime ?? createBrowserRealtime();
+    const bridge = realtimeBridge() ?? createBrowserRealtime();
     let active = true;
     let statusEpoch = 0;
     let ready: Promise<void> = Promise.resolve();

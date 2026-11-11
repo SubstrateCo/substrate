@@ -127,6 +127,7 @@ export const taskTools = {
     output: taskResult,
   },
   create_task: {
+    publishes: [{ kind: "task", id: "id" }],
     title: "Create task",
     description:
       "Create a task as yourself. If the task comes from a message, set sourceMessageId so the task links back to it. Defaults: status not_started, priority none. Returns the new task.",
@@ -145,6 +146,7 @@ export const taskTools = {
     output: taskResult,
   },
   update_task: {
+    publishes: [{ kind: "task", id: "id" }],
     title: "Update task",
     description:
       "Change only the fields you supply. Null clears the assignee or due date. Cannot move a task to another project or parent. Returns the updated task.",

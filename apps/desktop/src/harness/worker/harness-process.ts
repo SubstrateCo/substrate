@@ -1,5 +1,9 @@
 /* oxlint-disable deslop/no-unknown-parameters, deslop/no-unknown-returns -- This transport forwards structured-clone payloads. Main validates requests and parses responses in the controller. */
-import type { HarnessCommand, HarnessEvent } from "@substrate/contracts/harness";
+import {
+  harnessEventSchema,
+  type HarnessCommand,
+  type HarnessEvent,
+} from "@substrate/contracts/harness";
 import type {
   LocalToolProxy,
   LocalToolRequest,
@@ -130,8 +134,14 @@ export function createHarnessProcess(
       }
       if (message.event) {
         if (disposed) return;
-        open.observe(message.event);
-        onEvent(message.event);
+        const event = harnessEventSchema.safeParse(message.event);
+        if (!event.success) {
+          child.kill();
+          stopped();
+          return;
+        }
+        open.observe(event.data);
+        onEvent(event.data);
         return;
       }
       const request = pending.get(message.id);

@@ -1,3 +1,4 @@
+import { DesktopSessionAuthority } from "../../session/desktop-session-authority.ts";
 import { createHarnessController } from "./harness-controller.ts";
 import { fixture } from "./test-support.ts";
 import { describe, expect, test } from "bun:test";
@@ -19,10 +20,9 @@ describe("desktop harness authority", () => {
     let organizationId = "org-1";
     let created = 0;
     const calls: string[] = [];
-    const controller = createHarnessController({
+    const connection = {
       backend: "https://api.example.com",
-      accountsDirectory: "accounts",
-      fetchAPI: async (url) => {
+      fetchAPI: async (url: string) => {
         if (url.endsWith("/session"))
           return Response.json({
             success: true,
@@ -34,8 +34,13 @@ describe("desktop harness authority", () => {
         if (url.includes("get-active-member-role")) return Response.json({ role: "member" });
         catalogStarted.resolve();
         await catalogGate.promise;
-        return Response.json({ success: true, data: { agents: [] } });
+        return Response.json({ success: true, data: { agents: [], runSettings: [] } });
       },
+    };
+    const controller = createHarnessController({
+      ...connection,
+      authority: new DesktopSessionAuthority(connection),
+      accountsDirectory: "accounts",
       createWorker: () => {
         created++;
         return {
@@ -128,7 +133,8 @@ describe("desktop harness authority", () => {
     expect(f.requests()).toEqual(["session", "membership", "catalog", "session"]);
     expect(f.calls.map((call) => call.method)).toEqual(["configure"]);
     await f.controller.run("synchronize");
-    expect(f.requests()).toHaveLength(8);
+    // The shared authority keeps membership and the catalog until invalidated.
+    expect(f.requests()).toHaveLength(5);
   });
   test("the renderer cannot run session commands", async () => {
     const f = fixture();
@@ -266,7 +272,13 @@ describe("desktop harness authority", () => {
     await scanning;
   });
   test("local tool calls reach the registered handler after validation", async () => {
-    const f = fixture();
+    const received: unknown[] = [];
+    const f = fixture(undefined, [], {
+      localToolHandler: async (call) => {
+        received.push(call);
+        return { success: true, data: { items: [] } };
+      },
+    });
     await f.controller.run("synchronize");
     const local = f.localTools()!;
     const request = {
@@ -283,12 +295,6 @@ describe("desktop harness authority", () => {
       },
       input: {},
     };
-    expect(local(request)).rejects.toThrow("unavailable");
-    const received: unknown[] = [];
-    f.controller.setLocalToolHandler(async (call) => {
-      received.push(call);
-      return { success: true, data: { items: [] } };
-    });
     expect(await local(request)).toEqual({ success: true, data: { items: [] } });
     expect(local({ ...request, input: { unexpected: true } })).rejects.toThrow();
     expect(received).toEqual([request]);
@@ -318,9 +324,8 @@ describe("desktop harness authority", () => {
       release = resolve;
     });
     let created = false;
-    const controller = createHarnessController({
+    const connection = {
       backend: "https://api.example.com",
-      accountsDirectory: "accounts",
       fetchAPI: async () => {
         await gate;
         return Response.json({
@@ -328,6 +333,11 @@ describe("desktop harness authority", () => {
           session: { activeOrganizationId: "org" },
         });
       },
+    };
+    const controller = createHarnessController({
+      ...connection,
+      authority: new DesktopSessionAuthority(connection),
+      accountsDirectory: "accounts",
       createWorker: () => {
         created = true;
         throw new Error("Unexpected process");

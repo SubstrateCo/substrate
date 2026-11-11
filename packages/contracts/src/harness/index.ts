@@ -48,3 +48,5 @@ export {
   type HarnessModel,
   type HarnessModelCatalog,
 } from "./models.ts";
+export { commandSchema, harnessFolderSchema, harnessEventSchema } from "./runtime.ts";
+export { desktopAgentCatalogSchema } from "./catalog.ts";

@@ -70,7 +70,7 @@ export function ModelPicker({
   const [open, setOpen] = useState(false);
   const [selectedHarness, setSelectedHarness] = useState<HarnessKind>(harness);
   const [search, setSearch] = useState("");
-  const available = !!window.substrateHarness && !!organizationId;
+  const available = !!harnessBridge() && !!organizationId;
   const query = search.trim();
   const catalogs = useQueries({
     queries: harnessOptions.map((option) => ({
@@ -306,3 +306,4 @@ export function ModelPicker({
     </Popover>
   );
 }
+import { harnessBridge } from "@/lib/desktop/bridges";

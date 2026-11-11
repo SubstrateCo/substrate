@@ -1,20 +1,14 @@
 import type { HarnessKind } from "../harness/kinds.ts";
-import type {
-  AgentRoutineView,
-  ApproveRoutineInput,
-  CreateRoutineInput,
-  UpdateRoutineInput,
-} from "./routines.ts";
+import type { AgentWorkMethods } from "./ipc.ts";
 import type { AgentStatusState } from "./status.ts";
 import type {
   AgentHelperView,
   AgentInboxItemView,
   AgentSessionView,
   AgentTurnView,
-  TurnEventView,
 } from "./turns.ts";
 
-export const agentWorkChannel = "substrate:agent-work";
+export { channel as agentWorkChannel } from "./ipc.ts";
 export const agentWorkChangeChannel = "substrate:agent-work:change";
 /** The most events one turnEvents call returns. A full page means more may follow. */
 export const turnEventsPageSize = 1000;
@@ -53,40 +47,6 @@ export interface AgentWorkChange {
 }
 
 /** Main derives the account and organization for every call, like the harness bridge. */
-export interface AgentWorkAPI {
-  conversation(conversationId: string): Promise<AgentConversationWork>;
-  /** One turn on this desktop, for transcript links. Null when this desktop does not have it. */
-  turn(turnId: string): Promise<AgentTurnView | null>;
-  /** Events with seq greater than after, oldest first, at most turnEventsPageSize. */
-  turnEvents(turnId: string, after?: number): Promise<TurnEventView[]>;
-  agents(): Promise<AgentLocalSummary[]>;
-  agentActivity(agentId: string, cursor?: string): Promise<AgentActivityPage>;
-  /** Interrupts the live turn in the item's slot so the held item runs next. */
-  sendNow(itemId: string): Promise<void>;
-  /** For uncertain items: sends the item again in the next turn of its session. */
-  resendItem(itemId: string): Promise<void>;
-  /** For uncertain items: the item needs nothing more. */
-  discardItem(itemId: string): Promise<void>;
-  stop(turnId: string): Promise<void>;
-  /** For needs_attention turns. */
-  retry(turnId: string): Promise<void>;
-  dismiss(turnId: string): Promise<void>;
-  /** Rotates the session's epoch instead of resuming the native session. */
-  startFresh(turnId: string): Promise<void>;
-  /** Starts a new epoch for the DM session of this conversation. */
-  newTopic(conversationId: string): Promise<void>;
-  routines: {
-    list(agentId: string): Promise<AgentRoutineView[]>;
-    create(input: CreateRoutineInput): Promise<AgentRoutineView>;
-    update(input: UpdateRoutineInput): Promise<AgentRoutineView>;
-    approve(input: ApproveRoutineInput): Promise<AgentRoutineView>;
-    delete(routineId: string): Promise<void>;
-  };
+export interface AgentWorkAPI extends AgentWorkMethods {
   onChange(callback: (change: AgentWorkChange) => void): () => void;
-}
-
-declare global {
-  interface Window {
-    readonly substrateAgentWork?: AgentWorkAPI;
-  }
 }

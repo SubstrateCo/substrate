@@ -69,6 +69,29 @@ export default defineConfig({
   },
   overrides: [
     {
+      files: ["apps/web/src/**"],
+      rules: {
+        "no-restricted-properties": [
+          "error",
+          ...[
+            "substrateHarness",
+            "substrateAgentWork",
+            "substrateWindow",
+            "substrateDesktopSettings",
+            "substrateRealtime",
+          ].map((property) => ({
+            object: "window",
+            property,
+            message: "Use lib/desktop/bridges.ts.",
+          })),
+        ],
+      },
+    },
+    {
+      files: ["apps/web/src/lib/desktop/bridges.ts"],
+      rules: { "no-restricted-properties": "off" },
+    },
+    {
       files: [
         "apps/web/src/components/ui/input.tsx",
         "apps/web/src/components/ui/textarea.tsx",

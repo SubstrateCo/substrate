@@ -1,5 +1,6 @@
 import type { LocalToolProxy } from "@substrate/contracts/harness/mcp";
 
+import { DesktopSessionAuthority } from "../../session/desktop-session-authority.ts";
 import { HarnessWorkerError } from "../worker/protocol.ts";
 import { createHarnessController } from "./harness-controller.ts";
 
@@ -30,6 +31,7 @@ export function fixture(
     failExecute?: string;
     /** Holds every execute command except interrupt until resolved. */
     holdExecute?: Promise<void>;
+    localToolHandler?: LocalToolProxy;
   } = {},
 ) {
   let session = {
@@ -46,10 +48,9 @@ export function fixture(
   let outage: "network" | "server" | undefined;
   let catalogFails = false;
   let localTools: LocalToolProxy | undefined;
-  const controller = createHarnessController({
+  const connection = {
     backend: "https://api.example.com",
-    accountsDirectory: "accounts",
-    fetchAPI: async (url) => {
+    fetchAPI: async (url: string) => {
       if (outage === "network") throw new TypeError("fetch failed");
       if (outage === "server") return new Response(null, { status: 503 });
       if (url.endsWith("/session")) {
@@ -63,8 +64,15 @@ export function fixture(
       requests.push("catalog");
       catalogRequests++;
       if (catalogFails) return new Response("Bad gateway", { status: 502 });
-      return Response.json({ success: true, data: { agents: [] } });
+      return Response.json({ success: true, data: { agents: [], runSettings: [] } });
     },
+  };
+  const authority = new DesktopSessionAuthority(connection);
+  const controller = createHarnessController({
+    ...connection,
+    authority,
+    accountsDirectory: "accounts",
+    localToolHandler: options.localToolHandler,
     createWorker: (directory, _proxy, local) => {
       directories.push(directory);
       localTools = local;
@@ -119,18 +127,22 @@ export function fixture(
     directories,
     setSession: (value: typeof session) => {
       session = value;
+      authority.invalidate();
     },
     catalogRequests: () => catalogRequests,
     requests: () => [...requests],
     disposed: () => disposed,
     revokeMembership: () => {
       membership = false;
+      authority.invalidate();
     },
     setOutage: (value: typeof outage) => {
       outage = value;
+      authority.invalidate();
     },
     failCatalog: (value: boolean) => {
       catalogFails = value;
+      authority.invalidate();
     },
     localTools: () => localTools,
   };

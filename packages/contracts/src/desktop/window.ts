@@ -1,6 +1,8 @@
-export const windowChannel = "substrate:window";
+import type { WindowMethods } from "./window-ipc.ts";
+export { channel as windowChannel } from "./window-ipc.ts";
 export const fullscreenChannel = "substrate:fullscreen";
-export const desktopSettingsChannel = "substrate:desktop-settings";
+export { channel as desktopSettingsChannel } from "./settings-ipc.ts";
+export type { DesktopSettingsAPI } from "./settings-ipc.ts";
 
 /** Settings of this desktop installation, kept by the main process. */
 export interface DesktopSettings {
@@ -8,21 +10,7 @@ export interface DesktopSettings {
   launchAtLogin: boolean;
 }
 
-export interface DesktopSettingsAPI {
-  get(): Promise<DesktopSettings>;
-  setLaunchAtLogin(enabled: boolean): Promise<DesktopSettings>;
-}
-
-export interface DesktopWindowAPI {
+export interface DesktopWindowAPI extends WindowMethods {
   platform: string;
-  isFullscreen(): Promise<boolean>;
-  setTheme(theme: "light" | "dark" | "system"): Promise<void>;
   onFullscreenChange(callback: (fullscreen: boolean) => void): () => void;
-}
-
-declare global {
-  interface Window {
-    substrateWindow?: DesktopWindowAPI;
-    substrateDesktopSettings?: DesktopSettingsAPI;
-  }
 }

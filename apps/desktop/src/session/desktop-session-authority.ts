@@ -1,0 +1,160 @@
+import { desktopAgentCatalogSchema } from "@substrate/contracts/harness";
+
+import { createHash } from "node:crypto";
+import { z } from "zod";
+
+const verifiedSessionSchema = z.object({
+  user: z.object({ id: z.string().min(1), emailVerified: z.literal(true) }),
+  session: z.object({
+    activeOrganizationId: z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$/),
+  }),
+});
+const catalogSchema = z.object({ success: z.literal(true), data: desktopAgentCatalogSchema });
+
+const sessionResultSchema = z.object({ success: z.literal(true), data: verifiedSessionSchema });
+
+/**
+ * The backend answered that this account or membership is no longer valid. Other failures,
+ * such as network errors and 5xx answers, are transient.
+ */
+export class HarnessAccessDenied extends Error {}
+
+const deniedStatuses = new Set([401, 403, 404]);
+
+async function readVerifiedSession(
+  fetchAPI: (url: string, init: RequestInit) => Promise<Response>,
+  backend: string,
+) {
+  const response = await fetchAPI(new URL("/api/v1/session", backend).href, {
+    method: "GET",
+    redirect: "error",
+  });
+  if (deniedStatuses.has(response.status)) throw new HarnessAccessDenied("Session ended.");
+  if (!response.ok) throw new Error("Session unavailable.");
+  const result = sessionResultSchema.safeParse(await response.json());
+  // A valid answer without a verified user and an active organization denies access.
+  if (!result.success) throw new HarnessAccessDenied("Session is not verified.");
+  return result.data.data;
+}
+
+type AuthorityOptions = {
+  backend: string;
+  fetchAPI: (url: string, init: RequestInit) => Promise<Response>;
+};
+
+export class DesktopSessionAuthority {
+  generation = 0;
+  identity: string | undefined;
+  private verified: Promise<Authorization> | undefined;
+  private cachedCatalog: Promise<z.output<typeof desktopAgentCatalogSchema>> | undefined;
+  private listeners = new Set<() => void>();
+  private options: AuthorityOptions;
+  constructor(options: AuthorityOptions) {
+    this.options = options;
+  }
+
+  onChange(listener: () => void) {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  invalidate() {
+    this.generation++;
+    this.verified = undefined;
+    this.cachedCatalog = undefined;
+    this.identity = undefined;
+    for (const listener of this.listeners) listener();
+  }
+
+  invalidateCatalog() {
+    this.cachedCatalog = undefined;
+  }
+
+  /** A catalog request must not configure a worker after the backend workspace changed. */
+  async confirm(auth: Authorization) {
+    const generation = this.generation;
+    const latest = await readVerifiedSession(this.options.fetchAPI, this.options.backend);
+    if (latest.user.id !== auth.userId) throw new HarnessAccessDenied("Account changed.");
+    if (
+      generation !== this.generation ||
+      latest.session.activeOrganizationId !== auth.organizationId
+    ) {
+      this.invalidate();
+      throw new Error("Session changed.");
+    }
+  }
+
+  verify(): Promise<Authorization> {
+    if (this.verified) return this.verified;
+    const generation = this.generation;
+    const pending = this.readAuthorization().then((auth) => {
+      if (generation !== this.generation) throw new Error("Session changed.");
+      this.identity = auth.identity;
+      return auth;
+    });
+    this.verified = pending;
+    pending.catch(() => {
+      if (this.verified === pending) this.verified = undefined;
+    });
+    return pending;
+  }
+
+  private async readAuthorization() {
+    const options = this.options;
+    const data = await readVerifiedSession(options.fetchAPI, options.backend);
+    const organizationId = data.session.activeOrganizationId;
+    const membershipURL = new URL("/api/auth/organization/get-active-member-role", options.backend);
+    membershipURL.searchParams.set("organizationId", organizationId);
+    const membership = await options.fetchAPI(membershipURL.href, {
+      method: "GET",
+      redirect: "error",
+    });
+    if (deniedStatuses.has(membership.status))
+      throw new HarnessAccessDenied("Organization membership ended.");
+    if (!membership.ok) throw new Error("Organization unavailable.");
+    if (!z.object({ role: z.string().min(1) }).safeParse(await membership.json()).success)
+      throw new HarnessAccessDenied("Organization membership ended.");
+    const accountKey = createHash("sha256")
+      .update(JSON.stringify([new URL(options.backend).origin, data.user.id]))
+      .digest("hex");
+    return { accountKey, organizationId, userId: data.user.id, identity: accountKey };
+  }
+
+  catalog() {
+    const generation = this.generation;
+    const pending = (this.cachedCatalog ??= this.readCatalog().then((catalog) => {
+      if (generation !== this.generation) throw new Error("Session changed.");
+      return catalog;
+    }));
+    pending.catch(() => {
+      if (this.cachedCatalog === pending) this.cachedCatalog = undefined;
+    });
+    return pending;
+  }
+
+  private async readCatalog() {
+    const options = this.options;
+    const response = await options.fetchAPI(new URL("/api/v1/agents/list", options.backend).href, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+      redirect: "error",
+    });
+    if (deniedStatuses.has(response.status)) {
+      this.invalidate();
+      throw new HarnessAccessDenied("Catalog access ended.");
+    }
+    if (!response.ok) throw new Error("Catalog unavailable.");
+    const result = catalogSchema.parse(await response.json());
+    return result.data;
+  }
+}
+
+export interface Authorization {
+  accountKey: string;
+  organizationId: string;
+  userId: string;
+  identity: string;
+}
