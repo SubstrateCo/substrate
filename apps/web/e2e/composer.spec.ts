@@ -120,7 +120,7 @@ test("a failed send retains the draft and can be retried without retyping", asyn
   await editor.fill(body);
   await editor.press("Enter");
   await expect(form.getByRole("alert")).toContainText(
-    "You’re offline. Check your connection and try again.",
+    "Couldn’t reach the server. Check your connection and try again.",
   );
   await expect(editor).toHaveText(body);
   await expect(editor).toHaveAttribute("contenteditable", "true");

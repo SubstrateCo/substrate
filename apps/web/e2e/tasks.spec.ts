@@ -75,11 +75,13 @@ test("a click outside the task inspector closes it, but controls, drafts and bac
   await inspector.getByLabel("Add a comment").fill("A comment draft");
   await outside.click();
   await user.page.getByRole("button", { name: "Keep editing" }).click();
+  await expect(user.page.getByRole("dialog")).toHaveCount(0);
   await expect(inspector.getByLabel("Add a comment")).toHaveText("A comment draft");
   await inspector.getByLabel("Add a comment").fill("");
+  await expect(inspector.getByLabel("Add a comment")).toHaveText("");
   await outside.click();
   await expect(inspector).toHaveCount(0);
-  expect(new URL(user.page.url()).searchParams.has("taskId")).toBe(false);
+  await expect.poll(() => new URL(user.page.url()).searchParams.has("taskId")).toBe(false);
 
   // A task created elsewhere refreshes the project without discarding an open edit draft.
   await user.page.getByRole("button", { name: /^Not started: Open task/ }).click();
