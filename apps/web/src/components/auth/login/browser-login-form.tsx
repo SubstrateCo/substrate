@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { BrowserElectronReturn } from "../desktop/browser-electron-return";
 import { formText } from "../form-values";
+import { authError } from "@/api/auth/error";
 import { LoginForm } from "@/components/auth/login/login-form-view";
 import { authHref } from "@/lib/auth/browser-links";
 import { authClient } from "@/lib/auth/client";
@@ -28,7 +29,7 @@ export function BrowserLoginForm({ redirect, email }: { redirect: string; email:
           window.location.assign(authHref("/verify-email", redirect, email));
           return;
         }
-        throw new Error(result.error.message || "Could not sign in.");
+        throw authError(result.error);
       }
       queryClient.clear();
       if (query) return;

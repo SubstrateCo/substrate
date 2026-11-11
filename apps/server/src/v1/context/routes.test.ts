@@ -1,4 +1,4 @@
-import { failure } from "@substrate/contracts/result";
+import { failure, publicFailure } from "@substrate/contracts/result";
 
 import { createContextRoutes } from "./routes";
 import * as services from "./service";
@@ -90,7 +90,7 @@ test("context routes reject invalid input without invoking services", async () =
   ]) {
     const response = await app.request(path);
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual(failure("INVALID_INPUT", "Invalid request input."));
+    expect(await response.json()).toEqual(publicFailure("INVALID_INPUT", "Invalid request input."));
   }
   for (const [method, path] of [
     ["POST", "/message-page"],

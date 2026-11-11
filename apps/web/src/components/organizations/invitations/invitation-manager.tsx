@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { authError } from "@/api/auth/error";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import {
   InvitationManager as InvitationManagerView,
@@ -40,7 +41,7 @@ export function InvitationManager({
         role,
         resend,
       });
-      if (result.error) throw new Error(result.error.message || "Could not send the invitation.");
+      if (result.error) throw authError(result.error);
     },
     onSuccess: async (_, { resend }) => {
       toast.success(resend ? "Invitation email resent." : "Invitation email sent.");
@@ -56,7 +57,7 @@ export function InvitationManager({
   const cancel = useMutation({
     mutationFn: async (invitationId: string) => {
       const result = await authClient.organization.cancelInvitation({ invitationId });
-      if (result.error) throw new Error(result.error.message || "Could not cancel the invitation.");
+      if (result.error) throw authError(result.error);
     },
     onSuccess: async () => {
       toast.success("Invitation canceled.");

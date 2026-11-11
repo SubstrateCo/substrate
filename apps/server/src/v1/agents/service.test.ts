@@ -57,7 +57,11 @@ test("all mutations enforce origin and do not reach persistence on failure", asy
   for (const result of results)
     expect(result).toEqual({
       success: false,
-      error: { code: "FORBIDDEN", message: "Invalid request origin." },
+      error: {
+        code: "FORBIDDEN",
+        message: "Invalid request origin.",
+        userMessage: "Invalid request origin.",
+      },
     });
   expect(forUser).not.toHaveBeenCalled();
 });

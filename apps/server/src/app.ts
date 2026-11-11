@@ -1,4 +1,4 @@
-import { failure } from "@substrate/contracts/result";
+import { failure, publicFailure } from "@substrate/contracts/result";
 
 import { auth } from "./auth/server";
 import { createDesktopRoutes } from "./desktop/routes";
@@ -40,7 +40,8 @@ export function createApp() {
         "/api/v1/files/pictures/:purpose",
         bodyLimit({
           maxSize: 1024 * 1024,
-          onError: (c) => respond(c, failure("PAYLOAD_TOO_LARGE", "Request body is too large.")),
+          onError: (c) =>
+            respond(c, publicFailure("PAYLOAD_TOO_LARGE", "Request body is too large.")),
         }),
       ),
     )
@@ -60,10 +61,10 @@ export function createApp() {
     .route("/api/v1/context", createContextRoutes())
     .route("/api/v1/agents", createAgentsRoutes())
     .route("/api/v1/agent-work", createAgentWorkRoutes())
-    .notFound((c) => respond(c, failure("NOT_FOUND", "Endpoint not found.")))
+    .notFound((c) => respond(c, publicFailure("NOT_FOUND", "Endpoint not found.")))
     .onError((error, c) => {
       if (error instanceof HTTPException && error.status === 400) {
-        return respond(c, failure("INVALID_INPUT", "Invalid request body."));
+        return respond(c, publicFailure("INVALID_INPUT", "Invalid request body."));
       }
       console.error("Request failed", error.name);
       return respond(

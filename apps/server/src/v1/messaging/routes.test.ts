@@ -1,4 +1,4 @@
-import { failure } from "@substrate/contracts/result";
+import { failure, publicFailure } from "@substrate/contracts/result";
 
 import { createMessagingRoutes } from "./routes";
 import * as services from "./service";
@@ -55,7 +55,7 @@ test("messaging validates each route before calling services", async () => {
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual(failure("INVALID_INPUT", "Invalid request input."));
+    expect(await response.json()).toEqual(publicFailure("INVALID_INPUT", "Invalid request input."));
   }
   for (const spy of Object.values(spies)) expect(spy).not.toHaveBeenCalled();
 });

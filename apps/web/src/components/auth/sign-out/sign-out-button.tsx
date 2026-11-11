@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { authError } from "@/api/auth/error";
 import { SignOutButton as SignOutButtonView } from "@/components/auth/sign-out/sign-out-button-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { authHref } from "@/lib/auth/browser-links";
@@ -16,7 +17,7 @@ export function SignOutButton({ destination }: { destination?: string }) {
       if (isDesktop()) await window.signOut!();
       else {
         const result = await authClient.signOut();
-        if (result.error) throw new Error(result.error.message || "Could not sign out.");
+        if (result.error) throw authError(result.error);
       }
       // Clear private state before the next document replaces this one.
       await queryClient.cancelQueries();

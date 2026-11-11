@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { formText } from "../form-values";
+import { authError } from "@/api/auth/error";
 import { ResetPasswordForm as ResetPasswordFormView } from "@/components/auth/password/reset-password-form-view";
 import { authHref } from "@/lib/auth/browser-links";
 import { authClient } from "@/lib/auth/client";
@@ -21,10 +22,7 @@ export function ResetPasswordForm({
         token,
         newPassword: formText(form, "password"),
       });
-      if (result.error)
-        throw new Error(
-          result.error.message || "This reset link is invalid or expired. Request a new link.",
-        );
+      if (result.error) throw authError(result.error);
       queryClient.clear();
     },
   });

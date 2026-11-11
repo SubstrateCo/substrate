@@ -3,7 +3,7 @@ import {
   pictureOwnerParam,
   pictureUploadInput,
 } from "@substrate/contracts/files/pictures";
-import { failure } from "@substrate/contracts/result";
+import { publicFailure } from "@substrate/contracts/result";
 
 import { respond, validationHook } from "../../shared/http";
 import type { PictureService } from "./pictures";
@@ -17,7 +17,7 @@ export function createPictureRoutes(service: PictureService) {
       "/:purpose",
       bodyLimit({
         maxSize: 6 * 1024 * 1024,
-        onError: (c) => respond(c, failure("PAYLOAD_TOO_LARGE", "Use a picture up to 5 MB.")),
+        onError: (c) => respond(c, publicFailure("PAYLOAD_TOO_LARGE", "Use a picture up to 5 MB.")),
       }),
       zValidator("param", pictureKindParam, validationHook),
       zValidator("form", pictureUploadInput, validationHook),

@@ -20,7 +20,7 @@ export function requireOrigin(headers: Headers) {
 export function requireVerified<T extends { user: { emailVerified: boolean } }>(session: T | null) {
   if (!session) throw new ServiceError("UNAUTHENTICATED", "Sign in to continue.");
   if (!session.user.emailVerified)
-    throw new ServiceError("FORBIDDEN", "Verify your email to continue.");
+    throw new ServiceError("FORBIDDEN", "Verify your email to continue.", "EMAIL_NOT_VERIFIED");
   return session;
 }
 

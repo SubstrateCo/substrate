@@ -55,7 +55,7 @@ describe("organization settings access service", () => {
     });
     expect(await service.settingsAccess(new Headers())).toEqual({
       success: false,
-      error: { code: "FORBIDDEN", message: "Access denied." },
+      error: { code: "FORBIDDEN", message: "Access denied.", userMessage: "Access denied." },
     });
   });
 

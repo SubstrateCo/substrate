@@ -1,4 +1,4 @@
-import { failure, success } from "@substrate/contracts/result";
+import { failure, publicFailure, success } from "@substrate/contracts/result";
 
 import { createAgentsRoutes } from "./routes";
 import * as services from "./service";
@@ -44,7 +44,7 @@ test("rejects invalid IDs, scope injection and device assignments before calling
       body: JSON.stringify(input),
     });
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual(failure("INVALID_INPUT", "Invalid request input."));
+    expect(await response.json()).toEqual(publicFailure("INVALID_INPUT", "Invalid request input."));
   }
   for (const spy of [spies.saveAgent, spies.deleteAgent, spies.setAgentPicture])
     expect(spy).not.toHaveBeenCalled();

@@ -1,6 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 
 import { formText } from "../form-values";
+import { authError } from "@/api/auth/error";
 import { VerifyEmailScreen as VerifyEmailScreenView } from "@/components/auth/verification/verify-email-screen-view";
 import { authHref } from "@/lib/auth/browser-links";
 import { authClient } from "@/lib/auth/client";
@@ -21,8 +22,7 @@ export function VerifyEmailScreen({
         email,
         callbackURL: authHref("/login", redirect, email),
       });
-      if (result.error)
-        throw new Error(result.error.message || "Could not send verification email.");
+      if (result.error) throw authError(result.error);
     },
   });
   return (

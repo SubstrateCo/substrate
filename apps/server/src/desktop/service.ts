@@ -1,5 +1,5 @@
 import { desktopLink, desktopPath } from "@substrate/contracts/desktop/links";
-import { failure, success, type ServiceResult } from "@substrate/contracts/result";
+import { publicFailure, success, type ServiceResult } from "@substrate/contracts/result";
 
 /** The public /desktop/open page for a destination. Throws when the validator rejects it. */
 export function desktopHandoffURL(path: string, apiURL: string) {
@@ -10,6 +10,6 @@ export function desktopHandoffURL(path: string, apiURL: string) {
 
 export function openDesktop(path: string): ServiceResult<{ link: string }> {
   const result = desktopPath.safeParse(path);
-  if (!result.success) return failure("INVALID_INPUT", "Invalid desktop destination.");
+  if (!result.success) return publicFailure("INVALID_INPUT", "Invalid desktop destination.");
   return success({ link: desktopLink(result.data) });
 }

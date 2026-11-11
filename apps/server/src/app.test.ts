@@ -7,7 +7,11 @@ test("unknown API versions fail with the standard response", async () => {
   expect(response.headers.get("Cache-Control")).toBe("no-store");
   expect(await response.json()).toEqual({
     success: false,
-    error: { code: "NOT_FOUND", message: "Endpoint not found." },
+    error: {
+      code: "NOT_FOUND",
+      message: "Endpoint not found.",
+      userMessage: "Endpoint not found.",
+    },
   });
 });
 
@@ -20,7 +24,11 @@ test("malformed JSON does not escape the application error envelope", async () =
   expect(response.status).toBe(400);
   expect(await response.json()).toEqual({
     success: false,
-    error: { code: "INVALID_INPUT", message: "Invalid request body." },
+    error: {
+      code: "INVALID_INPUT",
+      message: "Invalid request body.",
+      userMessage: "Invalid request body.",
+    },
   });
 });
 
@@ -33,7 +41,11 @@ test("rejects oversized API payloads with a safe, standard error", async () => {
   expect(response.status).toBe(413);
   expect(await response.json()).toEqual({
     success: false,
-    error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large." },
+    error: {
+      code: "PAYLOAD_TOO_LARGE",
+      message: "Request body is too large.",
+      userMessage: "Request body is too large.",
+    },
   });
 });
 
@@ -59,6 +71,10 @@ test("picture uploads use their own size limit instead of the API limit", async 
   expect(oversized.status).toBe(413);
   expect(await oversized.json()).toEqual({
     success: false,
-    error: { code: "PAYLOAD_TOO_LARGE", message: "Use a picture up to 5 MB." },
+    error: {
+      code: "PAYLOAD_TOO_LARGE",
+      message: "Use a picture up to 5 MB.",
+      userMessage: "Use a picture up to 5 MB.",
+    },
   });
 });

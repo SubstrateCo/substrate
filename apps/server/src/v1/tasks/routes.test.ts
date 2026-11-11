@@ -1,4 +1,4 @@
-import { failure, success } from "@substrate/contracts/result";
+import { failure, publicFailure, success } from "@substrate/contracts/result";
 import type { TasksWrite } from "@substrate/contracts/tasks/input";
 
 import { createTasksRoutes } from "./routes";
@@ -21,7 +21,7 @@ test("task routes reject invalid requests before calling a service", async () =>
   ]) {
     const response = await app.request(path);
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual(failure("INVALID_INPUT", "Invalid request input."));
+    expect(await response.json()).toEqual(publicFailure("INVALID_INPUT", "Invalid request input."));
   }
   for (const read of Object.values(reads)) expect(read).not.toHaveBeenCalled();
 

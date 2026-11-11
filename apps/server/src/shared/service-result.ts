@@ -1,7 +1,9 @@
 import {
   failure,
+  publicFailure,
   success,
   type ServiceErrorCode,
+  type ServiceErrorReason,
   type ServiceResult,
 } from "@substrate/contracts/result";
 import { AccessDeniedError, ConflictError, ValidationError } from "@substrate/database";
@@ -13,6 +15,7 @@ export class ServiceError extends Error {
   constructor(
     public readonly code: ServiceErrorCode,
     message: string,
+    public readonly reason?: ServiceErrorReason,
   ) {
     super(message);
     this.name = "ServiceError";
@@ -23,17 +26,23 @@ export async function serviceResult<T>(work: () => Promise<T>): Promise<ServiceR
   try {
     return success(await work());
   } catch (error) {
-    if (error instanceof ServiceError) return failure(error.code, error.message);
-    if (error instanceof ZodError) return failure("INVALID_INPUT", "Invalid request input.");
+    if (error instanceof ServiceError && error.code !== "INTERNAL_ERROR")
+      return publicFailure(error.code, error.message, error.reason);
+    if (error instanceof ZodError) return publicFailure("INVALID_INPUT", "Invalid request input.");
     if (error instanceof APIError) {
-      if (error.statusCode === 400) return failure("INVALID_INPUT", "Invalid request input.");
-      if (error.statusCode === 401) return failure("UNAUTHENTICATED", "Sign in to continue.");
-      if (error.statusCode === 403) return failure("FORBIDDEN", "Access denied.");
+      switch (error.statusCode) {
+        case 400:
+          return publicFailure("INVALID_INPUT", "Invalid request input.");
+        case 401:
+          return publicFailure("UNAUTHENTICATED", "Sign in to continue.");
+        case 403:
+          return publicFailure("FORBIDDEN", "Access denied.");
+      }
     }
     if (error instanceof AccessDeniedError)
-      return failure("NOT_FOUND", "Item not found or access denied.");
-    if (error instanceof ValidationError) return failure("INVALID_INPUT", error.message);
-    if (error instanceof ConflictError) return failure("CONFLICT", error.message);
+      return publicFailure("NOT_FOUND", "Item not found or access denied.");
+    if (error instanceof ValidationError) return publicFailure("INVALID_INPUT", error.message);
+    if (error instanceof ConflictError) return publicFailure("CONFLICT", error.message);
     console.error(
       "Service operation failed",
       error instanceof Error ? error.name : "Unknown error",

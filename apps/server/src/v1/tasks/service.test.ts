@@ -1,4 +1,4 @@
-import { failure } from "@substrate/contracts/result";
+import { publicFailure } from "@substrate/contracts/result";
 import * as database from "@substrate/database";
 import * as provisioning from "@substrate/database/provisioning";
 
@@ -101,15 +101,19 @@ for (const denial of ["signed out", "unverified", "workspace mismatch"] as const
     switch (denial) {
       case "signed out":
         fixture.getSession.mockResolvedValue(null);
-        expected = failure("UNAUTHENTICATED", "Sign in to continue.");
+        expected = publicFailure("UNAUTHENTICATED", "Sign in to continue.");
         break;
       case "unverified":
         fixture.session.user.emailVerified = false;
-        expected = failure("FORBIDDEN", "Verify your email to continue.");
+        expected = publicFailure(
+          "FORBIDDEN",
+          "Verify your email to continue.",
+          "EMAIL_NOT_VERIFIED",
+        );
         break;
       case "workspace mismatch":
         fixture.session.session.activeOrganizationId = "other-org";
-        expected = failure(
+        expected = publicFailure(
           "WORKSPACE_CHANGED",
           "Your active workspace changed. Reload this page to continue.",
         );

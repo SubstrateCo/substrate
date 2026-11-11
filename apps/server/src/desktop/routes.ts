@@ -1,5 +1,5 @@
 import { desktopPath } from "@substrate/contracts/desktop/links";
-import { failure, success } from "@substrate/contracts/result";
+import { publicFailure, success } from "@substrate/contracts/result";
 
 import { environment, type ServerEnvironment } from "../environment";
 import { respond, validationHook } from "../shared/http";
@@ -28,7 +28,10 @@ export function createDesktopRoutes(
     )
     .get("/download", (c) => {
       if (!config.windowsDownloadURL)
-        return respond(c, failure("NOT_FOUND", "The Windows installer is not available yet."));
+        return respond(
+          c,
+          publicFailure("NOT_FOUND", "The Windows installer is not available yet."),
+        );
       return c.redirect(config.windowsDownloadURL, 303);
     })
     .get("/open", zValidator("query", z.object({ path: desktopPath }), validationHook), (c) => {

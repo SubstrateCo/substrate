@@ -1,6 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 
 import { formText } from "../form-values";
+import { authError } from "@/api/auth/error";
 import { SignupForm } from "@/components/auth/signup/signup-form-view";
 import { authHref } from "@/lib/auth/browser-links";
 import { authClient } from "@/lib/auth/client";
@@ -17,7 +18,7 @@ export function BrowserSignupForm({ redirect }: { redirect: string }) {
         callbackURL: authHref("/login", redirect, email),
         fetchOptions: { query: electronQuery(window.location.search) },
       });
-      if (result.error) throw new Error(result.error.message || "Could not create your account.");
+      if (result.error) throw authError(result.error);
       window.location.assign(authHref("/verify-email", redirect, email));
     },
   });

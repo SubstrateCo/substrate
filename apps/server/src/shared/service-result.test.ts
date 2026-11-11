@@ -31,7 +31,7 @@ describe("service results", () => {
     const result = await serviceResult(async () => {
       throw error;
     });
-    expect(result).toEqual({ success: false, error: { code, message } });
+    expect(result).toEqual({ success: false, error: { code, message, userMessage: message } });
   });
 
   test("trusts database error classes, not an error that only shares their name", async () => {
@@ -47,6 +47,22 @@ describe("service results", () => {
     } finally {
       log.mockRestore();
     }
+  });
+
+  test("preserves structured recovery reasons", async () => {
+    expect(
+      await serviceResult(async () => {
+        throw new ServiceError("FORBIDDEN", "Verify your email.", "EMAIL_NOT_VERIFIED");
+      }),
+    ).toEqual({
+      success: false,
+      error: {
+        code: "FORBIDDEN",
+        message: "Verify your email.",
+        userMessage: "Verify your email.",
+        reason: "EMAIL_NOT_VERIFIED",
+      },
+    });
   });
 
   test("does not expose unexpected errors or their messages in logs", async () => {

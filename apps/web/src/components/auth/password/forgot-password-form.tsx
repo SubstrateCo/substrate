@@ -1,6 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 
 import { formText } from "../form-values";
+import { authError } from "@/api/auth/error";
 import { ForgotPasswordForm as ForgotPasswordFormView } from "@/components/auth/password/forgot-password-form-view";
 import { authHref } from "@/lib/auth/browser-links";
 import { authClient } from "@/lib/auth/client";
@@ -12,8 +13,7 @@ export function ForgotPasswordForm({ redirect }: { redirect: string }) {
         email: formText(form, "email"),
         redirectTo: authHref("/reset-password", redirect),
       });
-      if (result.error)
-        throw new Error(result.error.message || "Could not request a password reset.");
+      if (result.error) throw authError(result.error);
     },
   });
   return (
