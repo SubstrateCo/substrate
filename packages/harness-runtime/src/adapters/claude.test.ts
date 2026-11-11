@@ -2,7 +2,7 @@ import type { HarnessEventBody, TurnResult } from "@substrate/contracts/harness"
 
 import { ClaudeSession, type ClaudeQuery } from "./claude.ts";
 import { InputQueue } from "./input-queue.ts";
-import { unattendedDenial, type AdapterContext, type EventScope } from "./types.ts";
+import { unattendedDenial, type NativePrefixContext, type EventScope } from "./types.ts";
 import type { SDKMessage, SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import { expect, test } from "bun:test";
 
@@ -34,7 +34,7 @@ function assistant(fields: Record<string, unknown>, content: unknown[]): SDKMess
 
 function setup(receipt?: (sent: SDKUserMessage[]) => { still_queued: string[] }) {
   const events: { body: HarnessEventBody; scope: EventScope }[] = [];
-  const context: AdapterContext = {
+  const context: NativePrefixContext = {
     directory: ".",
     executable: "claude",
     prefix: "",

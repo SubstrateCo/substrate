@@ -14,7 +14,6 @@ function setup() {
   const context: AdapterContext = {
     directory: ".",
     executable: "codex",
-    prefix: "",
     emit: (body) => events.push(body),
   };
   const session = new CodexSession(context, {

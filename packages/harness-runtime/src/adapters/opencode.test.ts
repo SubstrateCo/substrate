@@ -1,7 +1,7 @@
 import type { HarnessEventBody } from "@substrate/contracts/harness";
 
 import { OpenCodeSession, type OpenCodeApi } from "./opencode.ts";
-import { unattendedDenial, type AdapterContext } from "./types.ts";
+import { unattendedDenial, type NativePrefixContext } from "./types.ts";
 import type { OpenCodeEvent } from "@opencode/client";
 import { expect, test } from "bun:test";
 
@@ -30,7 +30,7 @@ function setup(inbox: string[] = []) {
     permission: { reply: record("permission.reply") },
   } as unknown as OpenCodeApi;
   const events: HarnessEventBody[] = [];
-  const context: AdapterContext = {
+  const context: NativePrefixContext = {
     directory: ".",
     executable: "opencode",
     prefix: "",

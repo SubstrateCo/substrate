@@ -14,6 +14,7 @@ import {
   type AdapterContext,
   type EventScope,
   type NativeAdapter,
+  type NativePrefixContext,
   type TurnOptions,
 } from "./types.ts";
 import type { OpenCodeClient, OpenCodeEvent } from "@opencode/client";
@@ -347,7 +348,7 @@ export class OpenCodeSession {
 }
 
 export async function connectOpenCode(
-  context: AdapterContext,
+  context: NativePrefixContext,
   resumeId?: string,
 ): Promise<NativeAdapter> {
   // OpenCode loads extra instruction files from config. The managed prefix is one such file,
@@ -364,7 +365,7 @@ export async function connectOpenCode(
     mcp: context.lease
       ? {
           servers: {
-            "substrate": {
+            substrate: {
               type: "remote",
               url: context.lease.url,
               oauth: false,

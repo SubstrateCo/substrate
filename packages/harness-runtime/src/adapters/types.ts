@@ -28,10 +28,14 @@ export interface AdapterContext {
    * outside a turn fail.
    */
   lease?: McpLease;
-  /** Managed policy prefix for this epoch, delivered through the harness's own channel. */
-  prefix: string;
   /** The host adds sessionId, organizationId, turnId, generation and timestamp. */
   emit(event: HarnessEventBody, scope?: EventScope): void;
+}
+
+/** The context of an adapter that delivers the managed prefix through a native channel. */
+export interface NativePrefixContext extends AdapterContext {
+  /** Managed policy prefix for this epoch. It stays byte-stable within the epoch. */
+  prefix: string;
 }
 
 /** Per-turn options. unattended turns use the no-ask profile: every native prompt is denied. */

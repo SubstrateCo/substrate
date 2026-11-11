@@ -14,6 +14,7 @@ import {
   type AdapterContext,
   type EventScope,
   type NativeAdapter,
+  type NativePrefixContext,
   type TurnOptions,
 } from "./types.ts";
 import {
@@ -344,14 +345,14 @@ export class ClaudeSession {
 }
 
 export async function connectClaude(
-  context: AdapterContext,
+  context: NativePrefixContext,
   resumeId?: string,
 ): Promise<NativeAdapter> {
   const nativeSessionId = resumeId ?? randomUUID();
   const session = new ClaudeSession(context, nativeSessionId);
   const mcpServers: Record<string, McpServerConfig> = context.lease
     ? {
-        "substrate": {
+        substrate: {
           type: "http",
           url: context.lease.url,
           headers: { Authorization: `Bearer ${context.lease.token}` },

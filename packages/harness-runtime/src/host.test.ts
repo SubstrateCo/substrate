@@ -66,7 +66,7 @@ interface FakeNative {
 
 function fakeNative() {
   const state: FakeNative = { resumes: [] };
-  const connect: ConnectNative = async (_harness, adapterContext, resumeId) => {
+  const connect: ConnectNative = async (_harness, adapterContext, _prefix, resumeId) => {
     state.resumes.push(resumeId);
     if (resumeId === "lost") throw new Error("missing native session");
     state.context = adapterContext;
@@ -187,6 +187,21 @@ test("a second turn while one is live is rejected", async () => {
     await f.host.execute(open);
     await f.host.execute(turn);
     await expect(f.host.execute(turn)).rejects.toMatchObject({ code: "turn-active" });
+  } finally {
+    await f.host.dispose();
+  }
+});
+
+test("an open of a session that closes after its live turn waits with session-closing", async () => {
+  const f = await host();
+  try {
+    await f.host.execute(open);
+    await f.host.execute(turn);
+    await f.host.configure({
+      organizationId: "org-a",
+      agents: [agent({ instructions: "Work elsewhere" })],
+    });
+    await expect(f.host.execute(open)).rejects.toMatchObject({ code: "session-closing" });
   } finally {
     await f.host.dispose();
   }

@@ -23,7 +23,6 @@ import {
  * - noAskProfile: unattended turns start with turn/start approvalPolicy "never"
  *   (TurnStartParams.approvalPolicy, app-server-protocol schema v2), and the adapter declines
  *   every approval, user-input and elicitation request that still arrives. On.
- * The managed prefix is delivered in the instructions file (AGENTS.md); see registry.ts.
  */
 export const codexCapabilities: AdapterCapabilities = {
   steer: false,

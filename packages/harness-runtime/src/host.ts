@@ -32,7 +32,7 @@ import {
 } from "./native-config.ts";
 import { agentDirectory, helperDirectory, safeId, safePath } from "./paths.ts";
 import { binaryVersion, resolveExecutable } from "./process.ts";
-import { harnessDefinitions } from "./registry.ts";
+import { connectHarness, harnessDefinitions } from "./registry.ts";
 import { mkdir, realpath } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -49,8 +49,25 @@ type CloseReason = Extract<HarnessEventBody, { type: "session.closed" }>["reason
 export type ConnectNative = (
   harness: HarnessKind,
   context: AdapterContext,
+  prefix: string,
   resumeId?: string,
 ) => Promise<NativeAdapter>;
+
+/** Time for the host's timestamps, interrupt grace and idle reaper. */
+export interface HostClock {
+  now(): number;
+  /** Runs callback once after milliseconds. The timer does not keep the process alive. */
+  later(callback: () => void, milliseconds: number): () => void;
+}
+
+const systemClock: HostClock = {
+  now: () => Date.now(),
+  later(callback, milliseconds) {
+    const timer = setTimeout(callback, milliseconds);
+    timer.unref();
+    return () => clearTimeout(timer);
+  },
+};
 
 export interface HarnessHostOptions {
   accountDirectory: string;
@@ -61,6 +78,8 @@ export interface HarnessHostOptions {
   interruptGraceMs?: number;
   /** Test seam. Defaults to the registry's native adapters and executable resolution. */
   connect?: ConnectNative;
+  /** Test seam. Defaults to the system clock. */
+  clock?: HostClock;
 }
 
 /** The host plus what the desktop needs to build a managed prefix. */
@@ -83,7 +102,8 @@ interface LiveTurn {
   settled: Promise<void>;
   /** Ends the turn with this result if the adapter has not ended it yet. */
   force(result: TurnResult): void;
-  interruptTimer?: ReturnType<typeof setTimeout>;
+  /** Cancels the interrupt grace, once an interrupt armed it. */
+  cancelInterrupt?: () => void;
 }
 
 interface LiveSession {
@@ -117,6 +137,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
   const configurations = new Map<string, HarnessConfiguration>();
   const keepAliveMs = options.keepAliveMs ?? sessionKeepAliveMs;
   const graceMs = options.interruptGraceMs ?? interruptGraceMs;
+  const clock = options.clock ?? systemClock;
   const mcp = await createStartupMcp({
     workspace: options.workspaceProxy,
     local: options.localTools,
@@ -126,9 +147,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
   const opening = new Map<string, Promise<HarnessSessionRef>>();
   let disposed = false;
   const modelDiscovery = new AbortController();
-  const connectNative: ConnectNative =
-    options.connect ??
-    (async (harness, context, resumeId) => harnessDefinitions[harness].connect(context, resumeId));
+  const connectNative: ConnectNative = options.connect ?? connectHarness;
   const assertOpen = () => {
     if (disposed) throw new HarnessError("disposed", "Harness host is disposed.");
   };
@@ -153,7 +172,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
       organizationId: scope.organizationId,
       turnId: turn?.turnId ?? null,
       generation: turn?.generation ?? null,
-      timestamp: Date.now(),
+      timestamp: clock.now(),
     });
   }
 
@@ -243,21 +262,25 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
         directory: folder,
         executable: options.connect ? agent.harness : await resolveExecutable(agent.harness),
         lease,
-        prefix: command.prefix,
         emit: (body: HarnessEventBody, eventScope: EventScope = "turn") =>
           emit(scope, body, eventScope === "turn" ? holder.live?.turn : undefined),
       };
       let adapter: NativeAdapter;
       let resumed = Boolean(command.nativeSessionId);
       try {
-        adapter = await connectNative(agent.harness, context, command.nativeSessionId);
+        adapter = await connectNative(
+          agent.harness,
+          context,
+          command.prefix,
+          command.nativeSessionId,
+        );
       } catch (error) {
         if (!command.nativeSessionId) throw error;
         if (command.requireResume)
           throw new HarnessError("resume-failed", "The native session could not be resumed.", {
             cause: error,
           });
-        adapter = await connectNative(agent.harness, context);
+        adapter = await connectNative(agent.harness, context, command.prefix);
         resumed = false;
       }
       const ref: HarnessSessionRef = {
@@ -276,7 +299,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
         adapter,
         epoch: command.epoch,
         lease,
-        idleSince: Date.now(),
+        idleSince: clock.now(),
       };
       holder.live = live;
       if (disposed) {
@@ -315,12 +338,12 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
       .then(() => live.adapter.turn(command.input, { mode: command.mode }))
       .catch(() => failedTurn);
     void Promise.race([native, forced.promise]).then((result) => {
-      clearTimeout(turn.interruptTimer);
+      turn.cancelInterrupt?.();
       emit(scope, { type: "turn.completed", result }, turn);
       if (live.turn === turn) {
         live.lease?.unbind();
         live.turn = undefined;
-        live.idleSince = Date.now();
+        live.idleSince = clock.now();
       }
       settled.resolve();
       if (live.closing) void closeSession(live, live.closing).catch(() => {});
@@ -329,23 +352,28 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
 
   /** Every interrupt ends in a terminal event: the harness's own, or the host's after the grace. */
   function armInterrupt(live: LiveSession, turn: LiveTurn) {
-    if (turn.interruptTimer) return;
-    turn.interruptTimer = setTimeout(() => {
+    if (turn.cancelInterrupt) return;
+    turn.cancelInterrupt = clock.later(() => {
       if (live.turn !== turn) return;
       turn.force({
         status: "interrupted",
         error: "The harness did not confirm the interrupt.",
       });
-      live.closing ??= "closed";
+      void closeWhenIdle(live, "closed")?.catch(() => {});
     }, graceMs);
-    turn.interruptTimer.unref();
+  }
+
+  /** Closes the session now, or as soon as its live turn ends. No new turn starts meanwhile. */
+  function closeWhenIdle(live: LiveSession, reason: CloseReason) {
+    live.closing ??= reason;
+    return live.turn ? undefined : closeSession(live, live.closing);
   }
 
   function session(command: { organizationId: string; sessionId: string }) {
     const live = sessions.get(command.sessionId);
     if (!live || live.ref.organizationId !== command.organizationId)
       throw new HarnessError("not-connected", "Open the session first.");
-    live.idleSince = Date.now();
+    live.idleSince = clock.now();
     return live;
   }
 
@@ -369,12 +397,12 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
         (command.nativeSessionId !== undefined &&
           command.nativeSessionId !== existing.ref.nativeSessionId);
       if (!stale && !existing.closing) {
-        existing.idleSince = Date.now();
+        existing.idleSince = clock.now();
         return structuredClone(existing.ref);
       }
       // A session waiting to close keeps its live turn; it is never returned.
       if (!stale && existing.turn)
-        throw new HarnessError("turn-active", "The session closes after its live turn.");
+        throw new HarnessError("session-closing", "The session closes after its live turn.");
       await closeSession(existing, existing.closing ?? "closed");
     }
     const started = open(command).finally(() => opening.delete(command.sessionId));
@@ -429,16 +457,16 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
     }
   }
 
-  const reaper = setInterval(
-    () => {
-      const now = Date.now();
-      for (const live of sessions.values())
-        if (!live.turn && now - live.idleSince >= keepAliveMs)
-          void closeSession(live, "idle").catch(() => {});
-    },
-    Math.min(30_000, Math.max(10, Math.floor(keepAliveMs / 6))),
-  );
-  reaper.unref();
+  const reapEveryMs = Math.min(30_000, Math.max(10, Math.floor(keepAliveMs / 6)));
+  let stopReaper = () => {};
+  function reap() {
+    const now = clock.now();
+    for (const live of sessions.values())
+      if (!live.turn && now - live.idleSince >= keepAliveMs)
+        void closeSession(live, "idle").catch(() => {});
+    stopReaper = clock.later(reap, reapEveryMs);
+  }
+  stopReaper = clock.later(reap, reapEveryMs);
 
   return {
     async listModels(scope) {
@@ -459,8 +487,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
         );
         if (next && JSON.stringify(next) === JSON.stringify(live.agent)) continue;
         // A live turn finishes on the configuration it started with; the session closes after.
-        if (live.turn) live.closing = "configuration";
-        else await closeSession(live, "configuration");
+        await closeWhenIdle(live, "configuration");
       }
       await materialize(accountDirectory, configuration);
       configurations.set(configuration.organizationId, configuration);
@@ -527,16 +554,14 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
       const results = await Promise.allSettled(
         closing.map(async (live) => {
           // No new turn starts while the native turn stops.
-          live.closing ??= "closed";
-          if (live.turn) {
-            let timer: ReturnType<typeof setTimeout> | undefined;
-            const waited = new Promise<void>((resolve) => {
-              timer = setTimeout(resolve, closeInterruptMs);
-              timer.unref();
-            });
-            await Promise.race([live.adapter.interrupt().catch(() => {}), waited]);
-            clearTimeout(timer);
-          }
+          const idle = closeWhenIdle(live, "closed");
+          if (idle) return idle;
+          let cancel = () => {};
+          const waited = new Promise<void>((resolve) => {
+            cancel = clock.later(resolve, closeInterruptMs);
+          });
+          await Promise.race([live.adapter.interrupt().catch(() => {}), waited]);
+          cancel();
           await closeSession(live, "closed");
         }),
       );
@@ -558,7 +583,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
     async dispose() {
       if (disposed) return;
       disposed = true;
-      clearInterval(reaper);
+      stopReaper();
       modelDiscovery.abort();
       const results = await Promise.allSettled(
         [...sessions.values()].map((live) => closeSession(live, "closed")),

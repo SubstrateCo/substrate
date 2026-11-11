@@ -5,9 +5,24 @@ import {
   type HarnessModel,
 } from "@substrate/contracts/harness";
 
-import type { AdapterContext, NativeAdapter } from "./adapters/types.ts";
+import type { AdapterContext, NativeAdapter, NativePrefixContext } from "./adapters/types.ts";
 
-interface HarnessDefinition {
+/**
+ * Where the managed prefix goes: at the start of the instructions file, or through the
+ * adapter's native channel (Claude systemPrompt append, OpenCode config instructions). Only an
+ * adapter with a native channel receives the prefix.
+ */
+type PrefixChannel =
+  | {
+      prefixInInstructions: true;
+      connect(context: AdapterContext, resumeId?: string): Promise<NativeAdapter>;
+    }
+  | {
+      prefixInInstructions: false;
+      connect(context: NativePrefixContext, resumeId?: string): Promise<NativeAdapter>;
+    };
+
+type HarnessDefinition = PrefixChannel & {
   executable: string;
   instructions: string;
   skills: string;
@@ -15,20 +30,14 @@ interface HarnessDefinition {
   mcpFiles: [string, ...string[]];
   mcpKeys: [string, ...string[]];
   mcpFormat: "jsonc" | "toml";
-  /**
-   * The managed prefix goes at the start of the instructions file. Otherwise the adapter delivers
-   * it through a native channel (Claude systemPrompt append, OpenCode config instructions).
-   */
-  prefixInInstructions: boolean;
   encodeMcpServer(server: HarnessMcpServer): object;
-  connect(context: AdapterContext, resumeId?: string): Promise<NativeAdapter>;
   discoverModels(
     executable: string,
     directory: string,
     signal: AbortSignal,
   ): Promise<HarnessModel[]>;
   available?(executable: string): Promise<boolean>;
-}
+};
 
 export const harnessDefinitions = {
   opencode: {
@@ -115,3 +124,16 @@ export const harnessDefinitions = {
       (await import("./models/codex.ts")).discoverCodexModels(executable, directory, signal),
   },
 } satisfies Record<HarnessKind, HarnessDefinition>;
+
+/** Connects the harness's adapter. The prefix reaches only an adapter with a native channel. */
+export function connectHarness(
+  harness: HarnessKind,
+  context: AdapterContext,
+  prefix: string,
+  resumeId?: string,
+) {
+  const definition: HarnessDefinition = harnessDefinitions[harness];
+  return definition.prefixInInstructions
+    ? definition.connect(context, resumeId)
+    : definition.connect({ ...context, prefix }, resumeId);
+}

@@ -25,7 +25,6 @@ import { Readable, Writable } from "node:stream";
  *   (PermissionOptionKind :628) or the "cancelled" outcome (:3695).
  * - steer, steerEvidence, compact, interruptReceipt: ACP has session/prompt and session/cancel
  *   only; no queued input, compaction request or cancel receipt. Off.
- * The managed prefix is delivered in the instructions file (AGENTS.md); see registry.ts.
  */
 export const antigravityCapabilities: AdapterCapabilities = {
   steer: false,
