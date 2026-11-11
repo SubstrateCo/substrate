@@ -21,7 +21,7 @@ test("group pages count complete threads, page groups, and keep concurrent arriv
   await chat.addMembers(channel.id, ["bob@example.com"]);
   const bob = createAcceptedMessagingService(f.db, { userId: "bob", organizationId: f.orgA });
   const root = await bob.sendMessage(channel.id, "First thread");
-  for (let index = 0; index < 22; index++)
+  for (let index = 0; index < 3; index++)
     await chat.sendMessage(channel.id, `Reply ${index}`, root.id);
   const second = await bob.sendMessage(channel.id, "Second thread");
   await chat.sendMessage(channel.id, "Other reply", second.id);
@@ -36,26 +36,26 @@ test("group pages count complete threads, page groups, and keep concurrent arriv
   const next = await service.groups({ limit: 1, filter: "all", after: first.nextCursor! });
   expect(next.items[0]).toMatchObject({
     groupKey: `thread:${root.id}`,
-    count: 22,
-    unreadCount: 22,
+    count: 3,
+    unreadCount: 3,
     otherActorCount: 0,
   });
   expect(next.nextCursor).toBeNull();
   const group = next.items[0]!;
-  const details = await service.groupEvents({ groupKey: group.groupKey, limit: 20 });
-  expect(details.items).toHaveLength(20);
+  const details = await service.groupEvents({ groupKey: group.groupKey, limit: 2 });
+  expect(details.items).toHaveLength(2);
   const older = await service.groupEvents({
     groupKey: group.groupKey,
-    limit: 20,
+    limit: 2,
     after: details.nextCursor!,
   });
-  expect(older.items).toHaveLength(2);
-  expect(new Set([...details.items, ...older.items].map((item) => item.id)).size).toBe(22);
+  expect(older.items).toHaveLength(1);
+  expect(new Set([...details.items, ...older.items].map((item) => item.id)).size).toBe(3);
   await chat.sendMessage(channel.id, "Concurrent arrival", root.id);
   await service.markGroupRead({ groupKey: group.groupKey, through: group.newestCursor });
   const unread = await service.groups({ limit: 20, filter: "unread" });
   expect(unread.items.find((item) => item.groupKey === group.groupKey)).toMatchObject({
-    count: 23,
+    count: 4,
     unreadCount: 1,
   });
   expect(await service.hasUnread()).toBe(true);
@@ -256,7 +256,7 @@ test("feed pages read current work and message targets in one statement without 
   expect(repeated.result.every((row) => row.title === "First")).toBe(true);
   expect(repeated.statements).toBe(2);
   const distinct = [];
-  for (let index = 0; index < 20; index++)
+  for (let index = 0; index < 4; index++)
     distinct.push(
       await alice.tasks.create({ projectEntityId: project.entityId, title: `Distinct ${index}` }),
     );

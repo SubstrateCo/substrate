@@ -11,7 +11,7 @@ import { eq } from "drizzle-orm";
 describe("development seed", () => {
   const fixture = setupDatabase();
 
-  test("creates usable teams, assigned projects, and shared conversations", async () => {
+  test("creates usable teams, assigned projects, and shared conversations; reruns preserve edits without duplicating data or resetting passwords", async () => {
     expect(await seedDevelopmentDatabase(fixture.db, "development-password-hash")).toBe(true);
     for (const organizationId of ["dev-northstar", "dev-orbit"]) {
       const members = await fixture.db
@@ -95,10 +95,8 @@ describe("development seed", () => {
         .projects.get(privateProjects[0]!.entityId)
         .catch((error: Error) => error),
     ).toBeInstanceOf(AccessDeniedError);
-  });
 
-  test("reruns preserve edits and do not duplicate data or reset passwords", async () => {
-    await seedDevelopmentDatabase(fixture.db, "original-hash");
+    // A rerun preserves edits and does not duplicate data or reset passwords.
     const [task] = await fixture.db.select().from(schema.tasks);
     await fixture.db
       .update(schema.tasks)
@@ -119,7 +117,7 @@ describe("development seed", () => {
       (
         await fixture.db.select().from(schema.account).where(eq(schema.account.userId, "dev-alice"))
       )[0]!.password,
-    ).toBe("original-hash");
+    ).toBe("development-password-hash");
     expect(
       (await fixture.db.select().from(schema.user).where(eq(schema.user.id, "alice")))[0]!.email,
     ).toBe("alice@example.com");

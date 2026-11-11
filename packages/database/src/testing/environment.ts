@@ -1,4 +1,9 @@
 export function testDatabaseURL(env: Record<string, string | undefined> = process.env) {
+  // Without the runner, every parallel worker would reset the same database.
+  if (env.BUN_TEST_WORKER_ID && !env.TEST_DATABASE_WORKER_URLS)
+    throw new Error(
+      "Parallel test workers need their own databases. Run bun run test from packages/database.",
+    );
   // The parallel runner gives each Bun test worker its own database.
   const connectionString =
     env.TEST_DATABASE_WORKER_URLS && env.BUN_TEST_WORKER_ID

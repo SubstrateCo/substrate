@@ -19,31 +19,41 @@ if (count === 1) {
 } else {
   // Bun gives the slowest files to the workers first when it knows the last durations.
   mkdirSync("node_modules/.cache", { recursive: true });
-  const databases = await createTestDatabases(count);
+  // An interrupt while the databases are created must still let close drop them.
+  const interrupt = new AbortController();
+  let child: Bun.Subprocess | undefined;
+  const cancel = () => {
+    interrupt.abort();
+    child?.kill();
+  };
+  process.on("SIGINT", cancel);
   try {
-    // Each worker runs its files serially against its own database.
-    const child = Bun.spawn(
-      [
-        process.execPath,
-        "test",
-        "--timeout",
-        "30000",
-        `--parallel=${count}`,
-        "--timings=node_modules/.cache/test-timings.json",
-        "--update-timings",
-        ...args,
-      ],
-      {
-        env: { ...process.env, TEST_DATABASE_WORKER_URLS: databases.connections.join(" ") },
-        stdout: "inherit",
-        stderr: "inherit",
-      },
-    );
-    const cancel = () => child.kill();
-    process.on("SIGINT", cancel);
-    process.exitCode = await child.exited;
-    process.off("SIGINT", cancel);
+    const databases = await createTestDatabases(count);
+    try {
+      // Each worker runs its files serially against its own database.
+      if (!interrupt.signal.aborted)
+        child = Bun.spawn(
+          [
+            process.execPath,
+            "test",
+            "--timeout",
+            "30000",
+            `--parallel=${count}`,
+            "--timings=node_modules/.cache/test-timings.json",
+            "--update-timings",
+            ...args,
+          ],
+          {
+            env: { ...process.env, TEST_DATABASE_WORKER_URLS: databases.connections.join(" ") },
+            stdout: "inherit",
+            stderr: "inherit",
+          },
+        );
+      process.exitCode = child ? await child.exited : 130;
+    } finally {
+      await databases.close();
+    }
   } finally {
-    await databases.close();
+    process.off("SIGINT", cancel);
   }
 }
