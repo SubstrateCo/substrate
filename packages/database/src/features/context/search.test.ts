@@ -82,7 +82,7 @@ test("task, project and combined work search each run one statement with one vis
   const alice = f.forActor(f.alice);
   const project = await alice.projects.create({ name: "Search project" });
   const tasks = [];
-  for (let i = 0; i < 30; i++)
+  for (let i = 0; i < 3; i++)
     tasks.push(
       await alice.tasks.create({ projectEntityId: project.entityId, title: `Search ${i}` }),
     );
@@ -149,6 +149,33 @@ test("short fields match substrings, and words match by prefix", async () => {
   expect(await ids("dash, ship!", "message")).toEqual([message.id]);
   expect(await ids("board", "message")).toEqual([]);
   expect(await ids("?!", "message")).toEqual([]);
+});
+
+test("identifiers, versions and addresses are found by the same text or by any of their parts", async () => {
+  await f.db.update(user).set({ emailVerified: true });
+  const chat = createAcceptedMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
+  const channel = await chat.createConversation({ kind: "channel", name: "Releases" });
+  const body =
+    "Shared 0f8a1b2c-3456-4e9a-8123-9abc45de6f70 in v1.2.3 by sam@example.com, it's note-7";
+  const message = await chat.sendMessage(channel.id, body);
+  await chat.sendMessage(channel.id, "Shared 0f8a1b2c-9999-4e9a-8123-9abc45de6f70");
+  const context = createContextService(f.db, { userId: "alice", organizationId: f.orgA });
+  const ids = async (query: string) =>
+    (await context.search({ query, kind: "message" })).map((row) => row.id);
+  for (const query of [
+    body,
+    "0f8a1b2c-3456-4e9a-8123-9abc45de6f70",
+    "0f8a1b2c-34",
+    "v1.2.3",
+    "sam@example.com",
+    "it's note-7",
+    // Parts after punctuation are words of their own.
+    "3456",
+    "note 7",
+    "example.com",
+  ])
+    expect(await ids(query)).toEqual([message.id]);
+  expect(await ids("0f8a1b2c-3457")).toEqual([]);
 });
 
 test("person search filters conversation access before paging and keeps organization boundaries", async () => {

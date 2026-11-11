@@ -141,6 +141,13 @@
       "when": 1794341613924,
       "tag": "0019_attachment_boundaries",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1794355237055,
+      "tag": "0020_search_word_boundaries",
+      "breakpoints": true
     }
   ]
 }

@@ -72,17 +72,20 @@ function containsText(column: SQLWrapper, query: string) {
   return sql`${trigramKey(column)} LIKE lower(${pattern})`;
 }
 
-// Every word of the query as a word prefix, for the word indexes. Punctuation separates words.
+// Every word of the query as a word prefix, for the word indexes. PostgreSQL splits the query with
+// the expression that built the index, so both sides get the same words and punctuation separates
+// them. A query with no words gives NULL, which matches nothing.
 function wordPrefixQuery(query: string) {
-  const words = query.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
-  return words
-    .slice(0, 16)
-    .map((word) => `${word}:*`)
-    .join(" & ");
+  return sql`(
+    SELECT string_agg('''' || replace(replace(lexeme, '\\', '\\\\'), '''', '''''') || ''':*', ' & ')::tsquery
+    FROM (
+      SELECT lexeme FROM unnest(${searchDocument(sql`${query}::text`)}) ORDER BY positions[1] LIMIT 16
+    ) AS query_words
+  )`;
 }
 
-function matchesWords(document: SQL, words: string) {
-  return words ? sql`${document} @@ to_tsquery('simple', ${words})` : sql`false`;
+function matchesWords(document: SQL, words: SQL) {
+  return sql`${document} @@ ${words}`;
 }
 
 export async function contextSearch(
