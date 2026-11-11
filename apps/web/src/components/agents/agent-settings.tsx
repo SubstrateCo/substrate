@@ -126,6 +126,7 @@ export function AgentSettings({
           deleteAction={
             <DeleteRecordCard
               title="Delete agent"
+              actionLabel={`Delete ${agent.name}`}
               description={`Removes ${agent.name} and its settings. Messages it posted stay.`}
               confirmTitle={`Delete ${agent.name}?`}
               confirmDescription={`This removes ${agent.name} and its settings. Messages it already posted stay in their conversations. You can’t undo this.`}

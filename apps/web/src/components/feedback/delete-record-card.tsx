@@ -8,6 +8,7 @@ import { Trash2 } from "lucide-react";
 
 export function DeleteRecordCard({
   title,
+  actionLabel,
   description,
   confirmTitle,
   confirmDescription,
@@ -19,6 +20,8 @@ export function DeleteRecordCard({
   onRestoreFocus,
 }: {
   title: string;
+  /** Names the record for assistive technology when the visible title is generic. */
+  actionLabel?: string;
   description: ReactNode;
   confirmTitle: string;
   confirmDescription: ReactNode;
@@ -37,6 +40,7 @@ export function DeleteRecordCard({
       <SettingsCard tone="destructive" title={title} description={description}>
         <Button
           ref={button}
+          aria-label={actionLabel}
           className="w-fit"
           variant="destructive-ghost"
           disabled={pending}
