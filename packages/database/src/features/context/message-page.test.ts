@@ -3,10 +3,10 @@ import { entities, member, actors } from "../../schema";
 import { contextConversation } from "../../testing/context";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
+import { rejection } from "../../testing/rejection";
 import { messagingMessages, messagingParticipants } from "../messaging/schema";
 import { messageEntityReferences } from "./schema";
 import { createContextService } from "./service";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -86,14 +86,16 @@ test("page context uses constant reads for one or fifty messages, including empt
   queries.length = 0;
   expect((await service.messageLinks(rows[0]!.id))[0]?.title).toBe("Launch");
   expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(3);
-  await expect(context("bob").messagePage([rows[0]!.id])).rejects.toBeInstanceOf(AccessDeniedError);
-  await expect(service.messagePage([rows[0]!.id, crypto.randomUUID()])).rejects.toBeInstanceOf(
+  expect(await rejection(context("bob").messagePage([rows[0]!.id]))).toBeInstanceOf(
+    AccessDeniedError,
+  );
+  expect(await rejection(service.messagePage([rows[0]!.id, crypto.randomUUID()]))).toBeInstanceOf(
     AccessDeniedError,
   );
   const bob = createContextService(db, { userId: "bob", organizationId: f.orgA });
   const deniedReads = async (ids: string[]) => {
     queries.length = 0;
-    await expect(bob.messagePage(ids)).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(await rejection(bob.messagePage(ids))).toBeInstanceOf(AccessDeniedError);
     return queries.filter((query) => /^(select|with)/i.test(query)).length;
   };
   expect(await deniedReads(rows.map((row) => row.id))).toBe(await deniedReads([rows[0]!.id]));
@@ -104,7 +106,7 @@ test("page context uses constant reads for one or fifty messages, including empt
     name: "Visible page row",
   });
   const visible = await chat.sendMessage(publicConversation.id, "Public message");
-  await expect(bob.messagePage([visible.id, rows[0]!.id])).rejects.toBeInstanceOf(
+  expect(await rejection(bob.messagePage([visible.id, rows[0]!.id]))).toBeInstanceOf(
     AccessDeniedError,
   );
 });
@@ -186,12 +188,14 @@ test("a task cannot be shared above its project, so removal rights match detach"
     actorEntityId: f.bob,
     level: "view",
   });
-  await expect(
-    repos.permissions.grant({ entityId: task.entityId, actorEntityId: f.bob, level: "owner" }),
-  ).rejects.toBeInstanceOf(ValidationError);
+  expect(
+    await rejection(
+      repos.permissions.grant({ entityId: task.entityId, actorEntityId: f.bob, level: "owner" }),
+    ),
+  ).toBeInstanceOf(ValidationError);
   const [link] = (await checkedPage([root.id], "bob"))[0]!.links;
   expect(link).toMatchObject({ entityId: task.entityId, canRemove: false });
-  await expect(context("bob").detach(root.id, task.entityId)).rejects.toBeInstanceOf(
+  expect(await rejection(context("bob").detach(root.id, task.entityId))).toBeInstanceOf(
     AccessDeniedError,
   );
 });
@@ -256,7 +260,9 @@ test("page people resolve parsed tokens in sets and clear inactive, deleted and 
     [],
     [{ id: f.bob, name: "Bob" }],
   ]);
-  await expect(context("bob").messagePage([rows[0]!.id])).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(context("bob").messagePage([rows[0]!.id]))).toBeInstanceOf(
+    AccessDeniedError,
+  );
   await f.db.delete(member).where(eq(member.userId, "bob"));
   expect((await checkedPage([publicMention.id]))[0]!.people).toEqual([]);
 });

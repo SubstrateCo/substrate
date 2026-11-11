@@ -2,9 +2,9 @@ import { AccessDeniedError, ValidationError } from "../../errors";
 import { user, member, entityGrants, actors } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { createAcceptedMessagingService } from "../../testing/messaging";
+import { rejection } from "../../testing/rejection";
 import { messagingConversations, messagingMessages, messagingParticipants } from "./schema";
 import { createMessagingService } from "./service";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -29,8 +29,8 @@ test("cross-org DMs use explicit participants without adding entity grants", asy
   expect(await service("outsider", fixture.orgB).listMessages(dm.id)).toMatchObject([
     { id: sent.id, authorName: "Alice", body: "Across organizations" },
   ]);
-  await expect(service("bob").listMessages(dm.id)).rejects.toBeInstanceOf(AccessDeniedError);
-  await expect(service("outsider", fixture.orgA).listConversations()).rejects.toBeInstanceOf(
+  expect(await rejection(service("bob").listMessages(dm.id))).toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(service("outsider", fixture.orgA).listConversations())).toBeInstanceOf(
     AccessDeniedError,
   );
   expect(await fixture.db.select().from(entityGrants)).toEqual(before);
@@ -51,16 +51,16 @@ test("public channels are org-scoped, private channels need membership, only cre
     publicChannel.id,
   ]);
   expect(await service("outsider", fixture.orgB).listConversations()).toEqual([]);
-  await expect(
-    service("outsider", fixture.orgB).sendMessage(publicChannel.id, "no"),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
-  await expect(service("bob").sendMessage(privateChannel.id, "no")).rejects.toBeInstanceOf(
+  expect(
+    await rejection(service("outsider", fixture.orgB).sendMessage(publicChannel.id, "no")),
+  ).toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(service("bob").sendMessage(privateChannel.id, "no"))).toBeInstanceOf(
     AccessDeniedError,
   );
   await service("bob").sendMessage(publicChannel.id, "joined");
-  await expect(
-    service("bob").addMembers(publicChannel.id, ["outside@example.com"]),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(service("bob").addMembers(publicChannel.id, ["outside@example.com"])),
+  ).toBeInstanceOf(AccessDeniedError);
   await service("alice").addMembers(privateChannel.id, ["outside@example.com"]);
   expect(
     (await service("outsider", fixture.orgB).listConversations()).map((row) => row.id),
@@ -70,49 +70,55 @@ test("public channels are org-scoped, private channels need membership, only cre
 test("unapproved external recipients require a history confirmation and invalid recipients roll back", async () => {
   await verified();
   await fixture.db.update(user).set({ emailVerified: false }).where(eq(user.id, "bob"));
-  await expect(
-    service("alice").createConversation({ kind: "dm", emails: ["outside"] }),
-  ).rejects.toBeInstanceOf(ValidationError);
-  await expect(
-    createMessagingService(fixture.db, {
-      userId: "alice",
-      organizationId: fixture.orgA,
-    }).createConversation({
-      kind: "group",
-      emails: ["outside@example.com", "bob@example.com"],
-    }),
-  ).rejects.toBeInstanceOf(ValidationError);
+  expect(
+    await rejection(service("alice").createConversation({ kind: "dm", emails: ["outside"] })),
+  ).toBeInstanceOf(ValidationError);
+  expect(
+    await rejection(
+      createMessagingService(fixture.db, {
+        userId: "alice",
+        organizationId: fixture.orgA,
+      }).createConversation({
+        kind: "group",
+        emails: ["outside@example.com", "bob@example.com"],
+      }),
+    ),
+  ).toBeInstanceOf(ValidationError);
   expect(await fixture.db.select().from(messagingConversations)).toEqual([]);
   expect(await fixture.db.select().from(messagingParticipants)).toEqual([]);
   await fixture.db.delete(member).where(eq(member.userId, "outsider"));
-  await expect(
-    createMessagingService(fixture.db, {
-      userId: "alice",
-      organizationId: fixture.orgA,
-    }).createConversation({ kind: "dm", emails: [" OUTSIDE@example.com "] }),
-  ).rejects.toBeInstanceOf(ValidationError);
+  expect(
+    await rejection(
+      createMessagingService(fixture.db, {
+        userId: "alice",
+        organizationId: fixture.orgA,
+      }).createConversation({ kind: "dm", emails: [" OUTSIDE@example.com "] }),
+    ),
+  ).toBeInstanceOf(ValidationError);
   expect(await fixture.db.select().from(messagingConversations)).toEqual([]);
 });
 
 test("group DMs support multiple recipients and caller transactions roll back all records", async () => {
   await verified();
-  await expect(
-    fixture.db.transaction(async (tx) => {
-      const group = await createMessagingService(tx, {
-        userId: "alice",
-        organizationId: fixture.orgA,
-      }).createConversation({
-        kind: "group",
-        emails: ["bob@example.com", "outside@example.com"],
-        shareHistory: true,
-      });
-      await createMessagingService(tx, {
-        userId: "alice",
-        organizationId: fixture.orgA,
-      }).sendMessage(group.id, "rollback");
-      throw new Error("abort");
-    }),
-  ).rejects.toThrow("abort");
+  expect(
+    await rejection(
+      fixture.db.transaction(async (tx) => {
+        const group = await createMessagingService(tx, {
+          userId: "alice",
+          organizationId: fixture.orgA,
+        }).createConversation({
+          kind: "group",
+          emails: ["bob@example.com", "outside@example.com"],
+          shareHistory: true,
+        });
+        await createMessagingService(tx, {
+          userId: "alice",
+          organizationId: fixture.orgA,
+        }).sendMessage(group.id, "rollback");
+        throw new Error("abort");
+      }),
+    ),
+  ).toMatchObject({ message: expect.stringContaining("abort") });
   expect(await fixture.db.select().from(messagingConversations)).toEqual([]);
   expect(await fixture.db.select().from(messagingMessages)).toEqual([]);
   const group = await service("alice").createConversation({
@@ -149,18 +155,18 @@ test("participant access is bound to the recipient organization and departure pr
     [dm.id, channel.id].sort(),
   );
   expect(await service("bob", fixture.orgB).listConversations()).toEqual([]);
-  await expect(service("bob", fixture.orgB).listMessages(dm.id)).rejects.toBeInstanceOf(
+  expect(await rejection(service("bob", fixture.orgB).listMessages(dm.id))).toBeInstanceOf(
     AccessDeniedError,
   );
-  await expect(
-    service("bob", fixture.orgB).sendMessage(channel.id, "wrong scope"),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(service("bob", fixture.orgB).sendMessage(channel.id, "wrong scope")),
+  ).toBeInstanceOf(AccessDeniedError);
   await fixture.db.delete(member).where(eq(member.id, "bob-a"));
-  await expect(service("bob").listConversations()).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(service("bob").listConversations())).toBeInstanceOf(AccessDeniedError);
   expect(await service("bob", fixture.orgB).listConversations()).toEqual([]);
-  await expect(service("bob", fixture.orgB).toggleReaction(sent.id, "👍")).rejects.toBeInstanceOf(
-    AccessDeniedError,
-  );
+  expect(
+    await rejection(service("bob", fixture.orgB).toggleReaction(sent.id, "👍")),
+  ).toBeInstanceOf(AccessDeniedError);
   expect(await service("alice").listMessages(dm.id)).toMatchObject([
     { id: sent.id, body: "retain my history" },
   ]);
@@ -219,10 +225,10 @@ test("disabled actors and unverified callers cannot use messaging", async () => 
     .update(actors)
     .set({ disabledAt: new Date() })
     .where(eq(actors.entityId, fixture.bob));
-  await expect(service("bob").listConversations()).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(service("bob").listConversations())).toBeInstanceOf(AccessDeniedError);
   await fixture.db.update(user).set({ emailVerified: false }).where(eq(user.id, "alice"));
-  await expect(
-    service("alice").createConversation({ kind: "channel", name: "blocked" }),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(service("alice").createConversation({ kind: "channel", name: "blocked" })),
+  ).toBeInstanceOf(AccessDeniedError);
   expect(await fixture.db.select().from(messagingConversations)).toEqual([]);
 });

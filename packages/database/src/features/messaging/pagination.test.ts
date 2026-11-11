@@ -1,9 +1,9 @@
 import { user } from "../../core/authentication/schema";
 import { AccessDeniedError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
+import { rejection } from "../../testing/rejection";
 import { messagingMessages } from "./schema";
 import { createMessagingService } from "./service";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 
 const f = setupDatabase();
@@ -58,7 +58,7 @@ test("message windows paginate equal timestamps without gaps and reject anchors 
   });
   expect(around.at(-1)!.id).toBe(anchor.id);
   const other = await service.createConversation({ kind: "channel", name: "Other" });
-  await expect(
-    service.listMessages(other.id, undefined, { beforeMessageId: anchor.id }),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(service.listMessages(other.id, undefined, { beforeMessageId: anchor.id })),
+  ).toBeInstanceOf(AccessDeniedError);
 });

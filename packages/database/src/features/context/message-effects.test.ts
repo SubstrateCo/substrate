@@ -9,10 +9,10 @@ import {
   createAcceptedMessagingService,
 } from "../../testing/messaging";
 import { recordQueries } from "../../testing/queries";
+import { rejection } from "../../testing/rejection";
 import { messagingConversations, messagingParticipants } from "../messaging/schema";
 import { applyMessageEffects } from "./message-effects";
 import { messageEntityReferences } from "./schema";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -229,9 +229,9 @@ for (const invalid of ["disabled", "deleted", "unverified", "removed", "hidden"]
     ).toEqual([]);
     if (invalid !== "unverified") {
       const before = await chat.listMessages(channel.id);
-      await expect(
-        chat.sendMessage(channel.id, `@[person:${f.bob}]`, root.id),
-      ).rejects.toBeInstanceOf(AccessDeniedError);
+      expect(
+        await rejection(chat.sendMessage(channel.id, `@[person:${f.bob}]`, root.id)),
+      ).toBeInstanceOf(AccessDeniedError);
       expect(await chat.listMessages(channel.id)).toEqual(before);
     } else {
       const mention = await chat.sendMessage(channel.id, `@[person:${f.bob}]`, root.id);
@@ -246,24 +246,26 @@ test("message, references and batched notifications all roll back with the calle
   const { chat, conversation, project } = await setup();
   await chat.addMembers(conversation.id, ["bob@example.com", "outside@example.com"]);
   const before = await chat.listMessages(conversation.id);
-  await expect(
-    f.db.transaction(async (tx) => {
-      await createAcceptedMessagingService(tx, {
-        userId: "alice",
-        organizationId: f.orgA,
-      }).sendMessage(
-        conversation.id,
-        `@[project:${project.entityId}] @[person:${f.bob}]`,
-        before[0]!.id,
-      );
-      throw new Error("abort after batch");
-    }),
-  ).rejects.toThrow("abort after batch");
+  expect(
+    await rejection(
+      f.db.transaction(async (tx) => {
+        await createAcceptedMessagingService(tx, {
+          userId: "alice",
+          organizationId: f.orgA,
+        }).sendMessage(
+          conversation.id,
+          `@[project:${project.entityId}] @[person:${f.bob}]`,
+          before[0]!.id,
+        );
+        throw new Error("abort after batch");
+      }),
+    ),
+  ).toMatchObject({ message: expect.stringContaining("abort after batch") });
   expect(await chat.listMessages(conversation.id)).toEqual(before);
   expect(await f.db.select().from(messageEntityReferences)).toEqual([]);
   expect(await f.db.select().from(notifications)).toEqual([]);
   for (const id of [crypto.randomUUID(), f.outsider]) {
-    await expect(chat.sendMessage(conversation.id, `@[person:${id}]`)).rejects.toBeInstanceOf(
+    expect(await rejection(chat.sendMessage(conversation.id, `@[person:${id}]`))).toBeInstanceOf(
       AccessDeniedError,
     );
   }

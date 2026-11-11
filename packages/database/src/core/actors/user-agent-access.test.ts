@@ -2,8 +2,8 @@ import { AccessDeniedError, ValidationError } from "../../errors";
 import { taskActivity } from "../../features/activity/schema";
 import { actors, entities, entityGrants, member, userAgents } from "../../schema";
 import { setupDatabase } from "../../testing/database";
+import { rejection } from "../../testing/rejection";
 import { ensureUserAgentActor } from "./provisioning";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -32,7 +32,7 @@ test("agents use their owner's live access, not grants of their own", async () =
   await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "alice"));
   const { repositories: agent, actor } = await assistant();
   const contact = await f.forActor(f.bob).contacts.create({ displayName: "Shared" });
-  await expect(agent.contacts.get(contact.entityId)).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(agent.contacts.get(contact.entityId))).toBeInstanceOf(AccessDeniedError);
   // A grant row for the agent itself does not give access.
   await f.db.insert(entityGrants).values({
     organizationId: f.orgA,
@@ -40,7 +40,7 @@ test("agents use their owner's live access, not grants of their own", async () =
     actorEntityId: actor.entityId,
     level: "owner",
   });
-  await expect(agent.contacts.get(contact.entityId)).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(agent.contacts.get(contact.entityId))).toBeInstanceOf(AccessDeniedError);
   for (const level of ["view", "comment", "edit", "owner"] as const) {
     await f
       .forActor(f.bob)
@@ -48,9 +48,9 @@ test("agents use their owner's live access, not grants of their own", async () =
     expect(await f.accessLevel(actor.entityId, contact.entityId)).toBe(level);
     expect((await agent.contacts.list()).map((item) => item.entityId)).toContain(contact.entityId);
     if (level === "view" || level === "comment") {
-      await expect(
-        agent.contacts.update(contact.entityId, { displayName: "Changed" }),
-      ).rejects.toBeInstanceOf(AccessDeniedError);
+      expect(
+        await rejection(agent.contacts.update(contact.entityId, { displayName: "Changed" })),
+      ).toBeInstanceOf(AccessDeniedError);
     } else {
       expect(
         (await agent.contacts.update(contact.entityId, { displayName: "Changed" })).displayName,
@@ -61,19 +61,21 @@ test("agents use their owner's live access, not grants of their own", async () =
     .forActor(f.bob)
     .permissions.revoke({ entityId: contact.entityId, actorEntityId: f.alice });
   expect(await agent.contacts.list()).toEqual([]);
-  await expect(agent.contacts.get(contact.entityId)).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(agent.contacts.get(contact.entityId))).toBeInstanceOf(AccessDeniedError);
 });
 
 test("agents cannot receive grants", async () => {
   const { actor } = await assistant();
   const contact = await f.forActor(f.bob).contacts.create({ displayName: "Shared" });
-  await expect(
-    f.forActor(f.bob).permissions.grant({
-      entityId: contact.entityId,
-      actorEntityId: actor.entityId,
-      level: "view",
-    }),
-  ).rejects.toBeInstanceOf(ValidationError);
+  expect(
+    await rejection(
+      f.forActor(f.bob).permissions.grant({
+        entityId: contact.entityId,
+        actorEntityId: actor.entityId,
+        level: "view",
+      }),
+    ),
+  ).toBeInstanceOf(ValidationError);
 });
 
 test("agent-created records belong to the owner and keep agent activity attribution", async () => {
@@ -118,17 +120,19 @@ test("other members cannot see or assign a user's local agent, but see it on ass
     actorEntityId: f.bob,
     level: "edit",
   });
-  await expect(
-    bob.tasks.create({
-      projectEntityId: project.entityId,
-      title: "Not allowed",
-      assigneeActorEntityId: actor.entityId,
-    }),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(
+      bob.tasks.create({
+        projectEntityId: project.entityId,
+        title: "Not allowed",
+        assigneeActorEntityId: actor.entityId,
+      }),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
   const task = await bob.tasks.create({ projectEntityId: project.entityId, title: "Open" });
-  await expect(
-    bob.tasks.update(task.entityId, { assigneeActorEntityId: actor.entityId }),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(bob.tasks.update(task.entityId, { assigneeActorEntityId: actor.entityId })),
+  ).toBeInstanceOf(AccessDeniedError);
   expect(
     (await bob.projects.getDetail(project.entityId)).actors.map((item) => item.entityId),
   ).not.toContain(actor.entityId);
@@ -162,31 +166,33 @@ test("other members cannot see or assign a user's local agent, but see it on ass
 test("the database rejects cross-organization grants to agents", async () => {
   const { actor } = await assistant();
   const project = await f.forActor(f.outsider, f.orgB).projects.create({ name: "Owned" });
-  await expect(
-    f.db
-      .insert(entityGrants)
-      .values({
-        organizationId: f.orgB,
-        entityId: project.entityId,
-        actorEntityId: actor.entityId,
-        level: "owner",
-      })
-      .execute(),
-  ).rejects.toMatchObject({ cause: { code: "23503" } });
+  expect(
+    await rejection(
+      f.db
+        .insert(entityGrants)
+        .values({
+          organizationId: f.orgB,
+          entityId: project.entityId,
+          actorEntityId: actor.entityId,
+          level: "owner",
+        })
+        .execute(),
+    ),
+  ).toMatchObject({ cause: { code: "23503" } });
 });
 
 test("agents cannot cross workspaces or outlive the owner's active identity", async () => {
   const { repositories: agent } = await assistant();
   const foreign = await f.forActor(f.outsider, f.orgB).contacts.create({ displayName: "Foreign" });
-  await expect(agent.contacts.get(foreign.entityId)).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(agent.contacts.get(foreign.entityId))).toBeInstanceOf(AccessDeniedError);
   await f.db.update(actors).set({ disabledAt: new Date() }).where(eq(actors.entityId, f.alice));
-  await expect(agent.contacts.create({ displayName: "Blocked" })).rejects.toBeInstanceOf(
+  expect(await rejection(agent.contacts.create({ displayName: "Blocked" }))).toBeInstanceOf(
     AccessDeniedError,
   );
   await f.db.update(actors).set({ disabledAt: null }).where(eq(actors.entityId, f.alice));
   await f.db.update(entities).set({ deletedAt: new Date() }).where(eq(entities.entityId, f.alice));
-  await expect(agent.contacts.list()).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(agent.contacts.list())).toBeInstanceOf(AccessDeniedError);
   await f.db.update(entities).set({ deletedAt: null }).where(eq(entities.entityId, f.alice));
   await f.db.delete(member).where(eq(member.id, "alice-a"));
-  await expect(agent.contacts.list()).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(agent.contacts.list())).toBeInstanceOf(AccessDeniedError);
 });

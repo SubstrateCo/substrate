@@ -6,10 +6,10 @@ import { entities, taskActivity, messagingParticipants, messagingMessages } from
 import { setupDatabase } from "../../testing/database";
 import { createAcceptedMessagingService } from "../../testing/messaging";
 import { recordQueries } from "../../testing/queries";
+import { rejection } from "../../testing/rejection";
 import { createContextService } from "../context/service";
 import { notifications } from "./schema";
 import { createFeedService } from "./service";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 import { eq, sql } from "drizzle-orm";
 
@@ -67,9 +67,11 @@ test("group pages count complete threads, page groups, and keep concurrent arriv
     .where(eq(messagingParticipants.actorEntityId, f.bob));
   expect((await service.groups({ limit: 20, filter: "all" })).items).toEqual([]);
   expect((await service.groupEvents({ groupKey: group.groupKey, limit: 20 })).items).toEqual([]);
-  await expect(
-    service.markGroupRead({ groupKey: group.groupKey, through: group.newestCursor }),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(
+      service.markGroupRead({ groupKey: group.groupKey, through: group.newestCursor }),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
 });
 
 test("work groups use entity identity, page tied timestamps after a deleted anchor, and check current access", async () => {
@@ -113,12 +115,14 @@ test("work groups use entity identity, page tied timestamps after a deleted anch
   expect(
     (await service.groupEvents({ groupKey: first.items[0]!.groupKey, limit: 20 })).items,
   ).toEqual([]);
-  await expect(
-    service.markGroupRead({
-      groupKey: second.items[0]!.groupKey,
-      through: second.items[0]!.newestCursor,
-    }),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(
+      service.markGroupRead({
+        groupKey: second.items[0]!.groupKey,
+        through: second.items[0]!.newestCursor,
+      }),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
 });
 
 test("groups retain microsecond boundaries and mixed read history and do not enrich the unread indicator", async () => {
@@ -175,12 +179,14 @@ test("groups retain microsecond boundaries and mixed read history and do not enr
       (item) => item.messageId !== second.id,
     ),
   ).toBe(true);
-  await expect(
-    otherWorkspace.markGroupRead({
-      groupKey: `thread:${root.id}`,
-      through: grouped.items[0]!.newestCursor,
-    }),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(
+      otherWorkspace.markGroupRead({
+        groupKey: `thread:${root.id}`,
+        through: grouped.items[0]!.newestCursor,
+      }),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
 });
 
 test("notification pages scan past inaccessible targets and filter unread before pagination", async () => {
@@ -432,7 +438,7 @@ test("assignment notifications exclude self and unchanged assignments; read stat
     entityId: task.entityId,
     readAt: null,
   });
-  await expect(feed("alice").markRead(notice!.id)).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(feed("alice").markRead(notice!.id))).toBeInstanceOf(AccessDeniedError);
   await feed("bob").markRead(notice!.id);
   expect((await feed("bob").list())[0]!.readAt).not.toBeNull();
   await alice.tasks.update(task.entityId, { assigneeActorEntityId: f.bob, title: "Ship" });
@@ -462,12 +468,12 @@ test("mentions notify accessible recipients once, reply notifications are dedupl
     { kind: "reply", messageId: reply.id, title: "New thread reply" },
   ]);
   const before = await chat.listMessages(channel.id);
-  await expect(chat.sendMessage(channel.id, `Bad @[person:${f.outsider}]`)).rejects.toBeInstanceOf(
-    AccessDeniedError,
-  );
-  await expect(
-    chat.sendMessage(channel.id, `Bad @[task:${project.entityId}]`),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(chat.sendMessage(channel.id, `Bad @[person:${f.outsider}]`)),
+  ).toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(chat.sendMessage(channel.id, `Bad @[task:${project.entityId}]`)),
+  ).toBeInstanceOf(AccessDeniedError);
   expect(await chat.listMessages(channel.id)).toEqual(before);
 });
 
@@ -604,21 +610,23 @@ test("mark all read covers more than one page, preserves read timestamps, and is
   expect(
     rows.filter((row) => row.recipientActorEntityId !== f.bob).map((row) => row.readAt),
   ).toEqual([null, null]);
-  await expect(feed("outsider").markAllRead()).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(feed("outsider").markAllRead())).toBeInstanceOf(AccessDeniedError);
 });
 
 test("notification and activity writes roll back with the task transaction", async () => {
   const { project } = await setup();
-  await expect(
-    f.forActor(f.alice).transaction(async (repos) => {
-      await repos.tasks.create({
-        projectEntityId: project.entityId,
-        title: "Rollback",
-        assigneeActorEntityId: f.bob,
-      });
-      throw new Error("abort");
-    }),
-  ).rejects.toThrow("abort");
+  expect(
+    await rejection(
+      f.forActor(f.alice).transaction(async (repos) => {
+        await repos.tasks.create({
+          projectEntityId: project.entityId,
+          title: "Rollback",
+          assigneeActorEntityId: f.bob,
+        });
+        throw new Error("abort");
+      }),
+    ),
+  ).toMatchObject({ message: expect.stringContaining("abort") });
   expect(
     await f.db.select().from(notifications).where(eq(notifications.recipientActorEntityId, f.bob)),
   ).toEqual([]);

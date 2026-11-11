@@ -1,10 +1,10 @@
 import { AccessDeniedError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
+import { rejection } from "../../testing/rejection";
 import { ensureUserAgentActor } from "../actors/provisioning";
 import { userAgents } from "../actors/user-agents.schema";
 import { member } from "../organizations/schema";
 import { RepositoryContext } from "../repository-context";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -19,12 +19,12 @@ async function promote(userId: string, role: string) {
 
 test("organization admins and owners act as owner of unshared records", async () => {
   const contact = await f.forActor(f.bob).contacts.create({ displayName: "Bob's contact" });
-  await expect(
-    context(f.outsider, f.orgB).requireAccess(contact.entityId, "view"),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(context(f.outsider, f.orgB).requireAccess(contact.entityId, "view")),
+  ).toBeInstanceOf(AccessDeniedError);
   expect((await context(f.alice).requireAccess(contact.entityId, "owner")).level).toBe("owner");
   await promote("alice", "member");
-  await expect(context(f.alice).requireAccess(contact.entityId, "view")).rejects.toBeInstanceOf(
+  expect(await rejection(context(f.alice).requireAccess(contact.entityId, "view"))).toBeInstanceOf(
     AccessDeniedError,
   );
   await promote("alice", "member,admin");
@@ -33,16 +33,16 @@ test("organization admins and owners act as owner of unshared records", async ()
 
 test("admin access is limited to the admin's organization", async () => {
   const contact = await f.forActor(f.alice).contacts.create({ displayName: "Org A" });
-  await expect(
-    context(f.outsider, f.orgB).requireAccess(contact.entityId, "view"),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
-  await expect(
-    context(f.outsider, f.orgA).requireAccess(contact.entityId, "view"),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(context(f.outsider, f.orgB).requireAccess(contact.entityId, "view")),
+  ).toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(context(f.outsider, f.orgA).requireAccess(contact.entityId, "view")),
+  ).toBeInstanceOf(AccessDeniedError);
 });
 
 test("admins do not gain owner access to other people's actor records", async () => {
-  await expect(context(f.alice).requireAccess(f.bob, "owner")).rejects.toBeInstanceOf(
+  expect(await rejection(context(f.alice).requireAccess(f.bob, "owner"))).toBeInstanceOf(
     AccessDeniedError,
   );
 });
@@ -62,9 +62,9 @@ test("an admin's agent acts with the admin's live access", async () => {
     "owner",
   );
   await promote("alice", "member");
-  await expect(
-    context(actor.entityId).requireAccess(contact.entityId, "view"),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(context(actor.entityId).requireAccess(contact.entityId, "view")),
+  ).toBeInstanceOf(AccessDeniedError);
 });
 
 test("readable entities include unshared records for admins only", async () => {

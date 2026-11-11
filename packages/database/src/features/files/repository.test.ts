@@ -4,10 +4,10 @@ import { AccessDeniedError, ConflictError } from "../../errors";
 import { member, user } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { createAcceptedMessagingService } from "../../testing/messaging";
+import { rejection } from "../../testing/rejection";
 import { messagingMessages } from "../messaging/schema";
 import { createAttachmentRepository, attachmentReferences } from "./repository";
 import { messageAttachments, taskAttachments } from "./schema";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -50,49 +50,53 @@ test("task attachments inherit access, reject uploader backdoors, and block blob
   expect(
     await files().taskContent(scope(), { ...target, attachmentId: attachment!.id }),
   ).toMatchObject({ id: file.id });
-  await expect(
-    files().listTask({ userId: "bob", organizationId: f.orgA }, target),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(files().listTask({ userId: "bob", organizationId: f.orgA }, target)),
+  ).toBeInstanceOf(AccessDeniedError);
   await f
     .forActor(f.alice)
     .permissions.grant({ entityId: target.projectEntityId, actorEntityId: f.bob, level: "view" });
   const viewer = { userId: "bob", organizationId: f.orgA };
   expect((await files().listTask(viewer, target))[0]!.fileId).toBe(file.id);
-  await expect(
-    files().removeTask(viewer, { ...target, attachmentId: attachment!.id }),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(files().removeTask(viewer, { ...target, attachmentId: attachment!.id })),
+  ).toBeInstanceOf(AccessDeniedError);
   await f
     .forActor(f.alice)
     .permissions.revoke({ entityId: target.projectEntityId, actorEntityId: f.bob });
-  await expect(
-    files().taskContent(viewer, { ...target, attachmentId: attachment!.id }),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(files().taskContent(viewer, { ...target, attachmentId: attachment!.id })),
+  ).toBeInstanceOf(AccessDeniedError);
   const storage = createStorageRepository(f.db, attachmentReferences);
   expect(await storage.getReadable(scope(), file.id)).toBeNull();
-  await expect(storage.deleteFile(scope(), file.id)).rejects.toBeInstanceOf(ConflictError);
+  expect(await rejection(storage.deleteFile(scope(), file.id))).toBeInstanceOf(ConflictError);
   await files().removeTask(scope(), { ...target, attachmentId: attachment!.id });
   expect(await files().listTask(scope(), target)).toEqual([]);
-  await expect(
-    files().taskContent(scope(), { ...target, attachmentId: attachment!.id }),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(files().taskContent(scope(), { ...target, attachmentId: attachment!.id })),
+  ).toBeInstanceOf(AccessDeniedError);
 });
 
 test("invalid files roll back the full attachment batch and cannot cross organizations", async () => {
   const target = await task();
   const file = await staged();
   const foreign = await staged("outsider", f.orgB);
-  await expect(
-    files().addTask(scope(), { ...target, attachmentFileIds: [file.id, foreign.id] }),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(
+      files().addTask(scope(), { ...target, attachmentFileIds: [file.id, foreign.id] }),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
   expect(await files().listTask(scope(), target)).toEqual([]);
   const [unchanged] = await f.db.select().from(storedFiles).where(eq(storedFiles.id, file.id));
   expect(unchanged!.publishedAt).toBeNull();
-  await expect(
-    files().addTask(
-      { userId: "bob", organizationId: f.orgA },
-      { ...target, attachmentFileIds: [file.id] },
+  expect(
+    await rejection(
+      files().addTask(
+        { userId: "bob", organizationId: f.orgA },
+        { ...target, attachmentFileIds: [file.id] },
+      ),
     ),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  ).toBeInstanceOf(AccessDeniedError);
 });
 
 test("attachment-only messages replay safely and private files do not become admin-readable", async () => {
@@ -113,9 +117,9 @@ test("attachment-only messages replay safely and private files do not become adm
   expect((await chat.sendMessage(conversation.id, "", undefined, requestId, [file.id])).id).toBe(
     sent.id,
   );
-  await expect(
-    chat.sendMessage(conversation.id, "changed", undefined, requestId, []),
-  ).rejects.toBeInstanceOf(ConflictError);
+  expect(
+    await rejection(chat.sendMessage(conversation.id, "changed", undefined, requestId, [])),
+  ).toBeInstanceOf(ConflictError);
   const target = {
     conversationId: conversation.id,
     messageId: sent.id,
@@ -123,9 +127,9 @@ test("attachment-only messages replay safely and private files do not become adm
   };
   expect((await files().messageContent(scope(), target)).id).toBe(file.id);
   await f.db.update(member).set({ role: "admin" }).where(eq(member.id, "bob-a"));
-  await expect(
-    files().messageContent({ userId: "bob", organizationId: f.orgA }, target),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(files().messageContent({ userId: "bob", organizationId: f.orgA }, target)),
+  ).toBeInstanceOf(AccessDeniedError);
 });
 
 test("partner downloads use conversation access, not the file's organization", async () => {
@@ -152,9 +156,9 @@ test("partner downloads use conversation access, not the file's organization", a
     organizationId: f.orgB,
   });
   await partner.leaveConversation(conversation.id);
-  await expect(
-    files().messageContent({ userId: "outsider", organizationId: f.orgB }, target),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(files().messageContent({ userId: "outsider", organizationId: f.orgB }, target)),
+  ).toBeInstanceOf(AccessDeniedError);
 });
 
 test("cleanup retains published references after uploader deletion and collects detached files", async () => {
@@ -191,15 +195,15 @@ test("creating a task and its files is atomic, and a published file cannot be re
       taskEntityId: created.entityId,
     }),
   ).toHaveLength(1);
-  await expect(
-    f
-      .forActor(f.alice)
-      .tasks.create({
+  expect(
+    await rejection(
+      f.forActor(f.alice).tasks.create({
         projectEntityId: project.entityId,
         title: "Cannot reuse",
         attachmentFileIds: [file.id],
       }),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
   expect((await f.forActor(f.alice).tasks.list(project.entityId)).map((row) => row.title)).toEqual([
     "With file",
   ]);
@@ -238,7 +242,7 @@ test("cleanup skips a file locked for publication and cannot remove a committed 
 test("database constraints reject wrong task organizations and empty messages after final attachment removal", async () => {
   const target = await task();
   const foreign = await staged("outsider", f.orgB);
-  await expect(
+  await rejection(
     f.db
       .insert(taskAttachments)
       .values({
@@ -250,17 +254,17 @@ test("database constraints reject wrong task organizations and empty messages af
         position: 0,
       })
       .execute(),
-  ).rejects.toThrow();
+  );
   await f.db.update(user).set({ emailVerified: true });
   const chat = createAcceptedMessagingService(f.db, scope());
   const conversation = await chat.createConversation({ kind: "channel", name: "files" });
   const file = await staged();
   const sent = await chat.sendMessage(conversation.id, "", undefined, undefined, [file.id]);
-  await expect(
+  await rejection(
     f.db.delete(messageAttachments).where(eq(messageAttachments.messageId, sent.id)).execute(),
-  ).rejects.toThrow();
+  );
   expect((await chat.listMessages(conversation.id))[0]!.attachments).toHaveLength(1);
-  await expect(
+  await rejection(
     f.db
       .insert(messagingMessages)
       .values({
@@ -270,5 +274,5 @@ test("database constraints reject wrong task organizations and empty messages af
         body: " ",
       })
       .execute(),
-  ).rejects.toThrow();
+  );
 });

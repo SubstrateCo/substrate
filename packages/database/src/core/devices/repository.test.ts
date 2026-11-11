@@ -1,12 +1,12 @@
 import { AccessDeniedError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
+import { rejection } from "../../testing/rejection";
 import { deviceOnline, registerDevice, touchDevice } from "./repository";
 import { desktopDevices } from "./schema";
 import { expect, test } from "bun:test";
 import { eq, sql } from "drizzle-orm";
 
-/* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous. */
 const f = setupDatabase();
 
 async function seenAgo(id: string, seconds: number) {
@@ -69,8 +69,10 @@ test("a device calling every minute stays online, and one that stops goes offlin
 test("only the registering user's device resolves", async () => {
   const installationId = crypto.randomUUID();
   await registerDevice(f.db, "alice", { installationId, name: "Mac", platform: "darwin" });
-  await expect(touchDevice(f.db, "bob", installationId)).rejects.toBeInstanceOf(AccessDeniedError);
-  await expect(touchDevice(f.db, "alice", crypto.randomUUID())).rejects.toBeInstanceOf(
+  expect(await rejection(touchDevice(f.db, "bob", installationId))).toBeInstanceOf(
+    AccessDeniedError,
+  );
+  expect(await rejection(touchDevice(f.db, "alice", crypto.randomUUID()))).toBeInstanceOf(
     AccessDeniedError,
   );
 });

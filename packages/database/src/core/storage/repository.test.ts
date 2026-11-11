@@ -1,11 +1,11 @@
 import { AccessDeniedError, ConflictError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
+import { rejection } from "../../testing/rejection";
 import { user } from "../authentication/schema";
 import { member, organization } from "../organizations/schema";
 import { createStorageRepository } from "./repository";
 import { fileUploads, storedFiles, storageCandidates } from "./schema";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -35,7 +35,7 @@ describe("stored file relationships", () => {
         new Date(Date.now() + 60_000),
       );
     const pending = await Promise.all(Array.from({ length: 20 }, create));
-    await expect(create()).rejects.toBeInstanceOf(ConflictError);
+    expect(await rejection(create())).toBeInstanceOf(ConflictError);
     await repo.complete(scope, pending[0]!.id, {
       objectKey: crypto.randomUUID(),
       contentType: "text/plain",
@@ -103,22 +103,22 @@ describe("stored file relationships", () => {
       size: 5,
       sha256: "a".repeat(64),
     });
-    await expect(repo.getUpload({ ...scope, userId: "bob" }, id)).rejects.toBeInstanceOf(
+    expect(await rejection(repo.getUpload({ ...scope, userId: "bob" }, id))).toBeInstanceOf(
       AccessDeniedError,
     );
-    await expect(repo.getUpload({ ...scope, organizationId: f.orgB }, id)).rejects.toBeInstanceOf(
-      AccessDeniedError,
-    );
+    expect(
+      await rejection(repo.getUpload({ ...scope, organizationId: f.orgB }, id)),
+    ).toBeInstanceOf(AccessDeniedError);
     await f.db.update(member).set({ role: "member" }).where(eq(member.id, "alice-a"));
-    await expect(repo.getUpload(scope, id)).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(await rejection(repo.getUpload(scope, id))).toBeInstanceOf(AccessDeniedError);
     await f.db.delete(member).where(eq(member.id, "alice-a"));
-    await expect(repo.getUpload(scope, id)).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(await rejection(repo.getUpload(scope, id))).toBeInstanceOf(AccessDeniedError);
     await f.db
       .insert(member)
       .values({ id: "alice-a", userId: "alice", organizationId: f.orgA, role: "owner" });
     await f.db.update(fileUploads).set({ deletedAt: new Date() }).where(eq(fileUploads.id, id));
     // Even an inconsistent surviving completed row cannot override the deletion marker.
-    await expect(repo.getUpload(scope, id)).rejects.toBeInstanceOf(ConflictError);
+    expect(await rejection(repo.getUpload(scope, id))).toBeInstanceOf(ConflictError);
   });
 
   test("completion rechecks membership, deletion, and expiry after the initial authorized read", async () => {
@@ -139,7 +139,7 @@ describe("stored file relationships", () => {
       sha256: "a".repeat(64),
     };
     await f.db.delete(member).where(eq(member.id, "alice-a"));
-    await expect(repo.complete(scope, id, verified)).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(await rejection(repo.complete(scope, id, verified))).toBeInstanceOf(AccessDeniedError);
     expect(await f.db.select().from(storedFiles).where(eq(storedFiles.id, id))).toEqual([]);
     await f.db
       .insert(member)
@@ -148,7 +148,9 @@ describe("stored file relationships", () => {
       .update(fileUploads)
       .set({ expiresAt: new Date(0) })
       .where(eq(fileUploads.id, id));
-    await expect(repo.complete(scope, id, verified)).rejects.toThrow("Upload expired");
+    expect(await rejection(repo.complete(scope, id, verified))).toMatchObject({
+      message: expect.stringContaining("Upload expired"),
+    });
     expect(await f.db.select().from(storedFiles).where(eq(storedFiles.id, id))).toEqual([]);
     await f.db
       .update(fileUploads)
@@ -157,7 +159,7 @@ describe("stored file relationships", () => {
     await repo.complete(scope, id, verified);
     await repo.getUpload(scope, id);
     await repo.deleteFile(scope, id);
-    await expect(repo.complete(scope, id, verified)).rejects.toBeInstanceOf(ConflictError);
+    expect(await rejection(repo.complete(scope, id, verified))).toBeInstanceOf(ConflictError);
     expect(await f.db.select().from(storedFiles).where(eq(storedFiles.id, id))).toEqual([]);
   });
 
@@ -179,9 +181,9 @@ describe("stored file relationships", () => {
     };
     await repo.complete(scope, id, verified);
     await repo.deleteFile(scope, id);
-    await expect(repo.getUpload(scope, id)).rejects.toThrow(
-      "File was deleted. Start a new upload.",
-    );
+    expect(await rejection(repo.getUpload(scope, id))).toMatchObject({
+      message: expect.stringContaining("File was deleted. Start a new upload."),
+    });
 
     await f.db
       .update(fileUploads)
@@ -232,12 +234,14 @@ describe("stored file relationships", () => {
   });
 
   test("PostgreSQL rejects malformed file ownership", async () => {
-    await expect(
-      f.db
-        .insert(storedFiles)
-        .values({ ...file(), organizationId: f.orgA })
-        .execute(),
-    ).rejects.toMatchObject({ cause: { code: "23514" } });
+    expect(
+      await rejection(
+        f.db
+          .insert(storedFiles)
+          .values({ ...file(), organizationId: f.orgA })
+          .execute(),
+      ),
+    ).toMatchObject({ cause: { code: "23514" } });
   });
 
   test("profile pictures are readable only by their owner or members of the active shared organization", async () => {
@@ -330,10 +334,10 @@ describe("stored file relationships", () => {
       repo.complete(scope, id, { ...verified, objectKey: `objects/${id}/loser` }),
     ]);
     expect(results[0].objectKey).toBe(results[1].objectKey);
-    await expect(repo.deleteFile({ userId: "bob", organizationId: f.orgA }, id)).rejects.toThrow();
+    await rejection(repo.deleteFile({ userId: "bob", organizationId: f.orgA }, id));
     await repo.deleteFile(scope, id);
     expect(await repo.getReadable(scope, id)).toBeNull();
-    await expect(repo.complete(scope, id, verified)).rejects.toThrow();
+    await rejection(repo.complete(scope, id, verified));
     expect(
       (await repo.cleanupCandidates(new Date(Date.now() + 1000))).map((row) => row.objectKey),
     ).toContain(results[0].objectKey);
@@ -342,16 +346,16 @@ describe("stored file relationships", () => {
   test("logo writes need an active organization and admin or owner role", async () => {
     const repo = createStorageRepository(f.db);
     await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "bob"));
-    await expect(
+    await rejection(
       repo.requirePictureAccess({ userId: "bob", organizationId: f.orgA }, "organization-logo"),
-    ).rejects.toThrow();
+    );
     await repo.requirePictureAccess(
       { userId: "alice", organizationId: f.orgA },
       "organization-logo",
     );
-    await expect(
+    await rejection(
       repo.requirePictureAccess({ userId: "alice", organizationId: null }, "organization-logo"),
-    ).rejects.toThrow();
+    );
     await f.db.update(member).set({ role: "admin" }).where(eq(member.id, "bob-a"));
     await repo.requirePictureAccess({ userId: "bob", organizationId: f.orgA }, "organization-logo");
   });

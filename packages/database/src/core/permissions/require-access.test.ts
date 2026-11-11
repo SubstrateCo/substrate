@@ -1,12 +1,12 @@
 import { AccessDeniedError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
+import { rejection } from "../../testing/rejection";
 import { actors } from "../actors/schema";
 import { entities } from "../entities/schema";
 import { member } from "../organizations/schema";
 import { RepositoryContext } from "../repository-context";
 import { entityGrants } from "./schema";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 import { and, eq, sql } from "drizzle-orm";
 
@@ -55,7 +55,7 @@ test("the container grant sets the child's level and enforces every permission r
     await owner.permissions.grant({ entityId: parent.entityId, actorEntityId: f.bob, level });
     expect((await context.requireAccess(child.entityId, level)).level).toBe(level);
     if (denied)
-      await expect(context.requireAccess(child.entityId, denied)).rejects.toBeInstanceOf(
+      expect(await rejection(context.requireAccess(child.entityId, denied))).toBeInstanceOf(
         AccessDeniedError,
       );
   }
@@ -74,7 +74,7 @@ test("a deleted container hides its live child, and a deleted child is hidden", 
     .update(entities)
     .set({ deletedAt: new Date() })
     .where(eq(entities.entityId, parent.entityId));
-  await expect(context.requireAccess(child.entityId, "view")).rejects.toBeInstanceOf(
+  expect(await rejection(context.requireAccess(child.entityId, "view"))).toBeInstanceOf(
     AccessDeniedError,
   );
   await f.db
@@ -85,7 +85,7 @@ test("a deleted container hides its live child, and a deleted child is hidden", 
     .update(entities)
     .set({ deletedAt: new Date() })
     .where(eq(entities.entityId, child.entityId));
-  await expect(context.requireAccess(child.entityId, "view")).rejects.toBeInstanceOf(
+  expect(await rejection(context.requireAccess(child.entityId, "view"))).toBeInstanceOf(
     AccessDeniedError,
   );
   expect((await context.requireAccess(parent.entityId, "owner")).level).toBe("owner");
@@ -100,7 +100,7 @@ test("missing, deleted, and foreign entities are denied even with an active acto
     .where(eq(entities.entityId, local.entityId));
   const context = new RepositoryContext(f.db, { organizationId: f.orgA, actorEntityId: f.alice });
   for (const id of [local.entityId, foreign.entityId, crypto.randomUUID()]) {
-    await expect(context.requireAccess(id, "view")).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(await rejection(context.requireAccess(id, "view"))).toBeInstanceOf(AccessDeniedError);
   }
 });
 
@@ -110,13 +110,15 @@ test("inactive and forged scopes fail the actor precheck before locks or visibil
   const deny = async (actorEntityId: string, organizationId = f.orgA) => {
     for (const lock of [true, false]) {
       queries.length = 0;
-      await expect(
-        new RepositoryContext(db, { organizationId, actorEntityId }).requireAccess(
-          contact.entityId,
-          "view",
-          lock,
+      expect(
+        await rejection(
+          new RepositoryContext(db, { organizationId, actorEntityId }).requireAccess(
+            contact.entityId,
+            "view",
+            lock,
+          ),
         ),
-      ).rejects.toBeInstanceOf(AccessDeniedError);
+      ).toBeInstanceOf(AccessDeniedError);
       expect(queries).toHaveLength(1);
     }
   };
@@ -137,13 +139,15 @@ test("a denied inactive scope holds no lock on the access path", async () => {
   const contact = await f.forActor(f.alice).contacts.create({ displayName: "Unlocked" });
   await f.db.update(actors).set({ disabledAt: new Date() }).where(eq(actors.entityId, f.bob));
   await f.db.transaction(async (tx) => {
-    await expect(
-      new RepositoryContext(tx, { organizationId: f.orgA, actorEntityId: f.bob }).requireAccess(
-        contact.entityId,
-        "view",
-        true,
+    expect(
+      await rejection(
+        new RepositoryContext(tx, { organizationId: f.orgA, actorEntityId: f.bob }).requireAccess(
+          contact.entityId,
+          "view",
+          true,
+        ),
       ),
-    ).rejects.toBeInstanceOf(AccessDeniedError);
+    ).toBeInstanceOf(AccessDeniedError);
     // A second connection locks the row at once while the denied transaction is still open.
     const rows = await f.db.execute(
       sql`SELECT entity_id FROM ${entities} WHERE entity_id = ${contact.entityId} FOR UPDATE NOWAIT`,

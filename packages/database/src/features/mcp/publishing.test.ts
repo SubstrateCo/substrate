@@ -4,12 +4,12 @@ import { agentRequests, agentToolRequests, messagingMessages, userAgents } from 
 import { agentWorkFixture, dmTurn, threadTurn } from "../../testing/agent-work";
 import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
+import { rejection } from "../../testing/rejection";
 import { executeAgentTool } from "./service";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { ZodError } from "zod";
 
-/* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous. */
 const f = setupDatabase();
 
 const message = async (id: string) =>
@@ -49,13 +49,15 @@ test("background turns post only to their own place and propose everything else"
   const { alice, dm, call } = await agentWorkFixture(f);
   const channel = await alice.createConversation({ kind: "channel", name: "general" });
   const background = dmTurn(dm.id, "unattended");
-  await expect(
-    call(
-      "reply",
-      { requestId: crypto.randomUUID(), body: "Elsewhere", to: { conversationId: channel.id } },
-      background,
+  expect(
+    await rejection(
+      call(
+        "reply",
+        { requestId: crypto.randomUUID(), body: "Elsewhere", to: { conversationId: channel.id } },
+        background,
+      ),
     ),
-  ).rejects.toThrow("Use propose for this action");
+  ).toMatchObject({ message: expect.stringContaining("Use propose for this action") });
 
   // A routine turn has no source and publishes to its destination.
   const routine = {
@@ -81,32 +83,36 @@ test("background turns post only to their own place and propose everything else"
 test("the turn must match its session and cannot borrow another agent's turn", async () => {
   const { alice, dm, call } = await agentWorkFixture(f);
   const channel = await alice.createConversation({ kind: "channel", name: "general" });
-  await expect(
-    call(
-      "reply",
-      { requestId: crypto.randomUUID(), body: "x" },
-      { ...dmTurn(dm.id), origin: { conversationId: channel.id, threadId: null } },
+  expect(
+    await rejection(
+      call(
+        "reply",
+        { requestId: crypto.randomUUID(), body: "x" },
+        { ...dmTurn(dm.id), origin: { conversationId: channel.id, threadId: null } },
+      ),
     ),
-  ).rejects.toBeInstanceOf(ValidationError);
+  ).toBeInstanceOf(ValidationError);
 
   const turn = dmTurn(dm.id);
   await call("reply", { requestId: crypto.randomUUID(), body: "Mine" }, turn);
   const other = await ownedAgent(f, "alice", "Writer");
   const otherDm = await alice.createConversation({ kind: "dm", agentIds: [other.agentId] });
-  await expect(
-    executeAgentTool(
-      f.db,
-      { userId: "alice", organizationId: f.orgA, actorEntityId: other.actorId },
-      "reply",
-      { requestId: crypto.randomUUID(), body: "Borrowed" },
-      {
-        ...turn,
-        sessionKey: `dm:${otherDm.id}`,
-        origin: { conversationId: otherDm.id, threadId: null },
-        installationId: other.identity.installationId,
-      },
+  expect(
+    await rejection(
+      executeAgentTool(
+        f.db,
+        { userId: "alice", organizationId: f.orgA, actorEntityId: other.actorId },
+        "reply",
+        { requestId: crypto.randomUUID(), body: "Borrowed" },
+        {
+          ...turn,
+          sessionKey: `dm:${otherDm.id}`,
+          origin: { conversationId: otherDm.id, threadId: null },
+          installationId: other.identity.installationId,
+        },
+      ),
     ),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  ).toBeInstanceOf(AccessDeniedError);
 });
 
 const messagesIn = (conversationId: string) =>
@@ -114,13 +120,15 @@ const messagesIn = (conversationId: string) =>
 
 test("background turns cannot ask: reply.ask is rejected before anything posts", async () => {
   const { dm, call } = await agentWorkFixture(f);
-  await expect(
-    call(
-      "reply",
-      { requestId: crypto.randomUUID(), body: "Should I?", ask: { question: "Should I?" } },
-      dmTurn(dm.id, "unattended"),
+  expect(
+    await rejection(
+      call(
+        "reply",
+        { requestId: crypto.randomUUID(), body: "Should I?", ask: { question: "Should I?" } },
+        dmTurn(dm.id, "unattended"),
+      ),
     ),
-  ).rejects.toBeInstanceOf(ValidationError);
+  ).toBeInstanceOf(ValidationError);
   expect(await messagesIn(dm.id)).toEqual([]);
   expect(await f.db.select().from(agentRequests)).toEqual([]);
 });
@@ -141,27 +149,31 @@ test("only the agent's home desktop can write; a moved agent's old desktop can o
   const unknown = { ...dmTurn(dm.id), installationId: crypto.randomUUID() };
   const withoutDevice = { ...dmTurn(dm.id), installationId: undefined };
   for (const turn of [oldDesktop, unknown, withoutDevice]) {
-    await expect(
-      call("reply", { requestId: crypto.randomUUID(), body: "Stale" }, turn),
-    ).rejects.toBeInstanceOf(AccessDeniedError);
-    await expect(
-      call(
-        "propose",
-        {
-          requestId: crypto.randomUUID(),
-          summary: "Track",
-          action: { type: "create_task", input: { projectId: project.entityId, title: "Task" } },
-        },
-        turn,
+    expect(
+      await rejection(call("reply", { requestId: crypto.randomUUID(), body: "Stale" }, turn)),
+    ).toBeInstanceOf(AccessDeniedError);
+    expect(
+      await rejection(
+        call(
+          "propose",
+          {
+            requestId: crypto.randomUUID(),
+            summary: "Track",
+            action: { type: "create_task", input: { projectId: project.entityId, title: "Task" } },
+          },
+          turn,
+        ),
       ),
-    ).rejects.toBeInstanceOf(AccessDeniedError);
-    await expect(
-      call(
-        "create_task",
-        { requestId: crypto.randomUUID(), projectId: project.entityId, title: "Task" },
-        turn,
+    ).toBeInstanceOf(AccessDeniedError);
+    expect(
+      await rejection(
+        call(
+          "create_task",
+          { requestId: crypto.randomUUID(), projectId: project.entityId, title: "Task" },
+          turn,
+        ),
       ),
-    ).rejects.toBeInstanceOf(AccessDeniedError);
+    ).toBeInstanceOf(AccessDeniedError);
   }
   expect(await messagesIn(dm.id)).toEqual([]);
   expect(await f.db.select().from(agentRequests)).toEqual([]);
@@ -178,9 +190,11 @@ test("a quiet handoff turn cannot publish but can read", async () => {
   const { dm, call } = await agentWorkFixture(f);
   await f.forActor(f.alice).projects.create({ name: "Work" });
   const handoff = { ...dmTurn(dm.id, "unattended"), purpose: "handoff" as const };
-  await expect(
-    call("reply", { requestId: crypto.randomUUID(), body: "Handing off" }, handoff),
-  ).rejects.toBeInstanceOf(ValidationError);
+  expect(
+    await rejection(
+      call("reply", { requestId: crypto.randomUUID(), body: "Handing off" }, handoff),
+    ),
+  ).toBeInstanceOf(ValidationError);
   expect(await messagesIn(dm.id)).toEqual([]);
   expect(await f.db.select().from(agentRequests)).toEqual([]);
   // Reading stays allowed, so the agent can gather its notes.
@@ -227,35 +241,39 @@ test("update_task requires a requestId and replays the same change", async () =>
     { requestId: crypto.randomUUID(), projectId: project.entityId, title: "Task" },
     turn,
   );
-  await expect(
-    call("update_task", { taskId: task.id, changes: { status: "completed" } }, turn),
-  ).rejects.toBeInstanceOf(ZodError);
+  expect(
+    await rejection(
+      call("update_task", { taskId: task.id, changes: { status: "completed" } }, turn),
+    ),
+  ).toBeInstanceOf(ZodError);
   const input = { requestId: crypto.randomUUID(), taskId: task.id, changes: { priority: "high" } };
   const updated = await call("update_task", input, turn);
   // Someone changes the task after the agent did; a retry must not apply the change again.
   await f.forActor(f.alice).tasks.update(task.id, { priority: "low" });
   expect(await call("update_task", input, turn)).toEqual(updated);
   expect((await call("get_task", { taskId: task.id }, turn)).priority).toBe("low");
-  await expect(
-    call("update_task", { ...input, changes: { priority: "urgent" } }, turn),
-  ).rejects.toBeInstanceOf(ConflictError);
+  expect(
+    await rejection(call("update_task", { ...input, changes: { priority: "urgent" } }, turn)),
+  ).toBeInstanceOf(ConflictError);
 });
 
 test("propose checks the action's target now and stores the exact action", async () => {
   const { bob, dm, call } = await agentWorkFixture(f);
   const hidden = await bob.createConversation({ kind: "channel", name: "bob", private: true });
   const turn = dmTurn(dm.id, "unattended");
-  await expect(
-    call(
-      "propose",
-      {
-        requestId: crypto.randomUUID(),
-        summary: "Post",
-        action: { type: "reply_elsewhere", input: { conversationId: hidden.id, body: "Hi" } },
-      },
-      turn,
+  expect(
+    await rejection(
+      call(
+        "propose",
+        {
+          requestId: crypto.randomUUID(),
+          summary: "Post",
+          action: { type: "reply_elsewhere", input: { conversationId: hidden.id, body: "Hi" } },
+        },
+        turn,
+      ),
     ),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  ).toBeInstanceOf(AccessDeniedError);
   const project = await f.forActor(f.alice).projects.create({ name: "Work" });
   const action = { type: "create_task", input: { projectId: project.entityId, title: "Plan" } };
   const { proposalId } = await call(

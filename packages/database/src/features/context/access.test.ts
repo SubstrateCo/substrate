@@ -3,8 +3,8 @@ import { AccessDeniedError } from "../../errors";
 import { actors, entities, entityGrants, member, user, userAgents } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
+import { rejection } from "../../testing/rejection";
 import { requireWork, workspaceContext } from "./access";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 import { and, eq } from "drizzle-orm";
 
@@ -59,12 +59,14 @@ for (const invalid of ["unverified", "removed", "disabled", "deleted", "foreign"
         .set({ deletedAt: new Date() })
         .where(eq(entities.entityId, f.alice));
     const before = await f.db.select().from(actors);
-    await expect(
-      workspaceContext(f.db, {
-        userId: "alice",
-        organizationId: invalid === "foreign" ? f.orgB : f.orgA,
-      }),
-    ).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(
+      await rejection(
+        workspaceContext(f.db, {
+          userId: "alice",
+          organizationId: invalid === "foreign" ? f.orgB : f.orgA,
+        }),
+      ),
+    ).toBeInstanceOf(AccessDeniedError);
     expect(await f.db.select().from(actors)).toEqual(before);
   });
 }
@@ -93,14 +95,14 @@ test("an agent actor is verified in one statement and locks only its actor row o
   await db.transaction((tx) => workspaceContext(tx, scope, { lockActor: true }));
   expect(statements(queries)).toHaveLength(1);
   expect(statements(queries)[0]).toContain('for update of "actors"');
-  await expect(workspaceContext(f.db, { ...scope, userId: "bob" })).rejects.toBeInstanceOf(
+  expect(await rejection(workspaceContext(f.db, { ...scope, userId: "bob" }))).toBeInstanceOf(
     AccessDeniedError,
   );
-  await expect(workspaceContext(f.db, { ...scope, actorEntityId: f.alice })).rejects.toBeInstanceOf(
-    AccessDeniedError,
-  );
+  expect(
+    await rejection(workspaceContext(f.db, { ...scope, actorEntityId: f.alice })),
+  ).toBeInstanceOf(AccessDeniedError);
   await f.db.update(userAgents).set({ enabled: false }).where(eq(userAgents.id, agent!.id));
-  await expect(workspaceContext(f.db, scope)).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(workspaceContext(f.db, scope))).toBeInstanceOf(AccessDeniedError);
 });
 
 test("task work uses two statements and reports the project's access", async () => {
@@ -131,17 +133,17 @@ test("task work uses two statements and reports the project's access", async () 
     level: "view",
   });
   expect(queries).toHaveLength(2);
-  await expect(requireWork(context, task.entityId, "edit")).rejects.toBeInstanceOf(
+  expect(await rejection(requireWork(context, task.entityId, "edit"))).toBeInstanceOf(
     AccessDeniedError,
   );
   await f.db
     .delete(entityGrants)
     .where(and(eq(entityGrants.entityId, project.entityId), eq(entityGrants.actorEntityId, f.bob)));
-  await expect(requireWork(context, task.entityId)).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(requireWork(context, task.entityId))).toBeInstanceOf(AccessDeniedError);
   const contact = await alice.contacts.create({ displayName: "Customer" });
   const { context: owner } = await workspaceContext(f.db, {
     userId: "alice",
     organizationId: f.orgA,
   });
-  await expect(requireWork(owner, contact.entityId)).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(requireWork(owner, contact.entityId))).toBeInstanceOf(AccessDeniedError);
 });

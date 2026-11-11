@@ -1,7 +1,7 @@
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { entities, projects } from "../../schema";
 import { setupDatabase } from "../../testing/database";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
+import { rejection } from "../../testing/rejection";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -31,7 +31,7 @@ test("project editors can set, replace and clear the project icon, and existing 
     .update(entities)
     .set({ deletedAt: new Date() })
     .where(eq(entities.entityId, project.entityId));
-  await expect(alice.projects.setPicture(project.entityId, image)).rejects.toBeInstanceOf(
+  expect(await rejection(alice.projects.setPicture(project.entityId, image))).toBeInstanceOf(
     AccessDeniedError,
   );
 });
@@ -41,15 +41,17 @@ test("the database rejects project icons belonging to a different project, and p
   const project = await alice.projects.create({ name: "Picture constraints" });
   const other = await alice.projects.create({ name: "Other project" });
   const image = `/api/v1/files/pictures/project-icon/${project.entityId}?v=${crypto.randomUUID()}`;
-  await expect(
+  await rejection(
     f.db.update(projects).set({ image }).where(eq(projects.entityId, other.entityId)).execute(),
-  ).rejects.toThrow();
-  await expect(
-    alice.transaction(async (repos) => {
-      await repos.projects.setPicture(project.entityId, image);
-      throw new Error("rollback picture");
-    }),
-  ).rejects.toThrow("rollback picture");
+  );
+  expect(
+    await rejection(
+      alice.transaction(async (repos) => {
+        await repos.projects.setPicture(project.entityId, image);
+        throw new Error("rollback picture");
+      }),
+    ),
+  ).toMatchObject({ message: expect.stringContaining("rollback picture") });
   expect((await alice.projects.get(project.entityId)).image).toBeNull();
 });
 
@@ -59,7 +61,7 @@ test("project icon changes enforce project access and reject external or another
   const project = await alice.projects.create({ name: "Private" });
   const other = await alice.projects.create({ name: "Other" });
   const image = `/api/v1/files/pictures/project-icon/${project.entityId}?v=${crypto.randomUUID()}`;
-  await expect(bob.projects.setPicture(project.entityId, image)).rejects.toBeInstanceOf(
+  expect(await rejection(bob.projects.setPicture(project.entityId, image))).toBeInstanceOf(
     AccessDeniedError,
   );
   await alice.permissions.grant({
@@ -67,17 +69,17 @@ test("project icon changes enforce project access and reject external or another
     actorEntityId: f.bob,
     level: "view",
   });
-  await expect(bob.projects.setPicture(project.entityId, image)).rejects.toBeInstanceOf(
+  expect(await rejection(bob.projects.setPicture(project.entityId, image))).toBeInstanceOf(
     AccessDeniedError,
   );
-  await expect(
-    f.forActor(f.outsider, f.orgB).projects.setPicture(project.entityId, image),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(f.forActor(f.outsider, f.orgB).projects.setPicture(project.entityId, image)),
+  ).toBeInstanceOf(AccessDeniedError);
   for (const invalid of [
     "https://example.test/icon.png",
     `/api/v1/files/pictures/project-icon/${other.entityId}?v=${crypto.randomUUID()}`,
   ]) {
-    await expect(alice.projects.setPicture(project.entityId, invalid)).rejects.toBeInstanceOf(
+    expect(await rejection(alice.projects.setPicture(project.entityId, invalid))).toBeInstanceOf(
       ValidationError,
     );
   }

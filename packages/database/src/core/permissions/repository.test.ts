@@ -3,8 +3,8 @@ import { createRepositories } from "../../repositories";
 import { actors, entityGrants, member } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
+import { rejection } from "../../testing/rejection";
 import { createActor } from "../actors/provisioning";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -13,7 +13,7 @@ const f = setupDatabase();
 describe("access controls", () => {
   test("organization admin cannot automatically read private entities", async () => {
     const contact = await f.forActor(f.alice).contacts.create({ displayName: "Private" });
-    await expect(f.forActor(f.bob).contacts.get(contact.entityId)).rejects.toBeInstanceOf(
+    expect(await rejection(f.forActor(f.bob).contacts.get(contact.entityId))).toBeInstanceOf(
       AccessDeniedError,
     );
     expect(await f.forActor(f.bob).contacts.list()).toEqual([]);
@@ -42,35 +42,45 @@ describe("access controls", () => {
       await owner.permissions.grant({ entityId: contact.entityId, actorEntityId: f.bob, level });
       expect((await other.contacts.get(contact.entityId)).displayName).toBe("Original");
       expect(await f.accessLevel(f.bob, contact.entityId)).toBe(level);
-      await expect(
-        other.permissions.grant({
-          entityId: contact.entityId,
-          actorEntityId: f.bob,
-          level: "owner",
-        }),
-      ).rejects.toBeInstanceOf(AccessDeniedError);
+      expect(
+        await rejection(
+          other.permissions.grant({
+            entityId: contact.entityId,
+            actorEntityId: f.bob,
+            level: "owner",
+          }),
+        ),
+      ).toBeInstanceOf(AccessDeniedError);
       if (level !== "edit") {
-        await expect(
-          other.contacts.update(contact.entityId, { displayName: "Changed" }),
-        ).rejects.toBeInstanceOf(AccessDeniedError);
+        expect(
+          await rejection(other.contacts.update(contact.entityId, { displayName: "Changed" })),
+        ).toBeInstanceOf(AccessDeniedError);
       }
     }
     expect(
       (await other.contacts.update(contact.entityId, { displayName: "Changed" })).displayName,
     ).toBe("Changed");
     await owner.permissions.revoke({ entityId: contact.entityId, actorEntityId: f.bob });
-    await expect(other.contacts.get(contact.entityId)).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(await rejection(other.contacts.get(contact.entityId))).toBeInstanceOf(AccessDeniedError);
   });
 
   test("cannot revoke or downgrade the last owner", async () => {
     const repo = f.forActor(f.alice);
     const contact = await repo.contacts.create({ displayName: "Owned" });
-    await expect(
-      repo.permissions.revoke({ entityId: contact.entityId, actorEntityId: f.alice }),
-    ).rejects.toThrow("last owner");
-    await expect(
-      repo.permissions.grant({ entityId: contact.entityId, actorEntityId: f.alice, level: "view" }),
-    ).rejects.toThrow("last owner");
+    expect(
+      await rejection(
+        repo.permissions.revoke({ entityId: contact.entityId, actorEntityId: f.alice }),
+      ),
+    ).toMatchObject({ message: expect.stringContaining("last owner") });
+    expect(
+      await rejection(
+        repo.permissions.grant({
+          entityId: contact.entityId,
+          actorEntityId: f.alice,
+          level: "view",
+        }),
+      ),
+    ).toMatchObject({ message: expect.stringContaining("last owner") });
     await repo.permissions.grant({
       entityId: contact.entityId,
       actorEntityId: f.bob,
@@ -90,18 +100,24 @@ describe("access controls", () => {
     const alice = f.forActor(f.alice);
     const project = await alice.projects.create({ name: "Container" });
     const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "Child" });
-    await expect(
-      alice.permissions.grant({ entityId: task.entityId, actorEntityId: f.bob, level: "owner" }),
-    ).rejects.toBeInstanceOf(ValidationError);
-    await expect(
-      alice.permissions.revoke({ entityId: task.entityId, actorEntityId: f.alice }),
-    ).rejects.toBeInstanceOf(ValidationError);
+    expect(
+      await rejection(
+        alice.permissions.grant({ entityId: task.entityId, actorEntityId: f.bob, level: "owner" }),
+      ),
+    ).toBeInstanceOf(ValidationError);
+    expect(
+      await rejection(
+        alice.permissions.revoke({ entityId: task.entityId, actorEntityId: f.alice }),
+      ),
+    ).toBeInstanceOf(ValidationError);
     expect(
       await f.db.select().from(entityGrants).where(eq(entityGrants.entityId, task.entityId)),
     ).toEqual([]);
-    await expect(
-      alice.permissions.revoke({ entityId: project.entityId, actorEntityId: f.alice }),
-    ).rejects.toThrow("last owner");
+    expect(
+      await rejection(
+        alice.permissions.revoke({ entityId: project.entityId, actorEntityId: f.alice }),
+      ),
+    ).toMatchObject({ message: expect.stringContaining("last owner") });
     expect(await f.accessLevel(f.alice, task.entityId)).toBe("owner");
   });
 
@@ -130,34 +146,38 @@ describe("access controls", () => {
   test("rejects forged scope and cross-organization grants", async () => {
     const contact = await f.forActor(f.alice).contacts.create({ displayName: "Private" });
     const otherOrganization = f.forActor(f.outsider, f.orgB);
-    await expect(otherOrganization.contacts.get(contact.entityId)).rejects.toBeInstanceOf(
+    expect(await rejection(otherOrganization.contacts.get(contact.entityId))).toBeInstanceOf(
       AccessDeniedError,
     );
-    await expect(
-      otherOrganization.contacts.update(contact.entityId, { displayName: "Changed" }),
-    ).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(
+      await rejection(
+        otherOrganization.contacts.update(contact.entityId, { displayName: "Changed" }),
+      ),
+    ).toBeInstanceOf(AccessDeniedError);
     expect(await otherOrganization.contacts.list()).toEqual([]);
-    await expect(f.forActor(f.outsider).contacts.get(contact.entityId)).rejects.toBeInstanceOf(
+    expect(await rejection(f.forActor(f.outsider).contacts.get(contact.entityId))).toBeInstanceOf(
       AccessDeniedError,
     );
-    await expect(
-      f.forActor(f.alice, f.orgB).contacts.create({ displayName: "Wrong org" }),
-    ).rejects.toBeInstanceOf(AccessDeniedError);
-    await expect(
-      f.forActor(f.alice).permissions.grant({
-        entityId: contact.entityId,
-        actorEntityId: f.outsider,
-        level: "view",
-      }),
-    ).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(
+      await rejection(f.forActor(f.alice, f.orgB).contacts.create({ displayName: "Wrong org" })),
+    ).toBeInstanceOf(AccessDeniedError);
+    expect(
+      await rejection(
+        f.forActor(f.alice).permissions.grant({
+          entityId: contact.entityId,
+          actorEntityId: f.outsider,
+          level: "view",
+        }),
+      ),
+    ).toBeInstanceOf(AccessDeniedError);
   });
 
   test("membership removal invalidates existing repository scopes", async () => {
     const repo = f.forActor(f.alice);
     const contact = await repo.contacts.create({ displayName: "Private" });
     await f.db.delete(member).where(eq(member.id, "alice-a"));
-    await expect(repo.contacts.get(contact.entityId)).rejects.toBeInstanceOf(AccessDeniedError);
-    await expect(repo.contacts.create({ displayName: "Blocked" })).rejects.toBeInstanceOf(
+    expect(await rejection(repo.contacts.get(contact.entityId))).toBeInstanceOf(AccessDeniedError);
+    expect(await rejection(repo.contacts.create({ displayName: "Blocked" }))).toBeInstanceOf(
       AccessDeniedError,
     );
   });
@@ -168,26 +188,28 @@ describe("access controls", () => {
       type: "agent",
     });
     const contact = await f.forActor(f.alice).contacts.create({ displayName: "Customer" });
-    await expect(f.forActor(agent.entityId).contacts.get(contact.entityId)).rejects.toBeInstanceOf(
-      AccessDeniedError,
-    );
-    await expect(
-      f.forActor(f.alice).permissions.grant({
-        entityId: contact.entityId,
-        actorEntityId: agent.entityId,
-        level: "edit",
-      }),
-    ).rejects.toBeInstanceOf(AccessDeniedError);
-    await expect(
-      f.forActor(agent.entityId).contacts.create({ displayName: "Blocked" }),
-    ).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(
+      await rejection(f.forActor(agent.entityId).contacts.get(contact.entityId)),
+    ).toBeInstanceOf(AccessDeniedError);
+    expect(
+      await rejection(
+        f.forActor(f.alice).permissions.grant({
+          entityId: contact.entityId,
+          actorEntityId: agent.entityId,
+          level: "edit",
+        }),
+      ),
+    ).toBeInstanceOf(AccessDeniedError);
+    expect(
+      await rejection(f.forActor(agent.entityId).contacts.create({ displayName: "Blocked" })),
+    ).toBeInstanceOf(AccessDeniedError);
     await f.db
       .update(actors)
       .set({ disabledAt: new Date() })
       .where(eq(actors.entityId, agent.entityId));
-    await expect(f.forActor(agent.entityId).contacts.get(contact.entityId)).rejects.toBeInstanceOf(
-      AccessDeniedError,
-    );
+    expect(
+      await rejection(f.forActor(agent.entityId).contacts.get(contact.entityId)),
+    ).toBeInstanceOf(AccessDeniedError);
   });
 
   test("soft-deleted entities disappear from reads and lists", async () => {
@@ -195,6 +217,6 @@ describe("access controls", () => {
     const contact = await repo.contacts.create({ displayName: "Deleted" });
     await repo.entities.softDelete(contact.entityId);
     expect(await repo.contacts.list()).toEqual([]);
-    await expect(repo.contacts.get(contact.entityId)).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(await rejection(repo.contacts.get(contact.entityId))).toBeInstanceOf(AccessDeniedError);
   });
 });

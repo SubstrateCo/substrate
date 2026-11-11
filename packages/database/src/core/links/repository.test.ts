@@ -1,6 +1,6 @@
 import { AccessDeniedError } from "../../index";
 import { setupDatabase } from "../../testing/database";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
+import { rejection } from "../../testing/rejection";
 import { describe, expect, test } from "bun:test";
 
 const f = setupDatabase();
@@ -21,13 +21,15 @@ describe("links", () => {
       level: "edit",
     });
     expect(await f.forActor(f.bob).links.list(shared.entityId)).toEqual([]);
-    await expect(
-      f.forActor(f.bob).links.create({
-        sourceEntityId: shared.entityId,
-        targetEntityId: privateContact.entityId,
-        relationType: "mentions",
-      }),
-    ).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(
+      await rejection(
+        f.forActor(f.bob).links.create({
+          sourceEntityId: shared.entityId,
+          targetEntityId: privateContact.entityId,
+          relationType: "mentions",
+        }),
+      ),
+    ).toBeInstanceOf(AccessDeniedError);
     await repo.permissions.grant({
       entityId: privateContact.entityId,
       actorEntityId: f.bob,
@@ -52,11 +54,11 @@ describe("links", () => {
     };
     await repo.links.create(link);
     expect(await repo.links.list(b.entityId)).toEqual(await repo.links.list(a.entityId));
-    await expect(repo.links.create(link)).rejects.toThrow();
-    await expect(repo.links.create({ ...link, targetEntityId: a.entityId })).rejects.toThrow();
-    await expect(
-      repo.links.create({ ...link, targetEntityId: other.entityId }),
-    ).rejects.toBeInstanceOf(AccessDeniedError);
+    await rejection(repo.links.create(link));
+    await rejection(repo.links.create({ ...link, targetEntityId: a.entityId }));
+    expect(
+      await rejection(repo.links.create({ ...link, targetEntityId: other.entityId })),
+    ).toBeInstanceOf(AccessDeniedError);
     expect(await repo.links.list(a.entityId)).toHaveLength(1);
   });
 
@@ -73,7 +75,7 @@ describe("links", () => {
     for (const entityId of [a.entityId, b.entityId]) {
       await repo.permissions.grant({ entityId, actorEntityId: f.bob, level: "view" });
     }
-    await expect(f.forActor(f.bob).links.remove(link)).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(await rejection(f.forActor(f.bob).links.remove(link))).toBeInstanceOf(AccessDeniedError);
     await repo.links.remove(link);
     expect(await repo.links.list(a.entityId)).toEqual([]);
   });

@@ -4,8 +4,8 @@ import { createStorageRepository } from "../../core/storage/repository";
 import { storedFiles } from "../../core/storage/schema";
 import { AccessDeniedError, ConflictError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
+import { rejection } from "../../testing/rejection";
 import { createAgentRepository } from "./repository";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -51,17 +51,17 @@ test("agent pictures require a live owned agent and a completed owned avatar", a
     new Date(Date.now() + 60000),
   );
   for (const fileId of [crypto.randomUUID(), pending.id, foreign.id, logo.id, raw.id])
-    await expect(owner.setPicture(saved.id, fileId)).rejects.toBeInstanceOf(AccessDeniedError);
-  await expect(
-    createAgentRepository(f.db, "bob").setPicture(saved.id, picture.id),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(await rejection(owner.setPicture(saved.id, fileId))).toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(createAgentRepository(f.db, "bob").setPicture(saved.id, picture.id)),
+  ).toBeInstanceOf(AccessDeniedError);
   const updated = await owner.setPicture(saved.id, picture.id);
   expect(updated.image).toBe(`/api/v1/files/${picture.id}/content`);
   expect((await owner.list()).agents[0]?.image).toBe(updated.image);
   expect((await owner.saveAgent({ ...agent, id: saved.id })).image).toBe(updated.image);
   expect((await owner.setPicture(saved.id, null)).image).toBeNull();
   await owner.deleteAgent(saved.id);
-  await expect(owner.setPicture(saved.id, picture.id)).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(owner.setPicture(saved.id, picture.id))).toBeInstanceOf(AccessDeniedError);
 });
 
 test("agent avatars survive cleanup and cannot be deleted until cleared or agent deletion", async () => {
@@ -72,7 +72,7 @@ test("agent avatars survive cleanup and cannot be deleted until cleared or agent
   const picture = avatar();
   await f.db.insert(storedFiles).values(picture);
   await owner.setPicture(saved.id, picture.id);
-  await expect(storage.deleteFile(scope, picture.id)).rejects.toBeInstanceOf(ConflictError);
+  expect(await rejection(storage.deleteFile(scope, picture.id))).toBeInstanceOf(ConflictError);
   await storage.pruneUnusedFiles(new Date(Date.now() + 60000));
   expect(await storage.getReadable(scope, picture.id)).toMatchObject({ id: picture.id });
   await owner.setPicture(saved.id, null);
@@ -92,20 +92,24 @@ test("PostgreSQL enforces agent picture owner and fixed purpose", async () => {
   const saved = await createAgentRepository(f.db, "bob").saveAgent(agent);
   const picture = avatar();
   await f.db.insert(storedFiles).values(picture);
-  await expect(
-    f.db
-      .update(userAgents)
-      .set({ imageFileId: picture.id })
-      .where(eq(userAgents.id, saved.id))
-      .execute(),
-  ).rejects.toMatchObject({ cause: { code: "23503" } });
-  await expect(
-    f.db
-      .update(userAgents)
-      .set({ picturePurpose: "file" })
-      .where(eq(userAgents.id, saved.id))
-      .execute(),
-  ).rejects.toMatchObject({ cause: { code: "23514" } });
+  expect(
+    await rejection(
+      f.db
+        .update(userAgents)
+        .set({ imageFileId: picture.id })
+        .where(eq(userAgents.id, saved.id))
+        .execute(),
+    ),
+  ).toMatchObject({ cause: { code: "23503" } });
+  expect(
+    await rejection(
+      f.db
+        .update(userAgents)
+        .set({ picturePurpose: "file" })
+        .where(eq(userAgents.id, saved.id))
+        .execute(),
+    ),
+  ).toMatchObject({ cause: { code: "23514" } });
 });
 
 test("user definitions do not require organization membership and cannot cross owners", async () => {
@@ -115,8 +119,8 @@ test("user definitions do not require organization membership and cannot cross o
   const saved = await owner.saveAgent(agent);
   expect(saved.useStartupDefaults).toBe(true);
   expect((await other.list()).agents).toEqual([]);
-  await expect(other.saveAgent({ ...agent, id: saved.id, name: "Changed" })).rejects.toThrow();
-  await expect(other.deleteAgent(saved.id)).rejects.toThrow();
+  await rejection(other.saveAgent({ ...agent, id: saved.id, name: "Changed" }));
+  await rejection(other.deleteAgent(saved.id));
   expect((await owner.list()).agents[0]?.name).toBe("Helper");
   const updated = await owner.saveAgent({
     ...agent,
@@ -144,5 +148,5 @@ test("deletion retains identity and updates cannot restore it", async () => {
   const [retained] = await f.db.select().from(userAgents).where(eq(userAgents.id, saved.id));
   expect(retained?.deletedAt).toBeInstanceOf(Date);
   expect(retained?.enabled).toBe(false);
-  await expect(owner.saveAgent({ ...agent, id: saved.id })).rejects.toThrow();
+  await rejection(owner.saveAgent({ ...agent, id: saved.id }));
 });

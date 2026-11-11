@@ -6,6 +6,7 @@ import { agentWakes, userAgents } from "../../schema";
 import { agentWorkFixture, dmTurn } from "../../testing/agent-work";
 import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
+import { rejection } from "../../testing/rejection";
 import { declineProposal, respondToRequest } from "./decisions";
 import { openRequest } from "./device-requests";
 import { loadSources } from "./sources";
@@ -13,7 +14,6 @@ import { ackWakes, pullWakes } from "./wakes";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
-/* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous. */
 const f = setupDatabase();
 
 test("only the home device pulls an agent's wakes, and ack is idempotent", async () => {
@@ -55,12 +55,12 @@ test("other people and organizations cannot pull or ack someone's wakes", async 
   const { agent, alice, dm } = await agentWorkFixture(f);
   await alice.sendMessage(dm.id, "Private");
   const bobDevice = { userId: "bob", organizationId: f.orgA, installationId: crypto.randomUUID() };
-  await expect(pullWakes(f.db, bobDevice, 50)).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(pullWakes(f.db, bobDevice, 50))).toBeInstanceOf(AccessDeniedError);
   await registerDevice(f.db, "bob", { ...bobDevice, name: "Bob", platform: "linux" });
   expect(await pullWakes(f.db, bobDevice, 50)).toEqual([]);
-  await expect(
-    pullWakes(f.db, { ...agent.identity, organizationId: f.orgB }, 50),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(pullWakes(f.db, { ...agent.identity, organizationId: f.orgB }, 50)),
+  ).toBeInstanceOf(AccessDeniedError);
 });
 
 test("answer and approval wakes carry the decided request for the agent's home device", async () => {

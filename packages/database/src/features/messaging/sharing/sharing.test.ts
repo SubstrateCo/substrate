@@ -4,10 +4,10 @@ import { ensureUserAgentActor } from "../../../core/actors/provisioning";
 import { userAgents } from "../../../core/actors/user-agents.schema";
 import { AccessDeniedError, ValidationError } from "../../../errors";
 import * as schema from "../../../schema";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { member, user } from "../../../schema";
 import { setupDatabase } from "../../../testing/database";
 import { receivesChange } from "../../../testing/realtime";
+import { rejection } from "../../../testing/rejection";
 import { createContextService } from "../../context/service";
 import { messagingParticipants } from "../schema";
 import { createMessagingService } from "../service";
@@ -34,7 +34,7 @@ test("an organization invitation grants nothing before approval and only the inv
   const c = await channel();
   const invite = await sharing().invite(c.id, { email: "outside@example.com", shareHistory: true });
   const partner = createMessagingService(f.db, { userId: "outsider", organizationId: f.orgB });
-  await expect(partner.listMessages(c.id)).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(partner.listMessages(c.id))).toBeInstanceOf(AccessDeniedError);
   await host().sendMessage(c.id, "Full history is explicitly shared");
   expect(await sharing("outsider", f.orgB).accept(invite.id, true)).toMatchObject({
     status: "accepted",
@@ -44,9 +44,11 @@ test("an organization invitation grants nothing before approval and only the inv
     { body: "Full history is explicitly shared" },
   ]);
   await f.db.insert(member).values({ id: "bob-b", userId: "bob", organizationId: f.orgB });
-  await expect(
-    createMessagingService(f.db, { userId: "bob", organizationId: f.orgB }).listMessages(c.id),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(
+      createMessagingService(f.db, { userId: "bob", organizationId: f.orgB }).listMessages(c.id),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
 });
 
 test("listed members mark people from another organization as external for each viewer", async () => {
@@ -108,18 +110,24 @@ test("ordinary recipients request approval instead of granting access to their o
   expect(await sharing("bob", f.orgB).accept(invite.id, true)).toMatchObject({
     status: "approval-required",
   });
-  await expect(
-    createMessagingService(f.db, { userId: "bob", organizationId: f.orgB }).listMessages(c.id),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(
+      createMessagingService(f.db, { userId: "bob", organizationId: f.orgB }).listMessages(c.id),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
   await sharing("outsider", f.orgB).accept(invite.id, true);
   expect(
     await createMessagingService(f.db, { userId: "bob", organizationId: f.orgB }).listMessages(
       c.id,
     ),
   ).toEqual([]);
-  await expect(
-    createMessagingService(f.db, { userId: "outsider", organizationId: f.orgB }).listMessages(c.id),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(
+      createMessagingService(f.db, { userId: "outsider", organizationId: f.orgB }).listMessages(
+        c.id,
+      ),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
 });
 
 test("legacy participants require individual reapproval even after their org connects", async () => {
@@ -130,9 +138,13 @@ test("legacy participants require individual reapproval even after their org con
     actorEntityId: f.outsider,
     actorType: "human",
   });
-  await expect(
-    createMessagingService(f.db, { userId: "outsider", organizationId: f.orgB }).listMessages(c.id),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(
+      createMessagingService(f.db, { userId: "outsider", organizationId: f.orgB }).listMessages(
+        c.id,
+      ),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
   const invite = await sharing().invite(c.id, { email: "outside@example.com", shareHistory: true });
   await sharing("outsider", f.orgB).accept(invite.id, true);
   expect(
@@ -148,9 +160,11 @@ test("disconnection revokes access and old accepted links cannot reconnect", asy
   await sharing("outsider", f.orgB).accept(invite.id, true);
   await sharing("outsider", f.orgB).disconnect(c.id, f.orgB);
   const partner = createMessagingService(f.db, { userId: "outsider", organizationId: f.orgB });
-  await expect(partner.listMessages(c.id)).rejects.toBeInstanceOf(AccessDeniedError);
-  await expect(partner.sendMessage(c.id, "Not allowed")).rejects.toBeInstanceOf(AccessDeniedError);
-  await expect(sharing("outsider", f.orgB).accept(invite.id, true)).rejects.toBeInstanceOf(
+  expect(await rejection(partner.listMessages(c.id))).toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(partner.sendMessage(c.id, "Not allowed"))).toBeInstanceOf(
+    AccessDeniedError,
+  );
+  expect(await rejection(sharing("outsider", f.orgB).accept(invite.id, true))).toBeInstanceOf(
     ValidationError,
   );
 });
@@ -205,7 +219,7 @@ test("the pending invitation limit applies to the whole batch", async () => {
     })),
   );
   const emails = ["one@example.test", "two@example.test", "three@example.test"];
-  await expect(host().addMembers(c.id, emails, true)).rejects.toBeInstanceOf(ValidationError);
+  expect(await rejection(host().addMembers(c.id, emails, true))).toBeInstanceOf(ValidationError);
   expect(await f.db.select().from(messagingInvitations)).toHaveLength(98);
   expect(await host().addMembers(c.id, emails.slice(0, 2), true)).toEqual({
     added: 0,
@@ -238,32 +252,34 @@ test("invitation changes return hints for both organizations and both people", a
 test("invites are email-bound, expire, and can be revoked", async () => {
   const c = await channel();
   const invite = await sharing().invite(c.id, { email: "outside@example.com", shareHistory: true });
-  await expect(sharing("bob").accept(invite.id, true)).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(sharing("bob").accept(invite.id, true))).toBeInstanceOf(AccessDeniedError);
   await f.db
     .update(messagingInvitations)
     .set({ expiresAt: new Date(0) })
     .where(eq(messagingInvitations.id, invite.id));
-  await expect(sharing("outsider", f.orgB).accept(invite.id, true)).rejects.toBeInstanceOf(
+  expect(await rejection(sharing("outsider", f.orgB).accept(invite.id, true))).toBeInstanceOf(
     ValidationError,
   );
   const next = await sharing().invite(c.id, { email: "outside@example.com", shareHistory: true });
   await sharing().revoke(next.id);
-  await expect(sharing("outsider", f.orgB).accept(next.id, true)).rejects.toBeInstanceOf(
+  expect(await rejection(sharing("outsider", f.orgB).accept(next.id, true))).toBeInstanceOf(
     ValidationError,
   );
 });
 
 test("channel sharing requires current admin authority on both sides and a history warning", async () => {
   const c = await channel();
-  await expect(
-    sharing("bob").invite(c.id, { email: "outside@example.com", shareHistory: true }),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
-  await expect(
-    sharing().invite(c.id, { email: "outside@example.com", shareHistory: false }),
-  ).rejects.toBeInstanceOf(ValidationError);
+  expect(
+    await rejection(
+      sharing("bob").invite(c.id, { email: "outside@example.com", shareHistory: true }),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(sharing().invite(c.id, { email: "outside@example.com", shareHistory: false })),
+  ).toBeInstanceOf(ValidationError);
   const invite = await sharing().invite(c.id, { email: "outside@example.com", shareHistory: true });
   await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "alice"));
-  await expect(sharing("outsider", f.orgB).accept(invite.id, true)).rejects.toBeInstanceOf(
+  expect(await rejection(sharing("outsider", f.orgB).accept(invite.id, true))).toBeInstanceOf(
     AccessDeniedError,
   );
 });
@@ -305,11 +321,11 @@ test("resending invalidates the previous invitation and revocation is permanent 
   const old = await sharing().invite(c.id, { email: "outside@example.com", shareHistory: true });
   const fresh = await sharing().resend(old.id);
   expect(fresh.id).not.toBe(old.id);
-  await expect(sharing("outsider", f.orgB).accept(old.id, true)).rejects.toBeInstanceOf(
+  expect(await rejection(sharing("outsider", f.orgB).accept(old.id, true))).toBeInstanceOf(
     ValidationError,
   );
   await sharing().revoke(fresh.id);
-  await expect(sharing("outsider", f.orgB).accept(fresh.id, true)).rejects.toBeInstanceOf(
+  expect(await rejection(sharing("outsider", f.orgB).accept(fresh.id, true))).toBeInstanceOf(
     ValidationError,
   );
 });
@@ -338,11 +354,13 @@ test("disconnect removes search, profiles, realtime and owner-based agent reads"
   await sharing().disconnect(c.id, f.orgB);
   expect(await context.search({ query: "Searchable", kind: "message" })).toEqual([]);
   expect(await receivesChange(f.db, identity, realtimeKeys.conversation(c.id))).toBe(false);
-  await expect(agentChat.listMessages(c.id)).rejects.toBeInstanceOf(AccessDeniedError);
-  await expect(context.messageTarget(c.id, message.id)).rejects.toBeInstanceOf(AccessDeniedError);
-  await expect(
-    createMessagingService(f.db, identity).getProfile(c.id, f.alice),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(agentChat.listMessages(c.id))).toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(context.messageTarget(c.id, message.id))).toBeInstanceOf(
+    AccessDeniedError,
+  );
+  expect(
+    await rejection(createMessagingService(f.db, identity).getProfile(c.id, f.alice)),
+  ).toBeInstanceOf(AccessDeniedError);
   expect(await host().listMessages(c.id)).toHaveLength(1);
 });
 
@@ -362,9 +380,13 @@ test("leaving and rejoining an organization does not restore earlier external co
     role: "owner",
     createdAt: new Date(participant!.consentedAt!.getTime() + 1),
   });
-  await expect(
-    createMessagingService(f.db, { userId: "outsider", organizationId: f.orgB }).listMessages(c.id),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(
+      createMessagingService(f.db, { userId: "outsider", organizationId: f.orgB }).listMessages(
+        c.id,
+      ),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
   expect(
     await receivesChange(
       f.db,
@@ -406,10 +428,12 @@ test("a partner manager invites only into their approved org and cannot manage a
       c.id,
     ),
   ).toEqual([]);
-  await expect(
-    createMessagingService(f.db, { userId: "bob", organizationId: f.orgA }).listMessages(c.id),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
-  await expect(sharing("outsider", f.orgB).disconnect(c.id, f.orgA)).rejects.toBeInstanceOf(
+  expect(
+    await rejection(
+      createMessagingService(f.db, { userId: "bob", organizationId: f.orgA }).listMessages(c.id),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(sharing("outsider", f.orgB).disconnect(c.id, f.orgA))).toBeInstanceOf(
     AccessDeniedError,
   );
 });
@@ -429,7 +453,7 @@ test("an approval request stays bound to the original user when an email address
   await f.db
     .insert(member)
     .values({ id: "replacement-b", userId: "replacement", organizationId: f.orgB });
-  await expect(readSharingInvitation(f.db, "replacement", invite.id)).rejects.toBeInstanceOf(
+  expect(await rejection(readSharingInvitation(f.db, "replacement", invite.id))).toBeInstanceOf(
     AccessDeniedError,
   );
   expect(await sharing("replacement", f.orgB).inbox()).toEqual([]);
@@ -438,11 +462,13 @@ test("an approval request stays bound to the original user when an email address
     status: "pending",
   });
   await sharing("outsider", f.orgB).accept(invite.id, true);
-  await expect(
-    createMessagingService(f.db, { userId: "replacement", organizationId: f.orgB }).listMessages(
-      c.id,
+  expect(
+    await rejection(
+      createMessagingService(f.db, { userId: "replacement", organizationId: f.orgB }).listMessages(
+        c.id,
+      ),
     ),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  ).toBeInstanceOf(AccessDeniedError);
 });
 
 test("invitation references cannot claim a different host organization", async () => {
@@ -458,7 +484,7 @@ test("invitation references cannot claim a different host organization", async (
       expiresAt: new Date(Date.now() + 60_000),
     });
   };
-  await expect(insertForgedReference()).rejects.toThrow();
+  await rejection(insertForgedReference());
   expect(await f.db.select().from(messagingInvitations)).toEqual([]);
 });
 
@@ -586,7 +612,7 @@ test("external DMs and groups require individual consent but not an organization
     shareHistory: true,
   });
   const partner = createMessagingService(f.db, { userId: "outsider", organizationId: f.orgB });
-  await expect(partner.listMessages(dm.id)).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(partner.listMessages(dm.id))).toBeInstanceOf(AccessDeniedError);
   const [invite] = await f.db
     .select()
     .from(messagingInvitations)
@@ -603,7 +629,7 @@ test("external DMs and groups require individual consent but not an organization
     emails: ["bob@example.com", "outside@example.com"],
     shareHistory: true,
   });
-  await expect(partner.listMessages(group.id)).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(partner.listMessages(group.id))).toBeInstanceOf(AccessDeniedError);
   const [groupInvite] = await f.db
     .select()
     .from(messagingInvitations)

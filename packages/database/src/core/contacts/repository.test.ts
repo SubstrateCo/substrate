@@ -1,6 +1,6 @@
 import { entities, entityGrants } from "../../schema";
 import { setupDatabase } from "../../testing/database";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
+import { rejection } from "../../testing/rejection";
 import { describe, expect, test } from "bun:test";
 
 const f = setupDatabase();
@@ -29,19 +29,21 @@ describe("contacts and transactions", () => {
   test("rejects blank names without leaving an orphan entity or grant", async () => {
     const before = await f.db.select().from(entities);
     const grantsBefore = await f.db.select().from(entityGrants);
-    await expect(f.forActor(f.alice).contacts.create({ displayName: "  " })).rejects.toThrow();
+    await rejection(f.forActor(f.alice).contacts.create({ displayName: "  " }));
     expect(await f.db.select().from(entities)).toHaveLength(before.length);
     expect(await f.db.select().from(entityGrants)).toHaveLength(grantsBefore.length);
   });
 
   test("rolls back multiple repository operations as one transaction", async () => {
     const before = await f.db.select().from(entities);
-    await expect(
-      f.forActor(f.alice).transaction(async (tx) => {
-        await tx.contacts.create({ displayName: "Rolled back" });
-        throw new Error("abort");
-      }),
-    ).rejects.toThrow("abort");
+    expect(
+      await rejection(
+        f.forActor(f.alice).transaction(async (tx) => {
+          await tx.contacts.create({ displayName: "Rolled back" });
+          throw new Error("abort");
+        }),
+      ),
+    ).toMatchObject({ message: expect.stringContaining("abort") });
     expect(await f.db.select().from(entities)).toHaveLength(before.length);
     expect(await f.forActor(f.alice).contacts.list()).toEqual([]);
   });
@@ -69,6 +71,6 @@ describe("contacts and transactions", () => {
     const second = await repo.contacts.list({ limit: 1, afterEntityId: first[0]!.entityId });
     expect(second).toHaveLength(1);
     expect(second[0]!.entityId).not.toBe(first[0]!.entityId);
-    await expect(repo.contacts.list({ limit: 1001 })).rejects.toThrow();
+    await rejection(repo.contacts.list({ limit: 1001 }));
   });
 });

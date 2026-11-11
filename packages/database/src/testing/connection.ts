@@ -6,7 +6,8 @@ import { getTableConfig, PgTable } from "drizzle-orm/pg-core";
 
 const connection = createDatabase({ connectionString: testDatabaseURL().href, maxConnections: 4 });
 export const testDatabase = connection.db;
-export const closeTestDatabase = connection.close;
+// A query that never ends must not hold the run open; close its connection after 5 s.
+export const closeTestDatabase = () => connection.db.$client.end({ timeout: 5 });
 
 // Deleting children before their parents satisfies every foreign key. On small tables this is much
 // faster than TRUNCATE, which replaces the files of every table and index.

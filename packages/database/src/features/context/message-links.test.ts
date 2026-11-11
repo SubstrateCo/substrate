@@ -3,10 +3,10 @@ import { entityGrants, tasks, taskActivity, notifications } from "../../schema";
 import { contextConversation } from "../../testing/context";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
+import { rejection } from "../../testing/rejection";
 import { messagingParticipants } from "../messaging/schema";
 import { messageEntityReferences, sourceTaskRequests } from "./schema";
 import { createContextService } from "./service";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -41,12 +41,12 @@ test("source creation is atomic, concurrent-idempotent, and preserves the exact 
   ]);
   expect(await f.db.select().from(entityGrants)).toEqual(before);
   expect(await f.db.select().from(sourceTaskRequests)).toHaveLength(1);
-  await expect(
-    context().createTaskFromMessage({ ...input, title: "Different" }),
-  ).rejects.toBeInstanceOf(ConflictError);
-  await expect(
-    context().createTaskFromMessage({ ...input, status: "completed" }),
-  ).rejects.toBeInstanceOf(ConflictError);
+  expect(
+    await rejection(context().createTaskFromMessage({ ...input, title: "Different" })),
+  ).toBeInstanceOf(ConflictError);
+  expect(
+    await rejection(context().createTaskFromMessage({ ...input, status: "completed" })),
+  ).toBeInstanceOf(ConflictError);
   const { db, queries } = recordQueries();
   await createContextService(db, { userId: "alice", organizationId: f.orgA }).createTaskFromMessage(
     { ...input, requestId: crypto.randomUUID() },
@@ -70,13 +70,13 @@ test("both endpoints are required, membership revocation hides context, and link
     level: "edit",
   });
   expect(await context("bob").related(task.entityId)).toEqual([]);
-  await expect(context("bob").messageLinks(reply.id)).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(context("bob").messageLinks(reply.id))).toBeInstanceOf(AccessDeniedError);
   await chat.addMembers(conversation.id, ["bob@example.com", "outside@example.com"]);
   expect(await context("bob").related(task.entityId)).toHaveLength(1);
   expect(await context("outsider", f.orgB).messageLinks(reply.id)).toEqual([]);
-  await expect(context("outsider", f.orgB).attach(reply.id, task.entityId)).rejects.toBeInstanceOf(
-    AccessDeniedError,
-  );
+  expect(
+    await rejection(context("outsider", f.orgB).attach(reply.id, task.entityId)),
+  ).toBeInstanceOf(AccessDeniedError);
   await f.db.delete(messagingParticipants).where(eq(messagingParticipants.actorEntityId, f.bob));
   expect(await context("bob").related(task.entityId)).toEqual([]);
   await repos.permissions.revoke({ entityId: project.entityId, actorEntityId: f.bob });
@@ -95,20 +95,22 @@ test("source provenance survives explicit unlinking and caller rollback removes 
   expect(await context().messageLinks(reply.id)).toHaveLength(2);
   await context().detach(reply.id, task.entityId);
   expect(await context().messageLinks(reply.id)).toMatchObject([{ purpose: "source" }]);
-  await expect(
-    f.db.transaction(async (tx) => {
-      await createContextService(tx, {
-        userId: "alice",
-        organizationId: f.orgA,
-      }).createTaskFromMessage({
-        requestId: crypto.randomUUID(),
-        messageId: reply.id,
-        projectEntityId: project.entityId,
-        title: "Rollback",
-      });
-      throw new Error("abort");
-    }),
-  ).rejects.toThrow("abort");
+  expect(
+    await rejection(
+      f.db.transaction(async (tx) => {
+        await createContextService(tx, {
+          userId: "alice",
+          organizationId: f.orgA,
+        }).createTaskFromMessage({
+          requestId: crypto.randomUUID(),
+          messageId: reply.id,
+          projectEntityId: project.entityId,
+          title: "Rollback",
+        });
+        throw new Error("abort");
+      }),
+    ),
+  ).toMatchObject({ message: expect.stringContaining("abort") });
   expect((await f.forActor(f.alice).tasks.list(project.entityId)).map((t) => t.title)).toEqual([
     "Work",
   ]);
@@ -123,35 +125,39 @@ test("source creation rejects task viewers and foreign or unsupported references
     level: "view",
   });
   await chat.addMembers(conversation.id, ["bob@example.com"]);
-  await expect(
-    context("bob").createTaskFromMessage({
-      requestId: crypto.randomUUID(),
-      messageId: reply.id,
-      projectEntityId: project.entityId,
-      title: "Forbidden",
-    }),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(
+      context("bob").createTaskFromMessage({
+        requestId: crypto.randomUUID(),
+        messageId: reply.id,
+        projectEntityId: project.entityId,
+        title: "Forbidden",
+      }),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
   const contact = await repos.contacts.create({ displayName: "Customer" });
-  await expect(context().attach(reply.id, contact.entityId)).rejects.toBeInstanceOf(
+  expect(await rejection(context().attach(reply.id, contact.entityId))).toBeInstanceOf(
     AccessDeniedError,
   );
   expect(await f.db.select().from(tasks)).toEqual([]);
   expect(await f.db.select().from(taskActivity)).toEqual([]);
   expect(await f.db.select().from(notifications)).toEqual([]);
-  await expect(
-    f.db
-      .insert(messageEntityReferences)
-      .values({
-        organizationId: f.orgA,
-        conversationId: conversation.id,
-        messageId: reply.id,
-        entityId: contact.entityId,
-        entityType: "task",
-        purpose: "association",
-        createdByActorEntityId: f.alice,
-      })
-      .execute(),
-  ).rejects.toMatchObject({ cause: { code: "23503" } });
+  expect(
+    await rejection(
+      f.db
+        .insert(messageEntityReferences)
+        .values({
+          organizationId: f.orgA,
+          conversationId: conversation.id,
+          messageId: reply.id,
+          entityId: contact.entityId,
+          entityType: "task",
+          purpose: "association",
+          createdByActorEntityId: f.alice,
+        })
+        .execute(),
+    ),
+  ).toMatchObject({ cause: { code: "23503" } });
   expect(await f.db.select().from(messageEntityReferences)).toEqual([]);
 });
 

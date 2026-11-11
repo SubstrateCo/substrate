@@ -4,10 +4,10 @@ import { user, userAgents } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { createAcceptedMessagingService } from "../../testing/messaging";
 import { recordQueries } from "../../testing/queries";
+import { rejection } from "../../testing/rejection";
 import { createMessagingService } from "./service";
 import { expect, test } from "bun:test";
 
-/* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous. */
 const f = setupDatabase();
 
 const chat = (userId: string, organizationId = f.orgA, actorEntityId?: string) =>
@@ -47,18 +47,18 @@ test("person profiles show contact details only to workspace members who share t
   }).getProfile(general.id, f.bob);
   expect(recording.queries.filter((query) => query.startsWith("select"))).toHaveLength(4);
   // Bob cannot see the private channel, so neither the conversation nor Alice resolves through it.
-  await expect(chat("bob").getProfile(hidden.id, f.alice)).rejects.toBeInstanceOf(
+  expect(await rejection(chat("bob").getProfile(hidden.id, f.alice))).toBeInstanceOf(
     AccessDeniedError,
   );
   // Bob is not in the private channel, so Alice cannot load his profile through it.
-  await expect(chat("alice").getProfile(hidden.id, f.bob)).rejects.toBeInstanceOf(
+  expect(await rejection(chat("alice").getProfile(hidden.id, f.bob))).toBeInstanceOf(
     AccessDeniedError,
   );
   // Actors from another organization resolve only when they wrote in the conversation.
-  await expect(chat("alice").getProfile(general.id, f.outsider)).rejects.toBeInstanceOf(
+  expect(await rejection(chat("alice").getProfile(general.id, f.outsider))).toBeInstanceOf(
     AccessDeniedError,
   );
-  await expect(chat("outsider", f.orgB).getProfile(general.id, f.alice)).rejects.toBeInstanceOf(
+  expect(await rejection(chat("outsider", f.orgB).getProfile(general.id, f.alice))).toBeInstanceOf(
     AccessDeniedError,
   );
 });
@@ -104,7 +104,7 @@ test("agent profiles show the owner to members and configuration only to the own
   const general = await chat("alice").createConversation({ kind: "channel", name: "general" });
   // Before the agent writes, only its owner can resolve it in a conversation.
   expect((await chat("alice").getProfile(general.id, agent.entityId)).type).toBe("agent");
-  await expect(chat("bob").getProfile(general.id, agent.entityId)).rejects.toBeInstanceOf(
+  expect(await rejection(chat("bob").getProfile(general.id, agent.entityId))).toBeInstanceOf(
     AccessDeniedError,
   );
   await chat("alice", f.orgA, agent.entityId).sendMessage(general.id, "agent work");

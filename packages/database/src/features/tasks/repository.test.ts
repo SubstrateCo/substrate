@@ -5,9 +5,9 @@ import { AccessDeniedError, ValidationError } from "../../errors";
 import { createRepositories } from "../../repositories";
 import * as schema from "../../schema";
 import { setupDatabase } from "../../testing/database";
+import { rejection } from "../../testing/rejection";
 import { taskComments } from "./comments.schema";
 import { tasks } from "./tasks.schema";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -24,18 +24,20 @@ describe("projects and tasks", () => {
       status: "canceled",
     });
     // SAFETY: Deliberately bypass the input type to verify runtime rejection of an invalid status.
-    await expect(
-      alice.tasks.update(task.entityId, { status: "blocked" as never }),
-    ).rejects.toBeInstanceOf(ValidationError);
+    expect(
+      await rejection(alice.tasks.update(task.entityId, { status: "blocked" as never })),
+    ).toBeInstanceOf(ValidationError);
     expect((await alice.tasks.get(task.entityId)).status).toBe("canceled");
     // SAFETY: Deliberately bypass the column type to verify PostgreSQL rejects an invalid status.
-    await expect(
-      fixture.db
-        .update(tasks)
-        .set({ status: "blocked" as never })
-        .where(eq(tasks.entityId, task.entityId))
-        .execute(),
-    ).rejects.toMatchObject({ cause: { code: "23514" } });
+    expect(
+      await rejection(
+        fixture.db
+          .update(tasks)
+          .set({ status: "blocked" as never })
+          .where(eq(tasks.entityId, task.entityId))
+          .execute(),
+      ),
+    ).toMatchObject({ cause: { code: "23514" } });
   });
 
   test("project sharing grants tasks and subtasks the same access, and revocation removes it", async () => {
@@ -48,7 +50,7 @@ describe("projects and tasks", () => {
       parentTaskEntityId: task.entityId,
       title: "Review",
     });
-    await expect(bob.tasks.get(task.entityId)).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(await rejection(bob.tasks.get(task.entityId))).toBeInstanceOf(AccessDeniedError);
     await alice.permissions.grant({
       entityId: project.entityId,
       actorEntityId: fixture.bob,
@@ -57,10 +59,10 @@ describe("projects and tasks", () => {
     expect((await bob.tasks.list(project.entityId)).map((row) => row.entityId).sort()).toEqual(
       [task.entityId, child.entityId].sort(),
     );
-    await expect(bob.tasks.update(task.entityId, { title: "Changed" })).rejects.toBeInstanceOf(
+    expect(await rejection(bob.tasks.update(task.entityId, { title: "Changed" }))).toBeInstanceOf(
       AccessDeniedError,
     );
-    await expect(bob.tasks.addComment(task.entityId, "Hello")).rejects.toBeInstanceOf(
+    expect(await rejection(bob.tasks.addComment(task.entityId, "Hello"))).toBeInstanceOf(
       AccessDeniedError,
     );
     await alice.permissions.grant({
@@ -76,10 +78,10 @@ describe("projects and tasks", () => {
     });
     expect((await bob.tasks.update(task.entityId, { title: "Changed" })).title).toBe("Changed");
     await alice.permissions.revoke({ entityId: project.entityId, actorEntityId: fixture.bob });
-    await expect(bob.tasks.get(child.entityId)).rejects.toBeInstanceOf(AccessDeniedError);
-    await expect(bob.tasks.listComments(child.entityId, project.entityId)).rejects.toBeInstanceOf(
-      AccessDeniedError,
-    );
+    expect(await rejection(bob.tasks.get(child.entityId))).toBeInstanceOf(AccessDeniedError);
+    expect(
+      await rejection(bob.tasks.listComments(child.entityId, project.entityId)),
+    ).toBeInstanceOf(AccessDeniedError);
   });
 
   test("subtasks belong to one project and assignees require project access", async () => {
@@ -100,20 +102,24 @@ describe("projects and tasks", () => {
       priority: "high",
       dueDate: "2026-12-01",
     });
-    await expect(
-      alice.tasks.create({
-        projectEntityId: second.entityId,
-        parentTaskEntityId: task.entityId,
-        title: "Bad parent",
-      }),
-    ).rejects.toBeInstanceOf(ValidationError);
-    await expect(
-      alice.tasks.update(task.entityId, { assigneeActorEntityId: fixture.outsider }),
-    ).rejects.toBeInstanceOf(AccessDeniedError);
-    await expect(
-      alice.tasks.update(task.entityId, { dueDate: "2026-02-31" }),
-    ).rejects.toBeInstanceOf(ValidationError);
-    await expect(alice.tasks.update(task.entityId, { title: " " })).rejects.toBeInstanceOf(
+    expect(
+      await rejection(
+        alice.tasks.create({
+          projectEntityId: second.entityId,
+          parentTaskEntityId: task.entityId,
+          title: "Bad parent",
+        }),
+      ),
+    ).toBeInstanceOf(ValidationError);
+    expect(
+      await rejection(
+        alice.tasks.update(task.entityId, { assigneeActorEntityId: fixture.outsider }),
+      ),
+    ).toBeInstanceOf(AccessDeniedError);
+    expect(
+      await rejection(alice.tasks.update(task.entityId, { dueDate: "2026-02-31" })),
+    ).toBeInstanceOf(ValidationError);
+    expect(await rejection(alice.tasks.update(task.entityId, { title: " " }))).toBeInstanceOf(
       ValidationError,
     );
   });
@@ -124,66 +130,78 @@ describe("projects and tasks", () => {
     const project = await alice.projects.create({ name: "Private" });
     const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "Secret" });
     expect(await outsider.projects.list()).toEqual([]);
-    await expect(outsider.tasks.get(task.entityId)).rejects.toBeInstanceOf(AccessDeniedError);
-    await expect(
-      outsider.tasks.create({ projectEntityId: project.entityId, title: "Intrusion" }),
-    ).rejects.toBeInstanceOf(AccessDeniedError);
-    await expect(
-      fixture.db
-        .insert(entityLinks)
-        .values({
-          organizationId: fixture.orgB,
-          sourceEntityId: fixture.outsider,
-          targetEntityId: task.entityId,
-          createdByActorEntityId: fixture.outsider,
-          relationType: "related_to",
-        })
-        .execute(),
-    ).rejects.toMatchObject({ cause: { code: "23503" } });
-    await expect(
-      fixture.db
-        .update(tasks)
-        .set({ organizationId: fixture.orgB })
-        .where(eq(tasks.entityId, task.entityId))
-        .execute(),
-    ).rejects.toMatchObject({ cause: { code: "23503" } });
+    expect(await rejection(outsider.tasks.get(task.entityId))).toBeInstanceOf(AccessDeniedError);
+    expect(
+      await rejection(
+        outsider.tasks.create({ projectEntityId: project.entityId, title: "Intrusion" }),
+      ),
+    ).toBeInstanceOf(AccessDeniedError);
+    expect(
+      await rejection(
+        fixture.db
+          .insert(entityLinks)
+          .values({
+            organizationId: fixture.orgB,
+            sourceEntityId: fixture.outsider,
+            targetEntityId: task.entityId,
+            createdByActorEntityId: fixture.outsider,
+            relationType: "related_to",
+          })
+          .execute(),
+      ),
+    ).toMatchObject({ cause: { code: "23503" } });
+    expect(
+      await rejection(
+        fixture.db
+          .update(tasks)
+          .set({ organizationId: fixture.orgB })
+          .where(eq(tasks.entityId, task.entityId))
+          .execute(),
+      ),
+    ).toMatchObject({ cause: { code: "23503" } });
   });
 
   test("creation rolls back with its caller and invalid references cannot be stored", async () => {
     const alice = fixture.forActor(fixture.alice);
     let rolledBackId = "";
-    await expect(
-      alice.transaction(async (repositories) => {
-        const project = await repositories.projects.create({ name: "Rollback" });
-        rolledBackId = project.entityId;
-        await repositories.tasks.create({
-          projectEntityId: project.entityId,
-          title: "Rollback task",
-        });
-        throw new Error("abort");
-      }),
-    ).rejects.toThrow("abort");
+    expect(
+      await rejection(
+        alice.transaction(async (repositories) => {
+          const project = await repositories.projects.create({ name: "Rollback" });
+          rolledBackId = project.entityId;
+          await repositories.tasks.create({
+            projectEntityId: project.entityId,
+            title: "Rollback task",
+          });
+          throw new Error("abort");
+        }),
+      ),
+    ).toMatchObject({ message: expect.stringContaining("abort") });
     expect(
       await fixture.db.select().from(entities).where(eq(entities.entityId, rolledBackId)),
     ).toEqual([]);
     const project = await alice.projects.create({ name: "Real" });
     const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "Real" });
-    await expect(
-      fixture.db
-        .update(tasks)
-        .set({ projectEntityId: crypto.randomUUID() })
-        .where(eq(tasks.entityId, task.entityId))
-        .execute(),
-    ).rejects.toMatchObject({ cause: { code: "23503" } });
-    await expect(
-      fixture.db
-        .update(tasks)
-        .set({ parentTaskEntityId: task.entityId })
-        .where(eq(tasks.entityId, task.entityId))
-        .execute(),
-    ).rejects.toMatchObject({ cause: { code: "23514" } });
+    expect(
+      await rejection(
+        fixture.db
+          .update(tasks)
+          .set({ projectEntityId: crypto.randomUUID() })
+          .where(eq(tasks.entityId, task.entityId))
+          .execute(),
+      ),
+    ).toMatchObject({ cause: { code: "23503" } });
+    expect(
+      await rejection(
+        fixture.db
+          .update(tasks)
+          .set({ parentTaskEntityId: task.entityId })
+          .where(eq(tasks.entityId, task.entityId))
+          .execute(),
+      ),
+    ).toMatchObject({ cause: { code: "23514" } });
     await alice.entities.softDelete(project.entityId);
-    await expect(alice.tasks.get(task.entityId)).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(await rejection(alice.tasks.get(task.entityId))).toBeInstanceOf(AccessDeniedError);
   });
 
   test("task writes cannot replace identity or structure and comments share caller rollback", async () => {
@@ -205,38 +223,46 @@ describe("projects and tasks", () => {
       parentTaskEntityId: null,
       title: "Changed",
     });
-    await expect(
-      fixture.db
-        .update(entities)
-        .set({ accessEntityId: other.entityId })
-        .where(eq(entities.entityId, task.entityId))
-        .execute(),
-    ).rejects.toMatchObject({ cause: { code: "23503" } });
-    await expect(
-      alice.transaction(async (repositories) => {
-        await repositories.tasks.addComment(task.entityId, "Must roll back");
-        throw new Error("abort comment");
-      }),
-    ).rejects.toThrow("abort comment");
+    expect(
+      await rejection(
+        fixture.db
+          .update(entities)
+          .set({ accessEntityId: other.entityId })
+          .where(eq(entities.entityId, task.entityId))
+          .execute(),
+      ),
+    ).toMatchObject({ cause: { code: "23503" } });
+    expect(
+      await rejection(
+        alice.transaction(async (repositories) => {
+          await repositories.tasks.addComment(task.entityId, "Must roll back");
+          throw new Error("abort comment");
+        }),
+      ),
+    ).toMatchObject({ message: expect.stringContaining("abort comment") });
     expect(await alice.tasks.listComments(task.entityId, project.entityId)).toEqual([]);
-    await expect(
-      fixture.db
-        .insert(taskComments)
-        .values({
-          organizationId: fixture.orgB,
-          taskEntityId: task.entityId,
-          authorActorEntityId: fixture.outsider,
-          body: "Wrong org",
-        })
-        .execute(),
-    ).rejects.toMatchObject({ cause: { code: "23503" } });
-    await expect(
-      alice.tasks.create({
-        projectEntityId: project.entityId,
-        title: "Invisible assignee",
-        assigneeActorEntityId: fixture.bob,
-      }),
-    ).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(
+      await rejection(
+        fixture.db
+          .insert(taskComments)
+          .values({
+            organizationId: fixture.orgB,
+            taskEntityId: task.entityId,
+            authorActorEntityId: fixture.outsider,
+            body: "Wrong org",
+          })
+          .execute(),
+      ),
+    ).toMatchObject({ cause: { code: "23503" } });
+    expect(
+      await rejection(
+        alice.tasks.create({
+          projectEntityId: project.entityId,
+          title: "Invisible assignee",
+          assigneeActorEntityId: fixture.bob,
+        }),
+      ),
+    ).toBeInstanceOf(AccessDeniedError);
   });
 });
 
@@ -324,17 +350,19 @@ test("task comments require their actual project and use three repository statem
   ]);
   expect(previousComments.map((row) => row.id)).toEqual([comment.id]);
   expect(statements).toHaveLength(3);
-  await expect(alice.tasks.listComments(task.entityId, other.entityId)).rejects.toBeInstanceOf(
+  expect(await rejection(alice.tasks.listComments(task.entityId, other.entityId))).toBeInstanceOf(
     AccessDeniedError,
   );
-  await expect(alice.tasks.listComments(other.entityId, other.entityId)).rejects.toBeInstanceOf(
+  expect(await rejection(alice.tasks.listComments(other.entityId, other.entityId))).toBeInstanceOf(
     AccessDeniedError,
   );
-  await expect(
-    fixture
-      .forActor(fixture.outsider, fixture.orgB)
-      .tasks.listComments(task.entityId, project.entityId),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(
+      fixture
+        .forActor(fixture.outsider, fixture.orgB)
+        .tasks.listComments(task.entityId, project.entityId),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
 });
 
 test("task comments follow the actual project's grants, deletion and membership checks", async () => {
@@ -344,10 +372,10 @@ test("task comments follow the actual project's grants, deletion and membership 
   const other = await bob.projects.create({ name: "Accessible decoy" });
   const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "Secret" });
   await alice.tasks.addComment(task.entityId, "Private comment");
-  await expect(bob.tasks.listComments(task.entityId, project.entityId)).rejects.toBeInstanceOf(
+  expect(await rejection(bob.tasks.listComments(task.entityId, project.entityId))).toBeInstanceOf(
     AccessDeniedError,
   );
-  await expect(bob.tasks.listComments(task.entityId, other.entityId)).rejects.toBeInstanceOf(
+  expect(await rejection(bob.tasks.listComments(task.entityId, other.entityId))).toBeInstanceOf(
     AccessDeniedError,
   );
   await alice.permissions.grant({
@@ -363,7 +391,7 @@ test("task comments follow the actual project's grants, deletion and membership 
       .update(entities)
       .set({ deletedAt: new Date() })
       .where(eq(entities.entityId, entityId));
-    await expect(bob.tasks.listComments(task.entityId, project.entityId)).rejects.toBeInstanceOf(
+    expect(await rejection(bob.tasks.listComments(task.entityId, project.entityId))).toBeInstanceOf(
       AccessDeniedError,
     );
     await fixture.db
@@ -372,7 +400,7 @@ test("task comments follow the actual project's grants, deletion and membership 
       .where(eq(entities.entityId, entityId));
   }
   await fixture.db.delete(member).where(eq(member.id, "bob-a"));
-  await expect(bob.tasks.listComments(task.entityId, project.entityId)).rejects.toBeInstanceOf(
+  expect(await rejection(bob.tasks.listComments(task.entityId, project.entityId))).toBeInstanceOf(
     AccessDeniedError,
   );
 });
@@ -383,15 +411,15 @@ test("task writes deny non-project parents and mismatched projects without writi
   const other = await alice.projects.create({ name: "Other" });
   const contact = await alice.contacts.create({ displayName: "Not a project" });
   const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "Ship" });
-  await expect(
-    alice.tasks.create({ projectEntityId: contact.entityId, title: "Orphan" }),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
-  await expect(
-    alice.tasks.update(task.entityId, { title: "Moved" }, other.entityId),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
-  await expect(alice.tasks.addComment(task.entityId, "Hi", other.entityId)).rejects.toBeInstanceOf(
-    AccessDeniedError,
-  );
+  expect(
+    await rejection(alice.tasks.create({ projectEntityId: contact.entityId, title: "Orphan" })),
+  ).toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(alice.tasks.update(task.entityId, { title: "Moved" }, other.entityId)),
+  ).toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(alice.tasks.addComment(task.entityId, "Hi", other.entityId)),
+  ).toBeInstanceOf(AccessDeniedError);
   expect(await fixture.db.select().from(tasks)).toEqual([task]);
   expect(await fixture.db.select().from(taskComments)).toEqual([]);
   expect(

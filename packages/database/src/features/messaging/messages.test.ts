@@ -5,9 +5,9 @@ import { user, member } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { createAcceptedMessagingService } from "../../testing/messaging";
 import { recordQueries } from "../../testing/queries";
+import { rejection } from "../../testing/rejection";
 import { messagingMessages, messagingReactions } from "./schema";
 import { createMessagingService } from "./service";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -39,14 +39,14 @@ test("send and replay reuse authenticated identity and the locked conversation",
   expect(provisioning()).toEqual([]);
   // Replay also reads the attachment set, so a changed set cannot reuse the request.
   expect(queries).toHaveLength(5);
-  await expect(
-    chat.sendMessage(channel.id, "changed", undefined, requestId),
-  ).rejects.toBeInstanceOf(ConflictError);
-  await expect(chat.sendMessage(channel.id, "hello", sent.id, requestId)).rejects.toBeInstanceOf(
+  expect(
+    await rejection(chat.sendMessage(channel.id, "changed", undefined, requestId)),
+  ).toBeInstanceOf(ConflictError);
+  expect(await rejection(chat.sendMessage(channel.id, "hello", sent.id, requestId))).toBeInstanceOf(
     ConflictError,
   );
   const other = await service("alice").createConversation({ kind: "channel", name: "other" });
-  await expect(chat.sendMessage(other.id, "hello", undefined, requestId)).rejects.toBeInstanceOf(
+  expect(await rejection(chat.sendMessage(other.id, "hello", undefined, requestId))).toBeInstanceOf(
     ConflictError,
   );
 });
@@ -156,7 +156,9 @@ test("external authors follow the viewer organization for partner channel roots 
       ]),
     );
   }
-  await expect(service("bob").listMessages(channel.id)).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(service("bob").listMessages(channel.id))).toBeInstanceOf(
+    AccessDeniedError,
+  );
 });
 
 test("external authors use current membership, not participant organization or author identity", async () => {
@@ -201,47 +203,53 @@ test("threads stay in their conversation and reference only roots, including raw
   expect(await service("alice").listMessages(a.id, root.id)).toMatchObject([
     { id: reply.id, threadId: root.id },
   ]);
-  await expect(
-    service("alice").sendMessage(b.id, "wrong conversation", root.id),
-  ).rejects.toBeInstanceOf(ValidationError);
-  await expect(service("alice").sendMessage(a.id, "nested", reply.id)).rejects.toBeInstanceOf(
+  expect(
+    await rejection(service("alice").sendMessage(b.id, "wrong conversation", root.id)),
+  ).toBeInstanceOf(ValidationError);
+  expect(await rejection(service("alice").sendMessage(a.id, "nested", reply.id))).toBeInstanceOf(
     ValidationError,
   );
-  await expect(
-    fixture.db
-      .insert(messagingMessages)
-      .values({
-        conversationId: b.id,
-        authorActorEntityId: fixture.alice,
-        authorOrganizationId: fixture.orgA,
-        body: "bad",
-        threadId: root.id,
-      })
-      .execute(),
-  ).rejects.toMatchObject({ cause: { code: "23503" } });
-  await expect(
-    fixture.db
-      .insert(messagingMessages)
-      .values({
-        conversationId: a.id,
-        authorActorEntityId: fixture.alice,
-        authorOrganizationId: fixture.orgA,
-        body: "bad",
-        threadId: reply.id,
-      })
-      .execute(),
-  ).rejects.toMatchObject({ cause: { code: "23503" } });
-  await expect(
-    fixture.db
-      .insert(messagingMessages)
-      .values({
-        conversationId: a.id,
-        authorActorEntityId: fixture.outsider,
-        authorOrganizationId: fixture.orgB,
-        body: "bad",
-      })
-      .execute(),
-  ).rejects.toMatchObject({ cause: { code: "23503" } });
+  expect(
+    await rejection(
+      fixture.db
+        .insert(messagingMessages)
+        .values({
+          conversationId: b.id,
+          authorActorEntityId: fixture.alice,
+          authorOrganizationId: fixture.orgA,
+          body: "bad",
+          threadId: root.id,
+        })
+        .execute(),
+    ),
+  ).toMatchObject({ cause: { code: "23503" } });
+  expect(
+    await rejection(
+      fixture.db
+        .insert(messagingMessages)
+        .values({
+          conversationId: a.id,
+          authorActorEntityId: fixture.alice,
+          authorOrganizationId: fixture.orgA,
+          body: "bad",
+          threadId: reply.id,
+        })
+        .execute(),
+    ),
+  ).toMatchObject({ cause: { code: "23503" } });
+  expect(
+    await rejection(
+      fixture.db
+        .insert(messagingMessages)
+        .values({
+          conversationId: a.id,
+          authorActorEntityId: fixture.outsider,
+          authorOrganizationId: fixture.orgB,
+          body: "bad",
+        })
+        .execute(),
+    ),
+  ).toMatchObject({ cause: { code: "23503" } });
 });
 
 test("reactions aggregate per emoji, toggle per user and reject inaccessible messages", async () => {
@@ -269,20 +277,22 @@ test("reactions aggregate per emoji, toggle per user and reject inaccessible mes
   expect((await service("alice").listMessages(channel.id))[0]?.reactions).toEqual([
     { emoji: "👍", count: 1, reacted: false },
   ]);
-  await expect(
-    service("outsider", fixture.orgB).toggleReaction(message.id, "👍"),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
-  await expect(
-    fixture.db
-      .insert(messagingReactions)
-      .values({
-        conversationId: crypto.randomUUID(),
-        messageId: message.id,
-        actorEntityId: fixture.alice,
-        emoji: "👍",
-      })
-      .execute(),
-  ).rejects.toMatchObject({ cause: { code: "23503" } });
+  expect(
+    await rejection(service("outsider", fixture.orgB).toggleReaction(message.id, "👍")),
+  ).toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(
+      fixture.db
+        .insert(messagingReactions)
+        .values({
+          conversationId: crypto.randomUUID(),
+          messageId: message.id,
+          actorEntityId: fixture.alice,
+          emoji: "👍",
+        })
+        .execute(),
+    ),
+  ).toMatchObject({ cause: { code: "23503" } });
 });
 
 test("posts, reactions and reads do not wait for an open post, while leaving waits for it", async () => {

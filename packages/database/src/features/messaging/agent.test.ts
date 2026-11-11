@@ -3,12 +3,12 @@ import { AccessDeniedError } from "../../errors";
 import { user, userAgents, messagingMessages } from "../../schema";
 import { agentWorkFixture, threadTurn } from "../../testing/agent-work";
 import { setupDatabase } from "../../testing/database";
+import { rejection } from "../../testing/rejection";
 import { createContextService } from "../context/service";
 import { createMessagingService } from "./service";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
-/* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous. */
 const f = setupDatabase();
 
 test("only the agent's owner sees which turn published an agent reply", async () => {
@@ -82,8 +82,10 @@ test("agent messages retain agent authorship and use their owner's conversation 
     organizationId: f.orgA,
     userId: "bob",
   }).createConversation({ kind: "channel", name: "bob-only", private: true });
-  await expect(chat.sendMessage(bobsChannel.id, "no")).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(chat.sendMessage(bobsChannel.id, "no"))).toBeInstanceOf(AccessDeniedError);
   expect((await chat.listConversations()).map((item) => item.id)).not.toContain(bobsChannel.id);
   await f.db.update(userAgents).set({ enabled: false }).where(eq(userAgents.id, agent!.id));
-  await expect(chat.sendMessage(channel.id, "disabled")).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(chat.sendMessage(channel.id, "disabled"))).toBeInstanceOf(
+    AccessDeniedError,
+  );
 });

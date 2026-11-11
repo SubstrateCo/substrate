@@ -4,11 +4,11 @@ import { AccessDeniedError, ConflictError, ValidationError } from "../../errors"
 import { member, notifications, taskActivity, user } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { createAcceptedMessagingService } from "../../testing/messaging";
+import { rejection } from "../../testing/rejection";
 import { messageEntityReferences, messageMessagingReferences } from "../context/schema";
 import { createContextService } from "../context/service";
 import { createFeedService } from "../notifications/service";
 import { messagingConversations, messagingMessages } from "./schema";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -36,8 +36,8 @@ test("leaving a private conversation removes access until the owner adds the mem
   const before = await chat("bob").sendMessage(channel.id, "before leaving");
   await chat("bob").leaveConversation(channel.id);
   expect(await listed("bob")).toEqual([]);
-  await expect(chat("bob").listMessages(channel.id)).rejects.toBeInstanceOf(AccessDeniedError);
-  await expect(chat("bob").sendMessage(channel.id, "back?")).rejects.toBeInstanceOf(
+  expect(await rejection(chat("bob").listMessages(channel.id))).toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(chat("bob").sendMessage(channel.id, "back?"))).toBeInstanceOf(
     AccessDeniedError,
   );
   const [row] = await chat("alice").listConversations();
@@ -83,8 +83,8 @@ test("owners pass ownership before leaving, and the last member must delete inst
     kind: "group",
     emails: ["bob@example.com", "outside@example.com"],
   });
-  await expect(chat("alice").leaveConversation(group.id)).rejects.toBeInstanceOf(ConflictError);
-  await expect(chat("alice").leaveConversation(group.id, "nobody")).rejects.toBeInstanceOf(
+  expect(await rejection(chat("alice").leaveConversation(group.id))).toBeInstanceOf(ConflictError);
+  expect(await rejection(chat("alice").leaveConversation(group.id, "nobody"))).toBeInstanceOf(
     ValidationError,
   );
   await chat("alice").leaveConversation(group.id, "bob");
@@ -93,12 +93,12 @@ test("owners pass ownership before leaving, and the last member must delete inst
     .from(messagingConversations)
     .where(eq(messagingConversations.id, group.id));
   expect(owned!.createdBy).toBe("bob");
-  await expect(chat("alice").addMembers(group.id, ["alice@example.com"])).rejects.toBeInstanceOf(
+  expect(await rejection(chat("alice").addMembers(group.id, ["alice@example.com"]))).toBeInstanceOf(
     AccessDeniedError,
   );
   await chat("outsider", f.orgB).leaveConversation(group.id);
-  await expect(chat("bob").leaveConversation(group.id)).rejects.toBeInstanceOf(ConflictError);
-  await expect(chat("bob").leaveConversation(group.id, "outsider")).rejects.toBeInstanceOf(
+  expect(await rejection(chat("bob").leaveConversation(group.id))).toBeInstanceOf(ConflictError);
+  expect(await rejection(chat("bob").leaveConversation(group.id, "outsider"))).toBeInstanceOf(
     ValidationError,
   );
 });
@@ -106,8 +106,10 @@ test("owners pass ownership before leaving, and the last member must delete inst
 test("direct messages cannot be left or deleted, even by admins", async () => {
   await verified();
   const dm = await chat("bob").createConversation({ kind: "dm", emails: ["alice@example.com"] });
-  await expect(chat("bob").leaveConversation(dm.id)).rejects.toBeInstanceOf(AccessDeniedError);
-  await expect(chat("alice").deleteConversation(dm.id)).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(chat("bob").leaveConversation(dm.id))).toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(chat("alice").deleteConversation(dm.id))).toBeInstanceOf(
+    AccessDeniedError,
+  );
 });
 
 test("owners and admins of the owning organization manage conversations without reading them", async () => {
@@ -121,22 +123,22 @@ test("owners and admins of the owning organization manage conversations without 
   await chat("bob").sendMessage(secret.id, "private words");
   // alice is an organization owner but not a member.
   expect(await listed("alice")).toEqual([]);
-  await expect(chat("alice").listMessages(secret.id)).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(chat("alice").listMessages(secret.id))).toBeInstanceOf(AccessDeniedError);
   expect(await chat("alice").listManagedConversations()).toMatchObject([
     { id: secret.id, name: "secret", private: true, ownerName: "Bob" },
   ]);
-  await expect(chat("bob").listManagedConversations()).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(chat("bob").listManagedConversations())).toBeInstanceOf(AccessDeniedError);
   // Managing never becomes reading: an admin cannot add themselves or take ownership.
   expect(await chat("alice").addMembers(secret.id, ["alice@example.com"])).toEqual({ added: 0 });
-  await expect(chat("alice").transferOwnership(secret.id, "alice")).rejects.toBeInstanceOf(
+  expect(await rejection(chat("alice").transferOwnership(secret.id, "alice"))).toBeInstanceOf(
     ValidationError,
   );
-  await expect(chat("alice").listMessages(secret.id)).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(chat("alice").listMessages(secret.id))).toBeInstanceOf(AccessDeniedError);
   // A member from another organization cannot manage it, even as that organization's owner.
-  await expect(chat("outsider", f.orgB).deleteConversation(secret.id)).rejects.toBeInstanceOf(
+  expect(await rejection(chat("outsider", f.orgB).deleteConversation(secret.id))).toBeInstanceOf(
     AccessDeniedError,
   );
-  await expect(chat("alice").transferOwnership(secret.id, "outsider")).rejects.toBeInstanceOf(
+  expect(await rejection(chat("alice").transferOwnership(secret.id, "outsider"))).toBeInstanceOf(
     ValidationError,
   );
   const [owned] = await f.db
@@ -145,7 +147,7 @@ test("owners and admins of the owning organization manage conversations without 
     .where(eq(messagingConversations.id, secret.id));
   expect(owned!.createdBy).toBe("bob");
   await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "alice"));
-  await expect(chat("alice").deleteConversation(secret.id)).rejects.toBeInstanceOf(
+  expect(await rejection(chat("alice").deleteConversation(secret.id))).toBeInstanceOf(
     AccessDeniedError,
   );
   await f.db.update(member).set({ role: "admin" }).where(eq(member.userId, "alice"));
@@ -161,10 +163,10 @@ test("members who are not the owner cannot delete or change the owner", async ()
     emails: ["alice@example.com"],
   });
   await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "alice"));
-  await expect(chat("alice").deleteConversation(channel.id)).rejects.toBeInstanceOf(
+  expect(await rejection(chat("alice").deleteConversation(channel.id))).toBeInstanceOf(
     AccessDeniedError,
   );
-  await expect(chat("alice").transferOwnership(channel.id, "alice")).rejects.toBeInstanceOf(
+  expect(await rejection(chat("alice").transferOwnership(channel.id, "alice"))).toBeInstanceOf(
     AccessDeniedError,
   );
   expect((await chat("bob").listConversations())[0]).toMatchObject({ canManage: true });
@@ -276,9 +278,9 @@ test("agents cannot leave, delete, or manage conversations", async () => {
     organizationId: f.orgA,
     actorEntityId: crypto.randomUUID(),
   });
-  await expect(agent.deleteConversation(channel.id)).rejects.toBeInstanceOf(AccessDeniedError);
-  await expect(agent.leaveConversation(channel.id)).rejects.toBeInstanceOf(AccessDeniedError);
-  await expect(agent.transferOwnership(channel.id, "bob")).rejects.toBeInstanceOf(
+  expect(await rejection(agent.deleteConversation(channel.id))).toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(agent.leaveConversation(channel.id))).toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(agent.transferOwnership(channel.id, "bob"))).toBeInstanceOf(
     AccessDeniedError,
   );
 });

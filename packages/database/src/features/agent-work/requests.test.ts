@@ -10,13 +10,13 @@ import {
 } from "../../schema";
 import { agentWorkFixture, dmTurn, threadTurn } from "../../testing/agent-work";
 import { setupDatabase } from "../../testing/database";
+import { rejection } from "../../testing/rejection";
 import { approveProposal, declineProposal, respondToRequest } from "./decisions";
 import { closeRequest, openRequest, requestAnswers } from "./device-requests";
 import { listConversationRequests, listNeedsYou } from "./request-views";
 import { expect, test } from "bun:test";
 import { eq, sql } from "drizzle-orm";
 
-/* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous. */
 const f = setupDatabase();
 
 const approval = {
@@ -57,13 +57,17 @@ test("a blocking request opens once, the first answer wins, and the home device 
   const { agent, owner, input, request } = await blocking();
   expect(await openRequest(f.db, agent.identity, input)).toEqual(request);
 
-  await expect(
-    respondToRequest(f.db, owner, request.id, { type: "approval", optionId: "sudo" }),
-  ).rejects.toBeInstanceOf(ValidationError);
+  expect(
+    await rejection(
+      respondToRequest(f.db, owner, request.id, { type: "approval", optionId: "sudo" }),
+    ),
+  ).toBeInstanceOf(ValidationError);
   await respondToRequest(f.db, owner, request.id, { type: "approval", optionId: "deny" });
-  await expect(
-    respondToRequest(f.db, owner, request.id, { type: "approval", optionId: "allow" }),
-  ).rejects.toBeInstanceOf(ConflictError);
+  expect(
+    await rejection(
+      respondToRequest(f.db, owner, request.id, { type: "approval", optionId: "allow" }),
+    ),
+  ).toBeInstanceOf(ConflictError);
   // A blocking answer goes to the waiting callback, not to a new turn.
   expect(await wakesFor(request.id)).toEqual([]);
 
@@ -90,21 +94,25 @@ test("an expired blocking request cannot be answered", async () => {
     .update(agentRequests)
     .set({ expiresAt: sql`now() - interval '1 second'` })
     .where(eq(agentRequests.id, request.id));
-  await expect(
-    respondToRequest(f.db, owner, request.id, { type: "approval", optionId: "allow" }),
-  ).rejects.toBeInstanceOf(ConflictError);
+  expect(
+    await rejection(
+      respondToRequest(f.db, owner, request.id, { type: "approval", optionId: "allow" }),
+    ),
+  ).toBeInstanceOf(ConflictError);
 });
 
 test("other people cannot see or answer someone's requests, or act as their device", async () => {
   const { dm, input, request } = await blocking();
   const bob = { userId: "bob", organizationId: f.orgA };
-  await expect(
-    respondToRequest(f.db, bob, request.id, { type: "approval", optionId: "allow" }),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(
+      respondToRequest(f.db, bob, request.id, { type: "approval", optionId: "allow" }),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
   expect((await listNeedsYou(f.db, bob)).requests).toEqual([]);
   expect(await listConversationRequests(f.db, bob, dm.id)).toEqual([]);
   const bobDevice = { ...bob, installationId: crypto.randomUUID() };
-  await expect(openRequest(f.db, bobDevice, input)).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(openRequest(f.db, bobDevice, input))).toBeInstanceOf(AccessDeniedError);
 });
 
 test("an async question's answer wakes the agent exactly once in the question's session", async () => {
@@ -124,7 +132,7 @@ test("an async question's answer wakes the agent exactly once in the question's 
   });
   const answer = { type: "questions" as const, answers: { answer: ["Next week"] } };
   await respondToRequest(f.db, owner, reply.questionId!, answer);
-  await expect(respondToRequest(f.db, owner, reply.questionId!, answer)).rejects.toBeInstanceOf(
+  expect(await rejection(respondToRequest(f.db, owner, reply.questionId!, answer))).toBeInstanceOf(
     ConflictError,
   );
   expect(await wakesFor(reply.questionId!)).toEqual([
@@ -264,7 +272,7 @@ test("approval checks access again and records a failure; decline runs nothing",
     status: "resolved",
     outcome: { status: "declined" },
   });
-  await expect(approveProposal(f.db, owner, create.proposalId)).rejects.toBeInstanceOf(
+  expect(await rejection(approveProposal(f.db, owner, create.proposalId))).toBeInstanceOf(
     ConflictError,
   );
   expect(
@@ -273,9 +281,11 @@ test("approval checks access again and records a failure; decline runs nothing",
   expect(await wakesFor(create.proposalId)).toEqual([
     { source: "approval_result", sessionKey: turn.sessionKey },
   ]);
-  await expect(
-    approveProposal(f.db, { userId: "bob", organizationId: f.orgA }, post.proposalId),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(
+      approveProposal(f.db, { userId: "bob", organizationId: f.orgA }, post.proposalId),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
 });
 
 test("after the owner leaves, a request is a placeholder without IDs, text or proposal", async () => {

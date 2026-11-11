@@ -1,9 +1,9 @@
 import { AccessDeniedError } from "../../errors";
 import { actors, entities, member, userAgents } from "../../schema";
 import { setupDatabase } from "../../testing/database";
+import { rejection } from "../../testing/rejection";
 import { rootEntityValues } from "../entities/identity";
 import { createActor, ensureHumanActor, ensureUserAgentActor } from "./provisioning";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -47,13 +47,13 @@ describe("actor provisioning", () => {
     expect((await f.forActor(f.alice).contacts.get(contact.entityId)).displayName).toBe(
       "Agent edit",
     );
-    await expect(
-      f.forActor(other.entityId, f.orgB).contacts.get(contact.entityId),
-    ).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(
+      await rejection(f.forActor(other.entityId, f.orgB).contacts.get(contact.entityId)),
+    ).toBeInstanceOf(AccessDeniedError);
     const before = await f.db.select().from(entities);
-    await expect(
-      ensureUserAgentActor(f.db, { ...input, userAgentId: crypto.randomUUID() }),
-    ).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(
+      await rejection(ensureUserAgentActor(f.db, { ...input, userAgentId: crypto.randomUUID() })),
+    ).toBeInstanceOf(AccessDeniedError);
     expect(await f.db.select().from(entities)).toHaveLength(before.length);
   });
 
@@ -72,27 +72,33 @@ describe("actor provisioning", () => {
       userId: "alice",
       userAgentId: agent!.id,
     });
-    await expect(
-      createActor(f.db, {
-        organizationId: f.orgA,
-        type: "agent",
-        userAgentId: agent!.id,
-      }),
-    ).rejects.toMatchObject({ cause: { code: "23505" } });
-    await expect(
-      createActor(f.db, {
-        organizationId: f.orgA,
-        type: "agent",
-        userAgentId: crypto.randomUUID(),
-      }),
-    ).rejects.toMatchObject({ cause: { code: "23503" } });
-    await expect(
-      f.db
-        .update(actors)
-        .set({ userAgentId: agent!.id })
-        .where(eq(actors.entityId, f.alice))
-        .execute(),
-    ).rejects.toMatchObject({ cause: { code: "23514" } });
+    expect(
+      await rejection(
+        createActor(f.db, {
+          organizationId: f.orgA,
+          type: "agent",
+          userAgentId: agent!.id,
+        }),
+      ),
+    ).toMatchObject({ cause: { code: "23505" } });
+    expect(
+      await rejection(
+        createActor(f.db, {
+          organizationId: f.orgA,
+          type: "agent",
+          userAgentId: crypto.randomUUID(),
+        }),
+      ),
+    ).toMatchObject({ cause: { code: "23503" } });
+    expect(
+      await rejection(
+        f.db
+          .update(actors)
+          .set({ userAgentId: agent!.id })
+          .where(eq(actors.entityId, f.alice))
+          .execute(),
+      ),
+    ).toMatchObject({ cause: { code: "23514" } });
   });
 
   test("user agents use their owner's access, retain assignment identity, and lose access when inactive", async () => {
@@ -124,12 +130,12 @@ describe("actor provisioning", () => {
     expect(await f.db.select().from(actors).where(eq(actors.userAgentId, agent!.id))).toHaveLength(
       1,
     );
-    await expect(ensureUserAgentActor(f.db, { ...input, userId: "bob" })).rejects.toBeInstanceOf(
+    expect(await rejection(ensureUserAgentActor(f.db, { ...input, userId: "bob" }))).toBeInstanceOf(
       AccessDeniedError,
     );
-    await expect(
-      ensureUserAgentActor(f.db, { ...input, organizationId: f.orgB }),
-    ).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(
+      await rejection(ensureUserAgentActor(f.db, { ...input, organizationId: f.orgB })),
+    ).toBeInstanceOf(AccessDeniedError);
     await f.db.update(userAgents).set({ enabled: false }).where(eq(userAgents.id, agent!.id));
     // A disabled agent keeps its name on assigned tasks but cannot be assigned again.
     expect((await f.forActor(f.alice).projects.getDetail(project.entityId)).actors).toContainEqual({
@@ -139,25 +145,27 @@ describe("actor provisioning", () => {
       assignable: false,
       image: null,
     });
-    await expect(
-      f.forActor(f.alice).permissions.grant({
-        entityId: contact.entityId,
-        actorEntityId: actor!.entityId,
-        level: "edit",
-      }),
-    ).rejects.toBeInstanceOf(AccessDeniedError);
-    await expect(assistant.contacts.list()).rejects.toBeInstanceOf(AccessDeniedError);
-    await expect(ensureUserAgentActor(f.db, input)).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(
+      await rejection(
+        f.forActor(f.alice).permissions.grant({
+          entityId: contact.entityId,
+          actorEntityId: actor!.entityId,
+          level: "edit",
+        }),
+      ),
+    ).toBeInstanceOf(AccessDeniedError);
+    expect(await rejection(assistant.contacts.list())).toBeInstanceOf(AccessDeniedError);
+    expect(await rejection(ensureUserAgentActor(f.db, input))).toBeInstanceOf(AccessDeniedError);
     await f.db
       .update(userAgents)
       .set({ enabled: true, deletedAt: new Date() })
       .where(eq(userAgents.id, agent!.id));
-    await expect(assistant.contacts.get(contact.entityId)).rejects.toBeInstanceOf(
+    expect(await rejection(assistant.contacts.get(contact.entityId))).toBeInstanceOf(
       AccessDeniedError,
     );
     await f.db.update(userAgents).set({ deletedAt: null }).where(eq(userAgents.id, agent!.id));
     await f.db.delete(member).where(eq(member.id, "alice-a"));
-    await expect(assistant.contacts.get(contact.entityId)).rejects.toBeInstanceOf(
+    expect(await rejection(assistant.contacts.get(contact.entityId))).toBeInstanceOf(
       AccessDeniedError,
     );
   });
@@ -171,9 +179,9 @@ describe("actor provisioning", () => {
     expect(await f.db.select().from(entities)).toHaveLength(before.length);
     await f.db.update(member).set({ role: "member" }).where(eq(member.id, "alice-a"));
     const privateContact = await f.forActor(f.bob).contacts.create({ displayName: "Private" });
-    await expect(
-      f.forActor(actor.entityId).contacts.get(privateContact.entityId),
-    ).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(
+      await rejection(f.forActor(actor.entityId).contacts.get(privateContact.entityId)),
+    ).toBeInstanceOf(AccessDeniedError);
   });
 
   test("concurrent onboarding provisions one actor and rolls back invalid membership", async () => {
@@ -185,31 +193,37 @@ describe("actor provisioning", () => {
     ]);
     expect(results[0].entityId).toBe(results[1].entityId);
     const before = await f.db.select().from(entities);
-    await expect(
-      ensureHumanActor(f.db, {
-        organizationId: f.orgA,
-        userId: "outsider",
-      }),
-    ).rejects.toThrow("membership");
+    expect(
+      await rejection(
+        ensureHumanActor(f.db, {
+          organizationId: f.orgA,
+          userId: "outsider",
+        }),
+      ),
+    ).toMatchObject({ message: expect.stringContaining("membership") });
     expect(await f.db.select().from(entities)).toHaveLength(before.length);
   });
 
   test("requires organization membership and cannot duplicate it", async () => {
     const before = await f.db.select().from(entities);
-    await expect(
-      createActor(f.db, {
-        organizationId: f.orgA,
-        type: "human",
-        userId: "outsider",
-      }),
-    ).rejects.toThrow("membership");
-    await expect(
-      createActor(f.db, {
-        organizationId: f.orgA,
-        type: "human",
-        userId: "alice",
-      }),
-    ).rejects.toMatchObject({ cause: { code: "23505" } });
+    expect(
+      await rejection(
+        createActor(f.db, {
+          organizationId: f.orgA,
+          type: "human",
+          userId: "outsider",
+        }),
+      ),
+    ).toMatchObject({ message: expect.stringContaining("membership") });
+    expect(
+      await rejection(
+        createActor(f.db, {
+          organizationId: f.orgA,
+          type: "human",
+          userId: "alice",
+        }),
+      ),
+    ).toMatchObject({ cause: { code: "23505" } });
     expect(await f.db.select().from(entities)).toHaveLength(before.length);
     await f.db
       .insert(member)
@@ -229,17 +243,21 @@ describe("actor provisioning", () => {
       .values(rootEntityValues(f.orgA, "actor"))
       .returning();
     const identity = { organizationId: f.orgA, entityId: entity!.entityId };
-    await expect(
-      f.db
-        .insert(actors)
-        .values({ ...identity, type: "human" })
-        .execute(),
-    ).rejects.toMatchObject({ cause: { code: "23514" } });
-    await expect(
-      f.db
-        .insert(actors)
-        .values({ ...identity, type: "agent", userId: "alice" })
-        .execute(),
-    ).rejects.toMatchObject({ cause: { code: "23514" } });
+    expect(
+      await rejection(
+        f.db
+          .insert(actors)
+          .values({ ...identity, type: "human" })
+          .execute(),
+      ),
+    ).toMatchObject({ cause: { code: "23514" } });
+    expect(
+      await rejection(
+        f.db
+          .insert(actors)
+          .values({ ...identity, type: "agent", userId: "alice" })
+          .execute(),
+      ),
+    ).toMatchObject({ cause: { code: "23514" } });
   });
 });

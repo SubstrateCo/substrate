@@ -4,9 +4,9 @@ import { AccessDeniedError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
 import { createAcceptedMessagingService } from "../../testing/messaging";
 import { recordQueries } from "../../testing/queries";
+import { rejection } from "../../testing/rejection";
 import { messagingParticipants } from "../messaging/schema";
 import { createContextService } from "./service";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 const f = setupDatabase();
@@ -421,9 +421,9 @@ test("related search is one-hop, bidirectional, and includes structural membersh
       .map((row) => row.id)
       .sort(),
   ).toEqual([project.entityId, child.entityId].sort());
-  await expect(bob.search({ query: "", relatedToEntityId: other.entityId })).rejects.toBeInstanceOf(
-    AccessDeniedError,
-  );
+  expect(
+    await rejection(bob.search({ query: "", relatedToEntityId: other.entityId })),
+  ).toBeInstanceOf(AccessDeniedError);
   await alice.entities.softDelete(other.entityId);
   expect(await ids(parent.entityId)).toEqual([project.entityId, child.entityId].sort());
 });
@@ -453,7 +453,7 @@ test("related search traverses message references in both directions and checks 
     level: "view",
   });
   expect(await bob.search({ query: "", relatedToEntityId: project.entityId })).toEqual([]);
-  await expect(bob.search({ query: "", relatedToEntityId: message.id })).rejects.toBeInstanceOf(
+  expect(await rejection(bob.search({ query: "", relatedToEntityId: message.id }))).toBeInstanceOf(
     AccessDeniedError,
   );
   await chat.addMembers(channel.id, ["bob@example.com", "outside@example.com"]);
@@ -470,11 +470,11 @@ test("related search traverses message references in both directions and checks 
   expect(
     await outsider.search({ query: "", kind: "project", relatedToEntityId: message.id }),
   ).toEqual([]);
-  await expect(
-    outsider.search({ query: "", relatedToEntityId: project.entityId }),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(outsider.search({ query: "", relatedToEntityId: project.entityId })),
+  ).toBeInstanceOf(AccessDeniedError);
   await f.db.delete(messagingParticipants).where(eq(messagingParticipants.actorEntityId, f.bob));
-  await expect(bob.search({ query: "", relatedToEntityId: channel.id })).rejects.toBeInstanceOf(
+  expect(await rejection(bob.search({ query: "", relatedToEntityId: channel.id }))).toBeInstanceOf(
     AccessDeniedError,
   );
   const sourced = await context.createTaskFromMessage({

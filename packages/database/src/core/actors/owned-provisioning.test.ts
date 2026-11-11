@@ -3,8 +3,8 @@ import * as schema from "../../schema";
 import { actors, entities, member, userAgents } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
+import { rejection } from "../../testing/rejection";
 import { ensureOwnedAgentActors, ensureUserAgentActor, resolveHumanActor } from "./provisioning";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -131,26 +131,26 @@ test("existing agent and human actors resolve in one lock-free statement that ch
   expect(queries).toHaveLength(2);
   expect(queries.some((query) => query.includes("for update"))).toBe(false);
   await f.db.update(userAgents).set({ enabled: false }).where(eq(userAgents.id, agent!.id));
-  await expect(
-    ensureUserAgentActor(f.db, { ...input, userAgentId: agent!.id }),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(ensureUserAgentActor(f.db, { ...input, userAgentId: agent!.id })),
+  ).toBeInstanceOf(AccessDeniedError);
   await f.db.update(userAgents).set({ enabled: true }).where(eq(userAgents.id, agent!.id));
   await f.db.delete(member).where(eq(member.id, "alice-a"));
-  await expect(
-    ensureUserAgentActor(f.db, { ...input, userAgentId: agent!.id }),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
-  await expect(resolveHumanActor(f.db, input)).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(ensureUserAgentActor(f.db, { ...input, userAgentId: agent!.id })),
+  ).toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(resolveHumanActor(f.db, input))).toBeInstanceOf(AccessDeniedError);
 });
 
 test("membership loss denies batches including owners with no profiles", async () => {
   expect(await ensureOwnedAgentActors(f.db, input)).toEqual([]);
-  await expect(
-    ensureOwnedAgentActors(f.db, { ...input, userId: "outsider" }),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(ensureOwnedAgentActors(f.db, { ...input, userId: "outsider" })),
+  ).toBeInstanceOf(AccessDeniedError);
   await profiles(2);
   await ensureOwnedAgentActors(f.db, input);
   await f.db.delete(member).where(eq(member.id, "alice-a"));
   const before = await f.db.select().from(entities);
-  await expect(ensureOwnedAgentActors(f.db, input)).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(ensureOwnedAgentActors(f.db, input))).toBeInstanceOf(AccessDeniedError);
   expect(await f.db.select().from(entities)).toEqual(before);
 });

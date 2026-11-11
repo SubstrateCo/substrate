@@ -1,6 +1,6 @@
 import { setupDatabase } from "../../testing/database";
+import { rejection } from "../../testing/rejection";
 import { contactIdentifiers } from "./schema";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { describe, expect, test } from "bun:test";
 
 const f = setupDatabase();
@@ -16,18 +16,22 @@ describe("contact identifiers", () => {
     };
     await f.db.insert(contactIdentifiers).values(identifier);
     expect(await f.db.select().from(contactIdentifiers)).toEqual([identifier]);
-    await expect(
-      f.db
-        .insert(contactIdentifiers)
-        .values({ ...identifier, organizationId: f.orgB })
-        .execute(),
-    ).rejects.toMatchObject({ cause: { code: "23503" } });
-    await expect(
-      f.db
-        .insert(contactIdentifiers)
-        .values({ ...identifier, contactEntityId: f.alice })
-        .execute(),
-    ).rejects.toMatchObject({ cause: { code: "23503" } });
+    expect(
+      await rejection(
+        f.db
+          .insert(contactIdentifiers)
+          .values({ ...identifier, organizationId: f.orgB })
+          .execute(),
+      ),
+    ).toMatchObject({ cause: { code: "23503" } });
+    expect(
+      await rejection(
+        f.db
+          .insert(contactIdentifiers)
+          .values({ ...identifier, contactEntityId: f.alice })
+          .execute(),
+      ),
+    ).toMatchObject({ cause: { code: "23503" } });
   });
 
   test("rejects duplicate identifiers and blank values", async () => {
@@ -39,14 +43,16 @@ describe("contact identifiers", () => {
       value: "customer@example.com",
     };
     await f.db.insert(contactIdentifiers).values(identifier);
-    await expect(
-      f.db.insert(contactIdentifiers).values(identifier).execute(),
-    ).rejects.toMatchObject({ cause: { code: "23505" } });
-    await expect(
-      f.db
-        .insert(contactIdentifiers)
-        .values({ ...identifier, value: "  " })
-        .execute(),
-    ).rejects.toMatchObject({ cause: { code: "23514" } });
+    expect(
+      await rejection(f.db.insert(contactIdentifiers).values(identifier).execute()),
+    ).toMatchObject({ cause: { code: "23505" } });
+    expect(
+      await rejection(
+        f.db
+          .insert(contactIdentifiers)
+          .values({ ...identifier, value: "  " })
+          .execute(),
+      ),
+    ).toMatchObject({ cause: { code: "23514" } });
   });
 });

@@ -4,10 +4,10 @@ import { AccessDeniedError, ValidationError } from "../../errors";
 import { actors, member, organization, user } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
+import { rejection } from "../../testing/rejection";
 import { messagingConversations, messagingParticipants } from "./schema";
 import { createMessagingService } from "./service";
 import { createSharingService } from "./sharing/service";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -122,12 +122,14 @@ test("recipient normalization deduplicates emails and users without choosing an 
     userId: "outsider",
     organizationId: fixture.orgB,
   }).accept(pending.id, true);
-  await expect(
-    createMessagingService(fixture.db, {
-      userId: "outsider",
-      organizationId: "org-0",
-    }).listMessages(group.id),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(
+      createMessagingService(fixture.db, {
+        userId: "outsider",
+        organizationId: "org-0",
+      }).listMessages(group.id),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
 });
 
 test.each(["missing", "unverified", "no-membership"])(
@@ -148,11 +150,11 @@ test.each(["missing", "unverified", "no-membership"])(
       "bob@example.com",
       failure === "missing" ? "missing@example.com" : "outside@example.com",
     ];
-    await expect(chat.createConversation({ kind: "group", emails })).rejects.toBeInstanceOf(
+    expect(await rejection(chat.createConversation({ kind: "group", emails }))).toBeInstanceOf(
       ValidationError,
     );
     expect(lookups()).toHaveLength(1);
-    await expect(chat.addMembers(channel.id, emails)).rejects.toBeInstanceOf(ValidationError);
+    expect(await rejection(chat.addMembers(channel.id, emails))).toBeInstanceOf(ValidationError);
     expect(await fixture.db.select().from(messagingConversations)).toHaveLength(1);
     expect(await fixture.db.select().from(messagingParticipants)).toMatchObject([
       { actorEntityId: fixture.alice, actorType: "human" },
@@ -170,10 +172,10 @@ test("empty, invalid and oversized lists skip recipient lookup", async () => {
     [" "],
     Array<string>(messagingLimits.recipients + 1).fill("bob@example.com"),
   ]) {
-    await expect(chat.createConversation({ kind: "group", emails })).rejects.toBeInstanceOf(
+    expect(await rejection(chat.createConversation({ kind: "group", emails }))).toBeInstanceOf(
       ValidationError,
     );
-    await expect(chat.addMembers(channel.id, emails)).rejects.toBeInstanceOf(ValidationError);
+    expect(await rejection(chat.addMembers(channel.id, emails))).toBeInstanceOf(ValidationError);
   }
   expect(lookups()).toEqual([]);
   expect(await fixture.db.select().from(messagingConversations)).toHaveLength(1);

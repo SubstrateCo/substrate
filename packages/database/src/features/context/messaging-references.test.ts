@@ -2,6 +2,7 @@ import { user } from "../../core/authentication/schema";
 import { AccessDeniedError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
 import { createAcceptedMessagingService } from "../../testing/messaging";
+import { rejection } from "../../testing/rejection";
 import {
   messagingConversations,
   messagingMessages,
@@ -10,7 +11,6 @@ import {
 import { notifications } from "../notifications/schema";
 import { messageMessagingReferences } from "./schema";
 import { createContextService } from "./service";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 import { and, eq } from "drizzle-orm";
 
@@ -79,16 +79,18 @@ test("references save atomically, resolve with live access, and expose safe rela
   ).toContain(sent.id);
   const bob = createContextService(f.db, { userId: "bob", organizationId: f.orgA });
   expect((await bob.messagePage([sent.id]))[0]?.messaging).toEqual([]);
-  await expect(bob.search({ query: "", relatedToEntityId: root.id })).rejects.toBeInstanceOf(
+  expect(await rejection(bob.search({ query: "", relatedToEntityId: root.id }))).toBeInstanceOf(
     AccessDeniedError,
   );
   const before = await f.db.select().from(messagingMessages);
-  await expect(
-    createAcceptedMessagingService(f.db, { userId: "bob", organizationId: f.orgA }).sendMessage(
-      source.id,
-      body,
+  expect(
+    await rejection(
+      createAcceptedMessagingService(f.db, { userId: "bob", organizationId: f.orgA }).sendMessage(
+        source.id,
+        body,
+      ),
     ),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  ).toBeInstanceOf(AccessDeniedError);
   expect(await f.db.select().from(messagingMessages)).toEqual(before);
   // Preserve authorship history while revoking visibility in this workspace.
   await f.db
@@ -121,7 +123,7 @@ test("invalid target kinds, reply targets, and cross-workspace references roll b
     `@[channel:${foreign.id}]`,
     `@[channel:${source.id}] @[thread:${crypto.randomUUID()}]`,
   ])
-    await expect(chat.sendMessage(source.id, body)).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(await rejection(chat.sendMessage(source.id, body))).toBeInstanceOf(AccessDeniedError);
   expect(await f.db.select().from(messagingMessages)).toEqual(before);
   expect(await f.db.select().from(messageMessagingReferences)).toEqual([]);
 });
@@ -144,7 +146,7 @@ test("shared foreign source conversations cannot suggest or save local hashtag r
   for (const kind of ["channel", "thread"] as const) {
     expect(await context.search({ query: "", kind, conversationId: shared.id })).toEqual([]);
   }
-  await expect(chat.sendMessage(shared.id, `@[channel:${local.id}]`)).rejects.toBeInstanceOf(
+  expect(await rejection(chat.sendMessage(shared.id, `@[channel:${local.id}]`))).toBeInstanceOf(
     AccessDeniedError,
   );
   expect(await chat.listMessages(shared.id)).toEqual([]);

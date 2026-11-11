@@ -5,8 +5,8 @@ import { contextConversation } from "../../testing/context";
 import { setupDatabase } from "../../testing/database";
 import { createAcceptedMessagingService } from "../../testing/messaging";
 import { recordQueries } from "../../testing/queries";
+import { rejection } from "../../testing/rejection";
 import { createContextService } from "./service";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -40,7 +40,7 @@ test("project discussions include task links while checking both work and conver
     level: "view",
   });
   expect(await context("bob").related(project.entityId)).toMatchObject([{ messageId: visible.id }]);
-  await expect(context("outsider", f.orgB).related(project.entityId)).rejects.toBeInstanceOf(
+  expect(await rejection(context("outsider", f.orgB).related(project.entityId))).toBeInstanceOf(
     AccessDeniedError,
   );
   await f.db
@@ -90,7 +90,7 @@ test("message targets retain timeline reaction and reply summaries for roots and
     root: { replyCount: 2, reactions: [{ emoji: "👍", count: 1, reacted: false }] },
     message: { replyCount: 0, reactions: [{ emoji: "🎉", count: 1, reacted: false }] },
   });
-  await expect(context().messageTarget(crypto.randomUUID(), reply.id)).rejects.toBeInstanceOf(
+  expect(await rejection(context().messageTarget(crypto.randomUUID(), reply.id))).toBeInstanceOf(
     AccessDeniedError,
   );
 });
@@ -199,7 +199,7 @@ test("linked message targets classify root and reply authors by current viewer m
     message: { id: reply.id, authorExternal: false },
     root: { id: root.id, authorExternal: false },
   });
-  await expect(context("bob").messageTarget(conversation.id, reply.id)).rejects.toBeInstanceOf(
+  expect(await rejection(context("bob").messageTarget(conversation.id, reply.id))).toBeInstanceOf(
     AccessDeniedError,
   );
 });

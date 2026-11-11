@@ -18,12 +18,12 @@ import {
 } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
+import { rejection } from "../../testing/rejection";
 import { createMessagingService } from "../messaging/service";
 import { executeAgentTool } from "./service";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
-/* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous. */
 const f = setupDatabase();
 
 // An interactive turn without a source place on the agent's home desktop: every tool may run,
@@ -84,7 +84,7 @@ test("task tools use the owner's access, attribute writes and keep the source me
   const { actor, human, call } = await fixture();
   await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "alice"));
   const project = await f.forActor(f.bob).projects.create({ name: "Shared" });
-  await expect(call("get_project", { projectId: project.entityId })).rejects.toBeInstanceOf(
+  expect(await rejection(call("get_project", { projectId: project.entityId }))).toBeInstanceOf(
     AccessDeniedError,
   );
   await f.forActor(f.bob).permissions.grant({
@@ -108,7 +108,7 @@ test("task tools use the owner's access, attribute writes and keep the source me
     threadId: null,
   });
   expect(await call("create_task", input)).toEqual(created);
-  await expect(call("create_task", { ...input, title: "Different" })).rejects.toBeInstanceOf(
+  expect(await rejection(call("create_task", { ...input, title: "Different" }))).toBeInstanceOf(
     ConflictError,
   );
   const events = await f.db
@@ -170,7 +170,7 @@ test("task tools use the owner's access, attribute writes and keep the source me
   await f
     .forActor(f.bob)
     .permissions.revoke({ entityId: project.entityId, actorEntityId: f.alice });
-  await expect(call("create_task", input)).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(call("create_task", input))).toBeInstanceOf(AccessDeniedError);
 });
 
 test("a task created from a thread reply links to a message that read_thread can open", async () => {
@@ -220,13 +220,15 @@ test("read_conversation shows older threads with replies in the window, with one
   const second = await call("read_conversation", { ...input, cursor: first.nextCursor });
   expect(second.items.map((item) => item.text)).toEqual(["start"]);
   expect(second.nextCursor).toBeNull();
-  await expect(
-    call("read_conversation", {
-      ...input,
-      since: "2026-11-06T00:00:00Z",
-      cursor: first.nextCursor,
-    }),
-  ).rejects.toThrow("cursor");
+  expect(
+    await rejection(
+      call("read_conversation", {
+        ...input,
+        since: "2026-11-06T00:00:00Z",
+        cursor: first.nextCursor,
+      }),
+    ),
+  ).toMatchObject({ message: expect.stringContaining("cursor") });
   expect(
     (await call("list_conversations", { activeSince: input.since })).items.map((item) => item.id),
   ).toEqual([channel.id]);
@@ -335,9 +337,9 @@ test("search pages with a cursor bound to its query", async () => {
   expect(second.items).toHaveLength(1);
   expect(second.nextCursor).toBeNull();
   expect(new Set([...first.items, ...second.items].map((item) => item.id)).size).toBe(3);
-  await expect(
-    call("search", { ...input, query: "Other", cursor: first.nextCursor }),
-  ).rejects.toThrow("cursor");
+  expect(
+    await rejection(call("search", { ...input, query: "Other", cursor: first.nextCursor })),
+  ).toMatchObject({ message: expect.stringContaining("cursor") });
 });
 
 test("reply resolves the agent once and does not re-authenticate inside messaging", async () => {
@@ -385,14 +387,18 @@ test("read tools take no row locks, and write tools lock the agent's actor row",
 test("failed source validation rolls back task creation; foreign owners and organizations cannot impersonate agents", async () => {
   const { identity, project, createTask } = await fixture();
   const before = (await f.forActor(f.alice).tasks.list(project.entityId)).length;
-  await expect(
-    createTask({ title: "No", sourceMessageId: crypto.randomUUID() }),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(createTask({ title: "No", sourceMessageId: crypto.randomUUID() })),
+  ).toBeInstanceOf(AccessDeniedError);
   expect((await f.forActor(f.alice).tasks.list(project.entityId)).length).toBe(before);
-  await expect(
-    executeAgentTool(f.db, { ...identity, userId: "bob" }, "list_projects", {}, turn),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
-  await expect(
-    executeAgentTool(f.db, { ...identity, organizationId: f.orgB }, "list_projects", {}, turn),
-  ).rejects.toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(
+      executeAgentTool(f.db, { ...identity, userId: "bob" }, "list_projects", {}, turn),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(
+      executeAgentTool(f.db, { ...identity, organizationId: f.orgB }, "list_projects", {}, turn),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
 });

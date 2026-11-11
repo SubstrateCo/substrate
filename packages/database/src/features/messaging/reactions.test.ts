@@ -2,6 +2,7 @@ import { AccessDeniedError } from "../../errors";
 import { user } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { createAcceptedMessagingService } from "../../testing/messaging";
+import { rejection } from "../../testing/rejection";
 import { expect, test } from "bun:test";
 
 const fixture = setupDatabase();
@@ -53,11 +54,9 @@ test("reactor names require message read access, including organization owners",
   const message = await service("bob").sendMessage(channel.id, "private");
   await service("bob").toggleReaction(message.id, "👍");
   for (const viewer of [service("alice"), service("outsider", fixture.orgB)]) {
-    // oxlint-disable-next-line typescript/await-thenable -- Bun's rejects matcher returns a promise.
-    await expect(viewer.listReactions(message.id)).rejects.toBeInstanceOf(AccessDeniedError);
+    expect(await rejection(viewer.listReactions(message.id))).toBeInstanceOf(AccessDeniedError);
   }
-  // oxlint-disable-next-line typescript/await-thenable -- Bun's rejects matcher returns a promise.
-  await expect(service("bob").listReactions(crypto.randomUUID())).rejects.toBeInstanceOf(
+  expect(await rejection(service("bob").listReactions(crypto.randomUUID()))).toBeInstanceOf(
     AccessDeniedError,
   );
 });
