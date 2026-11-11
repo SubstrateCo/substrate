@@ -1,11 +1,11 @@
-import { routineView, type RoutineFields } from "@startup-os/client-storage/agent-work";
+import { routineView, type RoutineFields } from "@substrate/client-storage/agent-work";
 import {
   approveRoutineInput,
   createRoutineInput,
   deleteRoutineInput,
   updateRoutineInput,
   type AgentRoutineView,
-} from "@startup-os/contracts/agent-work";
+} from "@substrate/contracts/agent-work";
 
 import type { RuntimeContext } from "../runtime/context.ts";
 import { dueOccurrence, nextOccurrence, validCron } from "./schedule.ts";

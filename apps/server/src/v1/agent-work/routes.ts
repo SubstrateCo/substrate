@@ -13,7 +13,7 @@ import {
   requestParams,
   respondRequestInput,
   sourcesInput,
-} from "@startup-os/contracts/agent-work";
+} from "@substrate/contracts/agent-work";
 
 import { respond, validationHook } from "../../shared/http";
 import {

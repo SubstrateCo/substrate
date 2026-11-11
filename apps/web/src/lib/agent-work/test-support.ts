@@ -3,7 +3,7 @@ import type {
   AgentRequestView,
   AgentStatusView,
   AgentTurnView,
-} from "@startup-os/contracts/agent-work";
+} from "@substrate/contracts/agent-work";
 
 export const conversationId = "conversation";
 

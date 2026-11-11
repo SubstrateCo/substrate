@@ -19,7 +19,7 @@ export function BrowserElectronReturn({
 }) {
   return (
     <AuthFrame
-      title="Return to Startup OS"
+      title="Return to Substrate"
       description="You’re signed in. Continue in the desktop app."
       actions={signOut}
     >
@@ -30,7 +30,7 @@ export function BrowserElectronReturn({
       )}
       <FormMessage
         error={error}
-        errorDescription="Could not return to Startup OS. Please try again."
+        errorDescription="Could not return to Substrate. Please try again."
       />
       <PendingButton
         className="w-full"
@@ -39,7 +39,7 @@ export function BrowserElectronReturn({
         pendingLabel="Returning."
         onClick={onContinue}
       >
-        Continue to Startup OS
+        Continue to Substrate
       </PendingButton>
     </AuthFrame>
   );

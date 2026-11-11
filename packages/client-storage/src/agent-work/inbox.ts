@@ -4,7 +4,7 @@ import type {
   InboxSourceRef,
   InboxStatus,
   TurnStatus,
-} from "@startup-os/contracts/agent-work";
+} from "@substrate/contracts/agent-work";
 
 import type { LocalTransaction, RunTransaction } from "../database.ts";
 import { inbox, sessions, turns } from "../schema/index.ts";

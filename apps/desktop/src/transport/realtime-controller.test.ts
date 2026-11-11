@@ -1,5 +1,5 @@
-import { desktopOrigin } from "@startup-os/contracts/desktop/links";
-import type { RealtimeUpdate } from "@startup-os/contracts/realtime";
+import { desktopOrigin } from "@substrate/contracts/desktop/links";
+import type { RealtimeUpdate } from "@substrate/contracts/realtime";
 
 import { createRealtimeController } from "./realtime-controller.ts";
 import { expect, test } from "bun:test";

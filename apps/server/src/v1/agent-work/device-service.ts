@@ -8,8 +8,8 @@ import type {
   registerDeviceInput,
   requestAnswersInput,
   sourcesInput,
-} from "@startup-os/contracts/agent-work";
-import * as work from "@startup-os/database/agent-work";
+} from "@substrate/contracts/agent-work";
+import * as work from "@substrate/database/agent-work";
 
 import { db } from "../../auth/database";
 import { auth } from "../../auth/server";

@@ -3,7 +3,7 @@ import type {
   InterruptReceipt,
   TurnResult,
   Usage,
-} from "@startup-os/contracts/harness";
+} from "@substrate/contracts/harness";
 
 import { HarnessError } from "../errors.ts";
 import { InputQueue } from "./input-queue.ts";
@@ -351,7 +351,7 @@ export async function connectClaude(
   const session = new ClaudeSession(context, nativeSessionId);
   const mcpServers: Record<string, McpServerConfig> = context.lease
     ? {
-        "startup-os": {
+        "substrate": {
           type: "http",
           url: context.lease.url,
           headers: { Authorization: `Bearer ${context.lease.token}` },

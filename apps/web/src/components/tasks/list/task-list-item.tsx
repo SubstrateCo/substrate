@@ -1,4 +1,4 @@
-import { taskStatusLabels, type TaskStatus } from "@startup-os/contracts/tasks";
+import { taskStatusLabels, type TaskStatus } from "@substrate/contracts/tasks";
 
 import { TaskAssigneeHoverCard } from "../assignee/task-assignee-hover-card";
 import { TaskAssigneeAvatar } from "../task-cues/task-assignee-avatar";

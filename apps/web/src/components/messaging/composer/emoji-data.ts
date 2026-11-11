@@ -102,7 +102,7 @@ export const emojiCategories: { name: string; emojis: Emoji[] }[] = [
   },
 ];
 
-const recentKey = "startup-os:recent-emojis";
+const recentKey = "substrate:recent-emojis";
 const recentLimit = 8;
 
 const storedRecents = z.array(z.string()).catch([]);

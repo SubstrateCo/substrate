@@ -1,6 +1,6 @@
-import { desktopOrigin } from "@startup-os/contracts/desktop/links";
+import { desktopOrigin } from "@substrate/contracts/desktop/links";
 
-export const applicationURL = new URL(process.env.STARTUP_OS_WEB_URL ?? "http://localhost:3000")
+export const applicationURL = new URL(process.env.SUBSTRATE_WEB_URL ?? "http://localhost:3000")
   .origin;
 export const bundledApplicationURL = desktopOrigin;
 

@@ -1,4 +1,4 @@
-import { realtimeAudience, realtimeDomain, realtimeScope } from "@startup-os/contracts/realtime";
+import { realtimeAudience, realtimeDomain, realtimeScope } from "@substrate/contracts/realtime";
 
 import { environment } from "../../environment";
 import type { Change } from "./hub";

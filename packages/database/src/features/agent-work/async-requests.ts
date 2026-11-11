@@ -2,7 +2,7 @@ import type {
   AgentRequestPayload,
   ProposalAction,
   ProposalTargetBasis,
-} from "@startup-os/contracts/agent-work";
+} from "@substrate/contracts/agent-work";
 
 import type { DatabaseExecutor } from "../../client";
 import type { Place } from "./place";

@@ -1,4 +1,4 @@
-import { permissionLevels } from "@startup-os/contracts/tasks";
+import { permissionLevels } from "@substrate/contracts/tasks";
 
 import { actors } from "../actors/schema";
 import { entities } from "../entities/schema";

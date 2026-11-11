@@ -1,4 +1,4 @@
-import { messagingLimits } from "@startup-os/contracts/messaging/input";
+import { messagingLimits } from "@substrate/contracts/messaging/input";
 
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { actors, member, organization, user } from "../../schema";

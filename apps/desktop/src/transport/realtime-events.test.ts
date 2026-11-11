@@ -1,4 +1,4 @@
-import { realtimeEventChannel, type RealtimeUpdate } from "@startup-os/contracts/realtime";
+import { realtimeEventChannel, type RealtimeUpdate } from "@substrate/contracts/realtime";
 
 import { emitToRenderer } from "./realtime-events.ts";
 import { expect, test } from "bun:test";
@@ -15,7 +15,7 @@ test("shutdown does not read webContents from an already destroyed BrowserWindow
       window,
       realtimeEventChannel,
       { type: "status", status: "disconnected" },
-      "https://desktop.startup-os.local",
+      "https://desktop.substrate.local",
     ),
   ).not.toThrow();
 });
@@ -23,7 +23,7 @@ test("shutdown does not read webContents from an already destroyed BrowserWindow
 test("only a live internal renderer receives socket updates", () => {
   const sent: unknown[][] = [];
   let destroyed = false;
-  let url = "https://desktop.startup-os.local/dashboard";
+  let url = "https://desktop.substrate.local/dashboard";
   const window = {
     isDestroyed: () => false,
     webContents: {
@@ -33,13 +33,13 @@ test("only a live internal renderer receives socket updates", () => {
     },
   };
   const event = { type: "status", status: "disconnected" } as const;
-  emitToRenderer(window, realtimeEventChannel, event, "https://desktop.startup-os.local");
+  emitToRenderer(window, realtimeEventChannel, event, "https://desktop.substrate.local");
   expect(sent).toEqual([[realtimeEventChannel, event]]);
   destroyed = true;
-  emitToRenderer(window, realtimeEventChannel, event, "https://desktop.startup-os.local");
+  emitToRenderer(window, realtimeEventChannel, event, "https://desktop.substrate.local");
   destroyed = false;
   url = "https://outside.example/";
-  emitToRenderer(window, realtimeEventChannel, event, "https://desktop.startup-os.local");
-  emitToRenderer(undefined, realtimeEventChannel, event, "https://desktop.startup-os.local");
+  emitToRenderer(window, realtimeEventChannel, event, "https://desktop.substrate.local");
+  emitToRenderer(undefined, realtimeEventChannel, event, "https://desktop.substrate.local");
   expect(sent).toHaveLength(1);
 });

@@ -1,6 +1,6 @@
-import { managedPicture, profilePicturePath } from "@startup-os/contracts/files/pictures";
-import { AccessDeniedError } from "@startup-os/database";
-import type { StorageRepository } from "@startup-os/database/storage";
+import { managedPicture, profilePicturePath } from "@substrate/contracts/files/pictures";
+import { AccessDeniedError } from "@substrate/database";
+import type { StorageRepository } from "@substrate/database/storage";
 
 import { APIError } from "better-auth/api";
 import { z } from "zod";

@@ -1,9 +1,9 @@
-import { taskStatusLabels, type TaskStatus } from "@startup-os/contracts/tasks";
+import { taskStatusLabels, type TaskStatus } from "@substrate/contracts/tasks";
 import {
   taskLinkRelationLabels,
   taskLinkRelations,
   type TaskLinkRelation,
-} from "@startup-os/contracts/tasks/links";
+} from "@substrate/contracts/tasks/links";
 
 import type { ReactNode } from "react";
 

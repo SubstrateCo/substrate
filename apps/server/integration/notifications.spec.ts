@@ -122,12 +122,12 @@ test("grouped notifications enforce recipient, workspace, current access, authen
     ).status(),
   ).toBe(404);
 });
-import type { notificationGroupReadInput } from "@startup-os/contracts/context/notification-groups";
+import type { notificationGroupReadInput } from "@substrate/contracts/context/notification-groups";
 import type {
   conversationInput,
   messageInput,
   leaveInput,
-} from "@startup-os/contracts/messaging/input";
-import type { sharingAcceptInput } from "@startup-os/contracts/messaging/sharing";
+} from "@substrate/contracts/messaging/input";
+import type { sharingAcceptInput } from "@substrate/contracts/messaging/sharing";
 
 import type { z } from "zod";

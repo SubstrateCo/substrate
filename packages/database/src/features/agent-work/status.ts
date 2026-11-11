@@ -1,4 +1,4 @@
-import type { AgentStatusState, AgentStatusView } from "@startup-os/contracts/agent-work";
+import type { AgentStatusState, AgentStatusView } from "@substrate/contracts/agent-work";
 
 import type { DatabaseExecutor } from "../../client";
 import { actorDisplayName } from "../../core/actors/display-name";

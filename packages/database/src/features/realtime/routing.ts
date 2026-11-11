@@ -1,5 +1,5 @@
-import { realtimeKeys } from "@startup-os/contracts/realtime";
-import type { RealtimeHint } from "@startup-os/contracts/realtime";
+import { realtimeKeys } from "@substrate/contracts/realtime";
+import type { RealtimeHint } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";

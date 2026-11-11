@@ -34,9 +34,9 @@ test("API requests name this installation and the renderer cannot name another",
   });
   await transport("https://api.example.com/api/v1/agents/list", {
     method: "POST",
-    headers: { "x-startup-os-installation": "22222222-2222-4222-8222-222222222222" },
+    headers: { "x-substrate-installation": "22222222-2222-4222-8222-222222222222" },
   });
-  expect(sent.get("x-startup-os-installation")).toBe("11111111-1111-4111-8111-111111111111");
+  expect(sent.get("x-substrate-installation")).toBe("11111111-1111-4111-8111-111111111111");
 });
 
 test("desktop auth transport stores cookies through the official client and hides credentials", async () => {

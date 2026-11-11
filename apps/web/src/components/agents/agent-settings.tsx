@@ -1,5 +1,5 @@
-import type { SaveAgentInput } from "@startup-os/contracts/agents";
-import type { HarnessKind } from "@startup-os/contracts/harness";
+import type { SaveAgentInput } from "@substrate/contracts/agents";
+import type { HarnessKind } from "@substrate/contracts/harness";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 

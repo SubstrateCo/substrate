@@ -9,15 +9,15 @@ import type {
   contextSourceTask,
   contextNotification,
   contextNotificationPage,
-} from "@startup-os/contracts/context/input";
+} from "@substrate/contracts/context/input";
 import type {
   notificationGroupsInput,
   notificationGroupEventsInput,
   notificationGroupReadInput,
-} from "@startup-os/contracts/context/notification-groups";
-import { realtimeKeys } from "@startup-os/contracts/realtime";
-import type { RealtimeHint } from "@startup-os/contracts/realtime";
-import { createContextService, createFeedService } from "@startup-os/database/context";
+} from "@substrate/contracts/context/notification-groups";
+import { realtimeKeys } from "@substrate/contracts/realtime";
+import type { RealtimeHint } from "@substrate/contracts/realtime";
+import { createContextService, createFeedService } from "@substrate/database/context";
 
 import { db } from "../../auth/database";
 import { serviceResult } from "../../shared/service-result";

@@ -1,4 +1,4 @@
-import { failure, success } from "@startup-os/contracts/result";
+import { failure, success } from "@substrate/contracts/result";
 
 import { createAgentsRoutes } from "./routes";
 import * as services from "./service";

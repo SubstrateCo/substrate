@@ -3,7 +3,7 @@ import {
   taskAttachmentTarget,
   taskAttachmentRequest,
   messageAttachmentRequest,
-} from "@startup-os/contracts/files/attachments";
+} from "@substrate/contracts/files/attachments";
 
 import { respond, validationHook } from "../../shared/http";
 import * as services from "./attachments";

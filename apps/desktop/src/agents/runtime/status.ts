@@ -1,5 +1,5 @@
-import { agentStatusState, type publishStatusInput } from "@startup-os/contracts/agent-work";
-import type { AgentLocalSummary } from "@startup-os/contracts/agent-work/desktop";
+import { agentStatusState, type publishStatusInput } from "@substrate/contracts/agent-work";
+import type { AgentLocalSummary } from "@substrate/contracts/agent-work/desktop";
 
 import type { RuntimeContext } from "./context.ts";
 import type { RequestBridge } from "./requests.ts";

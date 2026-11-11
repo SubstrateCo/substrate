@@ -1,4 +1,4 @@
-import { taskStatusValues } from "@startup-os/contracts/tasks";
+import { taskStatusValues } from "@substrate/contracts/tasks";
 
 import type { DatabaseExecutor } from "../client";
 import { ensureHumanActor } from "../core/actors/provisioning";

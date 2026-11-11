@@ -5,7 +5,7 @@ import type {
   AgentSessionView,
   AgentTurnView,
   TurnOutputView,
-} from "@startup-os/contracts/agent-work";
+} from "@substrate/contracts/agent-work";
 
 import type { HelperRow } from "./helpers.ts";
 import type { InboxRow } from "./inbox.ts";

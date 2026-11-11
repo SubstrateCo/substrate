@@ -1,5 +1,5 @@
-import { desktopPath } from "@startup-os/contracts/desktop/links";
-import { failure, success } from "@startup-os/contracts/result";
+import { desktopPath } from "@substrate/contracts/desktop/links";
+import { failure, success } from "@substrate/contracts/result";
 
 import { environment, type ServerEnvironment } from "../environment";
 import { respond, validationHook } from "../shared/http";
@@ -43,16 +43,16 @@ export function createDesktopRoutes(
             <head>
               <meta charset="utf-8" />
               <meta name="viewport" content="width=device-width, initial-scale=1" />
-              <title>Open Startup OS</title>
+              <title>Open Substrate</title>
             </head>
             <body>
               <main>
-                <h1>Continue in Startup OS</h1>
+                <h1>Continue in Substrate</h1>
                 <p>Open the desktop app, or finish setup in your browser before installing.</p>
-                <p><a href="${result.data.link}" rel="noreferrer">Open Startup OS</a></p>
+                <p><a href="${result.data.link}" rel="noreferrer">Open Substrate</a></p>
                 <p><a href="${browserURL}" rel="noreferrer">Continue in browser</a></p>
-                <p><a href="${downloadURL.toString()}" rel="noreferrer">Download Startup OS</a></p>
-                <p>After installing, return to this page and choose Open Startup OS.</p>
+                <p><a href="${downloadURL.toString()}" rel="noreferrer">Download Substrate</a></p>
+                <p>After installing, return to this page and choose Open Substrate.</p>
               </main>
             </body>
           </html>`,

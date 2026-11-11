@@ -48,6 +48,6 @@ export interface HarnessAPI {
 
 declare global {
   interface Window {
-    readonly startupOSHarness?: HarnessAPI;
+    readonly substrateHarness?: HarnessAPI;
   }
 }

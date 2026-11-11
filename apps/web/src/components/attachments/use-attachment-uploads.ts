@@ -1,5 +1,5 @@
-import { MAX_ATTACHMENTS } from "@startup-os/contracts/files/attachments";
-import { MAX_FILE_BYTES } from "@startup-os/contracts/files/input";
+import { MAX_ATTACHMENTS } from "@substrate/contracts/files/attachments";
+import { MAX_FILE_BYTES } from "@substrate/contracts/files/input";
 
 import { useEffect, useRef, useState } from "react";
 

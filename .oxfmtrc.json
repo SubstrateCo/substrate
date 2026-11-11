@@ -12,8 +12,8 @@
   "sortImports": {
     "customGroups": [
       {
-        "groupName": "startup-os",
-        "elementNamePattern": ["@startup-os/**"]
+        "groupName": "substrate",
+        "elementNamePattern": ["@substrate/**"]
       },
       {
         "groupName": "tanstack",
@@ -25,7 +25,7 @@
       }
     ],
     "groups": [
-      "startup-os",
+      "substrate",
       "tanstack",
       "react-packages",
       [

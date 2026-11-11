@@ -1,4 +1,4 @@
-import { taskStatusLabels, type TaskStatus } from "@startup-os/contracts/tasks";
+import { taskStatusLabels, type TaskStatus } from "@substrate/contracts/tasks";
 
 import { taskStatusOptions } from "../task-cues/task-options";
 import { TaskStatusIcon } from "../task-cues/task-status-icon";

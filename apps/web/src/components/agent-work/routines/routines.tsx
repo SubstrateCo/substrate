@@ -1,5 +1,5 @@
-import type { AgentRoutineView } from "@startup-os/contracts/agent-work";
-import { createRoutineInput, updateRoutineInput } from "@startup-os/contracts/agent-work";
+import type { AgentRoutineView } from "@substrate/contracts/agent-work";
+import { createRoutineInput, updateRoutineInput } from "@substrate/contracts/agent-work";
 
 import { useQuery } from "@tanstack/react-query";
 

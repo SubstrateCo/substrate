@@ -1,7 +1,7 @@
 import type {
   PictureUploadInput,
   PictureKind as ManagedPictureKind,
-} from "@startup-os/contracts/files/pictures";
+} from "@substrate/contracts/files/pictures";
 
 import { api } from "../client";
 import { readResult } from "../result";

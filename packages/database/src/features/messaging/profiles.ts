@@ -1,4 +1,4 @@
-import { managedPicture, managedPicturePath } from "@startup-os/contracts/files/pictures";
+import { managedPicture, managedPicturePath } from "@substrate/contracts/files/pictures";
 
 import type { DatabaseExecutor } from "../../client";
 import { activeActorCondition } from "../../core/actors/access";

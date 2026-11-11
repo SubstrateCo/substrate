@@ -2,7 +2,7 @@ import {
   harnessInstructionsFiles,
   startupInstructions,
   type HarnessKind,
-} from "@startup-os/contracts/harness";
+} from "@substrate/contracts/harness";
 
 export function StartupInstructions({
   harness,
@@ -26,7 +26,7 @@ export function StartupInstructions({
     <section aria-labelledby="startup-instructions-title" className="grid gap-3">
       <div className="space-y-1">
         <h4 id="startup-instructions-title" className="sr-only">
-          Startup OS instructions
+          Substrate instructions
         </h4>
         <p className="text-xs text-muted-foreground">
           Written to {harnessInstructionsFiles[harness]} before your additional instructions for new

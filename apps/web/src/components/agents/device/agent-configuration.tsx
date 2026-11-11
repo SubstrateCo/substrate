@@ -3,7 +3,7 @@ import {
   startupSkills,
   type HarnessKind,
   type HarnessMcpServer,
-} from "@startup-os/contracts/harness";
+} from "@substrate/contracts/harness";
 
 import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -89,11 +89,11 @@ export function AgentConfiguration({
       await controller.resetDefaults();
     },
     onSuccess: async () => {
-      toast.success("Startup OS defaults reset.");
+      toast.success("Substrate defaults reset.");
       await client.invalidateQueries({ queryKey: key });
     },
   });
-  // Startup OS rewrites its own skills on every sync, so they are not listed as editable.
+  // Substrate rewrites its own skills on every sync, so they are not listed as editable.
   const isStartupSkill = (id: string) => startupSkillIds.includes(id);
   const skills = configuration.data?.skills.filter((skill) => !isStartupSkill(skill.id)) ?? [];
   const defaultSkills = !available && defaults ? startupSkills : [];
@@ -124,7 +124,7 @@ export function AgentConfiguration({
       {!available && (
         <SettingsNote icon={<Laptop />}>
           {agentId
-            ? `Open this agent in the Startup OS desktop app to see the ${section === "skills" ? "skills" : "MCP servers"} in its folder.`
+            ? `Open this agent in the Substrate desktop app to see the ${section === "skills" ? "skills" : "MCP servers"} in its folder.`
             : "Save this agent to see its local configuration."}
         </SettingsNote>
       )}
@@ -220,11 +220,11 @@ export function AgentConfiguration({
           <SettingsList
             description={
               defaults
-                ? "Startup OS adds the built-in server, which lets the agent read and post in this workspace."
+                ? "Substrate adds the built-in server, which lets the agent read and post in this workspace."
                 : undefined
             }
           >
-            {defaults && <McpServerRow name="startup-os" detail="Startup OS workspace" builtIn />}
+            {defaults && <McpServerRow name="substrate" detail="Substrate workspace" builtIn />}
             {servers.map((server) => (
               <McpServerRow key={server.id} name={server.name} detail={serverDetail(server)} />
             ))}
@@ -235,7 +235,7 @@ export function AgentConfiguration({
         )}
         {available && (
           <SettingsNote icon={<Info />}>
-            Startup OS lists these servers but can’t add or edit them yet. Change them in{" "}
+            Substrate lists these servers but can’t add or edit them yet. Change them in{" "}
             {harnessLabel(harness)}’s own configuration for this agent, then read the files again.
           </SettingsNote>
         )}
@@ -261,8 +261,8 @@ export function AgentConfiguration({
       )}
       {resetting && (
         <ConfirmDialog
-          title="Reset Startup OS defaults?"
-          description="This replaces the agent’s instructions file and Startup OS skills on this device with the saved agent settings. Local edits to those files are lost. Your other skills and MCP servers are not changed."
+          title="Reset Substrate defaults?"
+          description="This replaces the agent’s instructions file and Substrate skills on this device with the saved agent settings. Local edits to those files are lost. Your other skills and MCP servers are not changed."
           confirmLabel="Reset defaults"
           pendingLabel="Resetting…"
           errorDescription="We couldn’t reset the defaults. Try again."

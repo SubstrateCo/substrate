@@ -1,11 +1,11 @@
-import { realtimeKeys } from "@startup-os/contracts/realtime";
+import { realtimeKeys } from "@substrate/contracts/realtime";
 import type {
   RealtimeAudience,
   RealtimeDomain,
   RealtimeEvent,
   RealtimeScope,
-} from "@startup-os/contracts/realtime";
-import type { AudienceFilter, RealtimeReceiver } from "@startup-os/database/realtime";
+} from "@substrate/contracts/realtime";
+import type { AudienceFilter, RealtimeReceiver } from "@substrate/database/realtime";
 
 export interface Change {
   id: string;

@@ -1,4 +1,4 @@
-import { profilePicturePath, projectIcon } from "@startup-os/contracts/files/pictures";
+import { profilePicturePath, projectIcon } from "@substrate/contracts/files/pictures";
 
 import { activeActorCondition, visibleActorCondition } from "../../core/actors/access";
 import { actorDisplayName } from "../../core/actors/display-name";

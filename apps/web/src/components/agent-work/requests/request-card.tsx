@@ -1,4 +1,4 @@
-import type { AgentRequestView } from "@startup-os/contracts/agent-work";
+import type { AgentRequestView } from "@substrate/contracts/agent-work";
 
 import { RequestCardView, RequestResult, type RequestPending } from "./request-card-view";
 import { ApiError } from "@/api/result";

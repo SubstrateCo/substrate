@@ -1,5 +1,5 @@
-import type { AgentSessionKind } from "@startup-os/contracts/agent-work";
-import type { HarnessKind, TurnPlace } from "@startup-os/contracts/harness";
+import type { AgentSessionKind } from "@substrate/contracts/agent-work";
+import type { HarnessKind, TurnPlace } from "@substrate/contracts/harness";
 
 import type { LocalTransaction, RunTransaction } from "../database.ts";
 import { sessions } from "../schema/index.ts";

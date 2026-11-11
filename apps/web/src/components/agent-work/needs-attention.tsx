@@ -1,4 +1,4 @@
-import type { AgentTurnView } from "@startup-os/contracts/agent-work";
+import type { AgentTurnView } from "@substrate/contracts/agent-work";
 
 import { NeedsAttentionCard, type NeedsAttentionAction } from "./needs-attention-card";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";

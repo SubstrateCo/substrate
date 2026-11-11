@@ -1,12 +1,12 @@
-import type { AgentWorkStore } from "@startup-os/client-storage/agent-work";
-import type { AgentWorkChange } from "@startup-os/contracts/agent-work/desktop";
+import type { AgentWorkStore } from "@substrate/client-storage/agent-work";
+import type { AgentWorkChange } from "@substrate/contracts/agent-work/desktop";
 import type {
   AdapterCapabilities,
   HarnessCommand,
   HarnessCommandResult,
   HarnessKind,
   Usage,
-} from "@startup-os/contracts/harness";
+} from "@substrate/contracts/harness";
 
 import type { AgentWorkServer, CatalogAgent } from "../server/agent-work-server.ts";
 

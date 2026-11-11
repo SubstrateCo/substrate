@@ -27,7 +27,7 @@ export function DesktopInstallView({
     <Button asChild size="lg" variant="outline">
       <a href={openHref} rel="noreferrer">
         <ArrowUpRight aria-hidden="true" />
-        Open Startup OS
+        Open Substrate
       </a>
     </Button>
   );
@@ -38,7 +38,7 @@ export function DesktopInstallView({
   );
 
   let title = "Get the desktop app";
-  let description = "Install Startup OS for Windows, then sign in with the same account.";
+  let description = "Install Substrate for Windows, then sign in with the same account.";
   if (!loading && !error && !windowsAvailable) {
     title = "The Windows app is coming soon";
     description = "Keep working in your browser for now. If you already have the app, open it.";

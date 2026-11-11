@@ -1,4 +1,4 @@
-import type { TaskPriority, TaskStatus } from "@startup-os/contracts/tasks";
+import type { TaskPriority, TaskStatus } from "@substrate/contracts/tasks";
 
 export interface TaskFields {
   title: string;

@@ -1,4 +1,4 @@
-import { attachmentFileIds } from "@startup-os/contracts/files/attachments";
+import { attachmentFileIds } from "@substrate/contracts/files/attachments";
 
 import { actors } from "../../core/actors/schema";
 import type { RepositoryContext } from "../../core/repository-context";

@@ -1,5 +1,5 @@
-import type { HarnessKind } from "@startup-os/contracts/harness";
-import type {} from "@startup-os/contracts/harness/desktop";
+import type { HarnessKind } from "@substrate/contracts/harness";
+import type {} from "@substrate/contracts/harness/desktop";
 
 import { queryOptions } from "@tanstack/react-query";
 
@@ -16,7 +16,7 @@ export const harnessModelsQueryOptions = (
     staleTime: 60_000,
     retry: false,
     queryFn: async () => {
-      const bridge = window.startupOSHarness;
+      const bridge = window.substrateHarness;
       if (!bridge || !organizationId) throw new Error("Select a workspace in the desktop app.");
       const session = await bridge.synchronize();
       if (session.organizationId !== organizationId)

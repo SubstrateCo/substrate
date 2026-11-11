@@ -1,4 +1,4 @@
-import type { AgentSourcesResult } from "@startup-os/contracts/agent-work";
+import type { AgentSourcesResult } from "@substrate/contracts/agent-work";
 
 import type { DatabaseExecutor } from "../../client";
 import { actorAuthorKind, actorDisplayName } from "../../core/actors/display-name";

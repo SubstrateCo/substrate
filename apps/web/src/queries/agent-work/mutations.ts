@@ -4,7 +4,7 @@ import type {
   CreateRoutineInput,
   ProposalAction,
   UpdateRoutineInput,
-} from "@startup-os/contracts/agent-work";
+} from "@substrate/contracts/agent-work";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 

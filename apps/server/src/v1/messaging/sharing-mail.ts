@@ -1,4 +1,4 @@
-import { claimSharingMail, finishSharingMail } from "@startup-os/database/messaging";
+import { claimSharingMail, finishSharingMail } from "@substrate/database/messaging";
 
 import { db } from "../../auth/database";
 import { mail } from "../../mail/service";

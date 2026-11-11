@@ -22,7 +22,7 @@ export async function verifyEmail(page: Page, request: APIRequestContext, email:
   await page.goto(
     await new Mailpit(request).link(
       email,
-      "Verify your Startup OS email",
+      "Verify your Substrate email",
       "/api/auth/verify-email",
     ),
   );

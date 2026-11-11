@@ -5,7 +5,7 @@ import {
   type ProposalAction,
   type ProposalOutcome,
   type ProposalTargetBasis,
-} from "@startup-os/contracts/agent-work";
+} from "@substrate/contracts/agent-work";
 
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ConflictError } from "../../errors";

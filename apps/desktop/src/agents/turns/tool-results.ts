@@ -1,5 +1,5 @@
-import type { NewOutput } from "@startup-os/client-storage/agent-work";
-import { proposeResult, replyResult, taskResult } from "@startup-os/contracts/harness/tools";
+import type { NewOutput } from "@substrate/client-storage/agent-work";
+import { proposeResult, replyResult, taskResult } from "@substrate/contracts/harness/tools";
 
 /* oxlint-disable deslop/no-unknown-parameters -- MCP results are untyped JSON from the server; they are parsed here. */
 import { z } from "zod";

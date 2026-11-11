@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 describe("bundled backend configuration", () => {
   test("requires an explicit backend in packaged launches", () => {
-    expect(() => backendURL(undefined, true)).toThrow("STARTUP_OS_API_URL");
+    expect(() => backendURL(undefined, true)).toThrow("SUBSTRATE_API_URL");
     expect(backendURL(undefined, false)).toBe("http://localhost:3001");
     expect(backendURL("https://api.example.com/", true)).toBe("https://api.example.com");
     expect(backendURL("http://127.0.0.1:3001", true)).toBe("http://127.0.0.1:3001");
@@ -43,7 +43,7 @@ describe("bundled backend configuration", () => {
       `${bundledApplicationURL}/api/../private`,
       `${bundledApplicationURL}/api/%2f../private`,
       `${bundledApplicationURL}/api/%5cprivate`,
-      "https://user@desktop.startup-os.local/api/auth",
+      "https://user@desktop.substrate.local/api/auth",
     ]) {
       expect(() => proxyURL(url, "https://api.example.com")).toThrow();
     }
@@ -53,7 +53,7 @@ describe("bundled backend configuration", () => {
 describe("bundled assets and responses", () => {
   let directory: string;
   beforeAll(async () => {
-    directory = await mkdtemp(join(process.env.TEMP || tmpdir(), "startup-os-renderer-"));
+    directory = await mkdtemp(join(process.env.TEMP || tmpdir(), "substrate-renderer-"));
     await mkdir(join(directory, "dist"));
     await writeFile(join(directory, "dist", "index.html"), "<h1>Workspace</h1>");
     await writeFile(join(directory, "dist", "app.js"), "console.log('workspace')");

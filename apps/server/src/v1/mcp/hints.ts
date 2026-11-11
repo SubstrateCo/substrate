@@ -1,5 +1,5 @@
-import type { McpInput, ServerToolName } from "@startup-os/contracts/harness/tools";
-import { realtimeKeys, type RealtimeHint } from "@startup-os/contracts/realtime";
+import type { McpInput, ServerToolName } from "@substrate/contracts/harness/tools";
+import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
 const personMention = /@\[person:([0-9a-f-]{36})\]/gi;
 

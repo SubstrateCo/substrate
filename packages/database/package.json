@@ -1,5 +1,5 @@
 {
-  "name": "@startup-os/database",
+  "name": "@substrate/database",
   "private": true,
   "type": "module",
   "exports": {
@@ -25,7 +25,7 @@
     "db:migrate": "bun --env-file=../../.env src/migrate.ts"
   },
   "dependencies": {
-    "@startup-os/contracts": "workspace:*",
+    "@substrate/contracts": "workspace:*",
     "drizzle-orm": "^0.45.4",
     "postgres": "^4.0.0"
   },

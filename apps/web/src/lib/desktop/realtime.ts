@@ -1,7 +1,7 @@
-import type { RealtimeAPI } from "@startup-os/contracts/realtime";
+import type { RealtimeAPI } from "@substrate/contracts/realtime";
 
 declare global {
   interface Window {
-    startupOSRealtime?: RealtimeAPI;
+    substrateRealtime?: RealtimeAPI;
   }
 }

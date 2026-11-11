@@ -21,7 +21,7 @@ export async function provisionVerifiedAccount(
   expect(created.ok(), "The test account can sign up").toBe(true);
   const link = await mailpit.link(
     account.email,
-    "Verify your Startup OS email",
+    "Verify your Substrate email",
     "/api/auth/verify-email",
   );
   const verified = await page.request.get(link);

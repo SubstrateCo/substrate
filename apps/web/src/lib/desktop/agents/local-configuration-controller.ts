@@ -1,5 +1,5 @@
-import type { SaveSkillInput } from "@startup-os/contracts/agents";
-import type { HarnessLocalConfiguration } from "@startup-os/contracts/harness";
+import type { SaveSkillInput } from "@substrate/contracts/agents";
+import type { HarnessLocalConfiguration } from "@substrate/contracts/harness";
 
 type LocalAgentConfiguration = Pick<HarnessLocalConfiguration, "skills" | "mcpServers">;
 

@@ -1,4 +1,4 @@
-import type { AgentRequestPayload, AgentRequestResponse } from "@startup-os/contracts/agent-work";
+import type { AgentRequestPayload, AgentRequestResponse } from "@substrate/contracts/agent-work";
 
 type Questions = Extract<AgentRequestPayload, { type: "questions" }>["questions"];
 export type QuestionDraft = { selected: string[]; custom: string };

@@ -1,5 +1,5 @@
-import type { InboxRow } from "@startup-os/client-storage/agent-work";
-import type { AgentSourceMessage, AgentWakeRequestDetail } from "@startup-os/contracts/agent-work";
+import type { InboxRow } from "@substrate/client-storage/agent-work";
+import type { AgentSourceMessage, AgentWakeRequestDetail } from "@substrate/contracts/agent-work";
 
 import { envelopeItem, renderEnvelope, sortItems } from "./envelope.ts";
 import { expect, test } from "bun:test";

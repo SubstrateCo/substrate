@@ -31,8 +31,8 @@ export function WorkspaceTools({
   }
   const input = useRef<HTMLInputElement>(null);
   const container = useRef<HTMLDivElement>(null);
-  const desktop = !!window.startupOSWindow;
-  const isMac = window.startupOSWindow?.platform === "darwin";
+  const desktop = !!window.substrateWindow;
+  const isMac = window.substrateWindow?.platform === "darwin";
   const close = useCallback(() => {
     setOpen(false);
     setFocusRequest((value) => value + 1);

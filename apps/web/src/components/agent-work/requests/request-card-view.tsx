@@ -1,4 +1,4 @@
-import type { AgentRequestResponse, AgentRequestView } from "@startup-os/contracts/agent-work";
+import type { AgentRequestResponse, AgentRequestView } from "@substrate/contracts/agent-work";
 
 import { ApprovalRequest } from "./approval-request";
 import { hiddenConversation, ProposalPreview } from "./proposal-preview";

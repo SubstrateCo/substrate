@@ -12,9 +12,9 @@ import type {
   ownerInput,
   addAgentInput,
   removeAgentInput,
-} from "@startup-os/contracts/messaging/input";
-import { realtimeKeys } from "@startup-os/contracts/realtime";
-import { createMessagingService } from "@startup-os/database/messaging";
+} from "@substrate/contracts/messaging/input";
+import { realtimeKeys } from "@substrate/contracts/realtime";
+import { createMessagingService } from "@substrate/database/messaging";
 
 import { db } from "../../auth/database";
 import { serviceResult } from "../../shared/service-result";

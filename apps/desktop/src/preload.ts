@@ -2,21 +2,21 @@ import {
   agentWorkChangeChannel,
   agentWorkChannel,
   type AgentWorkChange,
-} from "@startup-os/contracts/agent-work/desktop";
+} from "@substrate/contracts/agent-work/desktop";
 import {
   desktopSettingsChannel,
   fullscreenChannel,
   windowChannel,
   type DesktopSettingsAPI,
   type DesktopWindowAPI,
-} from "@startup-os/contracts/desktop/window";
-import type { HarnessAPI } from "@startup-os/contracts/harness/desktop";
+} from "@substrate/contracts/desktop/window";
+import type { HarnessAPI } from "@substrate/contracts/harness/desktop";
 import {
   realtimeChannel,
   realtimeEventChannel,
   type RealtimeAPI,
   type RealtimeUpdate,
-} from "@startup-os/contracts/realtime";
+} from "@substrate/contracts/realtime";
 
 import { agentWorkAPI } from "./agents/bridge/agent-work-api.ts";
 import { harnessChannel } from "./harness/bridge/harness-bridge.ts";
@@ -24,8 +24,8 @@ import { setupRenderer } from "@better-auth/electron/preload";
 import { contextBridge, ipcRenderer } from "electron";
 
 const origin = process.argv
-  .find((value) => value.startsWith("--startup-os-origin="))
-  ?.slice("--startup-os-origin=".length);
+  .find((value) => value.startsWith("--substrate-origin="))
+  ?.slice("--substrate-origin=".length);
 if (process.isMainFrame && window.location.origin === origin) {
   setupRenderer();
   const realtime: RealtimeAPI = {
@@ -39,7 +39,7 @@ if (process.isMainFrame && window.location.origin === origin) {
       return () => ipcRenderer.removeListener(realtimeEventChannel, listener);
     },
   };
-  contextBridge.exposeInMainWorld("startupOSRealtime", realtime);
+  contextBridge.exposeInMainWorld("substrateRealtime", realtime);
   const windowAPI: DesktopWindowAPI = {
     platform: process.platform,
     isFullscreen: () => ipcRenderer.invoke(windowChannel, "fullscreen"),
@@ -50,13 +50,13 @@ if (process.isMainFrame && window.location.origin === origin) {
       return () => ipcRenderer.removeListener(fullscreenChannel, listener);
     },
   };
-  contextBridge.exposeInMainWorld("startupOSWindow", windowAPI);
+  contextBridge.exposeInMainWorld("substrateWindow", windowAPI);
   const settings: DesktopSettingsAPI = {
     get: () => ipcRenderer.invoke(desktopSettingsChannel, "get"),
     setLaunchAtLogin: (enabled) =>
       ipcRenderer.invoke(desktopSettingsChannel, "setLaunchAtLogin", enabled),
   };
-  contextBridge.exposeInMainWorld("startupOSDesktopSettings", settings);
+  contextBridge.exposeInMainWorld("substrateDesktopSettings", settings);
   const api: HarnessAPI = {
     status: () => ipcRenderer.invoke(harnessChannel, "status"),
     listModels: (input) => ipcRenderer.invoke(harnessChannel, "listModels", input),
@@ -69,9 +69,9 @@ if (process.isMainFrame && window.location.origin === origin) {
     saveMcpServer: (input) => ipcRenderer.invoke(harnessChannel, "saveMcpServer", input),
     deleteMcpServer: (input) => ipcRenderer.invoke(harnessChannel, "deleteMcpServer", input),
   };
-  contextBridge.exposeInMainWorld("startupOSHarness", api);
+  contextBridge.exposeInMainWorld("substrateHarness", api);
   contextBridge.exposeInMainWorld(
-    "startupOSAgentWork",
+    "substrateAgentWork",
     agentWorkAPI(
       // SAFETY: main returns the AgentWorkAPI result of each method; the API types each call.
       (method, value) => ipcRenderer.invoke(agentWorkChannel, method, value) as Promise<never>,

@@ -1,5 +1,5 @@
-import type { conversationInput, messageInput } from "@startup-os/contracts/messaging/input";
-import type { ServiceResult } from "@startup-os/contracts/result";
+import type { conversationInput, messageInput } from "@substrate/contracts/messaging/input";
+import type { ServiceResult } from "@substrate/contracts/result";
 
 import { appOrigin } from "./test-support/environment";
 import { test, type Actor } from "./test-support/fixtures";

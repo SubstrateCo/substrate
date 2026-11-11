@@ -1,4 +1,4 @@
-import type { TasksWrite } from "@startup-os/contracts/tasks/input";
+import type { TasksWrite } from "@substrate/contracts/tasks/input";
 
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 

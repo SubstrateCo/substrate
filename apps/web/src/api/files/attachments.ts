@@ -3,7 +3,7 @@ import type {
   taskAttachmentTarget,
   taskAttachmentRequest,
   messageAttachmentRequest,
-} from "@startup-os/contracts/files/attachments";
+} from "@substrate/contracts/files/attachments";
 
 import { api } from "../client";
 import { readResult } from "../result";

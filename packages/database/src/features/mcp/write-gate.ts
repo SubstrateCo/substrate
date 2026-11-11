@@ -1,5 +1,5 @@
-import type { TurnContext } from "@startup-os/contracts/harness/mcp";
-import type { ServerToolName } from "@startup-os/contracts/harness/tools";
+import type { TurnContext } from "@substrate/contracts/harness/mcp";
+import type { ServerToolName } from "@substrate/contracts/harness/tools";
 
 import { proposeInstead } from "./turn";
 

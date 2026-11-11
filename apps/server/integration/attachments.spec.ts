@@ -1,6 +1,6 @@
-import type { Attachment } from "@startup-os/contracts/files/attachments";
-import type { CompletedUpload } from "@startup-os/contracts/files/input";
-import type { TasksWrite } from "@startup-os/contracts/tasks/input";
+import type { Attachment } from "@substrate/contracts/files/attachments";
+import type { CompletedUpload } from "@substrate/contracts/files/input";
+import type { TasksWrite } from "@substrate/contracts/tasks/input";
 
 import { appOrigin } from "./test-support/environment";
 import { complete, createUpload, putBytes, rejected, result, root } from "./test-support/files";

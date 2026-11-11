@@ -37,20 +37,20 @@ export default defineConfig({
       reuseExistingServer: false,
       env: {
         NODE_ENV: "test",
-        REALTIME_CHANNEL: "startup-os:realtime:e2e",
+        REALTIME_CHANNEL: "substrate:realtime:e2e",
         DATABASE_URL:
           process.env.E2E_DATABASE_URL ??
-          "postgres://startup_os_e2e:startup_os_e2e@localhost:5434/startup_os_e2e_test",
-        STARTUP_OS_API_URL: apiURL,
-        STARTUP_OS_WEB_URL: baseURL,
-        STARTUP_OS_WINDOWS_DOWNLOAD_URL: "https://downloads.example.test/StartupOS.exe",
-        BETTER_AUTH_SECRET: "startup-os-e2e-only-secret-not-for-production",
+          "postgres://substrate_e2e:substrate_e2e@localhost:5434/substrate_e2e_test",
+        SUBSTRATE_API_URL: apiURL,
+        SUBSTRATE_WEB_URL: baseURL,
+        SUBSTRATE_WINDOWS_DOWNLOAD_URL: "https://downloads.example.test/Substrate.exe",
+        BETTER_AUTH_SECRET: "substrate-e2e-only-secret-not-for-production",
         SMTP_HOST: "localhost",
         SMTP_PORT: "1025",
         SMTP_SECURE: "false",
         SMTP_USER: "",
         SMTP_PASSWORD: "",
-        EMAIL_FROM: "Startup OS E2E <e2e@example.test>",
+        EMAIL_FROM: "Substrate E2E <e2e@example.test>",
       },
     },
     {
@@ -59,8 +59,8 @@ export default defineConfig({
       timeout: 120_000,
       reuseExistingServer: false,
       env: {
-        STARTUP_OS_WEB_URL: baseURL,
-        STARTUP_OS_API_URL: apiURL,
+        SUBSTRATE_WEB_URL: baseURL,
+        SUBSTRATE_API_URL: apiURL,
         VITE_CACHE_DIR: "node_modules/.vite-e2e",
       },
     },

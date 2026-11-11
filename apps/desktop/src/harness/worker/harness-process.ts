@@ -1,11 +1,11 @@
 /* oxlint-disable deslop/no-unknown-parameters, deslop/no-unknown-returns -- This transport forwards structured-clone payloads. Main validates requests and parses responses in the controller. */
-import type { HarnessCommand, HarnessEvent } from "@startup-os/contracts/harness";
+import type { HarnessCommand, HarnessEvent } from "@substrate/contracts/harness";
 import type {
   LocalToolProxy,
   LocalToolRequest,
   WorkspaceApiRequest,
   WorkspaceApiProxy,
-} from "@startup-os/contracts/harness/mcp";
+} from "@substrate/contracts/harness/mcp";
 
 import { createOpenSessions } from "./open-sessions.ts";
 import { HarnessWorkerError, type HarnessWorker } from "./protocol.ts";
@@ -58,7 +58,7 @@ export function createHarnessProcess(
     ].flatMap((key) => (process.env[key] ? [[key, process.env[key]!]] : [])),
   );
   const child = utilityProcess.fork(entry, [], {
-    serviceName: "Startup OS Harness",
+    serviceName: "Substrate Harness",
     env,
     stdio: "ignore",
   });

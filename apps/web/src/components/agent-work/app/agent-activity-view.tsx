@@ -1,4 +1,4 @@
-import type { HelperStatus } from "@startup-os/contracts/agent-work";
+import type { HelperStatus } from "@substrate/contracts/agent-work";
 
 import type { ReactNode } from "react";
 

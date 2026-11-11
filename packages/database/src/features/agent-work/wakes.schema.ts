@@ -2,7 +2,7 @@ import {
   agentWakeSources,
   type AgentWakeSource,
   type AgentWakeSourceRef,
-} from "@startup-os/contracts/agent-work";
+} from "@substrate/contracts/agent-work";
 
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";

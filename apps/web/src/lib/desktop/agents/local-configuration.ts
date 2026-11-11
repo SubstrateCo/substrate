@@ -1,5 +1,5 @@
-import type { HarnessKind } from "@startup-os/contracts/harness";
-import type {} from "@startup-os/contracts/harness/desktop";
+import type { HarnessKind } from "@substrate/contracts/harness";
+import type {} from "@substrate/contracts/harness/desktop";
 
 import type { LocalConfigurationController } from "@/lib/desktop/agents/local-configuration-controller";
 
@@ -7,7 +7,7 @@ export function desktopLocalConfiguration(
   harness: HarnessKind,
   agentId: string | undefined,
 ): LocalConfigurationController | undefined {
-  const bridge = window.startupOSHarness;
+  const bridge = window.substrateHarness;
   if (!bridge || !agentId) return undefined;
   return {
     async scan() {

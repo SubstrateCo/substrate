@@ -1,4 +1,4 @@
-import type { AgentRequestPlace } from "@startup-os/contracts/agent-work";
+import type { AgentRequestPlace } from "@substrate/contracts/agent-work";
 
 import { useQuery } from "@tanstack/react-query";
 

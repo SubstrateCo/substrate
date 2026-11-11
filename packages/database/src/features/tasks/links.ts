@@ -1,4 +1,4 @@
-import type { TaskStatus } from "@startup-os/contracts/tasks";
+import type { TaskStatus } from "@substrate/contracts/tasks";
 import {
   inverseTaskLinkRelation,
   taskLinkRelation,
@@ -6,7 +6,7 @@ import {
   type TaskLinkKind,
   type TaskLinkRelation,
   type TaskLinkView,
-} from "@startup-os/contracts/tasks/links";
+} from "@substrate/contracts/tasks/links";
 
 import { entities } from "../../core/entities/schema";
 import type { RepositoryContext } from "../../core/repository-context";

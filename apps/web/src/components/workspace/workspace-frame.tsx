@@ -1,4 +1,4 @@
-import { organizationSettingsAccess } from "@startup-os/contracts/auth/settings-access";
+import { organizationSettingsAccess } from "@substrate/contracts/auth/settings-access";
 
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "@tanstack/react-router";

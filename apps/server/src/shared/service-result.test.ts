@@ -1,4 +1,4 @@
-import { AccessDeniedError, ConflictError, ValidationError } from "@startup-os/database";
+import { AccessDeniedError, ConflictError, ValidationError } from "@substrate/database";
 
 import { serviceResult, ServiceError } from "./service-result";
 import { APIError } from "better-auth/api";

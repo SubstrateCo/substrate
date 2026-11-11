@@ -3,7 +3,7 @@ import type {
   InterruptReceipt,
   TurnResult,
   Usage,
-} from "@startup-os/contracts/harness";
+} from "@substrate/contracts/harness";
 
 import { HarnessError } from "../errors.ts";
 import { safePath } from "../paths.ts";
@@ -354,7 +354,7 @@ export async function connectOpenCode(
   // written once per session open so that it stays byte-stable.
   const managed = await safePath(
     context.directory,
-    ".startup-os/managed-instructions.md",
+    ".substrate/managed-instructions.md",
     false,
     true,
   );
@@ -364,11 +364,11 @@ export async function connectOpenCode(
     mcp: context.lease
       ? {
           servers: {
-            "startup-os": {
+            "substrate": {
               type: "remote",
               url: context.lease.url,
               oauth: false,
-              headers: { Authorization: "Bearer {env:STARTUP_OS_MCP_TOKEN}" },
+              headers: { Authorization: "Bearer {env:SUBSTRATE_MCP_TOKEN}" },
             },
           },
         }
@@ -378,7 +378,7 @@ export async function connectOpenCode(
   // This never discovers, reconfigures, or stops the user's shared service.
   const { client, close } = await startOpenCode(context.executable, context.directory, {
     OPENCODE_CONFIG_CONTENT: JSON.stringify(config),
-    STARTUP_OS_MCP_TOKEN: context.lease?.token,
+    SUBSTRATE_MCP_TOKEN: context.lease?.token,
   });
   const controller = new AbortController();
   let eventLoop: Promise<void> | undefined;

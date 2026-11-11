@@ -1,4 +1,4 @@
-import { harnessInstructionsFiles, type HarnessKind } from "@startup-os/contracts/harness";
+import { harnessInstructionsFiles, type HarnessKind } from "@substrate/contracts/harness";
 
 import { useId, type ComponentProps } from "react";
 
@@ -39,12 +39,12 @@ export function AgentInstructions({
   let description;
   if (creating)
     description = defaults
-      ? "Its role, tone, and limits. Added after the built-in Startup OS rules."
+      ? "Its role, tone, and limits. Added after the built-in Substrate rules."
       : "Its role, tone, and limits.";
   else
     description = defaults
-      ? `Startup OS writes these to ${file} after the built-in rules. New sessions use them.`
-      : `Startup OS writes these to ${file}. New sessions use them.`;
+      ? `Substrate writes these to ${file} after the built-in rules. New sessions use them.`
+      : `Substrate writes these to ${file}. New sessions use them.`;
   return (
     <div className="grid gap-3">
       <Field data-invalid={invalid}>
@@ -72,7 +72,7 @@ export function AgentInstructions({
               aria-hidden="true"
               className="size-4 shrink-0 transition-transform duration-150 ease-out group-open:rotate-90 motion-reduce:transition-none"
             />
-            View built-in Startup OS rules
+            View built-in Substrate rules
           </summary>
           <div className="max-h-64 overflow-y-auto border-t p-3">
             <StartupInstructions

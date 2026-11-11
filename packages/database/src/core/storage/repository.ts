@@ -1,5 +1,5 @@
-import { organizationSettingsAccess } from "@startup-os/contracts/auth/settings-access";
-import type { CreateUploadInput } from "@startup-os/contracts/files/input";
+import { organizationSettingsAccess } from "@substrate/contracts/auth/settings-access";
+import type { CreateUploadInput } from "@substrate/contracts/files/input";
 
 import type { Database, DatabaseExecutor } from "../../client";
 import { AccessDeniedError, ConflictError } from "../../errors";

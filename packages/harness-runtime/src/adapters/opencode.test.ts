@@ -1,4 +1,4 @@
-import type { HarnessEventBody } from "@startup-os/contracts/harness";
+import type { HarnessEventBody } from "@substrate/contracts/harness";
 
 import { OpenCodeSession, type OpenCodeApi } from "./opencode.ts";
 import { unattendedDenial, type AdapterContext } from "./types.ts";

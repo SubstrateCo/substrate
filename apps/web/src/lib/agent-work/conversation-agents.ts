@@ -2,7 +2,7 @@ import type {
   AgentRequestView,
   AgentStatusView,
   AgentTurnView,
-} from "@startup-os/contracts/agent-work";
+} from "@substrate/contracts/agent-work";
 
 export interface ConversationAgent {
   agentId: string;

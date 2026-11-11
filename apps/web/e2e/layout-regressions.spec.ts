@@ -84,8 +84,8 @@ test("desktop system theme sends the preference rather than the resolved color",
   const sender = await client(actors.sender);
   await sender.page.emulateMedia({ colorScheme: "light" });
   await sender.page.addInitScript(() => {
-    localStorage.setItem("startup-os-theme", "dark");
-    window.startupOSWindow = {
+    localStorage.setItem("substrate-theme", "dark");
+    window.substrateWindow = {
       platform: "win32",
       isFullscreen: async () => false,
       onFullscreenChange: () => () => {},

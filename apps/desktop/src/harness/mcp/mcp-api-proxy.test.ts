@@ -1,4 +1,4 @@
-import type { WorkspaceApiRequest, WorkspaceApiResult } from "@startup-os/contracts/harness/mcp";
+import type { WorkspaceApiRequest, WorkspaceApiResult } from "@substrate/contracts/harness/mcp";
 
 import { createMcpApiProxy } from "./mcp-api-proxy.ts";
 import { expect, test } from "bun:test";

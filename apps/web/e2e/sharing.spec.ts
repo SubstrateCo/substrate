@@ -39,7 +39,7 @@ test("a new partner signs up, creates their own org, and accepts a desktop chann
   await sender.page.getByRole("button", { name: "Send invitation", exact: true }).click();
   const link = await new Mailpit(request).link(
     email,
-    `Collaborate with ${actors.sender.organizationName} on Startup OS`,
+    `Collaborate with ${actors.sender.organizationName} on Substrate`,
     "/desktop/open",
   );
   await page.goto(link);
@@ -73,9 +73,9 @@ test("a new partner signs up, creates their own org, and accepts a desktop chann
   const session = await page.request.get("/api/v1/session");
   const organizationId = (await session.json()).data.session.activeOrganizationId;
   expect(organizationId).not.toBe(actors.sender.organizationId);
-  await expect(page.getByRole("link", { name: "Open Startup OS", exact: true })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Open Substrate", exact: true })).toHaveAttribute(
     "href",
-    `startupos://open/dashboard?workspaceId=${organizationId}&conversationId=${c.id}`,
+    `substrate://open/dashboard?workspaceId=${organizationId}&conversationId=${c.id}`,
   );
   const memberships = await page.request.get("/api/auth/organization/list");
   expect((await memberships.json()).map((org: { id: string }) => org.id)).toEqual([organizationId]);
@@ -125,10 +125,10 @@ test("an ordinary recipient requests org approval and an owner approves without 
     recipient.page.getByRole("heading", { name: "Your workspace is ready", exact: true }),
   ).toBeVisible();
   await expect(
-    recipient.page.getByRole("link", { name: "Open Startup OS", exact: true }),
+    recipient.page.getByRole("link", { name: "Open Substrate", exact: true }),
   ).toHaveAttribute(
     "href",
-    `startupos://open/dashboard?workspaceId=${actors.sender.organizationId}&conversationId=${c.id}`,
+    `substrate://open/dashboard?workspaceId=${actors.sender.organizationId}&conversationId=${c.id}`,
   );
 });
 

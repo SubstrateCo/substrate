@@ -1,4 +1,4 @@
-import type { PictureKind } from "@startup-os/contracts/files/pictures";
+import type { PictureKind } from "@substrate/contracts/files/pictures";
 
 import { useEffect, useState } from "react";
 

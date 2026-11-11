@@ -1,4 +1,4 @@
-import type { AgentSessionKind } from "@startup-os/contracts/agent-work";
+import type { AgentSessionKind } from "@substrate/contracts/agent-work";
 
 import type { NewInboxItem } from "./inbox.ts";
 import { AgentWorkStore } from "./store.ts";

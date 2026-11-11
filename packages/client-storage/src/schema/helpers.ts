@@ -1,4 +1,4 @@
-import type { HelperStatus } from "@startup-os/contracts/agent-work";
+import type { HelperStatus } from "@substrate/contracts/agent-work";
 
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 

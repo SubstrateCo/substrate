@@ -1,4 +1,4 @@
-import { tasksWrite } from "@startup-os/contracts/tasks/input";
+import { tasksWrite } from "@substrate/contracts/tasks/input";
 
 import { z } from "zod";
 

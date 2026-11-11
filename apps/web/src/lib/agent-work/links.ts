@@ -1,4 +1,4 @@
-import type { AgentRequestView, TurnOutputView } from "@startup-os/contracts/agent-work";
+import type { AgentRequestView, TurnOutputView } from "@substrate/contracts/agent-work";
 
 import { messageHref, workHref } from "@/lib/navigation/record-links";
 

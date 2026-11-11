@@ -1,4 +1,4 @@
-import type { McpInput } from "@startup-os/contracts/harness/tools";
+import type { McpInput } from "@substrate/contracts/harness/tools";
 
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError } from "../../errors";

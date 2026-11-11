@@ -1,4 +1,4 @@
-import { taskStatusLabels, taskStatusValues } from "@startup-os/contracts/tasks";
+import { taskStatusLabels, taskStatusValues } from "@substrate/contracts/tasks";
 
 import { taskPriorityLabels, taskPriorityOrder } from "./task-labels";
 import { TaskPriorityIcon } from "./task-priority-icon";

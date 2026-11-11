@@ -4,7 +4,7 @@ import {
   taskRequest,
   tasksWrite,
   workRequest,
-} from "@startup-os/contracts/tasks/input";
+} from "@substrate/contracts/tasks/input";
 
 import { respond, validationHook } from "../../shared/http";
 import * as defaultServices from "./service";

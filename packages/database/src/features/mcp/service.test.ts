@@ -1,6 +1,6 @@
-import type { WorkspaceApiRequest } from "@startup-os/contracts/harness/mcp";
-import { mcpTools, type McpOutput, type ServerToolName } from "@startup-os/contracts/harness/tools";
-import { realtimeKeys, type RealtimeHint } from "@startup-os/contracts/realtime";
+import type { WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
+import { mcpTools, type McpOutput, type ServerToolName } from "@substrate/contracts/harness/tools";
+import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
 import { ensureUserAgentActor } from "../../core/actors/provisioning";
 import { registerDevice } from "../../core/devices/repository";

@@ -1,4 +1,4 @@
-import { createHarnessHost, type RuntimeHarnessHost } from "@startup-os/harness-runtime";
+import { createHarnessHost, type RuntimeHarnessHost } from "@substrate/harness-runtime";
 
 import type { HarnessWorkerRequest, HarnessWorkerResult } from "./protocol.ts";
 import {

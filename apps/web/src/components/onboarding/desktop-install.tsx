@@ -1,4 +1,4 @@
-import { desktopLink, desktopPath } from "@startup-os/contracts/desktop/links";
+import { desktopLink, desktopPath } from "@substrate/contracts/desktop/links";
 
 import { useQuery } from "@tanstack/react-query";
 

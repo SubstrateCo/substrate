@@ -96,7 +96,7 @@ test("an owner invites a teammate, who accepts without receiving project access 
   await owner.page.getByRole("button", { name: "Send invitation", exact: true }).click();
   const link = await new Mailpit(account.request).link(
     account.email,
-    `Join ${actors.sender.organizationName} on Startup OS`,
+    `Join ${actors.sender.organizationName} on Substrate`,
     "/accept-invitation/",
   );
   await invitee.page.goto(link);

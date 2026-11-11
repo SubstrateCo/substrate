@@ -1,4 +1,4 @@
-import { desktopOrigin } from "@startup-os/contracts/desktop/links";
+import { desktopOrigin } from "@substrate/contracts/desktop/links";
 
 import { desktopHandoffURL } from "../desktop/service";
 

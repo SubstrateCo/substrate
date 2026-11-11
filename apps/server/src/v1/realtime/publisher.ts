@@ -1,4 +1,4 @@
-import type { RealtimeHint } from "@startup-os/contracts/realtime";
+import type { RealtimeHint } from "@substrate/contracts/realtime";
 
 import { environment } from "../../environment";
 import { RedisClient } from "bun";

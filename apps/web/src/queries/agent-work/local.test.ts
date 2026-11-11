@@ -1,5 +1,5 @@
-import type { TurnEventView } from "@startup-os/contracts/agent-work";
-import { turnEventsPageSize } from "@startup-os/contracts/agent-work/desktop";
+import type { TurnEventView } from "@substrate/contracts/agent-work";
+import { turnEventsPageSize } from "@substrate/contracts/agent-work/desktop";
 
 import { loadTurnEvents } from "./local";
 import { expect, test } from "bun:test";

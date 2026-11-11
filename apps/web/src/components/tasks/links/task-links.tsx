@@ -1,4 +1,4 @@
-import type { TaskLinkRelation } from "@startup-os/contracts/tasks/links";
+import type { TaskLinkRelation } from "@substrate/contracts/tasks/links";
 
 import { useQuery } from "@tanstack/react-query";
 

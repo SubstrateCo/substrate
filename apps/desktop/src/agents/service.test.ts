@@ -1,4 +1,4 @@
-import type { RealtimeDomain, RealtimeUpdate } from "@startup-os/contracts/realtime";
+import type { RealtimeDomain, RealtimeUpdate } from "@substrate/contracts/realtime";
 
 import { createAgentWorkService } from "./service.ts";
 import { afterEach, expect, jest, test } from "bun:test";

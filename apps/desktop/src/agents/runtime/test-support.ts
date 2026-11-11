@@ -1,17 +1,17 @@
-import { AgentWorkStore } from "@startup-os/client-storage/agent-work";
+import { AgentWorkStore } from "@substrate/client-storage/agent-work";
 import type {
   AgentRequestDelivery,
   AgentSourceMessage,
   AgentWakeRequestDetail,
   AgentWakeView,
-} from "@startup-os/contracts/agent-work";
+} from "@substrate/contracts/agent-work";
 import type {
   AdapterCapabilities,
   HarnessCommand,
   HarnessCommandResult,
   HarnessEvent,
   HarnessEventBody,
-} from "@startup-os/contracts/harness";
+} from "@substrate/contracts/harness";
 
 import type { AgentWorkServer, CatalogAgent } from "../server/agent-work-server.ts";
 import { createAgentWorkRuntime } from "./runtime.ts";

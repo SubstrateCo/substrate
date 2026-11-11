@@ -37,13 +37,13 @@ describe("external desktop links", () => {
       expect(desktopPath.safeParse(path).success).toBe(false);
     }
     for (const value of [
-      "https://desktop.startup-os.local/tasks",
-      "startupos://evil.test/tasks",
-      "startupos://user@open/tasks",
-      "startupos://open:80/tasks",
+      "https://desktop.substrate.local/tasks",
+      "substrate://evil.test/tasks",
+      "substrate://user@open/tasks",
+      "substrate://open:80/tasks",
       "file:///tasks",
-      "startupos://open//evil.test",
-      "startupos://open/api/auth/sign-out",
+      "substrate://open//evil.test",
+      "substrate://open/api/auth/sign-out",
       "not a URL",
     ]) {
       expect(resolveDesktopLink(value, desktopOrigin)).toBeNull();

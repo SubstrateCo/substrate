@@ -1,9 +1,9 @@
-import { MAX_FILE_BYTES, type CreateUploadInput } from "@startup-os/contracts/files/input";
+import { MAX_FILE_BYTES, type CreateUploadInput } from "@substrate/contracts/files/input";
 import {
   finalObjectKey,
   type StorageRepository,
   type StorageScope,
-} from "@startup-os/database/storage";
+} from "@substrate/database/storage";
 
 import { ServiceError, serviceResult } from "../../shared/service-result";
 import type { ObjectStorage } from "../../storage/types";

@@ -1,4 +1,4 @@
-import type { AgentRequestPayload } from "@startup-os/contracts/agent-work";
+import type { AgentRequestPayload } from "@substrate/contracts/agent-work";
 
 import { PendingButton } from "@/components/feedback/pending-button";
 import {

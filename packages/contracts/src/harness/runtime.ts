@@ -172,7 +172,7 @@ export interface HarnessHost {
   scanConfiguration(scope: HarnessLocalScope): Promise<HarnessLocalConfiguration>;
   saveSkill(input: HarnessLocalScope & { skill: HarnessSkill }): Promise<void>;
   deleteSkill(input: HarnessLocalScope & { id: string }): Promise<void>;
-  /** Overwrites the Startup OS default instructions, profile, and skill files. Other files stay. */
+  /** Overwrites the Substrate default instructions, profile, and skill files. Other files stay. */
   resetDefaults(scope: HarnessLocalScope): Promise<void>;
   saveMcpServer(input: HarnessLocalScope & { server: HarnessMcpServer }): Promise<void>;
   deleteMcpServer(input: HarnessLocalScope & { id: string }): Promise<void>;

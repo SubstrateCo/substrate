@@ -22,7 +22,7 @@ export async function createTestDatabases(count: number) {
     return url.href;
   };
   try {
-    const prefix = `startup_os_${crypto.randomUUID().replaceAll("-", "")}`;
+    const prefix = `substrate_${crypto.randomUUID().replaceAll("-", "")}`;
     // Migrating one template and copying it is faster than migrating every worker database.
     const template = `${prefix}_template_test`;
     await admin`CREATE DATABASE ${admin(template)}`;

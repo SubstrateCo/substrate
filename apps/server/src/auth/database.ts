@@ -1,4 +1,4 @@
-import { createDatabase } from "@startup-os/database";
+import { createDatabase } from "@substrate/database";
 
 import { environment } from "../environment";
 

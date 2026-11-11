@@ -1,4 +1,4 @@
-import { messagingLimits } from "@startup-os/contracts/messaging/input";
+import { messagingLimits } from "@substrate/contracts/messaging/input";
 
 import type { DatabaseExecutor } from "../../client";
 import { ensureHumanActor, ensureOwnedAgentActors } from "../../core/actors/provisioning";

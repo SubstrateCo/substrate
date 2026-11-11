@@ -18,7 +18,7 @@ export function DesktopSignIn({
   return (
     <AuthFrame
       title="Welcome back"
-      description="Sign in securely in your browser, then return to Startup OS."
+      description="Sign in securely in your browser, then return to Substrate."
     >
       {waiting && (
         <p role="status" className="text-sm text-muted-foreground">

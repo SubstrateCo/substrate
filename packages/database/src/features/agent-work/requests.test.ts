@@ -1,4 +1,4 @@
-import type { WorkspaceApiRequest } from "@startup-os/contracts/harness/mcp";
+import type { WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
 
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import {

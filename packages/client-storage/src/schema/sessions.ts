@@ -1,5 +1,5 @@
-import type { AgentSessionKind, AgentSessionStatus } from "@startup-os/contracts/agent-work";
-import type { HarnessKind } from "@startup-os/contracts/harness";
+import type { AgentSessionKind, AgentSessionStatus } from "@substrate/contracts/agent-work";
+import type { HarnessKind } from "@substrate/contracts/harness";
 
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 

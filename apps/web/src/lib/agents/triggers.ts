@@ -1,4 +1,4 @@
-import type { AgentTriggerSetting, SaveAgentTriggersInput } from "@startup-os/contracts/agents";
+import type { AgentTriggerSetting, SaveAgentTriggersInput } from "@substrate/contracts/agents";
 
 export function triggersInput(
   agentId: string,

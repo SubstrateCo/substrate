@@ -1,6 +1,6 @@
-import { realtimeKeys } from "@startup-os/contracts/realtime";
-import type { RealtimeEvent } from "@startup-os/contracts/realtime";
-import { realtimeEvent } from "@startup-os/contracts/realtime";
+import { realtimeKeys } from "@substrate/contracts/realtime";
+import type { RealtimeEvent } from "@substrate/contracts/realtime";
+import { realtimeEvent } from "@substrate/contracts/realtime";
 
 import { createApp } from "../../app";
 import { createRealtimeHub } from "./hub";
@@ -9,7 +9,7 @@ import { createRealtimeRoutes } from "./routes";
 import type { WebSocketOptions } from "bun";
 import { afterEach, expect, test } from "bun:test";
 
-const trustedOrigin = "https://desktop.startup-os.local";
+const trustedOrigin = "https://desktop.substrate.local";
 // SAFETY: Tests run on Bun, whose native constructor accepts WebSocketOptions.
 // lib.dom shadows that runtime overload; preserve its existing overloads too.
 const BunWebSocket = globalThis.WebSocket as typeof globalThis.WebSocket & {

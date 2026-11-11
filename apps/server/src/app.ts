@@ -1,4 +1,4 @@
-import { failure } from "@startup-os/contracts/result";
+import { failure } from "@substrate/contracts/result";
 
 import { auth } from "./auth/server";
 import { createDesktopRoutes } from "./desktop/routes";

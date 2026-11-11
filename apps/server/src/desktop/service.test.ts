@@ -8,6 +8,6 @@ test("desktop handoff services return expected failures without throwing", () =>
   });
   expect(openDesktop("/accept-invitation/invite-1")).toEqual({
     success: true,
-    data: { link: "startupos://open/accept-invitation/invite-1" },
+    data: { link: "substrate://open/accept-invitation/invite-1" },
   });
 });

@@ -1,4 +1,4 @@
-import { desktopScheme } from "@startup-os/contracts/desktop/links";
+import { desktopScheme } from "@substrate/contracts/desktop/links";
 
 import { electronClient, handleDeepLink } from "@better-auth/electron/client";
 import { storage } from "@better-auth/electron/storage";

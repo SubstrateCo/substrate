@@ -1,4 +1,4 @@
-import { taskStatusValues } from "@startup-os/contracts/tasks";
+import { taskStatusValues } from "@substrate/contracts/tasks";
 
 import { actors } from "../../core/actors/schema";
 import { entityIdentity } from "../../core/entities/identity";

@@ -35,7 +35,7 @@ export async function discoverAntigravityModels(
       {
         protocolVersion: PROTOCOL_VERSION,
         clientCapabilities: {},
-        clientInfo: { name: "startup-os", version: "1.0.0" },
+        clientInfo: { name: "substrate", version: "1.0.0" },
       },
       options,
     );

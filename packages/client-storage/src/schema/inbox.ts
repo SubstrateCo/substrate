@@ -3,7 +3,7 @@ import type {
   InboxSource,
   InboxSourceRef,
   InboxStatus,
-} from "@startup-os/contracts/agent-work";
+} from "@substrate/contracts/agent-work";
 
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 

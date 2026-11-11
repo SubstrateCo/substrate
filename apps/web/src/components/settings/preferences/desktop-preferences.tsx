@@ -1,4 +1,4 @@
-import type { DesktopSettingsAPI } from "@startup-os/contracts/desktop/window";
+import type { DesktopSettingsAPI } from "@substrate/contracts/desktop/window";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -11,7 +11,7 @@ import { toast } from "sonner";
 
 // Only the desktop app has this bridge. Browsers show nothing.
 export function DesktopPreferences() {
-  const bridge = window.startupOSDesktopSettings;
+  const bridge = window.substrateDesktopSettings;
   if (!bridge) return null;
   return <DesktopPreferencesCard bridge={bridge} />;
 }
@@ -33,7 +33,7 @@ function DesktopPreferencesCard({ bridge }: { bridge: DesktopSettingsAPI }) {
   return (
     <SettingsCard
       title="Desktop"
-      description="Your agents run on this computer while Startup OS is open."
+      description="Your agents run on this computer while Substrate is open."
     >
       {settings.isError ? (
         <ErrorState

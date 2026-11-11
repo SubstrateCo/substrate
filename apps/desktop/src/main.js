@@ -1,7 +1,7 @@
-import { agentWorkChangeChannel, agentWorkChannel } from "@startup-os/contracts/agent-work/desktop";
-import { desktopScheme, resolveDesktopLink } from "@startup-os/contracts/desktop/links";
-import { desktopSettingsChannel } from "@startup-os/contracts/desktop/window";
-import { realtimeChannel, realtimeEventChannel } from "@startup-os/contracts/realtime";
+import { agentWorkChangeChannel, agentWorkChannel } from "@substrate/contracts/agent-work/desktop";
+import { desktopScheme, resolveDesktopLink } from "@substrate/contracts/desktop/links";
+import { desktopSettingsChannel } from "@substrate/contracts/desktop/window";
+import { realtimeChannel, realtimeEventChannel } from "@substrate/contracts/realtime";
 
 import { installationId } from "./agents/installation.ts";
 import { createAgentWorkService } from "./agents/service.ts";
@@ -35,20 +35,20 @@ const errorPageURL = new URL(
   import.meta.url,
 ).href;
 const errorPage = fileURLToPath(errorPageURL);
-app.setName("Startup OS");
+app.setName("Substrate");
 // Keep the lock identity stable for package, source-file, and smoke-test launches.
 const smokeTest = app.commandLine.hasSwitch("desktop-smoke-test");
-const testID = smokeTest ? process.env.STARTUP_OS_TEST_ID : undefined;
+const testID = smokeTest ? process.env.SUBSTRATE_TEST_ID : undefined;
 if (testID && !/^[a-zA-Z0-9-]+$/.test(testID)) throw new Error("Invalid desktop test ID.");
 app.setPath(
   "userData",
-  join(app.getPath("appData"), "Startup OS", ...(testID ? ["tests", testID] : [])),
+  join(app.getPath("appData"), "Substrate", ...(testID ? ["tests", testID] : [])),
 );
-const sessionPartition = smokeTest ? "startup-os-smoke-test" : "persist:startup-os";
+const sessionPartition = smokeTest ? "substrate-smoke-test" : "persist:substrate";
 const publicConfig = app.isPackaged
   ? JSON.parse(readFileSync(new URL("./desktop-config.json", import.meta.url), "utf8"))
   : {};
-const backend = backendURL(process.env.STARTUP_OS_API_URL ?? publicConfig.apiURL, app.isPackaged);
+const backend = backendURL(process.env.SUBSTRATE_API_URL ?? publicConfig.apiURL, app.isPackaged);
 // Signed uploads go to the server's storage endpoint. A packaged app uses the origin from its
 // build, so an unrelated S3_ENDPOINT on the machine cannot widen it.
 const storageEndpoint = app.isPackaged ? undefined : process.env.S3_ENDPOINT;
@@ -76,7 +76,7 @@ function stopSession() {
 }
 const { authClient, handleAuthLink } = createDesktopAuthClient(
   backend,
-  process.env.STARTUP_OS_WEB_URL ?? publicConfig.webURL ?? applicationURL,
+  process.env.SUBSTRATE_WEB_URL ?? publicConfig.webURL ?? applicationURL,
   smokeTest,
   () => mainWindow,
   stopSession,
@@ -135,7 +135,7 @@ function openExternal(url) {
 
 function createWindow() {
   const window = new BrowserWindow({
-    title: "Startup OS",
+    title: "Substrate",
     width: 1440,
     height: 960,
     minWidth: 320,
@@ -151,7 +151,7 @@ function createWindow() {
       preload: fileURLToPath(
         new URL(app.isPackaged ? "./preload.cjs" : "../.runtime/preload.cjs", import.meta.url),
       ),
-      additionalArguments: [`--startup-os-origin=${rendererURL}`],
+      additionalArguments: [`--substrate-origin=${rendererURL}`],
     },
   });
   mainWindow = window;
@@ -217,10 +217,10 @@ function showWindow() {
 async function createTray() {
   const icon = await app.getFileIcon(process.execPath, { size: "small" });
   tray = new Tray(icon);
-  tray.setToolTip("Startup OS");
+  tray.setToolTip("Substrate");
   tray.setContextMenu(
     Menu.buildFromTemplate([
-      { label: "Open Startup OS", click: showWindow },
+      { label: "Open Substrate", click: showWindow },
       { type: "separator" },
       { label: "Quit", click: () => app.quit() },
     ]),
@@ -229,7 +229,7 @@ async function createTray() {
 }
 
 if (!app.requestSingleInstanceLock()) {
-  console.log("Startup OS is already running. Focusing the existing window.");
+  console.log("Substrate is already running. Focusing the existing window.");
   app.quit();
 } else {
   // One dispatcher owns workspace links and auth callbacks. Better Auth owns PKCE and exchange.

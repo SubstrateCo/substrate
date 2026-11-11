@@ -3,8 +3,8 @@ import type {
   HarnessAgent,
   HarnessEvent,
   TurnResult,
-} from "@startup-os/contracts/harness";
-import type { TurnContext, WorkspaceApiRequest } from "@startup-os/contracts/harness/mcp";
+} from "@substrate/contracts/harness";
+import type { TurnContext, WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
 
 import type { AdapterContext, NativeAdapter } from "./adapters/types.ts";
 import { createHarnessHost, type ConnectNative } from "./host.ts";

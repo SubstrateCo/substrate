@@ -2,8 +2,8 @@ import type {
   LocalToolRequest,
   TurnContext,
   WorkspaceApiRequest,
-} from "@startup-os/contracts/harness/mcp";
-import { leaseTools, type McpToolName } from "@startup-os/contracts/harness/tools";
+} from "@substrate/contracts/harness/mcp";
+import { leaseTools, type McpToolName } from "@substrate/contracts/harness/tools";
 
 import { createStartupMcp, type McpLeaseOptions, type StartupMcpHandlers } from "./mcp.ts";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -186,13 +186,13 @@ test("results above the offload limit are written inside the folder and returned
   try {
     mcp.lease.bind(turn);
     const result = await mcp.client.callTool({ name: "list_projects", arguments: {} });
-    const path = `.startup-os/outputs/${turn.turnId}/list_projects-1.json`;
+    const path = `.substrate/outputs/${turn.turnId}/list_projects-1.json`;
     expect(result.structuredContent).toMatchObject({ truncated: true, path });
     expect(JSON.parse(await readFile(join(folder, path), "utf8"))).toEqual({
       items,
       nextCursor: null,
     });
-    expect(await readdir(join(folder, ".startup-os", "outputs", turn.turnId))).toEqual([
+    expect(await readdir(join(folder, ".substrate", "outputs", turn.turnId))).toEqual([
       "list_projects-1.json",
     ]);
   } finally {

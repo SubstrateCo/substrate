@@ -1,4 +1,4 @@
-import type { AgentTurnView, TurnOutcome } from "@startup-os/contracts/agent-work";
+import type { AgentTurnView, TurnOutcome } from "@substrate/contracts/agent-work";
 
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 

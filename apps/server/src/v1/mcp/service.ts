@@ -1,6 +1,6 @@
-import type { mcpCall } from "@startup-os/contracts/harness/tools";
-import { executeAgentTool } from "@startup-os/database/mcp";
-import { ensureUserAgentActor } from "@startup-os/database/provisioning";
+import type { mcpCall } from "@substrate/contracts/harness/tools";
+import { executeAgentTool } from "@substrate/database/mcp";
+import { ensureUserAgentActor } from "@substrate/database/provisioning";
 
 import { db } from "../../auth/database";
 import { serviceResult } from "../../shared/service-result";

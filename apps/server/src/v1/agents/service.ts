@@ -1,12 +1,12 @@
-import type { saveAgentTriggersInput } from "@startup-os/contracts/agents";
+import type { saveAgentTriggersInput } from "@substrate/contracts/agents";
 import type {
   saveAgentInput,
   deleteAgentInput,
   setAgentPictureInput,
-} from "@startup-os/contracts/agents";
-import { desktopInstallationHeader } from "@startup-os/contracts/desktop/links";
-import { createAgentRepository } from "@startup-os/database/agents";
-import { agentRefreshHints } from "@startup-os/database/realtime";
+} from "@substrate/contracts/agents";
+import { desktopInstallationHeader } from "@substrate/contracts/desktop/links";
+import { createAgentRepository } from "@substrate/database/agents";
+import { agentRefreshHints } from "@substrate/database/realtime";
 
 import { db } from "../../auth/database";
 import { auth } from "../../auth/server";

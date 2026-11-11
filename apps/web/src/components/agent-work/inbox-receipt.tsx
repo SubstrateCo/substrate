@@ -1,4 +1,4 @@
-import type { AgentInboxItemView } from "@startup-os/contracts/agent-work";
+import type { AgentInboxItemView } from "@substrate/contracts/agent-work";
 
 import { InboxReceiptView } from "./inbox-receipt-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";

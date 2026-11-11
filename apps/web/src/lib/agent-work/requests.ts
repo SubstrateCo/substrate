@@ -1,4 +1,4 @@
-import type { AgentRequestView } from "@startup-os/contracts/agent-work";
+import type { AgentRequestView } from "@substrate/contracts/agent-work";
 
 /** One line that says how a request ended, or that it still waits. */
 export function requestOutcome(request: AgentRequestView) {

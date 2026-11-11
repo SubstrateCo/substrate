@@ -3,8 +3,8 @@ import {
   success,
   type ServiceErrorCode,
   type ServiceResult,
-} from "@startup-os/contracts/result";
-import { AccessDeniedError, ConflictError, ValidationError } from "@startup-os/database";
+} from "@substrate/contracts/result";
+import { AccessDeniedError, ConflictError, ValidationError } from "@substrate/database";
 
 import { APIError } from "better-auth/api";
 import { ZodError } from "zod";

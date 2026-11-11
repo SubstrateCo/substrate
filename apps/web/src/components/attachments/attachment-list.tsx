@@ -1,4 +1,4 @@
-import type { Attachment } from "@startup-os/contracts/files/attachments";
+import type { Attachment } from "@substrate/contracts/files/attachments";
 
 import type { ReactNode } from "react";
 

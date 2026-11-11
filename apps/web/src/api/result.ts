@@ -1,4 +1,4 @@
-import type { ServiceErrorCode, ServiceResult } from "@startup-os/contracts/result";
+import type { ServiceErrorCode, ServiceResult } from "@substrate/contracts/result";
 
 export class ApiError extends Error {
   constructor(

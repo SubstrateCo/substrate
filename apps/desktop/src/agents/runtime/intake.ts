@@ -1,5 +1,5 @@
-import type { NewInboxItem } from "@startup-os/client-storage/agent-work";
-import { parseSessionKey, type AgentWakeView } from "@startup-os/contracts/agent-work";
+import type { NewInboxItem } from "@substrate/client-storage/agent-work";
+import { parseSessionKey, type AgentWakeView } from "@substrate/contracts/agent-work";
 
 import type { RuntimeContext } from "./context.ts";
 

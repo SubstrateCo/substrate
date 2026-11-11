@@ -1,6 +1,6 @@
-export const windowChannel = "startup-os:window";
-export const fullscreenChannel = "startup-os:fullscreen";
-export const desktopSettingsChannel = "startup-os:desktop-settings";
+export const windowChannel = "substrate:window";
+export const fullscreenChannel = "substrate:fullscreen";
+export const desktopSettingsChannel = "substrate:desktop-settings";
 
 /** Settings of this desktop installation, kept by the main process. */
 export interface DesktopSettings {
@@ -22,7 +22,7 @@ export interface DesktopWindowAPI {
 
 declare global {
   interface Window {
-    startupOSWindow?: DesktopWindowAPI;
-    startupOSDesktopSettings?: DesktopSettingsAPI;
+    substrateWindow?: DesktopWindowAPI;
+    substrateDesktopSettings?: DesktopSettingsAPI;
   }
 }

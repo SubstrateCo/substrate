@@ -1,4 +1,4 @@
-import type { HarnessEventBody, TurnResult } from "@startup-os/contracts/harness";
+import type { HarnessEventBody, TurnResult } from "@substrate/contracts/harness";
 
 import { ClaudeSession, type ClaudeQuery } from "./claude.ts";
 import { InputQueue } from "./input-queue.ts";

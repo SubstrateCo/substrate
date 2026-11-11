@@ -1,4 +1,4 @@
-import type { HarnessCommand } from "@startup-os/contracts/harness";
+import type { HarnessCommand } from "@substrate/contracts/harness";
 
 import {
   agentId,

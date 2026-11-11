@@ -61,8 +61,8 @@ export type RealtimeStatus = "connecting" | "connected" | "disconnected" | "forb
 export type RealtimeUpdate = RealtimeEvent | { type: "status"; status: RealtimeStatus };
 export const realtimeConnectInput = z.object({ organizationId: identifier.nullable() });
 
-export const realtimeChannel = "startup-os:realtime";
-export const realtimeEventChannel = "startup-os:realtime:event";
+export const realtimeChannel = "substrate:realtime";
+export const realtimeEventChannel = "substrate:realtime:event";
 export interface RealtimeAPI {
   connect(input: z.infer<typeof realtimeConnectInput>): Promise<void>;
   disconnect(): Promise<void>;

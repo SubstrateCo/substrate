@@ -1,4 +1,4 @@
-import { notificationPosition } from "@startup-os/contracts/context/notification-groups";
+import { notificationPosition } from "@substrate/contracts/context/notification-groups";
 
 import type { DatabaseExecutor } from "../../client";
 import type { RepositoryContext } from "../../core/repository-context";

@@ -66,7 +66,7 @@ export function WorkspaceSearch({
 }) {
   const panel = useRef<HTMLElement>(null);
   const [panelTop, setPanelTop] = useState(0);
-  const isMac = window.startupOSWindow?.platform === "darwin";
+  const isMac = window.substrateWindow?.platform === "darwin";
   useLayoutEffect(() => {
     const measure = () => setPanelTop(panel.current?.getBoundingClientRect().top ?? 0);
     measure();

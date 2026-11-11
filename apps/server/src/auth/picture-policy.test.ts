@@ -1,4 +1,4 @@
-import { AccessDeniedError } from "@startup-os/database";
+import { AccessDeniedError } from "@substrate/database";
 
 import {
   authorizePictureMutation,

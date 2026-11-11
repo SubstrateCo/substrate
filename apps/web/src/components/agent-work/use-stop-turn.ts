@@ -1,5 +1,5 @@
-import type { AgentTurnView } from "@startup-os/contracts/agent-work";
-import { liveTurnStatuses } from "@startup-os/contracts/agent-work";
+import type { AgentTurnView } from "@substrate/contracts/agent-work";
+import { liveTurnStatuses } from "@substrate/contracts/agent-work";
 
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useStop } from "@/queries/agent-work/mutations";

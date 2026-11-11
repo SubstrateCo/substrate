@@ -1,5 +1,5 @@
-import { mcpOutputOffloadBytes, type OffloadedOutput } from "@startup-os/contracts/harness/mcp";
-import type { McpOutput, McpToolName } from "@startup-os/contracts/harness/tools";
+import { mcpOutputOffloadBytes, type OffloadedOutput } from "@substrate/contracts/harness/mcp";
+import type { McpOutput, McpToolName } from "@substrate/contracts/harness/tools";
 
 import { safeId, safePath } from "./paths.ts";
 import { writeFile } from "node:fs/promises";
@@ -7,7 +7,7 @@ import { writeFile } from "node:fs/promises";
 const previewCharacters = 1000;
 
 /**
- * Writes a large tool result to `<folder>/.startup-os/outputs/<turnId>/<tool>-<n>.json` and
+ * Writes a large tool result to `<folder>/.substrate/outputs/<turnId>/<tool>-<n>.json` and
  * returns a reference instead. Small results return undefined and stay inline.
  */
 export async function offloadOutput(
@@ -22,7 +22,7 @@ export async function offloadOutput(
   if (bytes <= mcpOutputOffloadBytes) return undefined;
   if (!Number.isSafeInteger(sequence) || sequence < 1) throw new RangeError("Invalid sequence.");
   // The path is relative to the native session's working directory, which is the folder.
-  const path = `.startup-os/outputs/${safeId(turnId)}/${safeId(tool)}-${sequence}.json`;
+  const path = `.substrate/outputs/${safeId(turnId)}/${safeId(tool)}-${sequence}.json`;
   await writeFile(await safePath(folder, path, false, true), text, { mode: 0o600 });
   return {
     summary: `${tool} returned ${bytes} bytes. The full JSON result is in ${path}; read that file for details. It starts with: ${text.slice(0, previewCharacters)}`,

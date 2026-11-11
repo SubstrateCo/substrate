@@ -1,4 +1,4 @@
-import type { AgentWorkChange } from "@startup-os/contracts/agent-work/desktop";
+import type { AgentWorkChange } from "@substrate/contracts/agent-work/desktop";
 
 import { useQueryClient, type QueryKey } from "@tanstack/react-query";
 
@@ -78,7 +78,7 @@ export function createBridgeChangeBatcher(
 export function useAgentWorkBridgeSync(userId: string | undefined, organizationId?: string | null) {
   const client = useQueryClient();
   useEffect(() => {
-    const bridge = window.startupOSAgentWork;
+    const bridge = window.substrateAgentWork;
     if (!bridge || !userId || !organizationId) return;
     const batcher = createBridgeChangeBatcher(userId, organizationId, (queryKey) => {
       void client.invalidateQueries({ queryKey });

@@ -8,15 +8,15 @@ const label = (name: string, input?: NativeInput) => toolLabel(name, toolInput.p
 
 test("workspace tools use their titles under any harness prefix", () => {
   expect(label("list_tasks")).toBe("List tasks");
-  expect(label("mcp__startup-os__list_projects")).toBe("List projects");
-  expect(label("startup-os_create_task")).toBe("Create task");
+  expect(label("mcp__substrate__list_projects")).toBe("List projects");
+  expect(label("substrate_create_task")).toBe("Create task");
 });
 
 test("code-mode calls name the workspace tools the code calls, once each", () => {
   const code = `
-    const projects = await tools["startup-os"].list_projects({});
-    for (const p of projects) await tools.startup_os.list_tasks({ projectId: p.id });
-    await tools["startup-os"]["list_tasks"]({});
+    const projects = await tools["substrate"].list_projects({});
+    for (const p of projects) await tools.substrate.list_tasks({ projectId: p.id });
+    await tools["substrate"]["list_tasks"]({});
     await search({ query: "tasks" });
   `;
   expect(label("execute", { code })).toBe("List projects, List tasks");

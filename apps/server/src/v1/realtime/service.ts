@@ -1,4 +1,4 @@
-import { audienceRecipients, resolveReceiver } from "@startup-os/database/realtime";
+import { audienceRecipients, resolveReceiver } from "@substrate/database/realtime";
 
 import { db } from "../../auth/database";
 import { auth } from "../../auth/server";

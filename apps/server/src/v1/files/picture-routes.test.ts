@@ -1,4 +1,4 @@
-import { failure, success } from "@startup-os/contracts/result";
+import { failure, success } from "@substrate/contracts/result";
 
 import { createPictureRoutes } from "./picture-routes";
 import type { PictureService } from "./pictures";

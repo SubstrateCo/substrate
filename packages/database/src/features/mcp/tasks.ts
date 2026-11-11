@@ -1,6 +1,6 @@
-import type { McpInput, McpOutput } from "@startup-os/contracts/harness/tools";
-import type { TaskStatus } from "@startup-os/contracts/tasks";
-import { taskLinkRelation } from "@startup-os/contracts/tasks/links";
+import type { McpInput, McpOutput } from "@substrate/contracts/harness/tools";
+import type { TaskStatus } from "@substrate/contracts/tasks";
+import { taskLinkRelation } from "@substrate/contracts/tasks/links";
 
 import { actorAuthorKind, actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";

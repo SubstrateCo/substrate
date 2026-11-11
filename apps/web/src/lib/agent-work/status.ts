@@ -4,7 +4,7 @@ import type {
   AgentStatusView,
   AgentTurnView,
   TurnAttentionReason,
-} from "@startup-os/contracts/agent-work";
+} from "@substrate/contracts/agent-work";
 
 import { formatDuration, ordinal } from "./time";
 

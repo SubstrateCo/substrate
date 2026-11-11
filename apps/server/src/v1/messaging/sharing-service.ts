@@ -1,7 +1,7 @@
 import type {
   conversationTargetInput,
   workspaceInput,
-} from "@startup-os/contracts/messaging/input";
+} from "@substrate/contracts/messaging/input";
 import type {
   sharingAcceptInput,
   sharingActionInput,
@@ -9,9 +9,9 @@ import type {
   sharingInviteInput,
   sharingInvitationInput,
   sharingRemoveInput,
-} from "@startup-os/contracts/messaging/sharing";
-import { realtimeKeys } from "@startup-os/contracts/realtime";
-import { createSharingService, readSharingInvitation } from "@startup-os/database/messaging";
+} from "@substrate/contracts/messaging/sharing";
+import { realtimeKeys } from "@substrate/contracts/realtime";
+import { createSharingService, readSharingInvitation } from "@substrate/database/messaging";
 
 import { db } from "../../auth/database";
 import { auth } from "../../auth/server";

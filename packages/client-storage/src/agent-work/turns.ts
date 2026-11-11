@@ -6,8 +6,8 @@ import {
   type TurnOutcome,
   type TurnSourceMessage,
   type TurnStatus,
-} from "@startup-os/contracts/agent-work";
-import type { Usage } from "@startup-os/contracts/harness";
+} from "@substrate/contracts/agent-work";
+import type { Usage } from "@substrate/contracts/harness";
 
 import type { LocalTransaction, RunTransaction } from "../database.ts";
 import { inbox, sessions, turnEvents, turns, type TurnInterruption } from "../schema/index.ts";

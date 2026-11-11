@@ -1,5 +1,5 @@
-import type { TurnContext, WorkspaceApiRequest } from "@startup-os/contracts/harness/mcp";
-import { mcpTools, type McpOutput, type ServerToolName } from "@startup-os/contracts/harness/tools";
+import type { TurnContext, WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
+import { mcpTools, type McpOutput, type ServerToolName } from "@substrate/contracts/harness/tools";
 
 import { executeAgentTool } from "../features/mcp/service";
 import { createMessagingService } from "../features/messaging/service";

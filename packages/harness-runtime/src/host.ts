@@ -13,9 +13,9 @@ import {
   type HarnessLocalScope,
   type HarnessSessionRef,
   type TurnResult,
-} from "@startup-os/contracts/harness";
-import type { LocalToolProxy, WorkspaceApiProxy } from "@startup-os/contracts/harness/mcp";
-import { leaseTools } from "@startup-os/contracts/harness/tools";
+} from "@substrate/contracts/harness";
+import type { LocalToolProxy, WorkspaceApiProxy } from "@substrate/contracts/harness/mcp";
+import { leaseTools } from "@substrate/contracts/harness/tools";
 
 import type { AdapterContext, EventScope, NativeAdapter } from "./adapters/types.ts";
 import { materialize, writeDefaultFiles } from "./config.ts";

@@ -1,4 +1,4 @@
-import type { RuntimeHarnessHost } from "@startup-os/harness-runtime";
+import type { RuntimeHarnessHost } from "@substrate/harness-runtime";
 
 /* oxlint-disable deslop/no-unknown-returns -- Main parses structured-clone results at the process boundary before exposing domain values. */
 

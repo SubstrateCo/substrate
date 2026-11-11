@@ -4,8 +4,8 @@ import type {
   TurnOutcome,
   TurnSourceMessage,
   TurnStatus,
-} from "@startup-os/contracts/agent-work";
-import type { TurnKind, Usage } from "@startup-os/contracts/harness";
+} from "@substrate/contracts/agent-work";
+import type { TurnKind, Usage } from "@substrate/contracts/harness";
 
 import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 

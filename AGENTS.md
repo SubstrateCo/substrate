@@ -1,6 +1,6 @@
-# Startup OS
+# Substrate
 
-Startup OS is an Electron workspace for email, messages, docs, tasks, agents, and CRM, with shared memory and linked, searchable records.
+Substrate is an Electron workspace for email, messages, docs, tasks, agents, and CRM, with shared memory and linked, searchable records.
 
 ## Desktop-first product
 

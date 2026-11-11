@@ -1,5 +1,5 @@
-import type { FilePurpose, UploadTicket } from "@startup-os/contracts/files/input";
-import type { ServiceResult } from "@startup-os/contracts/result";
+import type { FilePurpose, UploadTicket } from "@substrate/contracts/files/input";
+import type { ServiceResult } from "@substrate/contracts/result";
 
 import { appOrigin } from "./environment";
 import { expect, type APIRequestContext, type APIResponse } from "@playwright/test";

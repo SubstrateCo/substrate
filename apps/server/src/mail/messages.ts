@@ -15,14 +15,14 @@ export interface MailMessage {
 // Better Auth builds its URLs on the API; the browser flow opens them on the web app.
 export function verifyEmailMessage(url: string, origins: MailOrigins): MailMessage {
   return {
-    subject: "Verify your Startup OS email",
+    subject: "Verify your Substrate email",
     text: `Verify your email address: ${frontendAuthLink(url, origins.webURL)}`,
   };
 }
 
 export function resetPasswordMessage(url: string, origins: MailOrigins): MailMessage {
   return {
-    subject: "Reset your Startup OS password",
+    subject: "Reset your Substrate password",
     text: `Reset your password: ${frontendAuthLink(url, origins.webURL)}`,
   };
 }
@@ -35,7 +35,7 @@ export function organizationInvitationMessage(
 ): MailMessage {
   const url = invitationLink(invitation.id, origins.webURL, { baseURL: origins.apiURL, request });
   return {
-    subject: `Join ${invitation.organizationName} on Startup OS`,
+    subject: `Join ${invitation.organizationName} on Substrate`,
     text: `Accept your invitation: ${url}`,
   };
 }
@@ -46,7 +46,7 @@ export function sharingInvitationMessage(
 ): MailMessage {
   const link = desktopHandoffURL(`/accept-sharing/${invitation.id}`, origins.apiURL);
   return {
-    subject: `Collaborate with ${invitation.organizationName} on Startup OS`,
+    subject: `Collaborate with ${invitation.organizationName} on Substrate`,
     text: `You have been invited to ${invitation.conversationName ?? "a conversation"}.\n\nAccept or decline:\n${link}\n\nAccepting shares the full conversation history. You can create an account and organization before installing the app.`,
   };
 }

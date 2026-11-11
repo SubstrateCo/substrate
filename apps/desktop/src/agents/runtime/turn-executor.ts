@@ -4,13 +4,13 @@ import {
   type InboxRow,
   type SessionRow,
   type TurnRow,
-} from "@startup-os/client-storage/agent-work";
+} from "@substrate/client-storage/agent-work";
 import {
   liveTurnStatuses,
   type EnvelopeResumeNote,
   type TurnStatus,
-} from "@startup-os/contracts/agent-work";
-import type { AgentWorkChange } from "@startup-os/contracts/agent-work/desktop";
+} from "@substrate/contracts/agent-work";
+import type { AgentWorkChange } from "@substrate/contracts/agent-work/desktop";
 import {
   managedPrefix,
   POLICY_VERSION,
@@ -19,7 +19,7 @@ import {
   type HarnessFolder,
   type TurnContext,
   type TurnResult,
-} from "@startup-os/contracts/harness";
+} from "@substrate/contracts/harness";
 
 import { envelopeItem, renderEnvelope, sortItems } from "../turns/envelope.ts";
 import { turnOutcome } from "../turns/outcome.ts";
@@ -195,7 +195,7 @@ export function createTurnExecutor(
     const delay = Math.min(outageBackoffMs * 2 ** (failures.attempts - 1), outageBackoffMaxMs);
     const result = await context.store.turns.requeue(turn.id, now + delay, now);
     if (result === "kept") waitUntil.set(turn.id, now + delay);
-    context.log("Agent work waits for Startup OS or the harness to be reachable.");
+    context.log("Agent work waits for Substrate or the harness to be reachable.");
     context.later(() => context.changed({}), delay);
     context.changed({ userAgentId: turn.userAgentId });
   }

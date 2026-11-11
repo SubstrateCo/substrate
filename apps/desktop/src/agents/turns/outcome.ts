@@ -1,5 +1,5 @@
-import type { OutputRow } from "@startup-os/client-storage/agent-work";
-import type { TurnOutcome } from "@startup-os/contracts/agent-work";
+import type { OutputRow } from "@substrate/client-storage/agent-work";
+import type { TurnOutcome } from "@substrate/contracts/agent-work";
 
 /**
  * What a finished turn amounts to. A question or proposal ends the turn waiting for the owner,

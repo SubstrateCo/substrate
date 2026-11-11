@@ -1,4 +1,4 @@
-import { createDatabase, migrateDatabase } from "@startup-os/database";
+import { createDatabase, migrateDatabase } from "@substrate/database";
 
 import { sql } from "drizzle-orm";
 

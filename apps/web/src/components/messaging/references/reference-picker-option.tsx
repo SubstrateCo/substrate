@@ -1,4 +1,4 @@
-import type { TaskStatus } from "@startup-os/contracts/tasks";
+import type { TaskStatus } from "@substrate/contracts/tasks";
 /* oxlint-disable shadcn/no-restyle -- Picker candidates need a neutral cursor and wrapping context, not a button's selected state. */
 
 import { Button } from "../../ui/button";

@@ -1,4 +1,4 @@
-import type { HarnessCommand, HarnessEvent } from "@startup-os/contracts/harness";
+import type { HarnessCommand, HarnessEvent } from "@substrate/contracts/harness";
 
 interface OpenSession {
   organizationId: string;

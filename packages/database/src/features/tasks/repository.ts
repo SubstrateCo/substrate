@@ -1,5 +1,5 @@
-import { taskPriorityValues, taskStatusValues } from "@startup-os/contracts/tasks";
-import type { TaskLinkRelation } from "@startup-os/contracts/tasks/links";
+import { taskPriorityValues, taskStatusValues } from "@substrate/contracts/tasks";
+import type { TaskLinkRelation } from "@substrate/contracts/tasks/links";
 
 import { visibleActorCondition } from "../../core/actors/access";
 import { actorDisplayName } from "../../core/actors/display-name";

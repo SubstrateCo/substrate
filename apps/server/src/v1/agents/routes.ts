@@ -1,9 +1,9 @@
-import { saveAgentTriggersInput } from "@startup-os/contracts/agents";
+import { saveAgentTriggersInput } from "@substrate/contracts/agents";
 import {
   saveAgentInput,
   deleteAgentInput,
   setAgentPictureInput,
-} from "@startup-os/contracts/agents";
+} from "@substrate/contracts/agents";
 
 import { respond, validationHook } from "../../shared/http";
 import {

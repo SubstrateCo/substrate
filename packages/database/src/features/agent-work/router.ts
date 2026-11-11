@@ -1,5 +1,5 @@
-import { wakeDedupeKeys, type AgentWakeMessageKind } from "@startup-os/contracts/agent-work";
-import { realtimeKeys, type RealtimeHint } from "@startup-os/contracts/realtime";
+import { wakeDedupeKeys, type AgentWakeMessageKind } from "@substrate/contracts/agent-work";
+import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";

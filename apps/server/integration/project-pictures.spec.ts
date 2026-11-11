@@ -1,4 +1,4 @@
-import type { TasksWrite } from "@startup-os/contracts/tasks/input";
+import type { TasksWrite } from "@substrate/contracts/tasks/input";
 
 import { appOrigin } from "./test-support/environment";
 import { png, result } from "./test-support/files";

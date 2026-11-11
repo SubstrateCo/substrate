@@ -1,5 +1,5 @@
-import { ac, roles } from "@startup-os/contracts/auth/permissions";
-import { desktopScheme } from "@startup-os/contracts/desktop/links";
+import { ac, roles } from "@substrate/contracts/auth/permissions";
+import { desktopScheme } from "@substrate/contracts/desktop/links";
 
 import { electronProxyClient } from "@better-auth/electron/proxy";
 import { organizationClient } from "better-auth/client/plugins";

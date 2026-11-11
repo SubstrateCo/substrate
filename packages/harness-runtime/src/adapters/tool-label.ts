@@ -1,4 +1,4 @@
-import { mcpTools } from "@startup-os/contracts/harness/tools";
+import { mcpTools } from "@substrate/contracts/harness/tools";
 
 import { z } from "zod";
 
@@ -53,16 +53,16 @@ function host(url: string | undefined) {
   }
 }
 
-/** Our own tools, under any harness prefix: mcp__startup-os__list_tasks, startup-os_list_tasks. */
+/** Our own tools, under any harness prefix: mcp__substrate__list_tasks, substrate_list_tasks. */
 function workspaceTitle(name: string) {
   const base = name
     .split("__")
     .at(-1)
-    ?.replace(/^startup[-_]os_/, "");
+    ?.replace(/^substrate_/, "");
   return base ? workspaceTitles.get(base) : undefined;
 }
 
-/** The workspace tools that code-mode code calls, such as tools["startup-os"].list_tasks(…). */
+/** The workspace tools that code-mode code calls, such as tools["substrate"].list_tasks(…). */
 function calledTools(code: string) {
   const titles = new Set<string>();
   for (const match of code.matchAll(/(?:\.|\[["'])([a-z_]+)(?:["']\])?\s*\(/g)) {

@@ -1,6 +1,6 @@
-import { failure } from "@startup-os/contracts/result";
-import * as database from "@startup-os/database";
-import * as provisioning from "@startup-os/database/provisioning";
+import { failure } from "@substrate/contracts/result";
+import * as database from "@substrate/database";
+import * as provisioning from "@substrate/database/provisioning";
 
 import { db } from "../../auth/database";
 import { auth } from "../../auth/server";

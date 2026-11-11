@@ -4,7 +4,7 @@ import type {
   WorkspaceApiRequest,
   WorkspaceApiResult,
   WorkspaceApiProxy,
-} from "@startup-os/contracts/harness/mcp";
+} from "@substrate/contracts/harness/mcp";
 
 /** Main validates the result before it posts this message. */
 export type WorkspaceApiResponse = { apiResponse: number } & (

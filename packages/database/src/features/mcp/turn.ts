@@ -1,5 +1,5 @@
-import { parseSessionKey } from "@startup-os/contracts/agent-work";
-import type { TurnContext } from "@startup-os/contracts/harness/mcp";
+import { parseSessionKey } from "@substrate/contracts/agent-work";
+import type { TurnContext } from "@substrate/contracts/harness/mcp";
 
 import type { DatabaseExecutor } from "../../client";
 import { AccessDeniedError, ValidationError } from "../../errors";

@@ -1,4 +1,4 @@
-import type { RealtimeStatus } from "@startup-os/contracts/realtime";
+import type { RealtimeStatus } from "@substrate/contracts/realtime";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
@@ -27,7 +27,7 @@ export function RealtimeConnection({
   const [status, setStatus] = useState<RealtimeStatus | "stale">("connecting");
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   useEffect(() => {
-    const bridge = window.startupOSRealtime ?? createBrowserRealtime();
+    const bridge = window.substrateRealtime ?? createBrowserRealtime();
     let active = true;
     let statusEpoch = 0;
     let ready: Promise<void> = Promise.resolve();

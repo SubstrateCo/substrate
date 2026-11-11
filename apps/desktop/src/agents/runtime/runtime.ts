@@ -5,15 +5,15 @@ import {
   ownerMessageDebounceMs,
   sessionView,
   type TurnInterruption,
-} from "@startup-os/client-storage/agent-work";
-import type { AgentTurnView } from "@startup-os/contracts/agent-work";
+} from "@substrate/client-storage/agent-work";
+import type { AgentTurnView } from "@substrate/contracts/agent-work";
 import {
   turnEventsPageSize,
   type AgentActivityPage,
   type AgentConversationWork,
   type AgentWorkChange,
-} from "@startup-os/contracts/agent-work/desktop";
-import type { HarnessEvent } from "@startup-os/contracts/harness";
+} from "@substrate/contracts/agent-work/desktop";
+import type { HarnessEvent } from "@substrate/contracts/harness";
 
 import { createLocalTools } from "../helpers/local-tools.ts";
 import { createRoutines } from "../routines/routines.ts";

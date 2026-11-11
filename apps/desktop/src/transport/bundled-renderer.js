@@ -6,7 +6,7 @@ import { pathToFileURL } from "node:url";
 
 /** @param {string | undefined} value @param {boolean} packaged */
 export function backendURL(value, packaged) {
-  if (!value && packaged) throw new Error("Packaged Startup OS requires STARTUP_OS_API_URL.");
+  if (!value && packaged) throw new Error("Packaged Substrate requires SUBSTRATE_API_URL.");
   const url = new URL(value || "http://localhost:3001");
   const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
   const hasCredentials = url.username || url.password;
@@ -14,7 +14,7 @@ export function backendURL(value, packaged) {
   const isAllowedProtocol = url.protocol === "https:" || (url.protocol === "http:" && loopback);
   if (hasCredentials || hasPathQueryOrFragment || !isAllowedProtocol) {
     throw new Error(
-      "STARTUP_OS_API_URL must be an HTTPS origin (HTTP is allowed only on loopback).",
+      "SUBSTRATE_API_URL must be an HTTPS origin (HTTP is allowed only on loopback).",
     );
   }
   return url.origin;

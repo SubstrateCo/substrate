@@ -1,9 +1,9 @@
 {
-  "name": "@startup-os/desktop",
+  "name": "@substrate/desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "The connected Startup OS desktop workspace",
-  "author": "Startup OS",
+  "description": "The connected Substrate desktop workspace",
+  "author": "Substrate",
   "type": "module",
   "main": "dist/main.js",
   "scripts": {
@@ -17,9 +17,9 @@
   },
   "dependencies": {
     "@better-auth/electron": "^1.7.18",
-    "@startup-os/client-storage": "workspace:*",
-    "@startup-os/contracts": "workspace:*",
-    "@startup-os/harness-runtime": "workspace:*",
+    "@substrate/client-storage": "workspace:*",
+    "@substrate/contracts": "workspace:*",
+    "@substrate/harness-runtime": "workspace:*",
     "better-auth": "^1.7.18",
     "conf": "^16.0.0",
     "croner": "^11",
@@ -34,8 +34,8 @@
     "typescript": "^7.0.2"
   },
   "build": {
-    "appId": "com.startupos.desktop",
-    "productName": "Startup OS",
+    "appId": "com.substrate.desktop",
+    "productName": "Substrate",
     "directories": {
       "app": "dist",
       "output": "release"
@@ -52,9 +52,9 @@
     "npmRebuild": false,
     "protocols": [
       {
-        "name": "Startup OS",
+        "name": "Substrate",
         "schemes": [
-          "startupos"
+          "substrate"
         ]
       }
     ],
@@ -62,7 +62,7 @@
       "target": [
         "nsis"
       ],
-      "executableName": "Startup OS"
+      "executableName": "Substrate"
     },
     "nsis": {
       "oneClick": false,

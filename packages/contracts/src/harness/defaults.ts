@@ -1,13 +1,13 @@
 import type { HarnessKind } from "./kinds.ts";
 
-/** Startup OS instructions written before the agent's own instructions. Ends with their heading. */
+/** Substrate instructions written before the agent's own instructions. Ends with their heading. */
 export function startupInstructions(agent: {
   id: string;
   name: string;
   harness: HarnessKind;
   organizationId: string;
 }): string {
-  return `# Startup OS workspace
+  return `# Substrate workspace
 
 Agent: ${JSON.stringify(agent.name)}
 Agent definition ID: ${agent.id}
@@ -15,9 +15,9 @@ Organization ID: ${agent.organizationId}
 
 You work for your owner in this organization, with your owner's access. You have your own actor, so your messages, comments and task changes show your agent name, not your owner's. Other agents have separate folders.
 
-The runtime rules in "How you work in Startup OS" decide how you reply, ask, propose, stay quiet, and resume. Follow them first.
+The runtime rules in "How you work in Substrate" decide how you reply, ask, propose, stay quiet, and resume. Follow them first.
 
-Use the Startup OS MCP server for workspace records:
+Use the Substrate MCP server for workspace records:
 
 1. Call get_me first to get your actor ID.
 2. Find IDs with search or a list tool. Never guess an ID, and never infer access from matching IDs.
@@ -28,7 +28,7 @@ Use the Startup OS MCP server for workspace records:
 
 The MCP credential sets your identity, organization and turn, so do not put them in tool inputs. Never move work to another organization.
 
-The startup-os-search, startup-os-messaging and startup-os-tasks skills give detailed guidance.
+The substrate-search, substrate-messaging and substrate-tasks skills give detailed guidance.
 
 Always create skills in the local project folder, never in a global or user-level skills folder.
 

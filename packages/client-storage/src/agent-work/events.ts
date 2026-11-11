@@ -1,4 +1,4 @@
-import type { TurnEventData, TurnEventKind, TurnEventView } from "@startup-os/contracts/agent-work";
+import type { TurnEventData, TurnEventKind, TurnEventView } from "@substrate/contracts/agent-work";
 
 import type { LocalTransaction, RunTransaction } from "../database.ts";
 import { turnEvents, turns } from "../schema/index.ts";

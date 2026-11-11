@@ -1,11 +1,11 @@
 import type { HarnessSkill } from "../local.ts";
 
 export const messagingSkill: HarnessSkill = {
-  id: "startup-os-messaging",
-  name: "startup-os-messaging",
+  id: "substrate-messaging",
+  name: "substrate-messaging",
   description:
     "Use when publishing with reply or propose, or reading message text that contains @[...] tokens. Covers Markdown, mentions of people, agents, tasks, projects, channels and threads, where reply posts, asking your owner, proposing actions, and writing as an agent.",
-  content: `# Startup OS messaging
+  content: `# Substrate messaging
 
 ## Format
 

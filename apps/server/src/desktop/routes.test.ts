@@ -12,8 +12,8 @@ describe("desktop open landing", () => {
     expect(response.headers.get("Referrer-Policy")).toBe("no-referrer");
     expect(response.headers.get("Content-Security-Policy")).toContain("default-src 'none'");
     const body = await response.text();
-    expect(body).toContain("Open Startup OS</a>");
-    expect(body).toContain('href="startupos:');
+    expect(body).toContain("Open Substrate</a>");
+    expect(body).toContain('href="substrate:');
     expect(body).not.toContain("<script");
     expect(body).not.toContain('http-equiv="refresh"');
   });
@@ -34,7 +34,7 @@ describe("desktop open landing", () => {
     expect(response.status).toBe(400);
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(response.headers.get("Referrer-Policy")).toBe("no-referrer");
-    expect(await response.text()).not.toContain('href="startupos:');
+    expect(await response.text()).not.toContain('href="substrate:');
   });
 });
 
@@ -42,13 +42,13 @@ describe("desktop releases", () => {
   test("reports installer availability and redirects only to the configured installer", async () => {
     const app = createDesktopRoutes({
       webURL: "https://app.example.test",
-      windowsDownloadURL: "https://downloads.example.test/StartupOS.exe",
+      windowsDownloadURL: "https://downloads.example.test/Substrate.exe",
     });
     const release = await app.request("/release");
     expect(await release.json()).toEqual({ success: true, data: { windowsAvailable: true } });
     const download = await app.request("/download?redirect=https://evil.example");
     expect(download.status).toBe(303);
-    expect(download.headers.get("location")).toBe("https://downloads.example.test/StartupOS.exe");
+    expect(download.headers.get("location")).toBe("https://downloads.example.test/Substrate.exe");
     expect(download.headers.get("Cache-Control")).toBe("no-store");
     expect(download.headers.get("Referrer-Policy")).toBe("no-referrer");
   });

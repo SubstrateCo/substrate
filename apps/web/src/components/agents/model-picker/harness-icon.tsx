@@ -1,4 +1,4 @@
-import type { HarnessKind } from "@startup-os/contracts/harness";
+import type { HarnessKind } from "@substrate/contracts/harness";
 
 import antigravity from "./icons/antigravity.svg";
 import claude from "./icons/claude.svg";

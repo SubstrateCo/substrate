@@ -17,7 +17,7 @@ import { personAvatar } from "./rules/person-avatar.ts";
 import { sentenceCase } from "./rules/sentence-case.ts";
 import { typographicQuotes } from "./rules/typographic-quotes.ts";
 
-/** Design-contract rules for the Startup OS renderer. Messages point to apps/web/DESIGN.md. */
+/** Design-contract rules for the Substrate renderer. Messages point to apps/web/DESIGN.md. */
 export default {
   meta: { name: "design" },
   rules: {

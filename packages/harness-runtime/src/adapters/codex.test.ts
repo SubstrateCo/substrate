@@ -1,4 +1,4 @@
-import type { HarnessEventBody } from "@startup-os/contracts/harness";
+import type { HarnessEventBody } from "@substrate/contracts/harness";
 
 import { CodexSession } from "./codex.ts";
 import type { RpcMessage } from "./json-rpc.ts";

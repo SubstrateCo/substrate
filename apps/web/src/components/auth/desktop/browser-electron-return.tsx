@@ -12,9 +12,9 @@ export function BrowserElectronReturn({ redirect, email }: { redirect: string; e
   const transfer = useMutation({
     mutationFn: async () => {
       const query = electronQuery(window.location.search);
-      if (!query) throw new Error("Open sign-in from Startup OS to try again.");
+      if (!query) throw new Error("Open sign-in from Substrate to try again.");
       const result = await authClient.electron.transferUser({ fetchOptions: { query } });
-      if (result.error) throw new Error("Could not return to Startup OS. Please try again.");
+      if (result.error) throw new Error("Could not return to Substrate. Please try again.");
     },
     onSuccess: () => setAttempt((value) => value + 1),
   });

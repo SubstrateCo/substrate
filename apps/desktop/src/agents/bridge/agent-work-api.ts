@@ -1,5 +1,5 @@
 /* oxlint-disable deslop/no-unknown-parameters -- The preload forwards typed API inputs over IPC; main parses each one. */
-import type { AgentWorkAPI } from "@startup-os/contracts/agent-work/desktop";
+import type { AgentWorkAPI } from "@substrate/contracts/agent-work/desktop";
 
 import type { AgentWorkMethod } from "./agent-work-bridge.ts";
 

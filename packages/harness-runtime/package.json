@@ -1,5 +1,5 @@
 {
-  "name": "@startup-os/harness-runtime",
+  "name": "@substrate/harness-runtime",
   "private": true,
   "type": "module",
   "exports": {
@@ -14,7 +14,7 @@
     "@anthropic-ai/claude-agent-sdk": "^0.3.319",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@opencode/client": "^2.2.5",
-    "@startup-os/contracts": "workspace:*",
+    "@substrate/contracts": "workspace:*",
     "jsonc-parser": "^3.3.1",
     "smol-toml": "^1.9.1",
     "yaml": "^2.9.1",

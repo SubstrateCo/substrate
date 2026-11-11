@@ -1,4 +1,4 @@
-import type { WorkspaceApiRequest } from "@startup-os/contracts/harness/mcp";
+import type { WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
 
 import { appOrigin } from "./test-support/environment";
 import { test } from "./test-support/fixtures";
@@ -27,7 +27,7 @@ test("only the owner's home desktop receives wakes, and only the owner sees and 
     ).ok(),
   ).toBe(true);
   const saved = await owner.post("/api/v1/agents/actors/save", {
-    headers: { "x-startup-os-installation": installationId, origin },
+    headers: { "x-substrate-installation": installationId, origin },
     data: { name: "Research", instructions: "Help", harness: "claude", enabled: true },
   });
   expect(saved.ok()).toBe(true);
@@ -150,7 +150,7 @@ test("only the home desktop publishes, and a left conversation's requests are pl
   await register(home);
   await register(other);
   const saved = await owner.post("/api/v1/agents/actors/save", {
-    headers: { "x-startup-os-installation": home, origin },
+    headers: { "x-substrate-installation": home, origin },
     data: { name: "Research", instructions: "Help", harness: "claude", enabled: true },
   });
   expect(saved.ok()).toBe(true);

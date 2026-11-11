@@ -14,7 +14,7 @@ test("verification and reset mails open Better Auth's link on the web app", () =
     "https://api.example.com/api/auth/verify-email?token=verification-token",
     origins,
   );
-  expect(verify.subject).toBe("Verify your Startup OS email");
+  expect(verify.subject).toBe("Verify your Substrate email");
   expect(linkIn(verify.text).toString()).toBe(
     "https://app.example.com/api/auth/verify-email?token=verification-token",
   );
@@ -22,7 +22,7 @@ test("verification and reset mails open Better Auth's link on the web app", () =
     "https://api.example.com/api/auth/reset-password/reset-token",
     origins,
   );
-  expect(reset.subject).toBe("Reset your Startup OS password");
+  expect(reset.subject).toBe("Reset your Substrate password");
   expect(linkIn(reset.text).toString()).toBe(
     "https://app.example.com/api/auth/reset-password/reset-token",
   );
@@ -33,7 +33,7 @@ test("an organization invitation names the organization and links to its accepta
     { id: "invite-1", organizationName: "Acme" },
     origins,
   );
-  expect(message.subject).toBe("Join Acme on Startup OS");
+  expect(message.subject).toBe("Join Acme on Substrate");
   expect(linkIn(message.text).toString()).toBe(
     "https://app.example.com/accept-invitation/invite-1",
   );
@@ -45,7 +45,7 @@ test("a sharing invitation sends the recipient through the desktop handoff on th
     { id, organizationName: "Acme", conversationName: "launch" },
     origins,
   );
-  expect(message.subject).toBe("Collaborate with Acme on Startup OS");
+  expect(message.subject).toBe("Collaborate with Acme on Substrate");
   expect(message.text).toContain("You have been invited to launch.");
   const link = linkIn(message.text);
   expect(link.origin).toBe(origins.apiURL);

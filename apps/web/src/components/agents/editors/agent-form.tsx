@@ -1,6 +1,6 @@
-import type { AgentConfiguration, SaveAgentInput } from "@startup-os/contracts/agents";
-import { saveAgentInput } from "@startup-os/contracts/agents";
-import type { HarnessKind } from "@startup-os/contracts/harness";
+import type { AgentConfiguration, SaveAgentInput } from "@substrate/contracts/agents";
+import { saveAgentInput } from "@substrate/contracts/agents";
+import type { HarnessKind } from "@substrate/contracts/harness";
 
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 
@@ -320,7 +320,7 @@ export function AgentForm({
             {section === "general" && (
               <SettingsSection
                 title="General"
-                description="How this agent appears in Startup OS and which model it uses."
+                description="How this agent appears in Substrate and which model it uses."
               >
                 <SettingsCard label="Agent details" footer={footer}>
                   <fieldset

@@ -6,7 +6,7 @@ import type {
   decideProposalInput,
   ownerScopeInput,
   respondRequestInput,
-} from "@startup-os/contracts/agent-work";
+} from "@substrate/contracts/agent-work";
 
 import { api, type ApiInput } from "../client";
 import { readResult } from "../result";

@@ -1,4 +1,4 @@
-import type { AgentRequestPayload, AgentRequestResponse } from "@startup-os/contracts/agent-work";
+import type { AgentRequestPayload, AgentRequestResponse } from "@substrate/contracts/agent-work";
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 

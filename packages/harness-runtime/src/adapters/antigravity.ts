@@ -1,4 +1,4 @@
-import type { AdapterCapabilities, TurnResult, Usage } from "@startup-os/contracts/harness";
+import type { AdapterCapabilities, TurnResult, Usage } from "@substrate/contracts/harness";
 
 import { HarnessError, unsupported } from "../errors.ts";
 import { antigravityAcpAvailable, launch, stopProcess } from "../process.ts";
@@ -213,7 +213,7 @@ export async function connectAntigravity(
       {
         protocolVersion: PROTOCOL_VERSION,
         clientCapabilities: {},
-        clientInfo: { name: "startup-os", version: "1.0.0" },
+        clientInfo: { name: "substrate", version: "1.0.0" },
       },
       { cancellationSignal: AbortSignal.timeout(30_000), stopWaitingOnCancel: true },
     );
@@ -221,7 +221,7 @@ export async function connectAntigravity(
       ? [
           {
             type: "http",
-            name: "startup-os",
+            name: "substrate",
             url: context.lease.url,
             headers: [{ name: "Authorization", value: `Bearer ${context.lease.token}` }],
           },

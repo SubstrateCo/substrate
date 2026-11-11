@@ -1,5 +1,5 @@
-import type { TaskStatus } from "@startup-os/contracts/tasks";
-import type { TaskLinkView } from "@startup-os/contracts/tasks/links";
+import type { TaskStatus } from "@substrate/contracts/tasks";
+import type { TaskLinkView } from "@substrate/contracts/tasks/links";
 
 import type { WorkspaceReference } from "@/components/messaging/references/entity-reference";
 

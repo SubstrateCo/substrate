@@ -1,4 +1,4 @@
-# Startup OS design contract
+# Substrate design contract
 
 This is the design contract for the renderer. Each rule names the component that implements it. If a rule and a screen disagree, change the screen. Add a primitive or a variant only in `src/components/ui`, with the shadcn CLI for new primitives.
 

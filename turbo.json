@@ -1,7 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
-    "@startup-os/web#build": {
+    "@substrate/web#build": {
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/.env",

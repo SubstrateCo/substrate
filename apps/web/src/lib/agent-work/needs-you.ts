@@ -1,4 +1,4 @@
-import type { AgentNeedsYou } from "@startup-os/contracts/agent-work";
+import type { AgentNeedsYou } from "@substrate/contracts/agent-work";
 
 /**
  * What the Needs you list shows, and what the rail and the Agents app count. Every request

@@ -1,4 +1,4 @@
-import { taskStatusValues } from "@startup-os/contracts/tasks";
+import { taskStatusValues } from "@substrate/contracts/tasks";
 
 import { AccessDeniedError } from "../errors";
 import { createMessagingService } from "../features/messaging/service";

@@ -1,4 +1,4 @@
-import type { HarnessKind } from "@startup-os/contracts/harness";
+import type { HarnessKind } from "@substrate/contracts/harness";
 
 import { useQuery } from "@tanstack/react-query";
 
@@ -18,7 +18,7 @@ export function HarnessAvailability({
   organizationId?: string | null;
   harness: HarnessKind;
 }) {
-  const desktop = !!window.startupOSHarness && !!organizationId;
+  const desktop = !!window.substrateHarness && !!organizationId;
   const status = useQuery({
     ...harnessStatusQueryOptions(userId, organizationId ?? ""),
     enabled: desktop,

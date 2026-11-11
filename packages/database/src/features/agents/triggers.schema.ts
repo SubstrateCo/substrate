@@ -1,4 +1,4 @@
-import { agentTriggerKinds, type AgentTriggerKind } from "@startup-os/contracts/agents";
+import { agentTriggerKinds, type AgentTriggerKind } from "@substrate/contracts/agents";
 
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { checkValues } from "../agent-work/check-values";

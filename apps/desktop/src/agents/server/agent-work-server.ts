@@ -7,8 +7,8 @@ import {
   type AgentWakeView,
   type openRequestInput,
   type publishStatusInput,
-} from "@startup-os/contracts/agent-work";
-import { harnessKinds } from "@startup-os/contracts/harness";
+} from "@substrate/contracts/agent-work";
+import { harnessKinds } from "@substrate/contracts/harness";
 
 /* oxlint-disable deslop/no-unknown-parameters -- Server responses are parsed at this boundary. */
 import { z } from "zod";

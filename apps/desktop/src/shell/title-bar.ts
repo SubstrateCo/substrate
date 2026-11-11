@@ -1,4 +1,4 @@
-import { fullscreenChannel, windowChannel } from "@startup-os/contracts/desktop/window";
+import { fullscreenChannel, windowChannel } from "@substrate/contracts/desktop/window";
 
 import { trustedSender } from "./trusted-sender.ts";
 import {

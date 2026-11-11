@@ -1,4 +1,4 @@
-import type { AppType } from "@startup-os/server/api";
+import type { AppType } from "@substrate/server/api";
 
 import { hc } from "hono/client";
 

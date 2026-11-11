@@ -1,6 +1,6 @@
-import { realtimeKeys } from "@startup-os/contracts/realtime";
-import type { RealtimeEvent } from "@startup-os/contracts/realtime";
-import type { RealtimeReceiver } from "@startup-os/database/realtime";
+import { realtimeKeys } from "@substrate/contracts/realtime";
+import type { RealtimeEvent } from "@substrate/contracts/realtime";
+import type { RealtimeReceiver } from "@substrate/database/realtime";
 
 import { createRealtimeHub } from "./hub";
 import type { Change, HubDependencies, Transport } from "./hub";

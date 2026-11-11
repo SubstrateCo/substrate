@@ -1,4 +1,4 @@
-import { sessionKeys, type AgentWakeMessageKind } from "@startup-os/contracts/agent-work";
+import { sessionKeys, type AgentWakeMessageKind } from "@substrate/contracts/agent-work";
 
 /**
  * Why an owner message wakes one of the owner's agents, if it does: a mention first, then a

@@ -3,14 +3,14 @@ import type {
   TurnContext,
   WorkspaceApiProxy,
   WorkspaceApiResult,
-} from "@startup-os/contracts/harness/mcp";
+} from "@substrate/contracts/harness/mcp";
 import {
   mcpTools,
   type LocalToolName,
   type McpInput,
   type McpToolName,
   type ToolDefinition,
-} from "@startup-os/contracts/harness/tools";
+} from "@substrate/contracts/harness/tools";
 
 import { forget, MemoryError, remember } from "./memory.ts";
 import { offloadOutput } from "./offload.ts";
@@ -77,9 +77,9 @@ function errorHint(code: string) {
       return "This requestId was already used with different input. Use a new requestId for a new action.";
     case "UNAUTHENTICATED":
     case "FORBIDDEN":
-      return "Stop. Tell your owner to sign in to Startup OS in this workspace and start a new run.";
+      return "Stop. Tell your owner to sign in to Substrate in this workspace and start a new run.";
     case "NO_TURN":
-      return "Do not retry. Startup OS tools work only while a turn is running.";
+      return "Do not retry. Substrate tools work only while a turn is running.";
     default:
       return "Retry once. If it fails again, stop and report the error to your owner.";
   }
@@ -169,7 +169,7 @@ export async function createStartupMcp(
       return;
     }
     const live = () => leases.get(token) === lease && valid(lease);
-    const mcp = new McpServer({ name: "startup-os", version: "1.0.0" });
+    const mcp = new McpServer({ name: "substrate", version: "1.0.0" });
     for (const name of lease.options.tools) {
       const tool = mcpTools[name];
       const hints: ToolDefinition = tool;

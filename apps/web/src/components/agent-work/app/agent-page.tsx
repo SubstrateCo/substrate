@@ -1,4 +1,4 @@
-import type { AgentStatusView } from "@startup-os/contracts/agent-work";
+import type { AgentStatusView } from "@substrate/contracts/agent-work";
 
 import { useState } from "react";
 
@@ -55,7 +55,7 @@ export function AgentPage({
       description={
         device
           ? `${name} runs on ${device.name}. Its activity, transcripts, and routines are stored there.`
-          : `${name} works once a desktop runs it. Open Startup OS on your desktop, then choose Run on this device in run settings.`
+          : `${name} works once a desktop runs it. Open Substrate on your desktop, then choose Run on this device in run settings.`
       }
       action={
         !device && (

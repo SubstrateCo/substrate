@@ -1,5 +1,5 @@
-import { desktopLink, desktopPath } from "@startup-os/contracts/desktop/links";
-import { failure, success, type ServiceResult } from "@startup-os/contracts/result";
+import { desktopLink, desktopPath } from "@substrate/contracts/desktop/links";
+import { failure, success, type ServiceResult } from "@substrate/contracts/result";
 
 /** The public /desktop/open page for a destination. Throws when the validator rejects it. */
 export function desktopHandoffURL(path: string, apiURL: string) {

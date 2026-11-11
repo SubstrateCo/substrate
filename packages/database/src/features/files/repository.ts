@@ -1,4 +1,4 @@
-import { MAX_ATTACHMENTS, attachmentFileIds } from "@startup-os/contracts/files/attachments";
+import { MAX_ATTACHMENTS, attachmentFileIds } from "@substrate/contracts/files/attachments";
 
 import type { Database } from "../../client";
 import { resolveHumanActor } from "../../core/actors/provisioning";

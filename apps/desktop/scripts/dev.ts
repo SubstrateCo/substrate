@@ -25,7 +25,7 @@ try {
   await bundlePreload();
   await bundleHarnessWorker();
   await ensureDevelopmentServices(
-    developmentServices(applicationURL, backendURL(process.env.STARTUP_OS_API_URL, false)),
+    developmentServices(applicationURL, backendURL(process.env.SUBSTRATE_API_URL, false)),
     (service) => {
       console.log(`Starting the ${service.name} server at ${service.url}.`);
       const child = Bun.spawn([process.execPath, "run", "--no-orphans", service.script], {

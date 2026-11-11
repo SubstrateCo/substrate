@@ -25,7 +25,7 @@ export function LoginForm({
       description="Sign in to your workspace."
       footer={
         <>
-          New to Startup OS? <AuthLink href={signupHref}>Create account</AuthLink>
+          New to Substrate? <AuthLink href={signupHref}>Create account</AuthLink>
         </>
       }
     >

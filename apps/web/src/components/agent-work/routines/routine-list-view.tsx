@@ -1,4 +1,4 @@
-import type { AgentRoutineView } from "@startup-os/contracts/agent-work";
+import type { AgentRoutineView } from "@substrate/contracts/agent-work";
 
 import { describeSchedule } from "./schedule";
 import { ContentNotice } from "@/components/feedback/content-notice";

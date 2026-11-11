@@ -2,8 +2,8 @@ import {
   pictureKindParam,
   pictureOwnerParam,
   pictureUploadInput,
-} from "@startup-os/contracts/files/pictures";
-import { failure } from "@startup-os/contracts/result";
+} from "@substrate/contracts/files/pictures";
+import { failure } from "@substrate/contracts/result";
 
 import { respond, validationHook } from "../../shared/http";
 import type { PictureService } from "./pictures";

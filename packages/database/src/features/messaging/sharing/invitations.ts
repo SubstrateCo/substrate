@@ -1,4 +1,4 @@
-import { sharingInviteInput } from "@startup-os/contracts/messaging/sharing";
+import { sharingInviteInput } from "@substrate/contracts/messaging/sharing";
 
 import type { DatabaseExecutor } from "../../../client";
 import { ensureHumanActor } from "../../../core/actors/provisioning";

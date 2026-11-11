@@ -1,4 +1,4 @@
-import { mcpCall } from "@startup-os/contracts/harness/tools";
+import { mcpCall } from "@substrate/contracts/harness/tools";
 
 import { respond, validationHook } from "../../shared/http";
 import { callAgentTool } from "./service";

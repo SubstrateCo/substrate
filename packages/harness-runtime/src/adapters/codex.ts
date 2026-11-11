@@ -1,4 +1,4 @@
-import type { AdapterCapabilities, TurnResult } from "@startup-os/contracts/harness";
+import type { AdapterCapabilities, TurnResult } from "@substrate/contracts/harness";
 
 import { HarnessError } from "../errors.ts";
 import { launch, stopProcess } from "../process.ts";
@@ -294,13 +294,13 @@ export async function connectCodex(
   if (context.lease)
     args.push(
       "-c",
-      `mcp_servers.startup-os={url=${JSON.stringify(context.lease.url)},bearer_token_env_var="STARTUP_OS_MCP_TOKEN"}`,
+      `mcp_servers.substrate={url=${JSON.stringify(context.lease.url)},bearer_token_env_var="SUBSTRATE_MCP_TOKEN"}`,
     );
   const child = launch(
     context.executable,
     args,
     context.directory,
-    context.lease ? { STARTUP_OS_MCP_TOKEN: context.lease.token } : {},
+    context.lease ? { SUBSTRATE_MCP_TOKEN: context.lease.token } : {},
   );
   let rpc: JsonLineRpc | undefined;
   const session = new CodexSession(context, {
@@ -316,7 +316,7 @@ export async function connectCodex(
   );
   try {
     await rpc.request("initialize", {
-      clientInfo: { name: "startup_os", title: "Startup OS", version: "1.0.0" },
+      clientInfo: { name: "substrate", title: "Substrate", version: "1.0.0" },
     });
     rpc.send({ method: "initialized", params: {} });
     const params: ThreadOptions = {

@@ -11,7 +11,7 @@ const steps: { icon: LucideIcon; title: string; description: string }[] = [
   {
     icon: Laptop,
     title: "Run it on your desktop",
-    description: "It works through the Startup OS desktop app, with the tools you already use.",
+    description: "It works through the Substrate desktop app, with the tools you already use.",
   },
   {
     icon: MessageCircle,
@@ -31,7 +31,7 @@ export function FirstAgentView({ onCreate }: { onCreate: () => void }) {
           </span>
           <PageHeader
             title="Create your first agent"
-            description="An agent works for you in Startup OS. It answers your messages, helps in conversations you add it to, and runs routines on a schedule. Anything beyond a reply waits for your approval."
+            description="An agent works for you in Substrate. It answers your messages, helps in conversations you add it to, and runs routines on a schedule. Anything beyond a reply waits for your approval."
           />
           <Button type="button" onClick={onCreate}>
             <Plus aria-hidden="true" />

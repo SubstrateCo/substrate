@@ -1,5 +1,5 @@
-import { attachmentReferences } from "@startup-os/database/files";
-import { createStorageRepository } from "@startup-os/database/storage";
+import { attachmentReferences } from "@substrate/database/files";
+import { createStorageRepository } from "@substrate/database/storage";
 
 import { db } from "../../auth/database";
 import { auth } from "../../auth/server";

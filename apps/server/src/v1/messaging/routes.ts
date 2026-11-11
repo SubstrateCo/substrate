@@ -12,7 +12,7 @@ import {
   ownerInput,
   addAgentInput,
   removeAgentInput,
-} from "@startup-os/contracts/messaging/input";
+} from "@substrate/contracts/messaging/input";
 
 import { respond, validationHook } from "../../shared/http";
 import * as defaultServices from "./service";

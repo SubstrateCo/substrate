@@ -14,8 +14,8 @@ import type {
   TurnEventView,
 } from "./turns.ts";
 
-export const agentWorkChannel = "startup-os:agent-work";
-export const agentWorkChangeChannel = "startup-os:agent-work:change";
+export const agentWorkChannel = "substrate:agent-work";
+export const agentWorkChangeChannel = "substrate:agent-work:change";
 /** The most events one turnEvents call returns. A full page means more may follow. */
 export const turnEventsPageSize = 1000;
 
@@ -87,6 +87,6 @@ export interface AgentWorkAPI {
 
 declare global {
   interface Window {
-    readonly startupOSAgentWork?: AgentWorkAPI;
+    readonly substrateAgentWork?: AgentWorkAPI;
   }
 }

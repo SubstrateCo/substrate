@@ -1,4 +1,4 @@
-import type { HarnessSkill } from "@startup-os/contracts/harness";
+import type { HarnessSkill } from "@substrate/contracts/harness";
 
 import { SettingsList } from "@/components/layout/settings-section";
 import { Blocks } from "lucide-react";
@@ -11,14 +11,14 @@ function Tag({ children }: { children: string }) {
   );
 }
 
-/** Skills that Startup OS writes into the agent folder. */
+/** Skills that Substrate writes into the agent folder. */
 export function StartupSkills({ skills, scanned }: { skills: HarnessSkill[]; scanned: boolean }) {
   return (
     <SettingsList
-      title="Startup OS skills"
+      title="Substrate skills"
       description={
         scanned
-          ? "Read from this agent’s local files. Startup OS updates these skills on sync."
+          ? "Read from this agent’s local files. Substrate updates these skills on sync."
           : "Default skill definitions. Open the desktop app to inspect this agent’s local files."
       }
     >

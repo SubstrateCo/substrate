@@ -1,5 +1,5 @@
-import { createDatabase, migrateDatabase } from "@startup-os/database";
-import { developmentTeams, seedDevelopmentDatabase } from "@startup-os/database/development";
+import { createDatabase, migrateDatabase } from "@substrate/database";
+import { developmentTeams, seedDevelopmentDatabase } from "@substrate/database/development";
 
 import { hashPassword } from "better-auth/crypto";
 

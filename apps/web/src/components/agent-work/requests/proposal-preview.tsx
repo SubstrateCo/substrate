@@ -1,5 +1,5 @@
-import type { ProposalAction } from "@startup-os/contracts/agent-work";
-import { taskStatusLabels } from "@startup-os/contracts/tasks";
+import type { ProposalAction } from "@substrate/contracts/agent-work";
+import { taskStatusLabels } from "@substrate/contracts/tasks";
 
 import type { ReactNode } from "react";
 

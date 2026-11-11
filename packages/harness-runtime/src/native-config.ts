@@ -1,4 +1,4 @@
-import type { HarnessKind, HarnessMcpServer, HarnessSkill } from "@startup-os/contracts/harness";
+import type { HarnessKind, HarnessMcpServer, HarnessSkill } from "@substrate/contracts/harness";
 
 import { HarnessError } from "./errors.ts";
 import { readOptional, safeId, safePath } from "./paths.ts";
@@ -22,8 +22,8 @@ const credentialName = /token|secret|password|credential|api.?key|authorization/
 
 function validateServer(server: HarnessMcpServer): void {
   safeId(server.id);
-  if (server.id === "startup-os")
-    throw new HarnessError("reserved-id", "Startup OS MCP is injected at execution time.");
+  if (server.id === "substrate")
+    throw new HarnessError("reserved-id", "Substrate MCP is injected at execution time.");
   if (server.transport === "http") {
     const url = new URL(server.url);
     const isWebProtocol = ["http:", "https:"].includes(url.protocol);

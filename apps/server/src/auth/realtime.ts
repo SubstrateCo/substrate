@@ -1,5 +1,5 @@
-import { realtimeKeys, type RealtimeHint } from "@startup-os/contracts/realtime";
-import { invitationRefreshHints, profileRefreshHints } from "@startup-os/database/realtime";
+import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
+import { invitationRefreshHints, profileRefreshHints } from "@substrate/database/realtime";
 
 import { publishRefresh } from "../v1/realtime/publisher";
 import { db } from "./database";

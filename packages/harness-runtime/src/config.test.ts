@@ -5,7 +5,7 @@ import {
   type HarnessConfiguration,
   type HarnessKind,
   type HarnessSkill,
-} from "@startup-os/contracts/harness";
+} from "@substrate/contracts/harness";
 
 import { materialize, writeDefaultFiles } from "./config.ts";
 import { scanNativeSkills, saveNativeSkill } from "./native-config.ts";
@@ -61,7 +61,7 @@ for (const harness of harnessKinds) {
   });
 }
 
-test("sync keeps the user's instructions but rewrites edited or missing Startup OS skills", async () => {
+test("sync keeps the user's instructions but rewrites edited or missing Substrate skills", async () => {
   const config = configuration(agent("antigravity"));
   await materialize(root, config);
   const directory = await agentDirectory(root, "org-a", "agent-a");
@@ -85,14 +85,14 @@ test("disabling or removing an agent leaves its files in place", async () => {
   expect(await read(directory, "CLAUDE.md")).toBe(before);
 });
 
-test("without Startup OS defaults, only the agent instructions are seeded", async () => {
+test("without Substrate defaults, only the agent instructions are seeded", async () => {
   await materialize(root, configuration(agent("codex", { useStartupDefaults: false })));
   const directory = await agentDirectory(root, "org-a", "agent-a");
   expect(await read(directory, "AGENTS.md")).toBe("Review only.\n");
   expect(await scanNativeSkills(directory, "codex")).toEqual([]);
 });
 
-test("reset replaces only Startup OS files with the current agent", async () => {
+test("reset replaces only Substrate files with the current agent", async () => {
   await materialize(root, configuration(agent("claude")));
   const directory = await agentDirectory(root, "org-a", "agent-a");
   await writeFile(join(directory, "CLAUDE.md"), "User prompt");

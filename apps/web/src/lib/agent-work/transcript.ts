@@ -2,7 +2,7 @@ import type {
   AgentRequestKind,
   TurnEventView,
   TurnOutputView,
-} from "@startup-os/contracts/agent-work";
+} from "@substrate/contracts/agent-work";
 
 type StepState = "done" | "current" | "error";
 

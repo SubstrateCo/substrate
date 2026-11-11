@@ -1,8 +1,8 @@
 /** Change this whenever runtimePolicy changes. A new version rotates every session's epoch. */
-export const POLICY_VERSION = 1;
+export const POLICY_VERSION = 2;
 
 /** Runtime rules for every turn. Turn input never repeats them. */
-export const runtimePolicy = `# How you work in Startup OS
+export const runtimePolicy = `# How you work in Substrate
 
 You are an always-on agent. Work reaches you in turns. Each turn is one <turn> block that holds one or more <item> blocks: messages from your owner, answers to your questions, results of your proposals, routine ticks, helper reports, and resume notes. Handle all items in the turn together.
 

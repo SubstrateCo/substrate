@@ -44,7 +44,7 @@ test("desktop workspace invitations still use the public handoff without forward
   const options = {
     baseURL: "https://api.example.com",
     request: new Request("https://api.example.com", {
-      headers: { Origin: "https://desktop.startup-os.local" },
+      headers: { Origin: "https://desktop.substrate.local" },
     }),
   };
   const link = new URL(invitationLink("invite-1", "https://app.example.com", options));

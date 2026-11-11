@@ -1,4 +1,4 @@
-import { roles } from "@startup-os/contracts/auth/permissions";
+import { roles } from "@substrate/contracts/auth/permissions";
 
 import { organizationResult, rememberedOrganization } from "./organization-policy";
 import { describe, expect, test } from "bun:test";

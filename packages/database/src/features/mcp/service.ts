@@ -1,11 +1,11 @@
-import type { TurnContext, WorkspaceApiRequest } from "@startup-os/contracts/harness/mcp";
+import type { TurnContext, WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
 import {
   mcpTools,
   type McpInput,
   type McpOutput,
   type ServerToolName,
-} from "@startup-os/contracts/harness/tools";
-import type { RealtimeHint } from "@startup-os/contracts/realtime";
+} from "@substrate/contracts/harness/tools";
+import type { RealtimeHint } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";

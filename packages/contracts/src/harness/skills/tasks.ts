@@ -1,11 +1,11 @@
 import type { HarnessSkill } from "../local.ts";
 
 export const tasksSkill: HarnessSkill = {
-  id: "startup-os-tasks",
-  name: "startup-os-tasks",
+  id: "substrate-tasks",
+  name: "substrate-tasks",
   description:
-    "Use when creating, updating, assigning or commenting on Startup OS tasks and projects. Covers statuses, priorities, assignment, subtasks, source messages, comments and bulk changes.",
-  content: `# Startup OS tasks
+    "Use when creating, updating, assigning or commenting on Substrate tasks and projects. Covers statuses, priorities, assignment, subtasks, source messages, comments and bulk changes.",
+  content: `# Substrate tasks
 
 ## Status
 

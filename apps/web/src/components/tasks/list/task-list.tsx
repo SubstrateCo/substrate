@@ -1,4 +1,4 @@
-import { taskStatusLabels, taskStatusValues, type TaskStatus } from "@startup-os/contracts/tasks";
+import { taskStatusLabels, taskStatusValues, type TaskStatus } from "@substrate/contracts/tasks";
 
 import { useId, useState } from "react";
 

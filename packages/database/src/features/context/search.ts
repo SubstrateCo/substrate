@@ -1,5 +1,5 @@
-import type { ContextSearchKind } from "@startup-os/contracts/context/input";
-import type { TaskStatus } from "@startup-os/contracts/tasks";
+import type { ContextSearchKind } from "@substrate/contracts/context/input";
+import type { TaskStatus } from "@substrate/contracts/tasks";
 
 import type { DatabaseExecutor } from "../../client";
 import { actorDisplayName } from "../../core/actors/display-name";

@@ -12,7 +12,7 @@ import type {
   reactionListInput,
   removeAgentInput,
   workspaceInput,
-} from "@startup-os/contracts/messaging/input";
+} from "@substrate/contracts/messaging/input";
 
 import { api, type ApiInput } from "../client";
 import { readResult } from "../result";

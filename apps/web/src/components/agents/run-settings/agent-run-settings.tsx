@@ -1,4 +1,4 @@
-import type { AgentRunSettings as AgentRunSettingsData } from "@startup-os/contracts/agents";
+import type { AgentRunSettings as AgentRunSettingsData } from "@substrate/contracts/agents";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 

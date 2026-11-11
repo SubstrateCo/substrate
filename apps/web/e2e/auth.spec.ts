@@ -57,7 +57,7 @@ test("password recovery replaces the password and invalidates old sessions", asy
   await expect(page.getByRole("heading", { name: "Check your inbox", exact: true })).toBeVisible();
   const link = await new Mailpit(request).link(
     account.email,
-    "Reset your Startup OS password",
+    "Reset your Substrate password",
     "/api/auth/reset-password",
   );
   await page.goto(link);

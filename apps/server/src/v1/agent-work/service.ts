@@ -3,9 +3,9 @@ import type {
   decideProposalInput,
   ownerScopeInput,
   respondRequestInput,
-} from "@startup-os/contracts/agent-work";
-import { realtimeKeys, type RealtimeHint } from "@startup-os/contracts/realtime";
-import * as work from "@startup-os/database/agent-work";
+} from "@substrate/contracts/agent-work";
+import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
+import * as work from "@substrate/database/agent-work";
 
 import { db } from "../../auth/database";
 import { serviceResult } from "../../shared/service-result";

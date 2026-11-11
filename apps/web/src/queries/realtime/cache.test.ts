@@ -1,4 +1,4 @@
-import type { RealtimeEvent } from "@startup-os/contracts/realtime";
+import type { RealtimeEvent } from "@substrate/contracts/realtime";
 
 import { QueryClient, QueryObserver } from "@tanstack/react-query";
 

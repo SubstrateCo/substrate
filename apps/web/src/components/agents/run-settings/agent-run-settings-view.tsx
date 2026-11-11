@@ -2,7 +2,7 @@ import {
   agentTriggers,
   type AgentRunSettings,
   type AgentTriggerSetting,
-} from "@startup-os/contracts/agents";
+} from "@substrate/contracts/agents";
 
 import { useEffect, useState } from "react";
 
@@ -69,7 +69,7 @@ export function AgentRunSettingsView({
             <p className="text-sm font-medium">{homeDeviceLabel(device)}</p>
             {!canRunHere && !device?.current && (
               <p className="text-xs text-muted-foreground">
-                Open Startup OS on a desktop to run this agent there.
+                Open Substrate on a desktop to run this agent there.
               </p>
             )}
           </div>

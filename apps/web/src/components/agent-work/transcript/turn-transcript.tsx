@@ -1,5 +1,5 @@
-import type { AgentRequestView, AgentTurnView } from "@startup-os/contracts/agent-work";
-import { liveTurnStatuses } from "@startup-os/contracts/agent-work";
+import type { AgentRequestView, AgentTurnView } from "@substrate/contracts/agent-work";
+import { liveTurnStatuses } from "@substrate/contracts/agent-work";
 
 import { useQuery } from "@tanstack/react-query";
 

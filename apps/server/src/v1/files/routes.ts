@@ -1,4 +1,4 @@
-import { createUploadInput, uploadIdParam } from "@startup-os/contracts/files/input";
+import { createUploadInput, uploadIdParam } from "@substrate/contracts/files/input";
 
 import { respond, validationHook } from "../../shared/http";
 import { createAttachmentRoutes } from "./attachment-routes";

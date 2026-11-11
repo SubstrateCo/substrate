@@ -1,4 +1,4 @@
-import { failure, type ServiceErrorCode, type ServiceResult } from "@startup-os/contracts/result";
+import { failure, type ServiceErrorCode, type ServiceResult } from "@substrate/contracts/result";
 
 import type { Hook } from "@hono/zod-validator";
 import type { Context, Env } from "hono";

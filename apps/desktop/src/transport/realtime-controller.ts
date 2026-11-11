@@ -1,9 +1,9 @@
-import { desktopOrigin } from "@startup-os/contracts/desktop/links";
+import { desktopOrigin } from "@substrate/contracts/desktop/links";
 import {
   realtimeConnectInput,
   realtimeEvent,
   type RealtimeUpdate,
-} from "@startup-os/contracts/realtime";
+} from "@substrate/contracts/realtime";
 
 import type { ClientRequest, IncomingMessage } from "node:http";
 import WebSocket from "ws";

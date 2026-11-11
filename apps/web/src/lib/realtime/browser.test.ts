@@ -1,4 +1,4 @@
-import type { RealtimeUpdate } from "@startup-os/contracts/realtime";
+import type { RealtimeUpdate } from "@substrate/contracts/realtime";
 
 import { createBrowserRealtime, type BrowserRealtimeSocket } from "./browser";
 import { expect, test } from "bun:test";

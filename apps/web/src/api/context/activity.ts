@@ -1,4 +1,4 @@
-import type { contextEntity } from "@startup-os/contracts/context/input";
+import type { contextEntity } from "@substrate/contracts/context/input";
 
 import { api, type ApiInput } from "../client";
 import { readResult } from "../result";

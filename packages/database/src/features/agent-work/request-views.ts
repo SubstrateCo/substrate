@@ -1,4 +1,4 @@
-import type { AgentNeedsYou, AgentRequestView } from "@startup-os/contracts/agent-work";
+import type { AgentNeedsYou, AgentRequestView } from "@substrate/contracts/agent-work";
 
 import type { DatabaseExecutor } from "../../client";
 import { actorDisplayName } from "../../core/actors/display-name";

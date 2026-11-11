@@ -4,8 +4,8 @@ import {
   type AgentCatalog,
   type AgentConfiguration,
   type SaveAgentValues,
-} from "@startup-os/contracts/agents";
-import { managedPicturePath } from "@startup-os/contracts/files/pictures";
+} from "@substrate/contracts/agents";
+import { managedPicturePath } from "@substrate/contracts/files/pictures";
 
 import type { Database } from "../../client";
 import { userAgents } from "../../core/actors/user-agents.schema";
@@ -100,7 +100,7 @@ export function createAgentRepository(db: Database, userId: string, installation
     /** Moves the agent to the calling desktop. Its folder on the old device is not copied. */
     async setHomeDevice(id: string): Promise<null> {
       const device = await currentDevice();
-      if (!device) throw new ValidationError("Open Startup OS on the desktop that should run it.");
+      if (!device) throw new ValidationError("Open Substrate on the desktop that should run it.");
       const [row] = await db
         .update(userAgents)
         .set({ homeDeviceId: device.id })

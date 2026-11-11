@@ -8,8 +8,8 @@ import { fileURLToPath } from "node:url";
 const desktop = fileURLToPath(new URL("../", import.meta.url));
 const web = fileURLToPath(new URL("../../web/", import.meta.url));
 // Only this validated, public origin is captured. Never serialize process.env.
-const apiURL = backendURL(process.env.STARTUP_OS_API_URL, true);
-const webURL = backendURL(process.env.STARTUP_OS_WEB_URL, true);
+const apiURL = backendURL(process.env.SUBSTRATE_API_URL, true);
+const webURL = backendURL(process.env.SUBSTRATE_WEB_URL, true);
 // Signed uploads go to the storage endpoint the server signs with.
 const storageEndpoint = process.env.S3_ENDPOINT;
 const allowedStorageOrigins = storageOrigins(

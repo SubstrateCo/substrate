@@ -1,5 +1,5 @@
-import { realtimeKeys } from "@startup-os/contracts/realtime";
-import type { RealtimeEvent } from "@startup-os/contracts/realtime";
+import { realtimeKeys } from "@substrate/contracts/realtime";
+import type { RealtimeEvent } from "@substrate/contracts/realtime";
 
 import { createRealtimeHub } from "./hub";
 import type { Transport } from "./hub";

@@ -1,4 +1,4 @@
-import { askRequestPayload } from "@startup-os/contracts/agent-work";
+import { askRequestPayload } from "@substrate/contracts/agent-work";
 
 import { registerDevice } from "../../core/devices/repository";
 import { AccessDeniedError } from "../../errors";

@@ -1,8 +1,8 @@
-import type { contextSourceTask } from "@startup-os/contracts/context/input";
-import type { conversationInput, messageInput } from "@startup-os/contracts/messaging/input";
-import { realtimeEvent, type RealtimeEvent } from "@startup-os/contracts/realtime";
-import type { ServiceResult } from "@startup-os/contracts/result";
-import type { TasksWrite } from "@startup-os/contracts/tasks/input";
+import type { contextSourceTask } from "@substrate/contracts/context/input";
+import type { conversationInput, messageInput } from "@substrate/contracts/messaging/input";
+import { realtimeEvent, type RealtimeEvent } from "@substrate/contracts/realtime";
+import type { ServiceResult } from "@substrate/contracts/result";
+import type { TasksWrite } from "@substrate/contracts/tasks/input";
 
 import { provisionVerifiedAccount } from "../../../server/integration/test-support/auth";
 import { Mailpit } from "../../../server/integration/test-support/mailpit";

@@ -1,4 +1,4 @@
-import type { McpInput, McpOutput } from "@startup-os/contracts/harness/tools";
+import type { McpInput, McpOutput } from "@substrate/contracts/harness/tools";
 
 import { HarnessError } from "./errors.ts";
 import { readOptional, safePath } from "./paths.ts";

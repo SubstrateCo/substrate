@@ -1,4 +1,4 @@
-import { taskStatusLabels } from "@startup-os/contracts/tasks";
+import { taskStatusLabels } from "@substrate/contracts/tasks";
 
 import type { ReactNode } from "react";
 

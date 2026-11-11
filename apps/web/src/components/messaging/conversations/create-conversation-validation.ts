@@ -1,4 +1,4 @@
-import { conversationInput, messagingLimits } from "@startup-os/contracts/messaging/input";
+import { conversationInput, messagingLimits } from "@substrate/contracts/messaging/input";
 
 import type { Conversation } from "@/lib/messaging/conversations";
 import type { PickedRecipient } from "@/lib/people/people-picker";

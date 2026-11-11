@@ -1,4 +1,4 @@
-import { taskStatusLabels } from "@startup-os/contracts/tasks";
+import { taskStatusLabels } from "@substrate/contracts/tasks";
 
 import type { DatabaseExecutor } from "../../client";
 import { actorDisplayName } from "../../core/actors/display-name";

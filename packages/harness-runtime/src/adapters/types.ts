@@ -6,7 +6,7 @@ import type {
   TurnInput,
   TurnKind,
   TurnResult,
-} from "@startup-os/contracts/harness";
+} from "@substrate/contracts/harness";
 
 import type { McpLease } from "../mcp.ts";
 

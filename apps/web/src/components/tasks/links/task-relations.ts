@@ -4,7 +4,7 @@ import {
   type TaskLinkEnd,
   type TaskLinkRelation,
   TaskLinkView,
-} from "@startup-os/contracts/tasks/links";
+} from "@substrate/contracts/tasks/links";
 
 import type { Task } from "../types";
 

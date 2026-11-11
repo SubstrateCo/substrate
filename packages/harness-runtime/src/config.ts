@@ -4,7 +4,7 @@ import {
   type HarnessAgent,
   type HarnessConfiguration,
   type HarnessSkill,
-} from "@startup-os/contracts/harness";
+} from "@substrate/contracts/harness";
 
 import { HarnessError } from "./errors.ts";
 import { organizationDirectory, safeId, safePath } from "./paths.ts";
@@ -15,7 +15,7 @@ function skillFile(skill: HarnessSkill) {
   return `---\nname: ${skill.name}\ndescription: ${JSON.stringify(skill.description)}\n---\n\n${skill.content}`;
 }
 
-/** Files Startup OS provides for an agent, relative to its folder. The user owns them once written. */
+/** Files Substrate provides for an agent, relative to its folder. The user owns them once written. */
 function defaultFiles(organizationId: string, agent: HarnessAgent) {
   return new Map([
     [
@@ -27,7 +27,7 @@ function defaultFiles(organizationId: string, agent: HarnessAgent) {
   ]);
 }
 
-/** Startup OS owns these skills: each write replaces them so they match the current MCP tools. */
+/** Substrate owns these skills: each write replaces them so they match the current MCP tools. */
 async function writeStartupSkills(agentRoot: string, agent: HarnessAgent): Promise<void> {
   if (!agent.useStartupDefaults) return;
   for (const skill of startupSkills) {
@@ -39,7 +39,7 @@ async function writeStartupSkills(agentRoot: string, agent: HarnessAgent): Promi
 
 /**
  * Writes missing default files. With `replace`, replaces existing ones too: on a reset, and when
- * a session opens, so its folder matches the current agent. Startup OS skills are always
+ * a session opens, so its folder matches the current agent. Substrate skills are always
  * replaced. Never deletes files. With managedPrefix, the instructions file starts with it: the
  * managed policy channel for harnesses that load no other instruction source.
  */

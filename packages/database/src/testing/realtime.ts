@@ -1,4 +1,4 @@
-import type { RealtimeAudience } from "@startup-os/contracts/realtime";
+import type { RealtimeAudience } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../client";
 import { audienceRecipients, resolveReceiver } from "../features/realtime/audience";

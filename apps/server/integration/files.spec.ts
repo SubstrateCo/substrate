@@ -1,4 +1,4 @@
-import type { CompletedUpload } from "@startup-os/contracts/files/input";
+import type { CompletedUpload } from "@substrate/contracts/files/input";
 
 import { appOrigin } from "./test-support/environment";
 import {

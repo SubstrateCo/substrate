@@ -1,4 +1,4 @@
-import type { StorageRepository } from "@startup-os/database/storage";
+import type { StorageRepository } from "@substrate/database/storage";
 
 import { ServiceError } from "../../shared/service-result";
 import type { ObjectStorage } from "../../storage/types";

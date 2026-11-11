@@ -1,4 +1,4 @@
-import { realtimeEvent, type RealtimeEvent } from "@startup-os/contracts/realtime";
+import { realtimeEvent, type RealtimeEvent } from "@substrate/contracts/realtime";
 
 import {
   CancelledError,

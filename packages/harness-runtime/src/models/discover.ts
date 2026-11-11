@@ -2,7 +2,7 @@ import {
   harnessModelCatalogSchema,
   type HarnessKind,
   type HarnessModelCatalog,
-} from "@startup-os/contracts/harness";
+} from "@substrate/contracts/harness";
 
 import { resolveExecutable } from "../process.ts";
 import { harnessDefinitions } from "../registry.ts";

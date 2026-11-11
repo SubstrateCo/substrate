@@ -1,5 +1,5 @@
 {
-  "name": "@startup-os/design-lint",
+  "name": "@substrate/design-lint",
   "private": true,
   "type": "module",
   "exports": {

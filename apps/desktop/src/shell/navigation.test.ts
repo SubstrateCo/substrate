@@ -8,13 +8,13 @@ describe("desktop navigation", () => {
     ).toBe("internal");
     for (const url of [
       "http://localhost:3000/tasks",
-      "https://desktop.startup-os.local.evil.test/tasks",
-      "https://desktop.startup-os.local:444/tasks",
-      "http://desktop.startup-os.local/tasks",
+      "https://desktop.substrate.local.evil.test/tasks",
+      "https://desktop.substrate.local:444/tasks",
+      "http://desktop.substrate.local/tasks",
     ]) {
       expect(navigationTarget(url, bundledApplicationURL)).toBe("external");
     }
-    expect(navigationTarget("https://user@desktop.startup-os.local/", bundledApplicationURL)).toBe(
+    expect(navigationTarget("https://user@desktop.substrate.local/", bundledApplicationURL)).toBe(
       "blocked",
     );
   });
@@ -38,7 +38,7 @@ describe("desktop navigation", () => {
       "javascript:alert(1)",
       "file:///C:/Windows/system.ini",
       "data:text/html,hello",
-      "startupos://tasks",
+      "substrate://tasks",
       "not a URL",
       "https://user:password@example.com/",
       "http://user:password@localhost:3000/",

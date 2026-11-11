@@ -1,4 +1,4 @@
-import type { NewOutput } from "@startup-os/client-storage/agent-work";
+import type { NewOutput } from "@substrate/client-storage/agent-work";
 
 import { turnOutcome } from "./outcome.ts";
 import { toolOutputs } from "./tool-results.ts";

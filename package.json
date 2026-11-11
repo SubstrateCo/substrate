@@ -1,5 +1,5 @@
 {
-  "name": "startup-os",
+  "name": "substrate",
   "private": true,
   "workspaces": [
     "apps/*",
@@ -9,14 +9,14 @@
   "scripts": {
     "dev": "bun run --parallel --no-orphans dev:server dev:web",
     "dev:server": "bun --watch apps/server/src/main.ts",
-    "dev:web": "bun run --filter @startup-os/web dev",
-    "dev:desktop": "bun run --filter @startup-os/desktop dev",
-    "build": "bun run --filter @startup-os/web build",
-    "build:desktop": "bun run --filter @startup-os/desktop build",
-    "build:desktop:dir": "bun run --filter @startup-os/desktop build:dir",
-    "package:desktop": "bun run --filter @startup-os/desktop package",
-    "test:integration": "bun run --filter @startup-os/server test:integration",
-    "test:e2e": "bun run --filter @startup-os/web test:e2e",
+    "dev:web": "bun run --filter @substrate/web dev",
+    "dev:desktop": "bun run --filter @substrate/desktop dev",
+    "build": "bun run --filter @substrate/web build",
+    "build:desktop": "bun run --filter @substrate/desktop build",
+    "build:desktop:dir": "bun run --filter @substrate/desktop build:dir",
+    "package:desktop": "bun run --filter @substrate/desktop package",
+    "test:integration": "bun run --filter @substrate/server test:integration",
+    "test:e2e": "bun run --filter @substrate/web test:e2e",
     "test:e2e:services": "docker compose --profile test up -d --wait postgres-e2e mailpit valkey",
     "services:up": "docker compose up -d postgres mailpit s3 s3-init valkey",
     "lint": "oxlint --type-aware --fix",
@@ -27,8 +27,8 @@
     "test:unit": "turbo run test",
     "db:up": "docker compose up -d postgres",
     "db:test:up": "docker compose --profile test up -d postgres-test",
-    "db:generate": "bun run --filter @startup-os/database db:generate",
-    "db:migrate": "bun run --filter @startup-os/database db:migrate",
+    "db:generate": "bun run --filter @substrate/database db:generate",
+    "db:migrate": "bun run --filter @substrate/database db:migrate",
     "db:seed": "bun --env-file=.env apps/server/scripts/seed-dev.ts"
   },
   "devDependencies": {

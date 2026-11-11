@@ -3,7 +3,7 @@ import {
   realtimeEvent,
   type RealtimeAPI,
   type RealtimeUpdate,
-} from "@startup-os/contracts/realtime";
+} from "@substrate/contracts/realtime";
 
 import { z } from "zod";
 

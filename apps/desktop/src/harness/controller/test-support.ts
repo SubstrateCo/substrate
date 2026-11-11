@@ -1,4 +1,4 @@
-import type { LocalToolProxy } from "@startup-os/contracts/harness/mcp";
+import type { LocalToolProxy } from "@substrate/contracts/harness/mcp";
 
 import { HarnessWorkerError } from "../worker/protocol.ts";
 import { createHarnessController } from "./harness-controller.ts";

@@ -2,12 +2,12 @@ import type {
   contextWorkspace,
   contextNotification,
   contextNotificationPage,
-} from "@startup-os/contracts/context/input";
+} from "@substrate/contracts/context/input";
 import type {
   notificationGroupsInput,
   notificationGroupEventsInput,
   notificationGroupReadInput,
-} from "@startup-os/contracts/context/notification-groups";
+} from "@substrate/contracts/context/notification-groups";
 
 import { api, type ApiInput } from "../client";
 import { readResult } from "../result";

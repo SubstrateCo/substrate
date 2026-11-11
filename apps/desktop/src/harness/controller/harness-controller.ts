@@ -6,14 +6,14 @@ import {
   harnessSessionRefSchema,
   type HarnessCommand,
   type HarnessCommandResult,
-} from "@startup-os/contracts/harness";
+} from "@substrate/contracts/harness";
 import {
   localToolRequest,
   workspaceApiResult,
   type LocalToolProxy,
   type WorkspaceApiProxy,
-} from "@startup-os/contracts/harness/mcp";
-import { mcpTools } from "@startup-os/contracts/harness/tools";
+} from "@substrate/contracts/harness/mcp";
+import { mcpTools } from "@substrate/contracts/harness/tools";
 
 import {
   harnessMethods,

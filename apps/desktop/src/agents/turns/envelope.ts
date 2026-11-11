@@ -1,4 +1,4 @@
-import type { InboxRow } from "@startup-os/client-storage/agent-work";
+import type { InboxRow } from "@substrate/client-storage/agent-work";
 import type {
   AgentSourceMessage,
   AgentWakeRequestDetail,
@@ -6,7 +6,7 @@ import type {
   EnvelopeResumeNote,
   EnvelopeTurn,
   ProposalOutcome,
-} from "@startup-os/contracts/agent-work";
+} from "@substrate/contracts/agent-work";
 
 /** Escapes text so that no body or attribute can open or close an envelope tag. */
 function fence(value: string) {

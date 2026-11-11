@@ -1,4 +1,4 @@
-import type { HarnessEvent } from "@startup-os/contracts/harness";
+import type { HarnessEvent } from "@substrate/contracts/harness";
 
 import { expect, mock, test } from "bun:test";
 import { EventEmitter } from "node:events";

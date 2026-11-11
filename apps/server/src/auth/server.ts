@@ -1,13 +1,13 @@
-import { ac, roles } from "@startup-os/contracts/auth/permissions";
-import { managedPicture } from "@startup-os/contracts/files/pictures";
+import { ac, roles } from "@substrate/contracts/auth/permissions";
+import { managedPicture } from "@substrate/contracts/files/pictures";
 import {
   getRememberedOrganization,
   rememberOrganization,
-} from "@startup-os/database/authentication";
-import { clearMembershipSharing } from "@startup-os/database/messaging";
-import { ensureHumanActor } from "@startup-os/database/provisioning";
-import * as schema from "@startup-os/database/schema";
-import { createStorageRepository } from "@startup-os/database/storage";
+} from "@substrate/database/authentication";
+import { clearMembershipSharing } from "@substrate/database/messaging";
+import { ensureHumanActor } from "@substrate/database/provisioning";
+import * as schema from "@substrate/database/schema";
+import { createStorageRepository } from "@substrate/database/storage";
 
 import { environment } from "../environment";
 import { mail } from "../mail/service";
@@ -52,7 +52,7 @@ const provisionMember = async (input: {
 };
 
 export const auth = betterAuth({
-  appName: "Startup OS",
+  appName: "Substrate",
   baseURL: environment.apiURL,
   trustedOrigins: environment.trustedOrigins,
   secret: environment.authSecret,

@@ -1,5 +1,5 @@
 {
-  "name": "@startup-os/contracts",
+  "name": "@substrate/contracts",
   "private": true,
   "type": "module",
   "exports": {

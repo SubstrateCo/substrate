@@ -1,7 +1,7 @@
-import { askRequestPayload, proposalActionHash } from "@startup-os/contracts/agent-work";
-import type { TurnContext } from "@startup-os/contracts/harness/mcp";
-import type { McpInput, McpOutput } from "@startup-os/contracts/harness/tools";
-import type { RealtimeHint } from "@startup-os/contracts/realtime";
+import { askRequestPayload, proposalActionHash } from "@substrate/contracts/agent-work";
+import type { TurnContext } from "@substrate/contracts/harness/mcp";
+import type { McpInput, McpOutput } from "@substrate/contracts/harness/tools";
+import type { RealtimeHint } from "@substrate/contracts/realtime";
 
 import type { RepositoryContext } from "../../core/repository-context";
 import { ValidationError } from "../../errors";

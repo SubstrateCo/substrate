@@ -1,4 +1,4 @@
-import { maxLiveHelpers } from "@startup-os/contracts/agent-work";
+import { maxLiveHelpers } from "@substrate/contracts/agent-work";
 
 import type { LocalTransaction, RunTransaction } from "../database.ts";
 import { helpers, inbox } from "../schema/index.ts";

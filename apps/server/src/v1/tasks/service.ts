@@ -1,15 +1,15 @@
-import { realtimeKeys } from "@startup-os/contracts/realtime";
-import type { RealtimeHint } from "@startup-os/contracts/realtime";
+import { realtimeKeys } from "@substrate/contracts/realtime";
+import type { RealtimeHint } from "@substrate/contracts/realtime";
 import type {
   projectRequest,
   taskRequest,
   tasksWorkspace,
   tasksWrite,
   workRequest,
-} from "@startup-os/contracts/tasks/input";
-import { createRepositories } from "@startup-os/database";
-import { ensureOwnedAgentActors, resolveHumanActor } from "@startup-os/database/provisioning";
-import { projectAccessRefreshHints } from "@startup-os/database/realtime";
+} from "@substrate/contracts/tasks/input";
+import { createRepositories } from "@substrate/database";
+import { ensureOwnedAgentActors, resolveHumanActor } from "@substrate/database/provisioning";
+import { projectAccessRefreshHints } from "@substrate/database/realtime";
 
 import { db } from "../../auth/database";
 import { serviceResult } from "../../shared/service-result";

@@ -1,4 +1,4 @@
-import type { TurnStatus } from "@startup-os/contracts/agent-work";
+import type { TurnStatus } from "@substrate/contracts/agent-work";
 
 import type { LocalTransaction } from "../database.ts";
 import { inbox, turns } from "../schema/index.ts";

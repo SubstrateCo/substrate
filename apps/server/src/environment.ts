@@ -1,4 +1,4 @@
-import { desktopOrigin, desktopScheme } from "@startup-os/contracts/desktop/links";
+import { desktopOrigin, desktopScheme } from "@substrate/contracts/desktop/links";
 
 import { z } from "zod";
 
@@ -38,20 +38,20 @@ const storageKeys = [
 const developmentStorage: Record<(typeof storageKeys)[number], string> = {
   S3_ENDPOINT: "http://localhost:4566",
   S3_REGION: "us-east-1",
-  S3_BUCKET: "startup-os-private",
-  S3_ACCESS_KEY_ID: "startup_os",
-  S3_SECRET_ACCESS_KEY: "startup_os_storage",
+  S3_BUCKET: "substrate-private",
+  S3_ACCESS_KEY_ID: "substrate",
+  S3_SECRET_ACCESS_KEY: "substrate_storage",
 };
 
 const variables = z
   .object({
     NODE_ENV: z.string().optional(),
     // The public API origin: Better Auth links, the Vite proxy target and the desktop backend.
-    STARTUP_OS_API_URL: origin.default("http://localhost:3001"),
+    SUBSTRATE_API_URL: origin.default("http://localhost:3001"),
     // Bind port. Defaults to the API origin's port; set it when a proxy serves that origin.
     SERVER_PORT: port.optional(),
     // The public web app origin: email links and the first trusted frontend origin.
-    STARTUP_OS_WEB_URL: origin.default("http://localhost:3000"),
+    SUBSTRATE_WEB_URL: origin.default("http://localhost:3000"),
     // Extra trusted frontend origins, comma separated.
     FRONTEND_ORIGINS: z
       .string()
@@ -81,8 +81,8 @@ const variables = z
     S3_SECRET_ACCESS_KEY: z.string().optional(),
     VALKEY_URL: z.string().default("redis://localhost:6379"),
     // Separates servers that share one Valkey, such as the e2e and development servers.
-    REALTIME_CHANNEL: z.string().default("startup-os:realtime:v1"),
-    STARTUP_OS_WINDOWS_DOWNLOAD_URL: httpsURL.optional(),
+    REALTIME_CHANNEL: z.string().default("substrate:realtime:v1"),
+    SUBSTRATE_WINDOWS_DOWNLOAD_URL: httpsURL.optional(),
   })
   .superRefine((env, ctx) => {
     if (Boolean(env.SMTP_USER) !== Boolean(env.SMTP_PASSWORD))
@@ -98,15 +98,15 @@ const variables = z
   })
   .transform((env) => {
     const storage = (key: (typeof storageKeys)[number]) => env[key] ?? developmentStorage[key];
-    const api = new URL(env.STARTUP_OS_API_URL);
+    const api = new URL(env.SUBSTRATE_API_URL);
     return {
-      apiURL: env.STARTUP_OS_API_URL,
+      apiURL: env.SUBSTRATE_API_URL,
       port: env.SERVER_PORT ?? (Number(api.port) || (api.protocol === "https:" ? 443 : 80)),
-      webURL: env.STARTUP_OS_WEB_URL,
+      webURL: env.SUBSTRATE_WEB_URL,
       // The desktop scheme serves Better Auth's Electron flow; the desktop origin is the bundled renderer.
       trustedOrigins: [
         `${desktopScheme}:/`,
-        ...new Set([env.STARTUP_OS_WEB_URL, desktopOrigin, ...env.FRONTEND_ORIGINS]),
+        ...new Set([env.SUBSTRATE_WEB_URL, desktopOrigin, ...env.FRONTEND_ORIGINS]),
       ],
       authSecret: env.BETTER_AUTH_SECRET,
       databaseURL: env.DATABASE_URL,
@@ -129,7 +129,7 @@ const variables = z
       },
       valkeyURL: env.VALKEY_URL,
       realtimeChannel: env.REALTIME_CHANNEL,
-      windowsDownloadURL: env.STARTUP_OS_WINDOWS_DOWNLOAD_URL,
+      windowsDownloadURL: env.SUBSTRATE_WINDOWS_DOWNLOAD_URL,
     };
   });
 

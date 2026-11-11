@@ -1,4 +1,4 @@
-import { realtimeConnectInput } from "@startup-os/contracts/realtime";
+import { realtimeConnectInput } from "@substrate/contracts/realtime";
 
 import type { RealtimeHub } from "./hub";
 import { zValidator } from "@hono/zod-validator";

@@ -20,7 +20,7 @@ export async function discoverCodexModels(
   signal.addEventListener("abort", abort, { once: true });
   try {
     await rpc.request("initialize", {
-      clientInfo: { name: "startup_os", title: "Startup OS", version: "1.0.0" },
+      clientInfo: { name: "substrate", title: "Substrate", version: "1.0.0" },
       capabilities: { experimentalApi: true },
     });
     rpc.send({ method: "initialized", params: {} });

@@ -1,4 +1,4 @@
-import { managedPicture } from "@startup-os/contracts/files/pictures";
+import { managedPicture } from "@substrate/contracts/files/pictures";
 
 import { user } from "../authentication/schema";
 import { member } from "../organizations/schema";

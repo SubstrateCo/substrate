@@ -6,7 +6,7 @@ import {
   normalizeHarnessRequest,
   type AgentRequestPayload,
   type AgentRequestResponse,
-} from "@startup-os/contracts/agent-work";
+} from "@substrate/contracts/agent-work";
 
 import type { LiveTurn, RuntimeContext } from "./context.ts";
 
@@ -98,7 +98,7 @@ export function createRequestBridge(context: RuntimeContext) {
               kind: "error",
               data: {
                 code: "unsupported_request",
-                message: "The agent asked for input that Startup OS cannot show.",
+                message: "The agent asked for input that Substrate cannot show.",
               },
             },
           ],

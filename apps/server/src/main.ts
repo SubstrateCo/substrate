@@ -1,4 +1,4 @@
-import { pruneRecords } from "@startup-os/database/maintenance";
+import { pruneRecords } from "@substrate/database/maintenance";
 
 import { createApp } from "./app";
 import { closeDatabase, db } from "./auth/database";
@@ -24,7 +24,7 @@ const server = Bun.serve({
     return app.fetch(request, server);
   },
 });
-console.log(`Startup OS API listening on ${server.url}`);
+console.log(`Substrate API listening on ${server.url}`);
 
 let cleaning = false;
 // Hourly: storage objects, then records nothing reads any more.

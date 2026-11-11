@@ -2,7 +2,7 @@ import {
   wakeDedupeKeys,
   type AgentWakeRequestDetail,
   type AgentWakeView,
-} from "@startup-os/contracts/agent-work";
+} from "@substrate/contracts/agent-work";
 
 import type { DatabaseExecutor } from "../../client";
 import { userAgents } from "../../core/actors/user-agents.schema";

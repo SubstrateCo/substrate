@@ -1,4 +1,4 @@
-import type { HarnessModel } from "@startup-os/contracts/harness";
+import type { HarnessModel } from "@substrate/contracts/harness";
 
 import { HarnessError } from "../errors.ts";
 import { z } from "zod";

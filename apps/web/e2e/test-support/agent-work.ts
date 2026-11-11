@@ -1,5 +1,5 @@
-import type { TurnContext } from "@startup-os/contracts/harness/mcp";
-import { mcpTools, type McpOutput, type ServerToolName } from "@startup-os/contracts/harness/tools";
+import type { TurnContext } from "@substrate/contracts/harness/mcp";
+import { mcpTools, type McpOutput, type ServerToolName } from "@substrate/contracts/harness/tools";
 
 import type { Actor } from "./fixtures";
 import { expect } from "@playwright/test";
@@ -14,7 +14,7 @@ export async function createAgent(owner: Actor) {
   expect(registered.ok(), await registered.text()).toBe(true);
   const name = `Research ${crypto.randomUUID()}`;
   const saved = await owner.request.post("/api/v1/agents/actors/save", {
-    headers: { "x-startup-os-installation": installationId },
+    headers: { "x-substrate-installation": installationId },
     data: { name, instructions: "Help with work", harness: "opencode", enabled: true },
   });
   expect(saved.ok(), await saved.text()).toBe(true);

@@ -3,7 +3,7 @@ import type {
   contextMessagePage,
   contextTarget,
   contextLink,
-} from "@startup-os/contracts/context/input";
+} from "@substrate/contracts/context/input";
 
 import { api, type ApiInput } from "../client";
 import { readResult } from "../result";

@@ -1,5 +1,5 @@
-import type { SaveAgentTriggersInput } from "@startup-os/contracts/agents";
-import type { SaveAgentInput } from "@startup-os/contracts/agents";
+import type { SaveAgentTriggersInput } from "@substrate/contracts/agents";
+import type { SaveAgentInput } from "@substrate/contracts/agents";
 
 import { api } from "../client";
 import { readResult } from "../result";

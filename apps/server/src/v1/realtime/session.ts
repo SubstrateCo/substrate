@@ -1,4 +1,4 @@
-import type { RealtimeReceiver } from "@startup-os/database/realtime";
+import type { RealtimeReceiver } from "@substrate/database/realtime";
 
 interface SessionAPI {
   getSession(input: { headers: Headers; query: { disableCookieCache: true } }): Promise<{

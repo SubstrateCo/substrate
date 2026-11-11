@@ -1,6 +1,6 @@
-import { HelperLimitError } from "@startup-os/client-storage/agent-work";
-import { localToolRequest, type WorkspaceApiResult } from "@startup-os/contracts/harness/mcp";
-import { mcpTools, type LocalToolName, type McpOutput } from "@startup-os/contracts/harness/tools";
+import { HelperLimitError } from "@substrate/client-storage/agent-work";
+import { localToolRequest, type WorkspaceApiResult } from "@substrate/contracts/harness/mcp";
+import { mcpTools, type LocalToolName, type McpOutput } from "@substrate/contracts/harness/tools";
 
 import type { RuntimeContext } from "../runtime/context.ts";
 import type { Steering } from "../runtime/steering.ts";

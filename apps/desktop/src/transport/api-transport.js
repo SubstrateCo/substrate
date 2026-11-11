@@ -1,4 +1,4 @@
-import { desktopInstallationHeader, desktopOrigin } from "@startup-os/contracts/desktop/links";
+import { desktopInstallationHeader, desktopOrigin } from "@substrate/contracts/desktop/links";
 
 /** Remove session credentials before returning auth responses to the renderer. */
 /** @param {unknown} value @returns {unknown} */

@@ -44,15 +44,15 @@ test("agent definitions can be created, edited, persisted and deleted, and the A
   await expect(user.page.getByLabel("Agent name", { exact: true })).toHaveValue(name);
   await expect(save).toBeDisabled();
   await section(user.page, "Skills").click();
-  await expect(user.page.getByText("startup-os-search", { exact: true })).toBeVisible();
+  await expect(user.page.getByText("substrate-search", { exact: true })).toBeVisible();
   await section(user.page, "MCP servers").click();
   await expect(
-    user.page.getByRole("listitem").filter({ hasText: "startup-os" }).getByText("Built-in"),
+    user.page.getByRole("listitem").filter({ hasText: "substrate" }).getByText("Built-in"),
   ).toBeVisible();
 
   await section(user.page, "Instructions").click();
   await expect(
-    user.page.getByRole("region", { name: "Startup OS instructions", exact: true }),
+    user.page.getByRole("region", { name: "Substrate instructions", exact: true }),
   ).toBeHidden();
   await expect(instructions(user.page)).toHaveValue(
     "Review release tasks. Do not contact external services.",

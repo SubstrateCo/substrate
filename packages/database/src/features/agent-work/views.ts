@@ -2,7 +2,7 @@ import type {
   AgentRequestPlace,
   AgentRequestView,
   AgentStatusView,
-} from "@startup-os/contracts/agent-work";
+} from "@substrate/contracts/agent-work";
 
 import type { agentRequests } from "./requests.schema";
 import type { agentStatus } from "./status.schema";

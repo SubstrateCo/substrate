@@ -1,4 +1,4 @@
-import type { McpOutput, ServerToolName } from "@startup-os/contracts/harness/tools";
+import type { McpOutput, ServerToolName } from "@substrate/contracts/harness/tools";
 
 import { actors } from "../../core/actors/schema";
 import { sql } from "drizzle-orm";

@@ -4,8 +4,8 @@ import {
   responseMatchesPayload,
   type AgentRequestResponse,
   type ProposalOutcome,
-} from "@startup-os/contracts/agent-work";
-import type { RealtimeHint } from "@startup-os/contracts/realtime";
+} from "@substrate/contracts/agent-work";
+import type { RealtimeHint } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";

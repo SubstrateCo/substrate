@@ -1,7 +1,7 @@
 import type {
   conversationTargetInput,
   workspaceInput,
-} from "@startup-os/contracts/messaging/input";
+} from "@substrate/contracts/messaging/input";
 import type {
   sharingAcceptInput,
   sharingActionInput,
@@ -9,7 +9,7 @@ import type {
   sharingInviteInput,
   sharingInvitationInput,
   sharingRemoveInput,
-} from "@startup-os/contracts/messaging/sharing";
+} from "@substrate/contracts/messaging/sharing";
 
 import { api, type ApiInput } from "@/api/client";
 import { readResult } from "@/api/result";

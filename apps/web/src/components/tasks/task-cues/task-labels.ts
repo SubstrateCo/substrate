@@ -1,4 +1,4 @@
-import type { TaskPriority } from "@startup-os/contracts/tasks";
+import type { TaskPriority } from "@substrate/contracts/tasks";
 
 export const taskPriorityLabels: Record<TaskPriority, string> = {
   none: "No priority",

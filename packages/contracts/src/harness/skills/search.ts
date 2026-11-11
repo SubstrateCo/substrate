@@ -1,11 +1,11 @@
 import type { HarnessSkill } from "../local.ts";
 
 export const searchSkill: HarnessSkill = {
-  id: "startup-os-search",
-  name: "startup-os-search",
+  id: "substrate-search",
+  name: "substrate-search",
   description:
-    "Use when finding tasks, projects, messages or conversations in Startup OS, or gathering workspace context before answering or acting. Covers search strategy, catching up on recent activity, reading results in context, and access limits.",
-  content: `# Startup OS search
+    "Use when finding tasks, projects, messages or conversations in Substrate, or gathering workspace context before answering or acting. Covers search strategy, catching up on recent activity, reading results in context, and access limits.",
+  content: `# Substrate search
 
 ## Choose the right tool
 

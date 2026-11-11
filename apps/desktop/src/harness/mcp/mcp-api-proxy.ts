@@ -2,8 +2,8 @@ import {
   workspaceApiResult,
   workspaceApiRequest,
   type WorkspaceApiProxy,
-} from "@startup-os/contracts/harness/mcp";
-import { mcpTools } from "@startup-os/contracts/harness/tools";
+} from "@substrate/contracts/harness/mcp";
+import { mcpTools } from "@substrate/contracts/harness/tools";
 
 export function createMcpApiProxy(options: {
   backend: string;

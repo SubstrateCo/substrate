@@ -1,5 +1,5 @@
-import { realtimeKeys } from "@startup-os/contracts/realtime";
-import type { RealtimeEvent } from "@startup-os/contracts/realtime";
+import { realtimeKeys } from "@substrate/contracts/realtime";
+import type { RealtimeEvent } from "@substrate/contracts/realtime";
 
 import { createRealtimeHub } from "./hub";
 import { createRefreshPublisher } from "./publisher";
@@ -11,7 +11,7 @@ test.skipIf(!process.env.TEST_VALKEY_URL)(
   "Valkey fan-out reaches both hubs, with local permission checks and recovery after a gap",
   async () => {
     const url = process.env.TEST_VALKEY_URL!;
-    const topic = `startup-os:realtime:test:${crypto.randomUUID()}`;
+    const topic = `substrate:realtime:test:${crypto.randomUUID()}`;
     const publisher = new RedisClient(url, { autoReconnect: false, enableOfflineQueue: false });
     const peers = ["org-a", "org-b"].map((organizationId) => {
       const received: RealtimeEvent[] = [];

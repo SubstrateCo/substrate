@@ -2,7 +2,7 @@ import type {
   AgentInboxItemView,
   AgentRequestView,
   AgentTurnView,
-} from "@startup-os/contracts/agent-work";
+} from "@substrate/contracts/agent-work";
 
 const newest = <T extends { createdAt: string }>(values: readonly T[]) =>
   values.reduce<T | undefined>(

@@ -1,4 +1,4 @@
-import type {} from "@startup-os/contracts/harness/desktop";
+import type {} from "@substrate/contracts/harness/desktop";
 
 import { queryOptions } from "@tanstack/react-query";
 
@@ -10,7 +10,7 @@ export const harnessStatusQueryOptions = (userId: string, organizationId: string
     staleTime: 60_000,
     retry: false,
     queryFn: async () => {
-      const bridge = window.startupOSHarness;
+      const bridge = window.substrateHarness;
       if (!bridge || !organizationId) throw new Error("Select a workspace in the desktop app.");
       // Status needs a configured worker; synchronize starts it for this workspace.
       const session = await bridge.synchronize();

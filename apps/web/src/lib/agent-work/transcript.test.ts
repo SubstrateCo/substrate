@@ -1,4 +1,4 @@
-import type { TurnEventView } from "@startup-os/contracts/agent-work";
+import type { TurnEventView } from "@substrate/contracts/agent-work";
 
 import { transcriptEntries } from "./transcript";
 import { usageLabel } from "./usage";

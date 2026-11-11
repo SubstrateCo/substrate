@@ -45,7 +45,7 @@ test("offload refuses path segments and redirected folders", async () => {
   await mkdir(folder);
   await symlink(
     outside,
-    join(folder, ".startup-os"),
+    join(folder, ".substrate"),
     process.platform === "win32" ? "junction" : "dir",
   );
   await expect(offloadOutput(folder, turnId, "get_me", 1, large)).rejects.toMatchObject({

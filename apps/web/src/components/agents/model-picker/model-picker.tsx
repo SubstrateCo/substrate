@@ -1,4 +1,4 @@
-import type { HarnessKind, HarnessModel } from "@startup-os/contracts/harness";
+import type { HarnessKind, HarnessModel } from "@substrate/contracts/harness";
 
 import { useQueries } from "@tanstack/react-query";
 
@@ -70,7 +70,7 @@ export function ModelPicker({
   const [open, setOpen] = useState(false);
   const [selectedHarness, setSelectedHarness] = useState<HarnessKind>(harness);
   const [search, setSearch] = useState("");
-  const available = !!window.startupOSHarness && !!organizationId;
+  const available = !!window.substrateHarness && !!organizationId;
   const query = search.trim();
   const catalogs = useQueries({
     queries: harnessOptions.map((option) => ({
@@ -113,7 +113,7 @@ export function ModelPicker({
   if (!available)
     note = (
       <PickerNote icon={<Laptop aria-hidden="true" />}>
-        Open Startup OS on your desktop to see {selectedLabel}’s models. Until then, the agent uses
+        Open Substrate on your desktop to see {selectedLabel}’s models. Until then, the agent uses
         the default model.
       </PickerNote>
     );

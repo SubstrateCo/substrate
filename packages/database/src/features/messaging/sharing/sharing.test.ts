@@ -1,4 +1,4 @@
-import { realtimeKeys } from "@startup-os/contracts/realtime";
+import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { ensureUserAgentActor } from "../../../core/actors/provisioning";
 import { userAgents } from "../../../core/actors/user-agents.schema";

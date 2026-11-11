@@ -1,4 +1,4 @@
-import type { HarnessKind } from "@startup-os/contracts/harness";
+import type { HarnessKind } from "@substrate/contracts/harness";
 
 import type { RunTransaction } from "../database.ts";
 import { inbox, routines, sessions } from "../schema/index.ts";

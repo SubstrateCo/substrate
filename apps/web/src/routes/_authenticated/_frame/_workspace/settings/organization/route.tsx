@@ -1,4 +1,4 @@
-import { organizationSettingsAccess } from "@startup-os/contracts/auth/settings-access";
+import { organizationSettingsAccess } from "@substrate/contracts/auth/settings-access";
 
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 

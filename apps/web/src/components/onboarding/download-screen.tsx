@@ -6,11 +6,11 @@ import { authHref } from "@/lib/auth/navigation";
 export function DownloadScreen({ destination }: { destination: string }) {
   return (
     <AuthFrame
-      title="Startup OS for desktop"
+      title="Substrate for desktop"
       description="Messages, docs, tasks, and agents for your team in one app."
       footer={
         <>
-          New to Startup OS?{" "}
+          New to Substrate?{" "}
           <AuthLink href={authHref("/signup", destination)}>Create account</AuthLink>
         </>
       }

@@ -7,7 +7,7 @@
 - Keep data fetching, query options, mutations, invalidation, session/auth clients, resource access decisions, routing, and Electron integration in web. Keep purely visual state, focus/scroll effects, form drafts, and interaction behavior in UI. State that controls a query or application action may remain in a connected container.
 - Load shared session and application data in the highest common layout and reuse its route context. Do not repeat those loads or session checks; keep resource-specific access checks.
 - Use the Hono `hc` RPC client in `src/api/` for same-origin backend calls. Import the server's `AppType` as a type only. Better Auth uses its native client protocol under `/api/auth`.
-- Keep runtime server code, secrets, database access, setup, and actor provisioning out of the renderer. Share browser-safe contracts through `@startup-os/contracts`.
+- Keep runtime server code, secrets, database access, setup, and actor provisioning out of the renderer. Share browser-safe contracts through `@substrate/contracts`.
 - The server validates untrusted input and derives identity and actor scope. Organization owners and admins are super users for their organization's records and conversation management; other roles do not bypass entity grants.
 - Do not use dynamic imports to bypass dependency injection, server-only boundaries, or import configuration. Fix the underlying issue.
 - Group connected containers in `src/components/<domain>/`. Use one file per container. Loading, error, empty, pending, and unavailable views belong in UI and receive their state from the container.
@@ -42,7 +42,7 @@
 ## Agent work
 
 - Show agent work only to the agent's owner. Other members see only published messages.
-- Read local work through the `startupOSAgentWork` bridge on the home desktop. Elsewhere, fall back to server status and requests.
+- Read local work through the `substrateAgentWork` bridge on the home desktop. Elsewhere, fall back to server status and requests.
 - Place work under its outputs, then under its newest accessible source message. Work without an anchor appears only in the Agents app.
 - Notify only for Needs-you items. Do not notify for working, finished, quiet, or routine progress.
 - Show records the viewer cannot open as placeholders, such as "A conversation you can't open". Never show their names.

@@ -1,6 +1,6 @@
-import { MAX_FILE_BYTES } from "@startup-os/contracts/files/input";
-import { profilePicturePath, type PictureKind } from "@startup-os/contracts/files/pictures";
-import type { StorageScope } from "@startup-os/database/storage";
+import { MAX_FILE_BYTES } from "@substrate/contracts/files/input";
+import { profilePicturePath, type PictureKind } from "@substrate/contracts/files/pictures";
+import type { StorageScope } from "@substrate/database/storage";
 
 import { ServiceError, serviceResult } from "../../shared/service-result";
 import type { ObjectStorage } from "../../storage/types";

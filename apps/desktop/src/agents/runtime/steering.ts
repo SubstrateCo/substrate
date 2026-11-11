@@ -4,8 +4,8 @@ import {
   type SessionRow,
   type TurnInterruption,
   type TurnRow,
-} from "@startup-os/client-storage/agent-work";
-import type { AgentSourceMessage } from "@startup-os/contracts/agent-work";
+} from "@substrate/client-storage/agent-work";
+import type { AgentSourceMessage } from "@substrate/contracts/agent-work";
 
 import { envelopeItem, renderEnvelope } from "../turns/envelope.ts";
 import type { LiveTurn, RuntimeContext } from "./context.ts";

@@ -2,7 +2,7 @@ import {
   startupSkills,
   harnessKinds,
   type HarnessConfiguration,
-} from "@startup-os/contracts/harness";
+} from "@substrate/contracts/harness";
 
 import { createHarnessHost } from "./host.ts";
 import {

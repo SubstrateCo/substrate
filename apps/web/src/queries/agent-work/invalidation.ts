@@ -1,4 +1,4 @@
-import type { ProposalAction } from "@startup-os/contracts/agent-work";
+import type { ProposalAction } from "@substrate/contracts/agent-work";
 
 import type { QueryKey } from "@tanstack/react-query";
 

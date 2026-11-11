@@ -1,6 +1,6 @@
-import { AccessDeniedError, createRepositories, type Database } from "@startup-os/database";
-import { resolveHumanActor } from "@startup-os/database/provisioning";
-import type { StorageScope } from "@startup-os/database/storage";
+import { AccessDeniedError, createRepositories, type Database } from "@substrate/database";
+import { resolveHumanActor } from "@substrate/database/provisioning";
+import type { StorageScope } from "@substrate/database/storage";
 
 export function projectPictureAccess(db: Database) {
   async function projects(scope: StorageScope) {

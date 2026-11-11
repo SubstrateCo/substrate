@@ -74,10 +74,10 @@ test("a visitor creates an organization before installing and can resume setup",
   await expect(page.getByRole("heading", { name: "Invite your team", exact: true })).toBeVisible();
   const session = await page.request.get("/api/v1/session");
   const organizationId = (await session.json()).data.session.activeOrganizationId;
-  const open = page.getByRole("link", { name: "Open Startup OS", exact: true });
+  const open = page.getByRole("link", { name: "Open Substrate", exact: true });
   await expect(open).toHaveAttribute(
     "href",
-    `startupos://open/dashboard?workspaceId=${organizationId}`,
+    `substrate://open/dashboard?workspaceId=${organizationId}`,
   );
   await expect(
     page.getByRole("link", { name: "Download for Windows", exact: true }),
@@ -92,7 +92,7 @@ test("a visitor creates an organization before installing and can resume setup",
   ).toBeVisible();
   const invitation = await new Mailpit(request).link(
     teammate,
-    `Join Public ${id} on Startup OS`,
+    `Join Public ${id} on Substrate`,
     "/accept-invitation/",
   );
   expect(new URL(invitation).origin).toBe(process.env.PLAYWRIGHT_BASE_URL);
@@ -113,10 +113,10 @@ test("a desktop-sent teammate invitation can be accepted by a new user in the br
   const id = crypto.randomUUID();
   const email = `public-invite-${id}@example.test`;
   const password = `Invite-${id}!`;
-  await inviteMember(owner, email, { origin: "https://desktop.startup-os.local" });
+  await inviteMember(owner, email, { origin: "https://desktop.substrate.local" });
   const invitation = await new Mailpit(request).link(
     email,
-    `Join ${owner.organizationName} on Startup OS`,
+    `Join ${owner.organizationName} on Substrate`,
     "/desktop/open",
   );
   await page.goto(invitation);
@@ -131,9 +131,9 @@ test("a desktop-sent teammate invitation can be accepted by a new user in the br
     page.getByRole("heading", { name: "Your workspace is ready", exact: true }),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Invite your team", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Open Startup OS", exact: true })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Open Substrate", exact: true })).toHaveAttribute(
     "href",
-    `startupos://open/dashboard?workspaceId=${owner.organizationId}`,
+    `substrate://open/dashboard?workspaceId=${owner.organizationId}`,
   );
   const memberships = await page.request.get("/api/auth/organization/list");
   expect((await memberships.json()).map((org: { id: string }) => org.id)).toEqual([
@@ -151,7 +151,7 @@ test("public setup remains usable on a narrow screen", async ({ page }) => {
   await expect(
     page.getByRole("link", { name: "Download for Windows", exact: true }),
   ).toBeInViewport();
-  await expect(page.getByRole("link", { name: "Open Startup OS", exact: true })).toBeInViewport();
+  await expect(page.getByRole("link", { name: "Open Substrate", exact: true })).toBeInViewport();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -161,18 +161,18 @@ test("public downloads preserve a safe destination and do not forward it to the 
   page,
 }) => {
   await page.goto("/download?redirect=%2Faccept-invitation%2Finvite-1");
-  await expect(page.getByRole("link", { name: "Open Startup OS", exact: true })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Open Substrate", exact: true })).toHaveAttribute(
     "href",
-    "startupos://open/accept-invitation/invite-1",
+    "substrate://open/accept-invitation/invite-1",
   );
   // The server's installer redirect is unit-tested; the page must not pass the destination on.
   await expect(
     page.getByRole("link", { name: "Download for Windows", exact: true }),
   ).toHaveAttribute("href", "/desktop/download");
   await page.goto("/download?redirect=https%3A%2F%2Fevil.example");
-  await expect(page.getByRole("link", { name: "Open Startup OS", exact: true })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Open Substrate", exact: true })).toHaveAttribute(
     "href",
-    "startupos://open/onboarding",
+    "substrate://open/onboarding",
   );
 });
 
@@ -269,10 +269,10 @@ test("an accepted invitation can resume when workspace activation fails", async 
     user.page.getByRole("heading", { name: "Your workspace is ready", exact: true }),
   ).toBeVisible();
   await expect(
-    user.page.getByRole("link", { name: "Open Startup OS", exact: true }),
+    user.page.getByRole("link", { name: "Open Substrate", exact: true }),
   ).toHaveAttribute(
     "href",
-    `startupos://open/dashboard?workspaceId=${actors.sender.organizationId}`,
+    `substrate://open/dashboard?workspaceId=${actors.sender.organizationId}`,
   );
 });
 

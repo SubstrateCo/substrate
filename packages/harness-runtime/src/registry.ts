@@ -3,7 +3,7 @@ import {
   type HarnessKind,
   type HarnessMcpServer,
   type HarnessModel,
-} from "@startup-os/contracts/harness";
+} from "@substrate/contracts/harness";
 
 import type { AdapterContext, NativeAdapter } from "./adapters/types.ts";
 

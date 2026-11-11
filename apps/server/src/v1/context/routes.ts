@@ -9,12 +9,12 @@ import {
   contextSourceTask,
   contextNotification,
   contextNotificationPage,
-} from "@startup-os/contracts/context/input";
+} from "@substrate/contracts/context/input";
 import {
   notificationGroupsInput,
   notificationGroupEventsInput,
   notificationGroupReadInput,
-} from "@startup-os/contracts/context/notification-groups";
+} from "@substrate/contracts/context/notification-groups";
 
 import { respond, validationHook } from "../../shared/http";
 import * as defaultServices from "./service";

@@ -1,4 +1,4 @@
-import { harnessAgentSchema } from "@startup-os/contracts/harness";
+import { harnessAgentSchema } from "@substrate/contracts/harness";
 
 import { createHash } from "node:crypto";
 import { z } from "zod";

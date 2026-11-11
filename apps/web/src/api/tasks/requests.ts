@@ -4,7 +4,7 @@ import type {
   tasksWorkspace,
   TasksWrite,
   workRequest,
-} from "@startup-os/contracts/tasks/input";
+} from "@substrate/contracts/tasks/input";
 
 import { api, type ApiInput } from "../client";
 import { uploadPictureBytes } from "../files/pictures";

@@ -1,4 +1,4 @@
-import { conversationTargetInput, workspaceInput } from "@startup-os/contracts/messaging/input";
+import { conversationTargetInput, workspaceInput } from "@substrate/contracts/messaging/input";
 import {
   sharingAcceptInput,
   sharingActionInput,
@@ -6,7 +6,7 @@ import {
   sharingInviteInput,
   sharingInvitationInput,
   sharingRemoveInput,
-} from "@startup-os/contracts/messaging/sharing";
+} from "@substrate/contracts/messaging/sharing";
 
 import { respond, validationHook } from "../../shared/http";
 import * as service from "./sharing-service";

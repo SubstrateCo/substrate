@@ -1,4 +1,4 @@
-import type { contextSearch } from "@startup-os/contracts/context/input";
+import type { contextSearch } from "@substrate/contracts/context/input";
 
 import { api, type ApiInput } from "../client";
 import { readResult } from "../result";

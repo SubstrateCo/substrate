@@ -1,4 +1,4 @@
-import type { AgentConfiguration } from "@startup-os/contracts/agents";
+import type { AgentConfiguration } from "@substrate/contracts/agents";
 
 export const harnessOptions: {
   value: AgentConfiguration["harness"];

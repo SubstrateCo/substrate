@@ -23,7 +23,7 @@ export function useTheme() {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [store] = useState(() => createThemeStore("startup-os-theme"));
+  const [store] = useState(() => createThemeStore("substrate-theme"));
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const resolvedTheme = snapshot.theme === "system" ? snapshot.systemTheme : snapshot.theme;
   useLayoutEffect(() => applyTheme(resolvedTheme), [resolvedTheme]);

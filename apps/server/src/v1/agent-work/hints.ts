@@ -1,4 +1,4 @@
-import { realtimeKeys, type RealtimeHint } from "@startup-os/contracts/realtime";
+import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
 import { publishRefresh } from "../realtime/publisher";
 

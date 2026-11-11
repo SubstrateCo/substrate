@@ -1,4 +1,4 @@
-import type { TaskStatus } from "@startup-os/contracts/tasks";
+import type { TaskStatus } from "@substrate/contracts/tasks";
 
 import { TaskAssigneeHoverCard } from "../assignee/task-assignee-hover-card";
 import { TaskBlockedCue } from "../list/task-list-item";

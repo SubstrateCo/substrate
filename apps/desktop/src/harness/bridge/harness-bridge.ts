@@ -5,12 +5,12 @@ import {
   harnessSkillSchema,
   turnContextSchema,
   turnKinds,
-} from "@startup-os/contracts/harness";
+} from "@substrate/contracts/harness";
 
 /* oxlint-disable deslop/no-unknown-parameters -- These functions parse untrusted IPC payloads at the main-process boundary. */
 import { z } from "zod";
 
-export const harnessChannel = "startup-os:harness";
+export const harnessChannel = "substrate:harness";
 export const localHarnessMethods = [
   "listModels",
   "scanConfiguration",

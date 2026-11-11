@@ -3,10 +3,10 @@ import type {
   taskAttachmentTarget,
   taskAttachmentRequest,
   messageAttachmentRequest,
-} from "@startup-os/contracts/files/attachments";
-import { MAX_FILE_BYTES } from "@startup-os/contracts/files/input";
-import { realtimeKeys } from "@startup-os/contracts/realtime";
-import { createAttachmentRepository } from "@startup-os/database/files";
+} from "@substrate/contracts/files/attachments";
+import { MAX_FILE_BYTES } from "@substrate/contracts/files/input";
+import { realtimeKeys } from "@substrate/contracts/realtime";
+import { createAttachmentRepository } from "@substrate/database/files";
 
 import { db } from "../../auth/database";
 import { serviceResult } from "../../shared/service-result";

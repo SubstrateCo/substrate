@@ -1,4 +1,4 @@
-import type {} from "@startup-os/contracts/desktop/window";
+import type {} from "@substrate/contracts/desktop/window";
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
@@ -7,7 +7,7 @@ import { DesktopTitleBarContext } from "@/components/desktop/desktop-title-bar-c
 import { useTheme } from "@/components/theme/theme-provider";
 
 export function DesktopFrame({ children }: { children: ReactNode }) {
-  const bridge = window.startupOSWindow;
+  const bridge = window.substrateWindow;
   const { theme } = useTheme();
   const [fullscreen, setFullscreen] = useState(false);
   const [titleBarTarget, setTitleBarTarget] = useState<HTMLDivElement | null>(null);
@@ -61,7 +61,7 @@ export function DesktopFrame({ children }: { children: ReactNode }) {
           aria-label="Window title bar"
         >
           <span className="truncate group-has-data-workspace-search/desktop-title-bar:hidden">
-            Startup OS
+            Substrate
           </span>
           <div
             ref={setTitleBarTarget}

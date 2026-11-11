@@ -1,4 +1,4 @@
-import { taskLinkKinds } from "@startup-os/contracts/tasks/links";
+import { taskLinkKinds } from "@substrate/contracts/tasks/links";
 
 import { actors } from "../../core/actors/schema";
 import { tasks } from "./tasks.schema";

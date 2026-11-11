@@ -1,8 +1,8 @@
-import { AgentWorkStore } from "@startup-os/client-storage/agent-work";
-import type { AgentWorkChange } from "@startup-os/contracts/agent-work/desktop";
-import type { HarnessEvent } from "@startup-os/contracts/harness";
-import type { WorkspaceApiResult } from "@startup-os/contracts/harness/mcp";
-import type { RealtimeUpdate } from "@startup-os/contracts/realtime";
+import { AgentWorkStore } from "@substrate/client-storage/agent-work";
+import type { AgentWorkChange } from "@substrate/contracts/agent-work/desktop";
+import type { HarnessEvent } from "@substrate/contracts/harness";
+import type { WorkspaceApiResult } from "@substrate/contracts/harness/mcp";
+import type { RealtimeUpdate } from "@substrate/contracts/realtime";
 
 import { createHarnessAuthority } from "../harness/controller/harness-authority.ts";
 import { dispatchAgentWork } from "./bridge/agent-work-bridge.ts";
@@ -23,7 +23,7 @@ interface Active {
 
 async function storePath(accountDirectory: string) {
   await mkdir(accountDirectory, { recursive: true });
-  const directory = join(await realpath(accountDirectory), ".startup-os");
+  const directory = join(await realpath(accountDirectory), ".substrate");
   const path = join(directory, "agent-work.sqlite");
   for (const managed of [directory, path]) {
     const stat = await lstat(managed).catch(() => undefined);

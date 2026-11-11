@@ -1,4 +1,4 @@
-import type { TaskLinkEnd, TaskLinkView } from "@startup-os/contracts/tasks/links";
+import type { TaskLinkEnd, TaskLinkView } from "@substrate/contracts/tasks/links";
 
 import { defaultTaskFilters, filterTasks } from "../list/task-filters";
 import type { Task } from "../types";
