@@ -96,6 +96,7 @@ test("created and updated tasks are task outputs", () => {
     source: null,
     commentCount: 0,
     linkedMessageCount: 0,
+    links: [],
     createdAt,
     updatedAt: createdAt,
   };

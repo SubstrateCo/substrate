@@ -6,7 +6,8 @@ import type { RuntimeHarnessHost } from "@substrate/harness-runtime";
 type HostMethods = Omit<RuntimeHarnessHost, "subscribe">;
 type HarnessWorkerMethod = Exclude<keyof HostMethods, "dispose">;
 
-export type HarnessWorkerRequest = { id: number } & (
+/** One worker method with its value, as main sends it. */
+export type HarnessWorkerCall =
   | { method: "initialize"; value: string }
   | {
       [Method in keyof HostMethods]: { method: Method } & (Parameters<
@@ -14,8 +15,9 @@ export type HarnessWorkerRequest = { id: number } & (
       > extends []
         ? { value?: undefined }
         : { value: Parameters<HostMethods[Method]>[0] });
-    }[keyof HostMethods]
-);
+    }[keyof HostMethods];
+
+export type HarnessWorkerRequest = { id: number } & HarnessWorkerCall;
 
 export type HarnessWorkerResult = Awaited<ReturnType<HostMethods[keyof HostMethods]>>;
 

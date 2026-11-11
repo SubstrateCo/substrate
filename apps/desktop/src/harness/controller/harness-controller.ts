@@ -87,11 +87,26 @@ export function createHarnessController(options: {
     identity = undefined;
   }
 
+  /**
+   * The current generation. assertCurrent throws once it changed, or, given an identity, once
+   * the worker serves another account.
+   */
+  function capture() {
+    const current = generation;
+    return {
+      current,
+      assertCurrent(expected?: string) {
+        if (current !== generation || (expected !== undefined && identity !== expected))
+          throw new Error("Session changed.");
+      },
+    };
+  }
+
   /** Session commands verify once per generation, and again after refreshAuthority(). */
   function authorized(): Promise<Authorization> {
-    const epoch = generation;
+    const session = capture();
     return authority.verify().then((auth) => {
-      if (epoch !== generation) throw new Error("Session changed.");
+      session.assertCurrent();
       if (identity && identity !== auth.identity) throw new HarnessAccessDenied("Account changed.");
       return auth;
     });
@@ -108,45 +123,43 @@ export function createHarnessController(options: {
   }
 
   async function perform(method: HarnessMethod, value?: unknown) {
-    const epoch = generation;
+    const session = capture();
     try {
       const auth = await authority.verify();
-      if (epoch !== generation) throw new Error("Session changed.");
+      session.assertCurrent();
       if (identity && identity !== auth.identity) disconnect();
       if (method === "synchronize") {
-        const current = generation;
+        const sync = capture();
         const { agents } = await authority.catalog();
         // Renderer organization switches do not bump the generation; reread only the session.
         // Membership was verified for this organization before the catalog request.
         await authority.confirm(auth);
-        if (current !== generation) throw new Error("Session changed.");
+        sync.assertCurrent();
         worker ??= options.createWorker(
           join(options.accountsDirectory, auth.accountKey),
           createMcpApiProxy({
             backend: options.backend,
             fetchAPI: options.fetchAPI,
-            isActive: () => current === generation,
+            isActive: () => sync.current === generation,
             onResult: options.onResult,
           }),
-          localTools(current),
+          localTools(sync.current),
         );
         identity = auth.identity;
         await worker.request("configure", {
           agents,
           organizationId: auth.organizationId,
         });
-        if (current !== generation || identity !== auth.identity)
-          throw new Error("Session changed.");
+        sync.assertCurrent(auth.identity);
         return { connected: true, organizationId: auth.organizationId };
       }
       const localMethod = localMethodSchema.safeParse(method);
       if (localMethod.success) {
         const input = prepareLocalInput(localMethod.data, value, auth.organizationId);
         if (!worker || identity !== auth.identity) throw new Error("Organization unavailable.");
-        const current = generation;
+        const local = capture();
         const result = await worker.request(localMethod.data, input);
-        if (current !== generation || identity !== auth.identity)
-          throw new Error("Session changed.");
+        local.assertCurrent(auth.identity);
         if (method === "scanConfiguration") {
           return harnessLocalConfigurationSchema.parse(result);
         }
@@ -158,12 +171,12 @@ export function createHarnessController(options: {
         return result;
       }
       if (!worker || identity !== auth.identity) return { connected: false };
-      const current = generation;
+      const inspection = capture();
       const result = await worker.request("inspect").catch((error: unknown) => {
         if (error instanceof HarnessWorkerError && error.code === "worker-stopped") throw error;
         throw new CommandFailure();
       });
-      if (current !== generation || identity !== auth.identity) throw new Error("Session changed.");
+      inspection.assertCurrent(auth.identity);
       return {
         connected: true,
         organizationId: auth.organizationId,

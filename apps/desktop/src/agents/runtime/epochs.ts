@@ -1,9 +1,5 @@
 import type { EpochRotationReason, SessionRow } from "@substrate/client-storage/agent-work";
-import {
-  POLICY_VERSION,
-  type AdapterCapabilities,
-  type Usage,
-} from "@substrate/contracts/harness";
+import { POLICY_VERSION, type AdapterCapabilities, type Usage } from "@substrate/contracts/harness";
 
 import type { RuntimeContext } from "./context.ts";
 

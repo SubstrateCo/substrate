@@ -4,6 +4,7 @@ import {
   type FinishTurnInput,
   type InboxRow,
   type SessionRow,
+  type TurnInterruption,
   type TurnRow,
 } from "@substrate/client-storage/agent-work";
 import {
@@ -36,7 +37,7 @@ const sha256 = (value: string) => createHash("sha256").update(value).digest("hex
 
 /**
  * Harness failures that pass: the worker or the connection is gone for now, a command timed
- * out, the session closes after its live turn (turn-active), or the worker does not have the
+ * out, the session closes after its live turn (session-closing), or the worker does not have the
  * organization's configuration yet (it lives in memory and arrives with synchronize). Work
  * waits and runs again.
  */
@@ -82,6 +83,11 @@ function batchItems(items: InboxRow[]) {
 }
 
 type InterruptResult = "sent" | "gone" | "failed";
+
+/** The store status of a turn that ended for a recorded reason: the owner's stop cancels it. */
+export function endedStatus(interruption: TurnInterruption | null) {
+  return interruption === "stop" ? "cancelled" : "interrupted";
+}
 
 /**
  * Runs assigned turns against the harness host and records every canonical event in the local
@@ -252,7 +258,7 @@ export function createTurnExecutor(
       context.changed({ userAgentId: turn.userAgentId });
       return;
     }
-    const items = batchItems(await context.store.inbox.forTurn(turn.id));
+    const items = batchItems(await context.store.inbox.forTurn(context.organizationId, turn.id));
     const messageIds = items.flatMap((item) =>
       item.sourceRef.source === "owner_message" ? [item.sourceRef.messageId] : [],
     );
@@ -268,6 +274,7 @@ export function createTurnExecutor(
         item.sourceRef.source === "owner_message" && !messages.has(item.sourceRef.messageId),
     );
     await context.store.inbox.drop(
+      context.organizationId,
       inaccessible.map((item) => item.id),
       "source_inaccessible",
     );
@@ -434,7 +441,7 @@ export function createTurnExecutor(
     if (result.status === "completed") return "completed";
     const intent = turn?.status === "stopping" ? turn.interruption : null;
     if (result.status === "failed" && !intent) return state.handoff ? "failed" : "needs_attention";
-    return intent === "stop" ? "cancelled" : "interrupted";
+    return endedStatus(intent);
   }
 
   /**
@@ -589,6 +596,27 @@ export function createTurnExecutor(
 
   let outside = Promise.resolve();
 
+  /**
+   * Interrupts a live turn. The worker's turn.completed event ends it. "gone" means the worker
+   * has no live turn for it: the turn already stopped.
+   */
+  async function interrupt(turnId: string): Promise<InterruptResult> {
+    const state = live.get(turnId);
+    if (!state) return "gone";
+    try {
+      const receipt = await context.harness.execute({
+        type: "interrupt",
+        organizationId: context.organizationId,
+        sessionId: state.sessionId,
+        turnId,
+      });
+      state.stillQueued.push(...(receipt.stillQueuedInputIds ?? []));
+      return "sent";
+    } catch (error) {
+      return errorCode(error) === "no-live-turn" ? "gone" : "failed";
+    }
+  }
+
   return {
     live,
     heldFolders,
@@ -631,30 +659,50 @@ export function createTurnExecutor(
         .then(() => handle(target, event))
         .catch(() => context.log("Could not record an agent event."));
     },
-    /**
-     * Interrupts a live turn. The worker's turn.completed event ends it. "gone" means the
-     * worker has no live turn for it: the turn already stopped.
-     */
-    async interrupt(turnId: string): Promise<InterruptResult> {
-      const state = live.get(turnId);
-      if (!state) return "gone";
-      try {
-        const receipt = await context.harness.execute({
-          type: "interrupt",
-          organizationId: context.organizationId,
-          sessionId: state.sessionId,
-          turnId,
-        });
-        state.stillQueued.push(...(receipt.stillQueuedInputIds ?? []));
-        return "sent";
-      } catch (error) {
-        return errorCode(error) === "no-live-turn" ? "gone" : "failed";
-      }
-    },
+    interrupt,
     /** Ends a live turn without a worker result, such as when the worker is gone. */
     async abandon(turnId: string, result: TurnResult, options: { resume?: string } = {}) {
       const state = live.get(turnId);
       if (state) await finish(state, result, options);
+    },
+    /**
+     * Ends live turns for a reason. It records the reason first, unless a turn already stops,
+     * so that the close finishes each turn as cancelled or interrupted. Then it ends the native
+     * turns, handles the events the host sent before, and ends each row that the host did not
+     * end. By default it closes each session; interrupt interrupts each turn first, and close
+     * replaces the session closes, such as with a close of every session of the organization.
+     */
+    async end(
+      turnIds: string[],
+      interruption: TurnInterruption,
+      native: { interrupt?: boolean; close?: () => Promise<void> } = {},
+    ) {
+      const states = turnIds.flatMap((turnId) => {
+        const state = live.get(turnId);
+        return state ? [state] : [];
+      });
+      for (const state of states) {
+        const turn = await context.store.turns
+          .get(state.turnId)
+          .catch(() => context.log("Could not end an agent turn."));
+        if (turn && turn.status !== "stopping")
+          await context.store.turns
+            .stopping(state.turnId, interruption)
+            .catch(() => context.log("Could not end an agent turn."));
+      }
+      if (native.close) await native.close();
+      else
+        for (const state of states) {
+          if (native.interrupt) await interrupt(state.turnId);
+          await closeNative(state.sessionId);
+        }
+      for (const state of states) {
+        // The host's turn.completed arrives before the close answers; it is handled first.
+        await state.chain;
+        await finish(state, { status: "interrupted" }).catch(() =>
+          context.log("Could not end an agent turn."),
+        );
+      }
     },
   };
 }

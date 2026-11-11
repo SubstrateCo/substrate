@@ -4,7 +4,6 @@ import {
   ownerBatchWindowMs,
   ownerMessageDebounceMs,
   sessionView,
-  type TurnInterruption,
 } from "@substrate/client-storage/agent-work";
 import type { AgentTurnView } from "@substrate/contracts/agent-work";
 import {
@@ -117,33 +116,12 @@ export function createAgentWorkRuntime(
     await steering.dispatch();
   }
 
-  /**
-   * Records why the runtime ends a live turn before it does, so that the turn's end, failed
-   * or interrupted, is read as that intent. A turn that already stops keeps the owner's reason.
-   */
-  async function intend(turnId: string, interruption: TurnInterruption) {
-    const turn = await context.store.turns.get(turnId);
-    if (turn && turn.status !== "stopping")
-      await context.store.turns.stopping(turnId, interruption);
-  }
-
-  /** Interrupts and closes a live turn, then ends its row if the host did not end it. */
-  async function endLive(turnId: string, interruption: TurnInterruption) {
-    const state = executor.live.get(turnId);
-    if (!state) return;
-    await intend(turnId, interruption);
-    await executor.interrupt(turnId);
-    await executor.closeNative(state.sessionId);
-    // The host's turn.completed arrives before the close answers; it is handled first.
-    await state.chain;
-    await executor.abandon(turnId, { status: "interrupted" });
-  }
-
   /** Agents moved to another desktop stop here: their live work is interrupted and closed. */
   async function reconcileHome() {
     const home = new Set(await homeAgents());
     for (const state of executor.live.values())
-      if (!home.has(state.userAgentId)) await endLive(state.turnId, "moved");
+      if (!home.has(state.userAgentId))
+        await executor.end([state.turnId], "moved", { interrupt: true });
   }
 
   function pump() {
@@ -221,7 +199,7 @@ export function createAgentWorkRuntime(
   }
 
   async function ownedItem(itemId: string) {
-    const item = await context.store.inbox.get(itemId);
+    const item = await context.store.inbox.get(context.organizationId, itemId);
     const session = item ? await context.store.sessions.get(item.sessionId) : undefined;
     if (!item || session?.organizationId !== context.organizationId)
       throw new Error("Item not found.");
@@ -267,20 +245,12 @@ export function createAgentWorkRuntime(
       draining = true;
       for (const clear of timers) clear();
       timers.clear();
-      const ending = [...executor.live.values()];
-      for (const state of ending)
-        await intend(state.turnId, "retire").catch(() =>
-          context.log("Could not end an agent turn."),
-        );
-      await context.harness
-        .closeOrganization(context.organizationId)
-        .catch(() => context.log("Could not close the organization's agent sessions."));
-      for (const state of ending) {
-        await state.chain;
-        await executor
-          .abandon(state.turnId, { status: "interrupted" })
-          .catch(() => context.log("Could not end an agent turn."));
-      }
+      await executor.end([...executor.live.keys()], "retire", {
+        close: () =>
+          context.harness
+            .closeOrganization(context.organizationId)
+            .catch(() => context.log("Could not close the organization's agent sessions.")),
+      });
       dispose();
     },
     reconcileHome,

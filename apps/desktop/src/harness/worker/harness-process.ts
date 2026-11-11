@@ -13,7 +13,12 @@ import type {
 } from "@substrate/contracts/harness/mcp";
 
 import { createOpenSessions } from "./open-sessions.ts";
-import { HarnessWorkerError, type HarnessWorker } from "./protocol.ts";
+import {
+  HarnessWorkerError,
+  type HarnessWorker,
+  type HarnessWorkerCall,
+  type HarnessWorkerRequest,
+} from "./protocol.ts";
 import { utilityProcess } from "electron";
 
 /**
@@ -156,10 +161,9 @@ export function createHarnessProcess(
       else request.resolve(message.result);
     },
   );
-  function send(method: string, value?: unknown): Promise<unknown> {
+  function send(call: HarnessWorkerCall): Promise<unknown> {
     if (disposed) return Promise.reject(new HarnessWorkerError("worker-stopped"));
-    // SAFETY: main parsed execute values as harness commands before sending them.
-    const command = method === "execute" ? (value as HarnessCommand) : undefined;
+    const command = call.method === "execute" ? call.value : undefined;
     return new Promise((resolve, reject) => {
       const id = ++nextID;
       const timer = command
@@ -173,17 +177,15 @@ export function createHarnessProcess(
             stopped();
           }, timeouts.requestMs ?? requestTimeoutMs);
       pending.set(id, { resolve, reject, timer });
-      child.postMessage({ id, method, value });
+      child.postMessage({ id, ...call } satisfies HarnessWorkerRequest);
     });
   }
-  async function request(method: string, value?: unknown): Promise<unknown> {
-    if (method !== "execute") return send(method, value);
-    // SAFETY: as above.
-    const command = value as HarnessCommand;
-    if (command.type !== "open") return send(method, value);
+  async function request(call: HarnessWorkerCall): Promise<unknown> {
+    if (call.method !== "execute" || call.value.type !== "open") return send(call);
+    const command = call.value;
     open.opening(command);
     try {
-      const ref = await send(method, value);
+      const ref = await send(call);
       open.opened(command.sessionId);
       return ref;
     } catch (error) {
@@ -192,17 +194,18 @@ export function createHarnessProcess(
       throw error;
     }
   }
-  const ready = send("initialize", accountDirectory);
+  const ready = send({ method: "initialize", value: accountDirectory });
   // Attach a handler immediately; the first request still receives initialization failure.
   void ready.catch(() => {});
   return {
     request: async (method, ...[value]) => {
       await ready;
-      return request(method, value);
+      // SAFETY: HarnessWorker types value by method; TypeScript cannot correlate the two here.
+      return request({ method, value } as HarnessWorkerCall);
     },
     dispose() {
       if (disposed) return;
-      const shutdown = send("dispose");
+      const shutdown = send({ method: "dispose" });
       disposed = true;
       // Events after this point are dropped, so the open sessions end now.
       closeOpenSessions();

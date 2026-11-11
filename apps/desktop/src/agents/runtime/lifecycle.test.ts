@@ -88,7 +88,7 @@ test("an organization switch closes the native session of live work, and the wor
   expect(await f.store.turns.needsAttention(organizationId)).toEqual([]);
 });
 
-for (const code of ["steer-unsupported", "not-initialized", "harness-unavailable"])
+for (const code of ["steer-unsupported", "not-initialized", "harness-unavailable"] as const)
   test(`a steer refused with ${code} puts the message back, and the next turn takes it`, async () => {
     const f = await started({ capabilities: { steer: true, steerEvidence: true } });
     const { conversationId } = await f.message();
@@ -106,7 +106,13 @@ for (const code of ["steer-unsupported", "not-initialized", "harness-unavailable
     expect(lastTurn(f).input.inputIds).toEqual([item!.id]);
   });
 
-for (const code of ["timeout", "worker-stopped", "session-changed", "disconnected", undefined])
+for (const code of [
+  "timeout",
+  "worker-stopped",
+  "session-changed",
+  "disconnected",
+  undefined,
+] as const)
   test(`a steer that fails with ${code ?? "no code"} may have been delivered: the owner decides`, async () => {
     const f = await started({ capabilities: { steer: true, steerEvidence: true } });
     const { conversationId } = await f.message();
@@ -117,7 +123,7 @@ for (const code of ["timeout", "worker-stopped", "session-changed", "disconnecte
     };
     await f.message({ conversationId, body: "Also this" });
     const steer = commandsOf(f, "steer")[0] as Extract<HarnessCommand, { type: "steer" }>;
-    expect(await f.store.inbox.get(steer.inputId)).toMatchObject({
+    expect(await f.store.inbox.get(organizationId, steer.inputId)).toMatchObject({
       status: "uncertain",
       turnId: turn.turnId,
       held: false,
@@ -152,7 +158,7 @@ test("consumption evidence that arrives while the steer command runs still appli
   };
   await f.message({ conversationId, body: "Also this" });
   const steer = commandsOf(f, "steer")[0] as Extract<HarnessCommand, { type: "steer" }>;
-  expect((await f.store.inbox.get(steer.inputId))!.status).toBe("consumed");
+  expect((await f.store.inbox.get(organizationId, steer.inputId))!.status).toBe("consumed");
 });
 
 test("Stop while the session opens sends no turn and cancels it", async () => {
@@ -208,7 +214,7 @@ test("the owner can discard an uncertain message instead", async () => {
   const steer = commandsOf(f, "steer")[0] as Extract<HarnessCommand, { type: "steer" }>;
   await f.emit(turn.turnId, { type: "turn.completed", result: { status: "completed" } });
   await f.runtime.discardItem(steer.inputId);
-  expect((await f.store.inbox.get(steer.inputId))!.status).toBe("dropped");
+  expect((await f.store.inbox.get(organizationId, steer.inputId))!.status).toBe("dropped");
   expect((await f.store.turns.get(turn.turnId))!.status).toBe("completed");
   // oxlint-disable-next-line typescript/await-thenable -- Bun rejection assertions are asynchronous despite their assertion return declarations.
   await expect(f.runtime.discardItem(steer.inputId)).rejects.toThrow();
@@ -352,8 +358,7 @@ test("a started turn whose turn command fails transiently follows recovery, neve
     if (command.type !== "turn") return undefined;
     f.hooks.command = undefined;
     return next().then(() => {
-      // The host started the native turn, but its answer was lost.
-      f.emitFor(command, { type: "turn.started" });
+      // The host started the native turn and sent turn.started, but its answer was lost.
       throw new CodeError("timeout");
     });
   };
@@ -404,7 +409,7 @@ test("a failure without a known code stops retrying after 6 backoffs and needs t
   expect(commandsOf(f, "open")).toHaveLength(7);
 });
 
-for (const code of ["not-connected", "not-initialized", "harness-unavailable"])
+for (const code of ["not-connected", "not-initialized", "harness-unavailable"] as const)
   test(`a known ${code} outage keeps waiting past the retry cap`, async () => {
     const f = await started();
     f.hooks.command = (command) =>
@@ -476,8 +481,7 @@ test("after a restart, server requests of interrupted turns are closed as orphan
       kind: "permission",
       data: { toolName: "Bash", input: { command: "ls" } },
     });
-    before.runtime.dispose();
-    before.store.close();
+    await before.close();
 
     const f = await started({ path: location.path });
     expect(closedStatuses(f)).toEqual([{ requestId: "server-1", status: "orphaned" }]);
@@ -629,8 +633,7 @@ test("status versions are milliseconds and never go down, also after a restart",
     const published = versions();
     expect(published).toEqual([...published].sort((a, b) => a - b));
     const last = published.at(-1)!;
-    before.runtime.dispose();
-    before.store.close();
+    await before.close();
 
     const f = await started({ path: location.path, now: start + 2000 });
     await f.message();
@@ -681,13 +684,7 @@ test("native output outside our turns is a note on the session's latest turn", a
   await f.message();
   const turn = lastTurn(f);
   await f.emit(turn.turnId, { type: "turn.completed", result: { status: "completed" } });
-  await f.event({
-    type: "text",
-    text: "Background output",
-    sessionId: turn.sessionId,
-    turnId: null,
-    generation: null,
-  });
+  await f.nativeOutput(turn.sessionId, { type: "text", text: "Background output" });
   const events = await f.store.events.list(turn.turnId);
   expect(events.at(-1)).toMatchObject({ kind: "note", data: { text: "Background output" } });
 });

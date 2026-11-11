@@ -1,5 +1,4 @@
-import { HelperLimitError } from "@substrate/client-storage/agent-work";
-import { sessionKeys } from "@substrate/contracts/agent-work";
+import { folderKeys, HelperLimitError } from "@substrate/client-storage/agent-work";
 import { localToolRequest, type WorkspaceApiResult } from "@substrate/contracts/harness/mcp";
 import { mcpTools, type LocalToolName, type McpOutput } from "@substrate/contracts/harness/tools";
 
@@ -47,7 +46,7 @@ export function createLocalTools(
 
   function liveHelperTurn(helperId: string) {
     return [...deps.executor.live.values()].find(
-      (state) => state.folderKey === sessionKeys.helper(helperId),
+      (state) => state.folderKey === folderKeys.helper(helperId),
     );
   }
 
@@ -88,10 +87,10 @@ export function createLocalTools(
         const item = await context.store.helpers.message(input.helperId, input.text, now);
         const live = liveHelperTurn(input.helperId);
         if (live?.capabilities.steer) {
-          const steered = await deps.steering
+          const outcome = await deps.steering
             .steerInput(live, item.id, input.text)
-            .catch(() => false);
-          if (steered) return { delivered: "steered" };
+            .catch(() => "failed");
+          if (outcome === "steered") return { delivered: "steered" };
         }
         context.changed({ userAgentId: current.userAgentId });
         return { delivered: "queued" };

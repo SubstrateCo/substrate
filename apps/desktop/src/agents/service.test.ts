@@ -39,6 +39,8 @@ async function serviceFixture() {
   const requests: string[] = [];
   /** Paths that answer UNAUTHENTICATED once, as when the session ended. */
   const deniedOnce = new Set<string>();
+  /** Wakes the next pull returns. */
+  const wakes: unknown[] = [];
   const ok = (data: unknown) => Response.json({ success: true, data });
   const serviceOptions = {
     backend,
@@ -71,7 +73,8 @@ async function serviceFixture() {
         return Response.json({ role: "owner" });
       if (path === "/api/v1/agents/list") return ok({ agents: [], runSettings: [] });
       if (path === "/api/v1/agent-work/needs-you") return ok({ requests: [] });
-      if (path.endsWith("/wakes/pull") || path.endsWith("/requests/answers")) return ok([]);
+      if (path.endsWith("/wakes/pull")) return ok(wakes.splice(0));
+      if (path.endsWith("/requests/answers")) return ok([]);
       return ok(null);
     },
   };
@@ -86,7 +89,9 @@ async function serviceFixture() {
   return {
     service,
     deniedOnce,
+    wakes,
     sessionChecks: () => requests.filter((path) => path === "/api/v1/session").length,
+    catalogReads: () => requests.filter((path) => path === "/api/v1/agents/list").length,
     memberChecks: () =>
       requests.filter((path) => path === "/api/auth/organization/get-active-member-role").length,
   };
@@ -135,4 +140,37 @@ test("a server call denied with UNAUTHENTICATED verifies the session again", asy
   expect(f.deniedOnce.size).toBe(0);
   await f.service.call("agents");
   expect(f.sessionChecks()).toBe(2);
+});
+
+test("a wake for an unknown agent reads the catalog from the server again", async () => {
+  jest.useFakeTimers();
+  const f = await serviceFixture();
+  f.service.start();
+  await f.service.call("agents");
+  await settle();
+  const before = f.catalogReads();
+  expect(before).toBeGreaterThan(0);
+
+  // The server adopts unhomed agents at pull, so the cached catalog may not list this one.
+  f.wakes.push({
+    id: "wake-1",
+    userAgentId: "00000000-0000-4000-8000-0000000000a1",
+    source: "owner_message",
+    sourceRef: {
+      messageId: "00000000-0000-4000-8000-0000000000b1",
+      conversationId: "00000000-0000-4000-8000-0000000000c1",
+      threadId: null,
+      kind: "direct_message",
+    },
+    sessionKey: "dm:00000000-0000-4000-8000-0000000000c1",
+    dedupeKey: "msg:00000000-0000-4000-8000-0000000000b1",
+    createdAt: new Date().toISOString(),
+    request: null,
+  });
+  f.service.onRealtime(change("agent-work"));
+  await settle();
+  jest.advanceTimersByTime(300);
+  await settle();
+  expect(f.wakes).toHaveLength(0);
+  expect(f.catalogReads()).toBe(before + 1);
 });

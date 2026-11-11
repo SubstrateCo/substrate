@@ -10,7 +10,7 @@ import { harnessCodesWithClassification } from "@substrate/contracts/harness";
 
 import { envelopeItem, renderEnvelope } from "../turns/envelope.ts";
 import type { LiveTurn, RuntimeContext } from "./context.ts";
-import { errorCode, type TurnExecutor } from "./turn-executor.ts";
+import { endedStatus, errorCode, type TurnExecutor } from "./turn-executor.ts";
 
 /**
  * Steer failures that prove the harness did not take the input: it refused before delivery,
@@ -24,6 +24,9 @@ const wrapUpNote = "Your owner is waiting. Wrap up and hand off.";
 /** A stopping turn without a terminal event this long is closed natively and ended. */
 const stopTimeoutMs = 20_000;
 
+/** Where a steered item stands after steerInput. */
+export type SteerOutcome = "steered" | "skipped" | "pending" | "uncertain";
+
 /**
  * Owner items whose slot is busy. The live interactive turn of the same session, in the same
  * epoch, takes them with steer when the harness can; otherwise they wait, held, until the slot
@@ -35,13 +38,14 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
   }
 
   /**
-   * Steers one item. The store records it as submitted to the live turn first, in one
-   * transaction that checks the turn is still live, so that the turn's end and early
-   * consumption evidence see it. A steer that was certainly not delivered puts it back; any
-   * other failure leaves it uncertain, so that it is never delivered twice.
+   * Steers one item: the whole steer protocol of the inbox. The store records it as submitted
+   * to the live turn first, in one transaction that checks the turn is still live, so that the
+   * turn's end and early consumption evidence see it. A steer that was certainly not delivered
+   * puts it back to pending; any other failure leaves it uncertain, so that it is never
+   * delivered twice. "skipped" means the turn was not live and nothing changed.
    */
-  async function steerInput(state: LiveTurn, itemId: string, text: string) {
-    if (!(await context.store.inbox.submitSteer(itemId, state.turnId))) return false;
+  async function steerInput(state: LiveTurn, itemId: string, text: string): Promise<SteerOutcome> {
+    if (!(await context.store.inbox.submitSteer(itemId, state.turnId))) return "skipped";
     try {
       await context.harness.execute({
         type: "steer",
@@ -53,17 +57,19 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
       });
     } catch (error) {
       const code = errorCode(error);
-      if (code !== undefined && undeliveredSteerCodes.has(code))
+      if (code !== undefined && undeliveredSteerCodes.has(code)) {
         await context.store.inbox.revertSteer(itemId, state.turnId, context.now());
-      else await context.store.inbox.uncertainSteer(itemId, state.turnId);
-      throw error;
+        return "pending";
+      }
+      await context.store.inbox.uncertainSteer(itemId, state.turnId);
+      return "uncertain";
     }
     await context.store.events.append(
       state.turnId,
       [{ kind: "input_submitted", data: { inputId: itemId } }],
       context.now(),
     );
-    return true;
+    return "steered";
   }
 
   /** Renders one item as its own turn block and steers it into the live turn. */
@@ -73,11 +79,11 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
     item: InboxRow,
     sessionKind: SessionRow["kind"],
     messages: Map<string, AgentSourceMessage>,
-  ) {
+  ): Promise<SteerOutcome | "dropped"> {
     const rendered = envelopeItem(item, { sessionKind, messages });
     if (!rendered) {
-      await context.store.inbox.drop([item.id], "source_inaccessible");
-      return true;
+      await context.store.inbox.drop(context.organizationId, [item.id], "source_inaccessible");
+      return "dropped";
     }
     const text = renderEnvelope({
       time: new Date(context.now()).toISOString(),
@@ -98,11 +104,10 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
   function timeout(turnId: string) {
     context.later(() => {
       void (async () => {
-        const state = executor.live.get(turnId);
         const turn = await context.store.turns.get(turnId);
-        if (!state || turn?.status !== "stopping") return;
-        await executor.closeNative(state.sessionId);
-        await executor.abandon(turnId, { status: "interrupted" });
+        if (!executor.live.has(turnId) || turn?.status !== "stopping") return;
+        // The turn already stops: it keeps its recorded reason.
+        await executor.end([turnId], turn.interruption ?? "stop");
       })().catch(() => context.log("Could not end a stopped agent turn."));
     }, stopTimeoutMs);
   }
@@ -121,7 +126,7 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
     else
       await context.store.turns.finish(
         turnId,
-        { status: interruption === "stop" ? "cancelled" : "interrupted" },
+        { status: endedStatus(interruption) },
         context.now(),
       );
     return true;
@@ -178,28 +183,27 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
         if (messages) {
           try {
             const turn = turns.get(state.turnId);
-            if (await steerItem(state, turn, item, session.kind, messages)) {
+            const outcome = await steerItem(state, turn, item, session.kind, messages);
+            if (outcome === "pending" || outcome === "uncertain")
+              context.log("Could not add a message to the live turn.");
+            // An uncertain item waits for the owner, not for the slot.
+            if (outcome === "steered" || outcome === "dropped" || outcome === "uncertain") {
               context.changed({ userAgentId: session.userAgentId, turnId: state.turnId });
               continue;
             }
           } catch {
             context.log("Could not add a message to the live turn.");
-            // An uncertain item waits for the owner, not for the slot.
-            if ((await context.store.inbox.get(item.id))?.status === "uncertain") {
-              context.changed({ userAgentId: session.userAgentId, turnId: state.turnId });
-              continue;
-            }
           }
         }
         if (!item.held) hold.push(item.id);
       }
-      await context.store.inbox.hold(hold);
+      await context.store.inbox.hold(context.organizationId, hold);
       if (hold.length) context.changed({});
     },
     steerInput,
     /** Interrupts the live turn in the item's slot so that the held item runs next. */
     async sendNow(itemId: string) {
-      const item = await context.store.inbox.get(itemId);
+      const item = await context.store.inbox.get(context.organizationId, itemId);
       const session = item ? await context.store.sessions.get(item.sessionId) : undefined;
       if (!item || !session || session.organizationId !== context.organizationId)
         throw new Error("Item not found.");

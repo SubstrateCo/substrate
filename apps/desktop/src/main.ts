@@ -16,10 +16,9 @@ import { registerWindowBridge } from "./shell/title-bar.ts";
 import { trustedSender } from "./shell/trusted-sender.ts";
 import { createShellWindow, configurePermissions } from "./shell/window.ts";
 import { desktopAPITransport } from "./transport/api-transport.js";
-import { backendURL } from "./transport/bundled-renderer.js";
 import { configureProtocols } from "./transport/protocols.ts";
+import { resolvePublicConfig } from "./transport/public-config.ts";
 import { emitToRenderer } from "./transport/realtime-events.ts";
-import { storageOrigins } from "./transport/storage.js";
 import { app, BrowserWindow, ipcMain, Menu, session, Tray } from "electron";
 import { readFileSync } from "node:fs";
 import { hostname } from "node:os";
@@ -47,17 +46,14 @@ function main() {
     join(app.getPath("appData"), "Substrate", ...(testID ? ["tests", testID] : [])),
   );
   const sessionPartition = smokeTest ? "substrate-smoke-test" : "persist:substrate";
-  const publicConfig = app.isPackaged
-    ? JSON.parse(readFileSync(new URL("./desktop-config.json", import.meta.url), "utf8"))
-    : {};
-  const backend = backendURL(process.env.SUBSTRATE_API_URL ?? publicConfig.apiURL, app.isPackaged);
-  // Signed uploads go to the server's storage endpoint. A packaged app uses the origin from its
-  // build, so an unrelated S3_ENDPOINT on the machine cannot widen it.
-  const storageEndpoint = app.isPackaged ? undefined : process.env.S3_ENDPOINT;
-  const allowedStorageOrigins = storageOrigins(
-    storageEndpoint ? new URL(storageEndpoint).origin : publicConfig.storageOrigins,
-    app.isPackaged,
-  );
+  const publicConfig = resolvePublicConfig(process.env, {
+    packaged: app.isPackaged,
+    built: app.isPackaged
+      ? JSON.parse(readFileSync(new URL("./desktop-config.json", import.meta.url), "utf8"))
+      : undefined,
+  });
+  const backend = publicConfig.apiURL;
+  const allowedStorageOrigins = publicConfig.storageOrigins;
   let realtime: ReturnType<typeof composeDesktop>["realtime"] | undefined;
   let agentWork: ReturnType<typeof composeDesktop>["agentWork"] | undefined;
   let services: ReturnType<typeof composeDesktop> | undefined;
@@ -72,7 +68,7 @@ function main() {
   }
   const { authClient, handleAuthLink } = createDesktopAuthClient(
     backend,
-    process.env.SUBSTRATE_WEB_URL ?? publicConfig.webURL ?? applicationURL,
+    publicConfig.webURL ?? applicationURL,
     smokeTest,
     () => mainWindow,
     stopSession,

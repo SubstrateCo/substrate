@@ -6,21 +6,32 @@ import {
   type AgentWakeRequestDetail,
   type AgentWakeView,
 } from "@substrate/contracts/agent-work";
-import type {
-  AdapterCapabilities,
-  HarnessCommand,
-  HarnessCommandResult,
-  HarnessEvent,
-  HarnessEventBody,
+import {
+  isHarnessErrorCode,
+  type AdapterCapabilities,
+  type HarnessCommand,
+  type HarnessCommandResult,
+  type HarnessErrorCode,
+  type HarnessEvent,
+  type HarnessEventBody,
+  type TurnResult,
 } from "@substrate/contracts/harness";
+import {
+  createHarnessHost,
+  type AdapterContext,
+  type ConnectNative,
+  type NativeAdapter,
+  type RuntimeHarnessHost,
+} from "@substrate/harness-runtime";
 
+import { createOpenSessions } from "../../harness/worker/open-sessions.ts";
 import type { AgentWorkServer, CatalogAgent } from "../server/agent-work-server.ts";
 import { createAgentWorkRuntime } from "./runtime.ts";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-/* oxlint-disable deslop/no-unknown-parameters, deslop/no-unknown-returns -- The fake server records untyped request bodies and the fake harness returns untyped results, as the real boundaries do. */
+/* oxlint-disable deslop/no-unknown-parameters, deslop/no-unknown-returns -- The fake server records untyped request bodies and hooks return untyped results, as the real boundaries do. */
 
 export const agentId = "00000000-0000-4000-8000-0000000000a1";
 export const organizationId = "org-1";
@@ -35,10 +46,10 @@ const noCapabilities: AdapterCapabilities = {
   interruptReceipt: false,
 };
 
-/** A harness or server failure with a fixed code, as the controller reports them. */
+/** A harness failure with a fixed code, as the controller reports them. */
 export class CodeError extends Error {
-  readonly code: string;
-  constructor(code: string) {
+  readonly code: HarnessErrorCode;
+  constructor(code: HarnessErrorCode) {
     super(code);
     this.code = code;
   }
@@ -53,27 +64,20 @@ export async function openStore() {
   };
 }
 
-/** Test overrides of the fake harness and server. */
+/** Test overrides of the controller and server. */
 interface FixtureHooks {
   /**
-   * Replaces the fake harness result of a command. Return undefined to keep the default. next
-   * runs the default host behavior, so a hook can let the command reach the host and then fail.
+   * Replaces the controller's result of a command. Return undefined to keep the default. next
+   * sends the command to the host, so a hook can let the command reach the host and then fail.
    */
   command?: (command: HarnessCommand, next: () => Promise<unknown>) => Promise<unknown> | undefined;
   openRequest?: () => Promise<{ id: string; status: string }>;
 }
 
-/** The host's grace after an interrupt before it ends the turn itself. */
-const hostInterruptGraceMs = 15_000;
-
-interface FakeNativeSession {
-  organizationId: string;
-  epoch: number;
-  nativeSessionId: string;
-  resumed: boolean;
-  turn?: { turnId: string; generation: number; clearGrace?: () => void };
-  /** The session closes as soon as its live turn ends. */
-  closing: boolean;
+/** A native session of the fake adapter. Tests end its turn and stream its events. */
+interface FakeNative {
+  context: AdapterContext;
+  finish?: (result: TurnResult) => void;
 }
 
 /** A promise that the test settles. */
@@ -88,14 +92,16 @@ export function deferred<T = unknown>() {
 }
 
 /**
- * A runtime on a real SQLite store with a fake server, a fake harness and a manual clock.
- * Reuse a store path to simulate an app restart.
+ * A runtime on a real SQLite store and the real harness host, with a fake server, a fake native
+ * adapter and a manual clock. A thin controller in between checks the organization and reports
+ * host failures by code, as the worker and controller do. Reuse a store path to simulate an app
+ * restart.
  */
 export async function runtimeFixture(
   options: {
     path?: string;
     capabilities?: Partial<AdapterCapabilities>;
-    /** Every open fails with resume-failed. */
+    /** Every native connect fails, as when the native session is gone. */
     failOpen?: boolean;
     now?: number;
   } = {},
@@ -103,6 +109,8 @@ export async function runtimeFixture(
   // A restart reuses the given file. Other tests need no file.
   const path = options.path ?? ":memory:";
   const store = await AgentWorkStore.open(path);
+  await mkdir(join(tmpdir(), "opencode"), { recursive: true });
+  const accountDirectory = await mkdtemp(join(tmpdir(), "opencode", "agent-work-host-"));
   let now = options.now ?? Date.parse("2026-06-01T10:00:00Z");
   const wakes: AgentWakeView[] = [];
   const acked = new Set<string>();
@@ -123,8 +131,6 @@ export async function runtimeFixture(
   const hooks: FixtureHooks = {};
   /** The organization the controller verified. Commands for another one fail. */
   const harness = { activeOrganizationId: organizationId };
-  /** The sessions open in the fake host. */
-  const native = new Map<string, FakeNativeSession>();
   const closedOrganizations: string[] = [];
   /** The realtime connection main reports to agent work. */
   const realtime = { connected: false };
@@ -184,140 +190,97 @@ export async function runtimeFixture(
     };
   }
 
-  // The fake host follows the real host and controller: events reach agent work in order, a
-  // closed session ends its live turn as failed first, and interrupts end within the grace.
+  /** Native sessions by native session ID, and the ones open in the host by session ID. */
+  const natives = new Map<string, FakeNative>();
+  const open = new Map<string, FakeNative>();
+  let nativeCount = 0;
+  const connect: ConnectNative = async (_harness, context, _prefix, resumeId) => {
+    if (options.failOpen) throw new Error("The native session is gone.");
+    const native: FakeNative = { context };
+    const adapter: NativeAdapter = {
+      capabilities: { ...capabilities },
+      nativeSessionId: resumeId ?? `native-${++nativeCount}`,
+      turn: () =>
+        new Promise((resolve) => {
+          native.finish = resolve;
+        }),
+      steer: async () => {},
+      compact: async () => {},
+      interrupt: async () => ({ stillQueuedInputIds: [...stillQueued] }),
+      respond: async () => {},
+      // A native adapter ends its live turn as failed when it disconnects.
+      disconnect: async () =>
+        native.finish?.({ status: "failed", error: "The native session closed." }),
+    };
+    natives.set(adapter.nativeSessionId, native);
+    return adapter;
+  };
+
+  /** Main's view of the sessions open in the worker, which ends them when the worker exits. */
+  const workerSessions = createOpenSessions();
+  let host: RuntimeHarnessHost;
+  let unsubscribe = () => {};
+
   function deliver(event: HarnessEvent) {
-    const session = native.get(event.sessionId);
-    if (event.type === "session.closed") native.delete(event.sessionId);
-    const ends =
-      event.type === "turn.completed" && session?.turn && session.turn.turnId === event.turnId;
-    if (ends) {
-      session.turn!.clearGrace?.();
-      session.turn = undefined;
-    }
+    workerSessions.observe(event);
+    if (event.type === "session.closed") open.delete(event.sessionId);
     runtime.onHarnessEvent(event);
-    if (ends && session.closing) closeNativeSession(event.sessionId);
   }
 
-  function hostEvent(
-    sessionId: string,
-    body: HarnessEventBody,
-    turn?: { turnId: string; generation: number },
-  ) {
-    deliver({
-      sessionId,
-      organizationId: native.get(sessionId)?.organizationId ?? organizationId,
-      turnId: turn?.turnId ?? null,
-      generation: turn?.generation ?? null,
-      timestamp: now,
-      ...body,
+  /** A new harness worker: its host has the organization's configuration. */
+  async function startHost() {
+    host = await createHarnessHost({ accountDirectory, connect, clock: { now: () => now, later } });
+    unsubscribe = host.subscribe(deliver);
+    await host.configure({
+      organizationId,
+      agents: catalog.map((agent) => ({
+        id: agent.id,
+        name: agent.name,
+        instructions: "",
+        harness: agent.harness,
+        enabled: agent.enabled,
+        useStartupDefaults: false,
+      })),
     });
   }
 
-  /** The adapter ends a live turn as failed on disconnect, before the session closes. */
-  function closeNativeSession(sessionId: string) {
-    const session = native.get(sessionId);
-    if (!session) return;
-    if (session.turn)
-      hostEvent(
-        sessionId,
-        {
-          type: "turn.completed",
-          result: { status: "failed", error: "The native session closed." },
-        },
-        session.turn,
-      );
-    hostEvent(sessionId, { type: "session.closed", reason: "closed" });
+  /** The worker process exits: its events stop, and main closes every session it had open. */
+  async function workerExited() {
+    unsubscribe();
+    const closed = workerSessions.exited();
+    open.clear();
+    await host.dispose();
+    await startHost();
+    for (const event of closed) deliver({ ...event, timestamp: now });
   }
 
-  function openSession(command: { organizationId: string; sessionId: string }) {
-    const session = native.get(command.sessionId);
-    if (!session || session.organizationId !== command.organizationId)
-      throw new CodeError("not-connected");
-    return session;
+  /** Host commands on their way. The host does file work, so settle waits for them. */
+  const inflight = new Set<Promise<unknown>>();
+  function hostCommand(command: HarnessCommand): Promise<unknown> {
+    const pending = sendToHost(command);
+    const tracked = pending.catch(() => {});
+    inflight.add(tracked);
+    void tracked.finally(() => inflight.delete(tracked));
+    return pending;
   }
 
-  async function hostCommand(command: HarnessCommand): Promise<unknown> {
-    switch (command.type) {
-      case "open": {
-        if (options.failOpen) throw new CodeError("resume-failed");
-        const existing = native.get(command.sessionId);
-        if (existing) {
-          const stale =
-            existing.epoch !== command.epoch ||
-            (command.nativeSessionId !== undefined &&
-              command.nativeSessionId !== existing.nativeSessionId);
-          if (!stale && !existing.closing)
-            return {
-              nativeSessionId: existing.nativeSessionId,
-              capabilities,
-              resumed: existing.resumed,
-            };
-          if (!stale && existing.turn) throw new CodeError("turn-active");
-          closeNativeSession(command.sessionId);
-        }
-        const opened: FakeNativeSession = {
-          organizationId: command.organizationId,
-          epoch: command.epoch,
-          nativeSessionId: command.nativeSessionId ?? `native-${command.sessionId}`,
-          resumed: Boolean(command.nativeSessionId),
-          closing: false,
-        };
-        native.set(command.sessionId, opened);
-        return {
-          nativeSessionId: opened.nativeSessionId,
-          capabilities,
-          resumed: opened.resumed,
-        };
+  /** The command reaches the host, and fails with a registered code as the worker reports it. */
+  async function sendToHost(command: HarnessCommand): Promise<unknown> {
+    try {
+      if (command.type !== "open") return await host.execute(command);
+      workerSessions.opening(command);
+      try {
+        const ref = await host.execute(command);
+        workerSessions.opened(command.sessionId);
+        open.set(command.sessionId, natives.get(ref.nativeSessionId)!);
+        return ref;
+      } catch (error) {
+        workerSessions.openFailed(command.sessionId);
+        throw error;
       }
-      case "turn": {
-        const session = openSession(command);
-        if (session.turn) throw new CodeError("turn-active");
-        if (session.closing) throw new CodeError("not-connected");
-        session.turn = { turnId: command.turnId, generation: command.generation };
-        return undefined;
-      }
-      case "steer": {
-        const session = openSession(command);
-        if (session.turn?.turnId !== command.turnId) throw new CodeError("turn-not-live");
-        if (!capabilities.steer) throw new CodeError("steer-unsupported");
-        return undefined;
-      }
-      case "interrupt": {
-        const session = native.get(command.sessionId);
-        const turn = session?.turn;
-        if (!session || session.organizationId !== command.organizationId || !turn)
-          throw new CodeError("no-live-turn");
-        if (turn.turnId !== command.turnId) throw new CodeError("no-live-turn");
-        turn.clearGrace ??= later(() => {
-          if (session.turn !== turn) return;
-          session.closing = true;
-          hostEvent(
-            command.sessionId,
-            {
-              type: "turn.completed",
-              result: {
-                status: "interrupted",
-                error: "The harness did not confirm the interrupt.",
-              },
-            },
-            turn,
-          );
-        }, hostInterruptGraceMs);
-        return { stillQueuedInputIds: [...stillQueued] };
-      }
-      case "respond":
-        openSession(command);
-        return undefined;
-      case "compact":
-        if (openSession(command).turn) throw new CodeError("turn-active");
-        return undefined;
-      case "close": {
-        const session = native.get(command.sessionId);
-        if (session?.organizationId === command.organizationId)
-          closeNativeSession(command.sessionId);
-        return undefined;
-      }
+    } catch (error) {
+      const code = error instanceof Error && "code" in error ? error.code : undefined;
+      throw new CodeError(isHarnessErrorCode(code) ? code : "harness-error");
     }
   }
 
@@ -337,13 +300,12 @@ export async function runtimeFixture(
             if (command.organizationId !== harness.activeOrganizationId)
               throw new CodeError("organization-unavailable");
             const hooked = hooks.command?.(command, () => hostCommand(command));
-            // SAFETY: the fake host returns the result shape of each command, as the controller does.
+            // SAFETY: the host returns the result shape of each command, as the controller does.
             return (await (hooked ?? hostCommand(command))) as HarnessCommandResult<C>;
           },
           async closeOrganization(organization) {
             closedOrganizations.push(organization);
-            for (const [sessionId, session] of native)
-              if (session.organizationId === organization) closeNativeSession(sessionId);
+            await host.closeOrganization(organization);
           },
           readProfile: async () => "",
         },
@@ -374,9 +336,15 @@ export async function runtimeFixture(
     );
   }
   let runtime = createRuntime();
+  await startHost();
 
   async function settle() {
-    for (let index = 0; index < 40; index++) await new Promise((resolve) => setImmediate(resolve));
+    for (let round = 0; round < 20; round++) {
+      for (let index = 0; index < 40; index++)
+        await new Promise((resolve) => setImmediate(resolve));
+      if (!inflight.size) return;
+      await Promise.all(inflight);
+    }
   }
 
   interface OwnerMessageInput {
@@ -455,8 +423,8 @@ export async function runtimeFixture(
     switchOrganization(id: string) {
       harness.activeOrganizationId = id;
     },
-    /** Sessions open in the fake host. */
-    nativeSessions: () => [...native.keys()],
+    /** Sessions open in the host. */
+    nativeSessions: () => [...open.keys()],
     realtime,
     synchronizations,
     /** Runs the runtime's periodic tick once. */
@@ -497,28 +465,21 @@ export async function runtimeFixture(
       answers.push(delivery);
     },
     turns: () => commands.filter((command) => command.type === "turn"),
-    /** Emits a harness event for a turn this runtime started. */
+    /**
+     * The native harness reports an event of the turn's session through the host. The host sends
+     * turn.started itself when the turn command arrives. turn.completed ends the native turn, and
+     * session.closed is the worker's exit.
+     */
     async emit(turnId: string, body: HarnessEventBody) {
-      const turn = turnCommand(turnId);
-      deliver({
-        sessionId: turn.sessionId,
-        organizationId,
-        turnId,
-        generation: turn.generation,
-        timestamp: now,
-        ...body,
-      });
+      const native = open.get(turnCommand(turnId).sessionId);
+      if (body.type === "session.closed") await workerExited();
+      else if (body.type === "turn.completed") native?.finish?.(body.result);
+      else if (body.type !== "turn.started") native?.context.emit(body);
       await settle();
     },
-    /** Emits an event for a turn command from inside a hook, before the command answers. */
-    emitFor(command: Extract<HarnessCommand, { type: "turn" }>, body: HarnessEventBody) {
-      hostEvent(command.sessionId, body, command);
-    },
-    /** Emits any harness event, such as native output outside our turns. */
-    async event(
-      event: HarnessEventBody & Pick<HarnessEvent, "sessionId" | "turnId" | "generation">,
-    ) {
-      deliver({ organizationId, timestamp: now, ...event });
+    /** Native output outside our turns, such as a turn the harness started itself. */
+    async nativeOutput(sessionId: string, body: HarnessEventBody) {
+      open.get(sessionId)?.context.emit(body, "session");
       await settle();
     },
     /** Sends an owner message and lets its debounced turn start. */
@@ -529,8 +490,12 @@ export async function runtimeFixture(
       return sent;
     },
     async close() {
+      await settle();
+      unsubscribe();
       runtime.dispose();
+      await host.dispose().catch(() => {});
       store.close();
+      await rm(accountDirectory, { recursive: true, force: true });
     },
   };
 }

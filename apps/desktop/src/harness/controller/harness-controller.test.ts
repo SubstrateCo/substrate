@@ -293,7 +293,7 @@ describe("desktop harness authority", () => {
       turn: {
         turnId: crypto.randomUUID(),
         attempt: 1,
-        sessionKey: sessionKeys.dm("x"),
+        sessionKey: sessionKeys.dm(crypto.randomUUID()),
         origin: null,
         kind: "interactive" as const,
       },

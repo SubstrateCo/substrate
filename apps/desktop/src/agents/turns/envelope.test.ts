@@ -18,6 +18,7 @@ const message: AgentSourceMessage = {
 function row(id: string, createdAt: number, overrides: Partial<InboxRow> = {}): InboxRow {
   return {
     id,
+    organizationId: "org-1",
     sessionId: "s1",
     userAgentId: "agent",
     source: "owner_message",

@@ -8,7 +8,7 @@ import { DesktopSessionAuthority } from "../session/desktop-session-authority.ts
 import { dispatchAgentWork } from "./bridge/agent-work-bridge.ts";
 import type { AgentDirectory, HarnessPort } from "./runtime/context.ts";
 import { createAgentWorkRuntime, type AgentWorkRuntime } from "./runtime/runtime.ts";
-import { createAgentWorkServer, type CatalogAgent } from "./server/agent-work-server.ts";
+import { createAgentWorkServer } from "./server/agent-work-server.ts";
 import { lstat, mkdir, realpath } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -34,23 +34,20 @@ async function storePath(accountDirectory: string) {
   return path;
 }
 
+/**
+ * The authority caches the catalog until an agents hint or a realtime reconnect, which may
+ * follow missed hints. This directory keeps no cache of its own.
+ */
 function agentDirectory(
   server: ReturnType<typeof createAgentWorkServer>,
-): AgentDirectory & { invalidate(): void } {
-  /** Kept until an agents hint or a realtime reconnect, which may follow missed hints. */
-  let cache: Promise<CatalogAgent[]> | undefined;
-  function all() {
-    const pending = (cache ??= server.catalog());
-    pending.catch(() => {
-      if (cache === pending) cache = undefined;
-    });
-    return pending;
-  }
+  authority: DesktopSessionAuthority,
+): AgentDirectory {
+  const all = () => server.catalog();
   return {
     all,
     get: async (id) => (await all()).find((agent) => agent.id === id),
     invalidate() {
-      cache = undefined;
+      authority.invalidateCatalog();
     },
   };
 }
@@ -74,24 +71,20 @@ export function createAgentWorkService(options: {
   const log = options.log ?? (() => {});
   const authority = options.authority;
   /**
-   * Counts events that may change the session: session, access and organization hints, a
-   * realtime reconnect, and a denied server call. The active runtime is verified while the
-   * count it was verified at is current.
+   * The authority generation the active runtime was verified at. Events that may change the
+   * session advance it: session, access and organization hints, a realtime reconnect, and a
+   * denied server call.
    */
-  let sessionChanges = 0;
   let verifiedAt = -1;
   const sessionChanged = () => {
     authority.invalidate();
   };
-  authority.onChange(() => {
-    sessionChanges++;
-  });
   const server = createAgentWorkServer({
     ...options,
     onDenied: sessionChanged,
     catalog: () => authority.catalog(),
   });
-  const agents = agentDirectory(server);
+  const agents = agentDirectory(server, authority);
   let active: Active | undefined;
   let ensuring: Promise<Active | undefined> | undefined;
   let stopped = true;
@@ -115,7 +108,7 @@ export function createAgentWorkService(options: {
   }
 
   async function open(): Promise<Active | undefined> {
-    const seen = sessionChanges;
+    const seen = authority.generation;
     const auth = await authority.verify();
     verifiedAt = seen;
     const identity = `${auth.accountKey}:${auth.organizationId}`;
@@ -166,7 +159,7 @@ export function createAgentWorkService(options: {
    * organization replaces it.
    */
   function ensure() {
-    if (!ensuring && active && verifiedAt === sessionChanges) return Promise.resolve(active);
+    if (!ensuring && active && verifiedAt === authority.generation) return Promise.resolve(active);
     ensuring ??= open()
       .catch(() => {
         log("Could not verify the session for agent work.");
@@ -215,7 +208,6 @@ export function createAgentWorkService(options: {
       if (event.domain === "access") void ensure();
       if (event.domain === "agents") {
         // An agent may have moved to or from this desktop.
-        authority.invalidateCatalog();
         agents.invalidate();
         const current = active;
         current?.runtime.agentsChanged();

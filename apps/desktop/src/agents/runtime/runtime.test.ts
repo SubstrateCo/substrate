@@ -296,12 +296,13 @@ test("a new message for the live session is steered when the harness can steer",
   const steer = f.commands.find((command) => command.type === "steer");
   expect(steer).toMatchObject({ turnId: turn.turnId, text: expect.stringContaining("Also this") });
   const item = await f.store.inbox.get(
+    organizationId,
     (steer as Extract<HarnessCommand, { type: "steer" }>).inputId,
   );
   expect(item).toMatchObject({ status: "submitted", steered: true, turnId: turn.turnId });
 
   await f.emit(turn.turnId, { type: "input.consumed", inputId: item!.id });
-  expect((await f.store.inbox.get(item!.id))!.status).toBe("consumed");
+  expect((await f.store.inbox.get(organizationId, item!.id))!.status).toBe("consumed");
 });
 
 test("without steer the message is held, and Send now interrupts and runs it next with a resume note later", async () => {
@@ -364,9 +365,9 @@ async function interruptedTurn(path: string) {
     title: "search",
   });
   await before.emit(turn.turnId, { type: "item.completed", itemId: "i1", status: "completed" });
-  before.runtime.dispose();
-  before.store.close();
-  return turn;
+  const { nativeSessionId } = (await before.store.sessions.get(turn.sessionId))!;
+  await before.close();
+  return { ...turn, nativeSessionId };
 }
 
 test("after a restart a safe turn continues once, resuming its native session", async () => {
@@ -377,7 +378,7 @@ test("after a restart a safe turn continues once, resuming its native session", 
     const open = f.commands.find((command) => command.type === "open");
     expect(open).toMatchObject({
       requireResume: true,
-      nativeSessionId: `native-${turn.sessionId}`,
+      nativeSessionId: turn.nativeSessionId,
     });
     const [continued] = f.turns() as [TurnCommand];
     expect(continued).toMatchObject({
@@ -612,7 +613,7 @@ test("local tools reject calls that do not come from a live turn of the named se
     turn: {
       turnId: crypto.randomUUID(),
       attempt: 1,
-      sessionKey: sessionKeys.dm("x"),
+      sessionKey: sessionKeys.dm(crypto.randomUUID()),
       origin: null,
       kind: "interactive",
     },

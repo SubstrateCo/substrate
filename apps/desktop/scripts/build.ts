@@ -1,5 +1,4 @@
-import { backendURL } from "../src/transport/bundled-renderer.js";
-import { storageOrigins } from "../src/transport/storage.js";
+import { resolvePublicConfig } from "../src/transport/public-config.ts";
 import { bundleHarnessWorker, stageHarnessProductionAssets } from "./harness-worker.ts";
 import { bundlePreload } from "./preload.js";
 import { cp, readFile, rm, writeFile } from "node:fs/promises";
@@ -7,15 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const desktop = fileURLToPath(new URL("../", import.meta.url));
 const web = fileURLToPath(new URL("../../web/", import.meta.url));
-// Only this validated, public origin is captured. Never serialize process.env.
-const apiURL = backendURL(process.env.SUBSTRATE_API_URL, true);
-const webURL = backendURL(process.env.SUBSTRATE_WEB_URL, true);
-// Signed uploads go to the storage endpoint the server signs with.
-const storageEndpoint = process.env.S3_ENDPOINT;
-const allowedStorageOrigins = storageOrigins(
-  storageEndpoint ? new URL(storageEndpoint).origin : undefined,
-  true,
-);
+const publicConfig = resolvePublicConfig(process.env, { packaged: true });
 // This is a generated staging directory, never a source directory.
 await rm(`${desktop}/dist`, { recursive: true, force: true });
 const renderer = Bun.spawn([process.execPath, "run", "build"], {
@@ -42,10 +33,7 @@ await Promise.all([
   cp(`${web}/dist`, `${desktop}/dist/renderer`, { recursive: true }),
   cp(`${desktop}/src/shell/offline.html`, `${desktop}/dist/offline.html`),
   cp(`${desktop}/src/shell/offline.css`, `${desktop}/dist/offline.css`),
-  writeFile(
-    `${desktop}/dist/desktop-config.json`,
-    JSON.stringify({ apiURL, webURL, storageOrigins: allowedStorageOrigins }),
-  ),
+  writeFile(`${desktop}/dist/desktop-config.json`, JSON.stringify(publicConfig)),
   writeFile(
     `${desktop}/dist/package.json`,
     JSON.stringify({
