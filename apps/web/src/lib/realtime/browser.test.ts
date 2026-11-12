@@ -81,3 +81,42 @@ test("browser retries use bounded exponential jitter and cannot restart after di
   f.retries.at(-1)!.callback();
   expect(f.urls).toHaveLength(count);
 });
+
+test("an ended browser socket cannot publish ready or end its replacement; ready resets retry delay", async () => {
+  const f = fixture();
+  const ready = () =>
+    new MessageEvent("message", { data: JSON.stringify({ version: 1, type: "ready" }) });
+  await f.api.connect({ organizationId: "org" });
+  const first = f.sockets[0]!;
+  first.onclose?.(new CloseEvent("close", { code: 1006 }));
+  first.onclose?.(new CloseEvent("close", { code: 1006 }));
+  first.onmessage?.(ready());
+  expect(f.retries).toHaveLength(1);
+  expect(f.updates.at(-1)).toEqual({ type: "status", status: "disconnected" });
+  f.retries[0]!.callback();
+  const updates = f.updates.length;
+  first.onclose?.(new CloseEvent("close", { code: 4403 }));
+  first.onmessage?.(ready());
+  expect(f.updates).toHaveLength(updates);
+  f.sockets[1]!.onclose?.(new CloseEvent("close", { code: 1006 }));
+  expect(f.retries[1]?.delay).toBe(500);
+  f.retries[1]!.callback();
+  f.sockets[2]!.onmessage?.(ready());
+  f.sockets[2]!.onclose?.(new CloseEvent("close", { code: 1006 }));
+  expect(f.retries[2]?.delay).toBe(250);
+  await f.api.disconnect();
+});
+
+test("explicit browser connect recovers from forbidden and ignores its old socket", async () => {
+  const f = fixture();
+  await f.api.connect({ organizationId: "org" });
+  f.sockets[0]!.onclose?.(new CloseEvent("close", { code: 4401 }));
+  await f.api.connect({ organizationId: "org" });
+  f.sockets[0]!.onclose?.(new CloseEvent("close", { code: 1006 }));
+  f.sockets[1]!.onmessage?.(
+    new MessageEvent("message", { data: JSON.stringify({ version: 1, type: "ready" }) }),
+  );
+  expect(f.updates.at(-1)).toEqual({ type: "status", status: "connected" });
+  expect(f.retries).toHaveLength(0);
+  await f.api.disconnect();
+});

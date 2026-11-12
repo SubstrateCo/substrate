@@ -87,3 +87,38 @@ test("forbidden closes do not retry", () => {
   expect(f.updates.at(-1)).toEqual({ type: "status", status: "forbidden" });
   expect(f.retries).toHaveLength(0);
 });
+
+test("an ended socket cannot publish ready or end its replacement; ready resets retry delay", () => {
+  const f = fixture();
+  f.controller.connect({ organizationId: "org" });
+  const first = f.sockets[0]!;
+  first.emit("close", 1006);
+  first.emit("error");
+  first.emit("message", JSON.stringify({ version: 1, type: "ready" }));
+  expect(f.retries).toHaveLength(1);
+  expect(f.updates.at(-1)).toEqual({ type: "status", status: "disconnected" });
+  f.retries[0]!.callback();
+  const updates = f.updates.length;
+  first.emit("close", 4403);
+  first.emit("message", JSON.stringify({ version: 1, type: "ready" }));
+  expect(f.updates).toHaveLength(updates);
+  f.sockets[1]!.emit("close", 1006);
+  expect(f.retries[1]?.delay).toBe(1000);
+  f.retries[1]!.callback();
+  f.sockets[2]!.emit("message", JSON.stringify({ version: 1, type: "ready" }));
+  f.sockets[2]!.emit("close", 1006);
+  expect(f.retries[2]?.delay).toBe(500);
+  f.controller.disconnect();
+});
+
+test("explicit connect recovers from forbidden and ignores its old socket", () => {
+  const f = fixture();
+  f.controller.connect({ organizationId: "org" });
+  f.sockets[0]!.emit("close", 4401);
+  f.controller.connect({ organizationId: "org" });
+  f.sockets[0]!.emit("close", 1006);
+  f.sockets[1]!.emit("message", JSON.stringify({ version: 1, type: "ready" }));
+  expect(f.updates.at(-1)).toEqual({ type: "status", status: "connected" });
+  expect(f.retries).toHaveLength(0);
+  f.controller.disconnect();
+});

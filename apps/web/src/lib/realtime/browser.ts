@@ -1,6 +1,9 @@
 import {
   realtimeConnectInput,
+  realtimeConnectionMachine,
   realtimeEvent,
+  type RealtimeConnectionEvent,
+  type RealtimeConnectionState,
   type RealtimeAPI,
   type RealtimeUpdate,
 } from "@substrate/contracts/realtime";
@@ -32,11 +35,20 @@ export function createBrowserRealtime({
     for (const listener of listeners) listener(event);
   };
   let epoch = 0;
+  let attempt = 0;
+  let state: RealtimeConnectionState = "disconnected";
   let socket: BrowserRealtimeSocket | undefined;
   let retry: ReturnType<typeof setTimeout> | undefined;
   let timeout: ReturnType<typeof setTimeout> | undefined;
+  function transition(event: RealtimeConnectionEvent) {
+    const next = realtimeConnectionMachine.next(state, event);
+    if (next === null) return false;
+    state = next;
+    return true;
+  }
   function stop() {
     epoch++;
+    transition("disconnect");
     clearTimeout(retry);
     clearTimeout(timeout);
     const previous = socket;
@@ -60,15 +72,15 @@ export function createBrowserRealtime({
       const generation = epoch;
       let attempts = 0;
       function open() {
-        if (generation !== epoch) return;
+        if (generation !== epoch || !transition("connect")) return;
+        const currentAttempt = ++attempt;
         emit({ type: "status", status: "connecting" });
         const url = new URL("/api/v1/realtime", origin);
         url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
         if (organizationId !== null) url.searchParams.set("organizationId", organizationId);
-        let ended = false;
         function end(forbidden = false) {
-          if (generation !== epoch || ended) return;
-          ended = true;
+          if (generation !== epoch || currentAttempt !== attempt) return;
+          if (!transition(forbidden ? "forbidden" : "lost")) return;
           clearTimeout(timeout);
           emit({ type: "status", status: forbidden ? "forbidden" : "disconnected" });
           if (!forbidden)
@@ -90,7 +102,12 @@ export function createBrowserRealtime({
           current.close();
         }, 10_000);
         current.onmessage = ({ data }: MessageEvent) => {
-          if (generation !== epoch || ended) return;
+          if (
+            generation !== epoch ||
+            currentAttempt !== attempt ||
+            !realtimeConnectionMachine.canFire(state, "ready")
+          )
+            return;
           const text = wireText.safeParse(data);
           if (!text.success) return;
           try {
@@ -100,6 +117,7 @@ export function createBrowserRealtime({
             if (event.type === "change" && event.organizationId !== organizationId) return;
             emit(event);
             if (event.type === "ready") {
+              if (!transition("ready")) return;
               clearTimeout(timeout);
               attempts = 0;
               emit({ type: "status", status: "connected" });

@@ -1,7 +1,10 @@
 import { desktopOrigin } from "@substrate/contracts/desktop/links";
 import {
   realtimeConnectInput,
+  realtimeConnectionMachine,
   realtimeEvent,
+  type RealtimeConnectionEvent,
+  type RealtimeConnectionState,
   type RealtimeUpdate,
 } from "@substrate/contracts/realtime";
 
@@ -37,10 +40,19 @@ export function createRealtimeController({
   schedule?: (callback: () => void, delay: number) => ReturnType<typeof setTimeout>;
 }) {
   let epoch = 0;
+  let attempt = 0;
+  let state: RealtimeConnectionState = "disconnected";
   let socket: RealtimeSocket | undefined;
   let retry: ReturnType<typeof setTimeout> | undefined;
+  function transition(event: RealtimeConnectionEvent) {
+    const next = realtimeConnectionMachine.next(state, event);
+    if (next === null) return false;
+    state = next;
+    return true;
+  }
   function stop() {
     epoch++;
+    transition("disconnect");
     clearTimeout(retry);
     retry = undefined;
     const previous = socket;
@@ -58,16 +70,16 @@ export function createRealtimeController({
       const generation = epoch;
       let attempts = 0;
       function open() {
-        if (generation !== epoch) return;
+        if (generation !== epoch || !transition("connect")) return;
+        const currentAttempt = ++attempt;
         emit({ type: "status", status: "connecting" });
         const url = new URL("/api/v1/realtime", backend);
         url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
         if (organizationId !== null) url.searchParams.set("organizationId", organizationId);
         let current: RealtimeSocket;
-        let ended = false;
         function end(forbidden = false) {
-          if (generation !== epoch || ended) return;
-          ended = true;
+          if (generation !== epoch || currentAttempt !== attempt) return;
+          if (!transition(forbidden ? "forbidden" : "lost")) return;
           emit({ type: "status", status: forbidden ? "forbidden" : "disconnected" });
           if (!forbidden) {
             const delay =
@@ -83,7 +95,12 @@ export function createRealtimeController({
           return;
         }
         current.on("message", (data) => {
-          if (generation !== epoch || ended) return;
+          if (
+            generation !== epoch ||
+            currentAttempt !== attempt ||
+            !realtimeConnectionMachine.canFire(state, "ready")
+          )
+            return;
           try {
             const result = realtimeEvent.safeParse(JSON.parse(data.toString("utf8")));
             if (!result.success) return;
@@ -91,6 +108,7 @@ export function createRealtimeController({
               return;
             emit(result.data);
             if (result.data.type === "ready") {
+              if (!transition("ready")) return;
               attempts = 0;
               emit({ type: "status", status: "connected" });
             }
