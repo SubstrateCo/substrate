@@ -29,3 +29,33 @@ test("read enforces byte limits", async () => {
     await server.stop(true);
   }
 });
+
+test("batch cleanup returns only requested keys whose deletion succeeded", async () => {
+  let requests = 0;
+  const server = Bun.serve({
+    hostname: "127.0.0.1",
+    port: 0,
+    fetch() {
+      requests++;
+      return new Response(
+        '<DeleteResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Deleted><Key>one</Key></Deleted><Deleted><Key>unrequested</Key></Deleted><Error><Key>two</Key><Code>AccessDenied</Code></Error></DeleteResult>',
+        { headers: { "content-type": "application/xml" } },
+      );
+    },
+  });
+  try {
+    const storage = createS3Storage({
+      endpoint: server.url.href,
+      region: "us-east-1",
+      bucket: "test",
+      accessKeyId: "test",
+      secretAccessKey: "test",
+    });
+    expect(await storage.removeMany([])).toEqual([]);
+    expect(requests).toBe(0);
+    expect(await storage.removeMany(["one", "two"])).toEqual(["one"]);
+    expect(requests).toBe(1);
+  } finally {
+    await server.stop(true);
+  }
+});

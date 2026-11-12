@@ -4,7 +4,7 @@ import {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
-  DeleteObjectCommand,
+  DeleteObjectsCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
@@ -107,8 +107,13 @@ export function createS3Storage(
         { expiresIn: 60 },
       );
     },
-    async remove(key) {
-      await client.send(new DeleteObjectCommand({ Bucket, Key: key }));
+    async removeMany(keys) {
+      if (!keys.length) return [];
+      const result = await client.send(
+        new DeleteObjectsCommand({ Bucket, Delete: { Objects: keys.map((Key) => ({ Key })) } }),
+      );
+      const requested = new Set(keys);
+      return (result.Deleted ?? []).flatMap(({ Key }) => (Key && requested.has(Key) ? [Key] : []));
     },
   };
 }

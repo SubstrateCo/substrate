@@ -8,5 +8,5 @@ export interface ObjectStorage {
   put(key: string, bytes: Uint8Array, contentType: string): Promise<void>;
   putImmutable(key: string, bytes: Uint8Array, contentType: string): Promise<void>;
   signDownload(key: string, disposition: string): Promise<string>;
-  remove(key: string): Promise<void>;
+  removeMany(keys: string[]): Promise<string[]>;
 }

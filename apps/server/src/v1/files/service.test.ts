@@ -30,6 +30,7 @@ function fixture() {
   const candidates = new Set(["orphan"]);
   const forgottenCandidates: string[][] = [];
   const forgottenUploads: string[][] = [];
+  const removedBatches: string[][] = [];
   const expiredUploads = new Map<string, { id: string; temporaryKey: string }>([
     [id, { id, temporaryKey: upload.temporaryKey }],
   ]);
@@ -70,8 +71,10 @@ function fixture() {
       if (!objects.has(key)) objects.set(key, bytes.slice());
     },
     signDownload: async (_key, disposition) => `https://s3.test/content?disposition=${disposition}`,
-    remove: async (key) => {
-      objects.delete(key);
+    removeMany: async (keys) => {
+      removedBatches.push(keys);
+      for (const key of keys) objects.delete(key);
+      return keys;
     },
   };
   const service = createFileService({
@@ -88,6 +91,7 @@ function fixture() {
     candidates,
     forgottenCandidates,
     forgottenUploads,
+    removedBatches,
     expiredUploads,
     scope: { userId: "alice", organizationId: "org" },
   };
@@ -102,6 +106,10 @@ describe("file workflow", () => {
     await f.service.cleanup();
     expect(f.forgottenCandidates).toEqual([["orphan", "another", "third"]]);
     expect(f.forgottenUploads).toEqual([[f.id, "old-upload"]]);
+    expect(f.removedBatches).toEqual([
+      ["orphan", "another", "third"],
+      [f.upload.temporaryKey, "old-temporary"],
+    ]);
     expect(f.candidates.size).toBe(0);
     expect(f.expiredUploads.size).toBe(0);
   });
@@ -110,12 +118,23 @@ describe("file workflow", () => {
     const f = fixture();
     f.candidates.add("failed");
     f.candidates.add("unprocessed");
-    f.storage.remove = async (key) => {
-      if (key === "failed") throw new Error("S3 unavailable");
-    };
-    await expect(f.service.cleanup()).rejects.toThrow("S3 unavailable");
+    f.storage.removeMany = async () => ["orphan"];
+    await expect(f.service.cleanup()).rejects.toThrow(
+      "Storage cleanup did not remove every orphan.",
+    );
     expect([...f.candidates]).toEqual(["failed", "unprocessed"]);
     expect(f.forgottenCandidates).toEqual([["orphan"]]);
+  });
+  test("partial temporary cleanup acknowledges upload IDs only for deleted keys", async () => {
+    const f = fixture();
+    f.candidates.clear();
+    f.expiredUploads.set("failed-upload", { id: "failed-upload", temporaryKey: "failed-key" });
+    f.storage.removeMany = async () => [f.upload.temporaryKey];
+    await expect(f.service.cleanup()).rejects.toThrow(
+      "Storage cleanup did not remove every temporary object.",
+    );
+    expect(f.forgottenUploads).toEqual([[f.id]]);
+    expect([...f.expiredUploads.keys()]).toEqual(["failed-upload"]);
   });
   test("generic completion verifies bytes and retries cannot replace final content", async () => {
     const f = fixture();
@@ -194,15 +213,15 @@ describe("file workflow", () => {
       const f = fixture();
       const key = kind === "orphan" ? "orphan" : f.upload.temporaryKey;
       f.objects.set("orphan", new Uint8Array([1]));
-      const remove = f.storage.remove.bind(f.storage);
-      f.storage.remove = async (objectKey) => {
-        if (objectKey === key) throw new Error("Storage unavailable");
-        await remove(objectKey);
+      const remove = f.storage.removeMany.bind(f.storage);
+      f.storage.removeMany = async (keys) => {
+        if (keys.includes(key)) throw new Error("Storage unavailable");
+        return remove(keys);
       };
       await expect(f.service.cleanup()).rejects.toThrow("Storage unavailable");
       expect(f.objects.has(key)).toBe(true);
       expect(kind === "orphan" ? f.candidates.has(key) : f.expiredUploads.has(f.id)).toBe(true);
-      f.storage.remove = remove;
+      f.storage.removeMany = remove;
       await f.service.cleanup();
       expect(f.objects.has("orphan")).toBe(false);
       expect(f.objects.has(f.upload.temporaryKey)).toBe(false);

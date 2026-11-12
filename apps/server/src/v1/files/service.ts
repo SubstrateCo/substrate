@@ -94,23 +94,24 @@ export function createFileService(deps: FileServiceDependencies) {
       // Uploads expire after uploadTtlMs. A full day gives in-flight completions ample time to stop.
       const before = new Date(Date.now() - 24 * 60 * 60_000);
       await repository.pruneUnusedFiles(before);
-      const candidates: string[] = [];
-      try {
-        for (const candidate of await repository.cleanupCandidates(before)) {
-          await storage.remove(candidate.objectKey);
-          candidates.push(candidate.objectKey);
-        }
-      } finally {
-        if (candidates.length) await repository.forgetCandidates(candidates);
+      const candidates = await repository.cleanupCandidates(before);
+      if (candidates.length) {
+        const removed = await storage.removeMany(
+          candidates.map((candidate) => candidate.objectKey),
+        );
+        await repository.forgetCandidates(removed);
+        if (new Set(removed).size !== candidates.length)
+          throw new Error("Storage cleanup did not remove every orphan.");
       }
-      const uploads: string[] = [];
-      try {
-        for (const upload of await repository.expiredUploads(before)) {
-          await storage.remove(upload.temporaryKey);
-          uploads.push(upload.id);
-        }
-      } finally {
-        if (uploads.length) await repository.forgetUploads(uploads);
+      const uploads = await repository.expiredUploads(before);
+      if (uploads.length) {
+        const removed = new Set(
+          await storage.removeMany(uploads.map((upload) => upload.temporaryKey)),
+        );
+        const completed = uploads.filter((upload) => removed.has(upload.temporaryKey));
+        await repository.forgetUploads(completed.map((upload) => upload.id));
+        if (completed.length !== uploads.length)
+          throw new Error("Storage cleanup did not remove every temporary object.");
       }
     },
   };
