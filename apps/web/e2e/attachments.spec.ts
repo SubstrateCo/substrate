@@ -60,6 +60,74 @@ test("message and thread files send without text, persist, and download", async 
   await expect(replyLink).toBeVisible();
 });
 
+test("removing an active attachment aborts it and ignores its late completion", async ({
+  actors,
+  client,
+}) => {
+  test.setTimeout(60_000);
+  const channel = await conversation(actors.sender);
+  const sender = await client(actors.sender);
+  const { page } = sender;
+  await visit(sender, channel.id);
+  const zone = page.getByRole("region", { name: "Message attachments", exact: true });
+  const completed = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  const delivered = Promise.withResolvers<void>();
+  const completionUrl = "**/api/v1/files/uploads/*/complete";
+  await page.route(completionUrl, async (route) => {
+    const response = await route.fetch();
+    expect(response.ok()).toBe(true);
+    expect((await response.json()).data.fileId).toBeTruthy();
+    completed.resolve();
+    await release.promise;
+    try {
+      await route.fulfill({ response });
+    } finally {
+      delivered.resolve();
+    }
+  });
+  try {
+    await dropFiles(zone, "removed.txt", "This real upload must not be sent.");
+    await completed.promise;
+    await expect(zone.getByText("Finishing upload…", { exact: true })).toBeVisible();
+    const aborted = page.waitForEvent("requestfailed", {
+      predicate: (request) => new URL(request.url()).pathname.endsWith("/complete"),
+    });
+    await zone.getByRole("button", { name: "Remove removed.txt", exact: true }).click();
+    expect((await aborted).failure()?.errorText).toContain("ERR_ABORTED");
+    release.resolve();
+    await delivered.promise;
+    await expect(zone.getByRole("list", { name: "Selected attachments" })).toHaveCount(0);
+    await expect(zone.getByRole("button", { name: "Send", exact: true })).toBeDisabled();
+
+    const body = "Send only the text after removing the upload.";
+    await zone.getByRole("textbox").fill(body);
+    const sent = page.waitForRequest(
+      (request) =>
+        request.method() === "POST" &&
+        new URL(request.url()).pathname === "/api/v1/messaging/messages",
+    );
+    await zone.getByRole("button", { name: "Send", exact: true }).click();
+    expect((await sent).postDataJSON().attachmentFileIds).toEqual([]);
+    const message = page.getByRole("article").filter({ hasText: body });
+    await expect(message).toBeVisible();
+    await expect(
+      message.getByRole("link", { name: "Download removed.txt", exact: true }),
+    ).toHaveCount(0);
+    const response = await actors.sender.request.get("/api/v1/messaging/messages", {
+      params: { organizationId: actors.sender.organizationId, conversationId: channel.id },
+    });
+    expect(response.ok()).toBe(true);
+    const { data } = await response.json();
+    expect(data.find((entry: { body: string }) => entry.body === body)).toMatchObject({
+      attachments: [],
+    });
+  } finally {
+    release.resolve();
+    await page.unroute(completionUrl);
+  }
+});
+
 test("create a task with a file, attach another, download, and remove with confirmation", async ({
   actors,
   client,

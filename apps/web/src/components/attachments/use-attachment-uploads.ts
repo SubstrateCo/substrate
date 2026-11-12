@@ -3,22 +3,22 @@ import { MAX_FILE_BYTES } from "@substrate/contracts/files/input";
 
 import { useEffect, useRef, useState } from "react";
 
+import {
+  transitionAttachmentUpload,
+  type AttachmentUploadDraft,
+  type AttachmentUploadEvent,
+} from "./attachment-upload-machine";
 import { useAttachmentUpload } from "@/queries/attachments/mutations";
 
-export interface AttachmentDraft {
-  id: string;
-  file: File;
-  status: "uploading" | "ready" | "failed";
-  progress: number;
-  fileId?: string;
-}
+export type AttachmentDraft = Omit<AttachmentUploadDraft, "attempt">;
+
 export function useAttachmentUploads(existingCount = 0) {
   const { mutateAsync: upload } = useAttachmentUpload();
-  const [items, setItems] = useState<AttachmentDraft[]>([]);
+  const [items, setItems] = useState<AttachmentUploadDraft[]>([]);
   const current = useRef(items);
   const controllers = useRef(new Map<string, AbortController>());
   const [error, setError] = useState<string | null>(null);
-  const change = (next: AttachmentDraft[]) => {
+  const change = (next: AttachmentUploadDraft[]) => {
     current.current = next;
     setItems(next);
   };
@@ -28,23 +28,25 @@ export function useAttachmentUploads(existingCount = 0) {
       for (const controller of active.values()) controller.abort();
     };
   }, []);
-  const start = (item: AttachmentDraft) => {
+  const start = (item: AttachmentUploadDraft) => {
     controllers.current.get(item.id)?.abort();
     const controller = new AbortController();
     controllers.current.set(item.id, controller);
-    const update = (patch: Partial<AttachmentDraft>) => {
-      if (!controller.signal.aborted)
+    const update = (event: AttachmentUploadEvent) => {
+      if (!controller.signal.aborted && controllers.current.get(item.id) === controller)
         change(
-          current.current.map((entry) => (entry.id === item.id ? { ...entry, ...patch } : entry)),
+          current.current.map((entry) =>
+            entry.id === item.id ? transitionAttachmentUpload(entry, event) : entry,
+          ),
         );
     };
     void upload({
       file: item.file,
       signal: controller.signal,
-      onProgress: (progress) => update({ progress }),
+      onProgress: (progress) => update({ type: "progress", attempt: item.attempt, progress }),
     })
-      .then((fileId) => update({ status: "ready", fileId, progress: 100 }))
-      .catch(() => update({ status: "failed" }))
+      .then((fileId) => update({ type: "complete", attempt: item.attempt, fileId }))
+      .catch(() => update({ type: "fail", attempt: item.attempt }))
       .finally(() => {
         if (controllers.current.get(item.id) === controller) controllers.current.delete(item.id);
       });
@@ -59,11 +61,12 @@ export function useAttachmentUploads(existingCount = 0) {
       setError("Choose files between 1 byte and 5 MiB each.");
       return;
     }
-    const added = files.map((file): AttachmentDraft => ({
+    const added = files.map((file): AttachmentUploadDraft => ({
       id: crypto.randomUUID(),
       file,
       status: "uploading",
       progress: 0,
+      attempt: 0,
     }));
     change([...current.current, ...added]);
     added.forEach(start);
@@ -76,20 +79,20 @@ export function useAttachmentUploads(existingCount = 0) {
     fileIds: items.flatMap((item) => (item.fileId ? [item.fileId] : [])),
     remove(id: string) {
       controllers.current.get(id)?.abort();
+      controllers.current.delete(id);
       change(current.current.filter((item) => item.id !== id));
     },
     retry(id: string) {
       const item = current.current.find((entry) => entry.id === id);
       if (!item) return;
-      change(
-        current.current.map((entry) =>
-          entry.id === id ? { ...entry, status: "uploading", progress: 0 } : entry,
-        ),
-      );
-      start(item);
+      const next = transitionAttachmentUpload(item, { type: "retry" });
+      if (next === item) return;
+      change(current.current.map((entry) => (entry.id === id ? next : entry)));
+      start(next);
     },
     clear() {
       for (const controller of controllers.current.values()) controller.abort();
+      controllers.current.clear();
       change([]);
       setError(null);
     },
