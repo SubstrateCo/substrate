@@ -223,10 +223,14 @@ export function createContextRepository(context: RepositoryContext, scope: Sessi
       return (await messagePeople(db, scope, [message])).get(messageId)!;
     },
     async related(entityId: string) {
-      const ctx = context;
-      const work = await requireWork(ctx, entityId);
+      // Only the type is needed, so this skips requireWork's task or project row read. A live
+      // task or project entity always has its row: both are created together and never removed
+      // apart.
+      const { entity } = await context.requireAccess(entityId, "view");
+      if (entity.entityType !== "task" && entity.entityType !== "project")
+        throw new AccessDeniedError();
       const projectTasks =
-        work.entityType === "project"
+        entity.entityType === "project"
           ? db
               .select({ entityId: tasks.entityId })
               .from(tasks)
