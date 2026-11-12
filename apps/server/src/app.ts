@@ -2,6 +2,7 @@ import { failure, publicFailure } from "@substrate/contracts/result";
 
 import type { Auth } from "./auth/server";
 import { createDesktopRoutes } from "./desktop/routes";
+import { installRuntimeMetrics, type RuntimeMetrics } from "./infrastructure/runtime-metrics";
 import type { Services } from "./services";
 import { respond } from "./shared/http";
 import { trustedOrigin } from "./shared/origin";
@@ -34,10 +35,19 @@ export interface AppDependencies {
   scopes: Scopes;
   trustedOrigins: string[];
   realtime?: Pick<ReturnType<typeof createRealtimeRoutes>, "app">;
+  metrics?: RuntimeMetrics;
 }
 
-export function createApp({ auth, services, scopes, trustedOrigins, realtime }: AppDependencies) {
+export function createApp({
+  auth,
+  services,
+  scopes,
+  trustedOrigins,
+  realtime,
+  metrics,
+}: AppDependencies) {
   const app = new Hono();
+  installRuntimeMetrics(app, metrics);
   // Upgrade handlers must run before response-mutating middleware. Hono owns routing;
   // Bun only receives its websocket callbacks in main.ts.
   if (realtime) app.route("/", realtime.app);

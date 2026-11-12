@@ -65,6 +65,11 @@ const variables = z
       }),
     BETTER_AUTH_SECRET: required().min(32, "Use at least 32 characters."),
     DATABASE_URL: required(),
+    DATABASE_POOL_SIZE: z.coerce.number().int().positive().default(10),
+    SERVER_METRICS: z
+      .enum(["0", "1"])
+      .default("0")
+      .transform((value) => value === "1"),
     SMTP_HOST: required(),
     SMTP_PORT: port.default(587),
     SMTP_SECURE: z
@@ -110,6 +115,8 @@ const variables = z
       ],
       authSecret: env.BETTER_AUTH_SECRET,
       databaseURL: env.DATABASE_URL,
+      databasePoolSize: env.DATABASE_POOL_SIZE,
+      serverMetrics: env.SERVER_METRICS,
       smtp: {
         host: env.SMTP_HOST,
         port: env.SMTP_PORT,

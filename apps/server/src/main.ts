@@ -7,6 +7,7 @@ import { createAuth } from "./auth/server";
 // Parsed once on import: an invalid environment stops startup before the app is created.
 import { environment } from "./environment";
 import { createServerDatabase } from "./infrastructure/database";
+import { createRuntimeMetrics } from "./infrastructure/runtime-metrics";
 import { createSmtpMail } from "./mail/service";
 import { createServices } from "./services";
 import { createScopes } from "./shared/scope";
@@ -37,12 +38,14 @@ const scopes = createScopes({
   },
 });
 const realtime = createRealtimeService({ db, auth });
+const metrics = createRuntimeMetrics(environment.serverMetrics, environment.databasePoolSize);
 const app = createApp({
   auth,
   services,
   scopes,
   trustedOrigins: environment.trustedOrigins,
   realtime,
+  metrics,
 });
 await realtime.start();
 const stopSharingMail = sharingMail.start();
@@ -80,6 +83,7 @@ function shutdown() {
   if (stopping) return;
   stopping = true;
   clearInterval(cleanupTimer);
+  metrics?.close();
   realtime.stop();
   void server
     .stop(true)
