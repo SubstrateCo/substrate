@@ -20,7 +20,6 @@ import { createMessagingService } from "./v1/messaging/service";
 import { createSharingService } from "./v1/messaging/sharing-service";
 import { createOrganizationService } from "./v1/organizations/service";
 import type { CommittedPublisher } from "./v1/realtime/committed";
-import { createSessionService } from "./v1/session/service";
 import { projectPictureAccess } from "./v1/tasks/picture-access";
 import { createTasksService } from "./v1/tasks/service";
 
@@ -64,7 +63,6 @@ export function createServices(deps: {
     agentWork: createAgentWorkService(deps),
     devices: createDeviceService(deps),
     mcp: createMcpService(deps),
-    session: createSessionService(),
     organizations: createOrganizationService(),
   };
 }

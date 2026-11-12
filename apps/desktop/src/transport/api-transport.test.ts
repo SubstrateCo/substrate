@@ -61,6 +61,32 @@ test("desktop auth transport stores cookies through the official client and hide
   expect(response.headers.has("set-cookie")).toBe(false);
 });
 
+test("authoritative session refreshes retain their query through the native auth client", async () => {
+  let path = "";
+  const transport = desktopAPITransport({
+    getCookie: () => "session=main-only",
+    authFetch: async (value, options) => {
+      path = value;
+      await options.onResponse({
+        response: Response.json(
+          { session: { token: "secret" }, user: { id: "user" } },
+          { headers: { "set-cookie": "session=renewed" } },
+        ),
+      });
+    },
+    fetchUpstream: async () => {
+      throw new Error("Session renewal bypassed native storage");
+    },
+  });
+  const response = await transport(
+    "https://api.example.com/api/auth/get-session?disableCookieCache=true",
+    { method: "GET" },
+  );
+  expect(path).toBe("/get-session?disableCookieCache=true");
+  expect(response.headers.has("set-cookie")).toBe(false);
+  expect(await response.json()).toEqual({ session: {}, user: { id: "user" } });
+});
+
 test("desktop application requests use main-owned credentials, never renderer credentials", async () => {
   let headers = new Headers();
   const transport = desktopAPITransport({
@@ -73,7 +99,7 @@ test("desktop application requests use main-owned credentials, never renderer cr
       return Response.json({ ok: true });
     },
   });
-  await transport("https://api.example.com/api/v1/session", {
+  await transport("https://api.example.com/api/v1/agents/list", {
     headers: { cookie: "forged", authorization: "Bearer forged" },
   });
   expect(headers.get("cookie")).toBe("session=main-only");

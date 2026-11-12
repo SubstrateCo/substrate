@@ -1,10 +1,10 @@
 import type { Database } from "@substrate/database/trusted";
 
 import type { AppDependencies } from "./app";
+import { sessionFixture } from "./auth/test-support";
 import { createServices } from "./services";
 import { createScopes, type ScopeDependencies, type WorkspaceScope } from "./shared/scope";
 import type { ObjectStorage } from "./storage/types";
-import { sessionFixture } from "./v1/session/test-support";
 
 export function scopeFixture(): WorkspaceScope {
   const session = sessionFixture({ organizationId: "org" });

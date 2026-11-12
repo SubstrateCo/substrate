@@ -1,4 +1,4 @@
-import type { AuthSession } from "../../shared/scope";
+import type { AuthSession } from "../shared/scope";
 
 export function sessionFixture(
   overrides: {

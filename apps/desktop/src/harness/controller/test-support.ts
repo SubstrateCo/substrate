@@ -54,9 +54,9 @@ export function fixture(
     fetchAPI: async (url: string) => {
       if (outage === "network") throw new TypeError("fetch failed");
       if (outage === "server") return new Response(null, { status: 503 });
-      if (url.endsWith("/session")) {
+      if (new URL(url).pathname === "/api/auth/get-session") {
         requests.push("session");
-        return Response.json({ success: true, data: session });
+        return Response.json(session);
       }
       if (url.includes("get-active-member-role")) {
         requests.push("membership");

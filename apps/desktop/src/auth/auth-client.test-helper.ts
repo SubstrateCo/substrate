@@ -15,6 +15,7 @@ const electron = {
 await mock.module("electron", () => ({ default: electron, shell: electron.shell }));
 
 let token = "original-token";
+let cache = "";
 const response = Promise.withResolvers<Response>();
 let holdResponse = false;
 globalThis.fetch = Object.assign(
@@ -25,7 +26,7 @@ globalThis.fetch = Object.assign(
           { status: true },
           {
             headers: {
-              "set-cookie": `better-auth.session_token=${token}; Path=/; Max-Age=3600`,
+              "set-cookie": `better-auth.session_token=${token}; Path=/; Max-Age=3600${cache ? `, better-auth.session_data=${cache}; Path=/; Max-Age=60` : ""}`,
             },
           },
         ),
@@ -49,6 +50,17 @@ invalidated = 0;
 changed = 0;
 
 switch (process.argv[2]) {
+  case "cache-refresh":
+    cache = "refreshed-cache";
+    await authClient.$fetch("/get-session");
+    console.log(
+      JSON.stringify({
+        invalidated,
+        changed,
+        cached: authClient.getCookie().includes("session_data=refreshed-cache"),
+      }),
+    );
+    break;
   case "replaced-cookie":
     token = "replacement-token";
     await authClient.$fetch("/get-session");

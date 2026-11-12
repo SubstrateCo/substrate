@@ -75,6 +75,7 @@ export function createAuth(deps: {
     trustedOrigins: environment.trustedOrigins,
     secret: environment.authSecret,
     database: drizzleAdapter(db, { provider: "pg", schema }),
+    session: { cookieCache: { enabled: true, maxAge: 60 } },
     emailAndPassword: {
       enabled: true,
       disableSignUp: false,

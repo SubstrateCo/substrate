@@ -19,7 +19,6 @@ import { createMessagingRoutes } from "./v1/messaging/routes";
 import { createSharingRoutes } from "./v1/messaging/sharing-routes";
 import { createOrganizationRoutes } from "./v1/organizations/routes";
 import type { createRealtimeRoutes } from "./v1/realtime/routes";
-import { createSessionRoutes } from "./v1/session/routes";
 import { createTasksRoutes } from "./v1/tasks/routes";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -71,7 +70,6 @@ export function createApp({ auth, services, scopes, trustedOrigins, realtime }: 
     .use("/api/v1/*", trustedOrigin(trustedOrigins))
     .on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw))
     .route("/desktop", createDesktopRoutes())
-    .route("/api/v1/session", createSessionRoutes(services.session, scopes))
     .route("/api/v1/organizations", createOrganizationRoutes(services.organizations, scopes))
     .route("/api/v1/files/pictures", createPictureRoutes(services.pictures, scopes))
     .route("/api/v1/files/attachments", createAttachmentRoutes(services.attachments, scopes))

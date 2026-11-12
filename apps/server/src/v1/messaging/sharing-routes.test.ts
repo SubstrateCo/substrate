@@ -1,7 +1,7 @@
 import { failure, publicFailure } from "@substrate/contracts/result";
 
+import { sessionFixture } from "../../auth/test-support";
 import { createTestScopes, createTestServices } from "../../test-support";
-import { sessionFixture } from "../session/test-support";
 import { createSharingRoutes } from "./sharing-routes";
 import { expect, mock, test } from "bun:test";
 

@@ -1,21 +1,49 @@
 import { DesktopSessionAuthority } from "./desktop-session-authority.ts";
-import { expect, test } from "bun:test";
+import { afterEach, expect, jest, test } from "bun:test";
+
+afterEach(() => jest.useRealTimers());
+
+test("local authority rechecks after sixty seconds even without a realtime hint", async () => {
+  jest.useFakeTimers();
+  let checks = 0;
+  const authority = new DesktopSessionAuthority({
+    backend: "https://api.example.com",
+    fetchAPI: async (url) => {
+      if (new URL(url).pathname === "/api/auth/get-session") {
+        checks++;
+        return Response.json({
+          user: { id: "user", emailVerified: true },
+          session: { activeOrganizationId: "org" },
+        });
+      }
+      return Response.json({ role: "owner" });
+    },
+  });
+  await authority.verify();
+  jest.advanceTimersByTime(59_999);
+  await authority.verify();
+  expect(checks).toBe(1);
+  jest.advanceTimersByTime(1);
+  await authority.verify();
+  expect(checks).toBe(2);
+});
 
 test("invalidation rejects an old verification and drops the catalog cache", async () => {
   const gate = Promise.withResolvers<void>();
   let delayed = true;
   let catalogCalls = 0;
+  let sessionCalls = 0;
   const authority = new DesktopSessionAuthority({
     backend: "https://api.example.com",
     fetchAPI: async (url) => {
-      if (url.endsWith("/session")) {
+      if (new URL(url).pathname === "/api/auth/get-session") {
+        expect(new URL(url).searchParams.get("disableCookieCache")).toBe(
+          sessionCalls++ === 0 ? null : "true",
+        );
         if (delayed) await gate.promise;
         return Response.json({
-          success: true,
-          data: {
-            user: { id: "user", emailVerified: true },
-            session: { activeOrganizationId: "org" },
-          },
+          user: { id: "user", emailVerified: true },
+          session: { activeOrganizationId: "org" },
         });
       }
       if (url.includes("get-active-member-role")) return Response.json({ role: "owner" });

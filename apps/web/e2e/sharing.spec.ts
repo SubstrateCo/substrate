@@ -77,8 +77,8 @@ test("a new partner signs up, creates their own org, and accepts a desktop chann
   await expect(
     page.getByRole("heading", { name: "Your workspace is ready", exact: true }),
   ).toBeVisible();
-  const session = await page.request.get("/api/v1/session");
-  const organizationId = (await session.json()).data.session.activeOrganizationId;
+  const session = await page.request.get("/api/auth/get-session");
+  const organizationId = (await session.json()).session.activeOrganizationId;
   expect(organizationId).not.toBe(actors.sender.organizationId);
   await expect(page.getByRole("link", { name: "Open Substrate", exact: true })).toHaveAttribute(
     "href",

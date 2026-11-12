@@ -1,35 +1,48 @@
 import { QueryClient } from "@tanstack/react-query";
 
 import { requireVerifiedSession } from "./route-access";
+import * as sessionAPI from "@/api/auth/session";
 import { queryKeys } from "@/queries/keys";
 import { afterEach, expect, spyOn, test } from "bun:test";
 
-let fetchSpy: ReturnType<typeof spyOn<typeof globalThis, "fetch">> | undefined;
+let sessionSpy: ReturnType<typeof spyOn<typeof sessionAPI, "getSession">> | undefined;
 afterEach(() => {
-  fetchSpy?.mockRestore();
+  sessionSpy?.mockRestore();
 });
 
-const session = (emailVerified: boolean) => ({
-  user: { id: "user", email: "user@example.com", emailVerified },
-  session: { activeOrganizationId: "org" },
+const session = (
+  emailVerified: boolean,
+): NonNullable<Awaited<ReturnType<typeof sessionAPI.getSession>>> => ({
+  user: {
+    id: "user",
+    email: "user@example.com",
+    name: "User",
+    emailVerified,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  session: {
+    id: "session",
+    userId: "user",
+    activeOrganizationId: "org",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    expiresAt: new Date(),
+  },
 });
 
 test("workspace navigations reuse a verified session instead of refetching it", async () => {
   const client = new QueryClient();
-  fetchSpy = spyOn(globalThis, "fetch").mockImplementation(
-    Object.assign(async () => Response.json({ success: true, data: session(true) }), {
-      preconnect: globalThis.fetch.preconnect,
-    }),
-  );
+  sessionSpy = spyOn(sessionAPI, "getSession").mockResolvedValue(session(true));
   try {
     await requireVerifiedSession(client, "/dashboard");
     await requireVerifiedSession(client, "/tasks");
     expect((await requireVerifiedSession(client, "/notifications")).user.id).toBe("user");
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(sessionSpy).toHaveBeenCalledTimes(1);
     // Realtime session events invalidate the cached session; the next navigation rechecks it.
     await client.invalidateQueries({ queryKey: queryKeys.session });
     await requireVerifiedSession(client, "/dashboard");
-    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(sessionSpy).toHaveBeenCalledTimes(2);
   } finally {
     client.clear();
   }
@@ -38,11 +51,7 @@ test("workspace navigations reuse a verified session instead of refetching it", 
 test("an unverified session is rechecked on each navigation, so verification elsewhere is seen", async () => {
   const client = new QueryClient();
   let verified = false;
-  fetchSpy = spyOn(globalThis, "fetch").mockImplementation(
-    Object.assign(async () => Response.json({ success: true, data: session(verified) }), {
-      preconnect: globalThis.fetch.preconnect,
-    }),
-  );
+  sessionSpy = spyOn(sessionAPI, "getSession").mockImplementation(async () => session(verified));
   try {
     const denied = await requireVerifiedSession(client, "/dashboard").catch(
       (redirect: { options: { to?: string } }) => redirect.options.to,
@@ -50,7 +59,7 @@ test("an unverified session is rechecked on each navigation, so verification els
     expect(denied).toBe("/verify-email");
     verified = true;
     expect((await requireVerifiedSession(client, "/dashboard")).user.emailVerified).toBe(true);
-    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(sessionSpy).toHaveBeenCalledTimes(2);
   } finally {
     client.clear();
   }

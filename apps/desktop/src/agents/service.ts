@@ -4,7 +4,10 @@ import type { HarnessEvent } from "@substrate/contracts/harness";
 import type { WorkspaceApiResult } from "@substrate/contracts/harness/mcp";
 import type { RealtimeUpdate } from "@substrate/contracts/realtime";
 
-import { DesktopSessionAuthority } from "../session/desktop-session-authority.ts";
+import {
+  DesktopSessionAuthority,
+  HarnessAccessDenied,
+} from "../session/desktop-session-authority.ts";
 import { dispatchAgentWork } from "./bridge/agent-work-bridge.ts";
 import type { AgentDirectory, HarnessPort } from "./runtime/context.ts";
 import { createAgentWorkRuntime, type AgentWorkRuntime } from "./runtime/runtime.ts";
@@ -70,12 +73,6 @@ export function createAgentWorkService(options: {
 }) {
   const log = options.log ?? (() => {});
   const authority = options.authority;
-  /**
-   * The authority generation the active runtime was verified at. Events that may change the
-   * session advance it: session, access and organization hints, a realtime reconnect, and a
-   * denied server call.
-   */
-  let verifiedAt = -1;
   const sessionChanged = () => {
     authority.invalidate();
   };
@@ -108,9 +105,7 @@ export function createAgentWorkService(options: {
   }
 
   async function open(): Promise<Active | undefined> {
-    const seen = authority.generation;
     const auth = await authority.verify();
-    verifiedAt = seen;
     const identity = `${auth.accountKey}:${auth.organizationId}`;
     if (active?.identity === identity) return active;
     if (active) await retire(active);
@@ -154,14 +149,16 @@ export function createAgentWorkService(options: {
 
   /**
    * The runtime for the current verified account and organization. The session is verified
-   * again only after an event that may change it; calls share one check. A failed check, such
-   * as a network error, keeps the running runtime: only a verified change of account or
-   * organization replaces it.
+   * again after its freshness window or an event that may change it; calls share one check.
+   * A network outage keeps recoverable state. Confirmed denial retires the old runtime.
    */
   function ensure() {
-    if (!ensuring && active && verifiedAt === authority.generation) return Promise.resolve(active);
     ensuring ??= open()
-      .catch(() => {
+      .catch(async (error: unknown) => {
+        if (error instanceof HarnessAccessDenied) {
+          if (active) await retire(active);
+          return undefined;
+        }
         log("Could not verify the session for agent work.");
         return stopped ? undefined : active;
       })
@@ -190,6 +187,10 @@ export function createAgentWorkService(options: {
     onRealtime(event: RealtimeUpdate) {
       if (event.type === "status") realtimeConnected = event.status === "connected";
       if (stopped) return;
+      if (event.type === "status" && event.status === "forbidden") {
+        sessionChanged();
+        void ensure();
+      }
       if (event.type === "ready") {
         sessionChanged();
         agents.invalidate();

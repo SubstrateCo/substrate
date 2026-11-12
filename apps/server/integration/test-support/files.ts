@@ -52,8 +52,8 @@ export function uploadPicture(page: APIClient, purpose: "avatar" | "organization
 }
 
 export async function image(page: APIClient) {
-  const session = await result<{ user: { image?: string | null } }>(
-    await page.request.get("/api/v1/session"),
-  );
+  const response = await page.request.get("/api/auth/get-session?disableCookieCache=true");
+  expect(response.ok()).toBe(true);
+  const session: { user: { image?: string | null } } = await response.json();
   return session.user.image ?? null;
 }

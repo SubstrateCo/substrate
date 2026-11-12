@@ -6,10 +6,12 @@ import { useRouter } from "@tanstack/react-router";
 import { useEffect, useReducer, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
+import { getSession } from "@/api/auth/session";
 import { RealtimeContainerContext } from "@/components/realtime/realtime-container-context";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { realtimeBridge } from "@/lib/desktop/bridges";
 import { createBrowserRealtime } from "@/lib/realtime/browser";
+import { queryKeys } from "@/queries/keys";
 import {
   createRealtimeCache,
   realtimeReconcileMs,
@@ -52,7 +54,14 @@ export function RealtimeConnection({
       queryClient,
       organizationId,
       userId,
-      revalidate: () => router.invalidate(),
+      revalidate: async (refreshSession) => {
+        if (refreshSession) {
+          const session = await getSession(undefined, true);
+          if (!active) return;
+          queryClient.setQueryData(queryKeys.session, session);
+        }
+        if (active) await router.invalidate();
+      },
       onHealth: (health) => {
         if (active) dispatch({ health });
       },

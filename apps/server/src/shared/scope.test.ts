@@ -2,8 +2,8 @@ import { desktopInstallationHeader } from "@substrate/contracts/desktop/links";
 import { success } from "@substrate/contracts/result";
 import { AccessDeniedError } from "@substrate/database";
 
+import { sessionFixture } from "../auth/test-support";
 import { createTestScopes, scopeFixture } from "../test-support";
-import { sessionFixture } from "../v1/session/test-support";
 import { respond, v } from "./http";
 import type { ScopeDependencies, ScopeEnv, UserScope, SettingsScope } from "./scope";
 import { expect, mock, test } from "bun:test";

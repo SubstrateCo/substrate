@@ -10,10 +10,8 @@ import { createMiddleware } from "hono/factory";
 import { z } from "zod";
 
 export type AuthSession = NonNullable<Awaited<ReturnType<Auth["api"]["getSession"]>>>;
-export interface SessionScope {
+export interface SettingsScope {
   session: AuthSession | null;
-}
-export interface SettingsScope extends SessionScope {
   role: string | null;
 }
 type Repositories = ReturnType<typeof createRepositories>;
@@ -35,7 +33,10 @@ export type ScopeEnv<S = WorkspaceScope> = Env & { Variables: { scope: S } };
 
 export interface ScopeDependencies {
   api: {
-    getSession(input: { headers: Headers }): Promise<AuthSession | null>;
+    getSession(input: {
+      headers: Headers;
+      query: { disableRefresh: true };
+    }): Promise<AuthSession | null>;
     getActiveMemberRole(input: {
       headers: Headers;
       query: { organizationId: string };
@@ -49,8 +50,8 @@ type ScopeInput = { organizationId?: string; installationId?: string };
 type ValidatedScopeInput = { out: Record<keyof ValidationTargets, ScopeInput> };
 
 export function createScopes(deps: ScopeDependencies) {
-  async function user(headers: Headers): Promise<UserScope> {
-    const session = requireVerified(await deps.api.getSession({ headers }));
+  async function user(headers: Headers, result: AuthSession | null): Promise<UserScope> {
+    const session = requireVerified(result);
     const installationId = z.uuid().safeParse(headers.get(desktopInstallationHeader)).data;
     const userId = session.user.id;
     return {
@@ -61,8 +62,12 @@ export function createScopes(deps: ScopeDependencies) {
       owner: await deps.repositories.forOwnerSession({ userId, installationId }),
     };
   }
-  async function workspace(headers: Headers, expected?: string): Promise<WorkspaceScope> {
-    const scope = await user(headers);
+  async function workspace(
+    headers: Headers,
+    result: AuthSession | null,
+    expected?: string,
+  ): Promise<WorkspaceScope> {
+    const scope = await user(headers, result);
     const organizationId = requireWorkspace(
       expected ?? scope.organizationId ?? "",
       scope.organizationId,
@@ -75,12 +80,21 @@ export function createScopes(deps: ScopeDependencies) {
     return { ...scope, organizationId, repositories };
   }
   function middleware<S>(
-    resolve: (headers: Headers, input: ScopeInput) => Promise<S>,
+    resolve: (headers: Headers, input: ScopeInput, session: AuthSession | null) => Promise<S>,
     target?: keyof ValidationTargets,
   ) {
     return createMiddleware<ScopeEnv<S>, string, ValidatedScopeInput>(async (c, next) => {
       const input = target ? c.req.valid(target) : {};
-      const result = await serviceResult(() => resolve(c.req.raw.headers, input));
+      const result = await serviceResult(async () => {
+        const session = await deps.api.getSession({
+          headers: c.req.raw.headers,
+          query: {
+            // Better Auth's own endpoint owns renewal and delivers the updated cookies.
+            disableRefresh: true,
+          },
+        });
+        return resolve(c.req.raw.headers, input, session);
+      });
       if (!result.success) return respond(c, result);
       c.set("scope", result.data);
       await next();
@@ -93,13 +107,8 @@ export function createScopes(deps: ScopeDependencies) {
     return { ...scope, installationId: scope.installationId };
   }
   return {
-    session: () =>
-      middleware(async (headers): Promise<SessionScope> => ({
-        session: await deps.api.getSession({ headers }),
-      })),
     settings: () =>
-      middleware(async (headers): Promise<SettingsScope> => {
-        const session = await deps.api.getSession({ headers });
+      middleware(async (headers, _input, session): Promise<SettingsScope> => {
         const organizationId = session?.session.activeOrganizationId;
         const role =
           session?.user.emailVerified && organizationId
@@ -107,14 +116,20 @@ export function createScopes(deps: ScopeDependencies) {
             : null;
         return { session, role };
       }),
-    user: () => middleware((headers) => user(headers)),
+    user: () => middleware((headers, _input, session) => user(headers, session)),
     registeredUserDevice: (target: keyof ValidationTargets) =>
-      middleware(async (headers, input) => registered(await user(headers), input), target),
+      middleware(
+        async (headers, input, session) => registered(await user(headers, session), input),
+        target,
+      ),
     workspace: (target?: keyof ValidationTargets) =>
-      middleware((headers, input) => workspace(headers, input.organizationId), target),
+      middleware(
+        (headers, input, session) => workspace(headers, session, input.organizationId),
+        target,
+      ),
     device: (target: keyof ValidationTargets) =>
-      middleware(async (headers, input): Promise<DeviceScope> => {
-        const scope = await workspace(headers, input.organizationId);
+      middleware(async (headers, input, session): Promise<DeviceScope> => {
+        const scope = await workspace(headers, session, input.organizationId);
         return registered(scope, input);
       }, target),
   };

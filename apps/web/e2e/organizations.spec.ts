@@ -32,7 +32,7 @@ test("switching workspaces clears private messages, reconnects in the selected o
   account.state = await account.request.storageState();
   const user = await client(account);
   const activeOrganizationId = async () =>
-    (await (await user.page.request.get("/api/v1/session")).json()).data.session
+    (await (await user.page.request.get("/api/auth/get-session")).json()).session
       .activeOrganizationId;
   await visit(user, first.id);
   await expect(user.page.getByText(privateBody, { exact: true })).toBeVisible();

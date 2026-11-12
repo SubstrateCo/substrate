@@ -11,8 +11,6 @@ const verifiedSessionSchema = z.object({
 });
 const catalogSchema = z.object({ success: z.literal(true), data: desktopAgentCatalogSchema });
 
-const sessionResultSchema = z.object({ success: z.literal(true), data: verifiedSessionSchema });
-
 /**
  * The backend answered that this account or membership is no longer valid. Other failures,
  * such as network errors and 5xx answers, are transient.
@@ -24,17 +22,20 @@ const deniedStatuses = new Set([401, 403, 404]);
 async function readVerifiedSession(
   fetchAPI: (url: string, init: RequestInit) => Promise<Response>,
   backend: string,
+  disableCookieCache = false,
 ) {
-  const response = await fetchAPI(new URL("/api/v1/session", backend).href, {
+  const url = new URL("/api/auth/get-session", backend);
+  if (disableCookieCache) url.searchParams.set("disableCookieCache", "true");
+  const response = await fetchAPI(url.href, {
     method: "GET",
     redirect: "error",
   });
   if (deniedStatuses.has(response.status)) throw new HarnessAccessDenied("Session ended.");
   if (!response.ok) throw new Error("Session unavailable.");
-  const result = sessionResultSchema.safeParse(await response.json());
+  const result = verifiedSessionSchema.safeParse(await response.json());
   // A valid answer without a verified user and an active organization denies access.
   if (!result.success) throw new HarnessAccessDenied("Session is not verified.");
-  return result.data.data;
+  return result.data;
 }
 
 type AuthorityOptions = {
@@ -46,6 +47,8 @@ export class DesktopSessionAuthority {
   generation = 0;
   identity: string | undefined;
   private verified: Promise<Authorization> | undefined;
+  private verifiedAt = 0;
+  private invalidated = false;
   private cachedCatalog: Promise<z.output<typeof desktopAgentCatalogSchema>> | undefined;
   private listeners = new Set<() => void>();
   private options: AuthorityOptions;
@@ -62,6 +65,7 @@ export class DesktopSessionAuthority {
 
   invalidate() {
     this.generation++;
+    this.invalidated = true;
     this.verified = undefined;
     this.cachedCatalog = undefined;
     this.identity = undefined;
@@ -87,10 +91,12 @@ export class DesktopSessionAuthority {
   }
 
   verify(): Promise<Authorization> {
-    if (this.verified) return this.verified;
+    if (this.verified && Date.now() - this.verifiedAt < 60_000) return this.verified;
     const generation = this.generation;
-    const pending = this.readAuthorization().then((auth) => {
+    this.verifiedAt = Date.now();
+    const pending = this.readAuthorization(this.invalidated).then((auth) => {
       if (generation !== this.generation) throw new Error("Session changed.");
+      this.invalidated = false;
       this.identity = auth.identity;
       return auth;
     });
@@ -101,9 +107,9 @@ export class DesktopSessionAuthority {
     return pending;
   }
 
-  private async readAuthorization() {
+  private async readAuthorization(disableCookieCache: boolean) {
     const options = this.options;
-    const data = await readVerifiedSession(options.fetchAPI, options.backend);
+    const data = await readVerifiedSession(options.fetchAPI, options.backend, disableCookieCache);
     const organizationId = data.session.activeOrganizationId;
     const membershipURL = new URL("/api/auth/organization/get-active-member-role", options.backend);
     membershipURL.searchParams.set("organizationId", organizationId);

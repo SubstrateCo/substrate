@@ -29,8 +29,8 @@ test("a visitor creates an organization before installing and can resume setup",
     page.getByRole("heading", { name: "Your workspace is ready", exact: true }),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Invite your team", exact: true })).toBeVisible();
-  const session = await page.request.get("/api/v1/session");
-  const organizationId = (await session.json()).data.session.activeOrganizationId;
+  const session = await page.request.get("/api/auth/get-session");
+  const organizationId = (await session.json()).session.activeOrganizationId;
   const open = page.getByRole("link", { name: "Open Substrate", exact: true });
   await expect(open).toHaveAttribute(
     "href",

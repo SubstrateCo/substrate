@@ -1,4 +1,4 @@
-import { sessionFixture } from "../session/test-support";
+import { sessionFixture } from "../../auth/test-support";
 import { createOrganizationService } from "./service";
 import { expect, test } from "bun:test";
 

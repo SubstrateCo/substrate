@@ -1,5 +1,13 @@
-import { api } from "../client";
-import { readResult } from "../result";
+import { authError } from "./error";
+import { authClient } from "@/lib/auth/client";
 
-export const getSession = (signal?: AbortSignal) =>
-  readResult(api.session.$get({}, { init: { signal } }));
+export async function getSession(signal?: AbortSignal, disableCookieCache = false) {
+  const { data, error } = await authClient.getSession({
+    query: { disableCookieCache },
+    fetchOptions: { signal },
+  });
+  if (error) throw authError(error);
+  if (!data) return null;
+  const { token: _token, ...session } = data.session;
+  return { ...data, session };
+}

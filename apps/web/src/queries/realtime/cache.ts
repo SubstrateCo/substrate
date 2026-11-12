@@ -111,7 +111,7 @@ export function createRealtimeCache({
   queryClient: QueryClient;
   organizationId: string | null;
   userId: string;
-  revalidate: () => Promise<void>;
+  revalidate: (refreshSession?: boolean) => Promise<void>;
   /** Reports each ready refresh, and every failed refresh. */
   onHealth?: (health: RealtimeHealth) => void;
   /** How long change hints collect before one refresh. */
@@ -190,7 +190,7 @@ export function createRealtimeCache({
       queryClient.invalidateQueries({ queryKey: queryKeys.organizations }),
       queryClient.invalidateQueries({ queryKey: queryKeys.userInvitations }),
     ]);
-    if (!isDisposed()) await revalidate();
+    if (!isDisposed()) await revalidate(true);
   }
   function resetAccess() {
     const epoch = ++generation;
@@ -205,7 +205,7 @@ export function createRealtimeCache({
         { queryKey: queryKeys.userInvitations },
         { queryKey: queryKeys.sharingInvitations },
       ]);
-      if (isCurrent(epoch)) await revalidate();
+      if (isCurrent(epoch)) await revalidate(true);
     }
     // Superseded resets skip metadata work. The latest reset still completes after a slow route load.
     accessWork = accessWork.then(finish, finish);
@@ -281,7 +281,7 @@ export function createRealtimeCache({
     const epoch = generation;
     try {
       await refresh(targets, since);
-      if (isCurrent(epoch) && route) await revalidate();
+      if (isCurrent(epoch) && route) await revalidate(true);
     } finally {
       flushing = false;
       if (pending.size) schedule();

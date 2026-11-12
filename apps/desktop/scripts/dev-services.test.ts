@@ -10,7 +10,7 @@ for (const [webReady, apiReady, expected] of [
   test(`starts only missing services (frontend=${webReady}, API=${apiReady})`, async () => {
     const available = new Set<string>();
     if (webReady) available.add("http://localhost:3100/login");
-    if (apiReady) available.add("http://localhost:3101/api/v1/session");
+    if (apiReady) available.add("http://localhost:3101/api/auth/get-session");
     const started: string[] = [];
     const services = developmentServices(
       "http://localhost:3100",

@@ -15,7 +15,7 @@ export function developmentServices(
   fetchService: FetchService = fetch,
 ): DevelopmentService[] {
   const services: Omit<DevelopmentService, "ready">[] = [
-    { name: "API", script: "dev:server", url: new URL("/api/v1/session", apiURL).href },
+    { name: "API", script: "dev:server", url: new URL("/api/auth/get-session", apiURL).href },
     { name: "web", script: "dev:web", url: new URL("/login", webURL).href },
   ];
   return services.map((service) => ({

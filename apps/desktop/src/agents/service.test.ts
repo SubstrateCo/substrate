@@ -39,6 +39,7 @@ async function serviceFixture() {
   const requests: string[] = [];
   /** Paths that answer UNAUTHENTICATED once, as when the session ended. */
   const deniedOnce = new Set<string>();
+  let sessionStatus = 200;
   /** Wakes the next pull returns. */
   const wakes: unknown[] = [];
   const ok = (data: unknown) => Response.json({ success: true, data });
@@ -64,11 +65,13 @@ async function serviceFixture() {
           { success: false, error: { code: "UNAUTHENTICATED", message: "Sign in." } },
           { status: 401 },
         );
-      if (path === "/api/v1/session")
-        return ok({
+      if (path === "/api/auth/get-session") {
+        if (sessionStatus !== 200) return new Response(null, { status: sessionStatus });
+        return Response.json({
           user: { id: "user-1", emailVerified: true },
           session: { activeOrganizationId: "org-1" },
         });
+      }
       if (path === "/api/auth/organization/get-active-member-role")
         return Response.json({ role: "owner" });
       if (path === "/api/v1/agents/list") return ok({ agents: [], runSettings: [] });
@@ -90,7 +93,10 @@ async function serviceFixture() {
     service,
     deniedOnce,
     wakes,
-    sessionChecks: () => requests.filter((path) => path === "/api/v1/session").length,
+    sessionStatus(status: number) {
+      sessionStatus = status;
+    },
+    sessionChecks: () => requests.filter((path) => path === "/api/auth/get-session").length,
     catalogReads: () => requests.filter((path) => path === "/api/v1/agents/list").length,
     memberChecks: () =>
       requests.filter((path) => path === "/api/auth/organization/get-active-member-role").length,
@@ -121,6 +127,27 @@ test("agent work reuses the verified session until a session, access or organiza
   await settle();
   expect(f.sessionChecks()).toBe(5);
   expect(f.memberChecks()).toBe(5);
+});
+
+test("confirmed session denial blocks access to the previous local runtime", async () => {
+  const f = await serviceFixture();
+  f.service.start();
+  await f.service.call("agents");
+  f.sessionStatus(401);
+  f.service.onRealtime(change("session"));
+  await settle();
+  // oxlint-disable-next-line typescript/await-thenable -- Bun's rejection assertion is asynchronous at runtime.
+  await expect(f.service.call("agents")).rejects.toThrow("Sign in");
+});
+
+test("a server outage preserves the recoverable local runtime", async () => {
+  const f = await serviceFixture();
+  f.service.start();
+  const before = await f.service.call("agents");
+  f.sessionStatus(503);
+  f.service.onRealtime(change("session"));
+  await settle();
+  expect(await f.service.call("agents")).toEqual(before);
 });
 
 test("a server call denied with UNAUTHENTICATED verifies the session again", async () => {

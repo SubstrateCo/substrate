@@ -19,6 +19,7 @@ export function createDesktopAuthClient(
     protocol: desktopScheme,
     storage: storage({ configName: smokeTest ? "auth-smoke-test" : "auth" }),
     userImageProxy: { enabled: false },
+    disableCache: true,
     sanitizeUser: (user) => ({
       id: user.id,
       name: user.name,
@@ -38,7 +39,21 @@ export function createDesktopAuthClient(
       },
     },
   });
-  authClient.$store.atoms.$sessionSignal.listen(onSessionChanged);
+  // Cache-cookie updates do not change the signed-in identity. Keep those out of the
+  // shutdown/reload path while the official plugin still persists every cookie update.
+  const sessionToken = () =>
+    authClient
+      .getCookie()
+      .split(";")
+      .map((cookie) => cookie.trim())
+      .find((cookie) => cookie.split("=", 1)[0]?.endsWith(".session_token")) ?? "";
+  let previousToken = sessionToken();
+  authClient.$store.atoms.$sessionSignal.listen(() => {
+    const token = sessionToken();
+    if (token === previousToken) return;
+    previousToken = token;
+    onSessionChanged();
+  });
   return {
     authClient,
     /** @param {string} url */
