@@ -29,13 +29,15 @@ export function createAgentWorkService({
       scope: WorkspaceScope,
       input: z.output<typeof conversationRequestsInput>,
     ) {
-      return serviceResult(() => work.listConversationRequests(db, scope, input.conversationId));
+      return serviceResult(() =>
+        scope.repositories.agentWork.listConversationRequests(input.conversationId),
+      );
     },
     listNeedsYou(this: void, scope: WorkspaceScope, _input: z.output<typeof ownerScopeInput>) {
-      return serviceResult(() => work.listNeedsYou(db, scope));
+      return serviceResult(() => scope.repositories.agentWork.listNeedsYou());
     },
     listStatus(this: void, scope: WorkspaceScope, _input: z.output<typeof ownerScopeInput>) {
-      return serviceResult(() => work.listStatus(db, scope));
+      return serviceResult(() => scope.repositories.agentWork.listStatus());
     },
     respondToRequest(
       this: void,
@@ -69,7 +71,7 @@ export function createAgentWorkService({
       scope: WorkspaceScope,
       input: z.output<typeof listInvocationsInput>,
     ) {
-      return serviceResult(() => work.listInvocations(db, scope, input.userAgentId));
+      return serviceResult(() => scope.repositories.agentWork.listInvocations(input.userAgentId));
     },
     decideInvocation(
       this: void,
@@ -83,11 +85,11 @@ export function createAgentWorkService({
     },
     /** The owner's Calls log of one agent. */
     listCallsLog(this: void, scope: WorkspaceScope, input: z.output<typeof callsLogInput>) {
-      return serviceResult(() => work.listCallsLog(db, scope, input.userAgentId));
+      return serviceResult(() => scope.repositories.agentWork.listCallsLog(input.userAgentId));
     },
     /** The caller's own call statuses in one conversation. */
     listMyCalls(this: void, scope: WorkspaceScope, input: z.output<typeof myCallsInput>) {
-      return serviceResult(() => work.listMyCalls(db, scope, input.conversationId));
+      return serviceResult(() => scope.repositories.agentWork.listMyCalls(input.conversationId));
     },
   };
 }

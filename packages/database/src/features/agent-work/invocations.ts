@@ -21,7 +21,7 @@ import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError, ConflictError } from "../../errors";
 import { userAgentCallers } from "../agents/callers.schema";
 import { userAgentTriggers } from "../agents/triggers.schema";
-import { liveAgentMember, visibleConversations } from "../messaging/access";
+import { visibleConversations } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";
 import {
   messagingConversations,
@@ -47,6 +47,7 @@ import {
   max,
   sql,
   type SQL,
+  type SQLWrapper,
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
@@ -89,6 +90,8 @@ const auditOf = (
   targetIds: [row.messageId],
 });
 
+const checkedInvocation = alias(agentInvocations, "checked_invocation");
+
 /**
  * Whether a call may still run, read now: the agent is enabled and its policy accepts callers,
  * the caller is an active member who can see the conversation, the owner can see it, the agent
@@ -96,8 +99,14 @@ const auditOf = (
  * lets this call run without a new decision: anyone, an owner approval, or the allowlist. A
  * concurrent policy change may commit after this read, as if the check ran before the change.
  */
-async function callChecks(db: DatabaseExecutor, row: InvocationRow) {
-  const visibleTo = (userId: string) =>
+async function callChecks(db: DatabaseExecutor, rows: InvocationRow[]) {
+  const checks = new Map<
+    string,
+    { reachable: boolean; approved: boolean; triggerEnabled: boolean }
+  >();
+  if (!rows.length) return checks;
+  const row = checkedInvocation;
+  const visibleTo = (userId: SQLWrapper) =>
     exists(
       db
         .select({ id: messagingConversations.id })
@@ -109,9 +118,21 @@ async function callChecks(db: DatabaseExecutor, row: InvocationRow) {
           ),
         ),
     );
-  const [check] = await db
+  const checked = await db
     .select({
+      id: row.id,
+      decidedByUserId: row.decidedByUserId,
       policy: userAgents.callerPolicy,
+      triggerEnabled: sql<boolean>`not exists (${db
+        .select({ kind: userAgentTriggers.kind })
+        .from(userAgentTriggers)
+        .where(
+          and(
+            eq(userAgentTriggers.userAgentId, row.userAgentId),
+            eq(userAgentTriggers.kind, row.kind),
+            eq(userAgentTriggers.enabled, false),
+          ),
+        )})`,
       allowlisted: sql<boolean>`${exists(
         db
           .select({ id: userAgentCallers.callerUserId })
@@ -142,7 +163,10 @@ async function callChecks(db: DatabaseExecutor, row: InvocationRow) {
           .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
           .where(
             and(
-              liveAgentMember(row.conversationId),
+              eq(messagingParticipants.conversationId, row.conversationId),
+              eq(messagingParticipants.actorType, "agent"),
+              isNull(messagingParticipants.leftAt),
+              activeActorCondition(),
               eq(messagingParticipants.actorEntityId, row.agentActorEntityId),
             ),
           ),
@@ -153,34 +177,30 @@ async function callChecks(db: DatabaseExecutor, row: InvocationRow) {
           .where(and(eq(messagingMessages.id, row.messageId), isNull(messagingMessages.deletedAt))),
       )})`,
     })
-    .from(userAgents)
+    .from(row)
+    .innerJoin(userAgents, eq(userAgents.id, row.userAgentId))
     .where(
       and(
-        eq(userAgents.id, row.userAgentId),
+        inArray(
+          row.id,
+          rows.map((invocation) => invocation.id),
+        ),
         eq(userAgents.userId, row.ownerUserId),
         isNull(userAgents.deletedAt),
         eq(userAgents.enabled, true),
       ),
     );
-  if (!check || check.policy === "owner" || !check.reachable)
-    return { reachable: false, approved: false };
-  const approved = check.policy === "anyone" || row.decidedByUserId !== null || check.allowlisted;
-  return { reachable: true, approved };
-}
-
-/** Whether the owner still has the call's trigger kind enabled. */
-async function triggerEnabled(db: DatabaseExecutor, row: InvocationRow) {
-  const [disabled] = await db
-    .select({ kind: userAgentTriggers.kind })
-    .from(userAgentTriggers)
-    .where(
-      and(
-        eq(userAgentTriggers.userAgentId, row.userAgentId),
-        eq(userAgentTriggers.kind, row.kind),
-        eq(userAgentTriggers.enabled, false),
-      ),
-    );
-  return !disabled;
+  for (const check of checked) {
+    const reachable = check.policy !== "owner" && check.reachable;
+    checks.set(check.id, {
+      reachable,
+      approved:
+        reachable &&
+        (check.policy === "anyone" || check.decidedByUserId !== null || check.allowlisted),
+      triggerEnabled: check.triggerEnabled,
+    });
+  }
+  return checks;
 }
 
 async function requireOwnedInvocation(
@@ -248,11 +268,10 @@ export function decideInvocation(
     await workspaceContext(tx, identity);
     const row = await requireOwnedInvocation(tx, identity, invocationId);
     let event: DecisionEvent = "decline";
-    if (decision !== "decline")
-      event =
-        (await callChecks(tx, row)).reachable && (await triggerEnabled(tx, row))
-          ? "approve"
-          : "cancel";
+    if (decision !== "decline") {
+      const checked = (await callChecks(tx, [row])).get(row.id);
+      event = checked?.reachable && checked.triggerEnabled ? "approve" : "cancel";
+    }
     const [decided] = await tx
       .update(agentInvocations)
       .set({
@@ -370,10 +389,14 @@ export async function revokedInvocations(
     );
   const allowed = new Map<string, string>();
   const dropped: InvocationRow[] = [];
+  const checks = await callChecks(
+    db,
+    rows.filter((row) => row.status === invocationMachine.events.admit.to),
+  );
   for (const row of rows) {
     if (row.status !== invocationMachine.events.admit.to) continue;
-    const checked = await callChecks(db, row);
-    if (checked.reachable && checked.approved && (await triggerEnabled(db, row)))
+    const checked = checks.get(row.id);
+    if (checked?.reachable && checked.approved && checked.triggerEnabled)
       allowed.set(row.id, row.messageId);
     else dropped.push(row);
   }
@@ -521,63 +544,72 @@ export function listMyCalls(
 ) {
   return db.transaction(async (tx): Promise<AgentCallStatusView[]> => {
     await workspaceContext(tx, identity);
-    const agent = alias(actors, "call_agent");
-    const rows = await tx
-      .select({
-        invocation: agentInvocations,
-        agentName: actorDisplayName(agent),
-        expired: sql<boolean>`${agentInvocations.expiresAt} <= now()`,
-        answered: exists(
-          tx
-            .select({ id: agentAuditEvents.id })
-            .from(agentAuditEvents)
-            .where(
-              and(
-                eq(agentAuditEvents.invocationId, agentInvocations.id),
-                eq(agentAuditEvents.userAgentId, agentInvocations.userAgentId),
-                eq(agentAuditEvents.action, "mcp_call"),
-                eq(agentAuditEvents.tool, "reply"),
-                eq(agentAuditEvents.result, "ok"),
-              ),
-            ),
-        ).mapWith(Boolean),
-      })
-      .from(agentInvocations)
-      .innerJoin(
-        agent,
-        and(
-          eq(agent.organizationId, agentInvocations.organizationId),
-          eq(agent.entityId, agentInvocations.agentActorEntityId),
-        ),
-      )
-      .innerJoin(
-        messagingConversations,
-        and(
-          eq(messagingConversations.id, agentInvocations.conversationId),
-          visibleConversations(tx, identity),
-        ),
-      )
-      .where(
-        and(
-          eq(agentInvocations.conversationId, conversationId),
-          eq(agentInvocations.callerUserId, identity.userId),
-          eq(agentInvocations.organizationId, identity.organizationId),
-        ),
-      )
-      .orderBy(desc(agentInvocations.createdAt), desc(agentInvocations.id))
-      .limit(200);
-    return rows.map(({ invocation, agentName, expired, answered }) => ({
-      invocationId: invocation.id,
-      messageId: invocation.messageId,
-      agent: { actorId: invocation.agentActorEntityId, name: agentName },
-      status: callStatus(invocation.status, {
-        expired,
-        answered,
-        dropReason: invocation.dropReason,
-      }),
-      updatedAt: (invocation.decidedAt ?? invocation.createdAt).toISOString(),
-    }));
+    return queryMyCalls(tx, identity, conversationId);
   });
+}
+
+export async function queryMyCalls(
+  db: DatabaseExecutor,
+  identity: SessionIdentity,
+  conversationId: string,
+): Promise<AgentCallStatusView[]> {
+  const agent = alias(actors, "call_agent");
+  const rows = await db
+    .select({
+      invocation: agentInvocations,
+      agentName: userAgents.name,
+      expired: sql<boolean>`${agentInvocations.expiresAt} <= now()`,
+      answered: exists(
+        db
+          .select({ id: agentAuditEvents.id })
+          .from(agentAuditEvents)
+          .where(
+            and(
+              eq(agentAuditEvents.invocationId, agentInvocations.id),
+              eq(agentAuditEvents.userAgentId, agentInvocations.userAgentId),
+              eq(agentAuditEvents.action, "mcp_call"),
+              eq(agentAuditEvents.tool, "reply"),
+              eq(agentAuditEvents.result, "ok"),
+            ),
+          ),
+      ).mapWith(Boolean),
+    })
+    .from(agentInvocations)
+    .innerJoin(
+      agent,
+      and(
+        eq(agent.organizationId, agentInvocations.organizationId),
+        eq(agent.entityId, agentInvocations.agentActorEntityId),
+      ),
+    )
+    .innerJoin(userAgents, eq(userAgents.id, agent.userAgentId))
+    .innerJoin(
+      messagingConversations,
+      and(
+        eq(messagingConversations.id, agentInvocations.conversationId),
+        visibleConversations(db, identity),
+      ),
+    )
+    .where(
+      and(
+        eq(agentInvocations.conversationId, conversationId),
+        eq(agentInvocations.callerUserId, identity.userId),
+        eq(agentInvocations.organizationId, identity.organizationId),
+      ),
+    )
+    .orderBy(desc(agentInvocations.createdAt), desc(agentInvocations.id))
+    .limit(200);
+  return rows.map(({ invocation, agentName, expired, answered }) => ({
+    invocationId: invocation.id,
+    messageId: invocation.messageId,
+    agent: { actorId: invocation.agentActorEntityId, name: agentName },
+    status: callStatus(invocation.status, {
+      expired,
+      answered,
+      dropReason: invocation.dropReason,
+    }),
+    updatedAt: (invocation.decidedAt ?? invocation.createdAt).toISOString(),
+  }));
 }
 
 /** Expires pending calls past their expiry, in batches, for maintenance. */

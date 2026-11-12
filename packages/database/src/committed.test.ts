@@ -30,6 +30,10 @@ test("workspace reads reuse the scope already resolved by forSession", async () 
   expect(await repositories.feed.hasUnread()).toBe(false);
   expect(await repositories.sharing.inbox()).toEqual([]);
   expect(await repositories.sharing.listConversations()).toMatchObject([{ id: channel.id }]);
+  expect(await repositories.agentWork.listStatus()).toEqual([]);
+  expect(await repositories.agentWork.listInvocations()).toEqual([]);
+  expect(await repositories.agentWork.listMyCalls(channel.id)).toEqual([]);
+  expect(await repositories.agentWork.listConversationRequests(channel.id)).toEqual([]);
   expect(
     queries.filter(
       (query) => query.startsWith("select") && query.includes('from "user" inner join "member"'),

@@ -5,8 +5,8 @@ import {
 } from "@substrate/contracts/agent-work";
 
 import type { DatabaseExecutor } from "../../client";
-import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
+import { userAgents } from "../../core/actors/user-agents.schema";
 import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
 import { visibleConversations } from "../messaging/access";
@@ -18,7 +18,7 @@ import { agentRequests } from "./requests.schema";
 import { statusViews } from "./status";
 import { agentStatus } from "./status.schema";
 import { toRequestView } from "./views";
-import { and, desc, eq, gt, inArray, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, exists, gt, inArray, or, sql, type SQL } from "drizzle-orm";
 
 /** Requests of the owner's own agents in the organization. */
 export function ownedRequests(identity: SessionIdentity) {
@@ -44,7 +44,7 @@ async function requestViews(
   const rows = await db
     .select({
       request: agentRequests,
-      agent: { actorId: actors.entityId, name: actorDisplayName() },
+      agent: { actorId: actors.entityId, name: userAgents.name },
       conversationName: sql<
         string | null
       >`case when ${messagingConversations.id} is null then null else ${conversationDisplayName(db, identity)} end`,
@@ -58,6 +58,7 @@ async function requestViews(
         eq(actors.organizationId, agentRequests.organizationId),
       ),
     )
+    .innerJoin(userAgents, eq(userAgents.id, actors.userAgentId))
     .leftJoin(
       messagingConversations,
       and(
@@ -92,17 +93,29 @@ export function listConversationRequests(
 ) {
   return db.transaction(async (tx) => {
     await workspaceContext(tx, identity);
-    const [visible] = await tx
+    return queryConversationRequests(tx, identity, conversationId);
+  });
+}
+
+export function queryConversationRequests(
+  db: DatabaseExecutor,
+  identity: SessionIdentity,
+  conversationId: string,
+) {
+  const visible = exists(
+    db
       .select({ id: messagingConversations.id })
       .from(messagingConversations)
       .where(
-        and(eq(messagingConversations.id, conversationId), visibleConversations(tx, identity)),
-      );
-    if (!visible) return [];
-    // The origin place of a backlinked proposal is shown only if the owner can still see it.
-    return requestViews(
-      tx,
-      identity,
+        and(eq(messagingConversations.id, conversationId), visibleConversations(db, identity)),
+      ),
+  );
+  // The origin place of a backlinked proposal is shown only if the owner can still see it.
+  return requestViews(
+    db,
+    identity,
+    and(
+      visible,
       or(
         and(
           eq(agentRequests.conversationId, conversationId),
@@ -114,8 +127,8 @@ export function listConversationRequests(
           sql`${agentRequests.outcome}->'receipt'->>'conversationId' = ${conversationId}`,
         ),
       ),
-    );
-  });
+    ),
+  );
 }
 
 /**
@@ -125,11 +138,18 @@ export function listConversationRequests(
 export function listNeedsYou(db: DatabaseExecutor, identity: SessionIdentity) {
   return db.transaction(async (tx): Promise<AgentNeedsYou> => {
     await workspaceContext(tx, identity);
-    return {
-      requests: await requestViews(tx, identity, answerableRequest),
-      agents: await statusViews(tx, identity, eq(agentStatus.state, "needs_you")),
-      calls: await invocationViews(tx, identity, awaitingOwner),
-      desktopUpdateRequired: await desktopUpdateViews(tx, identity),
-    };
+    return queryNeedsYou(tx, identity);
   });
+}
+
+export async function queryNeedsYou(
+  db: DatabaseExecutor,
+  identity: SessionIdentity,
+): Promise<AgentNeedsYou> {
+  return {
+    requests: await requestViews(db, identity, answerableRequest),
+    agents: await statusViews(db, identity, eq(agentStatus.state, "needs_you")),
+    calls: await invocationViews(db, identity, awaitingOwner),
+    desktopUpdateRequired: await desktopUpdateViews(db, identity),
+  };
 }

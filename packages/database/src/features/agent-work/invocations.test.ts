@@ -30,7 +30,7 @@ import {
   removeCaller,
   saveCallerPolicy,
 } from "./committed";
-import { expireInvocations, listInvocations, listMyCalls } from "./invocations";
+import { expireInvocations, listInvocations, listMyCalls, revokedInvocations } from "./invocations";
 import { listNeedsYou } from "./request-views";
 import { expect, test } from "bun:test";
 import { and, asc, eq, sql } from "drizzle-orm";
@@ -375,7 +375,7 @@ test("one message batches caller facts and wake links across agents", async () =
     ),
   ).toHaveLength(1);
   expect(
-    recorded.queries.filter((query) => /^update "agent_invocations"/.test(query)),
+    recorded.queries.filter((query) => query.startsWith('update "agent_invocations"')),
   ).toHaveLength(1);
   const wakes = await callerWakes();
   for (const call of admitted)
@@ -403,6 +403,39 @@ test("batched caller visibility remains bound to each agent owner", async () => 
     expect.objectContaining({ userAgentId: second.agentId, status: "pending_approval" }),
   ]);
   expect(await callerWakes()).toEqual([]);
+});
+
+test("source revocation batches call checks and trigger toggles without crossing owners", async () => {
+  const x = await callerFixture(f);
+  await x.policy("anyone");
+  const first = await x.bob.sendMessage(x.channel.id, x.mention);
+  const second = await x.carol.sendMessage(x.channel.id, x.mention);
+  const other = await ownedAgent(f, "bob");
+  await saveCallerPolicy(f.db, { userId: "bob", organizationId: f.orgA }, other.agentId, "anyone");
+  await x.bob.addAgent(x.channel.id, other.agentId);
+  const foreign = await x.alice.sendMessage(x.channel.id, `@[agent:${other.actorId}]`);
+  const foreignCall = await callOf(foreign.id);
+  await f.db
+    .delete(member)
+    .where(and(eq(member.userId, "carol"), eq(member.organizationId, f.orgA)));
+  const [firstCall, secondCall] = [await callOf(first.id), await callOf(second.id)];
+  const unknown = crypto.randomUUID();
+  const recorded = recordQueries();
+  const checked = await recorded.db.transaction((tx) =>
+    revokedInvocations(tx, x.owner, [firstCall.id, secondCall.id, foreignCall.id, unknown]),
+  );
+  expect(new Set(checked.revoked)).toEqual(new Set([secondCall.id, foreignCall.id, unknown]));
+  expect(checked.allowed).toEqual(new Set([first.id]));
+  expect(checked.blocked).toEqual(new Set([second.id]));
+  expect((await callOf(second.id)).status).toBe("dropped");
+  expect((await callOf(foreign.id)).status).toBe("admitted");
+  expect(
+    await f.db
+      .select({ invocationId: agentAuditEvents.invocationId, result: agentAuditEvents.result })
+      .from(agentAuditEvents)
+      .where(eq(agentAuditEvents.action, "invocation_dropped")),
+  ).toEqual([{ invocationId: secondCall.id, result: "revoked" }]);
+  expect(recorded.queries.filter((query) => query.startsWith("select "))).toHaveLength(2);
 });
 
 test("a batch of calls counts earlier decisions in the batch toward the daily cap", async () => {

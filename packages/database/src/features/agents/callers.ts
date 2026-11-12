@@ -14,7 +14,7 @@ import { audit } from "../agent-work/audit";
 import { cancelPendingInvocations } from "../agent-work/invocations";
 import { agentRefreshHints } from "../realtime/routing";
 import { userAgentCallers } from "./callers.schema";
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 
 // Caller settings belong to the agent's owner. Every function checks the session's membership,
 // that the agent is the owner's own, and that the agent has an actor in this organization.
@@ -96,36 +96,66 @@ export function saveCallerPolicy(
 /** The agent's policy and its allowlist in this organization. */
 export function listCallers(db: DatabaseExecutor, identity: SessionIdentity, agentId: string) {
   return db.transaction(async (tx): Promise<AgentCallers> => {
-    const agent = await requireOwnedAgent(tx, identity, agentId);
-    const rows = await tx
-      .select({
-        actorId: userAgentCallers.callerActorEntityId,
-        name: actorDisplayName(),
-        createdAt: userAgentCallers.createdAt,
-      })
-      .from(userAgentCallers)
-      .innerJoin(
-        actors,
-        and(
-          eq(actors.organizationId, userAgentCallers.organizationId),
-          eq(actors.entityId, userAgentCallers.callerActorEntityId),
-        ),
-      )
-      .where(
-        and(
-          eq(userAgentCallers.userAgentId, agent.id),
-          eq(userAgentCallers.organizationId, identity.organizationId),
-        ),
-      )
-      .orderBy(asc(userAgentCallers.createdAt));
-    return {
-      policy: agent.policy,
-      allowlist: rows.map((row): AgentCallerView => ({
-        ...row,
-        createdAt: row.createdAt.toISOString(),
-      })),
-    };
+    await workspaceContext(tx, identity);
+    return queryCallers(tx, identity, agentId);
   });
+}
+
+export async function queryCallers(
+  db: DatabaseExecutor,
+  identity: SessionIdentity,
+  agentId: string,
+): Promise<AgentCallers> {
+  const ownedActor = db
+    .select({ id: actors.userAgentId })
+    .from(actors)
+    .where(eq(actors.organizationId, identity.organizationId));
+  const rows = await db
+    .select({
+      policy: userAgents.callerPolicy,
+      actorId: userAgentCallers.callerActorEntityId,
+      name: actorDisplayName(),
+      createdAt: userAgentCallers.createdAt,
+    })
+    .from(userAgents)
+    .leftJoin(
+      userAgentCallers,
+      and(
+        eq(userAgentCallers.userAgentId, userAgents.id),
+        eq(userAgentCallers.organizationId, identity.organizationId),
+      ),
+    )
+    .leftJoin(
+      actors,
+      and(
+        eq(actors.organizationId, userAgentCallers.organizationId),
+        eq(actors.entityId, userAgentCallers.callerActorEntityId),
+      ),
+    )
+    .where(
+      and(
+        eq(userAgents.id, agentId),
+        eq(userAgents.userId, identity.userId),
+        isNull(userAgents.deletedAt),
+        inArray(userAgents.id, ownedActor),
+      ),
+    )
+    .orderBy(asc(userAgentCallers.createdAt));
+  if (!rows.length) throw new AccessDeniedError();
+  return {
+    policy: rows[0]!.policy,
+    allowlist: rows.flatMap((row): AgentCallerView[] =>
+      row.actorId && row.createdAt
+        ? [
+            {
+              actorId: row.actorId,
+              name: row.name,
+              createdAt: row.createdAt.toISOString(),
+            },
+          ]
+        : [],
+    ),
+  };
 }
 
 /** Lets a person of this organization call the agent without approval under ask. */

@@ -26,7 +26,7 @@ export function createCallerService({
       );
     },
     listCallers(this: void, scope: WorkspaceScope, input: z.output<typeof listCallersInput>) {
-      return serviceResult(() => work.listCallers(db, scope, input.agentId));
+      return serviceResult(() => scope.repositories.agentWork.listCallers(input.agentId));
     },
     allowCaller(this: void, scope: WorkspaceScope, input: z.output<typeof agentCallerInput>) {
       return serviceResult(async () =>
