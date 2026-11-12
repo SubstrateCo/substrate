@@ -1,23 +1,24 @@
+import { contextEntityTypes } from "@substrate/contracts/context/input";
 import type { McpInput, McpOutput } from "@substrate/contracts/harness/tools";
 
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
+import { entities } from "../../core/entities/schema";
+import { entityLinks } from "../../core/links/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError } from "../../errors";
-import { requireWork } from "../context/access";
+import { requireContextTarget } from "../context/access";
 import { messageEntityReferences } from "../context/schema";
 import { requireMessage, visibleConversations } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
-import { projects } from "../projects/schema";
-import { tasks } from "../tasks/tasks.schema";
 import { excerpt, iso, messageRef } from "./formatting";
 import { pagination } from "./pagination";
 import { actorSelection } from "./tasks";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 
-type LinkKind = McpOutput<"list_links">["items"][number]["kind"];
+type LinkKind = NonNullable<McpInput<"list_links">["kind"]>;
 type Purpose = (typeof messageEntityReferences.$inferSelect)["purpose"];
 // Agents see link kinds named for what happened, not the stored reference purpose.
 const kinds: Record<Purpose, LinkKind> = {
@@ -38,6 +39,63 @@ export async function listLinks(
 ): Promise<McpOutput<"list_links">> {
   const { db, scope } = ctx;
   const p = pagination(scope, "list_links", input);
+  if (input.source === "entities") {
+    const target = await requireContextTarget(ctx, input.target.id);
+    if (target.entityType !== input.target.type) throw new AccessDeniedError();
+    const opposite = sql<string>`case when ${entityLinks.sourceEntityId} = ${input.target.id}
+      then ${entityLinks.targetEntityId} else ${entityLinks.sourceEntityId} end`;
+    const rows = await db
+      .select({
+        id: entities.entityId,
+        sourceEntityId: entityLinks.sourceEntityId,
+        relation: entityLinks.relationType,
+        createdAt: entityLinks.createdAt,
+      })
+      .from(entityLinks)
+      .innerJoin(
+        entities,
+        and(eq(entities.organizationId, scope.organizationId), eq(entities.entityId, opposite)),
+      )
+      .where(
+        and(
+          eq(entityLinks.organizationId, scope.organizationId),
+          or(
+            eq(entityLinks.sourceEntityId, input.target.id),
+            eq(entityLinks.targetEntityId, input.target.id),
+          ),
+          inArray(entities.entityType, contextEntityTypes),
+          ctx.readable(entities.entityId),
+        ),
+      )
+      .orderBy(
+        desc(entityLinks.createdAt),
+        desc(entityLinks.sourceEntityId),
+        desc(entityLinks.targetEntityId),
+        desc(entityLinks.relationType),
+      )
+      .offset(p.offset)
+      .limit(p.take);
+    const items = await Promise.all(
+      rows.map(async (row) => {
+        const other = await requireContextTarget(ctx, row.id);
+        return {
+          kind: "entity" as const,
+          createdAt: iso(row.createdAt),
+          entity: {
+            type: other.entityType,
+            id: row.id,
+            title: other.title,
+            relation: row.relation,
+            direction:
+              row.sourceEntityId === input.target.id
+                ? ("outgoing" as const)
+                : ("incoming" as const),
+          },
+        };
+      }),
+    );
+    return p.page(items);
+  }
   const references = [
     eq(messageEntityReferences.organizationId, scope.organizationId),
     input.kind ? eq(messageEntityReferences.purpose, purposes[input.kind]) : undefined,
@@ -55,13 +113,9 @@ export async function listLinks(
       .select({
         purpose: messageEntityReferences.purpose,
         createdAt: messageEntityReferences.createdAt,
-        type: sql<"task" | "project">`${messageEntityReferences.entityType}`,
         id: messageEntityReferences.entityId,
-        title: sql<string>`coalesce(${tasks.title}, ${projects.name})`,
       })
       .from(messageEntityReferences)
-      .leftJoin(tasks, eq(tasks.entityId, messageEntityReferences.entityId))
-      .leftJoin(projects, eq(projects.entityId, messageEntityReferences.entityId))
       .where(
         and(
           ...references,
@@ -73,14 +127,19 @@ export async function listLinks(
       .offset(p.offset)
       .limit(p.take);
     return p.page(
-      rows.map(({ purpose, createdAt, ...work }) => ({
-        kind: kinds[purpose],
-        createdAt: iso(createdAt),
-        work,
-      })),
+      await Promise.all(
+        rows.map(async ({ purpose, createdAt, id }) => {
+          const target = await requireContextTarget(ctx, id);
+          return {
+            kind: kinds[purpose],
+            createdAt: iso(createdAt),
+            work: { type: target.entityType, id, title: target.title },
+          };
+        }),
+      ),
     );
   }
-  const work = await requireWork(ctx, input.target.id);
+  const work = await requireContextTarget(ctx, input.target.id);
   if (work.entityType !== input.target.type) throw new AccessDeniedError();
   const rows = await db
     .select({

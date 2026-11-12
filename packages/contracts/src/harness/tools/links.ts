@@ -1,44 +1,56 @@
-import { actor, excerpt, id, messageRef, page, pageInput, timestamp, workRef } from "./shared.ts";
+import { contextEntityTypes } from "../../context/input.ts";
+import { actor, excerpt, id, messageRef, page, pageInput, timestamp } from "./shared.ts";
 import { z } from "zod";
 
 export const linkKinds = ["origin", "mention", "attachment"] as const;
-const link = { messageId: id, target: workRef };
+const entityRef = z.object({ type: z.enum(contextEntityTypes), id }).strict();
+const link = { messageId: id, target: z.object({ type: z.enum(contextEntityTypes), id }).strict() };
 
 export const linkTools = {
   list_links: {
     title: "List links",
     description:
-      "List links between messages and a task or project, newest first. Give a task or project to find related messages, or a message to find related work. kind: origin = the task was created from the message; mention = the message text names the record; attachment = someone linked them by hand. Linking never grants access. For a task's parent, subtasks or project, use get_task or list_tasks.",
+      "List permitted explicit links for tasks, projects or CRM records. source messages (default) reads message references; target message reads its linked records. source entities reads core contextual entity links, not structural account/participant relationships. Read both sources for explicit context; neither is a complete relationship graph. Linking never grants access or wakes agents.",
     readOnly: true,
     input: z
       .object({
-        target: z.discriminatedUnion("type", [
-          ...workRef.options,
-          z.object({ type: z.literal("message"), id }).strict(),
-        ]),
+        target: z.union([entityRef, z.object({ type: z.literal("message"), id }).strict()]),
+        source: z.enum(["messages", "entities"]).default("messages"),
         kind: z.enum(linkKinds).optional().describe("Return only links of this kind."),
         ...pageInput,
       })
-      .strict(),
+      .strict()
+      .refine(
+        (value) => value.source !== "entities" || (value.target.type !== "message" && !value.kind),
+        "Entity links require an entity target and do not use message kind filters.",
+      ),
     output: page(
       z.object({
-        kind: z.enum(linkKinds),
+        kind: z.enum([...linkKinds, "entity"]),
         createdAt: timestamp,
         message: messageRef
           .extend({ author: actor, ...excerpt, createdAt: timestamp })
           .optional()
-          .describe("Set when the target is a task or project."),
+          .describe("Set for message references to an entity target."),
         work: z
-          .object({ type: z.enum(["task", "project"]), id, title: z.string() })
+          .object({ type: z.enum(contextEntityTypes), id, title: z.string() })
           .optional()
           .describe("Set when the target is a message."),
+        entity: entityRef
+          .extend({
+            title: z.string(),
+            relation: z.enum(["related_to", "mentions"]),
+            direction: z.enum(["outgoing", "incoming"]),
+          })
+          .optional()
+          .describe("The readable opposite endpoint of a core contextual link."),
       }),
     ),
   },
   attach_message: {
     title: "Attach message",
     description:
-      "Link a message to a task or project by hand (kind attachment). Repeating the call changes nothing.",
+      "Link a message to a task, project, contact, account, deal or contact interaction by hand (kind attachment). Checks both endpoints; does not publish a summary, grant access or wake an agent. Repeating the call changes nothing.",
     readOnly: false,
     idempotent: true,
     input: z.object(link).strict(),
@@ -47,7 +59,7 @@ export const linkTools = {
   detach_message: {
     title: "Detach message",
     description:
-      "Remove a link of kind attachment between a message and a task or project. Origin and mention links stay. Repeating the call changes nothing.",
+      "Remove a hand-made link between a message and a task, project or CRM record. Origin and mention links and published interaction provenance stay. Repeating the call changes nothing.",
     readOnly: false,
     idempotent: true,
     destructive: true,

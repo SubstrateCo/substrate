@@ -1,5 +1,6 @@
 import { turnContextSchema } from "../turn-context.ts";
 import { contextTools } from "./context.ts";
+import { crmTools } from "./crm.ts";
 import { linkTools } from "./links.ts";
 import { localTools } from "./local.ts";
 import { messagingTools } from "./messaging.ts";
@@ -11,6 +12,7 @@ import { z } from "zod";
 export type ToolScope = "server" | "local";
 
 const serverTools = {
+  ...crmTools,
   ...contextTools,
   ...taskTools,
   ...messagingTools,

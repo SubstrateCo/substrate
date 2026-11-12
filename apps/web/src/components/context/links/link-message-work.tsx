@@ -1,7 +1,10 @@
+import type { ContextEntityType } from "@substrate/contracts/context/input";
+
 import { useQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
 
+import { MessageRecordCreator } from "./message-record-creator";
 import {
   LinkMessageWork as LinkMessageWorkView,
   type LinkableWork,
@@ -28,7 +31,8 @@ export function LinkMessageWork({
   onRestoreFocus?: () => void;
 }) {
   const [query, setQuery] = useState("");
-  const [kind, setKind] = useState<"task" | "project">("task");
+  const [kind, setKind] = useState<ContextEntityType>("task");
+  const [creating, setCreating] = useState<"account" | "contact" | "deal" | null>(null);
   const search = useSearchDebounce(query, JSON.stringify([organizationId, kind]));
   const results = useQuery({
     ...searchOptions({ organizationId, query: search.query, kind, editable: true }),
@@ -53,6 +57,17 @@ export function LinkMessageWork({
       ),
     );
   };
+  if (creating)
+    return (
+      <MessageRecordCreator
+        key={`${organizationId}:${messageId}:${creating}`}
+        organizationId={organizationId}
+        messageId={messageId}
+        kind={creating}
+        onClose={() => setCreating(null)}
+        onCreated={onClose}
+      />
+    );
   return (
     <LinkMessageWorkView
       state={resourceState(results).status}
@@ -62,7 +77,7 @@ export function LinkMessageWork({
         id: item.id,
         kind,
         title: item.title,
-        projectEntityId: item.projectEntityId ?? item.id,
+        projectEntityId: item.projectEntityId ?? null,
         projectName:
           kind === "task" && item.projectEntityId
             ? projectNames.get(item.projectEntityId)
@@ -82,6 +97,7 @@ export function LinkMessageWork({
       }}
       onClose={onClose}
       onRestoreFocus={onRestoreFocus}
+      onCreate={setCreating}
     />
   );
 }

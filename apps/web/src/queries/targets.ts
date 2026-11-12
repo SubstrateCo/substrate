@@ -46,7 +46,11 @@ function linksWork(query: Query, ids: string[]) {
   return (
     pages === undefined ||
     pages.some((page) =>
-      page.links.some((link) => ids.includes(link.entityId) || ids.includes(link.projectEntityId)),
+      page.links.some(
+        (link) =>
+          ids.includes(link.entityId) ||
+          (!!link.projectEntityId && ids.includes(link.projectEntityId)),
+      ),
     )
   );
 }
@@ -152,6 +156,7 @@ function workTargets(
   taskIds: string[] | undefined,
 ): QueryTarget[] {
   const shared: QueryTarget[] = [
+    { queryKey: queryKeys.crm(organizationId) },
     // Task discussions show their task's current title and project backlink.
     { queryKey: queryKeys.conversations(organizationId), discussesWork: { projectId, taskIds } },
     ...searchTargets(organizationId),
@@ -281,6 +286,7 @@ export function domainTargets(
       if (detail.projectId) return workTargets(organizationId, detail.projectId, detail.taskIds);
       // Without IDs, such as a grant change: any task record can change.
       return [
+        { queryKey: queryKeys.crm(organizationId) },
         { queryKey: queryKeys.tasks(organizationId) },
         { queryKey: queryKeys.activity(organizationId) },
         { queryKey: queryKeys.related(organizationId) },
@@ -303,6 +309,7 @@ export function domainTargets(
       if (detail.projectId) return referencedWorkTargets(organizationId, detail);
       // Without IDs, such as a conversation deletion: any reference can change.
       return [
+        { queryKey: queryKeys.crm(organizationId) },
         { queryKey: queryKeys.activity(organizationId) },
         { queryKey: queryKeys.related(organizationId) },
         { queryKey: queryKeys.messagePages(organizationId) },

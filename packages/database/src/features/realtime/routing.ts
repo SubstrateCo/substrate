@@ -146,6 +146,12 @@ interface WorkRecord {
   projectEntityId: string;
 }
 
+interface CrmContextRecord {
+  entityId: string;
+  entityType: "contact" | "account" | "deal" | "contact_interaction";
+  accessEntityId: string;
+}
+
 // One hint per project. A record that is the project itself names only the project.
 function projectHints(
   organizationId: string,
@@ -182,12 +188,11 @@ export async function workChangeHints(
   return projectHints(organizationId, rows, "tasks");
 }
 
-// References between a message and work changed. Each referenced record's readers refresh its
-// related lists. When an existing message changed, its conversation's viewers refresh its context
-// pages. Each audience sees only IDs it can already read.
+// Each endpoint refreshes independently. Conversation viewers see only the message ID; CRM readers
+// get a data-less hint on the record's access container, never the private source identifiers.
 export function referenceChangeHints(
   organizationId: string,
-  work: WorkRecord[],
+  work: (WorkRecord | CrmContextRecord)[],
   message?: { id: string; conversationId: string },
 ): RealtimeHint[] {
   return [
@@ -200,7 +205,21 @@ export function referenceChangeHints(
           },
         ]
       : []),
-    ...projectHints(organizationId, work, "context"),
+    ...projectHints(
+      organizationId,
+      work.filter((record): record is WorkRecord => "projectEntityId" in record),
+      "context",
+    ),
+    ...work.flatMap((record) =>
+      "projectEntityId" in record
+        ? []
+        : [
+            {
+              audience: realtimeKeys.entity(organizationId, record.accessEntityId),
+              domain: "context" as const,
+            },
+          ],
+    ),
   ];
 }
 

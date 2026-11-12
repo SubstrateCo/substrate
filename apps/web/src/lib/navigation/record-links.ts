@@ -11,14 +11,24 @@ export function workLink(organizationId: string, projectEntityId: string, taskEn
     search: { workspaceId: organizationId, projectId: projectEntityId, taskId: taskEntityId },
   });
 }
-/** A linked task opens in its project; a linked project opens itself. */
+/** Open a readable record in its owning app; interactions open their contact's history. */
 export function linkedWorkLink(
   organizationId: string,
-  link: { projectEntityId: string; entityType: "task" | "project"; entityId: string },
+  link: {
+    projectEntityId: string | null;
+    contactEntityId?: string | null;
+    entityType: "task" | "project" | "contact" | "account" | "deal" | "contact_interaction";
+    entityId: string;
+  },
 ) {
+  if (link.entityType === "account") return crmLink(organizationId, "accounts", link.entityId);
+  if (link.entityType === "deal") return crmLink(organizationId, "deals", link.entityId);
+  if (link.entityType === "contact") return crmLink(organizationId, "contacts", link.entityId);
+  if (link.entityType === "contact_interaction")
+    return crmLink(organizationId, "contacts", link.contactEntityId ?? undefined);
   return workLink(
     organizationId,
-    link.projectEntityId,
+    link.projectEntityId ?? link.entityId,
     link.entityType === "task" ? link.entityId : undefined,
   );
 }
@@ -37,6 +47,15 @@ export function agentLink(organizationId: string, agentId: string, section?: Age
 }
 
 export type RecordLink =
+  | ReturnType<typeof crmLink>
   | ReturnType<typeof workLink>
   | ReturnType<typeof messageLink>
   | ReturnType<typeof agentLink>;
+
+export function crmLink(
+  organizationId: string,
+  section: "accounts" | "contacts" | "deals",
+  recordId?: string,
+) {
+  return linkOptions({ to: "/crm", search: { workspaceId: organizationId, section, recordId } });
+}

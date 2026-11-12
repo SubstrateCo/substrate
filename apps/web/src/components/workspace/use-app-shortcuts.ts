@@ -4,11 +4,12 @@ import { useEffect, useEffectEvent, useRef } from "react";
 export const appShortcutKeys = {
   messages: "M",
   tasks: "T",
+  crm: "C",
   agents: "A",
   notifications: "N",
 } as const;
 
-const apps = ["messages", "tasks", "agents", "notifications"] as const;
+const apps = ["messages", "tasks", "crm", "agents", "notifications"] as const;
 export type ShortcutApp = (typeof apps)[number];
 
 const sequenceMs = 1000;

@@ -13,6 +13,8 @@ import {
   user,
   userAgents,
   taskActivity,
+  tasks,
+  contactInteractions,
   messagingConversations,
   agentWakes,
   messageEntityReferences,
@@ -20,15 +22,19 @@ import {
   messagingParticipants,
 } from "../../schema";
 import { discardEffects } from "../../testing/connection";
+import { contextConversation } from "../../testing/context";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
+import { crmActivityEvents } from "../crm/activity.schema";
+import { crmStages } from "../crm/schema";
+import { crmSettings } from "../crm/settings.schema";
 import { createMessagingService } from "../messaging/service";
 import { executeAgentTool as executeCommittedTool } from "./committed";
 import { agentToolRequests } from "./schema";
 import { executeAgentTool } from "./service";
 import { expect, test } from "bun:test";
-import { eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 const f = setupDatabase();
 
@@ -107,6 +113,743 @@ async function setCreatedAt(id: string, createdAt: string) {
     .set({ createdAt: new Date(createdAt) })
     .where(eq(messagingMessages.id, id));
 }
+
+test("CRM MCP uses owner access, human responsibility and replay without duplicate records", async () => {
+  const { call } = await fixture();
+  await f.db.update(member).set({ role: "member" }).where(eq(member.id, "alice-a"));
+  const hidden = await f.forActor(f.bob).crm.createAccount({ name: "Private customer" });
+  const input = { requestId: crypto.randomUUID(), name: "Customer" };
+  const created = await call("create_crm_account", input);
+  expect(created.record.ownerActorEntityId).toBe(f.alice);
+  expect(await call("create_crm_account", input)).toEqual(created);
+  const listed = await call("list_crm_records", { kind: "account", search: "Customer" });
+  expect(listed.items.map((row) => row.entityId)).toEqual([created.record.entityId]);
+  expect(
+    await rejection(call("get_crm_record", { kind: "account", entityId: hidden.entityId })),
+  ).toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(call("create_crm_account", { ...input, name: "Different" })),
+  ).toBeInstanceOf(ConflictError);
+});
+
+test("CRM message creation preserves agent-authored provenance and replays the current public record", async () => {
+  const { call, actor } = await fixture();
+  const { reply } = await contextConversation(f);
+  const input = {
+    kind: "account",
+    fields: { name: "Reviewed company", summary: "Approved fact" },
+    messageId: reply.id,
+    requestId: crypto.randomUUID(),
+    consentToRecordAudience: true,
+    associate: true,
+  };
+  const created = await call("create_crm_from_message", input);
+  expect(created.entityType).toBe("account");
+  expect(created.record).toHaveProperty("account.ownerActorEntityId", f.alice);
+  await call("update_crm_account", {
+    requestId: crypto.randomUUID(),
+    entityId: created.entityId,
+    name: "Current company",
+    summary: "Approved fact",
+    website: null,
+    domain: null,
+  });
+  const retry = await call("create_crm_from_message", input);
+  expect(retry.entityId).toBe(created.entityId);
+  expect(retry.record).toHaveProperty("account.name", "Current company");
+  expect(retry.record).toHaveProperty("account.summary", "Approved fact");
+  const refs = await f.db
+    .select()
+    .from(messageEntityReferences)
+    .where(eq(messageEntityReferences.entityId, created.entityId));
+  expect(refs.map((row) => row.purpose).toSorted((a, b) => a.localeCompare(b))).toEqual([
+    "association",
+    "source",
+  ]);
+  expect(
+    refs.every(
+      (row) => row.messageId === reply.id && row.createdByActorEntityId === actor.entityId,
+    ),
+  ).toBe(true);
+  expect((await call("list_crm_records", { kind: "account" })).items).toHaveLength(1);
+});
+
+test("CRM message creation replay requires current source access", async () => {
+  const { call } = await fixture();
+  const { reply, conversation } = await contextConversation(f);
+  const input = {
+    kind: "contact",
+    fields: { displayName: "Buyer" },
+    messageId: reply.id,
+    requestId: crypto.randomUUID(),
+    consentToRecordAudience: true,
+  };
+  await call("create_crm_from_message", input);
+  await f.db
+    .update(messagingParticipants)
+    .set({ leftAt: new Date() })
+    .where(
+      and(
+        eq(messagingParticipants.conversationId, conversation.id),
+        eq(messagingParticipants.actorEntityId, f.alice),
+      ),
+    );
+  expect(await rejection(call("create_crm_from_message", input))).toBeInstanceOf(AccessDeniedError);
+  expect(await f.db.select().from(messageEntityReferences)).toHaveLength(1);
+});
+
+test("CRM message creation replay rejects a deleted source without restoring its reference", async () => {
+  const { call } = await fixture();
+  const { reply } = await contextConversation(f);
+  const input = {
+    kind: "account",
+    fields: { name: "Customer" },
+    messageId: reply.id,
+    requestId: crypto.randomUUID(),
+    consentToRecordAudience: true,
+  };
+  await call("create_crm_from_message", input);
+  await f.db
+    .update(messagingMessages)
+    .set({ deletedAt: new Date(), body: "" })
+    .where(eq(messagingMessages.id, reply.id));
+  const references = await f.db.select().from(messageEntityReferences);
+  expect(await rejection(call("create_crm_from_message", input))).toBeInstanceOf(AccessDeniedError);
+  expect(await f.db.select().from(messageEntityReferences)).toEqual(references);
+  expect((await call("list_crm_records", { kind: "account" })).items).toHaveLength(1);
+});
+
+test("CRM message creation replay cannot return an inaccessible created record", async () => {
+  const { call } = await fixture();
+  await f.db.update(member).set({ role: "member" }).where(eq(member.id, "alice-a"));
+  const { reply } = await contextConversation(f);
+  const input = {
+    kind: "account",
+    fields: { name: "Customer" },
+    messageId: reply.id,
+    requestId: crypto.randomUUID(),
+    consentToRecordAudience: true,
+  };
+  const created = await call("create_crm_from_message", input);
+  await f
+    .forActor(f.alice)
+    .permissions.grant({ entityId: created.entityId, actorEntityId: f.bob, level: "owner" });
+  await f
+    .forActor(f.bob)
+    .permissions.revoke({ entityId: created.entityId, actorEntityId: f.alice });
+  expect(await rejection(call("create_crm_from_message", input))).toBeInstanceOf(AccessDeniedError);
+  expect(await f.db.select().from(messageEntityReferences)).toHaveLength(1);
+});
+
+test("CRM message creation replay refreshes hidden deal relationships instead of cached references", async () => {
+  const { call } = await fixture();
+  await f.db.update(member).set({ role: "member" }).where(eq(member.id, "alice-a"));
+  const { reply } = await contextConversation(f);
+  const bob = f.forActor(f.bob);
+  const account = await bob.crm.createAccount({ name: "Private account name" });
+  await bob.permissions.grant({
+    entityId: account.entityId,
+    actorEntityId: f.alice,
+    level: "view",
+  });
+  const [stage] = await f.forActor(f.alice).crm.ensurePipeline();
+  const input = {
+    kind: "deal",
+    fields: { title: "Sale", accountEntityId: account.entityId, stageId: stage!.id },
+    messageId: reply.id,
+    requestId: crypto.randomUUID(),
+    consentToRecordAudience: true,
+  };
+  const created = await call("create_crm_from_message", input);
+  expect(created.record).toHaveProperty("deal.accountEntityId", account.entityId);
+  await bob.permissions.revoke({ entityId: account.entityId, actorEntityId: f.alice });
+  const retry = await call("create_crm_from_message", input);
+  expect(retry.entityId).toBe(created.entityId);
+  expect(retry.record).toHaveProperty("deal.accountEntityId", null);
+  expect(retry.record).toHaveProperty("account", null);
+  const serialized = JSON.stringify(retry);
+  expect(serialized).not.toContain(account.entityId);
+  expect(serialized).not.toContain("Private account name");
+});
+
+test("CRM MCP keeps the validated agent actor separate from human responsibility", async () => {
+  const { call, actor } = await fixture();
+  const account = await call("create_crm_account", {
+    requestId: crypto.randomUUID(),
+    name: "Customer",
+  });
+  expect(account.record.ownerActorEntityId).toBe(f.alice);
+  const contact = await call("create_crm_contact", {
+    requestId: crypto.randomUUID(),
+    displayName: "Buyer",
+  });
+  const interaction = await call("create_crm_interaction", {
+    requestId: crypto.randomUUID(),
+    contactEntityId: contact.record.entityId,
+    kind: "call",
+    occurredAt: "2026-11-12T10:00:00Z",
+    summary: "Customer call.",
+  });
+  const [stored] = await f.db
+    .select()
+    .from(contactInteractions)
+    .where(eq(contactInteractions.entityId, interaction.record.entityId));
+  expect(stored?.createdByActorEntityId).toBe(actor.entityId);
+  expect(interaction.record.actor).toEqual({
+    type: "agent",
+    displayName: "Agent on behalf of Alice",
+  });
+  expect(interaction.record).not.toHaveProperty("createdByActorEntityId");
+});
+
+test("CRM MCP interaction responses redact private agent identity for coworkers", async () => {
+  const { call, actor, agentId } = await fixture();
+  await f.db
+    .update(userAgents)
+    .set({ name: "Private customer research agent" })
+    .where(eq(userAgents.id, agentId));
+  const contact = await call("create_crm_contact", {
+    requestId: crypto.randomUUID(),
+    displayName: "Buyer",
+  });
+  const interaction = await call("create_crm_interaction", {
+    requestId: crypto.randomUUID(),
+    contactEntityId: contact.record.entityId,
+    kind: "call",
+    occurredAt: "2026-11-12T10:00:00Z",
+    summary: "Customer call.",
+  });
+  await f
+    .forActor(f.alice)
+    .permissions.grant({ entityId: contact.record.entityId, actorEntityId: f.bob, level: "view" });
+  const [agent] = await f.db
+    .insert(userAgents)
+    .values({ userId: "bob", name: "Coworker agent", instructions: "", harness: "opencode" })
+    .returning();
+  const coworker = await ensureUserAgentActor(f.db, {
+    organizationId: f.orgA,
+    userId: "bob",
+    userAgentId: agent!.id,
+  });
+  const listed = (
+    await executeAgentTool(
+      f.db,
+      { organizationId: f.orgA, userId: "bob", actorEntityId: coworker.entityId },
+      "list_crm_interactions",
+      { contactEntityId: contact.record.entityId },
+      turn,
+    )
+  ).output;
+  expect(listed.items).toMatchObject([
+    {
+      entityId: interaction.record.entityId,
+      actor: { type: "agent", displayName: "Agent on behalf of Alice" },
+    },
+  ]);
+  for (const response of [interaction.record, listed]) {
+    const serialized = JSON.stringify(response);
+    expect(serialized).not.toContain("createdByActorEntityId");
+    expect(serialized).not.toContain(actor.entityId);
+    expect(serialized).not.toContain(agentId);
+    expect(serialized).not.toContain("Private customer research agent");
+  }
+});
+
+test("CRM activity attributes the agent but coworkers see no private agent identity", async () => {
+  const { call, actor, agentId } = await fixture();
+  await f.db
+    .update(userAgents)
+    .set({ name: "Private sales strategist" })
+    .where(eq(userAgents.id, agentId));
+  const account = await call("create_crm_account", {
+    requestId: crypto.randomUUID(),
+    name: "Customer",
+  });
+  expect(account.record.ownerActorEntityId).toBe(f.alice);
+  const events = await f.db
+    .select()
+    .from(crmActivityEvents)
+    .where(eq(crmActivityEvents.entityId, account.record.entityId));
+  expect(events).toMatchObject([{ action: "created", actorEntityId: actor.entityId }]);
+  await f
+    .forActor(f.alice)
+    .permissions.grant({ entityId: account.record.entityId, actorEntityId: f.bob, level: "view" });
+  const [coworkerAgent] = await f.db
+    .insert(userAgents)
+    .values({ userId: "bob", name: "Coworker agent", instructions: "", harness: "opencode" })
+    .returning();
+  const coworkerActor = await ensureUserAgentActor(f.db, {
+    organizationId: f.orgA,
+    userId: "bob",
+    userAgentId: coworkerAgent!.id,
+  });
+  const activity = (
+    await executeAgentTool(
+      f.db,
+      { organizationId: f.orgA, userId: "bob", actorEntityId: coworkerActor.entityId },
+      "list_crm_activity",
+      { entityId: account.record.entityId },
+      turn,
+    )
+  ).output;
+  expect(activity.items).toMatchObject([
+    { action: "created", actor: { type: "agent", displayName: "Agent on behalf of Alice" } },
+  ]);
+  const serialized = JSON.stringify(activity);
+  expect(serialized).not.toContain("Private sales strategist");
+  expect(serialized).not.toContain(agentId);
+  expect(serialized).not.toContain(actor.entityId);
+});
+
+test("CRM MCP contact wrappers record agent activity once per actual edit", async () => {
+  const { call, actor } = await fixture();
+  const create = { requestId: crypto.randomUUID(), displayName: "Buyer" };
+  const contact = await call("create_crm_contact", create);
+  expect(await call("create_crm_contact", create)).toEqual(contact);
+  const update = {
+    requestId: crypto.randomUUID(),
+    entityId: contact.record.entityId,
+    displayName: "Updated buyer",
+  };
+  await call("update_crm_contact", update);
+  await call("update_crm_contact", update);
+  const rows = await f.db
+    .select()
+    .from(crmActivityEvents)
+    .where(eq(crmActivityEvents.entityId, contact.record.entityId));
+  expect(rows).toHaveLength(2);
+  expect(rows.every((row) => row.actorEntityId === actor.entityId)).toBe(true);
+  expect(rows.find((row) => row.action === "updated")?.changedFields).toEqual(["displayName"]);
+  const activity = await call("list_crm_activity", { entityId: contact.record.entityId });
+  expect(activity.items.map((row) => row.action).toSorted((a, b) => a.localeCompare(b))).toEqual([
+    "created",
+    "updated",
+  ]);
+});
+
+test("CRM MCP contact writes retain committed context invalidation hints", async () => {
+  const { identity } = await fixture();
+  const created = await executeCommittedTool(
+    f.db,
+    identity,
+    "create_crm_contact",
+    { requestId: crypto.randomUUID(), displayName: "Buyer" },
+    turn,
+  );
+  const contact = mcpTools.create_crm_contact.output.parse(created.result.output);
+  const expected: RealtimeHint = {
+    audience: realtimeKeys.entity(f.orgA, contact.record.entityId),
+    domain: "context",
+  };
+  expect(created.hints).toContainEqual(expected);
+  const updated = await executeCommittedTool(
+    f.db,
+    identity,
+    "update_crm_contact",
+    {
+      requestId: crypto.randomUUID(),
+      entityId: contact.record.entityId,
+      displayName: "Updated buyer",
+    },
+    turn,
+  );
+  expect(updated.hints).toContainEqual(expected);
+});
+
+test("CRM MCP blocks unattended writes and writes from another desktop", async () => {
+  const { identity } = await fixture();
+  const input = { requestId: crypto.randomUUID(), name: "Must not exist" };
+  expect(
+    await rejection(
+      executeAgentTool(f.db, identity, "create_crm_account", input, {
+        ...turn,
+        kind: "unattended",
+      }),
+    ),
+  ).toMatchObject({ name: "ValidationError" });
+  expect(
+    await rejection(
+      executeAgentTool(f.db, identity, "create_crm_account", input, {
+        ...turn,
+        installationId: crypto.randomUUID(),
+      }),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
+  expect(await f.forActor(f.alice).crm.listAccounts()).toEqual([]);
+  expect(await f.db.select().from(agentToolRequests)).toEqual([]);
+});
+
+test("CRM interaction retries preserve a single manual interaction", async () => {
+  const { call } = await fixture();
+  const contact = await call("create_crm_contact", {
+    requestId: crypto.randomUUID(),
+    displayName: "Buyer",
+  });
+  const input = {
+    requestId: crypto.randomUUID(),
+    contactEntityId: String(contact.record.entityId),
+    kind: "call",
+    occurredAt: "2026-11-12T10:00:00Z",
+    summary: "Discussed the proposal.",
+  };
+  const interaction = await call("create_crm_interaction", input);
+  expect(await call("create_crm_interaction", input)).toEqual(interaction);
+  const timeline = await call("list_crm_interactions", { contactEntityId: input.contactEntityId });
+  expect(timeline.items.map((row) => row.entityId)).toEqual([interaction.record.entityId]);
+  expect(timeline.items[0]?.origin).toBe("manual");
+  expect(timeline.items[0]?.occurredAt).toBe("2026-11-12T10:00:00.000Z");
+});
+
+test("CRM follow-up replay rebuilds the current task projection after a project move", async () => {
+  const { call, project } = await fixture();
+  await f.db.update(member).set({ role: "member" }).where(eq(member.id, "alice-a"));
+  const bob = f.forActor(f.bob);
+  const original = await bob.projects.create({ name: "Former private project" });
+  await bob.permissions.grant({
+    entityId: original.entityId,
+    actorEntityId: f.alice,
+    level: "edit",
+  });
+  const account = await call("create_crm_account", {
+    requestId: crypto.randomUUID(),
+    name: "Customer",
+  });
+  const input = {
+    requestId: crypto.randomUUID(),
+    entityId: account.record.entityId,
+    projectEntityId: original.entityId,
+    title: "Call buyer",
+    consentToTaskAudience: true,
+  };
+  const created = await call("create_crm_follow_up", input);
+  expect(created.project.id).toBe(original.entityId);
+  // Simulate a committed structural move: task parent and access container change together.
+  await f.db.execute(sql`with moved as (
+    update ${entities} set access_entity_id = ${project.entityId} where entity_id = ${created.id} returning entity_id
+  ) update ${tasks} set project_entity_id = ${project.entityId} where entity_id in (select entity_id from moved)`);
+  await bob.permissions.revoke({ entityId: original.entityId, actorEntityId: f.alice });
+  const retry = await call("create_crm_follow_up", input);
+  expect(retry.id).toBe(created.id);
+  expect(retry.project).toEqual({ id: project.entityId, name: "Work" });
+  const serialized = JSON.stringify(retry);
+  expect(serialized).not.toContain(original.entityId);
+  expect(serialized).not.toContain("Former private project");
+});
+
+test("CRM interaction pagination reaches the 51st entry with stable occurrence-time ties", async () => {
+  const { call } = await fixture();
+  const repos = f.forActor(f.alice);
+  const contact = await repos.contacts.create({ displayName: "Buyer" });
+  const created = [];
+  for (let index = 0; index < 51; index++)
+    created.push(
+      await repos.contactInteractions.createManual({
+        contactEntityId: contact.entityId,
+        kind: "call",
+        occurredAt: new Date("2026-11-12T10:00:00Z"),
+        summary: `Call ${index}`,
+      }),
+    );
+  const first = await call("list_crm_interactions", { contactEntityId: contact.entityId });
+  expect(first.items).toHaveLength(50);
+  expect(first.nextBefore).not.toBeNull();
+  const second = await call("list_crm_interactions", {
+    contactEntityId: contact.entityId,
+    before: first.nextBefore,
+  });
+  expect(second.items).toHaveLength(1);
+  expect(second.nextBefore).toBeNull();
+  const actual = [...first.items, ...second.items].map((row) => row.entityId);
+  const expected = created.map((row) => row.entityId).toSorted((a, b) => b.localeCompare(a));
+  expect(actual).toEqual(expected);
+  expect(new Set(actual).size).toBe(51);
+});
+
+test("CRM deal replay rechecks related account access and stages reject stale versions", async () => {
+  const { call } = await fixture();
+  await f.db.update(member).set({ role: "member" }).where(eq(member.id, "alice-a"));
+  const bob = f.forActor(f.bob);
+  const account = await bob.crm.createAccount({ name: "Shared customer" });
+  await bob.permissions.grant({
+    entityId: account.entityId,
+    actorEntityId: f.alice,
+    level: "view",
+  });
+  const [stage] = await f.forActor(f.alice).crm.ensurePipeline();
+  const input = {
+    requestId: crypto.randomUUID(),
+    title: "Sale",
+    stageId: stage!.id,
+    accountEntityId: account.entityId,
+  };
+  const deal = await call("create_crm_deal", input);
+  const transition = {
+    requestId: crypto.randomUUID(),
+    entityId: deal.record.entityId,
+    expectedVersion: 1,
+    stageId: stage!.id,
+    outcome: "won",
+  };
+  const won = await call("transition_crm_deal", transition);
+  expect(won.record.outcome).toBe("won");
+  expect(won.record.version).toBe(2);
+  expect(await call("transition_crm_deal", transition)).toEqual(won);
+  expect(
+    await rejection(
+      call("transition_crm_deal", {
+        ...transition,
+        requestId: crypto.randomUUID(),
+        outcome: "open",
+      }),
+    ),
+  ).toBeInstanceOf(ConflictError);
+  await bob.permissions.revoke({ entityId: account.entityId, actorEntityId: f.alice });
+  expect(await rejection(call("create_crm_deal", input))).toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(call("transition_crm_deal", transition))).toBeInstanceOf(
+    AccessDeniedError,
+  );
+});
+
+test("CRM MCP message publication retains provenance and returns later edits on retry", async () => {
+  const { call } = await fixture();
+  const { repos, reply } = await contextConversation(f);
+  const contact = await repos.contacts.create({ displayName: "Buyer" });
+  const input = {
+    contactEntityId: contact.entityId,
+    messageId: reply.id,
+    kind: "message",
+    occurredAt: "2026-11-12T10:00:00Z",
+    summary: "Approved summary.",
+    consentToContactAudience: true,
+  };
+  const first = await call("publish_crm_interaction", input);
+  expect(first.record.origin).toBe("message_publication");
+  await repos.contactInteractions.update(first.record.entityId, { summary: "Later correction." });
+  const retry = await call("publish_crm_interaction", input);
+  expect(retry.record.entityId).toBe(first.record.entityId);
+  expect(retry.record.summary).toBe("Later correction.");
+  expect(
+    (await f.db.select().from(messageEntityReferences)).filter(
+      (row) => row.entityId === first.record.entityId,
+    ),
+  ).toMatchObject([{ messageId: reply.id, purpose: "source" }]);
+  await repos.contactInteractions.softDelete(first.record.entityId);
+  expect(await rejection(call("publish_crm_interaction", input))).toBeInstanceOf(AccessDeniedError);
+});
+
+test("CRM MCP message associations link only the chosen record without publishing or waking", async () => {
+  const { call } = await fixture();
+  const { reply } = await contextConversation(f);
+  const account = await call("create_crm_account", {
+    requestId: crypto.randomUUID(),
+    name: "Customer",
+  });
+  const input = { messageId: reply.id, target: { type: "account", id: account.record.entityId } };
+  const wakes = await f.db.select().from(agentWakes);
+  const attached = await call("attach_message", input);
+  const retry = await call("attach_message", input);
+  expect(attached).toEqual({ changed: true });
+  expect(retry).toEqual({ changed: false });
+  expect(await f.db.select().from(messageEntityReferences)).toMatchObject([
+    { entityId: account.record.entityId, purpose: "association" },
+  ]);
+  expect(await f.db.select().from(agentWakes)).toEqual(wakes);
+  expect(await f.db.select().from(contactInteractions)).toEqual([]);
+  expect(
+    (await call("list_links", { target: { type: "message", id: reply.id } })).items,
+  ).toMatchObject([
+    {
+      kind: "attachment",
+      work: { type: "account", id: account.record.entityId, title: "Customer" },
+    },
+  ]);
+  expect(
+    (await call("list_links", { target: { type: "account", id: account.record.entityId } })).items,
+  ).toMatchObject([{ kind: "attachment", message: { id: reply.id } }]);
+  expect(await call("detach_message", input)).toEqual({ changed: true });
+  expect(await f.db.select().from(messageEntityReferences)).toEqual([]);
+  expect(
+    (await call("get_crm_record", { kind: "account", entityId: account.record.entityId })).record,
+  ).toHaveProperty("account.name", "Customer");
+});
+
+test("CRM settings and pipeline reads do not initialize records, even unattended", async () => {
+  const { identity } = await fixture();
+  const settings = await executeAgentTool(
+    f.db,
+    identity,
+    "get_crm_settings",
+    {},
+    { ...turn, kind: "unattended" },
+  );
+  expect(settings.output.settings.defaultCurrency).toBeNull();
+  expect(
+    (
+      await executeAgentTool(
+        f.db,
+        identity,
+        "get_crm_pipeline",
+        {},
+        { ...turn, kind: "unattended" },
+      )
+    ).output.stages,
+  ).toEqual([]);
+  expect(await f.db.select().from(crmSettings)).toEqual([]);
+  expect(await f.db.select().from(crmStages)).toEqual([]);
+});
+
+test("CRM settings writes require current admin capability and never rewrite deals", async () => {
+  const { call } = await fixture();
+  const settingsInput = { requestId: crypto.randomUUID(), defaultCurrency: "EUR" };
+  expect((await call("update_crm_settings", settingsInput)).settings.defaultCurrency).toBe("EUR");
+  const account = await call("create_crm_account", {
+    requestId: crypto.randomUUID(),
+    name: "Customer",
+  });
+  const [stage] = await f.forActor(f.alice).crm.ensurePipeline();
+  const base = { title: "Sale", accountEntityId: account.record.entityId, stageId: stage!.id };
+  const explicit = await call("create_crm_deal", {
+    ...base,
+    requestId: crypto.randomUUID(),
+    amount: "10",
+    currency: "USD",
+  });
+  const unknown = await call("create_crm_deal", { ...base, requestId: crypto.randomUUID() });
+  expect(explicit.record.currency).toBe("USD");
+  expect(explicit.record.expectedCloseDate).toBeNull();
+  expect(unknown.record.amount).toBeNull();
+  expect(unknown.record.currency).toBeNull();
+  await call("update_crm_settings", { requestId: crypto.randomUUID(), defaultCurrency: "GBP" });
+  const after = await call("get_crm_record", { kind: "deal", entityId: explicit.record.entityId });
+  expect(after.record).toHaveProperty("deal.currency", "USD");
+  expect(after.record).toHaveProperty("deal.amount", explicit.record.amount);
+  expect(after.record).toHaveProperty("deal.expectedCloseDate", null);
+  await f.db.update(member).set({ role: "member" }).where(eq(member.id, "alice-a"));
+  expect(await rejection(call("update_crm_settings", settingsInput))).toBeInstanceOf(
+    AccessDeniedError,
+  );
+  expect(
+    await rejection(
+      call("update_crm_settings", { requestId: crypto.randomUUID(), defaultCurrency: "EUR" }),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
+  expect((await call("get_crm_settings", {})).settings.defaultCurrency).toBe("GBP");
+});
+
+test("CRM follow-up tools use existing project tasks and expose permission-filtered core links", async () => {
+  const { call, project } = await fixture();
+  await f.db.update(member).set({ role: "member" }).where(eq(member.id, "alice-a"));
+  const alice = f.forActor(f.alice);
+  const account = await call("create_crm_account", {
+    requestId: crypto.randomUUID(),
+    name: "Customer",
+  });
+  const hidden = await f.forActor(f.bob).crm.createAccount({ name: "Hidden" });
+  await f
+    .forActor(f.bob)
+    .permissions.grant({ entityId: hidden.entityId, actorEntityId: f.alice, level: "view" });
+  await alice.links.create({
+    sourceEntityId: account.record.entityId,
+    targetEntityId: hidden.entityId,
+    relationType: "related_to",
+  });
+  await f.forActor(f.bob).permissions.revoke({ entityId: hidden.entityId, actorEntityId: f.alice });
+  const input = {
+    requestId: crypto.randomUUID(),
+    entityId: account.record.entityId,
+    projectEntityId: project.entityId,
+    title: "Call buyer",
+    dueDate: "2026-11-20",
+    consentToTaskAudience: true,
+  };
+  const task = await call("create_crm_follow_up", input);
+  expect(task.project.id).toBe(project.entityId);
+  expect(task.dueDate).toBe("2026-11-20");
+  expect(await call("create_crm_follow_up", input)).toEqual(task);
+  const links = await call("list_links", {
+    target: { type: "account", id: account.record.entityId },
+    source: "entities",
+  });
+  expect(links.items).toMatchObject([
+    {
+      kind: "entity",
+      entity: { type: "task", id: task.id, relation: "related_to", direction: "incoming" },
+    },
+  ]);
+  expect(links.items).toHaveLength(1);
+  const reverse = await call("list_links", {
+    target: { type: "task", id: task.id },
+    source: "entities",
+  });
+  expect(reverse.items).toMatchObject([
+    { entity: { type: "account", id: account.record.entityId, direction: "outgoing" } },
+  ]);
+  expect(
+    await rejection(
+      call("list_links", { target: { type: "account", id: hidden.entityId }, source: "entities" }),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
+});
+
+test("CRM message and entity links resolve all supported customer record types", async () => {
+  const { call } = await fixture();
+  const { reply } = await contextConversation(f);
+  const account = await call("create_crm_account", {
+    requestId: crypto.randomUUID(),
+    name: "Customer",
+  });
+  const contact = await call("create_crm_contact", {
+    requestId: crypto.randomUUID(),
+    displayName: "Buyer",
+  });
+  const [stage] = await f.forActor(f.alice).crm.ensurePipeline();
+  const deal = await call("create_crm_deal", {
+    requestId: crypto.randomUUID(),
+    title: "Sale",
+    accountEntityId: account.record.entityId,
+    stageId: stage!.id,
+  });
+  const interaction = await call("create_crm_interaction", {
+    requestId: crypto.randomUUID(),
+    contactEntityId: contact.record.entityId,
+    kind: "call",
+    occurredAt: "2026-11-12T10:00:00Z",
+    summary: "Customer call",
+  });
+  const targets = [
+    { type: "account", id: account.record.entityId },
+    { type: "contact", id: contact.record.entityId },
+    { type: "deal", id: deal.record.entityId },
+    { type: "contact_interaction", id: interaction.record.entityId },
+  ] as const;
+  for (const target of targets) {
+    await call("attach_message", { messageId: reply.id, target });
+    expect((await call("list_links", { target })).items).toMatchObject([
+      { message: { id: reply.id } },
+    ]);
+    if (target.type !== "account")
+      await f.forActor(f.alice).links.create({
+        sourceEntityId: account.record.entityId,
+        targetEntityId: target.id,
+        relationType: "related_to",
+      });
+  }
+  const messages = await call("list_links", { target: { type: "message", id: reply.id } });
+  expect(
+    messages.items.map((item) => item.work?.type ?? "").toSorted((a, b) => a.localeCompare(b)),
+  ).toEqual(targets.map((target) => target.type).toSorted((a, b) => a.localeCompare(b)));
+  const core = await call("list_links", { target: targets[0]!, source: "entities", limit: 1 });
+  expect(core.items).toHaveLength(1);
+  expect(core.nextCursor).not.toBeNull();
+  const next = await call("list_links", {
+    target: targets[0]!,
+    source: "entities",
+    limit: 1,
+    cursor: core.nextCursor,
+  });
+  expect(next.items).toHaveLength(1);
+  expect(next.items[0]?.entity?.id).not.toBe(core.items[0]?.entity?.id);
+});
 
 test("committed MCP reads use one transaction and raw validation opens none", async () => {
   const { identity } = await fixture();

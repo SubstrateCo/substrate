@@ -5,6 +5,7 @@ import type { TaskStatus } from "@substrate/contracts/tasks";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
+import { contactInteractions } from "../../core/contacts/interactions.schema";
 import { entities } from "../../core/entities/schema";
 import { entityLinks } from "../../core/links/schema";
 import { member } from "../../core/organizations/schema";
@@ -28,6 +29,7 @@ import { projects } from "../projects/schema";
 import { taskLinks } from "../tasks/links.schema";
 import { tasks } from "../tasks/tasks.schema";
 import { requireWork } from "./access";
+import { crmContextTargets, crmContextTypes, isCrmContextType } from "./crm-targets";
 import { messageExcerpts } from "./message-excerpt";
 import { messageEntityReferences, messageMessagingReferences } from "./schema";
 import {
@@ -52,6 +54,7 @@ interface SearchResult {
   title: string;
   image?: string | null;
   projectEntityId?: string;
+  contactEntityId?: string;
   // Task results only: the readable parent project and the task's status, so pickers can tell
   // tasks with the same title apart.
   projectName?: string;
@@ -349,6 +352,39 @@ export async function contextSearch(
           ),
         ),
     );
+  }
+  if (kind === "all" || isCrmContextType(kind)) {
+    const types = kind === "all" ? crmContextTypes : [kind];
+    for (const type of types) {
+      const { table, title, active } = crmContextTargets[type];
+      const contactEntityId =
+        type === "contact_interaction" ? contactInteractions.contactEntityId : sql<null>`null`;
+      branchRows.push(
+        db
+          .select({ id: table.entityId, title, contactEntityId })
+          .from(table)
+          .where(
+            and(
+              eq(table.organizationId, scope.organizationId),
+              ctx.readable(table.entityId, input.editable ? "edit" : "view"),
+              active,
+              anchorId ? inArray(table.entityId, relatedEntities) : undefined,
+              anchorId ? sql`${table.entityId} <> ${anchorId}` : undefined,
+              query ? containsText(title, query) : undefined,
+              input.after ? gt(table.entityId, input.after) : undefined,
+            ),
+          )
+          .orderBy(asc(table.entityId))
+          .limit(limit)
+          .then((rows) =>
+            rows.map(({ contactEntityId, ...row }) => {
+              const result: SearchResult = { ...row, kind: type };
+              if (contactEntityId) result.contactEntityId = contactEntityId;
+              return result;
+            }),
+          ),
+      );
+    }
   }
   if (kind === "all" || kind === "conversation") {
     const pending = db

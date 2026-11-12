@@ -21,14 +21,12 @@ test("MCP conversation, thread and link authors join current human and agent nam
   const human = f.messaging("alice");
   const channel = await human.createConversation({ kind: "channel", name: "Names" });
   const root = await human.sendMessage(channel.id, "Root");
-  await f.db
-    .insert(messagingParticipants)
-    .values({
-      conversationId: channel.id,
-      organizationId: f.orgA,
-      actorEntityId: agent.actorId,
-      actorType: "agent",
-    });
+  await f.db.insert(messagingParticipants).values({
+    conversationId: channel.id,
+    organizationId: f.orgA,
+    actorEntityId: agent.actorId,
+    actorType: "agent",
+  });
   const [reply] = await f.db
     .insert(messagingMessages)
     .values({
@@ -82,6 +80,7 @@ test("MCP conversation, thread and link authors join current human and agent nam
   });
   const links = await listLinks(ctx, identity, {
     target: { type: "project", id: project.entityId },
+    source: "messages",
     limit: 20,
   });
   expect(

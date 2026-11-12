@@ -3,6 +3,11 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./crm/from-message": "./src/crm/from-message.ts",
+    "./crm/activity": "./src/crm/activity.ts",
+    "./crm/input": "./src/crm/input.ts",
+    "./crm/report-input": "./src/crm/report-input.ts",
+    "./crm/export": "./src/crm/export.ts",
     "./realtime": "./src/realtime/index.ts",
     "./harness": "./src/harness/index.ts",
     "./harness/desktop": "./src/harness/desktop.ts",

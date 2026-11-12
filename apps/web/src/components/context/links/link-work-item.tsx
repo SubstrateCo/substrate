@@ -1,7 +1,9 @@
+import type { ContextEntityType } from "@substrate/contracts/context/input";
+
 import { Checkbox } from "../../ui/checkbox";
 import { CommandItem } from "../../ui/command";
 import { cn } from "cn";
-import { FolderKanban, ListTodo } from "lucide-react";
+import { FolderKanban, ListTodo, Building2, Contact, Handshake, MessageSquare } from "lucide-react";
 
 export function LinkWorkItem({
   id,
@@ -14,7 +16,7 @@ export function LinkWorkItem({
   onChoose,
 }: {
   id: string;
-  kind: "task" | "project";
+  kind: ContextEntityType;
   title: string;
   projectName?: string;
   chosen: boolean;
@@ -22,9 +24,23 @@ export function LinkWorkItem({
   disabled: boolean;
   onChoose: () => void;
 }) {
-  const Icon = kind === "task" ? ListTodo : FolderKanban;
+  const Icon = {
+    task: ListTodo,
+    project: FolderKanban,
+    contact: Contact,
+    account: Building2,
+    deal: Handshake,
+    contact_interaction: MessageSquare,
+  }[kind];
   const selected = chosen && !linked;
-  let subtitle = "Project";
+  let subtitle = {
+    task: "Task",
+    project: "Project",
+    contact: "Contact",
+    account: "Account",
+    deal: "Deal",
+    contact_interaction: "Interaction",
+  }[kind];
   if (kind === "task") subtitle = projectName ? `Task · ${projectName}` : "Task";
   return (
     <CommandItem value={id} disabled={disabled || linked} onSelect={onChoose}>

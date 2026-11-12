@@ -45,16 +45,18 @@ export function ReferencedMessageBody({
             reference.threadId ?? undefined,
           ),
         })),
-        ...(context.error ? [] : (context.data?.links ?? [])).map((link) => ({
-          id: link.entityId,
-          kind: link.entityType,
-          label: link.title,
-          status:
-            link.status && link.statusName
-              ? { value: link.status, label: link.statusName }
-              : undefined,
-          link: linkedWorkLink(organizationId, link),
-        })),
+        ...(context.error ? [] : (context.data?.links ?? []))
+          .filter((link) => link.entityType === "task" || link.entityType === "project")
+          .map((link) => ({
+            id: link.entityId,
+            kind: link.entityType === "task" ? ("task" as const) : ("project" as const),
+            label: link.title,
+            status:
+              link.status && link.statusName
+                ? { value: link.status, label: link.statusName }
+                : undefined,
+            link: linkedWorkLink(organizationId, link),
+          })),
         ...(context.error ? [] : (context.data?.people ?? [])).map((person) => ({
           id: person.id,
           kind: "person" as const,

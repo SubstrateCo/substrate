@@ -11,6 +11,7 @@ import {
   text,
   timestamp,
   uniqueIndex,
+  unique,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -25,6 +26,7 @@ export const contactInteractionKind = pgEnum("contact_interaction_kind", [
 export const contactInteractionOrigin = pgEnum("contact_interaction_origin", [
   "manual",
   "imported",
+  "message_publication",
 ]);
 
 export const contactInteractions = pgTable(
@@ -76,7 +78,7 @@ export const contactInteractions = pgTable(
     ),
     check(
       "contact_interactions_source_check",
-      sql`(${table.origin} = 'manual' AND ${table.sourceEntityId} IS NULL AND ${table.sourceEntityType} IS NULL) OR (${table.origin} = 'imported' AND ${table.sourceEntityId} IS NOT NULL AND ${table.sourceEntityType} IS NOT NULL)`,
+      sql`(${table.origin}::text IN ('manual', 'message_publication') AND ${table.sourceEntityId} IS NULL AND ${table.sourceEntityType} IS NULL) OR (${table.origin}::text = 'imported' AND ${table.sourceEntityId} IS NOT NULL AND ${table.sourceEntityType} IS NOT NULL)`,
     ),
     check(
       "contact_interactions_no_self_source_check",
@@ -92,5 +94,10 @@ export const contactInteractions = pgTable(
       .on(table.organizationId, table.contactEntityId, table.sourceEntityId)
       .where(sql`${table.origin} = 'imported'`),
     index("contact_interactions_source_idx").on(table.organizationId, table.sourceEntityId),
+    unique("contact_interactions_org_entity_contact_unique").on(
+      table.organizationId,
+      table.entityId,
+      table.contactEntityId,
+    ),
   ],
 );

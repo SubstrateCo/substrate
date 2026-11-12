@@ -17,6 +17,7 @@ import { createDeviceWorkRepository } from "./features/agent-work/device-reposit
 import { createAgentWorkReadRepository } from "./features/agent-work/read-repository";
 import { createAgentRepository } from "./features/agents/repository";
 import { createContextRepository } from "./features/context/service";
+import { crmRepository } from "./features/crm/repository";
 import { createAttachmentRepository } from "./features/files/repository";
 import { createMessagingRepository } from "./features/messaging/service";
 import {
@@ -39,6 +40,7 @@ export class ActorRepositories {
   readonly permissions;
   readonly projects;
   readonly tasks;
+  readonly crm;
   protected readonly repositoryContext;
 
   constructor(
@@ -54,6 +56,7 @@ export class ActorRepositories {
     this.permissions = permissionRepository(this.repositoryContext);
     this.projects = projectRepository(this.repositoryContext);
     this.tasks = taskRepository(this.repositoryContext);
+    this.crm = crmRepository(this.repositoryContext);
   }
 
   async transaction<T>(
@@ -125,6 +128,7 @@ function standalone(
   function domain<
     K extends
       | "contacts"
+      | "crm"
       | "contactInteractions"
       | "entities"
       | "links"
@@ -143,6 +147,24 @@ function standalone(
   }
   return {
     contacts: domain("contacts", ["get", "getDetail", "list", "findByIdentifier"]),
+    crm: domain("crm", [
+      "listAccounts",
+      "getAccount",
+      "listContacts",
+      "getContact",
+      "pipeline",
+      "listDeals",
+      "getDeal",
+      "report",
+      "reportDeals",
+      "activity",
+      "listInteractions",
+      "people",
+      "grants",
+      "followUps",
+      "settings",
+      "timeline",
+    ]),
     contactInteractions: domain("contactInteractions", ["get", "listForContact", "listForSource"]),
     entities: domain("entities", ["get"]),
     links: domain("links", ["list"]),

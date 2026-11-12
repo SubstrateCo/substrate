@@ -28,7 +28,7 @@ export async function rejected(response: APIResponse, privateValues: readonly st
 }
 
 export type TaskWrite<T = TasksWrite> = T extends TasksWrite ? Omit<T, "organizationId"> : never;
-type WorkspaceClient = { request: APIRequestContext; organizationId: string };
+export type WorkspaceClient = { request: APIRequestContext; organizationId: string };
 const write = (actor: WorkspaceClient, data: TaskWrite, origin = appOrigin) =>
   actor.request.post("/api/v1/tasks/mutations", {
     headers: { origin },

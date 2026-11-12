@@ -28,7 +28,7 @@ Use the Substrate MCP server for workspace records:
 
 The MCP credential sets your identity, organization and turn, so do not put them in tool inputs. Never move work to another organization.
 
-The substrate-search, substrate-messaging and substrate-tasks skills give detailed guidance.
+The substrate-search, substrate-messaging, substrate-tasks and substrate-crm skills give detailed guidance.
 
 Always create skills in the local project folder, never in a global or user-level skills folder.
 

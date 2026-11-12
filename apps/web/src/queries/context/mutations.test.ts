@@ -49,3 +49,18 @@ test("link changes refresh only the affected message pages, links, work and proj
     client.clear();
   }
 });
+
+test("CRM associations invalidate the record without inventing a project or touching another organization", async () => {
+  const client = new QueryClient();
+  const related = queryKeys.related("org", "deal");
+  const otherOrganization = queryKeys.related("other", "deal");
+  const unrelated = queryKeys.related("org", "unrelated");
+  const messages = [...queryKeys.context("org"), "message-pages", "conversation", ["message"]];
+  for (const key of [related, otherOrganization, unrelated, messages]) client.setQueryData(key, []);
+  await invalidateMessageWork(client, "org", "message", "deal", null);
+  expect(client.getQueryState(related)?.isInvalidated).toBe(true);
+  expect(client.getQueryState(messages)?.isInvalidated).toBe(true);
+  expect(client.getQueryState(otherOrganization)?.isInvalidated).toBe(false);
+  expect(client.getQueryState(unrelated)?.isInvalidated).toBe(false);
+  client.clear();
+});

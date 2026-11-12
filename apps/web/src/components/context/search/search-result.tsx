@@ -12,6 +12,10 @@ import { conversationLabel } from "@/lib/messaging/conversations";
 import type { RecordLink } from "@/lib/navigation/record-links";
 import {
   FolderKanban,
+  Building2,
+  Contact,
+  Handshake,
+  MessageSquare,
   ListTodo,
   LockKeyhole,
   MessageSquareText,
@@ -93,6 +97,17 @@ function describe(item: SearchResultItem) {
     };
   if (item.kind === "project")
     return { icon: icon(FolderKanban), title: item.title, kind: "Project", detail: "Project" };
+  const crmKinds = {
+    contact: { Icon: Contact, label: "Contact" },
+    account: { Icon: Building2, label: "Account" },
+    deal: { Icon: Handshake, label: "Deal" },
+    contact_interaction: { Icon: MessageSquare, label: "Interaction" },
+  };
+  const crmKind = Object.entries(crmKinds).find(([kind]) => kind === item.kind)?.[1];
+  if (crmKind) {
+    const { Icon, label } = crmKind;
+    return { icon: icon(Icon), title: item.title, kind: label, detail: label };
+  }
   if (item.kind === "message")
     return {
       icon: icon(MessageSquareText),

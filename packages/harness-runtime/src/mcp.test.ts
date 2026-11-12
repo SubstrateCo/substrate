@@ -104,6 +104,52 @@ test("server calls carry lease identity and the bound turn; calls outside a turn
   }
 });
 
+test("CRM tools use the native lease and reject input identity spoofing before forwarding", async () => {
+  const calls: WorkspaceApiRequest[] = [];
+  const mcp = await connected({
+    workspace: async (call) => {
+      calls.push(call);
+      return { success: true, data: { items: [], nextAfterEntityId: null } };
+    },
+  });
+  try {
+    const listed = new Map((await mcp.client.listTools()).tools.map((tool) => [tool.name, tool]));
+    expect(listed.get("list_crm_records")?.annotations?.readOnlyHint).toBe(true);
+    expect(listed.get("create_crm_deal")?.annotations).toMatchObject({
+      readOnlyHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    });
+    const outside = await mcp.client.callTool({
+      name: "list_crm_records",
+      arguments: { kind: "account" },
+    });
+    expect(JSON.parse(text(outside))).toMatchObject({ code: "NO_TURN" });
+    mcp.lease.bind(turn);
+    const spoofed = await mcp.client.callTool({
+      name: "list_crm_records",
+      arguments: { kind: "account", organizationId: "other-org", turn },
+    });
+    expect(spoofed.isError).toBe(true);
+    expect(calls).toEqual([]);
+    await mcp.client.callTool({
+      name: "list_crm_records",
+      arguments: { kind: "account", search: "Customer" },
+    });
+    expect(calls).toEqual([
+      {
+        tool: "list_crm_records",
+        organizationId: "org-a",
+        agentId,
+        turn,
+        input: { kind: "account", search: "Customer", archived: "active" },
+      },
+    ]);
+  } finally {
+    await mcp.close();
+  }
+});
+
 test("local tools route to the desktop handler with the session and turn", async () => {
   const calls: LocalToolRequest[] = [];
   const mcp = await connected({

@@ -11,6 +11,8 @@ import { createAgentWorkService } from "./v1/agent-work/service";
 import { createCallerService } from "./v1/agents/callers-service";
 import { createAgentService } from "./v1/agents/service";
 import { createContextService } from "./v1/context/service";
+import { createCrmFromMessageService } from "./v1/crm/from-message-service";
+import { createCrmService } from "./v1/crm/service";
 import { createAttachmentService } from "./v1/files/attachments";
 import { createPictureService } from "./v1/files/pictures";
 import { createFileService } from "./v1/files/service";
@@ -31,6 +33,8 @@ export function createServices(deps: {
   const repository = createStorageRepository(deps.db, attachmentReferences);
   const projectPictures = projectPictureAccess(deps.db);
   return {
+    crm: createCrmService(deps),
+    crmFromMessage: createCrmFromMessageService(deps),
     files: createFileService({ repository, storage: deps.storage }),
     pictures: createPictureService({
       storage: deps.storage,

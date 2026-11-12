@@ -45,7 +45,10 @@ export const messageEntityReferences = pgTable(
       columns: [table.organizationId, table.createdByActorEntityId],
       foreignColumns: [actors.organizationId, actors.entityId],
     }),
-    check("message_reference_type_check", sql`${table.entityType} IN ('task', 'project')`),
+    check(
+      "message_reference_type_check",
+      sql`${table.entityType}::text IN ('task', 'project', 'contact', 'account', 'deal', 'contact_interaction')`,
+    ),
     check(
       "message_reference_purpose_check",
       sql`${table.purpose} IN ('source', 'mention', 'association')`,

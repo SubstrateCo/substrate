@@ -1,5 +1,5 @@
-import { taskPriorityValues, taskStatusValues } from "../tasks/status";
-import { organizationId } from "../workspace";
+import { taskPriorityValues, taskStatusValues } from "../tasks/status.js";
+import { organizationId } from "../workspace.js";
 import { z } from "zod";
 
 export const contextWorkspace = z.object({ organizationId });
@@ -10,10 +10,23 @@ export const contextMessagePage = contextWorkspace.extend({
 });
 export const contextTarget = contextMessage.extend({ conversationId: z.uuid() });
 export const contextLink = contextMessage.extend({ entityId: z.uuid() });
+export const contextEntityTypes = [
+  "task",
+  "project",
+  "contact",
+  "account",
+  "deal",
+  "contact_interaction",
+] as const;
+export type ContextEntityType = (typeof contextEntityTypes)[number];
 export const contextSearchKinds = [
   "all",
   "task",
   "project",
+  "contact",
+  "account",
+  "deal",
+  "contact_interaction",
   "message",
   "conversation",
   "person",

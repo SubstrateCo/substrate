@@ -1,30 +1,36 @@
+import type { ContextEntityType } from "@substrate/contracts/context/input";
 import { taskStatusLabels } from "@substrate/contracts/tasks";
 
 import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
+import { contactInteractions } from "../../core/contacts/interactions.schema";
+import { contacts } from "../../core/contacts/schema";
 import { entities } from "../../core/entities/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { messageReferences } from "../../core/text/references";
+import { crmAccounts, crmDeals } from "../crm/schema";
 import { mentionablePerson } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { projects } from "../projects/schema";
 import { tasks } from "../tasks/tasks.schema";
 import { messageEntityReferences } from "./schema";
-import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, isNotNull, or, sql } from "drizzle-orm";
 
 // Callers authorize every message before resolving its metadata.
 export async function messageWorkLinks(ctx: RepositoryContext, messageIds: string[]) {
   // A task inherits its project's level, which decides removal rights.
   const projectEntityId = sql`coalesce(${tasks.projectEntityId}, ${projects.entityId})`;
+  const title = sql<string>`coalesce(${tasks.title}, ${projects.name}, ${contacts.displayName}, ${crmAccounts.name}, ${crmDeals.title}, ${contactInteractions.summary})`;
   const work = await ctx.db
     .select({
       messageId: messageEntityReferences.messageId,
       entityId: messageEntityReferences.entityId,
-      entityType: sql<"task" | "project">`${messageEntityReferences.entityType}`,
-      title: sql<string>`coalesce(${tasks.title}, ${projects.name})`,
-      projectEntityId: sql<string>`${projectEntityId}`,
+      entityType: sql<ContextEntityType>`${messageEntityReferences.entityType}`,
+      title,
+      projectEntityId: sql<string | null>`${projectEntityId}`,
+      contactEntityId: contactInteractions.contactEntityId,
       status: tasks.status,
       purpose: messageEntityReferences.purpose,
       canRemove: sql<boolean>`(${messagingConversations.taskEntityId} IS NULL OR
@@ -60,6 +66,34 @@ export async function messageWorkLinks(ctx: RepositoryContext, messageIds: strin
         eq(messageEntityReferences.entityType, "project"),
       ),
     )
+    .leftJoin(
+      contacts,
+      and(
+        eq(contacts.entityId, messageEntityReferences.entityId),
+        eq(messageEntityReferences.entityType, "contact"),
+      ),
+    )
+    .leftJoin(
+      crmAccounts,
+      and(
+        eq(crmAccounts.entityId, messageEntityReferences.entityId),
+        eq(messageEntityReferences.entityType, "account"),
+      ),
+    )
+    .leftJoin(
+      crmDeals,
+      and(
+        eq(crmDeals.entityId, messageEntityReferences.entityId),
+        eq(messageEntityReferences.entityType, "deal"),
+      ),
+    )
+    .leftJoin(
+      contactInteractions,
+      and(
+        eq(contactInteractions.entityId, messageEntityReferences.entityId),
+        eq(messageEntityReferences.entityType, "contact_interaction"),
+      ),
+    )
     // A page has few references, so each walks up from its entity instead of reading the
     // caller's whole visible set.
     .innerJoin(
@@ -71,6 +105,7 @@ export async function messageWorkLinks(ctx: RepositoryContext, messageIds: strin
         inArray(messageEntityReferences.messageId, messageIds),
         eq(messageEntityReferences.organizationId, ctx.scope.organizationId),
         eq(messagingConversations.organizationId, ctx.scope.organizationId),
+        isNotNull(title),
       ),
     )
     .orderBy(asc(messageEntityReferences.createdAt));

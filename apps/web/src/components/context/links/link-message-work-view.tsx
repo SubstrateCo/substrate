@@ -1,5 +1,7 @@
-import { useState } from "react";
+import type { ContextEntityType } from "@substrate/contracts/context/input";
 /* oxlint-disable shadcn/no-restyle -- Selected record chips must grow vertically to reveal long identities. */
+
+import { useState } from "react";
 
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
@@ -15,21 +17,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "../../ui/tabs";
 import { LinkWorkItem } from "./link-work-item";
-import { SegmentedControl } from "@/components/forms/segmented-control";
 import type { ResourceStatus } from "@/lib/resource-state";
-import { Link2 } from "lucide-react";
+import { Link2, Plus } from "lucide-react";
 
 const kindOptions = [
   { value: "task", label: "Tasks" },
   { value: "project", label: "Projects" },
+  { value: "contact", label: "Contacts" },
+  { value: "account", label: "Accounts" },
+  { value: "deal", label: "Deals" },
+  { value: "contact_interaction", label: "Interactions" },
 ] as const;
 
 export type LinkableWork = {
   id: string;
-  kind: "task" | "project";
+  kind: ContextEntityType;
   title: string;
-  projectEntityId: string;
+  projectEntityId: string | null;
   projectName?: string;
 };
 
@@ -48,26 +54,29 @@ export function LinkMessageWork({
   onLink,
   onClose,
   onRestoreFocus,
+  onCreate,
 }: {
   query: string;
   state: ResourceStatus;
-  kind: "task" | "project";
+  kind: ContextEntityType;
   results: LinkableWork[];
   linkedIds: ReadonlySet<string>;
   loading: boolean;
   error?: Error | null;
   pending: boolean;
   onQueryChange: (query: string) => void;
-  onKindChange: (kind: "task" | "project") => void;
+  onKindChange: (kind: ContextEntityType) => void;
   onRetry: () => void;
   onLink: (items: LinkableWork[]) => void;
   onClose: () => void;
   /** Focus a stable control on close, because the menu item that opened the dialog is gone. */
   onRestoreFocus?: () => void;
+  onCreate?: (kind: "account" | "contact" | "deal") => void;
 }) {
   // Selection survives tab and search changes, so tasks and projects can be linked together.
   const [chosen, setChosen] = useState(() => new Map<string, LinkableWork>());
   const visible = results;
+  const kindLabel = kindOptions.find((option) => option.value === kind)!.label;
   // Items that became linked, for example after a partial failure, leave the selection.
   const selection =
     state === "unavailable" ? [] : [...chosen.values()].filter((item) => !linkedIds.has(item.id));
@@ -79,7 +88,7 @@ export function LinkMessageWork({
       return next;
     });
   let linkLabel = "Link";
-  if (selection.length === 1) linkLabel = `Link ${selection[0]!.kind}`;
+  if (selection.length === 1) linkLabel = "Link item";
   else if (selection.length > 1) linkLabel = `Link ${selection.length} items`;
   return (
     <Dialog
@@ -96,25 +105,43 @@ export function LinkMessageWork({
         }}
       >
         <DialogHeader>
-          <DialogTitle>Link existing work</DialogTitle>
+          <DialogTitle>Link existing records</DialogTitle>
           <DialogDescription>
-            Choose tasks or projects to attach to this message. Only people with access can open
-            them. Linking does not share them.
+            Choose work or CRM records to attach to this message. Linking does not share either side
+            or publish the message to record readers.
           </DialogDescription>
         </DialogHeader>
         <DialogBody>
           <Command shouldFilter={false}>
             <div className="flex flex-col gap-3">
-              <SegmentedControl
-                aria-label="Work type"
+              <Tabs
                 value={kind}
-                options={kindOptions}
-                disabled={pending}
-                onValueChange={onKindChange}
-              />
+                onValueChange={(value) => {
+                  const option = kindOptions.find((item) => item.value === value);
+                  if (option) onKindChange(option.value);
+                }}
+              >
+                <TabsList aria-label="Record type" className="flex-wrap">
+                  {kindOptions.map((option) => (
+                    <TabsTrigger key={option.value} value={option.value} disabled={pending}>
+                      {option.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+              {onCreate && (kind === "account" || kind === "contact" || kind === "deal") && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={pending || state === "unavailable"}
+                  onClick={() => onCreate(kind)}
+                >
+                  <Plus aria-hidden="true" /> Create {kind} from this message
+                </Button>
+              )}
               <CommandInput
                 aria-label="Search work to link"
-                placeholder={kind === "task" ? "Search tasks…" : "Search projects…"}
+                placeholder={`Search ${kindLabel.toLowerCase()}…`}
                 value={query}
                 onValueChange={onQueryChange}
                 disabled={pending}
@@ -130,12 +157,14 @@ export function LinkMessageWork({
                       className="h-auto max-w-full text-left whitespace-normal"
                       disabled={pending}
                       onClick={() => toggle(item)}
-                      aria-label={`Remove ${item.title}, ${item.kind === "task" ? `task${item.projectName ? ` in ${item.projectName}` : ""}` : "project"} from selection`}
+                      aria-label={`Remove ${item.title} from selection`}
                     >
                       <span className="min-w-0 wrap-anywhere">
                         {item.title}{" "}
                         <span className="text-muted-foreground">
-                          · {item.kind === "task" ? (item.projectName ?? "Task") : "Project"}
+                          ·{" "}
+                          {item.projectName ??
+                            kindOptions.find((option) => option.value === item.kind)!.label}
                         </span>
                       </span>{" "}
                       <span aria-hidden="true">×</span>
@@ -144,7 +173,7 @@ export function LinkMessageWork({
                 </div>
               )}
               <div className="rounded-lg border p-1">
-                <CommandList aria-label={kind === "task" ? "Tasks" : "Projects"} className="h-72">
+                <CommandList aria-label={kindLabel} className="h-72">
                   {loading && !visible.length && (
                     <LoadingState label="Searching work" variant="compact" />
                   )}
@@ -152,8 +181,8 @@ export function LinkMessageWork({
                   {!loading && !error && (
                     <CommandEmpty>
                       {query.trim()
-                        ? `No editable ${kind === "task" ? "tasks" : "projects"} match “${query.trim()}”.`
-                        : `No editable ${kind === "task" ? "tasks" : "projects"} found.`}
+                        ? `No editable ${kindLabel.toLowerCase()} match “${query.trim()}”.`
+                        : `No editable ${kindLabel.toLowerCase()} found.`}
                     </CommandEmpty>
                   )}
                   {visible.map((item) => (

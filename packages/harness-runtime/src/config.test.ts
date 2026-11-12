@@ -58,6 +58,11 @@ for (const harness of harnessKinds) {
     for (const other of ["AGENTS.md", "CLAUDE.md"].filter((name) => name !== instructions))
       expect(await exists(directory, other)).toBe(false);
     expect(byId(await scanNativeSkills(directory, harness))).toEqual(byId(startupSkills));
+    const crm = (await scanNativeSkills(directory, harness)).find(
+      (skill) => skill.id === "substrate-crm",
+    );
+    expect(crm?.content).toContain("Do not change CRM records.");
+    expect(crm?.content).toContain("Do not disguise a private-message summary");
   });
 }
 

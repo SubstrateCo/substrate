@@ -16,7 +16,7 @@ const file = new SharedArray<UsersFile>("users-file", () => [
   JSON.parse(open("../../.data/users.json")) as UsersFile,
 ]);
 
-const users = new SharedArray<LoadUser>("users", () => file[0]!.users);
+export const users = new SharedArray<LoadUser>("users", () => file[0]!.users);
 const meta = file[0]!;
 export const apiUrl = meta.apiUrl;
 export const origin = meta.origin;

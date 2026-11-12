@@ -16,6 +16,8 @@ export const entityType = pgEnum("entity_type", [
   "contact_interaction",
   "project",
   "task",
+  "account",
+  "deal",
 ]);
 
 export const entities = pgTable(

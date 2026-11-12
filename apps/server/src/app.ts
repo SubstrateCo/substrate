@@ -11,6 +11,8 @@ import { createAgentWorkRoutes } from "./v1/agent-work/routes";
 import { createCallerRoutes } from "./v1/agents/callers-routes";
 import { createAgentsRoutes } from "./v1/agents/routes";
 import { createContextRoutes } from "./v1/context/routes";
+import { createCrmFromMessageRoutes } from "./v1/crm/from-message-routes";
+import { createCrmRoutes } from "./v1/crm/routes";
 import { createAttachmentRoutes } from "./v1/files/attachment-routes";
 import { createPictureRoutes } from "./v1/files/picture-routes";
 import { createFilesRoutes } from "./v1/files/routes";
@@ -85,6 +87,8 @@ export function createApp({
     .route("/api/v1/files/attachments", createAttachmentRoutes(services.attachments, scopes))
     .route("/api/v1/files", createFilesRoutes(services.files, scopes))
     .route("/api/v1/tasks", createTasksRoutes(services.tasks, scopes))
+    .route("/api/v1/crm", createCrmRoutes(services.crm, scopes))
+    .route("/api/v1/crm", createCrmFromMessageRoutes(services.crmFromMessage, scopes))
     .route("/api/v1/messaging", createMessagingRoutes(services.messaging, scopes))
     .route("/api/v1/messaging", createReadRoutes(services.messagingRead, scopes))
     .route("/api/v1/messaging/sharing", createSharingRoutes(services.sharing, scopes))

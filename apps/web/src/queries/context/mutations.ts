@@ -13,17 +13,17 @@ export function invalidateMessageWork(
   organizationId: string,
   messageId: string,
   entityId: string,
-  projectEntityId: string,
+  projectEntityId: string | null,
 ) {
   return Promise.all([
     client.invalidateQueries({
       queryKey: queryKeys.messagePages(organizationId),
       predicate: ({ queryKey }) => queryKeys.messagePageIds(queryKey).includes(messageId),
     }),
-    ...[...new Set([entityId, projectEntityId])].map((id) =>
+    ...[...new Set([entityId, ...(projectEntityId ? [projectEntityId] : [])])].map((id) =>
       client.invalidateQueries({ queryKey: queryKeys.related(organizationId, id) }),
     ),
-    ...(entityId !== projectEntityId
+    ...(projectEntityId && entityId !== projectEntityId
       ? [client.invalidateQueries({ queryKey: queryKeys.activity(organizationId, entityId) })]
       : []),
     staleSearches(client, organizationId),

@@ -163,7 +163,7 @@ export function MessageItem({
                   )}
                   {canPost && !message.deletedAt && (
                     <DropdownMenuItem onSelect={() => setLinking(true)}>
-                      <Link2 aria-hidden="true" /> Link existing work
+                      <Link2 aria-hidden="true" /> Link work or CRM
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem

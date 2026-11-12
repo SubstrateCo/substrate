@@ -4,7 +4,7 @@ import { Button } from "../../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import type { MessageWorkLink } from "./message-work";
 import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
-import { FolderKanban, Unlink } from "lucide-react";
+import { Building2, Contact, FolderKanban, Handshake, MessageSquare, Unlink } from "lucide-react";
 
 /** One linked record: status or kind icon, title, status label, and unlink on hover. */
 export function MessageWorkTile({
@@ -19,6 +19,14 @@ export function MessageWorkTile({
   const meta = [link.statusName, link.purpose === "source" ? "Created here" : null]
     .filter(Boolean)
     .join(" · ");
+  const Icon = {
+    task: FolderKanban,
+    project: FolderKanban,
+    contact: Contact,
+    account: Building2,
+    deal: Handshake,
+    contact_interaction: MessageSquare,
+  }[link.entityType];
   return (
     <li className="group/work flex h-8 min-w-0 items-center gap-1 rounded-md border bg-card pr-1 text-sm transition-colors hover:bg-row-hover">
       <Link
@@ -28,7 +36,7 @@ export function MessageWorkTile({
         {link.entityType === "task" && link.status ? (
           <TaskStatusIcon status={link.status} />
         ) : (
-          <FolderKanban aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+          <Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
         )}
         <span title={link.title} className="min-w-0 truncate font-medium">
           {link.title}
@@ -52,7 +60,7 @@ export function MessageWorkTile({
                 <Unlink aria-hidden="true" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Unlink {link.entityType}</TooltipContent>
+            <TooltipContent>Remove association; source history stays</TooltipContent>
           </Tooltip>
         </span>
       )}

@@ -1,3 +1,4 @@
+import type { ContextEntityType } from "@substrate/contracts/context/input";
 import { managedPicture } from "@substrate/contracts/files/pictures";
 
 import type { DatabaseExecutor } from "../../client";
@@ -10,6 +11,7 @@ import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
 import { ConflictError, AccessDeniedError } from "../../errors";
 import { recordTaskActivity } from "../activity/events";
+import { recordCrmActivity } from "../crm/activity";
 import { requireMessage, visibleConversations } from "../messaging/access";
 import { messageViews, selectMessages } from "../messaging/messages";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
@@ -18,12 +20,12 @@ import { liveProjectTasks } from "../tasks/access";
 import type { CreateTaskInput } from "../tasks/contracts";
 import { createTaskInLockedProject, taskRepository } from "../tasks/repository";
 import { tasks } from "../tasks/tasks.schema";
-import { requireWork } from "./access";
+import { requireContextTarget } from "./access";
 import { messagePeople, messageWorkLinks } from "./message-metadata";
 import { messagePage } from "./message-page";
 import { messageEntityReferences, sourceTaskRequests } from "./schema";
 import { contextSearch } from "./search";
-import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
 interface ReferenceMessage {
   messageId: string;
@@ -31,7 +33,7 @@ interface ReferenceMessage {
 }
 interface ReferenceTarget {
   id: string;
-  type?: "task" | "project";
+  type?: ContextEntityType;
 }
 
 // All message mutations lock conversation, access paths, then message. Source creation also
@@ -62,11 +64,14 @@ async function referenceEndpoints(
     scope,
     source.messageId,
     "comment",
+    [target.id],
   );
   if (message.deletedAt && level === "edit") throw new AccessDeniedError();
   if (source.conversationId && message.conversationId !== source.conversationId)
     throw new AccessDeniedError();
-  const work = await requireWork(ctx, target.id, level);
+  if (conversation.organizationId !== scope.organizationId) throw new AccessDeniedError();
+  if (!conversation.taskEntityId) await ctx.lockAccessPaths([target.id]);
+  const work = await requireContextTarget(ctx, target.id, level);
   if (target.type && work.entityType !== target.type) throw new AccessDeniedError();
   return { conversation, work };
 }
@@ -95,11 +100,25 @@ export async function attachReference(
     .returning();
   if (rows.length && work.entityType === "task")
     await recordTaskActivity(ctx, work, ["Discussion linked"], source.messageId);
+  if (rows.length && ["contact", "account", "deal"].includes(work.entityType))
+    await recordCrmActivity(ctx, { entityId: work.entityId, action: "discussion_linked" });
   if (rows.length)
-    for (const hint of referenceChangeHints(scope.organizationId, [work], {
-      id: source.messageId,
-      conversationId: conversation.id,
-    }))
+    for (const hint of referenceChangeHints(
+      scope.organizationId,
+      [
+        work.projectEntityId === null
+          ? {
+              entityId: work.entityId,
+              entityType: work.entityType,
+              accessEntityId: work.accessEntityId,
+            }
+          : work,
+      ],
+      {
+        id: source.messageId,
+        conversationId: conversation.id,
+      },
+    ))
       ctx.effects.hint(hint);
   return rows.length > 0;
 }
@@ -138,11 +157,25 @@ export async function detachReference(
     .returning();
   if (rows.length && work.entityType === "task")
     await recordTaskActivity(ctx, work, ["Discussion unlinked"], source.messageId);
+  if (rows.length && ["contact", "account", "deal"].includes(work.entityType))
+    await recordCrmActivity(ctx, { entityId: work.entityId, action: "discussion_unlinked" });
   if (rows.length)
-    for (const hint of referenceChangeHints(scope.organizationId, [work], {
-      id: source.messageId,
-      conversationId: conversation.id,
-    }))
+    for (const hint of referenceChangeHints(
+      scope.organizationId,
+      [
+        work.projectEntityId === null
+          ? {
+              entityId: work.entityId,
+              entityType: work.entityType,
+              accessEntityId: work.accessEntityId,
+            }
+          : work,
+      ],
+      {
+        id: source.messageId,
+        conversationId: conversation.id,
+      },
+    ))
       ctx.effects.hint(hint);
   return rows.length > 0;
 }
@@ -253,12 +286,7 @@ export function createContextRepository(context: RepositoryContext, scope: Sessi
       return (await messagePeople(db, scope, [message])).get(messageId)!;
     },
     async related(entityId: string) {
-      // Only the type is needed, so this skips requireWork's task or project row read. A live
-      // task or project entity always has its row: both are created together and never removed
-      // apart.
-      const { entity } = await context.requireAccess(entityId, "view");
-      if (entity.entityType !== "task" && entity.entityType !== "project")
-        throw new AccessDeniedError();
+      const entity = await requireContextTarget(context, entityId);
       const projectTasks =
         entity.entityType === "project"
           ? db
@@ -306,6 +334,9 @@ export function createContextRepository(context: RepositoryContext, scope: Sessi
         .where(
           and(
             eq(messageEntityReferences.organizationId, scope.organizationId),
+            entity.entityType !== "task" && entity.entityType !== "project"
+              ? isNull(messagingMessages.deletedAt)
+              : undefined,
             or(
               eq(messageEntityReferences.entityId, entityId),
               projectTasks ? inArray(messageEntityReferences.entityId, projectTasks) : undefined,

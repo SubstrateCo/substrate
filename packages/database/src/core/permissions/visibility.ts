@@ -16,6 +16,8 @@ const adminEntityTypes = sql.raw(
       "contact",
       "project",
       "task",
+      "account",
+      "deal",
     ] as const satisfies readonly (typeof entityType.enumValues)[number][]
   )
     .map((type) => `'${type}'`)

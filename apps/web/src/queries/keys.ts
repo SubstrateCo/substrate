@@ -122,6 +122,27 @@ export const queryKeys = {
     [...queryKeys.organization(organizationId), "invitations"] as const,
   invitation: (invitationId: string) => ["invitations", invitationId] as const,
   tasks: (organizationId: string) => [...queryKeys.organization(organizationId), "tasks"] as const,
+  crm: (organizationId: string) => [...queryKeys.organization(organizationId), "crm"] as const,
+  crmList: (
+    organizationId: string,
+    kind: string,
+    search: string,
+    archived: boolean,
+    afterEntityId?: string,
+  ) =>
+    [
+      ...queryKeys.crm(organizationId),
+      kind,
+      "list",
+      search,
+      archived,
+      afterEntityId ?? "",
+    ] as const,
+  crmRecord: (organizationId: string, kind: string, entityId: string) =>
+    [...queryKeys.crm(organizationId), kind, entityId] as const,
+  crmPipeline: (organizationId: string) => [...queryKeys.crm(organizationId), "pipeline"] as const,
+  crmActivity: (organizationId: string, entityId: string) =>
+    [...queryKeys.crm(organizationId), "activity", entityId] as const,
   projects: (organizationId: string) => [...queryKeys.tasks(organizationId), "projects"] as const,
   // Every cached project detail.
   projectDetails: (organizationId: string) =>

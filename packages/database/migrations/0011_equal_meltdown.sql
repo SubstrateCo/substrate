@@ -1,0 +1,2 @@
+ALTER TABLE "crm_create_requests" DROP CONSTRAINT "crm_create_request_operation";--> statement-breakpoint
+ALTER TABLE "crm_create_requests" ADD CONSTRAINT "crm_create_request_operation" CHECK ("crm_create_requests"."operation" in ('account', 'deal', 'from_message'));

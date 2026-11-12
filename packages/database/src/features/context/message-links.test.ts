@@ -163,10 +163,9 @@ test("source creation rejects task viewers and foreign or unsupported references
       }),
     ),
   ).toBeInstanceOf(AccessDeniedError);
+  const person = f.alice;
+  expect(await rejection(context().attach(reply.id, person))).toBeInstanceOf(AccessDeniedError);
   const contact = await repos.contacts.create({ displayName: "Customer" });
-  expect(await rejection(context().attach(reply.id, contact.entityId))).toBeInstanceOf(
-    AccessDeniedError,
-  );
   expect(await f.db.select().from(tasks)).toEqual([]);
   expect(await f.db.select().from(taskActivity)).toEqual([]);
   expect(await f.db.select().from(notifications)).toEqual([]);

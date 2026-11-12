@@ -3,6 +3,12 @@ export interface LoadUser {
   name: string;
   userId: string;
   organizationId: string;
+  crm?: {
+    accountEntityId: string;
+    contactEntityId: string;
+    dealEntityId: string;
+    projectEntityId: string;
+  };
 }
 
 export interface LoadOrganization {

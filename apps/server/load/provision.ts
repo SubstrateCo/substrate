@@ -1,5 +1,6 @@
 import { account } from "./provision/accounts";
 import { config, parallel, type Account } from "./provision/client";
+import { crm } from "./provision/crm";
 import { organization, sizes } from "./provision/organizations";
 import { pictures } from "./provision/pictures";
 import { workspace } from "./provision/workspaces";
@@ -52,6 +53,7 @@ try {
     organizations.push(await organization(members, index));
     await save();
     await workspace(members, index);
+    await crm(members);
     await pictures(members, index);
     console.log(`Provisioned ${organizations[index]!.name}: ${size} members`);
     offset += size;

@@ -60,7 +60,7 @@ export function WorkDiscussions({
           <ContentNotice
             icon={MessagesSquare}
             title="No discussions yet"
-            description="Messages that link or mention this project appear here."
+            description="Messages linked to this record appear here when you can read them."
           />
         )}
         {list}

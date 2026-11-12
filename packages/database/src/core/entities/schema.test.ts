@@ -13,7 +13,6 @@ describe("database integrity", () => {
     "file",
     "folder",
     "pipeline",
-    "deal",
     "email_account",
     "email_conversation",
     "email_message",

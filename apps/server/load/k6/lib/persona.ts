@@ -8,6 +8,7 @@ export type FlowName =
   | "search"
   | "notifications"
   | "connectedWork"
+  | "crm"
   | "rare";
 
 type Role = "chatty" | "taskFocused" | "lurker" | "balanced";
@@ -44,6 +45,7 @@ const flowNames: FlowName[] = [
   "search",
   "notifications",
   "connectedWork",
+  "crm",
   "rare",
 ];
 
