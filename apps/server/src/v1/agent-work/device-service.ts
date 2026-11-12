@@ -10,7 +10,7 @@ import type {
   sourcesInput,
 } from "@substrate/contracts/agent-work";
 
-import type { DeviceScope, UserScope } from "../../shared/scope";
+import type { DeviceScope, UserScope, RegisteredUserDeviceScope } from "../../shared/scope";
 import { serviceResult } from "../../shared/service-result";
 import type { CommittedPublisher } from "../realtime/committed";
 import type { z } from "zod";
@@ -23,7 +23,11 @@ export function createDeviceService({ publish }: { publish: CommittedPublisher }
         return { id: result.id };
       });
     },
-    deviceHeartbeat(this: void, _scope: UserScope, _input: z.output<typeof deviceHeartbeatInput>) {
+    deviceHeartbeat(
+      this: void,
+      _scope: RegisteredUserDeviceScope,
+      _input: z.output<typeof deviceHeartbeatInput>,
+    ) {
       return serviceResult(async () => {
         return {};
       });

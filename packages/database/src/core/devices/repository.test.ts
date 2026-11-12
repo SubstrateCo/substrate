@@ -36,7 +36,9 @@ test("device calls write last_seen_at at most every 30 seconds", async () => {
   expect(unchanged!.lastSeenAt).toEqual(recent);
 
   const stale = await seenAgo(device.id, 40);
-  await touchDevice(f.db, "alice", installationId);
+  queries.length = 0;
+  await touchDevice(db, "alice", installationId);
+  expect(queries).toHaveLength(1);
   const [touched] = await f.db
     .select()
     .from(desktopDevices)

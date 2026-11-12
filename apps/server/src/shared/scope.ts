@@ -24,6 +24,9 @@ interface IdentityScope {
 export interface UserScope extends IdentityScope {
   owner: Awaited<ReturnType<Repositories["forOwnerSession"]>>;
 }
+export interface RegisteredUserDeviceScope extends IdentityScope {
+  installationId: string;
+}
 export interface WorkspaceScope extends IdentityScope {
   organizationId: string;
   repositories: Awaited<ReturnType<Repositories["forSession"]>>;
@@ -130,7 +133,7 @@ export function createScopes(deps: ScopeDependencies) {
     user: () => middleware((headers, _input, session) => user(headers, session)),
     registeredUserDevice: (target: keyof ValidationTargets) =>
       middleware(
-        async (headers, input, session) => registered(await user(headers, session), input),
+        async (headers, input, session) => registered(identity(headers, session), input),
         target,
       ),
     workspace: (target?: keyof ValidationTargets) =>

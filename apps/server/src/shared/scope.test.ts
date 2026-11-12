@@ -147,6 +147,27 @@ test("settings membership is checked only for verified sessions with an active w
   }
 });
 
+test("heartbeats do not construct unused owner repositories", async () => {
+  const installationId = crypto.randomUUID();
+  const forOwnerSession = mock(async () => scopeFixture().owner);
+  const checkDevice = mock(async () => {});
+  const scopes = createTestScopes({ repositories: { forOwnerSession }, checkDevice });
+  const app = new Hono().post(
+    "/",
+    v("json", z.object({ installationId: z.uuid() })),
+    scopes.registeredUserDevice("json"),
+    (c) => c.json({ registered: true }),
+  );
+  const response = await app.request("/", {
+    method: "POST",
+    headers: { "content-type": "application/json", [desktopInstallationHeader]: installationId },
+    body: JSON.stringify({ installationId }),
+  });
+  expect(await response.json()).toEqual({ registered: true });
+  expect(forOwnerSession).not.toHaveBeenCalled();
+  expect(checkDevice).toHaveBeenCalledWith("user-1", installationId);
+});
+
 test("device middleware constructs only the registered-device repository", async () => {
   const installationId = crypto.randomUUID();
   const forSession = mock(async () => scopeFixture().repositories);

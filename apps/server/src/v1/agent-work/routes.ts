@@ -21,7 +21,13 @@ import {
 } from "@substrate/contracts/agent-work";
 
 import { respond, v } from "../../shared/http";
-import type { DeviceScope, ScopeEnv, Scopes, UserScope } from "../../shared/scope";
+import type {
+  DeviceScope,
+  RegisteredUserDeviceScope,
+  ScopeEnv,
+  Scopes,
+  UserScope,
+} from "../../shared/scope";
 import type { DeviceService } from "./device-service";
 import type { AgentWorkService } from "./service";
 import { Hono } from "hono";
@@ -94,16 +100,18 @@ export function createAgentWorkRoutes(
     .get("/calls/mine", v("query", myCallsInput), scopes.workspace("query"), async (c) =>
       respond(c, await service.listMyCalls(c.var.scope, c.req.valid("query"))),
     );
-  const registration = new Hono<ScopeEnv<UserScope>>()
-    .post("/device/register", v("json", registerDeviceInput), scopes.user(), async (c) =>
-      respond(c, await device.registerDevice(c.var.scope, c.req.valid("json"))),
-    )
-    .post(
-      "/device/heartbeat",
-      v("json", deviceHeartbeatInput),
-      scopes.registeredUserDevice("json"),
-      async (c) => respond(c, await device.deviceHeartbeat(c.var.scope, c.req.valid("json"))),
-    );
+  const registration = new Hono<ScopeEnv<UserScope>>().post(
+    "/device/register",
+    v("json", registerDeviceInput),
+    scopes.user(),
+    async (c) => respond(c, await device.registerDevice(c.var.scope, c.req.valid("json"))),
+  );
+  const heartbeat = new Hono<ScopeEnv<RegisteredUserDeviceScope>>().post(
+    "/device/heartbeat",
+    v("json", deviceHeartbeatInput),
+    scopes.registeredUserDevice("json"),
+    async (c) => respond(c, await device.deviceHeartbeat(c.var.scope, c.req.valid("json"))),
+  );
   const desktop = new Hono<ScopeEnv<DeviceScope>>()
     .post("/device/wakes/pull", v("json", pullWakesInput), scopes.device("json"), async (c) =>
       respond(c, await device.pullWakes(c.var.scope, c.req.valid("json"))),
@@ -132,5 +140,9 @@ export function createAgentWorkRoutes(
       scopes.device("json"),
       async (c) => respond(c, await device.requestAnswers(c.var.scope, c.req.valid("json"))),
     );
-  return new Hono().route("/", owner).route("/", registration).route("/", desktop);
+  return new Hono()
+    .route("/", owner)
+    .route("/", registration)
+    .route("/", heartbeat)
+    .route("/", desktop);
 }

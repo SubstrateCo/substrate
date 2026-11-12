@@ -32,20 +32,29 @@ const ownedDevice = (userId: string, installationId: string) =>
  * online window.
  */
 export async function touchDevice(db: DatabaseExecutor, userId: string, installationId: string) {
-  const [row] = await db
-    .select({
-      device: desktopDevices,
-      stale: sql<boolean>`${desktopDevices.lastSeenAt} < now() - interval '30 seconds'`,
-    })
-    .from(desktopDevices)
-    .where(ownedDevice(userId, installationId));
-  if (!row) throw new AccessDeniedError();
-  if (row.stale)
-    await db
+  const owned = db
+    .$with("owned_device")
+    .as(db.select().from(desktopDevices).where(ownedDevice(userId, installationId)));
+  const touched = db.$with("touched_device").as(
+    db
       .update(desktopDevices)
       .set({ lastSeenAt: sql`now()` })
-      .where(eq(desktopDevices.id, row.device.id));
-  return row.device;
+      .where(
+        and(
+          eq(
+            desktopDevices.id,
+            sql`(select id from ${owned} where last_seen_at < now() - interval '30 seconds')`,
+          ),
+          sql`${desktopDevices.lastSeenAt} < now() - interval '30 seconds'`,
+        ),
+      )
+      .returning({ id: desktopDevices.id }),
+  );
+  // The data-changing CTE runs even when the final select only reads the owned device.
+  // Keep its current-row predicate: another heartbeat may refresh it while this write waits.
+  const [device] = await db.with(owned, touched).select().from(owned);
+  if (!device) throw new AccessDeniedError();
+  return device;
 }
 
 export async function findDevice(db: DatabaseExecutor, userId: string, installationId: string) {
