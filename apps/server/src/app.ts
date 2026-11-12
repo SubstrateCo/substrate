@@ -7,6 +7,7 @@ import { respond } from "./shared/http";
 import { trustedOrigin } from "./shared/origin";
 import type { Scopes } from "./shared/scope";
 import { createAgentWorkRoutes } from "./v1/agent-work/routes";
+import { createCallerRoutes } from "./v1/agents/callers-routes";
 import { createAgentsRoutes } from "./v1/agents/routes";
 import { createContextRoutes } from "./v1/context/routes";
 import { createAttachmentRoutes } from "./v1/files/attachment-routes";
@@ -82,6 +83,7 @@ export function createApp({ auth, services, scopes, trustedOrigins, realtime }: 
     .route("/api/v1/mcp", createMcpRoutes(services.mcp, scopes))
     .route("/api/v1/context", createContextRoutes(services.context, scopes))
     .route("/api/v1/agents", createAgentsRoutes(services.agents, scopes))
+    .route("/api/v1/agents", createCallerRoutes(services.callers, scopes))
     .route(
       "/api/v1/agent-work",
       createAgentWorkRoutes(services.agentWork, services.devices, scopes),

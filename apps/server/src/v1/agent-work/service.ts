@@ -1,6 +1,10 @@
 import type {
+  callsLogInput,
   conversationRequestsInput,
+  decideInvocationInput,
   decideProposalInput,
+  listInvocationsInput,
+  myCallsInput,
   ownerScopeInput,
   respondRequestInput,
 } from "@substrate/contracts/agent-work";
@@ -58,6 +62,32 @@ export function createAgentWorkService({
       _input: z.output<typeof decideProposalInput>,
     ) {
       return serviceResult(async () => publish(await work.declineProposal(db, scope, requestId)));
+    },
+    /** The owner's calls of their agents. */
+    listInvocations(
+      this: void,
+      scope: WorkspaceScope,
+      input: z.output<typeof listInvocationsInput>,
+    ) {
+      return serviceResult(() => work.listInvocations(db, scope, input.userAgentId));
+    },
+    decideInvocation(
+      this: void,
+      scope: WorkspaceScope,
+      invocationId: string,
+      input: z.output<typeof decideInvocationInput>,
+    ) {
+      return serviceResult(async () =>
+        publish(await work.decideInvocation(db, scope, invocationId, input.decision)),
+      );
+    },
+    /** The owner's Calls log of one agent. */
+    listCallsLog(this: void, scope: WorkspaceScope, input: z.output<typeof callsLogInput>) {
+      return serviceResult(() => work.listCallsLog(db, scope, input.userAgentId));
+    },
+    /** The caller's own call statuses in one conversation. */
+    listMyCalls(this: void, scope: WorkspaceScope, input: z.output<typeof myCallsInput>) {
+      return serviceResult(() => work.listMyCalls(db, scope, input.conversationId));
     },
   };
 }

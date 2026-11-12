@@ -21,7 +21,8 @@
 
 - Agent-work device routes require a verified session, a trusted origin, and a registered device.
 - MCP calls require a `TurnContext`. Write tools also require the agent's home device, named by `TurnContext.installationId`.
-- Publish agent-work hints without data, only to the owner's audience.
+- Publish agent-work hints without data, to the owner's audience. A caller gets a data-less hint only when their own call changes.
+- Send caller wakes only to desktops that declare the `caller_wakes` capability when they pull. Older desktops reject unknown wake sources.
 
 ## Integration tests
 

@@ -8,6 +8,7 @@ import {
 import type { ObjectStorage } from "./storage/types";
 import { createDeviceService } from "./v1/agent-work/device-service";
 import { createAgentWorkService } from "./v1/agent-work/service";
+import { createCallerService } from "./v1/agents/callers-service";
 import { createAgentService } from "./v1/agents/service";
 import { createContextService } from "./v1/context/service";
 import { createAttachmentService } from "./v1/files/attachments";
@@ -59,6 +60,7 @@ export function createServices(deps: {
     }),
     context: createContextService(deps),
     agents: createAgentService(deps),
+    callers: createCallerService(deps),
     agentWork: createAgentWorkService(deps),
     devices: createDeviceService(deps),
     mcp: createMcpService(deps),

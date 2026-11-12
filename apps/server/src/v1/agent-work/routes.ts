@@ -1,9 +1,14 @@
 import {
   ackWakesInput,
+  callsLogInput,
   closeRequestInput,
   conversationRequestsInput,
+  decideInvocationInput,
   decideProposalInput,
   deviceHeartbeatInput,
+  invocationParams,
+  listInvocationsInput,
+  myCallsInput,
   openRequestInput,
   ownerScopeInput,
   publishStatusInput,
@@ -68,6 +73,26 @@ export function createAgentWorkRoutes(
           c,
           await service.declineProposal(c.var.scope, c.req.valid("param").id, c.req.valid("json")),
         ),
+    )
+    .get("/invocations", v("query", listInvocationsInput), scopes.workspace("query"), async (c) =>
+      respond(c, await service.listInvocations(c.var.scope, c.req.valid("query"))),
+    )
+    .post(
+      "/invocations/:id/decide",
+      v("param", invocationParams),
+      v("json", decideInvocationInput),
+      scopes.workspace("json"),
+      async (c) =>
+        respond(
+          c,
+          await service.decideInvocation(c.var.scope, c.req.valid("param").id, c.req.valid("json")),
+        ),
+    )
+    .get("/calls", v("query", callsLogInput), scopes.workspace("query"), async (c) =>
+      respond(c, await service.listCallsLog(c.var.scope, c.req.valid("query"))),
+    )
+    .get("/calls/mine", v("query", myCallsInput), scopes.workspace("query"), async (c) =>
+      respond(c, await service.listMyCalls(c.var.scope, c.req.valid("query"))),
     );
   const registration = new Hono<ScopeEnv<UserScope>>()
     .post("/device/register", v("json", registerDeviceInput), scopes.user(), async (c) =>
