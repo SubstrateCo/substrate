@@ -1,7 +1,10 @@
+import { actors } from "../../core/actors/schema";
 import { entities } from "../../core/entities/schema";
+import { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
+import { queryProjects } from "./queries";
 import { projects } from "./schema";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
@@ -90,4 +93,18 @@ test("project references enforce entity type and organization alignment", async 
   expect(
     await f.db.select().from(projects).where(eq(projects.entityId, project.entityId)),
   ).toHaveLength(1);
+});
+
+test("project lists page readable projects by name and deny inactive actors", async () => {
+  const bob = f.forActor(f.bob);
+  const beta = await bob.projects.create({ name: "Beta" });
+  const alpha = await bob.projects.create({ name: "Alpha" });
+  await f.forActor(f.alice).projects.create({ name: "Alice only" });
+  const context = new RepositoryContext(f.db, { organizationId: f.orgA, actorEntityId: f.bob });
+  expect(await bob.projects.list()).toEqual([alpha, beta]);
+  expect(await queryProjects(context, { offset: 1, limit: 1 })).toEqual([beta]);
+  expect(await queryProjects(context, { offset: 2, limit: 1 })).toEqual([]);
+  await f.db.update(actors).set({ disabledAt: new Date() }).where(eq(actors.entityId, f.bob));
+  for (const page of [{}, { offset: 2, limit: 1 }])
+    expect(await rejection(queryProjects(context, page))).toBeInstanceOf(AccessDeniedError);
 });
