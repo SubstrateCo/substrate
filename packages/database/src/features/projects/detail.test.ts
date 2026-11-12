@@ -66,7 +66,7 @@ test("project members and available actors join current names and private pictur
   const metadataQueries = queries.filter(
     (query) => query.includes('left join "user"') && query.includes('left join "member"'),
   );
-  expect(metadataQueries).toHaveLength(6);
+  expect(metadataQueries).toHaveLength(3);
   for (const query of metadataQueries) {
     expect(query).not.toMatch(
       /select\s+(?:dn_user|dn_agent|picture_user|picture_agent|picture_member)\./i,
@@ -81,10 +81,16 @@ test("project members and available actors join current names and private pictur
   expect(result.actors.find((row) => row.entityId === f.alice)?.image).toBeNull();
 });
 
-test("project detail preserves protected output with five SELECT statements", async () => {
+test("project detail preserves protected output in one SELECT statement", async () => {
   const alice = f.forActor(f.alice);
   const project = await alice.projects.create({ name: "Detail" });
-  const visible = await alice.tasks.create({ projectEntityId: project.entityId, title: "Visible" });
+  const visible = await alice.tasks.create({
+    projectEntityId: project.entityId,
+    title: "Visible",
+    priority: "high",
+    assigneeActorEntityId: f.alice,
+    dueDate: "2026-12-01",
+  });
   const child = await alice.tasks.create({
     projectEntityId: project.entityId,
     parentTaskEntityId: visible.entityId,
@@ -106,12 +112,23 @@ test("project detail preserves protected output with five SELECT statements", as
   const { result: actual } = await repos.transaction((tx) =>
     tx.projects.getDetail(project.entityId),
   );
-  expect(statements.filter((query) => /^(select|with)\b/i.test(query.trimStart()))).toHaveLength(5);
+  expect(statements.filter((query) => /^(select|with)\b/i.test(query.trimStart()))).toHaveLength(1);
   expect(actual.project).toEqual(await alice.projects.get(project.entityId));
   expect(actual.level).toBe("owner");
   expect(actual.tasks.map((task) => task.entityId)).toEqual(
     [visible.entityId, child.entityId].sort(),
   );
+  expect(actual.tasks.find((task) => task.entityId === visible.entityId)).toEqual({
+    entityId: visible.entityId,
+    projectEntityId: project.entityId,
+    parentTaskEntityId: null,
+    title: "Visible",
+    description: "",
+    status: visible.status,
+    priority: "high",
+    assigneeActorEntityId: f.alice,
+    dueDate: "2026-12-01",
+  });
   expect(actual.actors.map((actor) => actor.entityId)).toEqual([f.alice, f.bob]);
   expect(actual.members).toEqual([
     { actorEntityId: f.alice, name: "Alice", image: null, type: "human", level: "owner" },

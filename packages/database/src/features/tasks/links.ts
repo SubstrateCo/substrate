@@ -41,26 +41,29 @@ function stored(taskEntityId: string, otherEntityId: string, relation: TaskLinkR
   }
 }
 
-// Links that match `where`, with both tasks and their projects live. An end the reader cannot
-// open keeps its place in the link but loses every field.
-async function linkViews(ctx: RepositoryContext, where: SQL): Promise<TaskLinkView[]> {
-  const rows = await ctx.db.execute<{
-    id: string;
-    kind: TaskLinkKind;
-    sourceId: string;
-    sourceTitle: string;
-    sourceStatus: TaskStatus;
-    sourceProjectId: string;
-    sourceProjectName: string;
-    sourceReadable: boolean;
-    targetId: string;
-    targetTitle: string;
-    targetStatus: TaskStatus;
-    targetProjectId: string;
-    targetProjectName: string;
-    targetReadable: boolean;
-  }>(sql`
-    SELECT link.id, link.kind,
+export type TaskLinkRow = {
+  id: string;
+  kind: TaskLinkKind;
+  createdAt: unknown;
+  sourceId: string;
+  sourceTitle: string;
+  sourceStatus: TaskStatus;
+  sourceProjectId: string;
+  sourceProjectName: string;
+  sourceReadable: boolean;
+  targetId: string;
+  targetTitle: string;
+  targetStatus: TaskStatus;
+  targetProjectId: string;
+  targetProjectName: string;
+  targetReadable: boolean;
+};
+
+// Links that match `where`, with both tasks and their projects live, in no order. Order by
+// "createdAt", then id.
+function linkRows(ctx: RepositoryContext, where: SQL) {
+  return sql`
+    SELECT link.id, link.kind, link.created_at AS "createdAt",
       src.entity_id AS "sourceId", src.title AS "sourceTitle", src.status AS "sourceStatus",
       src.project_entity_id AS "sourceProjectId", src_project.name AS "sourceProjectName",
       ${ctx.readable(sql`src.entity_id`)} AS "sourceReadable",
@@ -84,9 +87,12 @@ async function linkViews(ctx: RepositoryContext, where: SQL): Promise<TaskLinkVi
             src.entity_id, tgt.entity_id, src.project_entity_id, tgt.project_entity_id
           )
       )
-    ORDER BY link.created_at, link.id
-  `);
-  return rows.map((row) => ({
+  `;
+}
+
+// An end the reader cannot open keeps its place in the link but loses every field.
+export function toLinkView(row: TaskLinkRow): TaskLinkView {
+  return {
     id: row.id,
     kind: row.kind,
     source: row.sourceReadable
@@ -109,15 +115,27 @@ async function linkViews(ctx: RepositoryContext, where: SQL): Promise<TaskLinkVi
       : null,
     blocking:
       row.kind === "blocks" && row.sourceStatus !== "completed" && row.sourceStatus !== "canceled",
-  }));
+  };
 }
 
-/** Every link that touches a task in the project. The caller checks project access. */
-export function projectTaskLinks(ctx: RepositoryContext, projectEntityId: string) {
-  return linkViews(
+async function linkViews(ctx: RepositoryContext, where: SQL): Promise<TaskLinkView[]> {
+  const rows = await ctx.db.execute<TaskLinkRow>(
+    sql`${linkRows(ctx, where)} ORDER BY link.created_at, link.id`,
+  );
+  return rows.map(toLinkView);
+}
+
+/**
+ * A JSON array of TaskLinkRow for every link that touches a task in the project, in link order.
+ * The caller checks project access and maps each row with toLinkView.
+ */
+export function projectTaskLinkRows(ctx: RepositoryContext, projectEntityId: string) {
+  return sql<
+    TaskLinkRow[]
+  >`coalesce((SELECT json_agg(l ORDER BY l."createdAt", l.id) FROM (${linkRows(
     ctx,
     sql`(src.project_entity_id = ${projectEntityId} OR tgt.project_entity_id = ${projectEntityId})`,
-  );
+  )}) l), '[]'::json)`;
 }
 
 /** Every link that touches the task. The caller checks task access. */

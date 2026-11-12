@@ -18,12 +18,12 @@ import { requiredText } from "../../core/validation";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { liveProjectTasks } from "../tasks/access";
 import { requireUnassignedProjectActor } from "../tasks/assignment";
-import { projectTaskLinks } from "../tasks/links";
+import { projectTaskLinkRows, toLinkView } from "../tasks/links";
 import { tasks } from "../tasks/tasks.schema";
 import { queryProjects } from "./queries";
 import { projects } from "./schema";
-import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
+import { and, eq, inArray, isNull, or, sql, type SQLWrapper } from "drizzle-orm";
+import { alias, type SelectedFields } from "drizzle-orm/pg-core";
 
 export function projectRepository(context: RepositoryContext) {
   const { db, scope } = context;
@@ -36,24 +36,20 @@ export function projectRepository(context: RepositoryContext) {
       : sql`(select coalesce(viewer.user_id, owner.user_id)
     from ${actors} viewer left join ${userAgents} owner on owner.id = viewer.user_agent_id
     where viewer.entity_id = ${scope.actorEntityId} and viewer.organization_id = ${scope.organizationId})`;
+  // Read inside JSON aggregates; withPictures accepts only managed pictures afterwards.
   const image = sql<string | null>`case when ${actors.type} = 'agent' then
     case when ${userAgents.userId} = ${viewerUserId}
       then '/api/v1/files/' || ${userAgents.imageFileId}::text || '/content' end
-    else case when ${member.id} is not null then ${user.image} end end`.mapWith(
-    (value: string | null) => {
-      const parsed = managedPicture.safeParse(value);
-      return parsed.success ? parsed.data : null;
-    },
-  );
+    else case when ${member.id} is not null then ${user.image} end end`;
   const projectWhere = (id: string) =>
     and(eq(projects.organizationId, scope.organizationId), eq(projects.entityId, id));
-  async function getWithLevel(entityId: string) {
+  // The project row and the actor's level. A row exists only when the actor is active and can
+  // read the project, so the extra fields are never computed for a reader without access.
+  function selectWithLevel<T extends SelectedFields>(entityId: string, fields: T) {
     const actorEntity = alias(entities, "project_viewer_entity");
-    const [row] = await db
-      .select({
-        project: projects,
-        level: sql<PermissionLevel | null>`${context.accessLevel(projects.entityId)}`,
-      })
+    const level = sql<PermissionLevel | null>`${context.accessLevel(projects.entityId)}`;
+    return db
+      .select({ ...fields, project: projects, level })
       .from(projects)
       .innerJoin(
         actors,
@@ -70,21 +66,38 @@ export function projectRepository(context: RepositoryContext) {
           isNull(actorEntity.deletedAt),
         ),
       )
-      .where(and(projectWhere(entityId), activeActorCondition()));
-    if (!row?.level) throw new AccessDeniedError();
-    return { project: row.project, level: row.level };
+      .where(and(projectWhere(entityId), activeActorCondition(), sql`${level} IS NOT NULL`));
   }
   async function get(entityId: string) {
-    return (await getWithLevel(entityId)).project;
+    const [row] = await selectWithLevel(entityId, {});
+    if (!row) throw new AccessDeniedError();
+    return row.project;
+  }
+  // A JSON object with the given keys. Keys are fixed identifiers in this file.
+  function jsonObject(fields: Record<string, SQLWrapper>) {
+    return sql.join(
+      Object.entries(fields).map(([key, value]) => sql`${sql.raw(`'${key}'`)}, ${value}`),
+      sql`, `,
+    );
   }
   function members(projectEntityId: string) {
     return db
       .select({
-        actorEntityId: actors.entityId,
-        name,
-        image,
-        type: actors.type,
-        level: entityGrants.level,
+        items: sql<
+          {
+            actorEntityId: string;
+            name: string;
+            image: string | null;
+            type: "human" | "agent";
+            level: PermissionLevel;
+          }[]
+        >`coalesce(json_agg(json_build_object(${jsonObject({
+          actorEntityId: actors.entityId,
+          name,
+          image,
+          type: actors.type,
+          level: entityGrants.level,
+        })}) ORDER BY ${name}, ${actors.entityId}), '[]'::json)`,
       })
       .from(entityGrants)
       .innerJoin(
@@ -105,8 +118,7 @@ export function projectRepository(context: RepositoryContext) {
           eq(entityGrants.organizationId, scope.organizationId),
           eq(entityGrants.entityId, projectEntityId),
         ),
-      )
-      .orderBy(asc(name), asc(actors.entityId));
+      );
   }
   function availableActors(projectEntityId: string) {
     // Organization actors are discoverable only inside an accessible project, not across organizations.
@@ -118,11 +130,21 @@ export function projectRepository(context: RepositoryContext) {
       .where(liveProjectTasks(scope, projectEntityId));
     return db
       .select({
-        entityId: actors.entityId,
-        name,
-        image,
-        type: actors.type,
-        assignable: sql<boolean>`coalesce(${assignable}, false)`,
+        items: sql<
+          {
+            entityId: string;
+            name: string;
+            image: string | null;
+            type: "human" | "agent";
+            assignable: boolean;
+          }[]
+        >`coalesce(json_agg(json_build_object(${jsonObject({
+          entityId: actors.entityId,
+          name,
+          image,
+          type: actors.type,
+          assignable: sql`coalesce(${assignable}, false)`,
+        })}) ORDER BY ${name}, ${actors.entityId}), '[]'::json)`,
       })
       .from(actors)
       .innerJoin(entities, eq(entities.entityId, actors.entityId))
@@ -138,9 +160,48 @@ export function projectRepository(context: RepositoryContext) {
           isNull(entities.deletedAt),
           or(assignable, and(eq(actors.type, "agent"), inArray(actors.entityId, assignedAgents))),
         ),
-      )
-      .orderBy(asc(name), asc(actors.entityId));
+      );
   }
+  function projectTasks(projectEntityId: string) {
+    return db
+      .select({
+        items: sql<
+          Pick<
+            typeof tasks.$inferSelect,
+            | "entityId"
+            | "projectEntityId"
+            | "parentTaskEntityId"
+            | "title"
+            | "description"
+            | "status"
+            | "priority"
+            | "assigneeActorEntityId"
+            | "dueDate"
+          >[]
+        >`coalesce(json_agg(json_build_object(${jsonObject({
+          entityId: tasks.entityId,
+          projectEntityId: tasks.projectEntityId,
+          parentTaskEntityId: tasks.parentTaskEntityId,
+          title: tasks.title,
+          description: tasks.description,
+          status: tasks.status,
+          priority: tasks.priority,
+          assigneeActorEntityId: tasks.assigneeActorEntityId,
+          dueDate: tasks.dueDate,
+        })}) ORDER BY ${tasks.entityId}), '[]'::json)`,
+      })
+      .from(tasks)
+      .where(liveProjectTasks(scope, projectEntityId));
+  }
+  // Each list is aggregated on its own, so one list's rows never multiply another's.
+  function scalar<T>(query: SQLWrapper & PromiseLike<{ items: T }[]>) {
+    return sql<T>`(${query})`;
+  }
+  const withPictures = <T extends { image: string | null }>(rows: T[]) =>
+    rows.map((row) => {
+      const parsed = managedPicture.safeParse(row.image);
+      return { ...row, image: parsed.success ? parsed.data : null };
+    });
   return {
     get,
     async delete(entityId: string) {
@@ -206,29 +267,27 @@ export function projectRepository(context: RepositoryContext) {
     },
     /** Actors the caller may assign in this project, under the same policy as getDetail. */
     async assignableActors(projectEntityId: string) {
-      await get(projectEntityId);
-      const rows = await availableActors(projectEntityId);
-      return rows.filter((row) => row.assignable);
+      const [row] = await selectWithLevel(projectEntityId, {
+        actors: scalar(availableActors(projectEntityId)),
+      });
+      if (!row) throw new AccessDeniedError();
+      return withPictures(row.actors).filter((row) => row.assignable);
     },
     async getDetail(projectEntityId: string) {
-      const { project, level } = await getWithLevel(projectEntityId);
-      const [projectMembers, projectActors, projectTasks, links] = await Promise.all([
-        members(projectEntityId),
-        availableActors(projectEntityId),
-        db
-          .select()
-          .from(tasks)
-          .where(liveProjectTasks(scope, projectEntityId))
-          .orderBy(asc(tasks.entityId)),
-        projectTaskLinks(context, projectEntityId),
-      ]);
+      const [row] = await selectWithLevel(projectEntityId, {
+        members: scalar(members(projectEntityId)),
+        actors: scalar(availableActors(projectEntityId)),
+        tasks: scalar(projectTasks(projectEntityId)),
+        links: projectTaskLinkRows(context, projectEntityId),
+      });
+      if (!row) throw new AccessDeniedError();
       return {
-        project,
-        level,
-        members: projectMembers,
-        actors: projectActors,
-        tasks: projectTasks,
-        links,
+        project: row.project,
+        level: row.level!,
+        members: withPictures(row.members),
+        actors: withPictures(row.actors),
+        tasks: row.tasks,
+        links: row.links.map(toLinkView),
       };
     },
     async create(input: { name: string; description?: string }) {
