@@ -104,7 +104,14 @@ export const commandSchema = z.discriminatedUnion("type", [
     input: z.strictObject({ inputIds: z.array(inputId).min(1).max(64), text }),
     context: turnContextSchema,
   }),
-  z.strictObject({ type: z.literal("steer"), ...session, turnId: z.uuid(), inputId, text }),
+  z.strictObject({
+    type: z.literal("steer"),
+    ...session,
+    turnId: z.uuid(),
+    inputId,
+    text,
+    invocationIds: z.array(z.uuid()).max(20).optional(),
+  }),
   z.strictObject({ type: z.literal("interrupt"), ...session, turnId: z.uuid() }),
   z.strictObject({
     type: z.literal("respond"),

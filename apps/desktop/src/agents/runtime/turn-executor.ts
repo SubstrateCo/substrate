@@ -373,6 +373,7 @@ export function createTurnExecutor(
       startedAt: context.now(),
       capabilities: opened.capabilities,
       stillQueued: [],
+      invocationIds: sourceRequest(remaining).invocationIds,
       usage: turn.usage,
       activity: turn.activity,
       conversationId: (destination ?? origin)?.conversationId ?? null,
@@ -389,6 +390,7 @@ export function createTurnExecutor(
       installationId: context.installationId,
     };
     if (destination) turnContext.destination = destination;
+    if (state.invocationIds.length) turnContext.invocationIds = [...state.invocationIds];
     if (turn.handoff) turnContext.purpose = "handoff";
     try {
       await context.harness.execute({

@@ -115,6 +115,7 @@ export async function runtimeFixture(
   const wakes: AgentWakeView[] = [];
   const acked = new Set<string>();
   const messages = new Map<string, AgentSourceMessage>();
+  const revokedInvocations = new Set<string>();
   const posts: { method: string; body: unknown }[] = [];
   let answers: AgentRequestDelivery[] = [];
   /** Requests the server lists as open in needs-you. */
@@ -153,11 +154,12 @@ export async function runtimeFixture(
     ackWakes: async (_organization, ids) => {
       for (const id of ids) acked.add(id);
     },
-    async sources(_organization, ids) {
+    async sources(_organization, ids, invocationIds = []) {
       if (outage.sources) throw new TypeError("fetch failed");
       return {
         messages: ids.flatMap((id) => (messages.has(id) ? [messages.get(id)!] : [])),
         inaccessible: ids.filter((id) => !messages.has(id)),
+        inaccessibleInvocations: invocationIds.filter((id) => revokedInvocations.has(id)),
       };
     },
     publishStatus: async (body) => record("status", body),
@@ -448,6 +450,28 @@ export async function runtimeFixture(
     /** Moves the clock and runs due timers. */
     advance,
     ownerMessage,
+    revokedInvocations,
+    callerMessage(input: OwnerMessageInput = {}) {
+      const message = ownerMessage({ ...input, threadId: input.threadId ?? crypto.randomUUID() });
+      const wake = wakes.at(-1)!;
+      const ref = wake.sourceRef;
+      if (!("messageId" in ref)) throw new Error("Expected a message wake.");
+      const invocationId = crypto.randomUUID();
+      const source = messages.get(message.messageId);
+      if (source) source.author = { actorId: "caller-actor", name: "Caller", kind: "member" };
+      wake.source = "caller_message";
+      wake.sourceRef = { invocationId };
+      wake.invocation = {
+        id: invocationId,
+        messageId: ref.messageId,
+        conversationId: ref.conversationId,
+        threadId: ref.threadId!,
+        kind: "mention",
+        callerActorId: "caller-actor",
+      };
+      wake.dedupeKey = `call:${invocationId}`;
+      return { ...message, invocationId };
+    },
     /** An answer wake with the decided request, as the server reports it. */
     answerWake(request: AgentWakeRequestDetail, sessionKey: string) {
       wakes.push({

@@ -144,7 +144,7 @@ export function createAgentWorkServer(options: {
     async pullWakes(organizationId, limit) {
       return call(
         "/agent-work/device/wakes/pull",
-        { ...device(organizationId), limit },
+        { ...device(organizationId), limit, capabilities: ["caller_wakes"] },
         z.array(agentWakeView),
       );
     },

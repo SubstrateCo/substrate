@@ -64,7 +64,7 @@ interface FakeNative {
   resumes: (string | undefined)[];
 }
 
-function fakeNative() {
+function fakeNative(steer = false) {
   const state: FakeNative = { resumes: [] };
   const connect: ConnectNative = async (_harness, adapterContext, _prefix, resumeId) => {
     state.resumes.push(resumeId);
@@ -72,7 +72,8 @@ function fakeNative() {
     state.context = adapterContext;
     let finish: ((result: TurnResult) => void) | undefined;
     const adapter: NativeAdapter = {
-      capabilities,
+      capabilities: { ...capabilities, steer },
+      steer: async () => {},
       nativeSessionId: resumeId ?? "native-new",
       turn: () =>
         new Promise((resolve) => {
@@ -89,9 +90,14 @@ function fakeNative() {
 }
 
 async function host(
-  options: { keepAliveMs?: number; interruptGraceMs?: number; calls?: WorkspaceApiRequest[] } = {},
+  options: {
+    keepAliveMs?: number;
+    interruptGraceMs?: number;
+    calls?: WorkspaceApiRequest[];
+    steer?: boolean;
+  } = {},
 ) {
-  const native = fakeNative();
+  const native = fakeNative(options.steer);
   const events: HarnessEvent[] = [];
   const created = await createHarnessHost({
     accountDirectory: root,
@@ -149,6 +155,47 @@ test("MCP calls are accepted only while a turn is bound to the session", async (
     await Bun.sleep(0);
     expect((await call()).isError).toBe(true);
     expect(calls).toHaveLength(1);
+  } finally {
+    await client.close();
+    await f.host.dispose();
+  }
+});
+
+test("steered calls join the bound MCP context and do not leak into the next turn", async () => {
+  const calls: WorkspaceApiRequest[] = [];
+  const f = await host({ calls, steer: true });
+  const client = new Client({ name: "host-test", version: "1" });
+  try {
+    await f.host.execute(open);
+    const lease = f.native.state.context!.lease!;
+    await client.connect(
+      new StreamableHTTPClientTransport(new URL(lease.url), {
+        requestInit: { headers: { Authorization: `Bearer ${lease.token}` } },
+      }),
+    );
+    await f.host.execute(turn);
+    const invocationId = crypto.randomUUID();
+    await f.host.execute({
+      type: "steer",
+      organizationId: "org-a",
+      sessionId: "session-a",
+      turnId,
+      inputId: "call",
+      text: "Caller asks",
+      invocationIds: [invocationId],
+    });
+    await client.callTool({ name: "list_projects", arguments: {} });
+    expect(calls.at(-1)?.turn.invocationIds).toEqual([invocationId]);
+    f.native.state.finish!({ status: "completed" });
+    await Bun.sleep(0);
+    const nextTurnId = crypto.randomUUID();
+    await f.host.execute({
+      ...turn,
+      turnId: nextTurnId,
+      context: { ...context, turnId: nextTurnId },
+    });
+    await client.callTool({ name: "list_projects", arguments: {} });
+    expect(calls.at(-1)?.turn.invocationIds).toBeUndefined();
   } finally {
     await client.close();
     await f.host.dispose();

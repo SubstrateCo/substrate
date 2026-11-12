@@ -13,6 +13,7 @@ import {
   type HarnessLocalScope,
   type HarnessSessionRef,
   type TurnResult,
+  type TurnContext,
 } from "@substrate/contracts/harness";
 import type { LocalToolProxy, WorkspaceApiProxy } from "@substrate/contracts/harness/mcp";
 import { leaseTools } from "@substrate/contracts/harness/tools";
@@ -97,6 +98,7 @@ export interface RuntimeHarnessHost extends HarnessHost {
 const closeInterruptMs = 2_000;
 
 interface LiveTurn {
+  context: TurnContext;
   turnId: string;
   generation: number;
   settled: Promise<void>;
@@ -324,6 +326,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
     const settled = Promise.withResolvers<void>();
     const forced = Promise.withResolvers<TurnResult>();
     const turn: LiveTurn = {
+      context,
       turnId: command.turnId,
       generation: command.generation,
       settled: settled.promise,
@@ -423,6 +426,15 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
           throw new HarnessError("turn-not-live", "That turn is not running.");
         if (!live.adapter.capabilities.steer || !live.adapter.steer)
           throw new HarnessError("steer-unsupported", "This harness cannot steer a live turn.");
+        if (command.invocationIds?.length) {
+          const invocationIds = [
+            ...new Set([...(live.turn.context.invocationIds ?? []), ...command.invocationIds]),
+          ];
+          const parsed = turnContextSchema.safeParse({ ...live.turn.context, invocationIds });
+          if (!parsed.success)
+            throw new HarnessError("invalid-turn-context", "Too many calls in this turn.");
+          live.turn.context.invocationIds = parsed.data.invocationIds;
+        }
         await live.adapter.steer({ inputId: command.inputId, text: command.text });
         return;
       }

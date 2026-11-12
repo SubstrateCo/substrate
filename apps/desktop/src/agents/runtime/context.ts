@@ -72,6 +72,8 @@ export interface LiveTurn {
   capabilities: AdapterCapabilities;
   /** Steered inputs an interrupt receipt reported as still queued. */
   stillQueued: string[];
+  /** Calls already attached to the turn's MCP context, including steered calls. */
+  invocationIds: string[];
   usage: Usage | null;
   /** The latest tool start, for status. */
   activity: string | null;

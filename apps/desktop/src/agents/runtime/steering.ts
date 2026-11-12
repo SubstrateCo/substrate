@@ -6,11 +6,11 @@ import {
   type TurnRow,
 } from "@substrate/client-storage/agent-work";
 import { triggerRegistry, type AgentSourceMessage } from "@substrate/contracts/agent-work";
-import { harnessCodesWithClassification } from "@substrate/contracts/harness";
+import { harnessCodesWithClassification, type HarnessCommand } from "@substrate/contracts/harness";
 
 import { envelopeItem, renderEnvelope } from "../turns/envelope.ts";
 import type { LiveTurn, RuntimeContext } from "./context.ts";
-import { sourceRequest } from "./source-check.ts";
+import { inaccessibleItems, sourceRequest } from "./source-check.ts";
 import { endedStatus, errorCode, type TurnExecutor } from "./turn-executor.ts";
 
 /**
@@ -45,17 +45,25 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
    * puts it back to pending; any other failure leaves it uncertain, so that it is never
    * delivered twice. "skipped" means the turn was not live and nothing changed.
    */
-  async function steerInput(state: LiveTurn, itemId: string, text: string): Promise<SteerOutcome> {
+  async function steerInput(
+    state: LiveTurn,
+    itemId: string,
+    text: string,
+    invocationIds: string[] = [],
+  ): Promise<SteerOutcome> {
     if (!(await context.store.inbox.submitSteer(itemId, state.turnId))) return "skipped";
     try {
-      await context.harness.execute({
+      state.invocationIds = [...new Set([...state.invocationIds, ...invocationIds])];
+      const command: Extract<HarnessCommand, { type: "steer" }> = {
         type: "steer",
         organizationId: context.organizationId,
         sessionId: state.sessionId,
         turnId: state.turnId,
         inputId: itemId,
         text,
-      });
+      };
+      if (invocationIds.length) command.invocationIds = invocationIds;
+      await context.harness.execute(command);
     } catch (error) {
       const code = errorCode(error);
       if (code !== undefined && undeliveredSteerCodes.has(code)) {
@@ -95,7 +103,7 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
       items: [rendered],
       resume: null,
     });
-    return steerInput(state, item.id, text);
+    return steerInput(state, item.id, text, sourceRequest([item]).invocationIds);
   }
 
   /**
@@ -155,7 +163,7 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
         if (!state) continue;
         if (!turns.has(state.turnId))
           turns.set(state.turnId, await context.store.turns.get(state.turnId));
-        // Owner items join only interactive turns of their own session in its current epoch.
+        // Steerable items join only interactive turns of their own session in its current epoch.
         const joins =
           triggerRegistry[item.source].steerable &&
           state.sessionId === session.id &&
@@ -166,10 +174,18 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
           state.epoch === session.epoch &&
           turns.get(state.turnId)?.status !== "stopping" &&
           item.status === "pending";
-        if (joins) steerable.push({ item, session, state });
+        const withinCallLimit =
+          item.source !== "caller_message" ||
+          state.invocationIds.length +
+            steerable.filter(
+              (entry) => entry.state === state && entry.item.source === "caller_message",
+            ).length <
+            20;
+        if (joins && withinCallLimit) steerable.push({ item, session, state });
         else if (!item.held) hold.push(item.id);
       }
       let messages: Map<string, AgentSourceMessage> | undefined;
+      const inaccessible = new Set<string>();
       if (steerable.length) {
         const { messageIds, invocationIds } = sourceRequest(steerable.map(({ item }) => item));
         try {
@@ -178,13 +194,22 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
             messageIds,
             invocationIds,
           );
-          // The server leaves out the message of a revoked call, so its item drops below.
+          for (const item of inaccessibleItems(
+            steerable.map(({ item }) => item),
+            sources,
+          ))
+            inaccessible.add(item.id);
           messages = new Map(sources.messages.map((message) => [message.id, message]));
         } catch {
           context.log("Could not add a message to the live turn.");
         }
       }
       for (const { item, session, state } of steerable) {
+        if (inaccessible.has(item.id)) {
+          await context.store.inbox.drop(context.organizationId, [item.id], "source_inaccessible");
+          context.changed({ userAgentId: session.userAgentId, turnId: state.turnId });
+          continue;
+        }
         if (messages) {
           try {
             const turn = turns.get(state.turnId);

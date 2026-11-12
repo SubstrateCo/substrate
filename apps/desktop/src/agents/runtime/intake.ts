@@ -16,8 +16,9 @@ async function wakeItem(context: RuntimeContext, wake: AgentWakeView): Promise<W
   if (!agent.home) return { skip: "the wake's agent is homed on another desktop" };
   const ref = wake.sourceRef;
   const message = "messageId" in ref ? ref : null;
-  if (!message && !("requestId" in ref)) return { skip: "the wake has no source" };
-  const place = message ?? wake.request;
+  const invocation = wake.source === "caller_message" ? wake.invocation : null;
+  if (!message && !invocation && !("requestId" in ref)) return { skip: "the wake has no source" };
+  const place = message ?? invocation ?? wake.request;
   const existing = await context.store.sessions.byKey(wake.userAgentId, wake.sessionKey);
   const session =
     existing ??
@@ -44,6 +45,20 @@ async function wakeItem(context: RuntimeContext, wake: AgentWakeView): Promise<W
     dedupeKey: wake.dedupeKey,
     wakeId: wake.id,
   };
+  if (invocation)
+    return {
+      item: {
+        ...common,
+        source: "caller_message",
+        sourceRef: {
+          source: "caller_message",
+          invocationId: invocation.id,
+          messageId: invocation.messageId,
+          conversationId: invocation.conversationId,
+          threadId: invocation.threadId,
+        },
+      },
+    };
   if (message)
     return {
       item: {
