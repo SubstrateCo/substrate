@@ -26,6 +26,7 @@ export function createRuntimeMetrics(enabled: boolean, poolMaxConnections: numbe
       const now = performance.now();
       const currentCpu = process.cpuUsage();
       const currentUtilization = performance.eventLoopUtilization();
+      const loop = performance.eventLoopUtilization(currentUtilization, utilization);
       const result = {
         windowMs: now - startedAt,
         eventLoopDelayMs: {
@@ -34,7 +35,8 @@ export function createRuntimeMetrics(enabled: boolean, poolMaxConnections: numbe
           p99: delay.percentile(99) / 1e6,
           max: delay.count ? delay.max / 1e6 : 0,
         },
-        eventLoopUtilization: performance.eventLoopUtilization(currentUtilization, utilization),
+        // Bun currently returns all zeros for this API. Do not report that as an idle loop.
+        eventLoopUtilization: loop.active + loop.idle > 0 ? loop : null,
         cpuMs: {
           user: (currentCpu.user - cpu.user) / 1000,
           system: (currentCpu.system - cpu.system) / 1000,
