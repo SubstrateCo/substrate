@@ -17,6 +17,7 @@ import { createAgentRepository } from "../agents/repository";
 import { contextSearch } from "../context/search";
 import { executeAgentTool } from "../mcp/committed";
 import { createMessagingService } from "../messaging/service";
+import { admit } from "./admission";
 import { listCallsLog } from "./audit";
 import {
   ackWakes,
@@ -302,6 +303,62 @@ test("concurrent calls never exceed the pending cap or the daily cap", async () 
   const ids = new Set(sent.map((message) => message.id));
   const carolCalls = (await calls()).filter((row) => ids.has(row.messageId));
   expect(statusCounts(carolCalls)).toEqual({ admitted: 3, rate_limited: 5 });
+});
+
+/** Admits copies of a sent message as message triggers in one admit() call. */
+async function admitBatch(sent: { id: string }, n: number, userId: string) {
+  const [message] = await f.db
+    .select()
+    .from(messagingMessages)
+    .where(eq(messagingMessages.id, sent.id));
+  const copies = await f.db
+    .insert(messagingMessages)
+    .values(
+      Array.from({ length: n }, () => ({
+        conversationId: message!.conversationId,
+        authorActorEntityId: message!.authorActorEntityId,
+        authorOrganizationId: message!.authorOrganizationId,
+        body: message!.body,
+      })),
+    )
+    .returning();
+  await f.db.transaction((tx) =>
+    admit(
+      tx,
+      copies.map((copy) => ({
+        type: "message" as const,
+        organizationId: f.orgA,
+        author: { kind: "human" as const, userId },
+        message: copy,
+        conversationKind: "channel" as const,
+      })),
+    ),
+  );
+  return copies.map((copy) => copy.id);
+}
+
+test("a batch of calls counts earlier decisions in the batch toward the pending cap", async () => {
+  const x = await callerFixture(f);
+  await x.policy("ask");
+  const first = await x.bob.sendMessage(x.channel.id, `${x.mention} ask`);
+  await admitBatch(first, 3, "bob");
+  expect((await calls()).map((row) => row.status)).toEqual([
+    "pending_approval",
+    "pending_approval",
+    "pending_approval",
+    "rate_limited",
+  ]);
+});
+
+test("a batch of calls counts earlier decisions in the batch toward the daily cap", async () => {
+  const x = await callerFixture(f);
+  await x.policy("anyone");
+  const first = await x.carol.sendMessage(x.channel.id, `${x.mention} run`);
+  await admittedCalls(await callOf(first.id), maxAdmittedInvocationsPerDay - 2);
+  const ids = new Set(await admitBatch(first, 2, "carol"));
+  const batch = (await calls()).filter((row) => ids.has(row.messageId));
+  expect(statusCounts(batch)).toEqual({ admitted: 1, rate_limited: 1 });
+  expect(await callerWakes()).toHaveLength(2);
 });
 
 test("the first decision wins, an approval wakes the agent once, and always allow allowlists", async () => {

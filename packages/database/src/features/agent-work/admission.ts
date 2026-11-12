@@ -613,13 +613,20 @@ export async function admit(
   db: DatabaseExecutor,
   triggers: AdmissionTrigger[],
 ): Promise<RealtimeHint[]> {
-  const inputs: AdmissionInput[] = [];
-  for (const trigger of triggers)
-    inputs.push(
-      ...(trigger.type === "message" ? await messageInputs(db, trigger) : [requestInput(trigger)]),
-    );
-  const decided = inputs.map((input) => ({ input, decision: decideAdmission(input) }));
-  const { recorded, hints } = await recordInvocations(db, decided);
+  const decided: { input: AdmissionInput; decision: AdmissionDecision }[] = [];
+  const recorded = new Set<string>();
+  const hints: RealtimeHint[] = [];
+  // Each trigger's calls are recorded before the next trigger's facts are read, so caller caps
+  // count the calls decided earlier in this batch.
+  for (const trigger of triggers) {
+    const inputs =
+      trigger.type === "message" ? await messageInputs(db, trigger) : [requestInput(trigger)];
+    const batch = inputs.map((input) => ({ input, decision: decideAdmission(input) }));
+    const calls = await recordInvocations(db, batch);
+    decided.push(...batch);
+    for (const id of calls.recorded) recorded.add(id);
+    hints.push(...calls.hints);
+  }
   const wakes = decided.flatMap(({ input, decision }) => {
     if (decision.type !== "admit") return [];
     if (decision.invocation && !recorded.has(decision.invocation.id)) return [];
