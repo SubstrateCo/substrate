@@ -143,6 +143,10 @@ export const messagingMessages = pgTable(
       .where(sql`${table.originTurnId} IS NOT NULL`),
     // A conversation's latest activity, which does not filter by thread.
     index("messaging_message_conversation_created_idx").on(table.conversationId, table.createdAt),
+    // Cover unread counts without fetching message bodies or tombstones.
+    index("messaging_message_unread_idx")
+      .on(table.conversationId, table.createdAt, table.id, table.authorActorEntityId)
+      .where(sql`${table.deletedAt} IS NULL`),
   ],
 );
 

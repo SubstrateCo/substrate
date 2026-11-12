@@ -6,10 +6,10 @@ import { effectsFor } from "../../core/effects";
 import type { SessionIdentity } from "../../core/session/identity";
 import type { MessagingSessionResolver } from "../../core/session/messaging";
 import { AccessDeniedError } from "../../errors";
-import { loadConversation, liveApprovedParticipant, visibleConversations } from "./access";
+import { loadConversation, liveApprovedParticipant } from "./access";
 import { messagingReadPositions } from "./read-state.schema";
 import { messagingConversations, messagingMessages, messagingParticipants } from "./schema";
-import { and, eq, isNull, ne, sql } from "drizzle-orm";
+import { and, eq, isNull, ne, notInArray, sql } from "drizzle-orm";
 
 export function readOperations(
   db: DatabaseExecutor,
@@ -46,12 +46,17 @@ export function readOperations(
         )
         .where(
           and(
-            visibleConversations(db, scope),
+            // Authentication resolves the scope's human actor. Its approved participation
+            // already satisfies visibleConversations, including partner conversations.
             liveApprovedParticipant(db),
             ne(messagingMessages.authorActorEntityId, actor.entityId),
-            sql`NOT EXISTS (SELECT 1 FROM ${actors} author
-            WHERE author.entity_id = ${messagingMessages.authorActorEntityId}
-              AND author.user_id = ${scope.userId})`,
+            notInArray(
+              messagingMessages.authorActorEntityId,
+              db
+                .select({ id: actors.entityId })
+                .from(actors)
+                .where(eq(actors.userId, scope.userId)),
+            ),
             isNull(messagingMessages.deletedAt),
             // Bounds the message index scan to unread rows. The joined read position cannot,
             // because it is on the nullable side of the left join. The row comparison is exact.
