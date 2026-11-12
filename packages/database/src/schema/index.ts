@@ -5,6 +5,8 @@ export * from "../core/actors/schema";
 export * from "../core/actors/user-agents.schema";
 export * from "../core/devices/schema";
 export * from "../core/contacts/schema";
+export * from "../core/contacts/details.schema";
+export * from "../core/contacts/interactions.schema";
 export * from "../core/permissions/schema";
 export * from "../core/links/schema";
 export * from "../core/storage/schema";

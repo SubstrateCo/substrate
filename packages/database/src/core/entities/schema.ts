@@ -13,6 +13,7 @@ import {
 export const entityType = pgEnum("entity_type", [
   "actor",
   "contact",
+  "contact_interaction",
   "company",
   "project",
   "task",

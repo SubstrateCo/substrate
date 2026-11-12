@@ -15,7 +15,9 @@ describe("contact identifiers", () => {
       value: "customer@example.com",
     };
     await f.db.insert(contactIdentifiers).values(identifier);
-    expect(await f.db.select().from(contactIdentifiers)).toEqual([identifier]);
+    expect(await f.db.select().from(contactIdentifiers)).toEqual([
+      expect.objectContaining(identifier),
+    ]);
     expect(
       await rejection(
         f.db

@@ -11,7 +11,7 @@ import { messagingInvitations } from "../features/messaging/sharing.schema";
 import { createSharingService } from "../features/messaging/sharing/service";
 import { projectRepository } from "../features/projects/repository";
 import { taskRepository } from "../features/tasks/repository";
-import { account, contactIdentifiers, member, organization, user, userAgents } from "../schema";
+import { account, member, organization, user, userAgents } from "../schema";
 import {
   developmentAgent,
   developmentConversations,
@@ -105,11 +105,10 @@ export async function seedDevelopmentDatabase(db: DatabaseExecutor, passwordHash
       const contacts = [];
       for (const input of team.contacts) {
         const contact = await contactRepository(context).create({ displayName: input.name });
-        await tx.insert(contactIdentifiers).values({
-          organizationId: team.id,
-          contactEntityId: contact.entityId,
+        await contactRepository(context).addIdentifier(contact.entityId, {
           type: "email",
           value: input.email,
+          isPrimary: true,
         });
         for (const actor of actors.slice(1)) {
           await permissionRepository(context).grant({

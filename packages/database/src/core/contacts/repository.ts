@@ -1,12 +1,16 @@
 import { AccessDeniedError } from "../../errors";
 import { RepositoryContext, pageSize } from "../repository-context";
+import { contactDetailsRepository } from "./details.repository";
+import { contactProfileInput, parseInput, type ContactInput } from "./inputs";
 import { contacts } from "./schema";
 import { and, asc, eq, gt } from "drizzle-orm";
 
 export function contactRepository(context: RepositoryContext) {
   const { db, scope } = context;
   return {
-    async create(input: { displayName: string }) {
+    ...contactDetailsRepository(context),
+    async create(input: ContactInput) {
+      const value = parseInput(contactProfileInput, input);
       return db.transaction(async (tx) => {
         const entity = await new RepositoryContext(tx, scope).createEntity("contact");
         const [contact] = await tx
@@ -14,7 +18,7 @@ export function contactRepository(context: RepositoryContext) {
           .values({
             entityId: entity.entityId,
             organizationId: scope.organizationId,
-            displayName: input.displayName,
+            ...value,
           })
           .returning();
         return contact!;
@@ -49,13 +53,14 @@ export function contactRepository(context: RepositoryContext) {
         .limit(pageSize(options.limit));
     },
 
-    async update(entityId: string, input: { displayName: string }) {
+    async update(entityId: string, input: Partial<ContactInput>) {
+      const value = parseInput(contactProfileInput.partial(), input);
       return db.transaction(async (tx) => {
         const ctx = new RepositoryContext(tx, scope);
         await ctx.requireAccess(entityId, "edit", true);
         const [contact] = await tx
           .update(contacts)
-          .set({ displayName: input.displayName })
+          .set(value)
           .where(
             and(eq(contacts.organizationId, scope.organizationId), eq(contacts.entityId, entityId)),
           )

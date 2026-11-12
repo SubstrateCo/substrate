@@ -1,4 +1,5 @@
 import type { DatabaseExecutor } from "./client";
+import { contactInteractionRepository } from "./core/contacts/interactions.repository";
 import { contactRepository } from "./core/contacts/repository";
 import { registerDevice, touchDevice } from "./core/devices/repository";
 import { RepositoryEffects, collectedEffects, commit, commitWrites } from "./core/effects";
@@ -32,6 +33,7 @@ import { taskRepository } from "./features/tasks/repository";
 
 export class ActorRepositories {
   readonly contacts;
+  readonly contactInteractions;
   readonly entities;
   readonly links;
   readonly permissions;
@@ -46,6 +48,7 @@ export class ActorRepositories {
   ) {
     this.repositoryContext = new RepositoryContext(db, scope, effects);
     this.contacts = contactRepository(this.repositoryContext);
+    this.contactInteractions = contactInteractionRepository(this.repositoryContext);
     this.entities = entityRepository(this.repositoryContext);
     this.links = linkRepository(this.repositoryContext);
     this.permissions = permissionRepository(this.repositoryContext);
@@ -122,6 +125,7 @@ function standalone(
   function domain<
     K extends
       | "contacts"
+      | "contactInteractions"
       | "entities"
       | "links"
       | "permissions"
@@ -138,7 +142,8 @@ function standalone(
     return commitWrites(repositories[key], reads, (work) => transaction((tx) => work(tx[key])));
   }
   return {
-    contacts: domain("contacts", ["get", "list"]),
+    contacts: domain("contacts", ["get", "getDetail", "list", "findByIdentifier"]),
+    contactInteractions: domain("contactInteractions", ["get", "listForContact", "listForSource"]),
     entities: domain("entities", ["get"]),
     links: domain("links", ["list"]),
     permissions: domain("permissions", []),
