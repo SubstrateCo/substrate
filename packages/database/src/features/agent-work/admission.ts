@@ -27,7 +27,7 @@ import {
   messagingParticipants,
 } from "../messaging/schema";
 import { audit, type AuditEvent } from "./audit";
-import { agentInvocations } from "./invocations.schema";
+import { agentAuditEvents, agentInvocations } from "./invocations.schema";
 import { inStates } from "./machine-sql";
 import { agentRequests } from "./requests.schema";
 import { wakeKind, wakeSessionKey } from "./wake-kind";
@@ -93,7 +93,10 @@ export type CallerFacts = {
   /** The agent's owner can see the conversation now. */
   ownerCanSee: boolean;
   allowlisted: boolean;
-  /** The agent answered this caller's call in this thread. */
+  /**
+   * The agent published a reply in this thread in a turn that answered an admitted call of this
+   * caller in this thread. An ask alone, or a reply to someone else, does not count.
+   */
   answeredInThread: boolean;
   /** The caller's calls of this agent that wait for the owner. */
   pending: number;
@@ -309,7 +312,6 @@ async function callerFacts(
   agent: AdmissionAgent,
   policy: CallerFacts["policy"],
   person: { actorId: string } | undefined,
-  workedInThread: boolean,
 ): Promise<CallerFacts> {
   const { message } = trigger;
   const callerUserId = trigger.author.userId;
@@ -351,12 +353,33 @@ async function callerFacts(
             gt(agentInvocations.decidedAt, sql`now() - interval '1 day'`),
           ),
         )})::int`,
-      invokedThread: message.threadId
+      // The agent published a reply in this thread, and the reply's audit row ties it to an
+      // admitted call of this caller in this thread.
+      answeredInThread: message.threadId
         ? sql<boolean>`exists (${db
-            .select({ id: agentInvocations.id })
-            .from(agentInvocations)
+            .select({ id: messagingMessages.id })
+            .from(messagingMessages)
+            .innerJoin(
+              agentAuditEvents,
+              and(
+                eq(agentAuditEvents.userAgentId, agent.userAgentId),
+                eq(agentAuditEvents.action, "mcp_call"),
+                eq(agentAuditEvents.tool, "reply"),
+                eq(agentAuditEvents.result, "ok"),
+                eq(agentAuditEvents.turnId, messagingMessages.originTurnId),
+                sql`${agentAuditEvents.targetIds} @> jsonb_build_array(${messagingMessages.id}::text)`,
+              ),
+            )
+            .innerJoin(agentInvocations, eq(agentInvocations.id, agentAuditEvents.invocationId))
             .where(
               and(
+                eq(messagingMessages.conversationId, message.conversationId),
+                or(
+                  eq(messagingMessages.id, message.threadId),
+                  eq(messagingMessages.threadId, message.threadId),
+                ),
+                eq(messagingMessages.authorActorEntityId, agent.actorId),
+                isNotNull(messagingMessages.originTurnId),
                 ofCaller,
                 eq(agentInvocations.conversationId, message.conversationId),
                 or(
@@ -376,7 +399,7 @@ async function callerFacts(
     actorId: person?.actorId ?? null,
     ownerCanSee: row?.ownerCanSee ?? false,
     allowlisted: row?.allowlisted ?? false,
-    answeredInThread: workedInThread && (row?.invokedThread ?? false),
+    answeredInThread: row?.answeredInThread ?? false,
     pending: row?.pending ?? 0,
     admittedToday: row?.admittedToday ?? 0,
     invocationId: crypto.randomUUID(),
@@ -455,14 +478,7 @@ async function messageInputs(
       disabled,
     };
     if (agent.ownerUserId !== author.userId && callerPolicy !== "owner")
-      facts.caller = await callerFacts(
-        db,
-        { ...trigger, author },
-        agent,
-        callerPolicy,
-        person,
-        facts.workedInThread,
-      );
+      facts.caller = await callerFacts(db, { ...trigger, author }, agent, callerPolicy, person);
     inputs.push({ type: "message", trigger, facts });
   }
   return inputs;

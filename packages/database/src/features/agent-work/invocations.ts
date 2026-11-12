@@ -17,6 +17,7 @@ import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError, ConflictError } from "../../errors";
 import { userAgentCallers } from "../agents/callers.schema";
+import { userAgentTriggers } from "../agents/triggers.schema";
 import { liveAgentMember, visibleConversations } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";
 import {
@@ -150,6 +151,21 @@ async function callChecks(db: DatabaseExecutor, row: InvocationRow) {
   return { reachable: true, approved };
 }
 
+/** Whether the owner still has the call's trigger kind enabled. */
+async function triggerEnabled(db: DatabaseExecutor, row: InvocationRow) {
+  const [disabled] = await db
+    .select({ kind: userAgentTriggers.kind })
+    .from(userAgentTriggers)
+    .where(
+      and(
+        eq(userAgentTriggers.userAgentId, row.userAgentId),
+        eq(userAgentTriggers.kind, row.kind),
+        eq(userAgentTriggers.enabled, false),
+      ),
+    );
+  return !disabled;
+}
+
 async function requireOwnedInvocation(
   db: DatabaseExecutor,
   identity: SessionIdentity,
@@ -201,7 +217,8 @@ const decisionAudits: Record<DecisionEvent, AuditEvent["action"]> = {
  * The owner decides a pending call. The first decision wins: each update applies only while the
  * call is pending and not expired. Approval first checks again that the call may run (see
  * callChecks); a call that cannot is cancelled instead. An approval creates the wake in the same
- * transaction. always_allow also allowlists the caller.
+ * transaction. A call whose trigger kind the owner disabled since is cancelled too. always_allow
+ * also allowlists the caller.
  */
 export function decideInvocation(
   db: DatabaseExecutor,
@@ -214,7 +231,10 @@ export function decideInvocation(
     const row = await requireOwnedInvocation(tx, identity, invocationId);
     let event: DecisionEvent = "decline";
     if (decision !== "decline")
-      event = (await callChecks(tx, row)).reachable ? "approve" : "cancel";
+      event =
+        (await callChecks(tx, row)).reachable && (await triggerEnabled(tx, row))
+          ? "approve"
+          : "cancel";
     const [decided] = await tx
       .update(agentInvocations)
       .set({

@@ -160,6 +160,35 @@ test("a thread reply calls only where the agent answered that caller", async () 
   ]);
 });
 
+test("a thread reply does not call where the agent only asked, or replied to someone else", async () => {
+  const x = await callerFixture(f);
+  await x.policy("anyone");
+  const root = await x.bob.sendMessage(x.channel.id, `${x.mention} start`);
+  const [first] = await calls();
+  const turn = { ...threadTurn(x.channel.id, root.id), invocationIds: [first!.id] };
+  // The agent works on Bob's call but publishes no reply: it only proposes in the thread.
+  const project = await f.forActor(f.alice).projects.create({ name: "Work" });
+  await x.call(
+    "propose",
+    {
+      requestId: crypto.randomUUID(),
+      summary: "Track it",
+      action: { type: "create_task", input: { projectId: project.entityId, title: "Track" } },
+    },
+    turn,
+  );
+  // The agent replies in the thread to its owner, in a turn that answers no call.
+  await x.alice.sendMessage(x.channel.id, `${x.mention} note this`, root.id);
+  await x.call(
+    "reply",
+    { requestId: crypto.randomUUID(), body: "Noted" },
+    threadTurn(x.channel.id, root.id),
+  );
+  await x.bob.sendMessage(x.channel.id, "and the risks", root.id);
+  expect((await calls()).map((row) => row.messageId)).toEqual([root.id]);
+  expect(await callerWakes()).toHaveLength(1);
+});
+
 test("a caller has at most three calls waiting for the owner; more are rate limited", async () => {
   const x = await callerFixture(f);
   await x.policy("ask");
@@ -218,6 +247,22 @@ test("the first decision wins, an approval wakes the agent once, and always allo
   });
   await x.carol.sendMessage(x.channel.id, `${x.mention} three`);
   expect((await calls()).at(-1)).toMatchObject({ status: "admitted", allowlisted: true });
+});
+
+test("approving a call whose trigger the owner disabled since cancels it", async () => {
+  const x = await callerFixture(f);
+  await x.policy("ask");
+  await x.bob.sendMessage(x.channel.id, `${x.mention} later`);
+  const [call] = await calls();
+  await createAgentRepository(f.db, "alice").saveTriggers({
+    agentId: x.agent.agentId,
+    triggers: [{ kind: "mention", enabled: false }],
+  });
+  const decided = await decideInvocation(f.db, x.owner, call!.id, "always_allow");
+  expect(decided.result).toEqual({ status: "cancelled" });
+  expect(await callerWakes()).toEqual([]);
+  // A cancelled approval does not allowlist the caller.
+  expect(await auditActions()).not.toContain("caller_allowed");
 });
 
 test("a decision after expiry fails, and maintenance expires the call", async () => {
