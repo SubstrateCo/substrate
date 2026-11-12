@@ -12,6 +12,7 @@ test("an agent with a request counts once, for the request", () => {
     requests: [request({ id: "r1", userAgentId: "a1" }), request({ id: "r2", userAgentId: "a1" })],
     agents: [stopped("a1"), stopped("a2")],
     calls: [],
+    desktopUpdateRequired: [],
   };
   const items = needsYouItems(data);
   expect(items.requests.map((entry) => entry.id)).toEqual(["r1", "r2"]);
@@ -31,6 +32,7 @@ test("calls notify even when the same agent already has a request", () => {
     caller: { actorId: "caller", name: "Caller" },
     kind: "mention",
     status: "pending_approval",
+    dropReason: null,
     policy: "ask",
     allowlisted: false,
     place: { access: "hidden" },
@@ -43,6 +45,7 @@ test("calls notify even when the same agent already has a request", () => {
     requests: [request({ userAgentId: "a1" })],
     agents: [stopped("a1")],
     calls: [call],
+    desktopUpdateRequired: [],
   };
   expect(needsYouCount(data)).toBe(2);
   expect(needsYouItems(data).calls).toEqual([call]);

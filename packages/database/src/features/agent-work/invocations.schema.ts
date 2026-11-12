@@ -1,8 +1,10 @@
 import {
   agentAuditActions,
+  agentInvocationDropReasons,
   agentInvocationKinds,
   agentInvocationStatuses,
   type AgentAuditAction,
+  type AgentInvocationDropReason,
   type AgentInvocationKind,
   type AgentInvocationStatus,
 } from "@substrate/contracts/agent-work";
@@ -49,6 +51,8 @@ export const agentInvocations = pgTable(
     policy: text("policy").$type<AgentCallerPolicy>().notNull(),
     allowlisted: boolean("allowlisted").notNull(),
     status: text("status").$type<AgentInvocationStatus>().notNull(),
+    // Why a dropped call dropped. Null for other statuses.
+    dropReason: text("drop_reason").$type<AgentInvocationDropReason>(),
     sessionKey: text("session_key").notNull(),
     // The owner who approved or declined. Null for automatic decisions.
     decidedByUserId: text("decided_by_user_id").references(() => user.id, {
@@ -91,6 +95,10 @@ export const agentInvocations = pgTable(
     check(
       "agent_invocation_status_check",
       sql`${table.status} IN (${checkValues(agentInvocationStatuses)})`,
+    ),
+    check(
+      "agent_invocation_drop_reason_check",
+      sql`${table.dropReason} IS NULL OR ${table.dropReason} IN (${checkValues(agentInvocationDropReasons)})`,
     ),
     check(
       "agent_invocation_kind_check",

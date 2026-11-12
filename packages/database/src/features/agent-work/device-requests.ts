@@ -87,13 +87,14 @@ export function openRequest(
   });
 }
 
-// The request machine event behind each status the desktop reports.
+// The request machine events behind each status the desktop reports. The request's current
+// state picks one: an orphaned callback leaves an answered request undelivered.
 const closable = {
-  delivered: "deliver",
-  cancelled: "cancel",
-  expired: "expire",
-  orphaned: "orphan",
-} as const satisfies Record<string, keyof typeof requestMachine.events>;
+  delivered: ["deliver"],
+  cancelled: ["cancel"],
+  expired: ["expire"],
+  orphaned: ["orphan", "undeliver"],
+} as const satisfies Record<string, readonly (keyof typeof requestMachine.events)[]>;
 
 /**
  * The desktop reports what happened to a request after the owner answered it or its native
@@ -107,12 +108,15 @@ export function closeRequest(
 ) {
   return db.transaction(async (tx) => {
     const device = await requireDevice(tx, identity);
+    // Locked, so an answer cannot land between choosing the event and applying it.
     const [request] = await tx
       .select({ id: agentRequests.id, status: agentRequests.status })
       .from(agentRequests)
-      .where(and(eq(agentRequests.id, requestId), deviceRequests(tx, identity, device.id)));
+      .where(and(eq(agentRequests.id, requestId), deviceRequests(tx, identity, device.id)))
+      .for("update");
     if (!request) throw new AccessDeniedError();
-    const event = closable[status];
+    const events: readonly (keyof typeof requestMachine.events)[] = closable[status];
+    const event = events.find((name) => requestMachine.canFire(request.status, name)) ?? events[0]!;
     const to = requestMachine.events[event].to;
     const changed = await tx
       .update(agentRequests)

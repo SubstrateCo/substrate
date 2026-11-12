@@ -17,6 +17,8 @@ export function requestOutcome(request: AgentRequestView) {
       return "Cancelled";
     case "orphaned":
       return "No longer needed";
+    case "undelivered":
+      return "Answered after the agent stopped waiting";
     case "failed":
       return "Failed";
     case "executed":

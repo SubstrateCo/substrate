@@ -22,11 +22,24 @@ export type AgentInvocationStatus = (typeof agentInvocationStatuses)[number];
 export const agentInvocationKinds = ["mention", "thread_reply"] as const;
 export type AgentInvocationKind = (typeof agentInvocationKinds)[number];
 
+/**
+ * Why an admitted call dropped before it ran. revoked: the source check found that it may not run
+ * any more. desktop_needs_update: the agent's home desktop cannot run caller calls and withheld
+ * its wake for a day.
+ */
+export const agentInvocationDropReasons = ["revoked", "desktop_needs_update"] as const;
+export type AgentInvocationDropReason = (typeof agentInvocationDropReasons)[number];
+/** A caller wake withheld from a desktop without caller_wakes this long drops its call. */
+export const withheldCallerWakeMs = 24 * 60 * 60_000;
+
 /** Pending calls expire after this long. */
 export const invocationApprovalMs = 24 * 60 * 60_000;
 /** Pending calls per caller per agent. More are recorded as rate_limited. */
 export const maxPendingInvocationsPerCaller = 3;
-/** Admitted caller calls per agent in the last 24 hours. More are recorded as rate_limited. */
+/**
+ * Admitted caller calls per agent in the last 24 hours, owner approvals included. More automatic
+ * admissions are recorded as rate_limited; the cap never blocks an owner approval.
+ */
 export const maxAdmittedInvocationsPerDay = 100;
 
 /** A call as the agent's owner sees it now. A hidden place has no IDs, names or preview. */
@@ -37,6 +50,8 @@ export interface AgentInvocationView {
   caller: { actorId: string; name: string };
   kind: AgentInvocationKind;
   status: AgentInvocationStatus;
+  /** Why a dropped call dropped; null otherwise, and for calls dropped before reasons were stored. */
+  dropReason: AgentInvocationDropReason | null;
   /** The policy when the call arrived. */
   policy: AgentCallerPolicy;
   /** The caller was allowlisted when the call arrived. */
@@ -50,14 +65,17 @@ export interface AgentInvocationView {
   expiresAt: string;
 }
 
-/** What a caller learns about their own call. */
-export const agentCallStatuses = ["waiting", "declined", "expired", "answered"] as const;
+/**
+ * What a caller learns about their own call. queued: admitted, and the agent has not published
+ * a reply for it yet. answered: the agent published a reply in a turn that answered this call.
+ */
+export const agentCallStatuses = ["waiting", "queued", "answered", "declined", "expired"] as const;
 export type AgentCallStatus = (typeof agentCallStatuses)[number];
 
 const callStatusOf: Record<AgentInvocationStatus, AgentCallStatus> = {
   received: "waiting",
   pending_approval: "waiting",
-  admitted: "answered",
+  admitted: "queued",
   rate_limited: "declined",
   declined: "declined",
   expired: "expired",
@@ -65,9 +83,19 @@ const callStatusOf: Record<AgentInvocationStatus, AgentCallStatus> = {
   dropped: "declined",
 };
 
-/** The caller's view of an invocation status. A pending call past its expiry is expired. */
-export function callStatus(status: AgentInvocationStatus, expired: boolean): AgentCallStatus {
-  return status === "pending_approval" && expired ? "expired" : callStatusOf[status];
+/**
+ * The caller's view of an invocation. A pending call past its expiry is expired. An admitted or
+ * dropped call with a published reply is answered. A call dropped because the owner's desktop
+ * needs an update is expired: nobody declined it.
+ */
+export function callStatus(
+  status: AgentInvocationStatus,
+  facts: { expired: boolean; answered: boolean; dropReason: AgentInvocationDropReason | null },
+): AgentCallStatus {
+  if (status === "pending_approval" && facts.expired) return "expired";
+  if ((status === "admitted" || status === "dropped") && facts.answered) return "answered";
+  if (status === "dropped" && facts.dropReason === "desktop_needs_update") return "expired";
+  return callStatusOf[status];
 }
 
 /** The caller's own call on one of their messages. */

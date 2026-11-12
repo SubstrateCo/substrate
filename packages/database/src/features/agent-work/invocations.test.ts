@@ -1,8 +1,14 @@
-import { sessionKeys } from "@substrate/contracts/agent-work";
+import { maxAdmittedInvocationsPerDay, sessionKeys } from "@substrate/contracts/agent-work";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
-import { agentAuditEvents, agentInvocations, agentWakes, member } from "../../schema";
+import {
+  agentAuditEvents,
+  agentInvocations,
+  agentWakes,
+  member,
+  messagingMessages,
+} from "../../schema";
 import { callerFixture, threadTurn } from "../../testing/agent-work";
 import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
@@ -12,7 +18,14 @@ import { contextSearch } from "../context/search";
 import { executeAgentTool } from "../mcp/committed";
 import { createMessagingService } from "../messaging/service";
 import { listCallsLog } from "./audit";
-import { allowCaller, decideInvocation, loadSources, pullWakes, removeCaller } from "./committed";
+import {
+  ackWakes,
+  allowCaller,
+  decideInvocation,
+  loadSources,
+  pullWakes,
+  removeCaller,
+} from "./committed";
 import { expireInvocations, listInvocations, listMyCalls } from "./invocations";
 import { listNeedsYou } from "./request-views";
 import { expect, test } from "bun:test";
@@ -27,6 +40,44 @@ const callerWakes = () =>
     .from(agentWakes)
     .where(eq(agentWakes.source, "caller_message"))
     .orderBy(asc(agentWakes.createdAt));
+const callOf = async (messageId: string) =>
+  (await calls()).find((row) => row.messageId === messageId)!;
+function statusCounts(rows: { status: string }[]) {
+  const counts: Record<string, number> = {};
+  for (const row of rows) counts[row.status] = (counts[row.status] ?? 0) + 1;
+  return counts;
+}
+
+/** Adds n calls of the template's agent admitted now, as copies of it on new messages. */
+async function admittedCalls(template: typeof agentInvocations.$inferSelect, n: number) {
+  const [message] = await f.db
+    .select()
+    .from(messagingMessages)
+    .where(eq(messagingMessages.id, template.messageId));
+  const messages = await f.db
+    .insert(messagingMessages)
+    .values(
+      Array.from({ length: n }, () => ({
+        conversationId: message!.conversationId,
+        authorActorEntityId: message!.authorActorEntityId,
+        authorOrganizationId: message!.authorOrganizationId,
+        body: "earlier call",
+      })),
+    )
+    .returning({ id: messagingMessages.id });
+  await f.db.insert(agentInvocations).values(
+    messages.map(({ id }) => ({
+      ...template,
+      id: crypto.randomUUID(),
+      messageId: id,
+      threadId: null,
+      status: "admitted" as const,
+      wakeId: null,
+      decidedAt: new Date(),
+    })),
+  );
+}
+
 const auditActions = async () =>
   (
     await f.db
@@ -204,6 +255,55 @@ test("a caller has at most three calls waiting for the owner; more are rate limi
   expect((await calls()).at(-1)!.status).toBe("pending_approval");
 });
 
+test("owner approvals count toward the daily cap and are never blocked by it", async () => {
+  const x = await callerFixture(f);
+  await x.policy("ask");
+  const first = await x.bob.sendMessage(x.channel.id, `${x.mention} first`);
+  const pending = await callOf(first.id);
+  await admittedCalls(pending, maxAdmittedInvocationsPerDay - 1);
+  // The approval is the 100th call admitted today.
+  expect((await decideInvocation(f.db, x.owner, pending.id, "approve")).result).toEqual({
+    status: "admitted",
+  });
+  await x.policy("anyone");
+  const over = await x.carol.sendMessage(x.channel.id, `${x.mention} over`);
+  expect((await callOf(over.id)).status).toBe("rate_limited");
+  // At the cap, the owner still approves.
+  await x.policy("ask");
+  const later = await x.bob.sendMessage(x.channel.id, `${x.mention} later`);
+  const held = await callOf(later.id);
+  expect(held.status).toBe("pending_approval");
+  expect((await decideInvocation(f.db, x.owner, held.id, "approve")).result).toEqual({
+    status: "admitted",
+  });
+});
+
+test("concurrent calls never exceed the pending cap or the daily cap", async () => {
+  const x = await callerFixture(f);
+  // One channel per message: sends in one conversation already wait for each other.
+  const channels = [];
+  for (const n of [1, 2, 3, 4, 5, 6, 7, 8]) {
+    const channel = await x.alice.createConversation({ kind: "channel", name: `room-${n}` });
+    await x.alice.addAgent(channel.id, x.agent.agentId);
+    channels.push(channel);
+  }
+  await x.policy("ask");
+  await Promise.all(
+    channels.map((channel, n) => x.bob.sendMessage(channel.id, `${x.mention} ask ${n}`)),
+  );
+  expect(statusCounts(await calls())).toEqual({ pending_approval: 3, rate_limited: 5 });
+
+  const [template] = await calls();
+  await admittedCalls(template!, maxAdmittedInvocationsPerDay - 3);
+  await x.policy("anyone");
+  const sent = await Promise.all(
+    channels.map((channel, n) => x.carol.sendMessage(channel.id, `${x.mention} run ${n}`)),
+  );
+  const ids = new Set(sent.map((message) => message.id));
+  const carolCalls = (await calls()).filter((row) => ids.has(row.messageId));
+  expect(statusCounts(carolCalls)).toEqual({ admitted: 3, rate_limited: 5 });
+});
+
 test("the first decision wins, an approval wakes the agent once, and always allow allowlists", async () => {
   const x = await callerFixture(f);
   await x.policy("ask");
@@ -344,6 +444,99 @@ test("allowlist removal and a caller who leaves the organization revoke queued c
     inaccessibleInvocations: [two!.id],
   });
   expect((await calls()).map((row) => row.status)).toEqual(["dropped", "dropped"]);
+});
+
+test("a queued call drops at the source check once the owner disables its trigger", async () => {
+  const x = await callerFixture(f);
+  await x.policy("anyone");
+  const asked = await x.bob.sendMessage(x.channel.id, `${x.mention} queued`);
+  const call = await callOf(asked.id);
+  await createAgentRepository(f.db, "alice").saveTriggers({
+    agentId: x.agent.agentId,
+    triggers: [{ kind: "mention", enabled: false }],
+  });
+  const checked = await loadSources(f.db, x.agent.identity, [], [call.id]);
+  expect(checked.result).toMatchObject({ messages: [], inaccessibleInvocations: [call.id] });
+  expect(await callOf(asked.id)).toMatchObject({ status: "dropped", dropReason: "revoked" });
+  expect(await auditActions()).toContain("invocation_dropped");
+});
+
+test("a caller sees a call as queued until the agent's reply for it is published", async () => {
+  const x = await callerFixture(f);
+  await x.policy("anyone");
+  const root = await x.bob.sendMessage(x.channel.id, `${x.mention} help`);
+  const call = await callOf(root.id);
+  const bobCalls = () => listMyCalls(f.db, { userId: "bob", organizationId: f.orgA }, x.channel.id);
+  expect((await bobCalls()).map((view) => view.status)).toEqual(["queued"]);
+  // A reply in a turn that answers no call is not an answer to this call.
+  await x.call(
+    "reply",
+    { requestId: crypto.randomUUID(), body: "For Alice" },
+    threadTurn(x.channel.id, root.id),
+  );
+  expect((await bobCalls()).map((view) => view.status)).toEqual(["queued"]);
+  await x.call(
+    "reply",
+    { requestId: crypto.randomUUID(), body: "Done" },
+    { ...threadTurn(x.channel.id, root.id), invocationIds: [call.id] },
+  );
+  expect((await bobCalls()).map((view) => view.status)).toEqual(["answered"]);
+});
+
+test("caller wakes withheld from an old desktop for a day drop and ask the owner to update", async () => {
+  const x = await callerFixture(f);
+  await x.policy("anyone");
+  const asked = await x.bob.sendMessage(x.channel.id, `${x.mention} help`);
+  const call = await callOf(asked.id);
+  const age = (hours: number) =>
+    f.db
+      .update(agentWakes)
+      .set({ createdAt: new Date(Date.now() - hours * 60 * 60_000) })
+      .where(eq(agentWakes.source, "caller_message"));
+  const signal = async () => (await listNeedsYou(f.db, x.owner)).desktopUpdateRequired;
+  await age(23);
+  expect((await pullWakes(f.db, x.agent.identity, 50)).result).toEqual([]);
+  expect((await callOf(asked.id)).status).toBe("admitted");
+  expect(await signal()).toEqual([]);
+
+  await age(25);
+  expect((await pullWakes(f.db, x.agent.identity, 50)).result).toEqual([]);
+  expect(await callOf(asked.id)).toMatchObject({
+    status: "dropped",
+    dropReason: "desktop_needs_update",
+  });
+  expect(await callerWakes()).toEqual([]);
+  const [dropped] = await f.db
+    .select()
+    .from(agentAuditEvents)
+    .where(eq(agentAuditEvents.action, "invocation_dropped"));
+  expect(dropped).toMatchObject({ invocationId: call.id, result: "desktop_needs_update" });
+  const mine = await listMyCalls(f.db, { userId: "bob", organizationId: f.orgA }, x.channel.id);
+  expect(mine.map((view) => view.status)).toEqual(["expired"]);
+  expect(await signal()).toEqual([
+    {
+      userAgentId: x.agent.agentId,
+      agent: { actorId: x.agent.actorId, name: expect.any(String) },
+      droppedCalls: 1,
+      lastDroppedAt: expect.any(String),
+    },
+  ]);
+  // Only the owner gets the signal.
+  expect(
+    (await listNeedsYou(f.db, { userId: "bob", organizationId: f.orgA })).desktopUpdateRequired,
+  ).toEqual([]);
+
+  // An updated desktop gets old caller wakes, and storing one clears the signal.
+  await x.bob.sendMessage(x.channel.id, `${x.mention} again`);
+  await age(25);
+  const pulled = (await pullWakes(f.db, x.agent.identity, 50, ["caller_wakes"])).result;
+  expect(pulled).toHaveLength(1);
+  await ackWakes(
+    f.db,
+    x.agent.identity,
+    pulled.map((wake) => wake.id),
+  );
+  expect(await signal()).toEqual([]);
 });
 
 test("caller wakes go only to desktops that declare caller_wakes", async () => {

@@ -1,0 +1,4 @@
+ALTER TABLE "agent_requests" DROP CONSTRAINT "agent_request_status_check";--> statement-breakpoint
+ALTER TABLE "agent_invocations" ADD COLUMN "drop_reason" text;--> statement-breakpoint
+ALTER TABLE "agent_requests" ADD CONSTRAINT "agent_request_status_check" CHECK ("agent_requests"."status" IN ('pending', 'resolved', 'delivered', 'executing', 'executed', 'failed', 'cancelled', 'expired', 'orphaned', 'undelivered'));--> statement-breakpoint
+ALTER TABLE "agent_invocations" ADD CONSTRAINT "agent_invocation_drop_reason_check" CHECK ("agent_invocations"."drop_reason" IS NULL OR "agent_invocations"."drop_reason" IN ('revoked', 'desktop_needs_update'));

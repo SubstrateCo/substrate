@@ -135,7 +135,7 @@ test("only the agent's owner sets callers and decides calls; a caller sees only 
     expect((await approved.json()).data).toEqual({ status: "admitted" });
     expect((await decide(agentOwner, "decline")).status()).toBe(409);
     expect((await (await mine(caller)).json()).data).toEqual([
-      expect.objectContaining({ messageId, status: "answered" }),
+      expect.objectContaining({ messageId, status: "queued" }),
     ]);
 
     // Only the home desktop that declares caller wakes receives the call.

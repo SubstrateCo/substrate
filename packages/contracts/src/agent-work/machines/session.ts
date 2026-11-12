@@ -4,6 +4,7 @@ import { agentSessionStatuses } from "../turns.ts";
 /** A local agent session on the home desktop. */
 export const sessionMachine = defineMachine({
   states: agentSessionStatuses,
+  // closed is reserved: no event reaches it today.
   terminal: ["closed"],
   events: {
     /** A turn of the session is claimed, retried, or started fresh. */

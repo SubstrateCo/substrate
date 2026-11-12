@@ -2,6 +2,7 @@ import type { AgentCallStatus, AgentCallStatusView } from "@substrate/contracts/
 
 const labels: Record<AgentCallStatus, string> = {
   waiting: "Waiting",
+  queued: "Queued",
   declined: "Declined",
   expired: "Expired",
   answered: "Answered",

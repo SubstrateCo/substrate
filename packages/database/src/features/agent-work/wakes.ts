@@ -14,6 +14,7 @@ import { effectsFor } from "../../core/effects";
 import { requireDevice, type DeviceIdentity } from "../../core/session/device";
 import { admit } from "./admission";
 import { homedAgentIds } from "./device";
+import { dropWithheldCallerWakes } from "./invocations";
 import { agentInvocations } from "./invocations.schema";
 import { agentRequests } from "./requests.schema";
 import { agentWakes } from "./wakes.schema";
@@ -100,7 +101,8 @@ function deviceWakes(db: DatabaseExecutor, identity: DeviceIdentity, deviceId: s
 /**
  * Unacknowledged wakes for agents whose home is this device, oldest first. An agent without a
  * home that has waiting wakes is adopted here. A desktop without the caller_wakes capability
- * gets no caller_message wakes: they stay pending for a desktop that can run them.
+ * gets no caller_message wakes: they stay pending for a desktop that can run them, for up to a
+ * day. Its pull then drops the calls of older ones (see dropWithheldCallerWakes).
  */
 export function pullWakes(
   db: DatabaseExecutor,
@@ -136,6 +138,15 @@ export function pullWakes(
       .returning({ id: userAgents.id });
     if (adopted.length)
       effectsFor(tx).hint({ audience: realtimeKeys.user(identity.userId), domain: "agents" });
+    if (!capabilities.includes("caller_wakes"))
+      await dropWithheldCallerWakes(
+        tx,
+        and(
+          eq(agentWakes.ownerUserId, identity.userId),
+          eq(agentWakes.organizationId, identity.organizationId),
+          deviceWakes(tx, identity, device.id),
+        )!,
+      );
     const rows = await tx
       .select()
       .from(agentWakes)

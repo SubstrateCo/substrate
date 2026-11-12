@@ -88,6 +88,29 @@ test("a blocking request opens once, the first answer wins, and the home device 
   expect(await requestAnswers(f.db, agent.identity)).toEqual([]);
 });
 
+test("an answer whose callback went away is undelivered and kept; an unanswered one is orphaned", async () => {
+  const { agent, owner, dm, input, request } = await blocking();
+  await respondToRequest(f.db, owner, request.id, { type: "approval", optionId: "allow" });
+  expect(await closeRequest(f.db, agent.identity, request.id, "orphaned")).toEqual({
+    changed: true,
+  });
+  const [answered] = await listConversationRequests(f.db, owner, dm.id);
+  expect(answered).toMatchObject({
+    id: request.id,
+    status: "undelivered",
+    response: { type: "approval", optionId: "allow" },
+  });
+  expect(await requestAnswers(f.db, agent.identity)).toEqual([]);
+
+  const open = await openRequest(f.db, agent.identity, { ...input, nativeRequestId: "native-2" });
+  await closeRequest(f.db, agent.identity, open.id, "orphaned");
+  const [row] = await f.db
+    .select({ status: agentRequests.status })
+    .from(agentRequests)
+    .where(eq(agentRequests.id, open.id));
+  expect(row).toEqual({ status: "orphaned" });
+});
+
 test("an expired blocking request cannot be answered", async () => {
   const { owner, request } = await blocking();
   await f.db

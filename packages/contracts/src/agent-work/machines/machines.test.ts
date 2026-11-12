@@ -62,7 +62,7 @@ describeMachine("request", requestMachine, agentRequestStatuses, [
   ["pending", "cancel", "cancelled"],
   ["pending", "expire", "expired"],
   ["pending", "orphan", "orphaned"],
-  ["resolved", "orphan", "orphaned"],
+  ["resolved", "undeliver", "undelivered"],
 ]);
 
 describeMachine("wake", wakeMachine, agentWakeStates, [["pending", "ack", "acked"]]);

@@ -68,12 +68,27 @@ export interface AgentHiddenRequestView extends AgentRequestViewBase {
 /** A request as its owner may see it now. */
 export type AgentRequestView = AgentVisibleRequestView | AgentHiddenRequestView;
 
+/**
+ * An agent whose home desktop cannot run caller calls: caller wakes it withheld for a day were
+ * dropped. Shows while such a drop is less than 7 days old and no caller wake of the agent was
+ * stored by a desktop since the last drop.
+ */
+export interface AgentDesktopUpdateView {
+  userAgentId: string;
+  agent: { actorId: string; name: string };
+  /** Calls dropped for this reason in the last 7 days. */
+  droppedCalls: number;
+  lastDroppedAt: string;
+}
+
 export interface AgentNeedsYou {
   requests: AgentRequestView[];
   /** Agents whose desktop reported needs_you, such as a turn that needs attention. */
   agents: AgentStatusView[];
   /** Calls of the owner's agents that wait for the owner's approval. */
   calls: AgentInvocationView[];
+  /** Agents whose home desktop must be updated to run caller calls. */
+  desktopUpdateRequired: AgentDesktopUpdateView[];
 }
 
 const ref = z.string().min(1);

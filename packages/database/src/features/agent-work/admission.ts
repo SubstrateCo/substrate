@@ -32,7 +32,7 @@ import { inStates } from "./machine-sql";
 import { agentRequests } from "./requests.schema";
 import { wakeKind, wakeSessionKey } from "./wake-kind";
 import { agentWakes } from "./wakes.schema";
-import { and, count, eq, gt, inArray, isNotNull, or, sql } from "drizzle-orm";
+import { and, asc, count, eq, gt, inArray, isNotNull, or, sql } from "drizzle-orm";
 
 /** An agent that a trigger may wake. */
 export type AdmissionAgent = {
@@ -305,6 +305,22 @@ async function agentsThatWorked(
 
 const admittedStates = [invocationMachine.events.admit.to, invocationMachine.events.drop.to];
 
+/**
+ * Locks agents' rows for update, in ID order so concurrent transactions cannot deadlock, and
+ * returns their caller policies as of the lock. Caller admission and owner approval hold this
+ * lock, so the pending and daily call counts are exact.
+ */
+export async function lockCallableAgents(db: DatabaseExecutor, userAgentIds: string[]) {
+  if (!userAgentIds.length) return new Map<string, AgentCallerPolicy>();
+  const rows = await db
+    .select({ id: userAgents.id, callerPolicy: userAgents.callerPolicy })
+    .from(userAgents)
+    .where(inArray(userAgents.id, [...new Set(userAgentIds)]))
+    .orderBy(asc(userAgents.id))
+    .for("update");
+  return new Map(rows.map((row) => [row.id, row.callerPolicy]));
+}
+
 // The facts about the author as a caller of one agent that accepts callers.
 async function callerFacts(
   db: DatabaseExecutor,
@@ -469,15 +485,28 @@ async function messageInputs(
           ),
         )
     : [];
+  // Agents this message may call. Their rows stay locked until the message commits, so calls of
+  // one agent are counted one after another.
+  const policies = await lockCallableAgents(
+    db,
+    rows.flatMap((row) =>
+      row.ownerUserId !== author.userId &&
+      row.callerPolicy !== "owner" &&
+      (mentioned.has(row.actorId) || message.threadId)
+        ? [row.userAgentId]
+        : [],
+    ),
+  );
   const inputs: AdmissionInput[] = [];
-  for (const { disabled, callerPolicy, ...agent } of rows) {
+  for (const { disabled, callerPolicy: _read, ...agent } of rows) {
     const facts: MessageFacts = {
       agent,
       mentioned: mentioned.has(agent.actorId),
       workedInThread: worked.has(agent.actorId),
       disabled,
     };
-    if (agent.ownerUserId !== author.userId && callerPolicy !== "owner")
+    const callerPolicy = policies.get(agent.userAgentId);
+    if (agent.ownerUserId !== author.userId && callerPolicy && callerPolicy !== "owner")
       facts.caller = await callerFacts(db, { ...trigger, author }, agent, callerPolicy, person);
     inputs.push({ type: "message", trigger, facts });
   }

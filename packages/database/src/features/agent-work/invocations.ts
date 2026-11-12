@@ -1,7 +1,10 @@
 import {
   callStatus,
   invocationMachine,
+  withheldCallerWakeMs,
   type AgentCallStatusView,
+  type AgentDesktopUpdateView,
+  type AgentInvocationDropReason,
   type AgentInvocationView,
   type DecideInvocationInput,
 } from "@substrate/contracts/agent-work";
@@ -25,11 +28,26 @@ import {
   messagingMessages,
   messagingParticipants,
 } from "../messaging/schema";
-import { admit } from "./admission";
+import { admit, lockCallableAgents } from "./admission";
 import { audit, type AuditEvent } from "./audit";
-import { agentInvocations } from "./invocations.schema";
+import { agentAuditEvents, agentInvocations } from "./invocations.schema";
 import { inStates } from "./machine-sql";
-import { and, desc, eq, exists, gt, inArray, isNull, lte, sql, type SQL } from "drizzle-orm";
+import { agentWakes } from "./wakes.schema";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  exists,
+  gt,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  max,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 type InvocationRow = typeof agentInvocations.$inferSelect;
@@ -215,7 +233,8 @@ const decisionAudits: Record<DecisionEvent, AuditEvent["action"]> = {
 
 /**
  * The owner decides a pending call. The first decision wins: each update applies only while the
- * call is pending and not expired. Approval first checks again that the call may run (see
+ * call is pending and not expired. An approval counts toward the agent's daily cap, but the cap
+ * never blocks it. Approval first checks again that the call may run (see
  * callChecks); a call that cannot is cancelled instead. An approval creates the wake in the same
  * transaction. A call whose trigger kind the owner disabled since is cancelled too. always_allow
  * also allowlists the caller.
@@ -229,6 +248,8 @@ export function decideInvocation(
   return db.transaction(async (tx) => {
     await workspaceContext(tx, identity);
     const row = await requireOwnedInvocation(tx, identity, invocationId);
+    // Admission counts an approval toward the daily cap, so it waits for concurrent admissions.
+    await lockCallableAgents(tx, [row.userAgentId]);
     let event: DecisionEvent = "decline";
     if (decision !== "decline")
       event =
@@ -301,9 +322,35 @@ export async function cancelPendingInvocations(
   return cancelled.length;
 }
 
+/** Drops admitted calls with a reason, through the drop event, with audit rows and hints. */
+async function dropInvocations(
+  db: DatabaseExecutor,
+  ids: string[],
+  reason: AgentInvocationDropReason,
+) {
+  if (!ids.length) return [];
+  const changed = await db
+    .update(agentInvocations)
+    .set({ status: invocationMachine.events.drop.to, dropReason: reason })
+    .where(
+      and(
+        inArray(agentInvocations.id, ids),
+        inStates(agentInvocations.status, invocationMachine.from("drop")),
+      ),
+    )
+    .returning();
+  await audit(
+    db,
+    changed.map((row) => ({ ...auditOf(row, "invocation_dropped", null), result: reason })),
+  );
+  hint(db, changed);
+  return changed;
+}
+
 /**
  * Drops admitted calls that may not run any more, when the home desktop checks their sources:
- * the policy, the allowlist, or the caller's membership or access changed. Returns the IDs of
+ * the policy, the allowlist, the caller's membership or access, or the owner's trigger toggle
+ * for the call's kind changed. Returns the IDs of
  * the calls that may not run, including unknown ones, and the messages on each side.
  */
 export async function revokedInvocations(
@@ -329,29 +376,15 @@ export async function revokedInvocations(
   for (const row of rows) {
     if (row.status !== invocationMachine.events.admit.to) continue;
     const checked = await callChecks(db, row);
-    if (checked.reachable && checked.approved) allowed.set(row.id, row.messageId);
+    if (checked.reachable && checked.approved && (await triggerEnabled(db, row)))
+      allowed.set(row.id, row.messageId);
     else dropped.push(row);
   }
-  if (dropped.length) {
-    const changed = await db
-      .update(agentInvocations)
-      .set({ status: invocationMachine.events.drop.to })
-      .where(
-        and(
-          inArray(
-            agentInvocations.id,
-            dropped.map((row) => row.id),
-          ),
-          inStates(agentInvocations.status, invocationMachine.from("drop")),
-        ),
-      )
-      .returning();
-    await audit(
-      db,
-      changed.map((row) => auditOf(row, "invocation_dropped", null)),
-    );
-    hint(db, changed);
-  }
+  await dropInvocations(
+    db,
+    dropped.map((row) => row.id),
+    "revoked",
+  );
   const allowedMessages = new Set(allowed.values());
   return {
     revoked: [...new Set(invocationIds)].filter((id) => !allowed.has(id)),
@@ -436,6 +469,7 @@ export async function invocationViews(
         caller: { actorId: invocation.callerActorEntityId, name: callerName },
         kind: invocation.kind,
         status,
+        dropReason: invocation.dropReason,
         policy: invocation.policy,
         allowlisted: invocation.allowlisted,
         place: visible
@@ -480,7 +514,8 @@ export function listInvocations(
 
 /**
  * The caller's own calls on their messages in one conversation they can see now. Nothing for a
- * conversation they cannot open. Callers learn only waiting, declined, expired or answered.
+ * conversation they cannot open. Callers learn only waiting, queued, answered, declined or
+ * expired. A call is answered once a reply that the agent published for it is audited.
  */
 export function listMyCalls(
   db: DatabaseExecutor,
@@ -495,6 +530,20 @@ export function listMyCalls(
         invocation: agentInvocations,
         agentName: actorDisplayName(agent),
         expired: sql<boolean>`${agentInvocations.expiresAt} <= now()`,
+        answered: exists(
+          tx
+            .select({ id: agentAuditEvents.id })
+            .from(agentAuditEvents)
+            .where(
+              and(
+                eq(agentAuditEvents.invocationId, agentInvocations.id),
+                eq(agentAuditEvents.userAgentId, agentInvocations.userAgentId),
+                eq(agentAuditEvents.action, "mcp_call"),
+                eq(agentAuditEvents.tool, "reply"),
+                eq(agentAuditEvents.result, "ok"),
+              ),
+            ),
+        ).mapWith(Boolean),
       })
       .from(agentInvocations)
       .innerJoin(
@@ -520,11 +569,15 @@ export function listMyCalls(
       )
       .orderBy(desc(agentInvocations.createdAt), desc(agentInvocations.id))
       .limit(200);
-    return rows.map(({ invocation, agentName, expired }) => ({
+    return rows.map(({ invocation, agentName, expired, answered }) => ({
       invocationId: invocation.id,
       messageId: invocation.messageId,
       agent: { actorId: invocation.agentActorEntityId, name: agentName },
-      status: callStatus(invocation.status, expired),
+      status: callStatus(invocation.status, {
+        expired,
+        answered,
+        dropReason: invocation.dropReason,
+      }),
       updatedAt: (invocation.decidedAt ?? invocation.createdAt).toISOString(),
     }));
   });
@@ -551,4 +604,108 @@ export async function expireInvocations(db: DatabaseExecutor, limit: number) {
     ),
   );
   return expired.length;
+}
+
+/**
+ * Drops the calls of caller wakes that waited longer than withheldCallerWakeMs for agents homed
+ * on a desktop that pulls without caller_wakes. Only that desktop's pull proves it cannot run
+ * them, so this runs there and not in maintenance. The wakes are removed; the calls drop with
+ * reason desktop_needs_update, and the owner sees desktopUpdateRequired in Needs you.
+ */
+export async function dropWithheldCallerWakes(db: DatabaseExecutor, homedAgents: SQL) {
+  const removed = await db
+    .delete(agentWakes)
+    .where(
+      and(
+        eq(agentWakes.source, "caller_message"),
+        isNull(agentWakes.ackedAt),
+        lte(agentWakes.createdAt, sql`now() - ${`${withheldCallerWakeMs} milliseconds`}::interval`),
+        homedAgents,
+      ),
+    )
+    .returning({ sourceRef: agentWakes.sourceRef });
+  const ids = removed.flatMap(({ sourceRef }) =>
+    "invocationId" in sourceRef ? [sourceRef.invocationId] : [],
+  );
+  return (await dropInvocations(db, ids, "desktop_needs_update")).length;
+}
+
+const signalDays = 7;
+
+/**
+ * The owner's agents with calls dropped for desktop_needs_update in the last 7 days, unless a
+ * desktop stored a caller wake of the agent after the last such drop.
+ */
+export async function desktopUpdateViews(
+  db: DatabaseExecutor,
+  identity: SessionIdentity,
+): Promise<AgentDesktopUpdateView[]> {
+  const agent = alias(actors, "update_agent");
+  const rows = await db
+    .select({
+      userAgentId: agentInvocations.userAgentId,
+      actorId: agentInvocations.agentActorEntityId,
+      name: actorDisplayName(agent),
+      droppedCalls: count(),
+      lastDroppedAt: max(agentAuditEvents.createdAt),
+    })
+    .from(agentInvocations)
+    .innerJoin(
+      agentAuditEvents,
+      and(
+        eq(agentAuditEvents.invocationId, agentInvocations.id),
+        eq(agentAuditEvents.action, "invocation_dropped"),
+        eq(agentAuditEvents.result, "desktop_needs_update"),
+      ),
+    )
+    .innerJoin(
+      agent,
+      and(
+        eq(agent.organizationId, agentInvocations.organizationId),
+        eq(agent.entityId, agentInvocations.agentActorEntityId),
+      ),
+    )
+    .where(
+      and(
+        eq(agentInvocations.ownerUserId, identity.userId),
+        eq(agentInvocations.organizationId, identity.organizationId),
+        eq(agentInvocations.dropReason, "desktop_needs_update"),
+        gt(agentAuditEvents.createdAt, sql`now() - ${`${signalDays} days`}::interval`),
+      ),
+    )
+    .groupBy(
+      agentInvocations.userAgentId,
+      agentInvocations.agentActorEntityId,
+      agent.entityId,
+      agent.organizationId,
+    );
+  if (!rows.length) return [];
+  // A caller wake stored after the last drop shows the agent's desktop runs caller calls now.
+  const stored = await db
+    .select({ userAgentId: agentWakes.userAgentId, ackedAt: max(agentWakes.ackedAt) })
+    .from(agentWakes)
+    .where(
+      and(
+        inArray(
+          agentWakes.userAgentId,
+          rows.map((row) => row.userAgentId),
+        ),
+        eq(agentWakes.source, "caller_message"),
+        isNotNull(agentWakes.ackedAt),
+      ),
+    )
+    .groupBy(agentWakes.userAgentId);
+  const storedAt = new Map(stored.map((row) => [row.userAgentId, row.ackedAt]));
+  return rows.flatMap((row) => {
+    const acked = storedAt.get(row.userAgentId);
+    if (!row.lastDroppedAt || (acked && acked > row.lastDroppedAt)) return [];
+    return [
+      {
+        userAgentId: row.userAgentId,
+        agent: { actorId: row.actorId, name: row.name },
+        droppedCalls: row.droppedCalls,
+        lastDroppedAt: row.lastDroppedAt.toISOString(),
+      },
+    ];
+  });
 }

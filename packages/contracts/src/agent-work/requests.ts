@@ -23,6 +23,7 @@ export const agentRequestStatuses = [
   "cancelled",
   "expired",
   "orphaned",
+  "undelivered",
 ] as const;
 export type AgentRequestStatus = (typeof agentRequestStatuses)[number];
 /** The owner can still act on these. */
