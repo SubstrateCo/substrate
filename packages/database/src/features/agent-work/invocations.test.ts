@@ -13,6 +13,7 @@ import {
 import { callerFixture, threadTurn } from "../../testing/agent-work";
 import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
+import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { createAgentRepository } from "../agents/repository";
 import { contextSearch } from "../context/search";
@@ -27,6 +28,7 @@ import {
   loadSources,
   pullWakes,
   removeCaller,
+  saveCallerPolicy,
 } from "./committed";
 import { expireInvocations, listInvocations, listMyCalls } from "./invocations";
 import { listNeedsYou } from "./request-views";
@@ -338,6 +340,69 @@ test("a batch of calls counts earlier decisions in the batch toward the pending 
   await admitBatch(first, 3, "bob");
   // Calls recorded in one transaction share created_at, so compare counts, not order.
   expect(statusCounts(await calls())).toEqual({ pending_approval: 3, rate_limited: 1 });
+});
+
+test("one message batches caller facts and wake links across agents", async () => {
+  const x = await callerFixture(f);
+  await x.policy("anyone");
+  const second = await ownedAgent(f, "carol");
+  const secondOwner = { userId: "carol", organizationId: f.orgA };
+  await saveCallerPolicy(f.db, secondOwner, second.agentId, "ask");
+  await allowCaller(f.db, secondOwner, second.agentId, f.bob);
+  await x.carol.addAgent(x.channel.id, second.agentId);
+  const sent = await x.bob.sendMessage(x.channel.id, "hello");
+  const triggers = await messageTriggers(
+    sent,
+    [`${x.mention} @[agent:${second.actorId}] help`],
+    "bob",
+  );
+  const recorded = recordQueries();
+  await recorded.db.transaction((tx) => admit(tx, triggers));
+  const admitted = (await calls()).filter((row) => row.messageId === triggers[0]!.message.id);
+  expect(admitted).toHaveLength(2);
+  expect(admitted.every((row) => row.status === "admitted" && row.wakeId !== null)).toBe(true);
+  expect(admitted.find((row) => row.userAgentId === second.agentId)).toMatchObject({
+    policy: "ask",
+    allowlisted: true,
+  });
+  expect(admitted.find((row) => row.userAgentId === x.agent.agentId)).toMatchObject({
+    policy: "anyone",
+    allowlisted: false,
+  });
+  expect(
+    recorded.queries.filter(
+      (query) => query.startsWith("select ") && query.includes('"user_agent_callers"'),
+    ),
+  ).toHaveLength(1);
+  expect(
+    recorded.queries.filter((query) => /^update "agent_invocations"/.test(query)),
+  ).toHaveLength(1);
+  const wakes = await callerWakes();
+  for (const call of admitted)
+    expect(wakes.find((wake) => wake.id === call.wakeId)?.sourceRef).toEqual({
+      invocationId: call.id,
+    });
+});
+
+test("batched caller visibility remains bound to each agent owner", async () => {
+  const x = await callerFixture(f);
+  await x.policy("anyone");
+  const second = await ownedAgent(f, "carol");
+  await saveCallerPolicy(f.db, { userId: "carol", organizationId: f.orgA }, second.agentId, "ask");
+  const channel = await x.alice.createConversation({
+    kind: "channel",
+    name: "private callers",
+    private: true,
+    emails: ["bob@example.com", "carol@example.com"],
+  });
+  await x.alice.addAgent(channel.id, x.agent.agentId);
+  await x.carol.addAgent(channel.id, second.agentId);
+  await x.alice.leaveConversation(channel.id, "bob");
+  const sent = await x.bob.sendMessage(channel.id, `${x.mention} @[agent:${second.actorId}] help`);
+  expect((await calls()).filter((row) => row.messageId === sent.id)).toEqual([
+    expect.objectContaining({ userAgentId: second.agentId, status: "pending_approval" }),
+  ]);
+  expect(await callerWakes()).toEqual([]);
 });
 
 test("a batch of calls counts earlier decisions in the batch toward the daily cap", async () => {

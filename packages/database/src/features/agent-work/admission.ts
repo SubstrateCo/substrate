@@ -33,6 +33,7 @@ import { agentRequests } from "./requests.schema";
 import { wakeKind, wakeSessionKey } from "./wake-kind";
 import { agentWakes } from "./wakes.schema";
 import { and, count, eq, gt, inArray, isNotNull, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 /** An agent that a trigger may wake. */
 export type AdmissionAgent = {
@@ -318,31 +319,36 @@ async function callerPolicies(db: DatabaseExecutor, userAgentIds: string[]) {
   return new Map(rows.map((row) => [row.id, row.callerPolicy]));
 }
 
-// The facts about the author as a caller of one agent that accepts callers.
+// Keep outer agent columns distinct from the tables used by visibility subqueries.
+const callerAgent = alias(userAgents, "admission_caller_agent");
+const callerActor = alias(actors, "admission_caller_actor");
+
+// The facts about the author as a caller of all candidate agents that accept callers.
 async function callerFacts(
   db: DatabaseExecutor,
   trigger: MessageTrigger & { author: { kind: "human" } },
-  agent: AdmissionAgent,
-  policy: CallerFacts["policy"],
+  agents: { agent: AdmissionAgent; policy: CallerFacts["policy"] }[],
   person: { actorId: string } | undefined,
-): Promise<CallerFacts> {
+): Promise<Map<string, CallerFacts>> {
+  if (!agents.length) return new Map();
   const { message } = trigger;
   const callerUserId = trigger.author.userId;
-  const ofAgent = eq(agentInvocations.userAgentId, agent.userAgentId);
+  const ofAgent = eq(agentInvocations.userAgentId, callerAgent.id);
   const ofCaller = and(ofAgent, eq(agentInvocations.callerUserId, callerUserId));
-  const [row] = await db
+  const rows = await db
     .select({
+      userAgentId: callerAgent.id,
       ownerCanSee: sql<boolean>`coalesce(${visibleConversations(db, {
-        userId: agent.ownerUserId,
-        organizationId: agent.organizationId,
+        userId: callerAgent.userId,
+        organizationId: callerActor.organizationId,
       })}, false)`,
       allowlisted: sql<boolean>`exists (${db
         .select({ id: userAgentCallers.callerUserId })
         .from(userAgentCallers)
         .where(
           and(
-            eq(userAgentCallers.userAgentId, agent.userAgentId),
-            eq(userAgentCallers.organizationId, agent.organizationId),
+            eq(userAgentCallers.userAgentId, callerAgent.id),
+            eq(userAgentCallers.organizationId, callerActor.organizationId),
             eq(userAgentCallers.callerUserId, callerUserId),
           ),
         )})`,
@@ -375,7 +381,7 @@ async function callerFacts(
             .innerJoin(
               agentAuditEvents,
               and(
-                eq(agentAuditEvents.userAgentId, agent.userAgentId),
+                eq(agentAuditEvents.userAgentId, callerAgent.id),
                 eq(agentAuditEvents.action, "mcp_call"),
                 eq(agentAuditEvents.tool, "reply"),
                 eq(agentAuditEvents.result, "ok"),
@@ -391,7 +397,7 @@ async function callerFacts(
                   eq(messagingMessages.id, message.threadId),
                   eq(messagingMessages.threadId, message.threadId),
                 ),
-                eq(messagingMessages.authorActorEntityId, agent.actorId),
+                eq(messagingMessages.authorActorEntityId, callerActor.entityId),
                 isNotNull(messagingMessages.originTurnId),
                 ofCaller,
                 eq(agentInvocations.conversationId, message.conversationId),
@@ -405,18 +411,35 @@ async function callerFacts(
         : sql<boolean>`false`,
     })
     .from(messagingConversations)
+    .innerJoin(
+      callerActor,
+      inArray(
+        callerActor.entityId,
+        agents.map(({ agent }) => agent.actorId),
+      ),
+    )
+    .innerJoin(callerAgent, eq(callerAgent.id, callerActor.userAgentId))
     .where(eq(messagingConversations.id, message.conversationId));
-  return {
-    policy,
-    member: !!person,
-    actorId: person?.actorId ?? null,
-    ownerCanSee: row?.ownerCanSee ?? false,
-    allowlisted: row?.allowlisted ?? false,
-    answeredInThread: row?.answeredInThread ?? false,
-    pending: row?.pending ?? 0,
-    admittedToday: row?.admittedToday ?? 0,
-    invocationId: crypto.randomUUID(),
-  };
+  const byAgent = new Map(rows.map((row) => [row.userAgentId, row]));
+  return new Map(
+    agents.map(({ agent, policy }) => {
+      const row = byAgent.get(agent.userAgentId);
+      return [
+        agent.userAgentId,
+        {
+          policy,
+          member: !!person,
+          actorId: person?.actorId ?? null,
+          ownerCanSee: row?.ownerCanSee ?? false,
+          allowlisted: row?.allowlisted ?? false,
+          answeredInThread: row?.answeredInThread ?? false,
+          pending: row?.pending ?? 0,
+          admittedToday: row?.admittedToday ?? 0,
+          invocationId: crypto.randomUUID(),
+        },
+      ];
+    }),
+  );
 }
 
 type MessageCandidates = {
@@ -522,6 +545,17 @@ async function messageInputs(
         )
     : [];
   const inputs: AdmissionInput[] = [];
+  const callers = await callerFacts(
+    db,
+    { ...trigger, author },
+    agents.flatMap((agent) => {
+      const policy = callable.has(agent.userAgentId) ? policies.get(agent.userAgentId) : undefined;
+      return agent.ownerUserId !== author.userId && policy && policy !== "owner"
+        ? [{ agent, policy }]
+        : [];
+    }),
+    person,
+  );
   for (const { disabled, ...agent } of rows) {
     const facts: MessageFacts = {
       agent,
@@ -529,11 +563,7 @@ async function messageInputs(
       workedInThread: worked.has(agent.actorId),
       disabled,
     };
-    const callerPolicy = callable.has(agent.userAgentId)
-      ? policies.get(agent.userAgentId)
-      : undefined;
-    if (agent.ownerUserId !== author.userId && callerPolicy && callerPolicy !== "owner")
-      facts.caller = await callerFacts(db, { ...trigger, author }, agent, callerPolicy, person);
+    facts.caller = callers.get(agent.userAgentId);
     inputs.push({ type: "message", trigger, facts });
   }
   return inputs;
@@ -687,12 +717,29 @@ export async function admit(
         sourceRef: agentWakes.sourceRef,
       })
     : [];
-  for (const wake of created)
-    if ("invocationId" in wake.sourceRef)
-      await db
-        .update(agentInvocations)
-        .set({ wakeId: wake.id })
-        .where(eq(agentInvocations.id, wake.sourceRef.invocationId));
+  const callWakes = created.flatMap((wake) =>
+    "invocationId" in wake.sourceRef
+      ? [{ invocationId: wake.sourceRef.invocationId, wakeId: wake.id }]
+      : [],
+  );
+  if (callWakes.length)
+    await db
+      .update(agentInvocations)
+      .set({
+        wakeId: sql`case ${sql.join(
+          callWakes.map(
+            (wake) =>
+              sql`when ${agentInvocations.id} = ${wake.invocationId} then ${wake.wakeId}::uuid`,
+          ),
+          sql` `,
+        )} end`,
+      })
+      .where(
+        inArray(
+          agentInvocations.id,
+          callWakes.map((wake) => wake.invocationId),
+        ),
+      );
   const owners = [...new Set(created.map((wake) => wake.ownerUserId))].map(
     (userId): RealtimeHint => ({ audience: realtimeKeys.user(userId), domain: "agent-work" }),
   );
