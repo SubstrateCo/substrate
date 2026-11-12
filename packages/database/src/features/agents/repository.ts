@@ -13,7 +13,7 @@ import { deviceOnline, findDevice } from "../../core/devices/repository";
 import { desktopDevices } from "../../core/devices/schema";
 import { effectsFor } from "../../core/effects";
 import { storedFiles } from "../../core/storage/schema";
-import { AccessDeniedError, ValidationError } from "../../errors";
+import { AccessDeniedError, ValidationError, violatedConstraint } from "../../errors";
 import { agentRefreshHints } from "../realtime/routing";
 import { userAgentTriggers } from "./triggers.schema";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
@@ -141,8 +141,7 @@ export function createAgentRepository(
               eq(userAgents.userId, userId),
               isNull(userAgents.deletedAt),
             ),
-          )
-          .for("update");
+          );
         if (!agent) throw new AccessDeniedError();
         // One row per kind: the last setting of a repeated kind wins.
         const triggers = [...new Map(input.triggers.map((trigger) => [trigger.kind, trigger]))];
@@ -159,37 +158,42 @@ export function createAgentRepository(
       });
     },
     async setPicture(id: string, fileId: string | null): Promise<AgentConfiguration> {
-      return db.transaction(async (tx) => {
-        const [agent] = await tx
-          .select()
-          .from(userAgents)
-          .where(
-            and(eq(userAgents.id, id), eq(userAgents.userId, userId), isNull(userAgents.deletedAt)),
-          )
-          .for("update");
-        if (!agent) throw new AccessDeniedError();
-        if (fileId !== null) {
-          const [file] = await tx
-            .select()
-            .from(storedFiles)
+      return db
+        .transaction(async (tx) => {
+          if (fileId !== null) {
+            const [file] = await tx
+              .select()
+              .from(storedFiles)
+              .where(
+                and(
+                  eq(storedFiles.id, fileId),
+                  eq(storedFiles.ownerUserId, userId),
+                  eq(storedFiles.purpose, "avatar"),
+                ),
+              );
+            if (!file) throw new AccessDeniedError();
+          }
+          const [row] = await tx
+            .update(userAgents)
+            .set({ imageFileId: fileId })
             .where(
               and(
-                eq(storedFiles.id, fileId),
-                eq(storedFiles.ownerUserId, userId),
-                eq(storedFiles.purpose, "avatar"),
+                eq(userAgents.id, id),
+                eq(userAgents.userId, userId),
+                isNull(userAgents.deletedAt),
               ),
             )
-            .for("update");
-          if (!file) throw new AccessDeniedError();
-        }
-        const [row] = await tx
-          .update(userAgents)
-          .set({ imageFileId: fileId })
-          .where(eq(userAgents.id, id))
-          .returning();
-        await changed(tx);
-        return configuration(row!);
-      });
+            .returning();
+          if (!row) throw new AccessDeniedError();
+          await changed(tx);
+          return configuration(row);
+        })
+        .catch((error: Error) => {
+          // The composite foreign key arbitrates deletion after the avatar ownership read.
+          if (violatedConstraint(error) === "user_agent_picture_file_owner_fk")
+            throw new AccessDeniedError();
+          throw error;
+        });
     },
     async deleteAgent(id: string): Promise<null> {
       const [row] = await db

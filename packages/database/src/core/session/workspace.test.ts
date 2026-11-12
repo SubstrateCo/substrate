@@ -2,13 +2,46 @@ import { AccessDeniedError } from "../../errors";
 import { createRepositories } from "../../repositories";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
+import { ensureUserAgentActor } from "../actors/provisioning";
 import { actors } from "../actors/schema";
+import { userAgents } from "../actors/user-agents.schema";
 import { member } from "../organizations/schema";
 import { RepositoryContext } from "../repository-context";
+import { workspaceContext } from "./workspace";
 import { expect, test } from "bun:test";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 const f = setupDatabase();
+
+test("the agent actor lock allows references but still serializes agent writes", async () => {
+  await f.verifyEmails();
+  const [agent] = await f.db
+    .insert(userAgents)
+    .values({ userId: "alice", name: "Writer", instructions: "", harness: "opencode" })
+    .returning();
+  const actor = await ensureUserAgentActor(f.db, {
+    organizationId: f.orgA,
+    userId: "alice",
+    userAgentId: agent!.id,
+  });
+  const scope = { userId: "alice", organizationId: f.orgA, actorEntityId: actor.entityId };
+  await f.db.transaction(async (tx) => {
+    await workspaceContext(tx, scope, { lockActor: true });
+    expect(
+      await f.db.execute(sql`
+        SELECT entity_id FROM ${actors} WHERE entity_id = ${actor.entityId} FOR KEY SHARE NOWAIT
+      `),
+    ).toHaveLength(1);
+    expect(
+      await rejection(
+        f.db.transaction(async (second) => {
+          await second.execute(sql`SET LOCAL lock_timeout = '100ms'`);
+          await workspaceContext(second, scope, { lockActor: true });
+        }),
+      ),
+    ).toMatchObject({ cause: { code: "55P03" } });
+  });
+});
 
 test("owner-device configuration checks verified identity without borrowing a workspace", async () => {
   const repositories = createRepositories(f.db);

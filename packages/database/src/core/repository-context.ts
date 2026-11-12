@@ -17,6 +17,7 @@ export interface ActorScope {
 }
 
 export type PermissionLevel = (typeof permissionLevel.enumValues)[number];
+export type AccessPathLockMode = "ordinary" | "structural";
 const permissionRank: Record<PermissionLevel, number> = { view: 0, comment: 1, edit: 2, owner: 3 };
 
 type AtLeast = {
@@ -86,36 +87,45 @@ export class RepositoryContext {
 
   // Locks the entities and their access containers in one statement and one global order. Read
   // grants in a later statement, after any competing writer commits.
-  async lockAccessPaths(entityIds: string[]) {
+  async lockAccessPaths(entityIds: string[], mode: AccessPathLockMode = "ordinary") {
     if (!entityIds.length) return;
     // Inactive or forged scopes take no locks: the statement locks only for an active actor.
     // A missing row also means a missing entity, which every caller denies.
-    const locked = new Set(
-      (await this.db.execute<{ entityId: string }>(lockAccessPaths(this.scope, entityIds))).map(
-        (row) => row.entityId,
-      ),
+    const rows = await this.db.execute<{ entityId: string; accessEntityId: string }>(
+      lockAccessPaths(this.scope, entityIds, mode),
     );
+    const locked = new Set(rows.map((row) => row.entityId));
     if (entityIds.some((id) => !locked.has(id))) throw new AccessDeniedError();
+    // A move may commit while this statement waits for the old container. Fail closed rather
+    // than check access through a new container that this transaction has not locked.
+    if (rows.some((row) => !locked.has(row.accessEntityId))) throw new AccessDeniedError();
   }
 
-  async lockAccessPath(entityId: string) {
-    await this.lockAccessPaths([entityId]);
+  async lockAccessPath(entityId: string, mode: AccessPathLockMode = "ordinary") {
+    await this.lockAccessPaths([entityId], mode);
   }
 
   requireAccess<Minimum extends PermissionLevel>(
     entityId: string,
     minimum: Minimum,
     lock: true,
+    mode?: AccessPathLockMode,
   ): Promise<LockedAccess<Minimum>>;
-  requireAccess(entityId: string, minimum: PermissionLevel, lock?: boolean): Promise<EntityAccess>;
+  requireAccess(
+    entityId: string,
+    minimum: PermissionLevel,
+    lock?: boolean,
+    mode?: AccessPathLockMode,
+  ): Promise<EntityAccess>;
   async requireAccess(
     entityId: string,
     minimum: PermissionLevel,
     lock = false,
+    mode: AccessPathLockMode = "ordinary",
   ): Promise<EntityAccess> {
     // Fail closed: an unknown level would otherwise compare as granted.
     if (!Object.hasOwn(permissionRank, minimum)) throw new AccessDeniedError();
-    if (lock) await this.lockAccessPath(entityId);
+    if (lock) await this.lockAccessPath(entityId, mode);
     const actorEntity = alias(entities, "actor_entity");
     const [access] = await this.db
       .select({

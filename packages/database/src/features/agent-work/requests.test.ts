@@ -103,7 +103,9 @@ test("an answer whose callback went away is undelivered and kept; an unanswered 
   expect(await requestAnswers(f.db, agent.identity)).toEqual([]);
 
   const open = await openRequest(f.db, agent.identity, { ...input, nativeRequestId: "native-2" });
-  await closeRequest(f.db, agent.identity, open.id, "orphaned");
+  expect(await closeRequest(f.db, agent.identity, open.id, "orphaned")).toEqual({
+    changed: true,
+  });
   const [row] = await f.db
     .select({ status: agentRequests.status })
     .from(agentRequests)

@@ -39,11 +39,15 @@ test("owned provisioning has constant read cost for cold and warm batches", asyn
     statements.length = 0;
     const cold = await ensureOwnedAgentActors(db, input);
     const coldReads = statements.filter((query) => /^select\b/i.test(query)).length;
+    const coldLocks = statements.filter((query) =>
+      /for (?:no key update|key share|share|update)\b/i.test(query),
+    ).length;
     statements.length = 0;
     const warm = await ensureOwnedAgentActors(db, input);
     measurements.push({
       count,
       coldReads,
+      coldLocks,
       warmReads: statements.filter((query) => /^select\b/i.test(query)).length,
       warmLocks: statements.filter((query) => query.includes("for update")).length,
     });
@@ -54,11 +58,11 @@ test("owned provisioning has constant read cost for cold and warm batches", asyn
     expect(statements.filter((query) => /^insert\b/i.test(query))).toHaveLength(0);
   }
   console.log("owned provisioning SELECT counts:", JSON.stringify(measurements));
-  // A cold batch adds the lock-free check to the three locking reads. A warm batch is one
-  // lock-free read.
+  // A cold batch checks membership, enabled profiles and existing identities without row locks.
+  // A warm batch is one read.
   expect(measurements).toEqual([
-    { count: 1, coldReads: 4, warmReads: 1, warmLocks: 0 },
-    { count: 8, coldReads: 4, warmReads: 1, warmLocks: 0 },
+    { count: 1, coldReads: 4, coldLocks: 0, warmReads: 1, warmLocks: 0 },
+    { count: 8, coldReads: 4, coldLocks: 0, warmReads: 1, warmLocks: 0 },
   ]);
 });
 
@@ -97,7 +101,7 @@ test("owned provisioning filters owner and profile lifecycle without replacing i
   );
 });
 
-test("bulk and single provisioning serialize and keep organization identities separate", async () => {
+test("bulk and single provisioning converge and keep organization identities separate", async () => {
   const agents = await profiles(5);
   const before = await f.db.select().from(entities);
   const [first, second, single] = await Promise.all([

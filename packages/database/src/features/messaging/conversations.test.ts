@@ -4,12 +4,65 @@ import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
 import { messagingConversations, messagingMessages, messagingParticipants } from "./schema";
 import { createMessagingService } from "./service";
+import { messagingInvitations } from "./sharing.schema";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 const fixture = setupDatabase();
 const service = fixture.messaging;
 const verified = fixture.verifyEmails;
+
+test("concurrent normalized external DM starts queue only one invitation", async () => {
+  await verified();
+  const chat = createMessagingService(fixture.db, {
+    userId: "alice",
+    organizationId: fixture.orgA,
+  });
+  const [first, second] = await Promise.all([
+    chat.createConversation({ kind: "dm", emails: [" OUTSIDE@example.com "], shareHistory: true }),
+    chat.createConversation({ kind: "dm", emails: ["outside@example.com"], shareHistory: true }),
+  ]);
+  expect(first.id).toBe(second.id);
+  expect(await fixture.db.select().from(messagingConversations)).toHaveLength(1);
+  expect(await fixture.db.select().from(messagingParticipants)).toHaveLength(1);
+  expect(await fixture.db.select().from(messagingInvitations)).toMatchObject([
+    { conversationId: first.id, email: "outside@example.com", status: "pending" },
+  ]);
+});
+
+test("expired and revoked external invitations release their DM key for concurrent re-invites", async () => {
+  await verified();
+  const chat = createMessagingService(fixture.db, {
+    userId: "alice",
+    organizationId: fixture.orgA,
+  });
+  for (const status of ["expired", "revoked"] as const) {
+    const input = { kind: "dm" as const, emails: [`${status}@example.com`], shareHistory: true };
+    const old = await chat.createConversation(input);
+    await fixture.db
+      .update(messagingInvitations)
+      .set(status === "expired" ? { expiresAt: new Date(0) } : { status: "revoked" })
+      .where(eq(messagingInvitations.conversationId, old.id));
+    const [first, second] = await Promise.all([
+      chat.createConversation(input),
+      chat.createConversation(input),
+    ]);
+    expect(first.id).toBe(second.id);
+    expect(first.id).not.toBe(old.id);
+    expect(
+      await fixture.db
+        .select({ key: messagingConversations.dmKey })
+        .from(messagingConversations)
+        .where(eq(messagingConversations.id, old.id)),
+    ).toEqual([{ key: null }]);
+    expect(
+      await fixture.db
+        .select()
+        .from(messagingInvitations)
+        .where(eq(messagingInvitations.conversationId, first.id)),
+    ).toHaveLength(1);
+  }
+});
 
 test("cross-org DMs use explicit participants without adding entity grants", async () => {
   await verified();
@@ -176,6 +229,8 @@ test("starting a DM with the same person returns the existing DM", async () => {
     service("bob").createConversation({ kind: "dm", emails: ["alice@example.com"] }),
   ]);
   expect(reverse.id).toBe(dm.id);
+  expect(await fixture.db.select().from(messagingConversations)).toHaveLength(1);
+  expect(await fixture.db.select().from(messagingParticipants)).toHaveLength(2);
   expect(
     (await service("alice").createConversation({ kind: "dm", emails: ["bob@example.com"] })).id,
   ).toBe(dm.id);

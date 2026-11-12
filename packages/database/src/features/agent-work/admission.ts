@@ -32,7 +32,7 @@ import { inStates } from "./machine-sql";
 import { agentRequests } from "./requests.schema";
 import { wakeKind, wakeSessionKey } from "./wake-kind";
 import { agentWakes } from "./wakes.schema";
-import { and, asc, count, eq, gt, inArray, isNotNull, or, sql } from "drizzle-orm";
+import { and, count, eq, gt, inArray, isNotNull, or, sql } from "drizzle-orm";
 
 /** An agent that a trigger may wake. */
 export type AdmissionAgent = {
@@ -306,18 +306,15 @@ async function agentsThatWorked(
 const admittedStates = [invocationMachine.events.admit.to, invocationMachine.events.drop.to];
 
 /**
- * Locks agents' rows for update, in ID order so concurrent transactions cannot deadlock, and
- * returns their caller policies as of the lock. Caller admission and owner approval hold this
- * lock, so the pending and daily call counts are exact.
+ * Reads the agents' caller policies without locking. Caller caps are approximate across
+ * concurrent transactions; decisions and source checks recheck whether a call may run.
  */
-export async function lockCallableAgents(db: DatabaseExecutor, userAgentIds: string[]) {
+async function callerPolicies(db: DatabaseExecutor, userAgentIds: string[]) {
   if (!userAgentIds.length) return new Map<string, AgentCallerPolicy>();
   const rows = await db
     .select({ id: userAgents.id, callerPolicy: userAgents.callerPolicy })
     .from(userAgents)
-    .where(inArray(userAgents.id, [...new Set(userAgentIds)]))
-    .orderBy(asc(userAgents.id))
-    .for("update");
+    .where(inArray(userAgents.id, [...new Set(userAgentIds)]));
   return new Map(rows.map((row) => [row.id, row.callerPolicy]));
 }
 
@@ -433,7 +430,7 @@ type MessageCandidates = {
     disabled: AgentWakeMessageKind[];
   }[];
   mentioned: Set<string>;
-  /** Agents this message may call. admit() locks them before any facts are read. */
+  /** Agents this message may call. admit() reads their policies before caller facts. */
   callable: Set<string>;
 };
 
@@ -492,8 +489,7 @@ async function messageCandidates(
   };
 }
 
-// Caller facts are read only for callable agents whose policy, read under the lock, accepts
-// callers.
+// Caller facts are read only for callable agents whose policy accepts callers.
 async function messageInputs(
   db: DatabaseExecutor,
   { trigger, author, rows, mentioned, callable }: MessageCandidates,
@@ -646,10 +642,8 @@ export async function admit(
   const candidates: (MessageCandidates | undefined)[] = [];
   for (const trigger of triggers)
     candidates.push(trigger.type === "message" ? await messageCandidates(db, trigger) : undefined);
-  // One ID-ordered lock of every agent the batch may call, before any facts are read, so
-  // concurrent batches cannot deadlock. The rows stay locked until the transaction commits, so
-  // calls of one agent are counted one after another.
-  const policies = await lockCallableAgents(
+  // Concurrent sends may read the same counts and exceed a caller cap by a small number.
+  const policies = await callerPolicies(
     db,
     candidates.flatMap((candidate) => [...(candidate?.callable ?? [])]),
   );

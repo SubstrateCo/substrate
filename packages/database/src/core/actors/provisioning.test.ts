@@ -1,5 +1,5 @@
 import { AccessDeniedError } from "../../errors";
-import { actors, entities, member, userAgents } from "../../schema";
+import { actors, entities, entityGrants, member, userAgents } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
 import { rootEntityValues } from "../entities/identity";
@@ -26,11 +26,16 @@ describe("actor provisioning", () => {
       userId: "alice",
     });
     const input = { organizationId: f.orgA, userId: "alice", userAgentId: agent!.id };
+    const entitiesBefore = await f.db.select().from(entities);
     const [first, second] = await Promise.all([
       ensureUserAgentActor(f.db, input),
       ensureUserAgentActor(f.db, input),
     ]);
     expect(first.entityId).toBe(second.entityId);
+    expect(await f.db.select().from(actors).where(eq(actors.userAgentId, agent!.id))).toHaveLength(
+      1,
+    );
+    expect(await f.db.select().from(entities)).toHaveLength(entitiesBefore.length + 1);
     const other = await ensureUserAgentActor(f.db, { ...input, organizationId: f.orgB });
     expect(other.entityId).not.toBe(first.entityId);
     // Each workspace's agent uses the owner's access in that workspace only.
@@ -187,11 +192,21 @@ describe("actor provisioning", () => {
   test("concurrent onboarding provisions one actor and rolls back invalid membership", async () => {
     await f.db.insert(member).values({ id: "alice-b", organizationId: f.orgB, userId: "alice" });
     const input = { organizationId: f.orgB, userId: "alice", name: "Alice" };
+    const entitiesBefore = await f.db.select().from(entities);
+    const grantsBefore = await f.db.select().from(entityGrants);
     const results = await Promise.all([
       ensureHumanActor(f.db, input),
       ensureHumanActor(f.db, input),
     ]);
     expect(results[0].entityId).toBe(results[1].entityId);
+    expect(
+      await f.db.select().from(actors).where(eq(actors.entityId, results[0].entityId)),
+    ).toHaveLength(1);
+    expect(await f.db.select().from(entities)).toHaveLength(entitiesBefore.length + 1);
+    expect(await f.db.select().from(entityGrants)).toHaveLength(grantsBefore.length + 1);
+    expect(
+      await f.db.select().from(entityGrants).where(eq(entityGrants.entityId, results[0].entityId)),
+    ).toMatchObject([{ actorEntityId: results[0].entityId, level: "owner" }]);
     const before = await f.db.select().from(entities);
     expect(
       await rejection(

@@ -424,7 +424,9 @@ test("read tools take no row locks, and write tools lock the agent's actor row",
   queries.length = 0;
   const input = { requestId: crypto.randomUUID(), projectId: project.entityId, title: "Locked" };
   await executeAgentTool(db, identity, "create_task", input, turn);
-  expect(queries.filter((query) => query.includes('for update of "actors"'))).toHaveLength(1);
+  expect(queries.filter((query) => query.includes('for no key update of "actors"'))).toHaveLength(
+    1,
+  );
 });
 
 test("failed source validation rolls back task creation; foreign owners and organizations cannot impersonate agents", async () => {

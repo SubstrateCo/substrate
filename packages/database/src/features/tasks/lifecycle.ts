@@ -43,7 +43,7 @@ export function taskLifecycle(context: RepositoryContext) {
     async delete(taskId: string, projectId: string) {
       return context.transaction(async (ctx) => {
         const tx = ctx.db;
-        await ctx.requireAccess(projectId, "edit", true);
+        await ctx.requireAccess(projectId, "edit", true, "structural");
         await requireTask(ctx, taskId, projectId);
         const subtree = await taskSubtree(ctx, projectId, taskId);
         ctx.effects.hint({
@@ -73,7 +73,7 @@ export function taskLifecycle(context: RepositoryContext) {
       return context.transaction(async (ctx) => {
         const tx = ctx.db;
         const projectIds = [...new Set([projectId, destinationProjectId])];
-        await ctx.lockAccessPaths(projectIds);
+        await ctx.lockAccessPaths(projectIds, "structural");
         for (const id of projectIds) {
           const { entity } = await ctx.requireAccess(id, "edit");
           if (entity.entityType !== "project") throw new AccessDeniedError();

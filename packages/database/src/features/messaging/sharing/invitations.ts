@@ -52,10 +52,7 @@ export async function queueSharingInvitations(
       }),
     ),
   ];
-  // Serialize the per-org limits across different conversations.
-  await db.execute(
-    sql`select pg_advisory_xact_lock(hashtextextended(${`messaging-invitations:${scope.organizationId}`}, 0))`,
-  );
+  // Per-org limits are approximate: concurrent batches may each pass these counts.
   const [totals] = await db
     .select({
       sent: sql<number>`count(*) filter (where ${gt(
@@ -166,25 +163,20 @@ export async function readSharingInvitation(db: DatabaseExecutor, userId: string
 
 export async function declineSharingInvitation(db: DatabaseExecutor, userId: string, id: string) {
   return db.transaction(async (tx) => {
-    const [lookup] = await tx
-      .select()
-      .from(messagingInvitations)
-      .where(eq(messagingInvitations.id, id));
-    if (!lookup) throw new AccessDeniedError();
-    await lockConversation(tx, lookup.conversationId, "update");
     const [invite] = await tx
       .select()
       .from(messagingInvitations)
-      .where(eq(messagingInvitations.id, id))
-      .for("update");
+      .where(eq(messagingInvitations.id, id));
     if (!invite) throw new AccessDeniedError();
     await requireSharingRecipient(tx, userId, invite);
     if (invite.status !== "pending")
       throw new ValidationError("This invitation is no longer available.");
-    await tx
+    const declined = await tx
       .update(messagingInvitations)
       .set({ status: "declined" })
-      .where(eq(messagingInvitations.id, id));
+      .where(and(eq(messagingInvitations.id, id), eq(messagingInvitations.status, "pending")))
+      .returning({ id: messagingInvitations.id });
+    if (!declined.length) throw new ValidationError("This invitation is no longer available.");
     await recordSharingEvents(
       tx,
       { userId, organizationId: invite.hostOrganizationId },
@@ -227,8 +219,7 @@ export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentit
         const [invite] = await tx
           .select()
           .from(messagingInvitations)
-          .where(eq(messagingInvitations.id, id))
-          .for("update");
+          .where(eq(messagingInvitations.id, id));
         if (!invite) throw new AccessDeniedError();
         const person = await requireSharingRecipient(tx, scope.userId, invite);
         if (invite.status === "accepted" && invite.targetOrganizationId === scope.organizationId) {
@@ -284,8 +275,9 @@ export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentit
           const [requested] = await tx
             .update(messagingInvitations)
             .set({ targetOrganizationId: scope.organizationId, recipientUserId: person.id })
-            .where(eq(messagingInvitations.id, id))
+            .where(and(eq(messagingInvitations.id, id), eq(messagingInvitations.status, "pending")))
             .returning();
+          if (!requested) throw new ValidationError("This invitation is no longer available.");
           await recordSharingEvents(tx, scope, conversation.id, "approval-requested", [
             { invitationId: id, targetOrganizationId: scope.organizationId },
           ]);
@@ -336,8 +328,9 @@ export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentit
             targetOrganizationId: scope.organizationId,
             recipientUserId: originalId,
           })
-          .where(eq(messagingInvitations.id, id))
+          .where(and(eq(messagingInvitations.id, id), eq(messagingInvitations.status, "pending")))
           .returning();
+        if (!accepted) throw new ValidationError("This invitation is no longer available.");
         await recordSharingEvents(tx, scope, conversation.id, "accepted", [
           { invitationId: id, targetOrganizationId: scope.organizationId },
         ]);

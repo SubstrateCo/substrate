@@ -1,3 +1,10 @@
+import postgres from "postgres";
+
+/** The constraint a failed statement violated, or undefined for any other error. */
+export function violatedConstraint(error: Error) {
+  return error.cause instanceof postgres.PostgresError ? error.cause.constraint_name : undefined;
+}
+
 export class AccessDeniedError extends Error {
   constructor() {
     super("Entity not found or access denied.");

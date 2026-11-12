@@ -334,6 +334,7 @@ describe("stored file relationships", () => {
       repo.complete(scope, id, { ...verified, objectKey: `objects/${id}/loser` }),
     ]);
     expect(results[0].objectKey).toBe(results[1].objectKey);
+    expect(await f.db.select().from(storedFiles).where(eq(storedFiles.id, id))).toHaveLength(1);
     await rejection(repo.deleteFile({ userId: "bob", organizationId: f.orgA }, id));
     await repo.deleteFile(scope, id);
     expect(await repo.getReadable(scope, id)).toBeNull();
@@ -341,6 +342,79 @@ describe("stored file relationships", () => {
     expect(
       (await repo.cleanupCandidates(new Date(Date.now() + 1000))).map((row) => row.objectKey),
     ).toContain(results[0].objectKey);
+  });
+
+  test.each(["delete", "prune"] as const)(
+    "completion cannot resurrect a file during concurrent %s",
+    async (operation) => {
+      const repo = createStorageRepository(f.db);
+      const scope = { userId: "alice", organizationId: f.orgA };
+      const id = crypto.randomUUID();
+      await repo.createUpload(
+        scope,
+        { purpose: "file", filename: "a.txt", contentType: "text/plain", size: 5 },
+        id,
+        new Date(Date.now() + 60_000),
+      );
+      const verified = {
+        objectKey: `objects/${id}/hash`,
+        contentType: "text/plain",
+        size: 5,
+        sha256: "a".repeat(64),
+      };
+      await repo.complete(scope, id, verified);
+      await f.db
+        .update(storedFiles)
+        .set({ createdAt: new Date(0) })
+        .where(eq(storedFiles.id, id));
+      const [first, second, removed] = await Promise.allSettled([
+        repo.complete(scope, id, verified),
+        repo.complete(scope, id, verified),
+        operation === "delete" ? repo.deleteFile(scope, id) : repo.pruneUnusedFiles(new Date()),
+      ]);
+      expect(removed.status).toBe("fulfilled");
+      for (const completion of [first, second]) {
+        if (completion.status === "rejected")
+          expect(completion.reason).toBeInstanceOf(ConflictError);
+        else expect(completion.value.id).toBe(id);
+      }
+      expect(await f.db.select().from(storedFiles).where(eq(storedFiles.id, id))).toEqual([]);
+      const [upload] = await f.db.select().from(fileUploads).where(eq(fileUploads.id, id));
+      expect(upload?.deletedAt).toBeInstanceOf(Date);
+      expect(await rejection(repo.complete(scope, id, verified))).toBeInstanceOf(ConflictError);
+    },
+  );
+
+  test("completion cannot insert after concurrent upload cleanup", async () => {
+    const repo = createStorageRepository(f.db);
+    const scope = { userId: "alice", organizationId: null };
+    const id = crypto.randomUUID();
+    await repo.createUpload(
+      scope,
+      { purpose: "avatar", filename: "a.webp", contentType: "image/webp", size: 5 },
+      id,
+      new Date(Date.now() + 60_000),
+    );
+    const deleted = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const cleanup = f.db.transaction(async (tx) => {
+      await tx.delete(fileUploads).where(eq(fileUploads.id, id));
+      deleted.resolve();
+      await release.promise;
+    });
+    await deleted.promise;
+    const completion = rejection(
+      repo.complete(scope, id, {
+        objectKey: `objects/${id}/hash`,
+        contentType: "image/webp",
+        size: 5,
+        sha256: "a".repeat(64),
+      }),
+    );
+    release.resolve();
+    await cleanup;
+    expect(await completion).toBeInstanceOf(AccessDeniedError);
+    expect(await f.db.select().from(storedFiles).where(eq(storedFiles.id, id))).toEqual([]);
   });
 
   test("logo writes need an active organization and admin or owner role", async () => {

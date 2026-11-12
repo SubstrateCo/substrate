@@ -8,7 +8,6 @@ import {
   agentWakes,
   member,
   messagingMessages,
-  userAgents,
 } from "../../schema";
 import { callerFixture, threadTurn } from "../../testing/agent-work";
 import { ownedAgent } from "../../testing/agents";
@@ -31,7 +30,7 @@ import {
 import { expireInvocations, listInvocations, listMyCalls } from "./invocations";
 import { listNeedsYou } from "./request-views";
 import { expect, test } from "bun:test";
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 
 const f = setupDatabase();
 
@@ -280,32 +279,6 @@ test("owner approvals count toward the daily cap and are never blocked by it", a
   });
 });
 
-test("concurrent calls never exceed the pending cap or the daily cap", async () => {
-  const x = await callerFixture(f);
-  // One channel per message: sends in one conversation already wait for each other.
-  const channels = [];
-  for (const n of [1, 2, 3, 4, 5, 6, 7, 8]) {
-    const channel = await x.alice.createConversation({ kind: "channel", name: `room-${n}` });
-    await x.alice.addAgent(channel.id, x.agent.agentId);
-    channels.push(channel);
-  }
-  await x.policy("ask");
-  await Promise.all(
-    channels.map((channel, n) => x.bob.sendMessage(channel.id, `${x.mention} ask ${n}`)),
-  );
-  expect(statusCounts(await calls())).toEqual({ pending_approval: 3, rate_limited: 5 });
-
-  const [template] = await calls();
-  await admittedCalls(template!, maxAdmittedInvocationsPerDay - 3);
-  await x.policy("anyone");
-  const sent = await Promise.all(
-    channels.map((channel, n) => x.carol.sendMessage(channel.id, `${x.mention} run ${n}`)),
-  );
-  const ids = new Set(sent.map((message) => message.id));
-  const carolCalls = (await calls()).filter((row) => ids.has(row.messageId));
-  expect(statusCounts(carolCalls)).toEqual({ admitted: 3, rate_limited: 5 });
-});
-
 /** Inserts messages like a sent one with the given bodies, as message triggers by the user. */
 async function messageTriggers(sent: { id: string }, bodies: string[], userId: string) {
   const [message] = await f.db
@@ -339,48 +312,22 @@ async function admitBatch(sent: { id: string; body: string }, n: number, userId:
   return triggers.map((trigger) => trigger.message.id);
 }
 
-// Waits until the given number of sessions in this database wait for a lock.
-async function lockWaiters(n: number) {
-  for (let attempt = 0; attempt < 400; attempt++) {
-    const [row] = await f.db.execute<{ n: number }>(
-      sql`select count(*)::int as n from pg_stat_activity
-        where datname = current_database() and wait_event_type = 'Lock'`,
-    );
-    if (row!.n >= n) return;
-    await Bun.sleep(25);
-  }
-  throw new Error(`Fewer than ${n} sessions waited for a lock.`);
-}
-
-test("concurrent batches that call the same agents in opposite orders both complete", async () => {
+test("admissions for the same agent finish while another admission is uncommitted", async () => {
   const x = await callerFixture(f);
   await x.policy("anyone");
-  const second = await ownedAgent(f, "alice", "Second");
-  await f.db
-    .update(userAgents)
-    .set({ callerPolicy: "anyone" })
-    .where(eq(userAgents.id, second.agentId));
-  await x.alice.addAgent(x.channel.id, second.agentId);
-  const secondMention = `@[agent:${second.actorId}]`;
   const sent = await x.carol.sendMessage(x.channel.id, "hello");
-  const forward = await messageTriggers(sent, [x.mention, secondMention], "carol");
-  const backward = await messageTriggers(sent, [secondMention, x.mention], "carol");
-  // Both batches start while another transaction holds both agent rows, so each waits for its
-  // first lock. Locking per trigger, each would then take one agent and wait for the other.
-  let settled!: Promise<PromiseSettledResult<unknown>[]>;
+  const first = await messageTriggers(sent, [x.mention], "carol");
+  const second = await messageTriggers(sent, [x.mention], "carol");
+  // Keep the first transaction open after admission, as a message send would.
   await f.db.transaction(async (tx) => {
-    await tx
-      .select({ id: userAgents.id })
-      .from(userAgents)
-      .where(inArray(userAgents.id, [x.agent.agentId, second.agentId]))
-      .for("update");
-    settled = Promise.allSettled(
-      [forward, backward].map((triggers) => f.db.transaction((batch) => admit(batch, triggers))),
-    );
-    await lockWaiters(2);
+    await admit(tx, first);
+    await f.db.transaction(async (other) => {
+      await other.execute(sql`set local lock_timeout = '1s'`);
+      await admit(other, second);
+    });
+    expect(statusCounts(await calls())).toEqual({ admitted: 1 });
   });
-  expect((await settled).map((result) => result.status)).toEqual(["fulfilled", "fulfilled"]);
-  expect(statusCounts(await calls())).toEqual({ admitted: 4 });
+  expect(statusCounts(await calls())).toEqual({ admitted: 2 });
 });
 
 test("a batch of calls counts earlier decisions in the batch toward the pending cap", async () => {
@@ -410,14 +357,19 @@ test("the first decision wins, an approval wakes the agent once, and always allo
   const [call] = await calls();
   const results = await Promise.allSettled([
     decideInvocation(f.db, x.owner, call!.id, "approve"),
-    decideInvocation(f.db, x.owner, call!.id, "decline"),
+    decideInvocation(f.db, x.owner, call!.id, "approve"),
   ]);
   const won = results.filter((result) => result.status === "fulfilled");
   const lost = results.filter((result) => result.status === "rejected");
   expect(won).toHaveLength(1);
   expect(lost.map((result) => result.reason)).toEqual([expect.any(ConflictError)]);
   const [decided] = await calls();
-  expect(await callerWakes()).toHaveLength(decided!.status === "admitted" ? 1 : 0);
+  const wakes = await callerWakes();
+  expect(wakes).toHaveLength(1);
+  expect(decided).toMatchObject({ status: "admitted", wakeId: wakes[0]!.id });
+  expect((await auditActions()).filter((action) => action === "invocation_approved")).toHaveLength(
+    1,
+  );
 
   await x.carol.sendMessage(x.channel.id, `${x.mention} two`);
   const carolCall = (await calls()).at(-1)!;
@@ -446,6 +398,25 @@ test("the first decision wins, an approval wakes the agent once, and always allo
   });
   await x.carol.sendMessage(x.channel.id, `${x.mention} three`);
   expect((await calls()).at(-1)).toMatchObject({ status: "admitted", allowlisted: true });
+});
+
+test("rolling back an approval also rolls back its wake and decision audit", async () => {
+  const x = await callerFixture(f);
+  await x.policy("ask");
+  const message = await x.bob.sendMessage(x.channel.id, `${x.mention} help`);
+  const call = await callOf(message.id);
+  const rollback = new Error("Roll back approval");
+  expect(
+    await rejection(
+      f.db.transaction(async (tx) => {
+        await decideInvocation(tx, x.owner, call.id, "approve");
+        throw rollback;
+      }),
+    ),
+  ).toBe(rollback);
+  expect(await callOf(message.id)).toMatchObject({ status: "pending_approval", wakeId: null });
+  expect(await callerWakes()).toEqual([]);
+  expect(await auditActions()).not.toContain("invocation_approved");
 });
 
 test("approving a call whose trigger the owner disabled since cancels it", async () => {

@@ -3,7 +3,7 @@ import { actors } from "../actors/schema";
 import { entities, type entityType } from "../entities/schema";
 import { adminRoleCondition } from "../organizations/roles";
 import { member } from "../organizations/schema";
-import type { ActorScope, PermissionLevel } from "../repository-context";
+import type { AccessPathLockMode, ActorScope, PermissionLevel } from "../repository-context";
 import { entityGrants } from "./schema";
 import { sql, type SQL, type SQLWrapper } from "drizzle-orm";
 
@@ -115,15 +115,21 @@ export function entityAccessLevel(scope: ActorScope, entityId: SQLWrapper | stri
   ) levels)`;
 }
 
-// Locks the entities and their containers in one order: containers, then children, each by ID.
-// Writers that lock in one statement cannot deadlock each other. Locks nothing unless the actor is
-// active.
-export function lockAccessPaths(scope: ActorScope, entityIds: string[]) {
+// Materialize the global order before the correlated locking subqueries run: containers first,
+// then children, each by ID. Each lateral branch locks just that row, without a lock upgrade.
+// A container named as a target gets the stronger lock from the start. Inactive actors lock nothing.
+export function lockAccessPaths(
+  scope: ActorScope,
+  entityIds: string[],
+  mode: AccessPathLockMode = "ordinary",
+) {
   const ids = sql.join(
     entityIds.map((id) => sql`${id}::uuid`),
     sql`, `,
   );
-  return sql`SELECT e.entity_id AS "entityId" FROM ${entities} e
+  return sql`WITH access_paths AS MATERIALIZED (
+  SELECT e.entity_id, (${mode === "structural"} OR e.entity_id IN (${ids})) AS exclusive_lock
+  FROM ${entities} e
   WHERE e.organization_id = ${scope.organizationId} AND (e.entity_id IN (${ids})
       OR e.entity_id IN (SELECT access_entity_id FROM ${entities}
         WHERE organization_id = ${scope.organizationId} AND entity_id IN (${ids})))
@@ -135,5 +141,16 @@ export function lockAccessPaths(scope: ActorScope, entityIds: string[]) {
         AND ${actors.entityId} = ${scope.actorEntityId}
         AND ${activeActorCondition()} AND actor_entity.deleted_at IS NULL
     )
-  ORDER BY (e.entity_id <> e.access_entity_id), e.entity_id FOR UPDATE`;
+  ORDER BY (e.entity_id <> e.access_entity_id), e.entity_id
+  )
+  SELECT locked.entity_id AS "entityId", locked.access_entity_id AS "accessEntityId" FROM access_paths path
+  CROSS JOIN LATERAL (
+    SELECT shared.* FROM (SELECT e.entity_id, e.access_entity_id FROM ${entities} e
+      WHERE e.organization_id = ${scope.organizationId} AND e.entity_id = path.entity_id
+        AND NOT path.exclusive_lock FOR SHARE OF e) shared
+    UNION ALL
+    SELECT target.* FROM (SELECT e.entity_id, e.access_entity_id FROM ${entities} e
+      WHERE e.organization_id = ${scope.organizationId} AND e.entity_id = path.entity_id
+        AND path.exclusive_lock FOR NO KEY UPDATE OF e) target
+  ) locked`;
 }

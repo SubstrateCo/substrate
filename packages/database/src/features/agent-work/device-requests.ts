@@ -87,8 +87,7 @@ export function openRequest(
   });
 }
 
-// The request machine events behind each status the desktop reports. The request's current
-// state picks one: an orphaned callback leaves an answered request undelivered.
+// Try the machine events in order: an orphaned callback leaves an answered request undelivered.
 const closable = {
   delivered: ["deliver"],
   cancelled: ["cancel"],
@@ -108,34 +107,35 @@ export function closeRequest(
 ) {
   return db.transaction(async (tx) => {
     const device = await requireDevice(tx, identity);
-    // Locked, so an answer cannot land between choosing the event and applying it.
     const [request] = await tx
-      .select({ id: agentRequests.id, status: agentRequests.status })
+      .select({ id: agentRequests.id })
       .from(agentRequests)
-      .where(and(eq(agentRequests.id, requestId), deviceRequests(tx, identity, device.id)))
-      .for("update");
+      .where(and(eq(agentRequests.id, requestId), deviceRequests(tx, identity, device.id)));
     if (!request) throw new AccessDeniedError();
     const events: readonly (keyof typeof requestMachine.events)[] = closable[status];
-    const event = events.find((name) => requestMachine.canFire(request.status, name)) ?? events[0]!;
-    const to = requestMachine.events[event].to;
-    const changed = await tx
-      .update(agentRequests)
-      .set(
-        to === "delivered"
-          ? { status: to, deliveredAt: sql`now()` }
-          : { status: to, resolvedAt: sql`coalesce(${agentRequests.resolvedAt}, now())` },
-      )
-      .where(
-        and(
-          eq(agentRequests.id, requestId),
-          eq(agentRequests.mode, "blocking"),
-          inStates(agentRequests.status, requestMachine.from(event)),
-        ),
-      )
-      .returning({ id: agentRequests.id });
-    if (changed.length)
-      effectsFor(tx).hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });
-    return { changed: changed.length > 0 };
+    for (const event of events) {
+      const to = requestMachine.events[event].to;
+      const changed = await tx
+        .update(agentRequests)
+        .set(
+          to === "delivered"
+            ? { status: to, deliveredAt: sql`now()` }
+            : { status: to, resolvedAt: sql`coalesce(${agentRequests.resolvedAt}, now())` },
+        )
+        .where(
+          and(
+            eq(agentRequests.id, requestId),
+            eq(agentRequests.mode, "blocking"),
+            inStates(agentRequests.status, requestMachine.from(event)),
+          ),
+        )
+        .returning({ id: agentRequests.id });
+      if (changed.length) {
+        effectsFor(tx).hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });
+        return { changed: true };
+      }
+    }
+    return { changed: false };
   });
 }
 

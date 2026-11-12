@@ -51,7 +51,7 @@ test("source creation is atomic, concurrent-idempotent, and preserves the exact 
     { ...input, requestId: crypto.randomUUID() },
   );
   // The project lock taken for idempotency also covers the task insert.
-  expect(queries.filter((query) => query.includes("FOR UPDATE"))).toHaveLength(1);
+  expect(queries.filter((query) => query.includes("FOR NO KEY UPDATE"))).toHaveLength(1);
   // Source validation now also locks and rechecks the conversation against concurrent deletion.
   expect(queries).toHaveLength(14);
 });

@@ -42,16 +42,34 @@ export function createStorageCleanup(db: Database, fileReferences: SQL) {
           .limit(100)
           .for("update", { skipLocked: true });
         if (!unused.length) return;
+        const deleted = await tx
+          .delete(storedFiles)
+          .where(
+            and(
+              inArray(
+                storedFiles.id,
+                unused.map((file) => file.id),
+              ),
+              not(fileReferences),
+              notExists(
+                tx
+                  .select({ id: userAgents.id })
+                  .from(userAgents)
+                  .where(eq(userAgents.imageFileId, storedFiles.id)),
+              ),
+            ),
+          )
+          .returning();
+        if (!deleted.length) return;
         await tx
           .insert(storageCandidates)
-          .values(unused.map((file) => ({ objectKey: file.objectKey })))
+          .values(deleted.map((file) => ({ objectKey: file.objectKey })))
           .onConflictDoNothing();
-        const ids = unused.map((file) => file.id);
+        const ids = deleted.map((file) => file.id);
         await tx
           .update(fileUploads)
           .set({ deletedAt: new Date() })
           .where(inArray(fileUploads.id, ids));
-        await tx.delete(storedFiles).where(inArray(storedFiles.id, ids));
       });
     },
     async forgetCandidate(objectKey: string) {

@@ -40,7 +40,7 @@ test("first human use provisions the actor once and later uses take the fast pat
   const first = await workspaceContext(db, scope);
   expect(first.actor).toMatchObject({ name: "Bob", type: "human" });
   expect(first.actor.entityId).not.toBe(f.bob);
-  expect(queries.some((query) => query.includes("for update"))).toBe(true);
+  expect(queries.some((query) => query.includes("for update"))).toBe(false);
   queries.length = 0;
   const second = await workspaceContext(db, scope);
   expect(second.actor).toEqual(first.actor);
@@ -100,7 +100,7 @@ test("an agent actor is verified in one statement and locks only its actor row o
   queries.length = 0;
   await db.transaction((tx) => workspaceContext(tx, scope, { lockActor: true }));
   expect(statements(queries)).toHaveLength(1);
-  expect(statements(queries)[0]).toContain('for update of "actors"');
+  expect(statements(queries)[0]).toContain('for no key update of "actors"');
   expect(await rejection(workspaceContext(f.db, { ...scope, userId: "bob" }))).toBeInstanceOf(
     AccessDeniedError,
   );

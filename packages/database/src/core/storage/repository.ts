@@ -2,14 +2,13 @@ import { organizationSettingsAccess } from "@substrate/contracts/auth/settings-a
 import type { CreateUploadInput } from "@substrate/contracts/files/input";
 
 import type { Database, DatabaseExecutor } from "../../client";
-import { AccessDeniedError, ConflictError } from "../../errors";
+import { AccessDeniedError, ConflictError, violatedConstraint } from "../../errors";
 import { userAgents } from "../actors/user-agents.schema";
-import { user } from "../authentication/schema";
 import { member } from "../organizations/schema";
 import { createStorageCleanup } from "./cleanup";
 import { temporaryObjectKey } from "./object-keys";
 import { fileUploads, storedFiles, storageCandidates } from "./schema";
-import { and, eq, gt, inArray, isNotNull, isNull, notExists, sql, type SQL } from "drizzle-orm";
+import { and, eq, gt, inArray, isNotNull, isNull, not, notExists, type SQL } from "drizzle-orm";
 
 // Trusted server-only identity scope. Personal files deliberately do not require an actor.
 export interface StorageScope {
@@ -68,12 +67,7 @@ export function createStorageRepository(
     async createUpload(scope: StorageScope, input: CreateUploadInput, id: string, expiresAt: Date) {
       return db.transaction(async (tx) => {
         if (input.purpose === "file") {
-          // Serialize the outstanding-ticket limit across devices and workspaces of one uploader.
-          await tx
-            .select({ id: user.id })
-            .from(user)
-            .where(eq(user.id, scope.userId))
-            .for("no key update");
+          // Approximate across parallel requests, but shared across the uploader's workspaces.
           const outstanding = await tx
             .select({ id: fileUploads.id })
             .from(fileUploads)
@@ -151,7 +145,9 @@ export function createStorageRepository(
           .select()
           .from(fileUploads)
           .where(eq(fileUploads.id, id))
-          .for("update");
+          // Serialize completions with deletion markers and upload cleanup, not key readers.
+          // SHARE would let an insert loser wait on a file deletion that waits on this upload.
+          .for("no key update");
         if (
           !upload ||
           upload.uploadedBy !== scope.userId ||
@@ -178,8 +174,11 @@ export function createStorageRepository(
             size: verified.size,
             sha256: verified.sha256,
           })
+          .onConflictDoNothing({ target: storedFiles.id })
           .returning();
-        return file!;
+        if (file) return file;
+        const [completed] = await tx.select().from(storedFiles).where(eq(storedFiles.id, id));
+        return completed!;
       });
     },
     async getReadable(scope: StorageScope, id: string) {
@@ -198,33 +197,49 @@ export function createStorageRepository(
       return membership ? file : null;
     },
     async deleteFile(scope: StorageScope, id: string) {
-      await db.transaction(async (tx) => {
-        const [file] = await tx
-          .select()
-          .from(storedFiles)
-          .where(eq(storedFiles.id, id))
-          .for("update");
-        if (!file) throw new AccessDeniedError();
-        const ownedByOtherUser = file.ownerUserId !== null && file.ownerUserId !== scope.userId;
-        const inOtherOrganization =
-          file.organizationId !== null && file.organizationId !== scope.organizationId;
-        if (file.uploadedBy !== scope.userId || ownedByOtherUser || inOtherOrganization)
-          throw new AccessDeniedError();
-        await requireScope(tx, scope, file.purpose, false);
-        const [usage] = await tx.execute<{ referenced: boolean }>(sql`
-          SELECT (EXISTS (SELECT 1 FROM ${userAgents} WHERE ${userAgents.imageFileId} = ${id})
-            OR EXISTS (SELECT 1 FROM ${storedFiles} WHERE ${storedFiles.id} = ${id} AND (${fileReferences})))
-            AS referenced
-        `);
-        if (usage?.referenced)
-          throw new ConflictError("Remove the attachment before deleting this file.");
-        await tx
-          .insert(storageCandidates)
-          .values({ objectKey: file.objectKey })
-          .onConflictDoNothing();
-        await tx.delete(storedFiles).where(eq(storedFiles.id, id));
-        await tx.update(fileUploads).set({ deletedAt: new Date() }).where(eq(fileUploads.id, id));
-      });
+      await db
+        .transaction(async (tx) => {
+          const [file] = await tx.select().from(storedFiles).where(eq(storedFiles.id, id));
+          if (!file) throw new AccessDeniedError();
+          const ownedByOtherUser = file.ownerUserId !== null && file.ownerUserId !== scope.userId;
+          const inOtherOrganization =
+            file.organizationId !== null && file.organizationId !== scope.organizationId;
+          if (file.uploadedBy !== scope.userId || ownedByOtherUser || inOtherOrganization)
+            throw new AccessDeniedError();
+          await requireScope(tx, scope, file.purpose, false);
+          const deleted = await tx
+            .delete(storedFiles)
+            .where(
+              and(
+                eq(storedFiles.id, id),
+                // Reference subqueries use the statement snapshot. Also detect publication
+                // that commits while this delete waits for its conditional row write.
+                file.publishedAt === null
+                  ? isNull(storedFiles.publishedAt)
+                  : eq(storedFiles.publishedAt, file.publishedAt),
+                not(fileReferences),
+                notExists(
+                  tx
+                    .select({ id: userAgents.id })
+                    .from(userAgents)
+                    .where(eq(userAgents.imageFileId, storedFiles.id)),
+                ),
+              ),
+            )
+            .returning({ id: storedFiles.id });
+          if (!deleted.length)
+            throw new ConflictError("Remove the attachment before deleting this file.");
+          await tx.update(fileUploads).set({ deletedAt: new Date() }).where(eq(fileUploads.id, id));
+          await tx
+            .insert(storageCandidates)
+            .values({ objectKey: file.objectKey })
+            .onConflictDoNothing();
+        })
+        .catch((error: Error) => {
+          if (violatedConstraint(error) === "user_agent_picture_file_owner_fk")
+            throw new ConflictError("Remove the attachment before deleting this file.");
+          throw error;
+        });
     },
   };
 }

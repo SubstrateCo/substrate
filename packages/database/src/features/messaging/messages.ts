@@ -344,7 +344,9 @@ export function messageOperations(db: DatabaseExecutor, scope: Readonly<SessionI
         const [live] = await tx
           .select({ deletedAt: messagingMessages.deletedAt })
           .from(messagingMessages)
-          .where(eq(messagingMessages.id, messageId));
+          .where(eq(messagingMessages.id, messageId))
+          // Hold the lifecycle check through the reaction write; deletion waits for this lock.
+          .for("share");
         if (!live || live.deletedAt) throw new AccessDeniedError();
         const joined =
           (

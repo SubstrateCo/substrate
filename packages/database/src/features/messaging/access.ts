@@ -241,7 +241,7 @@ export type LockedConversation = Conversation & {
   readonly [conversationLock]: "update" | "share";
 };
 
-/** Locks a conversation without an access check. The caller authorizes. */
+/** The caller authorizes. "update" locks non-key changes but permits foreign-key inserts. */
 export async function lockConversation(
   db: DatabaseExecutor,
   id: string,
@@ -251,7 +251,7 @@ export async function lockConversation(
     .select()
     .from(messagingConversations)
     .where(eq(messagingConversations.id, id))
-    .for(lock);
+    .for(lock === "update" ? "no key update" : "share");
   if (!row) throw new AccessDeniedError();
   // SAFETY: the row was just selected with the lock, which holds until the transaction ends.
   return row as LockedConversation;
@@ -259,8 +259,9 @@ export async function lockConversation(
 
 /**
  * Loads a conversation the scope can see. Membership, ownership, sharing and deletion take
- * "update" to serialize with each other. Posts and reactions take "share": they block those
- * changes until commit but not each other. Reads lock nothing.
+ * "update" to serialize with each other. Posts, reactions and message mutations take "share":
+ * they block those changes until commit but not each other at the conversation level. Reads lock
+ * nothing.
  *
  * The lock comes first and visibility is read in a second statement. PostgreSQL rechecks a row
  * after a lock wait, but not the subqueries that grant visibility, so one statement would miss a
@@ -307,7 +308,7 @@ export async function requireMessage(
     if (!target) throw new AccessDeniedError();
     await loadConversation(db, scope, target.conversationId, lock);
   }
-  const [row] = await db
+  const query = db
     .select({ message: messagingMessages, conversation: messagingConversations })
     .from(messagingMessages)
     .innerJoin(
@@ -315,6 +316,9 @@ export async function requireMessage(
       eq(messagingConversations.id, messagingMessages.conversationId),
     )
     .where(and(eq(messagingMessages.id, messageId), visibleConversations(db, scope)));
+  // Source associations must not race message deletion or edits either. Keep read-only calls free
+  // of locks, and lock only the message here: the conversation is already held above.
+  const [row] = await (lock ? query.for("share", { of: messagingMessages }) : query);
   if (!row) throw new AccessDeniedError();
   return row;
 }

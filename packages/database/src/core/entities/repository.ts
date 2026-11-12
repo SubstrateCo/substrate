@@ -15,6 +15,7 @@ export function entityRepository(context: RepositoryContext) {
           entityId,
           "owner",
           true,
+          "structural",
         );
         if (entity.entityType === "actor")
           throw new ValidationError("Disable actors instead of deleting them.");

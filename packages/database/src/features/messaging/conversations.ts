@@ -11,7 +11,11 @@ import { AccessDeniedError, ValidationError } from "../../errors";
 import { messageEntityReferences } from "../context/schema";
 import { withRemovalHints } from "../realtime/routing";
 import { loadConversation, lockConversation, visibleConversations } from "./access";
-import { findDirectMessage, findExternalDirectMessage } from "./direct-messages";
+import {
+  directMessageKey,
+  externalDirectMessageKey,
+  findExternalDirectMessage,
+} from "./direct-messages";
 import { activeMembers, endParticipation, hasOtherPerson, setOwner, writeMembers } from "./members";
 import {
   canManage,
@@ -73,8 +77,7 @@ export function conversationOperations(db: DatabaseExecutor, scope: Readonly<Ses
               )
             : visibleConversations(tx, scope),
         ),
-      )
-      .for("update");
+      );
     if (!conversation || !canManage(conversation, viewer)) throw new AccessDeniedError();
     return conversation;
   }
@@ -170,24 +173,46 @@ export function conversationOperations(db: DatabaseExecutor, scope: Readonly<Ses
         const { people, external } = await recipients(tx, scope, input.emails ?? []);
         const selected = [...people, ...(await ownedAgents(tx, scope, input.agentIds ?? []))];
         const values = validateCreate(input, selected.length + external.length);
-        if (input.kind === "dm") {
-          const existing = external.length
-            ? await findExternalDirectMessage(tx, scope, external[0]!)
-            : await findDirectMessage(tx, scope.organizationId, [
-                actor.entityId,
-                selected[0]!.entityId,
-              ]);
+        let dmKey: string | null = null;
+        if (input.kind === "dm" && external.length) {
+          const existing = await findExternalDirectMessage(tx, scope, external[0]!);
           if (existing) return existing;
+          dmKey = externalDirectMessageKey(scope, external[0]!);
+        } else if (input.kind === "dm")
+          dmKey = directMessageKey(scope.organizationId, [actor.entityId, selected[0]!.entityId]);
+        let conversation: typeof messagingConversations.$inferSelect | undefined;
+        while (!conversation) {
+          [conversation] = await tx
+            .insert(messagingConversations)
+            .values({
+              organizationId: scope.organizationId,
+              createdBy: scope.userId,
+              kind: input.kind,
+              dmKey,
+              ...values,
+            })
+            .onConflictDoNothing()
+            .returning();
+          if (conversation) break;
+          const existingQuery = tx
+            .select()
+            .from(messagingConversations)
+            .where(eq(messagingConversations.dmKey, dmKey!));
+          const [existing] = await (external.length
+            ? existingQuery.for("no key update")
+            : existingQuery);
+          // A deletion or another re-invite can release the key while the insert waits.
+          if (!existing) continue;
+          if (!external.length) return existing;
+          // Read validity after the wait: a concurrent creator may just have queued its invite.
+          const valid = await findExternalDirectMessage(tx, scope, external[0]!);
+          if (valid) return valid;
+          // Expired/revoked invitations and departed or disconnected people do not reserve a DM.
+          await tx
+            .update(messagingConversations)
+            .set({ dmKey: null })
+            .where(eq(messagingConversations.id, existing.id));
         }
-        const [conversation] = await tx
-          .insert(messagingConversations)
-          .values({
-            organizationId: scope.organizationId,
-            createdBy: scope.userId,
-            kind: input.kind,
-            ...values,
-          })
-          .returning();
         await writeMembers(
           tx,
           conversation!.id,

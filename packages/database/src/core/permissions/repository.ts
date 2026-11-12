@@ -15,7 +15,7 @@ export function permissionRepository(context: RepositoryContext) {
   }) {
     await context.transaction(async (ctx) => {
       const tx = ctx.db;
-      const { entity } = await ctx.requireAccess(input.entityId, "owner", true);
+      const { entity } = await ctx.requireAccess(input.entityId, "owner", true, "structural");
       if (entity.accessEntityId !== input.entityId)
         throw new ValidationError("This record inherits its access. Share its parent instead.");
       if (input.level) {

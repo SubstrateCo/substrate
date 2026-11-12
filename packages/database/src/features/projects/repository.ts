@@ -89,7 +89,7 @@ export function projectRepository(context: RepositoryContext) {
     async delete(entityId: string) {
       return context.transaction(async (ctx) => {
         const tx = ctx.db;
-        const { entity } = await ctx.requireAccess(entityId, "owner", true);
+        const { entity } = await ctx.requireAccess(entityId, "owner", true, "structural");
         if (entity.entityType !== "project") throw new AccessDeniedError();
         ctx.effects.hint({
           audience: realtimeKeys.organization(scope.organizationId),
@@ -108,7 +108,7 @@ export function projectRepository(context: RepositoryContext) {
     },
     async revoke(entityId: string, actorEntityId: string) {
       return context.transaction(async (ctx) => {
-        const { entity } = await ctx.requireAccess(entityId, "owner", true);
+        const { entity } = await ctx.requireAccess(entityId, "owner", true, "structural");
         if (entity.entityType !== "project") throw new AccessDeniedError();
         await requireUnassignedProjectActor(ctx, entityId, actorEntityId);
         await permissionRepository(ctx).revoke({ entityId, actorEntityId });

@@ -57,7 +57,7 @@ export async function workspaceContext(
         ),
       )
       .where(and(identity, activeActorCondition(), isNull(entities.deletedAt)));
-    const [row] = await (options.lockActor ? query.for("update", { of: actors }) : query);
+    const [row] = await (options.lockActor ? query.for("no key update", { of: actors }) : query);
     if (!row) throw new AccessDeniedError();
     ({ actor, userName, admin } = row);
   } else {

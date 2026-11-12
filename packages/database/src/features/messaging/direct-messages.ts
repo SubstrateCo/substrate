@@ -8,10 +8,17 @@ import { messagingInvitations } from "./sharing.schema";
 import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
-// The lock serializes concurrent starts of the same DM, so the lookup and the insert that follows
-// act as one step.
-async function lockDirectMessage(db: DatabaseExecutor, key: string) {
-  await db.execute(sql`select pg_advisory_xact_lock(hashtextextended(${key}, 0))`);
+export function directMessageKey(organizationId: string, actorIds: [string, string]) {
+  return JSON.stringify(["dm", organizationId, ...[...actorIds].sort()]);
+}
+
+export function externalDirectMessageKey(scope: SessionIdentity, email: string) {
+  return JSON.stringify([
+    "dm-email",
+    scope.organizationId,
+    scope.userId,
+    email.trim().toLowerCase(),
+  ]);
 }
 
 /** A pair of actors has one DM per organization, started by either of them. */
@@ -20,7 +27,6 @@ export async function findDirectMessage(
   organizationId: string,
   actorIds: [string, string],
 ) {
-  await lockDirectMessage(db, `messaging-dm:${organizationId}:${[...actorIds].sort().join(":")}`);
   const member = (actorEntityId: string) =>
     inArray(
       messagingConversations.id,
@@ -54,10 +60,6 @@ export async function findExternalDirectMessage(
   scope: SessionIdentity,
   email: string,
 ) {
-  await lockDirectMessage(
-    db,
-    `messaging-dm-email:${scope.organizationId}:${scope.userId}:${email}`,
-  );
   const [existing] = await db
     .select({ conversation: messagingConversations })
     .from(messagingConversations)
@@ -90,6 +92,7 @@ export async function findExternalDirectMessage(
         ),
       ),
     )
+    .orderBy(desc(messagingConversations.createdAt))
     .limit(1);
   return existing?.conversation;
 }

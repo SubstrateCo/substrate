@@ -13,6 +13,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -25,6 +26,7 @@ export const messagingConversations = pgTable(
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
     kind: text("kind").$type<"dm" | "group" | "channel">().notNull(),
+    dmKey: text("dm_key"),
     name: text("name"),
     private: boolean("private").default(true).notNull(),
     createdBy: text("created_by")
@@ -34,6 +36,9 @@ export const messagingConversations = pgTable(
   },
   (table) => [
     unique("messaging_conversation_organization_unique").on(table.organizationId, table.id),
+    uniqueIndex("messaging_conversations_dm_key_unique")
+      .on(table.dmKey)
+      .where(sql`${table.dmKey} IS NOT NULL`),
     check("messaging_kind_check", sql`${table.kind} IN ('dm', 'group', 'channel')`),
     check("messaging_visibility_check", sql`${table.kind} = 'channel' OR ${table.private}`),
     check(

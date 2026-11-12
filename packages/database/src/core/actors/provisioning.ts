@@ -1,5 +1,5 @@
 import type { DatabaseExecutor } from "../../client";
-import { AccessDeniedError, ValidationError } from "../../errors";
+import { AccessDeniedError, ValidationError, violatedConstraint } from "../../errors";
 import { rootEntityValues } from "../entities/identity";
 import { entities } from "../entities/schema";
 import { member } from "../organizations/schema";
@@ -51,9 +51,35 @@ export function createActor(db: DatabaseExecutor, input: ActorInput) {
   });
 }
 
+async function createOrReadActor(db: DatabaseExecutor, input: ActorInput) {
+  try {
+    // createActor's nested transaction rolls back the entity and grant on an identity conflict.
+    return await createActor(db, input);
+  } catch (error) {
+    const constraint =
+      input.type === "human"
+        ? "actors_organization_user_unique"
+        : "actors_organization_user_agent_unique";
+    if (!(error instanceof Error) || violatedConstraint(error) !== constraint) throw error;
+    const [existing] = await db
+      .select()
+      .from(actors)
+      .where(
+        and(
+          eq(actors.organizationId, input.organizationId),
+          input.type === "human"
+            ? eq(actors.userId, input.userId)
+            : eq(actors.userAgentId, input.userAgentId!),
+        ),
+      );
+    if (!existing) throw error;
+    return existing;
+  }
+}
+
 // Trusted session/credential identity only. Never accept the owner from tool input. An existing
 // actor of a live, enabled agent whose owner is a member returns from one lock-free statement;
-// only a missing actor takes the provisioning locks. Callers still check the actor is active.
+// a missing actor uses the unique identity constraint. Callers still check the actor is active.
 export async function ensureUserAgentActor(
   db: DatabaseExecutor,
   input: { organizationId: string; userId: string; userAgentId: string },
@@ -85,8 +111,7 @@ export async function ensureUserAgentActor(
     const [membership] = await tx
       .select()
       .from(member)
-      .where(and(eq(member.organizationId, input.organizationId), eq(member.userId, input.userId)))
-      .for("update");
+      .where(and(eq(member.organizationId, input.organizationId), eq(member.userId, input.userId)));
     if (!membership) throw new AccessDeniedError();
     const [agent] = await tx
       .select()
@@ -98,8 +123,7 @@ export async function ensureUserAgentActor(
           eq(userAgents.enabled, true),
           isNull(userAgents.deletedAt),
         ),
-      )
-      .for("update");
+      );
     if (!agent) throw new AccessDeniedError();
     const [existing] = await tx
       .select()
@@ -112,7 +136,7 @@ export async function ensureUserAgentActor(
       );
     return (
       existing ??
-      createActor(tx, {
+      createOrReadActor(tx, {
         organizationId: input.organizationId,
         type: "agent",
         userAgentId: agent.id,
@@ -121,7 +145,7 @@ export async function ensureUserAgentActor(
   });
 }
 
-// Trusted auth hooks can run more than once. Lock membership to serialize provisioning.
+// Trusted auth hooks can run more than once. The unique identity constraint arbitrates creation.
 export function ensureHumanActor(
   db: DatabaseExecutor,
   input: { organizationId: string; userId: string },
@@ -130,19 +154,18 @@ export function ensureHumanActor(
     const [membership] = await tx
       .select()
       .from(member)
-      .where(and(eq(member.organizationId, input.organizationId), eq(member.userId, input.userId)))
-      .for("update");
+      .where(and(eq(member.organizationId, input.organizationId), eq(member.userId, input.userId)));
     if (!membership) throw new ValidationError("Human actors require organization membership.");
     const [existing] = await tx
       .select()
       .from(actors)
       .where(and(eq(actors.organizationId, input.organizationId), eq(actors.userId, input.userId)));
-    return existing ?? createActor(tx, { ...input, type: "human" });
+    return existing ?? createOrReadActor(tx, { ...input, type: "human" });
   });
 }
 
-// Reads take one lock-free statement when every enabled agent already has an actor here. Only a
-// missing actor takes the provisioning locks.
+// Reads take one statement when every enabled agent already has an actor here. Missing actors
+// use the unique identity constraint without locking membership or agent configuration.
 export async function ensureOwnedAgentActors(
   db: DatabaseExecutor,
   input: { organizationId: string; userId: string },
@@ -178,8 +201,7 @@ function provisionOwnedAgentActors(
     const [membership] = await tx
       .select()
       .from(member)
-      .where(and(eq(member.organizationId, input.organizationId), eq(member.userId, input.userId)))
-      .for("update");
+      .where(and(eq(member.organizationId, input.organizationId), eq(member.userId, input.userId)));
     if (!membership) throw new AccessDeniedError();
     const agents = await tx
       .select({ id: userAgents.id })
@@ -191,8 +213,7 @@ function provisionOwnedAgentActors(
           isNull(userAgents.deletedAt),
         ),
       )
-      .orderBy(userAgents.id)
-      .for("update");
+      .orderBy(userAgents.id);
     if (!agents.length) return [];
     const existing = await tx
       .select()
@@ -211,7 +232,7 @@ function provisionOwnedAgentActors(
     for (const agent of agents) {
       result.push(
         byAgent.get(agent.id) ??
-          (await createActor(tx, {
+          (await createOrReadActor(tx, {
             organizationId: input.organizationId,
             type: "agent",
             userAgentId: agent.id,

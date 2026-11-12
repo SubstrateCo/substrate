@@ -19,12 +19,7 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 // Caller settings belong to the agent's owner. Every function checks the session's membership,
 // that the agent is the owner's own, and that the agent has an actor in this organization.
 
-async function lockOwnedAgent(
-  db: DatabaseExecutor,
-  identity: SessionIdentity,
-  agentId: string,
-  lock: "update" | "share" = "update",
-) {
+async function requireOwnedAgent(db: DatabaseExecutor, identity: SessionIdentity, agentId: string) {
   await workspaceContext(db, identity);
   const [agent] = await db
     .select({ id: userAgents.id, policy: userAgents.callerPolicy })
@@ -42,8 +37,7 @@ async function lockOwnedAgent(
         eq(userAgents.userId, identity.userId),
         isNull(userAgents.deletedAt),
       ),
-    )
-    .for(lock, { of: userAgents });
+    );
   if (!agent) throw new AccessDeniedError();
   return agent;
 }
@@ -64,9 +58,25 @@ export function saveCallerPolicy(
   policy: AgentCallerPolicy,
 ) {
   return db.transaction(async (tx) => {
-    const agent = await lockOwnedAgent(tx, identity, agentId);
-    if (agent.policy === policy) return null;
-    await tx.update(userAgents).set({ callerPolicy: policy }).where(eq(userAgents.id, agent.id));
+    let agent = await requireOwnedAgent(tx, identity, agentId);
+    for (;;) {
+      if (agent.policy === policy) return null;
+      const updated = await tx
+        .update(userAgents)
+        .set({ callerPolicy: policy })
+        .where(
+          and(
+            eq(userAgents.id, agent.id),
+            eq(userAgents.userId, identity.userId),
+            isNull(userAgents.deletedAt),
+            eq(userAgents.callerPolicy, agent.policy),
+          ),
+        )
+        .returning({ id: userAgents.id });
+      if (updated.length) break;
+      // Another policy change won. Read its value before retrying so the audit stays correct.
+      agent = await requireOwnedAgent(tx, identity, agentId);
+    }
     await audit(tx, [
       {
         organizationId: identity.organizationId,
@@ -86,7 +96,7 @@ export function saveCallerPolicy(
 /** The agent's policy and its allowlist in this organization. */
 export function listCallers(db: DatabaseExecutor, identity: SessionIdentity, agentId: string) {
   return db.transaction(async (tx): Promise<AgentCallers> => {
-    const agent = await lockOwnedAgent(tx, identity, agentId, "share");
+    const agent = await requireOwnedAgent(tx, identity, agentId);
     const rows = await tx
       .select({
         actorId: userAgentCallers.callerActorEntityId,
@@ -126,7 +136,7 @@ export function allowCaller(
   callerActorId: string,
 ) {
   return db.transaction(async (tx) => {
-    const agent = await lockOwnedAgent(tx, identity, agentId);
+    const agent = await requireOwnedAgent(tx, identity, agentId);
     const [person] = await tx
       .select({ actorId: actors.entityId, userId: actors.userId })
       .from(actors)
@@ -178,7 +188,7 @@ export function removeCaller(
   callerActorId: string,
 ) {
   return db.transaction(async (tx) => {
-    const agent = await lockOwnedAgent(tx, identity, agentId);
+    const agent = await requireOwnedAgent(tx, identity, agentId);
     const removed = await tx
       .delete(userAgentCallers)
       .where(

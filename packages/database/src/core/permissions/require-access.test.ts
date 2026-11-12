@@ -1,4 +1,5 @@
 import { AccessDeniedError } from "../../errors";
+import { tasks } from "../../features/tasks/tasks.schema";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
@@ -183,6 +184,96 @@ test("lockAccessPaths locks every entity and container in one statement and deni
   ).toBeInstanceOf(AccessDeniedError);
 });
 
+test("ordinary writes to different tasks share their project's access lock", async () => {
+  const { owner, parent, child } = await hierarchy();
+  const other = await owner.tasks.create({ projectEntityId: parent.entityId, title: "Other" });
+  const scope = { organizationId: f.orgA, actorEntityId: f.alice };
+  await f.db.transaction(async (tx) => {
+    await new RepositoryContext(tx, scope).requireAccess(child.entityId, "edit", true);
+    // This must finish before the first writer commits, not merely after it releases the lock.
+    await f.db.transaction(async (second) => {
+      await second.execute(sql`SET LOCAL lock_timeout = '1s'`);
+      await new RepositoryContext(second, scope).requireAccess(other.entityId, "edit", true);
+      await second
+        .update(tasks)
+        .set({ title: "Written concurrently" })
+        .where(eq(tasks.entityId, other.entityId));
+    });
+    expect((await owner.tasks.get(other.entityId)).title).toBe("Written concurrently");
+    expect(
+      await rejection(
+        f.db.transaction(async (second) => {
+          await second.execute(sql`SET LOCAL lock_timeout = '100ms'`);
+          await new RepositoryContext(second, scope).requireAccess(child.entityId, "edit", true);
+        }),
+      ),
+    ).toMatchObject({ cause: { code: "55P03" } });
+  });
+});
+
+test("a structural change waits for an ordinary task writer before revoking access", async () => {
+  const { owner, parent, child } = await hierarchy();
+  await owner.permissions.grant({ entityId: parent.entityId, actorEntityId: f.bob, level: "edit" });
+  const held = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  const writer = f.db.transaction(async (tx) => {
+    const ctx = new RepositoryContext(tx, { organizationId: f.orgA, actorEntityId: f.bob });
+    await ctx.requireAccess(child.entityId, "edit", true);
+    await tx
+      .update(tasks)
+      .set({ title: "Before revoke" })
+      .where(eq(tasks.entityId, child.entityId));
+    held.resolve();
+    await release.promise;
+  });
+  const started = Promise.withResolvers<number>();
+  let structural: Promise<unknown> | undefined;
+  try {
+    await Promise.race([held.promise, writer]);
+    structural = f.db.transaction(async (tx) => {
+      const [connection] = await tx.execute<{ pid: number }>(sql`SELECT pg_backend_pid() AS pid`);
+      started.resolve(connection!.pid);
+      await new RepositoryContext(tx, {
+        organizationId: f.orgA,
+        actorEntityId: f.alice,
+      }).requireAccess(child.entityId, "owner", true, "structural");
+      await tx
+        .delete(entityGrants)
+        .where(
+          and(eq(entityGrants.entityId, parent.entityId), eq(entityGrants.actorEntityId, f.bob)),
+        );
+    });
+    const pid = await started.promise;
+    let blocked = false;
+    for (let attempt = 0; attempt < 200; attempt++) {
+      const [state] = await f.db.execute<{ blocked: boolean }>(
+        sql`SELECT cardinality(pg_blocking_pids(${pid}::integer)) > 0 AS blocked`,
+      );
+      if (state!.blocked) {
+        blocked = true;
+        break;
+      }
+      await Bun.sleep(10);
+    }
+    expect(blocked).toBe(true);
+    release.resolve();
+    await writer;
+    await structural;
+    expect((await owner.tasks.get(child.entityId)).title).toBe("Before revoke");
+    expect(
+      await rejection(
+        new RepositoryContext(f.db, {
+          organizationId: f.orgA,
+          actorEntityId: f.bob,
+        }).requireAccess(child.entityId, "edit"),
+      ),
+    ).toBeInstanceOf(AccessDeniedError);
+  } finally {
+    release.resolve();
+    await Promise.allSettled([writer, ...(structural ? [structural] : [])]);
+  }
+});
+
 for (const inherited of [false, true]) {
   test(`locked access sees ${inherited ? "inherited" : "direct"} revocation committed while waiting for the lock`, async () => {
     const { owner, parent, child } = await hierarchy();
@@ -196,7 +287,7 @@ for (const inherited of [false, true]) {
       await new RepositoryContext(tx, {
         organizationId: f.orgA,
         actorEntityId: f.alice,
-      }).requireAccess(grantEntityId, "owner", true);
+      }).requireAccess(grantEntityId, "owner", true, "structural");
       await tx
         .delete(entityGrants)
         .where(

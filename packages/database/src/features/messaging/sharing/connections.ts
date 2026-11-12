@@ -142,7 +142,7 @@ export async function clearMembershipSharing(
         ),
       )
       .orderBy(asc(messagingConversations.id))
-      .for("update");
+      .for("no key update");
     const ids = conversations.map((row) => row.id);
     await withRemovalHints(
       tx,

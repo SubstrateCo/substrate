@@ -316,6 +316,57 @@ test("concurrent acceptance is safe to replay without duplicate participants or 
   ).toHaveLength(1);
 });
 
+test("accept and decline racing on one invitation commit exactly one outcome", async () => {
+  const c = await channel();
+  const invite = await sharing().invite(c.id, { email: "outside@example.com", shareHistory: true });
+  const results = await Promise.allSettled([
+    sharing("outsider", f.orgB).accept(invite.id, true),
+    sharing("outsider", f.orgB).decline(invite.id),
+  ]);
+  expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+  const loser = results.find((result) => result.status === "rejected");
+  expect(loser?.status === "rejected" ? loser.reason : undefined).toBeInstanceOf(ValidationError);
+  const [current] = await f.db
+    .select()
+    .from(messagingInvitations)
+    .where(eq(messagingInvitations.id, invite.id));
+  const accepted = results[0]!.status === "fulfilled";
+  expect(current!.status).toBe(accepted ? "accepted" : "declined");
+  expect(
+    await f.db
+      .select()
+      .from(messagingParticipants)
+      .where(
+        and(
+          eq(messagingParticipants.conversationId, c.id),
+          eq(messagingParticipants.organizationId, f.orgB),
+        ),
+      ),
+  ).toHaveLength(accepted ? 1 : 0);
+  expect(
+    await f.db
+      .select()
+      .from(messagingConnections)
+      .where(
+        and(
+          eq(messagingConnections.conversationId, c.id),
+          eq(messagingConnections.organizationId, f.orgB),
+        ),
+      ),
+  ).toHaveLength(accepted ? 1 : 0);
+  expect(
+    await f.db
+      .select()
+      .from(messagingSharingEvents)
+      .where(
+        and(
+          eq(messagingSharingEvents.invitationId, invite.id),
+          eq(messagingSharingEvents.action, accepted ? "accepted" : "declined"),
+        ),
+      ),
+  ).toHaveLength(1);
+});
+
 test("resending invalidates the previous invitation and revocation is permanent for that link", async () => {
   const c = await channel();
   const old = await sharing().invite(c.id, { email: "outside@example.com", shareHistory: true });
@@ -533,7 +584,7 @@ test("a post waiting for a disconnect lock rechecks access after that disconnect
       .select()
       .from(schema.messagingConversations)
       .where(eq(schema.messagingConversations.id, c.id))
-      .for("update");
+      .for("no key update");
     const posted = createMessagingService(observed, { userId: "outsider", organizationId: f.orgB })
       .sendMessage(c.id, "Must not commit")
       .then(
@@ -659,7 +710,7 @@ test("an invite from a non-member is rejected before it waits for the conversati
       .select()
       .from(schema.messagingConversations)
       .where(eq(schema.messagingConversations.id, c.id))
-      .for("update");
+      .for("no key update");
     return Promise.race([
       rejection(
         sharing("outsider", f.orgA).invite(c.id, {

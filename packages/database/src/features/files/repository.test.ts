@@ -243,34 +243,57 @@ test("creating a task and its files is atomic, and a published file cannot be re
   ]);
 });
 
-test("cleanup skips a file locked for publication and cannot remove a committed attachment", async () => {
+test("cleanup skips an uncommitted publication write and cannot remove its committed attachment", async () => {
   const target = await task();
   const file = await staged();
   await f.db
     .update(storedFiles)
     .set({ createdAt: new Date(0) })
     .where(eq(storedFiles.id, file.id));
-  const locked = Promise.withResolvers<void>();
+  const published = Promise.withResolvers<void>();
   const release = Promise.withResolvers<void>();
-  const holding = f.db.transaction(async (tx) => {
-    await tx.select().from(storedFiles).where(eq(storedFiles.id, file.id)).for("update");
-    locked.resolve();
+  const publishing = f.db.transaction(async (tx) => {
+    const workspace = await createRepositories(tx).forSession(scope());
+    await workspace.files.addTask({ ...target, attachmentFileIds: [file.id] });
+    published.resolve();
     await release.promise;
   });
-  await locked.promise;
-  const publishing = files().addTask(scope(), { ...target, attachmentFileIds: [file.id] });
+  await published.promise;
   const storage = createStorageRepository(f.db, attachmentReferences);
   try {
     await storage.pruneUnusedFiles(new Date());
     expect((await f.db.select().from(storedFiles)).map((row) => row.id)).toEqual([file.id]);
   } finally {
     release.resolve();
-    await holding;
+    await publishing;
   }
-  await publishing;
   await storage.pruneUnusedFiles(new Date());
   expect((await files().listTask(scope(), target))[0]!.fileId).toBe(file.id);
   expect((await f.db.select().from(storedFiles)).map((row) => row.id)).toEqual([file.id]);
+});
+
+test("concurrent publication and deletion have exactly one winner", async () => {
+  const target = await task();
+  const storage = createStorageRepository(f.db, attachmentReferences);
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const file = await staged();
+    const publish = () => files().addTask(scope(), { ...target, attachmentFileIds: [file.id] });
+    const remove = () => storage.deleteFile(scope(), file.id);
+    const operations = attempt % 2 === 0 ? [publish(), remove()] : [remove(), publish()];
+    const outcomes = await Promise.allSettled(operations);
+    expect(outcomes.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    const attachments = (await files().listTask(scope(), target)).filter(
+      (item) => item.fileId === file.id,
+    );
+    const remaining = await f.db.select().from(storedFiles).where(eq(storedFiles.id, file.id));
+    const published = outcomes[attempt % 2 === 0 ? 0 : 1]!.status === "fulfilled";
+    expect(attachments).toHaveLength(published ? 1 : 0);
+    expect(remaining).toHaveLength(published ? 1 : 0);
+    const failure = outcomes.find((result) => result.status === "rejected");
+    expect(failure?.status === "rejected" ? failure.reason : undefined).toBeInstanceOf(
+      published ? ConflictError : AccessDeniedError,
+    );
+  }
 });
 
 test("database constraints reject wrong task organizations and empty messages after final attachment removal", async () => {

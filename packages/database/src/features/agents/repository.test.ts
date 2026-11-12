@@ -122,6 +122,32 @@ test("PostgreSQL enforces agent picture owner and fixed purpose", async () => {
   ).toMatchObject({ cause: { code: "23514" } });
 });
 
+test("concurrent picture assignment and deletion leave no dangling picture", async () => {
+  const owner = createAgentRepository(f.db, "alice");
+  const storage = createStorageRepository(f.db);
+  const saved = await owner.saveAgent(agent);
+  const picture = avatar();
+  await f.db.insert(storedFiles).values(picture);
+  const [assignment, deletion] = await Promise.allSettled([
+    owner.setPicture(saved.id, picture.id),
+    storage.deleteFile({ userId: "alice", organizationId: null }, picture.id),
+  ]);
+  expect([assignment, deletion].filter((result) => result.status === "fulfilled")).toHaveLength(1);
+  const [row] = await f.db.select().from(userAgents).where(eq(userAgents.id, saved.id));
+  const remaining = await f.db.select().from(storedFiles).where(eq(storedFiles.id, picture.id));
+  if (assignment.status === "fulfilled") {
+    expect(row?.imageFileId).toBe(picture.id);
+    expect(remaining).toHaveLength(1);
+    expect(deletion.status === "rejected" ? deletion.reason : undefined).toBeInstanceOf(
+      ConflictError,
+    );
+  } else {
+    expect(assignment.reason).toBeInstanceOf(AccessDeniedError);
+    expect(row?.imageFileId).toBeNull();
+    expect(remaining).toHaveLength(0);
+  }
+});
+
 test("user definitions do not require organization membership and cannot cross owners", async () => {
   await f.db.insert(user).values({ id: "solo", name: "Solo", email: "solo@example.com" });
   const owner = createAgentRepository(f.db, "solo");

@@ -28,7 +28,7 @@ import {
   messagingMessages,
   messagingParticipants,
 } from "../messaging/schema";
-import { admit, lockCallableAgents } from "./admission";
+import { admit } from "./admission";
 import { audit, type AuditEvent } from "./audit";
 import { agentAuditEvents, agentInvocations } from "./invocations.schema";
 import { inStates } from "./machine-sql";
@@ -93,8 +93,8 @@ const auditOf = (
  * Whether a call may still run, read now: the agent is enabled and its policy accepts callers,
  * the caller is an active member who can see the conversation, the owner can see it, the agent
  * is still a live member, and the message is not deleted. `approved` reports whether the policy
- * lets this call run without a new decision: anyone, an owner approval, or the allowlist. Takes
- * a share lock on the agent, so a policy change waits for the check's transaction.
+ * lets this call run without a new decision: anyone, an owner approval, or the allowlist. A
+ * concurrent policy change may commit after this read, as if the check ran before the change.
  */
 async function callChecks(db: DatabaseExecutor, row: InvocationRow) {
   const visibleTo = (userId: string) =>
@@ -161,8 +161,7 @@ async function callChecks(db: DatabaseExecutor, row: InvocationRow) {
         isNull(userAgents.deletedAt),
         eq(userAgents.enabled, true),
       ),
-    )
-    .for("share", { of: userAgents });
+    );
   if (!check || check.policy === "owner" || !check.reachable)
     return { reachable: false, approved: false };
   const approved = check.policy === "anyone" || row.decidedByUserId !== null || check.allowlisted;
@@ -248,8 +247,6 @@ export function decideInvocation(
   return db.transaction(async (tx) => {
     await workspaceContext(tx, identity);
     const row = await requireOwnedInvocation(tx, identity, invocationId);
-    // Admission counts an approval toward the daily cap, so it waits for concurrent admissions.
-    await lockCallableAgents(tx, [row.userAgentId]);
     let event: DecisionEvent = "decline";
     if (decision !== "decline")
       event =
@@ -295,8 +292,8 @@ export function decideInvocation(
 }
 
 /**
- * Cancels an agent's pending calls, when its owner switches to owner only. Call with the agent
- * row locked for update.
+ * Cancels an agent's pending calls after updating its policy to owner only in this transaction.
+ * A concurrent admission missed by this update is cancelled at decision time or expires.
  */
 export async function cancelPendingInvocations(
   db: DatabaseExecutor,

@@ -24,14 +24,15 @@ export function messageMutationOperations(db: DatabaseExecutor, scope: Readonly<
         .from(messagingMessages)
         .where(eq(messagingMessages.id, messageId));
       if (!target) throw new AccessDeniedError();
-      // Serialize with membership changes, sends, reactions, and other message mutations. Read
+      // Serialize with membership changes and mutations of this message, not other sends. Read
       // author and lifecycle state after the lock wait, never from a stale pre-lock message.
-      const conversation = await loadConversation(tx, scope, target.conversationId, "update");
+      const conversation = await loadConversation(tx, scope, target.conversationId, "share");
       const { actor, context } = await messagingSession(tx, scope);
       const [message] = await tx
         .select()
         .from(messagingMessages)
-        .where(eq(messagingMessages.id, messageId));
+        .where(eq(messagingMessages.id, messageId))
+        .for("no key update");
       if (!message || message.authorActorEntityId !== actor.entityId || message.deletedAt)
         throw new AccessDeniedError();
       const deleting = body === undefined;
