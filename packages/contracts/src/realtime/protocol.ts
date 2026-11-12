@@ -34,9 +34,10 @@ export const realtimeDomain = z.enum([
 ]);
 export type RealtimeDomain = z.infer<typeof realtimeDomain>;
 
-// Narrows a messaging change to message content: membership and conversation details did not
-// change. Optional, so clients that do not know it refresh the whole messaging domain.
-export const realtimeScope = z.enum(["messages"]);
+// Narrows a messaging change. "messages": message content changed, but membership and
+// conversation details did not. "read": only the viewer's read position, so only unread state,
+// changed. Optional: without it, clients refresh the whole messaging domain.
+export const realtimeScope = z.enum(["messages", "read"]);
 export type RealtimeScope = z.infer<typeof realtimeScope>;
 
 /** Only messaging changes have a scope. */

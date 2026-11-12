@@ -105,10 +105,12 @@ export function readOperations(
             setWhere: sql`(${messagingReadPositions.messageCreatedAt}, ${messagingReadPositions.messageId}) < (${at}, ${messageId}::uuid)`,
           })
           .returning({ messageId: messagingReadPositions.messageId });
+        // A read position changes only the reader's unread counts, on the reader's devices.
         if (changed.length)
           effectsFor(tx).hint({
             audience: realtimeKeys.actor(scope.organizationId, actor.entityId),
             domain: "messaging",
+            scope: "read",
           });
         return { read: true };
       });

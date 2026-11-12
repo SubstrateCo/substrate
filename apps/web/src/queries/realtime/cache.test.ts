@@ -3,6 +3,7 @@ import type { RealtimeEvent } from "@substrate/contracts/realtime";
 import { QueryClient, QueryObserver } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
+import { queryTargetFilter } from "../targets";
 import { createRealtimeCache, realtimeQueryTargets } from "./cache";
 import { expect, test } from "bun:test";
 
@@ -231,6 +232,32 @@ test("messaging targets all thread variants of one conversation, not another", (
   expect(realtimeQueryTargets(change("agents", null), "user")).toEqual([
     { queryKey: queryKeys.agents("user") },
   ]);
+});
+
+test("a read-position hint refreshes only unread counts", () => {
+  const client = new QueryClient();
+  const unread = queryKeys.messageUnread("org");
+  const untouched = [
+    queryKeys.conversations("org"),
+    queryKeys.messages("org", "conversation"),
+    queryKeys.messageReactions("org", "conversation", "message"),
+    queryKeys.messagePage("org", "conversation", ["message"]),
+    queryKeys.messageTargets("org", "conversation"),
+    queryKeys.related("org", "task"),
+    queryKeys.search("org"),
+    queryKeys.myAgentCalls("user", "org", "conversation"),
+    queryKeys.messageUnread("other-org"),
+  ];
+  for (const key of [unread, ...untouched]) client.setQueryData(key, []);
+  const matched = realtimeQueryTargets({ ...change("messaging"), scope: "read" }, "user").flatMap(
+    (target) =>
+      client
+        .getQueryCache()
+        .findAll(queryTargetFilter(target))
+        .map((query) => query.queryKey),
+  );
+  expect(matched).toEqual([unread]);
+  client.clear();
 });
 
 test("new messages refresh history, not conversation lists or loaded message context", () => {

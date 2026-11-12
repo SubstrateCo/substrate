@@ -60,6 +60,8 @@ export function domainTargets(
 ): QueryTarget[] {
   switch (domain) {
     case "messaging":
+      // A read position changes only the reader's unread counts.
+      if (scope === "read") return [{ queryKey: queryKeys.messageUnread(organizationId) }];
       return [
         { queryKey: queryKeys.messageUnread(organizationId) },
         // Message content changes leave membership and conversation details unchanged.

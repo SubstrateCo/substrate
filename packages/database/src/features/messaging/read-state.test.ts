@@ -1,3 +1,5 @@
+import { realtimeKeys } from "@substrate/contracts/realtime";
+
 import { commit } from "../../core/effects";
 import { AccessDeniedError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
@@ -43,7 +45,10 @@ test("unchanged and older read positions publish no refresh hints", async () => 
   const conversation = await alice.createConversation({ kind: "dm", emails: ["bob@example.com"] });
   const first = await alice.sendMessage(conversation.id, "first");
   const last = await alice.sendMessage(conversation.id, "last");
-  expect((await mark(conversation.id, last.id)).hints).toHaveLength(1);
+  // Only the reader's own devices refresh, and only their unread state.
+  expect((await mark(conversation.id, last.id)).hints).toEqual([
+    { audience: realtimeKeys.actor(f.orgA, f.bob), domain: "messaging", scope: "read" },
+  ]);
   expect((await mark(conversation.id, last.id)).hints).toEqual([]);
   expect((await mark(conversation.id, first.id)).hints).toEqual([]);
   expect(await reads().unreadCounts()).toEqual([]);
