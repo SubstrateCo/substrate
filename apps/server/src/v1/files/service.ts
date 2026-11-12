@@ -94,13 +94,23 @@ export function createFileService(deps: FileServiceDependencies) {
       // Uploads expire after uploadTtlMs. A full day gives in-flight completions ample time to stop.
       const before = new Date(Date.now() - 24 * 60 * 60_000);
       await repository.pruneUnusedFiles(before);
-      for (const candidate of await repository.cleanupCandidates(before)) {
-        await storage.remove(candidate.objectKey);
-        await repository.forgetCandidate(candidate.objectKey);
+      const candidates: string[] = [];
+      try {
+        for (const candidate of await repository.cleanupCandidates(before)) {
+          await storage.remove(candidate.objectKey);
+          candidates.push(candidate.objectKey);
+        }
+      } finally {
+        if (candidates.length) await repository.forgetCandidates(candidates);
       }
-      for (const upload of await repository.expiredUploads(before)) {
-        await storage.remove(upload.temporaryKey);
-        await repository.forgetUpload(upload.id);
+      const uploads: string[] = [];
+      try {
+        for (const upload of await repository.expiredUploads(before)) {
+          await storage.remove(upload.temporaryKey);
+          uploads.push(upload.id);
+        }
+      } finally {
+        if (uploads.length) await repository.forgetUploads(uploads);
       }
     },
   };

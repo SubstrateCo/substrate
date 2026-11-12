@@ -28,8 +28,10 @@ export interface WorkspaceScope extends IdentityScope {
   organizationId: string;
   repositories: Awaited<ReturnType<Repositories["forSession"]>>;
 }
-export interface DeviceScope extends WorkspaceScope {
+export interface DeviceScope extends IdentityScope {
+  organizationId: string;
   installationId: string;
+  device: Awaited<ReturnType<Repositories["forDeviceSession"]>>;
 }
 export type ScopeEnv<S = WorkspaceScope> = Env & { Variables: { scope: S } };
 
@@ -138,8 +140,19 @@ export function createScopes(deps: ScopeDependencies) {
       ),
     device: (target: keyof ValidationTargets) =>
       middleware(async (headers, input, session): Promise<DeviceScope> => {
-        const scope = await workspace(headers, session, input.organizationId);
-        return registered(scope, input);
+        const scope = identity(headers, session);
+        const organizationId = requireWorkspace(
+          input.organizationId ?? scope.organizationId ?? "",
+          scope.organizationId,
+        );
+        if (!scope.installationId || scope.installationId !== input.installationId)
+          throw new ServiceError("FORBIDDEN", "Invalid desktop installation.");
+        const device = await deps.repositories.forDeviceSession({
+          userId: scope.userId,
+          organizationId,
+          installationId: scope.installationId,
+        });
+        return { ...scope, organizationId, installationId: scope.installationId, device };
       }, target),
   };
 }

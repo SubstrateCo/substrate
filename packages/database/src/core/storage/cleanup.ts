@@ -72,8 +72,9 @@ export function createStorageCleanup(db: Database, fileReferences: SQL) {
           .where(inArray(fileUploads.id, ids));
       });
     },
-    async forgetCandidate(objectKey: string) {
-      await db.delete(storageCandidates).where(eq(storageCandidates.objectKey, objectKey));
+    async forgetCandidates(objectKeys: string[]) {
+      if (objectKeys.length)
+        await db.delete(storageCandidates).where(inArray(storageCandidates.objectKey, objectKeys));
     },
     async expiredUploads(before: Date) {
       return db
@@ -84,8 +85,8 @@ export function createStorageCleanup(db: Database, fileReferences: SQL) {
     },
     // Cleanup reaches an upload a day after it expired, so it is complete or abandoned. A stored
     // file keeps its own row, and the row's deletion message is no longer needed.
-    async forgetUpload(id: string) {
-      await db.delete(fileUploads).where(eq(fileUploads.id, id));
+    async forgetUploads(ids: string[]) {
+      if (ids.length) await db.delete(fileUploads).where(inArray(fileUploads.id, ids));
     },
   };
 }

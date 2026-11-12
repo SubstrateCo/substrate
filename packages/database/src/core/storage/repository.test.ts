@@ -191,7 +191,7 @@ describe("stored file relationships", () => {
       .where(eq(fileUploads.id, id));
     const before = new Date(Date.now() - 24 * 60 * 60_000);
     expect((await repo.expiredUploads(before)).map((upload) => upload.id)).toEqual([id]);
-    await repo.forgetUpload(id);
+    await repo.forgetUploads([id]);
     expect(await f.db.select().from(fileUploads).where(eq(fileUploads.id, id))).toEqual([]);
     expect(await repo.expiredUploads(before)).toEqual([]);
   });

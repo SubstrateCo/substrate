@@ -9,21 +9,13 @@ import type {
   requestAnswersInput,
   sourcesInput,
 } from "@substrate/contracts/agent-work";
-import * as work from "@substrate/database/agent-work";
-import type { Database } from "@substrate/database/trusted";
 
 import type { DeviceScope, UserScope } from "../../shared/scope";
 import { serviceResult } from "../../shared/service-result";
 import type { CommittedPublisher } from "../realtime/committed";
 import type { z } from "zod";
 
-export function createDeviceService({
-  db,
-  publish,
-}: {
-  db: Database;
-  publish: CommittedPublisher;
-}) {
+export function createDeviceService({ publish }: { publish: CommittedPublisher }) {
   return {
     registerDevice(this: void, scope: UserScope, input: z.output<typeof registerDeviceInput>) {
       return serviceResult(async () => {
@@ -31,44 +23,43 @@ export function createDeviceService({
         return { id: result.id };
       });
     },
-    deviceHeartbeat(this: void, scope: UserScope, input: z.output<typeof deviceHeartbeatInput>) {
+    deviceHeartbeat(this: void, _scope: UserScope, _input: z.output<typeof deviceHeartbeatInput>) {
       return serviceResult(async () => {
-        await publish(await scope.owner.devices.touch(input.installationId));
         return {};
       });
     },
     pullWakes(this: void, scope: DeviceScope, input: z.output<typeof pullWakesInput>) {
       return serviceResult(async () =>
-        publish(await work.pullWakes(db, scope, input.limit, input.capabilities)),
+        publish(await scope.device.agentWork.pullWakes(input.limit, input.capabilities)),
       );
     },
     ackWakes(this: void, scope: DeviceScope, input: z.output<typeof ackWakesInput>) {
-      return serviceResult(async () => publish(await work.ackWakes(db, scope, input.ids)));
+      return serviceResult(async () => publish(await scope.device.agentWork.ackWakes(input.ids)));
     },
     loadSources(this: void, scope: DeviceScope, input: z.output<typeof sourcesInput>) {
       return serviceResult(async () =>
-        publish(await work.loadSources(db, scope, input.messageIds, input.invocationIds)),
+        publish(await scope.device.agentWork.loadSources(input.messageIds, input.invocationIds)),
       );
     },
     publishStatus(this: void, scope: DeviceScope, input: z.output<typeof publishStatusInput>) {
       return serviceResult(async () => {
         const { organizationId: _, installationId: __, ...status } = input;
-        return publish(await work.publishStatus(db, scope, status));
+        return publish(await scope.device.agentWork.publishStatus(status));
       });
     },
     openRequest(this: void, scope: DeviceScope, input: z.output<typeof openRequestInput>) {
       return serviceResult(async () => {
         const { organizationId: _, installationId: __, ...request } = input;
-        return publish(await work.openRequest(db, scope, request));
+        return publish(await scope.device.agentWork.openRequest(request));
       });
     },
     closeRequest(this: void, scope: DeviceScope, input: z.output<typeof closeRequestInput>) {
       return serviceResult(async () =>
-        publish(await work.closeRequest(db, scope, input.requestId, input.status)),
+        publish(await scope.device.agentWork.closeRequest(input.requestId, input.status)),
       );
     },
     requestAnswers(this: void, scope: DeviceScope, _input: z.output<typeof requestAnswersInput>) {
-      return serviceResult(() => work.requestAnswers(db, scope));
+      return serviceResult(() => scope.device.agentWork.requestAnswers());
     },
   };
 }

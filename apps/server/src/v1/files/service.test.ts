@@ -28,6 +28,8 @@ function fixture() {
     [upload.temporaryKey, new TextEncoder().encode("hello")],
   ]);
   const candidates = new Set(["orphan"]);
+  const forgottenCandidates: string[][] = [];
+  const forgottenUploads: string[][] = [];
   const expiredUploads = new Map<string, { id: string; temporaryKey: string }>([
     [id, { id, temporaryKey: upload.temporaryKey }],
   ]);
@@ -45,12 +47,14 @@ function fixture() {
     },
     cleanupCandidates: async () => [...candidates].map((objectKey) => ({ objectKey })),
     pruneUnusedFiles: async () => {},
-    forgetCandidate: async (key) => {
-      candidates.delete(key);
+    forgetCandidates: async (keys) => {
+      forgottenCandidates.push(keys);
+      for (const key of keys) candidates.delete(key);
     },
     expiredUploads: async () => [...expiredUploads.values()],
-    forgetUpload: async (uploadId) => {
-      expiredUploads.delete(uploadId);
+    forgetUploads: async (ids) => {
+      forgottenUploads.push(ids);
+      for (const uploadId of ids) expiredUploads.delete(uploadId);
     },
   };
   const storage: ObjectStorage = {
@@ -82,12 +86,37 @@ function fixture() {
     storage,
     service,
     candidates,
+    forgottenCandidates,
+    forgottenUploads,
     expiredUploads,
     scope: { userId: "alice", organizationId: "org" },
   };
 }
 
 describe("file workflow", () => {
+  test("cleanup acknowledges each successful storage batch with one database write", async () => {
+    const f = fixture();
+    f.candidates.add("another");
+    f.candidates.add("third");
+    f.expiredUploads.set("old-upload", { id: "old-upload", temporaryKey: "old-temporary" });
+    await f.service.cleanup();
+    expect(f.forgottenCandidates).toEqual([["orphan", "another", "third"]]);
+    expect(f.forgottenUploads).toEqual([[f.id, "old-upload"]]);
+    expect(f.candidates.size).toBe(0);
+    expect(f.expiredUploads.size).toBe(0);
+  });
+
+  test("a failed storage deletion keeps failed keys but acknowledges completed deletions", async () => {
+    const f = fixture();
+    f.candidates.add("failed");
+    f.candidates.add("unprocessed");
+    f.storage.remove = async (key) => {
+      if (key === "failed") throw new Error("S3 unavailable");
+    };
+    await expect(f.service.cleanup()).rejects.toThrow("S3 unavailable");
+    expect([...f.candidates]).toEqual(["failed", "unprocessed"]);
+    expect(f.forgottenCandidates).toEqual([["orphan"]]);
+  });
   test("generic completion verifies bytes and retries cannot replace final content", async () => {
     const f = fixture();
     const first = await f.service.completeUpload(f.scope, f.id);

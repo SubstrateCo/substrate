@@ -11,7 +11,11 @@ import { realtimeKeys } from "@substrate/contracts/realtime";
 import type { DatabaseExecutor } from "../../client";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { effectsFor } from "../../core/effects";
-import { requireDevice, type DeviceIdentity } from "../../core/session/device";
+import {
+  requireDevice,
+  type DeviceIdentity,
+  type ResolvedDeviceIdentity,
+} from "../../core/session/device";
 import { admit } from "./admission";
 import { homedAgentIds } from "./device";
 import { dropWithheldCallerWakes } from "./invocations";
@@ -104,6 +108,125 @@ function deviceWakes(db: DatabaseExecutor, identity: DeviceIdentity, deviceId: s
  * gets no caller_message wakes: they stay pending for a desktop that can run them, for up to a
  * day. Its pull then drops the calls of older ones (see dropWithheldCallerWakes).
  */
+export async function pullWakesForDevice(
+  tx: DatabaseExecutor,
+  identity: ResolvedDeviceIdentity,
+  limit: number,
+  capabilities: readonly DeviceCapability[] = [],
+) {
+  const device = { id: identity.deviceId };
+  // Driven from the owner's homeless agents, so the wake check uses the per-agent pending index.
+  const adopted = await tx
+    .update(userAgents)
+    .set({ homeDeviceId: device.id })
+    .where(
+      and(
+        eq(userAgents.userId, identity.userId),
+        isNull(userAgents.homeDeviceId),
+        exists(
+          tx
+            .select({ id: agentWakes.id })
+            .from(agentWakes)
+            .where(
+              and(
+                eq(agentWakes.userAgentId, userAgents.id),
+                isNull(agentWakes.ackedAt),
+                eq(agentWakes.ownerUserId, identity.userId),
+                eq(agentWakes.organizationId, identity.organizationId),
+              ),
+            ),
+        ),
+      ),
+    )
+    .returning({ id: userAgents.id });
+  if (adopted.length)
+    effectsFor(tx).hint({ audience: realtimeKeys.user(identity.userId), domain: "agents" });
+  if (!capabilities.includes("caller_wakes"))
+    await dropWithheldCallerWakes(
+      tx,
+      and(
+        eq(agentWakes.ownerUserId, identity.userId),
+        eq(agentWakes.organizationId, identity.organizationId),
+        deviceWakes(tx, identity, device.id),
+      )!,
+    );
+  const rows = await tx
+    .select()
+    .from(agentWakes)
+    .where(
+      and(
+        eq(agentWakes.ownerUserId, identity.userId),
+        eq(agentWakes.organizationId, identity.organizationId),
+        isNull(agentWakes.ackedAt),
+        deviceWakes(tx, identity, device.id),
+        capabilities.includes("caller_wakes") ? undefined : ne(agentWakes.source, "caller_message"),
+      ),
+    )
+    .orderBy(asc(agentWakes.createdAt), asc(agentWakes.id))
+    .limit(limit);
+  const invocationIds = rows.flatMap((wake) => invocationIdOf(wake) ?? []);
+  const invocations = invocationIds.length
+    ? await tx
+        .select()
+        .from(agentInvocations)
+        .where(
+          and(
+            inArray(agentInvocations.id, invocationIds),
+            eq(agentInvocations.ownerUserId, identity.userId),
+            eq(agentInvocations.organizationId, identity.organizationId),
+          ),
+        )
+    : [];
+  const invocationById = new Map(invocations.map((row) => [row.id, row]));
+  const requestIds = rows.flatMap((wake) => requestIdOf(wake) ?? []);
+  const requests = requestIds.length
+    ? await tx
+        .select()
+        .from(agentRequests)
+        .where(
+          and(
+            inArray(agentRequests.id, requestIds),
+            eq(agentRequests.ownerUserId, identity.userId),
+            eq(agentRequests.organizationId, identity.organizationId),
+          ),
+        )
+    : [];
+  const byId = new Map(requests.map((request) => [request.id, request]));
+  return rows.map((wake) => {
+    const requestId = requestIdOf(wake);
+    const invocationId = invocationIdOf(wake);
+    return toView(
+      wake,
+      requestId ? byId.get(requestId) : undefined,
+      invocationId ? invocationById.get(invocationId) : undefined,
+    );
+  });
+}
+
+/** Marks wakes as stored on this device. Repeating it, or naming other wakes, changes nothing. */
+export async function ackWakesForDevice(
+  tx: DatabaseExecutor,
+  identity: ResolvedDeviceIdentity,
+  ids: string[],
+) {
+  const device = { id: identity.deviceId };
+  const acked = await tx
+    .update(agentWakes)
+    // The ack event moves the wake to acked: it records acked_at.
+    .set({ ackedAt: sql`now()` })
+    .where(
+      and(
+        inArray(agentWakes.id, ids),
+        eq(agentWakes.ownerUserId, identity.userId),
+        eq(agentWakes.organizationId, identity.organizationId),
+        or(...wakeMachine.from("ack").map((state) => wakeIn[state])),
+        deviceWakes(tx, identity, device.id),
+      ),
+    )
+    .returning({ id: agentWakes.id });
+  return { acked: acked.length };
+}
+
 export function pullWakes(
   db: DatabaseExecutor,
   identity: DeviceIdentity,
@@ -112,116 +235,14 @@ export function pullWakes(
 ) {
   return db.transaction(async (tx) => {
     const device = await requireDevice(tx, identity);
-    // Driven from the owner's homeless agents, so the wake check uses the per-agent pending index.
-    const adopted = await tx
-      .update(userAgents)
-      .set({ homeDeviceId: device.id })
-      .where(
-        and(
-          eq(userAgents.userId, identity.userId),
-          isNull(userAgents.homeDeviceId),
-          exists(
-            tx
-              .select({ id: agentWakes.id })
-              .from(agentWakes)
-              .where(
-                and(
-                  eq(agentWakes.userAgentId, userAgents.id),
-                  isNull(agentWakes.ackedAt),
-                  eq(agentWakes.ownerUserId, identity.userId),
-                  eq(agentWakes.organizationId, identity.organizationId),
-                ),
-              ),
-          ),
-        ),
-      )
-      .returning({ id: userAgents.id });
-    if (adopted.length)
-      effectsFor(tx).hint({ audience: realtimeKeys.user(identity.userId), domain: "agents" });
-    if (!capabilities.includes("caller_wakes"))
-      await dropWithheldCallerWakes(
-        tx,
-        and(
-          eq(agentWakes.ownerUserId, identity.userId),
-          eq(agentWakes.organizationId, identity.organizationId),
-          deviceWakes(tx, identity, device.id),
-        )!,
-      );
-    const rows = await tx
-      .select()
-      .from(agentWakes)
-      .where(
-        and(
-          eq(agentWakes.ownerUserId, identity.userId),
-          eq(agentWakes.organizationId, identity.organizationId),
-          isNull(agentWakes.ackedAt),
-          deviceWakes(tx, identity, device.id),
-          capabilities.includes("caller_wakes")
-            ? undefined
-            : ne(agentWakes.source, "caller_message"),
-        ),
-      )
-      .orderBy(asc(agentWakes.createdAt), asc(agentWakes.id))
-      .limit(limit);
-    const invocationIds = rows.flatMap((wake) => invocationIdOf(wake) ?? []);
-    const invocations = invocationIds.length
-      ? await tx
-          .select()
-          .from(agentInvocations)
-          .where(
-            and(
-              inArray(agentInvocations.id, invocationIds),
-              eq(agentInvocations.ownerUserId, identity.userId),
-              eq(agentInvocations.organizationId, identity.organizationId),
-            ),
-          )
-      : [];
-    const invocationById = new Map(invocations.map((row) => [row.id, row]));
-    const requestIds = rows.flatMap((wake) => requestIdOf(wake) ?? []);
-    const requests = requestIds.length
-      ? await tx
-          .select()
-          .from(agentRequests)
-          .where(
-            and(
-              inArray(agentRequests.id, requestIds),
-              eq(agentRequests.ownerUserId, identity.userId),
-              eq(agentRequests.organizationId, identity.organizationId),
-            ),
-          )
-      : [];
-    const byId = new Map(requests.map((request) => [request.id, request]));
-    return rows.map((wake) => {
-      const requestId = requestIdOf(wake);
-      const invocationId = invocationIdOf(wake);
-      return toView(
-        wake,
-        requestId ? byId.get(requestId) : undefined,
-        invocationId ? invocationById.get(invocationId) : undefined,
-      );
-    });
+    return pullWakesForDevice(tx, { ...identity, deviceId: device.id }, limit, capabilities);
   });
 }
 
-/** Marks wakes as stored on this device. Repeating it, or naming other wakes, changes nothing. */
 export function ackWakes(db: DatabaseExecutor, identity: DeviceIdentity, ids: string[]) {
   return db.transaction(async (tx) => {
     const device = await requireDevice(tx, identity);
-    const acked = await tx
-      .update(agentWakes)
-      // The ack event moves the wake to acked: it records acked_at.
-      .set({ ackedAt: sql`now()` })
-      .where(
-        and(
-          inArray(agentWakes.id, ids),
-          eq(agentWakes.ownerUserId, identity.userId),
-          eq(agentWakes.organizationId, identity.organizationId),
-          or(...wakeMachine.from("ack").map((state) => wakeIn[state])),
-          deviceWakes(tx, identity, device.id),
-        ),
-      )
-      .returning({ id: agentWakes.id });
-    return { acked: acked.length };
+    return ackWakesForDevice(tx, { ...identity, deviceId: device.id }, ids);
   });
 }
 

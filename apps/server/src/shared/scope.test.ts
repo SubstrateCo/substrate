@@ -97,10 +97,10 @@ test("owner scope works without an active workspace and parses only the installa
 
 test("device scope binds the validated installation to a registered device of the session user", async () => {
   const installationId = crypto.randomUUID();
-  const checkDevice = mock(async () => {
+  const forDeviceSession = mock(async () => {
     throw new AccessDeniedError();
   });
-  const scopes = createTestScopes({ checkDevice });
+  const scopes = createTestScopes({ repositories: { forDeviceSession } });
   const service = mock(() => success(null));
   const app = new Hono().post(
     "/",
@@ -118,8 +118,12 @@ test("device scope binds the validated installation to a registered device of th
     });
     expect(response.status).toBe(header === installationId ? 404 : 403);
   }
-  expect(checkDevice).toHaveBeenCalledTimes(1);
-  expect(checkDevice).toHaveBeenCalledWith("user-1", installationId);
+  expect(forDeviceSession).toHaveBeenCalledTimes(1);
+  expect(forDeviceSession).toHaveBeenCalledWith({
+    userId: "user-1",
+    organizationId: "org",
+    installationId,
+  });
   expect(service).not.toHaveBeenCalled();
 });
 
@@ -141,4 +145,38 @@ test("settings membership is checked only for verified sessions with an active w
     expect(await response.json()).toEqual({ role: expected ? "owner" : null });
     expect(getActiveMemberRole).toHaveBeenCalledTimes(expected ? 1 : 0);
   }
+});
+
+test("device middleware constructs only the registered-device repository", async () => {
+  const installationId = crypto.randomUUID();
+  const forSession = mock(async () => scopeFixture().repositories);
+  const forOwnerSession = mock(async () => scopeFixture().owner);
+  const forDeviceSession = mock(
+    async () =>
+      // SAFETY: This boundary-only test never calls the native repository methods.
+      ({ agentWork: {} }) as Awaited<
+        ReturnType<ScopeDependencies["repositories"]["forDeviceSession"]>
+      >,
+  );
+  const checkDevice = mock(async () => {});
+  const scopes = createTestScopes({
+    repositories: { forSession, forOwnerSession, forDeviceSession },
+    checkDevice,
+  });
+  const app = new Hono().post(
+    "/",
+    v("json", z.object({ organizationId: z.string(), installationId: z.uuid() })),
+    scopes.device("json"),
+    (c) => c.json({ userId: c.var.scope.userId }),
+  );
+  const response = await app.request("/", {
+    method: "POST",
+    headers: { "content-type": "application/json", [desktopInstallationHeader]: installationId },
+    body: JSON.stringify({ organizationId: "org", installationId }),
+  });
+  expect(await response.json()).toEqual({ userId: "user-1" });
+  expect(forDeviceSession).toHaveBeenCalledTimes(1);
+  expect(forSession).not.toHaveBeenCalled();
+  expect(forOwnerSession).not.toHaveBeenCalled();
+  expect(checkDevice).not.toHaveBeenCalled();
 });

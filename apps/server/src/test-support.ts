@@ -24,8 +24,13 @@ export function scopeFixture(): WorkspaceScope & UserScope {
   };
 }
 
-export function createTestScopes(overrides: Partial<ScopeDependencies> = {}) {
+export function createTestScopes(
+  overrides: Omit<Partial<ScopeDependencies>, "repositories"> & {
+    repositories?: Partial<ScopeDependencies["repositories"]>;
+  } = {},
+) {
   const scope = scopeFixture();
+  const { repositories, ...dependencies } = overrides;
   return createScopes({
     api: {
       getSession: async () => scope.session,
@@ -34,9 +39,13 @@ export function createTestScopes(overrides: Partial<ScopeDependencies> = {}) {
     repositories: {
       forOwnerSession: async () => scope.owner,
       forSession: async () => scope.repositories,
+      // SAFETY: Boundary-only tests never call native repository methods.
+      forDeviceSession: async () =>
+        ({}) as Awaited<ReturnType<ScopeDependencies["repositories"]["forDeviceSession"]>>,
+      ...repositories,
     },
     checkDevice: async () => {},
-    ...overrides,
+    ...dependencies,
   });
 }
 

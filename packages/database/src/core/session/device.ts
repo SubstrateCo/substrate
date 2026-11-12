@@ -7,6 +7,10 @@ export interface DeviceIdentity extends Pick<SessionIdentity, "userId" | "organi
   installationId: string;
 }
 
+export interface ResolvedDeviceIdentity extends DeviceIdentity {
+  deviceId: string;
+}
+
 export async function requireDevice(db: DatabaseExecutor, identity: DeviceIdentity) {
   await workspaceContext(db, { userId: identity.userId, organizationId: identity.organizationId });
   return touchDevice(db, identity.userId, identity.installationId);

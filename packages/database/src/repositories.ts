@@ -7,9 +7,12 @@ import { entityRepository } from "./core/entities/repository";
 import { linkRepository } from "./core/links/repository";
 import { permissionRepository } from "./core/permissions/repository";
 import { RepositoryContext, type ActorScope } from "./core/repository-context";
+import { requireDevice, type DeviceIdentity } from "./core/session/device";
 import type { SessionIdentity, OwnerSessionIdentity } from "./core/session/identity";
 import { ownerSession } from "./core/session/owner";
 import { workspaceContext, type ResolvedWorkspace } from "./core/session/workspace";
+import { createDeviceWorkRepository } from "./features/agent-work/device-repository";
+import { createAgentWorkReadRepository } from "./features/agent-work/read-repository";
 import { createAgentRepository } from "./features/agents/repository";
 import { createContextRepository } from "./features/context/service";
 import { createAttachmentRepository } from "./features/files/repository";
@@ -67,6 +70,7 @@ class WorkspaceRepositories extends ActorRepositories {
   readonly sharing;
   readonly feed;
   readonly files;
+  readonly agentWork;
 
   constructor(
     context: RepositoryContext,
@@ -79,6 +83,7 @@ class WorkspaceRepositories extends ActorRepositories {
     this.sharing = createSharingRepository(context.db, identity, resolved);
     this.feed = createFeedRepository(context, identity);
     this.files = createAttachmentRepository(context);
+    this.agentWork = createAgentWorkReadRepository(context, identity);
   }
 
   override async transaction<T>(
@@ -155,12 +160,18 @@ function standalone(
     sharing: domain("sharing", ["list", "listConversations", "inbox"]),
     feed: domain("feed", ["activity", "list", "groups", "groupEvents", "hasUnread"]),
     files: domain("files", ["listTask", "taskContent", "messageContent"]),
+    agentWork: repositories.agentWork,
     transaction,
   };
 }
 
 export function createRepositories(db: DatabaseExecutor) {
   return {
+    async forDeviceSession(identity: DeviceIdentity) {
+      const device = await requireDevice(db, identity);
+      const resolved = Object.freeze({ ...identity, deviceId: device.id });
+      return { agentWork: createDeviceWorkRepository(db, resolved) };
+    },
     async forOwnerSession(identity: OwnerSessionIdentity) {
       const owner = await ownerSession(db, identity);
       const agents = createAgentRepository(db, owner.userId, owner.installationId);
