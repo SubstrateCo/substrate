@@ -1,5 +1,4 @@
 import {
-  wakeDedupeKeys,
   wakeMachine,
   type AgentWakeRequestDetail,
   type AgentWakeState,
@@ -11,6 +10,7 @@ import type { DatabaseExecutor } from "../../client";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { effectsFor } from "../../core/effects";
 import { requireDevice, type DeviceIdentity } from "../../core/session/device";
+import { admit } from "./admission";
 import { homedAgentIds } from "./device";
 import { agentRequests } from "./requests.schema";
 import { agentWakes } from "./wakes.schema";
@@ -155,20 +155,6 @@ export async function wakeForRequest(
   request: typeof agentRequests.$inferSelect,
   source: "answer" | "approval_result",
 ) {
-  await db
-    .insert(agentWakes)
-    .values({
-      organizationId: request.organizationId,
-      userAgentId: request.userAgentId,
-      agentActorEntityId: request.agentActorEntityId,
-      ownerUserId: request.ownerUserId,
-      source,
-      sourceRef: { requestId: request.id },
-      sessionKey: request.sessionKey,
-      dedupeKey:
-        source === "answer"
-          ? wakeDedupeKeys.answer(request.id)
-          : wakeDedupeKeys.approval(request.id),
-    })
-    .onConflictDoNothing();
+  // Callers publish their own agent-work hint, so admit's hints are not needed here.
+  await admit(db, [{ type: "request", source, request }]);
 }

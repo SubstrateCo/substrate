@@ -36,7 +36,7 @@
 
 ## Agent work
 
-- Route wakes with `routeWake` inside the transaction that inserts the message. Wakes hold references, not message bodies; the home desktop reads bodies through the visibility-checked sources query.
+- Create every wake through `admit()` in `admission.ts`, and put every wake rule in the pure `decideAdmission`. `routeWake` stays the entry point inside the transaction that inserts the message. Wakes hold references, not message bodies; the home desktop reads bodies through the visibility-checked sources query.
 - Answer requests with compare-and-set: the first answer wins.
 - Execute a proposal exactly once. Bind it to its action hash and the target state recorded when it was proposed, and check both under the target's locks.
 - Bind agent provenance with composite foreign keys: the actor must belong to the user agent and organization.
