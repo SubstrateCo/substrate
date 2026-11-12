@@ -161,6 +161,28 @@ function workTargets(
   ];
 }
 
+// Messages that reference one project's work changed. Related lists and source-message activity
+// of those tasks change; a project-wide change can reach any list.
+function referencedWorkTargets(
+  organizationId: string,
+  { projectId, taskIds }: ChangeDetail,
+): QueryTarget[] {
+  if (!projectId || !taskIds)
+    return [
+      { queryKey: queryKeys.related(organizationId) },
+      { queryKey: queryKeys.activity(organizationId) },
+      ...searchTargets(organizationId),
+    ];
+  return [
+    { queryKey: queryKeys.related(organizationId, projectId) },
+    ...taskIds.flatMap((taskId) => [
+      { queryKey: queryKeys.related(organizationId, taskId) },
+      { queryKey: queryKeys.activity(organizationId, taskId) },
+    ]),
+    ...searchTargets(organizationId),
+  ];
+}
+
 // A changed message's context shows only in pages that include it.
 function messagePagesTarget(
   organizationId: string,
@@ -246,6 +268,15 @@ export function domainTargets(
     case "context":
       // Reference changes do not change notifications. Writes that create notifications, and
       // conversation deletion, send notifications hints to the recipients.
+      if (conversationId && detail.messageId)
+        // One message's references changed: its context pages and the conversation's targets.
+        return [
+          messagePagesTarget(organizationId, conversationId, detail.messageId),
+          { queryKey: queryKeys.messageTargets(organizationId, conversationId) },
+          ...searchTargets(organizationId),
+        ];
+      if (detail.projectId) return referencedWorkTargets(organizationId, detail);
+      // Without IDs, such as a conversation deletion: any reference can change.
       return [
         { queryKey: queryKeys.activity(organizationId) },
         { queryKey: queryKeys.related(organizationId) },

@@ -16,17 +16,23 @@ import { saveMessagingReferences } from "./messaging-references";
 import { messageEntityReferences } from "./schema";
 import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
-// `referenced` reports saved work or messaging references. `notified` lists the alerts created.
+// `referenced` reports saved work or messaging references, and `work` the referenced tasks and
+// projects. `notified` lists the alerts created.
 export async function applyMessageEffects(
   ctx: RepositoryContext,
   scope: SessionIdentity,
   message: typeof messagingMessages.$inferSelect,
   conversation: Pick<typeof messagingConversations.$inferSelect, "organizationId" | "kind">,
   options: { delivery?: boolean } = {},
-): Promise<{ referenced: boolean; notified: { organizationId: string; actorId: string }[] }> {
+): Promise<{
+  referenced: boolean;
+  work: { entityId: string; projectEntityId: string }[];
+  notified: { organizationId: string; actorId: string }[];
+}> {
   const { db } = ctx;
   const { organizationId: conversationOrganizationId } = conversation;
-  if (message.deletedAt) return { referenced: false, notified: [] };
+  const work: { entityId: string; projectEntityId: string }[] = [];
+  if (message.deletedAt) return { referenced: false, work, notified: [] };
   const recipients = new Map<string, "mention" | "reply" | "message">();
   const personIds: string[] = [];
   const agentIds: string[] = [];
@@ -95,8 +101,11 @@ export async function applyMessageEffects(
       ctx,
       workReferences.map((reference) => reference.id),
     );
-    for (const reference of workReferences)
-      if (targets.get(reference.id)?.entityType !== reference.kind) throw new AccessDeniedError();
+    for (const reference of workReferences) {
+      const target = targets.get(reference.id);
+      if (target?.entityType !== reference.kind) throw new AccessDeniedError();
+      work.push({ entityId: reference.id, projectEntityId: target.projectEntityId });
+    }
     await db
       .insert(messageEntityReferences)
       .values(
@@ -114,7 +123,7 @@ export async function applyMessageEffects(
     referenced = true;
   }
   // Edits validate and replace derived references, but never deliver a new message event.
-  if (options.delivery === false) return { referenced, notified: [] };
+  if (options.delivery === false) return { referenced, work, notified: [] };
   if (message.threadId) {
     // Members who left get mention alerts only.
     const authors = await db
@@ -164,7 +173,7 @@ export async function applyMessageEffects(
   for (const person of ordinaryRecipients)
     if (person.userId && !recipients.has(person.userId)) recipients.set(person.userId, "message");
   if (!scope.actorEntityId) recipients.delete(scope.userId);
-  if (!recipients.size) return { referenced, notified: [] };
+  if (!recipients.size) return { referenced, work, notified: [] };
   const notified: { organizationId: string; actorId: string }[] = [];
   for (const kind of ["mention", "reply", "message"] as const) {
     notified.push(
@@ -183,5 +192,5 @@ export async function applyMessageEffects(
       )),
     );
   }
-  return { referenced, notified };
+  return { referenced, work, notified };
 }

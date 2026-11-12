@@ -1,6 +1,7 @@
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
+import { entities } from "../../core/entities/schema";
 import type { SessionIdentity } from "../../core/session/identity";
 import { messagingSession, type MessagingSessionResolver } from "../../core/session/messaging";
 import { AccessDeniedError } from "../../errors";
@@ -9,6 +10,7 @@ import { messageEntityReferences, messageMessagingReferences } from "../context/
 import { messageAttachmentMetadata } from "../files/metadata";
 import { messageAttachments } from "../files/schema";
 import { notifications } from "../notifications/schema";
+import { referenceChangeHints } from "../realtime/routing";
 import { loadConversation } from "./access";
 import { validateBody } from "./policy";
 import { messagingMessages, messagingReactions } from "./schema";
@@ -45,6 +47,22 @@ export function messageMutationOperations(
         validateBody(body, attachments.length);
         if (body === message.body) return { id: messageId };
       }
+      // Related lists of every referenced record show this message's body. Read the references
+      // before the edit replaces its mentions.
+      const referenced = await tx
+        .select({
+          entityId: messageEntityReferences.entityId,
+          projectEntityId: entities.accessEntityId,
+        })
+        .from(messageEntityReferences)
+        .innerJoin(
+          entities,
+          and(
+            eq(entities.organizationId, messageEntityReferences.organizationId),
+            eq(entities.entityId, messageEntityReferences.entityId),
+          ),
+        )
+        .where(eq(messageEntityReferences.messageId, messageId));
       // Explicit associations and source relationships are provenance, not parsed body content.
       await tx
         .delete(messageEntityReferences)
@@ -80,9 +98,10 @@ export function messageMutationOperations(
             domain: "notifications",
           });
       } else {
-        await applyMessageEffects(context, scope, updated!, conversation, {
+        const { work } = await applyMessageEffects(context, scope, updated!, conversation, {
           delivery: false,
         });
+        referenced.push(...work);
       }
       // A full messaging hint refreshes previews and active search, not just timeline pages. The
       // identifiers keep the refresh to this message's thread and context pages.
@@ -92,10 +111,9 @@ export function messageMutationOperations(
         messageId,
         threadId: message.threadId,
       });
-      context.effects.hint({
-        audience: realtimeKeys.organization(conversation.organizationId),
-        domain: "context",
-      });
+      // The messaging hint already refreshes this message's context pages.
+      for (const hint of referenceChangeHints(conversation.organizationId, referenced))
+        context.effects.hint(hint);
       return { id: messageId };
     });
   }

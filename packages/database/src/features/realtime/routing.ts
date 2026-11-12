@@ -129,15 +129,38 @@ export function workHint(
   organizationId: string,
   projectId: string,
   taskIds: string[] = [],
+  domain: "tasks" | "context" = "tasks",
 ): RealtimeHint {
-  const hint: Extract<RealtimeHint, { domain: "tasks" }> = {
+  const hint: Extract<RealtimeHint, { domain: "tasks" | "context" }> = {
     audience: realtimeKeys.entity(organizationId, projectId),
-    domain: "tasks",
+    domain,
     projectId,
   };
   const tasks = [...new Set(taskIds)].sort();
   if (tasks.length && tasks.length <= realtimeTaskLimit) hint.taskIds = tasks;
   return hint;
+}
+
+interface WorkRecord {
+  entityId: string;
+  projectEntityId: string;
+}
+
+// One hint per project. A record that is the project itself names only the project.
+function projectHints(
+  organizationId: string,
+  records: WorkRecord[],
+  domain: "tasks" | "context",
+): RealtimeHint[] {
+  const projects = new Map<string, string[] | null>();
+  for (const { entityId, projectEntityId } of records) {
+    const tasks = projects.get(projectEntityId);
+    if (entityId === projectEntityId || tasks === null) projects.set(projectEntityId, null);
+    else projects.set(projectEntityId, [...(tasks ?? []), entityId]);
+  }
+  return [...projects].map(([projectId, taskIds]) =>
+    workHint(organizationId, projectId, taskIds ?? [], domain),
+  );
 }
 
 // Reads each record's project for callers that do not have it.
@@ -148,7 +171,7 @@ export async function workChangeHints(
 ): Promise<RealtimeHint[]> {
   if (!entityIds.length) return [];
   const rows = await db
-    .select({ id: entities.entityId, projectId: entities.accessEntityId })
+    .select({ entityId: entities.entityId, projectEntityId: entities.accessEntityId })
     .from(entities)
     .where(
       and(
@@ -156,15 +179,29 @@ export async function workChangeHints(
         inArray(entities.entityId, [...new Set(entityIds)]),
       ),
     );
-  const projects = new Map<string, string[] | null>();
-  for (const { id, projectId } of rows) {
-    const tasks = projects.get(projectId);
-    if (id === projectId || tasks === null) projects.set(projectId, null);
-    else projects.set(projectId, [...(tasks ?? []), id]);
-  }
-  return [...projects].map(([projectId, taskIds]) =>
-    workHint(organizationId, projectId, taskIds ?? []),
-  );
+  return projectHints(organizationId, rows, "tasks");
+}
+
+// References between a message and work changed. Each referenced record's readers refresh its
+// related lists. When an existing message changed, its conversation's viewers refresh its context
+// pages. Each audience sees only IDs it can already read.
+export function referenceChangeHints(
+  organizationId: string,
+  work: WorkRecord[],
+  message?: { id: string; conversationId: string },
+): RealtimeHint[] {
+  return [
+    ...(message
+      ? [
+          {
+            audience: realtimeKeys.conversation(message.conversationId),
+            domain: "context" as const,
+            messageId: message.id,
+          },
+        ]
+      : []),
+    ...projectHints(organizationId, work, "context"),
+  ];
 }
 
 function verifiedUsersByEmail(db: DatabaseExecutor, email: string) {
@@ -315,7 +352,8 @@ export function messageChangeHints(
   },
   effects: {
     joined: boolean;
-    referenced?: boolean;
+    // Work the new message references. Its page loads after the commit, with its references.
+    work?: WorkRecord[];
   },
 ): RealtimeHint[] {
   const conversation: RealtimeHint = {
@@ -327,10 +365,5 @@ export function messageChangeHints(
     if (change.messageId) conversation.messageId = change.messageId;
     if (change.threadId !== undefined) conversation.threadId = change.threadId;
   }
-  return [
-    conversation,
-    ...(effects.referenced
-      ? [{ audience: realtimeKeys.organization(change.organizationId), domain: "context" as const }]
-      : []),
-  ];
+  return [conversation, ...referenceChangeHints(change.organizationId, effects.work ?? [])];
 }

@@ -1,5 +1,4 @@
 import { managedPicture } from "@substrate/contracts/files/pictures";
-import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
@@ -14,6 +13,7 @@ import { recordTaskActivity } from "../activity/events";
 import { requireMessage, visibleConversations } from "../messaging/access";
 import { messageViews, selectMessages } from "../messaging/messages";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
+import { referenceChangeHints } from "../realtime/routing";
 import { liveProjectTasks } from "../tasks/access";
 import type { CreateTaskInput } from "../tasks/contracts";
 import { createTaskInLockedProject, taskRepository } from "../tasks/repository";
@@ -75,10 +75,11 @@ export async function attachReference(
   if (rows.length && work.entityType === "task")
     await recordTaskActivity(ctx, work, ["Discussion linked"], source.messageId);
   if (rows.length)
-    ctx.effects.hint({
-      audience: realtimeKeys.organization(scope.organizationId),
-      domain: "context",
-    });
+    for (const hint of referenceChangeHints(scope.organizationId, [work], {
+      id: source.messageId,
+      conversationId: conversation.id,
+    }))
+      ctx.effects.hint(hint);
   return rows.length > 0;
 }
 
@@ -89,7 +90,7 @@ export async function detachReference(
   target: ReferenceTarget,
 ) {
   const { db } = ctx;
-  const { work } = await referenceEndpoints(ctx, scope, source, target, "view");
+  const { conversation, work } = await referenceEndpoints(ctx, scope, source, target, "view");
   const [reference] = await db
     .select()
     .from(messageEntityReferences)
@@ -117,10 +118,11 @@ export async function detachReference(
   if (rows.length && work.entityType === "task")
     await recordTaskActivity(ctx, work, ["Discussion unlinked"], source.messageId);
   if (rows.length)
-    ctx.effects.hint({
-      audience: realtimeKeys.organization(scope.organizationId),
-      domain: "context",
-    });
+    for (const hint of referenceChangeHints(scope.organizationId, [work], {
+      id: source.messageId,
+      conversationId: conversation.id,
+    }))
+      ctx.effects.hint(hint);
   return rows.length > 0;
 }
 
@@ -140,10 +142,11 @@ export async function recordTaskSource(
     createdByActorEntityId: ctx.scope.actorEntityId,
   });
   await recordTaskActivity(ctx, task, ["Created from a discussion"], source.messageId);
-  ctx.effects.hint({
-    audience: realtimeKeys.organization(ctx.scope.organizationId),
-    domain: "context",
-  });
+  for (const hint of referenceChangeHints(ctx.scope.organizationId, [task], {
+    id: source.messageId,
+    conversationId: source.conversationId,
+  }))
+    ctx.effects.hint(hint);
 }
 
 export function createContextRepository(context: RepositoryContext, scope: SessionIdentity) {

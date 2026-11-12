@@ -1,3 +1,5 @@
+import { realtimeKeys } from "@substrate/contracts/realtime";
+
 import { AccessDeniedError, ConflictError } from "../../errors";
 import { entityGrants, tasks, taskActivity, notifications } from "../../schema";
 import { contextConversation } from "../../testing/context";
@@ -14,6 +16,32 @@ const f = setupDatabase();
 const context = f.context;
 
 const setup = () => contextConversation(f);
+
+test("reference hints name the message to its conversation and the work to its readers", async () => {
+  const { repos, project, conversation, reply } = await setup();
+  const task = await repos.tasks.create({ projectEntityId: project.entityId, title: "Linked" });
+  const alice = await f.forSession("alice");
+  const pages = {
+    audience: realtimeKeys.conversation(conversation.id),
+    domain: "context" as const,
+    messageId: reply.id,
+  };
+  const related = {
+    audience: realtimeKeys.entity(f.orgA, project.entityId),
+    domain: "context" as const,
+    projectId: project.entityId,
+    taskIds: [task.entityId],
+  };
+  for (const change of [
+    await alice.context.attach(reply.id, task.entityId),
+    await alice.context.detach(reply.id, task.entityId),
+  ]) {
+    expect(change.hints).toContainEqual(pages);
+    expect(change.hints).toContainEqual(related);
+    // The private channel's message and the project's task never go to the whole workspace.
+    expect(change.hints.filter((hint) => hint.audience[0] === "organization")).toEqual([]);
+  }
+});
 
 test("source creation is atomic, concurrent-idempotent, and preserves the exact reply without granting access", async () => {
   const { project, reply, root } = await setup();

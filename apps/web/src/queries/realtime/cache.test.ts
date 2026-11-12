@@ -532,6 +532,45 @@ test("a project hint refreshes the project's records and lists, not other projec
   expect(matchedKeys(change("tasks"), untouched.slice(0, 3))).toEqual(untouched.slice(0, 3));
 });
 
+test("a message reference hint refreshes only that message's context pages", () => {
+  const event = {
+    ...change("context"),
+    conversationId: "conversation",
+    messageId: "message",
+  } as const;
+  const refreshed = [
+    queryKeys.messagePage("org", "conversation", ["older", "message"]),
+    [...queryKeys.messageTargets("org", "conversation"), "message"],
+  ];
+  const untouched = [
+    queryKeys.messagePage("org", "conversation", ["other"]),
+    queryKeys.messagePage("org", "other", ["message"]),
+    queryKeys.related("org", "task"),
+    queryKeys.activity("org", "task"),
+    queryKeys.messages("org", "conversation"),
+  ];
+  expect(matchedKeys(event, [...refreshed, ...untouched])).toEqual(refreshed);
+});
+
+test("a referenced-work hint refreshes the related lists of that project and its tasks", () => {
+  const event = { ...change("context"), projectId: "launch", taskIds: ["task"] };
+  const refreshed = [
+    queryKeys.related("org", "launch"),
+    queryKeys.related("org", "task"),
+    queryKeys.activity("org", "task"),
+  ];
+  const untouched = [
+    queryKeys.related("org", "other"),
+    queryKeys.activity("org", "other"),
+    queryKeys.messagePage("org", "conversation", ["message"]),
+    queryKeys.project("org", "launch"),
+    queryKeys.notificationUnread("org"),
+  ];
+  expect(matchedKeys(event, [...refreshed, ...untouched])).toEqual(refreshed);
+  // Conversation deletion sends no IDs, so every reference view refreshes.
+  expect(matchedKeys(change("context"), untouched.slice(0, 3))).toEqual(untouched.slice(0, 3));
+});
+
 test("workspace detail changes refresh organization details and invitations, not workspace records", () => {
   const client = new QueryClient();
   const refreshed = [

@@ -74,11 +74,18 @@ interface WorkDetail {
 
 type Audience = { audience: Readonly<RealtimeAudience> };
 
-/** Messaging changes name messages; task changes name work. */
+/**
+ * Messaging changes name messages; task changes name work. A reference change names either the
+ * message whose references changed, to its conversation, or the referenced work, to its readers.
+ */
 export type RealtimeHint =
   | (Audience & { domain: "messaging" } & MessagingDetail)
   | (Audience & { domain: "tasks"; scope?: never } & WorkDetail)
-  | (Audience & { domain: Exclude<RealtimeDomain, "messaging" | "tasks">; scope?: never });
+  | (Audience & { domain: "context"; scope?: never; messageId?: string } & WorkDetail)
+  | (Audience & {
+      domain: Exclude<RealtimeDomain, "messaging" | "tasks" | "context">;
+      scope?: never;
+    });
 
 export const realtimeEvent = z.discriminatedUnion("type", [
   z.object({ version: z.literal(1), type: z.literal("ready") }),

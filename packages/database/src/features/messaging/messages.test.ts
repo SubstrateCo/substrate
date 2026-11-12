@@ -104,9 +104,14 @@ test("send hints come from the write itself and describe only what the message c
   // The notification insert returns its recipients; nothing reads them back.
   expect(queries.filter((query) => /^select .* from "notifications"/i.test(query))).toEqual([]);
   const referenced = await send("alice", `@[project:${project.entityId}]`);
+  // Only the project's readers hear that its related messages changed.
   expect(referenced.hints).toEqual([
     content(referenced),
-    { audience: realtimeKeys.organization(fixture.orgA), domain: "context" },
+    {
+      audience: realtimeKeys.entity(fixture.orgA, project.entityId),
+      domain: "context",
+      projectId: project.entityId,
+    },
   ]);
 });
 
@@ -127,12 +132,47 @@ test("edits and deletions name the changed message and its thread", async () => 
     messageId,
     threadId,
   });
-  expect((await alice((chat) => chat.editMessage(reply.id, "edited"))).hints).toContainEqual(
+  expect((await alice((chat) => chat.editMessage(reply.id, "edited"))).hints).toEqual([
     changed(reply.id, root.id),
-  );
-  expect((await alice((chat) => chat.deleteMessage(root.id))).hints).toContainEqual(
+  ]);
+  expect((await alice((chat) => chat.deleteMessage(root.id))).hints).toEqual([
     changed(root.id, null),
+  ]);
+});
+
+test("edits refresh related lists of the work referenced before and after, for its readers only", async () => {
+  await verified();
+  const channel = await service("alice").createConversation({ kind: "channel", name: "general" });
+  const repos = fixture.forActor(fixture.alice);
+  const before = await repos.projects.create({ name: "Before" });
+  const after = await repos.projects.create({ name: "After" });
+  const task = await repos.tasks.create({ projectEntityId: after.entityId, title: "Task" });
+  const sent = await service("alice").sendMessage(channel.id, `@[project:${before.entityId}]`);
+  const edited = await commit(fixture.db, (tx) =>
+    createMessagingService(tx, { userId: "alice", organizationId: fixture.orgA }).editMessage(
+      sent.id,
+      `@[task:${task.entityId}]`,
+    ),
   );
+  expect(edited.hints).toEqual(
+    expect.arrayContaining([
+      {
+        audience: realtimeKeys.entity(fixture.orgA, before.entityId),
+        domain: "context",
+        projectId: before.entityId,
+      },
+      {
+        audience: realtimeKeys.entity(fixture.orgA, after.entityId),
+        domain: "context",
+        projectId: after.entityId,
+        taskIds: [task.entityId],
+      },
+    ]),
+  );
+  // No hint names the work to the whole workspace.
+  expect(
+    edited.hints.filter((hint) => hint.audience[0] === "organization" && hint.domain === "context"),
+  ).toEqual([]);
 });
 
 test("message pages load their summaries in one statement after scope resolution", async () => {
