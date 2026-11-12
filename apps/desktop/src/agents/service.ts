@@ -12,6 +12,7 @@ import { dispatchAgentWork } from "./bridge/agent-work-bridge.ts";
 import type { AgentDirectory, HarnessPort } from "./runtime/context.ts";
 import { createAgentWorkRuntime, type AgentWorkRuntime } from "./runtime/runtime.ts";
 import { createAgentWorkServer } from "./server/agent-work-server.ts";
+import { agentWorkServiceMachine, type AgentWorkServiceState } from "./service-machine.ts";
 import { lstat, mkdir, realpath } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -19,6 +20,7 @@ import { join } from "node:path";
 
 interface Active {
   identity: string;
+  generation: number;
   organizationId: string;
   store: AgentWorkStore;
   runtime: AgentWorkRuntime;
@@ -84,37 +86,55 @@ export function createAgentWorkService(options: {
   const agents = agentDirectory(server, authority);
   let active: Active | undefined;
   let ensuring: Promise<Active | undefined> | undefined;
-  let stopped = true;
+  let stopping: Promise<void> | undefined;
+  let state: AgentWorkServiceState = "stopped";
   let realtimeConnected = false;
 
-  /** The app stops: the harness process stops with it, and the next start recovers the turns. */
-  function shutdown() {
-    active?.runtime.dispose();
-    active?.store.close();
-    active = undefined;
+  function transition(event: keyof typeof agentWorkServiceMachine.events) {
+    const next = agentWorkServiceMachine.next(state, event);
+    if (next === null) return false;
+    state = next;
+    return true;
   }
+
+  const accepting = () => agentWorkServiceMachine.canFire(state, "stop");
+  const available = (current: Active | undefined) =>
+    active === current &&
+    (state === "running" || (state === "verifying" && current?.generation === authority.generation))
+      ? current
+      : undefined;
 
   /**
    * The account or organization changed: the old runtime interrupts and closes its live
    * sessions and ends their turns before it goes. It keeps receiving their events until then.
    */
   async function retire(current: Active) {
+    transition("retire");
     await current.runtime.shutdown().catch(() => log("Agent work could not stop cleanly."));
     if (active === current) active = undefined;
     current.store.close();
+    transition("retired");
   }
 
-  async function open(): Promise<Active | undefined> {
+  async function open(generation: number): Promise<Active | undefined> {
     const auth = await authority.verify();
+    if (!accepting() || generation !== authority.generation) return undefined;
     const identity = `${auth.accountKey}:${auth.organizationId}`;
-    if (active?.identity === identity) return active;
+    if (active?.identity === identity) {
+      active.generation = generation;
+      return active;
+    }
     if (active) await retire(active);
-    if (stopped) return undefined;
+    if (!accepting() || generation !== authority.generation) return undefined;
     const accountDirectory = join(options.accountsDirectory, auth.accountKey);
     const store = await AgentWorkStore.open(
       await storePath(accountDirectory),
       options.migrationsDirectory,
     );
+    if (!accepting() || generation !== authority.generation) {
+      store.close();
+      return undefined;
+    }
     agents.invalidate();
     const runtime = createAgentWorkRuntime(
       {
@@ -142,8 +162,9 @@ export function createAgentWorkService(options: {
         },
       },
     );
-    active = { identity, organizationId: auth.organizationId, store, runtime };
-    void runtime.start().catch(() => log("Agent work could not start."));
+    active = { identity, generation, organizationId: auth.organizationId, store, runtime };
+    // Retirement must not close the store while startup still uses it.
+    await runtime.start().catch(() => log("Agent work could not start."));
     return active;
   }
 
@@ -153,40 +174,66 @@ export function createAgentWorkService(options: {
    * A network outage keeps recoverable state. Confirmed denial retires the old runtime.
    */
   function ensure() {
-    ensuring ??= open()
-      .catch(async (error: unknown) => {
-        if (error instanceof HarnessAccessDenied) {
-          if (active) await retire(active);
-          return undefined;
+    if (!accepting()) return Promise.resolve(undefined);
+    if (ensuring) return ensuring;
+    if (!transition("recheck")) transition("check");
+    ensuring = (async () => {
+      while (accepting()) {
+        const generation = authority.generation;
+        let current: Active | undefined;
+        try {
+          current = await open(generation);
+        } catch (error: unknown) {
+          if (!accepting()) return undefined;
+          if (generation !== authority.generation) continue;
+          if (error instanceof HarnessAccessDenied) {
+            if (active) await retire(active);
+          } else {
+            log("Could not verify the session for agent work.");
+            current = active;
+          }
         }
-        log("Could not verify the session for agent work.");
-        return stopped ? undefined : active;
-      })
-      .finally(() => {
-        ensuring = undefined;
-      });
+        if (!accepting()) return undefined;
+        // A hint received during any await must not be swallowed by this shared check.
+        if (generation !== authority.generation) continue;
+        transition(current ? "ready" : "unavailable");
+        return current;
+      }
+      return undefined;
+    })().finally(() => {
+      ensuring = undefined;
+    });
     return ensuring;
   }
 
   async function required() {
-    const current = await ensure();
+    const current = available(await ensure());
     if (!current) throw new Error("Agent work is unavailable. Sign in and try again.");
     return current.runtime;
   }
 
   return {
     start() {
-      stopped = false;
-      void ensure();
+      if (transition("start")) void ensure();
+      else transition("restart");
     },
-    async stop() {
-      stopped = true;
-      if (active) await retire(active);
-      else shutdown();
+    stop() {
+      transition("cancelRestart");
+      if (stopping) return stopping;
+      if (!transition("stop")) return Promise.resolve();
+      stopping = (async () => {
+        await ensuring;
+        if (active) await retire(active);
+      })().finally(() => {
+        stopping = undefined;
+        if (transition("restarted")) void ensure();
+        else transition("stopped");
+      });
+      return stopping;
     },
     onRealtime(event: RealtimeUpdate) {
       if (event.type === "status") realtimeConnected = event.status === "connected";
-      if (stopped) return;
+      if (!accepting()) return;
       if (event.type === "status" && event.status === "forbidden") {
         sessionChanged();
         void ensure();
@@ -195,6 +242,7 @@ export function createAgentWorkService(options: {
         sessionChanged();
         agents.invalidate();
         void ensure().then((current) => {
+          if (!available(current)) return;
           current?.runtime.agentsChanged();
           return current?.runtime.sync();
         });
@@ -210,16 +258,19 @@ export function createAgentWorkService(options: {
       if (event.domain === "agents") {
         // An agent may have moved to or from this desktop.
         agents.invalidate();
-        const current = active;
-        current?.runtime.agentsChanged();
-        void current?.runtime
-          .reconcileHome()
-          .then(() => current.runtime.hint())
+        void ensure()
+          .then(async (current) => {
+            if (!available(current)) return;
+            current?.runtime.agentsChanged();
+            await current?.runtime.reconcileHome();
+            available(current)?.runtime.hint();
+          })
           .catch(() => log("Could not check where agents run."));
       }
-      if (event.domain === "agent-work") void ensure().then((current) => current?.runtime.hint());
+      if (event.domain === "agent-work")
+        void ensure().then((current) => available(current)?.runtime.hint());
       if (event.domain === "session" || event.domain === "organization")
-        void ensure().then((current) => current?.runtime.sync());
+        void ensure().then((current) => available(current)?.runtime.sync());
     },
     /** Harness events reach the store before anything else. */
     onHarnessEvent(event: HarnessEvent) {
@@ -229,12 +280,13 @@ export function createAgentWorkService(options: {
       return active?.runtime.observeToolCall(request, result);
     },
     async handleLocalTool(request: unknown): Promise<WorkspaceApiResult> {
-      if (!active)
+      const current = available(active);
+      if (!current)
         return {
           success: false,
           error: { code: "UNAVAILABLE", message: "Agent work is not running." },
         };
-      return active.runtime.handleLocalTool(request);
+      return current.runtime.handleLocalTool(request);
     },
     /** The IPC bridge. Values are parsed per method. */
     async call(method: unknown, value?: unknown) {
