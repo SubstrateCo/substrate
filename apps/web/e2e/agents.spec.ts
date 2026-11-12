@@ -71,7 +71,10 @@ test("agent definitions and run settings can be created, edited, persisted and d
     user.page.waitForResponse(
       (response) => response.url().endsWith("/actors/triggers") && response.ok(),
     ),
-    save.click(),
+    user.page
+      .getByRole("region", { name: "Triggers", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
+      .click(),
   ]);
   await user.page.reload();
   await section(user.page, "Run settings").click();

@@ -2,6 +2,7 @@ import type { AgentStatusView } from "@substrate/contracts/agent-work";
 
 import type { ComponentProps } from "react";
 
+import { CallsLog } from "../calls/calls-log";
 import { Routines } from "../routines/routines";
 import { AgentActivity } from "./agent-activity";
 import { AgentPageView } from "./agent-page-view";
@@ -85,6 +86,8 @@ function AgentPageContent({
         />
       </SettingsContent>
     );
+  else if (section === "calls")
+    content = <CallsLog userId={userId} organizationId={organizationId} agentId={agentId} />;
   else if (unavailable) content = unavailable;
   else if (section === "routines")
     content = (

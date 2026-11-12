@@ -116,6 +116,7 @@ export function AgentSettings({
               <AgentRunSettings
                 key={agent.id}
                 userId={userId}
+                organizationId={organizationId}
                 name={agent.name}
                 settings={runSettings}
               />

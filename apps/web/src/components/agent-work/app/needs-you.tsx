@@ -3,6 +3,7 @@ import type { AgentRequestPlace } from "@substrate/contracts/agent-work";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
+import { CallCard } from "../calls/call-card";
 import { RequestCard } from "../requests/request-card";
 import { NeedsYouView, type NeedsYouEntry } from "./needs-you-view";
 import { hiddenConversation } from "@/lib/agent-work/hidden-records";
@@ -34,8 +35,15 @@ export function NeedsYou({
   onOpenAgent: (agentId: string) => void;
 }) {
   const needsYou = useQuery(needsYouOptions(userId, organizationId));
-  const { requests, agents } = needsYouItems(needsYou.data);
+  const { requests, agents, calls } = needsYouItems(needsYou.data);
   const entries: NeedsYouEntry[] = [
+    ...calls.map((call) => ({
+      key: `call:${call.id}`,
+      agentName: call.agent.name,
+      place: <Place organizationId={organizationId} place={call.place} />,
+      body: <CallCard userId={userId} organizationId={organizationId} call={call} />,
+      onOpenAgent: () => onOpenAgent(call.userAgentId),
+    })),
     ...requests.map((request) => ({
       key: request.id,
       agentName: request.agent.name,

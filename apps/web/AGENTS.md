@@ -41,7 +41,7 @@
 
 ## Agent work
 
-- Show agent work only to the agent's owner. Other members see only published messages.
+- Show agent work only to the agent's owner. Callers see only the status of their own calls and published messages, not the owner's work, approvals, allowlist, or Calls log.
 - Read local work through the `substrateAgentWork` bridge on the home desktop. Elsewhere, fall back to server status and requests.
 - Place work under its outputs, then under its newest accessible source message. Work without an anchor appears only in the Agents app.
 - Notify only for Needs-you items. Do not notify for working, finished, quiet, or routine progress.

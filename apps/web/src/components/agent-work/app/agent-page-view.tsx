@@ -20,6 +20,7 @@ const groups = [
     items: [
       { value: "activity", label: "Activity", icon: Activity },
       { value: "routines", label: "Routines", icon: CalendarClock },
+      { value: "calls", label: "Calls", icon: ScrollText },
     ],
   },
   {

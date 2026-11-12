@@ -4,7 +4,7 @@ import {
   type AgentTriggerSetting,
 } from "@substrate/contracts/agents";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { PendingButton } from "@/components/feedback/pending-button";
@@ -22,6 +22,7 @@ import { Laptop } from "lucide-react";
 export function AgentRunSettingsView({
   name,
   settings,
+  callers,
   canRunHere,
   moving,
   saving,
@@ -31,6 +32,7 @@ export function AgentRunSettingsView({
 }: {
   name: string;
   settings: AgentRunSettings;
+  callers?: ReactNode;
   /** Only the desktop app can become an agent's home. */
   canRunHere: boolean;
   moving: boolean;
@@ -82,6 +84,7 @@ export function AgentRunSettingsView({
           )}
         </div>
       </SettingsCard>
+      {callers}
       <SettingsCard
         title="Triggers"
         description="Messages that start this agent."

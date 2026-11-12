@@ -25,7 +25,7 @@ export const queryKeys = {
     agentId: string,
     harness: string,
   ) => [...queryKeys.localAgentConfigurations(userId), organizationId, agentId, harness] as const,
-  // Agent work is private to the agent's owner, so it lives under the user.
+  // Owner work and the caller's own call status are private, so they live under the user.
   agentWork: (userId: string, organizationId?: string) =>
     [...queryKeys.user(userId), "agent-work", ...(organizationId ? [organizationId] : [])] as const,
   // Server: requests and status that every owner device can read.
@@ -33,6 +33,12 @@ export const queryKeys = {
     [...queryKeys.agentWork(userId, organizationId), "status"] as const,
   agentWorkNeedsYou: (userId: string, organizationId: string) =>
     [...queryKeys.agentWork(userId, organizationId), "needs-you"] as const,
+  agentCallers: (userId: string, organizationId: string, agentId: string) =>
+    [...queryKeys.agentWork(userId, organizationId), "callers", agentId] as const,
+  agentCallsLog: (userId: string, organizationId: string, agentId: string) =>
+    [...queryKeys.agentWork(userId, organizationId), "calls", agentId] as const,
+  myAgentCalls: (userId: string, organizationId: string, conversationId: string) =>
+    [...queryKeys.agentWork(userId, organizationId), "my-calls", conversationId] as const,
   agentWorkRequests: (userId: string, organizationId: string, conversationId: string) =>
     [...queryKeys.agentWork(userId, organizationId), "requests", conversationId] as const,
   // Local: what the home desktop's bridge returns. Only that desktop has it.

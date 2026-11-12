@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
 import { AgentWorkProvider } from "./agent-work-slot";
+import { CallStatus } from "./calls/call-status";
 import { ComposerNotice, type ComposerNoticeLine } from "./composer-notice";
 import { InboxReceipt } from "./inbox-receipt";
 import { ProposalBacklink } from "./requests/proposal-backlink";
@@ -24,6 +25,7 @@ import { isOpenRequest } from "@/lib/agent-work/requests";
 import { agentStatus, noDesktopLabel, queueAhead, turnTone } from "@/lib/agent-work/status";
 import type { Conversation } from "@/lib/messaging/conversations";
 import { agentLink } from "@/lib/navigation/record-links";
+import { myCallsOptions } from "@/queries/agent-work/calls";
 import {
   conversationWorkOptions,
   localAgentsOptions,
@@ -34,9 +36,9 @@ import { agentStatusOptions, conversationRequestsOptions } from "@/queries/agent
 import { toast } from "sonner";
 
 /**
- * The owner's agent work in one conversation, for the channel and the thread pane. Other members
- * see no agent work: the server returns requests and status only to the agent's owner, and the
- * bridge holds only the work of agents homed on this desktop.
+ * The owner's agent work in one conversation, for the channel and the thread pane. Callers see
+ * only their own call status. The server returns requests and work status only to the owner,
+ * and the bridge holds only the work of agents homed on this desktop.
  *
  * Work loads whether or not the agent is still a member, so an agent that left still shows its
  * open requests and turns here. Local turns come from the bridge when an agent is homed on this
@@ -70,6 +72,7 @@ export function ConversationAgentWork({
   });
   const requests = useQuery(conversationRequestsOptions(userId, organizationId, conversation.id));
   const statuses = useQuery(agentStatusOptions(userId, organizationId));
+  const calls = useQuery(myCallsOptions(userId, organizationId, conversation.id));
   const newTopic = useNewTopic(userId, organizationId);
   const turns = local.data?.turns ?? [];
   const sessions = new Map((local.data?.sessions ?? []).map((session) => [session.id, session]));
@@ -193,10 +196,16 @@ export function ConversationAgentWork({
           const requestCards = cards.get(message.id) ?? [];
           const waiting = waitingItems.get(message.id) ?? [];
           const created = backlinks.get(message.id) ?? [];
-          const empty = [placed, requestCards, waiting, created].every((list) => !list.length);
+          const myCalls = (calls.data ?? []).filter((call) => call.messageId === message.id);
+          const empty = [placed, requestCards, waiting, created, myCalls].every(
+            (list) => !list.length,
+          );
           if (empty) return null;
           return (
             <>
+              {myCalls.map((call) => (
+                <CallStatus key={call.invocationId} call={call} />
+              ))}
               {created.map((request) => {
                 const link = proposalSourceLink(organizationId, request);
                 return (

@@ -3,7 +3,7 @@ export const agentSettingsSections = ["general", "instructions", "skills", "mcps
 export type AgentSettingsSection = (typeof agentSettingsSections)[number];
 
 /** Every section of an agent's page. Activity is the default and has no search value. */
-export const agentPageSections = ["routines", ...agentSettingsSections] as const;
+export const agentPageSections = ["routines", "calls", ...agentSettingsSections] as const;
 export type AgentPageSection = "activity" | (typeof agentPageSections)[number];
 
 export const agentSectionLabels: Record<AgentSettingsSection, string> = {

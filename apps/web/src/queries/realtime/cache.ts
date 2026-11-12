@@ -61,8 +61,8 @@ export function realtimeQueryTargets(
       targets.push({ queryKey: queryKeys.agents(userId) });
       break;
     case "agent-work":
-      // Hints are dataless and go only to the owner. They cover server requests and status, and
-      // local work that another device changed by answering.
+      // Dataless hints refresh owner work or the caller's own call statuses. Server reads
+      // enforce that distinction; both are private, user- and workspace-scoped keys.
       targets.push({ queryKey: queryKeys.agentWork(userId, organizationId ?? undefined) });
       break;
     case "organization":

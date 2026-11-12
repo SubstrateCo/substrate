@@ -9,10 +9,11 @@ export function needsYouItems(data: AgentNeedsYou | undefined) {
   const requests = data?.requests ?? [];
   const withRequests = new Set(requests.map((request) => request.userAgentId));
   const agents = (data?.agents ?? []).filter((status) => !withRequests.has(status.userAgentId));
-  return { requests, agents };
+  const calls = data?.calls ?? [];
+  return { requests, agents, calls };
 }
 
 export function needsYouCount(data: AgentNeedsYou | undefined) {
-  const { requests, agents } = needsYouItems(data);
-  return requests.length + agents.length;
+  const { requests, agents, calls } = needsYouItems(data);
+  return requests.length + agents.length + calls.length;
 }
