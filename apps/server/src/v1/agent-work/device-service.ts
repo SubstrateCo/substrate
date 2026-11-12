@@ -38,13 +38,17 @@ export function createDeviceService({
       });
     },
     pullWakes(this: void, scope: DeviceScope, input: z.output<typeof pullWakesInput>) {
-      return serviceResult(async () => publish(await work.pullWakes(db, scope, input.limit)));
+      return serviceResult(async () =>
+        publish(await work.pullWakes(db, scope, input.limit, input.capabilities)),
+      );
     },
     ackWakes(this: void, scope: DeviceScope, input: z.output<typeof ackWakesInput>) {
       return serviceResult(async () => publish(await work.ackWakes(db, scope, input.ids)));
     },
     loadSources(this: void, scope: DeviceScope, input: z.output<typeof sourcesInput>) {
-      return serviceResult(() => work.loadSources(db, scope, input.messageIds));
+      return serviceResult(async () =>
+        publish(await work.loadSources(db, scope, input.messageIds, input.invocationIds)),
+      );
     },
     publishStatus(this: void, scope: DeviceScope, input: z.output<typeof publishStatusInput>) {
       return serviceResult(async () => {

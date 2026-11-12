@@ -1,8 +1,10 @@
 import {
   wakeMachine,
+  type AgentWakeInvocation,
   type AgentWakeRequestDetail,
   type AgentWakeState,
   type AgentWakeView,
+  type DeviceCapability,
 } from "@substrate/contracts/agent-work";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
@@ -12,11 +14,25 @@ import { effectsFor } from "../../core/effects";
 import { requireDevice, type DeviceIdentity } from "../../core/session/device";
 import { admit } from "./admission";
 import { homedAgentIds } from "./device";
+import { agentInvocations } from "./invocations.schema";
 import { agentRequests } from "./requests.schema";
 import { agentWakes } from "./wakes.schema";
-import { and, asc, eq, exists, inArray, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
+import {
+  and,
+  asc,
+  eq,
+  exists,
+  inArray,
+  isNotNull,
+  isNull,
+  ne,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 
 type RequestRow = typeof agentRequests.$inferSelect;
+type InvocationRow = typeof agentInvocations.$inferSelect;
 
 // A wake's state is stored as acked_at: null while the wake is pending.
 const wakeIn = {
@@ -36,23 +52,44 @@ const detailOf = (request: RequestRow): AgentWakeRequestDetail => ({
   threadId: request.threadId,
 });
 
+const invocationOf = (invocation: InvocationRow): AgentWakeInvocation => ({
+  id: invocation.id,
+  messageId: invocation.messageId,
+  conversationId: invocation.conversationId,
+  threadId: invocation.threadId,
+  kind: invocation.kind,
+  callerActorId: invocation.callerActorEntityId,
+});
+
 const toView = (
   wake: typeof agentWakes.$inferSelect,
   request: RequestRow | undefined,
-): AgentWakeView => ({
-  id: wake.id,
-  userAgentId: wake.userAgentId,
-  source: wake.source,
-  sourceRef: wake.sourceRef,
-  sessionKey: wake.sessionKey,
-  dedupeKey: wake.dedupeKey,
-  createdAt: wake.createdAt.toISOString(),
-  // Only the decided request of this wake's own agent and owner.
-  request: request && request.userAgentId === wake.userAgentId ? detailOf(request) : null,
-});
+  invocation: InvocationRow | undefined,
+): AgentWakeView => {
+  const view: AgentWakeView = {
+    id: wake.id,
+    userAgentId: wake.userAgentId,
+    source: wake.source,
+    sourceRef: wake.sourceRef,
+    sessionKey: wake.sessionKey,
+    dedupeKey: wake.dedupeKey,
+    createdAt: wake.createdAt.toISOString(),
+    // Only the decided request of this wake's own agent and owner.
+    request: request && request.userAgentId === wake.userAgentId ? detailOf(request) : null,
+  };
+  // Older desktops never get caller wakes, so other wakes keep their exact earlier shape.
+  if (wake.source === "caller_message")
+    view.invocation =
+      invocation && invocation.userAgentId === wake.userAgentId ? invocationOf(invocation) : null;
+  return view;
+};
 
 function requestIdOf(wake: typeof agentWakes.$inferSelect) {
   return "requestId" in wake.sourceRef ? wake.sourceRef.requestId : null;
+}
+
+function invocationIdOf(wake: typeof agentWakes.$inferSelect) {
+  return "invocationId" in wake.sourceRef ? wake.sourceRef.invocationId : null;
 }
 
 // Wakes of agents that this device runs, for this owner and organization.
@@ -62,9 +99,15 @@ function deviceWakes(db: DatabaseExecutor, identity: DeviceIdentity, deviceId: s
 
 /**
  * Unacknowledged wakes for agents whose home is this device, oldest first. An agent without a
- * home that has waiting wakes is adopted here.
+ * home that has waiting wakes is adopted here. A desktop without the caller_wakes capability
+ * gets no caller_message wakes: they stay pending for a desktop that can run them.
  */
-export function pullWakes(db: DatabaseExecutor, identity: DeviceIdentity, limit: number) {
+export function pullWakes(
+  db: DatabaseExecutor,
+  identity: DeviceIdentity,
+  limit: number,
+  capabilities: readonly DeviceCapability[] = [],
+) {
   return db.transaction(async (tx) => {
     const device = await requireDevice(tx, identity);
     // Driven from the owner's homeless agents, so the wake check uses the per-agent pending index.
@@ -102,10 +145,27 @@ export function pullWakes(db: DatabaseExecutor, identity: DeviceIdentity, limit:
           eq(agentWakes.organizationId, identity.organizationId),
           isNull(agentWakes.ackedAt),
           deviceWakes(tx, identity, device.id),
+          capabilities.includes("caller_wakes")
+            ? undefined
+            : ne(agentWakes.source, "caller_message"),
         ),
       )
       .orderBy(asc(agentWakes.createdAt), asc(agentWakes.id))
       .limit(limit);
+    const invocationIds = rows.flatMap((wake) => invocationIdOf(wake) ?? []);
+    const invocations = invocationIds.length
+      ? await tx
+          .select()
+          .from(agentInvocations)
+          .where(
+            and(
+              inArray(agentInvocations.id, invocationIds),
+              eq(agentInvocations.ownerUserId, identity.userId),
+              eq(agentInvocations.organizationId, identity.organizationId),
+            ),
+          )
+      : [];
+    const invocationById = new Map(invocations.map((row) => [row.id, row]));
     const requestIds = rows.flatMap((wake) => requestIdOf(wake) ?? []);
     const requests = requestIds.length
       ? await tx
@@ -122,7 +182,12 @@ export function pullWakes(db: DatabaseExecutor, identity: DeviceIdentity, limit:
     const byId = new Map(requests.map((request) => [request.id, request]));
     return rows.map((wake) => {
       const requestId = requestIdOf(wake);
-      return toView(wake, requestId ? byId.get(requestId) : undefined);
+      const invocationId = invocationIdOf(wake);
+      return toView(
+        wake,
+        requestId ? byId.get(requestId) : undefined,
+        invocationId ? invocationById.get(invocationId) : undefined,
+      );
     });
   });
 }

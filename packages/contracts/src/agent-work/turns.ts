@@ -35,11 +35,13 @@ export const inboxSources = [
   "helper_result",
   "recovery",
   "epoch",
+  /** A message from a person the owner allows to call the agent. */
+  "caller_message",
 ] as const;
 export type InboxSource = (typeof inboxSources)[number];
 
 /** Claim order. Background items move up one lane for every inboxLaneAgingMs they wait. */
-export const inboxLanes = ["owner", "system", "background"] as const;
+export const inboxLanes = ["owner", "caller", "system", "background"] as const;
 export const inboxLaneAgingMs = 10 * 60_000;
 export type InboxLane = (typeof inboxLanes)[number];
 
@@ -57,6 +59,14 @@ export type InboxStatus = (typeof inboxStatuses)[number];
 
 export type InboxSourceRef =
   | { source: "owner_message"; messageId: string; conversationId: string; threadId: string | null }
+  | {
+      source: "caller_message";
+      /** The server's invocation. The source check rechecks it before the turn runs. */
+      invocationId: string;
+      messageId: string;
+      conversationId: string;
+      threadId: string | null;
+    }
   | {
       source: "answer" | "approval_result";
       requestId: string;

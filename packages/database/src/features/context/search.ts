@@ -9,6 +9,7 @@ import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import { entityLinks } from "../../core/links/schema";
+import { member } from "../../core/organizations/schema";
 import { readableFromCte, withVisibility } from "../../core/permissions/visibility";
 import { pageSize } from "../../core/repository-context";
 import { searchDocument, trigramKey } from "../../core/search/indexing";
@@ -32,7 +33,19 @@ import { tasks } from "../tasks/tasks.schema";
 import { requireWork } from "./access";
 import { messageExcerpts } from "./message-excerpt";
 import { messageEntityReferences, messageMessagingReferences } from "./schema";
-import { and, asc, eq, gt, inArray, isNull, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
+import {
+  and,
+  asc,
+  eq,
+  exists,
+  gt,
+  inArray,
+  isNull,
+  or,
+  sql,
+  type SQL,
+  type SQLWrapper,
+} from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 type ChannelMembership = "joined" | "left" | "none";
@@ -58,6 +71,8 @@ interface SearchResult {
   createdAt?: Date;
   // Agent results only: the viewer's own agent definition.
   agentId?: string;
+  // Agent results only: another person's agent that the viewer may call, and how.
+  callMode?: "anyone" | "ask";
   // Conversation and channel results only.
   private?: boolean;
   membership?: ChannelMembership;
@@ -520,14 +535,40 @@ export async function contextSearch(
       .limit(limit);
     results.push(...rows.map((row) => ({ ...row, kind: "person" as const })));
   }
-  // Mention picker: only the caller's own agents that are members here. Other people's agents
-  // stay private and cannot be addressed.
+  // Mention picker: the viewer's own agents that are members here, and, for a person of this
+  // organization in a channel or group, other people's agents that accept callers and whose owner
+  // can see the conversation. Shared agents show their call mode, never their allowlist or
+  // definition. Agents themselves never call other agents.
   if (kind === "agent" && input.conversationId) {
+    const shared = scope.actorEntityId
+      ? undefined
+      : and(
+          sql`${userAgents.callerPolicy} <> 'owner'`,
+          eq(actors.organizationId, scope.organizationId),
+          inArray(messagingConversations.kind, ["channel", "group"]),
+          exists(
+            db
+              .select({ id: member.id })
+              .from(member)
+              .where(
+                and(
+                  eq(member.userId, scope.userId),
+                  eq(member.organizationId, scope.organizationId),
+                ),
+              ),
+          ),
+          visibleConversations(db, {
+            userId: userAgents.userId,
+            organizationId: scope.organizationId,
+          }),
+        );
     const rows = await db
       .select({
         id: actors.entityId,
         title: userAgents.name,
+        ownerUserId: userAgents.userId,
         agentId: userAgents.id,
+        callerPolicy: userAgents.callerPolicy,
         image: actorPicture(scope),
       })
       .from(messagingParticipants)
@@ -543,14 +584,27 @@ export async function contextSearch(
       .where(
         and(
           liveAgentMember(input.conversationId),
-          eq(userAgents.userId, scope.userId),
+          shared
+            ? or(eq(userAgents.userId, scope.userId), shared)
+            : eq(userAgents.userId, scope.userId),
           query ? containsText(userAgents.name, query) : undefined,
           input.after ? gt(actors.entityId, input.after) : undefined,
         ),
       )
       .orderBy(asc(actors.entityId))
       .limit(limit);
-    results.push(...rows.map((row) => ({ ...row, kind: "agent" as const })));
+    results.push(
+      ...rows.map(({ ownerUserId, agentId, callerPolicy, ...row }) =>
+        ownerUserId === scope.userId
+          ? { ...row, agentId, kind: "agent" as const }
+          : {
+              ...row,
+              // The shared condition admits only agents whose policy is anyone or ask.
+              callMode: callerPolicy === "ask" ? ("ask" as const) : ("anyone" as const),
+              kind: "agent" as const,
+            },
+      ),
+    );
   }
   const page = results.sort((a, b) => a.id.localeCompare(b.id)).slice(0, limit);
   // Message rows passed the conversation check above, so their bodies may be quoted.

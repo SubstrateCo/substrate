@@ -12,6 +12,7 @@ import { workspaceContext } from "../../core/session/workspace";
 import { visibleConversations } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";
 import { messagingConversations } from "../messaging/schema";
+import { awaitingOwner, invocationViews } from "./invocations";
 import { inStates } from "./machine-sql";
 import { agentRequests } from "./requests.schema";
 import { statusViews } from "./status";
@@ -117,13 +118,17 @@ export function listConversationRequests(
   });
 }
 
-/** Everything that waits for the owner: open requests and agents that report needs_you. */
+/**
+ * Everything that waits for the owner: open requests, agents that report needs_you, and calls
+ * that wait for approval.
+ */
 export function listNeedsYou(db: DatabaseExecutor, identity: SessionIdentity) {
   return db.transaction(async (tx): Promise<AgentNeedsYou> => {
     await workspaceContext(tx, identity);
     return {
       requests: await requestViews(tx, identity, answerableRequest),
       agents: await statusViews(tx, identity, eq(agentStatus.state, "needs_you")),
+      calls: await invocationViews(tx, identity, awaitingOwner),
     };
   });
 }

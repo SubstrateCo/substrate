@@ -19,6 +19,7 @@ import { attachReference, detachReference } from "../context/service";
 import { requireMessage } from "../messaging/access";
 import { messageChangeHints } from "../realtime/routing";
 import { taskRepository } from "../tasks/repository";
+import { auditCallerTool, namedIds, requireCallerTurn } from "./caller-turn";
 import { mcpContextQueries } from "./context";
 import { listLinks } from "./links";
 import { mcpMessagingQueries } from "./messaging";
@@ -73,6 +74,8 @@ export async function executeAgentTool<K extends ServerToolName>(
       userName,
     } = await workspaceContext(tx, identity, { lockActor: !definition.readOnly });
     const actor = { id: agent.entityId, name: agent.name, type: agent.type };
+    // A turn that answers callers names their calls; each call is audited, reads included.
+    const calls = await requireCallerTurn(tx, identity, turn);
     // Writes use the turn context, so the turn is checked before any write runs.
     let userAgentId: string | null = null;
     if (!definition.readOnly) {
@@ -221,6 +224,13 @@ export async function executeAgentTool<K extends ServerToolName>(
         result,
         turnId: turn.turnId,
         attempt: turn.attempt,
+      });
+    if (calls.length)
+      await auditCallerTool(tx, calls, {
+        tool,
+        readOnly: definition.readOnly,
+        turnId: turn.turnId,
+        targetIds: [...namedIds(fingerprint), ...namedIds(JSON.stringify(result))],
       });
     return result;
   });

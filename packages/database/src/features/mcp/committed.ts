@@ -1,17 +1,31 @@
 import type { TurnContext, WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
-import type { ServerToolName } from "@substrate/contracts/harness/tools";
+import { mcpTools, type ServerToolName } from "@substrate/contracts/harness/tools";
 
 import type { DatabaseExecutor } from "../../client";
 import { commit } from "../../core/effects";
 import type { SessionIdentity } from "../../core/session/identity";
+import { auditFailedCallerTool, namedIds } from "./caller-turn";
 import { executeAgentTool as execute } from "./service";
 
-export function executeAgentTool<K extends ServerToolName>(
+export async function executeAgentTool<K extends ServerToolName>(
   db: DatabaseExecutor,
   identity: SessionIdentity & { actorEntityId: string },
   tool: K,
   raw: WorkspaceApiRequest["input"],
   turn: TurnContext,
 ) {
-  return commit(db, (tx) => execute(tx, identity, tool, raw, turn));
+  try {
+    return await commit(db, (tx) => execute(tx, identity, tool, raw, turn));
+  } catch (error) {
+    // The call's transaction rolled back. A turn that answers callers still logs the failure;
+    // a failed log does not hide the call's own error.
+    if (turn.invocationIds?.length && error instanceof Error)
+      await auditFailedCallerTool(db, identity, turn, {
+        tool,
+        readOnly: mcpTools[tool].readOnly,
+        targetIds: namedIds(JSON.stringify(raw)),
+        error,
+      }).catch(() => undefined);
+    throw error;
+  }
 }

@@ -2,11 +2,12 @@ import type { InboxLane, InboxSource } from "../turns.ts";
 
 export interface TriggerDefinition {
   origin: "server" | "local";
-  principal: "owner" | "system" | "agent";
+  principal: "owner" | "caller" | "system" | "agent";
   lane: InboxLane;
   turnMode: "interactive" | "unattended";
   steerable: boolean;
-  recheck: "owner_source" | "none";
+  /** owner_source: the owner must still see the message. caller_source: also the call. */
+  recheck: "owner_source" | "caller_source" | "none";
   envelope: "message" | "decision" | "helper_task" | "helper_result" | "routine" | "system";
 }
 
@@ -82,5 +83,14 @@ export const triggerRegistry: Record<InboxSource, TriggerDefinition> = {
     steerable: false,
     recheck: "none",
     envelope: "system",
+  },
+  caller_message: {
+    origin: "server",
+    principal: "caller",
+    lane: "caller",
+    turnMode: "interactive",
+    steerable: true,
+    recheck: "caller_source",
+    envelope: "message",
   },
 };

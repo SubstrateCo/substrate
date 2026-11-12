@@ -30,6 +30,13 @@ test("claims follow each trigger's turn mode, except helper sessions and rotatio
     helper_result: { source: "helper_result", helperId: "h" },
     recovery: { source: "recovery", turnId: "t" },
     epoch: { source: "epoch", fromEpoch: 0 },
+    caller_message: {
+      source: "caller_message",
+      invocationId: "i",
+      messageId: "m",
+      conversationId: "c",
+      threadId: null,
+    },
   };
   try {
     for (const source of inboxSources) {

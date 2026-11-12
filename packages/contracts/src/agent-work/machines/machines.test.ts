@@ -1,8 +1,10 @@
 import type { Machine, MachineEvent } from "../../state-machine.ts";
+import { agentInvocationStatuses } from "../invocations.ts";
 import { agentRequestStatuses } from "../requests.ts";
 import { agentSessionStatuses, helperStatuses, inboxStatuses, turnStatuses } from "../turns.ts";
 import { helperMachine } from "./helper.ts";
 import { inboxItemMachine } from "./inbox-item.ts";
+import { invocationMachine } from "./invocation.ts";
 import { requestMachine } from "./request.ts";
 import { sessionMachine } from "./session.ts";
 import { turnMachine } from "./turn.ts";
@@ -100,6 +102,17 @@ describeMachine("turn", turnMachine, turnStatuses, [
 describeMachine("session", sessionMachine, agentSessionStatuses, [
   ...fromEach(["idle", "working"], "work", "working"),
   ...fromEach(["idle", "working"], "rest", "idle"),
+]);
+
+describeMachine("invocation", invocationMachine, agentInvocationStatuses, [
+  ["received", "admit", "admitted"],
+  ["received", "hold", "pending_approval"],
+  ["received", "limit", "rate_limited"],
+  ["pending_approval", "approve", "admitted"],
+  ["pending_approval", "decline", "declined"],
+  ["pending_approval", "expire", "expired"],
+  ["pending_approval", "cancel", "cancelled"],
+  ["admitted", "drop", "dropped"],
 ]);
 
 describeMachine("helper", helperMachine, helperStatuses, [

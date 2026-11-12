@@ -1,3 +1,4 @@
+import type { AgentInvocationView } from "./invocations.ts";
 import type { ProposalAction, ProposalOutcome } from "./proposals.ts";
 import {
   agentRequestResponse,
@@ -71,6 +72,8 @@ export interface AgentNeedsYou {
   requests: AgentRequestView[];
   /** Agents whose desktop reported needs_you, such as a turn that needs attention. */
   agents: AgentStatusView[];
+  /** Calls of the owner's agents that wait for the owner's approval. */
+  calls: AgentInvocationView[];
 }
 
 const ref = z.string().min(1);

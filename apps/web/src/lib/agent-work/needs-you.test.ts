@@ -9,6 +9,7 @@ test("an agent with a request counts once, for the request", () => {
   const data = {
     requests: [request({ id: "r1", userAgentId: "a1" }), request({ id: "r2", userAgentId: "a1" })],
     agents: [stopped("a1"), stopped("a2")],
+    calls: [],
   };
   const items = needsYouItems(data);
   expect(items.requests.map((entry) => entry.id)).toEqual(["r1", "r2"]);

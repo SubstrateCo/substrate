@@ -1,3 +1,5 @@
+import type { AgentCallerPolicy } from "@substrate/contracts/agents";
+
 import { user } from "../authentication/schema";
 import { desktopDevices } from "../devices/schema";
 import { storedFiles } from "../storage/schema";
@@ -32,10 +34,16 @@ export const userAgents = pgTable(
     useStartupDefaults: boolean("use_startup_defaults").notNull().default(true),
     // The desktop that runs this local agent. Its working folder lives on that device.
     homeDeviceId: uuid("home_device_id"),
+    // Who may call the agent besides its owner: owner, anyone, or ask. See agentCallerPolicies.
+    callerPolicy: text("caller_policy").$type<AgentCallerPolicy>().notNull().default("owner"),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => [
     unique("user_agents_owner_id_unique").on(table.userId, table.id),
+    check(
+      "user_agent_caller_policy_check",
+      sql`${table.callerPolicy} IN ('owner', 'anyone', 'ask')`,
+    ),
     foreignKey({
       name: "user_agent_home_device_owner_fk",
       columns: [table.userId, table.homeDeviceId],

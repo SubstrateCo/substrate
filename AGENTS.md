@@ -21,7 +21,7 @@ Substrate is an Electron workspace for email, messages, docs, tasks, agents, and
 ## Agent work
 
 - Agents run on their owner's home desktop. The server keeps shared records and only what other devices need: wakes, requests, and agent status. The desktop keeps sessions, turns, transcripts, routines, and helpers in local SQLite. The native harness only executes turns.
-- Only the owner wakes their agent: owner messages, owner answers and approvals, owner-approved routines, and the agent's own helpers. Agent-written messages never wake an agent.
+- Admission decides every wake (`decideAdmission` in `packages/database/src/features/agent-work/admission.ts`). The owner wakes their agent: owner messages, owner answers and approvals, owner-approved routines, and the agent's own helpers. Other people wake it only as callers that the owner's caller policy admits: human members of the agent's organization, in channels and groups the owner can see. A call runs with the owner's access, and the owner approves it under `ask`. Agent-written messages never wake an agent.
 - Agents publish only through `reply` and `propose`. Assistant text outside tools is the owner-only transcript. A turn with nothing useful to say ends quietly.
 - Change agent-work statuses only through a machine event's compare-and-set (`packages/contracts/src/agent-work/machines/`): match the event's `from` states in the `WHERE` clause and write its `to` state. Add a new transition to the machine table first.
 - Every agent-work trigger needs an entry in `packages/contracts/src/agent-work/triggers/registry.ts`. Local triggers enqueue only through `enqueue()` in client storage; callers do not choose a lane.

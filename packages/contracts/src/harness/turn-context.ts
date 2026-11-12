@@ -29,5 +29,11 @@ export const turnContextSchema = z.strictObject({
   installationId: z.uuid().optional(),
   /** A quiet handoff turn saves its notes locally and must not publish or propose. */
   purpose: z.enum(["handoff"]).optional(),
+  /**
+   * The calls (caller_message items) this turn answers. The server checks that each is an
+   * admitted call of this agent whose message is in the turn's place, and audits the turn's
+   * MCP calls against them. Absent or empty for turns without callers.
+   */
+  invocationIds: z.array(z.uuid()).max(20).optional(),
 });
 export type TurnContext = z.infer<typeof turnContextSchema>;

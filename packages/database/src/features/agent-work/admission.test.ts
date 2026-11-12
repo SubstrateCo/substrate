@@ -3,6 +3,8 @@ import { sessionKeys, wakeDedupeKeys } from "@substrate/contracts/agent-work";
 import {
   decideAdmission,
   type AdmissionDecision,
+  type CallerFacts,
+  type InvocationRecord,
   type MessageFacts,
   type MessageTrigger,
   type RequestTrigger,
@@ -90,6 +92,159 @@ for (const [name, trigger, overrides, expected] of messageCases)
       decideAdmission({ type: "message", trigger, facts: { ...facts, ...overrides } }),
     ).toEqual(expected);
   });
+
+const bob = { kind: "human" as const, userId: "bob" };
+const caller: CallerFacts = {
+  policy: "anyone",
+  member: true,
+  actorId: "bob-actor",
+  ownerCanSee: true,
+  allowlisted: false,
+  answeredInThread: false,
+  pending: 0,
+  admittedToday: 0,
+  invocationId: "i1",
+};
+const call = (event: InvocationRecord["event"], overrides: Partial<InvocationRecord> = {}) => ({
+  id: "i1",
+  event,
+  kind: "mention" as const,
+  policy: "anyone" as const,
+  allowlisted: false,
+  ...overrides,
+});
+const calledNow = (invocation: InvocationRecord): AdmissionDecision => ({
+  type: "admit",
+  source: "caller_message",
+  sourceRef: { invocationId: "i1" },
+  sessionKey: thread,
+  dedupeKey: wakeDedupeKeys.call("i1"),
+  invocation,
+});
+
+const callerCases: [
+  string,
+  MessageTrigger["conversationKind"],
+  Partial<MessageFacts>,
+  Partial<CallerFacts>,
+  AdmissionDecision,
+][] = [
+  [
+    "anyone: a member's mention runs now",
+    "channel",
+    { mentioned: true },
+    {},
+    calledNow(call("admit")),
+  ],
+  [
+    "ask: a member's mention waits for the owner",
+    "group",
+    { mentioned: true },
+    { policy: "ask" },
+    { type: "needs_approval", sessionKey: thread, invocation: call("hold", { policy: "ask" }) },
+  ],
+  [
+    "ask: an allowlisted member's mention runs now",
+    "channel",
+    { mentioned: true },
+    { policy: "ask", allowlisted: true },
+    calledNow(call("admit", { policy: "ask", allowlisted: true })),
+  ],
+  [
+    "a person outside the agent's organization is never a caller",
+    "channel",
+    { mentioned: true },
+    { member: false, actorId: null },
+    { type: "deny", reason: "not_member" },
+  ],
+  [
+    "callers cannot reach someone else's agent in a DM",
+    "dm",
+    { mentioned: true },
+    {},
+    { type: "deny", reason: "direct_message" },
+  ],
+  [
+    "a conversation the owner cannot see never wakes the agent for a caller",
+    "channel",
+    { mentioned: true },
+    { ownerCanSee: false },
+    { type: "deny", reason: "owner_cannot_see" },
+  ],
+  [
+    "a thread reply wakes only where the agent answered this caller",
+    "channel",
+    { workedInThread: true },
+    {},
+    { type: "deny", reason: "not_triggered" },
+  ],
+  [
+    "a thread reply where the agent answered this caller runs as thread_reply",
+    "channel",
+    { workedInThread: true },
+    { answeredInThread: true },
+    calledNow(call("admit", { kind: "thread_reply" })),
+  ],
+  [
+    "the owner's disabled mention trigger applies to callers",
+    "channel",
+    { mentioned: true, disabled: ["mention"] },
+    {},
+    { type: "deny", reason: "not_triggered" },
+  ],
+  [
+    "a fourth pending call of the same caller is rate limited",
+    "channel",
+    { mentioned: true },
+    { policy: "ask", pending: 3 },
+    { type: "deny", reason: "rate_limited", invocation: call("limit", { policy: "ask" }) },
+  ],
+  [
+    "the agent's daily cap of admitted calls is rate limited",
+    "channel",
+    { mentioned: true },
+    { admittedToday: 100 },
+    { type: "deny", reason: "rate_limited", invocation: call("limit") },
+  ],
+];
+
+for (const [name, conversationKind, overrides, callerOverrides, expected] of callerCases)
+  test(`caller: ${name}`, () => {
+    expect(
+      decideAdmission({
+        type: "message",
+        trigger: { ...sent(bob, conversationKind), message: { ...message, threadId: "m1" } },
+        facts: { ...facts, ...overrides, caller: { ...caller, ...callerOverrides } },
+      }),
+    ).toEqual(expected);
+  });
+
+test("caller: an agent author never wakes an agent, even one that accepts callers", () => {
+  expect(
+    decideAdmission({
+      type: "message",
+      trigger: sent({ kind: "agent", actorEntityId: "a2" }, "channel"),
+      facts: { ...facts, mentioned: true, caller },
+    }),
+  ).toEqual({ type: "deny", reason: "agent_author" });
+});
+
+test("invocation: an approved call wakes the agent in the call's session, once", () => {
+  const invocation = { ...request, id: "i1" };
+  expect(
+    decideAdmission({
+      type: "invocation",
+      trigger: { type: "invocation", invocation },
+      facts: { agent },
+    }),
+  ).toEqual({
+    type: "admit",
+    source: "caller_message",
+    sourceRef: { invocationId: "i1" },
+    sessionKey: thread,
+    dedupeKey: wakeDedupeKeys.call("i1"),
+  });
+});
 
 const request = {
   id: "r1",

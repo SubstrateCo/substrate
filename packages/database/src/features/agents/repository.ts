@@ -79,6 +79,7 @@ export function createAgentRepository(
             );
             return { kind, enabled: row?.enabled ?? true };
           }),
+          callerPolicy: agent.callerPolicy,
         })),
       };
     },

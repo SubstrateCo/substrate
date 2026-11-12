@@ -1,7 +1,7 @@
 import { organizationId } from "../workspace.ts";
 import { agentRequestPayload } from "./requests.ts";
 import { agentActivityMaxLength, agentStatusStates } from "./status.ts";
-import { sessionKey } from "./wakes.ts";
+import { deviceCapabilities, sessionKey } from "./wakes.ts";
 import { z } from "zod";
 
 // Home desktop calls under /agent-work/device/*. The session decides the user; the server checks
@@ -22,14 +22,26 @@ export const deviceHeartbeatInput = z.strictObject({ installationId: id });
 export const pullWakesInput = z.strictObject({
   ...device,
   limit: z.number().int().min(1).max(100).default(50),
+  /** What this desktop can run. Older desktops send none and get no caller_message wakes. */
+  capabilities: z.array(z.enum(deviceCapabilities)).max(deviceCapabilities.length).optional(),
 });
 
 export const ackWakesInput = z.strictObject({ ...device, ids: z.array(id).min(1).max(100) });
 
-export const sourcesInput = z.strictObject({
-  ...device,
-  messageIds: z.array(id).min(1).max(100),
-});
+export const sourcesInput = z
+  .strictObject({
+    ...device,
+    messageIds: z.array(id).max(100),
+    /**
+     * Calls to recheck before their turn runs. Their messages are returned with the others
+     * while the call may still run, and left out otherwise.
+     */
+    invocationIds: z.array(id).max(100).optional(),
+  })
+  .refine(
+    (input) => input.messageIds.length + (input.invocationIds?.length ?? 0) > 0,
+    "Name at least one message or invocation.",
+  );
 
 export const publishStatusInput = z.strictObject({
   ...device,

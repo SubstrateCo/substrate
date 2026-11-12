@@ -1,4 +1,5 @@
 import { harnessKinds } from "../harness/kinds.ts";
+import type { AgentCallerPolicy } from "./callers.ts";
 import type { AgentTriggerSetting } from "./triggers.ts";
 import { z } from "zod";
 
@@ -110,6 +111,8 @@ export interface AgentRunSettings {
   agentId: string;
   homeDevice: { id: string; name: string; online: boolean; current: boolean } | null;
   triggers: AgentTriggerSetting[];
+  /** Who may call the agent besides its owner. */
+  callerPolicy: AgentCallerPolicy;
 }
 export interface AgentCatalog {
   agents: AgentConfiguration[];

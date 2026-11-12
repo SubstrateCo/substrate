@@ -1,11 +1,16 @@
 import { sessionKeys } from "@substrate/contracts/agent-work";
+import type { AgentCallerPolicy } from "@substrate/contracts/agents";
 import type { TurnContext, WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
 import { mcpTools, type McpOutput, type ServerToolName } from "@substrate/contracts/harness/tools";
 
+import { actors } from "../core/actors/schema";
+import { saveCallerPolicy } from "../features/agent-work/committed";
 import { executeAgentTool } from "../features/mcp/service";
 import { createMessagingService } from "../features/messaging/service";
+import { member, user } from "../schema";
 import { ownedAgent } from "./agents";
 import type { setupDatabase } from "./database";
+import { and, eq } from "drizzle-orm";
 
 type Fixture = ReturnType<typeof setupDatabase>;
 
@@ -59,4 +64,35 @@ export async function agentWorkFixture(f: Fixture) {
       ).output,
     ) as McpOutput<K>;
   return { agent, alice, bob, dm, owner, agentIdentity, call };
+}
+
+/**
+ * agentWorkFixture plus Carol, a third member of orgA, and a public channel that has Alice's
+ * agent. `policy` sets who may call the agent; `mention` is the agent's mention markup.
+ */
+export async function callerFixture(f: Fixture) {
+  await f.db
+    .insert(user)
+    .values({ id: "carol", name: "Carol", email: "carol@example.com", emailVerified: true });
+  await f.db.insert(member).values({ id: "carol-a", userId: "carol", organizationId: f.orgA });
+  const base = await agentWorkFixture(f);
+  const carol = createMessagingService(f.db, { organizationId: f.orgA, userId: "carol" });
+  const channel = await base.alice.createConversation({ kind: "channel", name: "general" });
+  await base.alice.addAgent(channel.id, base.agent.agentId);
+  const policy = (value: AgentCallerPolicy) =>
+    saveCallerPolicy(f.db, base.owner, base.agent.agentId, value);
+  // Carol's first workspace read provisions her person actor.
+  await carol.listConversations();
+  const [carolActor] = await f.db
+    .select({ id: actors.entityId })
+    .from(actors)
+    .where(and(eq(actors.userId, "carol"), eq(actors.organizationId, f.orgA)));
+  return {
+    ...base,
+    carol,
+    carolActorId: carolActor!.id,
+    channel,
+    policy,
+    mention: `@[agent:${base.agent.actorId}]`,
+  };
 }

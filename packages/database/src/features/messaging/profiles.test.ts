@@ -111,6 +111,7 @@ test("agent profiles show the owner to members and configuration only to the own
     ownerName: "Alice",
     harness: "claude",
     model: "sonnet",
+    callMode: null,
   });
   expect(await chat("bob").getProfile(general.id, agent.entityId)).toMatchObject({
     type: "agent",

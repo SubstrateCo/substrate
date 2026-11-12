@@ -7,6 +7,7 @@ import {
   type AgentWakeView,
   type openRequestInput,
   type publishStatusInput,
+  type sourcesInput,
 } from "@substrate/contracts/agent-work";
 import { harnessKinds, desktopAgentCatalogSchema } from "@substrate/contracts/harness";
 
@@ -50,7 +51,12 @@ export interface AgentWorkServer {
   catalog(): Promise<CatalogAgent[]>;
   pullWakes(organizationId: string, limit: number): Promise<AgentWakeView[]>;
   ackWakes(organizationId: string, ids: string[]): Promise<void>;
-  sources(organizationId: string, messageIds: string[]): Promise<AgentSourcesResult>;
+  /** invocationIds are calls to recheck; the server leaves out the messages of revoked calls. */
+  sources(
+    organizationId: string,
+    messageIds: string[],
+    invocationIds?: string[],
+  ): Promise<AgentSourcesResult>;
   publishStatus(input: Omit<z.input<typeof publishStatusInput>, "installationId">): Promise<void>;
   openRequest(
     input: Omit<z.input<typeof openRequestInput>, "installationId">,
@@ -146,13 +152,12 @@ export function createAgentWorkServer(options: {
       if (ids.length)
         await call("/agent-work/device/wakes/ack", { ...device(organizationId), ids }, ignored);
     },
-    async sources(organizationId, messageIds) {
-      if (!messageIds.length) return { messages: [], inaccessible: [] };
-      return call(
-        "/agent-work/device/sources",
-        { ...device(organizationId), messageIds },
-        agentSourcesResult,
-      );
+    async sources(organizationId, messageIds, invocationIds = []) {
+      if (!messageIds.length && !invocationIds.length) return { messages: [], inaccessible: [] };
+      const input: z.input<typeof sourcesInput> = { ...device(organizationId), messageIds };
+      // Older servers reject unknown fields, so a batch without calls leaves the field out.
+      if (invocationIds.length) input.invocationIds = invocationIds;
+      return call("/agent-work/device/sources", input, agentSourcesResult);
     },
     async publishStatus(input) {
       await call(

@@ -138,10 +138,11 @@ function itemBase(item: InboxRow) {
 }
 
 const renderers: Record<TriggerDefinition["envelope"], ItemRenderer> = {
+  // An owner message, or a caller's message: the author is the caller, as device/sources names them.
   message: (item, context) => {
     const ref = item.sourceRef;
     const base = itemBase(item);
-    if (ref.source !== "owner_message") return null;
+    if (ref.source !== "owner_message" && ref.source !== "caller_message") return null;
     const message = context.messages.get(ref.messageId);
     if (!message) return null;
     return {

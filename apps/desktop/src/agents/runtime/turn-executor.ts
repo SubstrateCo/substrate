@@ -9,7 +9,6 @@ import {
 } from "@substrate/client-storage/agent-work";
 import {
   liveTurnStatuses,
-  triggerRegistry,
   type EnvelopeResumeNote,
   type TurnStatus,
 } from "@substrate/contracts/agent-work";
@@ -29,6 +28,7 @@ import { turnOutcome } from "../turns/outcome.ts";
 import type { LiveTurn, RuntimeContext } from "./context.ts";
 import type { Epochs } from "./epochs.ts";
 import type { RequestBridge } from "./requests.ts";
+import { inaccessibleItems, sourceRequest } from "./source-check.ts";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 
@@ -260,25 +260,15 @@ export function createTurnExecutor(
       return;
     }
     const items = batchItems(await context.store.inbox.forTurn(context.organizationId, turn.id));
-    const messageIds = items.flatMap((item) =>
-      triggerRegistry[item.source].recheck === "owner_source" &&
-      item.sourceRef.source === "owner_message"
-        ? [item.sourceRef.messageId]
-        : [],
-    );
+    const { messageIds, invocationIds } = sourceRequest(items);
     let sources;
     try {
-      sources = await context.server.sources(context.organizationId, messageIds);
+      sources = await context.server.sources(context.organizationId, messageIds, invocationIds);
     } catch (error) {
       return retryLater(turn, error);
     }
     const messages = new Map(sources.messages.map((message) => [message.id, message]));
-    const inaccessible = items.filter(
-      (item) =>
-        triggerRegistry[item.source].recheck === "owner_source" &&
-        item.sourceRef.source === "owner_message" &&
-        !messages.has(item.sourceRef.messageId),
-    );
+    const inaccessible = inaccessibleItems(items, sources);
     await context.store.inbox.drop(
       context.organizationId,
       inaccessible.map((item) => item.id),

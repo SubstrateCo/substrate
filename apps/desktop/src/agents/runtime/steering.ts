@@ -10,6 +10,7 @@ import { harnessCodesWithClassification } from "@substrate/contracts/harness";
 
 import { envelopeItem, renderEnvelope } from "../turns/envelope.ts";
 import type { LiveTurn, RuntimeContext } from "./context.ts";
+import { sourceRequest } from "./source-check.ts";
 import { endedStatus, errorCode, type TurnExecutor } from "./turn-executor.ts";
 
 /**
@@ -170,14 +171,14 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
       }
       let messages: Map<string, AgentSourceMessage> | undefined;
       if (steerable.length) {
-        const ids = steerable.flatMap(({ item }) =>
-          triggerRegistry[item.source].recheck === "owner_source" &&
-          item.sourceRef.source === "owner_message"
-            ? [item.sourceRef.messageId]
-            : [],
-        );
+        const { messageIds, invocationIds } = sourceRequest(steerable.map(({ item }) => item));
         try {
-          const sources = await context.server.sources(context.organizationId, ids);
+          const sources = await context.server.sources(
+            context.organizationId,
+            messageIds,
+            invocationIds,
+          );
+          // The server leaves out the message of a revoked call, so its item drops below.
           messages = new Map(sources.messages.map((message) => [message.id, message]));
         } catch {
           context.log("Could not add a message to the live turn.");
