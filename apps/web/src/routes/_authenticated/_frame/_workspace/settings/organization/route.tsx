@@ -3,19 +3,19 @@ import { organizationSettingsAccess } from "@substrate/contracts/auth/settings-a
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 
 import { SettingsShell } from "@/components/settings/settings-shell";
-import { activeMemberQueryOptions } from "@/queries/organizations/options";
+import { currentOrganizationQueryOptions } from "@/queries/organizations/options";
 
 export const Route = createFileRoute("/_authenticated/_frame/_workspace/settings/organization")({
   component: OrganizationSettingsRoute,
-  // The workspace frame already observes the active member role, so this reads the cache. The
+  // The workspace frame already observes the viewer's role, so this reads the cache. The
   // server still checks the role on every settings request.
   beforeLoad: async ({ context }) => {
     const { organizationId } = context;
-    const member = await context.queryClient.query({
-      ...activeMemberQueryOptions(organizationId),
+    const organization = await context.queryClient.query({
+      ...currentOrganizationQueryOptions(organizationId),
       staleTime: Infinity,
     });
-    const access = organizationSettingsAccess(member.role);
+    const access = organizationSettingsAccess(organization.role);
     if (!access.allowed) throw redirect({ to: "/dashboard" });
     return { organizationSettings: { organizationId, isOwner: access.isOwner } };
   },

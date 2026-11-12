@@ -1,22 +1,23 @@
 import { queryOptions } from "@tanstack/react-query";
 
+import { getOrganizationPeople } from "@/api/organizations/requests";
 import type { PickerPerson } from "@/lib/people/people-picker";
-import { organizationQueryOptions } from "@/queries/organizations/options";
+import { queryKeys } from "@/queries/keys";
 
-/**
- * Members of the workspace as people to choose, sorted by name. It reuses the organization
- * detail that Better Auth returns only to members, so it adds no new access.
- */
+/** Members of the workspace as people to choose, sorted by name. Only members may read them. */
 export const workspacePeopleQueryOptions = (organizationId: string) =>
   queryOptions({
-    ...organizationQueryOptions(organizationId),
-    select: (organization): PickerPerson[] =>
-      organization.members
-        .map((member) => ({
-          id: member.userId,
-          name: member.user.name,
-          email: member.user.email,
-          image: member.user.image,
+    queryKey: queryKeys.organizationPeople(organizationId),
+    queryFn: ({ signal }) => getOrganizationPeople({ data: { organizationId }, signal }),
+    staleTime: 30_000,
+    retry: false,
+    select: (people): PickerPerson[] =>
+      people
+        .map((person) => ({
+          id: person.userId,
+          name: person.name,
+          email: person.email,
+          image: person.image,
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
   });

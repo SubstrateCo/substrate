@@ -97,7 +97,7 @@ test("sending a work reference refreshes its project discussions, not other conv
     search: { key: [...context, "search", "term"] },
     searchPages: { key: [...context, "search-pages", "term"] },
     notifications: { key: [...context, "notifications"] },
-    member: { key: queryKeys.activeMember("org") },
+    member: { key: queryKeys.organizationSummary("org") },
     otherWorkspace: { key: queryKeys.messages("other", "conversation") },
   });
   try {

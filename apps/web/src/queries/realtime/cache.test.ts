@@ -171,18 +171,19 @@ test("organization invitations refresh user lists without an active workspace", 
 });
 
 test("organization hints retain role refresh because organization deletion has no access hint", () => {
+  // The detail target also refreshes the summary that holds the role (see "workspace detail
+  // changes refresh organization details").
   expect(realtimeQueryTargets(change("organization"), "user")).toEqual([
     { queryKey: queryKeys.organizations },
     { queryKey: queryKeys.userInvitations },
     { queryKey: queryKeys.organizationDetail("org") },
     { queryKey: queryKeys.invitations("org") },
-    { queryKey: queryKeys.activeMember("org") },
   ]);
 });
 
-test("access hints reload the active member role", async () => {
+test("access hints reload the viewer's role in the organization summary", async () => {
   const client = new QueryClient();
-  const key = queryKeys.activeMember("org");
+  const key = queryKeys.organizationSummary("org");
   client.setQueryData(key, { role: "owner" });
   const observer = new QueryObserver(client, {
     queryKey: key,
@@ -308,7 +309,8 @@ test("workspace detail changes refresh organization details and invitations, not
     queryKeys.userInvitations,
     queryKeys.organizationDetail("org"),
     queryKeys.invitations("org"),
-    queryKeys.activeMember("org"),
+    queryKeys.organizationSummary("org"),
+    queryKeys.organizationPeople("org"),
   ];
   const kept = [
     queryKeys.conversations("org"),

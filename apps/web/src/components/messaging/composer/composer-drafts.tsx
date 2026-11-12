@@ -34,7 +34,7 @@ export function ComposerDraftProvider({
     if (!organizationId) return;
     const options = conversationsQueryOptions(organizationId);
     const listKey = JSON.stringify(options.queryKey);
-    const organizationKey = JSON.stringify(queryKeys.organizationDetail(organizationId));
+    const organizationKey = JSON.stringify(queryKeys.organizationSummary(organizationId));
     // Only a confirmed read changes access. Cache resets and network failures must not
     // discard an unsent draft or the request ID of a send whose response was lost.
     return client.getQueryCache().subscribe((event) => {

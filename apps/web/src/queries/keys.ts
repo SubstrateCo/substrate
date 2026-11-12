@@ -113,10 +113,13 @@ export const queryKeys = {
   organization: (organizationId: string) => ["organizations", organizationId] as const,
   organizationDetail: (organizationId: string) =>
     [...queryKeys.organization(organizationId), "detail"] as const,
+  // The summary and people sit under the detail key, so every detail refresh refreshes them too.
+  organizationSummary: (organizationId: string) =>
+    [...queryKeys.organizationDetail(organizationId), "summary"] as const,
+  organizationPeople: (organizationId: string) =>
+    [...queryKeys.organizationDetail(organizationId), "people"] as const,
   invitations: (organizationId: string) =>
     [...queryKeys.organization(organizationId), "invitations"] as const,
-  activeMember: (organizationId: string) =>
-    [...queryKeys.organization(organizationId), "active-member"] as const,
   invitation: (invitationId: string) => ["invitations", invitationId] as const,
   tasks: (organizationId: string) => [...queryKeys.organization(organizationId), "tasks"] as const,
   projects: (organizationId: string) => [...queryKeys.tasks(organizationId), "projects"] as const,

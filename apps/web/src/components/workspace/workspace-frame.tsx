@@ -17,10 +17,7 @@ import { useAgentWorkBridgeSync } from "@/queries/agent-work/sync";
 import { sessionQueryOptions } from "@/queries/auth/session";
 import { notificationUnreadOptions } from "@/queries/context/notification-groups";
 import { unreadCountsOptions } from "@/queries/messaging/read-state";
-import {
-  activeMemberQueryOptions,
-  organizationQueryOptions,
-} from "@/queries/organizations/options";
+import { currentOrganizationQueryOptions } from "@/queries/organizations/options";
 
 export function WorkspaceFrame({
   userId,
@@ -37,11 +34,7 @@ export function WorkspaceFrame({
   const session = useQuery({ ...sessionQueryOptions(), staleTime: Infinity });
   const pathname = useLocation({ select: (location) => location.pathname });
   const organization = useQuery({
-    ...organizationQueryOptions(organizationId ?? ""),
-    enabled: !!organizationId,
-  });
-  const member = useQuery({
-    ...activeMemberQueryOptions(organizationId ?? ""),
+    ...currentOrganizationQueryOptions(organizationId ?? ""),
     enabled: !!organizationId,
   });
   // The dot needs only to know whether one unread notification exists.
@@ -61,7 +54,7 @@ export function WorkspaceFrame({
   });
   useAgentWorkBridgeSync(userId, organizationId);
   const access = organizationSettingsAccess(
-    member.data?.organizationId === organizationId ? member.data?.role : undefined,
+    organization.data?.id === organizationId ? organization.data?.role : undefined,
   );
   let view: WorkspaceView = "messages";
   if (pathname.startsWith("/settings/user")) view = "user-settings";
@@ -72,7 +65,7 @@ export function WorkspaceFrame({
   return (
     <WorkspaceSearchProvider>
       <WorkspaceShell
-        unavailable={isAccessFailure(organization.error) || isAccessFailure(member.error)}
+        unavailable={isAccessFailure(organization.error)}
         name={name}
         image={session.data?.user.image}
         view={view}
@@ -108,12 +101,9 @@ export function WorkspaceFrame({
           )
         }
         signOut={<SignOutButton />}
-        error={organization.error || member.error}
-        loading={!!organizationId && (organization.isPending || member.isPending)}
-        onRetry={() => {
-          void organization.refetch();
-          void member.refetch();
-        }}
+        error={organization.error}
+        loading={!!organizationId && organization.isPending}
+        onRetry={() => void organization.refetch()}
       >
         {organizationId && organization.data && !organization.error && (
           <WorkspaceTools key={organizationId} organizationId={organizationId} />

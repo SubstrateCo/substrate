@@ -8,7 +8,7 @@ import { resourceState } from "@/lib/resource-state";
 import { sessionQueryOptions } from "@/queries/auth/session";
 import { useOrganizationMutations } from "@/queries/organizations/mutations";
 import {
-  activeMemberQueryOptions,
+  currentOrganizationQueryOptions,
   organizationQueryOptions,
 } from "@/queries/organizations/options";
 import { UserPlus } from "lucide-react";
@@ -19,7 +19,7 @@ const roleOrder = { owner: 0, admin: 1, member: 2 } as const;
 export function OrganizationMembers({ organizationId }: { organizationId: string }) {
   const organization = useQuery(organizationQueryOptions(organizationId));
   const session = useQuery({ ...sessionQueryOptions(), staleTime: Infinity });
-  const viewer = useQuery(activeMemberQueryOptions(organizationId));
+  const viewer = useQuery(currentOrganizationQueryOptions(organizationId));
   const { changeRole, removeMember } = useOrganizationMutations(organizationId);
   const viewerUserId = session.data?.user.id ?? "";
   const viewerRole = viewer.data?.role ?? "member";

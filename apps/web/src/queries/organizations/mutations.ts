@@ -5,7 +5,8 @@ import { unwrap } from "@/lib/auth/result";
 import type { OrganizationRole } from "@/lib/organizations/member-policy";
 import { queryKeys } from "@/queries/keys";
 
-// Names, roles, and membership show in the switcher, the frame, and member lists.
+// Names, roles, and membership show in the switcher, the frame, and member lists. The detail
+// key also covers the frame's summary and the people pickers.
 const refreshOrganization = (queryClient: QueryClient, organizationId: string) =>
   Promise.all([
     queryClient.invalidateQueries({ queryKey: queryKeys.organizations }),
@@ -13,11 +14,7 @@ const refreshOrganization = (queryClient: QueryClient, organizationId: string) =
   ]);
 
 export function organizationMutationOptions(queryClient: QueryClient, organizationId: string) {
-  const onSuccess = () =>
-    Promise.all([
-      refreshOrganization(queryClient, organizationId),
-      queryClient.invalidateQueries({ queryKey: queryKeys.activeMember(organizationId) }),
-    ]);
+  const onSuccess = () => refreshOrganization(queryClient, organizationId);
   const rename = {
     mutationFn: async (name: string) =>
       unwrap(await authClient.organization.update({ organizationId, data: { name } })),

@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 
+import { getCurrentOrganization } from "@/api/organizations/requests";
 import { authClient } from "@/lib/auth/client";
 import { unwrap } from "@/lib/auth/result";
 import { queryKeys } from "@/queries/keys";
@@ -10,6 +11,7 @@ export const organizationsQueryOptions = () =>
     queryFn: async () => unwrap(await authClient.organization.list()),
   });
 
+/** Members, invitations and settings. Organization settings screens use it. */
 export const organizationQueryOptions = (organizationId: string) =>
   queryOptions({
     queryKey: queryKeys.organizationDetail(organizationId),
@@ -19,12 +21,10 @@ export const organizationQueryOptions = (organizationId: string) =>
     retry: false,
   });
 
-export const activeMemberQueryOptions = (organizationId: string) =>
+/** The organization's name and logo, and the viewer's role. The workspace frame holds it. */
+export const currentOrganizationQueryOptions = (organizationId: string) =>
   queryOptions({
-    queryKey: queryKeys.activeMember(organizationId),
-    queryFn: async () => ({
-      ...unwrap(await authClient.organization.getActiveMemberRole({ query: { organizationId } })),
-      organizationId,
-    }),
+    queryKey: queryKeys.organizationSummary(organizationId),
+    queryFn: ({ signal }) => getCurrentOrganization({ data: { organizationId }, signal }),
     retry: false,
   });

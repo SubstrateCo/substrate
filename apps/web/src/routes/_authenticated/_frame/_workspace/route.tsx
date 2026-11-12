@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 
 import { isAccessFailure } from "@/components/feedback/request-failure";
 import { WorkspaceLinkBoundary } from "@/components/workspace/workspace-link-boundary";
-import { organizationQueryOptions } from "@/queries/organizations/options";
+import { currentOrganizationQueryOptions } from "@/queries/organizations/options";
 import { z } from "zod";
 
 export const Route = createFileRoute("/_authenticated/_frame/_workspace")({
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_authenticated/_frame/_workspace")({
       // Realtime organization and access hints and reconnect resyncs invalidate or reset this
       // entry, so a cached one is current and navigation does not wait for the network.
       await context.queryClient.query({
-        ...organizationQueryOptions(organizationId),
+        ...currentOrganizationQueryOptions(organizationId),
         staleTime: Infinity,
       });
       return { organizationId };

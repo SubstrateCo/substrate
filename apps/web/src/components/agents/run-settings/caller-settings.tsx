@@ -4,7 +4,7 @@ import { CallerSettingsView } from "./caller-settings-view";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { callersOptions, useCallMutations } from "@/queries/agent-work/calls";
-import { organizationQueryOptions } from "@/queries/organizations/options";
+import { currentOrganizationQueryOptions } from "@/queries/organizations/options";
 
 export function CallerSettings({
   userId,
@@ -16,7 +16,7 @@ export function CallerSettings({
   agentId: string;
 }) {
   const callers = useQuery(callersOptions(userId, organizationId, agentId));
-  const organization = useQuery(organizationQueryOptions(organizationId));
+  const organization = useQuery(currentOrganizationQueryOptions(organizationId));
   const { policy, remove } = useCallMutations(userId, organizationId, agentId);
   if (callers.isPending) return <LoadingState label="Loading caller settings" variant="compact" />;
   if (!callers.data)

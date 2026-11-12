@@ -68,11 +68,11 @@ export function realtimeQueryTargets(
     case "organization":
       // Organization details and invitations changed. Membership and role changes send "access".
       targets.push({ queryKey: queryKeys.organizations }, { queryKey: queryKeys.userInvitations });
+      // The detail key also covers the frame's summary, which holds the viewer's role.
       if (organizationId)
         targets.push(
           { queryKey: queryKeys.organizationDetail(organizationId) },
           { queryKey: queryKeys.invitations(organizationId) },
-          { queryKey: queryKeys.activeMember(organizationId) },
         );
       break;
     case "access":
