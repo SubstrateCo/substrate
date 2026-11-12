@@ -3,7 +3,8 @@ import type { HarnessKind } from "@substrate/contracts/harness";
 
 import type { RunTransaction } from "../database.ts";
 import { inbox, routines, sessions } from "../schema/index.ts";
-import { insertItem, localDedupeKeys, setItemStatus } from "./inbox.ts";
+import { enqueue } from "./enqueue.ts";
+import { localDedupeKeys, setItemStatus } from "./inbox.ts";
 import { ensureSession } from "./sessions.ts";
 import { and, desc, eq, isNotNull, lte } from "drizzle-orm";
 
@@ -185,7 +186,7 @@ export function routineRepository(run: RunTransaction) {
           )
           .all();
         const scheduledAt = new Date(input.occurrence).toISOString();
-        const item = await insertItem(
+        const item = await enqueue(
           tx,
           {
             sessionId: session.id,
@@ -197,7 +198,6 @@ export function routineRepository(run: RunTransaction) {
               revision: routine.revision,
               scheduledAt,
             },
-            lane: "background",
             dedupeKey: localDedupeKeys.routine(routine.id, routine.revision, scheduledAt),
             body: routine.prompt,
           },

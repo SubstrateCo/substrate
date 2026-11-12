@@ -1,6 +1,6 @@
 import { inboxLaneAgingMs, sessionKeys } from "@substrate/contracts/agent-work";
 
-import { background, createSession, item, openTestStore } from "./test-support.ts";
+import { background, createSession, item, openTestStore, system } from "./test-support.ts";
 import { afterEach, beforeEach, expect, test } from "bun:test";
 
 let fixture: Awaited<ReturnType<typeof openTestStore>>;
@@ -45,7 +45,7 @@ test("free slots go to the owner lane first, then system, then background", asyn
   await store.inbox.intake(
     [
       background(sessions[0]!),
-      item(sessions[1]!, { lane: "system", dedupeKey: "system" }),
+      system(sessions[1]!, "system"),
       item(sessions[2]!),
       background(sessions[3]!),
     ],
@@ -61,7 +61,7 @@ test("background work moves up one lane for every ten minutes it waits", async (
   const fresh = await createSession(store, { userAgentId: "fresh" });
   await store.inbox.intake([background(waiting)], 0);
   const now = 2 * inboxLaneAgingMs;
-  await store.inbox.intake([item(fresh, { lane: "system", dedupeKey: "system" })], now);
+  await store.inbox.intake([system(fresh, "system")], now);
   const claimed = await store.turns.claim(now, { organizationId: "org-1", deviceCap: 1 });
   expect(claimed.map((entry) => entry.session.userAgentId)).toEqual(["waiting"]);
 });
@@ -70,8 +70,8 @@ test("main slots go before helper slots in the same lane", async () => {
   const { store } = fixture;
   const helper = await createSession(store, { userAgentId: "a", kind: "helper" });
   const main = await createSession(store, { userAgentId: "b" });
-  await store.inbox.intake([item(helper, { lane: "system", dedupeKey: "h" })], 0);
-  await store.inbox.intake([item(main, { lane: "system", dedupeKey: "m" })], 5);
+  await store.inbox.intake([system(helper, "h")], 0);
+  await store.inbox.intake([system(main, "m")], 5);
   const claimed = await store.turns.claim(10, { organizationId: "org-1", deviceCap: 1 });
   expect(claimed.map((entry) => entry.session.id)).toEqual([main.id]);
 });

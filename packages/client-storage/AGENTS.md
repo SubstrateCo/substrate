@@ -5,3 +5,4 @@
 - Run every store operation in one transaction. Operations run one at a time, so a read-then-write sequence stays consistent.
 - Split the agent-work store by responsibility in `src/agent-work/`. Scope every agent-work query to an organization.
 - Keep invariants in the store, not in callers: one live turn per folder, gapless per-turn event sequences, and inbox dedupe keys.
+- Every agent-work trigger needs an entry in the contracts trigger registry. Local triggers enqueue only through `enqueue()` in `src/agent-work/enqueue.ts`; the registry chooses their lane.

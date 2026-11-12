@@ -8,4 +8,5 @@ export * from "./requests.ts";
 export * from "./routines.ts";
 export * from "./status.ts";
 export * from "./turns.ts";
+export * from "./triggers/registry.ts";
 export * from "./wakes.ts";

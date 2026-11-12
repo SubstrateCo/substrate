@@ -2,7 +2,8 @@ import { helperMachine, maxLiveHelpers, sessionKeys } from "@substrate/contracts
 
 import type { LocalTransaction, RunTransaction } from "../database.ts";
 import { helpers, inbox } from "../schema/index.ts";
-import { insertItem, localDedupeKeys, setItemStatus } from "./inbox.ts";
+import { enqueue } from "./enqueue.ts";
+import { localDedupeKeys, setItemStatus } from "./inbox.ts";
 import { inStates } from "./machine-sql.ts";
 import { ensureSession, sessionById } from "./sessions.ts";
 import { and, desc, eq } from "drizzle-orm";
@@ -27,7 +28,7 @@ async function queueHelperInput(
   dedupeKey: string,
   now: number,
 ) {
-  return insertItem(
+  return enqueue(
     tx,
     {
       sessionId: helper.sessionId,
@@ -35,7 +36,6 @@ async function queueHelperInput(
       // The helper session's input: the task, then parent messages.
       source: "helper_task",
       sourceRef: { source: "helper_task", helperId: helper.id },
-      lane: "system",
       dedupeKey,
       body: text,
     },
@@ -169,14 +169,13 @@ export function helperRepository(run: RunTransaction) {
         if (!helper) throw new Error("Only helpers can finish.");
         if (helper.status !== "running") return helper;
         await endHelper(tx, helper, report === null ? "fail" : "finish", report, now);
-        await insertItem(
+        await enqueue(
           tx,
           {
             sessionId: helper.parentSessionId,
             userAgentId: helper.userAgentId,
             source: "helper_result",
             sourceRef: { source: "helper_result", helperId: helper.id },
-            lane: "background",
             dedupeKey: localDedupeKeys.helperResult(helper.id),
             body: report ?? "The helper ended without a report.",
           },

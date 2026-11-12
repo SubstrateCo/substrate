@@ -5,7 +5,7 @@ import {
   type TurnInterruption,
   type TurnRow,
 } from "@substrate/client-storage/agent-work";
-import type { AgentSourceMessage } from "@substrate/contracts/agent-work";
+import { triggerRegistry, type AgentSourceMessage } from "@substrate/contracts/agent-work";
 import { harnessCodesWithClassification } from "@substrate/contracts/harness";
 
 import { envelopeItem, renderEnvelope } from "../turns/envelope.ts";
@@ -156,6 +156,7 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
           turns.set(state.turnId, await context.store.turns.get(state.turnId));
         // Owner items join only interactive turns of their own session in its current epoch.
         const joins =
+          triggerRegistry[item.source].steerable &&
           state.sessionId === session.id &&
           state.kind === "interactive" &&
           state.capabilities.steer &&
@@ -170,7 +171,10 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
       let messages: Map<string, AgentSourceMessage> | undefined;
       if (steerable.length) {
         const ids = steerable.flatMap(({ item }) =>
-          item.sourceRef.source === "owner_message" ? [item.sourceRef.messageId] : [],
+          triggerRegistry[item.source].recheck === "owner_source" &&
+          item.sourceRef.source === "owner_message"
+            ? [item.sourceRef.messageId]
+            : [],
         );
         try {
           const sources = await context.server.sources(context.organizationId, ids);

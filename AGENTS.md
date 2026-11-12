@@ -24,6 +24,7 @@ Substrate is an Electron workspace for email, messages, docs, tasks, agents, and
 - Only the owner wakes their agent: owner messages, owner answers and approvals, owner-approved routines, and the agent's own helpers. Agent-written messages never wake an agent.
 - Agents publish only through `reply` and `propose`. Assistant text outside tools is the owner-only transcript. A turn with nothing useful to say ends quietly.
 - Change agent-work statuses only through a machine event's compare-and-set (`packages/contracts/src/agent-work/machines/`): match the event's `from` states in the `WHERE` clause and write its `to` state. Add a new transition to the machine table first.
+- Every agent-work trigger needs an entry in `packages/contracts/src/agent-work/triggers/registry.ts`. Local triggers enqueue only through `enqueue()` in client storage; callers do not choose a lane.
 - The desktop host attaches a `TurnContext` to every MCP call. The model never supplies it, and the server checks it before using any field.
 - Runtime rules for agents live in `packages/contracts/src/harness/policy.ts`. Bump `POLICY_VERSION` with every change to that text; the bump rotates every session's context.
 

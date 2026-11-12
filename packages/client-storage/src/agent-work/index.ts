@@ -1,11 +1,7 @@
 export { AgentWorkStore } from "./store.ts";
 export { HelperLimitError } from "./helpers.ts";
-export {
-  ownerBatchWindowMs,
-  ownerMessageDebounceMs,
-  type InboxRow,
-  type NewInboxItem,
-} from "./inbox.ts";
+export { ownerBatchWindowMs, ownerMessageDebounceMs, type NewInboxItem } from "./enqueue.ts";
+export type { InboxRow } from "./inbox.ts";
 export type { NewOutput, OutputRow } from "./outputs.ts";
 export type { RoutineFields } from "./routines.ts";
 export { folderKey, folderKeys, folderOf, type SessionRow } from "./sessions.ts";

@@ -9,6 +9,7 @@ import {
 } from "@substrate/client-storage/agent-work";
 import {
   liveTurnStatuses,
+  triggerRegistry,
   type EnvelopeResumeNote,
   type TurnStatus,
 } from "@substrate/contracts/agent-work";
@@ -260,7 +261,10 @@ export function createTurnExecutor(
     }
     const items = batchItems(await context.store.inbox.forTurn(context.organizationId, turn.id));
     const messageIds = items.flatMap((item) =>
-      item.sourceRef.source === "owner_message" ? [item.sourceRef.messageId] : [],
+      triggerRegistry[item.source].recheck === "owner_source" &&
+      item.sourceRef.source === "owner_message"
+        ? [item.sourceRef.messageId]
+        : [],
     );
     let sources;
     try {
@@ -271,7 +275,9 @@ export function createTurnExecutor(
     const messages = new Map(sources.messages.map((message) => [message.id, message]));
     const inaccessible = items.filter(
       (item) =>
-        item.sourceRef.source === "owner_message" && !messages.has(item.sourceRef.messageId),
+        triggerRegistry[item.source].recheck === "owner_source" &&
+        item.sourceRef.source === "owner_message" &&
+        !messages.has(item.sourceRef.messageId),
     );
     await context.store.inbox.drop(
       context.organizationId,

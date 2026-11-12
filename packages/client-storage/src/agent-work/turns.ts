@@ -5,7 +5,7 @@ import {
   liveTurnStatuses,
   sessionMachine,
   turnMachine,
-  type InboxSource,
+  triggerRegistry,
   type TurnAttentionReason,
   type TurnOutcome,
   type TurnSourceMessage,
@@ -15,14 +15,9 @@ import type { Usage } from "@substrate/contracts/harness";
 
 import type { LocalTransaction, RunTransaction } from "../database.ts";
 import { inbox, sessions, turnEvents, turns, type TurnInterruption } from "../schema/index.ts";
+import { enqueue } from "./enqueue.ts";
 import { appendEvents, type NewTurnEvent } from "./events.ts";
-import {
-  claimableStatuses,
-  insertItem,
-  localDedupeKeys,
-  setItemStatus,
-  type InboxRow,
-} from "./inbox.ts";
+import { claimableStatuses, localDedupeKeys, setItemStatus, type InboxRow } from "./inbox.ts";
 import { inStates } from "./machine-sql.ts";
 import {
   folderKey,
@@ -40,11 +35,6 @@ export type TurnRow = typeof turns.$inferSelect;
 const deviceTurnCap = 3;
 /** Items batched into one turn. */
 const turnBatchLimit = 20;
-const ownerSources: ReadonlySet<InboxSource> = new Set([
-  "owner_message",
-  "answer",
-  "approval_result",
-]);
 const liveStatuses = [...liveTurnStatuses];
 
 /**
@@ -178,7 +168,7 @@ async function claimTurns(
     const interactive =
       group.session.kind !== "helper" &&
       !rotation &&
-      batch.some((item) => ownerSources.has(item.source));
+      batch.some((item) => triggerRegistry[item.source].turnMode === "interactive");
     const recovery = batch.find((item) => item.sourceRef.source === "recovery");
     const turn: TurnRow = {
       id: crypto.randomUUID(),
@@ -271,14 +261,13 @@ const finishEvents = {
 
 /** A system item that resumes an ended turn's work in the next turn of its session. */
 async function queueResume(tx: LocalTransaction, turn: TurnRow, body: string, now: number) {
-  await insertItem(
+  await enqueue(
     tx,
     {
       sessionId: turn.sessionId,
       userAgentId: turn.userAgentId,
       source: "recovery",
       sourceRef: { source: "recovery", turnId: turn.id },
-      lane: "system",
       dedupeKey: localDedupeKeys.recovery(turn.id, turn.attempt),
       body,
     },

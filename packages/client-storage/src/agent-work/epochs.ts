@@ -1,6 +1,7 @@
 import type { RunTransaction } from "../database.ts";
 import { handoffs, sessions, type EpochRotationReason } from "../schema/index.ts";
-import { insertItem, localDedupeKeys } from "./inbox.ts";
+import { enqueue } from "./enqueue.ts";
+import { localDedupeKeys } from "./inbox.ts";
 import { rotateEpoch, sessionById } from "./sessions.ts";
 import { and, eq } from "drizzle-orm";
 
@@ -24,14 +25,13 @@ export function epochRepository(run: RunTransaction) {
           .update(sessions)
           .set({ rotation: reason, updatedAt: now })
           .where(eq(sessions.id, sessionId));
-        await insertItem(
+        await enqueue(
           tx,
           {
             sessionId,
             userAgentId: session.userAgentId,
             source: "epoch",
             sourceRef: { source: "epoch", fromEpoch: session.epoch },
-            lane: "system",
             dedupeKey: localDedupeKeys.epoch(sessionId, session.epoch),
             body,
           },

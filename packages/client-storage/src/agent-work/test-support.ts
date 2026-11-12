@@ -4,7 +4,8 @@ import {
   type AgentSessionKind,
 } from "@substrate/contracts/agent-work";
 
-import { localDedupeKeys, type NewInboxItem } from "./inbox.ts";
+import type { NewInboxItem } from "./enqueue.ts";
+import { localDedupeKeys } from "./inbox.ts";
 import { AgentWorkStore } from "./store.ts";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -61,7 +62,6 @@ export function item(
     userAgentId: session.userAgentId,
     source: "answer",
     sourceRef: { source: "answer", requestId, anchorMessageId: null, request: null },
-    lane: "owner",
     dedupeKey: wakeDedupeKeys.answer(requestId),
     ...overrides,
   };
@@ -87,7 +87,14 @@ export function background(session: { id: string; userAgentId: string }) {
   return item(session, {
     source: "routine",
     sourceRef: { source: "routine", routineId, revision: 1, scheduledAt },
-    lane: "background",
     dedupeKey: localDedupeKeys.routine(routineId, 1, scheduledAt),
+  });
+}
+
+export function system(session: { id: string; userAgentId: string }, dedupeKey: string) {
+  return item(session, {
+    source: "recovery",
+    sourceRef: { source: "recovery", turnId: "previous-turn" },
+    dedupeKey,
   });
 }

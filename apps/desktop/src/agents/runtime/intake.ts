@@ -41,7 +41,6 @@ async function wakeItem(context: RuntimeContext, wake: AgentWakeView): Promise<W
   const common = {
     sessionId: session.id,
     userAgentId: wake.userAgentId,
-    lane: "owner" as const,
     dedupeKey: wake.dedupeKey,
     wakeId: wake.id,
   };

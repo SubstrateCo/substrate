@@ -1,4 +1,4 @@
-import { ownerBatchWindowMs, ownerMessageDebounceMs } from "./inbox.ts";
+import { ownerBatchWindowMs, ownerMessageDebounceMs } from "./enqueue.ts";
 import { createSession, item, openTestStore, ownerMessage } from "./test-support.ts";
 import { afterEach, beforeEach, expect, test } from "bun:test";
 

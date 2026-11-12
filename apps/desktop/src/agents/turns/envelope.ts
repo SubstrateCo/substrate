@@ -1,11 +1,13 @@
 import type { InboxRow } from "@substrate/client-storage/agent-work";
-import type {
-  AgentSourceMessage,
-  AgentWakeRequestDetail,
-  EnvelopeItem,
-  EnvelopeResumeNote,
-  EnvelopeTurn,
-  ProposalOutcome,
+import {
+  triggerRegistry,
+  type AgentSourceMessage,
+  type AgentWakeRequestDetail,
+  type EnvelopeItem,
+  type EnvelopeResumeNote,
+  type EnvelopeTurn,
+  type ProposalOutcome,
+  type TriggerDefinition,
 } from "@substrate/contracts/agent-work";
 
 /** Escapes text so that no body or attribute can open or close an envelope tag. */
@@ -123,59 +125,86 @@ export function envelopeItem(
   item: InboxRow,
   context: { sessionKind: string; messages: Map<string, AgentSourceMessage> },
 ): EnvelopeItem | null {
-  const ref = item.sourceRef;
-  const base = { id: item.id, source: item.source, conversationId: null, threadId: null };
-  switch (ref.source) {
-    case "owner_message": {
-      const message = context.messages.get(ref.messageId);
-      if (!message) return null;
-      return {
-        ...base,
-        author: message.author.name,
-        authorKind: message.author.kind,
-        conversationId: message.conversationId,
-        threadId: message.threadId,
-        body: message.body,
-      };
-    }
-    case "answer":
-    case "approval_result": {
-      const lines = ref.request
-        ? decisionLines(ref.source, ref.request)
-        : [
-            ref.source === "answer"
-              ? `Your owner answered request ${ref.requestId}. The answer is not available.`
-              : `Your owner decided on proposal ${ref.requestId}. The result is not available.`,
-          ];
-      if (item.body) lines.push(item.body);
-      return {
-        ...base,
-        // The answer is the owner's words; a proposal's outcome is reported by the system.
-        author: null,
-        authorKind: ref.source === "answer" ? "owner" : "system",
-        conversationId: ref.request?.conversationId ?? null,
-        threadId: ref.request?.threadId ?? null,
-        body: lines.join("\n"),
-      };
-    }
-    case "helper_task":
-      return { ...base, author: "Parent agent", authorKind: "agent", body: item.body ?? "" };
-    case "helper_result":
-      return {
-        ...base,
-        author: `Helper ${ref.helperId}`,
-        authorKind: "agent",
-        body: item.body ?? "",
-      };
-    case "routine":
-      return {
-        ...base,
-        author: null,
-        authorKind: "system",
-        body: `Routine ${ref.routineId} (scheduled ${ref.scheduledAt}):\n${item.body ?? ""}`,
-      };
-    case "recovery":
-    case "epoch":
-      return { ...base, author: null, authorKind: "system", body: item.body ?? "" };
-  }
+  return renderers[triggerRegistry[item.sourceRef.source].envelope](item, context);
 }
+
+type ItemRenderer = (
+  item: InboxRow,
+  context: { sessionKind: string; messages: Map<string, AgentSourceMessage> },
+) => EnvelopeItem | null;
+
+function itemBase(item: InboxRow) {
+  return { id: item.id, source: item.source, conversationId: null, threadId: null };
+}
+
+const renderers: Record<TriggerDefinition["envelope"], ItemRenderer> = {
+  message: (item, context) => {
+    const ref = item.sourceRef;
+    const base = itemBase(item);
+    if (ref.source !== "owner_message") return null;
+    const message = context.messages.get(ref.messageId);
+    if (!message) return null;
+    return {
+      ...base,
+      author: message.author.name,
+      authorKind: message.author.kind,
+      conversationId: message.conversationId,
+      threadId: message.threadId,
+      body: message.body,
+    };
+  },
+  decision: (item) => {
+    const ref = item.sourceRef;
+    const base = itemBase(item);
+    if (ref.source !== "answer" && ref.source !== "approval_result") return null;
+    const lines = ref.request
+      ? decisionLines(ref.source, ref.request)
+      : [
+          ref.source === "answer"
+            ? `Your owner answered request ${ref.requestId}. The answer is not available.`
+            : `Your owner decided on proposal ${ref.requestId}. The result is not available.`,
+        ];
+    if (item.body) lines.push(item.body);
+    return {
+      ...base,
+      // The answer is the owner's words; a proposal's outcome is reported by the system.
+      author: null,
+      authorKind: ref.source === "answer" ? "owner" : "system",
+      conversationId: ref.request?.conversationId ?? null,
+      threadId: ref.request?.threadId ?? null,
+      body: lines.join("\n"),
+    };
+  },
+  helper_task: (item) => ({
+    ...itemBase(item),
+    author: "Parent agent",
+    authorKind: "agent",
+    body: item.body ?? "",
+  }),
+  helper_result: (item) => {
+    const ref = item.sourceRef;
+    if (ref.source !== "helper_result") return null;
+    return {
+      ...itemBase(item),
+      author: `Helper ${ref.helperId}`,
+      authorKind: "agent",
+      body: item.body ?? "",
+    };
+  },
+  routine: (item) => {
+    const ref = item.sourceRef;
+    if (ref.source !== "routine") return null;
+    return {
+      ...itemBase(item),
+      author: null,
+      authorKind: "system",
+      body: `Routine ${ref.routineId} (scheduled ${ref.scheduledAt}):\n${item.body ?? ""}`,
+    };
+  },
+  system: (item) => ({
+    ...itemBase(item),
+    author: null,
+    authorKind: "system",
+    body: item.body ?? "",
+  }),
+};
