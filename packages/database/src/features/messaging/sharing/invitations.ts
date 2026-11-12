@@ -1,4 +1,7 @@
-import { sharingInviteInput } from "@substrate/contracts/messaging/sharing";
+import {
+  sharingInvitationMachine,
+  sharingInviteInput,
+} from "@substrate/contracts/messaging/sharing";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../../client";
@@ -88,13 +91,13 @@ export async function queueSharingInvitations(
   // A new invitation to the same address replaces the previous one.
   await db
     .update(messagingInvitations)
-    .set({ status: "revoked" })
+    .set({ status: sharingInvitationMachine.events.revoke.to })
     .where(
       and(
         eq(messagingInvitations.conversationId, conversation.id),
         eq(messagingInvitations.senderOrganizationId, scope.organizationId),
         inArray(messagingInvitations.email, emails),
-        eq(messagingInvitations.status, "pending"),
+        inArray(messagingInvitations.status, sharingInvitationMachine.from("revoke")),
       ),
     );
   const target = invitationTarget(conversation, viewer);
@@ -169,12 +172,17 @@ export async function declineSharingInvitation(db: DatabaseExecutor, userId: str
       .where(eq(messagingInvitations.id, id));
     if (!invite) throw new AccessDeniedError();
     await requireSharingRecipient(tx, userId, invite);
-    if (invite.status !== "pending")
+    if (!sharingInvitationMachine.canFire(invite.status, "decline"))
       throw new ValidationError("This invitation is no longer available.");
     const declined = await tx
       .update(messagingInvitations)
-      .set({ status: "declined" })
-      .where(and(eq(messagingInvitations.id, id), eq(messagingInvitations.status, "pending")))
+      .set({ status: sharingInvitationMachine.events.decline.to })
+      .where(
+        and(
+          eq(messagingInvitations.id, id),
+          inArray(messagingInvitations.status, sharingInvitationMachine.from("decline")),
+        ),
+      )
       .returning({ id: messagingInvitations.id });
     if (!declined.length) throw new ValidationError("This invitation is no longer available.");
     await recordSharingEvents(
@@ -246,7 +254,10 @@ export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentit
             conversationId: invite.recipientUserId === scope.userId ? conversation.id : null,
           };
         }
-        if (invite.status !== "pending" || invite.expiresAt <= new Date())
+        if (
+          !sharingInvitationMachine.canFire(invite.status, "accept") ||
+          invite.expiresAt <= new Date()
+        )
           throw new ValidationError("This invitation is no longer available.");
         if (!shareHistory)
           throw new ValidationError("Confirm that the full conversation history will be shared.");
@@ -274,8 +285,20 @@ export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentit
         if (invite.purpose === "organization" && !admin) {
           const [requested] = await tx
             .update(messagingInvitations)
-            .set({ targetOrganizationId: scope.organizationId, recipientUserId: person.id })
-            .where(and(eq(messagingInvitations.id, id), eq(messagingInvitations.status, "pending")))
+            .set({
+              status: sharingInvitationMachine.events.requestApproval.to,
+              targetOrganizationId: scope.organizationId,
+              recipientUserId: person.id,
+            })
+            .where(
+              and(
+                eq(messagingInvitations.id, id),
+                inArray(
+                  messagingInvitations.status,
+                  sharingInvitationMachine.from("requestApproval"),
+                ),
+              ),
+            )
             .returning();
           if (!requested) throw new ValidationError("This invitation is no longer available.");
           await recordSharingEvents(tx, scope, conversation.id, "approval-requested", [
@@ -324,11 +347,16 @@ export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentit
         const [accepted] = await tx
           .update(messagingInvitations)
           .set({
-            status: "accepted",
+            status: sharingInvitationMachine.events.accept.to,
             targetOrganizationId: scope.organizationId,
             recipientUserId: originalId,
           })
-          .where(and(eq(messagingInvitations.id, id), eq(messagingInvitations.status, "pending")))
+          .where(
+            and(
+              eq(messagingInvitations.id, id),
+              inArray(messagingInvitations.status, sharingInvitationMachine.from("accept")),
+            ),
+          )
           .returning();
         if (!accepted) throw new ValidationError("This invitation is no longer available.");
         await recordSharingEvents(tx, scope, conversation.id, "accepted", [
@@ -360,8 +388,13 @@ export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentit
           throw new AccessDeniedError();
         const revoked = await tx
           .update(messagingInvitations)
-          .set({ status: "revoked" })
-          .where(and(eq(messagingInvitations.id, id), eq(messagingInvitations.status, "pending")))
+          .set({ status: sharingInvitationMachine.events.revoke.to })
+          .where(
+            and(
+              eq(messagingInvitations.id, id),
+              inArray(messagingInvitations.status, sharingInvitationMachine.from("revoke")),
+            ),
+          )
           .returning({ id: messagingInvitations.id });
         if (!revoked.length) throw new ValidationError("This invitation is no longer pending.");
         await recordSharingEvents(tx, scope, conversation.id, "revoked", [{ invitationId: id }]);

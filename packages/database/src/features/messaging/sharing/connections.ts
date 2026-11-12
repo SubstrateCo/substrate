@@ -1,3 +1,4 @@
+import { sharingInvitationMachine } from "@substrate/contracts/messaging/sharing";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../../client";
@@ -48,11 +49,11 @@ export function connectionOperations(db: DatabaseExecutor, scope: SessionIdentit
         // Invitations to other partners and host invitations without a target stay pending.
         await tx
           .update(messagingInvitations)
-          .set({ status: "revoked" })
+          .set({ status: sharingInvitationMachine.events.revoke.to })
           .where(
             and(
               eq(messagingInvitations.conversationId, conversationId),
-              eq(messagingInvitations.status, "pending"),
+              inArray(messagingInvitations.status, sharingInvitationMachine.from("revoke")),
               or(
                 eq(messagingInvitations.senderOrganizationId, partnerOrganizationId),
                 eq(messagingInvitations.targetOrganizationId, partnerOrganizationId),
@@ -174,10 +175,10 @@ export async function clearMembershipSharingInTransaction(
   );
   await tx
     .update(messagingInvitations)
-    .set({ status: "revoked" })
+    .set({ status: sharingInvitationMachine.events.revoke.to })
     .where(
       and(
-        eq(messagingInvitations.status, "pending"),
+        inArray(messagingInvitations.status, sharingInvitationMachine.from("revoke")),
         or(
           and(
             eq(messagingInvitations.senderOrganizationId, organizationId),

@@ -1,3 +1,5 @@
+import type { SharingInvitationStatus } from "@substrate/contracts/messaging/sharing";
+
 import { user } from "../../core/authentication/schema";
 import { organization } from "../../core/organizations/schema";
 import { messagingConversations } from "./schema";
@@ -55,10 +57,7 @@ export const messagingInvitations = pgTable(
       onDelete: "cascade",
     }),
     recipientUserId: text("recipient_user_id").references(() => user.id),
-    status: text("status")
-      .$type<"pending" | "accepted" | "declined" | "revoked">()
-      .default("pending")
-      .notNull(),
+    status: text("status").$type<SharingInvitationStatus>().default("pending").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     deliveredAt: timestamp("delivered_at", { withTimezone: true }),

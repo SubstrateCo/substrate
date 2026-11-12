@@ -2,6 +2,9 @@ import { organizationId } from "../workspace";
 import { conversationTargetInput, workspaceInput } from "./input";
 import { z } from "zod";
 
+export { sharingInvitationMachine, sharingInvitationStatuses } from "./invitation-machine";
+export type { SharingInvitationStatus } from "./invitation-machine";
+
 export const sharingInviteInput = conversationTargetInput.extend({
   email: z.email().max(320),
   shareHistory: z.literal(true),

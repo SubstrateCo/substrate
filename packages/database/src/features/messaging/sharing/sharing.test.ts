@@ -176,6 +176,22 @@ test("ordinary recipients request approval instead of granting access to their o
   expect(await sharing("bob", f.orgB).accept(invite.id, true)).toMatchObject({
     status: "approval-required",
   });
+  const [requested] = await f.db
+    .select()
+    .from(messagingInvitations)
+    .where(eq(messagingInvitations.id, invite.id));
+  expect(requested).toMatchObject({
+    status: "pending",
+    recipientUserId: "bob",
+    targetOrganizationId: f.orgB,
+  });
+  expect(await f.db.select().from(messagingConnections)).toEqual([]);
+  expect(
+    await f.db
+      .select()
+      .from(messagingParticipants)
+      .where(eq(messagingParticipants.organizationId, f.orgB)),
+  ).toEqual([]);
   expect(
     await rejection(
       createMessagingService(f.db, { userId: "bob", organizationId: f.orgB }).listMessages(c.id),
@@ -247,6 +263,16 @@ test("disconnecting a partner revokes only invitations that concern that partner
     email: "carol@example.test",
     shareHistory: true,
   });
+  const declined = await sharing("outsider", f.orgB).invite(c.id, {
+    email: "bob@example.com",
+    shareHistory: true,
+  });
+  await sharing("bob", f.orgB).decline(declined.id);
+  const revoked = await sharing("outsider", f.orgB).invite(c.id, {
+    email: "bob@example.com",
+    shareHistory: true,
+  });
+  await sharing("outsider", f.orgB).revoke(revoked.id);
   const awaitingApproval = await sharing().invite(c.id, {
     email: "bob@example.com",
     shareHistory: true,
@@ -265,6 +291,8 @@ test("disconnecting a partner revokes only invitations that concern that partner
   expect(statuses).toEqual({
     [initial.id]: "accepted",
     [sentByPartner.id]: "revoked",
+    [declined.id]: "declined",
+    [revoked.id]: "revoked",
     [awaitingApproval.id]: "revoked",
     [unrelated.id]: "pending",
   });
@@ -326,6 +354,11 @@ test("invites are email-bound, expire, and can be revoked", async () => {
   expect(await rejection(sharing("outsider", f.orgB).accept(invite.id, true))).toBeInstanceOf(
     ValidationError,
   );
+  const [expired] = await f.db
+    .select()
+    .from(messagingInvitations)
+    .where(eq(messagingInvitations.id, invite.id));
+  expect(expired!.status).toBe("pending");
   const next = await sharing().invite(c.id, { email: "outside@example.com", shareHistory: true });
   await sharing().revoke(next.id);
   expect(await rejection(sharing("outsider", f.orgB).accept(next.id, true))).toBeInstanceOf(
@@ -445,6 +478,49 @@ test("resending invalidates the previous invitation and revocation is permanent 
   expect(await rejection(sharing("outsider", f.orgB).accept(fresh.id, true))).toBeInstanceOf(
     ValidationError,
   );
+});
+
+test("terminal invitation outcomes survive actions, replacement and membership cleanup", async () => {
+  const c = await channel();
+  const accepted = await sharing().invite(c.id, {
+    email: "outside@example.com",
+    shareHistory: true,
+  });
+  await sharing("outsider", f.orgB).accept(accepted.id, true);
+  const declined = await sharing().invite(c.id, {
+    email: "outside@example.com",
+    shareHistory: true,
+  });
+  await sharing("outsider", f.orgB).decline(declined.id);
+  const revoked = await sharing().invite(c.id, {
+    email: "outside@example.com",
+    shareHistory: true,
+  });
+  await sharing().revoke(revoked.id);
+  const pending = await sharing().invite(c.id, {
+    email: "outside@example.com",
+    shareHistory: true,
+  });
+  for (const invite of [accepted, declined, revoked]) {
+    expect(await rejection(sharing().revoke(invite.id))).toBeInstanceOf(ValidationError);
+    expect(await rejection(sharing("outsider", f.orgB).decline(invite.id))).toBeInstanceOf(
+      ValidationError,
+    );
+  }
+  for (const invite of [declined, revoked])
+    expect(await rejection(sharing("outsider", f.orgB).accept(invite.id, true))).toBeInstanceOf(
+      ValidationError,
+    );
+  await clearMembershipSharing(f.db, "alice", f.orgA);
+  const statuses = Object.fromEntries(
+    (await f.db.select().from(messagingInvitations)).map((row) => [row.id, row.status]),
+  );
+  expect(statuses).toEqual({
+    [accepted.id]: "accepted",
+    [declined.id]: "declined",
+    [revoked.id]: "revoked",
+    [pending.id]: "revoked",
+  });
 });
 
 test("disconnect removes search, profiles, realtime and owner-based agent reads", async () => {
