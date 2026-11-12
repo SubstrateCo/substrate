@@ -174,7 +174,7 @@ export function visibleConversations(
 }
 
 // Resolve the owner's human identity for both direct reads and correlated mention checks.
-export function taskDiscussionAccess(
+function taskDiscussionAccess(
   db: DatabaseExecutor,
   scope: { userId: string | SQLWrapper; organizationId: string | SQLWrapper },
   minimum: "view" | "comment" = "view",

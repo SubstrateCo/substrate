@@ -172,6 +172,7 @@ export const endpoints = {
 } satisfies Record<string, Endpoint>;
 
 export type EndpointName = keyof typeof endpoints;
+// SAFETY: endpoints is a module-owned object; its own keys are exactly EndpointName.
 export const endpointNames = Object.keys(endpoints) as EndpointName[];
 
 /** Failure codes in the summary: service error codes, else the HTTP status class. */

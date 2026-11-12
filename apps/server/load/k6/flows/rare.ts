@@ -72,16 +72,19 @@ async function startConversation(world: World) {
       .flatMap((conversation) => conversation.members.map((member) => member.userId)),
   );
   const fresh = people.filter((person) => !dmWith.has(person.userId));
-  const kind = rng.weighted(["channel", "group", "dm"] as const, (value) =>
-    value === "dm" ? (fresh.length ? 2.5 : 0) : value === "channel" ? 4.5 : 3,
-  )!;
+  const kind = rng.weighted(["channel", "group", "dm"] as const, (value) => {
+    if (value === "dm") return fresh.length ? 2.5 : 0;
+    return value === "channel" ? 4.5 : 3;
+  })!;
   await think("decide");
   let name: string | undefined;
   if (kind === "channel" || (kind === "group" && rng.chance(0.5))) {
     name = kind === "channel" ? `${word()}-${word()}` : `${word()} ${word()}`;
     await typeTime(name);
   }
-  const count = kind === "dm" ? 1 : kind === "group" ? rng.int(2, 4) : rng.int(1, 5);
+  let count = 1;
+  if (kind === "group") count = rng.int(2, 4);
+  else if (kind === "channel") count = rng.int(1, 5);
   const recipients = await pickPeople(kind === "dm" ? fresh : people, count);
   if ((kind === "dm" && recipients.length !== 1) || (kind === "group" && recipients.length < 2))
     return;
@@ -219,7 +222,7 @@ async function deleteOwnConversation(world: World) {
 type Step = {
   weight: number;
   backfill: number;
-  run: (world: World) => Promise<unknown>;
+  run: (world: World) => Promise<void>;
   when?: (world: World) => boolean;
 };
 
@@ -254,9 +257,10 @@ const steps: Step[] = [
  */
 export async function rare({ world }: FlowContext) {
   await checkInvitations(world);
-  const step = rng.weighted(steps, (entry) =>
-    entry.when && !entry.when(world) ? 0 : backfill ? entry.backfill : entry.weight,
-  );
+  const step = rng.weighted(steps, (entry) => {
+    if (entry.when && !entry.when(world)) return 0;
+    return backfill ? entry.backfill : entry.weight;
+  });
   if (!step) return;
   trace("step", step.run.name);
   await step.run(world);

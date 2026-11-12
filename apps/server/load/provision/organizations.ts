@@ -1,4 +1,5 @@
-import { json, parallel, type Account, type Organization } from "./client";
+import type { LoadOrganization } from "../types";
+import { json, parallel, type Account } from "./client";
 
 const names = [
   "Northstar Labs",
@@ -19,10 +20,12 @@ export function sizes(total: number) {
   while (sum !== total) {
     const adding = sum < total;
     const candidates = result
-      .map((size, index) => ({
-        index,
-        gap: adding ? targets[index]! - size : size > 1 ? size - targets[index]! : -Infinity,
-      }))
+      .map((size, index) => {
+        let gap = -Infinity;
+        if (adding) gap = targets[index]! - size;
+        else if (size > 1) gap = size - targets[index]!;
+        return { index, gap };
+      })
       .sort((a, b) => b.gap - a.gap);
     result[candidates[0]!.index]! += adding ? 1 : -1;
     sum += adding ? 1 : -1;
@@ -30,7 +33,7 @@ export function sizes(total: number) {
   return result;
 }
 
-export async function organization(members: Account[], index: number): Promise<Organization> {
+export async function organization(members: Account[], index: number): Promise<LoadOrganization> {
   const owner = members[0]!;
   const slug = `load-${names[index]!.toLowerCase().replaceAll(" ", "-")}`;
   const existing = await json<{ id: string; slug: string; name: string }[]>(

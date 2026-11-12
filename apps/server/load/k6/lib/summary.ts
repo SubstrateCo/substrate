@@ -76,13 +76,14 @@ function table(headers: string[], rows: string[][]) {
 export function summarize(data: SummaryData, flowNames: string[]) {
   const seconds = data.state.testRunDurationMs / 1000;
   const endpoints = endpointRows(data);
-  const flows = flowNames
-    .map((flow) => ({
+  const flows = flowNames.flatMap((flow) => {
+    const row = {
       flow,
       runs: value(data, `flow_duration{flow:${flow}}`, "count"),
       p50: value(data, `flow_duration{flow:${flow}}`, "med"),
-    }))
-    .filter((row) => row.runs > 0);
+    };
+    return row.runs > 0 ? [row] : [];
+  });
   const calls = value(data, "api_calls", "count");
   const totals = {
     seconds,

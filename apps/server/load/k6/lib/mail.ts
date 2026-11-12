@@ -27,6 +27,7 @@ async function getJson<T>(url: string): Promise<T | null> {
     console.warn(`[vu ${__VU}] mailpit ${response.status} ${String(response.error)}`);
     return null;
   }
+  // SAFETY: callers provide the response shape for the fixed Mailpit endpoint they request.
   return response.json() as T;
 }
 

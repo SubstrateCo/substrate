@@ -36,7 +36,7 @@ import { and, count, eq, gt, inArray, isNotNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 /** An agent that a trigger may wake. */
-export type AdmissionAgent = {
+type AdmissionAgent = {
   actorId: string;
   organizationId: string;
   userAgentId: string;
@@ -67,7 +67,7 @@ export type RequestTrigger = {
 };
 
 /** The owner approved a pending call. */
-export type InvocationTrigger = {
+type InvocationTrigger = {
   type: "invocation";
   invocation: {
     id: string;
@@ -116,7 +116,7 @@ export type MessageFacts = {
   caller?: CallerFacts;
 };
 
-export type RequestFacts = { agent: AdmissionAgent };
+type RequestFacts = { agent: AdmissionAgent };
 
 /** One trigger and the facts about one candidate agent. `type` is the trigger's type. */
 export type AdmissionInput =
@@ -124,7 +124,7 @@ export type AdmissionInput =
   | { type: "request"; trigger: RequestTrigger; facts: RequestFacts }
   | { type: "invocation"; trigger: InvocationTrigger; facts: RequestFacts };
 
-export type AdmissionDenial =
+type AdmissionDenial =
   | "agent_author"
   | "not_owner"
   | "not_member"

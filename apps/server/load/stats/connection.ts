@@ -29,11 +29,12 @@ export function labelArgument() {
   return label;
 }
 
-export async function writeJson(name: string, value: unknown) {
+export async function writeJson<T>(name: string, value: T) {
   await mkdir(dataDirectory, { recursive: true });
   await Bun.write(`${dataDirectory}/${name}`, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+// oxlint-disable-next-line deslop/no-unknown-parameters -- Catch values are untrusted; this boundary converts them to a log message.
 export function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }

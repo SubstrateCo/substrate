@@ -31,7 +31,13 @@ export async function mountProjects(world: World) {
   return rows ?? [];
 }
 
-function searchKey(world: World, input: object): QueryKey {
+interface WorkSearch {
+  query: string;
+  kind: "task" | "project";
+  editable: boolean;
+}
+
+function searchKey(world: World, input: WorkSearch): QueryKey {
   return [...keys.search(world.organizationId), JSON.stringify(input)];
 }
 

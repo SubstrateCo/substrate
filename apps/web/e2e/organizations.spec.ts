@@ -66,7 +66,9 @@ test("switching workspaces clears private messages, reconnects in the selected o
     .getByRole("button", { name: `Signed in as ${account.name}`, exact: true })
     .click();
   await user.page.getByRole("button", { name: "User settings", exact: true }).click();
+  await expect(user.page).toHaveURL(/\/settings\/user\/?$/);
   const fullName = user.page.getByLabel("Full name", { exact: true });
+  await expect(fullName).toHaveValue(account.name);
   await fullName.fill("");
   await user.page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(fullName).toHaveAttribute("aria-invalid", "true");

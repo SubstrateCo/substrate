@@ -52,12 +52,12 @@ async function verificationLink(email: string) {
       `${config.mailpitUrl}/api/v1/search?${new URLSearchParams({ query: `to:${email}`, limit: "50" })}`,
     );
     if (!search.ok) throw new Error(`Mailpit search: ${search.status}`);
-    const { messages } = (await search.json()) as { messages: { ID: string; Subject: string }[] };
+    const { messages }: { messages: { ID: string; Subject: string }[] } = await search.json();
     const message = messages.find((item) => item.Subject === "Verify your Substrate email");
     if (message) {
       const response = await fetch(`${config.mailpitUrl}/api/v1/message/${message.ID}`);
       if (!response.ok) throw new Error(`Mailpit message: ${response.status}`);
-      const { Text } = (await response.json()) as { Text: string };
+      const { Text }: { Text: string } = await response.json();
       const link = Text.match(/https?:\/\/[^\s<>"']+/g)?.find(
         (value) => new URL(value).pathname === "/api/auth/verify-email",
       );

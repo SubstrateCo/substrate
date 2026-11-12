@@ -37,7 +37,7 @@ interface LinkEnd {
   entityId: string;
 }
 
-export interface TaskLink {
+interface TaskLink {
   id: string;
   source: LinkEnd | null;
   target: LinkEnd | null;
@@ -73,7 +73,12 @@ export function assignableActors(detail: ProjectDetail) {
 }
 
 // What the tasks screen shows now.
-const screen: { projectId?: string; taskId?: string; discussions?: boolean } = {};
+interface TaskScreen {
+  projectId?: string;
+  taskId?: string;
+  discussions?: boolean;
+}
+const screen: TaskScreen = {};
 
 /** The latest detail per project this client loaded or changed. Backfill reads it instead of the cache. */
 export const boards = new Map<string, ProjectDetail>();

@@ -20,6 +20,7 @@ export type ListedConversation = Conversation & {
   partner: boolean;
 };
 
+// SAFETY: messaging.conversations returns these fields; World stores only their common subset.
 export const listed = (world: World) => world.conversations as ListedConversation[];
 
 /** The org-wide channel everyone is in. It is never left, removed from, or deleted. */

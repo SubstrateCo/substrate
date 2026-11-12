@@ -65,21 +65,25 @@ function run(entry: Entry, cause: RefetchCause): Promise<void> {
       const startedAt = Date.now();
       refetches.add(1, { cause });
       trace("fetch", `${cause} ${entry.key.slice(2).join("/")}`);
-      let data: unknown = null;
       try {
-        data = await entry.fetcher(entry.data !== undefined);
+        const data = await entry.fetcher(entry.data !== undefined);
+        if (data !== null) {
+          entry.data = data;
+          entry.fetchedAt = startedAt;
+        }
       } catch (error) {
         console.error(`[vu ${__VU}] query ${entry.key.join("/")} threw: ${String(error)}`);
       }
-      if (data !== null) {
-        entry.data = data;
-        entry.fetchedAt = startedAt;
-      }
-    } while (entry.again && entry.owners.size > 0);
+      // A hint can set again while the fetcher is awaited.
+    } while (needsAnotherFetch(entry));
   })().finally(() => {
     entry.inflight = undefined;
   });
   return entry.inflight;
+}
+
+function needsAnotherFetch(entry: Entry) {
+  return entry.again && entry.owners.size > 0;
 }
 
 function collectGarbage() {
@@ -116,12 +120,13 @@ export async function mount<T>(
     };
     entries.set(id, entry);
   }
-  entry.fetcher = fetcher as Fetcher<unknown>;
+  entry.fetcher = fetcher;
   entry.staleTime = options.staleTime ?? 30_000;
   entry.owners.add(options.frame ? "frame" : view);
   const fresh =
     entry.data !== undefined && !entry.invalid && Date.now() - entry.fetchedAt < entry.staleTime;
   if (!fresh || entry.inflight) await run(entry, "mount");
+  // SAFETY: callers pair a query key with one response type, as in the renderer cache.
   return entry.data as T | undefined;
 }
 
@@ -153,16 +158,19 @@ export function currentView() {
 
 /** The cached data of a key, mounted or not. */
 export function cached<T>(key: QueryKey): T | undefined {
+  // SAFETY: callers use the same response type as the fetcher registered for this key.
   return entries.get(idOf(key))?.data as T | undefined;
 }
 
 function linked(entry: Entry) {
+  // SAFETY: withLinks targets message context pages, whose cached rows carry links arrays.
   const rows = entry.data as { links?: unknown[] }[] | undefined;
   return rows === undefined || rows.some((row) => (row.links?.length ?? 0) > 0);
 }
 
 /** targets.ts linksWork: a context page that links one of these tasks or projects. */
 function linksWork(entry: Entry, ids: string[]) {
+  // SAFETY: linksTo targets message context pages, whose links identify tasks and projects.
   const rows = entry.data as
     | { links?: { entityId?: string; projectEntityId?: string }[] }[]
     | undefined;
@@ -180,6 +188,7 @@ function linksWork(entry: Entry, ids: string[]) {
 
 /** targets.ts showsConversation: a related list with a message of this conversation. */
 function showsConversation(entry: Entry, conversationId: string) {
+  // SAFETY: inConversation targets related lists, whose rows include conversationId.
   const rows = entry.data as { conversationId?: string }[] | undefined;
   return rows === undefined || rows.some((row) => row.conversationId === conversationId);
 }
@@ -209,7 +218,7 @@ export async function invalidate(
 ) {
   const reads: Promise<void>[] = [];
   for (const target of targets) {
-    const hint = "prefix" in target ? target : ({ prefix: target } as HintTarget);
+    const hint: HintTarget = "prefix" in target ? target : { prefix: target };
     const { staleOnly } = hint;
     for (const entry of entries.values()) {
       if (!selects(entry, hint)) continue;
@@ -252,10 +261,4 @@ export function resetCache() {
   entries.clear();
   view = "messages";
   visits++;
-}
-
-export function mountedCount() {
-  let count = 0;
-  for (const entry of entries.values()) if (entry.owners.size) count++;
-  return count;
 }

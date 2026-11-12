@@ -20,7 +20,7 @@ export interface TaskFields {
   dueDate?: string | null;
 }
 
-type Target = { projectEntityId: string; taskEntityId: string };
+export type TaskTarget = Pick<Task, "projectEntityId"> & { taskEntityId: string };
 
 export type TasksWrite =
   | ({
@@ -30,15 +30,15 @@ export type TasksWrite =
       parentTaskEntityId?: string;
       attachmentFileIds?: string[];
     } & TaskFields)
-  | ({ action: "updateTask" } & Target & TaskFields)
-  | ({ action: "addTaskLink"; relation: string; otherTaskEntityId: string } & Target)
-  | ({ action: "removeTaskLink"; linkId: string } & Target)
-  | ({ action: "deleteTask" } & Target)
+  | ({ action: "updateTask" } & TaskTarget & TaskFields)
+  | ({ action: "addTaskLink"; relation: string; otherTaskEntityId: string } & TaskTarget)
+  | ({ action: "removeTaskLink"; linkId: string } & TaskTarget)
+  | ({ action: "deleteTask" } & TaskTarget)
   | ({
       action: "moveTask";
       destinationProjectEntityId: string;
       parentTaskEntityId: string | null;
-    } & Target);
+    } & TaskTarget);
 
 /** Mirrors invalidateTasksWrite in apps/web/src/queries/tasks/mutations.ts for these actions. */
 function writeTargets(org: string, input: TasksWrite, id: string): (QueryKey | HintTarget)[] {
@@ -122,19 +122,8 @@ export function updateTask(world: World, task: Task, fields: TaskFields) {
   });
 }
 
-export interface SearchRow {
-  id: string;
-  title: string;
-  kind: "task" | "project";
-}
-
 /** One workspace search (queries/context/search.ts). The key holds the input, like the web's. */
-export async function searchWork(
-  world: World,
-  query: string,
-  kind: "task" | "project",
-  limit?: number,
-) {
+async function searchWork(world: World, query: string, kind: "task" | "project", limit?: number) {
   const input = { query, kind, limit };
   const key = [...keys.search(world.organizationId), JSON.stringify(input)];
   const rows = await mount(key, () =>

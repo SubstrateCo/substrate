@@ -47,14 +47,11 @@ const totalScans = snapshot.indexes.reduce((sum, index) => sum + index.idx_scan,
 const smallTable = (table: TableStats) =>
   table.exact_rows < SMALL_TABLE_ROWS ||
   table.heap_size_bytes < SMALL_TABLE_PAGES * snapshot.metadata.block_size;
-const kind = (index: IndexStats) =>
-  index.primary
-    ? "primary"
-    : index.constraint_name
-      ? "unique-constraint"
-      : index.unique
-        ? "unique-index"
-        : "secondary";
+function kind(index: IndexStats) {
+  if (index.primary) return "primary";
+  if (index.constraint_name) return "unique-constraint";
+  return index.unique ? "unique-index" : "secondary";
+}
 function verdict(index: IndexStats) {
   if (index.primary || index.unique || index.constraint_name) return "keep (constraint)";
   if (index.idx_scan === 0)
@@ -67,7 +64,8 @@ function verdict(index: IndexStats) {
     return "low use";
   return "used";
 }
-const cell = (value: unknown) =>
+type Cell = string | number | boolean | null | undefined;
+const cell = (value: Cell) =>
   String(value ?? "—")
     .replaceAll("|", "\\|")
     .replace(/[\r\n]+/g, " ");
@@ -77,7 +75,7 @@ const bytes = (value: number) => `${number(value / 1024, 1)} KiB`;
 const ratio = (numerator: number, denominator: number, digits = 2) =>
   denominator ? number(numerator / denominator, digits) : "—";
 const sections: string[] = [];
-function table(headers: string[], rows: unknown[][]) {
+function table(headers: string[], rows: Cell[][]) {
   return [
     headers.map(cell).join(" | "),
     headers.map(() => "---").join(" | "),

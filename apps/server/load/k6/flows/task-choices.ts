@@ -80,7 +80,8 @@ export function pickTask(
   purpose: "read" | "update" | "comment",
 ) {
   return rng.weighted(tasks, (task) => {
-    let weight = open(task) ? 3 : purpose === "read" ? 0.8 : 0.25;
+    let weight = purpose === "read" ? 0.8 : 0.25;
+    if (open(task)) weight = 3;
     if (actorId && task.assigneeActorEntityId === actorId) weight *= 3;
     if (purpose === "comment") weight *= 0.3 + 3 * busyness(task.entityId) ** 3;
     return weight;

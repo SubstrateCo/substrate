@@ -51,7 +51,7 @@ async function scrollHistory(world: World) {
 
 /** Now and then a shown file looks worth opening. */
 async function maybeOpenFile(world: World, messages: Message[]) {
-  const message = rng.pick(messages.filter((row) => row.attachments?.length && !row.deletedAt));
+  const message = rng.pick(messages.filter((row) => row.attachments.length && !row.deletedAt));
   if (!message || !rng.chance(0.05)) return;
   await think("glance");
   await openMessageAttachment(world, message, rng.pick(message.attachments)!.id);

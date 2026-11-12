@@ -61,7 +61,10 @@ function liveTarget(world: World) {
   return rng.weighted(writable, (conversation) => {
     const idle = now - (world.activity.get(conversation.id) ?? 0);
     const kind = conversation.kind === "channel" ? 1 : 1.6;
-    return kind * (idle < 10 * minute ? 4 : idle < 60 * minute ? 2 : 1);
+    let recency = 1;
+    if (idle < 10 * minute) recency = 4;
+    else if (idle < 60 * minute) recency = 2;
+    return kind * recency;
   });
 }
 
@@ -96,7 +99,9 @@ async function mention(world: World, conversation: Conversation) {
   const query = text.slice(0, rng.int(2, Math.min(5, text.length)));
   await typeTime(`@${query}`);
   const results = await mentionSearch(world, conversation.id, query);
-  const wanted = person ? "person" : work ? (work.projectEntityId ? "task" : "project") : undefined;
+  let wanted: "person" | "task" | "project" | undefined;
+  if (person) wanted = "person";
+  else if (work) wanted = work.projectEntityId ? "task" : "project";
   const choice =
     results.find((row) => row.kind === wanted) ??
     rng.pick(results.filter((row) => row.kind !== "agent"));

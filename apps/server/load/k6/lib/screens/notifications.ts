@@ -103,7 +103,7 @@ export async function markNotificationsRead(world: World, group: NotificationGro
 }
 
 function atOrBefore(cursor: string, through: string) {
-  const event = JSON.parse(cursor) as { at: string; id: string };
-  const cutoff = JSON.parse(through) as { at: string; id: string };
+  const event: { at: string; id: string } = JSON.parse(cursor);
+  const cutoff: { at: string; id: string } = JSON.parse(through);
   return event.at < cutoff.at || (event.at === cutoff.at && event.id <= cutoff.id);
 }

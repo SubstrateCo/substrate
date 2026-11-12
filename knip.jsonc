@@ -7,13 +7,25 @@
     },
     "apps/desktop": {
       // Bun's custom bundlers and Electron load these outside the import graph.
-      "entry": ["src/main.js", "src/preload.ts", "src/harness/worker/harness-worker.ts"],
+      "entry": ["src/preload.ts", "src/harness/worker/harness-worker.ts"],
       "project": ["src/**/*.{js,ts}", "scripts/**/*.{js,ts}"],
     },
     "apps/server": {
       // Runtime scripts and the public API export are discovered from package.json.
-      "entry": [],
-      "project": ["src/**/*.ts", "scripts/**/*.ts", "integration/**/*.ts", "*.config.ts"],
+      "entry": [
+        "load/k6/main.ts",
+        "load/k6/discussions-smoke.ts",
+        "load/stats/{reset,snapshot,plans,report}.ts",
+      ],
+      "project": [
+        "src/**/*.ts",
+        "scripts/**/*.ts",
+        "integration/**/*.ts",
+        "load/**/*.ts",
+        "*.config.ts",
+      ],
+      // k6 provides these modules at runtime; @types/k6 supplies their declarations.
+      "ignoreDependencies": ["k6"],
     },
     "apps/web": {
       // Vite, TanStack Router, and Playwright discover renderer and test entries.

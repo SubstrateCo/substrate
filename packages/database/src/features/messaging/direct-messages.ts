@@ -21,36 +21,6 @@ export function externalDirectMessageKey(scope: SessionIdentity, email: string) 
   ]);
 }
 
-/** A pair of actors has one DM per organization, started by either of them. */
-export async function findDirectMessage(
-  db: DatabaseExecutor,
-  organizationId: string,
-  actorIds: [string, string],
-) {
-  const member = (actorEntityId: string) =>
-    inArray(
-      messagingConversations.id,
-      db
-        .select({ id: messagingParticipants.conversationId })
-        .from(messagingParticipants)
-        .where(eq(messagingParticipants.actorEntityId, actorEntityId)),
-    );
-  const [existing] = await db
-    .select()
-    .from(messagingConversations)
-    .where(
-      and(
-        eq(messagingConversations.kind, "dm"),
-        eq(messagingConversations.organizationId, organizationId),
-        member(actorIds[0]),
-        member(actorIds[1]),
-      ),
-    )
-    .orderBy(desc(messagingConversations.createdAt))
-    .limit(1);
-  return existing;
-}
-
 /**
  * A creator has one DM per external email: with the approved person who accepted, or with a
  * pending invitation to that email.

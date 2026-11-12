@@ -1,3 +1,4 @@
+import type { LoadUser } from "../types";
 import { request, type APIRequestContext, type APIResponse } from "@playwright/test";
 
 export const config = {
@@ -8,21 +9,8 @@ export const config = {
   password: process.env.LOAD_PASSWORD ?? "Substrate-Load-2026!Strong",
 };
 
-export interface User {
-  email: string;
-  name: string;
-  userId: string;
-  organizationId: string;
-}
-export interface Account extends User {
+export interface Account extends LoadUser {
   client: APIRequestContext;
-}
-export interface Organization {
-  id: string;
-  slug: string;
-  name: string;
-  ownerEmail: string;
-  memberEmails: string[];
 }
 
 export async function client() {
@@ -39,7 +27,13 @@ export async function json<T>(response: APIResponse): Promise<T> {
   return response.json();
 }
 
-export async function api<T>(client: APIRequestContext, path: string, data?: object): Promise<T> {
+type RequestData = Record<string, string | number | boolean | string[] | null | undefined>;
+
+export async function api<T>(
+  client: APIRequestContext,
+  path: string,
+  data?: RequestData,
+): Promise<T> {
   const response = data ? await client.post(path, { data }) : await client.get(path);
   const result = await json<{ success: boolean; data: T; error?: { message: string } }>(response);
   if (!result.success) throw new Error(`${path}: ${result.error?.message}`);

@@ -33,7 +33,7 @@ export async function readContextPage(
   refetch: boolean,
 ) {
   let known = world.contextIds.get(conversationId);
-  if (!known) world.contextIds.set(conversationId, (known = new Map()));
+  if (!known) world.contextIds.set(conversationId, (known = new Map<string, ContextRow | null>()));
   const missing = refetch ? ids : ids.filter((id) => !known.has(id));
   if (missing.length) {
     const rows = await call<ContextRow[]>("context.messagePage", { messageIds: missing });

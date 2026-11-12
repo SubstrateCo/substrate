@@ -1,8 +1,9 @@
 import { account } from "./provision/accounts";
-import { config, parallel, type Account, type Organization } from "./provision/client";
+import { config, parallel, type Account } from "./provision/client";
 import { organization, sizes } from "./provision/organizations";
 import { pictures } from "./provision/pictures";
 import { workspace } from "./provision/workspaces";
+import type { LoadOrganization } from "./types";
 import { mkdir, rename } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
@@ -10,8 +11,8 @@ if (!Number.isSafeInteger(config.users) || config.users < 8)
   throw new Error("LOAD_USERS must be an integer of at least 8 (one owner per organization).");
 
 const started = Date.now();
-const accounts: Account[] = new Array(config.users);
-const organizations: Organization[] = [];
+const accounts: Account[] = [];
+const organizations: LoadOrganization[] = [];
 const output = fileURLToPath(new URL("./.data/users.json", import.meta.url));
 await mkdir(fileURLToPath(new URL("./.data", import.meta.url)), { recursive: true });
 
@@ -24,9 +25,11 @@ async function save() {
         origin: config.origin,
         password: config.password,
         organizations,
-        users: accounts
-          .filter((item) => item?.organizationId)
-          .map(({ client: _client, ...user }) => user),
+        users: accounts.flatMap((item) => {
+          if (!item.organizationId) return [];
+          const { client: _client, ...user } = item;
+          return [user];
+        }),
       },
       null,
       2,
@@ -58,5 +61,5 @@ try {
     `Saved ${accounts.length} users in ${organizations.length} organizations to ${output} (${((Date.now() - started) / 1000).toFixed(1)}s)`,
   );
 } finally {
-  await Promise.all(accounts.filter(Boolean).map((item) => item.client.dispose()));
+  await Promise.all(accounts.map((item) => item.client.dispose()));
 }

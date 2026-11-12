@@ -13,29 +13,34 @@ import http from "k6/http";
 
 const reported = new Set<string>();
 
-function report(name: string, status: number, body: unknown) {
+function report(name: string, status: number, body: http.Response["body"] | string) {
+  let code = "NETWORK";
+  if (status >= 500) code = "HTTP_5XX";
+  else if (status) code = "HTTP_4XX";
   apiFailures.add(1, {
     endpoint: name,
-    code: status >= 500 ? "HTTP_5XX" : status ? "HTTP_4XX" : "NETWORK",
+    code,
   });
   if (reported.has(name)) return;
   reported.add(name);
-  console.warn(`[vu ${__VU}] ${name} failed: ${status} ${String(body).slice(0, 200)}`);
+  console.warn(`[vu ${__VU}] ${name} failed: ${status} ${JSON.stringify(body).slice(0, 200)}`);
 }
 
 /** A JSON text body, a multipart form (an object with http.file values), or none. */
-type Body = string | Record<string, string | http.FileData> | null;
+type Body =
+  | { kind: "json"; value: string }
+  | { kind: "multipart"; value: Record<string, string | http.FileData> }
+  | null;
 
 async function raw(name: EndpointName, url: string, body: Body, json: boolean, redirect = false) {
   const endpoint = endpoints[name];
   const started = Date.now();
+  const headers: http.Params["headers"] = { Origin: origin };
+  if (body?.kind === "json") headers["Content-Type"] = "application/json";
   const response = await withConnection(() =>
-    http.asyncRequest(endpoint.method, url, body, {
+    http.asyncRequest(endpoint.method, url, body?.value ?? null, {
       // k6 sets the multipart Content-Type with its boundary.
-      headers: {
-        Origin: origin,
-        ...(typeof body === "string" ? { "Content-Type": "application/json" } : {}),
-      },
+      headers,
       tags: { name, endpoint: name },
       timeout: "30s",
       // The content route answers with the file; a redirect would leave the API.
@@ -60,8 +65,14 @@ async function raw(name: EndpointName, url: string, body: Body, json: boolean, r
 /** Finishes an upload after its bytes are stored. Resolves the file ID, or null. */
 export async function completeUpload(uploadId: string) {
   const path = endpoints["files.uploads.complete"].path.replace(":id", uploadId);
-  const response = await raw("files.uploads.complete", `${apiUrl}${path}`, "", true);
+  const response = await raw(
+    "files.uploads.complete",
+    `${apiUrl}${path}`,
+    { kind: "json", value: "" },
+    true,
+  );
   if (!response) return null;
+  // SAFETY: files.uploads.complete responds with the file ID in the API data envelope.
   const envelope = response.json() as { data?: { fileId?: string } } | null;
   return envelope?.data?.fileId ?? null;
 }
@@ -110,8 +121,14 @@ export async function uploadPicture(
 ) {
   const path = endpoints["files.pictures.upload"].path.replace(":purpose", purpose);
   const form = { ...fields, file: http.file(bytes, "picture.png", "image/png") };
-  const response = await raw("files.pictures.upload", `${apiUrl}${path}`, form, true);
+  const response = await raw(
+    "files.pictures.upload",
+    `${apiUrl}${path}`,
+    { kind: "multipart", value: form },
+    true,
+  );
   if (!response) return null;
+  // SAFETY: files.pictures.upload responds with the saved picture URL in the data envelope.
   const envelope = response.json() as { data?: { url?: string } } | null;
   return envelope?.data?.url ?? null;
 }

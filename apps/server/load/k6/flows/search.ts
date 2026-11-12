@@ -18,19 +18,18 @@ const steps = new Counter("search_steps");
 
 function termFor(world: World, kind: SearchKind) {
   if (rng.chance(0.25)) {
-    const names =
-      kind === "project"
-        ? world.projects.map((project) => project.title)
-        : kind === "task"
-          ? world.tasks.map((task) => task.title)
-          : kind === "channel"
-            ? world.conversations
-                .filter((conversation) => conversation.kind === "channel")
-                .map((conversation) => conversation.name)
-            : [
-                ...world.people.map((person) => person.name),
-                ...world.conversations.map((conversation) => conversation.name),
-              ];
+    let names;
+    if (kind === "project") names = world.projects.map((project) => project.title);
+    else if (kind === "task") names = world.tasks.map((task) => task.title);
+    else if (kind === "channel")
+      names = world.conversations.flatMap((conversation) =>
+        conversation.kind === "channel" ? [conversation.name] : [],
+      );
+    else
+      names = [
+        ...world.people.map((person) => person.name),
+        ...world.conversations.map((conversation) => conversation.name),
+      ];
     const name = rng.pick(names.filter(Boolean));
     if (name) return name.slice(0, 80);
   }

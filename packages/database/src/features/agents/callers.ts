@@ -167,15 +167,6 @@ export async function queryCallers(
 }
 
 /** Lets a person of this organization call the agent without approval under ask. */
-export function allowCaller(
-  db: DatabaseExecutor,
-  identity: SessionIdentity,
-  agentId: string,
-  callerActorId: string,
-) {
-  return db.transaction((tx) => allowCallerInTransaction(tx, identity, agentId, callerActorId));
-}
-
 export async function allowCallerInTransaction(
   tx: DatabaseExecutor,
   identity: SessionIdentity,
@@ -226,15 +217,6 @@ export async function allowCallerInTransaction(
 }
 
 /** Removes a person from the allowlist. Their admitted calls drop at the source check. */
-export function removeCaller(
-  db: DatabaseExecutor,
-  identity: SessionIdentity,
-  agentId: string,
-  callerActorId: string,
-) {
-  return db.transaction((tx) => removeCallerInTransaction(tx, identity, agentId, callerActorId));
-}
-
 export async function removeCallerInTransaction(
   tx: DatabaseExecutor,
   identity: SessionIdentity,

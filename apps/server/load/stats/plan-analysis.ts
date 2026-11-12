@@ -1,4 +1,28 @@
-export interface AccessPath {
+import { z } from "zod";
+
+const planNodeSchema = z.object({
+  "Node Type": z.string(),
+  "Total Cost": z.number().optional(),
+  "Index Name": z.string().optional(),
+  "Relation Name": z.string().optional(),
+  Schema: z.string().optional(),
+  get Plans() {
+    return z.array(planNodeSchema).optional();
+  },
+});
+
+export const explainPlanSchema = z
+  .array(
+    z.object({
+      Plan: planNodeSchema.extend({ "Total Cost": z.number() }),
+    }),
+  )
+  .min(1);
+
+type ExplainPlan = z.infer<typeof explainPlanSchema>;
+type PlanNode = z.infer<typeof planNodeSchema>;
+
+interface AccessPath {
   node: string;
   schema?: string;
   table?: string;
@@ -41,45 +65,37 @@ export interface Plans {
   what_if: WhatIf[];
 }
 
-export function summarizePlan(value: unknown): PlanSummary {
-  const documents = value as { Plan: Record<string, unknown> }[];
-  const cost = documents[0]?.Plan?.["Total Cost"];
-  if (typeof cost !== "number") throw new Error("EXPLAIN returned no root plan cost.");
+export function summarizePlan(documents: ExplainPlan): PlanSummary {
+  const root = documents[0]!.Plan;
   const indexes = new Set<string>();
   const tables = new Set<string>();
   const paths: AccessPath[] = [];
-  function walk(value: unknown) {
-    if (!value || typeof value !== "object") return;
-    if (Array.isArray(value)) {
-      for (const child of value) walk(child);
-      return;
-    }
-    const node = value as Record<string, unknown>;
+  function walk(node: PlanNode) {
     const type = node["Node Type"];
     const index = node["Index Name"];
     const table = node["Relation Name"];
-    if (typeof type === "string" && (type.includes("Scan") || type === "ModifyTable")) {
+    if (type.includes("Scan") || type === "ModifyTable") {
       paths.push({
         node: type,
-        schema: typeof node.Schema === "string" ? node.Schema : undefined,
-        table: typeof table === "string" ? table : undefined,
-        index: typeof index === "string" ? index : undefined,
+        schema: node.Schema,
+        table,
+        index,
       });
     }
     if (
-      ["Index Scan", "Index Only Scan", "Bitmap Index Scan"].includes(String(type)) &&
-      typeof index === "string"
+      ["Index Scan", "Index Only Scan", "Bitmap Index Scan"].includes(type) &&
+      index !== undefined
     ) {
       indexes.add(index);
     }
-    if ((type === "Seq Scan" || type === "Parallel Seq Scan") && typeof table === "string") {
+    if ((type === "Seq Scan" || type === "Parallel Seq Scan") && table !== undefined) {
       tables.add(table);
     }
-    for (const child of Object.values(node)) walk(child);
+    for (const child of node.Plans ?? []) walk(child);
   }
-  walk(value);
+  for (const document of documents) walk(document.Plan);
   return {
-    total_cost: cost,
+    total_cost: root["Total Cost"],
     indexes: [...indexes].sort(),
     seq_scan_tables: [...tables].sort(),
     access_paths: paths,

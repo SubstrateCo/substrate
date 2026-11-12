@@ -140,10 +140,17 @@ test("only the agent's owner sets callers and decides calls; a caller sees only 
 
     // Only the home desktop that declares caller wakes receives the call.
     const pull = (data: RequestBody) =>
-      post(agentOwner, "/api/v1/agent-work/device/wakes/pull", data);
+      agentOwner.request.post("/api/v1/agent-work/device/wakes/pull", {
+        headers: { origin, "x-substrate-installation": installationId },
+        data,
+      });
     const device = { organizationId, installationId, limit: 50 };
-    expect((await (await pull(device)).json()).data).toEqual([]);
-    const pulled = (await (await pull({ ...device, capabilities: ["caller_wakes"] })).json()).data;
+    const withoutCapabilities = await pull(device);
+    expect(withoutCapabilities.ok()).toBe(true);
+    expect((await withoutCapabilities.json()).data).toEqual([]);
+    const withCapabilities = await pull({ ...device, capabilities: ["caller_wakes"] });
+    expect(withCapabilities.ok()).toBe(true);
+    const pulled = (await withCapabilities.json()).data;
     expect(pulled).toEqual([
       expect.objectContaining({
         source: "caller_message",

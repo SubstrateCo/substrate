@@ -60,7 +60,7 @@ function otherHumans(world: World, detail: ProjectDetail) {
   );
 }
 
-export async function createTask(world: World, detail: ProjectDetail, small: boolean) {
+export async function createTask(world: World, detail: ProjectDetail) {
   const projectEntityId = detail.project.entityId;
   // "Add subtask" in the inspector of the parent; otherwise "New task" or a column's "+".
   const parent =
@@ -174,11 +174,13 @@ async function reference(world: World, detail: ProjectDetail, task: Task, conver
   const people = otherHumans(world, detail);
   const roll = rng.next();
   const person = people.length && roll < 0.45 ? rng.pick(people)! : undefined;
-  const work = !person
-    ? roll < 0.8
-      ? rng.pick(world.tasks.filter((other) => other.entityId !== task.entityId))
-      : rng.pick(world.projects)
-    : undefined;
+  let work: World["projects"][number] | undefined;
+  if (!person) {
+    work =
+      roll < 0.8
+        ? rng.pick(world.tasks.filter((other) => other.entityId !== task.entityId))
+        : rng.pick(world.projects);
+  }
   const text = person?.name ?? work?.title ?? word();
   const query = text.slice(0, rng.int(3, Math.min(10, text.length)));
   let rows: Awaited<ReturnType<typeof mentionSearch>> = [];

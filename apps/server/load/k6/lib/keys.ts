@@ -286,7 +286,7 @@ function messagePagesTarget(
 }
 
 /** Mirrors domainTargets in apps/web/src/queries/targets.ts. */
-export function domainTargets(
+function domainTargets(
   domain: "messaging" | "tasks" | "context" | "notifications",
   org: string,
   conversationId?: string,

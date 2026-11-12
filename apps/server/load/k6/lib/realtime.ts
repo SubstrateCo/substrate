@@ -56,7 +56,7 @@ export function connectRealtime(
     stopped: false,
     attempts: 0,
     seen: new Set(),
-    pending: new Map(),
+    pending: new Map<string, HintTarget>(),
   };
   current = connection;
 
@@ -86,6 +86,7 @@ export function connectRealtime(
       return;
     }
     if (event.type !== "change" || event.organizationId !== organizationId) return;
+    // SAFETY: the server emits ChangeEvent for change frames; type and active organization were checked above.
     const change = event as ChangeEvent;
     if (connection.seen.has(change.id)) return;
     connection.seen.add(change.id);
@@ -132,12 +133,15 @@ export function connectRealtime(
       socket.close();
     }, readyTimeoutMs);
     socket.onmessage = (event) => {
+      // oxlint-disable-next-line deslop/no-runtime-typeof -- WebSocket input boundary: only text frames contain JSON hints.
       if (!ended && typeof event?.data === "string") receive(event.data);
     };
     // The runtime passes the close event; the published types omit it.
-    socket.addEventListener("close" as EventName, (event) =>
-      end((event as { code?: number }).code ?? 1006),
-    );
+    // SAFETY: k6 accepts the standard close event name; EventName is a string enum in its declarations.
+    socket.addEventListener("close" as EventName, (event) => {
+      // SAFETY: k6 supplies a CloseEvent here, although its listener declaration lists only message/error events.
+      end((event as { code?: number }).code ?? 1006);
+    });
     socket.onerror = () => socket.close();
   };
 

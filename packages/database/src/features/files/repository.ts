@@ -16,8 +16,8 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 
 type Task = typeof tasks.$inferSelect;
 
-export const attachmentReferences = sql`exists (select 1 from ${taskAttachments} where ${taskAttachments.fileId} = ${storedFiles.id})
-  or exists (select 1 from ${messageAttachments} where ${messageAttachments.fileId} = ${storedFiles.id})`;
+export const attachmentReferences = sql`(exists (select 1 from ${taskAttachments} where ${taskAttachments.fileId} = ${storedFiles.id})
+  or exists (select 1 from ${messageAttachments} where ${messageAttachments.fileId} = ${storedFiles.id}))`;
 
 export function createAttachmentRepository(context: RepositoryContext) {
   const { db, scope } = context;

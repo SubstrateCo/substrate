@@ -1,20 +1,6 @@
+import type { LoadUser, LoadOrganization } from "../../types.ts";
 import { config } from "./config.ts";
 import { SharedArray } from "k6/data";
-
-export interface LoadUser {
-  email: string;
-  name: string;
-  userId: string;
-  organizationId: string;
-}
-
-export interface LoadOrganization {
-  id: string;
-  slug: string;
-  name: string;
-  ownerEmail: string;
-  memberEmails: string[];
-}
 
 interface UsersFile {
   apiUrl: string;
@@ -26,10 +12,11 @@ interface UsersFile {
 
 // open() resolves relative to this module.
 const file = new SharedArray<UsersFile>("users-file", () => [
+  // SAFETY: load/provision.ts writes this local fixture with the UsersFile shape.
   JSON.parse(open("../../.data/users.json")) as UsersFile,
 ]);
 
-export const users = new SharedArray<LoadUser>("users", () => file[0]!.users);
+const users = new SharedArray<LoadUser>("users", () => file[0]!.users);
 const meta = file[0]!;
 export const apiUrl = meta.apiUrl;
 export const origin = meta.origin;

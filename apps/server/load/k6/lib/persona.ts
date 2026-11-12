@@ -10,7 +10,7 @@ export type FlowName =
   | "connectedWork"
   | "rare";
 
-export type Role = "chatty" | "taskFocused" | "lurker" | "balanced";
+type Role = "chatty" | "taskFocused" | "lurker" | "balanced";
 
 export interface Persona {
   role: Role;
@@ -64,6 +64,7 @@ function createPersona(): Persona {
     // Chat is read faster than prose: short lines, much of it skimmed.
     readingCps: rng.between(25, 45),
     awayChance: Math.min(0.25, 0.1 / Math.sqrt(activity)),
+    // SAFETY: every FlowName in flowNames is assigned a numeric weight.
     flowBias: Object.fromEntries(flowNames.map((name) => [name, bias[name] ?? 1])) as Record<
       FlowName,
       number

@@ -57,7 +57,7 @@ function visibleEntitiesQuery(scope: ActorScope) {
 
 // Entities the actor's grants reach, for list queries. Admin access is not in this set; use
 // readableCondition, which adds it per row.
-export function visibilityCte(scope: ActorScope) {
+function visibilityCte(scope: ActorScope) {
   return sql`WITH visible_entities(entity_id, level) AS (${visibleEntitiesQuery(scope)})`;
 }
 
@@ -76,7 +76,7 @@ export function readableFromCte(
 }
 
 // Admins own every live entity in a live container of a shared type.
-export function adminOwnsCondition(scope: ActorScope, entityId: SQLWrapper) {
+function adminOwnsCondition(scope: ActorScope, entityId: SQLWrapper) {
   return sql`(${organizationAdminCondition(scope)} AND EXISTS (
     SELECT 1 FROM ${entities} ae
     JOIN ${entities} ac ON ac.organization_id = ae.organization_id AND ac.entity_id = ae.access_entity_id

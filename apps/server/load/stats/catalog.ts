@@ -1,3 +1,4 @@
+import { explainPlanSchema } from "./plan-analysis";
 import type { SQL } from "bun";
 
 type Client = Pick<SQL, "unsafe">;
@@ -72,7 +73,7 @@ export interface Snapshot {
   statements: StatementStats[];
 }
 
-export const quoteIdentifier = (value: string) => `"${value.replaceAll('"', '""')}"`;
+const quoteIdentifier = (value: string) => `"${value.replaceAll('"', '""')}"`;
 
 export async function resetStatistics(sql: Client) {
   await sql.unsafe("/* load-stats */ ANALYZE");
@@ -86,7 +87,7 @@ export async function clearStatistics(sql: Client) {
 }
 
 export async function metadata(sql: Client): Promise<Metadata> {
-  const [row] = await sql.unsafe<Metadata[]>(`/* load-stats */
+  const [row] = await sql.unsafe<(Metadata | undefined)[]>(`/* load-stats */
     SELECT current_database() AS database, version(),
       d.stats_reset::text, s.stats_reset::text AS statements_reset,
       current_setting('block_size')::int AS block_size
@@ -165,9 +166,9 @@ export async function statementStatistics(sql: Client): Promise<StatementStats[]
   });
 }
 
-export async function explain(sql: Client, query: string): Promise<unknown> {
+export async function explain(sql: Client, query: string) {
   const [row] = await sql.unsafe(`/* load-stats */ EXPLAIN (GENERIC_PLAN, FORMAT JSON) ${query}`);
-  return row["QUERY PLAN"];
+  return explainPlanSchema.parse(row["QUERY PLAN"]);
 }
 
 export async function setPlanTimeouts(sql: Client, local = false) {

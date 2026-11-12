@@ -258,17 +258,6 @@ const decisionAudits: Record<DecisionEvent, AuditEvent["action"]> = {
  * transaction. A call whose trigger kind the owner disabled since is cancelled too. always_allow
  * also allowlists the caller.
  */
-export function decideInvocation(
-  db: DatabaseExecutor,
-  identity: SessionIdentity,
-  invocationId: string,
-  decision: DecideInvocationInput["decision"],
-) {
-  return db.transaction((tx) =>
-    decideInvocationInTransaction(tx, identity, invocationId, decision),
-  );
-}
-
 export async function decideInvocationInTransaction(
   tx: DatabaseExecutor,
   identity: SessionIdentity,

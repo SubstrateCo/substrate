@@ -1,4 +1,4 @@
-export type Mode = "smoke" | "backfill" | "measure";
+type Mode = "smoke" | "backfill" | "measure";
 
 const modes: Record<Mode, { vus: number; ramp: string; duration: string; pace: number }> = {
   smoke: { vus: 5, ramp: "10s", duration: "1m", pace: 1 },
@@ -13,13 +13,18 @@ function parseMode(value: string | undefined): Mode {
 }
 
 /** Parses k6-style durations such as "90s", "2m" or "1h30m" to milliseconds. */
-export function durationMs(text: string) {
+function durationMs(text: string) {
   const parts = text.match(/\d+(\.\d+)?(ms|s|m|h)/g);
   if (!parts || parts.join("") !== text) throw new Error(`Invalid duration: ${text}`);
-  const unit: Record<string, number> = { ms: 1, s: 1000, m: 60_000, h: 3_600_000 };
+  const unit = new Map([
+    ["ms", 1],
+    ["s", 1000],
+    ["m", 60_000],
+    ["h", 3_600_000],
+  ]);
   return parts.reduce((total, part) => {
     const [, amount, suffix] = part.match(/^([\d.]+)(ms|s|m|h)$/)!;
-    return total + Number(amount) * unit[suffix!]!;
+    return total + Number(amount) * unit.get(suffix!)!;
   }, 0);
 }
 

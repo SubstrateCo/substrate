@@ -4,12 +4,11 @@ import { sql } from "drizzle-orm";
 
 const connectionString = process.env.DATABASE_URL;
 const target = connectionString ? new URL(connectionString) : undefined;
-if (
-  !target ||
-  !["postgres:", "postgresql:"].includes(target.protocol) ||
-  !["localhost", "127.0.0.1", "[::1]"].includes(target.hostname) ||
-  target.pathname !== "/substrate_load"
-)
+const localDatabase =
+  target &&
+  ["localhost", "127.0.0.1", "[::1]"].includes(target.hostname) &&
+  target.pathname === "/substrate_load";
+if (!target || !["postgres:", "postgresql:"].includes(target.protocol) || !localDatabase)
   throw new Error("Load testing requires the substrate_load database on localhost.");
 
 // Explicit values isolate this server from Bun's automatically loaded developer .env files.

@@ -114,6 +114,38 @@ test("task attachments inherit access, reject uploader backdoors, and block blob
   ).toBeInstanceOf(AccessDeniedError);
 });
 
+test.each(["delete", "prune"] as const)(
+  "%s removes an unused file but keeps another organization's message attachment",
+  async (operation) => {
+    const partner = { userId: "outsider", organizationId: f.orgB };
+    const chat = createAcceptedMessagingService(f.db, partner);
+    const conversation = await chat.createConversation({
+      kind: "channel",
+      name: "protected-files",
+      private: true,
+    });
+    const protectedFile = await staged(partner.userId, partner.organizationId);
+    await chat.sendMessage(conversation.id, "Keep this file", undefined, undefined, [
+      protectedFile.id,
+    ]);
+    const unused = await staged();
+    const storage = createStorageRepository(f.db, attachmentReferences);
+
+    if (operation === "delete") await storage.deleteFile(scope(), unused.id);
+    else await storage.pruneUnusedFiles(new Date(Date.now() + 1000));
+
+    expect(await f.db.select({ id: storedFiles.id }).from(storedFiles)).toEqual([
+      { id: protectedFile.id },
+    ]);
+    expect(
+      await f.db.select({ fileId: messageAttachments.fileId }).from(messageAttachments),
+    ).toEqual([{ fileId: protectedFile.id }]);
+    expect(
+      (await storage.cleanupCandidates(new Date(Date.now() + 1000))).map((row) => row.objectKey),
+    ).toContain(unused.objectKey);
+  },
+);
+
 test("attaching task files does not reload metadata discarded by the HTTP mutation", async () => {
   const target = await task();
   const file = await staged();

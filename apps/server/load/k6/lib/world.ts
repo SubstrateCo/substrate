@@ -1,7 +1,7 @@
-import type { LoadUser } from "./data.ts";
+import type { LoadUser } from "../../types.ts";
 
 /** Response rows the flows use. Fields are the subset read by the load test. */
-export interface ConversationMember {
+interface ConversationMember {
   actorId: string;
   type: "human" | "agent";
   userId: string | null;
@@ -49,7 +49,7 @@ export interface Person {
   image: string | null;
 }
 
-export interface WorkRecord {
+interface WorkRecord {
   entityId: string;
   title: string;
   /** Set on tasks. */
@@ -90,10 +90,10 @@ export function createWorld(user: LoadUser): World {
     userId: user.userId,
     people: [],
     conversations: [],
-    unread: new Map(),
-    activity: new Map(),
-    messages: new Map(),
-    contextIds: new Map(),
+    unread: new Map<string, number>(),
+    activity: new Map<string, number>(),
+    messages: new Map<string, Message[]>(),
+    contextIds: new Map<string, Map<string, ContextRow | null>>(),
     projects: [],
     tasks: [],
     hasUnreadNotifications: false,
@@ -127,8 +127,4 @@ export function applyLatestMessages(world: World, conversationId: string, rows: 
 
 export function joinedConversations(world: World) {
   return world.conversations.filter((conversation) => conversation.joined);
-}
-
-export function conversationOf(world: World, conversationId: string) {
-  return world.conversations.find((conversation) => conversation.id === conversationId);
 }

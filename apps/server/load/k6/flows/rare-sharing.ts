@@ -1,6 +1,7 @@
+import type { LoadUser } from "../../types.ts";
 import { cached } from "../lib/client-cache.ts";
 import { config } from "../lib/config.ts";
-import { organizations, userOf, type LoadUser } from "../lib/data.ts";
+import { organizations, userOf } from "../lib/data.ts";
 import { trace } from "../lib/debug.ts";
 import { keys } from "../lib/keys.ts";
 import { unreadSharingInvitations } from "../lib/mail.ts";

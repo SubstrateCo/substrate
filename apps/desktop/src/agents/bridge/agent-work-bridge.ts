@@ -4,8 +4,6 @@ import { handleBridge } from "@substrate/contracts/desktop/ipc";
 
 import type { AgentWorkRuntime } from "../runtime/runtime.ts";
 
-export type AgentWorkMethod = keyof typeof methods;
-
 export async function dispatchAgentWork(
   runtime: AgentWorkRuntime,
   method: unknown,

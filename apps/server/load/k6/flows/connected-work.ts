@@ -43,7 +43,8 @@ function chooseConversation(world: World) {
   const now = Date.now();
   return rng.weighted(joinedConversations(world), (conversation) => {
     const idle = now - (world.activity.get(conversation.id) ?? 0);
-    return idle < 10 * minute ? 4 : idle < 60 * minute ? 2 : 1;
+    if (idle < 10 * minute) return 4;
+    return idle < 60 * minute ? 2 : 1;
   });
 }
 
@@ -121,7 +122,7 @@ async function linkToWork(world: World, conversationId: string, message: Message
   const text = hint.slice(0, rng.int(3, Math.max(3, Math.min(8, hint.length)))).toLowerCase();
   const picker = await openLinkPicker(world, kind, backfill ? "" : text);
   const linked = new Set(
-    links.filter((row) => row.messageId === message.id).map((row) => row.work.id),
+    links.flatMap((row) => (row.messageId === message.id ? [row.work.id] : [])),
   );
   const choice = rng.pick(picker.rows.slice(0, 8).filter((row) => !linked.has(row.id)));
   if (!backfill) await (choice ? think("decide") : think("glance"));

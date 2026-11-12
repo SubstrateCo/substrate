@@ -7,7 +7,7 @@ import { search } from "./search.ts";
 import { tasks } from "./tasks.ts";
 import { writeMessages } from "./write-messages.ts";
 
-export type { Flow, FlowContext } from "./flow.ts";
+export type { Flow } from "./flow.ts";
 
 export const flows: Flow[] = [
   { name: "readMessages", weight: 35, backfillWeight: 0, run: readMessages },

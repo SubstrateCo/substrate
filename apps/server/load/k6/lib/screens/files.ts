@@ -11,6 +11,7 @@ import {
 } from "../upload.ts";
 import { word } from "../words.ts";
 import type { Message, World } from "../world.ts";
+import type { TaskTarget } from "./task-writes.ts";
 
 /**
  * Attachments (components/attachments/..., composer uploads): the three-step upload
@@ -23,8 +24,6 @@ export interface Attachment {
   filename: string;
   size: number;
 }
-
-type Target = { projectEntityId: string; taskEntityId: string };
 
 const types = [
   { ext: "pdf", type: "application/pdf", weight: 5 },
@@ -93,7 +92,7 @@ export async function uploadFile() {
 }
 
 /** The attachment list in the task inspector (task-attachments.tsx). */
-export async function showTaskAttachments(world: World, target: Target) {
+export async function showTaskAttachments(world: World, target: TaskTarget) {
   const rows = await mount(
     keys.taskAttachments(world.organizationId, target.projectEntityId, target.taskEntityId),
     () => call<Attachment[]>("files.taskAttachments", target),
@@ -101,25 +100,25 @@ export async function showTaskAttachments(world: World, target: Target) {
   return rows ?? [];
 }
 
-const refreshAttachments = (world: World, target: Target) =>
+const refreshAttachments = (world: World, target: TaskTarget) =>
   invalidate(
     [keys.taskAttachments(world.organizationId, target.projectEntityId, target.taskEntityId)],
     "mutation",
   );
 
-export async function attachToTask(world: World, target: Target, fileIds: string[]) {
+export async function attachToTask(world: World, target: TaskTarget, fileIds: string[]) {
   const result = await call("files.taskAttachments.add", { ...target, attachmentFileIds: fileIds });
   if (result) await refreshAttachments(world, target);
   return !!result;
 }
 
-export async function removeTaskAttachment(world: World, target: Target, attachmentId: string) {
+export async function removeTaskAttachment(world: World, target: TaskTarget, attachmentId: string) {
   const result = await call("files.taskAttachments.remove", { ...target, attachmentId });
   if (result) await refreshAttachments(world, target);
   return !!result;
 }
 
-export const openTaskAttachment = (world: World, target: Target, attachmentId: string) =>
+export const openTaskAttachment = (world: World, target: TaskTarget, attachmentId: string) =>
   taskAttachmentContent({ organizationId: world.organizationId, ...target, attachmentId });
 
 /** Clicks a file under a message, which downloads it (api/files/attachments.ts). */

@@ -47,7 +47,7 @@ function chooseProject(projects: Project[]) {
   });
 }
 
-type Step = (world: World, detail: ProjectDetail, small: boolean) => Promise<unknown>;
+type Step = (world: World, detail: ProjectDetail) => Promise<void | boolean>;
 
 /** Step weights for one board. A new or small board gets more creates, a grown one more updates. */
 function chooseStep(world: World, detail: ProjectDetail): Step | undefined {
@@ -56,9 +56,10 @@ function chooseStep(world: World, detail: ProjectDetail): Step | undefined {
   const edit = canEdit(detail);
   const some = count > 0;
   const mine = detail.tasks.some((task) => created.has(task.entityId));
+  const createWeight = small ? 30 : 12;
   const steps: [Step, number][] = [
     [readTask, some ? 30 : 0],
-    [createTask, edit ? (small ? 30 : 12) : 0],
+    [createTask, edit ? createWeight : 0],
     [updateOne, edit && some ? 25 : 0],
     [commentOn, canComment(detail) && some ? 20 : 0],
     [linkTasks, edit && count >= 2 ? 5 : 0],
@@ -116,7 +117,7 @@ export async function tasks({ world }: FlowContext) {
     if (!action) break;
     touched.set(detail.project.entityId, Date.now());
     trace("step", action.name);
-    await action(world, detail, detail.tasks.length < 8);
+    await action(world, detail);
     detail = current(world);
     if (!detail) return;
     if (step < count - 1) await think("between");
