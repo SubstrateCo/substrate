@@ -1,9 +1,23 @@
 import type { DatabaseExecutor } from "../../client";
+import { RepositoryContext } from "../repository-context";
 import type { SessionIdentity } from "./identity";
-import { workspaceContext } from "./workspace";
+import { workspaceContext, type ResolvedWorkspace } from "./workspace";
+
+export type MessagingSessionResolver = (
+  db: DatabaseExecutor,
+) => Promise<ReturnType<typeof resolvedMessagingSession>>;
 
 export async function messagingSession(db: DatabaseExecutor, identity: SessionIdentity) {
-  const { context, actor, admin } = await workspaceContext(db, identity);
+  return resolvedMessagingSession(db, identity, await workspaceContext(db, identity));
+}
+
+export function resolvedMessagingSession(
+  db: DatabaseExecutor,
+  identity: SessionIdentity,
+  workspace: ResolvedWorkspace,
+) {
+  const { actor, admin } = workspace;
+  const context = new RepositoryContext(db, workspace.context.scope);
   return {
     context,
     actor,

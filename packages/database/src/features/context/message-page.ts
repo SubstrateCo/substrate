@@ -1,6 +1,5 @@
-import type { DatabaseExecutor } from "../../client";
+import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
-import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { visibleConversations } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
@@ -9,12 +8,12 @@ import { messagingReferencePage } from "./messaging-references";
 import { and, eq, inArray, sql } from "drizzle-orm";
 
 export async function messagePage(
-  db: DatabaseExecutor,
+  ctx: RepositoryContext,
   scope: SessionIdentity,
   messageIds: string[],
 ) {
   if (messageIds.length > 50) throw new ValidationError("At most 50 messages are allowed.");
-  const { context: ctx } = await workspaceContext(db, scope);
+  const { db } = ctx;
   const ids = [...new Set(messageIds)];
   if (!ids.length) return [];
   const messages = await db

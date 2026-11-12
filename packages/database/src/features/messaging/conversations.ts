@@ -7,6 +7,7 @@ import { user } from "../../core/authentication/schema";
 import { effectsFor } from "../../core/effects";
 import { member, organization } from "../../core/organizations/schema";
 import type { SessionIdentity } from "../../core/session/identity";
+import type { MessagingSessionResolver } from "../../core/session/messaging";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { messageEntityReferences } from "../context/schema";
 import { withRemovalHints } from "../realtime/routing";
@@ -47,8 +48,11 @@ function displayName(name: string | null, members: { name: string }[]) {
 }
 
 // Conversation membership and management. Scope comes from the authenticated session.
-export function conversationOperations(db: DatabaseExecutor, scope: Readonly<SessionIdentity>) {
-  const authenticate = (tx: DatabaseExecutor) => messagingSession(tx, scope);
+export function conversationOperations(
+  db: DatabaseExecutor,
+  scope: Readonly<SessionIdentity>,
+  authenticate: MessagingSessionResolver,
+) {
   function changed(tx: DatabaseExecutor, conversationId: string, management = false) {
     const effects = effectsFor(tx);
     effects.hint({ audience: realtimeKeys.conversation(conversationId), domain: "messaging" });
@@ -63,7 +67,7 @@ export function conversationOperations(db: DatabaseExecutor, scope: Readonly<Ses
   async function requireManaged(tx: DatabaseExecutor, viewer: Viewer, id: string) {
     if (viewer.agent) throw new AccessDeniedError();
     await lockConversation(tx, id, "update");
-    viewer = (await authenticate(tx)).viewer;
+    viewer = (await messagingSession(tx, scope)).viewer;
     const [conversation] = await tx
       .select()
       .from(messagingConversations)

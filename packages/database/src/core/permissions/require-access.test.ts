@@ -8,10 +8,21 @@ import { entities } from "../entities/schema";
 import { member } from "../organizations/schema";
 import { RepositoryContext } from "../repository-context";
 import { entityGrants } from "./schema";
+import { entityAccessLevel } from "./visibility";
 import { expect, test } from "bun:test";
 import { and, eq, sql } from "drizzle-orm";
 
 const f = setupDatabase();
+
+test("single-entity access reads its target once for both grants and admin access", async () => {
+  const { child } = await hierarchy();
+  const { db, queries } = recordQueries();
+  const [access] = await db.execute<{ level: string }>(
+    sql`select ${entityAccessLevel({ organizationId: f.orgA, actorEntityId: f.alice }, child.entityId)} as level`,
+  );
+  expect(access?.level).toBe("owner");
+  expect(queries[0]?.match(/FROM "entities" e/g)).toHaveLength(1);
+});
 
 // A project container and one task inside it.
 async function hierarchy() {

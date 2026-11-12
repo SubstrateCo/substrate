@@ -4,17 +4,21 @@ import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { effectsFor } from "../../core/effects";
 import type { SessionIdentity } from "../../core/session/identity";
-import { messagingSession } from "../../core/session/messaging";
+import type { MessagingSessionResolver } from "../../core/session/messaging";
 import { AccessDeniedError } from "../../errors";
 import { loadConversation, liveApprovedParticipant, visibleConversations } from "./access";
 import { messagingReadPositions } from "./read-state.schema";
 import { messagingConversations, messagingMessages, messagingParticipants } from "./schema";
 import { and, eq, isNull, ne, sql } from "drizzle-orm";
 
-export function readOperations(db: DatabaseExecutor, scope: Readonly<SessionIdentity>) {
+export function readOperations(
+  db: DatabaseExecutor,
+  scope: Readonly<SessionIdentity>,
+  authenticate: MessagingSessionResolver,
+) {
   return {
     async unreadCounts() {
-      const { actor } = await messagingSession(db, scope);
+      const { actor } = await authenticate(db);
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db
         .select({
@@ -65,10 +69,13 @@ export function readOperations(db: DatabaseExecutor, scope: Readonly<SessionIden
     async markRead(conversationId: string, messageId: string) {
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
-        const { actor } = await messagingSession(tx, scope);
+        const { actor } = await authenticate(tx);
         await loadConversation(tx, scope, conversationId, "share");
         const [message] = await tx
-          .select({ id: messagingMessages.id })
+          .select({
+            id: messagingMessages.id,
+            at: sql<string>`${messagingMessages.createdAt}::text`,
+          })
           .from(messagingMessages)
           .where(
             and(
@@ -77,8 +84,8 @@ export function readOperations(db: DatabaseExecutor, scope: Readonly<SessionIden
             ),
           );
         if (!message) throw new AccessDeniedError();
-        const at = sql`(SELECT created_at FROM ${messagingMessages} WHERE id = ${messageId}::uuid)`;
-        await tx
+        const at = sql`${message.at}::timestamptz`;
+        const changed = await tx
           .insert(messagingReadPositions)
           .values({
             conversationId,
@@ -91,11 +98,13 @@ export function readOperations(db: DatabaseExecutor, scope: Readonly<SessionIden
             target: [messagingReadPositions.conversationId, messagingReadPositions.actorEntityId],
             set: { messageId, messageCreatedAt: at },
             setWhere: sql`(${messagingReadPositions.messageCreatedAt}, ${messagingReadPositions.messageId}) < (${at}, ${messageId}::uuid)`,
+          })
+          .returning({ messageId: messagingReadPositions.messageId });
+        if (changed.length)
+          effectsFor(tx).hint({
+            audience: realtimeKeys.actor(scope.organizationId, actor.entityId),
+            domain: "messaging",
           });
-        effectsFor(tx).hint({
-          audience: realtimeKeys.actor(scope.organizationId, actor.entityId),
-          domain: "messaging",
-        });
         return { read: true };
       });
     },

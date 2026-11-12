@@ -16,6 +16,8 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 const actorSelection = { entityId: actors.entityId, name: actorDisplayName(), type: actors.type };
 const adminSelection = sql<boolean>`${adminRoleCondition(member.role)}`;
 
+export type ResolvedWorkspace = Awaited<ReturnType<typeof workspaceContext>>;
+
 // Verifies the session identity, membership and active actor in one statement, and reads
 // whether the user is an owner or admin of the organization now. Only a human's first workspace
 // use takes the provisioning lock.

@@ -34,12 +34,12 @@ export async function requireMovingAssignees(
   projectEntityId: string,
   assignees: (string | null)[],
 ) {
-  for (const assignee of new Set(assignees.filter((id) => id !== null))) {
-    if (!(await ctx.actorCanAccess(assignee, projectEntityId, "view")))
-      throw new ValidationError(
-        "Reassign or unassign tasks whose assignees cannot access the destination project.",
-      );
-  }
+  const assigned = [...new Set(assignees.filter((id) => id !== null))];
+  const reachable = await ctx.actorsWithAccess(assigned, projectEntityId, "view");
+  if (reachable.size !== assigned.length)
+    throw new ValidationError(
+      "Reassign or unassign tasks whose assignees cannot access the destination project.",
+    );
 }
 
 export async function requireUnassignedProjectActor(

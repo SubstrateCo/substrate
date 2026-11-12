@@ -1,7 +1,6 @@
 import type { ContextSearchKind } from "@substrate/contracts/context/input";
 import type { TaskStatus } from "@substrate/contracts/tasks";
 
-import type { DatabaseExecutor } from "../../client";
 import { actorDisplayName } from "../../core/actors/display-name";
 import { actorPicture } from "../../core/actors/picture";
 import { actors } from "../../core/actors/schema";
@@ -11,9 +10,8 @@ import { entities } from "../../core/entities/schema";
 import { entityLinks } from "../../core/links/schema";
 import { member } from "../../core/organizations/schema";
 import { readableFromCte, withVisibility } from "../../core/permissions/visibility";
-import { pageSize } from "../../core/repository-context";
+import { pageSize, type RepositoryContext } from "../../core/repository-context";
 import { searchDocument, trigramKey } from "../../core/search/indexing";
-import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError } from "../../errors";
 import {
   approvedParticipant,
@@ -104,7 +102,7 @@ function matchesWords(document: SQL, words: SQL) {
 }
 
 export async function contextSearch(
-  db: DatabaseExecutor,
+  ctx: RepositoryContext,
   scope: SessionIdentity,
   input: {
     query: string;
@@ -116,7 +114,7 @@ export async function contextSearch(
     relatedToEntityId?: string;
   },
 ): Promise<SearchResult[]> {
-  const { context: ctx } = await workspaceContext(db, scope);
+  const { db } = ctx;
   // The route and the MCP tool schemas validate the query and kind.
   const limit = pageSize(input.limit ?? 30);
   const query = input.query.trim();

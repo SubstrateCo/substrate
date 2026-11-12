@@ -15,14 +15,16 @@ export interface SettingsScope {
   role: string | null;
 }
 type Repositories = ReturnType<typeof createRepositories>;
-export interface UserScope {
+interface IdentityScope {
   session: AuthSession;
   userId: string;
   organizationId: string | null;
   installationId?: string;
+}
+export interface UserScope extends IdentityScope {
   owner: Awaited<ReturnType<Repositories["forOwnerSession"]>>;
 }
-export interface WorkspaceScope extends UserScope {
+export interface WorkspaceScope extends IdentityScope {
   organizationId: string;
   repositories: Awaited<ReturnType<Repositories["forSession"]>>;
 }
@@ -50,7 +52,7 @@ type ScopeInput = { organizationId?: string; installationId?: string };
 type ValidatedScopeInput = { out: Record<keyof ValidationTargets, ScopeInput> };
 
 export function createScopes(deps: ScopeDependencies) {
-  async function user(headers: Headers, result: AuthSession | null): Promise<UserScope> {
+  function identity(headers: Headers, result: AuthSession | null): IdentityScope {
     const session = requireVerified(result);
     const installationId = z.uuid().safeParse(headers.get(desktopInstallationHeader)).data;
     const userId = session.user.id;
@@ -59,15 +61,22 @@ export function createScopes(deps: ScopeDependencies) {
       userId,
       organizationId: session.session.activeOrganizationId ?? null,
       installationId,
-      owner: await deps.repositories.forOwnerSession({ userId, installationId }),
     };
+  }
+  async function user(headers: Headers, result: AuthSession | null): Promise<UserScope> {
+    const scope = identity(headers, result);
+    const owner = await deps.repositories.forOwnerSession({
+      userId: scope.userId,
+      installationId: scope.installationId,
+    });
+    return { ...scope, owner };
   }
   async function workspace(
     headers: Headers,
     result: AuthSession | null,
     expected?: string,
   ): Promise<WorkspaceScope> {
-    const scope = await user(headers, result);
+    const scope = identity(headers, result);
     const organizationId = requireWorkspace(
       expected ?? scope.organizationId ?? "",
       scope.organizationId,
@@ -100,7 +109,7 @@ export function createScopes(deps: ScopeDependencies) {
       await next();
     });
   }
-  async function registered<S extends UserScope>(scope: S, input: ScopeInput) {
+  async function registered<S extends IdentityScope>(scope: S, input: ScopeInput) {
     if (!scope.installationId || scope.installationId !== input.installationId)
       throw new ServiceError("FORBIDDEN", "Invalid desktop installation.");
     await deps.checkDevice(scope.userId, scope.installationId);

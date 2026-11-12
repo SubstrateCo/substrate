@@ -7,6 +7,7 @@ import { effectsFor } from "../../core/effects";
 import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
+import type { MessagingSessionResolver } from "../../core/session/messaging";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { routeWake } from "../agent-work/router";
 import { applyMessageEffects } from "../context/message-effects";
@@ -257,9 +258,11 @@ export async function sendMessageAs(
 }
 
 // Reading, posting and reacting. Scope comes from the authenticated session.
-export function messageOperations(db: DatabaseExecutor, scope: Readonly<SessionIdentity>) {
-  const authenticate = (tx: DatabaseExecutor) => messagingSession(tx, scope);
-
+export function messageOperations(
+  db: DatabaseExecutor,
+  scope: Readonly<SessionIdentity>,
+  authenticate: MessagingSessionResolver,
+) {
   return {
     async listMessages(
       conversationId: string,
@@ -274,7 +277,10 @@ export function messageOperations(db: DatabaseExecutor, scope: Readonly<SessionI
         const anchorId = options.beforeMessageId ?? options.aroundMessageId;
         if (anchorId) {
           const [anchor] = await tx
-            .select({ id: messagingMessages.id })
+            .select({
+              id: messagingMessages.id,
+              at: sql<string>`${messagingMessages.createdAt}::text`,
+            })
             .from(messagingMessages)
             .where(
               and(
@@ -287,8 +293,8 @@ export function messageOperations(db: DatabaseExecutor, scope: Readonly<SessionI
             );
           if (!anchor) throw new AccessDeniedError();
           boundary = options.beforeMessageId
-            ? sql`(${messagingMessages.createdAt}, ${messagingMessages.id}) < (select anchor.created_at, anchor.id from ${messagingMessages} anchor where anchor.id = ${anchor.id}::uuid)`
-            : sql`(${messagingMessages.createdAt}, ${messagingMessages.id}) <= (select anchor.created_at, anchor.id from ${messagingMessages} anchor where anchor.id = ${anchor.id}::uuid)`;
+            ? sql`(${messagingMessages.createdAt}, ${messagingMessages.id}) < (${anchor.at}::timestamptz, ${anchor.id}::uuid)`
+            : sql`(${messagingMessages.createdAt}, ${messagingMessages.id}) <= (${anchor.at}::timestamptz, ${anchor.id}::uuid)`;
         }
         const rows = await selectMessages(tx, scope)
           .where(
@@ -388,4 +394,3 @@ export function messageOperations(db: DatabaseExecutor, scope: Readonly<SessionI
     },
   };
 }
-import { messagingSession } from "../../core/session/messaging";

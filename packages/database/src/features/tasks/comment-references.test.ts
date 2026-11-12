@@ -1,5 +1,7 @@
 import { AccessDeniedError, ValidationError } from "../../errors";
+import { ActorRepositories } from "../../repositories";
 import { setupDatabase } from "../../testing/database";
+import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { notifications } from "../notifications/schema";
 import { taskCommentReferences } from "./comment-references.schema";
@@ -62,6 +64,24 @@ test("a mention alerts the person once, on the task, and never the author", asyn
   ).toEqual([
     { recipient: fixture.bob, kind: "mention", entityId: task.entityId, eventKey: comment.id },
   ]);
+});
+
+test("mention access checks do not add one statement per person", async () => {
+  await fixture.verifyEmails();
+  const { task } = await workspace();
+  const { db, queries } = recordQueries();
+  const repos = new ActorRepositories(db, {
+    organizationId: fixture.orgA,
+    actorEntityId: fixture.alice,
+  });
+  await repos.tasks.addComment(task.entityId, `@[person:${fixture.bob}]`);
+  const count = queries.length;
+  queries.length = 0;
+  await repos.tasks.addComment(
+    task.entityId,
+    `@[person:${fixture.bob}] @[person:${fixture.alice}]`,
+  );
+  expect(queries).toHaveLength(count);
 });
 
 test("a comment rejects references its author or its mentioned person cannot open", async () => {

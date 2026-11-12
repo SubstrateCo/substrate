@@ -8,7 +8,7 @@ import { entities } from "./entities/schema";
 import { entityGrants, permissionLevel } from "./permissions/schema";
 import { entityAccessLevel, lockAccessPaths, readableCondition } from "./permissions/visibility";
 import type { WorkspaceScope } from "./session/identity";
-import { and, eq, exists, isNull, sql, type SQLWrapper } from "drizzle-orm";
+import { and, eq, exists, inArray, isNull, sql, type SQLWrapper } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 export interface ActorScope {
@@ -166,10 +166,17 @@ export class RepositoryContext {
   }
 
   async actorCanAccess(actorEntityId: string, entityId: string, minimum: PermissionLevel) {
-    if (!Object.hasOwn(permissionRank, minimum)) return false;
-    const scope = { organizationId: this.scope.organizationId, actorEntityId };
-    const [row] = await this.db
-      .select({ level: sql<PermissionLevel | null>`${entityAccessLevel(scope, entityId)}` })
+    return (await this.actorsWithAccess([actorEntityId], entityId, minimum)).has(actorEntityId);
+  }
+
+  async actorsWithAccess(actorEntityIds: string[], entityId: string, minimum: PermissionLevel) {
+    if (!actorEntityIds.length || !Object.hasOwn(permissionRank, minimum)) return new Set<string>();
+    const scope = { organizationId: this.scope.organizationId, actorEntityId: actors.entityId };
+    const rows = await this.db
+      .select({
+        entityId: actors.entityId,
+        level: sql<PermissionLevel | null>`${entityAccessLevel(scope, entityId)}`,
+      })
       .from(actors)
       .innerJoin(
         entities,
@@ -181,12 +188,16 @@ export class RepositoryContext {
       .where(
         and(
           eq(actors.organizationId, scope.organizationId),
-          eq(actors.entityId, actorEntityId),
+          inArray(actors.entityId, [...new Set(actorEntityIds)]),
           activeActorCondition(),
           isNull(entities.deletedAt),
         ),
       );
-    return !!row?.level && permissionRank[row.level] >= permissionRank[minimum];
+    return new Set(
+      rows
+        .filter((row) => row.level && permissionRank[row.level] >= permissionRank[minimum])
+        .map((row) => row.entityId),
+    );
   }
 
   // A root entity owned by the actor's person. Children use createChildEntity.

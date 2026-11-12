@@ -50,9 +50,12 @@ export function createAttachmentRepository(context: RepositoryContext) {
           !attachmentFileIds.safeParse(input.attachmentFileIds).success
         )
           throw new ValidationError("Select up to 10 distinct files.");
-        const existing = await taskAttachmentMetadata(ctx.db, input.taskEntityId);
+        const existing = await ctx.db
+          .select({ fileId: taskAttachments.fileId, position: taskAttachments.position })
+          .from(taskAttachments)
+          .where(eq(taskAttachments.taskEntityId, input.taskEntityId));
         if (input.attachmentFileIds.every((id) => existing.some((item) => item.fileId === id)))
-          return existing;
+          return;
         if (existing.length + input.attachmentFileIds.length > MAX_ATTACHMENTS)
           throw new ValidationError("A task can have up to 10 files.");
         await publishFiles(ctx, task, input.attachmentFileIds);
@@ -71,7 +74,6 @@ export function createAttachmentRepository(context: RepositoryContext) {
           audience: realtimeKeys.organization(scope.organizationId),
           domain: "tasks",
         });
-        return taskAttachmentMetadata(ctx.db, input.taskEntityId);
       });
     },
     removeTask(input: { taskEntityId: string; projectEntityId: string; attachmentId: string }) {

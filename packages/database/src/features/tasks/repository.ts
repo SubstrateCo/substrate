@@ -152,6 +152,7 @@ export function taskRepository(context: RepositoryContext) {
           throw new AccessDeniedError();
         await validate(ctx, task.projectEntityId, input, task.assigneeActorEntityId);
         const changes = taskChanges(task, input);
+        if (!changes.length) return task;
         const [updated] = await tx
           .update(tasks)
           .set({

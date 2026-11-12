@@ -99,9 +99,8 @@ export async function applyCommentReferences(
     );
   const unreachable = new ValidationError("Mention only people who can open this task.");
   if (mentioned.length !== people.length) throw unreachable;
-  for (const person of mentioned) {
-    if (!(await ctx.actorCanAccess(person.entityId, task.entityId, "view"))) throw unreachable;
-  }
+  const reachable = await ctx.actorsWithAccess(people, task.entityId, "view");
+  if (reachable.size !== people.length) throw unreachable;
   const recipients = people.filter((id) => id !== scope.actorEntityId);
   if (!recipients.length) return [];
   const notified = await notify(

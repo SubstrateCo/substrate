@@ -5,7 +5,6 @@ import type { DatabaseExecutor } from "../../client";
 import { effectsFor } from "../../core/effects";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
-import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError } from "../../errors";
 import { taskActivity } from "../activity/schema";
 import { visibleConversations } from "../messaging/access";
@@ -52,13 +51,13 @@ function boundary(after?: string) {
 }
 
 export function createNotificationGroups(
-  db: DatabaseExecutor,
+  ctx: RepositoryContext,
   scope: SessionIdentity,
-  load: (ids: string[], context: RepositoryContext) => Promise<FeedItem[]>,
+  load: (ids: string[]) => Promise<FeedItem[]>,
 ) {
+  const { db } = ctx;
   return {
     async groups({ after, limit, filter }: Page & { filter: "all" | "unread" }) {
-      const { context: ctx } = await workspaceContext(db, scope);
       const rows = await db.execute<{
         id: string;
         at: string;
@@ -104,12 +103,7 @@ export function createNotificationGroups(
         ORDER BY created_at DESC, id DESC LIMIT ${limit + 1}
       `);
       const page = rows.slice(0, limit);
-      const items = page.length
-        ? await load(
-            page.map((row) => row.id),
-            ctx,
-          )
-        : [];
+      const items = page.length ? await load(page.map((row) => row.id)) : [];
       const byId = new Map(items.map((item) => [item.id, item]));
       return {
         items: page.flatMap((row) => {
@@ -132,7 +126,6 @@ export function createNotificationGroups(
       };
     },
     async groupEvents({ groupKey, after, limit }: Page & { groupKey: string }) {
-      const { context: ctx } = await workspaceContext(db, scope);
       const rows = await db.execute<{ id: string; at: string }>(sql`
         WITH eligible AS (${eligible(db, ctx, scope)})
         SELECT id, ${positionText} AS at FROM eligible
@@ -140,12 +133,7 @@ export function createNotificationGroups(
         ORDER BY created_at DESC, id DESC LIMIT ${limit + 1}
       `);
       const page = rows.slice(0, limit);
-      const items = page.length
-        ? await load(
-            page.map((row) => row.id),
-            ctx,
-          )
-        : [];
+      const items = page.length ? await load(page.map((row) => row.id)) : [];
       const positions = new Map(page.map((row) => [row.id, encode(row)]));
       return {
         items: items.map((item) => ({ ...item, eventCursor: positions.get(item.id)! })),
@@ -153,7 +141,6 @@ export function createNotificationGroups(
       };
     },
     async hasUnread() {
-      const { context: ctx } = await workspaceContext(db, scope);
       const [row] = await db.execute<{ unread: boolean }>(sql`
         SELECT EXISTS (SELECT 1 FROM (${eligible(db, ctx, scope)}) eligible
           WHERE read_at IS NULL) AS unread
@@ -161,7 +148,6 @@ export function createNotificationGroups(
       return row!.unread;
     },
     async markGroupRead({ groupKey, through }: { groupKey: string; through: string }) {
-      const { context: ctx } = await workspaceContext(db, scope);
       const { at, id } = notificationPosition(through);
       const [result] = await db.execute<{ allowed: boolean; changed: boolean }>(sql`
         WITH eligible AS (${eligible(db, ctx, scope)}), updated AS (

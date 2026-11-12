@@ -3,7 +3,7 @@ import { member } from "../organizations/schema";
 import type { ActorScope } from "../repository-context";
 import { actors } from "./schema";
 import { userAgents } from "./user-agents.schema";
-import { and, isNull, sql } from "drizzle-orm";
+import { and, isNull, sql, type SQLWrapper } from "drizzle-orm";
 
 // Callers also check the actor entity's organization and deletion state. Pass an alias of
 // `actors` when the query uses one.
@@ -31,7 +31,10 @@ export function activeActorCondition(actor: typeof actors = actors) {
 // Grants belong to people. A local agent uses its owner's human actor, so it can do what the
 // owner can do in this organization. Unknown actors resolve to NULL.
 // Future team agents need their own rule here.
-export function permissionActorEntityId(scope: ActorScope) {
+export function permissionActorEntityId(scope: {
+  organizationId: string;
+  actorEntityId: string | SQLWrapper;
+}) {
   return sql`(SELECT CASE WHEN pa.type = 'agent' THEN ph.entity_id ELSE pa.entity_id END
     FROM ${actors} pa
     LEFT JOIN ${userAgents} pua ON pa.type = 'agent' AND pua.id = pa.user_agent_id

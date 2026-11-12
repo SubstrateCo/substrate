@@ -4,19 +4,24 @@ import { actors } from "../../../core/actors/schema";
 import { user } from "../../../core/authentication/schema";
 import { organization } from "../../../core/organizations/schema";
 import type { SessionIdentity } from "../../../core/session/identity";
-import { workspaceContext } from "../../../core/session/workspace";
+import type { ResolvedWorkspace } from "../../../core/session/workspace";
 import { AccessDeniedError } from "../../../errors";
 import { visibleConversations } from "../access";
+import { viewerOf } from "../policy";
 import { messagingConversations, messagingParticipants } from "../schema";
 import {
   messagingConnections,
   messagingInvitations,
   messagingSharingEvents,
 } from "../sharing.schema";
-import { requireSharingManager } from "./access";
-import { and, desc, eq, gt, inArray, isNull, ne, or } from "drizzle-orm";
+import { checkSharingManager } from "./access";
+import { and, desc, eq, gt, inArray, isNull, ne, or, sql } from "drizzle-orm";
 
-export function sharingQueries(db: DatabaseExecutor, scope: SessionIdentity) {
+export function sharingQueries(
+  db: DatabaseExecutor,
+  scope: SessionIdentity,
+  resolved: ResolvedWorkspace,
+) {
   return {
     async list(conversationId: string) {
       return db.transaction(async (tx) => {
@@ -25,7 +30,7 @@ export function sharingQueries(db: DatabaseExecutor, scope: SessionIdentity) {
           .from(messagingConversations)
           .where(eq(messagingConversations.id, conversationId));
         if (!conversation) throw new AccessDeniedError();
-        await requireSharingManager(tx, scope, conversation);
+        await checkSharingManager(tx, scope, conversation, viewerOf(scope, resolved.admin));
         const host = conversation.organizationId === scope.organizationId;
         const connections = await tx
           .select({
@@ -102,7 +107,7 @@ export function sharingQueries(db: DatabaseExecutor, scope: SessionIdentity) {
       });
     },
     async listConversations() {
-      const { admin } = await workspaceContext(db, scope);
+      const { admin } = resolved;
       return db
         .select({
           id: messagingConversations.id,
@@ -153,11 +158,7 @@ export function sharingQueries(db: DatabaseExecutor, scope: SessionIdentity) {
         .orderBy(desc(messagingConversations.createdAt));
     },
     async inbox() {
-      const { admin } = await workspaceContext(db, scope);
-      const [person] = await db
-        .select({ email: user.email })
-        .from(user)
-        .where(eq(user.id, scope.userId));
+      const { admin } = resolved;
       return db
         .select({
           id: messagingInvitations.id,
@@ -180,7 +181,10 @@ export function sharingQueries(db: DatabaseExecutor, scope: SessionIdentity) {
               eq(messagingInvitations.recipientUserId, scope.userId),
               and(
                 isNull(messagingInvitations.recipientUserId),
-                eq(messagingInvitations.email, person!.email),
+                eq(
+                  messagingInvitations.email,
+                  sql`(select ${user.email} from ${user} where ${user.id} = ${scope.userId})`,
+                ),
               ),
               admin
                 ? and(

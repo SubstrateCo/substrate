@@ -9,17 +9,20 @@ import { permissionRepository } from "./core/permissions/repository";
 import { RepositoryContext, type ActorScope } from "./core/repository-context";
 import type { SessionIdentity, OwnerSessionIdentity } from "./core/session/identity";
 import { ownerSession } from "./core/session/owner";
-import { workspaceContext } from "./core/session/workspace";
+import { workspaceContext, type ResolvedWorkspace } from "./core/session/workspace";
 import { createAgentRepository } from "./features/agents/repository";
-import { createContextService } from "./features/context/service";
+import { createContextRepository } from "./features/context/service";
 import { createAttachmentRepository } from "./features/files/repository";
-import { createMessagingService } from "./features/messaging/service";
+import { createMessagingRepository } from "./features/messaging/service";
 import {
   readSharingInvitation,
   declineSharingInvitation,
 } from "./features/messaging/sharing/invitations";
-import { createSharingService } from "./features/messaging/sharing/service";
-import { createFeedService } from "./features/notifications/service";
+import {
+  createSharingService,
+  createSharingRepository,
+} from "./features/messaging/sharing/service";
+import { createFeedRepository } from "./features/notifications/service";
 import { projectRepository } from "./features/projects/repository";
 import { taskRepository } from "./features/tasks/repository";
 
@@ -68,14 +71,13 @@ class WorkspaceRepositories extends ActorRepositories {
   constructor(
     context: RepositoryContext,
     private readonly identity: SessionIdentity,
+    resolved: ResolvedWorkspace,
   ) {
     super(context.db, context.scope, collectedEffects(context.db));
-    // TODO: Rename these facades to *Repository and pass the resolved WorkspaceScope.
-    // Each operation now re-runs messagingSession/workspaceContext after forSession checked it.
-    this.messaging = createMessagingService(context.db, identity);
-    this.context = createContextService(context.db, identity, context);
-    this.sharing = createSharingService(context.db, identity);
-    this.feed = createFeedService(context.db, identity);
+    this.messaging = createMessagingRepository(context.db, identity, resolved);
+    this.context = createContextRepository(context, identity);
+    this.sharing = createSharingRepository(context.db, identity, resolved);
+    this.feed = createFeedRepository(context, identity);
     this.files = createAttachmentRepository(context);
   }
 
@@ -84,9 +86,14 @@ class WorkspaceRepositories extends ActorRepositories {
   ): Promise<Committed<T>> {
     const effects = new RepositoryEffects();
     const result = await this.db.transaction(async (tx) => {
-      const { context } = await workspaceContext(tx, this.identity);
+      const resolved = await workspaceContext(tx, this.identity);
+      const { context } = resolved;
       return work(
-        new WorkspaceRepositories(new RepositoryContext(tx, context.scope, effects), this.identity),
+        new WorkspaceRepositories(
+          new RepositoryContext(tx, context.scope, effects),
+          this.identity,
+          resolved,
+        ),
       );
     });
     collectedEffects(this.repositoryContext.db)?.merge(effects);
@@ -101,8 +108,8 @@ function standalone(
 ) {
   const transaction = <T>(work: (repositories: WorkspaceRepositories) => Promise<T>) =>
     commit(db, async (tx) => {
-      const { context } = await workspaceContext(tx, identity);
-      return work(new WorkspaceRepositories(context, identity));
+      const resolved = await workspaceContext(tx, identity);
+      return work(new WorkspaceRepositories(resolved.context, identity, resolved));
     });
   function domain<
     K extends
@@ -204,9 +211,13 @@ export function createRepositories(db: DatabaseExecutor) {
       };
     },
     async forSession(identity: SessionIdentity) {
-      const { context } = await workspaceContext(db, identity);
+      const resolved = await workspaceContext(db, identity);
       const session = Object.freeze({ ...identity });
-      return standalone(db, session, new WorkspaceRepositories(context, session));
+      return standalone(
+        db,
+        session,
+        new WorkspaceRepositories(resolved.context, session, resolved),
+      );
     },
   };
 }

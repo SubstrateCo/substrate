@@ -144,17 +144,12 @@ export async function recordTaskSource(
   });
 }
 
-export function createContextService(
-  db: DatabaseExecutor,
-  scope: SessionIdentity,
-  context?: RepositoryContext,
-) {
-  const transaction = async <T>(work: (ctx: RepositoryContext) => Promise<T>) => {
-    if (context) return context.transaction(work);
-    return db.transaction(async (tx) => work((await workspaceContext(tx, scope)).context));
-  };
+export function createContextRepository(context: RepositoryContext, scope: SessionIdentity) {
+  const { db } = context;
+  const transaction = <T>(work: (ctx: RepositoryContext) => Promise<T>) =>
+    context.transaction(work);
   return {
-    messagePage: (messageIds: string[]) => messagePage(db, scope, messageIds),
+    messagePage: (messageIds: string[]) => messagePage(context, scope, messageIds),
     async createTaskFromMessage(input: CreateTaskInput & { requestId: string; messageId: string }) {
       return transaction(async (ctx) => {
         const tx = ctx.db;
@@ -216,18 +211,17 @@ export function createContextService(
       });
     },
     async messageLinks(messageId: string) {
-      const { context: ctx } = await workspaceContext(db, scope);
+      const ctx = context;
       const { conversation } = await requireMessage(db, scope, messageId);
       if (conversation.organizationId !== scope.organizationId) return [];
       return (await messageWorkLinks(ctx, [messageId])).get(messageId) ?? [];
     },
     async messagePeople(messageId: string) {
-      await workspaceContext(db, scope);
       const { message } = await requireMessage(db, scope, messageId);
       return (await messagePeople(db, scope, [message])).get(messageId)!;
     },
     async related(entityId: string) {
-      const { context: ctx } = await workspaceContext(db, scope);
+      const ctx = context;
       const work = await requireWork(ctx, entityId);
       const projectTasks =
         work.entityType === "project"
@@ -272,7 +266,7 @@ export function createContextService(
         .limit(100);
     },
     async messageTarget(conversationId: string, messageId: string) {
-      const { actor } = await workspaceContext(db, scope);
+      const actorEntityId = context.scope.actorEntityId;
       // Reads the message and its thread root together; each row must be visible.
       const rows = await selectMessages(db, scope)
         .innerJoin(
@@ -298,12 +292,37 @@ export function createContextService(
       const [message, thread] = await messageViews(
         db,
         scope,
-        actor.entityId,
+        actorEntityId,
         conversationId,
         target === root ? [target] : [target, root],
       );
       return { message: message!, root: thread ?? message! };
     },
-    search: (input: Parameters<typeof contextSearch>[2]) => contextSearch(db, scope, input),
+    search: (input: Parameters<typeof contextSearch>[2]) => contextSearch(context, scope, input),
+  };
+}
+
+// Trusted non-HTTP entry point. Each operation starts a new scope, like request middleware does.
+export function createContextService(db: DatabaseExecutor, scope: SessionIdentity) {
+  type Repository = ReturnType<typeof createContextRepository>;
+  const run = async <T>(work: (repository: Repository) => Promise<T>) => {
+    const { context } = await workspaceContext(db, scope);
+    return work(createContextRepository(context, scope));
+  };
+  return {
+    messagePage: (...args: Parameters<Repository["messagePage"]>) =>
+      run((repo) => repo.messagePage(...args)),
+    createTaskFromMessage: (...args: Parameters<Repository["createTaskFromMessage"]>) =>
+      run((repo) => repo.createTaskFromMessage(...args)),
+    attach: (...args: Parameters<Repository["attach"]>) => run((repo) => repo.attach(...args)),
+    detach: (...args: Parameters<Repository["detach"]>) => run((repo) => repo.detach(...args)),
+    messageLinks: (...args: Parameters<Repository["messageLinks"]>) =>
+      run((repo) => repo.messageLinks(...args)),
+    messagePeople: (...args: Parameters<Repository["messagePeople"]>) =>
+      run((repo) => repo.messagePeople(...args)),
+    related: (...args: Parameters<Repository["related"]>) => run((repo) => repo.related(...args)),
+    messageTarget: (...args: Parameters<Repository["messageTarget"]>) =>
+      run((repo) => repo.messageTarget(...args)),
+    search: (...args: Parameters<Repository["search"]>) => run((repo) => repo.search(...args)),
   };
 }

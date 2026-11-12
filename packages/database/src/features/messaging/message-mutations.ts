@@ -2,7 +2,7 @@ import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
 import type { SessionIdentity } from "../../core/session/identity";
-import { messagingSession } from "../../core/session/messaging";
+import { messagingSession, type MessagingSessionResolver } from "../../core/session/messaging";
 import { AccessDeniedError } from "../../errors";
 import { applyMessageEffects } from "../context/message-effects";
 import { messageEntityReferences, messageMessagingReferences } from "../context/schema";
@@ -14,11 +14,15 @@ import { validateBody } from "./policy";
 import { messagingMessages, messagingReactions } from "./schema";
 import { and, eq } from "drizzle-orm";
 
-export function messageMutationOperations(db: DatabaseExecutor, scope: Readonly<SessionIdentity>) {
+export function messageMutationOperations(
+  db: DatabaseExecutor,
+  scope: Readonly<SessionIdentity>,
+  authenticate: MessagingSessionResolver,
+) {
   async function mutate(messageId: string, body?: string) {
     if (scope.actorEntityId) throw new AccessDeniedError();
     return db.transaction(async (tx) => {
-      await messagingSession(tx, scope);
+      await authenticate(tx);
       const [target] = await tx
         .select({ conversationId: messagingMessages.conversationId })
         .from(messagingMessages)

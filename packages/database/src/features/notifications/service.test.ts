@@ -1,5 +1,6 @@
 import { ensureHumanActor } from "../../core/actors/provisioning";
 import { user } from "../../core/authentication/schema";
+import { commit } from "../../core/effects";
 import { member } from "../../core/organizations/schema";
 import { AccessDeniedError } from "../../errors";
 import { entities, taskActivity, messagingParticipants, messagingMessages } from "../../schema";
@@ -15,6 +16,23 @@ import { eq, sql } from "drizzle-orm";
 
 const f = setupDatabase();
 const feed = (userId: string) => createFeedService(f.db, { userId, organizationId: f.orgA });
+
+test("marking one notification read uses one mutation statement and no-op retries send no hints", async () => {
+  const { chat, channel } = await setup();
+  await chat.addMembers(channel.id, ["bob@example.com"]);
+  await chat.sendMessage(channel.id, `@[person:${f.bob}] hello`);
+  const [notice] = await f.db.select().from(notifications);
+  const { db, queries } = recordQueries();
+  const mark = () =>
+    commit(db, (tx) =>
+      createFeedService(tx, { userId: "bob", organizationId: f.orgA }).markRead(notice!.id),
+    );
+  expect((await mark()).hints).toHaveLength(1);
+  // Workspace resolution and the authorized read mutation. No preflight notification read.
+  expect(queries.filter((query) => !["begin", "commit"].includes(query))).toHaveLength(2);
+  expect((await mark()).hints).toEqual([]);
+  expect((await feed("bob").list())[0]?.readAt).toBeInstanceOf(Date);
+});
 
 test("a removed notification cursor restarts only the viewer's authorized feed", async () => {
   const { chat, channel } = await setup();

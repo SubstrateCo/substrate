@@ -5,7 +5,7 @@ import type { SessionIdentity } from "../../../core/session/identity";
 import { workspaceContext } from "../../../core/session/workspace";
 import { AccessDeniedError } from "../../../errors";
 import { visibleConversations, type Conversation } from "../access";
-import { canShare, hosts, viewerOf } from "../policy";
+import { canShare, hosts, viewerOf, type Viewer } from "../policy";
 import { messagingConversations } from "../schema";
 import {
   messagingConnections,
@@ -39,6 +39,16 @@ export async function requireSharingManager(
 ) {
   if (scope.actorEntityId) throw new AccessDeniedError();
   const viewer = viewerOf(scope, (await workspaceContext(db, scope)).admin);
+  return checkSharingManager(db, scope, conversation, viewer);
+}
+
+export async function checkSharingManager(
+  db: DatabaseExecutor,
+  scope: SessionIdentity,
+  conversation: Conversation,
+  viewer: Viewer,
+) {
+  if (viewer.agent) throw new AccessDeniedError();
   // Only partners need the connection, and only partner DMs the visibility.
   const partner = { connected: false, visible: false };
   if (!hosts(conversation, viewer)) {

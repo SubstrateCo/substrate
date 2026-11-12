@@ -57,6 +57,21 @@ test("removed membership fails before the workspace service", async () => {
   expect(service).not.toHaveBeenCalled();
 });
 
+test("workspace requests do not construct unused owner repositories", async () => {
+  const forOwnerSession = mock(async () => scopeFixture().owner);
+  const scopes = createTestScopes({
+    repositories: {
+      forOwnerSession,
+      forSession: async () => scopeFixture().repositories,
+    },
+  });
+  const app = new Hono<ScopeEnv>().get("/", scopes.workspace(), (c) =>
+    c.json({ userId: c.var.scope.userId }),
+  );
+  expect(await (await app.request("/")).json()).toEqual({ userId: "user-1" });
+  expect(forOwnerSession).not.toHaveBeenCalled();
+});
+
 test("owner scope works without an active workspace and parses only the installation header", async () => {
   const session = sessionFixture({ organizationId: null });
   const installationId = crypto.randomUUID();

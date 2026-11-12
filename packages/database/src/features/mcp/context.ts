@@ -38,7 +38,7 @@ export function mcpContextQueries(ctx: RepositoryContext, identity: SessionIdent
     async search(input: McpInput<"search">) {
       const p = keysetPagination(scope, "search", input);
       // Search applies each record type's access rules and sorts all results by ID.
-      const rows = await contextSearch(db, identity, {
+      const rows = await contextSearch(ctx, identity, {
         query: input.query,
         kind: input.type ?? "all",
         after: p.after,

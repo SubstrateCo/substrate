@@ -1,6 +1,6 @@
 import type { DatabaseExecutor } from "../../client";
-import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
+import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { approvedParticipant } from "./access";
 import { messagingConversations, messagingParticipants } from "./schema";
@@ -16,7 +16,7 @@ export function conversationDisplayName(
   viewer: { userId: string; excludeActorId?: string },
   conversation: typeof messagingConversations = messagingConversations,
 ) {
-  const memberName = actorDisplayName();
+  const memberName = sql<string>`case when ${actors.type} = 'agent' then coalesce(${userAgents.name}, 'Agent') else ${user.name} end`;
   const others = db
     .select({
       names: sql<
@@ -26,6 +26,7 @@ export function conversationDisplayName(
     .from(messagingParticipants)
     .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
     .leftJoin(user, eq(user.id, actors.userId))
+    .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
     .where(
       and(
         eq(messagingParticipants.conversationId, conversation.id),

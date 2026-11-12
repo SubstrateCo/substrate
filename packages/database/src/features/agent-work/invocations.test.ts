@@ -1,6 +1,7 @@
 import { maxAdmittedInvocationsPerDay, sessionKeys } from "@substrate/contracts/agent-work";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
+import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import {
   agentAuditEvents,
@@ -691,9 +692,9 @@ test("MCP calls of a caller turn need its admitted calls in the turn's place and
 
 test("members find a shared agent and its mode, never its allowlist; agents never do", async () => {
   const x = await callerFixture(f);
-  const agents = (userId: string, actorEntityId?: string) =>
+  const agents = async (userId: string, actorEntityId?: string) =>
     contextSearch(
-      f.db,
+      (await workspaceContext(f.db, { userId, organizationId: f.orgA, actorEntityId })).context,
       { userId, organizationId: f.orgA, actorEntityId },
       { query: "", kind: "agent", conversationId: x.channel.id },
     );

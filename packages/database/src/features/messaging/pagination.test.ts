@@ -5,8 +5,30 @@ import { rejection } from "../../testing/rejection";
 import { messagingMessages } from "./schema";
 import { createMessagingService } from "./service";
 import { expect, test } from "bun:test";
+import { eq, sql } from "drizzle-orm";
 
 const f = setupDatabase();
+
+test("message cursors preserve PostgreSQL microseconds without rereading the anchor", async () => {
+  await f.verifyEmails();
+  const service = f.messaging("alice");
+  const conversation = await service.createConversation({ kind: "channel", name: "Precise" });
+  const first = await service.sendMessage(conversation.id, "first");
+  const second = await service.sendMessage(conversation.id, "second");
+  await f.db
+    .update(messagingMessages)
+    .set({ createdAt: sql`'2026-01-01T00:00:00.000001Z'::timestamptz` })
+    .where(eq(messagingMessages.id, first.id));
+  await f.db
+    .update(messagingMessages)
+    .set({ createdAt: sql`'2026-01-01T00:00:00.000002Z'::timestamptz` })
+    .where(eq(messagingMessages.id, second.id));
+  expect(
+    (await service.listMessages(conversation.id, undefined, { beforeMessageId: second.id })).map(
+      (row) => row.id,
+    ),
+  ).toEqual([first.id]);
+});
 test("message windows paginate equal timestamps without gaps and reject anchors from another conversation", async () => {
   await f.db.update(user).set({ emailVerified: true });
   const service = createMessagingService(f.db, { userId: "alice", organizationId: f.orgA });

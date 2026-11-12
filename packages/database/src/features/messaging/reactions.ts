@@ -3,20 +3,24 @@ import { actorDisplayName } from "../../core/actors/display-name";
 import { actorPicture } from "../../core/actors/picture";
 import { actors } from "../../core/actors/schema";
 import type { SessionIdentity } from "../../core/session/identity";
-import { messagingSession } from "../../core/session/messaging";
+import type { MessagingSessionResolver } from "../../core/session/messaging";
 import { AccessDeniedError } from "../../errors";
 import { loadConversation } from "./access";
 import { messagingMessages, messagingReactions } from "./schema";
 import { and, asc, eq, gt, sql } from "drizzle-orm";
 
-export function reactionOperations(db: DatabaseExecutor, scope: Readonly<SessionIdentity>) {
+export function reactionOperations(
+  db: DatabaseExecutor,
+  scope: Readonly<SessionIdentity>,
+  authenticate: MessagingSessionResolver,
+) {
   return {
     async listReactions(
       messageId: string,
       options: { emoji?: string; afterActorId?: string; limit?: number } = {},
     ) {
       return db.transaction(async (tx) => {
-        const { actor } = await messagingSession(tx, scope);
+        const { actor } = await authenticate(tx);
         const [message] = await tx
           .select({ conversationId: messagingMessages.conversationId })
           .from(messagingMessages)

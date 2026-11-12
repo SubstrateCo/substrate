@@ -29,7 +29,7 @@ const adminEntityTypes = sql.raw(
 
 // The role is read on every query, so promotion and demotion take effect at once. Agents resolve to
 // their owner's human actor, like grants do.
-function organizationAdminCondition(scope: ActorScope) {
+function organizationAdminCondition(scope: Parameters<typeof permissionActorEntityId>[0]) {
   return sql`EXISTS (
     SELECT 1 FROM ${actors} oa
     JOIN ${member} om ON om.organization_id = oa.organization_id AND om.user_id = oa.user_id
@@ -97,22 +97,19 @@ export function readableCondition(
 // The actor's strongest level on one entity. It comes from grants on the entity's container, and
 // the entity and its container must be live. An admin owns it when its container has a shared
 // type, the same check as adminOwnsCondition.
-export function entityAccessLevel(scope: ActorScope, entityId: SQLWrapper | string) {
-  return sql`(SELECT max(level) FROM (
-    SELECT g.level FROM ${entities} e
+export function entityAccessLevel(
+  scope: Parameters<typeof permissionActorEntityId>[0],
+  entityId: SQLWrapper | string,
+) {
+  return sql`(SELECT CASE WHEN c.entity_type IN (${adminEntityTypes})
+      AND ${organizationAdminCondition(scope)} THEN 'owner'::permission_level ELSE g.level END
+    FROM ${entities} e
     JOIN ${entities} c ON c.organization_id = e.organization_id AND c.entity_id = e.access_entity_id
       AND c.deleted_at IS NULL
-    JOIN ${entityGrants} g ON g.organization_id = c.organization_id AND g.entity_id = c.entity_id
+    LEFT JOIN ${entityGrants} g ON g.organization_id = c.organization_id AND g.entity_id = c.entity_id
+      AND g.actor_entity_id = ${permissionActorEntityId(scope)}
     WHERE e.organization_id = ${scope.organizationId} AND e.entity_id = ${entityId}
-      AND e.deleted_at IS NULL AND g.actor_entity_id = ${permissionActorEntityId(scope)}
-    UNION ALL
-    SELECT 'owner'::permission_level FROM ${entities} e
-    JOIN ${entities} c ON c.organization_id = e.organization_id AND c.entity_id = e.access_entity_id
-      AND c.deleted_at IS NULL
-    WHERE e.organization_id = ${scope.organizationId} AND e.entity_id = ${entityId}
-      AND e.deleted_at IS NULL AND c.entity_type IN (${adminEntityTypes})
-      AND ${organizationAdminCondition(scope)}
-  ) levels)`;
+      AND e.deleted_at IS NULL)`;
 }
 
 // Materialize the global order before the correlated locking subqueries run: containers first,

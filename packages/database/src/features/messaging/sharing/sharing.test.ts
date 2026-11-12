@@ -6,6 +6,7 @@ import { AccessDeniedError, ValidationError } from "../../../errors";
 import * as schema from "../../../schema";
 import { member, user } from "../../../schema";
 import { setupDatabase } from "../../../testing/database";
+import { recordQueries } from "../../../testing/queries";
 import { receivesChange } from "../../../testing/realtime";
 import { rejection } from "../../../testing/rejection";
 import { createContextService } from "../../context/service";
@@ -634,8 +635,16 @@ test("listing sharing does not wait for an open post", async () => {
 test("mail is durable, leased once, retried after failure, and skipped after revocation", async () => {
   const c = await channel();
   const invite = await sharing().invite(c.id, { email: "outside@example.com", shareHistory: true });
-  const first = await claimSharingMail(f.db);
-  expect(first).toMatchObject({ id: invite.id, email: "outside@example.com", attempt: 1 });
+  const { db, queries } = recordQueries();
+  const first = await claimSharingMail(db);
+  expect(first).toMatchObject({
+    id: invite.id,
+    email: "outside@example.com",
+    attempt: 1,
+    name: c.name,
+    organizationName: "A",
+  });
+  expect(queries.filter((query) => !["begin", "commit"].includes(query))).toHaveLength(2);
   expect(await claimSharingMail(f.db)).toBeNull();
   await finishSharingMail(f.db, invite.id, 1, false);
   expect(await claimSharingMail(f.db)).toBeNull();

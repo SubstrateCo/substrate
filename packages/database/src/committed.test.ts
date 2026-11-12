@@ -7,6 +7,7 @@ import { createRepositories } from "./repositories";
 import { notifications, messagingInvitations, member } from "./schema";
 import { agentWorkFixture, dmTurn } from "./testing/agent-work";
 import { setupDatabase } from "./testing/database";
+import { recordQueries } from "./testing/queries";
 import { rejection } from "./testing/rejection";
 import { beforeEach, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
@@ -14,6 +15,26 @@ import { eq } from "drizzle-orm";
 const f = setupDatabase();
 beforeEach(async () => {
   await f.verifyEmails();
+});
+
+test("workspace reads reuse the scope already resolved by forSession", async () => {
+  const channel = await f.messaging("alice").createConversation({ kind: "channel", name: "Scope" });
+  const { db, queries } = recordQueries();
+  const repositories = await createRepositories(db).forSession({
+    userId: "alice",
+    organizationId: f.orgA,
+  });
+  queries.length = 0;
+  expect(await repositories.messaging.listMessages(channel.id)).toEqual([]);
+  expect(await repositories.context.messagePage([])).toEqual([]);
+  expect(await repositories.feed.hasUnread()).toBe(false);
+  expect(await repositories.sharing.inbox()).toEqual([]);
+  expect(await repositories.sharing.listConversations()).toMatchObject([{ id: channel.id }]);
+  expect(
+    queries.filter(
+      (query) => query.startsWith("select") && query.includes('from "user" inner join "member"'),
+    ),
+  ).toEqual([]);
 });
 
 test("standalone writes expose the same effects as transaction writes", async () => {

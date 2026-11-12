@@ -2,7 +2,9 @@ import { ensureUserAgentActor } from "../../core/actors/provisioning";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { entities } from "../../core/entities/schema";
 import { AccessDeniedError, ValidationError } from "../../errors";
+import { ActorRepositories } from "../../repositories";
 import { setupDatabase } from "../../testing/database";
+import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
@@ -75,6 +77,18 @@ test("partial updates preserve other edits", async () => {
     title: "New title",
     status: "completed",
   });
+});
+
+test("unchanged task edits do not write or touch the entity", async () => {
+  const { task } = await tree();
+  const { db, queries } = recordQueries();
+  const repos = new ActorRepositories(db, { organizationId: f.orgA, actorEntityId: f.alice });
+  const result = await repos.transaction((tx) =>
+    tx.tasks.update(task.entityId, { title: " Parent " }),
+  );
+  expect(result.result).toEqual(task);
+  expect(result.hints).toEqual([]);
+  expect(queries.filter((query) => /^(update|insert|delete) /i.test(query))).toEqual([]);
 });
 
 test("concurrent assignment and access removal cannot leave an inaccessible assignee", async () => {

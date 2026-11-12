@@ -25,10 +25,10 @@ import { readableMessageTargets } from "./targets";
 import { and, desc, eq, inArray, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
-export function createFeedService(db: DatabaseExecutor, scope: SessionIdentity) {
+export function createFeedRepository(ctx: RepositoryContext, scope: SessionIdentity) {
+  const { db } = ctx;
   const service = {
     async activity(taskEntityId: string) {
-      const { context: ctx } = await workspaceContext(db, scope);
       const work = await requireWork(ctx, taskEntityId);
       if (work.entityType !== "task") throw new AccessDeniedError();
       const rows = await db
@@ -82,14 +82,12 @@ export function createFeedService(db: DatabaseExecutor, scope: SessionIdentity) 
         limit = 100,
         unread = false,
         ids,
-        context,
-      }: { limit?: number; unread?: boolean; ids?: string[]; context?: RepositoryContext } = {},
+      }: { limit?: number; unread?: boolean; ids?: string[] } = {},
     ) {
-      const ctx = context ?? (await workspaceContext(db, scope)).context;
       let boundary: SQL | undefined;
       if (after) {
         const [anchor] = await db
-          .select()
+          .select({ id: notifications.id, at: sql<string>`${notifications.createdAt}::text` })
           .from(notifications)
           .where(
             and(
@@ -101,7 +99,7 @@ export function createFeedService(db: DatabaseExecutor, scope: SessionIdentity) 
         // A deleted message removes its notification. Restart the authorized feed when its cursor
         // vanished; never resolve an anchor owned by another recipient or workspace.
         if (anchor)
-          boundary = sql`(${notifications.createdAt}, ${notifications.id}) < (select anchor.created_at, anchor.id from ${notifications} anchor where anchor.id = ${anchor.id}::uuid)`;
+          boundary = sql`(${notifications.createdAt}, ${notifications.id}) < (${anchor.at}::timestamptz, ${anchor.id}::uuid)`;
       }
       // One statement filters by the target's current access before LIMIT, so hidden targets
       // cost no extra round trips.
@@ -243,7 +241,6 @@ export function createFeedService(db: DatabaseExecutor, scope: SessionIdentity) 
       );
     },
     async markAllRead() {
-      const { context: ctx } = await workspaceContext(db, scope);
       const changed = await db
         .update(notifications)
         .set({ readAt: sql`now()` })
@@ -259,39 +256,52 @@ export function createFeedService(db: DatabaseExecutor, scope: SessionIdentity) 
         effectsFor(db).hint({ audience: realtimeKeys.user(scope.userId), domain: "notifications" });
     },
     async markRead(id: string) {
-      const { context: ctx } = await workspaceContext(db, scope);
-      const [existing] = await db
-        .select({ id: notifications.id })
-        .from(notifications)
-        .where(
-          and(
-            eq(notifications.id, id),
-            eq(notifications.organizationId, scope.organizationId),
-            eq(notifications.recipientActorEntityId, ctx.scope.actorEntityId),
-          ),
-        );
-      if (!existing) throw new AccessDeniedError();
-      const [row] = await db
-        .update(notifications)
-        .set({ readAt: sql`coalesce(${notifications.readAt}, now())` })
-        .where(
-          and(
-            eq(notifications.id, id),
-            eq(notifications.organizationId, scope.organizationId),
-            eq(notifications.recipientActorEntityId, ctx.scope.actorEntityId),
-            isNull(notifications.readAt),
-          ),
+      const key = and(
+        eq(notifications.id, id),
+        eq(notifications.organizationId, scope.organizationId),
+        eq(notifications.recipientActorEntityId, ctx.scope.actorEntityId),
+      );
+      const [result] = await db.execute<{ allowed: boolean; changed: boolean }>(sql`
+        WITH updated AS (
+          UPDATE ${notifications} SET read_at = now()
+          WHERE ${key} AND ${notifications.readAt} IS NULL RETURNING id
         )
-        .returning({ id: notifications.id });
-      if (row)
+        SELECT EXISTS (SELECT 1 FROM ${notifications} WHERE ${key}) AS allowed,
+          EXISTS (SELECT 1 FROM updated) AS changed
+      `);
+      if (!result?.allowed) throw new AccessDeniedError();
+      if (result.changed)
         effectsFor(db).hint({ audience: realtimeKeys.user(scope.userId), domain: "notifications" });
-      return existing;
+      return { id };
     },
   };
   return {
     ...service,
-    ...createNotificationGroups(db, scope, (ids, context) =>
-      service.list(undefined, { ids, context, limit: ids.length }),
+    ...createNotificationGroups(ctx, scope, (ids) =>
+      service.list(undefined, { ids, limit: ids.length }),
     ),
+  };
+}
+
+// Trusted non-HTTP entry point. HTTP handlers use the middleware's scoped repository instead.
+export function createFeedService(db: DatabaseExecutor, scope: SessionIdentity) {
+  type Repository = ReturnType<typeof createFeedRepository>;
+  const run = async <T>(work: (repository: Repository) => Promise<T>) => {
+    const { context } = await workspaceContext(db, scope);
+    return work(createFeedRepository(context, scope));
+  };
+  return {
+    activity: (...args: Parameters<Repository["activity"]>) =>
+      run((repo) => repo.activity(...args)),
+    list: (...args: Parameters<Repository["list"]>) => run((repo) => repo.list(...args)),
+    markAllRead: () => run((repo) => repo.markAllRead()),
+    markRead: (...args: Parameters<Repository["markRead"]>) =>
+      run((repo) => repo.markRead(...args)),
+    groups: (...args: Parameters<Repository["groups"]>) => run((repo) => repo.groups(...args)),
+    groupEvents: (...args: Parameters<Repository["groupEvents"]>) =>
+      run((repo) => repo.groupEvents(...args)),
+    hasUnread: () => run((repo) => repo.hasUnread()),
+    markGroupRead: (...args: Parameters<Repository["markGroupRead"]>) =>
+      run((repo) => repo.markGroupRead(...args)),
   };
 }

@@ -2,17 +2,17 @@ import { commit } from "../../core/effects";
 import { AccessDeniedError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
-import { readOperations } from "./read-state";
 import { messagingMessages, messagingParticipants } from "./schema";
+import { createMessagingService } from "./service";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
 const reads = (userId = "bob", organizationId = f.orgA) =>
-  readOperations(f.db, { userId, organizationId });
+  createMessagingService(f.db, { userId, organizationId });
 const mark = (conversationId: string, messageId: string) =>
   commit(f.db, (tx) =>
-    readOperations(tx, { userId: "bob", organizationId: f.orgA }).markRead(
+    createMessagingService(tx, { userId: "bob", organizationId: f.orgA }).markRead(
       conversationId,
       messageId,
     ),
@@ -35,6 +35,18 @@ test("read positions persist, exclude own messages, and never move backwards", a
   expect(await reads().unreadCounts()).toEqual([
     { conversationId: conversation.id, unreadCount: 1 },
   ]);
+});
+
+test("unchanged and older read positions publish no refresh hints", async () => {
+  await f.verifyEmails();
+  const alice = f.messaging("alice");
+  const conversation = await alice.createConversation({ kind: "dm", emails: ["bob@example.com"] });
+  const first = await alice.sendMessage(conversation.id, "first");
+  const last = await alice.sendMessage(conversation.id, "last");
+  expect((await mark(conversation.id, last.id)).hints).toHaveLength(1);
+  expect((await mark(conversation.id, last.id)).hints).toEqual([]);
+  expect((await mark(conversation.id, first.id)).hints).toEqual([]);
+  expect(await reads().unreadCounts()).toEqual([]);
 });
 
 test("a message at the read position's time counts when it sorts after the read message", async () => {

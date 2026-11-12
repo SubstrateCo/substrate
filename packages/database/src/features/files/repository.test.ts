@@ -6,6 +6,7 @@ import { createRepositories } from "../../repositories";
 import { member, user } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { createAcceptedMessagingService } from "../../testing/messaging";
+import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { messagingMessages } from "../messaging/schema";
 import { attachmentReferences } from "./repository";
@@ -111,6 +112,22 @@ test("task attachments inherit access, reject uploader backdoors, and block blob
   expect(
     await rejection(files().taskContent(scope(), { ...target, attachmentId: attachment!.id })),
   ).toBeInstanceOf(AccessDeniedError);
+});
+
+test("attaching task files does not reload metadata discarded by the HTTP mutation", async () => {
+  const target = await task();
+  const file = await staged();
+  const { db, queries } = recordQueries();
+  const repositories = await createRepositories(db).forSession(scope());
+  await repositories.files.addTask({ ...target, attachmentFileIds: [file.id] });
+  const insertedAt = queries.findIndex((query) =>
+    query.startsWith('insert into "task_attachments"'),
+  );
+  expect(insertedAt).toBeGreaterThanOrEqual(0);
+  expect(queries.slice(insertedAt + 1).filter((query) => query.startsWith("select"))).toEqual([]);
+  expect(await repositories.files.listTask(target)).toMatchObject([
+    { fileId: file.id, filename: file.filename },
+  ]);
 });
 
 test("invalid files roll back the full attachment batch and cannot cross organizations", async () => {
