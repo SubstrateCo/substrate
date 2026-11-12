@@ -5,9 +5,14 @@ import { activeActorCondition } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
+import { adminRoleCondition } from "../../core/organizations/roles";
+import { member } from "../../core/organizations/schema";
+import { entityGrants } from "../../core/permissions/schema";
+import { adminSharedType } from "../../core/permissions/visibility";
 import { liveApprovedParticipant, publicChannel } from "../messaging/access";
 import { messagingConversations, messagingParticipants } from "../messaging/schema";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 declare const resolved: unique symbol;
 
@@ -66,8 +71,8 @@ export async function resolveReceiver(
 
 export type AudienceFilter = (receiver: RealtimeReceiver) => boolean;
 
-// Resolves who may receive an audience, once per change. Only conversation audiences read the
-// database, in one statement, with visibleConversations' predicates: a public channel reaches its
+// Resolves who may receive an audience, once per change. Only conversation and entity audiences
+// read the database, each in one statement. Conversations use visibleConversations' predicates: a public channel reaches its
 // own workspace, and a live, approved human participant reaches the participant's workspace. Callers pass receivers freshly returned by resolveReceiver.
 export async function audienceRecipients(
   db: DatabaseExecutor,
@@ -124,6 +129,59 @@ export async function audienceRecipients(
         workspace(receiver) &&
         (receiver.organizationId === publicIn ||
           members.has(JSON.stringify([receiver.userId, receiver.organizationId])));
+    }
+    case "entity": {
+      // Readers of the entity's container: actors with a grant on it, and the organization's
+      // admins when its type is shared. One statement, like entityAccessLevel's rules.
+      const [, organizationId, entityId] = audience;
+      const container = alias(entities, "audience_container");
+      const target = and(
+        eq(entities.organizationId, organizationId),
+        eq(entities.entityId, entityId),
+      );
+      const rows = await db
+        .select({
+          actorId: sql<string | null>`${entityGrants.actorEntityId}`,
+          userId: sql<string | null>`null`,
+        })
+        .from(entities)
+        .innerJoin(
+          entityGrants,
+          and(
+            eq(entityGrants.organizationId, entities.organizationId),
+            eq(entityGrants.entityId, entities.accessEntityId),
+          ),
+        )
+        .where(target)
+        .union(
+          db
+            .select({
+              actorId: sql<string | null>`null`,
+              userId: sql<string | null>`${member.userId}`,
+            })
+            .from(entities)
+            .innerJoin(
+              container,
+              and(
+                eq(container.organizationId, entities.organizationId),
+                eq(container.entityId, entities.accessEntityId),
+              ),
+            )
+            .innerJoin(
+              member,
+              and(
+                eq(member.organizationId, entities.organizationId),
+                adminRoleCondition(member.role),
+              ),
+            )
+            .where(and(target, adminSharedType(container.entityType))),
+        );
+      const readers = new Set(rows.flatMap((row) => (row.actorId ? [row.actorId] : [])));
+      const admins = new Set(rows.flatMap((row) => (row.userId ? [row.userId] : [])));
+      return (receiver) =>
+        workspace(receiver) &&
+        receiver.organizationId === organizationId &&
+        (readers.has(receiver.actorId!) || admins.has(receiver.userId));
     }
   }
 }

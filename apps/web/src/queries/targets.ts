@@ -17,6 +17,11 @@ export interface QueryTarget {
   withMessage?: string;
   // Matches only related lists that show a message of this conversation, or have not loaded yet.
   inConversation?: string;
+  // Matches only queries whose key includes this record ID after queryKey.
+  withId?: string;
+  // Matches only message context pages that link one of these tasks or projects, or have not
+  // loaded yet.
+  linksTo?: string[];
 }
 
 type Change = Extract<RealtimeEvent, { type: "change" }>;
@@ -33,6 +38,17 @@ function showsLinks(query: Query) {
   return pages === undefined || pages.some((page) => page.links.length > 0);
 }
 
+function linksWork(query: Query, ids: string[]) {
+  // SAFETY: linksTo targets only match message context pages, which cache this shape.
+  const pages = query.state.data as MessagePageContext[] | undefined;
+  return (
+    pages === undefined ||
+    pages.some((page) =>
+      page.links.some((link) => ids.includes(link.entityId) || ids.includes(link.projectEntityId)),
+    )
+  );
+}
+
 function showsConversation(query: Query, conversationId: string) {
   // SAFETY: inConversation targets only match related lists, which cache these rows.
   const rows = query.state.data as { conversationId: string }[] | undefined;
@@ -43,19 +59,23 @@ export function queryTargetFilter(
   target: QueryTarget,
   predicate: (query: Query) => boolean = () => true,
 ) {
-  const { withLinks, withMessage, inConversation, ...filter } = target;
+  const { withLinks, withMessage, inConversation, withId, linksTo, ...filter } = target;
   return {
     ...filter,
     predicate: (query: Query) =>
       (!withLinks || showsLinks(query)) &&
       (!withMessage || queryKeys.messagePageIds(query.queryKey).includes(withMessage)) &&
       (!inConversation || showsConversation(query, inConversation)) &&
+      (!withId || query.queryKey.slice(filter.queryKey.length).includes(withId)) &&
+      (!linksTo || linksWork(query, linksTo)) &&
       predicate(query),
   };
 }
 
 /** Identifiers of the changed records. Without one, targets cover every record it could name. */
-export type ChangeDetail = Partial<Pick<Change, "messageId" | "threadId">>;
+export type ChangeDetail = Partial<
+  Pick<Change, "messageId" | "threadId" | "projectId" | "taskIds">
+>;
 
 // The history pages that show a changed message. A new reply also changes its root's reply count
 // in the main timeline. An edited or deleted root can be open as a thread's header.
@@ -96,6 +116,48 @@ function reactionTargets(
         : queryKeys.conversationReactions(organizationId, conversationId),
     },
     { queryKey: queryKeys.messageTargets(organizationId, conversationId) },
+  ];
+}
+
+// A change to one project's tasks. Only that project's readers receive it.
+function workTargets(
+  organizationId: string,
+  projectId: string,
+  taskIds: string[] | undefined,
+): QueryTarget[] {
+  const shared: QueryTarget[] = [
+    // Comment mentions show the titles of the commenting tasks, which can be in this project.
+    { queryKey: queryKeys.commentMentions(organizationId) },
+    ...searchTargets(organizationId),
+  ];
+  // The project itself changed, or tasks were deleted: refresh what shows the project or any of
+  // its tasks. Projects lists show project details; locations name their project.
+  if (!taskIds)
+    return [
+      { queryKey: queryKeys.projects(organizationId) },
+      { queryKey: queryKeys.tasks(organizationId), withId: projectId },
+      { queryKey: [...queryKeys.tasks(organizationId), "location"] },
+      { queryKey: queryKeys.related(organizationId, projectId) },
+      { queryKey: queryKeys.activity(organizationId, projectId) },
+      { queryKey: queryKeys.messagePages(organizationId), linksTo: [projectId] },
+      { queryKey: queryKeys.notifications(organizationId) },
+      ...shared,
+    ];
+  // Task changes leave related messages and the projects list alone. Notifications show task
+  // titles, but their read state does not change.
+  return [
+    { queryKey: queryKeys.project(organizationId, projectId) },
+    ...taskIds.flatMap((taskId) => [
+      { queryKey: queryKeys.taskLocation(organizationId, taskId) },
+      { queryKey: queryKeys.taskComments(organizationId, projectId, taskId) },
+      { queryKey: queryKeys.taskAttachments(organizationId, projectId, taskId) },
+      { queryKey: queryKeys.activity(organizationId, taskId) },
+    ]),
+    { queryKey: queryKeys.messagePages(organizationId), linksTo: taskIds },
+    { queryKey: queryKeys.notificationGroups(organizationId, "all") },
+    { queryKey: queryKeys.notificationGroups(organizationId, "unread") },
+    { queryKey: queryKeys.notificationEvents(organizationId) },
+    ...shared,
   ];
 }
 
@@ -169,6 +231,8 @@ export function domainTargets(
         ),
       ];
     case "tasks":
+      if (detail.projectId) return workTargets(organizationId, detail.projectId, detail.taskIds);
+      // Without IDs, such as a grant change: any task record can change.
       return [
         { queryKey: queryKeys.tasks(organizationId) },
         { queryKey: queryKeys.activity(organizationId) },

@@ -4,6 +4,7 @@ export {
   realtimeDomain,
   realtimeScope,
   realtimeDetail,
+  realtimeTaskLimit,
   realtimeEvent,
   realtimeEventChannel,
 } from "./protocol.ts";

@@ -38,7 +38,7 @@ export function agentActions(ctx: RepositoryContext, identity: SessionIdentity, 
         await recordTaskSource(
           ctx,
           { messageId: source.message.id, conversationId: source.conversation.id },
-          task.entityId,
+          task,
         );
       return task;
     },

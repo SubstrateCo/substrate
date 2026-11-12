@@ -1,4 +1,3 @@
-import { realtimeKeys } from "@substrate/contracts/realtime";
 import { taskPriorityValues, taskStatusValues } from "@substrate/contracts/tasks";
 import type { TaskLinkRelation } from "@substrate/contracts/tasks/links";
 
@@ -19,6 +18,7 @@ import { AccessDeniedError, ValidationError } from "../../errors";
 import { notifyAssignment, recordTaskActivity } from "../activity/events";
 import { publishFiles } from "../files/publication";
 import { taskAttachments } from "../files/schema";
+import { workHint } from "../realtime/routing";
 import { requireAssignee } from "./assignment";
 import { taskChanges } from "./changes";
 import { applyCommentReferences, commentReferences } from "./comment-references";
@@ -93,7 +93,7 @@ export async function createTaskInLockedProject(
       dueDate: input.dueDate,
     })
     .returning();
-  const [event] = await recordTaskActivity(ctx, task!.entityId, ["Task created"]);
+  const [event] = await recordTaskActivity(ctx, task!, ["Task created"]);
   const fileIds = input.attachmentFileIds ?? [];
   if (fileIds.length) {
     await publishFiles(ctx, project, fileIds);
@@ -201,7 +201,7 @@ export function taskRepository(context: RepositoryContext) {
           .where(taskWhere(entityId))
           .returning();
         await ctx.touch(entityId);
-        const events = await recordTaskActivity(ctx, entityId, changes);
+        const events = await recordTaskActivity(ctx, task, changes);
         const assignment = events.find((event) => event.action === "Assignee changed");
         if (assignment)
           await notifyAssignment(ctx, entityId, input.assigneeActorEntityId, assignment.id);
@@ -225,10 +225,7 @@ export function taskRepository(context: RepositoryContext) {
           })
           .returning();
         const notified = await applyCommentReferences(ctx, task, comment!);
-        ctx.effects.hint({
-          audience: realtimeKeys.organization(scope.organizationId),
-          domain: "tasks",
-        });
+        ctx.effects.hint(workHint(scope.organizationId, task.projectEntityId, [entityId]));
         return { ...comment!, notified };
       });
     },

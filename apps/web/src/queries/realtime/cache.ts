@@ -96,7 +96,7 @@ export function realtimeQueryTargets(
     case "notifications":
       if (organizationId)
         targets.push(
-          ...domainTargets(event.domain, organizationId, event.conversationId, event.scope),
+          ...domainTargets(event.domain, organizationId, event.conversationId, event.scope, event),
         );
       break;
   }

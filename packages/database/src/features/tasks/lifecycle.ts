@@ -4,6 +4,7 @@ import { entities } from "../../core/entities/schema";
 import { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { recordTaskActivity } from "../activity/events";
+import { workHint } from "../realtime/routing";
 import { liveTask } from "./access";
 import { tasks } from "./tasks.schema";
 import { and, eq, inArray, sql } from "drizzle-orm";
@@ -46,10 +47,8 @@ export function taskLifecycle(context: RepositoryContext) {
         await ctx.requireAccess(projectId, "edit", true, "structural");
         await requireTask(ctx, taskId, projectId);
         const subtree = await taskSubtree(ctx, projectId, taskId);
-        ctx.effects.hint({
-          audience: realtimeKeys.organization(scope.organizationId),
-          domain: "access",
-        });
+        // Deleting tasks changes no one's access: the project's readers refresh the whole project.
+        ctx.effects.hint(workHint(scope.organizationId, projectId));
         await tx
           .update(entities)
           .set({ deletedAt: new Date(), updatedAt: new Date() })
@@ -143,9 +142,11 @@ export function taskLifecycle(context: RepositoryContext) {
           task.projectEntityId !== destinationProjectId ||
           task.parentTaskEntityId !== parentTaskId
         )
-          await recordTaskActivity(ctx, taskId, [
-            projectId === destinationProjectId ? "Parent changed" : "Project changed",
-          ]);
+          await recordTaskActivity(
+            ctx,
+            { entityId: taskId, projectEntityId: destinationProjectId },
+            [projectId === destinationProjectId ? "Parent changed" : "Project changed"],
+          );
       });
     },
   };

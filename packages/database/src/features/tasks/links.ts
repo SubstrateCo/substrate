@@ -201,7 +201,7 @@ export async function addTaskLink(
       createdByActorEntityId: scope.actorEntityId,
     })
     .returning();
-  await recordLinkActivity(ctx, "Link added", task.entityId, other.entityId, relation);
+  await recordLinkActivity(ctx, "Link added", task, other, relation);
   await ctx.touch(task.entityId);
   return created!;
 }
@@ -231,8 +231,8 @@ export async function removeTaskLink(
   await recordLinkActivity(
     ctx,
     "Link removed",
-    task.entityId,
-    source ? removed.targetTaskEntityId : removed.sourceTaskEntityId,
+    task,
+    { entityId: source ? removed.targetTaskEntityId : removed.sourceTaskEntityId },
     relation,
   );
   await ctx.touch(task.entityId);
@@ -243,12 +243,13 @@ export async function removeTaskLink(
 async function recordLinkActivity(
   ctx: RepositoryContext,
   verb: "Link added" | "Link removed",
-  taskEntityId: string,
-  otherEntityId: string,
+  task: Task,
+  // A removed link names the other task only by ID.
+  other: Task | { entityId: string },
   relation: TaskLinkRelation,
 ) {
-  await recordTaskActivity(ctx, taskEntityId, [`${verb}: ${taskLinkRelationLabels[relation]}`]);
-  await recordTaskActivity(ctx, otherEntityId, [
+  await recordTaskActivity(ctx, task, [`${verb}: ${taskLinkRelationLabels[relation]}`]);
+  await recordTaskActivity(ctx, other, [
     `${verb}: ${taskLinkRelationLabels[inverseTaskLinkRelation[relation]]}`,
   ]);
 }

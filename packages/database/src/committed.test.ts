@@ -1,4 +1,4 @@
-import { realtimeKeys } from "@substrate/contracts/realtime";
+import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
 import { AccessDeniedError, ConflictError } from "./errors";
 import { approveProposal, publishStatus } from "./features/agent-work/committed";
@@ -44,7 +44,13 @@ test("workspace reads reuse the scope already resolved by forSession", async () 
 test("standalone writes expose the same effects as transaction writes", async () => {
   const repositories = await f.forSession("alice");
   const created = await repositories.projects.create({ name: "Standalone" });
-  expect(created.hints).toEqual([{ audience: realtimeKeys.organization(f.orgA), domain: "tasks" }]);
+  expect(created.hints).toEqual([
+    {
+      audience: realtimeKeys.entity(f.orgA, created.result.entityId),
+      domain: "tasks",
+      projectId: created.result.entityId,
+    },
+  ]);
   const direct = await repositories.tasks.create({
     projectEntityId: created.result.entityId,
     title: "Direct",
@@ -54,7 +60,14 @@ test("standalone writes expose the same effects as transaction writes", async ()
   );
   expect(direct.result.title).toBe("Direct");
   expect(grouped.result.title).toBe("Grouped");
-  expect(direct.hints).toEqual(grouped.hints);
+  const taskHint = (taskId: string): RealtimeHint => ({
+    audience: realtimeKeys.entity(f.orgA, created.result.entityId),
+    domain: "tasks",
+    projectId: created.result.entityId,
+    taskIds: [taskId],
+  });
+  expect(direct.hints).toEqual([taskHint(direct.result.entityId)]);
+  expect(grouped.hints).toEqual([taskHint(grouped.result.entityId)]);
 });
 
 test("messaging collects send, reaction, membership and removal effects", async () => {
@@ -246,10 +259,13 @@ test("MCP proposals and approved actions expose owner and confirmed notification
   const approved = await approveProposal(f.db, owner, proposed.result.output.proposalId);
   expect(approved.result.outcome.status).toBe("executed");
   expect(approved.hints).toContainEqual(ownerHint);
-  expect(approved.hints).toContainEqual({
-    audience: realtimeKeys.organization(f.orgA),
-    domain: "tasks",
-  });
+  expect(approved.hints).toContainEqual(
+    expect.objectContaining({
+      audience: realtimeKeys.entity(f.orgA, project.entityId),
+      domain: "tasks",
+      projectId: project.entityId,
+    }),
+  );
   expect(approved.hints).toContainEqual({
     audience: realtimeKeys.actor(f.orgA, f.bob),
     domain: "notifications",

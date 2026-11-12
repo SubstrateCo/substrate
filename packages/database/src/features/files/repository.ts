@@ -1,5 +1,4 @@
 import { MAX_ATTACHMENTS, attachmentFileIds } from "@substrate/contracts/files/attachments";
-import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { RepositoryContext, type Locked } from "../../core/repository-context";
 import { messagingSession } from "../../core/session/messaging";
@@ -7,6 +6,7 @@ import { storedFiles } from "../../core/storage/schema";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { loadConversation } from "../messaging/access";
 import { messagingMessages } from "../messaging/schema";
+import { workHint } from "../realtime/routing";
 import { taskRepository } from "../tasks/repository";
 import type { tasks } from "../tasks/tasks.schema";
 import { taskAttachmentMetadata } from "./metadata";
@@ -70,10 +70,7 @@ export function createAttachmentRepository(context: RepositoryContext) {
             position: position + index,
           })),
         );
-        ctx.effects.hint({
-          audience: realtimeKeys.organization(scope.organizationId),
-          domain: "tasks",
-        });
+        ctx.effects.hint(workHint(scope.organizationId, task.projectEntityId, [task.entityId]));
       });
     },
     removeTask(input: { taskEntityId: string; projectEntityId: string; attachmentId: string }) {
@@ -88,10 +85,10 @@ export function createAttachmentRepository(context: RepositoryContext) {
           )
           .returning();
         if (!removed.length) throw new AccessDeniedError();
-        ctx.effects.hint({
-          audience: realtimeKeys.organization(scope.organizationId),
-          domain: "tasks",
-        });
+        // taskContext checked that the task belongs to this project.
+        ctx.effects.hint(
+          workHint(scope.organizationId, input.projectEntityId, [input.taskEntityId]),
+        );
         return { id: input.attachmentId };
       });
     },

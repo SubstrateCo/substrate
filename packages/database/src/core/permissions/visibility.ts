@@ -27,6 +27,11 @@ const adminEntityTypes = sql.raw(
     .join(", "),
 );
 
+/** Whether admins own entities in a container of this type. */
+export function adminSharedType(entityType: SQLWrapper) {
+  return sql`${entityType} IN (${adminEntityTypes})`;
+}
+
 // The role is read on every query, so promotion and demotion take effect at once. Agents resolve to
 // their owner's human actor, like grants do.
 function organizationAdminCondition(scope: Parameters<typeof permissionActorEntityId>[0]) {

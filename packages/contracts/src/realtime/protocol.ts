@@ -10,6 +10,9 @@ export const realtimeKeys = {
   actor: (organizationId: string, actorEntityId: string) =>
     ["actor", organizationId, actorEntityId] as const,
   user: (userId: string) => ["user", userId] as const,
+  // Members who can read the entity through its access container.
+  entity: (organizationId: string, entityId: string) =>
+    ["entity", organizationId, entityId] as const,
 };
 
 export const realtimeAudience = z.union([
@@ -17,6 +20,7 @@ export const realtimeAudience = z.union([
   z.tuple([z.literal("conversation"), identifier]),
   z.tuple([z.literal("actor"), identifier, identifier]),
   z.tuple([z.literal("user"), identifier]),
+  z.tuple([z.literal("entity"), identifier, identifier]),
 ]);
 export type RealtimeAudience = z.infer<typeof realtimeAudience>;
 
@@ -41,6 +45,9 @@ export type RealtimeDomain = z.infer<typeof realtimeDomain>;
 export const realtimeScope = z.enum(["messages", "reactions", "read"]);
 export type RealtimeScope = z.infer<typeof realtimeScope>;
 
+// A hint names at most this many tasks; a larger change names only the project.
+export const realtimeTaskLimit = 50;
+
 // Identifiers of the changed records. A hint carries them only to an audience that can see those
 // records, and never carries record data. Each is optional: without it, clients refresh more.
 export const realtimeDetail = {
@@ -48,6 +55,10 @@ export const realtimeDetail = {
   messageId: identifier.optional(),
   // The thread of the changed message: null for the main timeline.
   threadId: identifier.nullable().optional(),
+  // The project of the changed work. Without taskIds, the project itself or any of its tasks.
+  projectId: identifier.optional(),
+  // The changed tasks, all in projectId.
+  taskIds: z.array(identifier).min(1).max(realtimeTaskLimit).optional(),
 };
 
 interface MessagingDetail {
@@ -56,14 +67,18 @@ interface MessagingDetail {
   threadId?: string | null;
 }
 
-/** Only messaging changes have a scope and message identifiers. */
+interface WorkDetail {
+  projectId?: string;
+  taskIds?: string[];
+}
+
+type Audience = { audience: Readonly<RealtimeAudience> };
+
+/** Messaging changes name messages; task changes name work. */
 export type RealtimeHint =
-  | ({ audience: Readonly<RealtimeAudience>; domain: "messaging" } & MessagingDetail)
-  | {
-      audience: Readonly<RealtimeAudience>;
-      domain: Exclude<RealtimeDomain, "messaging">;
-      scope?: never;
-    };
+  | (Audience & { domain: "messaging" } & MessagingDetail)
+  | (Audience & { domain: "tasks"; scope?: never } & WorkDetail)
+  | (Audience & { domain: Exclude<RealtimeDomain, "messaging" | "tasks">; scope?: never });
 
 export const realtimeEvent = z.discriminatedUnion("type", [
   z.object({ version: z.literal(1), type: z.literal("ready") }),

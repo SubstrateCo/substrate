@@ -460,6 +460,78 @@ test("a new-message hint reads history once and loaded message context not at al
   }
 });
 
+test("a task hint refreshes that task's records and its project's detail, nothing else", () => {
+  const client = new QueryClient();
+  const linked = queryKeys.messagePage("org", "conversation", ["linked"]);
+  const unlinked = queryKeys.messagePage("org", "conversation", ["unlinked"]);
+  client.setQueryData(linked, [{ links: [{ entityId: "task", projectEntityId: "project" }] }]);
+  client.setQueryData(unlinked, [{ links: [{ entityId: "other", projectEntityId: "elsewhere" }] }]);
+  const event = { ...change("tasks"), projectId: "project", taskIds: ["task"] };
+  const refreshed = [
+    queryKeys.project("org", "project"),
+    queryKeys.taskLocation("org", "task"),
+    queryKeys.taskComments("org", "project", "task"),
+    queryKeys.taskAttachments("org", "project", "task"),
+    queryKeys.activity("org", "task"),
+    queryKeys.commentMentions("org", "elsewhere"),
+    queryKeys.notificationGroups("org", "all"),
+    queryKeys.notificationEvents("org", "group"),
+    linked,
+  ];
+  const untouched = [
+    queryKeys.projects("org"),
+    queryKeys.project("org", "other-project"),
+    queryKeys.taskLocation("org", "other"),
+    queryKeys.taskComments("org", "project", "other"),
+    queryKeys.taskAttachments("org", "project", "other"),
+    queryKeys.activity("org", "other"),
+    queryKeys.related("org", "task"),
+    queryKeys.related("org", "project"),
+    queryKeys.notificationUnread("org"),
+    queryKeys.organizationSummary("org"),
+    queryKeys.organizationPeople("org"),
+    queryKeys.agentWorkStatus("user", "org"),
+    queryKeys.agents("user"),
+    unlinked,
+  ];
+  for (const key of [...refreshed, ...untouched])
+    if (!client.getQueryData(key)) client.setQueryData(key, []);
+  const matched = new Set(
+    realtimeQueryTargets(event, "user").flatMap((target) =>
+      client
+        .getQueryCache()
+        .findAll(queryTargetFilter(target))
+        .map((query) => JSON.stringify(query.queryKey)),
+    ),
+  );
+  expect([...refreshed, ...untouched].filter((key) => matched.has(JSON.stringify(key)))).toEqual(
+    refreshed,
+  );
+  client.clear();
+});
+
+test("a project hint refreshes the project's records and lists, not other projects", () => {
+  const event = { ...change("tasks"), projectId: "launch" } as const;
+  const refreshed = [
+    queryKeys.projects("org"),
+    queryKeys.project("org", "launch"),
+    queryKeys.taskComments("org", "launch", "task"),
+    queryKeys.taskLocation("org", "task"),
+    queryKeys.related("org", "launch"),
+    queryKeys.notificationUnread("org"),
+  ];
+  const untouched = [
+    queryKeys.project("org", "roadmap"),
+    queryKeys.taskComments("org", "roadmap", "task"),
+    queryKeys.related("org", "roadmap"),
+    queryKeys.organizationSummary("org"),
+    queryKeys.agentWorkStatus("user", "org"),
+  ];
+  expect(matchedKeys(event, [...refreshed, ...untouched])).toEqual(refreshed);
+  // Without a project, as after a grant change, every task record can change.
+  expect(matchedKeys(change("tasks"), untouched.slice(0, 3))).toEqual(untouched.slice(0, 3));
+});
+
 test("workspace detail changes refresh organization details and invitations, not workspace records", () => {
   const client = new QueryClient();
   const refreshed = [

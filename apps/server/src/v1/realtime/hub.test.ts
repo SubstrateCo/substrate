@@ -135,6 +135,21 @@ test("changes forward their record identifiers, which the client contract accept
     messageId: "message",
     threadId: null,
   });
+  // A project audience selects only connections in the project's workspace.
+  const elsewhere = await f.connect("user", "other-org");
+  await f.hub.publish({
+    id: crypto.randomUUID(),
+    audience: realtimeKeys.entity("org", "project"),
+    domain: "tasks",
+    projectId: "project",
+    taskIds: ["task"],
+  });
+  expect(realtimeEvent.parse(viewer.events[2])).toMatchObject({
+    domain: "tasks",
+    projectId: "project",
+    taskIds: ["task"],
+  });
+  expect(elsewhere.events).toEqual([{ version: 1, type: "ready" }]);
   f.hub.stop();
 });
 

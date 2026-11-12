@@ -16,6 +16,7 @@ import { entityGrants } from "../../core/permissions/schema";
 import { RepositoryContext, type PermissionLevel } from "../../core/repository-context";
 import { requiredText } from "../../core/validation";
 import { AccessDeniedError, ValidationError } from "../../errors";
+import { workHint } from "../realtime/routing";
 import { liveProjectTasks } from "../tasks/access";
 import { requireUnassignedProjectActor } from "../tasks/assignment";
 import { projectTaskLinkRows, toLinkView } from "../tasks/links";
@@ -258,10 +259,7 @@ export function projectRepository(context: RepositoryContext) {
           .returning();
         if (!project) throw new AccessDeniedError();
         await ctx.touch(entityId);
-        ctx.effects.hint({
-          audience: realtimeKeys.organization(scope.organizationId),
-          domain: "tasks",
-        });
+        ctx.effects.hint(workHint(scope.organizationId, entityId));
         return project;
       });
     },
@@ -304,10 +302,8 @@ export function projectRepository(context: RepositoryContext) {
             description: input.description ?? "",
           })
           .returning();
-        ctx.effects.hint({
-          audience: realtimeKeys.organization(scope.organizationId),
-          domain: "tasks",
-        });
+        // Only the creator and admins can read a new project.
+        ctx.effects.hint(workHint(scope.organizationId, entity.entityId));
         return project!;
       });
     },
@@ -326,10 +322,7 @@ export function projectRepository(context: RepositoryContext) {
           .returning();
         if (!project) throw new AccessDeniedError();
         await ctx.touch(entityId);
-        ctx.effects.hint({
-          audience: realtimeKeys.organization(scope.organizationId),
-          domain: "tasks",
-        });
+        ctx.effects.hint(workHint(scope.organizationId, entityId));
         return project;
       });
     },

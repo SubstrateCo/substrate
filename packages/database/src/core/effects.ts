@@ -12,12 +12,6 @@ export class RepositoryEffects {
   private readonly hints = new Map<string, RealtimeHint>();
   private readonly mailKinds = new Set<"sharing">();
 
-  async activity<T>(write: () => Promise<T>, hint: RealtimeHint): Promise<T> {
-    const result = await write();
-    this.hint(hint);
-    return result;
-  }
-
   async notify<T extends { organizationId: string; actorId: string }>(
     write: () => Promise<T[]>,
   ): Promise<T[]> {

@@ -73,7 +73,7 @@ export async function attachReference(
     .onConflictDoNothing()
     .returning();
   if (rows.length && work.entityType === "task")
-    await recordTaskActivity(ctx, target.id, ["Discussion linked"], source.messageId);
+    await recordTaskActivity(ctx, work, ["Discussion linked"], source.messageId);
   if (rows.length)
     ctx.effects.hint({
       audience: realtimeKeys.organization(scope.organizationId),
@@ -115,7 +115,7 @@ export async function detachReference(
     )
     .returning();
   if (rows.length && work.entityType === "task")
-    await recordTaskActivity(ctx, target.id, ["Discussion unlinked"], source.messageId);
+    await recordTaskActivity(ctx, work, ["Discussion unlinked"], source.messageId);
   if (rows.length)
     ctx.effects.hint({
       audience: realtimeKeys.organization(scope.organizationId),
@@ -128,18 +128,18 @@ export async function detachReference(
 export async function recordTaskSource(
   ctx: RepositoryContext,
   source: { messageId: string; conversationId: string },
-  taskEntityId: string,
+  task: { entityId: string; projectEntityId: string },
 ) {
   await ctx.db.insert(messageEntityReferences).values({
     organizationId: ctx.scope.organizationId,
     conversationId: source.conversationId,
     messageId: source.messageId,
-    entityId: taskEntityId,
+    entityId: task.entityId,
     entityType: "task",
     purpose: "source",
     createdByActorEntityId: ctx.scope.actorEntityId,
   });
-  await recordTaskActivity(ctx, taskEntityId, ["Created from a discussion"], source.messageId);
+  await recordTaskActivity(ctx, task, ["Created from a discussion"], source.messageId);
   ctx.effects.hint({
     audience: realtimeKeys.organization(ctx.scope.organizationId),
     domain: "context",
@@ -190,7 +190,7 @@ export function createContextRepository(context: RepositoryContext, scope: Sessi
         await recordTaskSource(
           ctx,
           { messageId: input.messageId, conversationId: conversation.id },
-          task.entityId,
+          task,
         );
         await tx.insert(sourceTaskRequests).values({
           organizationId: scope.organizationId,

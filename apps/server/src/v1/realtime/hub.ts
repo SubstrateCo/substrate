@@ -14,6 +14,8 @@ export interface Change {
   scope?: RealtimeScope;
   messageId?: string;
   threadId?: string | null;
+  projectId?: string;
+  taskIds?: string[];
 }
 
 export interface Transport {
@@ -70,6 +72,11 @@ function relevant(identity: RealtimeReceiver, audience: Readonly<RealtimeAudienc
       return (
         identity.organizationId !== null &&
         audience[1] === realtimeKeys.actor(identity.organizationId, audience[2])[1]
+      );
+    case "entity":
+      return (
+        identity.organizationId !== null &&
+        audience[1] === realtimeKeys.entity(identity.organizationId, audience[2])[1]
       );
     case "conversation":
       return identity.organizationId !== null;
@@ -270,6 +277,8 @@ export function createRealtimeHub(
             if (change.scope) event.scope = change.scope;
             if (change.messageId) event.messageId = change.messageId;
             if (change.threadId !== undefined) event.threadId = change.threadId;
+            if (change.projectId) event.projectId = change.projectId;
+            if (change.taskIds) event.taskIds = change.taskIds;
             send(connection, event);
           }
         } catch {

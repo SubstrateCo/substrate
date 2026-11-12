@@ -1,4 +1,4 @@
-import { realtimeKeys } from "@substrate/contracts/realtime";
+import { realtimeKeys, realtimeTaskLimit } from "@substrate/contracts/realtime";
 import type { RealtimeHint } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
@@ -6,6 +6,7 @@ import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { effectsFor } from "../../core/effects";
+import { entities } from "../../core/entities/schema";
 import { member } from "../../core/organizations/schema";
 import { agentRequests } from "../agent-work/requests.schema";
 import {
@@ -119,6 +120,51 @@ export async function projectAccessRefreshHints(
       domain: "access" as const,
     })),
   ];
+}
+
+// Work hints reach only the readers of the project, so the project and task IDs they name never
+// reach anyone who cannot read them. A change to the project itself, or to more tasks than a hint
+// names, names only the project.
+export function workHint(
+  organizationId: string,
+  projectId: string,
+  taskIds: string[] = [],
+): RealtimeHint {
+  const hint: Extract<RealtimeHint, { domain: "tasks" }> = {
+    audience: realtimeKeys.entity(organizationId, projectId),
+    domain: "tasks",
+    projectId,
+  };
+  const tasks = [...new Set(taskIds)].sort();
+  if (tasks.length && tasks.length <= realtimeTaskLimit) hint.taskIds = tasks;
+  return hint;
+}
+
+// Reads each record's project for callers that do not have it.
+export async function workChangeHints(
+  db: DatabaseExecutor,
+  organizationId: string,
+  entityIds: string[],
+): Promise<RealtimeHint[]> {
+  if (!entityIds.length) return [];
+  const rows = await db
+    .select({ id: entities.entityId, projectId: entities.accessEntityId })
+    .from(entities)
+    .where(
+      and(
+        eq(entities.organizationId, organizationId),
+        inArray(entities.entityId, [...new Set(entityIds)]),
+      ),
+    );
+  const projects = new Map<string, string[] | null>();
+  for (const { id, projectId } of rows) {
+    const tasks = projects.get(projectId);
+    if (id === projectId || tasks === null) projects.set(projectId, null);
+    else projects.set(projectId, [...(tasks ?? []), id]);
+  }
+  return [...projects].map(([projectId, taskIds]) =>
+    workHint(organizationId, projectId, taskIds ?? []),
+  );
 }
 
 function verifiedUsersByEmail(db: DatabaseExecutor, email: string) {

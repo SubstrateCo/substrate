@@ -23,7 +23,15 @@ test("self assignment and unchanged assignment emit no notification hint", async
       assigneeActorEntityId: f.alice,
     }),
   );
-  expect(created.hints).toEqual([{ audience: realtimeKeys.organization(f.orgA), domain: "tasks" }]);
+  // Only the project's readers hear of the task, by project and task ID.
+  expect(created.hints).toEqual([
+    {
+      audience: realtimeKeys.entity(f.orgA, project.entityId),
+      domain: "tasks",
+      projectId: project.entityId,
+      taskIds: [created.result.entityId],
+    },
+  ]);
   const unchanged = await repos.transaction((tx) =>
     tx.tasks.update(created.result.entityId, { assigneeActorEntityId: f.alice }),
   );
@@ -67,7 +75,7 @@ test("an inaccessible mention rolls back the comment and its effects", async () 
   expect(await repos.tasks.listComments(task.entityId, project.entityId)).toEqual([]);
 });
 
-test("moving and deleting tasks and deleting projects emit access hints", async () => {
+test("moving tasks and deleting projects emit access hints; deleting a task refreshes its project", async () => {
   const repos = f.forActor(f.alice);
   const first = await repos.projects.create({ name: "First" });
   const second = await repos.projects.create({ name: "Second" });
@@ -78,9 +86,33 @@ test("moving and deleting tasks and deleting projects emit access hints", async 
   );
   expect(moved.hints).toContainEqual(access);
   const deleted = await repos.transaction((tx) => tx.tasks.delete(task.entityId, second.entityId));
-  expect(deleted.hints).toEqual([access]);
+  expect(deleted.hints).toEqual([
+    {
+      audience: realtimeKeys.entity(f.orgA, second.entityId),
+      domain: "tasks",
+      projectId: second.entityId,
+    },
+  ]);
   const projectDeleted = await repos.transaction((tx) => tx.projects.delete(first.entityId));
   expect(projectDeleted.hints).toEqual([access]);
+});
+
+test("comments, attachments, and project edits name only their own project", async () => {
+  await f.verifyEmails();
+  const repos = f.forActor(f.alice);
+  const project = await repos.projects.create({ name: "Named" });
+  const task = await repos.tasks.create({ projectEntityId: project.entityId, title: "Task" });
+  const work = {
+    audience: realtimeKeys.entity(f.orgA, project.entityId),
+    domain: "tasks" as const,
+    projectId: project.entityId,
+  };
+  const commented = await repos.transaction((tx) => tx.tasks.addComment(task.entityId, "Note"));
+  expect(commented.hints).toEqual([{ ...work, taskIds: [task.entityId] }]);
+  const renamed = await repos.transaction((tx) =>
+    tx.projects.update(project.entityId, { name: "Renamed", description: "" }),
+  );
+  expect(renamed.hints).toEqual([work]);
 });
 
 test("unverified recipients get neither assignment nor mention notification hints", async () => {

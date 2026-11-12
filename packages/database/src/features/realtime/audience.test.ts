@@ -223,6 +223,54 @@ test("a conversation audience resolves in one statement for every receiver, and 
   ).toBe(false);
 });
 
+test("a project audience reaches its grantees and admins in one statement, never other members", async () => {
+  const project = await fixture.forActor(fixture.alice).projects.create({ name: "Private" });
+  const task = await fixture
+    .forActor(fixture.alice)
+    .tasks.create({ projectEntityId: project.entityId, title: "Hidden" });
+  const carol = { userId: "carol", organizationId: fixture.orgA };
+  await fixture.db.insert(user).values({
+    id: "carol",
+    name: "Carol",
+    email: "carol@example.com",
+    emailVerified: true,
+  });
+  await fixture.db
+    .insert(member)
+    .values({ id: "carol-a", userId: "carol", organizationId: fixture.orgA, role: "admin" });
+  await ensureHumanActor(fixture.db, carol);
+  const { db, queries } = recordQueries();
+  const receivers = await Promise.all(
+    [alice, bob, carol, external].map((identity) => resolveReceiver(fixture.db, identity)),
+  );
+  for (const audience of [
+    realtimeKeys.entity(fixture.orgA, project.entityId),
+    realtimeKeys.entity(fixture.orgA, task.entityId),
+  ]) {
+    queries.length = 0;
+    const receives = await audienceRecipients(db, audience);
+    expect(queries).toHaveLength(1);
+    // Alice owns the project and Carol is an admin; Bob has no grant; the partner is elsewhere.
+    expect(receivers.map((receiver) => receives(receiver!))).toEqual([true, false, true, false]);
+  }
+  await fixture.forActor(fixture.alice).permissions.grant({
+    entityId: project.entityId,
+    actorEntityId: fixture.bob,
+    level: "view",
+  });
+  const granted = await audienceRecipients(
+    fixture.db,
+    realtimeKeys.entity(fixture.orgA, project.entityId),
+  );
+  expect(granted(receivers[1]!)).toBe(true);
+  // The same project ID in another workspace's audience reaches no one here.
+  expect(
+    (await audienceRecipients(fixture.db, realtimeKeys.entity(fixture.orgB, project.entityId)))(
+      receivers[0]!,
+    ),
+  ).toBe(false);
+});
+
 test("disabled, deleted, revoked and unverified viewers lose scoped delivery", async () => {
   const audience = realtimeKeys.organization(fixture.orgA);
   const notificationAudience = realtimeKeys.actor(fixture.orgA, fixture.alice);
