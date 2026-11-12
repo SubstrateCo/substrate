@@ -53,26 +53,33 @@ export function respondToRequest(
   requestId: string,
   response: AgentRequestResponse,
 ) {
-  return db.transaction(async (tx) => {
-    await workspaceContext(tx, identity);
-    const request = await requireOwnedRequest(tx, identity, requestId, ["permission", "question"]);
-    if (!responseMatchesPayload(request.payload, response))
-      throw new ValidationError("Choose one of the offered answers.");
-    const [resolved] = await tx
-      .update(agentRequests)
-      .set({
-        status: requestMachine.events.answer.to,
-        response,
-        resolvedAt: sql`now()`,
-        resolvedByUserId: identity.userId,
-      })
-      .where(and(eq(agentRequests.id, requestId), answerableRequest))
-      .returning();
-    if (!resolved) throw new ConflictError(closed);
-    if (resolved.mode === "async") await wakeForRequest(tx, resolved, "answer");
-    effectsFor(tx).hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });
-    return { status: resolved.status };
-  });
+  return db.transaction((tx) => respondToRequestInTransaction(tx, identity, requestId, response));
+}
+
+export async function respondToRequestInTransaction(
+  tx: DatabaseExecutor,
+  identity: SessionIdentity,
+  requestId: string,
+  response: AgentRequestResponse,
+) {
+  await workspaceContext(tx, identity);
+  const request = await requireOwnedRequest(tx, identity, requestId, ["permission", "question"]);
+  if (!responseMatchesPayload(request.payload, response))
+    throw new ValidationError("Choose one of the offered answers.");
+  const [resolved] = await tx
+    .update(agentRequests)
+    .set({
+      status: requestMachine.events.answer.to,
+      response,
+      resolvedAt: sql`now()`,
+      resolvedByUserId: identity.userId,
+    })
+    .where(and(eq(agentRequests.id, requestId), answerableRequest))
+    .returning();
+  if (!resolved) throw new ConflictError(closed);
+  if (resolved.mode === "async") await wakeForRequest(tx, resolved, "answer");
+  effectsFor(tx).hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });
+  return { status: resolved.status };
 }
 
 /** Declines a proposal. Nothing runs; the agent learns the decision in its session. */
@@ -81,25 +88,31 @@ export function declineProposal(
   identity: SessionIdentity,
   requestId: string,
 ) {
-  return db.transaction(async (tx) => {
-    await workspaceContext(tx, identity);
-    await requireOwnedRequest(tx, identity, requestId, ["proposal"]);
-    const outcome: ProposalOutcome = { status: "declined" };
-    const [resolved] = await tx
-      .update(agentRequests)
-      .set({
-        status: requestMachine.events.decline.to,
-        outcome,
-        resolvedAt: sql`now()`,
-        resolvedByUserId: identity.userId,
-      })
-      .where(and(eq(agentRequests.id, requestId), answerableBy("decline")))
-      .returning();
-    if (!resolved) throw new ConflictError(closed);
-    await wakeForRequest(tx, resolved, "approval_result");
-    effectsFor(tx).hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });
-    return { status: resolved.status, outcome };
-  });
+  return db.transaction((tx) => declineProposalInTransaction(tx, identity, requestId));
+}
+
+export async function declineProposalInTransaction(
+  tx: DatabaseExecutor,
+  identity: SessionIdentity,
+  requestId: string,
+) {
+  await workspaceContext(tx, identity);
+  await requireOwnedRequest(tx, identity, requestId, ["proposal"]);
+  const outcome: ProposalOutcome = { status: "declined" };
+  const [resolved] = await tx
+    .update(agentRequests)
+    .set({
+      status: requestMachine.events.decline.to,
+      outcome,
+      resolvedAt: sql`now()`,
+      resolvedByUserId: identity.userId,
+    })
+    .where(and(eq(agentRequests.id, requestId), answerableBy("decline")))
+    .returning();
+  if (!resolved) throw new ConflictError(closed);
+  await wakeForRequest(tx, resolved, "approval_result");
+  effectsFor(tx).hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });
+  return { status: resolved.status, outcome };
 }
 
 /**
@@ -122,61 +135,67 @@ export function approveProposal(
   identity: SessionIdentity,
   requestId: string,
 ) {
-  return db.transaction(async (tx) => {
-    await workspaceContext(tx, identity);
-    await requireOwnedRequest(tx, identity, requestId, ["proposal"]);
-    const [claimed] = await tx
-      .update(agentRequests)
-      .set({
-        status: requestMachine.events.approve.to,
-        resolvedAt: sql`now()`,
-        resolvedByUserId: identity.userId,
-      })
-      .where(and(eq(agentRequests.id, requestId), answerableBy("approve")))
-      .returning();
-    if (!claimed) throw new ConflictError(closed);
-    let outcome: ProposalOutcome;
-    const parsed = proposalAction.safeParse(claimed.proposedAction);
-    if (!parsed.success || (await proposalActionHash(parsed.data)) !== claimed.actionHash)
-      outcome = { status: "failed", error: "The proposed action changed after it was proposed." };
-    else {
-      const agent = {
-        organizationId: claimed.organizationId,
-        userId: claimed.ownerUserId,
-        actorEntityId: claimed.agentActorEntityId,
-      };
-      try {
-        // A savepoint, so a failed action leaves no partial writes but the decision is kept. Its
-        // hints join the transaction only if the savepoint succeeds.
-        const result = await tx.transaction(async (sp) => {
-          const { context, actor } = await workspaceContext(sp, agent, { lockActor: true });
-          return runProposalAction(context, agent, actor, {
-            id: claimed.id,
-            turnId: claimed.turnId,
-            action: parsed.data,
-            targetBasis: claimed.targetBasis,
-          });
+  return db.transaction((tx) => approveProposalInTransaction(tx, identity, requestId));
+}
+
+export async function approveProposalInTransaction(
+  tx: DatabaseExecutor,
+  identity: SessionIdentity,
+  requestId: string,
+) {
+  await workspaceContext(tx, identity);
+  await requireOwnedRequest(tx, identity, requestId, ["proposal"]);
+  const [claimed] = await tx
+    .update(agentRequests)
+    .set({
+      status: requestMachine.events.approve.to,
+      resolvedAt: sql`now()`,
+      resolvedByUserId: identity.userId,
+    })
+    .where(and(eq(agentRequests.id, requestId), answerableBy("approve")))
+    .returning();
+  if (!claimed) throw new ConflictError(closed);
+  let outcome: ProposalOutcome;
+  const parsed = proposalAction.safeParse(claimed.proposedAction);
+  if (!parsed.success || (await proposalActionHash(parsed.data)) !== claimed.actionHash)
+    outcome = { status: "failed", error: "The proposed action changed after it was proposed." };
+  else {
+    const agent = {
+      organizationId: claimed.organizationId,
+      userId: claimed.ownerUserId,
+      actorEntityId: claimed.agentActorEntityId,
+    };
+    try {
+      // A savepoint, so a failed action leaves no partial writes but the decision is kept. Its
+      // hints join the transaction only if the savepoint succeeds.
+      const result = await tx.transaction(async (sp) => {
+        const { context, actor } = await workspaceContext(sp, agent, { lockActor: true });
+        return runProposalAction(context, agent, actor, {
+          id: claimed.id,
+          turnId: claimed.turnId,
+          action: parsed.data,
+          targetBasis: claimed.targetBasis,
         });
-        outcome = { status: "executed", receipt: result.receipt };
-      } catch (error) {
-        const failure = error instanceof Error ? proposalFailure(error) : null;
-        if (!failure) throw error;
-        outcome = failure;
-      }
+      });
+      outcome = { status: "executed", receipt: result.receipt };
+    } catch (error) {
+      const failure = error instanceof Error ? proposalFailure(error) : null;
+      if (!failure) throw error;
+      outcome = failure;
     }
-    const ended = outcome.status === "executed" ? "execute" : "fail";
-    const [finished] = await tx
-      .update(agentRequests)
-      .set({ status: requestMachine.events[ended].to, outcome })
-      .where(
-        and(
-          eq(agentRequests.id, requestId),
-          inStates(agentRequests.status, requestMachine.from(ended)),
-        ),
-      )
-      .returning();
-    await wakeForRequest(tx, finished!, "approval_result");
-    effectsFor(tx).hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });
-    return { status: finished!.status, outcome };
-  });
+  }
+  const ended = outcome.status === "executed" ? "execute" : "fail";
+  const [finished] = await tx
+    .update(agentRequests)
+    .set({ status: requestMachine.events[ended].to, outcome })
+    .where(
+      and(
+        eq(agentRequests.id, requestId),
+        inStates(agentRequests.status, requestMachine.from(ended)),
+      ),
+    )
+    .returning();
+  await wakeForRequest(tx, finished!, "approval_result");
+  effectsFor(tx).hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });
+  return { status: finished!.status, outcome };
 }

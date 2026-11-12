@@ -12,9 +12,9 @@ import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
 import { activeActorCondition } from "../../core/actors/access";
-import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
+import { user } from "../../core/authentication/schema";
 import { effectsFor } from "../../core/effects";
 import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
@@ -264,50 +264,59 @@ export function decideInvocation(
   invocationId: string,
   decision: DecideInvocationInput["decision"],
 ) {
-  return db.transaction(async (tx) => {
-    await workspaceContext(tx, identity);
-    const row = await requireOwnedInvocation(tx, identity, invocationId);
-    let event: DecisionEvent = "decline";
-    if (decision !== "decline") {
-      const checked = (await callChecks(tx, [row])).get(row.id);
-      event = checked?.reachable && checked.triggerEnabled ? "approve" : "cancel";
-    }
-    const [decided] = await tx
-      .update(agentInvocations)
-      .set({
-        status: invocationMachine.events[event].to,
-        decidedAt: sql`now()`,
-        decidedByUserId: event === "cancel" ? null : identity.userId,
+  return db.transaction((tx) =>
+    decideInvocationInTransaction(tx, identity, invocationId, decision),
+  );
+}
+
+export async function decideInvocationInTransaction(
+  tx: DatabaseExecutor,
+  identity: SessionIdentity,
+  invocationId: string,
+  decision: DecideInvocationInput["decision"],
+) {
+  await workspaceContext(tx, identity);
+  const row = await requireOwnedInvocation(tx, identity, invocationId);
+  let event: DecisionEvent = "decline";
+  if (decision !== "decline") {
+    const checked = (await callChecks(tx, [row])).get(row.id);
+    event = checked?.reachable && checked.triggerEnabled ? "approve" : "cancel";
+  }
+  const [decided] = await tx
+    .update(agentInvocations)
+    .set({
+      status: invocationMachine.events[event].to,
+      decidedAt: sql`now()`,
+      decidedByUserId: event === "cancel" ? null : identity.userId,
+    })
+    .where(and(eq(agentInvocations.id, invocationId), decidable(event)))
+    .returning();
+  // Another decision won, or the call expired. Maintenance records the expiry.
+  if (!decided) throw new ConflictError(closed);
+  const events = [
+    auditOf(decided, decisionAudits[event], event === "cancel" ? null : identity.userId),
+  ];
+  if (event === "approve" && decision === "always_allow") {
+    const allowed = await tx
+      .insert(userAgentCallers)
+      .values({
+        organizationId: decided.organizationId,
+        userAgentId: decided.userAgentId,
+        ownerUserId: decided.ownerUserId,
+        callerUserId: decided.callerUserId,
+        callerActorEntityId: decided.callerActorEntityId,
       })
-      .where(and(eq(agentInvocations.id, invocationId), decidable(event)))
-      .returning();
-    // Another decision won, or the call expired. Maintenance records the expiry.
-    if (!decided) throw new ConflictError(closed);
-    const events = [
-      auditOf(decided, decisionAudits[event], event === "cancel" ? null : identity.userId),
-    ];
-    if (event === "approve" && decision === "always_allow") {
-      const allowed = await tx
-        .insert(userAgentCallers)
-        .values({
-          organizationId: decided.organizationId,
-          userAgentId: decided.userAgentId,
-          ownerUserId: decided.ownerUserId,
-          callerUserId: decided.callerUserId,
-          callerActorEntityId: decided.callerActorEntityId,
-        })
-        .onConflictDoNothing()
-        .returning({ id: userAgentCallers.callerUserId });
-      if (allowed.length) events.push(auditOf(decided, "caller_allowed", identity.userId));
-    }
-    await audit(tx, events);
-    if (event === "approve") {
-      for (const value of await admit(tx, [{ type: "invocation", invocation: decided }]))
-        effectsFor(tx).hint(value);
-    }
-    hint(tx, [decided]);
-    return { status: decided.status };
-  });
+      .onConflictDoNothing()
+      .returning({ id: userAgentCallers.callerUserId });
+    if (allowed.length) events.push(auditOf(decided, "caller_allowed", identity.userId));
+  }
+  await audit(tx, events);
+  if (event === "approve") {
+    for (const value of await admit(tx, [{ type: "invocation", invocation: decided }]))
+      effectsFor(tx).hint(value);
+  }
+  hint(tx, [decided]);
+  return { status: decided.status };
 }
 
 /**
@@ -434,8 +443,8 @@ export async function invocationViews(
   const rows = await db
     .select({
       invocation: agentInvocations,
-      agentName: actorDisplayName(agent),
-      callerName: actorDisplayName(caller),
+      agentName: sql<string>`coalesce(${userAgents.name}, 'Agent')`,
+      callerName: user.name,
       conversationName: sql<
         string | null
       >`case when ${messagingConversations.id} is null then null else ${conversationDisplayName(db, identity)} end`,
@@ -458,6 +467,8 @@ export async function invocationViews(
         eq(caller.entityId, agentInvocations.callerActorEntityId),
       ),
     )
+    .leftJoin(userAgents, eq(userAgents.id, agent.userAgentId))
+    .innerJoin(user, eq(user.id, caller.userId))
     .leftJoin(
       messagingConversations,
       and(
@@ -674,7 +685,7 @@ export async function desktopUpdateViews(
     .select({
       userAgentId: agentInvocations.userAgentId,
       actorId: agentInvocations.agentActorEntityId,
-      name: actorDisplayName(agent),
+      name: sql<string>`coalesce(${userAgents.name}, 'Agent')`,
       droppedCalls: count(),
       lastDroppedAt: max(agentAuditEvents.createdAt),
     })
@@ -694,6 +705,7 @@ export async function desktopUpdateViews(
         eq(agent.entityId, agentInvocations.agentActorEntityId),
       ),
     )
+    .leftJoin(userAgents, eq(userAgents.id, agent.userAgentId))
     .where(
       and(
         eq(agentInvocations.ownerUserId, identity.userId),
@@ -707,6 +719,7 @@ export async function desktopUpdateViews(
       agentInvocations.agentActorEntityId,
       agent.entityId,
       agent.organizationId,
+      userAgents.id,
     );
   if (!rows.length) return [];
   // A caller wake stored after the last drop shows the agent's desktop runs caller calls now.
