@@ -169,7 +169,17 @@ export async function createStartupMcp(
       return;
     }
     const live = () => leases.get(token) === lease && valid(lease);
-    const mcp = new McpServer({ name: "substrate", version: "1.0.0" });
+    const mcp = new McpServer(
+      { name: "substrate", version: "1.0.0" },
+      {
+        instructions:
+          "Substrate connects workspace search, messages, tasks, CRM, and record links. " +
+          "Use your harness's tool discovery to discover relevant operations when their schemas are not loaded; " +
+          "do not assume a capability is unavailable just because its tool is not listed in context. " +
+          "Load the relevant domain skills for workflow guidance. Only tools offered to this session are available; " +
+          "discovery does not grant record access or permission to write.",
+      },
+    );
     for (const name of lease.options.tools) {
       const tool = mcpTools[name];
       const hints: ToolDefinition = tool;

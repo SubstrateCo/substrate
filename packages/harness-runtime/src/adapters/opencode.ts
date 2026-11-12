@@ -17,7 +17,7 @@ import {
   type NativePrefixContext,
   type TurnOptions,
 } from "./types.ts";
-import type { OpenCodeClient, OpenCodeEvent } from "@opencode/client";
+import type { ConfigEntry, OpenCodeClient, OpenCodeEvent } from "@opencode/client";
 import { writeFile } from "node:fs/promises";
 
 /* oxlint-disable deslop/no-runtime-typeof -- Host form responses and the native endpoint announcement are validated at this I/O boundary. */
@@ -347,6 +347,30 @@ export class OpenCodeSession {
   }
 }
 
+export function openCodeConfig(
+  context: NativePrefixContext,
+  managed: string,
+): Extract<ConfigEntry, { type: "document" }>["info"] {
+  return {
+    instructions: [managed],
+    mcp: context.lease
+      ? {
+          servers: {
+            substrate: {
+              type: "remote",
+              url: context.lease.url,
+              oauth: false,
+              // @opencode/client/dist/promise/generated/types.d.ts:3328; native search/on-demand
+              // signatures use the existing Code Mode, not an application-owned code runtime.
+              codemode: true,
+              headers: { Authorization: "Bearer {env:SUBSTRATE_MCP_TOKEN}" },
+            },
+          },
+        }
+      : undefined,
+  };
+}
+
 export async function connectOpenCode(
   context: NativePrefixContext,
   resumeId?: string,
@@ -360,21 +384,7 @@ export async function connectOpenCode(
     true,
   );
   await writeFile(managed, context.prefix, { mode: 0o600 });
-  const config = {
-    instructions: [managed],
-    mcp: context.lease
-      ? {
-          servers: {
-            substrate: {
-              type: "remote",
-              url: context.lease.url,
-              oauth: false,
-              headers: { Authorization: "Bearer {env:SUBSTRATE_MCP_TOKEN}" },
-            },
-          },
-        }
-      : undefined,
-  };
+  const config = openCodeConfig(context, managed);
   // --stdio emits the private endpoint and couples the server to its parent pipe.
   // This never discovers, reconfigures, or stops the user's shared service.
   const { client, close } = await startOpenCode(context.executable, context.directory, {

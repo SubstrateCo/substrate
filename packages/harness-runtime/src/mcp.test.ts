@@ -72,6 +72,23 @@ function text(result: Awaited<ReturnType<Client["callTool"]>>) {
   return content!.text;
 }
 
+test("initialization explains discovery without embedding tool schemas or expanding the lease", async () => {
+  const mcp = await connected({}, leaseOptions({ tools: ["list_projects"] }));
+  try {
+    const instructions = mcp.client.getInstructions();
+    expect(instructions).toContain("discover");
+    expect(instructions).toContain("skills");
+    expect(instructions!.length).toBeLessThan(1024);
+    const tools = (await mcp.client.listTools()).tools;
+    expect(tools.map((tool) => tool.name)).toEqual(["list_projects"]);
+    expect(instructions).not.toContain(JSON.stringify(tools[0]!.inputSchema));
+    mcp.lease.bind(turn);
+    expect((await mcp.client.callTool({ name: "reply", arguments: {} })).isError).toBe(true);
+  } finally {
+    await mcp.close();
+  }
+});
+
 test("server calls carry lease identity and the bound turn; calls outside a turn are rejected", async () => {
   const calls: WorkspaceApiRequest[] = [];
   const mcp = await connected({
@@ -217,6 +234,26 @@ test("helper leases offer no publishing, helper management or memory tools", asy
     ] satisfies McpToolName[])
       expect(names.has(name)).toBe(false);
     expect(names.has("finish_helper")).toBe(true);
+  } finally {
+    await mcp.close();
+  }
+});
+
+test("a discovered tool cannot run after its session lease is revoked", async () => {
+  const calls: WorkspaceApiRequest[] = [];
+  const mcp = await connected({
+    workspace: async (call) => {
+      calls.push(call);
+      return { success: true, data: { items: [], nextCursor: null } };
+    },
+  });
+  try {
+    const tools = (await mcp.client.listTools()).tools;
+    expect(tools.some((tool) => tool.name === "list_projects")).toBe(true);
+    mcp.lease.bind(turn);
+    mcp.lease.revoke();
+    await expect(mcp.client.callTool({ name: "list_projects", arguments: {} })).rejects.toThrow();
+    expect(calls).toEqual([]);
   } finally {
     await mcp.close();
   }

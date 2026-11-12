@@ -284,20 +284,27 @@ export class CodexSession {
   }
 }
 
+export function codexArgs(context: AdapterContext): string[] {
+  const args = ["app-server"];
+  // Codex defers MCP tools when the model supports search; the old feature switches are no-ops.
+  // openai/codex@16e27626, codex-rs/features/src/lib.rs:305-308. Do not send Responses API flags.
+  // required keeps the managed catalog available for discovery; see /codex/extend/mcp#other-configuration-options.
+  if (context.lease)
+    args.push(
+      "-c",
+      `mcp_servers.substrate={url=${JSON.stringify(context.lease.url)},bearer_token_env_var="SUBSTRATE_MCP_TOKEN",required=true}`,
+    );
+  return args;
+}
+
 export async function connectCodex(
   context: AdapterContext,
   resumeId?: string,
 ): Promise<NativeAdapter> {
   // app-server is the official bidirectional native API. No SDK exec adapter can answer approvals.
-  const args = ["app-server"];
-  if (context.lease)
-    args.push(
-      "-c",
-      `mcp_servers.substrate={url=${JSON.stringify(context.lease.url)},bearer_token_env_var="SUBSTRATE_MCP_TOKEN"}`,
-    );
   const child = launch(
     context.executable,
-    args,
+    codexArgs(context),
     context.directory,
     context.lease ? { SUBSTRATE_MCP_TOKEN: context.lease.token } : {},
   );

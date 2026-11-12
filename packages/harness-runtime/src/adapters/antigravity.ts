@@ -9,6 +9,7 @@ import {
   ndJsonStream,
   PROTOCOL_VERSION,
   type McpServer,
+  type NewSessionRequest,
   type PromptResponse,
   type RequestPermissionRequest,
   type RequestPermissionResponse,
@@ -169,6 +170,26 @@ export class AcpSession {
   }
 }
 
+export function antigravitySessionOptions(
+  context: AdapterContext,
+): Pick<NewSessionRequest, "cwd" | "mcpServers"> {
+  const mcpServers: McpServer[] = context.lease
+    ? [
+        {
+          type: "http",
+          name: "substrate",
+          url: context.lease.url,
+          headers: [{ name: "Authorization", value: `Bearer ${context.lease.token}` }],
+          // ACP permits per-server _meta (sdk/dist/v1/schema/types.gen.d.ts:3287-3309).
+          // Antigravity's extension: https://antigravity.google/docs/changelog/#rel-zed-1.4.0.
+          // Keep its default schema-file + call_mcp_tool path, not eager declarations.
+          _meta: { antigravity: { forceAllToolsEager: false } },
+        },
+      ]
+    : [];
+  return { cwd: context.directory, mcpServers };
+}
+
 export async function connectAntigravity(
   context: AdapterContext,
   resumeId?: string,
@@ -216,16 +237,7 @@ export async function connectAntigravity(
       },
       { cancellationSignal: AbortSignal.timeout(30_000), stopWaitingOnCancel: true },
     );
-    const mcpServers: McpServer[] = context.lease
-      ? [
-          {
-            type: "http",
-            name: "substrate",
-            url: context.lease.url,
-            headers: [{ name: "Authorization", value: `Bearer ${context.lease.token}` }],
-          },
-        ]
-      : [];
+    const options = antigravitySessionOptions(context);
     if (context.lease && !initialized.agentCapabilities?.mcpCapabilities?.http)
       unsupported("Installed agy does not advertise ACP HTTP MCP support.");
     if (resumeId) {
@@ -233,13 +245,13 @@ export async function connectAntigravity(
         unsupported("Installed agy cannot load native sessions.");
       await connection.agent.request(
         "session/load",
-        { sessionId: resumeId, cwd: context.directory, mcpServers },
+        { sessionId: resumeId, ...options },
         { cancellationSignal: AbortSignal.timeout(30_000), stopWaitingOnCancel: true },
       );
     } else {
       const created = await connection.agent.request(
         "session/new",
-        { cwd: context.directory, mcpServers },
+        { ...options },
         { cancellationSignal: AbortSignal.timeout(30_000), stopWaitingOnCancel: true },
       );
       nativeSessionId = created.sessionId;

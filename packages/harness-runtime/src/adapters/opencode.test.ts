@@ -1,6 +1,6 @@
 import type { HarnessEventBody } from "@substrate/contracts/harness";
 
-import { OpenCodeSession, type OpenCodeApi } from "./opencode.ts";
+import { openCodeConfig, OpenCodeSession, type OpenCodeApi } from "./opencode.ts";
 import { unattendedDenial, type NativePrefixContext } from "./types.ts";
 import type { OpenCodeEvent } from "@opencode/client";
 import { expect, test } from "bun:test";
@@ -46,6 +46,36 @@ function prompts(calls: { method: string; input: unknown }[]) {
     call.method === "prompt" ? [call.input as { id: string; text: string; delivery?: string }] : [],
   );
 }
+
+test("managed OpenCode sessions use native on-demand tools without embedding credentials in config", () => {
+  const context: NativePrefixContext = {
+    directory: ".",
+    executable: "opencode",
+    prefix: "Managed policy",
+    emit: () => {},
+    lease: {
+      url: "http://127.0.0.1:1234/mcp",
+      token: "session-secret",
+      organizationId: "org-a",
+      agentId: "agent-a",
+      sessionId: "session-a",
+      bind: () => {},
+      unbind: () => {},
+      revoke: () => {},
+    },
+  };
+  const config = openCodeConfig(context, ".substrate/managed-instructions.md");
+  expect(config.instructions).toEqual([".substrate/managed-instructions.md"]);
+  expect(config.mcp?.servers?.substrate).toEqual({
+    type: "remote",
+    url: context.lease!.url,
+    oauth: false,
+    codemode: true,
+    headers: { Authorization: "Bearer {env:SUBSTRATE_MCP_TOKEN}" },
+  });
+  expect(JSON.stringify(config)).not.toContain("session-secret");
+  expect(openCodeConfig({ ...context, lease: undefined }, "managed.md").mcp).toBeUndefined();
+});
 
 test("steer prompts with delivery steer, and delivery marks the input consumed", async () => {
   const f = setup();

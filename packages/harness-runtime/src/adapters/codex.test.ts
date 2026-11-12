@@ -1,9 +1,10 @@
 import type { HarnessEventBody } from "@substrate/contracts/harness";
 
-import { CodexSession } from "./codex.ts";
+import { codexArgs, CodexSession } from "./codex.ts";
 import type { RpcMessage } from "./json-rpc.ts";
 import { unattendedDenial, type AdapterContext } from "./types.ts";
 import { expect, test } from "bun:test";
+import { parse } from "smol-toml";
 
 /* oxlint-disable deslop/no-unknown-parameters -- The fake RPC records native request payloads. */
 
@@ -27,6 +28,39 @@ function setup() {
   session.nativeSessionId = "thread-1";
   return { session, adapter: session.adapter(async () => {}), sent, events, requests };
 }
+
+test("managed Codex discovery requires the workspace catalog without enabling retired feature flags", () => {
+  const context: AdapterContext = {
+    directory: ".",
+    executable: "codex",
+    emit: () => {},
+    lease: {
+      url: "http://127.0.0.1:1234/mcp",
+      token: "session-secret",
+      organizationId: "org-a",
+      agentId: "agent-a",
+      sessionId: "session-a",
+      bind: () => {},
+      unbind: () => {},
+      revoke: () => {},
+    },
+  };
+  const args = codexArgs(context);
+  expect(args.slice(0, 2)).toEqual(["app-server", "-c"]);
+  expect(parse(args[2]!)).toEqual({
+    mcp_servers: {
+      substrate: {
+        url: context.lease!.url,
+        bearer_token_env_var: "SUBSTRATE_MCP_TOKEN",
+        required: true,
+      },
+    },
+  });
+  const rendered = args.join(" ");
+  expect(rendered).not.toContain("session-secret");
+  expect(rendered).not.toContain("features.");
+  expect(codexArgs({ ...context, lease: undefined })).toEqual(["app-server"]);
+});
 
 test("each turn sets its approval policy: never when unattended, on-request when interactive", async () => {
   const f = setup();

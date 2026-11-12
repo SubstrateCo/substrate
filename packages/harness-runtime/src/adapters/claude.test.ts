@@ -1,6 +1,6 @@
 import type { HarnessEventBody, TurnResult } from "@substrate/contracts/harness";
 
-import { ClaudeSession, type ClaudeQuery } from "./claude.ts";
+import { claudeOptions, ClaudeSession, type ClaudeQuery } from "./claude.ts";
 import { InputQueue } from "./input-queue.ts";
 import { unattendedDenial, type NativePrefixContext, type EventScope } from "./types.ts";
 import type { SDKMessage, SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
@@ -10,6 +10,56 @@ import { expect, test } from "bun:test";
 
 const turnInput = "11111111-1111-4111-8111-111111111111";
 const steerInput = "22222222-2222-4222-8222-222222222222";
+
+test("managed Claude sessions defer workspace schemas and retain session credentials and permissions", () => {
+  const context: NativePrefixContext = {
+    directory: ".",
+    executable: "claude",
+    prefix: "Managed policy",
+    model: "claude-sonnet-4-6",
+    emit: () => {},
+    lease: {
+      url: "http://127.0.0.1:1234/mcp",
+      token: "session-secret",
+      organizationId: "org-a",
+      agentId: "agent-a",
+      sessionId: "session-a",
+      bind: () => {},
+      unbind: () => {},
+      revoke: () => {},
+    },
+  };
+  const session = new ClaudeSession(context, "native-a");
+  const options = claudeOptions(context, "native-a", session.canUseTool);
+  expect(options.mcpServers).toEqual({
+    substrate: {
+      type: "http",
+      url: context.lease!.url,
+      headers: { Authorization: "Bearer session-secret" },
+      alwaysLoad: false,
+    },
+  });
+  expect(options.env?.ENABLE_TOOL_SEARCH).toBe("true");
+  expect(options.canUseTool).toBe(session.canUseTool);
+  expect(options.systemPrompt).toEqual({
+    type: "preset",
+    preset: "claude_code",
+    append: "Managed policy",
+  });
+  expect(options.sessionId).toBe("native-a");
+  expect(options.model).toBe(context.model);
+
+  const unmanaged = claudeOptions(
+    { ...context, lease: undefined },
+    "native-a",
+    session.canUseTool,
+    "native-a",
+  );
+  expect(unmanaged.mcpServers).toEqual({});
+  expect(unmanaged.env).toBeUndefined();
+  expect(unmanaged.resume).toBe("native-a");
+  expect(unmanaged.sessionId).toBeUndefined();
+});
 
 function result(fields: Record<string, unknown>): SDKMessage {
   // SAFETY: tests build only the result fields the adapter reads.

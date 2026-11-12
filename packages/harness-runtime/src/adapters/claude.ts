@@ -344,22 +344,24 @@ export class ClaudeSession {
   }
 }
 
-export async function connectClaude(
+export function claudeOptions(
   context: NativePrefixContext,
+  nativeSessionId: string,
+  canUseTool: CanUseTool,
   resumeId?: string,
-): Promise<NativeAdapter> {
-  const nativeSessionId = resumeId ?? randomUUID();
-  const session = new ClaudeSession(context, nativeSessionId);
+): Options {
   const mcpServers: Record<string, McpServerConfig> = context.lease
     ? {
         substrate: {
           type: "http",
           url: context.lease.url,
           headers: { Authorization: `Bearer ${context.lease.token}` },
+          // @anthropic-ai/claude-agent-sdk/sdk.d.ts:1237-1251 supports server-level deferral.
+          alwaysLoad: false,
         },
       }
     : {};
-  const options: Options = {
+  return {
     cwd: context.directory,
     pathToClaudeCodeExecutable: context.executable,
     settingSources: ["user", "project", "local"],
@@ -367,10 +369,22 @@ export async function connectClaude(
     systemPrompt: { type: "preset", preset: "claude_code", append: context.prefix },
     model: context.model,
     mcpServers,
+    // Claude Code's documented ENABLE_TOOL_SEARCH=true avoids the auto context-size threshold.
+    // Options.env is supported in @anthropic-ai/claude-agent-sdk/sdk.d.ts:1742.
+    env: context.lease ? { ...process.env, ENABLE_TOOL_SEARCH: "true" } : undefined,
     persistSession: true,
     ...(resumeId ? { resume: resumeId } : { sessionId: nativeSessionId }),
-    canUseTool: session.canUseTool,
+    canUseTool,
   };
+}
+
+export async function connectClaude(
+  context: NativePrefixContext,
+  resumeId?: string,
+): Promise<NativeAdapter> {
+  const nativeSessionId = resumeId ?? randomUUID();
+  const session = new ClaudeSession(context, nativeSessionId);
+  const options = claudeOptions(context, nativeSessionId, session.canUseTool, resumeId);
   const warm = await startup({ options, initializeTimeoutMs: 30_000 });
   return session.attach(warm.query(session.input));
 }
