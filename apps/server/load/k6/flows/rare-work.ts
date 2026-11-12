@@ -204,8 +204,8 @@ async function pickTask(world: World, editable: boolean) {
   const target = { projectEntityId: detail.project.entityId, taskEntityId: task.entityId };
   if (!backfill) {
     await think("glance");
-    const { comments } = await openTask(world, target.projectEntityId, target.taskEntityId);
-    await readTime(comments.length + 1, task.description.length);
+    await openTask(world, target.projectEntityId, target.taskEntityId);
+    await readTime(1, task.description.length);
   }
   return target;
 }
@@ -232,8 +232,9 @@ export async function uploadToTask(world: World) {
 
 export async function uploadToMessage(world: World) {
   await showMessaging(world);
-  const open = joinedConversations(world).find((row) => row.id === world.screen.conversationId);
-  const conversation = open && rng.chance(0.6) ? open : rng.pick(joinedConversations(world));
+  const writable = joinedConversations(world).filter((row) => row.canPost);
+  const open = writable.find((row) => row.id === world.screen.conversationId);
+  const conversation = open && rng.chance(0.6) ? open : rng.pick(writable);
   if (!conversation) return;
   if (!backfill) {
     const { messages } = await openConversation(world, conversation.id);

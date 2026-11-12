@@ -4,7 +4,18 @@ import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-q
 
 import { invalidateWorkLabels, staleSearches } from "../context/mutations";
 import { queryKeys } from "../keys";
-import { mutateTasks, type getProject } from "@/api/tasks/requests";
+import { queryTargetFilter } from "../targets";
+import { mutateTasks, openTaskDiscussion, type getProject } from "@/api/tasks/requests";
+
+export function useTaskDiscussion() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Parameters<typeof openTaskDiscussion>[0]["data"]) =>
+      openTaskDiscussion({ data }),
+    onSuccess: (_result, input) =>
+      client.invalidateQueries({ queryKey: queryKeys.conversations(input.organizationId) }),
+  });
+}
 
 export function useTasksMutation(organizationId: string) {
   const client = useQueryClient();
@@ -82,20 +93,13 @@ export function invalidateTasksWrite(client: QueryClient, input: TasksWrite, id:
   )
     return Promise.all([
       client.resetQueries({ queryKey: queryKeys.tasks(organizationId) }),
+      client.resetQueries({ queryKey: queryKeys.messaging(organizationId) }),
       client.resetQueries({ queryKey: queryKeys.related(organizationId) }),
       client.resetQueries({ queryKey: queryKeys.activity(organizationId) }),
       client.resetQueries({ queryKey: queryKeys.messagePages(organizationId) }),
       client.resetQueries({ queryKey: queryKeys.messageTargets(organizationId) }),
       client.resetQueries({ queryKey: queryKeys.notifications(organizationId) }),
       ...queryKeys.searches(organizationId).map((queryKey) => client.resetQueries({ queryKey })),
-    ]);
-  if (input.action === "comment")
-    return Promise.all([
-      client.invalidateQueries({
-        queryKey: queryKeys.taskComments(organizationId, input.projectEntityId, id),
-      }),
-      // The comment may reference any task or project.
-      client.invalidateQueries({ queryKey: queryKeys.commentMentions(organizationId) }),
     ]);
   if (input.action === "addTaskLink" || input.action === "removeTaskLink")
     // The other task may be in another cached project, and both tasks get a history row.
@@ -122,11 +126,20 @@ export function invalidateTasksWrite(client: QueryClient, input: TasksWrite, id:
     refreshes.push(client.invalidateQueries({ queryKey: queryKeys.activity(organizationId, id) }));
   if (input.action === "updateTask" || input.action === "updateProject" || access)
     refreshes.push(invalidateWorkLabels(client, organizationId, entityIds));
+  if (input.action === "updateTask")
+    refreshes.push(
+      client.invalidateQueries(
+        queryTargetFilter({
+          queryKey: queryKeys.conversations(organizationId),
+          discussesWork: { projectId, taskIds: [id] },
+        }),
+      ),
+    );
   if (input.action !== "createProject")
     refreshes.push(client.invalidateQueries({ queryKey: queryKeys.notifications(organizationId) }));
   if (access)
     refreshes.push(
-      client.invalidateQueries({ queryKey: queryKeys.projectComments(organizationId, projectId) }),
+      client.resetQueries({ queryKey: queryKeys.messaging(organizationId) }),
       ...entityIds.flatMap((entityId) => [
         client.invalidateQueries({ queryKey: queryKeys.related(organizationId, entityId) }),
         client.invalidateQueries({ queryKey: queryKeys.activity(organizationId, entityId) }),

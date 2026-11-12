@@ -22,6 +22,8 @@ export interface QueryTarget {
   // Matches only message context pages that link one of these tasks or projects, or have not
   // loaded yet.
   linksTo?: string[];
+  // Matches conversation lists that include a discussion of this work, or have not loaded yet.
+  discussesWork?: { projectId: string; taskIds?: string[] };
 }
 
 type Change = Extract<RealtimeEvent, { type: "change" }>;
@@ -55,11 +57,34 @@ function showsConversation(query: Query, conversationId: string) {
   return rows === undefined || rows.some((row) => row.conversationId === conversationId);
 }
 
+function discussesWork(query: Query, work: NonNullable<QueryTarget["discussesWork"]>) {
+  if (!Array.isArray(query.state.data)) return query.state.data === undefined;
+  // SAFETY: conversation lists have task metadata; other lists under this prefix omit task.
+  const rows = query.state.data as {
+    task?: { taskEntityId: string; projectEntityId: string } | null;
+  }[];
+  return rows.some(
+    ({ task }) =>
+      task &&
+      (work.taskIds
+        ? work.taskIds.includes(task.taskEntityId)
+        : task.projectEntityId === work.projectId),
+  );
+}
+
 export function queryTargetFilter(
   target: QueryTarget,
   predicate: (query: Query) => boolean = () => true,
 ) {
-  const { withLinks, withMessage, inConversation, withId, linksTo, ...filter } = target;
+  const {
+    withLinks,
+    withMessage,
+    inConversation,
+    withId,
+    linksTo,
+    discussesWork: work,
+    ...filter
+  } = target;
   return {
     ...filter,
     predicate: (query: Query) =>
@@ -68,6 +93,7 @@ export function queryTargetFilter(
       (!inConversation || showsConversation(query, inConversation)) &&
       (!withId || query.queryKey.slice(filter.queryKey.length).includes(withId)) &&
       (!linksTo || linksWork(query, linksTo)) &&
+      (!work || discussesWork(query, work)) &&
       predicate(query),
   };
 }
@@ -126,8 +152,8 @@ function workTargets(
   taskIds: string[] | undefined,
 ): QueryTarget[] {
   const shared: QueryTarget[] = [
-    // Comment mentions show the titles of the commenting tasks, which can be in this project.
-    { queryKey: queryKeys.commentMentions(organizationId) },
+    // Task discussions show their task's current title and project backlink.
+    { queryKey: queryKeys.conversations(organizationId), discussesWork: { projectId, taskIds } },
     ...searchTargets(organizationId),
   ];
   // The project itself changed, or tasks were deleted: refresh what shows the project or any of
@@ -149,7 +175,6 @@ function workTargets(
     { queryKey: queryKeys.project(organizationId, projectId) },
     ...taskIds.flatMap((taskId) => [
       { queryKey: queryKeys.taskLocation(organizationId, taskId) },
-      { queryKey: queryKeys.taskComments(organizationId, projectId, taskId) },
       { queryKey: queryKeys.taskAttachments(organizationId, projectId, taskId) },
       { queryKey: queryKeys.activity(organizationId, taskId) },
     ]),

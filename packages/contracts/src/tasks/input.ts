@@ -47,7 +47,6 @@ export const tasksWrite = z.discriminatedUnion("action", [
       (input) => Object.keys(taskFields.shape).some((key) => key in input),
       "Change at least one task field.",
     ),
-  taskRequest.extend({ action: z.literal("comment"), body: z.string().trim().min(1).max(20000) }),
   taskRequest.extend({
     action: z.literal("addTaskLink"),
     relation: z.enum(taskLinkRelations),

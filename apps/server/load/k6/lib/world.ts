@@ -16,6 +16,8 @@ export interface Conversation {
   name: string;
   private: boolean;
   joined: boolean;
+  canPost: boolean;
+  task: { taskEntityId: string; projectEntityId: string; title: string } | null;
   members: ConversationMember[];
 }
 

@@ -6,7 +6,7 @@ import { effectsFor } from "../../core/effects";
 import type { SessionIdentity } from "../../core/session/identity";
 import type { MessagingSessionResolver } from "../../core/session/messaging";
 import { AccessDeniedError } from "../../errors";
-import { loadConversation, liveApprovedParticipant } from "./access";
+import { loadConversation, liveApprovedParticipant, visibleConversations } from "./access";
 import { messagingReadPositions } from "./read-state.schema";
 import { messagingConversations, messagingMessages, messagingParticipants } from "./schema";
 import { and, eq, isNull, ne, notInArray, sql } from "drizzle-orm";
@@ -49,6 +49,7 @@ export function readOperations(
             // Authentication resolves the scope's human actor. Its approved participation
             // already satisfies visibleConversations, including partner conversations.
             liveApprovedParticipant(db),
+            visibleConversations(db, scope),
             ne(messagingMessages.authorActorEntityId, actor.entityId),
             notInArray(
               messagingMessages.authorActorEntityId,

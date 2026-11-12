@@ -176,6 +176,8 @@ export async function sendMessageAs(
   if (originTurnId && actor.type !== "agent")
     throw new ValidationError("Only agent replies record a turn.");
   const conversation = await loadConversation(tx, scope, conversationId, "share");
+  if (conversation.taskEntityId)
+    await ctx.requireAccess(conversation.taskEntityId, "comment", true);
   validateBody(body, fileIds.length);
   if (requestId) {
     const [existing] = await tx
@@ -255,7 +257,9 @@ export async function sendMessageAs(
     );
   const attachments = await messageAttachmentMetadata(tx, fileIds.length ? [created!.id] : []);
   const effects = await applyMessageEffects(ctx, scope, created!, conversation);
-  const wakeHints = await routeWake(tx, scope, created!, conversation.kind);
+  const wakeHints = conversation.taskEntityId
+    ? []
+    : await routeWake(tx, scope, created!, conversation.kind);
   for (const hint of [
     ...messageChangeHints(
       {
@@ -453,7 +457,7 @@ export function messageOperations(
     async toggleReaction(messageId: string, emoji: string) {
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
-        const { actor } = await authenticate(tx);
+        const { actor, context } = await authenticate(tx);
         validateEmoji(emoji);
         const [message] = await tx
           .select({
@@ -463,7 +467,9 @@ export function messageOperations(
           .from(messagingMessages)
           .where(eq(messagingMessages.id, messageId));
         if (!message) throw new AccessDeniedError();
-        await loadConversation(tx, scope, message.conversationId, "share");
+        const conversation = await loadConversation(tx, scope, message.conversationId, "share");
+        if (conversation.taskEntityId)
+          await context.requireAccess(conversation.taskEntityId, "comment", true);
         const [live] = await tx
           .select({ deletedAt: messagingMessages.deletedAt })
           .from(messagingMessages)

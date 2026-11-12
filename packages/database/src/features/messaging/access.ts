@@ -4,6 +4,7 @@ import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { entities } from "../../core/entities/schema";
 import { member } from "../../core/organizations/schema";
+import { entityAccessLevel } from "../../core/permissions/visibility";
 import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { messagingConversations, messagingMessages, messagingParticipants } from "./schema";
@@ -108,7 +109,7 @@ export function approvedParticipant(
 export function publicChannel(
   conversation: typeof messagingConversations = messagingConversations,
 ) {
-  return sql<boolean>`(${eq(conversation.kind, "channel")} and ${eq(conversation.private, false)})`;
+  return sql<boolean>`(${isNull(conversation.taskEntityId)} and ${eq(conversation.kind, "channel")} and ${eq(conversation.private, false)})`;
 }
 
 /**
@@ -137,29 +138,71 @@ export function visibleConversations(
   scope: { userId: string | SQLWrapper; organizationId: string | SQLWrapper },
 ) {
   return or(
-    and(publicChannel(), eq(messagingConversations.organizationId, scope.organizationId)),
-    inArray(
-      messagingConversations.id,
+    taskDiscussionAccess(db, scope),
+    and(
+      isNull(messagingConversations.taskEntityId),
+      or(
+        and(publicChannel(), eq(messagingConversations.organizationId, scope.organizationId)),
+        inArray(
+          messagingConversations.id,
+          db
+            .select({ id: messagingParticipants.conversationId })
+            .from(messagingParticipants)
+            .innerJoin(
+              participantActor,
+              and(
+                eq(participantActor.entityId, messagingParticipants.actorEntityId),
+                eq(participantActor.userId, scope.userId),
+                eq(participantActor.organizationId, scope.organizationId),
+                eq(participantActor.type, "human"),
+              ),
+            )
+            .innerJoin(
+              messagingConversations,
+              eq(messagingConversations.id, messagingParticipants.conversationId),
+            )
+            .where(
+              and(
+                eq(messagingParticipants.organizationId, scope.organizationId),
+                liveApprovedParticipant(db),
+              ),
+            ),
+        ),
+      ),
+    ),
+  );
+}
+
+// Resolve the owner's human identity for both direct reads and correlated mention checks.
+export function taskDiscussionAccess(
+  db: DatabaseExecutor,
+  scope: { userId: string | SQLWrapper; organizationId: string | SQLWrapper },
+  minimum: "view" | "comment" = "view",
+) {
+  const viewer = alias(actors, "discussion_viewer");
+  const viewerEntity = alias(entities, "discussion_viewer_entity");
+  return and(
+    isNotNull(messagingConversations.taskEntityId),
+    eq(messagingConversations.organizationId, scope.organizationId),
+    exists(
       db
-        .select({ id: messagingParticipants.conversationId })
-        .from(messagingParticipants)
+        .select({ id: viewer.entityId })
+        .from(viewer)
         .innerJoin(
-          participantActor,
+          viewerEntity,
           and(
-            eq(participantActor.entityId, messagingParticipants.actorEntityId),
-            eq(participantActor.userId, scope.userId),
-            eq(participantActor.organizationId, scope.organizationId),
-            eq(participantActor.type, "human"),
+            eq(viewerEntity.entityId, viewer.entityId),
+            eq(viewerEntity.organizationId, viewer.organizationId),
           ),
-        )
-        .innerJoin(
-          messagingConversations,
-          eq(messagingConversations.id, messagingParticipants.conversationId),
         )
         .where(
           and(
-            eq(messagingParticipants.organizationId, scope.organizationId),
-            liveApprovedParticipant(db),
+            eq(viewer.organizationId, scope.organizationId),
+            eq(viewer.userId, scope.userId),
+            eq(viewer.type, "human"),
+            activeActorCondition(viewer),
+            isNull(viewerEntity.deletedAt),
+            sql`${entityAccessLevel({ organizationId: scope.organizationId, actorEntityId: viewer.entityId }, messagingConversations.taskEntityId)} >= ${minimum}::permission_level`,
           ),
         ),
     ),
@@ -299,6 +342,7 @@ export async function requireMessage(
   scope: SessionIdentity,
   messageId: string,
   lock?: "share",
+  beforeMessageLock?: (conversation: LockedConversation) => Promise<void>,
 ) {
   if (lock) {
     const [target] = await db
@@ -306,7 +350,8 @@ export async function requireMessage(
       .from(messagingMessages)
       .where(eq(messagingMessages.id, messageId));
     if (!target) throw new AccessDeniedError();
-    await loadConversation(db, scope, target.conversationId, lock);
+    const conversation = await loadConversation(db, scope, target.conversationId, lock);
+    if (beforeMessageLock) await beforeMessageLock(conversation);
   }
   const query = db
     .select({ message: messagingMessages, conversation: messagingConversations })

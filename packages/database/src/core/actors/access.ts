@@ -7,7 +7,11 @@ import { and, isNull, sql, type SQLWrapper } from "drizzle-orm";
 
 // Callers also check the actor entity's organization and deletion state. Pass an alias of
 // `actors` when the query uses one.
-export function activeActorCondition(actor: typeof actors = actors) {
+export function activeActorCondition(
+  actor: {
+    [Key in "disabledAt" | "type" | "organizationId" | "userId" | "userAgentId"]: SQLWrapper;
+  } = actors,
+) {
   return and(
     isNull(actor.disabledAt),
     sql`(
@@ -32,7 +36,7 @@ export function activeActorCondition(actor: typeof actors = actors) {
 // owner can do in this organization. Unknown actors resolve to NULL.
 // Future team agents need their own rule here.
 export function permissionActorEntityId(scope: {
-  organizationId: string;
+  organizationId: string | SQLWrapper;
   actorEntityId: string | SQLWrapper;
 }) {
   return sql`(SELECT CASE WHEN pa.type = 'agent' THEN ph.entity_id ELSE pa.entity_id END

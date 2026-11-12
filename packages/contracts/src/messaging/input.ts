@@ -9,6 +9,7 @@ const id = z.uuid();
 const emails = z.array(z.email().max(320)).max(messagingLimits.recipients);
 
 export const workspaceInput = z.object({ organizationId });
+export const conversationListInput = workspaceInput.extend({ conversationId: id.optional() });
 export const messageListInput = workspaceInput.extend({
   conversationId: id,
   threadId: id.optional(),

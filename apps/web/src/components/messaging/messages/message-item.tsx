@@ -49,6 +49,7 @@ export function MessageItem({
   organizationId,
   onThread,
   context,
+  canPost = true,
 }: {
   message: Message;
   grouped?: boolean;
@@ -56,6 +57,7 @@ export function MessageItem({
   organizationId: string;
   onThread?: (id: string) => void;
   context: MessageContextState;
+  canPost?: boolean;
 }) {
   const recordUrl = useRecordUrl();
   const copyText = useCopyText();
@@ -98,7 +100,7 @@ export function MessageItem({
               organizationId={organizationId}
               message={message}
               reaction={item}
-              onReact={react}
+              onReact={canPost ? react : undefined}
               pending={reaction.isPending}
               onViewAll={(emoji, trigger) => {
                 reactionsTrigger.current = trigger;
@@ -159,7 +161,7 @@ export function MessageItem({
                       <Smile aria-hidden="true" /> View reactions
                     </DropdownMenuItem>
                   )}
-                  {!message.deletedAt && (
+                  {canPost && !message.deletedAt && (
                     <DropdownMenuItem onSelect={() => setLinking(true)}>
                       <Link2 aria-hidden="true" /> Link existing work
                     </DropdownMenuItem>
@@ -175,7 +177,7 @@ export function MessageItem({
                   >
                     <Copy aria-hidden="true" /> Copy message link
                   </DropdownMenuItem>
-                  {message.canModify && (
+                  {canPost && message.canModify && (
                     <>
                       <DropdownMenuItem onSelect={() => setEditing(true)}>
                         <Pencil aria-hidden="true" /> Edit message
@@ -201,7 +203,7 @@ export function MessageItem({
             message.authorType === "agent" ? <AgentWorkStatus messageId={message.id} /> : undefined
           }
           onThread={onThread}
-          onReact={react}
+          onReact={canPost ? react : undefined}
           pending={reaction.isPending}
         >
           {!message.deletedAt && (
@@ -212,7 +214,7 @@ export function MessageItem({
             />
           )}
           <AgentWorkSlot messageId={message.id} fromAgent={message.authorType === "agent"} />
-          {editing && !message.deletedAt && (
+          {canPost && editing && !message.deletedAt && (
             <EditMessageDialog
               organizationId={organizationId}
               message={message}
@@ -220,7 +222,7 @@ export function MessageItem({
               onRestoreFocus={() => actionsTrigger.current?.focus()}
             />
           )}
-          {deleting && (
+          {canPost && deleting && (
             <ConfirmDialog
               destructive
               title="Delete message?"
@@ -235,7 +237,7 @@ export function MessageItem({
               onRestoreFocus={() => actionsTrigger.current?.focus()}
             />
           )}
-          {linking && (
+          {canPost && linking && (
             <LinkMessageWork
               organizationId={organizationId}
               messageId={message.id}

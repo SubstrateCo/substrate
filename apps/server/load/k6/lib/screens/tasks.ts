@@ -58,12 +58,6 @@ export interface ProjectDetail {
   links: TaskLink[];
 }
 
-export interface TaskComment {
-  id: string;
-  body: string;
-  authorImage: string | null;
-}
-
 export const canEdit = (detail: ProjectDetail) =>
   detail.level === "edit" || detail.level === "owner";
 export const canComment = (detail: ProjectDetail) => detail.level !== "view";
@@ -214,7 +208,7 @@ export function closeDiscussions(world: World) {
 
 /**
  * Opens the task inspector (task-detail.tsx). Selecting a task puts its ID in the URL, so the
- * workspace also mounts its location. Resolves the comments and the number of activity rows.
+ * workspace also mounts its location. Discussions open separately in messaging.
  */
 export async function openTask(world: World, projectId: string, taskId: string) {
   if (screen.taskId !== taskId) closeTask(world);
@@ -222,10 +216,7 @@ export async function openTask(world: World, projectId: string, taskId: string) 
   screen.taskId = taskId;
   const org = world.organizationId;
   const target = { projectEntityId: projectId, taskEntityId: taskId };
-  const [comments, activity] = await Promise.all([
-    mount(keys.taskComments(org, projectId, taskId), () =>
-      call<TaskComment[]>("tasks.comments", target),
-    ),
+  const [activity] = await Promise.all([
     mount(keys.activity(org, taskId), () =>
       call<unknown[]>("context.activity", { entityId: taskId }),
     ),
@@ -237,16 +228,9 @@ export async function openTask(world: World, projectId: string, taskId: string) 
     ),
     mount(keys.related(org, taskId), () => call("context.related", { entityId: taskId })),
     mountConversations(world),
-    mount(keys.commentMentions(org, taskId), () =>
-      call("tasks.commentMentions", { entityId: taskId }),
-    ),
   ]);
-  // The inspector header shows the project icon; each comment its author's avatar.
-  await showPictures("task", taskId, [
-    boards.get(projectId)?.project.image,
-    ...(comments ?? []).map((comment) => comment.authorImage),
-  ]);
-  return { comments: comments ?? [], activity: activity?.length ?? 0 };
+  await showPictures("task", taskId, [boards.get(projectId)?.project.image]);
+  return { activity: activity?.length ?? 0 };
 }
 
 export function closeTask(world: World) {
@@ -254,13 +238,11 @@ export function closeTask(world: World) {
   if (!projectId || !taskId) return;
   const org = world.organizationId;
   for (const key of [
-    keys.taskComments(org, projectId, taskId),
     keys.activity(org, taskId),
     keys.taskLocation(org, taskId),
     keys.taskAttachments(org, projectId, taskId),
     keys.related(org, taskId),
     keys.conversations(org),
-    keys.commentMentions(org, taskId),
   ])
     unmount(key);
   screen.taskId = undefined;

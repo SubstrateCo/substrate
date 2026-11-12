@@ -22,7 +22,9 @@ export async function applyMessageEffects(
   ctx: RepositoryContext,
   scope: SessionIdentity,
   message: typeof messagingMessages.$inferSelect,
-  conversation: Pick<typeof messagingConversations.$inferSelect, "organizationId" | "kind">,
+  conversation: Pick<typeof messagingConversations.$inferSelect, "organizationId" | "kind"> & {
+    taskEntityId?: string | null;
+  },
   options: { delivery?: boolean } = {},
 ): Promise<{
   referenced: boolean;
@@ -124,7 +126,7 @@ export async function applyMessageEffects(
   }
   // Edits validate and replace derived references, but never deliver a new message event.
   if (options.delivery === false) return { referenced, work, notified: [] };
-  if (message.threadId) {
+  if (message.threadId && !conversation.taskEntityId) {
     // Members who left get mention alerts only.
     const authors = await db
       .selectDistinct({ userId: actors.userId })
@@ -152,7 +154,7 @@ export async function applyMessageEffects(
       if (author.userId && !recipients.has(author.userId)) recipients.set(author.userId, "reply");
   }
   const ordinaryRecipients =
-    conversation.kind === "channel"
+    conversation.kind === "channel" || conversation.taskEntityId
       ? []
       : await db
           .selectDistinct({ userId: actors.userId })

@@ -2,9 +2,20 @@ import {
   agentDirectMessage,
   conversationAgentOptions,
   conversationLabel,
+  conversationName,
   humanMembers,
 } from "./conversations";
 import { expect, test } from "bun:test";
+
+test("a task discussion uses its task title instead of unnamed group fallback", () => {
+  expect(
+    conversationName({
+      kind: "group",
+      name: null,
+      task: { taskEntityId: "task", projectEntityId: "project", title: "Ship the launch" },
+    }),
+  ).toBe("Ship the launch");
+});
 
 test("only a public channel is written with a hash", () => {
   expect(conversationLabel({ kind: "channel", private: false, name: "launch" })).toBe("#launch");

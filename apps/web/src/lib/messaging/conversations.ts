@@ -22,7 +22,10 @@ export type ConversationMember = Omit<
 
 // The server names unnamed DMs and groups after their other members. With none yet, such as while
 // an invitation waits, only the viewer is in it.
-export function conversationName(conversation: Pick<Conversation, "name" | "kind">): string {
+export function conversationName(
+  conversation: Pick<Conversation, "name" | "kind"> & Partial<Pick<Conversation, "task">>,
+): string {
+  if (conversation.task) return conversation.task.title;
   return conversation.name || (conversation.kind === "channel" ? "Untitled channel" : "Only you");
 }
 

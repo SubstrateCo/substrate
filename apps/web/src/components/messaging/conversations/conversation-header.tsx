@@ -7,7 +7,7 @@ import { PersonAvatar } from "@/components/people/person-avatar";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Hash, LockKeyhole, MessageCircle, UserPlus, Users } from "lucide-react";
+import { Hash, ListTodo, LockKeyhole, MessageCircle, UserPlus, Users } from "lucide-react";
 
 export type HeaderMember = {
   actorId: string;
@@ -114,6 +114,7 @@ export function ConversationHeader({
   onToggleMembers,
   actions,
   memberAction,
+  taskLink,
 }: {
   title: string;
   /** Omitted while the conversation is unavailable. */
@@ -125,28 +126,32 @@ export function ConversationHeader({
   onToggleMembers?: () => void;
   actions?: ReactNode;
   memberAction?: (member: HeaderMember) => ReactNode;
+  taskLink?: ReactNode;
 }) {
   const dmMembers =
     kind === "dm" ? members.filter((member) => !viewerId || member.userId !== viewerId) : [];
   const dmPartner = dmMembers.length === 1 ? dmMembers[0] : undefined;
+  let icon = kind && kindIcons[kind];
+  if (dmPartner) icon = <MemberAvatar member={dmPartner} />;
+  if (taskLink) icon = <ListTodo aria-hidden="true" />;
   return (
     <PageHeader
       variant="pane"
-      title={title}
-      icon={dmPartner ? <MemberAvatar member={dmPartner} /> : kind && kindIcons[kind]}
+      title={taskLink ?? title}
+      icon={icon}
       actions={
         <>
-          {organizations.length > 1 && (
+          {!taskLink && organizations.length > 1 && (
             <ConversationOrganizations organizations={organizations} members={members} />
           )}
-          {members.length > 0 && kind !== "dm" && (
+          {!taskLink && members.length > 0 && kind !== "dm" && (
             <MembersButton
               members={members}
               organizations={organizations}
               memberAction={memberAction}
             />
           )}
-          {onToggleMembers && (
+          {!taskLink && onToggleMembers && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button

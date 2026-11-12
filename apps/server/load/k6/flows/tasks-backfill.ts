@@ -98,12 +98,16 @@ async function commentOn(world: World, detail: ProjectDetail) {
   if (!task) return;
   let body = comment();
   if (rng.chance(0.15)) body = `${body} ${referenceToken(world, detail)}`.trim();
-  await writeTasks(world, {
-    action: "comment",
+  const discussion = await call<{ conversationId: string }>("tasks.discussion", {
     projectEntityId: detail.project.entityId,
     taskEntityId: task.entityId,
-    body,
   });
+  if (discussion)
+    await call("messaging.messages.send", {
+      conversationId: discussion.conversationId,
+      body,
+      requestId: crypto.randomUUID(),
+    });
 }
 
 async function link(world: World, detail: ProjectDetail) {

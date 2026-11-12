@@ -129,16 +129,14 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     list_tasks: (value) => queries.listTasks(value),
     get_task: (value) => queries.getTask(value.taskId),
     list_task_activity: (value) => queries.listActivity(value),
-    list_task_comments: (value) => queries.listComments(value),
     list_conversations: (value) => messaging.listConversations(value),
     read_conversation: (value) => messaging.readConversation(value),
     read_thread: (value) => messaging.readThread(value),
     list_links: (value) => listLinks(ctx, identity, value),
     create_task: (value) => writes.createTask(value),
     update_task: (value) => writes.updateTask(value),
-    async add_task_comment(value) {
-      const comment = await tasks.addComment(value.taskId, value.body);
-      return { id: comment.id, taskId: value.taskId, createdAt: comment.createdAt };
+    async get_task_discussion(value) {
+      return { conversationId: await tasks.ensureDiscussion(value.taskId) };
     },
     async add_task_link(value) {
       await tasks.addLink(value.taskId, value.relation, value.otherTaskId);
@@ -166,7 +164,7 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     async update_task(value) {
       await tasks.get(value.taskId);
     },
-    async add_task_comment(value) {
+    async get_task_discussion(value) {
       await tasks.get(value.taskId);
     },
     async add_task_link(value) {

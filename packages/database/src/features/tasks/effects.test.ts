@@ -3,10 +3,10 @@ import { realtimeKeys } from "@substrate/contracts/realtime";
 import { user } from "../../core/authentication/schema";
 import { RepositoryEffects } from "../../core/effects";
 import { RepositoryContext } from "../../core/repository-context";
-import { ValidationError } from "../../errors";
+import { AccessDeniedError, ValidationError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
-import { taskRepository } from "./repository";
+import { sendMessageAs } from "../messaging/messages";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -54,11 +54,12 @@ test("self assignment and unchanged assignment emit no notification hint", async
   expect(reassigned.hints).toEqual([]);
 });
 
-test("an inaccessible mention rolls back the comment and its effects", async () => {
+test("an inaccessible mention rolls back the discussion message and its effects", async () => {
   await f.verifyEmails();
   const repos = f.forActor(f.alice);
   const project = await repos.projects.create({ name: "Private" });
   const task = await repos.tasks.create({ projectEntityId: project.entityId, title: "Private" });
+  const conversationId = await repos.tasks.ensureDiscussion(task.entityId);
   const ctx = new RepositoryContext(
     f.db,
     { organizationId: f.orgA, actorEntityId: f.alice },
@@ -67,12 +68,17 @@ test("an inaccessible mention rolls back the comment and its effects", async () 
   expect(
     await rejection(
       ctx.transaction(async (tx) => {
-        return taskRepository(tx).addComment(task.entityId, `@[person:${f.bob}]`);
+        return sendMessageAs(
+          tx,
+          { organizationId: f.orgA, userId: "alice" },
+          { actor: { entityId: f.alice, type: "human" }, authorName: "Alice" },
+          { conversationId, body: `@[person:${f.bob}]` },
+        );
       }),
     ),
-  ).toBeInstanceOf(ValidationError);
+  ).toBeInstanceOf(AccessDeniedError);
   expect(ctx.effects.committed(null).hints).toEqual([]);
-  expect(await repos.tasks.listComments(task.entityId, project.entityId)).toEqual([]);
+  expect(await f.messaging("alice").listMessages(conversationId)).toEqual([]);
 });
 
 test("moving tasks and deleting projects emit access hints; deleting a task refreshes its project", async () => {
@@ -87,6 +93,7 @@ test("moving tasks and deleting projects emit access hints; deleting a task refr
   expect(moved.hints).toContainEqual(access);
   const deleted = await repos.transaction((tx) => tx.tasks.delete(task.entityId, second.entityId));
   expect(deleted.hints).toEqual([
+    access,
     {
       audience: realtimeKeys.entity(f.orgA, second.entityId),
       domain: "tasks",
@@ -97,18 +104,15 @@ test("moving tasks and deleting projects emit access hints; deleting a task refr
   expect(projectDeleted.hints).toEqual([access]);
 });
 
-test("comments, attachments, and project edits name only their own project", async () => {
+test("project edits name only their own project", async () => {
   await f.verifyEmails();
   const repos = f.forActor(f.alice);
   const project = await repos.projects.create({ name: "Named" });
-  const task = await repos.tasks.create({ projectEntityId: project.entityId, title: "Task" });
   const work = {
     audience: realtimeKeys.entity(f.orgA, project.entityId),
     domain: "tasks" as const,
     projectId: project.entityId,
   };
-  const commented = await repos.transaction((tx) => tx.tasks.addComment(task.entityId, "Note"));
-  expect(commented.hints).toEqual([{ ...work, taskIds: [task.entityId] }]);
   const renamed = await repos.transaction((tx) =>
     tx.projects.update(project.entityId, { name: "Renamed", description: "" }),
   );
@@ -133,11 +137,23 @@ test("unverified recipients get neither assignment nor mention notification hint
     }),
   );
   expect(created.hints.filter((hint) => hint.domain === "notifications")).toEqual([]);
-  const commented = await repos.transaction((tx) =>
-    tx.tasks.addComment(created.result.entityId, `@[person:${f.bob}]`),
+  const conversationId = await repos.tasks.ensureDiscussion(created.result.entityId);
+  const ctx = new RepositoryContext(
+    f.db,
+    { organizationId: f.orgA, actorEntityId: f.alice },
+    new RepositoryEffects(),
   );
-  expect(commented.result.notified).toEqual([]);
-  expect(commented.hints.filter((hint) => hint.domain === "notifications")).toEqual([]);
+  await ctx.transaction((tx) =>
+    sendMessageAs(
+      tx,
+      { organizationId: f.orgA, userId: "alice" },
+      { actor: { entityId: f.alice, type: "human" }, authorName: "Alice" },
+      { conversationId, body: `@[person:${f.bob}]` },
+    ),
+  );
+  expect(
+    ctx.effects.committed(null).hints.filter((hint) => hint.domain === "notifications"),
+  ).toEqual([]);
 });
 
 test("a caught savepoint failure does not leak its hints into the committed transaction", async () => {

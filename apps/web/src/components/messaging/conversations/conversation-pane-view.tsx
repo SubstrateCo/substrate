@@ -28,10 +28,12 @@ export function ConversationPane({
   actions,
   leftNotice,
   memberAction,
+  taskLink,
 }: {
   actions?: ReactNode;
   leftNotice?: ReactNode;
   memberAction?: (member: HeaderMember) => ReactNode;
+  taskLink?: ReactNode;
   conversation: Conversation | null;
   /** The signed-in user, so a DM header shows the other person. */
   viewerId?: string;
@@ -53,26 +55,35 @@ export function ConversationPane({
   if (conversation?.kind === "channel") kind = conversation.private ? "private" : "public";
   if (conversation && conversation.kind !== "channel") kind = conversation.kind;
   const members = conversation?.members ?? [];
+  let emptyTitle = `Your conversation with ${title}`;
+  if (conversation?.kind === "channel")
+    emptyTitle = `Welcome to ${conversationLabel({ kind: "channel", private: conversation.private, name: title })}`;
+  if (taskLink) emptyTitle = "Task discussion";
   return (
     <PageLayout id="conversation" aria-label="Conversation">
       <PageContent>
         <section aria-label={title} className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface">
           <ConversationHeader
             title={title}
+            taskLink={!blocked ? taskLink : undefined}
             kind={kind}
             viewerId={viewerId}
-            members={members}
+            members={taskLink ? [] : members}
             memberAction={!blocked ? memberAction : undefined}
-            organizations={conversation?.organizations ?? []}
+            organizations={taskLink ? [] : (conversation?.organizations ?? [])}
             addingMembers={addingMembers}
             onToggleMembers={
-              !blocked && conversation && conversation.kind !== "dm" && conversation.canManage
+              !blocked &&
+              !taskLink &&
+              conversation &&
+              conversation.kind !== "dm" &&
+              conversation.canManage
                 ? onToggleMembers
                 : undefined
             }
             actions={!blocked && actions}
           />
-          {!blocked && addingMembers && membersForm}
+          {!blocked && !taskLink && addingMembers && membersForm}
           {state === "stale" && <StaleNotice>Messages may be out of date.</StaleNotice>}
           {blocked && (
             <PaneState
@@ -86,12 +97,10 @@ export function ConversationPane({
           {!blocked && !initialLoading && !messages && conversation && (
             <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center overflow-y-auto p-4 wrap-anywhere">
               <ContentNotice
-                title={
-                  conversation.kind === "channel"
-                    ? `Welcome to ${conversationLabel({ kind: "channel", private: conversation.private, name: title })}`
-                    : `Your conversation with ${title}`
+                title={emptyTitle}
+                description={
+                  taskLink ? "No messages yet." : "No messages yet. Send the first message below."
                 }
-                description="No messages yet. Send the first message below."
               />
             </div>
           )}

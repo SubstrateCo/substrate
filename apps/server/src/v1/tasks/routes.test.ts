@@ -11,18 +11,33 @@ const createTasksRoutes = (service: TasksService) => createRoutes(service, creat
 
 const projectEntityId = "00000000-0000-4000-8000-000000000001";
 
+test("discussion resolution validates the task and preserves workspace scope", async () => {
+  const ensureDiscussion = mock(async () => success({ conversationId: projectEntityId }));
+  const app = createTasksRoutes({ ...services, ensureDiscussion });
+  const resolve = (taskEntityId: string) =>
+    app.request("/discussion", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ organizationId: "org", projectEntityId, taskEntityId }),
+    });
+  expect((await resolve("invalid")).status).toBe(400);
+  expect(ensureDiscussion).not.toHaveBeenCalled();
+  const response = await resolve(projectEntityId);
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual(success({ conversationId: projectEntityId }));
+  expect(ensureDiscussion).toHaveBeenCalledWith(
+    expect.objectContaining({ userId: "user-1", organizationId: "org" }),
+    { organizationId: "org", projectEntityId, taskEntityId: projectEntityId },
+  );
+});
+
 test("task routes reject invalid requests before calling a service", async () => {
   const reads = {
     listProjects: mock(services.listProjects),
     getProject: mock(services.getProject),
-    listTaskComments: mock(services.listTaskComments),
   };
   const app = createTasksRoutes({ ...services, ...reads });
-  for (const path of [
-    "/projects",
-    "/project?organizationId=org&projectEntityId=invalid",
-    "/comments?organizationId=org&projectEntityId=invalid&taskEntityId=invalid",
-  ]) {
+  for (const path of ["/projects", "/project?organizationId=org&projectEntityId=invalid"]) {
     const response = await app.request(path);
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual(publicFailure("INVALID_INPUT", "Invalid request input."));
@@ -50,6 +65,24 @@ test("task routes reject invalid requests before calling a service", async () =>
     });
     expect(result.status).toBe(400);
   }
+  expect(mutateTasks).not.toHaveBeenCalled();
+});
+
+test("removed comment mutations are rejected instead of succeeding without a message", async () => {
+  const mutateTasks = mock(services.mutateTasks);
+  const app = createTasksRoutes({ ...services, mutateTasks });
+  const response = await app.request("/mutations", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      organizationId: "org",
+      projectEntityId,
+      taskEntityId: projectEntityId,
+      action: "comment",
+      body: "Use the shared discussion",
+    }),
+  });
+  expect(response.status).toBe(400);
   expect(mutateTasks).not.toHaveBeenCalled();
 });
 

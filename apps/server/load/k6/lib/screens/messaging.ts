@@ -69,12 +69,17 @@ async function markRead(
 }
 
 /** The conversation list (messaging-workspace.tsx). Resolves the conversations. */
-export async function showMessaging(world: World) {
+export async function showMessaging(world: World, selectedConversationId?: string) {
   navigate("messages");
   const org = world.organizationId;
+  const key = selectedConversationId
+    ? [...keys.conversations(org), "selected", selectedConversationId]
+    : keys.conversations(org);
   const [conversations] = await Promise.all([
-    mount(keys.conversations(org), async () => {
-      const rows = await call<Conversation[]>("messaging.conversations");
+    mount(key, async () => {
+      const rows = await call<Conversation[]>("messaging.conversations", {
+        conversationId: selectedConversationId,
+      });
       if (rows) applyConversations(world, rows);
       return rows;
     }),

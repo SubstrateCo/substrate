@@ -131,23 +131,17 @@ export const queryKeys = {
   projectEntityId: (queryKey: readonly unknown[]) => queryKey[queryKeys.projectDetails("").length],
   taskLocation: (organizationId: string, taskEntityId: string) =>
     [...queryKeys.tasks(organizationId), "location", taskEntityId] as const,
-  // Comments on every task of one project.
-  projectComments: (organizationId: string, projectEntityId: string) =>
-    [...queryKeys.tasks(organizationId), "comments", projectEntityId] as const,
-  taskComments: (organizationId: string, projectEntityId: string, taskEntityId: string) =>
-    [...queryKeys.projectComments(organizationId, projectEntityId), taskEntityId] as const,
-  commentMentions: (organizationId: string, entityId?: string) =>
-    [
-      ...queryKeys.tasks(organizationId),
-      "comment-mentions",
-      ...(entityId ? [entityId] : []),
-    ] as const,
   taskAttachments: (organizationId: string, projectEntityId: string, taskEntityId: string) =>
     [...queryKeys.tasks(organizationId), "attachments", projectEntityId, taskEntityId] as const,
   messaging: (organizationId: string) =>
     [...queryKeys.organization(organizationId), "messaging"] as const,
   conversations: (organizationId: string) =>
     [...queryKeys.messaging(organizationId), "conversations"] as const,
+  conversationList: (organizationId: string, conversationId?: string) =>
+    [
+      ...queryKeys.conversations(organizationId),
+      ...(conversationId ? ["selected", conversationId] : []),
+    ] as const,
   // Nested under conversations, so conversation refreshes also refresh these.
   managedConversations: (organizationId: string) =>
     [...queryKeys.conversations(organizationId), "managed"] as const,

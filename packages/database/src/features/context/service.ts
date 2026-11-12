@@ -34,6 +34,22 @@ interface ReferenceTarget {
   type?: "task" | "project";
 }
 
+// All message mutations lock conversation, access paths, then message. Source creation also
+// locks the destination in the same access-path order, so a source cannot move while it waits.
+async function lockSourceMessage(
+  ctx: RepositoryContext,
+  scope: SessionIdentity,
+  messageId: string,
+  minimum: "view" | "comment",
+  destinationIds: string[] = [],
+) {
+  return requireMessage(ctx.db, scope, messageId, "share", async (conversation) => {
+    if (!conversation.taskEntityId) return;
+    await ctx.lockAccessPaths([...destinationIds, conversation.taskEntityId]);
+    await ctx.requireAccess(conversation.taskEntityId, minimum);
+  });
+}
+
 async function referenceEndpoints(
   ctx: RepositoryContext,
   scope: SessionIdentity,
@@ -41,7 +57,12 @@ async function referenceEndpoints(
   target: ReferenceTarget,
   level: "view" | "edit",
 ) {
-  const { message, conversation } = await requireMessage(ctx.db, scope, source.messageId, "share");
+  const { message, conversation } = await lockSourceMessage(
+    ctx,
+    scope,
+    source.messageId,
+    "comment",
+  );
   if (message.deletedAt && level === "edit") throw new AccessDeniedError();
   if (source.conversationId && message.conversationId !== source.conversationId)
     throw new AccessDeniedError();
@@ -158,7 +179,13 @@ export function createContextRepository(context: RepositoryContext, scope: Sessi
     async createTaskFromMessage(input: CreateTaskInput & { requestId: string; messageId: string }) {
       return transaction(async (ctx) => {
         const tx = ctx.db;
-        const { conversation, message } = await requireMessage(tx, scope, input.messageId, "share");
+        const { conversation, message } = await lockSourceMessage(
+          ctx,
+          scope,
+          input.messageId,
+          "view",
+          [input.projectEntityId],
+        );
         if (message.deletedAt) throw new AccessDeniedError();
         if (conversation.organizationId !== scope.organizationId) throw new AccessDeniedError();
         const project = await ctx.requireAccess(input.projectEntityId, "edit", true);

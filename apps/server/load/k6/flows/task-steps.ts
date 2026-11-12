@@ -1,12 +1,13 @@
+import { call } from "../lib/http.ts";
 import { readTime, think, typeTime } from "../lib/pacing.ts";
 import { rng } from "../lib/persona.ts";
 import {
-  linkSearch,
-  referenceSearch,
-  updateTask,
-  writeTasks,
-  type TaskFields,
-} from "../lib/screens/task-writes.ts";
+  mentionSearch,
+  openConversation,
+  sendMessage,
+  showMessaging,
+} from "../lib/screens/messaging.ts";
+import { linkSearch, updateTask, writeTasks, type TaskFields } from "../lib/screens/task-writes.ts";
 import {
   assignableActors,
   closeMoveDialog,
@@ -16,6 +17,7 @@ import {
   openTask,
   openTaskId,
   showDiscussions,
+  showTasks,
   showMoveDestination,
   canEdit,
   type ProjectDetail,
@@ -37,18 +39,12 @@ import {
 /** Tasks this VU created, which it may later delete or move. */
 export const created = new Set<string>();
 
-const chars = (texts: string[]) => texts.reduce((sum, text) => sum + text.length, 0);
-
 /** Opens a task in the inspector if it is not open, and reads it. */
 async function inspect(world: World, task: Task) {
   if (openTaskId() === task.entityId) return [];
   await think("glance");
-  const { comments, activity } = await openTask(world, task.projectEntityId, task.entityId);
-  await readTime(
-    1 + comments.length + Math.min(activity, 4),
-    task.description.length + chars(comments.map((c) => c.body)),
-  );
-  return comments;
+  const { activity } = await openTask(world, task.projectEntityId, task.entityId);
+  await readTime(1 + Math.min(activity, 4), task.description.length);
 }
 
 export async function readTask(world: World, detail: ProjectDetail) {
@@ -174,7 +170,7 @@ async function changeField(world: World, detail: ProjectDetail, task: Task) {
 }
 
 /** Types "@" and part of a name or title; the picker searches as typing pauses; picks a row. */
-async function reference(world: World, detail: ProjectDetail, task: Task) {
+async function reference(world: World, detail: ProjectDetail, task: Task, conversationId: string) {
   const people = otherHumans(world, detail);
   const roll = rng.next();
   const person = people.length && roll < 0.45 ? rng.pick(people)! : undefined;
@@ -185,16 +181,17 @@ async function reference(world: World, detail: ProjectDetail, task: Task) {
     : undefined;
   const text = person?.name ?? work?.title ?? word();
   const query = text.slice(0, rng.int(3, Math.min(10, text.length)));
-  let rows: Awaited<ReturnType<typeof referenceSearch>> = [];
+  let rows: Awaited<ReturnType<typeof mentionSearch>> = [];
   let typed = "@";
   for (const prefix of typedPrefixes(query)) {
     await typeTime(`@${prefix}`.slice(typed.length));
     typed = `@${prefix}`;
-    rows = await referenceSearch(world, prefix);
+    rows = await mentionSearch(world, conversationId, prefix);
   }
   await think("glance");
-  if (person) return `@[person:${person.entityId}]`;
-  const choice = rows.find((row) => row.id === work?.entityId) ?? rng.pick(rows);
+  const choice =
+    rows.find((row) => row.id === (person?.entityId ?? work?.entityId)) ??
+    rng.pick(rows.filter((row) => row.kind !== "agent"));
   return choice ? `@[${choice.kind}:${choice.id}]` : "";
 }
 
@@ -202,6 +199,13 @@ export async function commentOn(world: World, detail: ProjectDetail) {
   const task = pickTask(detail.tasks, world.actorId, "comment");
   if (!task) return;
   await inspect(world, task);
+  const discussion = await call<{ conversationId: string }>("tasks.discussion", {
+    projectEntityId: task.projectEntityId,
+    taskEntityId: task.entityId,
+  });
+  if (!discussion) return;
+  await showMessaging(world, discussion.conversationId);
+  await openConversation(world, discussion.conversationId);
   const posts = rng.chance(0.2) ? 2 : 1;
   for (let post = 0; post < posts; post++) {
     let body = comment();
@@ -210,18 +214,15 @@ export async function commentOn(world: World, detail: ProjectDetail) {
       const words = body.split(" ");
       const at = rng.int(0, Math.min(words.length, 5));
       await typeTime(words.slice(0, at).join(" "));
-      const token = await reference(world, detail, task);
+      const token = await reference(world, detail, task, discussion.conversationId);
       await typeTime(words.slice(at).join(" "));
       body = [...words.slice(0, at), token, ...words.slice(at)].filter(Boolean).join(" ");
     } else await typeTime(body);
-    await writeTasks(world, {
-      action: "comment",
-      projectEntityId: task.projectEntityId,
-      taskEntityId: task.entityId,
-      body,
-    });
+    await sendMessage(world, discussion.conversationId, body);
     if (post < posts - 1) await think("between");
   }
+  await showTasks(world);
+  await openProject(world, task.projectEntityId);
 }
 
 const linkedTo = (detail: ProjectDetail, taskId: string) =>

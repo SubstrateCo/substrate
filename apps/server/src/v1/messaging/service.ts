@@ -1,5 +1,6 @@
 import type {
   workspaceInput,
+  conversationListInput,
   messageListInput,
   conversationInput,
   messageInput,
@@ -45,8 +46,14 @@ export function createMessagingService({
         ),
       );
     },
-    listConversations(this: void, scope: WorkspaceScope, _input: z.output<typeof workspaceInput>) {
-      return serviceResult(() => scope.repositories.messaging.listConversations());
+    listConversations(
+      this: void,
+      scope: WorkspaceScope,
+      input: z.output<typeof conversationListInput>,
+    ) {
+      return serviceResult(() =>
+        scope.repositories.messaging.listConversations(input.conversationId),
+      );
     },
     listMessages(this: void, scope: WorkspaceScope, input: z.output<typeof messageListInput>) {
       return serviceResult(() =>

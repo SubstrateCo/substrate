@@ -36,7 +36,7 @@ export function MessageItem({
   avatarBadge?: ReactNode;
   /** A status after the time, such as the state of the work behind an agent's reply. */
   status?: ReactNode;
-  onReact: (emoji: string) => void;
+  onReact?: (emoji: string) => void;
   pending?: boolean;
   onThread?: (id: string) => void;
   body?: ReactNode;

@@ -4,7 +4,6 @@ import type {
   taskLocationRequest,
   tasksWorkspace,
   TasksWrite,
-  workRequest,
 } from "@substrate/contracts/tasks/input";
 
 import { api, type ApiInput } from "../client";
@@ -18,10 +17,8 @@ export const getProject = ({ data, signal }: ApiInput<z.input<typeof projectRequ
   readResult(api.tasks.project.$get({ query: data }, { init: { signal } }));
 export const getTaskLocation = ({ data, signal }: ApiInput<z.input<typeof taskLocationRequest>>) =>
   readResult(api.tasks["task-location"].$get({ query: data }, { init: { signal } }));
-export const listTaskComments = ({ data, signal }: ApiInput<z.input<typeof taskRequest>>) =>
-  readResult(api.tasks.comments.$get({ query: data }, { init: { signal } }));
-export const listCommentMentions = ({ data, signal }: ApiInput<z.input<typeof workRequest>>) =>
-  readResult(api.tasks["comment-mentions"].$get({ query: data }, { init: { signal } }));
+export const openTaskDiscussion = ({ data, signal }: ApiInput<z.input<typeof taskRequest>>) =>
+  readResult(api.tasks.discussion.$post({ json: data }, { init: { signal } }));
 export const mutateTasks = ({ data, signal }: ApiInput<TasksWrite>) =>
   readResult(api.tasks.mutations.$post({ json: data }, { init: { signal } }));
 

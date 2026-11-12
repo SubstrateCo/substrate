@@ -73,7 +73,7 @@ test("an undelivered native answer stays visible after the agent stops waiting",
   await expect(user.page.getByRole("button", { name: "Agents, needs you" })).toHaveCount(0);
 });
 
-test("agent messages, comments and activity retain attribution and source links", async ({
+test("agent messages and task activity retain attribution and source links", async ({
   actors,
   client,
 }) => {
@@ -99,14 +99,7 @@ test("agent messages, comments and activity retain attribution and source links"
     title: "Agent follow-up",
     sourceMessageId: reply.messageId,
   });
-  await callTool(owner, agent.id, turn, "add_task_comment", {
-    taskId: task.id,
-    body: "Agent investigation notes",
-  });
   await visit(user, undefined, "/tasks", { projectId: created.entityId, taskId: task.id });
-  const comment = user.page.getByRole("article").filter({ hasText: "Agent investigation notes" });
-  await expect(comment.getByText(agent.name, { exact: true })).toBeVisible();
-  await expect(comment.getByText("Agent", { exact: true })).toBeVisible();
   const activity = user.page.getByRole("region", { name: "Task activity", exact: true });
   await expect(activity.getByText("Agent", { exact: true }).first()).toBeVisible();
   await expect(
@@ -115,6 +108,21 @@ test("agent messages, comments and activity retain attribution and source links"
       exact: true,
     }),
   ).toBeVisible();
+  const discussion = await callTool(owner, agent.id, turn, "get_task_discussion", {
+    taskId: task.id,
+  });
+  await callTool(owner, agent.id, turn, "reply", {
+    body: "Agent investigation notes",
+    to: { conversationId: discussion.conversationId },
+  });
+  await user.page.getByRole("link", { name: "Discussion", exact: true }).click();
+  const notes = user.page.getByRole("article").filter({ hasText: "Agent investigation notes" });
+  await expect(notes.getByText(agent.name, { exact: true })).toBeVisible();
+  await expect(notes.getByText("Agent", { exact: true })).toBeVisible();
+  await expect(notes.getByText("External", { exact: true })).toHaveCount(0);
+  expect(new URL(user.page.url()).searchParams.get("conversationId")).toBe(
+    discussion.conversationId,
+  );
 });
 
 test("the owner answers an agent's question from another window; members see only the reply", async ({

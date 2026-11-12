@@ -2,11 +2,10 @@ import { useContext, useState } from "react";
 
 import { CopyLink } from "../../context/links/copy-link";
 import { TaskContext } from "../../context/references/task-context";
-import { TaskCommentMentions } from "../comments/task-comment-mentions";
-import { TaskComments } from "../comments/task-comments";
 import { TaskForm } from "../editor/task-form";
 import { TaskLinks } from "../links/task-links";
 import { TaskActions } from "./task-actions";
+import { TaskDiscussion } from "./task-discussion";
 import { TaskInspectorActive } from "./task-inspector-context";
 import { TaskAttachments } from "@/components/attachments/task-attachments";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
@@ -39,15 +38,14 @@ export function TaskDetail({
   const update = useTaskUpdate(organizationId, detail.project.entityId);
   const capabilities = projectCapabilities(detail.level);
   const [editDirty, setEditDirty] = useState(false);
-  const [commentDirty, setCommentDirty] = useState(false);
   const active = useContext(TaskInspectorActive);
-  const dirty = active && (editDirty || commentDirty);
+  const dirty = active && editDirty;
   useRegisterDraft(task.entityId, dirty);
   return (
     <>
       <UnsavedChangesGuard
         dirty={dirty}
-        description="Your task edits or comment haven’t been saved."
+        description="Your task edits haven’t been saved."
         name={`Task “${task.title}”`}
       />
       <TaskDetailView
@@ -108,6 +106,11 @@ export function TaskDetail({
           />
         )}
       >
+        <TaskDiscussion
+          organizationId={organizationId}
+          projectEntityId={detail.project.entityId}
+          taskEntityId={task.entityId}
+        />
         <TaskAttachments
           key={`${organizationId}:${task.entityId}`}
           target={{
@@ -122,19 +125,6 @@ export function TaskDetail({
           visible={visible}
           organizationId={organizationId}
           taskEntityId={task.entityId}
-        />
-        <TaskCommentMentions
-          visible={visible}
-          organizationId={organizationId}
-          entityId={task.entityId}
-        />
-        <TaskComments
-          visible={visible}
-          organizationId={organizationId}
-          detail={detail}
-          taskEntityId={task.entityId}
-          canComment={capabilities.canComment}
-          onDirtyChange={setCommentDirty}
         />
       </TaskDetailView>
     </>

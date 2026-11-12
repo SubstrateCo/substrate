@@ -38,7 +38,7 @@ test("a reply hint refreshes only the viewer's calls in its conversation", () =>
 
 test("a task hint during an in-flight read stays stale when its panel becomes hidden", async () => {
   const client = new QueryClient();
-  const key = queryKeys.taskComments("org", "project", "task");
+  const key = queryKeys.taskAttachments("org", "project", "task");
   const first = Promise.withResolvers<string[]>();
   let reads = 0;
   const read = async () => (++reads === 1 ? first.promise : ["fresh"]);
@@ -120,7 +120,7 @@ for (const domain of ["context", "profile"] as const) {
 
 test("access resets clear hidden task data without issuing hidden reads", async () => {
   const client = new QueryClient();
-  const key = queryKeys.taskComments("org", "project", "task");
+  const key = queryKeys.taskAttachments("org", "project", "task");
   let reads = 0;
   const read = async () => {
     reads++;
@@ -467,13 +467,15 @@ test("a task hint refreshes that task's records and its project's detail, nothin
   client.setQueryData(linked, [{ links: [{ entityId: "task", projectEntityId: "project" }] }]);
   client.setQueryData(unlinked, [{ links: [{ entityId: "other", projectEntityId: "elsewhere" }] }]);
   const event = { ...change("tasks"), projectId: "project", taskIds: ["task"] };
+  client.setQueryData(queryKeys.conversationList("org", "discussion"), [
+    { task: { taskEntityId: "task", projectEntityId: "project" } },
+  ]);
   const refreshed = [
     queryKeys.project("org", "project"),
     queryKeys.taskLocation("org", "task"),
-    queryKeys.taskComments("org", "project", "task"),
     queryKeys.taskAttachments("org", "project", "task"),
     queryKeys.activity("org", "task"),
-    queryKeys.commentMentions("org", "elsewhere"),
+    queryKeys.conversationList("org", "discussion"),
     queryKeys.notificationGroups("org", "all"),
     queryKeys.notificationEvents("org", "group"),
     linked,
@@ -482,7 +484,6 @@ test("a task hint refreshes that task's records and its project's detail, nothin
     queryKeys.projects("org"),
     queryKeys.project("org", "other-project"),
     queryKeys.taskLocation("org", "other"),
-    queryKeys.taskComments("org", "project", "other"),
     queryKeys.taskAttachments("org", "project", "other"),
     queryKeys.activity("org", "other"),
     queryKeys.related("org", "task"),
@@ -515,14 +516,14 @@ test("a project hint refreshes the project's records and lists, not other projec
   const refreshed = [
     queryKeys.projects("org"),
     queryKeys.project("org", "launch"),
-    queryKeys.taskComments("org", "launch", "task"),
+    queryKeys.taskAttachments("org", "launch", "task"),
     queryKeys.taskLocation("org", "task"),
     queryKeys.related("org", "launch"),
     queryKeys.notificationUnread("org"),
   ];
   const untouched = [
     queryKeys.project("org", "roadmap"),
-    queryKeys.taskComments("org", "roadmap", "task"),
+    queryKeys.taskAttachments("org", "roadmap", "task"),
     queryKeys.related("org", "roadmap"),
     queryKeys.organizationSummary("org"),
     queryKeys.agentWorkStatus("user", "org"),
@@ -530,6 +531,61 @@ test("a project hint refreshes the project's records and lists, not other projec
   expect(matchedKeys(event, [...refreshed, ...untouched])).toEqual(refreshed);
   // Without a project, as after a grant change, every task record can change.
   expect(matchedKeys(change("tasks"), untouched.slice(0, 3))).toEqual(untouched.slice(0, 3));
+});
+
+test("task metadata hints refresh discussion titles and backlinks, not ordinary conversation lists", () => {
+  const client = new QueryClient();
+  const key = queryKeys.conversationList("org", "discussion");
+  const matches = (projectId: string, taskIds?: string[]) =>
+    realtimeQueryTargets({ ...change("tasks"), projectId, taskIds }, "user").some(
+      (target) => client.getQueryCache().findAll(queryTargetFilter(target)).length > 0,
+    );
+  try {
+    client.setQueryData(queryKeys.deleteImpact("org", "ordinary"), { messages: 5 });
+    client.setQueryData(queryKeys.conversations("org"), [{ task: null }]);
+    client.setQueryData(key, [{ task: null }]);
+    expect(matches("project", ["task"])).toBe(false);
+    client.setQueryData(key, [{ task: { taskEntityId: "task", projectEntityId: "project" } }]);
+    expect(matches("project", ["task"])).toBe(true);
+    expect(matches("project", ["other"])).toBe(false);
+    // A move hint may name the new project while the cache still has the previous backlink.
+    expect(matches("destination", ["task"])).toBe(true);
+    expect(matches("project")).toBe(true);
+    expect(matches("other-project")).toBe(false);
+  } finally {
+    client.clear();
+  }
+});
+
+test("selected discussion caches stay separate and a task hint refreshes only its selection", () => {
+  const client = new QueryClient();
+  const first = queryKeys.conversationList("org", "first");
+  const second = queryKeys.conversationList("org", "second");
+  const normal = queryKeys.conversationList("org");
+  try {
+    client.setQueryData(first, [
+      { task: { taskEntityId: "first-task", projectEntityId: "project" } },
+    ]);
+    client.setQueryData(second, [
+      { task: { taskEntityId: "second-task", projectEntityId: "project" } },
+    ]);
+    client.setQueryData(normal, [{ task: null }]);
+    const matched = realtimeQueryTargets(
+      { ...change("tasks"), projectId: "project", taskIds: ["first-task"] },
+      "user",
+    )
+      .flatMap((target) => client.getQueryCache().findAll(queryTargetFilter(target)))
+      .map((query) => query.queryKey);
+    expect(matched).toEqual([first]);
+    expect(client.getQueryData(first)).toEqual([
+      { task: { taskEntityId: "first-task", projectEntityId: "project" } },
+    ]);
+    expect(client.getQueryData(second)).toEqual([
+      { task: { taskEntityId: "second-task", projectEntityId: "project" } },
+    ]);
+  } finally {
+    client.clear();
+  }
 });
 
 test("a message reference hint refreshes only that message's context pages", () => {

@@ -117,6 +117,46 @@ test("the turn must match its session and cannot borrow another agent's turn", a
   ).toBeInstanceOf(AccessDeniedError);
 });
 
+test("background task discussion publishing requires a proposal and does not post before approval", async () => {
+  const { dm, call } = await agentWorkFixture(f);
+  const repos = f.forActor(f.alice);
+  const project = await repos.projects.create({ name: "Task discussion" });
+  const task = await repos.tasks.create({ projectEntityId: project.entityId, title: "Follow up" });
+  const conversationId = await repos.tasks.ensureDiscussion(task.entityId);
+  const background = dmTurn(dm.id, "unattended");
+  const target = { conversationId, body: "Progress to share" };
+  expect(
+    await rejection(
+      call(
+        "reply",
+        {
+          requestId: crypto.randomUUID(),
+          body: target.body,
+          to: { conversationId },
+        },
+        background,
+      ),
+    ),
+  ).toMatchObject({ message: expect.stringContaining("Use propose for this action") });
+  expect(
+    await call(
+      "propose",
+      {
+        requestId: crypto.randomUUID(),
+        summary: "Post the task update",
+        action: { type: "reply_elsewhere", input: target },
+      },
+      background,
+    ),
+  ).toMatchObject({ status: "pending" });
+  expect(
+    await f.db
+      .select()
+      .from(messagingMessages)
+      .where(eq(messagingMessages.conversationId, conversationId)),
+  ).toEqual([]);
+});
+
 const messagesIn = (conversationId: string) =>
   f.db.select().from(messagingMessages).where(eq(messagingMessages.conversationId, conversationId));
 

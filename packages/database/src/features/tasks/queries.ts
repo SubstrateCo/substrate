@@ -1,12 +1,9 @@
-import { managedPicture } from "@substrate/contracts/files/pictures";
 import type { TaskStatus } from "@substrate/contracts/tasks";
 
-import { actorAuthorKind } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
-import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError } from "../../errors";
@@ -16,7 +13,6 @@ import { visibleConversationIds, visibleConversations } from "../messaging/acces
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { projects } from "../projects/schema";
 import { liveProjectTasks, liveTask } from "./access";
-import { taskComments } from "./comments.schema";
 import { tasks } from "./tasks.schema";
 import { and, asc, countDistinct, desc, eq, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -83,68 +79,6 @@ export async function queryTasks(
   return input.limit === undefined ? query : query.limit(input.limit);
 }
 
-// The caller authorizes the task before querying its comments or detail.
-export async function queryTaskComments(
-  ctx: RepositoryContext,
-  taskEntityId: string,
-  ownerUserId: string,
-  page: QueryPage = {},
-) {
-  const order = page.ascending ? asc : desc;
-  const viewerUserId =
-    ctx.scope.userId !== undefined
-      ? sql`${ctx.scope.userId}`
-      : sql`(select coalesce(viewer.user_id, owner.user_id)
-    from ${actors} viewer left join ${userAgents} owner on owner.id = viewer.user_agent_id
-    where viewer.entity_id = ${ctx.scope.actorEntityId} and viewer.organization_id = ${ctx.scope.organizationId})`;
-  const query = ctx.db
-    .select({
-      id: taskComments.id,
-      body: taskComments.body,
-      createdAt: taskComments.createdAt,
-      author: {
-        id: actors.entityId,
-        name: assigneeDisplayName,
-        type: actors.type,
-        kind: actorAuthorKind(ownerUserId),
-      },
-      authorImage: sql<string | null>`case when ${actors.type} = 'agent' then
-        case when ${userAgents.userId} = ${viewerUserId}
-          then '/api/v1/files/' || ${userAgents.imageFileId}::text || '/content' end
-        else case when ${member.id} is not null then ${user.image} end end`.mapWith(
-        (value: string | null) => {
-          const parsed = managedPicture.safeParse(value);
-          return parsed.success ? parsed.data : null;
-        },
-      ),
-    })
-    .from(taskComments)
-    .innerJoin(
-      actors,
-      and(
-        eq(actors.entityId, taskComments.authorActorEntityId),
-        eq(actors.organizationId, taskComments.organizationId),
-      ),
-    )
-    .leftJoin(user, eq(user.id, actors.userId))
-    .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
-    .leftJoin(
-      member,
-      and(eq(member.userId, user.id), eq(member.organizationId, ctx.scope.organizationId)),
-    )
-    .where(
-      and(
-        eq(taskComments.organizationId, ctx.scope.organizationId),
-        eq(taskComments.taskEntityId, taskEntityId),
-        page.since ? gte(taskComments.createdAt, page.since) : undefined,
-        page.until ? lt(taskComments.createdAt, page.until) : undefined,
-      ),
-    )
-    .orderBy(order(taskComments.createdAt), order(taskComments.id))
-    .offset(page.offset ?? 0);
-  return page.limit === undefined ? query : query.limit(page.limit);
-}
-
 export async function queryTaskDetail(
   ctx: RepositoryContext,
   identity: SessionIdentity,
@@ -165,13 +99,13 @@ export async function queryTaskDetail(
         liveTask(subtask.entityId),
       ),
     );
-  const commentCount = db
-    .select({ total: sql`count(*)` })
-    .from(taskComments)
+  const discussion = db
+    .select({ id: messagingConversations.id })
+    .from(messagingConversations)
     .where(
       and(
-        eq(taskComments.organizationId, scope.organizationId),
-        eq(taskComments.taskEntityId, tasks.entityId),
+        eq(messagingConversations.organizationId, scope.organizationId),
+        eq(messagingConversations.taskEntityId, tasks.entityId),
       ),
     );
   const references = and(
@@ -201,7 +135,7 @@ export async function queryTaskDetail(
       updatedAt: entities.updatedAt,
       parent: { id: parent.entityId, title: parent.title },
       subtaskCount: sql<number>`(${subtaskCount})`.mapWith(Number),
-      commentCount: sql<number>`(${commentCount})`.mapWith(Number),
+      discussionConversationId: sql<string | null>`(${discussion})`,
       linkedMessageCount: sql<number>`(${linked})`.mapWith(Number),
       source: sql<{
         id: string;

@@ -34,6 +34,8 @@ export function messageMutationOperations(
       // author and lifecycle state after the lock wait, never from a stale pre-lock message.
       const conversation = await loadConversation(tx, scope, target.conversationId, "share");
       const { actor, context } = await messagingSession(tx, scope);
+      if (conversation.taskEntityId)
+        await context.requireAccess(conversation.taskEntityId, "comment", true);
       const [message] = await tx
         .select()
         .from(messagingMessages)

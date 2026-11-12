@@ -6,7 +6,7 @@ import * as schema from "../schema";
 import { setupDatabase } from "../testing/database";
 import { seedDevelopmentDatabase } from "./seed";
 import { describe, expect, test } from "bun:test";
-import { eq } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 
 describe("development seed", () => {
   const fixture = setupDatabase();
@@ -43,9 +43,22 @@ describe("development seed", () => {
         );
       }
       const references = await fixture.db
-        .select()
-        .from(schema.taskCommentReferences)
-        .where(eq(schema.taskCommentReferences.organizationId, organizationId));
+        .select({ entityType: schema.messageEntityReferences.entityType })
+        .from(schema.messageEntityReferences)
+        .innerJoin(
+          schema.messagingMessages,
+          eq(schema.messagingMessages.id, schema.messageEntityReferences.messageId),
+        )
+        .innerJoin(
+          schema.messagingConversations,
+          eq(schema.messagingConversations.id, schema.messagingMessages.conversationId),
+        )
+        .where(
+          and(
+            eq(schema.messagingConversations.organizationId, organizationId),
+            isNotNull(schema.messagingConversations.taskEntityId),
+          ),
+        );
       expect(new Set(references.map((reference) => reference.entityType))).toEqual(
         new Set(["task", "project"]),
       );

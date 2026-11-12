@@ -20,6 +20,7 @@ export function MessageList({
   footer,
   previousDate,
   olderPage,
+  canPost = true,
 }: {
   messages: Message[];
   organizationId: string;
@@ -31,6 +32,7 @@ export function MessageList({
   footer?: ReactNode;
   previousDate?: Message["createdAt"];
   olderPage?: boolean;
+  canPost?: boolean;
 }) {
   const context = useQuery(
     messagePageOptions(
@@ -58,6 +60,7 @@ export function MessageList({
             grouped={grouped}
             organizationId={organizationId}
             onThread={onThread}
+            canPost={canPost}
             data={contextById.get(message.id)}
             loading={context.isPending}
             error={context.error}
@@ -79,6 +82,7 @@ function MessageRow({
   loading,
   error,
   refetch,
+  canPost,
 }: {
   message: Message;
   grouped: boolean;
@@ -88,6 +92,7 @@ function MessageRow({
   loading: boolean;
   error: Error | null;
   refetch: () => void;
+  canPost: boolean;
 }) {
   return (
     <MessageItem
@@ -95,6 +100,7 @@ function MessageRow({
       grouped={grouped}
       organizationId={organizationId}
       onThread={onThread}
+      canPost={canPost}
       context={{ data, loading, error, onRetry: () => refetch() }}
     />
   );

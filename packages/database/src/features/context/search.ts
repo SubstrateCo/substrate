@@ -202,7 +202,11 @@ export async function contextSearch(
               ? eq(messageEntityReferences.messageId, anchorId!)
               : eq(messageEntityReferences.conversationId, anchorId!)
           }
-      )`;
+        UNION SELECT ${messagingConversations.taskEntityId} FROM ${messagingConversations}
+        WHERE ${messagingConversations.id} = ${anchorConversationId ?? null}::uuid
+          AND ${messagingConversations.organizationId} = ${scope.organizationId}
+          AND ${messagingConversations.taskEntityId} IS NOT NULL
+       )`;
   const relatedReferenceIds = (column: SQLWrapper) => sql`(
     SELECT ${column} FROM ${messageEntityReferences}
     WHERE ${messageEntityReferences.organizationId} = ${scope.organizationId}
@@ -214,13 +218,16 @@ export async function contextSearch(
     relatedConversations = sql`false`;
     relatedMessages = sql`false`;
     if (anchorKind === "entity") {
-      relatedConversations = inArray(
-        messagingConversations.id,
-        relatedReferenceIds(messageEntityReferences.conversationId),
+      relatedConversations = or(
+        eq(messagingConversations.taskEntityId, anchorId),
+        inArray(
+          messagingConversations.id,
+          relatedReferenceIds(messageEntityReferences.conversationId),
+        ),
       );
-      relatedMessages = inArray(
-        messagingMessages.id,
-        relatedReferenceIds(messageEntityReferences.messageId),
+      relatedMessages = or(
+        eq(messagingConversations.taskEntityId, anchorId),
+        inArray(messagingMessages.id, relatedReferenceIds(messageEntityReferences.messageId)),
       );
     } else if (anchorKind === "message") {
       relatedConversations = or(
@@ -356,7 +363,23 @@ export async function contextSearch(
         and(
           visibleConversations(db, scope),
           relatedConversations,
-          query ? containsText(messagingConversations.name, query) : undefined,
+          query
+            ? or(
+                containsText(messagingConversations.name, query),
+                exists(
+                  db
+                    .select({ id: tasks.entityId })
+                    .from(tasks)
+                    .where(
+                      and(
+                        eq(tasks.organizationId, messagingConversations.organizationId),
+                        eq(tasks.entityId, messagingConversations.taskEntityId),
+                        containsText(tasks.title, query),
+                      ),
+                    ),
+                ),
+              )
+            : undefined,
           input.after ? gt(messagingConversations.id, input.after) : undefined,
         ),
       )

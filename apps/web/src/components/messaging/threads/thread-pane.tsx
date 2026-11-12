@@ -21,6 +21,7 @@ export function ThreadPane({
   contextMessageIds,
   targetMessage,
   onClose,
+  canPost = true,
 }: {
   organizationId: string;
   conversationId: string;
@@ -30,6 +31,7 @@ export function ThreadPane({
   contextMessageIds: string[];
   targetMessage?: Message;
   onClose: () => void;
+  canPost?: boolean;
 }) {
   const {
     messages: replies,
@@ -73,6 +75,7 @@ export function ThreadPane({
             threadRoot
             message={root}
             organizationId={organizationId}
+            canPost={canPost}
             context={{
               data: rootContext.data?.find((row) => row.messageId === root.id),
               loading: rootContext.isPending,
@@ -90,6 +93,7 @@ export function ThreadPane({
             organizationId={organizationId}
             conversationId={conversationId}
             olderPage={history.hasPrevious}
+            canPost={canPost}
             previousDate={root?.createdAt}
             header={
               <>
@@ -111,12 +115,14 @@ export function ThreadPane({
       composer={
         <>
           <AgentWorkNotice threadId={threadId} />
-          <Composer
-            organizationId={organizationId}
-            conversationId={conversationId}
-            threadId={threadId}
-            label="Reply in thread…"
-          />
+          {canPost && (
+            <Composer
+              organizationId={organizationId}
+              conversationId={conversationId}
+              threadId={threadId}
+              label="Reply in thread…"
+            />
+          )}
         </>
       }
     />

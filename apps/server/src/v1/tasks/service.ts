@@ -4,7 +4,6 @@ import type {
   taskLocationRequest,
   tasksWorkspace,
   tasksWrite,
-  workRequest,
 } from "@substrate/contracts/tasks/input";
 
 import type { WorkspaceScope } from "../../shared/scope";
@@ -35,10 +34,14 @@ export function createTasksService(deps: {
     });
   }
 
-  function listTaskComments(scope: WorkspaceScope, input: z.output<typeof taskRequest>) {
+  function ensureDiscussion(scope: WorkspaceScope, input: z.output<typeof taskRequest>) {
     return serviceResult(async () => {
       const { repositories } = scope;
-      return repositories.tasks.listComments(input.taskEntityId, input.projectEntityId);
+      return {
+        conversationId: await publishCommitted(
+          await repositories.tasks.ensureDiscussion(input.taskEntityId, input.projectEntityId),
+        ),
+      };
     });
   }
 
@@ -47,13 +50,6 @@ export function createTasksService(deps: {
       const { repositories } = scope;
       const task = await repositories.tasks.get(input.taskEntityId);
       return { projectEntityId: task.projectEntityId };
-    });
-  }
-
-  function listCommentMentions(scope: WorkspaceScope, input: z.output<typeof workRequest>) {
-    return serviceResult(async () => {
-      const { repositories } = scope;
-      return repositories.tasks.commentMentions(input.entityId);
     });
   }
 
@@ -89,9 +85,6 @@ export function createTasksService(deps: {
               input.parentTaskEntityId,
             );
             return { id: input.taskEntityId };
-          case "comment":
-            await repos.tasks.addComment(input.taskEntityId, input.body, input.projectEntityId);
-            return { id: input.taskEntityId };
           case "addTaskLink":
             await repos.tasks.addLink(
               input.taskEntityId,
@@ -124,9 +117,8 @@ export function createTasksService(deps: {
   return {
     listProjects,
     getProject,
-    listTaskComments,
+    ensureDiscussion,
     getTaskLocation,
-    listCommentMentions,
     mutateTasks,
   };
 }

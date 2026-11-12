@@ -630,12 +630,13 @@ test("notices name the actor and place, and excerpts name only references the re
   );
 });
 
-test("message, discussion, comment and project actor pictures use existing reads and reflect picture changes", async () => {
+test("message, task discussion and project actor pictures use existing reads and reflect picture changes", async () => {
   const { alice, project, chat, channel } = await setup();
   const image = `/api/v1/files/pictures/avatar/alice?v=${crypto.randomUUID()}`;
   await f.db.update(user).set({ image }).where(eq(user.id, "alice"));
   const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "Pictures" });
-  await alice.tasks.addComment(task.entityId, "Comment");
+  const conversationId = await alice.tasks.ensureDiscussion(task.entityId);
+  await chat.sendMessage(conversationId, "Discussion message");
   const message = await chat.sendMessage(channel.id, `See @[task:${task.entityId}]`);
   const context = createContextService(f.db, { userId: "alice", organizationId: f.orgA });
   expect((await chat.listMessages(channel.id))[0]).toMatchObject({ authorImage: image });
@@ -643,7 +644,7 @@ test("message, discussion, comment and project actor pictures use existing reads
     authorImage: image,
   });
   expect((await context.related(project.entityId))[0]).toMatchObject({ authorImage: image });
-  expect((await alice.tasks.listComments(task.entityId, project.entityId))[0]).toMatchObject({
+  expect((await chat.listMessages(conversationId))[0]).toMatchObject({
     authorImage: image,
   });
   const detail = await alice.projects.getDetail(project.entityId);

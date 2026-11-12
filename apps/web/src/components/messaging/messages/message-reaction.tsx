@@ -16,7 +16,7 @@ export function MessageReaction({
   organizationId: string;
   message: Message;
   reaction: Message["reactions"][number];
-  onReact: (emoji: string) => void;
+  onReact?: (emoji: string) => void;
   pending: boolean;
   onViewAll: (emoji: string, trigger: HTMLButtonElement | null) => void;
 }) {
@@ -32,9 +32,9 @@ export function MessageReaction({
           size="xs"
           variant="reaction"
           aria-label={`${emoji}, ${count} ${count === 1 ? "reaction" : "reactions"}`}
-          aria-pressed={reacted}
+          aria-pressed={onReact ? reacted : undefined}
           disabled={pending}
-          onClick={() => onReact(emoji)}
+          onClick={() => (onReact ? onReact(emoji) : onViewAll(emoji, trigger.current))}
         >
           {emoji} {count}
         </Button>

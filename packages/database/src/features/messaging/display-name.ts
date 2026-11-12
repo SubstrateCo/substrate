@@ -2,6 +2,7 @@ import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
+import { tasks } from "../tasks/tasks.schema";
 import { approvedParticipant } from "./access";
 import { messagingConversations, messagingParticipants } from "./schema";
 import { and, eq, isNull, ne, sql } from "drizzle-orm";
@@ -36,5 +37,7 @@ export function conversationDisplayName(
         viewer.excludeActorId ? ne(actors.entityId, viewer.excludeActorId) : undefined,
       ),
     );
-  return sql<string>`coalesce(${conversation.name}, ${others}, 'Direct conversation')`;
+  return sql<string>`coalesce((select ${tasks.title} from ${tasks}
+    where ${tasks.entityId} = ${conversation.taskEntityId} and ${tasks.organizationId} = ${conversation.organizationId}),
+    ${conversation.name}, ${others}, 'Direct conversation')`;
 }

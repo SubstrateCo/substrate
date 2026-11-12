@@ -11,7 +11,12 @@ test("background turns may only reply or propose; interactive turns may run any 
   const unattended = { kind: "unattended" as const };
   expect(writeGate(unattended, "reply")).toBeNull();
   expect(writeGate(unattended, "propose")).toBeNull();
-  for (const tool of ["create_task", "update_task", "add_task_comment", "attach_message"] as const)
+  for (const tool of [
+    "create_task",
+    "update_task",
+    "get_task_discussion",
+    "attach_message",
+  ] as const)
     expect(writeGate(unattended, tool)).toBe(proposeInstead);
   expect(writeGate({ kind: "interactive" }, "create_task")).toBeNull();
 });

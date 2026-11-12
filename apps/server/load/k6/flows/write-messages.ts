@@ -43,7 +43,9 @@ const busyness = (conversation: Conversation) =>
  * collect thousands of messages and most stay short.
  */
 function backfillTarget(world: World) {
-  const ranked = [...joinedConversations(world)].sort((a, b) => busyness(b) - busyness(a));
+  const ranked = joinedConversations(world)
+    .filter((conversation) => conversation.canPost)
+    .sort((a, b) => busyness(b) - busyness(a));
   return rng.weighted(
     ranked,
     (conversation) => 1 / Math.pow(ranked.indexOf(conversation) + 1, 1.3),
@@ -52,10 +54,11 @@ function backfillTarget(world: World) {
 
 /** Mostly the open conversation; otherwise an active one, with direct messages favored. */
 function liveTarget(world: World) {
-  const open = joinedConversations(world).find((c) => c.id === world.screen.conversationId);
+  const writable = joinedConversations(world).filter((conversation) => conversation.canPost);
+  const open = writable.find((c) => c.id === world.screen.conversationId);
   if (open && rng.chance(0.6)) return open;
   const now = Date.now();
-  return rng.weighted(joinedConversations(world), (conversation) => {
+  return rng.weighted(writable, (conversation) => {
     const idle = now - (world.activity.get(conversation.id) ?? 0);
     const kind = conversation.kind === "channel" ? 1 : 1.6;
     return kind * (idle < 10 * minute ? 4 : idle < 60 * minute ? 2 : 1);

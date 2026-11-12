@@ -36,7 +36,7 @@ export function MessagingWorkspace({
   messageId?: string;
   turnId?: string;
 }) {
-  const conversations = useQuery(conversationsQueryOptions(organizationId));
+  const conversations = useQuery(conversationsQueryOptions(organizationId, conversationId));
   const unread = useQuery(unreadCountsOptions(organizationId));
   const workspacePeople = useQuery(workspacePeopleQueryOptions(organizationId));
   const people = (workspacePeople.data ?? []).filter((person) => person.id !== userId);
@@ -69,7 +69,7 @@ export function MessagingWorkspace({
   const visibleConversations = resource.data ?? [];
   // The sidebar lists joined conversations. Other public channels stay reachable by link and search.
   const sidebarConversations = visibleConversations
-    .filter((conversation) => conversation.joined)
+    .filter((conversation) => conversation.joined && !conversation.task)
     .map((conversation) => ({
       ...conversation,
       unreadCount: !unread.error

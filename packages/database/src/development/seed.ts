@@ -100,6 +100,8 @@ export async function seedDevelopmentDatabase(db: DatabaseExecutor, passwordHash
         organizationId: team.id,
         actorEntityId: actors[0]!.entityId,
       });
+      const messaging = (index: number) =>
+        createMessagingService(tx, { userId: team.people[index]!.id, organizationId: team.id });
       const contacts = [];
       for (const input of team.contacts) {
         const contact = await contactRepository(context).create({ displayName: input.name });
@@ -147,7 +149,10 @@ export async function seedDevelopmentDatabase(db: DatabaseExecutor, passwordHash
           seededTasks.push(task);
           projectTasks.push(task);
           if (stage.status === "in_progress")
-            await tasks.addComment(task.entityId, developmentWork.progressComment);
+            await messaging(0).sendMessage(
+              await tasks.ensureDiscussion(task.entityId),
+              developmentWork.progressComment,
+            );
         }
         projectTasks.push(
           await tasks.create({ ...developmentWork.followup, projectEntityId: project.entityId }),
@@ -171,22 +176,16 @@ export async function seedDevelopmentDatabase(db: DatabaseExecutor, passwordHash
             dueDate: date(stage.dueInDays),
           });
         }
-        await tasks.addComment(
-          projectTasks[1]!.entityId,
+        const discussionId = await tasks.ensureDiscussion(projectTasks[1]!.entityId);
+        await messaging(0).sendMessage(
+          discussionId,
           developmentWork.reviewComment(
             actors[1]!.entityId,
             projectTasks[0]!.entityId,
             project.entityId,
           ),
         );
-        const reviewer = new RepositoryContext(tx, {
-          organizationId: team.id,
-          actorEntityId: actors[1]!.entityId,
-        });
-        await taskRepository(reviewer).addComment(
-          projectTasks[1]!.entityId,
-          developmentWork.reviewerReply,
-        );
+        await messaging(1).sendMessage(discussionId, developmentWork.reviewerReply);
         await linkRepository(context).create({
           sourceEntityId: projectTasks[0]!.entityId,
           targetEntityId: contacts[projectIndex]!.entityId,
@@ -202,8 +201,6 @@ export async function seedDevelopmentDatabase(db: DatabaseExecutor, passwordHash
         }
       }
 
-      const messaging = (index: number) =>
-        createMessagingService(tx, { userId: team.people[index]!.id, organizationId: team.id });
       const conversations = developmentConversations(team, actors, seededTasks);
       const channel = await messaging(0).createConversation({
         kind: "channel",

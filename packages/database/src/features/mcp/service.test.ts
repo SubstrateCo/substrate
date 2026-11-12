@@ -13,7 +13,8 @@ import {
   user,
   userAgents,
   taskActivity,
-  taskComments,
+  messagingConversations,
+  agentWakes,
   messageEntityReferences,
   messagingMessages,
   messagingParticipants,
@@ -127,26 +128,23 @@ test("raw and committed MCP writes roll back with their transaction", async () =
     taskId: (
       await f.forActor(f.alice).tasks.create({
         projectEntityId: project.entityId,
-        title: "Atomic comment",
+        title: "Atomic discussion",
       })
     ).entityId,
-    body: "Must roll back",
     requestId: crypto.randomUUID(),
   };
   for (const execute of [executeAgentTool, executeCommittedTool]) {
     const tracked = trackedTransactions(true);
-    expect(await rejection(execute(tracked.db, identity, "add_task_comment", input, turn))).toBe(
+    expect(await rejection(execute(tracked.db, identity, "get_task_discussion", input, turn))).toBe(
       tracked.failure,
     );
-    // The task repository retains its own atomic comment transaction.
-    expect(tracked.count()).toBe(2);
-    expect(await f.db.select().from(taskComments)).toEqual([]);
+    expect(await f.db.select().from(messagingConversations)).toEqual([]);
     expect(await f.db.select().from(agentToolRequests)).toEqual([]);
   }
 });
 
-test("MCP and web comments publish the same confirmed notification hints", async () => {
-  const { identity, project } = await fixture();
+test("MCP discussion replies preserve provenance, references and notification hints without wakes", async () => {
+  const { identity, project, call, actor } = await fixture();
   const repos = await f.forSession("alice");
   await repos.permissions.grant({
     entityId: project.entityId,
@@ -157,25 +155,91 @@ test("MCP and web comments publish the same confirmed notification hints", async
     projectEntityId: project.entityId,
     title: "Mention",
   });
-  const body = `Hello @[person:${f.bob}]`;
-  const web = await repos.transaction((tx) => tx.tasks.addComment(task.entityId, body));
+  const { conversationId } = await call("get_task_discussion", {
+    taskId: task.entityId,
+    requestId: crypto.randomUUID(),
+  });
+  const body = `Hello @[person:${f.bob}] about @[task:${task.entityId}]`;
   const mcp = await executeCommittedTool(
     f.db,
     identity,
-    "add_task_comment",
+    "reply",
     {
-      taskId: task.entityId,
+      to: { conversationId },
       body,
       requestId: crypto.randomUUID(),
     },
     turn,
   );
-  expect(web.result.notified).toEqual([f.bob]);
-  expect(mcp.hints).toEqual(web.hints);
+  const sent = mcp.result.output;
+  expect((await call("read_conversation", { conversationId })).items).toMatchObject([
+    { id: sent.messageId, author: { id: actor.entityId }, text: body },
+  ]);
+  const [stored] = await f.db
+    .select()
+    .from(messagingMessages)
+    .where(eq(messagingMessages.id, sent.messageId));
+  expect(stored).toMatchObject({ originTurnId: turn.turnId, authorActorEntityId: actor.entityId });
+  expect(
+    await f.db
+      .select()
+      .from(messageEntityReferences)
+      .where(eq(messageEntityReferences.messageId, sent.messageId)),
+  ).toEqual([
+    expect.objectContaining({
+      entityId: task.entityId,
+      purpose: "mention",
+      createdByActorEntityId: actor.entityId,
+    }),
+  ]);
+  expect(await f.db.select().from(agentWakes)).toEqual([]);
   expect(mcp.hints).toContainEqual({
     audience: realtimeKeys.actor(f.orgA, f.bob),
     domain: "notifications",
   });
+});
+
+test("task discussion tools inherit view and comment access and recheck access on replay", async () => {
+  const { call } = await fixture();
+  await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "alice"));
+  const bob = f.forActor(f.bob);
+  const project = await bob.projects.create({ name: "Discussion permissions" });
+  const task = await bob.tasks.create({ projectEntityId: project.entityId, title: "Shared task" });
+  const input = { taskId: task.entityId, requestId: crypto.randomUUID() };
+  expect(await rejection(call("get_task_discussion", input))).toBeInstanceOf(AccessDeniedError);
+  await bob.permissions.grant({
+    entityId: project.entityId,
+    actorEntityId: f.alice,
+    level: "view",
+  });
+  const { conversationId } = await call("get_task_discussion", input);
+  expect(await call("get_task_discussion", { ...input, requestId: crypto.randomUUID() })).toEqual({
+    conversationId,
+  });
+  expect((await call("read_conversation", { conversationId })).items).toEqual([]);
+  const reply = { requestId: crypto.randomUUID(), to: { conversationId }, body: "Discuss" };
+  expect(await rejection(call("reply", reply))).toBeInstanceOf(AccessDeniedError);
+  await bob.permissions.grant({
+    entityId: project.entityId,
+    actorEntityId: f.alice,
+    level: "comment",
+  });
+  const sent = await call("reply", reply);
+  const thread = await call("reply", {
+    ...reply,
+    requestId: crypto.randomUUID(),
+    to: { conversationId, threadId: sent.messageId },
+    body: "A reply",
+  });
+  expect((await call("read_thread", { messageId: sent.messageId })).replies.items).toMatchObject([
+    { id: thread.messageId },
+  ]);
+  await bob.permissions.revoke({ entityId: project.entityId, actorEntityId: f.alice });
+  expect(await rejection(call("get_task_discussion", input))).toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(call("read_conversation", { conversationId }))).toBeInstanceOf(
+    AccessDeniedError,
+  );
+  expect(await rejection(call("reply", reply))).toBeInstanceOf(AccessDeniedError);
 });
 
 test("task tools use the owner's access, attribute writes and keep the source message across retries", async () => {
@@ -220,23 +284,31 @@ test("task tools use the owner's access, attribute writes and keep the source me
     .from(messageEntityReferences)
     .where(eq(messageEntityReferences.entityId, created.id));
   expect(source).toMatchObject({ purpose: "source", createdByActorEntityId: actor.entityId });
-  const commentInput = {
+  const discussionInput = {
     requestId: crypto.randomUUID(),
     taskId: created.id,
-    body: "Working on it",
   };
-  const comment = await call("add_task_comment", commentInput);
-  expect(await call("add_task_comment", commentInput)).toEqual(comment);
-  expect(await f.db.select().from(taskComments)).toHaveLength(1);
-  expect((await call("list_task_comments", { taskId: created.id })).items[0]?.author.id).toBe(
-    actor.entityId,
-  );
+  const { conversationId } = await call("get_task_discussion", discussionInput);
+  expect(await call("get_task_discussion", discussionInput)).toEqual({ conversationId });
+  const posted = await call("reply", {
+    requestId: crypto.randomUUID(),
+    to: { conversationId },
+    body: "Working on it",
+  });
+  expect((await call("read_conversation", { conversationId })).items[0]).toMatchObject({
+    id: posted.messageId,
+    author: { id: actor.entityId },
+  });
   const updated = await call("update_task", {
     requestId: crypto.randomUUID(),
     taskId: created.id,
     changes: { status: "completed" },
   });
-  expect(updated).toMatchObject({ status: "completed", commentCount: 1, linkedMessageCount: 1 });
+  expect(updated).toMatchObject({
+    status: "completed",
+    discussionConversationId: conversationId,
+    linkedMessageCount: 1,
+  });
   expect((await call("get_project", { projectId: project.entityId })).taskCounts).toMatchObject({
     completed: 1,
     not_started: 0,
@@ -374,7 +446,7 @@ test("get_task returns the parent and counts only live subtasks", async () => {
   expect(await call("get_task", { taskId: parent.id })).toMatchObject({
     parent: null,
     subtaskCount: 1,
-    commentCount: 0,
+    discussionConversationId: null,
   });
   expect((await call("get_task", { taskId: kept.id })).parent).toEqual({
     id: parent.id,

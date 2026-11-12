@@ -35,7 +35,6 @@ function targets(org: string, input: ProjectWrite, id: string): (QueryKey | Hint
     list.push({ prefix: keys.messagePages(org), withLinks: true }, keys.notifications(org));
   }
   if (access) {
-    list.push([...keys.tasks(org), "comments", projectId]);
     for (const entityId of entityIds)
       list.push(keys.related(org, entityId), keys.activity(org, entityId));
   }

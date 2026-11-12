@@ -143,7 +143,7 @@ function standalone(
     links: domain("links", ["list"]),
     permissions: domain("permissions", []),
     projects: domain("projects", ["get", "getPicture", "assignableActors", "getDetail", "list"]),
-    tasks: domain("tasks", ["get", "list", "commentMentions", "listLinks", "listComments"]),
+    tasks: domain("tasks", ["get", "list", "listLinks"]),
     messaging: domain("messaging", [
       "listConversations",
       "unreadCounts",

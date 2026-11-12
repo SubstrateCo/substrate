@@ -9,9 +9,9 @@ import { adminRoleCondition } from "../../core/organizations/roles";
 import { member } from "../../core/organizations/schema";
 import { entityGrants } from "../../core/permissions/schema";
 import { adminSharedType } from "../../core/permissions/visibility";
-import { liveApprovedParticipant, publicChannel } from "../messaging/access";
+import { liveApprovedParticipant, publicChannel, visibleConversations } from "../messaging/access";
 import { messagingConversations, messagingParticipants } from "../messaging/schema";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 declare const resolved: unique symbol;
@@ -114,10 +114,40 @@ export async function audienceRecipients(
             eq(actors.type, "human"),
           ),
         )
-        .where(eq(messagingConversations.id, audience[1]));
-      const [conversation] = rows;
-      if (!conversation) return () => false;
-      const publicIn = conversation.publicChannel ? conversation.organizationId : null;
+        .where(
+          and(
+            eq(messagingConversations.id, audience[1]),
+            isNull(messagingConversations.taskEntityId),
+          ),
+        )
+        .unionAll(
+          db
+            .select({
+              organizationId: messagingConversations.organizationId,
+              publicChannel: sql<boolean>`false`,
+              userId: actors.userId,
+              participantOrganizationId: actors.organizationId,
+            })
+            .from(messagingConversations)
+            .innerJoin(
+              actors,
+              and(
+                eq(actors.organizationId, messagingConversations.organizationId),
+                eq(actors.type, "human"),
+              ),
+            )
+            .where(
+              and(
+                eq(messagingConversations.id, audience[1]),
+                isNotNull(messagingConversations.taskEntityId),
+                visibleConversations(db, {
+                  userId: actors.userId,
+                  organizationId: actors.organizationId,
+                }),
+              ),
+            ),
+        );
+      const publicIn = rows.find((row) => row.publicChannel)?.organizationId;
       const members = new Set(
         rows.flatMap((row) =>
           row.userId && row.participantOrganizationId

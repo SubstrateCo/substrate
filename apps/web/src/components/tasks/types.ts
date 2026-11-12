@@ -1,8 +1,6 @@
 import type { TaskStatus } from "@substrate/contracts/tasks";
 import type { TaskLinkView } from "@substrate/contracts/tasks/links";
 
-import type { WorkspaceReference } from "@/components/messaging/references/entity-reference";
-
 export type ProjectPermission = "view" | "comment" | "edit" | "owner";
 export const projectPermissionOptions: { value: ProjectPermission; label: string }[] = [
   { value: "view", label: "Can view" },
@@ -56,14 +54,4 @@ export interface ProjectDetail {
   tasks: Task[];
   /** Every link that touches a task in this project. */
   links: TaskLinkView[];
-}
-export interface TaskComment {
-  id: string;
-  authorName: string;
-  authorImage?: string | null;
-  authorType?: "human" | "agent";
-  body: string;
-  /** The references in the body that the reader can open, with where each one leads. */
-  references?: WorkspaceReference[];
-  createdAt: Date | string;
 }

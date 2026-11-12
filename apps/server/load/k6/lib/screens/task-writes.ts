@@ -31,7 +31,6 @@ export type TasksWrite =
       attachmentFileIds?: string[];
     } & TaskFields)
   | ({ action: "updateTask" } & Target & TaskFields)
-  | ({ action: "comment"; body: string } & Target)
   | ({ action: "addTaskLink"; relation: string; otherTaskEntityId: string } & Target)
   | ({ action: "removeTaskLink"; linkId: string } & Target)
   | ({ action: "deleteTask" } & Target)
@@ -55,8 +54,6 @@ function writeTargets(org: string, input: TasksWrite, id: string): (QueryKey | H
       keys.notifications(org),
       ...searches,
     ];
-  if (input.action === "comment")
-    return [keys.taskComments(org, input.projectEntityId, id), keys.commentMentions(org)];
   if (input.action === "addTaskLink" || input.action === "removeTaskLink")
     return [keys.projectDetails(org), keys.activity(org), keys.related(org)];
   return [
@@ -145,15 +142,6 @@ export async function searchWork(
   );
   unmount(key);
   return (rows ?? []).map((row) => ({ id: row.id, title: row.title, kind }));
-}
-
-/** The comment reference picker on "@" (task-reference-picker.tsx): tasks and projects, 5 each. */
-export async function referenceSearch(world: World, query: string) {
-  const [tasks, projects] = await Promise.all([
-    searchWork(world, query, "task", 5),
-    searchWork(world, query, "project", 5),
-  ]);
-  return [...tasks.slice(0, 5), ...projects.slice(0, 5)];
 }
 
 /** The link picker (task-links.tsx): tasks only, 20 results. */

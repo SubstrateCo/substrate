@@ -11,12 +11,7 @@ import type { SessionIdentity } from "../../core/session/identity";
 import { queryProjects, queryProjectTaskCounts } from "../projects/queries";
 import { projectRepository } from "../projects/repository";
 import { linksOfTask } from "../tasks/links";
-import {
-  queryTasks,
-  queryTaskComments,
-  queryTaskActivity,
-  queryTaskDetail,
-} from "../tasks/queries";
+import { queryTasks, queryTaskActivity, queryTaskDetail } from "../tasks/queries";
 import { taskRepository } from "../tasks/repository";
 import { iso, messageRef } from "./formatting";
 import { pagination } from "./pagination";
@@ -99,7 +94,7 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: SessionIdentity
         parent: detail!.parent,
         subtaskCount: detail!.subtaskCount,
         source: source ? messageRef(source) : null,
-        commentCount: detail!.commentCount,
+        discussionConversationId: detail!.discussionConversationId,
         linkedMessageCount,
         links: (await linksOfTask(ctx, taskId)).map((link) => {
           const side = link.source?.entityId === taskId ? "source" : "target";
@@ -119,24 +114,6 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: SessionIdentity
         createdAt: iso(detail!.createdAt),
         updatedAt: iso(detail!.updatedAt),
       };
-    },
-    async listComments(input: McpInput<"list_task_comments">) {
-      await taskRepository(ctx).get(input.taskId);
-      const p = pagination(scope, "list_task_comments", input);
-      const rows = await queryTaskComments(ctx, input.taskId, identity.userId, {
-        since: input.since ? new Date(input.since) : undefined,
-        until: input.until ? new Date(input.until) : undefined,
-        offset: p.offset,
-        limit: p.take,
-      });
-      return p.page(
-        rows.map((row) => ({
-          id: row.id,
-          body: row.body,
-          author: row.author,
-          createdAt: iso(row.createdAt),
-        })),
-      );
     },
     async listActivity(input: McpInput<"list_task_activity">) {
       const p = pagination(scope, "list_task_activity", input);

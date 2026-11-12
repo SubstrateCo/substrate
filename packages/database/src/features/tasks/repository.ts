@@ -3,8 +3,6 @@ import type { TaskLinkRelation } from "@substrate/contracts/tasks/links";
 
 import { activeActorCondition } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
-import { userAgents } from "../../core/actors/user-agents.schema";
-import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import { permissionLevel } from "../../core/permissions/schema";
 import {
@@ -18,18 +16,15 @@ import { AccessDeniedError, ValidationError } from "../../errors";
 import { notifyAssignment, recordTaskActivity } from "../activity/events";
 import { publishFiles } from "../files/publication";
 import { taskAttachments } from "../files/schema";
-import { workHint } from "../realtime/routing";
 import { requireAssignee } from "./assignment";
 import { taskChanges } from "./changes";
-import { applyCommentReferences, commentReferences } from "./comment-references";
-import { taskCommentReferences } from "./comment-references.schema";
-import { taskComments } from "./comments.schema";
 import type { CreateTaskInput, TaskFields } from "./contracts";
+import { ensureTaskDiscussion } from "./discussion";
 import { taskLifecycle } from "./lifecycle";
 import { addTaskLink, linksOfTask, removeTaskLink } from "./links";
-import { queryTasks, queryTaskComments } from "./queries";
+import { queryTasks } from "./queries";
 import { tasks } from "./tasks.schema";
-import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 type Task = typeof tasks.$inferSelect;
@@ -208,27 +203,8 @@ export function taskRepository(context: RepositoryContext) {
         return updated!;
       });
     },
-    async addComment(entityId: string, body: string, expectedProjectEntityId?: string) {
-      const text = requiredText(body, 20000);
-      return context.transaction(async (ctx) => {
-        const tx = ctx.db;
-        const task = await taskRepository(ctx).get(entityId, "comment", true);
-        if (expectedProjectEntityId && task.projectEntityId !== expectedProjectEntityId)
-          throw new AccessDeniedError();
-        const [comment] = await tx
-          .insert(taskComments)
-          .values({
-            organizationId: scope.organizationId,
-            taskEntityId: entityId,
-            authorActorEntityId: scope.actorEntityId,
-            body: text,
-          })
-          .returning();
-        const notified = await applyCommentReferences(ctx, task, comment!);
-        ctx.effects.hint(workHint(scope.organizationId, task.projectEntityId, [entityId]));
-        return { ...comment!, notified };
-      });
-    },
+    ensureDiscussion: (entityId: string, expectedProjectEntityId?: string) =>
+      ensureTaskDiscussion(context, entityId, expectedProjectEntityId),
     /** Links the task to another one. `relation` is how this task relates to the other. */
     async addLink(
       entityId: string,
@@ -252,67 +228,9 @@ export function taskRepository(context: RepositoryContext) {
         return removeTaskLink(ctx, task, linkId);
       });
     },
-    /** Comments on other readable tasks that reference this task or project. No bodies. */
-    async commentMentions(entityId: string) {
-      await context.requireAccess(entityId, "view");
-      return db
-        .select({
-          commentId: taskComments.id,
-          taskEntityId: tasks.entityId,
-          taskTitle: tasks.title,
-          projectEntityId: tasks.projectEntityId,
-          authorName: sql<string>`case when ${actors.type} = 'agent'
-            then coalesce(${userAgents.name}, 'Agent') else ${user.name} end`,
-          createdAt: taskComments.createdAt,
-        })
-        .from(taskCommentReferences)
-        .innerJoin(taskComments, eq(taskComments.id, taskCommentReferences.commentId))
-        .innerJoin(
-          tasks,
-          and(
-            eq(tasks.organizationId, taskComments.organizationId),
-            eq(tasks.entityId, taskComments.taskEntityId),
-          ),
-        )
-        .innerJoin(
-          actors,
-          and(
-            eq(actors.organizationId, taskComments.organizationId),
-            eq(actors.entityId, taskComments.authorActorEntityId),
-          ),
-        )
-        .leftJoin(user, eq(user.id, actors.userId))
-        .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
-        .where(
-          and(
-            eq(taskCommentReferences.organizationId, scope.organizationId),
-            eq(taskCommentReferences.entityId, entityId),
-            ne(tasks.entityId, entityId),
-            context.readable(tasks.entityId),
-          ),
-        )
-        .orderBy(desc(taskComments.createdAt), desc(taskComments.id))
-        .limit(50);
-    },
     async listLinks(entityId: string) {
       await requireTask(entityId);
       return linksOfTask(context, entityId);
-    },
-    async listComments(entityId: string, projectEntityId: string) {
-      const task = await requireTask(entityId);
-      if (task.projectEntityId !== projectEntityId) throw new AccessDeniedError();
-      const comments = (
-        await queryTaskComments(context, entityId, scope.userId ?? "", { ascending: true })
-      ).map(({ author, ...comment }) => ({
-        ...comment,
-        authorName: author.name,
-        authorType: author.type,
-      }));
-      const references = await commentReferences(
-        context,
-        comments.map((comment) => comment.body),
-      );
-      return comments.map((comment, index) => ({ ...comment, references: references[index]! }));
     },
   };
 }

@@ -23,11 +23,12 @@ export const deleteImpactQueryOptions = (organizationId: string, conversationId:
     retry: false,
   });
 
-export const conversationsQueryOptions = (organizationId: string) =>
+export const conversationsQueryOptions = (organizationId: string, conversationId?: string) =>
   queryOptions({
-    queryKey: queryKeys.conversations(organizationId),
+    queryKey: queryKeys.conversationList(organizationId, conversationId),
     meta: { refreshError: "Couldn’t refresh conversations" },
-    queryFn: ({ signal }) => listConversations({ data: { organizationId }, signal }),
+    queryFn: ({ signal }) =>
+      listConversations({ data: { organizationId, conversationId }, signal }),
     retry: false,
   });
 

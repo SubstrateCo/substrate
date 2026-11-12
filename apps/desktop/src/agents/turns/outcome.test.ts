@@ -94,7 +94,7 @@ test("created and updated tasks are task outputs", () => {
     parent: null,
     subtaskCount: 0,
     source: null,
-    commentCount: 0,
+    discussionConversationId: null,
     linkedMessageCount: 0,
     links: [],
     createdAt,

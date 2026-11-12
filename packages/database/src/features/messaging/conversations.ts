@@ -11,6 +11,7 @@ import type { MessagingSessionResolver } from "../../core/session/messaging";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { messageEntityReferences } from "../context/schema";
 import { withRemovalHints } from "../realtime/routing";
+import { tasks } from "../tasks/tasks.schema";
 import { loadConversation, lockConversation, visibleConversations } from "./access";
 import {
   directMessageKey,
@@ -87,15 +88,37 @@ export function conversationOperations(
   }
 
   return {
-    async listConversations() {
+    async listConversations(selectedConversationId?: string) {
       return db.transaction(async (tx) => {
-        const { viewer } = await authenticate(tx);
+        const { viewer, context } = await authenticate(tx);
         const rows = await tx
           .select()
           .from(messagingConversations)
-          .where(visibleConversations(tx, scope))
+          .where(
+            and(
+              visibleConversations(tx, scope),
+              or(
+                isNull(messagingConversations.taskEntityId),
+                selectedConversationId
+                  ? eq(messagingConversations.id, selectedConversationId)
+                  : undefined,
+              ),
+            ),
+          )
           .orderBy(asc(messagingConversations.createdAt), asc(messagingConversations.id));
         const ids = rows.map((row) => row.id);
+        const taskIds = rows.flatMap((row) => (row.taskEntityId ? [row.taskEntityId] : []));
+        const discussions = taskIds.length
+          ? await tx
+              .select({
+                taskEntityId: tasks.entityId,
+                projectEntityId: tasks.projectEntityId,
+                title: tasks.title,
+                canPost: context.readable(tasks.entityId, "comment"),
+              })
+              .from(tasks)
+              .where(inArray(tasks.entityId, taskIds))
+          : [];
         const byConversation = await activeMembers(tx, ids, scope);
         // Only disclose organizations attached to conversations this viewer can read.
         const connections = ids.length
@@ -126,6 +149,14 @@ export function conversationOperations(
               .orderBy(asc(organization.name), asc(organization.id))
           : [];
         return rows.map((row) => {
+          const discussion = discussions.find((task) => task.taskEntityId === row.taskEntityId);
+          const task = discussion
+            ? {
+                taskEntityId: discussion.taskEntityId,
+                projectEntityId: discussion.projectEntityId,
+                title: discussion.title,
+              }
+            : null;
           const members = byConversation.get(row.id) ?? [];
           const connectedIds = new Set(
             connections
@@ -141,12 +172,16 @@ export function conversationOperations(
             }));
           return {
             ...row,
+            task,
+            canPost: row.taskEntityId ? !!discussion?.canPost : true,
             organizations: channelOrganizations,
             partner: channelOrganizations.some((org) => !org.own),
-            name: displayName(
-              row.name,
-              members.filter((participant) => participant.userId !== scope.userId),
-            ),
+            name:
+              task?.title ??
+              displayName(
+                row.name,
+                members.filter((participant) => participant.userId !== scope.userId),
+              ),
             members: members.map(
               ({ actorId, type, userId, agentId, name, image, organizationId }) => ({
                 actorId,
@@ -308,6 +343,7 @@ export function conversationOperations(
       return db.transaction(async (tx) => {
         await authenticate(tx);
         const conversation = await loadConversation(tx, scope, conversationId, "update");
+        if (conversation.taskEntityId) throw new AccessDeniedError();
         if (conversation.kind === "dm")
           throw new ValidationError("Start a direct conversation with the agent instead.");
         const [agent] = await ownedAgents(tx, scope, [agentId]);
@@ -323,7 +359,7 @@ export function conversationOperations(
       return db.transaction(async (tx) => {
         await authenticate(tx);
         const conversation = await loadConversation(tx, scope, conversationId, "update");
-        if (conversation.kind === "dm") throw new AccessDeniedError();
+        if (conversation.kind === "dm" || conversation.taskEntityId) throw new AccessDeniedError();
         const removed = await endParticipation(
           tx,
           and(
@@ -351,7 +387,8 @@ export function conversationOperations(
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
         const { actor } = await authenticate(tx);
-        await loadConversation(tx, scope, conversationId, "update");
+        const conversation = await loadConversation(tx, scope, conversationId, "update");
+        if (conversation.taskEntityId) throw new AccessDeniedError();
         const changed =
           (
             await writeMembers(
@@ -455,6 +492,7 @@ export function conversationOperations(
             and(
               eq(messagingConversations.organizationId, scope.organizationId),
               ne(messagingConversations.kind, "dm"),
+              isNull(messagingConversations.taskEntityId),
             ),
           )
           .orderBy(asc(messagingConversations.createdAt), asc(messagingConversations.id));

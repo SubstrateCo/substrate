@@ -140,17 +140,6 @@ export const keys = {
     taskEntityId,
   ],
   taskLocation: (org: string, taskEntityId: string) => [...tasks(org), "location", taskEntityId],
-  taskComments: (org: string, projectEntityId: string, taskEntityId: string) => [
-    ...tasks(org),
-    "comments",
-    projectEntityId,
-    taskEntityId,
-  ],
-  commentMentions: (org: string, entityId?: string) => [
-    ...tasks(org),
-    "comment-mentions",
-    ...optional(entityId),
-  ],
 };
 
 export interface HintTarget {
@@ -244,7 +233,7 @@ function reactionTargets(
 
 // targets.ts workTargets: a change to one project's tasks.
 function workTargets(org: string, projectId: string, taskIds: string[] | undefined): HintTarget[] {
-  const shared: HintTarget[] = [{ prefix: keys.commentMentions(org) }, ...searchTargets(org)];
+  const shared: HintTarget[] = searchTargets(org);
   if (!taskIds)
     return [
       { prefix: keys.projects(org) },
@@ -260,7 +249,6 @@ function workTargets(org: string, projectId: string, taskIds: string[] | undefin
     { prefix: keys.project(org, projectId) },
     ...taskIds.flatMap((taskId) => [
       { prefix: keys.taskLocation(org, taskId) },
-      { prefix: keys.taskComments(org, projectId, taskId) },
       { prefix: keys.taskAttachments(org, projectId, taskId) },
       { prefix: keys.activity(org, taskId) },
     ]),

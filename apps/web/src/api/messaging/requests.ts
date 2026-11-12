@@ -1,6 +1,7 @@
 import type {
   addAgentInput,
   conversationInput,
+  conversationListInput,
   conversationTargetInput,
   leaveInput,
   ownerInput,
@@ -23,7 +24,10 @@ import type { z } from "zod";
 
 export type Message = Awaited<ReturnType<typeof listMessages>>[number];
 
-export const listConversations = ({ data, signal }: ApiInput<z.input<typeof workspaceInput>>) =>
+export const listConversations = ({
+  data,
+  signal,
+}: ApiInput<z.input<typeof conversationListInput>>) =>
   readResult(api.messaging.conversations.$get({ query: data }, { init: { signal } }));
 export const listMessages = ({ data, signal }: ApiInput<z.input<typeof messageListInput>>) =>
   readResult(api.messaging.messages.$get({ query: data }, { init: { signal } }));

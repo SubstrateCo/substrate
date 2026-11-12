@@ -1,4 +1,4 @@
-import { expectChange, post, test, visit } from "./test-support/fixtures";
+import { expectChange, post, send, test, visit } from "./test-support/fixtures";
 import { detail, project, select, share } from "./test-support/tasks";
 import { expect } from "@playwright/test";
 
@@ -27,11 +27,10 @@ test("task drafts ask before navigation and project drafts stay with their proje
   await sender.page.getByRole("button", { name: /^Not started: Other task/ }).click();
   await sender.page.getByRole("button", { name: "Keep editing" }).click();
   await expect(sender.page.getByLabel("Task title")).toHaveValue("Unsaved task title");
-  await sender.page.getByLabel("Add a comment").fill("A comment draft");
   await sender.page.getByRole("button", { name: "Close task" }).click();
   await expect(sender.page.getByRole("dialog", { name: "Discard unsaved changes?" })).toBeVisible();
   await sender.page.getByRole("button", { name: "Keep editing" }).click();
-  await expect(sender.page.getByLabel("Add a comment")).toHaveText("A comment draft");
+  await expect(sender.page.getByLabel("Task title")).toHaveValue("Unsaved task title");
   await sender.page.getByRole("tab", { name: "Settings" }).click();
   await sender.page.getByRole("button", { name: "Discard changes" }).click();
   // The task inspector keeps its draft guard until its exit animation ends.
@@ -72,18 +71,16 @@ test("a click outside the task inspector closes it, but controls, drafts and bac
   await inspector.getByRole("heading", { name: "Other task", exact: true }).click();
   await expect(inspector).toBeVisible();
   // A draft asks before the click outside closes the inspector.
-  await inspector.getByLabel("Add a comment").fill("A comment draft");
+  await inspector.getByRole("button", { name: "Edit task", exact: true }).click();
+  const title = inspector.getByLabel("Task title", { exact: true });
+  await title.fill("Unsaved other task");
   await outside.click();
   await user.page.getByRole("button", { name: "Keep editing" }).click();
   await expect(user.page.getByRole("dialog")).toHaveCount(0);
-  await expect(inspector.getByLabel("Add a comment")).toHaveText("A comment draft");
+  await expect(title).toHaveValue("Unsaved other task");
   // The click outside moved focus off the draft, so keeping it returns focus there.
-  await expect(inspector.getByLabel("Add a comment")).toBeFocused();
-  // fill("") sets the DOM selection, then presses Delete. Chromium can deliver the key before
-  // selectionchange, so ProseMirror deletes at its stale caret. Select through the editor instead.
-  await inspector.getByLabel("Add a comment").press("ControlOrMeta+a");
-  await inspector.getByLabel("Add a comment").press("Delete");
-  await expect(inspector.getByLabel("Add a comment")).toHaveText("");
+  await expect(title).toBeFocused();
+  await title.fill("Other task");
   await outside.click();
   await expect(inspector).toHaveCount(0);
   await expect.poll(() => new URL(user.page.url()).searchParams.has("taskId")).toBe(false);
@@ -162,7 +159,7 @@ test("create a project, task and subtask, then edit and reload the task", async 
   );
 });
 
-test("assignment notifies a project member, whose comment reaches the owner live", async ({
+test("assignment notifies a project member, whose discussion message reaches the owner live", async ({
   actors,
   client,
 }) => {
@@ -193,11 +190,17 @@ test("assignment notifies a project member, whose comment reaches the owner live
       .getByRole("region", { name: "Task details", exact: true })
       .getByRole("heading", { name: title, exact: true }),
   ).toBeVisible();
-  const comment = `Ready for review ${created.entityId}`;
-  await member.page.getByLabel("Add a comment", { exact: true }).fill(comment);
-  await member.page.getByRole("button", { name: "Post comment", exact: true }).click();
-  // The owner's separate window reads the comment back from the server, so it persisted.
-  await expect(sender.page.getByText(comment, { exact: true })).toBeVisible();
+  await member.page.getByRole("link", { name: "Discussion", exact: true }).click();
+  await sender.page.getByRole("link", { name: "Discussion", exact: true }).click();
+  await expect(member.page.getByRole("textbox", { name: /^Message / })).toBeVisible();
+  await expect(sender.page.getByRole("textbox", { name: /^Message / })).toBeVisible();
+  const conversationId = new URL(member.page.url()).searchParams.get("conversationId")!;
+  const ownerSince = sender.events.length;
+  const message = `Ready for review ${created.entityId}`;
+  await send(member.page, message);
+  // The owner's separate window reads the message from the server, so it persisted.
+  await expect(sender.page.getByText(message, { exact: true })).toBeVisible();
+  await expectChange(sender, ownerSince, "messaging", conversationId);
 });
 
 test("project sharing needs confirmation and revocation removes cached private content live", async ({
@@ -265,12 +268,8 @@ test("project sharing needs confirmation and revocation removes cached private c
   );
 });
 
-test("a blocking link marks a task blocked, and a comment mention alerts the person and backlinks the task", async ({
-  actors,
-  client,
-}) => {
+test("a blocking link marks a task blocked", async ({ actors, client }) => {
   const created = await project(actors.sender);
-  await share(actors.sender, created.entityId, actors.member.name, "edit");
   const task = (title: string) =>
     post<{ id: string }>(actors.sender, "tasks/mutations", {
       action: "createTask",
@@ -280,19 +279,9 @@ test("a blocking link marks a task blocked, and a comment mention alerts the per
     });
   const waiting = `Waiting ${created.entityId}`;
   const blocker = `Blocker ${created.entityId}`;
-  const [first, second] = await Promise.all([task(waiting), task(blocker)]);
-  await post(actors.sender, "tasks/mutations", {
-    action: "comment",
-    organizationId: actors.sender.organizationId,
-    projectEntityId: created.entityId,
-    taskEntityId: second.id,
-    body: `Do this before @[task:${first.id}]`,
-  });
-  const [sender, member] = await Promise.all([client(actors.sender), client(actors.member)]);
-  await Promise.all([
-    visit(sender, undefined, "/tasks", { projectId: created.entityId, taskId: first.id }),
-    visit(member, undefined, "/notifications"),
-  ]);
+  const [first] = await Promise.all([task(waiting), task(blocker)]);
+  const sender = await client(actors.sender);
+  await visit(sender, undefined, "/tasks", { projectId: created.entityId, taskId: first.id });
   const links = sender.page.getByRole("region", { name: "Linked tasks", exact: true });
   await links.getByRole("button", { name: "Link a task", exact: true }).click();
   await sender.page.getByLabel("Search tasks to link", { exact: true }).fill(blocker);
@@ -310,20 +299,4 @@ test("a blocking link marks a task blocked, and a comment mention alerts the per
   await expect(
     sender.page.getByRole("button", { name: new RegExp(`^Not started: ${blocker}`) }),
   ).toHaveCount(1);
-  // The other task's comment references this task, so this task lists it.
-  await expect(
-    sender.page
-      .getByRole("region", { name: "Mentioned in comments", exact: true })
-      .getByRole("link", { name: new RegExp(blocker) }),
-  ).toBeVisible();
-
-  await sender.page.getByLabel("Add a comment", { exact: true }).click();
-  await sender.page.keyboard.type(`Please check @${actors.member.name.split(" ")[0]}`);
-  await sender.page.getByRole("option", { name: new RegExp(actors.member.name) }).click();
-  await sender.page.getByRole("button", { name: "Post comment", exact: true }).click();
-  const comments = sender.page.getByRole("region", { name: "Task comments", exact: true });
-  await expect(comments.getByRole("listitem").getByText(actors.member.name)).toBeVisible();
-  await expect(
-    member.page.getByRole("listitem").filter({ hasText: waiting }).getByRole("link"),
-  ).toHaveAccessibleName(`${actors.sender.name} mentioned you in a comment on ${waiting}, unread`);
 });

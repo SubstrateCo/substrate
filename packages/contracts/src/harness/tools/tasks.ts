@@ -1,16 +1,6 @@
 import { taskLinkRelations } from "../../tasks/links.ts";
 import { taskPriorityValues, taskStatusValues } from "../../tasks/status.ts";
-import {
-  actor,
-  author,
-  id,
-  messageRef,
-  page,
-  pageInput,
-  requestId,
-  timed,
-  timestamp,
-} from "./shared.ts";
+import { actor, id, messageRef, page, pageInput, requestId, timed, timestamp } from "./shared.ts";
 import { z } from "zod";
 
 const status = z
@@ -69,7 +59,9 @@ export const taskResult = z.object({
   parent: z.object({ id, title: z.string() }).nullable(),
   subtaskCount: z.number().int(),
   source: messageRef.nullable().describe("The message this task was created from."),
-  commentCount: z.number().int(),
+  discussionConversationId: id
+    .nullable()
+    .describe("The shared task discussion, if it has been opened."),
   linkedMessageCount: z.number().int(),
   links: z.array(taskLink).describe("Links to other tasks."),
   createdAt: timestamp,
@@ -120,7 +112,7 @@ export const taskTools = {
   get_task: {
     title: "Get task",
     description:
-      "Read a task in full: description, assignee, project, parent, subtask count, links to other tasks, the message it was created from, and counts of comments and linked messages. Use list_task_comments, list_task_activity or list_links for more.",
+      "Read a task in full, including its source message, shared discussion conversation ID, task links and linked-message count. Use read_conversation for an existing discussion, get_task_discussion to open one, or list_task_activity for change history.",
     readOnly: true,
     input: z.object({ taskId: id }).strict(),
     output: taskResult,
@@ -165,26 +157,19 @@ export const taskTools = {
       .strict(),
     output: taskResult,
   },
-  list_task_comments: {
-    title: "List task comments",
-    description: "List a task's comments, newest first.",
-    readOnly: true,
-    input: timed({ taskId: id, ...pageInput }),
-    output: page(z.object({ id, author, body: z.string(), createdAt: timestamp })),
-  },
-  add_task_comment: {
-    title: "Add task comment",
-    description: "Add a comment to a task as yourself.",
+  get_task_discussion: {
+    title: "Get task discussion",
+    description:
+      "Open a task's shared messaging discussion, creating it if needed. Task view access permits reading; comment access is required to post. Use read_conversation to read it and reply or propose to publish. This tool does not post a message or wake an agent.",
     readOnly: false,
     idempotent: true,
     input: z
       .object({
         requestId,
         taskId: id,
-        body: z.string().trim().min(1).max(20000).describe("Markdown."),
       })
       .strict(),
-    output: z.object({ id, taskId: id, createdAt: timestamp }),
+    output: z.object({ conversationId: id }),
   },
   add_task_link: {
     title: "Add task link",

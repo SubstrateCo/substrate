@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 
 import { useState } from "react";
 
@@ -23,6 +23,7 @@ import {
   conversationName,
   type Conversation,
 } from "@/lib/messaging/conversations";
+import { workLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import { messageTargetOptions } from "@/queries/context/links";
 import { useConversationManagement } from "@/queries/messaging/management";
@@ -43,6 +44,7 @@ export function ConversationPane({
 }) {
   const navigate = useNavigate();
   const { join } = useConversationManagement(organizationId);
+  const task = conversation.task;
   const target = useQuery({
     ...messageTargetOptions(
       organizationId,
@@ -80,6 +82,7 @@ export function ConversationPane({
         organizationId={organizationId}
         conversationId={conversation.id}
         olderPage={history.hasPrevious}
+        canPost={conversation.canPost}
         header={<OlderMessages {...history} onOlder={() => loadOlder(messages.data?.[0]?.id)} />}
         footer={<JumpToLatest {...history} />}
         onThread={(id) => {
@@ -131,6 +134,7 @@ export function ConversationPane({
         contextMessageIds={timeline.map((message) => message.id)}
         root={target.data?.root ?? messages.data?.find((message) => message.id === activeThreadId)}
         targetMessage={target.data?.message}
+        canPost={conversation.canPost}
         onClose={() => {
           void navigate({
             to: "/dashboard",
@@ -149,7 +153,18 @@ export function ConversationPane({
       <ConversationPaneView
         conversation={resource.status === "unavailable" ? null : conversation}
         viewerId={userId}
+        taskLink={
+          task && (
+            <Link
+              {...workLink(organizationId, task.projectEntityId, task.taskEntityId)}
+              className="underline decoration-muted-foreground underline-offset-4 hover:text-muted-foreground"
+            >
+              {task.title}
+            </Link>
+          )
+        }
         memberAction={(member) =>
+          !task &&
           conversation.canManage &&
           conversation.kind !== "dm" &&
           member.type === "human" &&
@@ -173,30 +188,40 @@ export function ConversationPane({
         }
         messages={messageContent}
         actions={
-          <ConversationActions
-            organizationId={organizationId}
-            conversation={conversation}
-            userId={userId}
-            onRemoved={() =>
-              navigate({ to: "/dashboard", search: { workspaceId: organizationId } })
-            }
-          />
+          !task && (
+            <ConversationActions
+              organizationId={organizationId}
+              conversation={conversation}
+              userId={userId}
+              onRemoved={() =>
+                navigate({ to: "/dashboard", search: { workspaceId: organizationId } })
+              }
+            />
+          )
         }
         leftNotice={
-          <LeftChannelNotice
-            pending={join.isPending}
-            error={join.error}
-            onJoin={() => join.mutate(conversation.id)}
-          />
+          !task && (
+            <LeftChannelNotice
+              pending={join.isPending}
+              error={join.error}
+              onJoin={() => join.mutate(conversation.id)}
+            />
+          )
         }
         composer={
           <>
             <AgentWorkNotice threadId={null} />
-            <Composer
-              organizationId={organizationId}
-              conversationId={conversation.id}
-              label={`Message ${conversationLabel({ ...conversation, name: conversationName(conversation) })}`}
-            />
+            {conversation.canPost ? (
+              <Composer
+                organizationId={organizationId}
+                conversationId={conversation.id}
+                label={`Message ${conversationLabel({ ...conversation, name: conversationName(conversation) })}`}
+              />
+            ) : (
+              <p className="px-4 py-3 text-sm text-muted-foreground">
+                Can view this discussion. Comment access is required to send messages.
+              </p>
+            )}
           </>
         }
         thread={aside}

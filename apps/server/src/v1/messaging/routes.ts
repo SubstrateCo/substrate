@@ -1,5 +1,6 @@
 import {
   workspaceInput,
+  conversationListInput,
   conversationInput,
   messageListInput,
   messageInput,
@@ -24,8 +25,11 @@ import { Hono } from "hono";
 
 export function createMessagingRoutes(services: MessagingService, scopes: Scopes) {
   return new Hono<ScopeEnv>()
-    .get("/conversations", v("query", workspaceInput), scopes.workspace("query"), async (c) =>
-      respond(c, await services.listConversations(c.var.scope, c.req.valid("query"))),
+    .get(
+      "/conversations",
+      v("query", conversationListInput),
+      scopes.workspace("query"),
+      async (c) => respond(c, await services.listConversations(c.var.scope, c.req.valid("query"))),
     )
     .post("/conversations", v("json", conversationInput), scopes.workspace("json"), async (c) =>
       respond(c, await services.createConversation(c.var.scope, c.req.valid("json"))),

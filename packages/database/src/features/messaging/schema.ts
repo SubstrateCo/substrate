@@ -2,6 +2,7 @@ import { actors, actorType } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
 import { organization } from "../../core/organizations/schema";
 import { searchDocument, trigramKey } from "../../core/search/indexing";
+import { tasks } from "../tasks/tasks.schema";
 import { sql } from "drizzle-orm";
 import {
   boolean,
@@ -26,6 +27,7 @@ export const messagingConversations = pgTable(
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
     kind: text("kind").$type<"dm" | "group" | "channel">().notNull(),
+    taskEntityId: uuid("task_entity_id"),
     dmKey: text("dm_key"),
     name: text("name"),
     private: boolean("private").default(true).notNull(),
@@ -36,6 +38,15 @@ export const messagingConversations = pgTable(
   },
   (table) => [
     unique("messaging_conversation_organization_unique").on(table.organizationId, table.id),
+    unique("messaging_conversation_task_unique").on(table.taskEntityId),
+    foreignKey({
+      columns: [table.organizationId, table.taskEntityId],
+      foreignColumns: [tasks.organizationId, tasks.entityId],
+    }).onDelete("cascade"),
+    check(
+      "messaging_task_discussion_check",
+      sql`${table.taskEntityId} IS NULL OR (${table.kind} = 'group' AND ${table.private} AND ${table.dmKey} IS NULL)`,
+    ),
     uniqueIndex("messaging_conversations_dm_key_unique")
       .on(table.dmKey)
       .where(sql`${table.dmKey} IS NOT NULL`),

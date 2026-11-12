@@ -106,16 +106,49 @@ export async function workspace(members: Account[], orgIndex: number) {
   const count = Math.min(8, Math.max(3, Math.ceil(members.length / 8)));
   await parallel(projects.slice(0, count), async (name, index) => {
     const creator = members[(index + 1) % members.length]!;
-    const existing = await api<{ name: string }[]>(
+    const existing = await api<{ entityId: string; name: string }[]>(
       creator.client,
       `/api/v1/tasks/projects${query}`,
     );
-    if (!existing.some((item) => item.name === name))
-      await api(creator.client, "/api/v1/tasks/mutations", {
+    const projectEntityId =
+      existing.find((item) => item.name === name)?.entityId ??
+      (
+        await api<{ id: string }>(creator.client, "/api/v1/tasks/mutations", {
+          organizationId,
+          action: "createProject",
+          name,
+          description: `Shared planning and delivery for ${name.toLowerCase()}.`,
+        })
+      ).id;
+    const detail = await api<{ tasks: { entityId: string; title: string }[] }>(
+      creator.client,
+      `/api/v1/tasks/project${query}&projectEntityId=${projectEntityId}`,
+    );
+    const title = `${name} kickoff`;
+    const taskEntityId =
+      detail.tasks.find((task) => task.title === title)?.entityId ??
+      (
+        await api<{ id: string }>(creator.client, "/api/v1/tasks/mutations", {
+          organizationId,
+          action: "createTask",
+          projectEntityId,
+          title,
+        })
+      ).id;
+    const { conversationId } = await api<{ conversationId: string }>(
+      creator.client,
+      "/api/v1/tasks/discussion",
+      { organizationId, projectEntityId, taskEntityId },
+    );
+    const messages = await api<{ id: string }[]>(
+      creator.client,
+      `/api/v1/messaging/messages${query}&conversationId=${conversationId}`,
+    );
+    if (!messages.length)
+      await api(creator.client, "/api/v1/messaging/messages", {
         organizationId,
-        action: "createProject",
-        name,
-        description: `Shared planning and delivery for ${name.toLowerCase()}.`,
+        conversationId,
+        body: `Coordinate delivery of @[task:${taskEntityId}] here.`,
       });
   });
 }

@@ -15,6 +15,7 @@ export interface Viewer {
 }
 
 interface ConversationFacts {
+  taskEntityId?: string | null;
   kind: ConversationKind;
   /** The host organization. */
   organizationId: string;
@@ -45,6 +46,7 @@ const owns = (conversation: ConversationFacts, viewer: Viewer) =>
  * without gaining read access. Agents never manage.
  */
 export const canManage = (conversation: ConversationFacts, viewer: Viewer) =>
+  !conversation.taskEntityId &&
   !viewer.agent &&
   conversation.kind !== "dm" &&
   (owns(conversation, viewer) || (viewer.admin && hosts(conversation, viewer)));
@@ -59,7 +61,7 @@ export function canShare(
   viewer: Viewer,
   partner: { connected: boolean; visible: boolean },
 ) {
-  if (viewer.agent) return false;
+  if (viewer.agent || conversation.taskEntityId) return false;
   if (hosts(conversation, viewer)) {
     if (conversation.kind === "channel") return viewer.admin;
     return owns(conversation, viewer) || (viewer.admin && conversation.kind !== "dm");
@@ -127,7 +129,8 @@ export function leavePlan(
   newOwnerUserId?: string,
 ): "leave" | "transfer" | "blocked" {
   // Agents only read and post.
-  if (viewer.agent || conversation.kind === "dm") throw new AccessDeniedError();
+  if (viewer.agent || conversation.kind === "dm" || conversation.taskEntityId)
+    throw new AccessDeniedError();
   if (!owns(conversation, viewer)) return "leave";
   return newOwnerUserId && newOwnerUserId !== viewer.userId ? "transfer" : "blocked";
 }

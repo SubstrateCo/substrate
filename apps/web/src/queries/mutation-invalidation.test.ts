@@ -19,9 +19,11 @@ test("task deletion and moves clear cached work and references without touching 
     const keys = [
       queryKeys.project("org", "source"),
       queryKeys.project("org", "destination"),
-      queryKeys.taskComments("org", "source", taskId),
       queryKeys.taskAttachments("org", "source", taskId),
       queryKeys.taskLocation("org", taskId),
+      queryKeys.conversations("org"),
+      queryKeys.conversationList("org", "discussion"),
+      queryKeys.messages("org", "discussion"),
       queryKeys.related("org", taskId),
       queryKeys.activity("org", taskId),
       queryKeys.notifications("org"),
@@ -206,13 +208,11 @@ test("plain replies refresh only discussion feeds containing that thread", async
   }
 });
 
-test("task edits refresh the affected project, labels, activity and notifications only; comments refresh only their feed", async () => {
+test("task edits refresh the affected project, labels, activity and notifications", async () => {
   const fixture = mount({
     project: { key: queryKeys.project("org", "project"), data: { tasks: [{ entityId: taskId }] } },
     otherProject: { key: queryKeys.project("org", "other"), data: { tasks: [] } },
     catalog: { key: queryKeys.projects("org") },
-    comments: { key: queryKeys.taskComments("org", "project", taskId) },
-    otherComments: { key: queryKeys.taskComments("org", "project", "other") },
     activity: { key: [...context, "activity", taskId] },
     otherActivity: { key: [...context, "activity", "other"] },
     labels: {
@@ -225,11 +225,15 @@ test("task edits refresh the affected project, labels, activity and notification
     },
     notifications: { key: [...context, "notifications"] },
     search: { key: [...context, "search", "term"] },
-    messaging: { key: queryKeys.conversations("org") },
+    messaging: {
+      key: queryKeys.conversationList("org", "discussion"),
+      data: [{ task: { taskEntityId: taskId, projectEntityId: "project" } }],
+    },
+    ordinaryMessaging: { key: queryKeys.conversations("org"), data: [{ task: null }] },
   });
   try {
     await fixture.client.invalidateQueries({ queryKey: queryKeys.organization("org") });
-    expect(Object.values(fixture.reads).reduce((sum, count) => sum + count, 0)).toBe(12);
+    expect(Object.values(fixture.reads).reduce((sum, count) => sum + count, 0)).toBe(11);
     for (const name of Object.keys(fixture.reads)) fixture.reads[name] = 0;
     await invalidateTasksWrite(
       fixture.client,
@@ -251,43 +255,26 @@ test("task edits refresh the affected project, labels, activity and notification
       project: 1,
       otherProject: 0,
       catalog: 0,
-      comments: 0,
-      otherComments: 0,
       activity: 1,
       otherActivity: 0,
       labels: 1,
       otherLabels: 0,
       notifications: 1,
       search: 0,
-      messaging: 0,
+      messaging: 1,
+      ordinaryMessaging: 0,
     });
-    for (const name of Object.keys(fixture.reads)) fixture.reads[name] = 0;
-    await invalidateTasksWrite(
-      fixture.client,
-      {
-        action: "comment",
-        organizationId: "org",
-        projectEntityId: "project",
-        taskEntityId: taskId,
-        body: "A comment",
-      },
-      taskId,
-    );
-    expect(fixture.reads.comments).toBe(1);
-    expect(Object.values(fixture.reads).reduce((sum, count) => sum + count, 0)).toBe(1);
   } finally {
     fixture.close();
   }
 });
 
-test("a link refreshes every cached project and task history; a comment refreshes comment backlinks", async () => {
+test("a link refreshes every cached project and task history", async () => {
   const fixture = mount({
     project: { key: queryKeys.project("org", "project"), data: { tasks: [{ entityId: taskId }] } },
     // The other end of a link may be in another project.
     otherProject: { key: queryKeys.project("org", "other"), data: { tasks: [] } },
     catalog: { key: queryKeys.projects("org") },
-    comments: { key: queryKeys.taskComments("org", "project", taskId) },
-    mentions: { key: queryKeys.commentMentions("org", "other") },
     activity: { key: [...context, "activity", taskId] },
     otherActivity: { key: [...context, "activity", "other"] },
     notifications: { key: [...context, "notifications"] },
@@ -305,25 +292,8 @@ test("a link refreshes every cached project and task history; a comment refreshe
       ...quiet,
       project: 1,
       otherProject: 1,
-      comments: 0,
-      mentions: 0,
       activity: 1,
       otherActivity: 1,
-    });
-    for (const name of Object.keys(fixture.reads)) fixture.reads[name] = 0;
-    await invalidateTasksWrite(
-      fixture.client,
-      { ...target, action: "comment", body: "See @[task:other]" },
-      taskId,
-    );
-    expect(fixture.reads).toEqual({
-      ...quiet,
-      project: 0,
-      otherProject: 0,
-      comments: 1,
-      mentions: 1,
-      activity: 0,
-      otherActivity: 0,
     });
   } finally {
     fixture.close();
@@ -359,12 +329,10 @@ test("a blocked search does not block a local mutation or erase stale-only inval
   }
 });
 
-test("project permission writes refresh child capabilities and comments without touching another project", async () => {
+test("project permission writes refresh child capabilities and references", async () => {
   const fixture = mount({
     project: { key: queryKeys.project("org", "project"), data: { tasks: [{ entityId: taskId }] } },
     catalog: { key: queryKeys.projects("org") },
-    comments: { key: queryKeys.taskComments("org", "project", taskId) },
-    otherComments: { key: queryKeys.taskComments("org", "other", "other") },
     labels: {
       key: [...context, "message-pages", "conversation", ["message"]],
       data: [{ links: [{ entityId: taskId }] }],
@@ -393,8 +361,6 @@ test("project permission writes refresh child capabilities and comments without 
     expect(fixture.reads).toEqual({
       project: 1,
       catalog: 1,
-      comments: 1,
-      otherComments: 0,
       labels: 1,
       otherLabels: 0,
       related: 1,

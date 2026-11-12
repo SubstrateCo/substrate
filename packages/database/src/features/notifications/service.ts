@@ -18,7 +18,6 @@ import { visibleConversations } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { projects } from "../projects/schema";
-import { taskComments } from "../tasks/comments.schema";
 import { tasks } from "../tasks/tasks.schema";
 import { toFeedItem } from "./feed-item";
 import { createNotificationGroups } from "./groups";
@@ -195,19 +194,10 @@ export function createFeedRepository(ctx: RepositoryContext, scope: SessionIdent
           ),
         )
         .leftJoin(
-          taskComments,
-          and(
-            eq(notifications.kind, "mention"),
-            eq(taskComments.organizationId, notifications.organizationId),
-            eq(taskComments.taskEntityId, notifications.entityId),
-            sql`${taskComments.id}::text = ${notifications.eventKey}`,
-          ),
-        )
-        .leftJoin(
           actor,
           eq(
             actor.entityId,
-            sql`coalesce(${messagingMessages.authorActorEntityId}, ${taskActivity.actorEntityId}, ${taskComments.authorActorEntityId})`,
+            sql`coalesce(${messagingMessages.authorActorEntityId}, ${taskActivity.actorEntityId})`,
           ),
         )
         .leftJoin(userAgents, eq(userAgents.id, actor.userAgentId))

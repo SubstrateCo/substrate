@@ -9,7 +9,6 @@ import { AccessDeniedError } from "../../errors";
 import { taskActivity } from "../activity/schema";
 import { visibleConversations } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
-import { taskComments } from "../tasks/comments.schema";
 import type { toFeedItem } from "./feed-item";
 import { notifications } from "./schema";
 import { sql } from "drizzle-orm";
@@ -70,18 +69,13 @@ export function createNotificationGroups(
         WITH eligible AS (${eligible(db, ctx, scope)}),
         events AS (
           SELECT eligible.*, coalesce(
-            message_actor, ${taskActivity.actorEntityId}, ${taskComments.authorActorEntityId}
+            message_actor, ${taskActivity.actorEntityId}
           ) AS actor_id
           FROM eligible LEFT JOIN ${taskActivity}
             ON eligible.kind = 'assignment'
             AND ${taskActivity.organizationId} = ${scope.organizationId}
             AND ${taskActivity.taskEntityId} = eligible.entity_id
             AND ${taskActivity.id}::text = eligible.event_key
-          LEFT JOIN ${taskComments}
-            ON eligible.kind = 'mention'
-            AND ${taskComments.organizationId} = ${scope.organizationId}
-            AND ${taskComments.taskEntityId} = eligible.entity_id
-            AND ${taskComments.id}::text = eligible.event_key
         ),
         totals AS (
           SELECT group_key, count(*)::int AS count,

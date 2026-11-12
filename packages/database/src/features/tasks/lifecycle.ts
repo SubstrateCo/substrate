@@ -47,7 +47,11 @@ export function taskLifecycle(context: RepositoryContext) {
         await ctx.requireAccess(projectId, "edit", true, "structural");
         await requireTask(ctx, taskId, projectId);
         const subtree = await taskSubtree(ctx, projectId, taskId);
-        // Deleting tasks changes no one's access: the project's readers refresh the whole project.
+        // Discussion access disappears with the task, including cached open conversations.
+        ctx.effects.hint({
+          audience: realtimeKeys.organization(scope.organizationId),
+          domain: "access",
+        });
         ctx.effects.hint(workHint(scope.organizationId, projectId));
         await tx
           .update(entities)

@@ -27,7 +27,9 @@ export async function messageWorkLinks(ctx: RepositoryContext, messageIds: strin
       projectEntityId: sql<string>`${projectEntityId}`,
       status: tasks.status,
       purpose: messageEntityReferences.purpose,
-      canRemove: sql<boolean>`${messageEntityReferences.purpose} = 'association' AND (
+      canRemove: sql<boolean>`(${messagingConversations.taskEntityId} IS NULL OR
+        ${ctx.accessLevel(messagingConversations.taskEntityId)} >= 'comment'::permission_level)
+        AND ${messageEntityReferences.purpose} = 'association' AND (
         ${messageEntityReferences.createdByActorEntityId} = ${ctx.scope.actorEntityId} OR
         work_access.level = 'owner'
       )`,

@@ -167,14 +167,16 @@ test("deletion and moves roll back with the caller, including deleted descendant
   });
 });
 
-test("moving a subtree keeps its IDs, comments, and access container aligned", async () => {
+test("moving a subtree keeps its IDs, discussion, and access container aligned", async () => {
+  await f.verifyEmails();
   const { repos, project, task, child } = await tree();
   const destination = await repos.projects.create({ name: "Destination" });
   const parent = await repos.tasks.create({
     projectEntityId: destination.entityId,
     title: "New parent",
   });
-  await repos.tasks.addComment(child.entityId, "Keep this comment");
+  const conversationId = await repos.tasks.ensureDiscussion(child.entityId);
+  await f.messaging("alice").sendMessage(conversationId, "Keep this message");
   await repos.permissions.grant({
     entityId: project.entityId,
     actorEntityId: f.bob,
@@ -190,8 +192,8 @@ test("moving a subtree keeps its IDs, comments, and access container aligned", a
     projectEntityId: destination.entityId,
     parentTaskEntityId: task.entityId,
   });
-  expect((await repos.tasks.listComments(child.entityId, destination.entityId))[0]?.body).toBe(
-    "Keep this comment",
+  expect((await f.messaging("alice").listMessages(conversationId))[0]?.body).toBe(
+    "Keep this message",
   );
   expect(await rejection(f.forActor(f.bob).tasks.get(child.entityId))).toBeInstanceOf(
     AccessDeniedError,

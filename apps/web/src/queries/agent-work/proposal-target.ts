@@ -46,7 +46,10 @@ export function useProposalTarget(
     message = { conversationId: sourceConversationId, messageId: action.input.sourceMessageId };
 
   const conversations = useQuery({
-    ...conversationsQueryOptions(organizationId),
+    ...conversationsQueryOptions(
+      organizationId,
+      action?.type === "reply_elsewhere" ? action.input.conversationId : undefined,
+    ),
     enabled: action?.type === "reply_elsewhere",
   });
   const projects = useQuery({
