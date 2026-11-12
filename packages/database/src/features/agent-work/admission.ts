@@ -330,7 +330,7 @@ async function callerFacts(
   agents: { agent: AdmissionAgent; policy: CallerFacts["policy"] }[],
   person: { actorId: string } | undefined,
 ): Promise<Map<string, CallerFacts>> {
-  if (!agents.length) return new Map();
+  if (!agents.length) return new Map<string, CallerFacts>();
   const { message } = trigger;
   const callerUserId = trigger.author.userId;
   const ofAgent = eq(agentInvocations.userAgentId, callerAgent.id);
