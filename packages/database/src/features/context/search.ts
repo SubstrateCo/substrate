@@ -115,7 +115,9 @@ export async function contextSearch(
     editable?: boolean;
     relatedToEntityId?: string;
   },
+  signal?: AbortSignal,
 ): Promise<SearchResult[]> {
+  signal?.throwIfAborted();
   const { db } = ctx;
   // The route and the MCP tool schemas validate the query and kind.
   const limit = pageSize(input.limit ?? 30);
@@ -132,6 +134,7 @@ export async function contextSearch(
           visibleConversations(db, scope),
         ),
       );
+    signal?.throwIfAborted();
     if (!source) return [];
   }
   // One hop only. Membership stays structural; links never grant access.
@@ -148,16 +151,19 @@ export async function contextSearch(
       .where(
         and(eq(entities.organizationId, scope.organizationId), eq(entities.entityId, anchorId)),
       );
+    signal?.throwIfAborted();
     if (entity) {
       if (entity.entityType === "task" || entity.entityType === "project")
         anchorProjectId = (await requireWork(ctx, anchorId)).projectEntityId;
       else await ctx.requireAccess(anchorId, "view");
+      signal?.throwIfAborted();
       anchorKind = "entity";
     } else {
       const [conversation] = await db
         .select({ id: messagingConversations.id })
         .from(messagingConversations)
         .where(and(eq(messagingConversations.id, anchorId), visibleConversations(db, scope)));
+      signal?.throwIfAborted();
       if (conversation) {
         anchorKind = "conversation";
         anchorConversationId = conversation.id;
@@ -170,6 +176,7 @@ export async function contextSearch(
             eq(messagingConversations.id, messagingMessages.conversationId),
           )
           .where(and(eq(messagingMessages.id, anchorId), visibleConversations(db, scope)));
+        signal?.throwIfAborted();
         if (!message) throw new AccessDeniedError();
         anchorKind = "message";
         anchorConversationId = message.conversationId;
@@ -471,6 +478,7 @@ export async function contextSearch(
       )
       .orderBy(sql`lower(${messagingConversations.name})`, asc(messagingConversations.id))
       .limit(limit);
+    signal?.throwIfAborted();
     return rows.map((row) => ({ ...row, kind: "channel" as const, conversationId: row.id }));
   }
   if (kind === "thread") {
@@ -518,6 +526,7 @@ export async function contextSearch(
       )
       .orderBy(asc(messagingMessages.id))
       .limit(limit);
+    signal?.throwIfAborted();
     for (const row of rows) bodies.set(row.id, row.title);
     results.push(
       ...rows.map((row) => ({
@@ -573,6 +582,7 @@ export async function contextSearch(
     );
   }
   for (const rows of await Promise.all(branchRows)) results.push(...rows);
+  signal?.throwIfAborted();
   if (kind === "person" && input.conversationId) {
     const rows = await db
       .select({
@@ -610,6 +620,7 @@ export async function contextSearch(
       )
       .orderBy(asc(actors.entityId))
       .limit(limit);
+    signal?.throwIfAborted();
     results.push(...rows.map((row) => ({ ...row, kind: "person" as const })));
   }
   // Mention picker: the viewer's own agents that are members here, and, for a person of this
@@ -670,6 +681,7 @@ export async function contextSearch(
       )
       .orderBy(asc(actors.entityId))
       .limit(limit);
+    signal?.throwIfAborted();
     results.push(
       ...rows.map(({ ownerUserId, agentId, callerPolicy, imageFileId, ...row }) =>
         ownerUserId === scope.userId
@@ -695,7 +707,10 @@ export async function contextSearch(
         ? [{ id: row.id, body: bodies.get(row.id)!, conversationId: row.conversationId! }]
         : [],
     ),
+    undefined,
+    signal,
   );
+  signal?.throwIfAborted();
   return page.map((row) => {
     const excerpt = excerpts.get(row.id);
     return excerpt === undefined ? row : { ...row, excerpt };

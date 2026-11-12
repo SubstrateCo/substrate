@@ -96,3 +96,16 @@ test("non-JSON gateway failures retain their HTTP status", async () => {
   expect(error).toBeInstanceOf(ApiError);
   expect(error).toMatchObject({ code: "INTERNAL_ERROR", status: 502 });
 });
+
+test("preserves cancellation while reading the response body", async () => {
+  const cancellation = new DOMException("Aborted", "AbortError");
+  const error = await readResult(
+    Promise.resolve({
+      status: 200,
+      json: async () => {
+        throw cancellation;
+      },
+    }),
+  ).catch((error) => error);
+  expect(error).toBe(cancellation);
+});

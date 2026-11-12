@@ -1,16 +1,53 @@
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import { entityLinks } from "../../core/links/schema";
+import { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
 import { createAcceptedMessagingService } from "../../testing/messaging";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { messagingParticipants } from "../messaging/schema";
+import { contextSearch } from "./search";
 import { createContextService } from "./service";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 const f = setupDatabase();
+
+test("an already cancelled search runs no queries", async () => {
+  const controller = new AbortController();
+  controller.abort();
+  const { db, queries } = recordQueries();
+  const context = new RepositoryContext(db, { organizationId: f.orgA, actorEntityId: f.alice });
+  expect(
+    await rejection(
+      contextSearch(
+        context,
+        { userId: "alice", organizationId: f.orgA },
+        { query: "" },
+        controller.signal,
+      ),
+    ),
+  ).toBe(controller.signal.reason);
+  expect(queries).toEqual([]);
+});
+
+test("cancelling a message search skips excerpt reference lookups", async () => {
+  await f.db.update(user).set({ emailVerified: true });
+  const project = await f.forActor(f.alice).projects.create({ name: "Referenced work" });
+  const chat = createAcceptedMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
+  const channel = await chat.createConversation({ kind: "channel", name: "Search cancellation" });
+  await chat.sendMessage(channel.id, `Find @[project:${project.entityId}]`);
+  const controller = new AbortController();
+  const { db, queries } = recordQueries((query) => {
+    if (query.includes('from "messaging_messages"')) controller.abort();
+  });
+  const context = createContextService(db, { userId: "alice", organizationId: f.orgA });
+  const result = context.search({ query: "Find", kind: "message" }, controller.signal);
+  expect(await rejection(result)).toMatchObject({ name: "AbortError" });
+  // The workspace check and message search run; no excerpt metadata is read afterwards.
+  expect(queries).toHaveLength(2);
+});
 
 test("unnamed conversation results are named after the other approved members", async () => {
   await f.db.update(user).set({ emailVerified: true });

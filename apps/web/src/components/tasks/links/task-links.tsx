@@ -1,6 +1,6 @@
 import type { TaskLinkRelation } from "@substrate/contracts/tasks/links";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQueries } from "@tanstack/react-query";
 
 import { useState } from "react";
 
@@ -33,10 +33,12 @@ export function TaskLinks({
   const [relation, setRelation] = useState<TaskLinkRelation>("blocked_by");
   const [query, setQuery] = useState("");
   const debounced = useSearchDebounce(query, `${organizationId}:${task.entityId}`);
-  const search = useQuery({
-    ...searchOptions({ organizationId, query: debounced.query, kind: "task", limit: 20 }),
-    enabled: open && canEdit && !debounced.pending,
-  });
+  // Detach while closed: disabling an observer alone does not abort its active request.
+  const queries =
+    open && canEdit && !debounced.pending
+      ? [searchOptions({ organizationId, query: debounced.query, kind: "task", limit: 20 })]
+      : [];
+  const search = useQueries({ queries }).at(0);
   const target = {
     organizationId,
     projectEntityId: detail.project.entityId,
@@ -70,9 +72,9 @@ export function TaskLinks({
             onRelationChange={setRelation}
             query={query}
             onQueryChange={setQuery}
-            results={(search.data ?? []).filter((result) => result.id !== task.entityId)}
-            loading={debounced.pending || search.isPending}
-            searchError={search.error}
+            results={(search?.data ?? []).filter((result) => result.id !== task.entityId)}
+            loading={debounced.pending || !!search?.isPending}
+            searchError={search?.error}
             pending={write.isPending}
             onPick={(otherTaskEntityId) => {
               setOpen(false);

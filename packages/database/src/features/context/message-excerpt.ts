@@ -50,13 +50,16 @@ export async function messageExcerpts(
   scope: SessionIdentity,
   messages: { id: string; body: string; conversationId: string }[],
   length?: number,
+  signal?: AbortSignal,
 ) {
+  signal?.throwIfAborted();
   const ids = messages.map((message) => message.id);
   const bodies = messages.map((message) => message.body).join("\n");
   const labels = new Map<string, string>();
   if (ids.length && /@\[(task|project):/i.test(bodies))
     for (const links of (await messageWorkLinks(ctx, ids)).values())
       for (const link of links) labels.set(`${link.entityType}:${link.entityId}`, link.title);
+  signal?.throwIfAborted();
   if (ids.length && /@\[(channel|thread):/i.test(bodies))
     for (const reference of await messagingReferencePage(db, scope, ids)) {
       const channel = reference.conversationName ? `#${reference.conversationName}` : "a channel";
@@ -65,9 +68,11 @@ export async function messageExcerpts(
         reference.kind === "channel" ? channel : `a thread in ${channel}`,
       );
     }
+  signal?.throwIfAborted();
   if (/@\[person:/i.test(bodies))
     for (const people of (await messagePeople(db, scope, messages)).values())
       for (const person of people) labels.set(`person:${person.id}`, `@${person.name}`);
+  signal?.throwIfAborted();
   return new Map(
     messages.map((message) => [message.id, excerptText(message.body, labels, length)]),
   );

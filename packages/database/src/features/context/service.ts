@@ -380,7 +380,8 @@ export function createContextRepository(context: RepositoryContext, scope: Sessi
       );
       return { message: message!, root: thread ?? message! };
     },
-    search: (input: Parameters<typeof contextSearch>[2]) => contextSearch(context, scope, input),
+    search: (input: Parameters<typeof contextSearch>[2], signal?: AbortSignal) =>
+      contextSearch(context, scope, input, signal),
   };
 }
 

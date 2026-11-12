@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
-import { useDeferredValue, useState } from "react";
+import { useState } from "react";
 
 import { CrmExport } from "./crm-export";
 import { CrmResourceState } from "./crm-resource-state";
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { resourceState } from "@/lib/resource-state";
 import { useCrmMutation } from "@/queries/crm/mutations";
 import {
@@ -28,8 +29,8 @@ import { Plus } from "lucide-react";
 
 export function CrmCollection({ organizationId, kind }: { organizationId: string; kind: CrmKind }) {
   const [search, setSearch] = useState("");
-  const deferredSearch = useDeferredValue(search);
   const [archived, setArchived] = useState(false);
+  const debounced = useSearchDebounce(search, JSON.stringify([organizationId, kind, archived]));
   const [view, setView] = useState<"pipeline" | "list">("pipeline");
   const [creating, setCreating] = useState(false);
   const [cursors, setCursors] = useState<string[]>([]);
@@ -39,24 +40,24 @@ export function CrmCollection({ organizationId, kind }: { organizationId: string
   const accounts = useQuery({
     ...accountsOptions(
       organizationId,
-      kind === "accounts" ? deferredSearch : "",
+      kind === "accounts" ? debounced.query : "",
       kind === "accounts" && archived,
       kind === "accounts" ? afterEntityId : undefined,
     ),
-    enabled: kind === "accounts" || creating,
+    enabled: !debounced.pending && (kind === "accounts" || creating),
   });
   const contacts = useQuery({
     ...contactsOptions(
       organizationId,
-      kind === "contacts" ? deferredSearch : "",
+      kind === "contacts" ? debounced.query : "",
       kind === "contacts" && archived,
       kind === "contacts" ? afterEntityId : undefined,
     ),
-    enabled: kind === "contacts" || creating,
+    enabled: !debounced.pending && (kind === "contacts" || creating),
   });
   const deals = useQuery({
-    ...dealsOptions(organizationId, deferredSearch, archived, afterEntityId),
-    enabled: kind === "deals",
+    ...dealsOptions(organizationId, debounced.query, archived, afterEntityId),
+    enabled: kind === "deals" && !debounced.pending,
   });
   const pipeline = useQuery({ ...pipelineOptions(organizationId), enabled: kind === "deals" });
   const settings = useQuery({ ...crmSettingsOptions(organizationId), enabled: kind === "deals" });
@@ -102,7 +103,7 @@ export function CrmCollection({ organizationId, kind }: { organizationId: string
               organizationId={organizationId}
               kind={kind}
               archived={archived ? "archived" : "active"}
-              search={deferredSearch}
+              search={debounced.query}
             />
             <Button
               size="sm"
@@ -159,7 +160,7 @@ export function CrmCollection({ organizationId, kind }: { organizationId: string
         </div>
       </div>
       <CrmResourceState
-        pending={query.isPending}
+        pending={debounced.pending || query.isPending}
         error={query.error}
         onRetry={() => void query.refetch()}
       />

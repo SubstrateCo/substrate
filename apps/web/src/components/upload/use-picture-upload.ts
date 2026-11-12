@@ -33,7 +33,7 @@ export function usePictureUpload({
   );
   const crop = useMutation({
     mutationFn: async ({ controller }: { controller: AbortController }) => {
-      const blob = await cropImage(file, area, rotation, mode);
+      const blob = await cropImage(file, area, rotation, mode, controller.signal);
       controller.signal.throwIfAborted();
       return blob;
     },

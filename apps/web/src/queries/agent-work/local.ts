@@ -50,10 +50,13 @@ export const turnOptions = (userId: string, organizationId: string, turnId: stri
 export async function loadTurnEvents(
   read: (after: number) => Promise<TurnEventView[]>,
   cached: TurnEventView[] = [],
+  signal?: AbortSignal,
 ) {
   const events = [...cached];
   for (;;) {
+    signal?.throwIfAborted();
     const page = await read(events.at(-1)?.seq ?? 0);
+    signal?.throwIfAborted();
     events.push(...page);
     if (page.length < turnEventsPageSize) return events;
   }
@@ -62,10 +65,11 @@ export async function loadTurnEvents(
 export const turnEventsOptions = (userId: string, organizationId: string, turnId: string) =>
   queryOptions({
     queryKey: queryKeys.agentWorkTurnEvents(userId, organizationId, turnId),
-    queryFn: ({ client, queryKey }) =>
+    queryFn: ({ client, queryKey, signal }) =>
       loadTurnEvents(
         (after) => agentWorkBridge().turnEvents(turnId, after),
         client.getQueryData<TurnEventView[]>(queryKey),
+        signal,
       ),
     ...localRead(userId),
   });

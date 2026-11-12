@@ -37,7 +37,8 @@ export async function readResult<T>(
   let result;
   try {
     result = await resolved.json();
-  } catch {
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") throw error;
     throw new ApiError(
       "INTERNAL_ERROR",
       "The server returned an invalid response.",

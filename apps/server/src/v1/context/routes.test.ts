@@ -141,7 +141,28 @@ test("context search keeps JSON numbers and booleans and maps authorization fail
   expect(searchContext).toHaveBeenCalledWith(
     expect.objectContaining({ userId: "user-1", organizationId: "org" }),
     input,
+    expect.any(AbortSignal),
   );
+});
+
+test("search forwards request cancellation and does not report it as a server error", async () => {
+  const controller = new AbortController();
+  let searchSignal: AbortSignal | undefined;
+  const searchContext: ContextService["searchContext"] = async (_scope, _input, signal) => {
+    searchSignal = signal;
+    controller.abort();
+    signal?.throwIfAborted();
+    return { success: true, data: [] };
+  };
+  const app = createContextRoutes({ ...services, searchContext });
+  const response = await app.request("/search", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ organizationId: "org", query: "Launch" }),
+    signal: controller.signal,
+  });
+  expect(searchSignal?.aborted).toBe(true);
+  expect(response.status).toBe(499);
 });
 
 test("context unlink reads JSON on DELETE and preserves structured IDs", async () => {

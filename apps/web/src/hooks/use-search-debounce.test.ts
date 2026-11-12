@@ -1,23 +1,23 @@
 import { debouncedSearch } from "./use-search-debounce";
 import { expect, test } from "bun:test";
 
-test("a search is pending and empty until its first query settles", () => {
-  expect(debouncedSearch(null, "rel", "org-1")).toEqual({ query: "", pending: true });
+test("a pending search uses the current text so it detaches from an obsolete query key", () => {
+  expect(debouncedSearch(null, "rel", "org-1")).toEqual({ query: "rel", pending: true });
 });
 
-test("a settled query is used, and newer typing keeps it while the next query is pending", () => {
+test("newer typing changes the query key before the next query settles", () => {
   const settled = { query: "release", scope: "org-1" };
   expect(debouncedSearch(settled, "release", "org-1")).toEqual({
     query: "release",
     pending: false,
   });
   expect(debouncedSearch(settled, "release notes", "org-1")).toEqual({
-    query: "release",
+    query: "release notes",
     pending: true,
   });
 });
 
-test("a scope change hides the previous results at once instead of reusing them", () => {
+test("a scope change keeps searching disabled until the current scope settles", () => {
   const settled = { query: "release", scope: "org-1" };
-  expect(debouncedSearch(settled, "release", "org-2")).toEqual({ query: "", pending: true });
+  expect(debouncedSearch(settled, "release", "org-2")).toEqual({ query: "release", pending: true });
 });

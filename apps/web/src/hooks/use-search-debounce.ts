@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 
 type Settled = { query: string; scope: string };
 
-/** Results use only a query settled in the current scope, so a scope change hides old results. */
+/** Change query keys at once to abandon old requests; enable fetching only after settling. */
 export function debouncedSearch(settled: Settled | null, query: string, scope: string) {
   return {
-    query: settled?.scope === scope ? settled.query : "",
+    query,
     pending: settled?.scope !== scope || settled.query !== query,
   };
 }

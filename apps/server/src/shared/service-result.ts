@@ -22,10 +22,17 @@ export class ServiceError extends Error {
   }
 }
 
-export async function serviceResult<T>(work: () => Promise<T>): Promise<ServiceResult<T>> {
+export async function serviceResult<T>(
+  work: () => Promise<T>,
+  signal?: AbortSignal,
+): Promise<ServiceResult<T>> {
   try {
-    return success(await work());
+    signal?.throwIfAborted();
+    const data = await work();
+    signal?.throwIfAborted();
+    return success(data);
   } catch (error) {
+    signal?.throwIfAborted();
     if (error instanceof ServiceError && error.code !== "INTERNAL_ERROR")
       return publicFailure(error.code, error.message, error.reason);
     if (error instanceof ZodError) return publicFailure("INVALID_INPUT", "Invalid request input.");

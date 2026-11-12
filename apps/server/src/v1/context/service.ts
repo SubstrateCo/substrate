@@ -44,8 +44,13 @@ export function createContextService({
         scope.repositories.context.messageTarget(input.conversationId, input.messageId),
       );
     },
-    searchContext(this: void, scope: WorkspaceScope, input: z.output<typeof contextSearch>) {
-      return serviceResult(() => scope.repositories.context.search(input));
+    searchContext(
+      this: void,
+      scope: WorkspaceScope,
+      input: z.output<typeof contextSearch>,
+      signal?: AbortSignal,
+    ) {
+      return serviceResult(() => scope.repositories.context.search(input, signal), signal);
     },
     createTaskFromMessage(
       this: void,

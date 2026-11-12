@@ -5,6 +5,22 @@ import { APIError } from "better-auth/api";
 import { describe, expect, spyOn, test } from "bun:test";
 
 describe("service results", () => {
+  test("cancellation is not logged or converted into a service failure", async () => {
+    const controller = new AbortController();
+    const log = spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const result = serviceResult(async () => {
+        controller.abort();
+        controller.signal.throwIfAborted();
+        return null;
+      }, controller.signal);
+      expect(await result.catch((error) => error)).toBe(controller.signal.reason);
+      expect(log).not.toHaveBeenCalled();
+    } finally {
+      log.mockRestore();
+    }
+  });
+
   test("keeps successful domain data in the result", async () => {
     expect(await serviceResult(async () => ({ id: "task" }))).toEqual({
       success: true,

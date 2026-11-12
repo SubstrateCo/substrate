@@ -7,20 +7,31 @@ import { queryKeys } from "@/queries/keys";
 export const invitationsQueryOptions = (organizationId: string) =>
   queryOptions({
     queryKey: queryKeys.invitations(organizationId),
-    queryFn: async () =>
-      unwrap(await authClient.organization.listInvitations({ query: { organizationId } })),
+    queryFn: async ({ signal }) =>
+      unwrap(
+        await authClient.organization.listInvitations({
+          query: { organizationId },
+          fetchOptions: { signal },
+        }),
+      ),
   });
 
 export const userInvitationsQueryOptions = () =>
   queryOptions({
     queryKey: queryKeys.userInvitations,
-    queryFn: async () => unwrap(await authClient.organization.listUserInvitations()),
+    queryFn: async ({ signal }) =>
+      unwrap(await authClient.organization.listUserInvitations({ fetchOptions: { signal } })),
   });
 
 export const invitationQueryOptions = (invitationId: string) =>
   queryOptions({
     queryKey: queryKeys.invitation(invitationId),
-    queryFn: async () =>
-      unwrap(await authClient.organization.getInvitation({ query: { id: invitationId } })),
+    queryFn: async ({ signal }) =>
+      unwrap(
+        await authClient.organization.getInvitation({
+          query: { id: invitationId },
+          fetchOptions: { signal },
+        }),
+      ),
     retry: false,
   });

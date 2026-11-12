@@ -49,6 +49,7 @@ export function RealtimeConnection({
   useEffect(() => {
     const bridge = realtimeBridge() ?? createBrowserRealtime();
     let active = true;
+    const controller = new AbortController();
     let connected = false;
     const cache = createRealtimeCache({
       queryClient,
@@ -56,7 +57,7 @@ export function RealtimeConnection({
       userId,
       revalidate: async (refreshSession) => {
         if (refreshSession) {
-          const session = await getSession(undefined, true);
+          const session = await getSession(controller.signal, true);
           if (!active) return;
           queryClient.setQueryData(queryKeys.session, session);
         }
@@ -90,6 +91,7 @@ export function RealtimeConnection({
     });
     return () => {
       active = false;
+      controller.abort();
       clearInterval(reconcileTimer);
       window.removeEventListener("focus", reconcile);
       document.removeEventListener("visibilitychange", onVisibility);

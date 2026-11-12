@@ -12,16 +12,20 @@ export function checkImageDimensions(width: number, height: number) {
   }
 }
 
-export async function openPicture(file: File) {
+export async function openPicture(file: File, signal?: AbortSignal) {
+  signal?.throwIfAborted();
   const error = await validatePicture(file);
+  signal?.throwIfAborted();
   if (error) throw new Error(error);
   let image: ImageBitmap;
   try {
     image = await createImageBitmap(file, { imageOrientation: "from-image" });
   } catch {
+    signal?.throwIfAborted();
     throw new Error("This image could not be opened. Choose a valid JPEG, PNG, or WebP image.");
   }
   try {
+    signal?.throwIfAborted();
     checkImageDimensions(image.width, image.height);
   } catch (error) {
     image.close();
@@ -36,9 +40,11 @@ export async function cropImage(
   area: CropArea | null,
   rotation: number,
   mode: "fit" | "fill",
+  signal?: AbortSignal,
 ): Promise<Blob> {
-  const image = await openPicture(file);
+  const image = await openPicture(file, signal);
   try {
+    signal?.throwIfAborted();
     const quarterTurn = ((rotation % 360) + 360) % 360;
     if (![0, 90, 180, 270].includes(quarterTurn)) throw new Error("Invalid rotation.");
     const width = quarterTurn % 180 === 0 ? image.width : image.height;
@@ -62,12 +68,15 @@ export async function cropImage(
     context.scale(scale, scale);
     context.rotate((quarterTurn * Math.PI) / 180);
     context.drawImage(image, -image.width / 2, -image.height / 2);
-    return await new Promise<Blob>((resolve, reject) =>
+    signal?.throwIfAborted();
+    const blob = await new Promise<Blob>((resolve, reject) =>
       canvas.toBlob(
         (blob) => (blob ? resolve(blob) : reject(new Error("Image could not be saved."))),
         "image/png",
       ),
     );
+    signal?.throwIfAborted();
+    return blob;
   } finally {
     image.close();
   }

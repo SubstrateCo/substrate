@@ -49,3 +49,30 @@ test("a refetch reads only the events after the cached ones", async () => {
   expect(source.requests).toEqual([turnEventsPageSize + 10]);
   expect(events.map((item) => item.seq)).toEqual(stored.map((item) => item.seq));
 });
+
+test("an abandoned transcript does not request another page", async () => {
+  const controller = new AbortController();
+  const requests: number[] = [];
+  const cancellation = new DOMException("Aborted", "AbortError");
+  const result = loadTurnEvents(
+    async (after) => {
+      requests.push(after);
+      controller.abort(cancellation);
+      return after === 0 ? sequence(turnEventsPageSize) : [];
+    },
+    [],
+    controller.signal,
+  );
+  expect(await result.catch((error) => error)).toBe(cancellation);
+  expect(requests).toEqual([0]);
+});
+
+test("a cancelled transcript does not start reading", async () => {
+  const controller = new AbortController();
+  controller.abort();
+  const source = bridge(sequence(1));
+  expect(await loadTurnEvents(source.read, [], controller.signal).catch((error) => error)).toBe(
+    controller.signal.reason,
+  );
+  expect(source.requests).toEqual([]);
+});
