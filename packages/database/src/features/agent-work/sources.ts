@@ -1,8 +1,10 @@
 import type { AgentSourcesResult } from "@substrate/contracts/agent-work";
 
 import type { DatabaseExecutor } from "../../client";
-import { actorAuthorKind, actorDisplayName } from "../../core/actors/display-name";
+import { actorAuthorKind } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
+import { userAgents } from "../../core/actors/user-agents.schema";
+import { user } from "../../core/authentication/schema";
 import {
   requireDevice,
   type DeviceIdentity,
@@ -12,7 +14,7 @@ import { visibleConversations } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { revokedInvocations } from "./invocations";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
 /**
  * Message bodies for the home desktop, only while the owner can see their conversation now.
@@ -38,7 +40,7 @@ export async function loadSourcesForDevice(
           conversationName: conversationDisplayName(tx, identity),
           conversationKind: messagingConversations.kind,
           actorId: actors.entityId,
-          name: actorDisplayName(),
+          name: sql<string>`case when ${actors.type} = 'agent' then coalesce(${userAgents.name}, 'Agent') else ${user.name} end`,
           kind: actorAuthorKind(identity.userId),
           body: messagingMessages.body,
           createdAt: messagingMessages.createdAt,
@@ -49,6 +51,8 @@ export async function loadSourcesForDevice(
           eq(messagingConversations.id, messagingMessages.conversationId),
         )
         .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
+        .leftJoin(user, eq(user.id, actors.userId))
+        .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
         .where(
           and(
             inArray(messagingMessages.id, readable),

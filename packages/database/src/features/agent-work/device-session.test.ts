@@ -1,15 +1,45 @@
 import { registerDevice } from "../../core/devices/repository";
 import { AccessDeniedError } from "../../errors";
 import { createRepositories } from "../../repositories";
-import { agentInvocations } from "../../schema";
+import { agentInvocations, user, userAgents } from "../../schema";
 import { agentWorkFixture, callerFixture } from "../../testing/agent-work";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
+import { createMessagingService } from "../messaging/service";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
+
+test("source pages join current human and agent names without per-message lookups", async () => {
+  const { agent, alice, dm } = await agentWorkFixture(f);
+  const ownerMessage = await alice.sendMessage(dm.id, "Owner text");
+  const agentMessage = await createMessagingService(f.db, {
+    userId: "alice",
+    organizationId: f.orgA,
+    actorEntityId: agent.actorId,
+  }).sendMessage(dm.id, "Agent text");
+  await f.db.update(user).set({ name: "Alice renamed" }).where(eq(user.id, "alice"));
+  await f.db
+    .update(userAgents)
+    .set({ name: "Scout renamed" })
+    .where(eq(userAgents.id, agent.agentId));
+  const { db, queries } = recordQueries();
+  const device = await createRepositories(db).forDeviceSession(agent.identity);
+  queries.length = 0;
+  const { result } = await device.agentWork.loadSources([ownerMessage.id, agentMessage.id]);
+  expect(result.messages.find((message) => message.id === ownerMessage.id)?.author).toMatchObject({
+    name: "Alice renamed",
+    kind: "owner",
+  });
+  expect(result.messages.find((message) => message.id === agentMessage.id)?.author).toMatchObject({
+    name: "Scout renamed",
+    kind: "agent",
+  });
+  expect(queries.filter((query) => query.startsWith("select"))).toHaveLength(1);
+  expect(queries.join("\n")).not.toMatch(/dn_user|dn_agent/);
+});
 
 test("native polling resolves membership and registration once at its factory boundary", async () => {
   await f.verifyEmails();
