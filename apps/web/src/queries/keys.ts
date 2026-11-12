@@ -37,8 +37,12 @@ export const queryKeys = {
     [...queryKeys.agentWork(userId, organizationId), "callers", agentId] as const,
   agentCallsLog: (userId: string, organizationId: string, agentId: string) =>
     [...queryKeys.agentWork(userId, organizationId), "calls", agentId] as const,
-  myAgentCalls: (userId: string, organizationId: string, conversationId: string) =>
-    [...queryKeys.agentWork(userId, organizationId), "my-calls", conversationId] as const,
+  myAgentCalls: (userId: string, organizationId: string, conversationId?: string) =>
+    [
+      ...queryKeys.agentWork(userId, organizationId),
+      "my-calls",
+      ...(conversationId ? [conversationId] : []),
+    ] as const,
   agentWorkRequests: (userId: string, organizationId: string, conversationId: string) =>
     [...queryKeys.agentWork(userId, organizationId), "requests", conversationId] as const,
   // Local: what the home desktop's bridge returns. Only that desktop has it.

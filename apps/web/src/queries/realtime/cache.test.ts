@@ -13,6 +13,28 @@ function change(
   return { version: 1, type: "change", id: crypto.randomUUID(), organizationId, domain } as const;
 }
 
+test("a reply hint refreshes only the viewer's calls in its conversation", () => {
+  const targets = realtimeQueryTargets(
+    { ...change("messaging"), conversationId: "conversation", scope: "messages" },
+    "user",
+  );
+  const client = new QueryClient();
+  const own = queryKeys.myAgentCalls("user", "org", "conversation");
+  const unrelated = [
+    queryKeys.myAgentCalls("other", "org", "conversation"),
+    queryKeys.myAgentCalls("user", "other-org", "conversation"),
+    queryKeys.myAgentCalls("user", "org", "other-conversation"),
+    queryKeys.agentWorkNeedsYou("user", "org"),
+    queryKeys.agentCallsLog("user", "org", "agent"),
+  ];
+  for (const key of [own, ...unrelated]) client.setQueryData(key, []);
+  const matched = targets.flatMap((target) => client.getQueryCache().findAll(target));
+  expect(matched.map((query) => query.queryKey)).toContainEqual(own);
+  for (const key of unrelated)
+    expect(matched.map((query) => query.queryKey)).not.toContainEqual(key);
+  client.clear();
+});
+
 test("a task hint during an in-flight read stays stale when its panel becomes hidden", async () => {
   const client = new QueryClient();
   const key = queryKeys.taskComments("org", "project", "task");
@@ -154,6 +176,7 @@ test("messaging targets all thread variants of one conversation, not another", (
     "user",
   );
   expect(targets).toEqual([
+    { queryKey: queryKeys.myAgentCalls("user", "org", "conversation") },
     { queryKey: queryKeys.messageUnread("org") },
     { queryKey: queryKeys.conversations("org") },
     { queryKey: queryKeys.conversationMessages("org", "conversation") },

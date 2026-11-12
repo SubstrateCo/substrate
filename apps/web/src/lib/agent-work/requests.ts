@@ -18,7 +18,7 @@ export function requestOutcome(request: AgentRequestView) {
     case "orphaned":
       return "No longer needed";
     case "undelivered":
-      return "Answered after the agent stopped waiting";
+      return `Your answer arrived after the agent stopped waiting · ${requestAnswer(request)}`;
     case "failed":
       return "Failed";
     case "executed":
@@ -27,6 +27,10 @@ export function requestOutcome(request: AgentRequestView) {
     case "delivered":
       break;
   }
+  return requestAnswer(request);
+}
+
+function requestAnswer(request: AgentRequestView) {
   const response = request.response;
   const payload = request.payload;
   if (payload?.type === "approval" && response?.type === "approval") {

@@ -2,6 +2,7 @@ import { addAgent, callTool, createAgent, threadTurn } from "./test-support/agen
 import { conversation, post, test, visit } from "./test-support/fixtures";
 import { detail, project } from "./test-support/tasks";
 import { expect } from "@playwright/test";
+import { z } from "zod";
 
 async function ownerMessage(
   actor: Parameters<typeof conversation>[0],
@@ -10,6 +11,67 @@ async function ownerMessage(
 ) {
   return post<{ id: string }>(actor, "messaging/messages", { conversationId, body });
 }
+
+test("an undelivered native answer stays visible after the agent stops waiting", async ({
+  actors,
+  client,
+}) => {
+  const owner = actors.sender;
+  const agent = await createAgent(owner);
+  const channel = await conversation(owner);
+  await addAgent(owner, channel.id, agent.id);
+  const root = await ownerMessage(owner, channel.id, "Please check the files");
+  const turn = threadTurn(channel.id, root.id, agent.installationId);
+  const device = { organizationId: owner.organizationId, installationId: agent.installationId };
+  const headers = { "x-substrate-installation": agent.installationId };
+  const openedResponse = await owner.request.post("/api/v1/agent-work/device/requests", {
+    headers,
+    data: {
+      ...device,
+      userAgentId: agent.id,
+      sessionKey: turn.sessionKey,
+      turnId: turn.turnId,
+      epoch: 1,
+      kind: "permission",
+      mode: "blocking",
+      nativeRequestId: "check-files",
+      anchorMessageId: root.id,
+      conversationId: channel.id,
+      payload: {
+        type: "approval",
+        title: "Allow reading files?",
+        detail: "Read the launch notes",
+        options: [{ id: "once", label: "Allow once", style: "approve" }],
+      },
+    },
+  });
+  expect(openedResponse.ok(), await openedResponse.text()).toBe(true);
+  const { data: opened } = z
+    .object({ data: z.object({ id: z.uuid() }) })
+    .parse(await openedResponse.json());
+  const user = await client(owner);
+  await visit(user, channel.id);
+  const card = user.page.getByRole("region", { name: "Allow reading files?", exact: true });
+  await card.getByRole("button", { name: "Allow once", exact: true }).click();
+  await expect(user.page.getByText("· Answered: Allow once", { exact: true })).toBeVisible();
+  const closed = await owner.request.post("/api/v1/agent-work/device/requests/close", {
+    headers,
+    data: {
+      ...device,
+      requestId: opened.id,
+      status: "orphaned",
+    },
+  });
+  expect(closed.ok(), await closed.text()).toBe(true);
+  await expect(
+    user.page.getByText(
+      "· Your answer arrived after the agent stopped waiting · Answered: Allow once",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(card).toHaveCount(0);
+  await expect(user.page.getByRole("button", { name: "Agents, needs you" })).toHaveCount(0);
+});
 
 test("agent messages, comments and activity retain attribution and source links", async ({
   actors,

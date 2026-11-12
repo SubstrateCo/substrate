@@ -5,6 +5,7 @@ import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { SettingsSection } from "@/components/layout/settings-section";
 import { Timestamp } from "@/components/time/timestamp";
+import { callDropReason } from "@/lib/agent-work/calls";
 import { ScrollText } from "lucide-react";
 
 const labels: Record<AgentAuditAction, string> = {
@@ -60,7 +61,7 @@ export function CallsLogView({
             <p className="text-xs wrap-anywhere text-muted-foreground">
               {[
                 entry.access,
-                entry.result,
+                entry.action === "invocation_dropped" ? callDropReason(entry.result) : entry.result,
                 entry.callerActorId && `Caller ${entry.callerActorId}`,
                 entry.invocationId && `Call ${entry.invocationId}`,
                 entry.turnId && `Turn ${entry.turnId}`,

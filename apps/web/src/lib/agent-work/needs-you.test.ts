@@ -22,6 +22,41 @@ test("an agent with a request counts once, for the request", () => {
 
 test("nothing loaded counts as nothing", () => {
   expect(needsYouCount(undefined)).toBe(0);
+  expect(needsYouItems(undefined).desktopUpdateRequired).toEqual([]);
+});
+
+test("desktop updates count as attention even with open requests for the same agent", () => {
+  const update = {
+    userAgentId: "a1",
+    agent: { actorId: "a1", name: "Scout" },
+    droppedCalls: 3,
+    lastDroppedAt: "2026-11-11T10:00:00Z",
+  };
+  const data = {
+    requests: [request({ userAgentId: "a1" })],
+    agents: [stopped("a1")],
+    calls: [],
+    desktopUpdateRequired: [update],
+  };
+  expect(needsYouItems(data).desktopUpdateRequired).toEqual([update]);
+  expect(needsYouCount(data)).toBe(2);
+});
+
+test("a desktop update counts once per agent, not once per dropped call", () => {
+  const data = {
+    requests: [],
+    agents: [],
+    calls: [],
+    desktopUpdateRequired: [
+      {
+        userAgentId: "a1",
+        agent: { actorId: "a1", name: "Scout" },
+        droppedCalls: 5,
+        lastDroppedAt: "2026-11-11T10:00:00Z",
+      },
+    ],
+  };
+  expect(needsYouCount(data)).toBe(1);
 });
 
 test("calls notify even when the same agent already has a request", () => {

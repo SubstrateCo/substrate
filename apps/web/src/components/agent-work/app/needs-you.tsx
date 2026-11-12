@@ -6,6 +6,7 @@ import { Link } from "@tanstack/react-router";
 import { CallCard } from "../calls/call-card";
 import { RequestCard } from "../requests/request-card";
 import { NeedsYouView, type NeedsYouEntry } from "./needs-you-view";
+import { Timestamp } from "@/components/time/timestamp";
 import { hiddenConversation } from "@/lib/agent-work/hidden-records";
 import { needsYouItems } from "@/lib/agent-work/needs-you";
 import { agentStatus } from "@/lib/agent-work/status";
@@ -35,8 +36,24 @@ export function NeedsYou({
   onOpenAgent: (agentId: string) => void;
 }) {
   const needsYou = useQuery(needsYouOptions(userId, organizationId));
-  const { requests, agents, calls } = needsYouItems(needsYou.data);
+  const { requests, agents, calls, desktopUpdateRequired } = needsYouItems(needsYou.data);
   const entries: NeedsYouEntry[] = [
+    ...desktopUpdateRequired.map((update) => ({
+      key: `desktop-update:${update.userAgentId}`,
+      agentName: update.agent.name,
+      place: <span>Desktop needs update</span>,
+      body: (
+        <div className="grid gap-2 text-sm">
+          <p>Update the Substrate desktop app so {update.agent.name} can answer calls.</p>
+          <p className="text-xs text-muted-foreground">
+            {update.droppedCalls} {update.droppedCalls === 1 ? "call dropped" : "calls dropped"}
+            {" · Last dropped "}
+            <Timestamp value={update.lastDroppedAt} format="relative" />
+          </p>
+        </div>
+      ),
+      onOpenAgent: () => onOpenAgent(update.userAgentId),
+    })),
     ...calls.map((call) => ({
       key: `call:${call.id}`,
       agentName: call.agent.name,

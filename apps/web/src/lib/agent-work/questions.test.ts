@@ -38,6 +38,35 @@ describe("question answers", () => {
 });
 
 describe("request deadlines and outcomes", () => {
+  test("an undelivered approval keeps the chosen option label", () => {
+    expect(
+      requestOutcome(
+        request({
+          status: "undelivered",
+          payload: {
+            type: "approval",
+            title: "Allow access?",
+            detail: null,
+            options: [{ id: "allow", label: "Allow once", style: "approve" }],
+          },
+          response: { type: "approval", optionId: "allow" },
+        }),
+      ),
+    ).toBe("Your answer arrived after the agent stopped waiting · Answered: Allow once");
+  });
+
+  test("undelivered questions keep all answers", () => {
+    expect(
+      requestOutcome(
+        request({
+          status: "undelivered",
+          payload: { type: "questions", title: "Which?", questions: [] },
+          response: { type: "questions", answers: { first: ["Blue", "Green"], next: ["Other"] } },
+        }),
+      ),
+    ).toBe("Your answer arrived after the agent stopped waiting · Answered: Blue, Green, Other");
+  });
+
   test("only blocking requests have a deadline; async questions wait for the owner", () => {
     expect(requestDeadline({ mode: "async", expiresAt: "2026-11-08T10:10:00Z" })).toBeNull();
     expect(requestDeadline({ mode: "blocking", expiresAt: "2026-11-08T10:10:00Z" })).toBe(

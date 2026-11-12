@@ -1,8 +1,8 @@
 import type { AgentCallStatus, AgentCallStatusView } from "@substrate/contracts/agent-work";
 
 const labels: Record<AgentCallStatus, string> = {
-  waiting: "Waiting",
-  queued: "Queued",
+  waiting: "Waiting for approval",
+  queued: "Waiting for a reply",
   declined: "Declined",
   expired: "Expired",
   answered: "Answered",
