@@ -3,7 +3,9 @@ import { entities } from "../../core/entities/schema";
 import { member } from "../../core/organizations/schema";
 import { AccessDeniedError } from "../../errors";
 import { ActorRepositories } from "../../repositories";
+import { user, userAgents, storedFiles } from "../../schema";
 import * as schema from "../../schema";
+import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
@@ -12,6 +14,72 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 
 const f = setupDatabase();
+
+test("project members and available actors join current names and private pictures", async () => {
+  const agent = await ownedAgent(f);
+  const alice = f.forActor(f.alice);
+  const project = await alice.projects.create({ name: "Actor metadata" });
+  await alice.permissions.grant({
+    entityId: project.entityId,
+    actorEntityId: f.bob,
+    level: "view",
+  });
+  await alice.tasks.create({
+    projectEntityId: project.entityId,
+    title: "Assigned agent",
+    assigneeActorEntityId: agent.actorId,
+  });
+  const image = `/api/v1/files/pictures/avatar/alice?v=${crypto.randomUUID()}`;
+  await f.db.update(user).set({ name: "Zoe", image }).where(eq(user.id, "alice"));
+  const fileId = crypto.randomUUID();
+  await f.db.insert(storedFiles).values({
+    id: fileId,
+    ownerUserId: "alice",
+    uploadedBy: "alice",
+    purpose: "avatar",
+    filename: "agent.webp",
+    contentType: "image/webp",
+    size: 10,
+    objectKey: `pictures/${fileId}`,
+    sha256: "hash",
+  });
+  await f.db
+    .update(userAgents)
+    .set({ name: "Amy", imageFileId: fileId })
+    .where(eq(userAgents.id, agent.agentId));
+  const { db, queries } = recordQueries();
+  for (const viewer of [f.alice, f.bob, agent.actorId]) {
+    const repos = new ActorRepositories(db, { organizationId: f.orgA, actorEntityId: viewer });
+    const result = await repos.projects.getDetail(project.entityId);
+    expect(result.members.map((row) => row.name)).toEqual(["Bob", "Zoe"]);
+    expect(result.actors.map((row) => row.name)).toEqual(["Amy", "Bob", "Zoe"]);
+    for (const rows of [result.members, result.actors]) {
+      expect(rows.find((row) => row.name === "Zoe")?.image).toBe(image);
+    }
+    expect(result.actors.find((row) => row.name === "Amy")?.image).toBe(
+      viewer === f.bob ? null : `/api/v1/files/${fileId}/content`,
+    );
+    expect(result.actors.find((row) => row.entityId === agent.actorId)?.assignable).toBe(
+      viewer !== f.bob,
+    );
+  }
+  const metadataQueries = queries.filter(
+    (query) => query.includes('left join "user"') && query.includes('left join "member"'),
+  );
+  expect(metadataQueries).toHaveLength(6);
+  for (const query of metadataQueries) {
+    expect(query).not.toMatch(
+      /select\s+(?:dn_user|dn_agent|picture_user|picture_agent|picture_member)\./i,
+    );
+  }
+  await f.db
+    .update(user)
+    .set({ image: "https://example.test/tracker.png" })
+    .where(eq(user.id, "alice"));
+  const result = await f.forActor(f.bob).projects.getDetail(project.entityId);
+  expect(result.members.find((row) => row.actorEntityId === f.alice)?.image).toBeNull();
+  expect(result.actors.find((row) => row.entityId === f.alice)?.image).toBeNull();
+});
 
 test("project detail preserves protected output with five SELECT statements", async () => {
   const alice = f.forActor(f.alice);

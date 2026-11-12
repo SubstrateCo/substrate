@@ -1,6 +1,7 @@
 import { activeActorCondition, visibleActorCondition } from "../../core/actors/access";
-import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
+import { userAgents } from "../../core/actors/user-agents.schema";
+import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import { RepositoryContext, type Locked } from "../../core/repository-context";
 import { messageReferences, type Reference } from "../../core/text/references";
@@ -10,7 +11,7 @@ import { readableWorkTargets } from "../notifications/targets";
 import { taskCommentReferences } from "./comment-references.schema";
 import type { taskComments } from "./comments.schema";
 import type { tasks } from "./tasks.schema";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
 export interface CommentReference {
   id: string;
@@ -134,8 +135,15 @@ export async function commentReferences(
   const actorIds = [...new Set([...people, ...agents])];
   const named = actorIds.length
     ? await ctx.db
-        .select({ entityId: actors.entityId, name: actorDisplayName(), type: actors.type })
+        .select({
+          entityId: actors.entityId,
+          name: sql<string>`case when ${actors.type} = 'agent'
+          then coalesce(${userAgents.name}, 'Agent') else ${user.name} end`,
+          type: actors.type,
+        })
         .from(actors)
+        .leftJoin(user, eq(user.id, actors.userId))
+        .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
         .where(
           and(
             eq(actors.organizationId, ctx.scope.organizationId),

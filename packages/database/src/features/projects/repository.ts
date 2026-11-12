@@ -1,11 +1,16 @@
-import { profilePicturePath, projectIcon } from "@substrate/contracts/files/pictures";
+import {
+  managedPicture,
+  profilePicturePath,
+  projectIcon,
+} from "@substrate/contracts/files/pictures";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { activeActorCondition, visibleActorCondition } from "../../core/actors/access";
-import { actorDisplayName } from "../../core/actors/display-name";
-import { actorPicture } from "../../core/actors/picture";
 import { actors } from "../../core/actors/schema";
+import { userAgents } from "../../core/actors/user-agents.schema";
+import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
+import { member } from "../../core/organizations/schema";
 import { permissionRepository } from "../../core/permissions/repository";
 import { entityGrants } from "../../core/permissions/schema";
 import { RepositoryContext, type PermissionLevel } from "../../core/repository-context";
@@ -22,6 +27,24 @@ import { alias } from "drizzle-orm/pg-core";
 
 export function projectRepository(context: RepositoryContext) {
   const { db, scope } = context;
+  const name = sql<string>`case when ${actors.type} = 'agent'
+    then coalesce(${userAgents.name}, 'Agent') else ${user.name} end`;
+  // This uncorrelated lookup also supports contexts that contain only an ActorScope.
+  const viewerUserId =
+    scope.userId !== undefined
+      ? sql`${scope.userId}`
+      : sql`(select coalesce(viewer.user_id, owner.user_id)
+    from ${actors} viewer left join ${userAgents} owner on owner.id = viewer.user_agent_id
+    where viewer.entity_id = ${scope.actorEntityId} and viewer.organization_id = ${scope.organizationId})`;
+  const image = sql<string | null>`case when ${actors.type} = 'agent' then
+    case when ${userAgents.userId} = ${viewerUserId}
+      then '/api/v1/files/' || ${userAgents.imageFileId}::text || '/content' end
+    else case when ${member.id} is not null then ${user.image} end end`.mapWith(
+    (value: string | null) => {
+      const parsed = managedPicture.safeParse(value);
+      return parsed.success ? parsed.data : null;
+    },
+  );
   const projectWhere = (id: string) =>
     and(eq(projects.organizationId, scope.organizationId), eq(projects.entityId, id));
   async function getWithLevel(entityId: string) {
@@ -58,8 +81,8 @@ export function projectRepository(context: RepositoryContext) {
     return db
       .select({
         actorEntityId: actors.entityId,
-        name: actorDisplayName(),
-        image: actorPicture(scope),
+        name,
+        image,
         type: actors.type,
         level: entityGrants.level,
       })
@@ -71,13 +94,19 @@ export function projectRepository(context: RepositoryContext) {
           eq(actors.entityId, entityGrants.actorEntityId),
         ),
       )
+      .leftJoin(user, eq(user.id, actors.userId))
+      .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+      .leftJoin(
+        member,
+        and(eq(member.userId, user.id), eq(member.organizationId, scope.organizationId)),
+      )
       .where(
         and(
           eq(entityGrants.organizationId, scope.organizationId),
           eq(entityGrants.entityId, projectEntityId),
         ),
       )
-      .orderBy(asc(actorDisplayName()), asc(actors.entityId));
+      .orderBy(asc(name), asc(actors.entityId));
   }
   function availableActors(projectEntityId: string) {
     // Organization actors are discoverable only inside an accessible project, not across organizations.
@@ -90,13 +119,19 @@ export function projectRepository(context: RepositoryContext) {
     return db
       .select({
         entityId: actors.entityId,
-        name: actorDisplayName(),
-        image: actorPicture(scope),
+        name,
+        image,
         type: actors.type,
         assignable: sql<boolean>`coalesce(${assignable}, false)`,
       })
       .from(actors)
       .innerJoin(entities, eq(entities.entityId, actors.entityId))
+      .leftJoin(user, eq(user.id, actors.userId))
+      .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+      .leftJoin(
+        member,
+        and(eq(member.userId, user.id), eq(member.organizationId, scope.organizationId)),
+      )
       .where(
         and(
           eq(actors.organizationId, scope.organizationId),
@@ -104,7 +139,7 @@ export function projectRepository(context: RepositoryContext) {
           or(assignable, and(eq(actors.type, "agent"), inArray(actors.entityId, assignedAgents))),
         ),
       )
-      .orderBy(asc(actorDisplayName()), asc(actors.entityId));
+      .orderBy(asc(name), asc(actors.entityId));
   }
   return {
     get,

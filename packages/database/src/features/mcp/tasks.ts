@@ -2,8 +2,10 @@ import type { McpInput, McpOutput } from "@substrate/contracts/harness/tools";
 import type { TaskStatus } from "@substrate/contracts/tasks";
 import { taskLinkRelation } from "@substrate/contracts/tasks/links";
 
-import { actorAuthorKind, actorDisplayName } from "../../core/actors/display-name";
+import { actorAuthorKind } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
+import { userAgents } from "../../core/actors/user-agents.schema";
+import { user } from "../../core/authentication/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { queryProjects, queryProjectTaskCounts } from "../projects/queries";
@@ -18,8 +20,14 @@ import {
 import { taskRepository } from "../tasks/repository";
 import { iso, messageRef } from "./formatting";
 import { pagination } from "./pagination";
+import { sql } from "drizzle-orm";
 
-export const actorSelection = { id: actors.entityId, name: actorDisplayName(), type: actors.type };
+export const actorSelection = {
+  id: actors.entityId,
+  name: sql<string>`case when ${actors.type} = 'agent'
+  then coalesce(${userAgents.name}, 'Agent') else ${user.name} end`,
+  type: actors.type,
+};
 /** An actor that wrote quoted text, labeled owner, member or agent for the reading agent. */
 export function authorSelection(ownerUserId: string) {
   return { ...actorSelection, kind: actorAuthorKind(ownerUserId) };

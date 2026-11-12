@@ -1,6 +1,8 @@
 import type { McpInput, McpOutput } from "@substrate/contracts/harness/tools";
 
 import { actors } from "../../core/actors/schema";
+import { userAgents } from "../../core/actors/user-agents.schema";
+import { user } from "../../core/authentication/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError } from "../../errors";
@@ -98,6 +100,8 @@ export async function listLinks(
       eq(messagingConversations.id, messageEntityReferences.conversationId),
     )
     .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
+    .leftJoin(user, eq(user.id, actors.userId))
+    .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
     .where(
       and(
         ...references,

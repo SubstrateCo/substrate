@@ -1,11 +1,12 @@
+import { managedPicture } from "@substrate/contracts/files/pictures";
 import type { TaskStatus } from "@substrate/contracts/tasks";
 
-import { actorAuthorKind, actorDisplayName } from "../../core/actors/display-name";
-import { actorPicture } from "../../core/actors/picture";
+import { actorAuthorKind } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
+import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError } from "../../errors";
@@ -90,6 +91,12 @@ export async function queryTaskComments(
   page: QueryPage = {},
 ) {
   const order = page.ascending ? asc : desc;
+  const viewerUserId =
+    ctx.scope.userId !== undefined
+      ? sql`${ctx.scope.userId}`
+      : sql`(select coalesce(viewer.user_id, owner.user_id)
+    from ${actors} viewer left join ${userAgents} owner on owner.id = viewer.user_agent_id
+    where viewer.entity_id = ${ctx.scope.actorEntityId} and viewer.organization_id = ${ctx.scope.organizationId})`;
   const query = ctx.db
     .select({
       id: taskComments.id,
@@ -97,11 +104,19 @@ export async function queryTaskComments(
       createdAt: taskComments.createdAt,
       author: {
         id: actors.entityId,
-        name: actorDisplayName(),
+        name: assigneeDisplayName,
         type: actors.type,
         kind: actorAuthorKind(ownerUserId),
       },
-      authorImage: actorPicture(ctx.scope),
+      authorImage: sql<string | null>`case when ${actors.type} = 'agent' then
+        case when ${userAgents.userId} = ${viewerUserId}
+          then '/api/v1/files/' || ${userAgents.imageFileId}::text || '/content' end
+        else case when ${member.id} is not null then ${user.image} end end`.mapWith(
+        (value: string | null) => {
+          const parsed = managedPicture.safeParse(value);
+          return parsed.success ? parsed.data : null;
+        },
+      ),
     })
     .from(taskComments)
     .innerJoin(
@@ -110,6 +125,12 @@ export async function queryTaskComments(
         eq(actors.entityId, taskComments.authorActorEntityId),
         eq(actors.organizationId, taskComments.organizationId),
       ),
+    )
+    .leftJoin(user, eq(user.id, actors.userId))
+    .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+    .leftJoin(
+      member,
+      and(eq(member.userId, user.id), eq(member.organizationId, ctx.scope.organizationId)),
     )
     .where(
       and(
@@ -225,7 +246,7 @@ export async function queryTaskActivity(
   const query = ctx.db
     .select({
       id: taskActivity.id,
-      actor: { id: actors.entityId, name: actorDisplayName(), type: actors.type },
+      actor: { id: actors.entityId, name: assigneeDisplayName, type: actors.type },
       action: taskActivity.action,
       createdAt: taskActivity.createdAt,
       sourceMessageId: messagingMessages.id,
@@ -234,6 +255,8 @@ export async function queryTaskActivity(
     })
     .from(taskActivity)
     .innerJoin(actors, eq(actors.entityId, taskActivity.actorEntityId))
+    .leftJoin(user, eq(user.id, actors.userId))
+    .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
     .leftJoin(messagingMessages, eq(messagingMessages.id, taskActivity.sourceMessageId))
     .leftJoin(
       messagingConversations,

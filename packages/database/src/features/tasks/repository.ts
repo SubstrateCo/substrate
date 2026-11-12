@@ -3,8 +3,9 @@ import { taskPriorityValues, taskStatusValues } from "@substrate/contracts/tasks
 import type { TaskLinkRelation } from "@substrate/contracts/tasks/links";
 
 import { activeActorCondition } from "../../core/actors/access";
-import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
+import { userAgents } from "../../core/actors/user-agents.schema";
+import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import { permissionLevel } from "../../core/permissions/schema";
 import {
@@ -263,7 +264,8 @@ export function taskRepository(context: RepositoryContext) {
           taskEntityId: tasks.entityId,
           taskTitle: tasks.title,
           projectEntityId: tasks.projectEntityId,
-          authorName: actorDisplayName(),
+          authorName: sql<string>`case when ${actors.type} = 'agent'
+            then coalesce(${userAgents.name}, 'Agent') else ${user.name} end`,
           createdAt: taskComments.createdAt,
         })
         .from(taskCommentReferences)
@@ -282,6 +284,8 @@ export function taskRepository(context: RepositoryContext) {
             eq(actors.entityId, taskComments.authorActorEntityId),
           ),
         )
+        .leftJoin(user, eq(user.id, actors.userId))
+        .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
         .where(
           and(
             eq(taskCommentReferences.organizationId, scope.organizationId),
