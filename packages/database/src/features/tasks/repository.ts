@@ -2,8 +2,11 @@ import { realtimeKeys } from "@substrate/contracts/realtime";
 import { taskPriorityValues, taskStatusValues } from "@substrate/contracts/tasks";
 import type { TaskLinkRelation } from "@substrate/contracts/tasks/links";
 
+import { activeActorCondition } from "../../core/actors/access";
 import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
+import { entities } from "../../core/entities/schema";
+import { permissionLevel } from "../../core/permissions/schema";
 import {
   RepositoryContext,
   type Locked,
@@ -25,7 +28,8 @@ import { taskLifecycle } from "./lifecycle";
 import { addTaskLink, linksOfTask, removeTaskLink } from "./links";
 import { queryTasks, queryTaskComments } from "./queries";
 import { tasks } from "./tasks.schema";
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 type Task = typeof tasks.$inferSelect;
 
@@ -124,10 +128,40 @@ export function taskRepository(context: RepositoryContext) {
     level: PermissionLevel = "view",
     lock = false,
   ): Promise<Task> {
-    await context.requireAccess(entityId, level, lock);
-    const [task] = await db.select().from(tasks).where(taskWhere(entityId));
-    if (!task) throw new AccessDeniedError();
-    return task;
+    if (lock) {
+      await context.requireAccess(entityId, level, true);
+      const [task] = await db.select().from(tasks).where(taskWhere(entityId));
+      if (!task) throw new AccessDeniedError();
+      return task;
+    }
+    const minimum = permissionLevel.enumValues.indexOf(level);
+    if (minimum < 0) throw new AccessDeniedError();
+    const actorEntity = alias(entities, "task_viewer_entity");
+    const [row] = await db
+      .select({
+        task: tasks,
+        level: sql<PermissionLevel | null>`${context.accessLevel(tasks.entityId)}`,
+      })
+      .from(tasks)
+      .innerJoin(
+        actors,
+        and(
+          eq(actors.organizationId, scope.organizationId),
+          eq(actors.entityId, scope.actorEntityId),
+        ),
+      )
+      .innerJoin(
+        actorEntity,
+        and(
+          eq(actorEntity.organizationId, actors.organizationId),
+          eq(actorEntity.entityId, actors.entityId),
+          isNull(actorEntity.deletedAt),
+        ),
+      )
+      .where(and(taskWhere(entityId), activeActorCondition()));
+    if (!row?.level || permissionLevel.enumValues.indexOf(row.level) < minimum)
+      throw new AccessDeniedError();
+    return row.task;
   }
 
   return {

@@ -323,7 +323,7 @@ test("task create locks the project once and update batches activity with one as
   ).toEqual([{ recipient: fixture.bob, kind: "assignment", eventKey: assigned.id }]);
 });
 
-test("task comments require their actual project and use three repository statements", async () => {
+test("task comments require their actual project and use two repository statements", async () => {
   const alice = fixture.forActor(fixture.alice);
   const project = await alice.projects.create({ name: "Comments" });
   const other = await alice.projects.create({ name: "Other accessible project" });
@@ -340,7 +340,7 @@ test("task comments require their actual project and use three repository statem
   });
   const previousTask = await repos.tasks.get(task.entityId);
   const previousComments = await repos.tasks.listComments(previousTask.entityId, project.entityId);
-  expect(statements).toHaveLength(5);
+  expect(statements).toHaveLength(3);
   statements.length = 0;
   expect(await repos.tasks.listComments(task.entityId, project.entityId)).toEqual([
     {
@@ -354,7 +354,7 @@ test("task comments require their actual project and use three repository statem
     },
   ]);
   expect(previousComments.map((row) => row.id)).toEqual([comment.id]);
-  expect(statements).toHaveLength(3);
+  expect(statements).toHaveLength(2);
   expect(await rejection(alice.tasks.listComments(task.entityId, other.entityId))).toBeInstanceOf(
     AccessDeniedError,
   );

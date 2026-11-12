@@ -1,9 +1,11 @@
+import { actors } from "../../core/actors/schema";
 import { entities } from "../../core/entities/schema";
 import { member } from "../../core/organizations/schema";
 import { AccessDeniedError } from "../../errors";
 import { ActorRepositories } from "../../repositories";
 import * as schema from "../../schema";
 import { setupDatabase } from "../../testing/database";
+import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
@@ -36,8 +38,7 @@ test("project detail preserves protected output with five SELECT statements", as
   const { result: actual } = await repos.transaction((tx) =>
     tx.projects.getDetail(project.entityId),
   );
-  // Detail performs one access check, reducing its budget from six reads to five.
-  expect(statements.filter((query) => /^(select|with)\b/i.test(query))).toHaveLength(5);
+  expect(statements.filter((query) => /^(select|with)\b/i.test(query.trimStart()))).toHaveLength(5);
   expect(actual.project).toEqual(await alice.projects.get(project.entityId));
   expect(actual.level).toBe("owner");
   expect(actual.tasks.map((task) => task.entityId)).toEqual(
@@ -47,6 +48,40 @@ test("project detail preserves protected output with five SELECT statements", as
   expect(actual.members).toEqual([
     { actorEntityId: f.alice, name: "Alice", image: null, type: "human", level: "owner" },
   ]);
+});
+
+test("project and task getters authorize and read in one statement", async () => {
+  const alice = f.forActor(f.alice);
+  const project = await alice.projects.create({ name: "One read" });
+  const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "One read" });
+  const { db, queries } = recordQueries();
+  const repos = new ActorRepositories(db, { organizationId: f.orgA, actorEntityId: f.alice });
+  expect(await repos.projects.get(project.entityId)).toEqual(project);
+  expect(queries).toHaveLength(1);
+  queries.length = 0;
+  expect(await repos.tasks.get(task.entityId)).toEqual(task);
+  expect(queries).toHaveLength(1);
+});
+
+test("single-statement getters retain minimum levels and disabled-actor checks", async () => {
+  const alice = f.forActor(f.alice);
+  const bob = f.forActor(f.bob);
+  const project = await alice.projects.create({ name: "Read access" });
+  const task = await alice.tasks.create({
+    projectEntityId: project.entityId,
+    title: "Read access",
+  });
+  await alice.permissions.grant({
+    entityId: project.entityId,
+    actorEntityId: f.bob,
+    level: "comment",
+  });
+  expect(await bob.tasks.get(task.entityId, "comment")).toEqual(task);
+  expect(await rejection(bob.tasks.get(task.entityId, "edit"))).toBeInstanceOf(AccessDeniedError);
+  expect(await bob.projects.get(project.entityId)).toEqual(project);
+  await f.db.update(actors).set({ disabledAt: new Date() }).where(eq(actors.entityId, f.bob));
+  expect(await rejection(bob.tasks.get(task.entityId))).toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(bob.projects.get(project.entityId))).toBeInstanceOf(AccessDeniedError);
 });
 
 test("project detail denies revoked, deleted, foreign and inactive access", async () => {

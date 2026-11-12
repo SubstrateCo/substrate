@@ -8,7 +8,7 @@ import { actors } from "../../core/actors/schema";
 import { entities } from "../../core/entities/schema";
 import { permissionRepository } from "../../core/permissions/repository";
 import { entityGrants } from "../../core/permissions/schema";
-import { RepositoryContext } from "../../core/repository-context";
+import { RepositoryContext, type PermissionLevel } from "../../core/repository-context";
 import { requiredText } from "../../core/validation";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { liveProjectTasks } from "../tasks/access";
@@ -18,16 +18,38 @@ import { tasks } from "../tasks/tasks.schema";
 import { queryProjects } from "./queries";
 import { projects } from "./schema";
 import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 export function projectRepository(context: RepositoryContext) {
   const { db, scope } = context;
   const projectWhere = (id: string) =>
     and(eq(projects.organizationId, scope.organizationId), eq(projects.entityId, id));
   async function getWithLevel(entityId: string) {
-    const { level } = await context.requireAccess(entityId, "view");
-    const [project] = await db.select().from(projects).where(projectWhere(entityId));
-    if (!project) throw new AccessDeniedError();
-    return { project, level };
+    const actorEntity = alias(entities, "project_viewer_entity");
+    const [row] = await db
+      .select({
+        project: projects,
+        level: sql<PermissionLevel | null>`${context.accessLevel(projects.entityId)}`,
+      })
+      .from(projects)
+      .innerJoin(
+        actors,
+        and(
+          eq(actors.organizationId, scope.organizationId),
+          eq(actors.entityId, scope.actorEntityId),
+        ),
+      )
+      .innerJoin(
+        actorEntity,
+        and(
+          eq(actorEntity.organizationId, actors.organizationId),
+          eq(actorEntity.entityId, actors.entityId),
+          isNull(actorEntity.deletedAt),
+        ),
+      )
+      .where(and(projectWhere(entityId), activeActorCondition()));
+    if (!row?.level) throw new AccessDeniedError();
+    return { project: row.project, level: row.level };
   }
   async function get(entityId: string) {
     return (await getWithLevel(entityId)).project;

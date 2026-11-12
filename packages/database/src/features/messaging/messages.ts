@@ -1,8 +1,9 @@
+import { managedPicture } from "@substrate/contracts/files/pictures";
+
 import type { DatabaseExecutor } from "../../client";
-import { actorDisplayName } from "../../core/actors/display-name";
-import { actorPicture } from "../../core/actors/picture";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
+import { user } from "../../core/authentication/schema";
 import { effectsFor } from "../../core/effects";
 import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
@@ -22,17 +23,22 @@ import { messagingProfile } from "./profiles";
 import { messagingMessages, messagingReactions } from "./schema";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 
-// `author` is the actors table, or its alias, joined on author_actor_entity_id.
-function messageAuthorColumns(scope: SessionIdentity, author: typeof actors = actors) {
+// selectMessages joins account, agent and viewer-organization membership once per author.
+function messageAuthorColumns(scope: SessionIdentity) {
   return {
-    authorName: actorDisplayName(author),
-    authorImage: actorPicture(scope, author),
-    authorType: sql<"human" | "agent">`${author.type}`,
-    authorExternal: sql<boolean>`${author.type} <> 'agent' AND not exists (
-      select 1 from ${member}
-      where ${member.userId} = ${author.userId}
-        and ${member.organizationId} = ${scope.organizationId}
-    )`,
+    authorName: sql<string>`case when ${actors.type} = 'agent'
+      then coalesce(${userAgents.name}, 'Agent') else ${user.name} end`,
+    authorImage: sql<string | null>`case when ${actors.type} = 'agent' then
+      case when ${userAgents.userId} = ${scope.userId}
+        then '/api/v1/files/' || ${userAgents.imageFileId}::text || '/content' end
+      else case when ${member.id} is not null then ${user.image} end end`.mapWith(
+      (value: string | null) => {
+        const parsed = managedPicture.safeParse(value);
+        return parsed.success ? parsed.data : null;
+      },
+    ),
+    authorType: sql<"human" | "agent">`${actors.type}`,
+    authorExternal: sql<boolean>`${actors.type} <> 'agent' AND ${member.id} is null`,
   };
 }
 
@@ -103,6 +109,11 @@ export function selectMessages(db: DatabaseExecutor, scope: SessionIdentity) {
     .from(messagingMessages)
     .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
     .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+    .leftJoin(user, eq(user.id, actors.userId))
+    .leftJoin(
+      member,
+      and(eq(member.userId, actors.userId), eq(member.organizationId, scope.organizationId)),
+    )
     .$dynamic();
 }
 

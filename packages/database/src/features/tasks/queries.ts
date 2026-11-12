@@ -3,6 +3,8 @@ import type { TaskStatus } from "@substrate/contracts/tasks";
 import { actorAuthorKind, actorDisplayName } from "../../core/actors/display-name";
 import { actorPicture } from "../../core/actors/picture";
 import { actors } from "../../core/actors/schema";
+import { userAgents } from "../../core/actors/user-agents.schema";
+import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
@@ -26,6 +28,9 @@ interface QueryPage {
   ascending?: boolean;
 }
 
+const assigneeDisplayName = sql<string>`case when ${actors.type} = 'agent'
+  then coalesce(${userAgents.name}, 'Agent') else ${user.name} end`;
+
 export async function queryTasks(
   ctx: RepositoryContext,
   input: QueryPage & {
@@ -44,7 +49,7 @@ export async function queryTasks(
   const query = ctx.db
     .select({
       task: tasks,
-      assignee: { id: actors.entityId, name: actorDisplayName(), type: actors.type },
+      assignee: { id: actors.entityId, name: assigneeDisplayName, type: actors.type },
       updatedAt: entities.updatedAt,
     })
     .from(tasks)
@@ -56,6 +61,8 @@ export async function queryTasks(
         eq(actors.organizationId, ctx.scope.organizationId),
       ),
     )
+    .leftJoin(user, eq(user.id, actors.userId))
+    .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
     .where(
       and(
         liveProjectTasks(ctx.scope, input.projectEntityId),
@@ -146,15 +153,40 @@ export async function queryTaskDetail(
         eq(taskComments.taskEntityId, tasks.entityId),
       ),
     );
-  const [detail] = await db
+  const references = and(
+    eq(messageEntityReferences.organizationId, scope.organizationId),
+    eq(messageEntityReferences.entityId, taskId),
+    inArray(messageEntityReferences.conversationId, visibleConversationIds(db, identity)),
+  );
+  const linked = db
+    .select({ total: countDistinct(messageEntityReferences.messageId) })
+    .from(messageEntityReferences)
+    .where(references);
+  const source = db
     .select({
-      assignee: { id: actors.entityId, name: actorDisplayName(), type: actors.type },
+      message: sql`json_build_object('id', ${messagingMessages.id},
+        'conversationId', ${messagingMessages.conversationId}, 'threadId', ${messagingMessages.threadId})`,
+    })
+    .from(messageEntityReferences)
+    .innerJoin(messagingMessages, eq(messagingMessages.id, messageEntityReferences.messageId))
+    .where(and(references, eq(messageEntityReferences.purpose, "source")))
+    .orderBy(asc(messageEntityReferences.createdAt))
+    .limit(1);
+  const [row] = await db
+    .select({
+      assignee: { id: actors.entityId, name: assigneeDisplayName, type: actors.type },
       projectName: projects.name,
       createdAt: entities.createdAt,
       updatedAt: entities.updatedAt,
       parent: { id: parent.entityId, title: parent.title },
       subtaskCount: sql<number>`(${subtaskCount})`.mapWith(Number),
       commentCount: sql<number>`(${commentCount})`.mapWith(Number),
+      linkedMessageCount: sql<number>`(${linked})`.mapWith(Number),
+      source: sql<{
+        id: string;
+        conversationId: string;
+        threadId: string | null;
+      } | null>`(${source})`,
     })
     .from(tasks)
     .innerJoin(entities, eq(entities.entityId, tasks.entityId))
@@ -166,6 +198,8 @@ export async function queryTaskDetail(
         eq(actors.organizationId, scope.organizationId),
       ),
     )
+    .leftJoin(user, eq(user.id, actors.userId))
+    .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
     .leftJoin(
       parent,
       and(
@@ -175,28 +209,9 @@ export async function queryTaskDetail(
       ),
     )
     .where(and(eq(tasks.organizationId, scope.organizationId), eq(tasks.entityId, taskId)));
-  const references = and(
-    eq(messageEntityReferences.organizationId, scope.organizationId),
-    eq(messageEntityReferences.entityId, taskId),
-    inArray(messageEntityReferences.conversationId, visibleConversationIds(db, identity)),
-  );
-  const [linked] = await db
-    .select({ total: countDistinct(messageEntityReferences.messageId) })
-    .from(messageEntityReferences)
-    .where(references);
-  const [source] = await db
-    .select({
-      id: messagingMessages.id,
-      conversationId: messagingMessages.conversationId,
-      threadId: messagingMessages.threadId,
-    })
-    .from(messageEntityReferences)
-    .innerJoin(messagingMessages, eq(messagingMessages.id, messageEntityReferences.messageId))
-    .where(and(references, eq(messageEntityReferences.purpose, "source")))
-    .orderBy(asc(messageEntityReferences.createdAt))
-    .limit(1);
-  if (!detail) throw new AccessDeniedError();
-  return { detail, linkedMessageCount: linked!.total, source };
+  if (!row) throw new AccessDeniedError();
+  const { linkedMessageCount, source: sourceMessage, ...detail } = row;
+  return { detail, linkedMessageCount, source: sourceMessage ?? undefined };
 }
 
 export async function queryTaskActivity(
