@@ -422,14 +422,28 @@ async function callerFacts(
   };
 }
 
+type MessageCandidates = {
+  trigger: MessageTrigger;
+  author: { kind: "human"; userId: string };
+  rows: {
+    actorId: string;
+    organizationId: string;
+    userAgentId: string;
+    ownerUserId: string;
+    disabled: AgentWakeMessageKind[];
+  }[];
+  mentioned: Set<string>;
+  /** Agents this message may call. admit() locks them before any facts are read. */
+  callable: Set<string>;
+};
+
 // Candidates are the live agents in the conversation's organization. An agent author has none:
-// decideAdmission denies it anyway, so no query runs for it. Caller facts are read only for
-// agents of other owners whose policy accepts callers.
-async function messageInputs(
+// decideAdmission denies it anyway, so no query runs for it.
+async function messageCandidates(
   db: DatabaseExecutor,
   trigger: MessageTrigger,
-): Promise<AdmissionInput[]> {
-  if (trigger.author.kind !== "human") return [];
+): Promise<MessageCandidates | undefined> {
+  if (trigger.author.kind !== "human") return undefined;
   const author = trigger.author;
   const { message } = trigger;
   const rows = await db
@@ -454,12 +468,38 @@ async function messageInputs(
         or(eq(userAgents.userId, author.userId), sql`${userAgents.callerPolicy} <> 'owner'`),
       ),
     );
-  if (!rows.length) return [];
+  if (!rows.length) return undefined;
   const mentioned = new Set(
     messageReferences(message.body)
       .filter((reference) => reference.kind === "agent")
       .map((reference) => reference.id),
   );
+  const callable = new Set(
+    rows.flatMap((row) =>
+      row.ownerUserId !== author.userId &&
+      row.callerPolicy !== "owner" &&
+      (mentioned.has(row.actorId) || message.threadId)
+        ? [row.userAgentId]
+        : [],
+    ),
+  );
+  return {
+    trigger,
+    author,
+    rows: rows.map(({ callerPolicy: _read, ...row }) => row),
+    mentioned,
+    callable,
+  };
+}
+
+// Caller facts are read only for callable agents whose policy, read under the lock, accepts
+// callers.
+async function messageInputs(
+  db: DatabaseExecutor,
+  { trigger, author, rows, mentioned, callable }: MessageCandidates,
+  policies: Map<string, AgentCallerPolicy>,
+): Promise<AdmissionInput[]> {
+  const { message } = trigger;
   const agents = rows.map((row) => ({
     actorId: row.actorId,
     organizationId: row.organizationId,
@@ -485,27 +525,17 @@ async function messageInputs(
           ),
         )
     : [];
-  // Agents this message may call. Their rows stay locked until the message commits, so calls of
-  // one agent are counted one after another.
-  const policies = await lockCallableAgents(
-    db,
-    rows.flatMap((row) =>
-      row.ownerUserId !== author.userId &&
-      row.callerPolicy !== "owner" &&
-      (mentioned.has(row.actorId) || message.threadId)
-        ? [row.userAgentId]
-        : [],
-    ),
-  );
   const inputs: AdmissionInput[] = [];
-  for (const { disabled, callerPolicy: _read, ...agent } of rows) {
+  for (const { disabled, ...agent } of rows) {
     const facts: MessageFacts = {
       agent,
       mentioned: mentioned.has(agent.actorId),
       workedInThread: worked.has(agent.actorId),
       disabled,
     };
-    const callerPolicy = policies.get(agent.userAgentId);
+    const callerPolicy = callable.has(agent.userAgentId)
+      ? policies.get(agent.userAgentId)
+      : undefined;
     if (agent.ownerUserId !== author.userId && callerPolicy && callerPolicy !== "owner")
       facts.caller = await callerFacts(db, { ...trigger, author }, agent, callerPolicy, person);
     inputs.push({ type: "message", trigger, facts });
@@ -613,14 +643,26 @@ export async function admit(
   db: DatabaseExecutor,
   triggers: AdmissionTrigger[],
 ): Promise<RealtimeHint[]> {
+  const candidates: (MessageCandidates | undefined)[] = [];
+  for (const trigger of triggers)
+    candidates.push(trigger.type === "message" ? await messageCandidates(db, trigger) : undefined);
+  // One ID-ordered lock of every agent the batch may call, before any facts are read, so
+  // concurrent batches cannot deadlock. The rows stay locked until the transaction commits, so
+  // calls of one agent are counted one after another.
+  const policies = await lockCallableAgents(
+    db,
+    candidates.flatMap((candidate) => [...(candidate?.callable ?? [])]),
+  );
   const decided: { input: AdmissionInput; decision: AdmissionDecision }[] = [];
   const recorded = new Set<string>();
   const hints: RealtimeHint[] = [];
   // Each trigger's calls are recorded before the next trigger's facts are read, so caller caps
   // count the calls decided earlier in this batch.
-  for (const trigger of triggers) {
-    const inputs =
-      trigger.type === "message" ? await messageInputs(db, trigger) : [requestInput(trigger)];
+  for (const [index, trigger] of triggers.entries()) {
+    const candidate = candidates[index];
+    let inputs: AdmissionInput[] = [];
+    if (trigger.type !== "message") inputs = [requestInput(trigger)];
+    else if (candidate) inputs = await messageInputs(db, candidate, policies);
     const batch = inputs.map((input) => ({ input, decision: decideAdmission(input) }));
     const calls = await recordInvocations(db, batch);
     decided.push(...batch);

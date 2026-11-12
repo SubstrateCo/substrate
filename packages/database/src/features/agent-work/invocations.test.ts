@@ -8,6 +8,7 @@ import {
   agentWakes,
   member,
   messagingMessages,
+  userAgents,
 } from "../../schema";
 import { callerFixture, threadTurn } from "../../testing/agent-work";
 import { ownedAgent } from "../../testing/agents";
@@ -30,7 +31,7 @@ import {
 import { expireInvocations, listInvocations, listMyCalls } from "./invocations";
 import { listNeedsYou } from "./request-views";
 import { expect, test } from "bun:test";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 
 const f = setupDatabase();
 
@@ -305,8 +306,8 @@ test("concurrent calls never exceed the pending cap or the daily cap", async () 
   expect(statusCounts(carolCalls)).toEqual({ admitted: 3, rate_limited: 5 });
 });
 
-/** Admits copies of a sent message as message triggers in one admit() call. */
-async function admitBatch(sent: { id: string }, n: number, userId: string) {
+/** Inserts messages like a sent one with the given bodies, as message triggers by the user. */
+async function messageTriggers(sent: { id: string }, bodies: string[], userId: string) {
   const [message] = await f.db
     .select()
     .from(messagingMessages)
@@ -314,40 +315,81 @@ async function admitBatch(sent: { id: string }, n: number, userId: string) {
   const copies = await f.db
     .insert(messagingMessages)
     .values(
-      Array.from({ length: n }, () => ({
+      bodies.map((body) => ({
         conversationId: message!.conversationId,
         authorActorEntityId: message!.authorActorEntityId,
         authorOrganizationId: message!.authorOrganizationId,
-        body: message!.body,
+        body,
       })),
     )
     .returning();
-  await f.db.transaction((tx) =>
-    admit(
-      tx,
-      copies.map((copy) => ({
-        type: "message" as const,
-        organizationId: f.orgA,
-        author: { kind: "human" as const, userId },
-        message: copy,
-        conversationKind: "channel" as const,
-      })),
-    ),
-  );
-  return copies.map((copy) => copy.id);
+  return copies.map((copy) => ({
+    type: "message" as const,
+    organizationId: f.orgA,
+    author: { kind: "human" as const, userId },
+    message: copy,
+    conversationKind: "channel" as const,
+  }));
 }
+
+/** Admits copies of a sent message as message triggers in one admit() call. */
+async function admitBatch(sent: { id: string; body: string }, n: number, userId: string) {
+  const triggers = await messageTriggers(sent, Array(n).fill(sent.body), userId);
+  await f.db.transaction((tx) => admit(tx, triggers));
+  return triggers.map((trigger) => trigger.message.id);
+}
+
+// Waits until the given number of sessions in this database wait for a lock.
+async function lockWaiters(n: number) {
+  for (let attempt = 0; attempt < 400; attempt++) {
+    const [row] = await f.db.execute<{ n: number }>(
+      sql`select count(*)::int as n from pg_stat_activity
+        where datname = current_database() and wait_event_type = 'Lock'`,
+    );
+    if (row!.n >= n) return;
+    await Bun.sleep(25);
+  }
+  throw new Error(`Fewer than ${n} sessions waited for a lock.`);
+}
+
+test("concurrent batches that call the same agents in opposite orders both complete", async () => {
+  const x = await callerFixture(f);
+  await x.policy("anyone");
+  const second = await ownedAgent(f, "alice", "Second");
+  await f.db
+    .update(userAgents)
+    .set({ callerPolicy: "anyone" })
+    .where(eq(userAgents.id, second.agentId));
+  await x.alice.addAgent(x.channel.id, second.agentId);
+  const secondMention = `@[agent:${second.actorId}]`;
+  const sent = await x.carol.sendMessage(x.channel.id, "hello");
+  const forward = await messageTriggers(sent, [x.mention, secondMention], "carol");
+  const backward = await messageTriggers(sent, [secondMention, x.mention], "carol");
+  // Both batches start while another transaction holds both agent rows, so each waits for its
+  // first lock. Locking per trigger, each would then take one agent and wait for the other.
+  let settled!: Promise<PromiseSettledResult<unknown>[]>;
+  await f.db.transaction(async (tx) => {
+    await tx
+      .select({ id: userAgents.id })
+      .from(userAgents)
+      .where(inArray(userAgents.id, [x.agent.agentId, second.agentId]))
+      .for("update");
+    settled = Promise.allSettled(
+      [forward, backward].map((triggers) => f.db.transaction((batch) => admit(batch, triggers))),
+    );
+    await lockWaiters(2);
+  });
+  expect((await settled).map((result) => result.status)).toEqual(["fulfilled", "fulfilled"]);
+  expect(statusCounts(await calls())).toEqual({ admitted: 4 });
+});
 
 test("a batch of calls counts earlier decisions in the batch toward the pending cap", async () => {
   const x = await callerFixture(f);
   await x.policy("ask");
   const first = await x.bob.sendMessage(x.channel.id, `${x.mention} ask`);
   await admitBatch(first, 3, "bob");
-  expect((await calls()).map((row) => row.status)).toEqual([
-    "pending_approval",
-    "pending_approval",
-    "pending_approval",
-    "rate_limited",
-  ]);
+  // Calls recorded in one transaction share created_at, so compare counts, not order.
+  expect(statusCounts(await calls())).toEqual({ pending_approval: 3, rate_limited: 1 });
 });
 
 test("a batch of calls counts earlier decisions in the batch toward the daily cap", async () => {
