@@ -2,7 +2,6 @@ import { managedPicture, managedPicturePath } from "@substrate/contracts/files/p
 
 import type { DatabaseExecutor } from "../../client";
 import { activeActorCondition } from "../../core/actors/access";
-import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
@@ -13,7 +12,7 @@ import { AccessDeniedError } from "../../errors";
 import { visibleConversations } from "./access";
 import { directConversationId } from "./direct-messages";
 import { messagingConversations, messagingMessages, messagingReactions } from "./schema";
-import { and, eq, exists, isNull, or } from "drizzle-orm";
+import { and, eq, exists, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 interface MessagingProfile {
@@ -45,7 +44,8 @@ async function profileActor(db: DatabaseExecutor, scope: SessionIdentity, actorE
   const [row] = await db
     .select({
       actor: actors,
-      name: actorDisplayName(),
+      name: sql<string>`case when ${actors.type} = 'agent'
+        then coalesce(${userAgents.name}, 'Agent') else ${personUser.name} end`,
       membership: personMember.id,
       email: personUser.email,
       image: personUser.image,
@@ -67,7 +67,7 @@ async function profileActor(db: DatabaseExecutor, scope: SessionIdentity, actorE
         eq(personMember.organizationId, scope.organizationId),
       ),
     )
-    .leftJoin(personUser, eq(personUser.id, personMember.userId))
+    .leftJoin(personUser, eq(personUser.id, actors.userId))
     .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
     .leftJoin(
       ownerMember,

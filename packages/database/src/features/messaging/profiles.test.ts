@@ -44,6 +44,9 @@ test("person profiles show contact details only to workspace members who share t
     organizationId: f.orgA,
   }).getProfile(general.id, f.bob);
   expect(recording.queries.filter((query) => query.startsWith("select"))).toHaveLength(4);
+  const profileQuery = recording.queries.find((query) => query.includes('"person_user"'))!;
+  expect(profileQuery).toContain('left join "user_agents"');
+  expect(profileQuery).not.toMatch(/dn_user|dn_agent/);
   // Bob cannot see the private channel, so neither the conversation nor Alice resolves through it.
   expect(await rejection(chat("bob").getProfile(hidden.id, f.alice))).toBeInstanceOf(
     AccessDeniedError,

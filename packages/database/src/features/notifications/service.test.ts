@@ -3,7 +3,15 @@ import { user } from "../../core/authentication/schema";
 import { commit } from "../../core/effects";
 import { member } from "../../core/organizations/schema";
 import { AccessDeniedError } from "../../errors";
-import { entities, taskActivity, messagingParticipants, messagingMessages } from "../../schema";
+import {
+  entities,
+  taskActivity,
+  messagingParticipants,
+  messagingMessages,
+  storedFiles,
+  userAgents,
+} from "../../schema";
+import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
 import { createAcceptedMessagingService } from "../../testing/messaging";
 import { recordQueries } from "../../testing/queries";
@@ -16,6 +24,53 @@ import { eq, sql } from "drizzle-orm";
 
 const f = setupDatabase();
 const feed = (userId: string) => createFeedService(f.db, { userId, organizationId: f.orgA });
+
+test("joined notification and activity projections keep agent pictures private to their owner", async () => {
+  const { alice, project } = await setup();
+  const agent = await ownedAgent(f);
+  const fileId = crypto.randomUUID();
+  await f.db.insert(storedFiles).values({
+    id: fileId,
+    ownerUserId: "alice",
+    uploadedBy: "alice",
+    purpose: "avatar",
+    filename: "agent.webp",
+    contentType: "image/webp",
+    size: 10,
+    objectKey: `pictures/${fileId}`,
+    sha256: "hash",
+  });
+  await f.db
+    .update(userAgents)
+    .set({ imageFileId: fileId })
+    .where(eq(userAgents.id, agent.agentId));
+  const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "Agent work" });
+  const [event] = await f.db
+    .insert(taskActivity)
+    .values({
+      organizationId: f.orgA,
+      taskEntityId: task.entityId,
+      actorEntityId: agent.actorId,
+      action: "Agent assignment",
+    })
+    .returning();
+  await f.db.insert(notifications).values(
+    [f.alice, f.bob].map((recipientActorEntityId) => ({
+      organizationId: f.orgA,
+      recipientActorEntityId,
+      entityId: task.entityId,
+      kind: "assignment" as const,
+      eventKey: event!.id,
+    })),
+  );
+  for (const userId of ["alice", "bob"]) {
+    const actorImage = userId === "alice" ? `/api/v1/files/${fileId}/content` : null;
+    expect((await feed(userId).list())[0]).toMatchObject({ actorName: "Research", actorImage });
+    expect(
+      (await feed(userId).activity(task.entityId)).find((row) => row.id === event!.id),
+    ).toMatchObject({ actorName: "Research", actorImage });
+  }
+});
 
 test("marking one notification read uses one mutation statement and no-op retries send no hints", async () => {
   const { chat, channel } = await setup();
@@ -554,6 +609,25 @@ test("notices name the actor and place, and excerpts name only references the re
     source: { kind: "project", name: "Shared work" },
     excerpt: null,
   });
+  const recording = recordQueries();
+  const recordedFeed = createFeedService(recording.db, { userId: "bob", organizationId: f.orgA });
+  await recordedFeed.list();
+  expect((await recordedFeed.activity(shared.entityId))[0]).toMatchObject({
+    actorName: "Alice",
+    actorImage: image,
+  });
+  const projections = recording.queries.filter(
+    (query) => query.includes('from "notifications"') || query.includes('from "task_activity"'),
+  );
+  expect(projections).toHaveLength(2);
+  for (const query of projections) {
+    expect(query).toContain('left join "user_agents"');
+    expect(query).toContain('left join "member"');
+    expect(query).not.toMatch(/dn_user|dn_agent|picture_user|picture_agent|picture_member/);
+  }
+  expect(projections.find((query) => query.includes('from "notifications"'))).toContain(
+    'left join "projects" "notice_project"',
+  );
 });
 
 test("message, discussion, comment and project actor pictures use existing reads and reflect picture changes", async () => {

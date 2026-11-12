@@ -1,8 +1,19 @@
 import { AccessDeniedError } from "../../errors";
-import { user } from "../../schema";
+import {
+  member,
+  messagingParticipants,
+  messagingReactions,
+  storedFiles,
+  user,
+  userAgents,
+} from "../../schema";
+import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
+import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
+import { createMessagingService } from "./service";
 import { expect, test } from "bun:test";
+import { eq } from "drizzle-orm";
 
 const fixture = setupDatabase();
 const service = fixture.messaging;
@@ -81,4 +92,90 @@ test("partner reactors reuse conversation-scoped profiles without revealing memb
     email: null,
     image: null,
   });
+});
+
+test("joined reactor metadata keeps agent pictures owner-only and partner pictures tied to viewer membership", async () => {
+  const agent = await ownedAgent(fixture);
+  const image = `/api/v1/files/pictures/avatar/outsider?v=${crypto.randomUUID()}`;
+  await fixture.db.update(user).set({ image }).where(eq(user.id, "outsider"));
+  const fileId = crypto.randomUUID();
+  await fixture.db.insert(storedFiles).values({
+    id: fileId,
+    ownerUserId: "alice",
+    uploadedBy: "alice",
+    purpose: "avatar",
+    filename: "agent.webp",
+    contentType: "image/webp",
+    size: 10,
+    objectKey: `pictures/${fileId}`,
+    sha256: "hash",
+  });
+  await fixture.db
+    .update(userAgents)
+    .set({ imageFileId: fileId })
+    .where(eq(userAgents.id, agent.agentId));
+  const channel = await service("alice").createConversation({
+    kind: "channel",
+    name: "Metadata",
+    emails: ["outside@example.com", "bob@example.com"],
+  });
+  await fixture.db.insert(messagingParticipants).values({
+    organizationId: fixture.orgA,
+    conversationId: channel.id,
+    actorEntityId: agent.actorId,
+    actorType: "agent",
+  });
+  const message = await service("alice").sendMessage(channel.id, "Metadata");
+  await fixture.db.insert(messagingReactions).values(
+    [agent.actorId, fixture.outsider].map((actorEntityId) => ({
+      messageId: message.id,
+      conversationId: channel.id,
+      actorEntityId,
+      emoji: "👍",
+    })),
+  );
+  const recording = recordQueries();
+  const owner = createMessagingService(recording.db, {
+    userId: "alice",
+    organizationId: fixture.orgA,
+  });
+  expect((await owner.listReactions(message.id)).items).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        actorId: agent.actorId,
+        name: "Research",
+        image: `/api/v1/files/${fileId}/content`,
+      }),
+      expect.objectContaining({ actorId: fixture.outsider, name: "Outsider", image: null }),
+    ]),
+  );
+  const query = recording.queries.find((query) => query.includes("array_agg"))!;
+  expect(query).toContain('left join "user_agents"');
+  expect(query).toContain('left join "member"');
+  expect(query).not.toMatch(/dn_user|dn_agent|picture_user|picture_agent|picture_member/);
+  expect(
+    (await service("bob").listReactions(message.id)).items.every((row) => row.image === null),
+  ).toBe(true);
+  await fixture.db
+    .insert(member)
+    .values({
+      id: crypto.randomUUID(),
+      organizationId: fixture.orgA,
+      userId: "outsider",
+      role: "member",
+    });
+  expect(
+    (await service("bob").listReactions(message.id)).items.find(
+      (row) => row.actorId === fixture.outsider,
+    )?.image,
+  ).toBe(image);
+  await fixture.db
+    .update(user)
+    .set({ image: "https://example.test/tracker.png" })
+    .where(eq(user.id, "outsider"));
+  expect(
+    (await service("bob").listReactions(message.id)).items.find(
+      (row) => row.actorId === fixture.outsider,
+    )?.image,
+  ).toBeNull();
 });

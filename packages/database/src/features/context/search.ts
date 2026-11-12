@@ -1,8 +1,7 @@
 import type { ContextSearchKind } from "@substrate/contracts/context/input";
+import { managedPicture, managedPicturePath } from "@substrate/contracts/files/pictures";
 import type { TaskStatus } from "@substrate/contracts/tasks";
 
-import { actorDisplayName } from "../../core/actors/display-name";
-import { actorPicture } from "../../core/actors/picture";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
@@ -424,7 +423,8 @@ export async function contextSearch(
         conversationName: sql<string>`${messagingConversations.name}`,
         conversationKind: messagingConversations.kind,
         private: messagingConversations.private,
-        authorName: actorDisplayName(),
+        authorName: sql<string>`case when ${actors.type} = 'agent'
+          then coalesce(${userAgents.name}, 'Agent') else ${user.name} end`,
         createdAt: messagingMessages.createdAt,
       })
       .from(messagingMessages)
@@ -433,6 +433,8 @@ export async function contextSearch(
         eq(messagingConversations.id, messagingMessages.conversationId),
       )
       .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
+      .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+      .leftJoin(user, eq(user.id, actors.userId))
       .where(
         and(
           visibleConversations(db, scope),
@@ -477,7 +479,8 @@ export async function contextSearch(
         conversationName: conversationDisplayName(db, scope),
         conversationKind: messagingConversations.kind,
         private: messagingConversations.private,
-        authorName: actorDisplayName(),
+        authorName: sql<string>`case when ${actors.type} = 'agent'
+          then coalesce(${userAgents.name}, 'Agent') else ${user.name} end`,
         createdAt: messagingMessages.createdAt,
       })
       .from(messagingMessages)
@@ -486,6 +489,8 @@ export async function contextSearch(
         eq(messagingConversations.id, messagingMessages.conversationId),
       )
       .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
+      .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+      .leftJoin(user, eq(user.id, actors.userId))
       .where(
         and(
           visibleConversations(db, scope),
@@ -511,9 +516,24 @@ export async function contextSearch(
   for (const rows of await Promise.all(branchRows)) results.push(...rows);
   if (kind === "person" && input.conversationId) {
     const rows = await db
-      .select({ id: actors.entityId, title: user.name, image: actorPicture(scope) })
+      .select({
+        id: actors.entityId,
+        title: user.name,
+        image: sql<
+          string | null
+        >`case when ${member.id} is not null then ${user.image} end`.mapWith(
+          (value: string | null) => {
+            const parsed = managedPicture.safeParse(value);
+            return parsed.success ? parsed.data : null;
+          },
+        ),
+      })
       .from(actors)
       .innerJoin(user, eq(user.id, actors.userId))
+      .leftJoin(
+        member,
+        and(eq(member.userId, actors.userId), eq(member.organizationId, scope.organizationId)),
+      )
       .innerJoin(entities, eq(entities.entityId, actors.entityId))
       .innerJoin(
         messagingConversations,
@@ -567,7 +587,7 @@ export async function contextSearch(
         ownerUserId: userAgents.userId,
         agentId: userAgents.id,
         callerPolicy: userAgents.callerPolicy,
-        image: actorPicture(scope),
+        imageFileId: userAgents.imageFileId,
       })
       .from(messagingParticipants)
       .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
@@ -592,11 +612,12 @@ export async function contextSearch(
       .orderBy(asc(actors.entityId))
       .limit(limit);
     results.push(
-      ...rows.map(({ ownerUserId, agentId, callerPolicy, ...row }) =>
+      ...rows.map(({ ownerUserId, agentId, callerPolicy, imageFileId, ...row }) =>
         ownerUserId === scope.userId
-          ? { ...row, agentId, kind: "agent" as const }
+          ? { ...row, image: managedPicturePath(imageFileId), agentId, kind: "agent" as const }
           : {
               ...row,
+              image: null,
               // The shared condition admits only agents whose policy is anyone or ask.
               callMode: callerPolicy === "ask" ? ("ask" as const) : ("anyone" as const),
               kind: "agent" as const,

@@ -1,7 +1,10 @@
+import { managedPicture } from "@substrate/contracts/files/pictures";
+
 import type { DatabaseExecutor } from "../../client";
-import { actorDisplayName } from "../../core/actors/display-name";
-import { actorPicture } from "../../core/actors/picture";
 import { actors } from "../../core/actors/schema";
+import { userAgents } from "../../core/actors/user-agents.schema";
+import { user } from "../../core/authentication/schema";
+import { member } from "../../core/organizations/schema";
 import type { SessionIdentity } from "../../core/session/identity";
 import type { MessagingSessionResolver } from "../../core/session/messaging";
 import { AccessDeniedError } from "../../errors";
@@ -31,8 +34,17 @@ export function reactionOperations(
         const rows = await tx
           .select({
             actorId: actors.entityId,
-            name: actorDisplayName(),
-            image: actorPicture(scope),
+            name: sql<string>`case when ${actors.type} = 'agent'
+              then coalesce(${userAgents.name}, 'Agent') else ${user.name} end`,
+            image: sql<string | null>`case when ${actors.type} = 'agent' then
+              case when ${userAgents.userId} = ${scope.userId}
+                then '/api/v1/files/' || ${userAgents.imageFileId}::text || '/content' end
+              else case when ${member.id} is not null then ${user.image} end end`.mapWith(
+              (value: string | null) => {
+                const parsed = managedPicture.safeParse(value);
+                return parsed.success ? parsed.data : null;
+              },
+            ),
             type: actors.type,
             self: sql<boolean>`${actors.entityId} = ${actor.entityId}`,
             emojis: sql<
@@ -41,6 +53,12 @@ export function reactionOperations(
           })
           .from(messagingReactions)
           .innerJoin(actors, eq(actors.entityId, messagingReactions.actorEntityId))
+          .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+          .leftJoin(user, eq(user.id, actors.userId))
+          .leftJoin(
+            member,
+            and(eq(member.userId, actors.userId), eq(member.organizationId, scope.organizationId)),
+          )
           .where(
             and(
               eq(messagingReactions.messageId, messageId),
@@ -48,7 +66,7 @@ export function reactionOperations(
               options.afterActorId ? gt(actors.entityId, options.afterActorId) : undefined,
             ),
           )
-          .groupBy(actors.entityId)
+          .groupBy(actors.entityId, userAgents.id, user.id, member.id)
           .orderBy(asc(actors.entityId))
           .limit(limit + 1);
         const items = rows.slice(0, limit);

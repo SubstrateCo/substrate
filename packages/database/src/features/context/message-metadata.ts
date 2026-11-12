@@ -1,8 +1,8 @@
 import { taskStatusLabels } from "@substrate/contracts/tasks";
 
 import type { DatabaseExecutor } from "../../client";
-import { actorDisplayName } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
+import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
@@ -105,10 +105,11 @@ export async function messagePeople(
     ? await db
         .select({
           id: actors.entityId,
-          name: actorDisplayName(),
+          name: user.name,
           conversationId: messagingConversations.id,
         })
         .from(actors)
+        .innerJoin(user, eq(user.id, actors.userId))
         .innerJoin(entities, eq(entities.entityId, actors.entityId))
         .innerJoin(
           messagingConversations,

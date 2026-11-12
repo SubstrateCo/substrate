@@ -1,8 +1,9 @@
+import { managedPicture } from "@substrate/contracts/files/pictures";
+
 import type { DatabaseExecutor } from "../../../client";
-import { actorPicture } from "../../../core/actors/picture";
 import { actors } from "../../../core/actors/schema";
 import { user } from "../../../core/authentication/schema";
-import { organization } from "../../../core/organizations/schema";
+import { member, organization } from "../../../core/organizations/schema";
 import type { SessionIdentity } from "../../../core/session/identity";
 import type { ResolvedWorkspace } from "../../../core/session/workspace";
 import { AccessDeniedError } from "../../../errors";
@@ -70,7 +71,14 @@ export function sharingQueries(
         const participants = await tx
           .select({
             actorId: actors.entityId,
-            image: actorPicture(scope),
+            image: sql<
+              string | null
+            >`case when ${member.id} is not null then ${user.image} end`.mapWith(
+              (value: string | null) => {
+                const parsed = managedPicture.safeParse(value);
+                return parsed.success ? parsed.data : null;
+              },
+            ),
             name: user.name,
             organizationId: messagingParticipants.organizationId,
             consentedAt: messagingParticipants.consentedAt,
@@ -78,6 +86,10 @@ export function sharingQueries(
           .from(messagingParticipants)
           .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
           .innerJoin(user, eq(user.id, actors.userId))
+          .leftJoin(
+            member,
+            and(eq(member.userId, actors.userId), eq(member.organizationId, scope.organizationId)),
+          )
           .where(
             and(
               eq(messagingParticipants.conversationId, conversationId),

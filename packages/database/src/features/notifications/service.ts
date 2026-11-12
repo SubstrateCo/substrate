@@ -1,10 +1,12 @@
+import { managedPicture } from "@substrate/contracts/files/pictures";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
-import { actorDisplayName } from "../../core/actors/display-name";
-import { actorPicture } from "../../core/actors/picture";
 import { actors } from "../../core/actors/schema";
+import { userAgents } from "../../core/actors/user-agents.schema";
+import { user } from "../../core/authentication/schema";
 import { effectsFor } from "../../core/effects";
+import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
@@ -35,14 +37,29 @@ export function createFeedRepository(ctx: RepositoryContext, scope: SessionIdent
         .select({
           id: taskActivity.id,
           action: taskActivity.action,
-          actorName: actorDisplayName(),
-          actorImage: actorPicture(scope),
+          actorName: sql<string>`case when ${actors.type} = 'agent'
+            then coalesce(${userAgents.name}, 'Agent') else ${user.name} end`,
+          actorImage: sql<string | null>`case when ${actors.type} = 'agent' then
+            case when ${userAgents.userId} = ${scope.userId}
+              then '/api/v1/files/' || ${userAgents.imageFileId}::text || '/content' end
+            else case when ${member.id} is not null then ${user.image} end end`.mapWith(
+            (value: string | null) => {
+              const parsed = managedPicture.safeParse(value);
+              return parsed.success ? parsed.data : null;
+            },
+          ),
           actorType: actors.type,
           createdAt: taskActivity.createdAt,
           sourceMessageId: taskActivity.sourceMessageId,
         })
         .from(taskActivity)
         .innerJoin(actors, eq(actors.entityId, taskActivity.actorEntityId))
+        .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+        .leftJoin(user, eq(user.id, actors.userId))
+        .leftJoin(
+          member,
+          and(eq(member.userId, actors.userId), eq(member.organizationId, scope.organizationId)),
+        )
         .where(
           and(
             eq(taskActivity.organizationId, scope.organizationId),
@@ -106,6 +123,7 @@ export function createFeedRepository(ctx: RepositoryContext, scope: SessionIdent
       const projectEntityId = sql`coalesce(${tasks.projectEntityId}, ${projects.entityId})`;
       // Who acted: the message author, or whoever recorded the assignment event.
       const actor = alias(actors, "notice_actor");
+      const noticeProject = alias(projects, "notice_project");
       const rows = await db
         .select({
           id: notifications.id,
@@ -116,11 +134,7 @@ export function createFeedRepository(ctx: RepositoryContext, scope: SessionIdent
           messageId: notifications.messageId,
           title: sql<string | null>`coalesce(${tasks.title}, ${projects.name})`,
           projectEntityId: sql<string | null>`${projectEntityId}`,
-          projectName: sql<
-            string | null
-          >`(SELECT notice_project.name FROM ${projects} notice_project
-            WHERE notice_project.organization_id = ${notifications.organizationId}
-              AND notice_project.entity_id = ${projectEntityId})`,
+          projectName: noticeProject.name,
           conversationId: messagingConversations.id,
           conversationName: sql<
             string | null
@@ -129,9 +143,17 @@ export function createFeedRepository(ctx: RepositoryContext, scope: SessionIdent
           conversationPrivate: messagingConversations.private,
           threadId: messagingMessages.threadId,
           body: messagingMessages.body,
-          actorName: sql<string | null>`CASE WHEN ${actor.entityId} IS NULL THEN NULL
-            ELSE ${actorDisplayName(actor)} END`,
-          actorImage: actorPicture(scope, actor),
+          actorName: sql<string | null>`case when ${actor.type} = 'agent'
+            then coalesce(${userAgents.name}, 'Agent') else ${user.name} end`,
+          actorImage: sql<string | null>`case when ${actor.type} = 'agent' then
+            case when ${userAgents.userId} = ${scope.userId}
+              then '/api/v1/files/' || ${userAgents.imageFileId}::text || '/content' end
+            else case when ${member.id} is not null then ${user.image} end end`.mapWith(
+            (value: string | null) => {
+              const parsed = managedPicture.safeParse(value);
+              return parsed.success ? parsed.data : null;
+            },
+          ),
         })
         .from(notifications)
         .leftJoin(
@@ -146,6 +168,13 @@ export function createFeedRepository(ctx: RepositoryContext, scope: SessionIdent
           and(
             eq(projects.organizationId, notifications.organizationId),
             eq(projects.entityId, notifications.entityId),
+          ),
+        )
+        .leftJoin(
+          noticeProject,
+          and(
+            eq(noticeProject.organizationId, notifications.organizationId),
+            eq(noticeProject.entityId, projectEntityId),
           ),
         )
         .leftJoin(
@@ -180,6 +209,12 @@ export function createFeedRepository(ctx: RepositoryContext, scope: SessionIdent
             actor.entityId,
             sql`coalesce(${messagingMessages.authorActorEntityId}, ${taskActivity.actorEntityId}, ${taskComments.authorActorEntityId})`,
           ),
+        )
+        .leftJoin(userAgents, eq(userAgents.id, actor.userAgentId))
+        .leftJoin(user, eq(user.id, actor.userId))
+        .leftJoin(
+          member,
+          and(eq(member.userId, actor.userId), eq(member.organizationId, scope.organizationId)),
         )
         .where(
           and(
