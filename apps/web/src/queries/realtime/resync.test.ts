@@ -4,6 +4,47 @@ import { queryKeys } from "../keys";
 import { createRealtimeCache } from "./cache";
 import { expect, test } from "bun:test";
 
+test("overlapping timer, focus and visibility reconciliations share one recovery read", async () => {
+  const client = new QueryClient();
+  const key = queryKeys.messages("org", "conversation");
+  const response = Promise.withResolvers<string[]>();
+  let reads = 0;
+  let routes = 0;
+  const read = () => {
+    reads++;
+    return response.promise;
+  };
+  const observer = new QueryObserver(client, {
+    queryKey: key,
+    initialData: ["visible"],
+    staleTime: Infinity,
+    queryFn: () => read(),
+  });
+  const stop = observer.subscribe(() => {});
+  const cache = createRealtimeCache({
+    queryClient: client,
+    organizationId: "org",
+    userId: "user",
+    revalidate: async () => {
+      routes++;
+    },
+  });
+  try {
+    const pending = [cache.reconcile(), cache.reconcile(), cache.reconcile()];
+    expect(observer.getCurrentResult().data).toEqual(["visible"]);
+    response.resolve(["missed hint recovered"]);
+    await Promise.all(pending);
+    expect(reads).toBe(1);
+    expect(routes).toBe(1);
+    expect(observer.getCurrentResult().data).toEqual(["missed hint recovered"]);
+  } finally {
+    response.resolve([]);
+    cache.dispose();
+    stop();
+    client.clear();
+  }
+});
+
 test("resync reads each active query once", async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const reads = new Map<string, number>();

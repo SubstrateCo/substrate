@@ -1,7 +1,7 @@
-import { QueryClient, type QueryKey } from "@tanstack/react-query";
+import { QueryClient, QueryObserver, type QueryKey } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
-import { queryTargetFilter, type QueryTarget } from "../targets";
+import { invalidateTargets, queryTargetFilter, type QueryTarget } from "../targets";
 import { agentWorkInvalidations } from "./invalidation";
 import { bridgeChangeTargets } from "./sync";
 import { describe, expect, test } from "bun:test";
@@ -37,6 +37,48 @@ const cached = [
 ];
 
 describe("agent-work mutation invalidation", () => {
+  test("an approved task reads overlapping context targets once without canceling them", async () => {
+    const client = new QueryClient();
+    const keys = [
+      queryKeys.activity("org", "task"),
+      queryKeys.related("org", "task"),
+      queryKeys.messagePage("org", "conversation", ["message"]),
+    ];
+    const reads = keys.map(() => 0);
+    let canceled = 0;
+    const response = Promise.withResolvers<{ links: unknown[] }[]>();
+    const stops = keys.map((queryKey, index) =>
+      new QueryObserver(client, {
+        queryKey,
+        initialData: [{ links: ["task"] }],
+        staleTime: Infinity,
+        queryFn: ({ signal }) => {
+          reads[index]++;
+          signal.addEventListener("abort", () => canceled++);
+          return response.promise;
+        },
+      }).subscribe(() => {}),
+    );
+    try {
+      const pending = invalidateTargets(
+        client,
+        agentWorkInvalidations("user", "org", {
+          kind: "approved",
+          action: { type: "create_task", input: { projectId: target, title: "Follow up" } },
+        }),
+      );
+      response.resolve([{ links: [] }]);
+      await pending;
+      expect(reads).toEqual([1, 1, 1]);
+      expect(canceled).toBe(0);
+      for (const key of keys) expect(client.getQueryData(key)).toEqual([{ links: [] }]);
+    } finally {
+      response.resolve([]);
+      stops.forEach((stop) => stop());
+      client.clear();
+    }
+  });
+
   test("an answer refreshes only this owner's agent work in this workspace", () => {
     expect(matched(cached, agentWorkInvalidations("user", "org", { kind: "agent-work" }))).toEqual(
       cached.slice(0, 3),

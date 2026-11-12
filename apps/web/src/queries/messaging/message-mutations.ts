@@ -1,15 +1,28 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
 import { deleteMessage, editMessage, removeMember } from "@/api/messaging/requests";
 import { queryKeys } from "@/queries/keys";
+import { domainTargets, invalidateTargets } from "@/queries/targets";
 
-export function useMessageMutations(organizationId: string, messageId: string) {
+export function invalidateChangedMessage(
+  client: QueryClient,
+  organizationId: string,
+  conversationId: string,
+) {
+  return invalidateTargets(client, [
+    ...domainTargets("messaging", organizationId, conversationId),
+    // Edits can change references, and deletion can remove linked discussions and alerts.
+    { queryKey: queryKeys.context(organizationId) },
+  ]);
+}
+
+export function useMessageMutations(
+  organizationId: string,
+  conversationId: string,
+  messageId: string,
+) {
   const client = useQueryClient();
-  const invalidate = () =>
-    Promise.all([
-      client.invalidateQueries({ queryKey: queryKeys.messaging(organizationId) }),
-      client.invalidateQueries({ queryKey: queryKeys.context(organizationId) }),
-    ]);
+  const invalidate = () => invalidateChangedMessage(client, organizationId, conversationId);
   return {
     edit: useMutation({
       mutationFn: (body: string) => editMessage({ data: { organizationId, messageId, body } }),

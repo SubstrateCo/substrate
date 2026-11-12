@@ -29,7 +29,7 @@ export function EditMessageDialog({
   onRestoreFocus: () => void;
 }) {
   const [body, setBody] = useState(message.body);
-  const { edit } = useMessageMutations(organizationId, message.id);
+  const { edit } = useMessageMutations(organizationId, message.conversationId, message.id);
   return (
     <Dialog
       open

@@ -65,7 +65,7 @@ export function MessageItem({
   const [linking, setLinking] = useState(false);
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const { remove } = useMessageMutations(organizationId, message.id);
+  const { remove } = useMessageMutations(organizationId, message.conversationId, message.id);
   const actionsTrigger = useRef<HTMLButtonElement>(null);
   const [reactionsEmoji, setReactionsEmoji] = useState<string | null>(null);
   const reactionsTrigger = useRef<HTMLElement | null>(null);

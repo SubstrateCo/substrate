@@ -127,14 +127,20 @@ export async function markStaleAfterInflight(
 
 /** Invalidates local writes' targets. Stale-only targets stay stale after reads in flight. */
 export function invalidateTargets(client: QueryClient, targets: QueryTarget[]) {
-  return Promise.all(
-    targets.map((target) => {
-      const filter = queryTargetFilter(target);
-      if (target.refetchType === "none")
-        for (const query of client.getQueryCache().findAll(filter))
-          if (query.state.fetchStatus !== "idle")
-            void markStaleAfterInflight(client, query, query.promise).catch(() => {});
-      return client.invalidateQueries(filter);
+  // Combined domain targets can overlap. Read each query once; any refreshing target wins
+  // over a stale-only target, regardless of their order.
+  const matched = new Map<Query, boolean>();
+  for (const target of targets)
+    for (const query of client.getQueryCache().findAll(queryTargetFilter(target)))
+      matched.set(query, matched.get(query) === true || target.refetchType !== "none");
+  for (const [query, refetch] of matched)
+    if (!refetch && query.state.fetchStatus !== "idle")
+      void markStaleAfterInflight(client, query, query.promise).catch(() => {});
+  return Promise.all([
+    client.invalidateQueries({ predicate: (query) => matched.get(query) === true }),
+    client.invalidateQueries({
+      predicate: (query) => matched.get(query) === false,
+      refetchType: "none",
     }),
-  );
+  ]);
 }
