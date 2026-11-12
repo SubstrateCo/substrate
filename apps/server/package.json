@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "bun --env-file=../../.env --watch src/main.ts",
     "start": "bun --env-file=../../.env src/main.ts",
+    "load:server": "DATABASE_URL=postgres://substrate_load:substrate_load@localhost:5435/substrate_load bun --no-env-file scripts/start-load.ts",
+    "load:provision": "bun --no-env-file load/provision.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun --env-file=../../.env test src scripts",
     "test:integration": "playwright test"
@@ -30,6 +32,7 @@
   "devDependencies": {
     "@playwright/test": "^1.64.1",
     "@types/bun": "^1.4.4",
+    "@types/k6": "^1.4.0",
     "@types/nodemailer": "^8.0.2",
     "typescript": "^7.0.2"
   }

@@ -12,3 +12,5 @@ test-results/
 .env
 .env.*
 !.env.example
+apps/server/load/.bin/
+apps/server/load/.data/
