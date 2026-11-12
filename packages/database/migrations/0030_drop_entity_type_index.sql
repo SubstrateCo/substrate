@@ -1,1 +1,0 @@
-DROP INDEX "entities_organization_type_idx";

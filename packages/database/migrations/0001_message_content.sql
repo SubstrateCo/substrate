@@ -10,7 +10,7 @@ BEGIN
   END IF;
   IF EXISTS (
     SELECT 1 FROM messaging_messages m
-    WHERE m.id = target_id AND length(btrim(m.body)) = 0
+    WHERE m.id = target_id AND m.deleted_at IS NULL AND length(btrim(m.body)) = 0
       AND NOT EXISTS (SELECT 1 FROM message_attachments a WHERE a.message_id = m.id)
   ) THEN
     RAISE EXCEPTION 'A message needs text or an attachment.' USING ERRCODE = '23514';

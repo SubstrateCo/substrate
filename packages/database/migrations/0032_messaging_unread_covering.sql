@@ -1,1 +1,0 @@
-CREATE INDEX "messaging_message_unread_idx" ON "messaging_messages" USING btree ("conversation_id","created_at","id","author_actor_entity_id") WHERE "messaging_messages"."deleted_at" IS NULL;

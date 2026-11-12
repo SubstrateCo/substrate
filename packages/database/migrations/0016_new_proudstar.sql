@@ -1,2 +1,0 @@
-ALTER TABLE "projects" ADD COLUMN "image" text;--> statement-breakpoint
-ALTER TABLE "projects" ADD CONSTRAINT "projects_image_check" CHECK ("projects"."image" IS NULL OR "projects"."image" ~ ('^/api/v1/files/pictures/project-icon/' || "projects"."entity_id"::text || '[?]v=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'));
