@@ -1,4 +1,4 @@
-import { storageOrigins, storageRequest } from "./storage.js";
+import { storageOrigins, storageRequest } from "./storage.ts";
 import { expect, test } from "bun:test";
 
 test("storage origins are explicit, normalized, and HTTPS-only in packages", () => {

@@ -1,4 +1,4 @@
-import { bundledApplicationURL, navigationTarget } from "./navigation.js";
+import { bundledApplicationURL, navigationTarget } from "./navigation.ts";
 import { describe, expect, test } from "bun:test";
 
 describe("desktop navigation", () => {

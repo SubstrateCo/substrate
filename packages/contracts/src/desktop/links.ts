@@ -27,13 +27,11 @@ export const desktopPath = z
     }
   }, "Invalid desktop destination.");
 
-/** @param {string} path */
-export function desktopLink(path) {
+export function desktopLink(path: string) {
   return `${desktopScheme}://open${desktopPath.parse(path)}`;
 }
 
-/** @param {string} value @param {string} rendererOrigin @returns {string | null} */
-export function resolveDesktopLink(value, rendererOrigin) {
+export function resolveDesktopLink(value: string, rendererOrigin: string): string | null {
   try {
     const url = new URL(value);
     const isOpenLink = url.protocol === `${desktopScheme}:` && url.host === "open";

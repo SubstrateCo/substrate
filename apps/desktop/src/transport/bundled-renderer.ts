@@ -1,11 +1,10 @@
-import { bundledApplicationURL } from "../shell/navigation.js";
-import { storageOrigins } from "./storage.js";
+import { bundledApplicationURL } from "../shell/navigation.ts";
+import { storageOrigins } from "./storage.ts";
 import { realpath, stat } from "node:fs/promises";
 import { extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 
-/** @param {string | undefined} value @param {boolean} packaged */
-export function backendURL(value, packaged) {
+export function backendURL(value: string | undefined, packaged: boolean) {
   if (!value && packaged) throw new Error("Packaged Substrate requires SUBSTRATE_API_URL.");
   const url = new URL(value || "http://localhost:3001");
   const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
@@ -20,13 +19,12 @@ export function backendURL(value, packaged) {
   return url.origin;
 }
 
-/** @param {URL} url @param {string} [origin] */
-function isAppURL(url, origin = bundledApplicationURL) {
+function isAppURL(url: URL, origin: string = bundledApplicationURL) {
   return url.origin === origin && !url.username && !url.password;
 }
 
-/** @param {string} value @param {string} backend A validated `backendURL()` origin. @param {string} [origin] */
-export function proxyURL(value, backend, origin = bundledApplicationURL) {
+/** `backend` is a validated `backendURL()` origin. */
+export function proxyURL(value: string, backend: string, origin: string = bundledApplicationURL) {
   const url = new URL(value);
   if (!isAppURL(url, origin) || !(url.pathname === "/api" || url.pathname.startsWith("/api/"))) {
     throw new Error("Only app API requests can be proxied.");
@@ -39,14 +37,12 @@ export function proxyURL(value, backend, origin = bundledApplicationURL) {
   return new URL(`${backend}${url.pathname}${url.search}`).href;
 }
 
-/** @param {string} root @param {string} file */
-function confined(root, file) {
+function confined(root: string, file: string) {
   const path = relative(root, file);
   return path !== ".." && !path.startsWith(`..${sep}`) && !isAbsolute(path);
 }
 
-/** @param {string} root @param {URL} url */
-export async function assetPath(root, url) {
+export async function assetPath(root: string, url: URL) {
   if (!isAppURL(url)) return null;
   let pathname;
   try {
@@ -59,8 +55,7 @@ export async function assetPath(root, url) {
   const directory = await realpath(root);
   const candidate = resolve(directory, `.${pathname}`);
   if (!confined(directory, candidate)) return null;
-  /** @param {string} path */
-  async function existingFile(path) {
+  async function existingFile(path: string) {
     try {
       const actual = await realpath(path);
       return confined(directory, actual) && (await stat(actual)).isFile() ? actual : null;
@@ -85,8 +80,7 @@ const hopHeaders = [
   "upgrade",
 ];
 
-/** @param {Headers} source */
-function forwardingHeaders(source) {
+function forwardingHeaders(source: Headers) {
   const headers = new Headers(source);
   for (const name of (headers.get("connection") || "").split(",")) {
     if (name.trim()) headers.delete(name.trim());
@@ -95,9 +89,6 @@ function forwardingHeaders(source) {
   return headers;
 }
 
-/**
- * @param {{ directory: string, backend: string, fetchFile: (url: string) => Promise<Response>, fetchUpstream?: (url: string, init: RequestInit) => Promise<Response>, origin?: string, storageOrigins?: string[] }} options
- */
 export function bundledRenderer({
   directory,
   backend,
@@ -105,13 +96,19 @@ export function bundledRenderer({
   fetchUpstream = fetch,
   origin = bundledApplicationURL,
   storageOrigins: configuredStorageOrigins = [],
+}: {
+  directory: string;
+  backend: string;
+  fetchFile: (url: string) => Promise<Response>;
+  fetchUpstream?: (url: string, init: RequestInit) => Promise<Response>;
+  origin?: string;
+  storageOrigins?: string[];
 }) {
   const upstream = backendURL(backend, false);
   const storageSources = storageOrigins(configuredStorageOrigins, false)
     .map((value) => ` ${value}`)
     .join("");
-  /** @param {Request} request */
-  return async (request) => {
+  return async (request: Request) => {
     const url = new URL(request.url);
     if (!isAppURL(url, origin)) return new Response("Forbidden", { status: 403 });
     if (url.pathname === "/api" || url.pathname.startsWith("/api/")) {

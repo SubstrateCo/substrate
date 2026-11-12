@@ -1,5 +1,5 @@
-import { backendURL } from "./bundled-renderer.js";
-import { storageOrigins } from "./storage.js";
+import { backendURL } from "./bundled-renderer.ts";
+import { storageOrigins } from "./storage.ts";
 
 /** The public origins a build writes to desktop-config.json. */
 export interface PublicConfig {

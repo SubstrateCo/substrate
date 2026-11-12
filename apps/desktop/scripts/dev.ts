@@ -1,5 +1,5 @@
-import { applicationURL } from "../src/shell/navigation.js";
-import { backendURL } from "../src/transport/bundled-renderer.js";
+import { applicationURL } from "../src/shell/navigation.ts";
+import { backendURL } from "../src/transport/bundled-renderer.ts";
 import { developmentServices, ensureDevelopmentServices } from "./dev-services.js";
 import { bundleHarnessWorker } from "./harness-worker.ts";
 import { bundlePreload } from "./preload.js";

@@ -31,7 +31,7 @@
     "./auth/permissions": "./src/auth/permissions.ts",
     "./auth/settings-access": "./src/auth/settings-access.ts",
     "./organizations/input": "./src/organizations/input.ts",
-    "./desktop/links": "./src/desktop/links.js",
+    "./desktop/links": "./src/desktop/links.ts",
     "./desktop/window": "./src/desktop/window.ts",
     "./result": "./src/result.ts",
     "./state-machine": "./src/state-machine.ts"

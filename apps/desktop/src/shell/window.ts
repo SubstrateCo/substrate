@@ -1,4 +1,4 @@
-import { bundledApplicationURL, navigationTarget } from "./navigation.js";
+import { bundledApplicationURL, navigationTarget } from "./navigation.ts";
 import { attachTitleBar, titleBarOptions } from "./title-bar.ts";
 import { BrowserWindow, shell, type Session } from "electron";
 

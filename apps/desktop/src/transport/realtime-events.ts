@@ -1,4 +1,4 @@
-import { navigationTarget } from "../shell/navigation.js";
+import { navigationTarget } from "../shell/navigation.ts";
 import type { WebContents } from "electron";
 
 export function emitToRenderer<T>(

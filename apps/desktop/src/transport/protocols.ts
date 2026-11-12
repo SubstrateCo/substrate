@@ -1,5 +1,5 @@
-import { bundledRenderer } from "./bundled-renderer.js";
-import { storageRequest } from "./storage.js";
+import { bundledRenderer } from "./bundled-renderer.ts";
+import { storageRequest } from "./storage.ts";
 import { net, type Session } from "electron";
 
 /** Renderer responses (including CSP) and storage use distinct transports. */

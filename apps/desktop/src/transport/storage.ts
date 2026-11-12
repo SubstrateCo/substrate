@@ -1,5 +1,5 @@
-/** @param {unknown} value @param {boolean} packaged @returns {string[]} */
-export function storageOrigins(value, packaged) {
+// oxlint-disable-next-line deslop/no-unknown-parameters -- This public config/env boundary validates raw values before returning allowed origins.
+export function storageOrigins(value: unknown, packaged: boolean): string[] {
   if (value === undefined) return [];
   // oxlint-disable-next-line deslop/no-runtime-typeof -- Public config/env boundary: parse comma-separated env text or a JSON array before validating each origin.
   const values = typeof value === "string" ? value.split(",") : value;
@@ -28,13 +28,11 @@ export function storageOrigins(value, packaged) {
   ];
 }
 
-/**
- * @param {string[]} origins
- * @param {(request: Request, init: RequestInit) => Promise<Response>} fetchStorage
- */
-export function storageRequest(origins, fetchStorage) {
-  /** @param {Request} request */
-  return async (request) => {
+export function storageRequest(
+  origins: string[],
+  fetchStorage: (request: Request, init: RequestInit) => Promise<Response>,
+) {
+  return async (request: Request) => {
     const url = new URL(request.url);
     const hasCredentials = url.username || url.password;
     const isAllowedMethod = ["GET", "HEAD", "PUT", "OPTIONS"].includes(request.method);

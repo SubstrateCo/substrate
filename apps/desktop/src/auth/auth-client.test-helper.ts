@@ -58,7 +58,7 @@ globalThis.fetch = Object.assign(
   { preconnect() {} },
 );
 
-const { createDesktopAuthClient } = await import("./auth-client.js");
+const { createDesktopAuthClient } = await import("./auth-client.ts");
 let invalidated = 0;
 let changed = 0;
 const desktopAuth = createDesktopAuthClient(

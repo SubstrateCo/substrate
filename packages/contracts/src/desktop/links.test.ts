@@ -1,4 +1,4 @@
-import { desktopLink, desktopOrigin, desktopPath, resolveDesktopLink } from "./links.js";
+import { desktopLink, desktopOrigin, desktopPath, resolveDesktopLink } from "./links.ts";
 import { describe, expect, test } from "bun:test";
 
 describe("external desktop links", () => {

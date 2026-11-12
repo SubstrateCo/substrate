@@ -1,8 +1,8 @@
 import { desktopInstallationHeader, desktopOrigin } from "@substrate/contracts/desktop/links";
 
 /** Remove session credentials before returning auth responses to the renderer. */
-/** @param {unknown} value @returns {unknown} */
-function publicAuthData(value) {
+// oxlint-disable-next-line deslop/no-unknown-parameters, deslop/no-unknown-returns -- This JSON boundary removes credentials from arbitrary auth response shapes before serialization.
+function publicAuthData(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(publicAuthData);
   // oxlint-disable-next-line deslop/no-runtime-typeof -- JSON response boundary: remove credentials recursively without assuming an endpoint's response shape.
   if (value && typeof value === "object") {
@@ -15,18 +15,28 @@ function publicAuthData(value) {
   return value;
 }
 
-/**
- * @typedef {{ method?: string, headers: Record<string, string>, body?: string, redirect: "manual", signal?: AbortSignal | null, onResponse: (context: { response: Response }) => Promise<void> }} AuthFetchOptions
- * @param {{ getCookie: () => string, authFetch: (path: string, options: AuthFetchOptions) => Promise<unknown>, fetchUpstream?: (url: string, init: RequestInit) => Promise<Response>, installationId?: string }} options
- */
+type AuthFetchOptions = {
+  method?: string;
+  headers: Record<string, string>;
+  body?: string;
+  redirect: "manual";
+  signal?: AbortSignal | null;
+  onResponse: (context: { response: Response }) => Promise<void>;
+};
+
 export function desktopAPITransport({
   getCookie,
   authFetch,
   fetchUpstream = fetch,
   installationId,
+}: {
+  getCookie: () => string;
+  // oxlint-disable-next-line deslop/no-unknown-returns -- Auth endpoint results have different shapes; this transport uses the raw response hook instead of the parsed result.
+  authFetch: (path: string, options: AuthFetchOptions) => Promise<unknown>;
+  fetchUpstream?: (url: string, init: RequestInit) => Promise<Response>;
+  installationId?: string;
 }) {
-  /** @param {string} value @param {RequestInit} init */
-  return async (value, init) => {
+  return async (value: string, init: RequestInit) => {
     const url = new URL(value);
     const headers = new Headers(init.headers);
     headers.delete("cookie");

@@ -9,13 +9,13 @@ import * as realtimeIPC from "@substrate/contracts/realtime/ipc";
 
 import { installationId } from "./agents/installation.ts";
 import { composeDesktop } from "./app/composition.ts";
-import { createDesktopAuthClient } from "./auth/auth-client.js";
+import { createDesktopAuthClient } from "./auth/auth-client.ts";
 import { HarnessCommandError } from "./harness/controller/harness-controller.ts";
-import { applicationURL, bundledApplicationURL, navigationTarget } from "./shell/navigation.js";
+import { applicationURL, bundledApplicationURL, navigationTarget } from "./shell/navigation.ts";
 import { registerWindowBridge } from "./shell/title-bar.ts";
 import { trustedSender } from "./shell/trusted-sender.ts";
 import { createShellWindow, configurePermissions } from "./shell/window.ts";
-import { desktopAPITransport } from "./transport/api-transport.js";
+import { desktopAPITransport } from "./transport/api-transport.ts";
 import { configureProtocols } from "./transport/protocols.ts";
 import { resolvePublicConfig } from "./transport/public-config.ts";
 import { emitToRenderer } from "./transport/realtime-events.ts";

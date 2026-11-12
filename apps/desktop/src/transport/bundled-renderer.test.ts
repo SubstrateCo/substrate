@@ -1,5 +1,5 @@
-import { bundledApplicationURL } from "../shell/navigation.js";
-import { assetPath, backendURL, bundledRenderer, proxyURL } from "./bundled-renderer.js";
+import { bundledApplicationURL } from "../shell/navigation.ts";
+import { assetPath, backendURL, bundledRenderer, proxyURL } from "./bundled-renderer.ts";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";

@@ -4,8 +4,7 @@ export const applicationURL = new URL(process.env.SUBSTRATE_WEB_URL ?? "http://l
   .origin;
 export const bundledApplicationURL = desktopOrigin;
 
-/** @param {string} value @param {string} [appURL] */
-export function navigationTarget(value, appURL = applicationURL) {
+export function navigationTarget(value: string, appURL = applicationURL) {
   let url;
   try {
     url = new URL(value);
