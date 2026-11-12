@@ -2,7 +2,7 @@ import { testReceiver } from "../v1/realtime/test-support";
 import { createRealtimeAuthenticator } from "./realtime-session";
 import { expect, test } from "bun:test";
 
-test("requires a fresh verified session with exact active-organization scope", async () => {
+test("requires a live verified session with exact organization scope without renewing it", async () => {
   let current: {
     user: { id: string; emailVerified: boolean };
     session: { activeOrganizationId: string | null };
@@ -32,7 +32,9 @@ test("requires a fresh verified session with exact active-organization scope", a
   expect(await authenticate(headers, "org")).toBeNull();
   current = null;
   expect(await authenticate(headers, "org")).toBeNull();
-  expect(queries).toEqual(Array.from({ length: 5 }, () => ({ disableCookieCache: true })));
+  expect(queries).toEqual(
+    Array.from({ length: 5 }, () => ({ disableCookieCache: true, disableRefresh: true })),
+  );
 });
 
 test("connect permission uses the database receiver resolver and supports account scope", async () => {

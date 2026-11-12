@@ -64,7 +64,7 @@ export async function workspaceContext(
     const [row] = await db
       .select({
         userName: user.name,
-        actor: actorSelection,
+        actor: { entityId: actors.entityId, type: actors.type },
         admin: adminSelection,
         disabledAt: actors.disabledAt,
         deletedAt: entities.deletedAt,
@@ -85,7 +85,7 @@ export async function workspaceContext(
       .where(identity);
     if (!row || row.disabledAt || row.deletedAt) throw new AccessDeniedError();
     ({ userName, admin } = row);
-    actor = row.actor ?? undefined;
+    actor = row.actor ? { ...row.actor, name: userName } : undefined;
     if (!actor) {
       const created = await ensureHumanActor(db, scope);
       actor = { entityId: created.entityId, name: userName, type: created.type };

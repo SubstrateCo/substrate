@@ -170,6 +170,43 @@ test("organization invitations refresh user lists without an active workspace", 
   ]);
 });
 
+test("organization hints retain role refresh because organization deletion has no access hint", () => {
+  expect(realtimeQueryTargets(change("organization"), "user")).toEqual([
+    { queryKey: queryKeys.organizations },
+    { queryKey: queryKeys.userInvitations },
+    { queryKey: queryKeys.organizationDetail("org") },
+    { queryKey: queryKeys.invitations("org") },
+    { queryKey: queryKeys.activeMember("org") },
+  ]);
+});
+
+test("access hints reload the active member role", async () => {
+  const client = new QueryClient();
+  const key = queryKeys.activeMember("org");
+  client.setQueryData(key, { role: "owner" });
+  const observer = new QueryObserver(client, {
+    queryKey: key,
+    staleTime: Infinity,
+    queryFn: async () => ({ role: "member" }),
+  });
+  const unsubscribe = observer.subscribe(() => {});
+  const cache = createRealtimeCache({
+    queryClient: client,
+    organizationId: "org",
+    userId: "user",
+    revalidate: async () => {},
+  });
+  try {
+    await cache.receive(change("access"));
+    expect(client.getQueryData(key)).toEqual({ role: "member" });
+    expect(observer.getCurrentResult().data).toEqual({ role: "member" });
+  } finally {
+    cache.dispose();
+    unsubscribe();
+    client.clear();
+  }
+});
+
 test("messaging targets all thread variants of one conversation, not another", () => {
   const targets = realtimeQueryTargets(
     { ...change("messaging"), conversationId: "conversation" },

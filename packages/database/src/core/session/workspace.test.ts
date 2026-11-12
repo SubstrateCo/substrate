@@ -1,17 +1,84 @@
 import { AccessDeniedError } from "../../errors";
 import { createRepositories } from "../../repositories";
+import * as schema from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
 import { ensureUserAgentActor } from "../actors/provisioning";
 import { actors } from "../actors/schema";
 import { userAgents } from "../actors/user-agents.schema";
+import { user } from "../authentication/schema";
 import { member } from "../organizations/schema";
 import { RepositoryContext } from "../repository-context";
 import { workspaceContext } from "./workspace";
 import { expect, test } from "bun:test";
 import { eq, sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/postgres-js";
 
 const f = setupDatabase();
+
+test("human workspace names use the joined user without another name lookup", async () => {
+  await f.verifyEmails();
+  await f.db.update(user).set({ name: "Alice renamed" }).where(eq(user.id, "alice"));
+  const queries: string[] = [];
+  const db = drizzle(f.db.$client, {
+    schema,
+    logger: { logQuery: (query) => queries.push(query) },
+  });
+  const result = await workspaceContext(db, { userId: "alice", organizationId: f.orgA });
+  expect(result).toMatchObject({
+    userName: "Alice renamed",
+    actor: { entityId: f.alice, name: "Alice renamed", type: "human" },
+  });
+  expect(queries).toHaveLength(1);
+  expect(queries[0]).not.toContain("SELECT dn_user.name");
+});
+
+test("human workspace names preserve provisioning when the actor is missing", async () => {
+  await f.db.insert(user).values({
+    id: "new-member",
+    name: "New member",
+    email: "new@example.com",
+    emailVerified: true,
+  });
+  await f.db.insert(member).values({
+    id: "new-member-a",
+    userId: "new-member",
+    organizationId: f.orgA,
+  });
+  const result = await workspaceContext(f.db, { userId: "new-member", organizationId: f.orgA });
+  expect(result).toMatchObject({
+    userName: "New member",
+    actor: { name: "New member", type: "human" },
+  });
+  expect(
+    await f.db.select().from(actors).where(eq(actors.entityId, result.actor.entityId)),
+  ).toEqual([
+    expect.objectContaining({ userId: "new-member", organizationId: f.orgA, type: "human" }),
+  ]);
+});
+
+test("agent workspace names remain distinct from the owner's name", async () => {
+  await f.verifyEmails();
+  const [agent] = await f.db
+    .insert(userAgents)
+    .values({ userId: "alice", name: "Writer", instructions: "", harness: "opencode" })
+    .returning();
+  const actor = await ensureUserAgentActor(f.db, {
+    organizationId: f.orgA,
+    userId: "alice",
+    userAgentId: agent!.id,
+  });
+  expect(
+    await workspaceContext(f.db, {
+      userId: "alice",
+      organizationId: f.orgA,
+      actorEntityId: actor.entityId,
+    }),
+  ).toMatchObject({
+    userName: "Alice",
+    actor: { entityId: actor.entityId, name: "Writer", type: "agent" },
+  });
+});
 
 test("the agent actor lock allows references but still serializes agent writes", async () => {
   await f.verifyEmails();

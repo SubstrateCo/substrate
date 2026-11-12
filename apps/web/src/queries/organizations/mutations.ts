@@ -10,23 +10,25 @@ const refreshOrganization = (queryClient: QueryClient, organizationId: string) =
   Promise.all([
     queryClient.invalidateQueries({ queryKey: queryKeys.organizations }),
     queryClient.invalidateQueries({ queryKey: queryKeys.organizationDetail(organizationId) }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.activeMember(organizationId) }),
   ]);
 
-export function useOrganizationMutations(organizationId: string) {
-  const queryClient = useQueryClient();
-  const onSuccess = () => refreshOrganization(queryClient, organizationId);
-  const rename = useMutation({
+export function organizationMutationOptions(queryClient: QueryClient, organizationId: string) {
+  const onSuccess = () =>
+    Promise.all([
+      refreshOrganization(queryClient, organizationId),
+      queryClient.invalidateQueries({ queryKey: queryKeys.activeMember(organizationId) }),
+    ]);
+  const rename = {
     mutationFn: async (name: string) =>
       unwrap(await authClient.organization.update({ organizationId, data: { name } })),
-    onSuccess,
-  });
-  const changeRole = useMutation({
+    onSuccess: () => refreshOrganization(queryClient, organizationId),
+  };
+  const changeRole = {
     mutationFn: async ({ memberId, role }: { memberId: string; role: OrganizationRole }) =>
       unwrap(await authClient.organization.updateMemberRole({ organizationId, memberId, role })),
     onSuccess,
-  });
-  const removeMember = useMutation({
+  };
+  const removeMember = {
     mutationFn: async (memberId: string) =>
       unwrap(
         await authClient.organization.removeMember({ organizationId, memberIdOrEmail: memberId }),
@@ -38,6 +40,15 @@ export function useOrganizationMutations(organizationId: string) {
         queryClient.invalidateQueries({ queryKey: queryKeys.messaging(organizationId) }),
       ]);
     },
-  });
+  };
   return { rename, changeRole, removeMember };
+}
+
+export function useOrganizationMutations(organizationId: string) {
+  const options = organizationMutationOptions(useQueryClient(), organizationId);
+  return {
+    rename: useMutation(options.rename),
+    changeRole: useMutation(options.changeRole),
+    removeMember: useMutation(options.removeMember),
+  };
 }

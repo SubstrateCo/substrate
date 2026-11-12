@@ -14,6 +14,7 @@ import { environment } from "../environment";
 import type { MailService } from "../mail/service";
 import { isTrustedOrigin } from "../shared/origin";
 import type { createCommittedPublisher } from "../v1/realtime/committed";
+import { createOrganizationLifecycle } from "./organization-lifecycle";
 import {
   organizationBody,
   organizationResult,
@@ -60,6 +61,14 @@ export function createAuth(deps: {
     await publishMembershipChange(input);
   };
 
+  const handleOrganizationLifecycle = createOrganizationLifecycle({
+    clearMembershipSharing: async (userId, organizationId) => {
+      await publishCommitted(await clearMembershipSharing(db, userId, organizationId));
+    },
+    publishMembershipChange,
+    publishInvitationChange,
+  });
+
   return betterAuth({
     appName: "Substrate",
     baseURL: environment.apiURL,
@@ -73,6 +82,9 @@ export function createAuth(deps: {
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user, url }) => {
         await mail.resetPassword(user.email, url);
+      },
+      onPasswordReset: async ({ user }) => {
+        await publishSessionChange({ userId: user.id });
       },
     },
     emailVerification: {
@@ -111,7 +123,14 @@ export function createAuth(deps: {
       },
       account: {
         create: { after: publishSessionChange },
-        update: { after: publishSessionChange },
+        update: {
+          // Bulk password updates return a count; onPasswordReset supplies their owner.
+          after: async (account: { userId: string } | number | null) => {
+            // oxlint-disable-next-line deslop/no-runtime-typeof -- Better Auth returns either an account row or a bulk affected-row count.
+            if (account === null || typeof account === "number") return;
+            await publishSessionChange(account);
+          },
+        },
         delete: { after: publishSessionChange },
       },
     },
@@ -128,6 +147,12 @@ export function createAuth(deps: {
       after: createAuthMiddleware(async (ctx) => {
         if (ctx.context.returned instanceof APIError)
           rethrowInvitationLookupError(ctx.path, ctx.context.returned);
+        await handleOrganizationLifecycle({
+          path: ctx.path,
+          body: ctx.body,
+          returned: ctx.context.returned,
+          session: ctx.context.session ?? null,
+        });
         const body = organizationBody.safeParse(ctx.body ?? {});
         const result = organizationResult.safeParse(ctx.context.returned);
         if (!body.success || !result.success) return;
@@ -162,7 +187,6 @@ export function createAuth(deps: {
                 message: "Use an uploaded picture URL or null.",
               });
           },
-          afterCreateOrganization: provisionMember,
           afterAddMember: provisionMember,
           afterAcceptInvitation: async (input) => {
             await provisionMember(input);
@@ -177,7 +201,6 @@ export function createAuth(deps: {
           afterUpdateMemberRole: publishMembershipChange,
           afterUpdateOrganization: publishOrganizationChange,
           afterDeleteOrganization: publishOrganizationDeletion,
-          afterCreateInvitation: publishInvitationChange,
           afterRejectInvitation: publishInvitationChange,
           afterCancelInvitation: publishInvitationChange,
         },
