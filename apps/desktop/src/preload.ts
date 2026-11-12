@@ -43,6 +43,7 @@ if (process.isMainFrame && window.location.origin === origin) {
   contextBridge.exposeInMainWorld("substrateRealtime", realtime);
   const windowAPI: DesktopWindowAPI = {
     platform: process.platform,
+    production: process.argv.includes("--substrate-production"),
     ...exposeBridge(windowChannel, windowIPC.methods, ipcRenderer.invoke.bind(ipcRenderer)),
     onFullscreenChange: (callback) => {
       const listener = (_event: Electron.IpcRendererEvent, value: boolean) => callback(value);

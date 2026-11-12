@@ -23,6 +23,10 @@ test.concurrent("native cookie replacement reports a session change, not sign-ou
   expect(await scenario("replaced-cookie")).toEqual({ invalidated: 0, changed: 1 });
 });
 
+test.concurrent("callbacks for another environment never reach the auth backend", async () => {
+  expect(await scenario("wrong-scheme")).toEqual({ requests: 0, changed: 0, invalidated: 0 });
+});
+
 test.concurrent("a cookie-cache refresh persists without restarting the session", async () => {
   expect(await scenario("cache-refresh")).toEqual({ invalidated: 0, changed: 0, cached: true });
 });

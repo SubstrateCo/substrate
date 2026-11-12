@@ -34,7 +34,7 @@ test("a visitor creates an organization before installing and can resume setup",
   const open = page.getByRole("link", { name: "Open Substrate", exact: true });
   await expect(open).toHaveAttribute(
     "href",
-    `substrate://open/dashboard?workspaceId=${organizationId}`,
+    `substrate-dev://open/dashboard?workspaceId=${organizationId}`,
   );
   await expect(
     page.getByRole("link", { name: "Download for Windows", exact: true }),
@@ -96,7 +96,7 @@ test("a desktop-sent teammate invitation can be accepted by a new user in the br
   await expect(page.getByRole("heading", { name: "Invite your team", exact: true })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Open Substrate", exact: true })).toHaveAttribute(
     "href",
-    `substrate://open/dashboard?workspaceId=${owner.organizationId}`,
+    `substrate-dev://open/dashboard?workspaceId=${owner.organizationId}`,
   );
   const memberships = await page.request.get("/api/auth/organization/list");
   expect((await memberships.json()).map((org: { id: string }) => org.id)).toEqual([
@@ -126,7 +126,7 @@ test("public downloads preserve a safe destination and do not forward it to the 
   await page.goto("/download?redirect=%2Faccept-invitation%2Finvite-1");
   await expect(page.getByRole("link", { name: "Open Substrate", exact: true })).toHaveAttribute(
     "href",
-    "substrate://open/accept-invitation/invite-1",
+    "substrate-dev://open/accept-invitation/invite-1",
   );
   // The server's installer redirect is unit-tested; the page must not pass the destination on.
   await expect(
@@ -135,7 +135,7 @@ test("public downloads preserve a safe destination and do not forward it to the 
   await page.goto("/download?redirect=https%3A%2F%2Fevil.example");
   await expect(page.getByRole("link", { name: "Open Substrate", exact: true })).toHaveAttribute(
     "href",
-    "substrate://open/onboarding",
+    "substrate-dev://open/onboarding",
   );
 });
 
@@ -235,7 +235,7 @@ test("an accepted invitation can resume when workspace activation fails", async 
     user.page.getByRole("link", { name: "Open Substrate", exact: true }),
   ).toHaveAttribute(
     "href",
-    `substrate://open/dashboard?workspaceId=${actors.sender.organizationId}`,
+    `substrate-dev://open/dashboard?workspaceId=${actors.sender.organizationId}`,
   );
 });
 

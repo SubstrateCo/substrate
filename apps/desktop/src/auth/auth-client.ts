@@ -1,4 +1,4 @@
-import { desktopScheme } from "@substrate/contracts/desktop/links";
+import type { DesktopScheme } from "@substrate/contracts/desktop/identity";
 
 import {
   electronClient,
@@ -17,11 +17,12 @@ export function createDesktopAuthClient(
   getWindow: () => BrowserWindow | undefined,
   onSessionInvalidated: () => void,
   onSessionChanged: () => void,
+  scheme: DesktopScheme = "substrate",
 ) {
   const backendKey = createHash("sha256").update(new URL(backend).origin).digest("hex");
   const options: ElectronClientOptions = {
     signInURL: new URL("/login", frontend),
-    protocol: desktopScheme,
+    protocol: scheme,
     storage: storage({ configName: `${smokeTest ? "auth-smoke-test" : "auth"}-${backendKey}` }),
     userImageProxy: { enabled: false },
     disableCache: true,
@@ -66,7 +67,9 @@ export function createDesktopAuthClient(
     initializeSession: () => {
       previousToken = sessionToken();
     },
-    handleAuthLink: (url: string) =>
-      handleDeepLink({ $fetch: authClient.$fetch, options, url, getWindow }),
+    handleAuthLink: (url: string) => {
+      if (URL.parse(url)?.protocol !== `${scheme}:`) return Promise.resolve();
+      return handleDeepLink({ $fetch: authClient.$fetch, options, url, getWindow });
+    },
   };
 }

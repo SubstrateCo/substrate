@@ -2,6 +2,17 @@ import { desktopLink, desktopOrigin, desktopPath, resolveDesktopLink } from "./l
 import { describe, expect, test } from "bun:test";
 
 describe("external desktop links", () => {
+  test("routes each environment's links only to its own desktop", () => {
+    for (const scheme of ["substrate", "substrate-dev"] as const) {
+      const link = desktopLink("/dashboard?workspaceId=org", scheme);
+      expect(link).toBe(`${scheme}://open/dashboard?workspaceId=org`);
+      expect(resolveDesktopLink(link, desktopOrigin, scheme)).toBe(
+        `${desktopOrigin}/dashboard?workspaceId=org`,
+      );
+      const other = scheme === "substrate" ? "substrate-dev" : "substrate";
+      expect(resolveDesktopLink(link, desktopOrigin, other)).toBeNull();
+    }
+  });
   test("preserves organization-aware record navigation and invitation destinations", () => {
     for (const path of [
       "/tasks?workspaceId=org&projectId=project&taskId=task",

@@ -3,6 +3,8 @@ import { attachTitleBar, titleBarOptions } from "./title-bar.ts";
 import { BrowserWindow, shell, type Session } from "electron";
 
 export function createShellWindow(options: {
+  name: string;
+  production: boolean;
   rendererURL: string;
   partition: string;
   preload: string;
@@ -18,7 +20,7 @@ export function createShellWindow(options: {
     if (target(url) === "external") void shell.openExternal(url).catch(console.error);
   };
   const window = new BrowserWindow({
-    title: "Substrate",
+    title: options.name,
     width: 1440,
     height: 960,
     minWidth: 320,
@@ -32,10 +34,17 @@ export function createShellWindow(options: {
       webSecurity: true,
       partition: options.partition,
       preload: options.preload,
-      additionalArguments: [`--substrate-origin=${options.rendererURL}`],
+      additionalArguments: [
+        `--substrate-origin=${options.rendererURL}`,
+        ...(options.production ? ["--substrate-production"] : []),
+      ],
     },
   });
   attachTitleBar(window, options.rendererURL);
+  window.on("page-title-updated", (event, title) => {
+    event.preventDefault();
+    window.setTitle(title && title !== "Substrate" ? `${title} — ${options.name}` : options.name);
+  });
   window.setMenuBarVisibility(false);
   window.once("ready-to-show", () => {
     if (!options.startHidden) window.show();

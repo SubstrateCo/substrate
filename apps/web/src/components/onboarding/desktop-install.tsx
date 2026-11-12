@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { DesktopInstallView } from "@/components/onboarding/desktop-install-view";
 import { safeRedirect } from "@/lib/auth/navigation";
+import { desktop } from "@/lib/desktop/identity";
 import { desktopReleaseQueryOptions } from "@/queries/desktop/release";
 
 export function DesktopInstall({
@@ -18,7 +19,7 @@ export function DesktopInstall({
   const path = desktopPath.safeParse(safeRedirect(destination));
   return (
     <DesktopInstallView
-      openHref={desktopLink(path.success ? path.data : "/dashboard")}
+      openHref={desktopLink(path.success ? path.data : "/dashboard", desktop.scheme)}
       browserHref={browserHref}
       windowsAvailable={release.data?.windowsAvailable ?? false}
       loading={release.isPending}

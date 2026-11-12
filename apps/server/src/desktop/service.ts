@@ -1,3 +1,4 @@
+import type { DesktopScheme } from "@substrate/contracts/desktop/identity";
 import { desktopLink, desktopPath } from "@substrate/contracts/desktop/links";
 import { publicFailure, success, type ServiceResult } from "@substrate/contracts/result";
 
@@ -8,8 +9,11 @@ export function desktopHandoffURL(path: string, apiURL: string) {
   return url.toString();
 }
 
-export function openDesktop(path: string): ServiceResult<{ link: string }> {
+export function openDesktop(
+  path: string,
+  scheme: DesktopScheme = "substrate",
+): ServiceResult<{ link: string }> {
   const result = desktopPath.safeParse(path);
   if (!result.success) return publicFailure("INVALID_INPUT", "Invalid desktop destination.");
-  return success({ link: desktopLink(result.data) });
+  return success({ link: desktopLink(result.data, scheme) });
 }

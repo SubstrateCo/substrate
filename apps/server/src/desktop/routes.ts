@@ -10,7 +10,7 @@ import { html } from "hono/html";
 import { z } from "zod";
 
 export function createDesktopRoutes(
-  config: Pick<ServerEnvironment, "webURL" | "windowsDownloadURL"> = environment,
+  config: Pick<ServerEnvironment, "webURL" | "windowsDownloadURL" | "desktopScheme"> = environment,
 ) {
   return new Hono()
     .use(async (c, next) => {
@@ -35,7 +35,7 @@ export function createDesktopRoutes(
       return c.redirect(config.windowsDownloadURL, 303);
     })
     .get("/open", zValidator("query", z.object({ path: desktopPath }), validationHook), (c) => {
-      const result = openDesktop(c.req.valid("query").path);
+      const result = openDesktop(c.req.valid("query").path, config.desktopScheme);
       if (!result.success) return respond(c, result);
       const browserURL = new URL(c.req.valid("query").path, config.webURL).toString();
       const downloadURL = new URL("/download", config.webURL);

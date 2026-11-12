@@ -1,4 +1,5 @@
-import { desktopOrigin, desktopScheme } from "@substrate/contracts/desktop/links";
+import { desktopIdentity } from "@substrate/contracts/desktop/identity";
+import { desktopOrigin } from "@substrate/contracts/desktop/links";
 
 import { BlockList, isIP } from "node:net";
 import { z } from "zod";
@@ -137,7 +138,9 @@ const variables = z
   .transform((env) => {
     const storage = (key: (typeof storageKeys)[number]) => env[key] ?? developmentStorage[key];
     const api = new URL(env.SUBSTRATE_API_URL);
+    const { scheme: desktopScheme } = desktopIdentity(env.NODE_ENV === "production");
     return {
+      desktopScheme,
       apiURL: env.SUBSTRATE_API_URL,
       port: env.SERVER_PORT ?? (Number(api.port) || (api.protocol === "https:" ? 443 : 80)),
       webURL: env.SUBSTRATE_WEB_URL,

@@ -12,5 +12,6 @@ export interface DesktopSettings {
 
 export interface DesktopWindowAPI extends WindowMethods {
   platform: string;
+  production: boolean;
   onFullscreenChange(callback: (fullscreen: boolean) => void): () => void;
 }

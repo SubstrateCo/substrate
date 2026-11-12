@@ -14,4 +14,8 @@ test("desktop handoff services return expected failures without throwing", () =>
     success: true,
     data: { link: "substrate://open/accept-invitation/invite-1" },
   });
+  expect(openDesktop("/accept-invitation/invite-1", "substrate-dev")).toEqual({
+    success: true,
+    data: { link: "substrate-dev://open/accept-invitation/invite-1" },
+  });
 });

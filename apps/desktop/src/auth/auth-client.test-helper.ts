@@ -43,9 +43,11 @@ let token = "original-token";
 let cache = "";
 const response = Promise.withResolvers<Response>();
 let holdResponse = false;
+let requests = 0;
 globalThis.fetch = Object.assign(
-  async () =>
-    holdResponse
+  async () => {
+    requests++;
+    return holdResponse
       ? response.promise
       : Response.json(
           { status: true },
@@ -54,7 +56,8 @@ globalThis.fetch = Object.assign(
               "set-cookie": `better-auth.session_token=${token}; Path=/; Max-Age=3600${cache ? `, better-auth.session_data=${cache}; Path=/; Max-Age=60` : ""}`,
             },
           },
-        ),
+        );
+  },
   { preconnect() {} },
 );
 
@@ -89,6 +92,23 @@ invalidated = 0;
 changed = 0;
 
 switch (process.argv[2]) {
+  case "wrong-scheme": {
+    requests = 0;
+    await desktopAuth.handleAuthLink("substrate-dev://auth/callback?code=wrong-environment");
+    await desktopAuth.handleAuthLink("https://example.com/auth/callback?code=wrong-environment");
+    const devAuth = createDesktopAuthClient(
+      "http://localhost:3001",
+      "http://localhost:3000",
+      true,
+      () => undefined,
+      () => {},
+      () => {},
+      "substrate-dev",
+    );
+    await devAuth.handleAuthLink("substrate://auth/callback?code=wrong-environment");
+    console.log(JSON.stringify({ requests, changed, invalidated }));
+    break;
+  }
   case "storage-origins": {
     const make = (backend: string, smoke: boolean) =>
       createDesktopAuthClient(

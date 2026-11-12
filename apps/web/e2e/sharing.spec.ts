@@ -82,7 +82,7 @@ test("a new partner signs up, creates their own org, and accepts a desktop chann
   expect(organizationId).not.toBe(actors.sender.organizationId);
   await expect(page.getByRole("link", { name: "Open Substrate", exact: true })).toHaveAttribute(
     "href",
-    `substrate://open/dashboard?workspaceId=${organizationId}&conversationId=${c.id}`,
+    `substrate-dev://open/dashboard?workspaceId=${organizationId}&conversationId=${c.id}`,
   );
   const memberships = await page.request.get("/api/auth/organization/list");
   expect((await memberships.json()).map((org: { id: string }) => org.id)).toEqual([organizationId]);
@@ -158,7 +158,7 @@ test("an ordinary recipient requests org approval and an owner approves without 
     recipient.page.getByRole("link", { name: "Open Substrate", exact: true }),
   ).toHaveAttribute(
     "href",
-    `substrate://open/dashboard?workspaceId=${actors.sender.organizationId}&conversationId=${c.id}`,
+    `substrate-dev://open/dashboard?workspaceId=${actors.sender.organizationId}&conversationId=${c.id}`,
   );
 });
 

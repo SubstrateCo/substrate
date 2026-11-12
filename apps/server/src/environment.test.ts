@@ -101,11 +101,19 @@ describe("server environment", () => {
         FRONTEND_ORIGINS: "https://admin.example.com, https://app.example.com",
       }).trustedOrigins,
     ).toEqual([
-      "substrate:/",
+      "substrate-dev:/",
       "https://app.example.com",
       "https://desktop.substrate.local",
       "https://admin.example.com",
     ]);
+  });
+
+  test("production trusts only production desktop callbacks", () => {
+    expect(parse(production).desktopScheme).toBe("substrate");
+    expect(parse(production).trustedOrigins).toContain("substrate:/");
+    expect(parse(production).trustedOrigins).not.toContain("substrate-dev:/");
+    expect(parse({}).desktopScheme).toBe("substrate-dev");
+    expect(parse({}).trustedOrigins).not.toContain("substrate:/");
   });
 
   test("binds the API origin's port unless SERVER_PORT names another", () => {

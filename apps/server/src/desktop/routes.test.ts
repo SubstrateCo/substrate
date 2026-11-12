@@ -13,7 +13,7 @@ describe("desktop open landing", () => {
     expect(response.headers.get("Content-Security-Policy")).toContain("default-src 'none'");
     const body = await response.text();
     expect(body).toContain("Open Substrate</a>");
-    expect(body).toContain('href="substrate:');
+    expect(body).toContain('href="substrate-dev:');
     expect(body).not.toContain("<script");
     expect(body).not.toContain('http-equiv="refresh"');
   });
@@ -34,13 +34,14 @@ describe("desktop open landing", () => {
     expect(response.status).toBe(400);
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(response.headers.get("Referrer-Policy")).toBe("no-referrer");
-    expect(await response.text()).not.toContain('href="substrate:');
+    expect(await response.text()).not.toContain('href="substrate-dev:');
   });
 });
 
 describe("desktop releases", () => {
   test("reports installer availability and redirects only to the configured installer", async () => {
     const app = createDesktopRoutes({
+      desktopScheme: "substrate",
       webURL: "https://app.example.test",
       windowsDownloadURL: "https://downloads.example.test/Substrate.exe",
     });
@@ -55,6 +56,7 @@ describe("desktop releases", () => {
 
   test("does not advertise or redirect to an unpublished installer", async () => {
     const app = createDesktopRoutes({
+      desktopScheme: "substrate",
       webURL: "https://app.example.test",
       windowsDownloadURL: undefined,
     });

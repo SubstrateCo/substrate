@@ -4,6 +4,7 @@ import { DesktopTitleBarContext } from "@/components/desktop/desktop-title-bar-c
 import "./desktop-frame.css";
 import { useTheme } from "@/components/theme/theme-provider";
 import { windowBridge } from "@/lib/desktop/bridges";
+import { desktop } from "@/lib/desktop/identity";
 
 export function DesktopFrame({ children }: { children: ReactNode }) {
   const bridge = windowBridge();
@@ -61,7 +62,7 @@ export function DesktopFrame({ children }: { children: ReactNode }) {
           aria-label="Window title bar"
         >
           <span className="truncate group-has-data-workspace-search/desktop-title-bar:hidden">
-            Substrate
+            {desktop.name}
           </span>
           <div
             ref={setTitleBarTarget}

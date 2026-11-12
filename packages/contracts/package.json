@@ -32,6 +32,7 @@
     "./auth/settings-access": "./src/auth/settings-access.ts",
     "./organizations/input": "./src/organizations/input.ts",
     "./desktop/links": "./src/desktop/links.ts",
+    "./desktop/identity": "./src/desktop/identity.ts",
     "./desktop/window": "./src/desktop/window.ts",
     "./result": "./src/result.ts",
     "./state-machine": "./src/state-machine.ts"

@@ -1,6 +1,7 @@
 import { agentWorkChannel } from "@substrate/contracts/agent-work/desktop";
+import { desktopIdentity } from "@substrate/contracts/desktop/identity";
 import { handleBridge } from "@substrate/contracts/desktop/ipc";
-import { desktopScheme, resolveDesktopLink } from "@substrate/contracts/desktop/links";
+import { resolveDesktopLink } from "@substrate/contracts/desktop/links";
 import * as settingsIPC from "@substrate/contracts/desktop/settings-ipc";
 import { desktopSettingsChannel } from "@substrate/contracts/desktop/window";
 import * as harnessIPC from "@substrate/contracts/harness/ipc";
@@ -26,6 +27,8 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 function main() {
+  const identity = desktopIdentity(app.isPackaged);
+  const desktopScheme = identity.scheme;
   const bundled = app.isPackaged || app.commandLine.hasSwitch("bundled-renderer");
   const rendererURL = bundled ? bundledApplicationURL : applicationURL;
   /** @param {string} url */
@@ -36,16 +39,17 @@ function main() {
     import.meta.url,
   ).href;
   const errorPage = fileURLToPath(errorPageURL);
-  app.setName("Substrate");
-  if (process.platform === "win32") app.setAppUserModelId("com.substrate.desktop");
-  // Keep the lock identity stable for package, source-file, and smoke-test launches.
+  app.setName(identity.name);
+  if (process.platform === "win32") app.setAppUserModelId(identity.appId);
+  // Keep each environment's lock and local state under its own data root.
   const smokeTest = app.commandLine.hasSwitch("desktop-smoke-test");
   const testID = smokeTest ? process.env.SUBSTRATE_TEST_ID : undefined;
   if (testID && !/^[a-zA-Z0-9-]+$/.test(testID)) throw new Error("Invalid desktop test ID.");
   app.setPath(
     "userData",
-    join(app.getPath("appData"), "Substrate", ...(testID ? ["tests", testID] : [])),
+    join(app.getPath("appData"), identity.directory, ...(testID ? ["tests", testID] : [])),
   );
+  app.setPath("sessionData", app.getPath("userData"));
   const sessionPartition = smokeTest ? "substrate-smoke-test" : "persist:substrate";
   const publicConfig = resolvePublicConfig(process.env, {
     packaged: app.isPackaged,
@@ -62,7 +66,14 @@ function main() {
   // Closing the window hides it so agents keep running. Quit from the tray or the app menu.
   let quitting = false;
   // A login launch starts in the tray.
-  const loginArguments = ["--hidden"];
+  const loginArguments = process.defaultApp
+    ? [
+        process.platform === "win32"
+          ? `"${fileURLToPath(import.meta.url)}"`
+          : fileURLToPath(import.meta.url),
+        "--hidden",
+      ]
+    : ["--hidden"];
   const startHidden = process.argv.includes("--hidden");
   async function stopSession() {
     await services?.shutdown();
@@ -80,6 +91,7 @@ function main() {
       if (contents && !contents.isDestroyed() && target(contents.getURL()) === "internal")
         contents.reload();
     },
+    desktopScheme,
   );
   /** @type {BrowserWindow | undefined} */
   let mainWindow: BrowserWindow | undefined;
@@ -89,7 +101,7 @@ function main() {
   /** @param {string[]} values */
   function acceptLinks(values: string[]) {
     for (const value of values) {
-      const destination = resolveDesktopLink(value, rendererURL);
+      const destination = resolveDesktopLink(value, rendererURL, desktopScheme);
       if (destination) pendingDestinations.push(destination);
       else
         void handleAuthLink(value).catch(() => {
@@ -121,6 +133,8 @@ function main() {
 
   function createWindow() {
     const window = createShellWindow({
+      name: identity.name,
+      production: app.isPackaged,
       rendererURL,
       partition: sessionPartition,
       preload: fileURLToPath(
@@ -152,10 +166,10 @@ function main() {
   async function createTray() {
     const icon = await app.getFileIcon(process.execPath, { size: "small" });
     tray = new Tray(icon);
-    tray.setToolTip("Substrate");
+    tray.setToolTip(identity.name);
     tray.setContextMenu(
       Menu.buildFromTemplate([
-        { label: "Open Substrate", click: showWindow },
+        { label: `Open ${identity.name}`, click: showWindow },
         { type: "separator" },
         { label: "Quit", click: () => app.quit() },
       ]),
@@ -164,7 +178,7 @@ function main() {
   }
 
   if (!app.requestSingleInstanceLock()) {
-    console.log("Substrate is already running. Focusing the existing window.");
+    console.log(`${identity.name} is already running. Focusing the existing window.`);
     app.quit();
   } else {
     // One dispatcher owns workspace links and auth callbacks. Better Auth owns PKCE and exchange.

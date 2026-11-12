@@ -1,7 +1,7 @@
+import type { DesktopScheme } from "./identity.ts";
 import { z } from "zod";
 
 export const desktopOrigin = "https://desktop.substrate.local";
-export const desktopScheme = "substrate";
 // Desktop main adds this to API requests. It names the installation; it is not a credential.
 export const desktopInstallationHeader = "x-substrate-installation";
 
@@ -27,14 +27,18 @@ export const desktopPath = z
     }
   }, "Invalid desktop destination.");
 
-export function desktopLink(path: string) {
-  return `${desktopScheme}://open${desktopPath.parse(path)}`;
+export function desktopLink(path: string, scheme: DesktopScheme = "substrate") {
+  return `${scheme}://open${desktopPath.parse(path)}`;
 }
 
-export function resolveDesktopLink(value: string, rendererOrigin: string): string | null {
+export function resolveDesktopLink(
+  value: string,
+  rendererOrigin: string,
+  scheme: DesktopScheme = "substrate",
+): string | null {
   try {
     const url = new URL(value);
-    const isOpenLink = url.protocol === `${desktopScheme}:` && url.host === "open";
+    const isOpenLink = url.protocol === `${scheme}:` && url.host === "open";
     const hasCredentials = url.username || url.password;
     if (!isOpenLink || hasCredentials) return null;
     const path = desktopPath.safeParse(`${url.pathname}${url.search}${url.hash}`);
