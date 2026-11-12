@@ -1,6 +1,7 @@
 import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
 import { commit } from "../../core/effects";
+import { storedFiles } from "../../core/storage/schema";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { user, member } from "../../schema";
 import { setupDatabase } from "../../testing/database";
@@ -84,7 +85,7 @@ test("send hints come from the write itself and describe only what the message c
   ]);
 });
 
-test("reaction summaries stay message-local and replies skip the root count query", async () => {
+test("message pages load their summaries in one statement after scope resolution", async () => {
   await verified();
   const channel = await service("alice").createConversation({ kind: "channel", name: "general" });
   const first = await service("alice").sendMessage(channel.id, "first");
@@ -99,23 +100,99 @@ test("reaction summaries stay message-local and replies skip the root count quer
     { id: first.id, replyCount: 1, reactions: [{ emoji: "👍", count: 2, reacted: true }] },
     { id: second.id, replyCount: 0, reactions: [{ emoji: "🎉", count: 1, reacted: false }] },
   ]);
+  expect(queries).toHaveLength(2);
   queries.length = 0;
   expect(await chat.listMessages(channel.id, first.id)).toMatchObject([
     { id: reply.id, replyCount: 0, reactions: [] },
   ]);
+  expect(queries).toHaveLength(2);
+  expect(queries[1]).not.toContain('from "messaging_messages" "page_reply"');
+  queries.length = 0;
   expect(
-    queries.filter(
-      (query) => query.includes("count(*)") && query.includes('from "messaging_messages"'),
-    ),
-  ).toEqual([]);
+    await chat.listMessages(channel.id, first.id, { aroundMessageId: reply.id }),
+  ).toMatchObject([{ id: reply.id, replyCount: 0, reactions: [] }]);
+  expect(queries).toHaveLength(2);
+  queries.length = 0;
+  expect(await chat.listMessages(channel.id, first.id, { beforeMessageId: reply.id })).toEqual([]);
+  expect(queries).toHaveLength(2);
+  queries.length = 0;
+  expect(
+    await chat.listMessages(channel.id, undefined, { beforeMessageId: second.id }),
+  ).toMatchObject([
+    { id: first.id, replyCount: 1, reactions: [{ emoji: "👍", count: 2, reacted: true }] },
+  ]);
+  expect(queries).toHaveLength(2);
   queries.length = 0;
   const empty = await service("alice").createConversation({ kind: "channel", name: "empty" });
   expect(await chat.listMessages(empty.id)).toEqual([]);
+  expect(queries).toHaveLength(2);
+});
+
+test("page attachments, reactions and replies aggregate without multiplying each other", async () => {
+  await verified();
+  const chat = service("alice");
+  const channel = await chat.createConversation({ kind: "channel", name: "attachments" });
+  const files = await fixture.db
+    .insert(storedFiles)
+    .values(
+      ["first.txt", "second.txt"].map((filename) => ({
+        id: crypto.randomUUID(),
+        organizationId: fixture.orgA,
+        uploadedBy: "alice",
+        purpose: "file",
+        filename,
+        contentType: "text/plain",
+        size: 6,
+        objectKey: crypto.randomUUID(),
+        sha256: "a".repeat(64),
+      })),
+    )
+    .returning();
+  const root = await chat.sendMessage(
+    channel.id,
+    "root",
+    undefined,
+    undefined,
+    files.map((file) => file.id),
+  );
+  await chat.toggleReaction(root.id, "👍");
+  await service("bob").toggleReaction(root.id, "👍");
+  await service("bob").toggleReaction(root.id, "🎉");
+  await chat.sendMessage(channel.id, "one", root.id);
+  const reply = await chat.sendMessage(channel.id, "two", root.id);
+  await chat.deleteMessage(reply.id);
+  const [view] = await chat.listMessages(channel.id);
+  expect(view!.attachments).toEqual(root.attachments);
+  expect(view!.replyCount).toBe(2);
+  expect(view!.reactions).toHaveLength(2);
+  expect(view!.reactions).toEqual(
+    expect.arrayContaining([
+      { emoji: "👍", count: 2, reacted: true },
+      { emoji: "🎉", count: 1, reacted: false },
+    ]),
+  );
+});
+
+test("empty pages preserve access, thread and cursor validation", async () => {
+  await verified();
+  const chat = service("alice");
+  const channel = await chat.createConversation({
+    kind: "channel",
+    name: "empty pages",
+    private: true,
+  });
+  const root = await chat.sendMessage(channel.id, "root");
+  expect(await chat.listMessages(channel.id, root.id)).toEqual([]);
+  expect(await chat.listMessages(channel.id, undefined, { beforeMessageId: root.id })).toEqual([]);
+  expect(await rejection(chat.listMessages(channel.id, crypto.randomUUID()))).toBeInstanceOf(
+    ValidationError,
+  );
   expect(
-    queries.filter(
-      (query) => query.includes("count(*)") && query.includes('from "messaging_messages"'),
-    ),
-  ).toEqual([]);
+    await rejection(chat.listMessages(channel.id, root.id, { beforeMessageId: root.id })),
+  ).toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(service("bob").listMessages(channel.id, crypto.randomUUID())),
+  ).toBeInstanceOf(AccessDeniedError);
 });
 
 test("external authors follow the viewer organization for partner channel roots and replies", async () => {

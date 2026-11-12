@@ -9,6 +9,7 @@ import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import type { MessagingSessionResolver } from "../../core/session/messaging";
+import { storedFiles } from "../../core/storage/schema";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { routeWake } from "../agent-work/router";
 import { applyMessageEffects } from "../context/message-effects";
@@ -16,12 +17,13 @@ import { messageAttachmentMetadata } from "../files/metadata";
 import { publishFiles } from "../files/publication";
 import { messageAttachments } from "../files/schema";
 import { messageChangeHints } from "../realtime/routing";
-import { loadConversation, requireThreadRoot } from "./access";
+import { loadConversation, requireThreadRoot, threadRoot, visibleConversations } from "./access";
 import { writeMembers } from "./members";
 import { validateBody, validateEmoji } from "./policy";
 import { messagingProfile } from "./profiles";
-import { messagingMessages, messagingReactions } from "./schema";
-import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { messagingConversations, messagingMessages, messagingReactions } from "./schema";
+import { and, desc, eq, exists, inArray, isNull, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 // selectMessages joins account, agent and viewer-organization membership once per author.
 function messageAuthorColumns(scope: SessionIdentity) {
@@ -280,48 +282,139 @@ export function messageOperations(
       threadId?: string,
       options: { beforeMessageId?: string; aroundMessageId?: string } = {},
     ) {
-      return db.transaction(async (tx) => {
-        const { actor } = await authenticate(tx);
-        await loadConversation(tx, scope, conversationId);
-        if (threadId) await requireThreadRoot(tx, conversationId, threadId);
-        let boundary;
-        const anchorId = options.beforeMessageId ?? options.aroundMessageId;
-        if (anchorId) {
-          const [anchor] = await tx
-            .select({
-              id: messagingMessages.id,
-              at: sql<string>`${messagingMessages.createdAt}::text`,
-            })
-            .from(messagingMessages)
-            .where(
-              and(
-                eq(messagingMessages.id, anchorId),
-                eq(messagingMessages.conversationId, conversationId),
-                threadId
-                  ? eq(messagingMessages.threadId, threadId)
-                  : isNull(messagingMessages.threadId),
-              ),
-            );
-          if (!anchor) throw new AccessDeniedError();
-          boundary = options.beforeMessageId
-            ? sql`(${messagingMessages.createdAt}, ${messagingMessages.id}) < (${anchor.at}::timestamptz, ${anchor.id}::uuid)`
-            : sql`(${messagingMessages.createdAt}, ${messagingMessages.id}) <= (${anchor.at}::timestamptz, ${anchor.id}::uuid)`;
-        }
-        const rows = await selectMessages(tx, scope)
+      const { actor } = await authenticate(db);
+      const pageCondition = and(
+        eq(messagingMessages.conversationId, conversationId),
+        threadId ? eq(messagingMessages.threadId, threadId) : isNull(messagingMessages.threadId),
+      );
+      const anchorId = options.beforeMessageId ?? options.aroundMessageId;
+      const anchor = db.$with("page_anchor").as(
+        db
+          .select({ id: messagingMessages.id, at: messagingMessages.createdAt })
+          .from(messagingMessages)
+          .where(and(pageCondition, anchorId ? eq(messagingMessages.id, anchorId) : sql`false`)),
+      );
+      const conversation = db.$with("authorized_conversation").as(
+        db
+          .select({
+            id: messagingConversations.id,
+            validThread: (threadId
+              ? sql<boolean>`${exists(db.select({ id: messagingMessages.id }).from(messagingMessages).where(threadRoot(conversationId, threadId)))}`
+              : sql<boolean>`true`
+            ).as("valid_thread"),
+            validAnchor: (anchorId
+              ? sql<boolean>`${exists(db.select({ id: anchor.id }).from(anchor))}`
+              : sql<boolean>`true`
+            ).as("valid_anchor"),
+          })
+          .from(messagingConversations)
+          .where(
+            and(eq(messagingConversations.id, conversationId), visibleConversations(db, scope)),
+          ),
+      );
+      let boundary;
+      if (anchorId)
+        boundary = options.beforeMessageId
+          ? sql`(${messagingMessages.createdAt}, ${messagingMessages.id}) < (select ${anchor.at}, ${anchor.id} from ${anchor})`
+          : sql`(${messagingMessages.createdAt}, ${messagingMessages.id}) <= (select ${anchor.at}, ${anchor.id} from ${anchor})`;
+      const page = db.$with("message_page").as(
+        db
+          .select({ id: messagingMessages.id })
+          .from(messagingMessages)
           .where(
             and(
-              eq(messagingMessages.conversationId, conversationId),
-              threadId
-                ? eq(messagingMessages.threadId, threadId)
-                : isNull(messagingMessages.threadId),
+              pageCondition,
+              exists(
+                db
+                  .select({ id: conversation.id })
+                  .from(conversation)
+                  .where(and(conversation.validThread, conversation.validAnchor)),
+              ),
               boundary,
             ),
           )
           .orderBy(desc(messagingMessages.createdAt), desc(messagingMessages.id))
-          .limit(50);
-        rows.reverse();
-        return messageViews(tx, scope, actor.entityId, conversationId, rows);
-      });
+          .limit(50),
+      );
+      const reply = alias(messagingMessages, "page_reply");
+      // Aggregate each relationship independently, after limiting the page. Joining the raw
+      // attachments, reactions and replies would multiply both rows and summary counts.
+      const rows = await db
+        .with(anchor, conversation, page)
+        .select({
+          validThread: conversation.validThread,
+          validAnchor: conversation.validAnchor,
+          message: messagingMessages,
+          ...messageAuthorColumns(scope),
+          authorOwnerUserId: userAgents.userId,
+          attachments: sql<Awaited<ReturnType<typeof messageAttachmentMetadata>>>`coalesce((
+            select json_agg(json_build_object(
+              'id', ${messageAttachments.id}, 'messageId', ${messageAttachments.messageId},
+              'position', ${messageAttachments.position}, 'fileId', ${storedFiles.id},
+              'filename', ${storedFiles.filename}, 'size', ${storedFiles.size},
+              'contentType', ${storedFiles.contentType}
+            ) order by ${messageAttachments.position})
+            from ${messageAttachments}
+            inner join ${storedFiles} on ${storedFiles.id} = ${messageAttachments.fileId}
+            where ${messageAttachments.messageId} = ${messagingMessages.id}
+              and ${messagingMessages.deletedAt} is null
+          ), '[]'::json)`,
+          reactions: sql<{ emoji: string; count: number; reacted: boolean }[]>`coalesce((
+            select json_agg(reaction) from (
+              select ${messagingReactions.emoji} as emoji, count(*)::int as count,
+                bool_or(${messagingReactions.actorEntityId} = ${actor.entityId}) as reacted
+              from ${messagingReactions}
+              where ${messagingReactions.messageId} = ${messagingMessages.id}
+              group by ${messagingReactions.emoji}
+            ) reaction
+          ), '[]'::json)`,
+          replyCount: threadId
+            ? sql<number>`0`
+            : sql<number>`(${db
+                .select({ count: sql<number>`count(*)::int` })
+                .from(reply)
+                .where(
+                  and(
+                    eq(reply.conversationId, conversationId),
+                    eq(reply.threadId, messagingMessages.id),
+                  ),
+                )})`,
+        })
+        // Keep one row for an authorized empty page, including invalid thread/cursor flags.
+        .from(conversation)
+        .leftJoin(page, sql`true`)
+        .leftJoin(messagingMessages, eq(messagingMessages.id, page.id))
+        .leftJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
+        .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+        .leftJoin(user, eq(user.id, actors.userId))
+        .leftJoin(
+          member,
+          and(eq(member.userId, actors.userId), eq(member.organizationId, scope.organizationId)),
+        )
+        .orderBy(desc(messagingMessages.createdAt), desc(messagingMessages.id));
+      if (!rows.length) throw new AccessDeniedError();
+      if (!rows[0]!.validThread)
+        throw new ValidationError("Thread must be a root message in this conversation.");
+      if (!rows[0]!.validAnchor) throw new AccessDeniedError();
+      return rows
+        .reverse()
+        .flatMap(
+          ({ message, authorOwnerUserId, validThread: _thread, validAnchor: _anchor, ...view }) =>
+            message
+              ? [
+                  {
+                    ...message,
+                    canModify:
+                      !scope.actorEntityId &&
+                      !message.deletedAt &&
+                      message.authorActorEntityId === actor.entityId,
+                    body: message.deletedAt ? "" : message.body,
+                    originTurnId: authorOwnerUserId === scope.userId ? message.originTurnId : null,
+                    ...view,
+                  },
+                ]
+              : [],
+        );
     },
     async getProfile(conversationId: string, actorEntityId: string) {
       return db.transaction(async (tx) => {
