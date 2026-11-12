@@ -16,6 +16,45 @@ import { drizzle } from "drizzle-orm/postgres-js";
 
 const f = setupDatabase();
 
+test("workspace lookups keep identities separate and read current roles", async () => {
+  await f.verifyEmails();
+  const scopes = await Promise.all([
+    workspaceContext(f.db, { userId: "alice", organizationId: f.orgA }),
+    workspaceContext(f.db, { userId: "bob", organizationId: f.orgA }),
+    workspaceContext(f.db, { userId: "outsider", organizationId: f.orgB }),
+  ]);
+  expect(scopes.map(({ actor, admin }) => ({ id: actor.entityId, admin }))).toEqual([
+    { id: f.alice, admin: true },
+    { id: f.bob, admin: false },
+    { id: f.outsider, admin: true },
+  ]);
+  expect(
+    await rejection(workspaceContext(f.db, { userId: "bob", organizationId: f.orgB })),
+  ).toBeInstanceOf(AccessDeniedError);
+  await f.db.update(member).set({ role: "admin" }).where(eq(member.id, "bob-a"));
+  expect((await workspaceContext(f.db, { userId: "bob", organizationId: f.orgA })).admin).toBe(
+    true,
+  );
+});
+
+test("workspace lookups use the calling transaction's membership state", async () => {
+  await f.verifyEmails();
+  const scope = { userId: "bob", organizationId: f.orgA };
+  expect((await workspaceContext(f.db, scope)).admin).toBe(false);
+  const failure = new Error("rollback role change");
+  expect(
+    await rejection(
+      f.db.transaction(async (tx) => {
+        await tx.update(member).set({ role: "admin" }).where(eq(member.id, "bob-a"));
+        expect((await workspaceContext(tx, scope)).admin).toBe(true);
+        expect((await workspaceContext(f.db, scope)).admin).toBe(false);
+        throw failure;
+      }),
+    ),
+  ).toBe(failure);
+  expect((await workspaceContext(f.db, scope)).admin).toBe(false);
+});
+
 test("human workspace names use the joined user without another name lookup", async () => {
   await f.verifyEmails();
   await f.db.update(user).set({ name: "Alice renamed" }).where(eq(user.id, "alice"));
