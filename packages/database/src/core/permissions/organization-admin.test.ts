@@ -71,17 +71,16 @@ test("an admin's agent acts with the admin's live access", async () => {
 test("admins inherit owner access from a shared container, not from the child's own type", async () => {
   const bob = context(f.bob);
   const project = await bob.createEntity("project");
-  const mailbox = await bob.createEntity("email_account");
-  const [inProject, inMailbox] = await f.db
+  const [inProject, inActor] = await f.db
     .insert(entities)
     .values([
-      { organizationId: f.orgA, entityType: "message", accessEntityId: project.entityId },
-      { organizationId: f.orgA, entityType: "task", accessEntityId: mailbox.entityId },
+      { organizationId: f.orgA, entityType: "actor", accessEntityId: project.entityId },
+      { organizationId: f.orgA, entityType: "task", accessEntityId: f.bob },
     ])
     .returning();
   const alice = context(f.alice);
   expect((await alice.requireAccess(inProject!.entityId, "owner")).level).toBe("owner");
-  expect(await rejection(alice.requireAccess(inMailbox!.entityId, "view"))).toBeInstanceOf(
+  expect(await rejection(alice.requireAccess(inActor!.entityId, "view"))).toBeInstanceOf(
     AccessDeniedError,
   );
   const readable = await f.db
@@ -89,7 +88,7 @@ test("admins inherit owner access from a shared container, not from the child's 
     .from(entities)
     .where(
       and(
-        inArray(entities.entityId, [inProject!.entityId, inMailbox!.entityId]),
+        inArray(entities.entityId, [inProject!.entityId, inActor!.entityId]),
         alice.readable(entities.entityId),
       ),
     );

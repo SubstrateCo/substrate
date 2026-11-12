@@ -8,6 +8,31 @@ import { sql } from "drizzle-orm";
 const f = setupDatabase();
 
 describe("database integrity", () => {
+  test.each([
+    "company",
+    "file",
+    "folder",
+    "pipeline",
+    "deal",
+    "email_account",
+    "email_conversation",
+    "email_message",
+    "channel",
+    "thread",
+    "message",
+    "calendar",
+    "calendar_event",
+  ])("entities reject unimplemented type %s", async (type) => {
+    const entityId = crypto.randomUUID();
+    expect(
+      await rejection(
+        f.db.execute(
+          sql`INSERT INTO entities (entity_id, entity_type, organization_id, access_entity_id) VALUES (${entityId}, ${type}, ${f.orgA}, ${entityId})`,
+        ),
+      ),
+    ).toMatchObject({ cause: { code: "22P02" } });
+  });
+
   test("entities require an organization", async () => {
     const insert = async () => {
       const entityId = crypto.randomUUID();

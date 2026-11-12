@@ -7,20 +7,15 @@ import type { AccessPathLockMode, ActorScope, PermissionLevel } from "../reposit
 import { entityGrants } from "./schema";
 import { sql, type SQL, type SQLWrapper } from "drizzle-orm";
 
-// Organization owners and admins are super users. People and personal mailbox or calendar
-// records are excluded. Add a type here only when its domain is shared with the organization.
+// Organization owners and admins are super users. Actor records are excluded.
+// Add a type here only when its domain is shared with the organization.
 // A child inherits admin access from its container's type.
 const adminEntityTypes = sql.raw(
   (
     [
       "contact",
-      "company",
       "project",
       "task",
-      "file",
-      "folder",
-      "pipeline",
-      "deal",
     ] as const satisfies readonly (typeof entityType.enumValues)[number][]
   )
     .map((type) => `'${type}'`)

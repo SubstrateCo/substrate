@@ -22,6 +22,13 @@
       "when": 1794507435341,
       "tag": "0002_icy_abomination",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794508880756,
+      "tag": "0003_living_wonder_man",
+      "breakpoints": true
     }
   ]
 }
