@@ -1,6 +1,6 @@
 import { organizationSettingsAccess } from "@substrate/contracts/auth/settings-access";
 
-import type { SettingsScope } from "../../shared/scope";
+import type { SettingsScope, WorkspaceScope } from "../../shared/scope";
 import { serviceResult } from "../../shared/service-result";
 
 export function createOrganizationService() {
@@ -12,6 +12,12 @@ export function createOrganizationService() {
         const access = organizationSettingsAccess(role);
         return access.allowed ? { organizationId, isOwner: access.isOwner } : null;
       });
+    },
+    current(scope: WorkspaceScope) {
+      return serviceResult(() => scope.repositories.organizations.summary());
+    },
+    people(scope: WorkspaceScope) {
+      return serviceResult(() => scope.repositories.organizations.people());
     },
   };
 }

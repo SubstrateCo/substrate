@@ -5,6 +5,7 @@ import { RepositoryEffects, collectedEffects, commit, commitWrites } from "./cor
 import type { Committed } from "./core/effects";
 import { entityRepository } from "./core/entities/repository";
 import { linkRepository } from "./core/links/repository";
+import { organizationRepository } from "./core/organizations/repository";
 import { permissionRepository } from "./core/permissions/repository";
 import { RepositoryContext, type ActorScope } from "./core/repository-context";
 import { requireDevice, type DeviceIdentity } from "./core/session/device";
@@ -71,6 +72,7 @@ class WorkspaceRepositories extends ActorRepositories {
   readonly feed;
   readonly files;
   readonly agentWork;
+  readonly organizations;
 
   constructor(
     context: RepositoryContext,
@@ -84,6 +86,7 @@ class WorkspaceRepositories extends ActorRepositories {
     this.feed = createFeedRepository(context, identity);
     this.files = createAttachmentRepository(context);
     this.agentWork = createAgentWorkReadRepository(context, identity);
+    this.organizations = organizationRepository(context, identity);
   }
 
   override async transaction<T>(
@@ -128,7 +131,8 @@ function standalone(
       | "context"
       | "sharing"
       | "feed"
-      | "files",
+      | "files"
+      | "organizations",
     R extends keyof WorkspaceRepositories[K],
   >(key: K, reads: readonly R[]) {
     return commitWrites(repositories[key], reads, (work) => transaction((tx) => work(tx[key])));
@@ -160,6 +164,7 @@ function standalone(
     sharing: domain("sharing", ["list", "listConversations", "inbox"]),
     feed: domain("feed", ["activity", "list", "groups", "groupEvents", "hasUnread"]),
     files: domain("files", ["listTask", "taskContent", "messageContent"]),
+    organizations: domain("organizations", ["summary", "people"]),
     agentWork: repositories.agentWork,
     transaction,
   };
