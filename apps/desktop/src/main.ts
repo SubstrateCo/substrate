@@ -67,7 +67,7 @@ function main() {
   async function stopSession() {
     await services?.shutdown();
   }
-  const { authClient, handleAuthLink } = createDesktopAuthClient(
+  const { authClient, handleAuthLink, initializeSession } = createDesktopAuthClient(
     backend,
     publicConfig.webURL ?? applicationURL,
     smokeTest,
@@ -199,6 +199,7 @@ function main() {
     void app
       .whenReady()
       .then(() => {
+        initializeSession();
         registerWindowBridge(rendererURL);
         const desktopSession = session.fromPartition(sessionPartition);
         const installation = installationId(app.getPath("userData"));

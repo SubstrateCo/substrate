@@ -27,6 +27,19 @@ test.concurrent("a cookie-cache refresh persists without restarting the session"
   expect(await scenario("cache-refresh")).toEqual({ invalidated: 0, changed: 0, cached: true });
 });
 
+test.concurrent("a restored session is baselined after encrypted storage becomes available", async () => {
+  expect(await scenario("restored-session")).toEqual({ changed: 0, cached: true });
+});
+
+test.concurrent("credentials persist only for the same backend and launch profile", async () => {
+  expect(await scenario("storage-origins")).toEqual({
+    sameOrigin: true,
+    otherOrigin: "",
+    otherProfile: "",
+    legacyUntouched: true,
+  });
+});
+
 test.concurrent("sign-out invalidates immediately before its response without reporting a session change", async () => {
   expect(await scenario("sign-out")).toEqual({
     beforeResponse: { invalidated: 1, changed: 0 },

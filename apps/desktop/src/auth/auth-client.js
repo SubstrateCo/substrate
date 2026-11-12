@@ -3,6 +3,7 @@ import { desktopScheme } from "@substrate/contracts/desktop/links";
 import { electronClient, handleDeepLink } from "@better-auth/electron/client";
 import { storage } from "@better-auth/electron/storage";
 import { createAuthClient } from "better-auth/client";
+import { createHash } from "node:crypto";
 
 /** @param {string} backend @param {string} frontend @param {boolean} smokeTest @param {() => import("electron").BrowserWindow | undefined} getWindow @param {() => void} onSessionInvalidated @param {() => void} onSessionChanged */
 export function createDesktopAuthClient(
@@ -13,11 +14,12 @@ export function createDesktopAuthClient(
   onSessionInvalidated,
   onSessionChanged,
 ) {
+  const backendKey = createHash("sha256").update(new URL(backend).origin).digest("hex");
   /** @type {import("@better-auth/electron/client").ElectronClientOptions} */
   const options = {
     signInURL: new URL("/login", frontend),
     protocol: desktopScheme,
-    storage: storage({ configName: smokeTest ? "auth-smoke-test" : "auth" }),
+    storage: storage({ configName: `${smokeTest ? "auth-smoke-test" : "auth"}-${backendKey}` }),
     userImageProxy: { enabled: false },
     disableCache: true,
     sanitizeUser: (user) => ({
@@ -47,8 +49,10 @@ export function createDesktopAuthClient(
       .split(";")
       .map((cookie) => cookie.trim())
       .find((cookie) => cookie.split("=", 1)[0]?.endsWith(".session_token")) ?? "";
-  let previousToken = sessionToken();
+  /** @type {string | undefined} */
+  let previousToken;
   authClient.$store.atoms.$sessionSignal.listen(() => {
+    if (previousToken === undefined) return;
     const token = sessionToken();
     if (token === previousToken) return;
     previousToken = token;
@@ -56,6 +60,10 @@ export function createDesktopAuthClient(
   });
   return {
     authClient,
+    // Call after app readiness, before starting any session-dependent services.
+    initializeSession: () => {
+      previousToken = sessionToken();
+    },
     /** @param {string} url */
     handleAuthLink: (url) => handleDeepLink({ $fetch: authClient.$fetch, options, url, getWindow }),
   };

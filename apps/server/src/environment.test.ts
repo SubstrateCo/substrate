@@ -10,7 +10,53 @@ const base = {
 const parse = (env: Record<string, string | undefined>) =>
   parseServerEnvironment({ ...base, ...env });
 
+const production = {
+  NODE_ENV: "production",
+  SUBSTRATE_API_URL: "https://api.example.com",
+  SUBSTRATE_WEB_URL: "https://app.example.com",
+  S3_ENDPOINT: "https://storage.example.com",
+  S3_REGION: "us-east-1",
+  S3_BUCKET: "private",
+  S3_ACCESS_KEY_ID: "key",
+  S3_SECRET_ACCESS_KEY: "secret",
+};
+
 describe("server environment", () => {
+  test("production requires explicit secure public origins", () => {
+    expect(parse(production).apiURL).toBe(production.SUBSTRATE_API_URL);
+    for (const key of ["SUBSTRATE_API_URL", "SUBSTRATE_WEB_URL"]) {
+      for (const value of [
+        undefined,
+        "",
+        "http://app.example.com",
+        "https://localhost",
+        "https://127.0.0.2",
+        "https://[::1]",
+        "https://[::ffff:127.0.0.1]",
+        "https://[::ffff:7f00:1]",
+        "https://app.localhost",
+      ]) {
+        expect(() => parse({ ...production, [key]: value })).toThrow(key);
+      }
+    }
+  });
+
+  test("production rejects insecure or loopback extra frontend origins", () => {
+    for (const value of [
+      "http://admin.example.com",
+      "https://localhost:3000",
+      "https://127.0.0.1",
+      "https://[::1]",
+      "https://[::ffff:127.0.0.1]",
+      "https://[::ffff:7f00:1]",
+    ]) {
+      expect(() => parse({ ...production, FRONTEND_ORIGINS: value })).toThrow("FRONTEND_ORIGINS");
+    }
+    expect(
+      parse({ ...production, FRONTEND_ORIGINS: "https://admin.example.com" }).trustedOrigins,
+    ).toContain("https://admin.example.com");
+  });
+
   test("pool size is a positive integer and metrics require an explicit opt-in", () => {
     expect(parse({}).databasePoolSize).toBe(10);
     expect(parse({}).serverMetrics).toBe(false);

@@ -1,39 +1,45 @@
 import { useMutation } from "@tanstack/react-query";
 
+import { useEffect, useRef, useState } from "react";
+
+import { requestDesktopSignIn } from "./desktop-sign-in";
 import { authClient } from "@/lib/auth/client";
-import type { ElectronAuthorization } from "@/lib/desktop/authorization-query";
 import "@/lib/desktop/auth";
+import type { ElectronAuthorization } from "@/lib/desktop/authorization-query";
 
 export function useDesktopSignIn() {
-  return useMutation({
+  const pending = useRef<AbortController | null>(null);
+  const [opening, setOpening] = useState(false);
+  useEffect(
+    () => () => {
+      pending.current?.abort();
+    },
+    [],
+  );
+  const mutation = useMutation({
     mutationFn: async () => {
-      await window.requestAuth!();
+      pending.current?.abort();
+      const controller = new AbortController();
+      pending.current = controller;
+      setOpening(true);
+      try {
+        await requestDesktopSignIn(
+          {
+            requestAuth: window.requestAuth!,
+            onAuthenticated: window.onAuthenticated!,
+            onAuthError: window.onAuthError!,
+          },
+          controller.signal,
+          () => {
+            if (!controller.signal.aborted) setOpening(false);
+          },
+        );
+      } finally {
+        if (pending.current === controller && !controller.signal.aborted) setOpening(false);
+      }
     },
   });
-}
-
-/**
- * Waits for the desktop app to report how the browser sign-in ended. Start it after the browser
- * opens; it stays pending while the person signs in there.
- */
-export function useDesktopSignInResult() {
-  return useMutation({
-    mutationFn: () =>
-      new Promise<void>((resolve, reject) => {
-        const stop = () => {
-          authenticated();
-          failed();
-        };
-        const authenticated = window.onAuthenticated!(() => {
-          stop();
-          resolve();
-        });
-        const failed = window.onAuthError!(() => {
-          stop();
-          reject(new Error("Could not complete sign-in. Please try again."));
-        });
-      }),
-  });
+  return { ...mutation, opening };
 }
 
 export function useElectronTransfer() {

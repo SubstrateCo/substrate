@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { signOutAndClear } from "./sign-out";
 import { authError } from "@/api/auth/error";
 import { authClient } from "@/lib/auth/client";
 import { isDesktop } from "@/lib/desktop/auth";
@@ -77,15 +78,17 @@ export function useSendVerificationEmail(callbackURL: (email: string) => string)
 export function useSignOut() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async () => {
-      if (isDesktop()) await window.signOut!();
-      else {
-        const result = await authClient.signOut();
-        if (result.error) throw authError(result.error);
-      }
-      // Clear private state before the next document replaces this one.
-      await client.cancelQueries();
-      client.clear();
+    mutationFn: () => {
+      const desktop = isDesktop();
+      return signOutAndClear(
+        client,
+        async () => {
+          if (desktop) return window.signOut!();
+          const result = await authClient.signOut();
+          if (result.error) throw authError(result.error);
+        },
+        desktop,
+      );
     },
   });
 }

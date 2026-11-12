@@ -13,7 +13,9 @@ export function SignOutButton({ destination }: { destination?: string }) {
       pending={signOut.isPending}
       onSignOut={() =>
         void leaveDocument(authHref("/login", destination ?? "/dashboard"), async () => {
-          await signOut.mutateAsync();
+          const { revocationError } = await signOut.mutateAsync();
+          if (revocationError)
+            toast.warning("Signed out on this device. Could not confirm server sign-out.");
         }).catch((error: Error) =>
           toast.error(actionErrorMessage(error, "We couldn't sign you out. Please try again.")),
         )

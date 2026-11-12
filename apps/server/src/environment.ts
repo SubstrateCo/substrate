@@ -1,5 +1,6 @@
 import { desktopOrigin, desktopScheme } from "@substrate/contracts/desktop/links";
 
+import { BlockList, isIP } from "node:net";
 import { z } from "zod";
 
 /** A bare HTTP or HTTPS origin: no wildcard, credentials, path, query or fragment. */
@@ -13,6 +14,24 @@ function explicitOrigin(value: string) {
     : undefined;
 }
 const originMessage = "Use explicit HTTP or HTTPS origins.";
+
+const localAddresses = new BlockList();
+localAddresses.addSubnet("127.0.0.0", 8, "ipv4");
+localAddresses.addAddress("::1", "ipv6");
+localAddresses.addAddress("0.0.0.0", "ipv4");
+localAddresses.addAddress("::", "ipv6");
+
+function productionOrigin(value: string) {
+  const url = new URL(value);
+  const hostname = url.hostname.replace(/^\[|\]$/g, "").replace(/\.$/, "");
+  const family = isIP(hostname);
+  return (
+    url.protocol === "https:" &&
+    hostname !== "localhost" &&
+    !hostname.endsWith(".localhost") &&
+    !(family && localAddresses.check(hostname, family === 6 ? "ipv6" : "ipv4"))
+  );
+}
 
 const required = () => z.string({ error: "Required." });
 const origin = required().transform((value, ctx) => {
@@ -96,10 +115,24 @@ const variables = z
         path: [env.SMTP_USER ? "SMTP_PASSWORD" : "SMTP_USER"],
         message: "Set SMTP_USER and SMTP_PASSWORD together.",
       });
-    if (env.NODE_ENV === "production")
+    if (env.NODE_ENV === "production") {
+      for (const key of ["SUBSTRATE_API_URL", "SUBSTRATE_WEB_URL"] as const)
+        if (!productionOrigin(env[key]))
+          ctx.addIssue({
+            code: "custom",
+            path: [key],
+            message: "Set an explicit HTTPS origin without localhost or loopback in production.",
+          });
+      if (env.FRONTEND_ORIGINS.some((value) => !productionOrigin(value)))
+        ctx.addIssue({
+          code: "custom",
+          path: ["FRONTEND_ORIGINS"],
+          message: "Use HTTPS origins without localhost or loopback in production.",
+        });
       for (const key of storageKeys)
         if (!env[key])
           ctx.addIssue({ code: "custom", path: [key], message: "Required in production." });
+    }
   })
   .transform((env) => {
     const storage = (key: (typeof storageKeys)[number]) => env[key] ?? developmentStorage[key];
