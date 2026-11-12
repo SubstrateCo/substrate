@@ -5,7 +5,7 @@ import type { DatabaseExecutor } from "../../client";
 import { commit } from "../../core/effects";
 import type { SessionIdentity } from "../../core/session/identity";
 import { auditFailedCallerTool, namedIds } from "./caller-turn";
-import { executeAgentTool as execute } from "./service";
+import { executeAgentToolInTransaction, parseAgentToolInput } from "./service";
 
 export async function executeAgentTool<K extends ServerToolName>(
   db: DatabaseExecutor,
@@ -15,7 +15,8 @@ export async function executeAgentTool<K extends ServerToolName>(
   turn: TurnContext,
 ) {
   try {
-    return await commit(db, (tx) => execute(tx, identity, tool, raw, turn));
+    const input = parseAgentToolInput(tool, raw);
+    return await commit(db, (tx) => executeAgentToolInTransaction(tx, identity, tool, input, turn));
   } catch (error) {
     // The call's transaction rolled back. A turn that answers callers still logs the failure;
     // a failed log does not hide the call's own error.

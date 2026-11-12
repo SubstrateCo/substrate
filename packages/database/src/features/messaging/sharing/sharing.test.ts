@@ -1,10 +1,12 @@
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
+import type { DatabaseExecutor } from "../../../client";
 import { ensureUserAgentActor } from "../../../core/actors/provisioning";
 import { userAgents } from "../../../core/actors/user-agents.schema";
 import { AccessDeniedError, ValidationError } from "../../../errors";
 import * as schema from "../../../schema";
 import { member, user } from "../../../schema";
+import { discardEffects } from "../../../testing/connection";
 import { setupDatabase } from "../../../testing/database";
 import { recordQueries } from "../../../testing/queries";
 import { receivesChange } from "../../../testing/realtime";
@@ -14,7 +16,10 @@ import { messagingParticipants } from "../schema";
 import { createMessagingService } from "../service";
 import { messagingConnections, messagingInvitations } from "../sharing.schema";
 import { messagingSharingEvents } from "../sharing.schema";
-import { claimSharingMail as claimCommittedSharingMail } from "./committed";
+import {
+  claimSharingMail as claimCommittedSharingMail,
+  clearMembershipSharing as clearCommittedMembershipSharing,
+} from "./committed";
 import { clearMembershipSharing } from "./connections";
 import { readSharingInvitation } from "./invitations";
 import { claimSharingMail, finishSharingMail } from "./mail";
@@ -31,6 +36,65 @@ async function channel() {
   await f.db.update(user).set({ emailVerified: true });
   return host().createConversation({ kind: "channel", name: "Partners", private: true });
 }
+
+test("membership cleanup uses one transaction, collects hints and rolls back on failure", async () => {
+  const c = await channel();
+  const invite = await sharing().invite(c.id, { email: "outside@example.com", shareHistory: true });
+  await sharing("outsider", f.orgB).accept(invite.id, true);
+  const pending = await sharing("outsider", f.orgB).invite(c.id, {
+    email: "bob@example.com",
+    shareHistory: true,
+  });
+  const before = await f.db.select().from(messagingParticipants);
+  const invitationsBefore = await f.db.select().from(messagingInvitations);
+  const failure = new Error("Abort membership cleanup");
+  let count = 0;
+  let abort = true;
+  const track = (db: DatabaseExecutor): DatabaseExecutor =>
+    discardEffects(
+      new Proxy(db, {
+        get(target, property: keyof DatabaseExecutor) {
+          if (property !== "transaction") return target[property];
+          return <T>(work: (tx: DatabaseExecutor) => Promise<T>) => {
+            count++;
+            return target.transaction(async (tx) => {
+              const result = await work(track(tx));
+              if (abort) throw failure;
+              return result;
+            });
+          };
+        },
+      }),
+    );
+  const db = track(f.db);
+  for (const clear of [clearMembershipSharing, clearCommittedMembershipSharing]) {
+    count = 0;
+    expect(await rejection(clear(db, "outsider", f.orgB))).toBe(failure);
+    expect(count).toBe(1);
+    expect(await f.db.select().from(messagingParticipants)).toEqual(before);
+    expect(await f.db.select().from(messagingInvitations)).toEqual(invitationsBefore);
+  }
+  count = 0;
+  abort = false;
+  const committed = await clearCommittedMembershipSharing(db, "outsider", f.orgB);
+  expect(count).toBe(1);
+  expect(committed.result).toBeNull();
+  expect(committed.hints).toContainEqual({
+    audience: realtimeKeys.user("outsider"),
+    domain: "access",
+  });
+  const [removed] = await f.db
+    .select()
+    .from(messagingParticipants)
+    .where(eq(messagingParticipants.actorEntityId, f.outsider));
+  expect(removed!.consentedAt).toBeNull();
+  expect(removed!.leftAt).not.toBeNull();
+  const [revoked] = await f.db
+    .select()
+    .from(messagingInvitations)
+    .where(eq(messagingInvitations.id, pending.id));
+  expect(revoked!.status).toBe("revoked");
+});
 
 test("an organization invitation grants nothing before approval and only the invited participant afterwards", async () => {
   const c = await channel();

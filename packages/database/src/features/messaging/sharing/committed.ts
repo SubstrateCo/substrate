@@ -11,4 +11,6 @@ export async function claimSharingMail(
   return { result: await mail.claimSharingMail(db), hints: [] };
 }
 export const finishSharingMail = committedWrite(mail.finishSharingMail);
-export const clearMembershipSharing = committedWrite(connections.clearMembershipSharing);
+export const clearMembershipSharing = committedWrite(
+  connections.clearMembershipSharingInTransaction,
+);

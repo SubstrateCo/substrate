@@ -3,6 +3,7 @@ import type { WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
 import { mcpTools, type McpOutput, type ServerToolName } from "@substrate/contracts/harness/tools";
 import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
+import type { DatabaseExecutor } from "../../client";
 import { ensureUserAgentActor } from "../../core/actors/provisioning";
 import { registerDevice } from "../../core/devices/repository";
 import { AccessDeniedError, ConflictError } from "../../errors";
@@ -17,16 +18,40 @@ import {
   messagingMessages,
   messagingParticipants,
 } from "../../schema";
+import { discardEffects } from "../../testing/connection";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { createMessagingService } from "../messaging/service";
 import { executeAgentTool as executeCommittedTool } from "./committed";
+import { agentToolRequests } from "./schema";
 import { executeAgentTool } from "./service";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
+
+function trackedTransactions(failAfterWork = false) {
+  let count = 0;
+  const failure = new Error("Abort tool transaction");
+  const track = (db: DatabaseExecutor, root = true): DatabaseExecutor =>
+    discardEffects(
+      new Proxy(db, {
+        get(target, property: keyof DatabaseExecutor) {
+          if (property !== "transaction") return target[property];
+          return <T>(work: (tx: DatabaseExecutor) => Promise<T>) => {
+            count++;
+            return target.transaction(async (tx) => {
+              const result = await work(track(tx, false));
+              if (root && failAfterWork) throw failure;
+              return result;
+            });
+          };
+        },
+      }),
+    );
+  return { db: track(f.db), count: () => count, failure };
+}
 
 // An interactive turn without a source place on the agent's home desktop: every tool may run,
 // and reply needs a `to`.
@@ -81,6 +106,44 @@ async function setCreatedAt(id: string, createdAt: string) {
     .set({ createdAt: new Date(createdAt) })
     .where(eq(messagingMessages.id, id));
 }
+
+test("committed MCP reads use one transaction and raw validation opens none", async () => {
+  const { identity } = await fixture();
+  const tracked = trackedTransactions();
+  const result = await executeCommittedTool(tracked.db, identity, "get_me", {}, turn);
+  expect(result.result.tool).toBe("get_me");
+  expect(tracked.count()).toBe(1);
+  expect(result.hints).toEqual([]);
+  const invalid = trackedTransactions();
+  expect(
+    await rejection(executeAgentTool(invalid.db, identity, "get_task", {}, turn)),
+  ).toBeInstanceOf(Error);
+  expect(invalid.count()).toBe(0);
+});
+
+test("raw and committed MCP writes roll back with their transaction", async () => {
+  const { identity, project } = await fixture();
+  const input = {
+    taskId: (
+      await f.forActor(f.alice).tasks.create({
+        projectEntityId: project.entityId,
+        title: "Atomic comment",
+      })
+    ).entityId,
+    body: "Must roll back",
+    requestId: crypto.randomUUID(),
+  };
+  for (const execute of [executeAgentTool, executeCommittedTool]) {
+    const tracked = trackedTransactions(true);
+    expect(await rejection(execute(tracked.db, identity, "add_task_comment", input, turn))).toBe(
+      tracked.failure,
+    );
+    // The task repository retains its own atomic comment transaction.
+    expect(tracked.count()).toBe(2);
+    expect(await f.db.select().from(taskComments)).toEqual([]);
+    expect(await f.db.select().from(agentToolRequests)).toEqual([]);
+  }
+});
 
 test("MCP and web comments publish the same confirmed notification hints", async () => {
   const { identity, project } = await fixture();
