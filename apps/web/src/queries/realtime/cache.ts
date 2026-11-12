@@ -83,12 +83,12 @@ export function realtimeQueryTargets(
     case "messaging":
       if (!organizationId) break;
       // A published reply can answer a call without changing the invocation itself.
-      if (event.scope !== "read")
+      if (event.scope !== "read" && event.scope !== "reactions")
         targets.push({
           queryKey: queryKeys.myAgentCalls(userId, organizationId, event.conversationId),
         });
       targets.push(
-        ...domainTargets(event.domain, organizationId, event.conversationId, event.scope),
+        ...domainTargets(event.domain, organizationId, event.conversationId, event.scope, event),
       );
       break;
     case "tasks":

@@ -1,6 +1,6 @@
 import type { RealtimeEvent } from "@substrate/contracts/realtime";
 
-import { QueryClient, QueryObserver } from "@tanstack/react-query";
+import { QueryClient, QueryObserver, type QueryKey } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
 import { queryTargetFilter } from "../targets";
@@ -258,6 +258,56 @@ test("a read-position hint refreshes only unread counts", () => {
   );
   expect(matched).toEqual([unread]);
   client.clear();
+});
+
+function matchedKeys(event: Extract<RealtimeEvent, { type: "change" }>, keys: QueryKey[]) {
+  const client = new QueryClient();
+  for (const key of keys) client.setQueryData(key, []);
+  const matched = new Set(
+    realtimeQueryTargets(event, "user").flatMap((target) =>
+      client
+        .getQueryCache()
+        .findAll(queryTargetFilter(target))
+        .map((query) => JSON.stringify(query.queryKey)),
+    ),
+  );
+  client.clear();
+  return keys.filter((key) => matched.has(JSON.stringify(key)));
+}
+
+test("a reaction hint refreshes that message's thread and reactions only", () => {
+  const event = {
+    ...change("messaging"),
+    conversationId: "conversation",
+    scope: "reactions",
+    messageId: "reply",
+    threadId: "root",
+  } as const;
+  const refreshed = [
+    [...queryKeys.messages("org", "conversation", "root"), { before: "older" }],
+    queryKeys.messageReactions("org", "conversation", "reply"),
+    [...queryKeys.messageTargets("org", "conversation"), "reply"],
+  ];
+  const untouched = [
+    queryKeys.messages("org", "conversation"),
+    queryKeys.messages("org", "conversation", "other-thread"),
+    queryKeys.messageReactions("org", "conversation", "other-message"),
+    queryKeys.messages("org", "other"),
+    queryKeys.messageUnread("org"),
+    queryKeys.conversations("org"),
+    queryKeys.messagePage("org", "conversation", ["reply"]),
+    queryKeys.related("org", "task"),
+    queryKeys.search("org"),
+    queryKeys.myAgentCalls("user", "org", "conversation"),
+  ];
+  expect(matchedKeys(event, [...refreshed, ...untouched])).toEqual(refreshed);
+  // A reaction on a main-timeline message refreshes the timeline, not its threads.
+  expect(
+    matchedKeys({ ...event, messageId: "root", threadId: null }, [
+      queryKeys.messages("org", "conversation"),
+      queryKeys.messages("org", "conversation", "root"),
+    ]),
+  ).toEqual([queryKeys.messages("org", "conversation")]);
 });
 
 test("new messages refresh history, not conversation lists or loaded message context", () => {

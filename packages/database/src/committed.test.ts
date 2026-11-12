@@ -89,7 +89,9 @@ test("messaging collects send, reaction, membership and removal effects", async 
   });
   const reaction = await repositories.messaging.toggleReaction(sent.result.id, "👍");
   expect(reaction.result.active).toBe(true);
-  expect(reaction.hints).toEqual([{ ...hint, scope: "messages" }]);
+  expect(reaction.hints).toEqual([
+    { ...hint, scope: "reactions", messageId: sent.result.id, threadId: null },
+  ]);
   const bob = await f.forSession("bob");
   const left = await bob.messaging.leaveConversation(channel.result.id);
   expect(left.hints).toContainEqual({ audience: realtimeKeys.user("bob"), domain: "messaging" });

@@ -332,12 +332,41 @@ test("threads stay in their conversation and reference only roots, including raw
   ).toMatchObject({ cause: { code: "23503" } });
 });
 
+test("a reaction to a reply names the reply's thread, so only that thread refreshes", async () => {
+  await verified();
+  const channel = await service("alice").createConversation({ kind: "channel", name: "general" });
+  const root = await service("alice").sendMessage(channel.id, "root");
+  const reply = await service("alice").sendMessage(channel.id, "reply", root.id);
+  const reacted = await commit(fixture.db, (tx) =>
+    createMessagingService(tx, { userId: "alice", organizationId: fixture.orgA }).toggleReaction(
+      reply.id,
+      "👍",
+    ),
+  );
+  expect(reacted.hints).toEqual([
+    {
+      audience: realtimeKeys.conversation(channel.id),
+      domain: "messaging",
+      scope: "reactions",
+      messageId: reply.id,
+      threadId: root.id,
+    },
+  ]);
+});
+
 test("reactions aggregate per emoji, toggle per user and reject inaccessible messages", async () => {
   await verified();
   const channel = await service("alice").createConversation({ kind: "channel", name: "general" });
   const message = await service("alice").sendMessage(channel.id, "hello");
+  // Only this message's reactions changed: no unread counts, order, or other conversations.
   const contentOnly: RealtimeHint[] = [
-    { audience: realtimeKeys.conversation(channel.id), domain: "messaging", scope: "messages" },
+    {
+      audience: realtimeKeys.conversation(channel.id),
+      domain: "messaging",
+      scope: "reactions",
+      messageId: message.id,
+      threadId: null,
+    },
   ];
   const toggle = (userId: string) =>
     commit(fixture.db, (tx) =>

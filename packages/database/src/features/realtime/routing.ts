@@ -234,6 +234,29 @@ export async function conversationRemovalHints(
   ];
 }
 
+// A reaction changes only one message's reactions: not unread counts, order, or other
+// conversations. Joining the conversation also changes conversation lists.
+export function reactionChangeHints(
+  change: {
+    conversationId: string;
+    organizationId: string;
+    messageId: string;
+    threadId: string | null;
+  },
+  joined: boolean,
+): RealtimeHint[] {
+  if (joined) return messageChangeHints(change, { joined });
+  return [
+    {
+      audience: realtimeKeys.conversation(change.conversationId),
+      domain: "messaging",
+      scope: "reactions",
+      messageId: change.messageId,
+      threadId: change.threadId,
+    },
+  ];
+}
+
 // Builds hints from what a send or reaction changed, so nothing is read back after commit.
 // Membership changes refresh conversation lists; other changes touch only message content.
 export function messageChangeHints(

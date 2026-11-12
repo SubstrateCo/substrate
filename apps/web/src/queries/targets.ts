@@ -40,6 +40,32 @@ export function queryTargetFilter(
   };
 }
 
+/** Identifiers of the changed records. Without one, targets cover every record it could name. */
+export type ChangeDetail = Partial<Pick<Change, "messageId" | "threadId">>;
+
+// A reaction changes one message's reactions, shown in its history page, its reaction details,
+// and target views of that conversation. Unread counts, order, and search stay the same.
+function reactionTargets(
+  organizationId: string,
+  conversationId: string,
+  { messageId, threadId }: ChangeDetail,
+): QueryTarget[] {
+  return [
+    {
+      queryKey:
+        threadId === undefined
+          ? queryKeys.conversationMessages(organizationId, conversationId)
+          : queryKeys.messages(organizationId, conversationId, threadId ?? undefined),
+    },
+    {
+      queryKey: messageId
+        ? queryKeys.messageReactions(organizationId, conversationId, messageId)
+        : queryKeys.conversationReactions(organizationId, conversationId),
+    },
+    { queryKey: queryKeys.messageTargets(organizationId, conversationId) },
+  ];
+}
+
 // Searches only become stale, so a change does not start a burst of search requests.
 export function searchTargets(organizationId: string): QueryTarget[] {
   return queryKeys.searches(organizationId).map((queryKey) => ({
@@ -57,11 +83,14 @@ export function domainTargets(
   organizationId: string,
   conversationId?: string,
   scope?: Change["scope"],
+  detail: ChangeDetail = {},
 ): QueryTarget[] {
   switch (domain) {
     case "messaging":
       // A read position changes only the reader's unread counts.
       if (scope === "read") return [{ queryKey: queryKeys.messageUnread(organizationId) }];
+      if (scope === "reactions" && conversationId)
+        return reactionTargets(organizationId, conversationId, detail);
       return [
         { queryKey: queryKeys.messageUnread(organizationId) },
         // Message content changes leave membership and conversation details unchanged.

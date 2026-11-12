@@ -16,7 +16,7 @@ import { applyMessageEffects } from "../context/message-effects";
 import { messageAttachmentMetadata } from "../files/metadata";
 import { publishFiles } from "../files/publication";
 import { messageAttachments } from "../files/schema";
-import { messageChangeHints } from "../realtime/routing";
+import { messageChangeHints, reactionChangeHints } from "../realtime/routing";
 import { loadConversation, requireThreadRoot, threadRoot, visibleConversations } from "./access";
 import { writeMembers } from "./members";
 import { validateBody, validateEmoji } from "./policy";
@@ -446,7 +446,10 @@ export function messageOperations(
         const { actor } = await authenticate(tx);
         validateEmoji(emoji);
         const [message] = await tx
-          .select({ conversationId: messagingMessages.conversationId })
+          .select({
+            conversationId: messagingMessages.conversationId,
+            threadId: messagingMessages.threadId,
+          })
           .from(messagingMessages)
           .where(eq(messagingMessages.id, messageId));
         if (!message) throw new AccessDeniedError();
@@ -467,9 +470,9 @@ export function messageOperations(
               "join",
             )
           ).length > 0;
-        const hints = messageChangeHints(
-          { conversationId: message.conversationId, organizationId: scope.organizationId },
-          { joined },
+        const hints = reactionChangeHints(
+          { ...message, messageId, organizationId: scope.organizationId },
+          joined,
         );
         for (const hint of hints) effectsFor(tx).hint(hint);
         const key = and(

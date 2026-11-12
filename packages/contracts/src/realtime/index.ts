@@ -3,6 +3,7 @@ export {
   realtimeAudience,
   realtimeDomain,
   realtimeScope,
+  realtimeDetail,
   realtimeEvent,
   realtimeEventChannel,
 } from "./protocol.ts";

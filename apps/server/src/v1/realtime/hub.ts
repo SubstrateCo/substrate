@@ -12,6 +12,8 @@ export interface Change {
   audience: Readonly<RealtimeAudience>;
   domain: RealtimeDomain;
   scope?: RealtimeScope;
+  messageId?: string;
+  threadId?: string | null;
 }
 
 export interface Transport {
@@ -264,7 +266,10 @@ export function createRealtimeHub(
               domain: change.domain,
             };
             if (change.audience[0] === "conversation") event.conversationId = change.audience[1];
+            // The audience already limits who sees these identifiers.
             if (change.scope) event.scope = change.scope;
+            if (change.messageId) event.messageId = change.messageId;
+            if (change.threadId !== undefined) event.threadId = change.threadId;
             send(connection, event);
           }
         } catch {

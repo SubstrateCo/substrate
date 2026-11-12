@@ -1,4 +1,4 @@
-import { realtimeAudience, realtimeDomain, realtimeScope } from "@substrate/contracts/realtime";
+import { realtimeAudience, realtimeDetail, realtimeDomain } from "@substrate/contracts/realtime";
 
 import { environment } from "../../environment";
 import type { Change } from "./hub";
@@ -10,7 +10,7 @@ const changes = z.array(
     id: z.uuid(),
     audience: realtimeAudience,
     domain: realtimeDomain,
-    scope: realtimeScope.optional(),
+    ...realtimeDetail,
   }),
 );
 

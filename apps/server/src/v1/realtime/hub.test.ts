@@ -1,4 +1,4 @@
-import { realtimeKeys } from "@substrate/contracts/realtime";
+import { realtimeEvent, realtimeKeys } from "@substrate/contracts/realtime";
 import type { RealtimeEvent } from "@substrate/contracts/realtime";
 import type { RealtimeReceiver } from "@substrate/database/realtime";
 
@@ -114,6 +114,27 @@ test("routes server-owned audiences and authorizes each viewer in their own work
   ]);
   expect(denied.events).toEqual([{ version: 1, type: "ready" }]);
   expect(account.events.slice(1)).toMatchObject([{ domain: "profile", organizationId: null }]);
+  f.hub.stop();
+});
+
+test("changes forward their record identifiers, which the client contract accepts", async () => {
+  const f = fixture();
+  const viewer = await f.connect();
+  await f.hub.publish({
+    id: crypto.randomUUID(),
+    audience: realtimeKeys.conversation("conversation"),
+    domain: "messaging",
+    scope: "reactions",
+    messageId: "message",
+    threadId: null,
+  });
+  const [, event] = viewer.events;
+  expect(realtimeEvent.parse(event)).toMatchObject({
+    conversationId: "conversation",
+    scope: "reactions",
+    messageId: "message",
+    threadId: null,
+  });
   f.hub.stop();
 });
 

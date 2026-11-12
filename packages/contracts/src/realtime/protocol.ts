@@ -35,14 +35,30 @@ export const realtimeDomain = z.enum([
 export type RealtimeDomain = z.infer<typeof realtimeDomain>;
 
 // Narrows a messaging change. "messages": message content changed, but membership and
-// conversation details did not. "read": only the viewer's read position, so only unread state,
-// changed. Optional: without it, clients refresh the whole messaging domain.
-export const realtimeScope = z.enum(["messages", "read"]);
+// conversation details did not. "reactions": only the reactions of one message changed.
+// "read": only the viewer's read position, so only unread state, changed. Optional: without it,
+// clients refresh the whole messaging domain.
+export const realtimeScope = z.enum(["messages", "reactions", "read"]);
 export type RealtimeScope = z.infer<typeof realtimeScope>;
 
-/** Only messaging changes have a scope. */
+// Identifiers of the changed records. A hint carries them only to an audience that can see those
+// records, and never carries record data. Each is optional: without it, clients refresh more.
+export const realtimeDetail = {
+  scope: realtimeScope.optional(),
+  messageId: identifier.optional(),
+  // The thread of the changed message: null for the main timeline.
+  threadId: identifier.nullable().optional(),
+};
+
+interface MessagingDetail {
+  scope?: RealtimeScope;
+  messageId?: string;
+  threadId?: string | null;
+}
+
+/** Only messaging changes have a scope and message identifiers. */
 export type RealtimeHint =
-  | { audience: Readonly<RealtimeAudience>; domain: "messaging"; scope?: RealtimeScope }
+  | ({ audience: Readonly<RealtimeAudience>; domain: "messaging" } & MessagingDetail)
   | {
       audience: Readonly<RealtimeAudience>;
       domain: Exclude<RealtimeDomain, "messaging">;
@@ -58,7 +74,7 @@ export const realtimeEvent = z.discriminatedUnion("type", [
     organizationId: identifier.nullable(),
     domain: realtimeDomain,
     conversationId: identifier.optional(),
-    scope: realtimeScope.optional(),
+    ...realtimeDetail,
   }),
 ]);
 export type RealtimeEvent = z.infer<typeof realtimeEvent>;
