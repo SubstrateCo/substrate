@@ -34,6 +34,11 @@ import {
 import { agentDirectory, helperDirectory, safeId, safePath } from "./paths.ts";
 import { binaryVersion, resolveExecutable } from "./process.ts";
 import { connectHarness, harnessDefinitions } from "./registry.ts";
+import {
+  nativeSessionMachine,
+  transitionSession,
+  type NativeSessionState,
+} from "./session-machine.ts";
 import { mkdir, realpath } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -94,8 +99,8 @@ export interface RuntimeHarnessHost extends HarnessHost {
   closeOrganization(organizationId: string): Promise<void>;
 }
 
-/** closeOrganization waits this long for a native interrupt before it closes the session. */
-const closeInterruptMs = 2_000;
+/** Bounds native interrupt waits and cleanup waits for cancelled opens. */
+const nativeCloseWaitMs = 2_000;
 
 interface LiveTurn {
   context: TurnContext;
@@ -108,18 +113,27 @@ interface LiveTurn {
   cancelInterrupt?: () => void;
 }
 
-interface LiveSession {
+interface SessionLifecycle {
+  state: NativeSessionState;
+  reason?: CloseReason;
+  lease?: McpLease;
+  /** The native cleanup in progress, including a cancelled open's cleanup. */
+  closed?: Promise<void>;
+}
+
+interface OpeningSession {
+  lifecycle: SessionLifecycle;
+  organizationId: string;
+  promise: Promise<HarnessSessionRef>;
+}
+
+interface LiveSession extends SessionLifecycle {
   ref: HarnessSessionRef;
   agent: HarnessAgent;
   adapter: NativeAdapter;
   epoch: number;
-  lease?: McpLease;
   turn?: LiveTurn;
   idleSince: number;
-  /** Set when the session must close as soon as its live turn ends. */
-  closing?: CloseReason;
-  /** The close in progress. */
-  closed?: Promise<void>;
 }
 
 /** Set once the session is live, so adapter events during open carry no turn. */
@@ -146,8 +160,9 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
   });
   const listeners = new Set<(event: HarnessEvent) => void>();
   const sessions = new Map<string, LiveSession>();
-  const opening = new Map<string, Promise<HarnessSessionRef>>();
+  const opening = new Map<string, OpeningSession>();
   let disposed = false;
+  let disposal: Promise<void> | undefined;
   const modelDiscovery = new AbortController();
   const connectNative: ConnectNative = options.connect ?? connectHarness;
   const assertOpen = () => {
@@ -201,7 +216,8 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
   async function closeSession(live: LiveSession, reason: CloseReason) {
     if (live.closed) return live.closed;
     if (sessions.get(live.ref.id) !== live) return;
-    sessions.delete(live.ref.id);
+    if (live.state !== "closing") transitionSession(live, "close");
+    live.reason ??= reason;
     live.closed = (async () => {
       live.lease?.revoke();
       try {
@@ -210,16 +226,21 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
         // The adapter ends a live turn on disconnect; report it before the session closes.
         live.turn?.force({ status: "failed", error: "The native session closed." });
         await live.turn?.settled;
+        transitionSession(live, "disconnected");
+        sessions.delete(live.ref.id);
         emit(
           { sessionId: live.ref.id, organizationId: live.ref.organizationId },
-          { type: "session.closed", reason },
+          { type: "session.closed", reason: live.reason! },
         );
       }
     })();
     return live.closed;
   }
 
-  async function open(command: Extract<HarnessCommand, { type: "open" }>) {
+  async function open(
+    command: Extract<HarnessCommand, { type: "open" }>,
+    lifecycle: SessionLifecycle,
+  ) {
     const configuration = configurations.get(command.organizationId);
     if (!configuration)
       throw new HarnessError(
@@ -256,6 +277,8 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
           agentFolder,
         })
       : undefined;
+    lifecycle.lease = lease;
+    if (lifecycle.state === "closing") lease?.revoke();
     const holder: SessionHolder = {};
     const scope = { sessionId: command.sessionId, organizationId: command.organizationId };
     try {
@@ -295,20 +318,24 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
         capabilities: { ...adapter.capabilities },
         resumed,
       };
-      const live: LiveSession = {
+      const live: LiveSession = Object.assign(lifecycle, {
         ref,
         agent,
         adapter,
         epoch: command.epoch,
         lease,
         idleSince: clock.now(),
-      };
+      });
       holder.live = live;
-      if (disposed) {
-        await adapter.disconnect();
-        throw new HarnessError("disposed", "Harness host is disposed.");
-      }
       sessions.set(ref.id, live);
+      if (live.state === "closing" || disposed) {
+        await closeSession(live, "closed");
+        throw new HarnessError(
+          disposed ? "disposed" : "not-connected",
+          "The session closed while opening.",
+        );
+      }
+      transitionSession(live, "connected");
       return structuredClone(ref);
     } catch (error) {
       lease?.revoke();
@@ -318,7 +345,8 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
 
   function startTurn(live: LiveSession, command: Extract<HarnessCommand, { type: "turn" }>) {
     if (live.turn) throw new HarnessError("turn-active", "A turn is already running.");
-    if (live.closing) throw new HarnessError("not-connected", "The session is closing.");
+    if (!nativeSessionMachine.canFire(live.state, "startTurn"))
+      throw new HarnessError("not-connected", "The session is closing.");
     if (!command.input.text.trim()) throw new HarnessError("empty-input", "Turn input is empty.");
     const context = turnContextSchema.parse(command.context);
     if (context.turnId !== command.turnId)
@@ -332,6 +360,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
       settled: settled.promise,
       force: forced.resolve,
     };
+    transitionSession(live, "startTurn");
     live.turn = turn;
     live.lease?.bind(context);
     const scope = { sessionId: live.ref.id, organizationId: live.ref.organizationId };
@@ -347,9 +376,10 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
         live.lease?.unbind();
         live.turn = undefined;
         live.idleSince = clock.now();
+        if (live.state === "running") transitionSession(live, "finishTurn");
       }
       settled.resolve();
-      if (live.closing) void closeSession(live, live.closing).catch(() => {});
+      if (live.state === "draining") void closeSession(live, live.reason!).catch(() => {});
     });
   }
 
@@ -368,13 +398,14 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
 
   /** Closes the session now, or as soon as its live turn ends. No new turn starts meanwhile. */
   function closeWhenIdle(live: LiveSession, reason: CloseReason) {
-    live.closing ??= reason;
-    return live.turn ? undefined : closeSession(live, live.closing);
+    live.reason ??= reason;
+    if (nativeSessionMachine.canFire(live.state, "drain")) transitionSession(live, "drain");
+    return live.turn ? undefined : closeSession(live, live.reason);
   }
 
   function session(command: { organizationId: string; sessionId: string }) {
     const live = sessions.get(command.sessionId);
-    if (!live || live.ref.organizationId !== command.organizationId)
+    if (!live || live.ref.organizationId !== command.organizationId || live.state === "closing")
       throw new HarnessError("not-connected", "Open the session first.");
     live.idleSince = clock.now();
     return live;
@@ -385,8 +416,12 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
     command: Extract<HarnessCommand, { type: "open" }>,
   ): Promise<HarnessSessionRef> {
     for (;;) {
+      assertOpen();
       const pending = opening.get(command.sessionId);
-      if (pending && !(await pending.then(Boolean, () => false))) return pending;
+      if (pending) {
+        await pending.promise;
+        assertOpen();
+      }
       const existing = sessions.get(command.sessionId);
       if (!existing) break;
       if (
@@ -399,17 +434,28 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
         existing.epoch !== command.epoch ||
         (command.nativeSessionId !== undefined &&
           command.nativeSessionId !== existing.ref.nativeSessionId);
-      if (!stale && !existing.closing) {
+      if (!stale && (existing.state === "idle" || existing.state === "running")) {
         existing.idleSince = clock.now();
         return structuredClone(existing.ref);
       }
       // A session waiting to close keeps its live turn; it is never returned.
-      if (!stale && existing.turn)
+      if (!stale && existing.state === "draining")
         throw new HarnessError("session-closing", "The session closes after its live turn.");
-      await closeSession(existing, existing.closing ?? "closed");
+      await closeSession(existing, existing.reason ?? "closed");
     }
-    const started = open(command).finally(() => opening.delete(command.sessionId));
-    opening.set(command.sessionId, started);
+    const lifecycle: SessionLifecycle = { state: "opening" };
+    const started = open(command, lifecycle)
+      .catch((error) => {
+        if (nativeSessionMachine.canFire(lifecycle.state, "openFailed"))
+          transitionSession(lifecycle, "openFailed");
+        throw error;
+      })
+      .finally(() => opening.delete(command.sessionId));
+    opening.set(command.sessionId, {
+      lifecycle,
+      organizationId: command.organizationId,
+      promise: started,
+    });
     return started;
   }
 
@@ -443,7 +489,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
         const turn = live?.turn;
         if (!live || live.ref.organizationId !== command.organizationId || !turn)
           throw new HarnessError("no-live-turn", "No turn is running in this session.");
-        if (turn.turnId !== command.turnId)
+        if (live.state === "closing" || turn.turnId !== command.turnId)
           throw new HarnessError("no-live-turn", "That turn is not running.");
         // Armed before the native call, which may itself hang or fail.
         armInterrupt(live, turn);
@@ -461,11 +507,46 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
         return;
       }
       case "close": {
+        const pending = opening.get(command.sessionId);
+        if (pending?.organizationId === command.organizationId) {
+          cancelOpening(pending.lifecycle);
+          await waitForOpeningClose(pending);
+        }
         const live = sessions.get(command.sessionId);
         if (live && live.ref.organizationId === command.organizationId)
           await closeSession(live, "closed");
         return;
       }
+    }
+  }
+
+  function cancelOpening(lifecycle: SessionLifecycle) {
+    if (nativeSessionMachine.canFire(lifecycle.state, "close"))
+      transitionSession(lifecycle, "close");
+    lifecycle.reason ??= "closed";
+    lifecycle.lease?.revoke();
+  }
+
+  async function waitForOpeningClose(pending: OpeningSession) {
+    const timeout = Promise.withResolvers<never>();
+    const cancel = clock.later(() => {
+      timeout.reject(
+        new HarnessError(
+          "request-timeout",
+          "The native session did not finish opening and closing in time.",
+        ),
+      );
+    }, nativeCloseWaitMs);
+    const cleanup = async () => {
+      // A cancelled open rejects by design; native cleanup failures still reach the closer.
+      await pending.promise.catch(() => {});
+      await pending.lifecycle.closed;
+    };
+    try {
+      // Keep the cancelled open tracked: if connect finishes late, open() still disconnects it.
+      await Promise.race([cleanup(), timeout.promise]);
+    } finally {
+      cancel();
     }
   }
 
@@ -560,23 +641,31 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
     },
     async closeOrganization(organizationId) {
       assertOpen();
-      const closing = [...sessions.values()].filter(
-        (live) => live.ref.organizationId === organizationId,
+      const pending = [...opening.values()].filter(
+        (entry) => entry.organizationId === organizationId,
       );
-      const results = await Promise.allSettled(
-        closing.map(async (live) => {
+      for (const entry of pending) cancelOpening(entry.lifecycle);
+      // A cancelled open may also be in sessions while disconnecting; its bounded wait owns cleanup.
+      const closing = [...sessions.values()].filter(
+        (live) =>
+          live.ref.organizationId === organizationId &&
+          !pending.some((entry) => entry.lifecycle === live),
+      );
+      const results = await Promise.allSettled([
+        ...pending.map(waitForOpeningClose),
+        ...closing.map(async (live) => {
           // No new turn starts while the native turn stops.
           const idle = closeWhenIdle(live, "closed");
           if (idle) return idle;
           let cancel = () => {};
           const waited = new Promise<void>((resolve) => {
-            cancel = clock.later(resolve, closeInterruptMs);
+            cancel = clock.later(resolve, nativeCloseWaitMs);
           });
           await Promise.race([live.adapter.interrupt().catch(() => {}), waited]);
           cancel();
           await closeSession(live, "closed");
         }),
-      );
+      ]);
       const failure = results.find((entry) => entry.status === "rejected");
       if (failure?.status === "rejected") throw failure.reason;
     },
@@ -593,18 +682,27 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
       };
     },
     async dispose() {
-      if (disposed) return;
+      if (disposal) return disposal;
       disposed = true;
       stopReaper();
       modelDiscovery.abort();
-      const results = await Promise.allSettled(
-        [...sessions.values()].map((live) => closeSession(live, "closed")),
-      );
-      sessions.clear();
-      listeners.clear();
-      await mcp.close();
-      const failure = results.find((entry) => entry.status === "rejected");
-      if (failure?.status === "rejected") throw failure.reason;
+      disposal = (async () => {
+        const pending = [...opening.values()];
+        for (const entry of pending) cancelOpening(entry.lifecycle);
+        const results = await Promise.allSettled([
+          ...pending.map(waitForOpeningClose),
+          // Do not await an overlapping cancelled open again without its deadline.
+          ...[...sessions.values()].flatMap((live) =>
+            pending.some((entry) => entry.lifecycle === live) ? [] : [closeSession(live, "closed")],
+          ),
+        ]);
+        sessions.clear();
+        listeners.clear();
+        await mcp.close();
+        const failure = results.find((entry) => entry.status === "rejected");
+        if (failure?.status === "rejected") throw failure.reason;
+      })();
+      return disposal;
     },
   };
 }

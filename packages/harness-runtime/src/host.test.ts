@@ -8,7 +8,7 @@ import type {
 import type { TurnContext, WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
 
 import type { AdapterContext, NativeAdapter } from "./adapters/types.ts";
-import { createHarnessHost, type ConnectNative } from "./host.ts";
+import { createHarnessHost, type ConnectNative, type HostClock } from "./host.ts";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { afterEach, beforeEach, expect, test } from "bun:test";
@@ -95,15 +95,18 @@ async function host(
     interruptGraceMs?: number;
     calls?: WorkspaceApiRequest[];
     steer?: boolean;
+    connect?: ConnectNative;
+    clock?: HostClock;
   } = {},
 ) {
   const native = fakeNative(options.steer);
   const events: HarnessEvent[] = [];
   const created = await createHarnessHost({
     accountDirectory: root,
-    connect: native.connect,
+    connect: options.connect ?? native.connect,
     keepAliveMs: options.keepAliveMs,
     interruptGraceMs: options.interruptGraceMs,
+    clock: options.clock,
     workspaceProxy: async (call) => {
       options.calls?.push(call);
       return { success: true, data: { items: [], nextCursor: null } };
@@ -425,3 +428,408 @@ test("an interrupt the harness never confirms still ends the turn as interrupted
     await f.host.dispose();
   }
 });
+
+test("reopen waits for disconnect and repeated closes share terminal cleanup", async () => {
+  const native = fakeNative();
+  const disconnecting = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  let disconnects = 0;
+  const f = await host({
+    connect: async (...args) => {
+      const adapter = await native.connect(...args);
+      return {
+        ...adapter,
+        disconnect: async () => {
+          disconnects++;
+          disconnecting.resolve();
+          await release.promise;
+          await adapter.disconnect();
+        },
+      };
+    },
+  });
+  try {
+    await f.host.execute(open);
+    await f.host.execute(turn);
+    const closing = f.host.execute({ ...open, type: "close" });
+    await disconnecting.promise;
+    const again = f.host.execute({ ...open, type: "close" });
+    const reopened = f.host.execute(open);
+    await Bun.sleep(0);
+    expect(native.state.resumes).toHaveLength(1);
+    expect(f.events.filter((event) => event.type === "session.closed")).toHaveLength(0);
+    release.resolve();
+    await Promise.all([closing, again, reopened]);
+    expect(disconnects).toBe(1);
+    expect(native.state.resumes).toHaveLength(2);
+    expect(f.events.map((event) => event.type)).toEqual([
+      "turn.started",
+      "turn.completed",
+      "session.closed",
+    ]);
+  } finally {
+    release.resolve();
+    await f.host.dispose();
+  }
+});
+
+test("close cancels a pending open and revokes its MCP lease", async () => {
+  const native = fakeNative();
+  const connecting = Promise.withResolvers<AdapterContext>();
+  const release = Promise.withResolvers<void>();
+  let disconnected = false;
+  const f = await host({
+    connect: async (...args) => {
+      connecting.resolve(args[1]);
+      await release.promise;
+      const adapter = await native.connect(...args);
+      return {
+        ...adapter,
+        disconnect: async () => {
+          disconnected = true;
+        },
+      };
+    },
+  });
+  try {
+    const opened = f.host.execute(open);
+    const outcome = opened.catch((error: Error) => error);
+    const adapterContext = await connecting.promise;
+    const closing = f.host.execute({ ...open, type: "close" });
+    const lease = adapterContext.lease!;
+    const response = await fetch(lease.url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${lease.token}` },
+      body: "{}",
+    });
+    release.resolve();
+    expect(response.status).toBe(401);
+    expect(await outcome).toMatchObject({ code: "not-connected" });
+    await closing;
+    expect(disconnected).toBe(true);
+    expect(closedEvents(f.events)).toEqual([["session-a", "closed"]]);
+  } finally {
+    release.resolve();
+    await f.host.dispose();
+  }
+});
+
+test("concurrent disposals wait for pending opens and their native cleanup", async () => {
+  const native = fakeNative();
+  const connecting = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  let disconnected = false;
+  const f = await host({
+    connect: async (...args) => {
+      connecting.resolve();
+      await release.promise;
+      const adapter = await native.connect(...args);
+      return {
+        ...adapter,
+        disconnect: async () => {
+          disconnected = true;
+        },
+      };
+    },
+  });
+  const opened = f.host.execute(open);
+  const outcome = opened.catch((error: Error) => error);
+  await connecting.promise;
+  let disposed = 0;
+  const first = f.host.dispose().then(() => {
+    disposed++;
+  });
+  const second = f.host.dispose().then(() => {
+    disposed++;
+  });
+  await Bun.sleep(0);
+  const beforeRelease = disposed;
+  release.resolve();
+  await Promise.all([first, second]);
+  expect(await outcome).toMatchObject({ code: "disposed" });
+  expect(beforeRelease).toBe(0);
+  expect(disconnected).toBe(true);
+  expect(disposed).toBe(2);
+  expect(closedEvents(f.events)).toEqual([["session-a", "closed"]]);
+});
+
+test("a failed disconnect still ends its turn, revokes MCP and allows a fresh open", async () => {
+  const native = fakeNative();
+  let fail = true;
+  const f = await host({
+    connect: async (...args) => {
+      const adapter = await native.connect(...args);
+      return {
+        ...adapter,
+        disconnect: async () => {
+          if (fail) throw new Error("disconnect failed");
+          await adapter.disconnect();
+        },
+      };
+    },
+  });
+  try {
+    await f.host.execute(open);
+    await f.host.execute(turn);
+    const lease = native.state.context!.lease!;
+    await expect(f.host.execute({ ...open, type: "close" })).rejects.toThrow("disconnect failed");
+    expect(f.events.map((event) => event.type)).toEqual([
+      "turn.started",
+      "turn.completed",
+      "session.closed",
+    ]);
+    expect(f.events[1]).toMatchObject({ turnId, result: { status: "failed" } });
+    const response = await fetch(lease.url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${lease.token}` },
+      body: "{}",
+    });
+    expect(response.status).toBe(401);
+    fail = false;
+    await f.host.execute(open);
+    await f.host.execute(turn);
+    native.state.finish!({ status: "completed" });
+    await Bun.sleep(0);
+    expect(f.events.filter((event) => event.type === "turn.completed")).toHaveLength(2);
+  } finally {
+    fail = false;
+    await f.host.dispose();
+  }
+});
+
+test("closeOrganization cancels its pending opens without closing another organization", async () => {
+  const native = fakeNative();
+  const connecting = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  const f = await host({
+    connect: async (...args) => {
+      if (args[1].directory.includes("org-a")) {
+        connecting.resolve();
+        await release.promise;
+      }
+      return native.connect(...args);
+    },
+  });
+  try {
+    await f.host.configure({ organizationId: "org-b", agents: [agent()] });
+    await f.host.execute({ ...open, organizationId: "org-b", sessionId: "session-b" });
+    const outcome = f.host.execute(open).catch((error: Error) => error);
+    await connecting.promise;
+    const closing = f.host.closeOrganization("org-a");
+    release.resolve();
+    expect(await outcome).toMatchObject({ code: "not-connected" });
+    await closing;
+    expect(closedEvents(f.events)).toEqual([["session-a", "closed"]]);
+    await f.host.execute({ ...turn, organizationId: "org-b", sessionId: "session-b" });
+    expect(f.events.at(-1)).toMatchObject({
+      type: "turn.started",
+      organizationId: "org-b",
+      sessionId: "session-b",
+      turnId,
+      generation: 1,
+    });
+  } finally {
+    release.resolve();
+    await f.host.dispose();
+  }
+});
+
+for (const action of ["close", "organization", "dispose"] as const) {
+  test(`${action} reports a disconnect failure after cancelling a pending open`, async () => {
+    const native = fakeNative();
+    const connecting = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const f = await host({
+      connect: async (...args) => {
+        connecting.resolve();
+        await release.promise;
+        const adapter = await native.connect(...args);
+        return {
+          ...adapter,
+          disconnect: async () => {
+            throw new Error("pending disconnect failed");
+          },
+        };
+      },
+    });
+    try {
+      const opened = f.host.execute(open).catch((error: Error) => error);
+      await connecting.promise;
+      let closing: Promise<void>;
+      if (action === "close") closing = f.host.execute({ ...open, type: "close" });
+      else if (action === "organization") closing = f.host.closeOrganization("org-a");
+      else closing = f.host.dispose();
+      const closed = closing.catch((error: Error) => error);
+      release.resolve();
+      expect(await closed).toMatchObject({ message: "pending disconnect failed" });
+      expect(await opened).toMatchObject({ message: "pending disconnect failed" });
+      expect(closedEvents(f.events)).toEqual([["session-a", "closed"]]);
+    } finally {
+      release.resolve();
+      await f.host.dispose().catch(() => {});
+    }
+  });
+}
+
+function manualClock() {
+  let now = 0;
+  const timers = new Map<() => void, number>();
+  const clock: HostClock = {
+    now: () => now,
+    later(callback, milliseconds) {
+      timers.set(callback, now + milliseconds);
+      return () => {
+        timers.delete(callback);
+      };
+    },
+  };
+  return {
+    clock,
+    advance(milliseconds: number) {
+      now += milliseconds;
+      for (const [callback, due] of timers) {
+        if (due > now) continue;
+        timers.delete(callback);
+        callback();
+      }
+    },
+  };
+}
+
+for (const action of ["close", "organization", "dispose"] as const) {
+  test(`${action} bounds a stuck pending open and cleans up its late adapter`, async () => {
+    const native = fakeNative();
+    const clock = manualClock();
+    const connecting = Promise.withResolvers<AdapterContext>();
+    const release = Promise.withResolvers<void>();
+    let disconnected = false;
+    const f = await host({
+      clock: clock.clock,
+      connect: async (...args) => {
+        connecting.resolve(args[1]);
+        await release.promise;
+        const adapter = await native.connect(...args);
+        return {
+          ...adapter,
+          disconnect: async () => {
+            disconnected = true;
+          },
+        };
+      },
+    });
+    try {
+      const opened = f.host.execute(open).catch((error: Error) => error);
+      const adapterContext = await connecting.promise;
+      let closing: Promise<void>;
+      if (action === "close") closing = f.host.execute({ ...open, type: "close" });
+      else if (action === "organization") closing = f.host.closeOrganization("org-a");
+      else closing = f.host.dispose();
+      let finished = false;
+      const outcome = closing
+        .catch((error: Error) => error)
+        .then((result) => {
+          finished = true;
+          return result;
+        });
+      clock.advance(1_999);
+      await Bun.sleep(0);
+      expect(finished).toBe(false);
+      clock.advance(1);
+      await Bun.sleep(0);
+      expect(finished).toBe(true);
+      expect(await outcome).toMatchObject({ code: "request-timeout" });
+      expect(disconnected).toBe(false);
+      if (action !== "dispose") {
+        const lease = adapterContext.lease!;
+        const response = await fetch(lease.url, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${lease.token}` },
+          body: "{}",
+        });
+        expect(response.status).toBe(401);
+      }
+      release.resolve();
+      expect(await opened).toMatchObject({
+        code: action === "dispose" ? "disposed" : "not-connected",
+      });
+      expect(disconnected).toBe(true);
+      await expect(f.host.execute(turn)).rejects.toMatchObject({
+        code: action === "dispose" ? "disposed" : "not-connected",
+      });
+    } finally {
+      release.resolve();
+      const cleanup = f.host.dispose().catch(() => {});
+      clock.advance(2_000);
+      await cleanup;
+    }
+  });
+}
+
+for (const action of ["close", "organization", "dispose"] as const) {
+  for (const failure of [false, true]) {
+    test(`${action} handles overlapping pending-open cleanup with ${failure ? "disconnect failure" : "timeout"}`, async () => {
+      const native = fakeNative();
+      const clock = manualClock();
+      const connecting = Promise.withResolvers<void>();
+      const releaseConnect = Promise.withResolvers<void>();
+      const disconnecting = Promise.withResolvers<void>();
+      const releaseDisconnect = Promise.withResolvers<void>();
+      const f = await host({
+        clock: clock.clock,
+        connect: async (...args) => {
+          connecting.resolve();
+          await releaseConnect.promise;
+          const adapter = await native.connect(...args);
+          return {
+            ...adapter,
+            disconnect: async () => {
+              disconnecting.resolve();
+              await releaseDisconnect.promise;
+            },
+          };
+        },
+      });
+      try {
+        const opened = f.host.execute(open).catch((error: Error) => error);
+        await connecting.promise;
+        const firstClose = f.host
+          .execute({ ...open, type: "close" })
+          .catch((error: Error) => error);
+        releaseConnect.resolve();
+        await disconnecting.promise;
+        let closing: Promise<void>;
+        if (action === "close") closing = f.host.execute({ ...open, type: "close" });
+        else if (action === "organization") closing = f.host.closeOrganization("org-a");
+        else closing = f.host.dispose();
+        let finished = false;
+        const outcome = closing
+          .catch((error: Error) => error)
+          .then((result) => {
+            finished = true;
+            return result;
+          });
+        if (failure) releaseDisconnect.reject(new Error("overlap disconnect failed"));
+        else clock.advance(2_000);
+        await Bun.sleep(0);
+        expect(finished).toBe(true);
+        const expected = failure
+          ? { message: "overlap disconnect failed" }
+          : { code: "request-timeout" };
+        expect(await outcome).toMatchObject(expected);
+        expect(await firstClose).toMatchObject(expected);
+        releaseDisconnect.resolve();
+        const openError = { code: action === "dispose" ? "disposed" : "not-connected" };
+        expect(await opened).toMatchObject(failure ? expected : openError);
+        await expect(f.host.execute(turn)).rejects.toMatchObject({
+          code: action === "dispose" ? "disposed" : "not-connected",
+        });
+      } finally {
+        releaseConnect.resolve();
+        releaseDisconnect.resolve();
+        const cleanup = f.host.dispose().catch(() => {});
+        clock.advance(2_000);
+        await cleanup;
+      }
+    });
+  }
+}
