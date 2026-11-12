@@ -107,6 +107,8 @@ export function TaskDetail({
         )}
       >
         <TaskDiscussion
+          conversationId={task.discussionConversationId ?? null}
+          visible={visible}
           organizationId={organizationId}
           projectEntityId={detail.project.entityId}
           taskEntityId={task.entityId}

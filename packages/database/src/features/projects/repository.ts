@@ -16,6 +16,7 @@ import { entityGrants } from "../../core/permissions/schema";
 import { RepositoryContext, type PermissionLevel } from "../../core/repository-context";
 import { requiredText } from "../../core/validation";
 import { AccessDeniedError, ValidationError } from "../../errors";
+import { messagingConversations } from "../messaging/schema";
 import { workHint } from "../realtime/routing";
 import { liveProjectTasks } from "../tasks/access";
 import { requireUnassignedProjectActor } from "../tasks/assignment";
@@ -167,7 +168,7 @@ export function projectRepository(context: RepositoryContext) {
     return db
       .select({
         items: sql<
-          Pick<
+          (Pick<
             typeof tasks.$inferSelect,
             | "entityId"
             | "projectEntityId"
@@ -178,7 +179,7 @@ export function projectRepository(context: RepositoryContext) {
             | "priority"
             | "assigneeActorEntityId"
             | "dueDate"
-          >[]
+          > & { discussionConversationId: string | null })[]
         >`coalesce(json_agg(json_build_object(${jsonObject({
           entityId: tasks.entityId,
           projectEntityId: tasks.projectEntityId,
@@ -189,9 +190,17 @@ export function projectRepository(context: RepositoryContext) {
           priority: tasks.priority,
           assigneeActorEntityId: tasks.assigneeActorEntityId,
           dueDate: tasks.dueDate,
+          discussionConversationId: messagingConversations.id,
         })}) ORDER BY ${tasks.entityId}), '[]'::json)`,
       })
       .from(tasks)
+      .leftJoin(
+        messagingConversations,
+        and(
+          eq(messagingConversations.organizationId, tasks.organizationId),
+          eq(messagingConversations.taskEntityId, tasks.entityId),
+        ),
+      )
       .where(liveProjectTasks(scope, projectEntityId));
   }
   // Each list is aggregated on its own, so one list's rows never multiply another's.

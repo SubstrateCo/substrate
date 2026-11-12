@@ -15,6 +15,21 @@ import { drizzle } from "drizzle-orm/postgres-js";
 
 const f = setupDatabase();
 
+test("project tasks expose only their own existing discussion without creating one", async () => {
+  const alice = f.forActor(f.alice);
+  const project = await alice.projects.create({ name: "Discussions" });
+  const first = await alice.tasks.create({ projectEntityId: project.entityId, title: "First" });
+  const second = await alice.tasks.create({ projectEntityId: project.entityId, title: "Second" });
+  const discussionId = await alice.tasks.ensureDiscussion(first.entityId);
+  const detail = await alice.projects.getDetail(project.entityId);
+  expect(
+    detail.tasks.find((task) => task.entityId === first.entityId)?.discussionConversationId,
+  ).toBe(discussionId);
+  expect(
+    detail.tasks.find((task) => task.entityId === second.entityId)?.discussionConversationId,
+  ).toBeNull();
+});
+
 test("project members and available actors join current names and private pictures", async () => {
   const agent = await ownedAgent(f);
   const alice = f.forActor(f.alice);
@@ -128,6 +143,7 @@ test("project detail preserves protected output in one SELECT statement", async 
     priority: "high",
     assigneeActorEntityId: f.alice,
     dueDate: "2026-12-01",
+    discussionConversationId: null,
   });
   expect(actual.actors.map((actor) => actor.entityId)).toEqual([f.alice, f.bob]);
   expect(actual.members).toEqual([

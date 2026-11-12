@@ -33,7 +33,7 @@ test("task discussion opens shared messaging and links back to its task", async 
   const sender = await client(actors.sender);
   await visit(sender, undefined, "/tasks", { projectId: created.id, taskId: target.id });
   const details = sender.page.getByRole("region", { name: "Task details", exact: true });
-  const entry = details.getByRole("link", { name: "Discussion", exact: true });
+  const entry = details.getByRole("link", { name: "View full conversation", exact: true });
   await expect(entry).toBeVisible();
   await expect(details.getByRole("textbox")).toHaveCount(0);
   await expect(details.getByRole("region", { name: "Task comments", exact: true })).toHaveCount(0);
@@ -65,6 +65,11 @@ test("task discussion opens shared messaging and links back to its task", async 
   }
   await backlink.click();
   await expect(details.getByRole("heading", { name: title, exact: true })).toBeVisible();
+  await expect(
+    details
+      .getByRole("region", { name: "Discussion", exact: true })
+      .getByText(body, { exact: true }),
+  ).toBeVisible();
   expect(new URL(sender.page.url()).searchParams.get("projectId")).toBe(created.id);
   expect(new URL(sender.page.url()).searchParams.get("taskId")).toBe(target.id);
   await entry.click();
@@ -82,12 +87,12 @@ test("a view-only task discussion cannot send, and revocation clears its open me
   const target = await task(actors.sender, created.entityId, title);
   const [sender, member] = await Promise.all([client(actors.sender), client(actors.member)]);
   await visit(sender, undefined, "/tasks", { projectId: created.entityId, taskId: target.id });
-  await sender.page.getByRole("link", { name: "Discussion", exact: true }).click();
+  await sender.page.getByRole("link", { name: "View full conversation", exact: true }).click();
   const body = `Private release notes ${target.id}`;
   await send(sender.page, body);
   await expect(sender.page.getByText(body, { exact: true })).toBeVisible();
   await visit(member, undefined, "/tasks", { projectId: created.entityId, taskId: target.id });
-  await member.page.getByRole("link", { name: "Discussion", exact: true }).click();
+  await member.page.getByRole("link", { name: "View full conversation", exact: true }).click();
   await expect(member.page.getByText(body, { exact: true })).toBeVisible();
   await expect(
     member.page.getByText(
@@ -151,7 +156,7 @@ test("task discussion mentions notify people and backlink referenced tasks throu
     visit(sender, undefined, "/tasks", { projectId: created.entityId, taskId: source.id }),
     visit(member, undefined, "/notifications"),
   ]);
-  await sender.page.getByRole("link", { name: "Discussion", exact: true }).click();
+  await sender.page.getByRole("link", { name: "View full conversation", exact: true }).click();
   const editor = sender.page.getByRole("textbox", { name: /^Message / });
   await expect(editor).toBeVisible();
   const conversationId = new URL(sender.page.url()).searchParams.get("conversationId")!;

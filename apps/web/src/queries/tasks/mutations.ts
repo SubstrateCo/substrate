@@ -13,7 +13,12 @@ export function useTaskDiscussion() {
     mutationFn: (data: Parameters<typeof openTaskDiscussion>[0]["data"]) =>
       openTaskDiscussion({ data }),
     onSuccess: (_result, input) =>
-      client.invalidateQueries({ queryKey: queryKeys.conversations(input.organizationId) }),
+      Promise.all([
+        client.invalidateQueries({ queryKey: queryKeys.conversations(input.organizationId) }),
+        client.invalidateQueries({
+          queryKey: queryKeys.project(input.organizationId, input.projectEntityId),
+        }),
+      ]),
   });
 }
 

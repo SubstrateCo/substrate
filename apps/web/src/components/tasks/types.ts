@@ -31,8 +31,12 @@ export interface Task {
   priority: "none" | "low" | "medium" | "high" | "urgent";
   assigneeActorEntityId: string | null;
   dueDate: string | null;
+  discussionConversationId?: string | null;
 }
-export type TaskDraft = Omit<Task, "entityId" | "projectEntityId" | "parentTaskEntityId">;
+export type TaskDraft = Omit<
+  Task,
+  "entityId" | "projectEntityId" | "parentTaskEntityId" | "discussionConversationId"
+>;
 export interface ProjectDetail {
   project: Project;
   level: ProjectPermission;

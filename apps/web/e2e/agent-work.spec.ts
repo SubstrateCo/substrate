@@ -115,7 +115,7 @@ test("agent messages and task activity retain attribution and source links", asy
     body: "Agent investigation notes",
     to: { conversationId: discussion.conversationId },
   });
-  await user.page.getByRole("link", { name: "Discussion", exact: true }).click();
+  await user.page.getByRole("link", { name: "View full conversation", exact: true }).click();
   const notes = user.page.getByRole("article").filter({ hasText: "Agent investigation notes" });
   await expect(notes.getByText(agent.name, { exact: true })).toBeVisible();
   await expect(notes.getByText("Agent", { exact: true })).toBeVisible();

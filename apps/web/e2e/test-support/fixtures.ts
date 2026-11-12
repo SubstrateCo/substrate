@@ -2,7 +2,7 @@ import type { contextSourceTask } from "@substrate/contracts/context/input";
 import type { conversationInput, messageInput } from "@substrate/contracts/messaging/input";
 import { realtimeEvent, type RealtimeEvent } from "@substrate/contracts/realtime";
 import type { ServiceResult } from "@substrate/contracts/result";
-import type { TasksWrite } from "@substrate/contracts/tasks/input";
+import type { taskRequest, TasksWrite } from "@substrate/contracts/tasks/input";
 
 import { provisionVerifiedAccount } from "../../../server/integration/test-support/auth";
 import { Mailpit } from "../../../server/integration/test-support/mailpit";
@@ -313,8 +313,13 @@ export async function post<T>(
     | "messaging/conversations"
     | "messaging/messages"
     | "tasks/mutations"
+    | "tasks/discussion"
     | "context/source-tasks",
-  data: MessagingInput | TasksWrite | z.input<typeof contextSourceTask>,
+  data:
+    | MessagingInput
+    | TasksWrite
+    | z.input<typeof contextSourceTask>
+    | z.input<typeof taskRequest>,
 ) {
   const response = await actor.request.post(`/api/v1/${path}`, {
     data: { organizationId: actor.organizationId, ...data },

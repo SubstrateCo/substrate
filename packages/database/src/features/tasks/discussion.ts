@@ -3,6 +3,7 @@ import { userAgents } from "../../core/actors/user-agents.schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError } from "../../errors";
 import { messagingConversations } from "../messaging/schema";
+import { workHint } from "../realtime/routing";
 import { taskRepository } from "./repository";
 import { eq, sql } from "drizzle-orm";
 
@@ -36,6 +37,7 @@ export function ensureTaskDiscussion(
         createdBy: creator.userId,
       })
       .returning();
+    ctx.effects.hint(workHint(ctx.scope.organizationId, task.projectEntityId, [taskId]));
     return created!.id;
   });
 }

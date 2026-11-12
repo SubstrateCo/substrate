@@ -190,8 +190,8 @@ test("assignment notifies a project member, whose discussion message reaches the
       .getByRole("region", { name: "Task details", exact: true })
       .getByRole("heading", { name: title, exact: true }),
   ).toBeVisible();
-  await member.page.getByRole("link", { name: "Discussion", exact: true }).click();
-  await sender.page.getByRole("link", { name: "Discussion", exact: true }).click();
+  await member.page.getByRole("link", { name: "View full conversation", exact: true }).click();
+  await sender.page.getByRole("link", { name: "View full conversation", exact: true }).click();
   await expect(member.page.getByRole("textbox", { name: /^Message / })).toBeVisible();
   await expect(sender.page.getByRole("textbox", { name: /^Message / })).toBeVisible();
   const conversationId = new URL(member.page.url()).searchParams.get("conversationId")!;
