@@ -3,7 +3,7 @@ import { AccessDeniedError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
 import { readOperations } from "./read-state";
-import { messagingParticipants } from "./schema";
+import { messagingMessages, messagingParticipants } from "./schema";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -32,6 +32,25 @@ test("read positions persist, exclude own messages, and never move backwards", a
   await mark(conversation.id, first.id);
   expect(await reads().unreadCounts()).toEqual([]);
   await alice.sendMessage(conversation.id, "new");
+  expect(await reads().unreadCounts()).toEqual([
+    { conversationId: conversation.id, unreadCount: 1 },
+  ]);
+});
+
+test("a message at the read position's time counts when it sorts after the read message", async () => {
+  await f.verifyEmails();
+  const alice = f.messaging("alice");
+  const conversation = await alice.createConversation({ kind: "dm", emails: ["bob@example.com"] });
+  const sent = [
+    await alice.sendMessage(conversation.id, "one"),
+    await alice.sendMessage(conversation.id, "two"),
+  ].sort((a, b) => (a.id < b.id ? -1 : 1));
+  const at = new Date("2026-01-01T00:00:00Z");
+  await f.db
+    .update(messagingMessages)
+    .set({ createdAt: at })
+    .where(eq(messagingMessages.conversationId, conversation.id));
+  await mark(conversation.id, sent[0]!.id);
   expect(await reads().unreadCounts()).toEqual([
     { conversationId: conversation.id, unreadCount: 1 },
   ]);

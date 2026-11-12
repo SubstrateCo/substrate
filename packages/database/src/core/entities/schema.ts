@@ -61,7 +61,6 @@ export const entities = pgTable(
       columns: [table.organizationId, table.accessEntityId],
       foreignColumns: [table.organizationId, table.entityId],
     }),
-    index("entities_organization_type_idx").on(table.organizationId, table.entityType),
     index("entities_organization_access_idx").on(table.organizationId, table.accessEntityId),
   ],
 );

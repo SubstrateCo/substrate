@@ -49,6 +49,12 @@ export function readOperations(db: DatabaseExecutor, scope: Readonly<SessionIden
             WHERE author.entity_id = ${messagingMessages.authorActorEntityId}
               AND author.user_id = ${scope.userId})`,
             isNull(messagingMessages.deletedAt),
+            // Bounds the message index scan to unread rows. The joined read position cannot,
+            // because it is on the nullable side of the left join. The row comparison is exact.
+            sql`${messagingMessages.createdAt} >= coalesce((SELECT bound.message_created_at
+              FROM ${messagingReadPositions} bound
+              WHERE bound.conversation_id = ${messagingConversations.id}
+                AND bound.actor_entity_id = ${actor.entityId}), '-infinity'::timestamptz)`,
             sql`(${messagingReadPositions.messageCreatedAt} IS NULL OR
             (${messagingMessages.createdAt}, ${messagingMessages.id}) >
             (${messagingReadPositions.messageCreatedAt}, ${messagingReadPositions.messageId}))`,
