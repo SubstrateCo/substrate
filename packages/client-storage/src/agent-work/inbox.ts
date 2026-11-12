@@ -1,4 +1,5 @@
 import {
+  inboxItemMachine,
   sessionKeys,
   type InboxLane,
   type InboxSource,
@@ -10,6 +11,7 @@ import {
 import type { LocalTransaction, RunTransaction } from "../database.ts";
 import { inbox, sessions, turns } from "../schema/index.ts";
 import { appendEvents, type NewTurnEvent } from "./events.ts";
+import { inStates } from "./machine-sql.ts";
 import { settleUncertainTurn } from "./uncertain.ts";
 import { and, eq, inArray, isNull, lte, sql } from "drizzle-orm";
 
@@ -113,17 +115,20 @@ export async function insertItem(tx: LocalTransaction, item: NewInboxItem, now: 
   return row;
 }
 
+export type InboxEvent = keyof typeof inboxItemMachine.events;
+
+/** Fires the event for the items that are still in one of its from states. */
 export async function setItemStatus(
   tx: LocalTransaction,
   ids: string[],
-  status: InboxStatus,
-  extra: Partial<Pick<InboxRow, "reason" | "held" | "turnId">> = {},
+  event: InboxEvent,
+  extra: Partial<Pick<InboxRow, "reason" | "held" | "turnId" | "steered">> = {},
 ) {
   if (ids.length)
     await tx
       .update(inbox)
-      .set({ status, ...extra })
-      .where(inArray(inbox.id, ids));
+      .set({ status: inboxItemMachine.events[event].to, ...extra })
+      .where(and(inArray(inbox.id, ids), inStates(inbox.status, inboxItemMachine.from(event))));
 }
 
 /** Live turns that can take steered input. A stopping turn is ending. */
@@ -207,8 +212,8 @@ export function inboxRepository(run: RunTransaction) {
         if (!turn || !steerableTurnStatuses.includes(turn.status)) return false;
         const updated = await tx
           .update(inbox)
-          .set({ status: "submitted", steered: true, held: false, turnId })
-          .where(and(eq(inbox.id, id), inArray(inbox.status, claimableStatuses)))
+          .set({ status: inboxItemMachine.events.submit.to, steered: true, held: false, turnId })
+          .where(and(eq(inbox.id, id), inStates(inbox.status, inboxItemMachine.from("submit"))))
           .returning({ id: inbox.id });
         return updated.length > 0;
       }),
@@ -217,13 +222,18 @@ export function inboxRepository(run: RunTransaction) {
       run(async (tx) => {
         await tx
           .update(inbox)
-          .set({ status: "pending", steered: false, turnId: null, reason: null })
+          .set({
+            status: inboxItemMachine.events.revertSteer.to,
+            steered: false,
+            turnId: null,
+            reason: null,
+          })
           .where(
             and(
               eq(inbox.id, id),
               eq(inbox.turnId, turnId),
               eq(inbox.steered, true),
-              inArray(inbox.status, ["submitted", "uncertain"]),
+              inStates(inbox.status, inboxItemMachine.from("revertSteer")),
             ),
           );
         await settleUncertainTurn(tx, turnId, now);
@@ -236,13 +246,17 @@ export function inboxRepository(run: RunTransaction) {
       run((tx) =>
         tx
           .update(inbox)
-          .set({ status: "uncertain", held: false, reason: "steer_unconfirmed" })
+          .set({
+            status: inboxItemMachine.events.unconfirm.to,
+            held: false,
+            reason: "steer_unconfirmed",
+          })
           .where(
             and(
               eq(inbox.id, id),
               eq(inbox.turnId, turnId),
               eq(inbox.steered, true),
-              eq(inbox.status, "submitted"),
+              inStates(inbox.status, inboxItemMachine.from("unconfirm")),
             ),
           ),
       ),
@@ -262,12 +276,12 @@ export function inboxRepository(run: RunTransaction) {
       run(async (tx) => {
         await tx
           .update(inbox)
-          .set({ status: "consumed", reason: null })
+          .set({ status: inboxItemMachine.events.consume.to, reason: null })
           .where(
             and(
               eq(inbox.id, inputId),
               eq(inbox.turnId, turnId),
-              inArray(inbox.status, ["submitted", "uncertain"]),
+              inStates(inbox.status, inboxItemMachine.from("consume")),
             ),
           );
         await settleUncertainTurn(tx, turnId, now);
@@ -280,7 +294,7 @@ export function inboxRepository(run: RunTransaction) {
         await tx
           .update(inbox)
           .set({
-            status: "pending",
+            status: inboxItemMachine.events.resend.to,
             steered: false,
             held: false,
             turnId: null,
@@ -288,7 +302,7 @@ export function inboxRepository(run: RunTransaction) {
             availableAt: now,
             deadlineAt: now,
           })
-          .where(eq(inbox.id, id));
+          .where(and(eq(inbox.id, id), inStates(inbox.status, inboxItemMachine.from("resend"))));
         if (row.turnId) await settleUncertainTurn(tx, row.turnId, now);
         return row;
       }),
@@ -296,7 +310,7 @@ export function inboxRepository(run: RunTransaction) {
     discard: (id: string, now: number) =>
       run(async (tx) => {
         const row = await uncertainItem(tx, id);
-        await setItemStatus(tx, [id], "dropped", { reason: "discarded", held: false });
+        await setItemStatus(tx, [id], "discard", { reason: "discarded", held: false });
         if (row.turnId) await settleUncertainTurn(tx, row.turnId, now);
         return row;
       }),
@@ -310,7 +324,7 @@ export function inboxRepository(run: RunTransaction) {
         await setItemStatus(
           tx,
           owned.map((row) => row.id),
-          "dropped",
+          "drop",
           { reason, held: false },
         );
       }),

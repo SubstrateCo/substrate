@@ -1,12 +1,14 @@
 import {
   parseSessionKey,
   sessionKeys,
+  sessionMachine,
   type AgentSessionKind,
 } from "@substrate/contracts/agent-work";
 import type { HarnessFolder, HarnessKind, TurnPlace } from "@substrate/contracts/harness";
 
 import type { LocalTransaction, RunTransaction } from "../database.ts";
 import { sessions } from "../schema/index.ts";
+import { inStates } from "./machine-sql.ts";
 import { and, eq, getTableColumns, inArray, isNotNull, isNull, ne, or } from "drizzle-orm";
 
 export type SessionRow = typeof sessions.$inferSelect;
@@ -77,6 +79,19 @@ export async function ensureSession(tx: LocalTransaction, input: EnsureSessionIn
 
 export async function sessionById(tx: LocalTransaction, id: string) {
   return tx.select().from(sessions).where(eq(sessions.id, id)).get();
+}
+
+/** Fires the session event, unless the session is in a state the event does not fire from. */
+export async function setSessionStatus(
+  tx: LocalTransaction,
+  id: string,
+  event: keyof typeof sessionMachine.events,
+  now: number,
+) {
+  await tx
+    .update(sessions)
+    .set({ status: sessionMachine.events[event].to, updatedAt: now })
+    .where(and(eq(sessions.id, id), inStates(sessions.status, sessionMachine.from(event))));
 }
 
 /** Starts the next epoch: a new native session and a new managed prefix. */

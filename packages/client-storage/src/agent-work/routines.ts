@@ -90,7 +90,7 @@ export function routineRepository(run: RunTransaction) {
           await setItemStatus(
             tx,
             pending.map((item) => item.id),
-            "dropped",
+            "drop",
             { reason: "routine_deleted" },
           );
         }
@@ -207,7 +207,7 @@ export function routineRepository(run: RunTransaction) {
           await setItemStatus(
             tx,
             older.map((row) => row.id),
-            "superseded",
+            "supersede",
           );
         await tx
           .update(routines)

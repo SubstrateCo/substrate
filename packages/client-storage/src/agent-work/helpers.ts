@@ -1,8 +1,9 @@
-import { maxLiveHelpers, sessionKeys } from "@substrate/contracts/agent-work";
+import { helperMachine, maxLiveHelpers, sessionKeys } from "@substrate/contracts/agent-work";
 
 import type { LocalTransaction, RunTransaction } from "../database.ts";
 import { helpers, inbox } from "../schema/index.ts";
 import { insertItem, localDedupeKeys, setItemStatus } from "./inbox.ts";
+import { inStates } from "./machine-sql.ts";
 import { ensureSession, sessionById } from "./sessions.ts";
 import { and, desc, eq } from "drizzle-orm";
 
@@ -46,14 +47,15 @@ async function queueHelperInput(
 async function endHelper(
   tx: LocalTransaction,
   helper: HelperRow,
-  status: "finished" | "failed" | "stopped",
+  event: keyof typeof helperMachine.events,
   report: string | null,
   now: number,
 ) {
+  const status = helperMachine.events[event].to;
   await tx
     .update(helpers)
     .set({ status, report, finishedAt: now })
-    .where(and(eq(helpers.id, helper.id), eq(helpers.status, "running")));
+    .where(and(eq(helpers.id, helper.id), inStates(helpers.status, helperMachine.from(event))));
   const pending = await tx
     .select({ id: inbox.id })
     .from(inbox)
@@ -62,7 +64,7 @@ async function endHelper(
   await setItemStatus(
     tx,
     pending.map((item) => item.id),
-    "dropped",
+    "drop",
     { reason: `helper_${status}` },
   );
 }
@@ -166,7 +168,7 @@ export function helperRepository(run: RunTransaction) {
         const helper = await helperBySession(tx, helperSessionId);
         if (!helper) throw new Error("Only helpers can finish.");
         if (helper.status !== "running") return helper;
-        await endHelper(tx, helper, report === null ? "failed" : "finished", report, now);
+        await endHelper(tx, helper, report === null ? "fail" : "finish", report, now);
         await insertItem(
           tx,
           {
@@ -186,7 +188,7 @@ export function helperRepository(run: RunTransaction) {
       run(async (tx) => {
         const helper = await tx.select().from(helpers).where(eq(helpers.id, helperId)).get();
         if (!helper) throw new Error("Helper not found.");
-        await endHelper(tx, helper, "stopped", helper.report, now);
+        await endHelper(tx, helper, "stop", helper.report, now);
         return (await tx.select().from(helpers).where(eq(helpers.id, helperId)).get())!;
       }),
   };

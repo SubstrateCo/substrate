@@ -1,6 +1,7 @@
 import {
   proposalAction,
   proposalActionHash,
+  requestMachine,
   responseMatchesPayload,
   type AgentRequestResponse,
   type ProposalOutcome,
@@ -12,8 +13,9 @@ import { effectsFor } from "../../core/effects";
 import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
+import { inStates } from "./machine-sql";
 import { runProposalAction } from "./proposals";
-import { answerableRequest, ownedRequests } from "./request-views";
+import { answerableBy, answerableRequest, ownedRequests } from "./request-views";
 import { agentRequests } from "./requests.schema";
 import { wakeForRequest } from "./wakes";
 import { and, eq, inArray, sql } from "drizzle-orm";
@@ -59,7 +61,7 @@ export function respondToRequest(
     const [resolved] = await tx
       .update(agentRequests)
       .set({
-        status: "resolved",
+        status: requestMachine.events.answer.to,
         response,
         resolvedAt: sql`now()`,
         resolvedByUserId: identity.userId,
@@ -86,12 +88,12 @@ export function declineProposal(
     const [resolved] = await tx
       .update(agentRequests)
       .set({
-        status: "resolved",
+        status: requestMachine.events.decline.to,
         outcome,
         resolvedAt: sql`now()`,
         resolvedByUserId: identity.userId,
       })
-      .where(and(eq(agentRequests.id, requestId), answerableRequest))
+      .where(and(eq(agentRequests.id, requestId), answerableBy("decline")))
       .returning();
     if (!resolved) throw new ConflictError(closed);
     await wakeForRequest(tx, resolved, "approval_result");
@@ -125,8 +127,12 @@ export function approveProposal(
     await requireOwnedRequest(tx, identity, requestId, ["proposal"]);
     const [claimed] = await tx
       .update(agentRequests)
-      .set({ status: "executing", resolvedAt: sql`now()`, resolvedByUserId: identity.userId })
-      .where(and(eq(agentRequests.id, requestId), answerableRequest))
+      .set({
+        status: requestMachine.events.approve.to,
+        resolvedAt: sql`now()`,
+        resolvedByUserId: identity.userId,
+      })
+      .where(and(eq(agentRequests.id, requestId), answerableBy("approve")))
       .returning();
     if (!claimed) throw new ConflictError(closed);
     let outcome: ProposalOutcome;
@@ -158,10 +164,16 @@ export function approveProposal(
         outcome = failure;
       }
     }
+    const ended = outcome.status === "executed" ? "execute" : "fail";
     const [finished] = await tx
       .update(agentRequests)
-      .set({ status: outcome.status === "executed" ? "executed" : "failed", outcome })
-      .where(eq(agentRequests.id, requestId))
+      .set({ status: requestMachine.events[ended].to, outcome })
+      .where(
+        and(
+          eq(agentRequests.id, requestId),
+          inStates(agentRequests.status, requestMachine.from(ended)),
+        ),
+      )
       .returning();
     await wakeForRequest(tx, finished!, "approval_result");
     effectsFor(tx).hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });

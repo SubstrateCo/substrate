@@ -1,14 +1,15 @@
-import type { TurnStatus } from "@substrate/contracts/agent-work";
+import { turnMachine } from "@substrate/contracts/agent-work";
 
 import type { LocalTransaction } from "../database.ts";
 import { inbox, turns } from "../schema/index.ts";
 import { appendEvents } from "./events.ts";
+import { inStates } from "./machine-sql.ts";
 import { and, eq } from "drizzle-orm";
 
-/** The status a turn had before uncertain input made it need the owner. */
-function settledStatus(turn: Pick<typeof turns.$inferSelect, "interruption">): TurnStatus {
-  if (turn.interruption === "stop") return "cancelled";
-  return turn.interruption ? "interrupted" : "completed";
+/** The event that ends the turn as it was before uncertain input made it need the owner. */
+function settledEvent(turn: Pick<typeof turns.$inferSelect, "interruption">) {
+  if (turn.interruption === "stop") return "settleCancelled";
+  return turn.interruption ? "settleInterrupted" : "settleCompleted";
 }
 
 /**
@@ -28,11 +29,12 @@ export async function settleUncertainTurn(tx: LocalTransaction, turnId: string, 
     (row) => row.status === "uncertain" || (row.status === "submitted" && !row.steered),
   );
   if (waiting) return;
-  const status = settledStatus(turn);
+  const event = settledEvent(turn);
+  const status = turnMachine.events[event].to;
   await tx
     .update(turns)
     .set({ status, attentionReason: null, finishedAt: now })
-    .where(and(eq(turns.id, turnId), eq(turns.status, "needs_attention")));
+    .where(and(eq(turns.id, turnId), inStates(turns.status, turnMachine.from(event))));
   await appendEvents(
     tx,
     turnId,

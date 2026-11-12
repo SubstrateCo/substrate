@@ -1,5 +1,6 @@
 import {
   blockingRequestTimeoutMs,
+  requestMachine,
   type AgentRequestDelivery,
   type AgentRequestOpened,
   type AgentRequestPayload,
@@ -11,6 +12,7 @@ import { effectsFor } from "../../core/effects";
 import { requireDevice, type DeviceIdentity } from "../../core/session/device";
 import { AccessDeniedError } from "../../errors";
 import { homedAgentIds, requireHomedAgent } from "./device";
+import { inStates } from "./machine-sql";
 import { requirePlace } from "./place";
 import { agentRequests } from "./requests.schema";
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
@@ -85,12 +87,13 @@ export function openRequest(
   });
 }
 
+// The request machine event behind each status the desktop reports.
 const closable = {
-  delivered: ["resolved"],
-  cancelled: ["pending"],
-  expired: ["pending"],
-  orphaned: ["pending", "resolved"],
-} as const;
+  delivered: "deliver",
+  cancelled: "cancel",
+  expired: "expire",
+  orphaned: "orphan",
+} as const satisfies Record<string, keyof typeof requestMachine.events>;
 
 /**
  * The desktop reports what happened to a request after the owner answered it or its native
@@ -109,18 +112,20 @@ export function closeRequest(
       .from(agentRequests)
       .where(and(eq(agentRequests.id, requestId), deviceRequests(tx, identity, device.id)));
     if (!request) throw new AccessDeniedError();
+    const event = closable[status];
+    const to = requestMachine.events[event].to;
     const changed = await tx
       .update(agentRequests)
       .set(
-        status === "delivered"
-          ? { status, deliveredAt: sql`now()` }
-          : { status, resolvedAt: sql`coalesce(${agentRequests.resolvedAt}, now())` },
+        to === "delivered"
+          ? { status: to, deliveredAt: sql`now()` }
+          : { status: to, resolvedAt: sql`coalesce(${agentRequests.resolvedAt}, now())` },
       )
       .where(
         and(
           eq(agentRequests.id, requestId),
           eq(agentRequests.mode, "blocking"),
-          inArray(agentRequests.status, [...closable[status]]),
+          inStates(agentRequests.status, requestMachine.from(event)),
         ),
       )
       .returning({ id: agentRequests.id });

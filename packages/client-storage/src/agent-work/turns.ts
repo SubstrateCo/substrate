@@ -1,7 +1,10 @@
 import {
+  inboxItemMachine,
   inboxLaneAgingMs,
   inboxLanes,
   liveTurnStatuses,
+  sessionMachine,
+  turnMachine,
   type InboxSource,
   type TurnAttentionReason,
   type TurnOutcome,
@@ -20,7 +23,14 @@ import {
   setItemStatus,
   type InboxRow,
 } from "./inbox.ts";
-import { folderKey, rotateEpoch, sessionById, type SessionRow } from "./sessions.ts";
+import { inStates } from "./machine-sql.ts";
+import {
+  folderKey,
+  rotateEpoch,
+  sessionById,
+  setSessionStatus,
+  type SessionRow,
+} from "./sessions.ts";
 import { settleUncertainTurn } from "./uncertain.ts";
 import { and, desc, eq, inArray, lt, lte, ne, or } from "drizzle-orm";
 
@@ -213,19 +223,21 @@ async function claimTurns(
     await setItemStatus(
       tx,
       batch.map((item) => item.id),
-      "submitted",
+      "submit",
       { turnId: turn.id, held: false },
     );
-    await tx
-      .update(sessions)
-      .set({ status: "working", updatedAt: now })
-      .where(eq(sessions.id, group.session.id));
+    await setSessionStatus(tx, group.session.id, "work", now);
     busy.add(folder);
     free--;
     claimed.push({
       turn,
       session: group.session,
-      items: batch.map((item) => ({ ...item, status: "submitted", turnId: turn.id, held: false })),
+      items: batch.map((item) => ({
+        ...item,
+        status: inboxItemMachine.events.submit.to,
+        turnId: turn.id,
+        held: false,
+      })),
     });
   }
   return claimed;
@@ -247,6 +259,15 @@ export interface FinishTurnInput {
   /** Queues a recovery item so that the next turn of the session continues this turn's work. */
   resume?: string;
 }
+
+// The turn machine event that ends a live turn with each status.
+const finishEvents = {
+  completed: "complete",
+  cancelled: "cancel",
+  interrupted: "interrupt",
+  needs_attention: "needAttention",
+  failed: "fail",
+} as const satisfies Record<FinishTurnInput["status"], keyof typeof turnMachine.events>;
 
 /** A system item that resumes an ended turn's work in the next turn of its session. */
 async function queueResume(tx: LocalTransaction, turn: TurnRow, body: string, now: number) {
@@ -312,15 +333,12 @@ async function finishTurn(
     else if (queued.has(item.id)) settle.requeued.push(item.id);
     else settle.uncertain.push(item.id);
   }
-  await setItemStatus(tx, settle.consumed, "consumed");
-  if (settle.requeued.length)
-    await tx
-      .update(inbox)
-      .set({ status: "confirmed_unconsumed", steered: false, turnId: null })
-      .where(inArray(inbox.id, settle.requeued));
-  await setItemStatus(tx, settle.uncertain, "uncertain", { reason: "no_consumption_evidence" });
+  await setItemStatus(tx, settle.consumed, "consume");
+  await setItemStatus(tx, settle.requeued, "requeue", { steered: false, turnId: null });
+  await setItemStatus(tx, settle.uncertain, "unconfirm", { reason: "no_consumption_evidence" });
   const uncertain = Boolean(settle.uncertain.length) && input.status !== "needs_attention";
-  const status = uncertain ? "needs_attention" : input.status;
+  const event = uncertain ? "needAttention" : finishEvents[input.status];
+  const status = turnMachine.events[event].to;
   await tx
     .update(turns)
     .set({
@@ -331,7 +349,7 @@ async function finishTurn(
       finishedAt: now,
       usage: input.usage ?? turn.usage,
     })
-    .where(eq(turns.id, turnId));
+    .where(and(eq(turns.id, turnId), inStates(turns.status, turnMachine.from(event))));
   await appendEvents(
     tx,
     turnId,
@@ -341,14 +359,22 @@ async function finishTurn(
   if (input.resume) await queueResume(tx, turn, input.resume, now);
   const session = await sessionById(tx, turn.sessionId);
   if (session) {
+    // A closed session stays closed; it still counts the turn.
+    const rests = sessionMachine.canFire(session.status, "rest");
+    const changes: Partial<SessionRow> = {
+      epochTurns: session.epochTurns + (status === "completed" ? 1 : 0),
+      updatedAt: now,
+    };
+    if (rests) changes.status = sessionMachine.events.rest.to;
     await tx
       .update(sessions)
-      .set({
-        status: session.status === "closed" ? "closed" : "idle",
-        epochTurns: session.epochTurns + (status === "completed" ? 1 : 0),
-        updatedAt: now,
-      })
-      .where(eq(sessions.id, session.id));
+      .set(changes)
+      .where(
+        and(
+          eq(sessions.id, session.id),
+          rests ? inStates(sessions.status, sessionMachine.from("rest")) : undefined,
+        ),
+      );
     // A retried handoff turn ends again; the epoch it handed off already rotated.
     if (turn.handoff && session.epoch === turn.epoch) await rotateEpoch(tx, session.id, now);
   }
@@ -365,14 +391,22 @@ export type RecoveryDecision =
 async function requeueTurn(tx: LocalTransaction, turn: TurnRow, availableAt: number, now: number) {
   await tx
     .update(inbox)
-    .set({ status: "pending", turnId: null, availableAt, deadlineAt: availableAt })
-    .where(and(eq(inbox.turnId, turn.id), eq(inbox.status, "submitted"), eq(inbox.steered, false)));
+    .set({
+      status: inboxItemMachine.events.unclaim.to,
+      turnId: null,
+      availableAt,
+      deadlineAt: availableAt,
+    })
+    .where(
+      and(
+        eq(inbox.turnId, turn.id),
+        inStates(inbox.status, inboxItemMachine.from("unclaim")),
+        eq(inbox.steered, false),
+      ),
+    );
   await tx.delete(turnEvents).where(eq(turnEvents.turnId, turn.id));
   await tx.delete(turns).where(eq(turns.id, turn.id));
-  await tx
-    .update(sessions)
-    .set({ status: "idle", updatedAt: now })
-    .where(eq(sessions.id, turn.sessionId));
+  await setSessionStatus(tx, turn.sessionId, "rest", now);
 }
 
 /**
@@ -429,31 +463,32 @@ async function recoverTurn(
   await setItemStatus(
     tx,
     unconfirmed.map((item) => item.id),
-    "uncertain",
+    "interrupt",
     { reason: "interrupted" },
   );
   if (reason) {
     await tx
       .update(turns)
-      .set({ status: "needs_attention", attentionReason: reason, interruption: "app" })
-      .where(eq(turns.id, turn.id));
+      .set({
+        status: turnMachine.events.needAttention.to,
+        attentionReason: reason,
+        interruption: "app",
+      })
+      .where(and(eq(turns.id, turn.id), inStates(turns.status, turnMachine.from("needAttention"))));
     await appendEvents(tx, turn.id, [{ kind: "note", data: { text: note } }], now);
-    await tx
-      .update(sessions)
-      .set({ status: "idle", updatedAt: now })
-      .where(eq(sessions.id, turn.sessionId));
+    await setSessionStatus(tx, turn.sessionId, "rest", now);
     return { turnId: turn.id, action: "needs_attention", reason };
   }
   await tx
     .update(turns)
     .set({
-      status: "assigned",
+      status: turnMachine.events.continue.to,
       attempt: turn.attempt + 1,
       generation: turn.generation + 1,
       recoveries: turn.recoveries + 1,
       interruption: "app",
     })
-    .where(eq(turns.id, turn.id));
+    .where(and(eq(turns.id, turn.id), inStates(turns.status, turnMachine.from("continue"))));
   await appendEvents(
     tx,
     turn.id,
@@ -540,8 +575,8 @@ export function turnRepository(run: RunTransaction) {
       run(async (tx) => {
         await tx
           .update(turns)
-          .set({ status: "running", startedAt: now })
-          .where(and(eq(turns.id, id), inArray(turns.status, ["assigned", "waiting"])));
+          .set({ status: turnMachine.events.run.to, startedAt: now })
+          .where(and(eq(turns.id, id), inStates(turns.status, turnMachine.from("run"))));
         await appendEvents(tx, id, events, now);
       }),
     /** The turn waits for the owner. The events for it land in the same transaction. */
@@ -549,8 +584,8 @@ export function turnRepository(run: RunTransaction) {
       run(async (tx) => {
         await tx
           .update(turns)
-          .set({ status: "waiting" })
-          .where(and(eq(turns.id, id), eq(turns.status, "running")));
+          .set({ status: turnMachine.events.wait.to })
+          .where(and(eq(turns.id, id), inStates(turns.status, turnMachine.from("wait"))));
         await appendEvents(tx, id, events, now);
       }),
     /** The owner or the runtime asked the live turn to end. */
@@ -558,8 +593,12 @@ export function turnRepository(run: RunTransaction) {
       run(async (tx) => {
         const turn = await tx.select().from(turns).where(eq(turns.id, id)).get();
         if (!turn || !liveStatuses.includes(turn.status)) return undefined;
-        await tx.update(turns).set({ status: "stopping", interruption }).where(eq(turns.id, id));
-        return { ...turn, status: "stopping" as const, interruption };
+        const status = turnMachine.events.stop.to;
+        await tx
+          .update(turns)
+          .set({ status, interruption })
+          .where(and(eq(turns.id, id), inStates(turns.status, turnMachine.from("stop"))));
+        return { ...turn, status, interruption };
       }),
     /** The turn was told to wrap up, so it never continues by itself. */
     wrapUp: (id: string) =>
@@ -573,10 +612,7 @@ export function turnRepository(run: RunTransaction) {
         if (turn?.status !== "assigned") return;
         await tx.delete(turnEvents).where(eq(turnEvents.turnId, id));
         await tx.delete(turns).where(eq(turns.id, id));
-        await tx
-          .update(sessions)
-          .set({ status: "idle", updatedAt: now })
-          .where(eq(sessions.id, turn.sessionId));
+        await setSessionStatus(tx, turn.sessionId, "rest", now);
       }),
     /** Recovers the organization's live turns. Other organizations wait for their own runtime. */
     recover: (now: number, organizationId: string) =>
@@ -618,7 +654,7 @@ export function turnRepository(run: RunTransaction) {
           await tx
             .update(inbox)
             .set({
-              status: "pending",
+              status: inboxItemMachine.events.resend.to,
               steered: false,
               held: false,
               turnId: null,
@@ -626,7 +662,9 @@ export function turnRepository(run: RunTransaction) {
               availableAt: now,
               deadlineAt: now,
             })
-            .where(and(eq(inbox.turnId, id), eq(inbox.status, "uncertain")));
+            .where(
+              and(eq(inbox.turnId, id), inStates(inbox.status, inboxItemMachine.from("resend"))),
+            );
           await settleUncertainTurn(tx, id, now);
           return;
         }
@@ -635,18 +673,15 @@ export function turnRepository(run: RunTransaction) {
         await tx
           .update(turns)
           .set({
-            status: "assigned",
+            status: turnMachine.events.retry.to,
             attempt: turn.attempt + 1,
             generation: turn.generation + 1,
             attentionReason: null,
             error: null,
             finishedAt: null,
           })
-          .where(eq(turns.id, id));
-        await tx
-          .update(sessions)
-          .set({ status: "working", updatedAt: now })
-          .where(eq(sessions.id, turn.sessionId));
+          .where(and(eq(turns.id, id), inStates(turns.status, turnMachine.from("retry"))));
+        await setSessionStatus(tx, turn.sessionId, "work", now);
       }),
     /** Ends a needs-attention turn without running it again. */
     dismiss: (id: string, now: number) =>
@@ -660,17 +695,18 @@ export function turnRepository(run: RunTransaction) {
         await setItemStatus(
           tx,
           items.map((item) => item.id),
-          "dropped",
+          "dismiss",
           { reason: "dismissed" },
         );
+        const status = turnMachine.events.dismiss.to;
         await tx
           .update(turns)
-          .set({ status: "cancelled", finishedAt: now })
-          .where(eq(turns.id, turn.id));
+          .set({ status, finishedAt: now })
+          .where(and(eq(turns.id, turn.id), inStates(turns.status, turnMachine.from("dismiss"))));
         await appendEvents(
           tx,
           id,
-          [{ kind: "turn_finished", data: { status: "cancelled", outcome: null } }],
+          [{ kind: "turn_finished", data: { status, outcome: null } }],
           now,
         );
       }),
@@ -684,7 +720,7 @@ export function turnRepository(run: RunTransaction) {
         await tx
           .update(turns)
           .set({
-            status: "assigned",
+            status: turnMachine.events.retry.to,
             attempt: turn.attempt + 1,
             generation: turn.generation + 1,
             epoch,
@@ -692,11 +728,8 @@ export function turnRepository(run: RunTransaction) {
             error: null,
             finishedAt: null,
           })
-          .where(eq(turns.id, id));
-        await tx
-          .update(sessions)
-          .set({ status: "working", updatedAt: now })
-          .where(eq(sessions.id, turn.sessionId));
+          .where(and(eq(turns.id, id), inStates(turns.status, turnMachine.from("retry"))));
+        await setSessionStatus(tx, turn.sessionId, "work", now);
       }),
     /** Marks the live turn of a failed open as needing the owner. */
     attention: (id: string, reason: TurnAttentionReason, error: string | null, now: number) =>

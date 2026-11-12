@@ -32,7 +32,8 @@
     "./auth/settings-access": "./src/auth/settings-access.ts",
     "./desktop/links": "./src/desktop/links.js",
     "./desktop/window": "./src/desktop/window.ts",
-    "./result": "./src/result.ts"
+    "./result": "./src/result.ts",
+    "./state-machine": "./src/state-machine.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

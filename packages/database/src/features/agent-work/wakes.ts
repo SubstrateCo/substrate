@@ -1,6 +1,8 @@
 import {
   wakeDedupeKeys,
+  wakeMachine,
   type AgentWakeRequestDetail,
+  type AgentWakeState,
   type AgentWakeView,
 } from "@substrate/contracts/agent-work";
 import { realtimeKeys } from "@substrate/contracts/realtime";
@@ -12,9 +14,15 @@ import { requireDevice, type DeviceIdentity } from "../../core/session/device";
 import { homedAgentIds } from "./device";
 import { agentRequests } from "./requests.schema";
 import { agentWakes } from "./wakes.schema";
-import { and, asc, eq, exists, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, exists, inArray, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
 
 type RequestRow = typeof agentRequests.$inferSelect;
+
+// A wake's state is stored as acked_at: null while the wake is pending.
+const wakeIn = {
+  pending: isNull(agentWakes.ackedAt),
+  acked: isNotNull(agentWakes.ackedAt),
+} satisfies Record<AgentWakeState, SQL>;
 
 const detailOf = (request: RequestRow): AgentWakeRequestDetail => ({
   id: request.id,
@@ -125,13 +133,14 @@ export function ackWakes(db: DatabaseExecutor, identity: DeviceIdentity, ids: st
     const device = await requireDevice(tx, identity);
     const acked = await tx
       .update(agentWakes)
+      // The ack event moves the wake to acked: it records acked_at.
       .set({ ackedAt: sql`now()` })
       .where(
         and(
           inArray(agentWakes.id, ids),
           eq(agentWakes.ownerUserId, identity.userId),
           eq(agentWakes.organizationId, identity.organizationId),
-          isNull(agentWakes.ackedAt),
+          or(...wakeMachine.from("ack").map((state) => wakeIn[state])),
           deviceWakes(tx, identity, device.id),
         ),
       )

@@ -1,4 +1,8 @@
-import type { AgentNeedsYou, AgentRequestView } from "@substrate/contracts/agent-work";
+import {
+  requestMachine,
+  type AgentNeedsYou,
+  type AgentRequestView,
+} from "@substrate/contracts/agent-work";
 
 import type { DatabaseExecutor } from "../../client";
 import { actorDisplayName } from "../../core/actors/display-name";
@@ -8,6 +12,7 @@ import { workspaceContext } from "../../core/session/workspace";
 import { visibleConversations } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";
 import { messagingConversations } from "../messaging/schema";
+import { inStates } from "./machine-sql";
 import { agentRequests } from "./requests.schema";
 import { statusViews } from "./status";
 import { agentStatus } from "./status.schema";
@@ -65,11 +70,14 @@ async function requestViews(
   return rows.map(toRequestView);
 }
 
-// Blocking requests stop being answerable when their wait ends.
-export const answerableRequest = and(
-  eq(agentRequests.status, "pending"),
-  or(sql`${agentRequests.expiresAt} IS NULL`, gt(agentRequests.expiresAt, sql`now()`)),
-);
+// The owner can still decide the request with this event. Blocking requests stop being
+// answerable when their wait ends.
+export const answerableBy = (event: "answer" | "decline" | "approve") =>
+  and(
+    inStates(agentRequests.status, requestMachine.from(event)),
+    or(sql`${agentRequests.expiresAt} IS NULL`, gt(agentRequests.expiresAt, sql`now()`)),
+  );
+export const answerableRequest = answerableBy("answer");
 
 /**
  * The owner's requests in one conversation they can see: open ones and those decided in the last
