@@ -14,6 +14,7 @@ import { messagingParticipants } from "../schema";
 import { createMessagingService } from "../service";
 import { messagingConnections, messagingInvitations } from "../sharing.schema";
 import { messagingSharingEvents } from "../sharing.schema";
+import { claimSharingMail as claimCommittedSharingMail } from "./committed";
 import { clearMembershipSharing } from "./connections";
 import { readSharingInvitation } from "./invitations";
 import { claimSharingMail, finishSharingMail } from "./mail";
@@ -636,7 +637,8 @@ test("mail is durable, leased once, retried after failure, and skipped after rev
   const c = await channel();
   const invite = await sharing().invite(c.id, { email: "outside@example.com", shareHistory: true });
   const { db, queries } = recordQueries();
-  const first = await claimSharingMail(db);
+  const { result: first, hints } = await claimCommittedSharingMail(db);
+  expect(hints).toEqual([]);
   expect(first).toMatchObject({
     id: invite.id,
     email: "outside@example.com",
@@ -644,7 +646,7 @@ test("mail is durable, leased once, retried after failure, and skipped after rev
     name: c.name,
     organizationName: "A",
   });
-  expect(queries.filter((query) => !["begin", "commit"].includes(query))).toHaveLength(2);
+  expect(queries).toHaveLength(1);
   expect(await claimSharingMail(f.db)).toBeNull();
   await finishSharingMail(f.db, invite.id, 1, false);
   expect(await claimSharingMail(f.db)).toBeNull();
@@ -661,6 +663,23 @@ test("mail is durable, leased once, retried after failure, and skipped after rev
   });
   await sharing().revoke(revoked.id);
   expect(await claimSharingMail(f.db)).toBeNull();
+});
+
+test("concurrent mail workers lease an invitation only once with one atomic statement", async () => {
+  const c = await channel();
+  const invitation = await sharing().invite(c.id, {
+    email: "outside@example.com",
+    shareHistory: true,
+  });
+  const claims = await Promise.all([claimSharingMail(f.db), claimSharingMail(f.db)]);
+  expect(claims.filter((claim) => claim !== null)).toMatchObject([
+    { id: invitation.id, attempt: 1 },
+  ]);
+  const [stored] = await f.db
+    .select()
+    .from(messagingInvitations)
+    .where(eq(messagingInvitations.id, invitation.id));
+  expect(stored?.deliveryAttempts).toBe(1);
 });
 
 test("external DMs and groups require individual consent but not an organization admin", async () => {
