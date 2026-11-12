@@ -464,11 +464,13 @@ test("reply resolves the agent once and does not re-authenticate inside messagin
   ).toBe("agent");
   const identityReads = () => queries.filter((query) => query.includes('from "user"'));
   expect(identityReads()).toHaveLength(1);
-  // The send builds its hints in the transaction; a replay still refreshes the conversation.
+  // The send builds its hints in the transaction; a replay still refreshes the same timeline.
   const conversationHint: RealtimeHint = {
     audience: realtimeKeys.conversation(channel.id),
     domain: "messaging",
     scope: "messages",
+    messageId: sent.result.output.messageId,
+    threadId: null,
   };
   expect(sent.hints).toContainEqual(conversationHint);
   queries.length = 0;

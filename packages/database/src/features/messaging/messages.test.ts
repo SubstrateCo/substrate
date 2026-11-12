@@ -62,8 +62,32 @@ test("send hints come from the write itself and describe only what the message c
         body,
       ),
     );
+  // A new message names itself and its thread, so viewers refresh only that history.
+  const content = (sent: { result: { id: string; threadId: string | null } }): RealtimeHint => ({
+    audience: conversation,
+    domain: "messaging",
+    scope: "messages",
+    messageId: sent.result.id,
+    threadId: sent.result.threadId,
+  });
   const plain = await send("alice", "plain");
-  expect(plain.hints).toEqual([{ audience: conversation, domain: "messaging", scope: "messages" }]);
+  expect(plain.hints).toEqual([content(plain)]);
+  const reply = await commit(db, (tx) =>
+    createMessagingService(tx, { userId: "alice", organizationId: fixture.orgA }).sendMessage(
+      channel.id,
+      "reply",
+      plain.result.id,
+    ),
+  );
+  expect(reply.hints).toEqual([
+    {
+      audience: conversation,
+      domain: "messaging",
+      scope: "messages",
+      messageId: reply.result.id,
+      threadId: plain.result.id,
+    },
+  ]);
   // Bob's first post joins the public channel.
   expect((await send("bob", "joining")).hints).toEqual([
     { audience: conversation, domain: "messaging" },
@@ -72,17 +96,43 @@ test("send hints come from the write itself and describe only what the message c
   const mention = await send("alice", `@[person:${fixture.bob}]`);
   expect(mention.hints).toEqual(
     expect.arrayContaining([
-      { audience: conversation, domain: "messaging", scope: "messages" },
-      { audience: realtimeKeys.actor(fixture.orgA, fixture.bob), domain: "notifications" },
+      content(mention),
+      { audience: realtimeKeys.actor(fixture.orgA, fixture.bob), domain: "notifications" as const },
     ]),
   );
   expect(mention.hints).toHaveLength(2);
   // The notification insert returns its recipients; nothing reads them back.
   expect(queries.filter((query) => /^select .* from "notifications"/i.test(query))).toEqual([]);
-  expect((await send("alice", `@[project:${project.entityId}]`)).hints).toEqual([
-    { audience: conversation, domain: "messaging", scope: "messages" },
+  const referenced = await send("alice", `@[project:${project.entityId}]`);
+  expect(referenced.hints).toEqual([
+    content(referenced),
     { audience: realtimeKeys.organization(fixture.orgA), domain: "context" },
   ]);
+});
+
+test("edits and deletions name the changed message and its thread", async () => {
+  await verified();
+  const channel = await service("alice").createConversation({ kind: "channel", name: "general" });
+  const root = await service("alice").sendMessage(channel.id, "root");
+  const reply = await service("alice").sendMessage(channel.id, "reply", root.id);
+  const alice = (
+    work: (chat: ReturnType<typeof createMessagingService>) => Promise<{ id: string }>,
+  ) =>
+    commit(fixture.db, (tx) =>
+      work(createMessagingService(tx, { userId: "alice", organizationId: fixture.orgA })),
+    );
+  const changed = (messageId: string, threadId: string | null): RealtimeHint => ({
+    audience: realtimeKeys.conversation(channel.id),
+    domain: "messaging",
+    messageId,
+    threadId,
+  });
+  expect((await alice((chat) => chat.editMessage(reply.id, "edited"))).hints).toContainEqual(
+    changed(reply.id, root.id),
+  );
+  expect((await alice((chat) => chat.deleteMessage(root.id))).hints).toContainEqual(
+    changed(root.id, null),
+  );
 });
 
 test("message pages load their summaries in one statement after scope resolution", async () => {

@@ -13,6 +13,10 @@ export interface QueryTarget {
   refetchType?: "none";
   // Matches only message context pages that show work links, or have not loaded yet.
   withLinks?: true;
+  // Matches only message context pages whose key includes this message.
+  withMessage?: string;
+  // Matches only related lists that show a message of this conversation, or have not loaded yet.
+  inConversation?: string;
 }
 
 type Change = Extract<RealtimeEvent, { type: "change" }>;
@@ -29,19 +33,48 @@ function showsLinks(query: Query) {
   return pages === undefined || pages.some((page) => page.links.length > 0);
 }
 
+function showsConversation(query: Query, conversationId: string) {
+  // SAFETY: inConversation targets only match related lists, which cache these rows.
+  const rows = query.state.data as { conversationId: string }[] | undefined;
+  return rows === undefined || rows.some((row) => row.conversationId === conversationId);
+}
+
 export function queryTargetFilter(
   target: QueryTarget,
   predicate: (query: Query) => boolean = () => true,
 ) {
-  const { withLinks, ...filter } = target;
+  const { withLinks, withMessage, inConversation, ...filter } = target;
   return {
     ...filter,
-    predicate: (query: Query) => (!withLinks || showsLinks(query)) && predicate(query),
+    predicate: (query: Query) =>
+      (!withLinks || showsLinks(query)) &&
+      (!withMessage || queryKeys.messagePageIds(query.queryKey).includes(withMessage)) &&
+      (!inConversation || showsConversation(query, inConversation)) &&
+      predicate(query),
   };
 }
 
 /** Identifiers of the changed records. Without one, targets cover every record it could name. */
 export type ChangeDetail = Partial<Pick<Change, "messageId" | "threadId">>;
+
+// The history pages that show a changed message. A new reply also changes its root's reply count
+// in the main timeline. An edited or deleted root can be open as a thread's header.
+function historyTargets(
+  organizationId: string,
+  conversationId: string | undefined,
+  scope: Change["scope"],
+  { messageId, threadId }: ChangeDetail,
+): QueryTarget[] {
+  if (!conversationId || threadId === undefined || (scope !== "messages" && !messageId))
+    return [{ queryKey: queryKeys.conversationMessages(organizationId, conversationId) }];
+  const timeline = { queryKey: queryKeys.messages(organizationId, conversationId) };
+  if (threadId === null)
+    return scope !== "messages" && messageId
+      ? [timeline, { queryKey: queryKeys.messages(organizationId, conversationId, messageId) }]
+      : [timeline];
+  const thread = { queryKey: queryKeys.messages(organizationId, conversationId, threadId) };
+  return scope === "messages" ? [thread, timeline] : [thread];
+}
 
 // A reaction changes one message's reactions, shown in its history page, its reaction details,
 // and target views of that conversation. Unread counts, order, and search stay the same.
@@ -64,6 +97,17 @@ function reactionTargets(
     },
     { queryKey: queryKeys.messageTargets(organizationId, conversationId) },
   ];
+}
+
+// A changed message's context shows only in pages that include it.
+function messagePagesTarget(
+  organizationId: string,
+  conversationId: string | undefined,
+  messageId: string | undefined,
+): QueryTarget {
+  const target: QueryTarget = { queryKey: queryKeys.messagePages(organizationId, conversationId) };
+  if (conversationId && messageId) target.withMessage = messageId;
+  return target;
 }
 
 // Searches only become stale, so a change does not start a burst of search requests.
@@ -95,13 +139,27 @@ export function domainTargets(
         { queryKey: queryKeys.messageUnread(organizationId) },
         // Message content changes leave membership and conversation details unchanged.
         ...(scope !== "messages" ? [{ queryKey: queryKeys.conversations(organizationId) }] : []),
-        { queryKey: queryKeys.conversationMessages(organizationId, conversationId) },
-        { queryKey: queryKeys.conversationReactions(organizationId, conversationId) },
-        { queryKey: queryKeys.related(organizationId) },
-        // A new message or reaction cannot change the context of loaded messages. A new message
-        // gets its own page key; its reference changes arrive as "context" hints.
+        ...historyTargets(organizationId, conversationId, scope, detail),
+        // A new message has no reactions yet. Deleting one removes only its own reactions.
         ...(scope !== "messages"
-          ? [{ queryKey: queryKeys.messagePages(organizationId, conversationId) }]
+          ? [
+              {
+                queryKey:
+                  conversationId && detail.messageId
+                    ? queryKeys.messageReactions(organizationId, conversationId, detail.messageId)
+                    : queryKeys.conversationReactions(organizationId, conversationId),
+              },
+            ]
+          : []),
+        // Related lists show messages with their reply counts. A message change reaches only lists
+        // that show its conversation; membership changes can reveal messages they do not show yet.
+        conversationId && (scope === "messages" || detail.messageId)
+          ? { queryKey: queryKeys.related(organizationId), inConversation: conversationId }
+          : { queryKey: queryKeys.related(organizationId) },
+        // A new message cannot change the context of loaded messages. A new message gets its own
+        // page key; its reference changes arrive as "context" hints.
+        ...(scope !== "messages"
+          ? [messagePagesTarget(organizationId, conversationId, detail.messageId)]
           : []),
         { queryKey: queryKeys.messageTargets(organizationId, conversationId) },
         // New posts need not interrupt an open search. General changes include edits and

@@ -203,7 +203,12 @@ export async function sendMessageAs(
       const reactions: { emoji: string; count: number; reacted: boolean }[] = [];
       ctx.effects.replay(
         messageChangeHints(
-          { conversationId, organizationId: scope.organizationId },
+          {
+            conversationId,
+            organizationId: scope.organizationId,
+            messageId: existing.id,
+            threadId: existing.threadId,
+          },
           { joined: false },
         ),
       );
@@ -253,7 +258,12 @@ export async function sendMessageAs(
   const wakeHints = await routeWake(tx, scope, created!, conversation.kind);
   for (const hint of [
     ...messageChangeHints(
-      { conversationId, organizationId: scope.organizationId },
+      {
+        conversationId,
+        organizationId: scope.organizationId,
+        messageId: created!.id,
+        threadId: created!.threadId,
+      },
       { joined, ...effects },
     ),
     ...wakeHints,

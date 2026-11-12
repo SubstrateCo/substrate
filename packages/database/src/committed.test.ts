@@ -82,7 +82,12 @@ test("messaging collects send, reaction, membership and removal effects", async 
     channel.result.id,
     `Hello @[person:${f.bob}]`,
   );
-  expect(sent.hints).toContainEqual({ ...hint, scope: "messages" });
+  expect(sent.hints).toContainEqual({
+    ...hint,
+    scope: "messages",
+    messageId: sent.result.id,
+    threadId: null,
+  });
   expect(sent.hints).toContainEqual({
     audience: realtimeKeys.actor(f.orgA, f.bob),
     domain: "notifications",

@@ -84,10 +84,13 @@ export function messageMutationOperations(
           delivery: false,
         });
       }
-      // A full messaging hint refreshes previews and active search, not just timeline pages.
+      // A full messaging hint refreshes previews and active search, not just timeline pages. The
+      // identifiers keep the refresh to this message's thread and context pages.
       context.effects.hint({
         audience: realtimeKeys.conversation(conversation.id),
         domain: "messaging",
+        messageId,
+        threadId: message.threadId,
       });
       context.effects.hint({
         audience: realtimeKeys.organization(conversation.organizationId),

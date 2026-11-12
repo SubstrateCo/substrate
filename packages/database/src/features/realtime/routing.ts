@@ -258,9 +258,15 @@ export function reactionChangeHints(
 }
 
 // Builds hints from what a send or reaction changed, so nothing is read back after commit.
-// Membership changes refresh conversation lists; other changes touch only message content.
+// Membership changes refresh conversation lists; other changes touch only message content: the
+// new message's thread, or its main timeline when threadId is null.
 export function messageChangeHints(
-  change: { conversationId: string; organizationId: string },
+  change: {
+    conversationId: string;
+    organizationId: string;
+    messageId?: string;
+    threadId?: string | null;
+  },
   effects: {
     joined: boolean;
     referenced?: boolean;
@@ -270,7 +276,11 @@ export function messageChangeHints(
     audience: realtimeKeys.conversation(change.conversationId),
     domain: "messaging",
   };
-  if (!effects.joined) conversation.scope = "messages";
+  if (!effects.joined) {
+    conversation.scope = "messages";
+    if (change.messageId) conversation.messageId = change.messageId;
+    if (change.threadId !== undefined) conversation.threadId = change.threadId;
+  }
   return [
     conversation,
     ...(effects.referenced

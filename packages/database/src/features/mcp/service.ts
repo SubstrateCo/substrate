@@ -219,17 +219,21 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     )[tool];
     if (!recheck) throw new AccessDeniedError();
     await recheck(input, result);
-    if (tool === "reply")
+    if (tool === "reply") {
+      // SAFETY: `result` was parsed with the reply tool's output schema.
+      const reply = result as McpOutput<"reply">;
       effectsFor(tx).replay(
         messageChangeHints(
           {
-            // SAFETY: `result` was parsed with the reply tool's output schema.
-            conversationId: (result as McpOutput<"reply">).conversationId,
+            conversationId: reply.conversationId,
             organizationId: identity.organizationId,
+            messageId: reply.messageId,
+            threadId: reply.threadId,
           },
           { joined: false },
         ),
       );
+    }
   } else if (requestId)
     await tx.insert(agentToolRequests).values({
       organizationId: identity.organizationId,

@@ -315,23 +315,103 @@ test("new messages refresh history, not conversation lists or loaded message con
     { ...change("messaging"), conversationId: "conversation", scope: "messages" },
     "user",
   );
-  const pages = { queryKey: queryKeys.messagePages("org", "conversation") };
   expect(targets).not.toContainEqual({ queryKey: queryKeys.conversations("org") });
-  expect(targets).not.toContainEqual(pages);
-  expect(targets).toEqual(
-    realtimeQueryTargets({ ...change("messaging"), conversationId: "conversation" }, "user")
-      .filter(
-        (target) =>
-          JSON.stringify(target) !== JSON.stringify({ queryKey: queryKeys.conversations("org") }) &&
-          JSON.stringify(target) !== JSON.stringify(pages),
-      )
-      .map((target) =>
-        JSON.stringify(target.queryKey) === JSON.stringify(queryKeys.search("org")) ||
-        JSON.stringify(target.queryKey) === JSON.stringify(queryKeys.searchPages("org"))
-          ? { ...target, refetchType: "none" }
-          : target,
-      ),
-  );
+  expect(targets).not.toContainEqual({ queryKey: queryKeys.messagePages("org", "conversation") });
+  // New posts only make open searches stale.
+  for (const queryKey of queryKeys.searches("org"))
+    expect(targets).toContainEqual({ queryKey, refetchType: "none" });
+});
+
+test("a new reply refreshes its thread and the timeline's reply count, nothing else in history", () => {
+  const event = {
+    ...change("messaging"),
+    conversationId: "conversation",
+    scope: "messages",
+    messageId: "reply",
+    threadId: "root",
+  } as const;
+  const refreshed = [
+    queryKeys.messageUnread("org"),
+    queryKeys.messages("org", "conversation"),
+    queryKeys.messages("org", "conversation", "root"),
+    [...queryKeys.messageTargets("org", "conversation"), "root"],
+    queryKeys.myAgentCalls("user", "org", "conversation"),
+  ];
+  const untouched = [
+    queryKeys.messages("org", "conversation", "other-thread"),
+    queryKeys.messages("org", "other"),
+    queryKeys.messageReactions("org", "conversation", "root"),
+    queryKeys.conversations("org"),
+    queryKeys.messagePage("org", "conversation", ["root"]),
+    queryKeys.messagePage("org", "other", ["message"]),
+  ];
+  expect(matchedKeys(event, [...refreshed, ...untouched])).toEqual(refreshed);
+  // A new main-timeline message leaves every thread alone.
+  expect(
+    matchedKeys({ ...event, messageId: "new", threadId: null }, [
+      queryKeys.messages("org", "conversation"),
+      queryKeys.messages("org", "conversation", "root"),
+    ]),
+  ).toEqual([queryKeys.messages("org", "conversation")]);
+});
+
+test("message changes refresh only related lists that show their conversation", () => {
+  const client = new QueryClient();
+  const shows = queryKeys.related("org", "shows");
+  const other = queryKeys.related("org", "other");
+  const loading = queryKeys.related("org", "loading");
+  client.setQueryData(shows, [{ conversationId: "conversation" }]);
+  client.setQueryData(other, [{ conversationId: "elsewhere" }]);
+  client.getQueryCache().build(client, { queryKey: loading });
+  const matched = (event: Extract<RealtimeEvent, { type: "change" }>) =>
+    realtimeQueryTargets(event, "user").flatMap((target) =>
+      client
+        .getQueryCache()
+        .findAll(queryTargetFilter(target))
+        .filter((query) => query.queryKey[3] === "related")
+        .map((query) => query.queryKey),
+    );
+  const sent = {
+    ...change("messaging"),
+    conversationId: "conversation",
+    scope: "messages",
+  } as const;
+  expect(matched(sent)).toEqual([shows, loading]);
+  expect(
+    matched({ ...change("messaging"), conversationId: "conversation", messageId: "m" }),
+  ).toEqual([shows, loading]);
+  // Membership changes can reveal messages that a list does not show yet.
+  expect(matched({ ...change("messaging"), conversationId: "conversation" })).toEqual([
+    shows,
+    other,
+    loading,
+  ]);
+  client.clear();
+});
+
+test("an edited or deleted message refreshes its own thread, reactions, and context pages", () => {
+  const event = {
+    ...change("messaging"),
+    conversationId: "conversation",
+    messageId: "root",
+    threadId: null,
+  } as const;
+  const refreshed = [
+    queryKeys.messageUnread("org"),
+    queryKeys.conversations("org"),
+    queryKeys.messages("org", "conversation"),
+    queryKeys.messages("org", "conversation", "root"),
+    queryKeys.messageReactions("org", "conversation", "root"),
+    queryKeys.messagePage("org", "conversation", ["older", "root"]),
+    [...queryKeys.search("org"), "term"],
+  ];
+  const untouched = [
+    queryKeys.messages("org", "conversation", "other-thread"),
+    queryKeys.messageReactions("org", "conversation", "other"),
+    queryKeys.messagePage("org", "conversation", ["other"]),
+    queryKeys.messages("org", "other"),
+  ];
+  expect(matchedKeys(event, [...refreshed, ...untouched])).toEqual(refreshed);
 });
 
 test("a new-message hint reads history once and loaded message context not at all", async () => {
@@ -368,10 +448,11 @@ test("a new-message hint reads history once and loaded message context not at al
       scope: "messages",
     });
     await new Promise((resolve) => setTimeout(resolve, 25));
-    expect(reads).toEqual({ messages: 2, pages: 1, reactions: 2 });
+    // A new message has no reactions yet.
+    expect(reads).toEqual({ messages: 2, pages: 1, reactions: 1 });
     await cache.receive({ ...change("messaging"), conversationId: "conversation" });
     await new Promise((resolve) => setTimeout(resolve, 25));
-    expect(reads).toEqual({ messages: 3, pages: 2, reactions: 3 });
+    expect(reads).toEqual({ messages: 3, pages: 2, reactions: 2 });
   } finally {
     cache.dispose();
     for (const stop of unsubscribe) stop();
