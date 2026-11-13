@@ -1,4 +1,4 @@
-import { currentView, mount, navigate, unmount } from "../client-cache.ts";
+import { currentView, mount, navigate, settleInactive, unmount } from "../client-cache.ts";
 import { call } from "../http.ts";
 import { keys } from "../keys.ts";
 import { applyConversations, type Conversation, type World } from "../world.ts";
@@ -93,6 +93,17 @@ export function openTaskId() {
 
 export function applyProjects(world: World, rows: Project[]) {
   world.projects = rows.map((row) => ({ entityId: row.entityId, title: row.name }));
+  const accessible = new Set(rows.map((row) => row.entityId));
+  for (const id of boards.keys()) if (!accessible.has(id)) boards.delete(id);
+  world.tasks = world.tasks.filter(
+    (task) => task.projectEntityId && accessible.has(task.projectEntityId),
+  );
+}
+
+export function resetTaskScreen() {
+  boards.clear();
+  screen.projectId = screen.taskId = undefined;
+  screen.discussions = false;
 }
 
 /** Keeps the world's task list in step with one project's board. */
@@ -216,6 +227,9 @@ export function closeDiscussions(world: World) {
  * workspace also mounts its location. Discussions open separately in messaging.
  */
 export async function openTask(world: World, projectId: string, taskId: string) {
+  // A search or notification can outlive a move/delete. The loaded board is the route's truth.
+  if (!boards.get(projectId)?.tasks.some((task) => task.entityId === taskId))
+    return { activity: 0, available: false };
   if (screen.taskId !== taskId) closeTask(world);
   closeDiscussions(world);
   screen.taskId = taskId;
@@ -235,23 +249,33 @@ export async function openTask(world: World, projectId: string, taskId: string) 
     mountConversations(world),
   ]);
   await showPictures("task", taskId, [boards.get(projectId)?.project.image]);
-  return { activity: activity?.length ?? 0 };
+  return { activity: activity?.length ?? 0, available: true };
 }
 
-export function closeTask(world: World) {
+function inspectorKeys(world: World) {
   const { projectId, taskId } = screen;
-  if (!projectId || !taskId) return;
+  if (!projectId || !taskId) return [];
   const org = world.organizationId;
-  for (const key of [
+  return [
     keys.activity(org, taskId),
     keys.taskLocation(org, taskId),
     keys.taskAttachments(org, projectId, taskId),
     keys.related(org, taskId),
     keys.conversations(org),
-  ])
-    unmount(key);
+  ];
+}
+
+export function closeTask(world: World) {
+  for (const key of inspectorKeys(world)) unmount(key);
   screen.taskId = undefined;
   hidePictures("task");
+}
+
+/** Detaches the inspector and finishes its old reads before moving or deleting work. */
+export async function settleTask(world: World) {
+  const queries = inspectorKeys(world);
+  closeTask(world);
+  await settleInactive(queries);
 }
 
 /**

@@ -1,4 +1,5 @@
 import { unmount } from "../lib/client-cache.ts";
+import { config } from "../lib/config.ts";
 import { keys } from "../lib/keys.ts";
 import { readTime, think } from "../lib/pacing.ts";
 import { rng } from "../lib/persona.ts";
@@ -12,7 +13,7 @@ import {
 } from "../lib/screens/notifications.ts";
 import { openProject, openTask, showTasks } from "../lib/screens/tasks.ts";
 import type { World } from "../lib/world.ts";
-import type { FlowContext } from "./flow.ts";
+import { FlowSkipped, type FlowContext } from "./flow.ts";
 import { Counter } from "k6/metrics";
 
 const steps = new Counter("notification_steps");
@@ -34,25 +35,25 @@ async function openSource(world: World, item: NotificationEvent) {
 
 export async function notifications({ world }: FlowContext) {
   // Most checks follow a lit badge; an occasional visit checks old activity without one.
-  if (!world.hasUnreadNotifications && !rng.chance(0.3)) {
+  if (config.mode !== "coverage" && !world.hasUnreadNotifications && !rng.chance(0.3)) {
     steps.add(1, { step: "badge_only" });
     await think("glance");
-    return;
+    throw new FlowSkipped("Notification badge only; feed not opened");
   }
   await think("navigate");
   let filter: NotificationFilter = "all";
   let page = await showNotifications(world);
   steps.add(1, { step: page?.items.length ? "list" : "empty" });
   await readTime(page?.items.length ?? 0);
-  if (!page?.items.length) return;
-  if (rng.chance(0.22)) {
+  if (!page?.items.length) throw new FlowSkipped("No notification groups");
+  if (config.mode !== "coverage" && rng.chance(0.22)) {
     await think("decide");
     filter = "unread";
     steps.add(1, { step: "filter_unread" });
     page = await showNotifications(world, filter);
     await readTime(page?.items.length ?? 0);
   }
-  if (!page?.items.length) return;
+  if (!page?.items.length) throw new FlowSkipped("No notification groups after filtering");
   if (page.nextCursor && rng.chance(0.2)) {
     await think("decide");
     steps.add(1, { step: "page" });
@@ -60,6 +61,7 @@ export async function notifications({ world }: FlowContext) {
     await readTime(page?.items.length ?? 0);
   }
   const groups = page?.items ?? [];
+  if (!groups.length) throw new FlowSkipped("No notification groups on selected page");
   if (world.hasUnreadNotifications && rng.chance(0.06)) {
     await think("decide");
     steps.add(1, { step: "read_all" });

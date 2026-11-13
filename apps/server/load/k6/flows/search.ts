@@ -11,7 +11,7 @@ import {
 import { openProject, openTask, showTasks } from "../lib/screens/tasks.ts";
 import { searchTerm, typedPrefixes } from "../lib/words.ts";
 import type { World } from "../lib/world.ts";
-import type { FlowContext } from "./flow.ts";
+import { FlowSkipped, type FlowContext } from "./flow.ts";
 import { Counter } from "k6/metrics";
 
 const steps = new Counter("search_steps");
@@ -64,21 +64,24 @@ async function scan(rows: SearchResult[]) {
 
 export async function search({ world }: FlowContext) {
   await think("navigate");
-  const kind = rng.weighted<SearchKind>(
-    ["all", "message", "task", "project", "channel"],
-    (value) => ({ all: 50, message: 25, task: 12, project: 7, channel: 6 })[value],
-  )!;
-  const term = termFor(world, kind);
+  const kind =
+    config.mode === "coverage"
+      ? "message"
+      : rng.weighted<SearchKind>(
+          ["all", "message", "task", "project", "channel"],
+          (value) => ({ all: 50, message: 25, task: 12, project: 7, channel: 6 })[value],
+        )!;
+  const term = config.mode === "coverage" ? "Customer" : termFor(world, kind);
   try {
     let rows = await typeSearch(world, term, kind);
     await scan(rows);
-    if (rows.length === 30 && rng.chance(0.35)) {
+    if (rows.length === 30 && (config.mode === "coverage" || rng.chance(0.35))) {
       await think("decide");
       steps.add(1, { step: "page" });
       rows = await searchPage(world, term, kind, rows.at(-1)!.id);
       await scan(rows);
     }
-    if (rng.chance(rows.length ? 0.18 : 0.45)) {
+    if (config.mode !== "coverage" && rng.chance(rows.length ? 0.18 : 0.45)) {
       await think("decide");
       steps.add(1, { step: "refine" });
       const refined = `${term} ${searchTerm()}`.slice(0, 200);
@@ -86,7 +89,9 @@ export async function search({ world }: FlowContext) {
       await scan(rows);
     }
     const result = rng.weighted(rows, (row) => 1 / (rows.indexOf(row) + 1));
-    if (!result || !rng.chance(0.72)) {
+    if (!result && config.mode === "coverage")
+      throw new FlowSkipped("No seeded message search result");
+    if (!result || (config.mode !== "coverage" && !rng.chance(0.72))) {
       steps.add(1, { step: "abandon" });
       return;
     }
@@ -113,3 +118,4 @@ export async function search({ world }: FlowContext) {
     closeSearch(world);
   }
 }
+import { config } from "../lib/config.ts";

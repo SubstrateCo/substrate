@@ -45,7 +45,7 @@ export async function parallel<T>(
   action: (item: T, index: number) => Promise<void>,
 ) {
   let next = 0;
-  await Promise.all(
+  const results = await Promise.allSettled(
     Array.from({ length: Math.min(8, items.length) }, async () => {
       while (next < items.length) {
         const index = next++;
@@ -53,4 +53,6 @@ export async function parallel<T>(
       }
     }),
   );
+  const failed = results.find((result) => result.status === "rejected");
+  if (failed?.status === "rejected") throw failed.reason;
 }

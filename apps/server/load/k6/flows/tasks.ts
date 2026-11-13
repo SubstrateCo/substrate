@@ -3,7 +3,7 @@ import { config } from "../lib/config.ts";
 import { trace } from "../lib/debug.ts";
 import { keys } from "../lib/keys.ts";
 import { readTime, think } from "../lib/pacing.ts";
-import { persona, rng } from "../lib/persona.ts";
+import { persona, pickResource, rng } from "../lib/persona.ts";
 import {
   boards,
   canComment,
@@ -16,7 +16,7 @@ import {
   type ProjectDetail,
 } from "../lib/screens/tasks.ts";
 import type { World } from "../lib/world.ts";
-import type { FlowContext } from "./flow.ts";
+import { FlowSkipped, type FlowContext } from "./flow.ts";
 import {
   commentOn,
   createTask,
@@ -37,14 +37,18 @@ const touched = new Map<string, number>();
 /** Projects the user worked in lately first, then busy ones. */
 function chooseProject(projects: Project[]) {
   const now = Date.now();
-  return rng.weighted(projects, (project) => {
-    const since = now - (touched.get(project.entityId) ?? -Infinity);
-    const size = boards.get(project.entityId)?.tasks.length ?? 4;
-    let weight = 1 + Math.sqrt(size) / 2;
-    if (since < 30 * minute) weight += 8;
-    else if (since < 2 * 60 * minute) weight += 3;
-    return weight;
-  });
+  return pickResource(
+    projects,
+    (project) => project.name,
+    (project) => {
+      const since = now - (touched.get(project.entityId) ?? -Infinity);
+      const size = boards.get(project.entityId)?.tasks.length ?? 4;
+      let weight = 1 + Math.sqrt(size) / 2;
+      if (since < 30 * minute) weight += 8;
+      else if (since < 2 * 60 * minute) weight += 3;
+      return weight;
+    },
+  );
 }
 
 type Step = (world: World, detail: ProjectDetail) => Promise<void | boolean>;
@@ -91,23 +95,50 @@ export async function tasks({ world }: FlowContext) {
   if (!projects.length) {
     // The empty state: a look, then elsewhere.
     await think(arriving ? "navigate" : "glance");
-    return;
+    throw new FlowSkipped("No accessible projects");
   }
   // The route has no project when arriving, so the first one opens.
   if (arriving || !openProjectId()) await openProject(world, projects[0]!.entityId);
   await think(arriving ? "navigate" : "glance");
-  const chosen = chooseProject(projects)!;
+  const chosen =
+    config.mode === "coverage"
+      ? projects.find((project) => project.entityId === world.user.workspace?.projectEntityId)
+      : chooseProject(projects);
+  if (!chosen) throw new FlowSkipped("Coverage needs the user's fixture project");
   if (chosen.entityId !== openProjectId()) {
     await openProject(world, chosen.entityId);
     await think("glance");
   }
   let detail = current(world);
-  if (!detail) return;
+  if (!detail) throw new FlowSkipped("Project board unavailable");
   const shown = detail.tasks.slice(0, 25);
   await readTime(
     shown.length,
     shown.reduce((sum, task) => sum + task.title.length, 0),
   );
+  if (config.mode === "coverage") {
+    const actions = [
+      readTask,
+      createTask,
+      updateOne,
+      commentOn,
+      linkTasks,
+      readDiscussions,
+      moveTask,
+      deleteOwn,
+    ];
+    for (const action of actions) {
+      if (action !== readTask && action !== readDiscussions && !canEdit(detail))
+        throw new FlowSkipped(`Coverage needs editable project for ${action.name}`);
+      if ((await action(world, detail)) !== true)
+        throw new FlowSkipped(`Coverage task action did not complete: ${action.name}`);
+      const next = current(world);
+      if (!next) break;
+      detail = next;
+    }
+    closeTask(world);
+    return;
+  }
   const count = rng.weighted(
     [1, 2, 3, 4, 5],
     (n) => [25, 30, 22, 13 * persona.activity, 10 * persona.activity][n - 1]!,

@@ -1,4 +1,5 @@
 import type { LoadUser, LoadOrganization } from "../../types.ts";
+import { maxConcurrentUsers, rankUsers } from "../../workload.ts";
 import { config } from "./config.ts";
 import { SharedArray } from "k6/data";
 
@@ -24,14 +25,17 @@ export const password = meta.password;
 export const organizations = meta.organizations;
 
 /**
- * The account of a VU, 1:1 while VUs do not exceed users. Smoke takes consecutive users, so its
- * few VUs share one organization and see each other's hints. Other modes spread VUs evenly over
- * the file, which lists users by organization, so every organization gets its share.
+ * Smoke and coverage keep fixture order so their few accounts collaborate. Measurement uses
+ * a weighted permutation; the same slot always owns one unique account, including ramp-down.
  */
+const rankedUsers = new SharedArray<LoadUser>("ranked-users", () =>
+  rankUsers([...users], organizations),
+);
+
 export function userOf(vuId: number): LoadUser {
-  const index =
-    config.mode === "smoke"
-      ? (vuId - 1) % users.length
-      : Math.floor(((vuId - 1) * users.length) / Math.max(config.vus, 1)) % users.length;
-  return users[Math.max(index, 0)]!;
+  if (vuId < 1 || vuId > maxConcurrentUsers || vuId > users.length)
+    throw new Error(
+      `No unique load account for VU ${vuId}; maximum ${Math.min(users.length, maxConcurrentUsers)}`,
+    );
+  return (config.mode === "smoke" || config.mode === "coverage" ? users : rankedUsers)[vuId - 1]!;
 }

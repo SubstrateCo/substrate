@@ -1,6 +1,15 @@
 import { account } from "./provision/accounts";
 import { config, parallel, type Account } from "./provision/client";
+import { context } from "./provision/context";
 import { crm } from "./provision/crm";
+import {
+  fixtureCounts,
+  provisioningTarget,
+  requireNotificationMembers,
+  SEED_PROFILE,
+  SEED_VERSION,
+} from "./provision/fixture";
+import { notifications } from "./provision/notifications";
 import { organization, sizes } from "./provision/organizations";
 import { pictures } from "./provision/pictures";
 import { workspace } from "./provision/workspaces";
@@ -8,8 +17,14 @@ import type { LoadOrganization } from "./types";
 import { mkdir, rename } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
-if (!Number.isSafeInteger(config.users) || config.users < 8)
-  throw new Error("LOAD_USERS must be an integer of at least 8 (one owner per organization).");
+if (!Number.isSafeInteger(config.users) || config.users < 8 || config.users > 200)
+  throw new Error("LOAD_USERS must be an integer from 8 to 200 (one owner per organization).");
+provisioningTarget(config);
+requireNotificationMembers(sizes(config.users));
+if (process.env.LOAD_SEED_PROFILE && process.env.LOAD_SEED_PROFILE !== SEED_PROFILE)
+  throw new Error(`LOAD_SEED_PROFILE must be ${SEED_PROFILE}`);
+if (process.env.LOAD_SEED_VERSION && process.env.LOAD_SEED_VERSION !== String(SEED_VERSION))
+  throw new Error(`LOAD_SEED_VERSION must be ${SEED_VERSION}`);
 
 const started = Date.now();
 const accounts: Account[] = [];
@@ -17,7 +32,7 @@ const organizations: LoadOrganization[] = [];
 const output = fileURLToPath(new URL("./.data/users.json", import.meta.url));
 await mkdir(fileURLToPath(new URL("./.data", import.meta.url)), { recursive: true });
 
-async function save() {
+async function save(complete = false) {
   await Bun.write(
     `${output}.tmp`,
     JSON.stringify(
@@ -25,6 +40,13 @@ async function save() {
         apiUrl: config.apiUrl,
         origin: config.origin,
         password: config.password,
+        seed: {
+          version: SEED_VERSION,
+          profile: SEED_PROFILE,
+          complete,
+          countBasis: "planned-minimum",
+          counts: fixtureCounts(sizes(config.users)),
+        },
         organizations,
         users: accounts.flatMap((item) => {
           if (!item.organizationId) return [];
@@ -52,13 +74,15 @@ try {
     const members = accounts.slice(offset, offset + size);
     organizations.push(await organization(members, index));
     await save();
-    await workspace(members, index);
+    const conversationId = await workspace(members, index);
     await crm(members);
+    await context(members, conversationId);
     await pictures(members, index);
+    await notifications(members, conversationId);
     console.log(`Provisioned ${organizations[index]!.name}: ${size} members`);
     offset += size;
   }
-  await save();
+  await save(true);
   console.log(
     `Saved ${accounts.length} users in ${organizations.length} organizations to ${output} (${((Date.now() - started) / 1000).toFixed(1)}s)`,
   );

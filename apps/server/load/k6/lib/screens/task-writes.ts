@@ -4,6 +4,11 @@ import { keys, type HintTarget, type QueryKey } from "../keys.ts";
 import type { World } from "../world.ts";
 import {
   boards,
+  applyBoard,
+  openProjectId,
+  openTask,
+  openTaskId,
+  settleTask,
   type ProjectDetail,
   type Task,
   type TaskPriority,
@@ -90,9 +95,18 @@ function patchBoard(input: TasksWrite, id: string) {
     if (task) Object.assign(task, fields);
   } else if (input.action === "deleteTask" || input.action === "moveTask") {
     const removed = new Set([input.taskEntityId]);
-    for (const task of detail.tasks)
-      if (task.parentTaskEntityId && removed.has(task.parentTaskEntityId))
-        removed.add(task.entityId);
+    for (let grew = true; grew;) {
+      grew = false;
+      for (const task of detail.tasks)
+        if (
+          task.parentTaskEntityId &&
+          removed.has(task.parentTaskEntityId) &&
+          !removed.has(task.entityId)
+        ) {
+          removed.add(task.entityId);
+          grew = true;
+        }
+    }
     detail.tasks = detail.tasks.filter((task) => !removed.has(task.entityId));
   }
 }
@@ -102,9 +116,21 @@ function patchBoard(input: TasksWrite, id: string) {
  * ID (the new task for createTask, else the task), or null.
  */
 export async function writeTasks(world: World, input: TasksWrite) {
+  const structural = input.action === "deleteTask" || input.action === "moveTask";
+  const projectId = openProjectId();
+  const taskId = openTaskId();
+  // A structural reset removes the renderer's project data and its inspector. Detach here,
+  // before the commit can publish hints; k6 has no render/unmount cycle or request cancellation.
+  // Finish old reads first so they cannot reach a deleted task or an old project after commit.
+  if (structural) await settleTask(world);
   const result = await call<{ id: string }>("tasks.mutations", { ...input });
-  if (!result) return null;
+  if (!result) {
+    if (structural && projectId && taskId) await openTask(world, projectId, taskId);
+    return null;
+  }
   patchBoard(input, result.id);
+  const detail = boards.get(input.projectEntityId);
+  if (detail) applyBoard(world, detail);
   await invalidate(writeTargets(world.organizationId, input, result.id), "mutation");
   return result.id;
 }

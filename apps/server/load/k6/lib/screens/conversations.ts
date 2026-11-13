@@ -1,9 +1,9 @@
-import { invalidate, mount, unmount } from "../client-cache.ts";
+import { invalidate, mount, removeInactive, settleInactive, unmount } from "../client-cache.ts";
 import { call } from "../http.ts";
 import { keys } from "../keys.ts";
 import type { Conversation, World } from "../world.ts";
 import { mountPeople } from "./frame.ts";
-import { closeThread } from "./messaging.ts";
+import { closeConversation, openConversation, openThread } from "./messaging.ts";
 
 /**
  * Conversation dialogs (components/messaging/conversations/...): create, add or remove members,
@@ -88,17 +88,8 @@ export async function joinConversation(world: World, conversationId: string) {
 /** invalidateRemovedConversation: the conversation's pages are dropped, lists refresh. */
 async function removed(world: World, conversationId: string) {
   const org = world.organizationId;
-  if (world.screen.conversationId === conversationId) {
-    closeThread(world);
-    world.screen = {};
-  }
-  for (const prefix of [
-    keys.conversationMessages(org, conversationId),
-    keys.messagePages(org, conversationId),
-    keys.messageTargets(org, conversationId),
-  ])
-    unmount(prefix);
   world.messages.delete(conversationId);
+  world.contextIds.delete(conversationId);
   await invalidate(
     [
       keys.conversations(org),
@@ -112,9 +103,7 @@ async function removed(world: World, conversationId: string) {
 }
 
 export async function leaveConversation(world: World, conversationId: string) {
-  const result = await call("messaging.conversations.leave", { conversationId });
-  if (result) await removed(world, conversationId);
-  return !!result;
+  return removeConversation(world, conversationId, "messaging.conversations.leave");
 }
 
 /** The delete dialog (conversation-actions.tsx) shows the linked-work count first. */
@@ -127,7 +116,25 @@ export async function showDeleteImpact(world: World, conversationId: string) {
 }
 
 export async function deleteConversation(world: World, conversationId: string) {
-  const result = await call("messaging.conversations.delete", { conversationId });
-  if (result) await removed(world, conversationId);
+  return removeConversation(world, conversationId, "messaging.conversations.delete");
+}
+
+async function removeConversation(
+  world: World,
+  conversationId: string,
+  endpoint: "messaging.conversations.leave" | "messaging.conversations.delete",
+) {
+  const previous = { ...world.screen };
+  // Leave the route before committing. k6 cannot abort detached HTTP reads, so drain them.
+  const prefixes = closeConversation(world, conversationId);
+  await settleInactive(prefixes);
+  const result = await call(endpoint, { conversationId });
+  if (result) {
+    removeInactive(prefixes);
+    await removed(world, conversationId);
+  } else if (previous.conversationId === conversationId) {
+    await openConversation(world, conversationId);
+    if (previous.threadId) await openThread(world, previous.threadId);
+  }
   return !!result;
 }

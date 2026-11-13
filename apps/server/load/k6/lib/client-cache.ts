@@ -137,6 +137,28 @@ export function unmount(prefix: QueryKey) {
       entry.unmountedAt = Date.now();
 }
 
+/** Drains detached reads before a structural write; k6 cannot abort an HTTP read on unmount. */
+export async function settleInactive(prefixes: QueryKey[]) {
+  await Promise.all(
+    [...entries.values()].flatMap((entry) =>
+      !entry.owners.size && prefixes.some((prefix) => matches(entry.key, prefix))
+        ? (entry.inflight ?? [])
+        : [],
+    ),
+  );
+}
+
+/** Drops detached query data after its resource is removed, like QueryClient.removeQueries. */
+export function removeInactive(prefixes: QueryKey[]) {
+  for (const [id, entry] of entries)
+    if (
+      !entry.owners.size &&
+      !entry.inflight &&
+      prefixes.some((prefix) => matches(entry.key, prefix))
+    )
+      entries.delete(id);
+}
+
 /** Switches the main screen: the old view's queries unmount; frame queries stay. */
 export function navigate(next: View) {
   if (next === view) return;

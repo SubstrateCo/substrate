@@ -1,4 +1,4 @@
-import { cached, invalidate, mount, navigate, unmount } from "../client-cache.ts";
+import { cached, currentView, invalidate, mount, navigate, unmount } from "../client-cache.ts";
 import { call } from "../http.ts";
 import { keys, type QueryKey } from "../keys.ts";
 import { applyConversations, applyLatestMessages } from "../world.ts";
@@ -20,6 +20,11 @@ type Pane = "timeline" | "thread";
 const pageKeys: Partial<Record<Pane, QueryKey>> = {};
 // The last read position each pane posted (useConversationRead runs once per message ID).
 const readPosted: Partial<Record<Pane, string>> = {};
+
+const showing = (world: World, conversationId: string, threadId?: string) =>
+  currentView() === "messages" &&
+  world.screen.conversationId === conversationId &&
+  (!threadId || world.screen.threadId === threadId);
 
 /**
  * Reads one context page (queries/context/links.ts messagePageOptions): only the IDs this client
@@ -90,20 +95,25 @@ export async function showMessaging(world: World, selectedConversationId?: strin
   return conversations ?? world.conversations;
 }
 
-function unmountConversation(world: World, conversationId: string) {
+export function closeConversation(world: World, conversationId: string) {
   const org = world.organizationId;
-  closeThread(world);
-  for (const prefix of [
+  if (world.screen.conversationId === conversationId) {
+    closeThread(world);
+    world.screen = {};
+    pageKeys.timeline = undefined;
+    readPosted.timeline = undefined;
+    hidePictures("timeline");
+  }
+  const prefixes = [
     keys.conversationMessages(org, conversationId),
     keys.messagePages(org, conversationId),
     keys.messageTargets(org, conversationId),
     keys.conversationReactions(org, conversationId),
     keys.agentWorkRequests(world.userId, org, conversationId),
     keys.myAgentCalls(world.userId, org, conversationId),
-  ])
-    unmount(prefix);
-  pageKeys.timeline = undefined;
-  readPosted.timeline = undefined;
+  ];
+  for (const prefix of prefixes) unmount(prefix);
+  return prefixes;
 }
 
 function latestPage(world: World, conversationId: string) {
@@ -113,13 +123,14 @@ function latestPage(world: World, conversationId: string) {
     applyLatestMessages(world, conversationId, rows);
     // The rendered list loads context for its rows and marks the newest as read, unless the
     // person is looking at older history.
-    if (world.screen.conversationId === conversationId && !world.screen.olderCursor) {
+    if (showing(world, conversationId) && !world.screen.olderCursor) {
       await showContext(
         world,
         conversationId,
         rows.map((row) => row.id),
         "timeline",
       );
+      if (!showing(world, conversationId)) return rows;
       await markRead(world, conversationId, rows.at(-1)?.id, "timeline");
       // New rows from a refetch show their authors' avatars.
       await showPictures("timeline", conversationId, authors(rows));
@@ -137,7 +148,7 @@ export async function openConversation(world: World, conversationId: string) {
   const org = world.organizationId;
   const before = new Set((world.messages.get(conversationId) ?? []).map((message) => message.id));
   if (world.screen.conversationId !== conversationId) {
-    if (world.screen.conversationId) unmountConversation(world, world.screen.conversationId);
+    if (world.screen.conversationId) closeConversation(world, world.screen.conversationId);
     world.screen = { conversationId };
   }
   const [rows] = await Promise.all([
@@ -152,12 +163,14 @@ export async function openConversation(world: World, conversationId: string) {
   ]);
   // A cached page shows without a read; its effects still run once for this pane.
   const messages = rows ?? [];
+  if (!showing(world, conversationId)) return { messages, unseen: 0 };
   await showContext(
     world,
     conversationId,
     messages.map((row) => row.id),
     "timeline",
   );
+  if (!showing(world, conversationId)) return { messages, unseen: 0 };
   await markRead(world, conversationId, messages.at(-1)?.id, "timeline");
   await showPictures("timeline", conversationId, authors(messages));
   return { messages, unseen: messages.filter((message) => !before.has(message.id)).length };
@@ -221,7 +234,7 @@ export async function openThread(world: World, rootId: string) {
         conversationId,
         threadId: rootId,
       });
-      if (page && world.screen.threadId === rootId) {
+      if (page && showing(world, conversationId, rootId)) {
         const replies = page.filter((message) => message.id !== rootId);
         await showContext(
           world,
@@ -229,17 +242,20 @@ export async function openThread(world: World, rootId: string) {
           replies.map((row) => row.id),
           "thread",
         );
-        await markRead(world, conversationId, page.at(-1)?.id, "thread");
+        if (showing(world, conversationId, rootId))
+          await markRead(world, conversationId, page.at(-1)?.id, "thread");
       }
       return page;
     })) ?? [];
   const replies = rows.filter((message) => message.id !== rootId);
+  if (!showing(world, conversationId, rootId)) return replies;
   await showContext(
     world,
     conversationId,
     replies.map((row) => row.id),
     "thread",
   );
+  if (!showing(world, conversationId, rootId)) return replies;
   await markRead(world, conversationId, rows.at(-1)?.id, "thread");
   await showPictures("thread", rootId, authors(rows));
   return replies;

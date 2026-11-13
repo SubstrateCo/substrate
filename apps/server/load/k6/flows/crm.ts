@@ -4,12 +4,19 @@ import { call } from "../lib/http.ts";
 import { think, readTime } from "../lib/pacing.ts";
 import { rng } from "../lib/persona.ts";
 import type { Message } from "../lib/world.ts";
-import type { FlowContext } from "./flow.ts";
+import { FlowSkipped, type FlowContext } from "./flow.ts";
 
 /** Throughput mix, not the deterministic crm-smoke correctness/management matrix. */
 export async function crm({ world }: FlowContext) {
+  if (config.mode === "coverage") {
+    for (const roll of [0.2, 0.63, 0.72, 0.84, 0.95]) await crmStep({ world }, roll);
+    return;
+  }
+  await crmStep({ world }, rng.next());
+}
+
+async function crmStep({ world }: FlowContext, roll: number) {
   const customer = fixture(world.user);
-  const roll = rng.next();
   if (config.mode !== "backfill" && roll < 0.6) {
     await Promise.all([
       call("crm.accounts", { limit: 25 }),
@@ -27,7 +34,7 @@ export async function crm({ world }: FlowContext) {
       call("crm.activity", { entityId: customer.dealEntityId, limit: 25 }),
       call("crm.followUps", { entityId: customer.dealEntityId }),
     ]);
-    if (rng.chance(0.15))
+    if (config.mode === "coverage" || rng.chance(0.15))
       await Promise.all([
         call("crm.report", reportPeriod()),
         call("crm.reportDeals", { cohort: "open", limit: 25 }),
@@ -50,7 +57,7 @@ export async function crm({ world }: FlowContext) {
   } else if (roll < 0.78) {
     // A fresh deal avoids two sessions silently overwriting a shared seed deal.
     const stages = await call<Stage[]>("crm.pipeline");
-    if (!stages?.length) return;
+    if (!stages?.length) throw new FlowSkipped("No CRM pipeline stages");
     const deal = await mutate({
       action: "createDeal",
       requestId: crypto.randomUUID(),
@@ -101,7 +108,7 @@ export async function crm({ world }: FlowContext) {
       summary: "Reviewed rollout scope, pricing and next steps with the customer.",
     });
     await call("crm.interactions", { contactEntityId: customer.contactEntityId });
-    if (rng.chance(0.3))
+    if (config.mode === "coverage" || rng.chance(0.3))
       await mutate({
         action: "createFollowUp",
         entityId: customer.dealEntityId,
@@ -112,7 +119,7 @@ export async function crm({ world }: FlowContext) {
       });
   } else {
     const conversation = rng.pick(world.conversations.filter((row) => row.joined && row.canPost));
-    if (!conversation) return;
+    if (!conversation) throw new FlowSkipped("No writable conversation for CRM context");
     const message = await call<Message>("messaging.messages.send", {
       conversationId: conversation.id,
       body: "Customer rollout needs a commercial review.",
@@ -124,7 +131,7 @@ export async function crm({ world }: FlowContext) {
     ) {
       await call("context.related", { entityId: customer.dealEntityId });
       await call("context.messagePage", { messageIds: [message.id] });
-      if (rng.chance(0.2))
+      if (config.mode === "coverage" || rng.chance(0.2))
         await call("context.links.detach", {
           messageId: message.id,
           entityId: customer.dealEntityId,

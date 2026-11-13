@@ -1,3 +1,4 @@
+import { config } from "../lib/config.ts";
 import { call } from "../lib/http.ts";
 import { readTime, think, typeTime } from "../lib/pacing.ts";
 import { rng } from "../lib/persona.ts";
@@ -10,6 +11,7 @@ import {
 import { linkSearch, updateTask, writeTasks, type TaskFields } from "../lib/screens/task-writes.ts";
 import {
   assignableActors,
+  boards,
   closeMoveDialog,
   closeDiscussions,
   closeTask,
@@ -41,17 +43,22 @@ export const created = new Set<string>();
 
 /** Opens a task in the inspector if it is not open, and reads it. */
 async function inspect(world: World, task: Task) {
-  if (openTaskId() === task.entityId) return [];
+  if (!boards.get(task.projectEntityId)?.tasks.some((row) => row.entityId === task.entityId))
+    return false;
+  if (openTaskId() === task.entityId) return true;
   await think("glance");
-  const { activity } = await openTask(world, task.projectEntityId, task.entityId);
+  const { activity, available } = await openTask(world, task.projectEntityId, task.entityId);
+  if (!available) return false;
   await readTime(1 + Math.min(activity, 4), task.description.length);
+  return true;
 }
 
 export async function readTask(world: World, detail: ProjectDetail) {
   const task = pickTask(detail.tasks, world.actorId, "read");
   if (!task) return;
-  await inspect(world, task);
+  if (!(await inspect(world, task))) return;
   if (rng.chance(0.6)) closeTask(world);
+  return true;
 }
 
 function otherHumans(world: World, detail: ProjectDetail) {
@@ -67,7 +74,7 @@ export async function createTask(world: World, detail: ProjectDetail) {
     detail.tasks.length >= 3 && rng.chance(0.7)
       ? pickTask(detail.tasks, world.actorId, "update")
       : undefined;
-  if (parent) await inspect(world, parent);
+  if (parent && !(await inspect(world, parent))) return;
   await think("decide");
   const title = taskTitle();
   await think("composeShort");
@@ -112,6 +119,7 @@ export async function createTask(world: World, detail: ProjectDetail) {
   // The saved task opens in the inspector.
   await openTask(world, projectEntityId, id);
   await think("glance");
+  return true;
 }
 
 /** One change in the inspector or on the board. Resolves the task, or undefined. */
@@ -121,15 +129,16 @@ export async function updateOne(world: World, detail: ProjectDetail) {
   if (openTaskId() !== task.entityId && rng.chance(0.05)) {
     // Board drag across columns or the list's status menu: an inline status change.
     await think("decide");
-    await updateTask(world, task, { status: nextStatus(task.status) });
-    return;
+    return !!(await updateTask(world, task, { status: nextStatus(task.status) }));
   }
-  await inspect(world, task);
-  await changeField(world, detail, task);
+  if (!(await inspect(world, task))) return;
+  const changed = await changeField(world, detail, task);
+  if (!changed) return false;
   if (rng.chance(0.25)) {
     await think("glance");
-    await changeField(world, detail, task);
+    if (!(await changeField(world, detail, task))) return false;
   }
+  return true;
 }
 
 async function changeField(world: World, detail: ProjectDetail, task: Task) {
@@ -200,7 +209,7 @@ async function reference(world: World, detail: ProjectDetail, task: Task, conver
 export async function commentOn(world: World, detail: ProjectDetail) {
   const task = pickTask(detail.tasks, world.actorId, "comment");
   if (!task) return;
-  await inspect(world, task);
+  if (!(await inspect(world, task))) return;
   const discussion = await call<{ conversationId: string }>("tasks.discussion", {
     projectEntityId: task.projectEntityId,
     taskEntityId: task.entityId,
@@ -220,11 +229,12 @@ export async function commentOn(world: World, detail: ProjectDetail) {
       await typeTime(words.slice(at).join(" "));
       body = [...words.slice(0, at), token, ...words.slice(at)].filter(Boolean).join(" ");
     } else await typeTime(body);
-    await sendMessage(world, discussion.conversationId, body);
+    if (!(await sendMessage(world, discussion.conversationId, body))) return false;
     if (post < posts - 1) await think("between");
   }
   await showTasks(world);
   await openProject(world, task.projectEntityId);
+  return true;
 }
 
 const linkedTo = (detail: ProjectDetail, taskId: string) =>
@@ -239,15 +249,18 @@ const linkedTo = (detail: ProjectDetail, taskId: string) =>
 export async function linkTasks(world: World, detail: ProjectDetail) {
   const task = pickTask(detail.tasks, world.actorId, "update");
   if (!task) return;
-  await inspect(world, task);
+  if (!(await inspect(world, task))) return;
   const target = { projectEntityId: task.projectEntityId, taskEntityId: task.entityId };
   const own = detail.links.filter(
     (link) => link.source?.entityId === task.entityId || link.target?.entityId === task.entityId,
   );
   if (own.length && rng.chance(0.9)) {
     await think("decide");
-    await writeTasks(world, { action: "removeTaskLink", ...target, linkId: rng.pick(own)!.id });
-    return;
+    return !!(await writeTasks(world, {
+      action: "removeTaskLink",
+      ...target,
+      linkId: rng.pick(own)!.id,
+    }));
   }
   const linked = linkedTo(detail, task.entityId);
   linked.add(task.entityId);
@@ -273,12 +286,12 @@ export async function linkTasks(world: World, detail: ProjectDetail) {
   const usable = rows.filter((row) => !linked.has(row.id));
   const choice = usable.find((row) => row.id === wanted?.entityId) ?? rng.pick(usable);
   if (!choice) return;
-  await writeTasks(world, {
+  return !!(await writeTasks(world, {
     action: "addTaskLink",
     ...target,
     relation,
     otherTaskEntityId: choice.id,
-  });
+  }));
 }
 
 /** The Discussions tab, read, then back to Tasks. */
@@ -288,6 +301,7 @@ export async function readDiscussions(world: World) {
   await readTime(Math.max(1, rows.length), rows.length * 120);
   closeDiscussions(world);
   await think("glance");
+  return true;
 }
 
 /** "Move" in the task menu: choose another project, maybe a parent there, move, follow the task. */
@@ -296,12 +310,23 @@ export async function moveTask(world: World, detail: ProjectDetail) {
     (project) => project.entityId !== detail.project.entityId,
   );
   const mine = detail.tasks.filter((task) => created.has(task.entityId));
-  const task = rng.pick(mine.length && rng.chance(0.6) ? mine : detail.tasks);
-  const destination = rng.pick(destinations);
+  const task = rng.pick(
+    mine.length && (config.mode === "coverage" || rng.chance(0.6)) ? mine : detail.tasks,
+  );
+  let destination = rng.pick(destinations);
   if (!task || !destination) return;
-  await inspect(world, task);
+  if (!(await inspect(world, task))) return;
   await think("glance");
-  const other = await showMoveDestination(world, destination.entityId);
+  let other = await showMoveDestination(world, destination.entityId);
+  if (config.mode === "coverage" && (!other || !canEdit(other))) {
+    closeMoveDialog(world, destination.entityId);
+    for (const candidate of destinations.filter((row) => row.entityId !== destination!.entityId)) {
+      destination = candidate;
+      other = await showMoveDestination(world, candidate.entityId);
+      if (other && canEdit(other)) break;
+      closeMoveDialog(world, candidate.entityId);
+    }
+  }
   await think("decide");
   if (!other || !canEdit(other)) return closeMoveDialog(world, destination.entityId);
   // The server refuses a move that leaves an assignee without access. The person unassigns the
@@ -337,13 +362,14 @@ export async function moveTask(world: World, detail: ProjectDetail) {
   await openProject(world, destination.entityId);
   await openTask(world, destination.entityId, task.entityId);
   await think("glance");
+  return true;
 }
 
 /** Deletes a task the user created here, after the confirm dialog. */
 export async function deleteOwn(world: World, detail: ProjectDetail) {
   const task = rng.pick(detail.tasks.filter((row) => created.has(row.entityId)));
   if (!task) return;
-  await inspect(world, task);
+  if (!(await inspect(world, task))) return;
   await think("decide");
   const deleted = await writeTasks(world, {
     action: "deleteTask",
@@ -352,4 +378,5 @@ export async function deleteOwn(world: World, detail: ProjectDetail) {
   });
   if (deleted) created.delete(task.entityId);
   closeTask(world);
+  return !!deleted;
 }

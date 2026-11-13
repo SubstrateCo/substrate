@@ -1,5 +1,6 @@
 import type { IndexStats, Snapshot, StatementStats, TableStats } from "./catalog";
 import { connectionUrl, dataDirectory, labelArgument } from "./connection";
+import { indexVerdict } from "./index-verdict";
 import type { Plans } from "./plan-analysis";
 import { findRedundancy } from "./redundancy";
 
@@ -36,6 +37,13 @@ if (await plansFile.exists()) {
 }
 
 const tables = new Map(snapshot.tables.map((table) => [table.table, table]));
+const coverageFile = Bun.file(`${dataDirectory}/snapshot-${label}-coverage.json`);
+const coverage: Snapshot | undefined = (await coverageFile.exists())
+  ? await coverageFile.json()
+  : undefined;
+if (coverage && coverage.metadata.database !== snapshot.metadata.database)
+  throw new Error("Coverage and measurement databases differ.");
+const coverageScans = new Map(coverage?.indexes.map((index) => [index.name, index.idx_scan]));
 const statementPlans = new Map(plans?.statements.map((statement) => [statement.key, statement]));
 const planUse = new Map<string, number>();
 for (const statement of plans?.statements ?? []) {
@@ -53,9 +61,14 @@ function kind(index: IndexStats) {
   return index.unique ? "unique-index" : "secondary";
 }
 function verdict(index: IndexStats) {
-  if (index.primary || index.unique || index.constraint_name) return "keep (constraint)";
-  if (index.idx_scan === 0)
-    return (planUse.get(index.name) ?? 0) > 0 ? "plan-only" : "drop candidate";
+  const evidence = indexVerdict(
+    index,
+    tables.get(index.table)!,
+    coverageScans.get(index.name),
+    planUse.get(index.name),
+    snapshot.metadata.block_size,
+  );
+  if (evidence !== "used") return evidence;
   if (
     totalScans > 0 &&
     index.idx_scan / totalScans < LOW_USE_SCAN_SHARE &&
@@ -96,7 +109,9 @@ Indexes: ${snapshot.indexes.length}; secondary (non-unique, no backing constrain
 Small table: < ${SMALL_TABLE_ROWS} rows OR heap < ${SMALL_TABLE_PAGES} pages (${snapshot.metadata.block_size} bytes/page).
 Low use: positive scans < ${LOW_USE_SCAN_SHARE * 100}% of total index scans AND small table.
 Missing-index signal: ≥ ${MANY_SEQ_SCANS} sequential scans AND > ${SMALL_TABLE_ROWS} rows.
-${plans ? `Generic plans: ${plans.statements.length}; EXPLAIN errors: ${plans.statements.filter((statement) => statement.error).length}.` : "No matching plans.json; drop candidates are provisional (generic-plan use is unknown)."}
+${plans ? `Generic plans: ${plans.statements.length}; EXPLAIN errors: ${plans.statements.filter((statement) => statement.error).length}.` : "No matching plans.json; generic-plan use is unknown."}
+Coverage snapshot: ${coverage ? `${label}-coverage (separate from measured counters)` : "missing; no review candidates assigned"}.
+Review candidates have zero scans in both windows, at least 1,000 rows, and measured table reads. They need repeated representative runs and query review, not automatic removal.
 
 Generic plans are parameter-independent estimates, not execution evidence. Candidate labels are not permission to drop indexes. Failed EXPLAINs, uncaptured workloads, uniqueness, FK checks, INCLUDE columns, and ordering can change the decision. Run snapshot before plans, on an idle database. Exact row counts scan tables/indexes; reset clears its counting overhead before the run. Later snapshots include earlier snapshot-count overhead.`);
 

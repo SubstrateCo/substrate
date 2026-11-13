@@ -3,6 +3,7 @@ import { call } from "../http.ts";
 import { keys, type HintTarget, type QueryKey } from "../keys.ts";
 import type { World } from "../world.ts";
 import type { Level, ProjectDetail } from "./tasks.ts";
+import { boards } from "./tasks.ts";
 
 /**
  * Project writes from the project form and the sharing dialog (components/tasks/projects/...),
@@ -49,6 +50,9 @@ export async function deleteProject(world: World, projectEntityId: string) {
   const org = world.organizationId;
   const result = await call("tasks.mutations", { action: "deleteProject", projectEntityId });
   if (!result) return false;
+  boards.delete(projectEntityId);
+  world.projects = world.projects.filter((row) => row.entityId !== projectEntityId);
+  world.tasks = world.tasks.filter((row) => row.projectEntityId !== projectEntityId);
   await invalidate(
     [
       keys.tasks(org),

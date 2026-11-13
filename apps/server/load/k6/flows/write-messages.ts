@@ -1,8 +1,7 @@
 import { config } from "../lib/config.ts";
 import { call } from "../lib/http.ts";
 import { readTime, think, typeTime } from "../lib/pacing.ts";
-import { rng } from "../lib/persona.ts";
-import { Rng } from "../lib/random.ts";
+import { pickResource, rng } from "../lib/persona.ts";
 import {
   closeThread,
   deleteMessage,
@@ -17,12 +16,13 @@ import {
 import { word, messageBody } from "../lib/words.ts";
 import {
   applyLatestMessages,
+  conversationKey,
   joinedConversations,
   type Conversation,
   type Message,
   type World,
 } from "../lib/world.ts";
-import type { FlowContext } from "./flow.ts";
+import { FlowSkipped, type FlowContext } from "./flow.ts";
 
 const backfill = config.mode === "backfill";
 const emojis = ["👍", "🎉", "❤️", "😂", "👀", "✅", "🙏", "🔥", "💯", "🚀"];
@@ -34,21 +34,14 @@ const minute = 60_000;
  */
 const known: { kind: string; id: string; conversationId: string }[] = [];
 
-// The same hash on every VU, so all members of a conversation agree on which ones are busy.
-const busyness = (conversation: Conversation) =>
-  new Rng(conversation.id).next() * (conversation.kind === "channel" ? 3 : 1);
-
 /**
  * Backfill skew: rank conversations by a shared hash and weight them Zipf-like, so a few channels
  * collect thousands of messages and most stay short.
  */
 function backfillTarget(world: World) {
-  const ranked = joinedConversations(world)
-    .filter((conversation) => conversation.canPost)
-    .sort((a, b) => busyness(b) - busyness(a));
-  return rng.weighted(
-    ranked,
-    (conversation) => 1 / Math.pow(ranked.indexOf(conversation) + 1, 1.3),
+  return pickResource(
+    joinedConversations(world).filter((conversation) => conversation.canPost),
+    conversationKey,
   );
 }
 
@@ -58,7 +51,7 @@ function liveTarget(world: World) {
   const open = writable.find((c) => c.id === world.screen.conversationId);
   if (open && rng.chance(0.6)) return open;
   const now = Date.now();
-  return rng.weighted(writable, (conversation) => {
+  return pickResource(writable, conversationKey, (conversation) => {
     const idle = now - (world.activity.get(conversation.id) ?? 0);
     const kind = conversation.kind === "channel" ? 1 : 1.6;
     let recency = 1;
@@ -82,9 +75,12 @@ async function recentMessages(world: World, conversationId: string) {
 async function mention(world: World, conversation: Conversation) {
   const usable = known.filter(
     (reference) =>
-      reference.kind === "task" ||
-      reference.kind === "project" ||
-      reference.conversationId === conversation.id,
+      (reference.kind === "task" && world.tasks.some((task) => task.entityId === reference.id)) ||
+      (reference.kind === "project" &&
+        world.projects.some((project) => project.entityId === reference.id)) ||
+      ((reference.kind === "person" || reference.kind === "agent") &&
+        reference.conversationId === conversation.id &&
+        conversation.members.some((member) => member.actorId === reference.id)),
   );
   if (usable.length && (backfill ? rng.chance(0.8) : rng.chance(0.3))) {
     const reference = rng.pick(usable)!;
@@ -146,8 +142,9 @@ async function replyInThread(world: World, conversation: Conversation, messages:
     const replies = await openThread(world, root.id);
     await readTime(replies.length + 1, root.body.length);
   }
-  await compose(world, conversation, root.id);
+  const message = await compose(world, conversation, root.id);
   if (!backfill && rng.chance(0.5)) closeThread(world);
+  return message;
 }
 
 async function react(world: World, messages: Message[]) {
@@ -160,7 +157,7 @@ async function react(world: World, messages: Message[]) {
   // Popular emoji win most of the time, and existing reactions get joined.
   const existing = message.reactions.find((reaction) => !reaction.reacted && rng.chance(0.5));
   const emoji = existing?.emoji ?? rng.weighted(emojis, (e) => 1 / (emojis.indexOf(e) + 1))!;
-  await toggleReaction(world, message, emoji);
+  return toggleReaction(world, message, emoji);
 }
 
 async function reviseOwn(world: World, messages: Message[]) {
@@ -171,8 +168,8 @@ async function reviseOwn(world: World, messages: Message[]) {
   if (rng.chance(0.65)) {
     const addition = ` ${word()} ${word()}`;
     await typeTime(addition);
-    await editMessage(world, message, `${message.body}${addition}`);
-  } else await deleteMessage(world, message);
+    return editMessage(world, message, `${message.body}${addition}`);
+  } else return deleteMessage(world, message);
 }
 
 /**
@@ -184,17 +181,29 @@ async function reviseOwn(world: World, messages: Message[]) {
 export async function writeMessages({ world }: FlowContext) {
   if (!backfill) await showMessaging(world);
   const conversation = backfill ? backfillTarget(world) : liveTarget(world);
-  if (!conversation) return;
+  if (!conversation) throw new FlowSkipped("No writable conversation");
   const opened = world.screen.conversationId === conversation.id;
   const messages = await recentMessages(world, conversation.id);
   if (!backfill && !opened) await readTime(Math.min(messages.length, 5), 300);
+  if (config.mode === "coverage") {
+    const sent = await compose(world, conversation);
+    if (!sent) throw new FlowSkipped("Coverage message not sent");
+    if (!(await replyInThread(world, conversation, [sent])))
+      throw new FlowSkipped("Coverage reply not sent");
+    return;
+  }
   const actions = rng.weighted([1, 2, 3], (count) => [55, 30, 15][count - 1]!)!;
+  let performed = false;
   for (let action = 0; action < actions; action++) {
     const roll = rng.next();
-    if (roll < 0.15) await react(world, messages);
-    else if (roll < 0.35) await replyInThread(world, conversation, messages);
-    else if (roll < 0.38) await reviseOwn(world, world.messages.get(conversation.id) ?? messages);
-    else await compose(world, conversation);
+    let result;
+    if (roll < 0.15) result = await react(world, messages);
+    else if (roll < 0.35) result = await replyInThread(world, conversation, messages);
+    else if (roll < 0.38)
+      result = await reviseOwn(world, world.messages.get(conversation.id) ?? messages);
+    else result = await compose(world, conversation);
+    performed = !!result || performed;
     if (action < actions - 1) await think("between");
   }
+  if (!performed) throw new FlowSkipped("No message action performed");
 }

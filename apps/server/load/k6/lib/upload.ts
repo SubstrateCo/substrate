@@ -2,7 +2,7 @@ import { withConnection } from "./connections.ts";
 import { apiUrl, origin } from "./data.ts";
 import { trace } from "./debug.ts";
 import { endpoints, type EndpointName } from "./endpoints.ts";
-import { apiCalls, apiDuration, apiFailures, writes } from "./metrics.ts";
+import { apiCalls, apiDuration, recordApiFailure, writes } from "./metrics.ts";
 import http from "k6/http";
 
 /**
@@ -17,10 +17,7 @@ function report(name: string, status: number, body: http.Response["body"] | stri
   let code = "NETWORK";
   if (status >= 500) code = "HTTP_5XX";
   else if (status) code = "HTTP_4XX";
-  apiFailures.add(1, {
-    endpoint: name,
-    code,
-  });
+  recordApiFailure(name, code);
   if (reported.has(name)) return;
   reported.add(name);
   console.warn(`[vu ${__VU}] ${name} failed: ${status} ${JSON.stringify(body).slice(0, 200)}`);
@@ -145,10 +142,7 @@ export async function putObject(url: string, headers: Record<string, string>, by
   trace("http", `PUT storage ${response.status} ${response.timings.duration.toFixed(0)}ms`);
   if (response.status >= 200 && response.status < 300) return true;
   // Counted under the upload it belongs to, so the summary shows it.
-  apiFailures.add(1, {
-    endpoint: "files.uploads",
-    code: response.status >= 500 ? "HTTP_5XX" : "HTTP_4XX",
-  });
+  recordApiFailure("files.uploads", response.status >= 500 ? "HTTP_5XX" : "HTTP_4XX");
   if (!reported.has("storage.put")) {
     reported.add("storage.put");
     console.warn(`[vu ${__VU}] storage PUT failed: ${response.status} ${String(response.error)}`);

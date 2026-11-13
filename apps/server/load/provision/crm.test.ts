@@ -42,7 +42,20 @@ test("CRM provisioning resumes per-user fixtures without duplicate customers, de
           if (command.action === "createAccount") accounts.push({ ...data, name: command.name });
           if (command.action === "createContact")
             contacts.push({ ...data, displayName: command.displayName });
-          if (command.action === "createDeal") deals.push({ ...data, title: command.title });
+          if (command.action === "createDeal")
+            deals.push({
+              ...data,
+              title: command.title,
+              outcome: "open",
+              version: 1,
+              stageId: command.stageId,
+            });
+          if (command.action === "transitionDeal") {
+            const deal = deals.find((row) => row.entityId === command.entityId)!;
+            expect(command.expectedVersion).toBe(deal.version);
+            deal.outcome = command.outcome;
+            deal.version++;
+          }
         }
       } else {
         const search = url.searchParams.get("search");
@@ -57,6 +70,9 @@ test("CRM provisioning resumes per-user fixtures without duplicate customers, de
             break;
           case "/api/v1/crm/deals":
             data = deals.filter((row) => row.title === search);
+            break;
+          case "/api/v1/crm/deal":
+            data = { deal: deals.find((row) => row.entityId === url.searchParams.get("entityId")) };
             break;
           case "/api/v1/crm/pipeline":
             data = [{ id: stageId }];
@@ -73,7 +89,13 @@ test("CRM provisioning resumes per-user fixtures without duplicate customers, de
   });
   const accounts: { entityId: string; name: string }[] = [];
   const contacts: { entityId: string; displayName: string }[] = [];
-  const deals: { entityId: string; title: string }[] = [];
+  const deals: {
+    entityId: string;
+    title: string;
+    outcome: "open" | "won" | "lost";
+    version: number;
+    stageId: string;
+  }[] = [];
   const clients = await Promise.all(
     [1, 2].map(() => request.newContext({ baseURL: server.url.href })),
   );
@@ -89,12 +111,17 @@ test("CRM provisioning resumes per-user fixtures without duplicate customers, de
     const fixtures = members.map((row) => row.crm);
     await crm(members);
     expect(members.map((row) => row.crm)).toEqual(fixtures);
-    expect(accounts).toHaveLength(2);
-    expect(contacts).toHaveLength(2);
-    expect(deals).toHaveLength(2);
+    expect(accounts).toHaveLength(6);
+    expect(contacts).toHaveLength(6);
+    expect(deals).toHaveLength(6);
+    expect(deals.filter((row) => row.outcome === "open")).toHaveLength(2);
+    expect(deals.filter((row) => row.outcome === "won")).toHaveLength(2);
+    expect(deals.filter((row) => row.outcome === "lost")).toHaveLength(2);
+    expect(writes.filter((row) => row.action === "transitionDeal")).toHaveLength(4);
     expect(projects).toHaveLength(2);
     for (const member of members) {
       const customer = member.crm!;
+      expect(deals.find((row) => row.entityId === customer.dealEntityId)?.outcome).toBe("open");
       const deal = writes.find(
         (row) => row.action === "createDeal" && row.accountEntityId === customer.accountEntityId,
       );
@@ -107,8 +134,8 @@ test("CRM provisioning resumes per-user fixtures without duplicate customers, de
         `Load CRM ${member.email}`,
       );
     }
-    expect(writes.filter((row) => row.action === "createAccount")).toHaveLength(2);
-    expect(writes.filter((row) => row.action === "createDeal")).toHaveLength(2);
+    expect(writes.filter((row) => row.action === "createAccount")).toHaveLength(6);
+    expect(writes.filter((row) => row.action === "createDeal")).toHaveLength(6);
   } finally {
     await Promise.all(clients.map((client) => client.dispose()));
     await server.stop(true);

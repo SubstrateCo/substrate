@@ -1,5 +1,7 @@
 import { config } from "../lib/config.ts";
+import { users } from "../lib/data.ts";
 import { trace } from "../lib/debug.ts";
+import { recordObservation } from "../lib/metrics.ts";
 import { readTime, think, typeTime } from "../lib/pacing.ts";
 import { rng } from "../lib/persona.ts";
 import {
@@ -17,7 +19,13 @@ import {
 import { openConversation, sendMessage, showMessaging } from "../lib/screens/messaging.ts";
 import { messageBody, word } from "../lib/words.ts";
 import type { Person, World } from "../lib/world.ts";
-import type { FlowContext } from "./flow.ts";
+import {
+  coverageChannel,
+  coverageHelpers,
+  ownedFixture,
+  seededChannel,
+} from "./coverage-fixtures.ts";
+import { FlowSkipped, type FlowContext } from "./flow.ts";
 import {
   administerOrganization,
   canAdminister,
@@ -41,13 +49,20 @@ import {
 } from "./rare-work.ts";
 
 const backfill = config.mode === "backfill";
+const coverage = config.mode === "coverage";
+const helpers = coverage ? coverageHelpers([...users], config.vus) : [];
 
 // What this VU did in its session, so it only undoes its own changes.
 const created = new Set<string>();
 const joined = new Set<string>();
 const added: { conversationId: string; userId: string }[] = [];
 
-const others = (world: World) => world.people.filter((person) => person.userId !== world.userId);
+const others = (world: World) =>
+  world.people.filter(
+    (person) =>
+      person.userId !== world.userId &&
+      (!coverage || helpers.some((helper) => helper.userId === person.userId)),
+  );
 
 /** The people picker: type part of a name, pick the match; repeated for each person. */
 async function pickPeople(candidates: Person[], count: number) {
@@ -72,14 +87,18 @@ async function startConversation(world: World) {
       .flatMap((conversation) => conversation.members.map((member) => member.userId)),
   );
   const fresh = people.filter((person) => !dmWith.has(person.userId));
-  const kind = rng.weighted(["channel", "group", "dm"] as const, (value) => {
-    if (value === "dm") return fresh.length ? 2.5 : 0;
-    return value === "channel" ? 4.5 : 3;
-  })!;
+  const kind =
+    config.mode === "coverage"
+      ? "channel"
+      : rng.weighted(["channel", "group", "dm"] as const, (value) => {
+          if (value === "dm") return fresh.length ? 2.5 : 0;
+          return value === "channel" ? 4.5 : 3;
+        })!;
   await think("decide");
   let name: string | undefined;
   if (kind === "channel" || (kind === "group" && rng.chance(0.5))) {
     name = kind === "channel" ? `${word()}-${word()}` : `${word()} ${word()}`;
+    if (coverage) name = `coverage-${name}`;
     await typeTime(name);
   }
   let count = 1;
@@ -90,15 +109,14 @@ async function startConversation(world: World) {
     return;
   const isPrivate = kind === "channel" && rng.chance(0.3);
   await think("glance");
-  const id = await createConversation(world, {
-    kind,
-    name,
-    private: isPrivate,
-    emails: recipients.map((person) => person.email),
-  });
+  const emails = recipients.map((person) => person.email);
+  const id = await createConversation(
+    world,
+    coverage ? coverageChannel(name!, emails) : { kind, name, private: isPrivate, emails },
+  );
   if (!id) return;
   created.add(id);
-  if (!rng.chance(0.8)) return;
+  if (!rng.chance(0.8)) return true;
   if (!backfill) {
     await showMessaging(world);
     await openConversation(world, id);
@@ -106,7 +124,7 @@ async function startConversation(world: World) {
   const body = messageBody();
   await think(body.length > 200 ? "composeLong" : "composeShort");
   await typeTime(body);
-  await sendMessage(world, id, body);
+  return !!(await sendMessage(world, id, body));
 }
 
 /** The members dialog of a managed channel or group: add people, or rarely remove one added here. */
@@ -116,11 +134,15 @@ async function manageMembers(world: World) {
     (conversation) =>
       conversation.joined &&
       conversation.canManage &&
+      (!coverage || ownedFixture(conversation.id, created)) &&
       conversation.kind !== "dm" &&
       !isGeneral(conversation),
   );
   const conversation = rng.pick(managed);
-  if (!conversation) return joinChannel(world);
+  if (!conversation) {
+    if (coverage) throw new FlowSkipped("Coverage requires its own temporary channel for members");
+    return joinChannel(world);
+  }
   if (!backfill) {
     await openConversation(world, conversation.id);
     await think("glance");
@@ -169,10 +191,16 @@ async function joinChannel(world: World) {
   await showMessaging(world);
   const open = listed(world).filter(
     (conversation) =>
-      conversation.kind === "channel" && !conversation.private && !conversation.joined,
+      conversation.kind === "channel" &&
+      !conversation.private &&
+      !conversation.joined &&
+      (!coverage || seededChannel(conversation)),
   );
   const channel = rng.pick(open);
-  if (!channel) return;
+  if (!channel) {
+    if (coverage) throw new FlowSkipped("Coverage requires an unjoined seeded public channel");
+    return;
+  }
   if (!backfill) await readTime(open.length);
   await think("decide");
   if (!(await joinConversation(world, channel.id))) return;
@@ -193,6 +221,7 @@ async function leaveChannel(world: World) {
       (conversation) =>
         conversation.joined &&
         joined.has(conversation.id) &&
+        (!coverage || seededChannel(conversation)) &&
         !isGeneral(conversation) &&
         conversation.createdBy !== world.userId,
     ),
@@ -222,7 +251,7 @@ async function deleteOwnConversation(world: World) {
 type Step = {
   weight: number;
   backfill: number;
-  run: (world: World) => Promise<void>;
+  run: (world: World) => Promise<void | boolean>;
   when?: (world: World) => boolean;
 };
 
@@ -257,11 +286,26 @@ const steps: Step[] = [
  */
 export async function rare({ world }: FlowContext) {
   await checkInvitations(world);
+  if (config.mode === "coverage") {
+    // Exercise every named branch rather than betting preflight on a rare random draw.
+    for (const step of steps) {
+      if (step.when && !step.when(world)) {
+        recordObservation("coverage_action_omitted", step.run.name);
+        continue;
+      }
+      trace("coverage", step.run.name);
+      recordObservation("coverage_action_attempted", step.run.name);
+      const result = await step.run(world);
+      if ((step.run === startConversation || step.run === createProject) && result !== true)
+        throw new FlowSkipped(`Required rare action did not complete: ${step.run.name}`);
+    }
+    return;
+  }
   const step = rng.weighted(steps, (entry) => {
     if (entry.when && !entry.when(world)) return 0;
     return backfill ? entry.backfill : entry.weight;
   });
-  if (!step) return;
+  if (!step) throw new FlowSkipped("No applicable rare action");
   trace("step", step.run.name);
   await step.run(world);
 }

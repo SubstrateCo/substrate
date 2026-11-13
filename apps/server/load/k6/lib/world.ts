@@ -1,4 +1,5 @@
 import type { LoadUser } from "../../types.ts";
+import type { LinkableWork } from "./screens/connected-work.ts";
 
 /** Response rows the flows use. Fields are the subset read by the load test. */
 interface ConversationMember {
@@ -39,7 +40,7 @@ export interface Message {
 /** One message's context row (POST /context/message-page): its work links. */
 export interface ContextRow {
   messageId: string;
-  links: { entityId: string; projectEntityId?: string | null }[];
+  links: { entityId: string; entityType: string; title: string; projectEntityId?: string | null }[];
 }
 
 export interface Person {
@@ -127,4 +128,33 @@ export function applyLatestMessages(world: World, conversationId: string, rows: 
 
 export function joinedConversations(world: World) {
   return world.conversations.filter((conversation) => conversation.joined);
+}
+
+/** Display identities survive fresh fixture UUIDs; private chats use their participant names. */
+export function conversationKey(conversation: Conversation) {
+  const label =
+    conversation.name ||
+    conversation.members
+      .map((member) => member.name)
+      .sort()
+      .join("|");
+  return `${conversation.kind}:${label}:${conversation.task?.title ?? ""}`;
+}
+
+/** Only cards actually shown on this message may open a linked-work panel. */
+export function linkedWorkForMessage(world: World, message: Message) {
+  return (
+    world.contextIds.get(message.conversationId)?.get(message.id)?.links ?? []
+  ).flatMap<LinkableWork>((link) => {
+    if ((link.entityType !== "task" && link.entityType !== "project") || !link.projectEntityId)
+      return [];
+    return [
+      {
+        id: link.entityId,
+        title: link.title,
+        projectEntityId: link.projectEntityId,
+        kind: link.entityType,
+      },
+    ];
+  });
 }

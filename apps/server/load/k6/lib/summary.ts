@@ -1,27 +1,9 @@
+import { averageSignedInUsers, estimateActiveFraction, rankUsers } from "../../workload.ts";
 import { config } from "./config.ts";
+import { organizations, users } from "./data.ts";
 import { endpointNames, failureCodes } from "./endpoints.ts";
+import { failedThresholds, reportingThresholds, type MetricData } from "./reporting.ts";
 
-/**
- * k6 reports a tag's values in the summary only as threshold submetrics. These always pass:
- * they are reporting aids and never stop the run.
- */
-export function reportingThresholds(flowNames: string[]) {
-  const thresholds: Record<string, string[]> = {};
-  for (const endpoint of endpointNames) {
-    thresholds[`api_calls{endpoint:${endpoint}}`] = ["count>=0"];
-    thresholds[`api_duration{endpoint:${endpoint}}`] = ["max>=0"];
-    for (const code of failureCodes)
-      thresholds[`api_failures{endpoint:${endpoint},code:${code}}`] = ["count>=0"];
-  }
-  for (const flow of flowNames) thresholds[`flow_duration{flow:${flow}}`] = ["max>=0"];
-  for (const cause of ["mount", "hint", "ready", "reconcile", "mutation"])
-    thresholds[`cache_refetches{cause:${cause}}`] = ["count>=0"];
-  return thresholds;
-}
-
-interface MetricData {
-  values: Record<string, number>;
-}
 interface SummaryData {
   metrics: Record<string, MetricData | undefined>;
   state: { testRunDurationMs: number };
@@ -73,25 +55,49 @@ function table(headers: string[], rows: string[][]) {
 }
 
 /** A compact per-endpoint table on stdout, and the same data as JSON in .data/. */
-export function summarize(data: SummaryData, flowNames: string[]) {
+export function summarize(
+  data: SummaryData,
+  flowNames: string[],
+  observationValues: Record<string, readonly string[]> = {},
+) {
   const seconds = data.state.testRunDurationMs / 1000;
   const endpoints = endpointRows(data);
   const flows = flowNames.flatMap((flow) => {
     const row = {
       flow,
       runs: value(data, `flow_duration{flow:${flow}}`, "count"),
+      completed: value(data, `flow_completed{flow:${flow}}`, "count"),
+      failed: value(data, `flow_failed{flow:${flow}}`, "count"),
+      skipped: value(data, `flow_skipped{flow:${flow}}`, "count"),
       p50: value(data, `flow_duration{flow:${flow}}`, "med"),
     };
-    return row.runs > 0 ? [row] : [];
+    return [row];
   });
   const calls = value(data, "api_calls", "count");
+  const sessionPresenceMs = value(data, "session_presence_ms", "count");
+  const expectedActiveFraction =
+    config.mode === "measure"
+      ? estimateActiveFraction(
+          rankUsers([...users], organizations).slice(0, config.vus),
+          organizations,
+        )
+      : null;
   const totals = {
     seconds,
+    accountSlots: config.vus,
+    sessionPresenceMs,
+    averageSignedInUsers: averageSignedInUsers(sessionPresenceMs, data.state.testRunDurationMs),
+    expectedSteadyStateActiveFraction: expectedActiveFraction,
+    expectedSteadyStateSignedInUsers:
+      expectedActiveFraction === null ? null : config.vus * expectedActiveFraction,
     calls,
-    callsPerSecond: calls / seconds,
+    callsPerSecond: seconds > 0 ? calls / seconds : 0,
     failures: value(data, "api_failures", "count"),
     writes: value(data, "writes", "count"),
-    writesPerSecond: value(data, "writes", "count") / seconds,
+    writesPerSecond: seconds > 0 ? value(data, "writes", "count") / seconds : 0,
+    completed: value(data, "flow_completed", "count"),
+    failed: value(data, "flow_failed", "count"),
+    skipped: value(data, "flow_skipped", "count"),
     wsReady: value(data, "ws_ready", "count"),
     wsDrops: value(data, "ws_drops", "count"),
     wsHints: value(data, "ws_hints", "count"),
@@ -102,10 +108,33 @@ export function summarize(data: SummaryData, flowNames: string[]) {
       ]),
     ),
   };
+  const failures = failedThresholds(
+    data.metrics,
+    reportingThresholds(flowNames, config, observationValues),
+  );
+  const observed = Object.fromEntries(
+    Object.entries(observationValues).map(([dimension, values]) => [
+      dimension,
+      Object.fromEntries(
+        values.map((label) => [
+          label,
+          value(data, `workload_observations{dimension:${dimension},value:${label}}`, "count"),
+        ]),
+      ),
+    ]),
+  );
   const text = [
     `\nmode=${config.mode} vus=${config.vus} pace=${config.pace} duration=${seconds.toFixed(0)}s`,
+    `presence: account slots=${config.vus}; measured mean signed-in users=${totals.averageSignedInUsers.toFixed(2)}; expected steady-state mean=${totals.expectedSteadyStateSignedInUsers?.toFixed(2) ?? "n/a"} (not a constant-active-user test; interrupted sessions lose at most the final 1s checkpoint)`,
     `calls=${calls} (${totals.callsPerSecond.toFixed(1)}/s) failures=${totals.failures} writes=${totals.writes} (${totals.writesPerSecond.toFixed(1)}/s)`,
     `socket: ready=${totals.wsReady} drops=${totals.wsDrops} hints=${totals.wsHints}; refetches ${JSON.stringify(totals.refetches)}`,
+    `verdict=${failures.length ? "FAIL" : "PASS"} failed thresholds=${JSON.stringify(failures)}`,
+    `observed visits (not unique identities): ${JSON.stringify(observed)}`,
+    ...(config.mode === "coverage"
+      ? [
+          "Rare action observations are attempts, not completions; omitted means its access/state predicate was false. Other prerequisite early returns are not proof of completed branch coverage.",
+        ]
+      : []),
     "",
     table(
       [
@@ -135,12 +164,29 @@ export function summarize(data: SummaryData, flowNames: string[]) {
     ),
     "",
     table(
-      ["flow", "runs", "p50 s"],
-      flows.map((row) => [row.flow, String(row.runs), (row.p50 / 1000).toFixed(1)]),
+      ["flow", "runs", "completed", "failed", "skipped", "p50 s"],
+      flows.map((row) => [
+        row.flow,
+        String(row.runs),
+        String(row.completed),
+        String(row.failed),
+        String(row.skipped),
+        (row.p50 / 1000).toFixed(1),
+      ]),
     ),
     "",
   ].join("\n");
-  const report = { mode: config.mode, config, totals, endpoints, flows, metrics: data.metrics };
+  const report = {
+    mode: config.mode,
+    config,
+    verdict: failures.length ? "FAIL" : "PASS",
+    failedThresholds: failures,
+    totals,
+    endpoints,
+    flows,
+    observed,
+    metrics: data.metrics,
+  };
   return {
     stdout: text,
     // handleSummary paths are relative to the working directory: run k6 from the repo root.

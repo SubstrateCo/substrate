@@ -1,4 +1,4 @@
-import { rng } from "../lib/persona.ts";
+import { pickResource, rng } from "../lib/persona.ts";
 import { Rng } from "../lib/random.ts";
 import type { Task, TaskPriority, TaskStatus } from "../lib/screens/tasks.ts";
 
@@ -79,19 +79,26 @@ export function pickTask(
   actorId: string | undefined,
   purpose: "read" | "update" | "comment",
 ) {
-  return rng.weighted(tasks, (task) => {
-    let weight = purpose === "read" ? 0.8 : 0.25;
-    if (open(task)) weight = 3;
-    if (actorId && task.assigneeActorEntityId === actorId) weight *= 3;
-    if (purpose === "comment") weight *= 0.3 + 3 * busyness(task.entityId) ** 3;
-    return weight;
-  });
+  return pickResource(
+    tasks,
+    (task) => task.title,
+    (task) => {
+      let weight = purpose === "read" ? 0.8 : 0.25;
+      if (open(task)) weight = 3;
+      if (actorId && task.assigneeActorEntityId === actorId) weight *= 3;
+      if (purpose === "comment") weight *= 0.3 + 3 * busyness(task.title) ** 3;
+      return weight;
+    },
+  );
 }
 
 /** Zipf over a shared ranking, so a few items collect most writes and many stay small. */
-export function skewed<T extends { entityId: string }>(items: T[], exponent: number) {
+export function skewed<T extends { title: string } | { name: string }>(
+  items: T[],
+  exponent: number,
+) {
   const ranked = items
-    .map((item) => ({ item, rank: busyness(item.entityId), weight: 0 }))
+    .map((item) => ({ item, rank: busyness("title" in item ? item.title : item.name), weight: 0 }))
     .sort((a, b) => b.rank - a.rank);
   ranked.forEach((entry, index) => (entry.weight = 1 / Math.pow(index + 1, exponent)));
   return rng.weighted(ranked, (entry) => entry.weight)?.item;

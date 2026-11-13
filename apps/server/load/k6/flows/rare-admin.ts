@@ -1,17 +1,24 @@
 import { cached, invalidate } from "../lib/client-cache.ts";
-import { organizations } from "../lib/data.ts";
+import { config } from "../lib/config.ts";
+import { organizations, users } from "../lib/data.ts";
 import { call } from "../lib/http.ts";
 import { keys } from "../lib/keys.ts";
 import { readTime, think, typeTime } from "../lib/pacing.ts";
 import { rng } from "../lib/persona.ts";
-import { isGeneral, listed } from "../lib/screens/conversations.ts";
+import { createConversation, isGeneral, listed } from "../lib/screens/conversations.ts";
 import type { FullOrganization } from "../lib/screens/frame.ts";
 import { openConversation, showMessaging } from "../lib/screens/messaging.ts";
 import { changeAvatar } from "../lib/screens/pictures.ts";
 import { showSettings } from "../lib/screens/settings.ts";
 import { word } from "../lib/words.ts";
 import type { World } from "../lib/world.ts";
+import { coverageChannel, coverageHelpers } from "./coverage-fixtures.ts";
 import { isOwner } from "./rare-sharing.ts";
+
+const coverage = config.mode === "coverage";
+const helpers = coverage ? coverageHelpers([...users], config.vus) : [];
+const helperPeer = (userId: string | null) =>
+  !coverage || helpers.some((helper) => helper.userId === userId);
 
 /**
  * Organization administration, conversation ownership and the profile picture in the rare flow.
@@ -72,7 +79,9 @@ async function changeRoleAndBack(world: World) {
   // The members page lists the full organization, which holds member IDs and roles.
   const detail = cached<FullOrganization>(keys.organizationDetail(world.organizationId));
   const member = rng.pick(
-    (detail?.members ?? []).filter((row) => row.userId !== world.userId && row.role === "member"),
+    (detail?.members ?? []).filter(
+      (row) => row.userId !== world.userId && row.role === "member" && helperPeer(row.userId),
+    ),
   );
   if (!member) return;
   await think("decide");
@@ -93,6 +102,12 @@ export const canAdminister = isOwner;
 /** One owner task in organization settings. */
 export async function administerOrganization(world: World) {
   await think("navigate");
+  if (config.mode === "coverage") {
+    await renameOrganization(world);
+    await inviteAndCancel(world);
+    await changeRoleAndBack(world);
+    return;
+  }
   const task = rng.weighted(
     [
       { weight: 2, run: renameOrganization },
@@ -107,26 +122,59 @@ export async function administerOrganization(world: World) {
 /** Hands a channel or group it owns to another member (conversation actions, "Transfer"). */
 export async function transferOwnership(world: World) {
   await showMessaging(world);
-  const conversation = rng.pick(
-    listed(world).filter(
-      (row) => row.joined && row.kind !== "dm" && row.createdBy === world.userId && !isGeneral(row),
-    ),
-  );
+  const helper = coverage
+    ? rng.pick(
+        world.people.filter(
+          (person) =>
+            person.userId !== world.userId &&
+            helperPeer(person.userId) &&
+            helpers.some(
+              (candidate) =>
+                candidate.userId === person.userId &&
+                candidate.organizationId === world.organizationId,
+            ),
+        ),
+      )
+    : undefined;
+  if (coverage && !helper)
+    throw new Error("Coverage ownership transfer requires an inactive organization helper");
+  const fixtureId = helper
+    ? await createConversation(
+        world,
+        coverageChannel(`coverage-transfer-${word()}-${word()}`, [helper.email]),
+      )
+    : undefined;
+  if (coverage && !fixtureId)
+    throw new Error("Coverage ownership transfer requires its own private channel");
+  const conversation = coverage
+    ? undefined
+    : rng.pick(
+        listed(world).filter(
+          (row) =>
+            row.joined && row.kind !== "dm" && row.createdBy === world.userId && !isGeneral(row),
+        ),
+      );
   const member =
-    conversation &&
-    rng.pick(
-      conversation.members.filter(
-        (row) => row.type === "human" && row.userId && row.userId !== world.userId,
-      ),
-    );
-  if (!conversation || !member?.userId) return;
-  await openConversation(world, conversation.id);
+    helper ??
+    (conversation &&
+      rng.pick(
+        conversation.members.filter(
+          (row) =>
+            row.type === "human" &&
+            row.userId &&
+            row.userId !== world.userId &&
+            helperPeer(row.userId),
+        ),
+      ));
+  const conversationId = fixtureId ?? conversation?.id;
+  if (!conversationId || !member?.userId) return;
+  await openConversation(world, conversationId);
   await think("decide");
   await typeTime(member.name.slice(0, rng.int(2, 5)));
   await think("decide");
   if (
     await call("messaging.conversations.owner", {
-      conversationId: conversation.id,
+      conversationId,
       userId: member.userId,
     })
   )

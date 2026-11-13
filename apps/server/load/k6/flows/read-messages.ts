@@ -1,6 +1,6 @@
 import { currentView } from "../lib/client-cache.ts";
 import { readTime, think } from "../lib/pacing.ts";
-import { persona, rng } from "../lib/persona.ts";
+import { persona, pickResource, rng } from "../lib/persona.ts";
 import { openMessageAttachment } from "../lib/screens/files.ts";
 import {
   closeThread,
@@ -12,15 +12,21 @@ import {
   showMessaging,
   showReactions,
 } from "../lib/screens/messaging.ts";
-import { joinedConversations, type Conversation, type Message, type World } from "../lib/world.ts";
-import type { FlowContext } from "./flow.ts";
+import {
+  conversationKey,
+  joinedConversations,
+  type Conversation,
+  type Message,
+  type World,
+} from "../lib/world.ts";
+import { FlowSkipped, type FlowContext } from "./flow.ts";
 
 const minute = 60_000;
 
 /** Unread first, then recently active; the open conversation rarely. */
 function chooseConversation(world: World): Conversation | undefined {
   const now = Date.now();
-  return rng.weighted(joinedConversations(world), (conversation) => {
+  return pickResource(joinedConversations(world), conversationKey, (conversation) => {
     if (conversation.id === world.screen.conversationId) return 0.3;
     const unread = world.unread.get(conversation.id) ?? 0;
     const idle = now - (world.activity.get(conversation.id) ?? 0);
@@ -96,6 +102,7 @@ async function glanceAtReactions(messages: Message[], world: World) {
 export async function readMessages({ world }: FlowContext) {
   const arriving = currentView() !== "messages";
   await showMessaging(world);
+  if (!joinedConversations(world).length) throw new FlowSkipped("No joined conversations");
   await think(arriving ? "navigate" : "glance");
   const visits = rng.weighted([1, 2, 3], (count) => [5, 3, 1.5 * persona.activity][count - 1]!)!;
   for (let visit = 0; visit < visits; visit++) {

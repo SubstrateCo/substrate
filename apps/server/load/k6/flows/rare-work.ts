@@ -1,4 +1,5 @@
 import { config } from "../lib/config.ts";
+import { users } from "../lib/data.ts";
 import { readTime, think, typeTime } from "../lib/pacing.ts";
 import { rng } from "../lib/persona.ts";
 import {
@@ -26,11 +27,14 @@ import {
 import { uploadPicture } from "../lib/upload.ts";
 import { taskDescription, word } from "../lib/words.ts";
 import { joinedConversations, type World } from "../lib/world.ts";
+import { coverageHelpers, coverageProject } from "./coverage-fixtures.ts";
 import { isOwner } from "./rare-sharing.ts";
 
 /** Projects, files and settings in the rare flow. */
 
 const backfill = config.mode === "backfill";
+const coverage = config.mode === "coverage";
+const helpers = coverage ? coverageHelpers([...users], config.vus) : [];
 const suffixes = [
   "Launch",
   "Plan",
@@ -51,7 +55,11 @@ const attached: { projectEntityId: string; taskEntityId: string; fileId: string 
 export const ownProjects: string[] = [];
 
 /** A project from the tasks screen; backfill reads a board directly. */
-async function pickProject(world: World, wanted: (detail: ProjectDetail) => boolean) {
+async function pickProject(
+  world: World,
+  wanted: (detail: ProjectDetail) => boolean,
+  ownOnly = false,
+) {
   const known = [...boards.values()].filter(wanted);
   if (backfill) {
     if (known.length && rng.chance(0.8)) return rng.pick(known);
@@ -63,6 +71,16 @@ async function pickProject(world: World, wanted: (detail: ProjectDetail) => bool
   const projects = await showTasks(world);
   await think("glance");
   const preferred = projects.filter((project) => {
+    if (
+      coverage &&
+      !coverageProject(
+        project.entityId,
+        ownProjects,
+        world.user.workspace?.projectEntityId,
+        ownOnly,
+      )
+    )
+      return false;
     const detail = boards.get(project.entityId);
     return !detail || wanted(detail);
   });
@@ -93,6 +111,7 @@ export async function createProject(world: World) {
     await openProject(world, id);
     await think("glance");
   }
+  return !!id;
 }
 
 /** Deletes a project it created in this session, from the project editor's danger zone. */
@@ -149,13 +168,27 @@ export async function updateProject(world: World) {
 
 /** The share dialog: find a person by name, pick a level, confirm. */
 export async function shareProject(world: World) {
-  const detail = await pickProject(world, (board) => board.level === "owner");
+  // Admins also report owner access to other VUs' private projects. Never adopt those fixtures.
+  const detail = await pickProject(world, (board) => board.level === "owner", coverage);
   if (!detail) return createProject(world);
   const members = new Set(detail.members.map((member) => member.actorEntityId));
   const person = rng.pick(
-    detail.actors.filter((actor) => actor.type === "human" && !members.has(actor.entityId)),
+    detail.actors.filter(
+      (actor) =>
+        actor.type === "human" &&
+        !members.has(actor.entityId) &&
+        (!coverage ||
+          helpers.some(
+            (helper) =>
+              helper.organizationId === world.organizationId &&
+              helper.actorEntityId === actor.entityId,
+          )),
+    ),
   );
-  if (!person) return;
+  if (!person) {
+    if (coverage) throw new Error("Coverage project sharing requires an inactive helper actor");
+    return;
+  }
   await think("glance");
   await typeTime(person.name.slice(0, rng.int(3, 6)));
   await think("glance");

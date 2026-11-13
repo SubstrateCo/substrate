@@ -2,7 +2,8 @@ import { withConnection } from "./connections.ts";
 import { apiUrl, origin } from "./data.ts";
 import { trace } from "./debug.ts";
 import { endpoints, failureCodes, type EndpointName, type FailureCode } from "./endpoints.ts";
-import { apiCalls, apiDuration, apiFailures, writes } from "./metrics.ts";
+import { failureTargets } from "./failure-targets.ts";
+import { apiCalls, apiDuration, recordApiFailure, writes } from "./metrics.ts";
 import type { JSONValue } from "k6";
 import http from "k6/http";
 
@@ -43,7 +44,7 @@ const reported = new Set<string>();
  * Calls one endpoint with the VU's cookie session and the trusted Origin. Workspace routes get
  * `organizationId` added. Resolves the unwrapped `data` (plain JSON for auth routes), `true` when
  * a route succeeds without data, or null after a failure, which is counted by endpoint and code
- * and logged once per VU and endpoint/code.
+ * and logged once per VU, endpoint/code, and resource target.
  */
 export async function call<T = JSONValue>(name: EndpointName, data: Data = {}): Promise<T | null> {
   const endpoint = endpoints[name];
@@ -59,7 +60,12 @@ export async function call<T = JSONValue>(name: EndpointName, data: Data = {}): 
       tags: { name, endpoint: name },
       timeout: "30s",
     }),
-  );
+  ).catch((error) => {
+    apiCalls.add(1, { endpoint: name });
+    apiDuration.add(Date.now() - started, { endpoint: name });
+    recordApiFailure(name, "NETWORK");
+    throw error;
+  });
   const tags = { endpoint: name };
   apiCalls.add(1, tags);
   apiDuration.add(response.timings.duration, tags);
@@ -80,12 +86,13 @@ export async function call<T = JSONValue>(name: EndpointName, data: Data = {}): 
   trace("http", `${endpoint.method} ${name} ${response.status} ${Date.now() - started}ms`);
   if (!ok) {
     const code = failureCode(response.status, errorCode);
-    apiFailures.add(1, { endpoint: name, code });
-    const key = `${name} ${code}`;
+    recordApiFailure(name, code);
+    const target = JSON.stringify(failureTargets(input));
+    const key = `${name} ${code} ${target}`;
     if (!reported.has(key)) {
       reported.add(key);
       console.warn(
-        `[vu ${__VU}] ${endpoint.method} ${name} failed: ${response.status} ${code} ${JSON.stringify(response.body ?? response.error).slice(0, 200)}`,
+        `[vu ${__VU}] ${endpoint.method} ${name} failed: ${response.status} ${code} target=${target} ${JSON.stringify(response.body ?? response.error).slice(0, 200)}`,
       );
     }
     return null;
