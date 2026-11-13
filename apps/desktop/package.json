@@ -7,8 +7,7 @@
   "type": "module",
   "main": "dist/main.js",
   "scripts": {
-    "setup": "install-electron",
-    "dev": "bun run setup && bun scripts/dev.ts",
+    "dev": "install-electron && bun scripts/dev.ts",
     "build": "bun scripts/build.ts",
     "build:dir": "bun run build && electron-builder --win --dir",
     "package": "bun run build && electron-builder --win nsis",
