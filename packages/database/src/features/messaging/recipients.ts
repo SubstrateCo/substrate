@@ -1,7 +1,7 @@
 import { messagingLimits } from "@substrate/contracts/messaging/input";
 
 import type { DatabaseExecutor } from "../../client";
-import { ensureHumanActor, ensureOwnedAgentActors } from "../../core/actors/provisioning";
+import { ensureHumanActors, ensureOwnedAgentActors } from "../../core/actors/provisioning";
 import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
 import { member } from "../../core/organizations/schema";
@@ -47,14 +47,21 @@ export async function recipients(db: DatabaseExecutor, scope: SessionIdentity, e
       ),
     );
   const matched = new Set(matches.map((match) => match.email));
-  const people: (MemberActor & { userId: string })[] = [];
-  for (const { userId, actorId } of matches) {
-    if (userId === scope.userId) continue;
-    const entityId =
-      actorId ??
-      (await ensureHumanActor(db, { userId, organizationId: scope.organizationId })).entityId;
-    people.push({ entityId, type: "human", userId, organizationId: scope.organizationId });
-  }
+  const others = matches.filter((match) => match.userId !== scope.userId);
+  const provisioned = new Map(
+    (
+      await ensureHumanActors(db, {
+        organizationId: scope.organizationId,
+        userIds: others.flatMap((match) => (match.actorId ? [] : [match.userId])),
+      })
+    ).map((actor) => [actor.userId, actor.entityId]),
+  );
+  const people: (MemberActor & { userId: string })[] = others.map(({ userId, actorId }) => ({
+    entityId: actorId ?? provisioned.get(userId)!,
+    type: "human",
+    userId,
+    organizationId: scope.organizationId,
+  }));
   return { people, external: normalized.filter((email) => !matched.has(email)) };
 }
 

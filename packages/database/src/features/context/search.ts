@@ -1,4 +1,4 @@
-import type { ContextSearchKind } from "@substrate/contracts/context/input";
+import type { ContextSearchBatchKind, ContextSearchKind } from "@substrate/contracts/context/input";
 import { managedPicture, managedPicturePath } from "@substrate/contracts/files/pictures";
 import type { TaskStatus } from "@substrate/contracts/tasks";
 
@@ -28,7 +28,7 @@ import {
 import { projects } from "../projects/schema";
 import { tasks } from "../tasks/tasks.schema";
 import { requireWork } from "./access";
-import { crmContextTargets, crmContextTypes, isCrmContextType } from "./crm-targets";
+import { crmContextTargets, crmContextTypes } from "./crm-targets";
 import { messageExcerpts } from "./message-excerpt";
 import { bodyMessagingReferences } from "./messaging-references";
 import { messageEntityReferences } from "./schema";
@@ -114,6 +114,7 @@ export async function contextSearch(
     conversationId?: string;
     editable?: boolean;
     relatedToEntityId?: string;
+    kinds?: readonly ContextSearchBatchKind[];
   },
   signal?: AbortSignal,
 ): Promise<SearchResult[]> {
@@ -123,6 +124,11 @@ export async function contextSearch(
   const limit = pageSize(input.limit ?? 30);
   const query = input.query.trim();
   const kind = input.kind ?? "all";
+  // A combined search names its kinds. Otherwise "all" covers every kind except people and agents.
+  const searches = (type: ContextSearchBatchKind) =>
+    input.kinds
+      ? input.kinds.includes(type)
+      : kind === type || (kind === "all" && type !== "person" && type !== "agent");
   if ((kind === "channel" || kind === "thread") && input.conversationId) {
     const [source] = await db
       .select({ id: messagingConversations.id })
@@ -261,39 +267,49 @@ export async function contextSearch(
   const bodies = new Map<string, string>();
   // Branches of kind "all" start here and run concurrently; their rows join `results` in order.
   const branchRows: Promise<SearchResult[]>[] = [];
-  if (kind === "all" || kind === "task" || kind === "project") {
-    // Tasks and projects in one statement with one visibility CTE.
+  const entityTypes = (["task", "project", ...crmContextTypes] as const).filter(searches);
+  if (entityTypes.length) {
+    // Work and CRM records in one statement with one visibility CTE.
     const minimum = input.editable ? "edit" : "view";
-    const types = kind === "all" ? (["task", "project"] as const) : [kind];
     // The task's project already passed the readable check, so its name is safe to show.
     const taskProject = alias(projects, "task_project");
-    const branches = types.map((type) => {
-      const table = type === "task" ? tasks : projects;
-      const column = type === "task" ? tasks.title : projects.name;
-      const projectEntityId = type === "task" ? tasks.projectEntityId : projects.entityId;
+    const branches = entityTypes.map((type) => {
+      let table, column, matches, active, projectEntityId;
+      if (type === "task" || type === "project") {
+        table = type === "task" ? tasks : projects;
+        column = type === "task" ? tasks.title : projects.name;
+        matches = or(
+          containsText(column, query),
+          matchesWords(searchDocument(column, table.description), words),
+        );
+        projectEntityId = type === "task" ? tasks.projectEntityId : projects.entityId;
+      } else {
+        ({ table, title: column, active } = crmContextTargets[type]);
+        matches = containsText(column, query);
+        projectEntityId = sql`NULL::uuid`;
+      }
       const where = and(
         eq(table.organizationId, scope.organizationId),
         readableFromCte(ctx.scope, table.entityId, minimum),
+        active,
         anchorId ? inArray(table.entityId, relatedEntities) : undefined,
         anchorId ? sql`${table.entityId} <> ${anchorId}` : undefined,
-        query
-          ? or(
-              containsText(column, query),
-              matchesWords(searchDocument(column, table.description), words),
-            )
-          : undefined,
+        query ? matches : undefined,
         input.after ? gt(table.entityId, input.after) : undefined,
       );
       const context =
         type === "task"
           ? sql`${taskProject.name} AS "projectName", ${tasks.status}::text AS status`
           : sql`NULL::text AS "projectName", NULL::text AS status`;
+      const contactEntityId =
+        type === "contact_interaction" ? contactInteractions.contactEntityId : sql`NULL::uuid`;
       const parent =
         type === "task"
           ? sql`LEFT JOIN ${projects} "task_project" ON ${taskProject.entityId} = ${tasks.projectEntityId}`
           : sql``;
       return sql`(SELECT ${table.entityId} AS id, ${column} AS title,
-          ${projectEntityId} AS "projectEntityId", ${type} AS kind, ${context}
+          ${projectEntityId} AS "projectEntityId", ${type} AS kind, ${context},
+          ${contactEntityId} AS "contactEntityId"
           FROM ${table} ${parent} WHERE ${where} ORDER BY ${table.entityId} LIMIT ${limit})`;
     });
     branchRows.push(
@@ -301,54 +317,30 @@ export async function contextSearch(
         .execute<{
           id: string;
           title: string;
-          projectEntityId: string;
-          kind: "task" | "project";
+          projectEntityId: string | null;
+          kind: (typeof entityTypes)[number];
           projectName: string | null;
           status: TaskStatus | null;
+          contactEntityId: string | null;
         }>(withVisibility(ctx.scope, sql.join(branches, sql` UNION ALL `)))
         .then((rows) =>
-          rows.map(({ projectName, status, ...row }) =>
-            row.kind === "task"
-              ? { ...row, projectName: projectName ?? undefined, status: status ?? undefined }
-              : row,
-          ),
+          rows.map(({ projectEntityId, projectName, status, contactEntityId, ...row }) => {
+            if (row.kind === "task")
+              return {
+                ...row,
+                projectEntityId: projectEntityId!,
+                projectName: projectName ?? undefined,
+                status: status ?? undefined,
+              };
+            if (row.kind === "project") return { ...row, projectEntityId: projectEntityId! };
+            const result: SearchResult = row;
+            if (contactEntityId) result.contactEntityId = contactEntityId;
+            return result;
+          }),
         ),
     );
   }
-  if (kind === "all" || isCrmContextType(kind)) {
-    const types = kind === "all" ? crmContextTypes : [kind];
-    for (const type of types) {
-      const { table, title, active } = crmContextTargets[type];
-      const contactEntityId =
-        type === "contact_interaction" ? contactInteractions.contactEntityId : sql<null>`null`;
-      branchRows.push(
-        db
-          .select({ id: table.entityId, title, contactEntityId })
-          .from(table)
-          .where(
-            and(
-              eq(table.organizationId, scope.organizationId),
-              ctx.readable(table.entityId, input.editable ? "edit" : "view"),
-              active,
-              anchorId ? inArray(table.entityId, relatedEntities) : undefined,
-              anchorId ? sql`${table.entityId} <> ${anchorId}` : undefined,
-              query ? containsText(title, query) : undefined,
-              input.after ? gt(table.entityId, input.after) : undefined,
-            ),
-          )
-          .orderBy(asc(table.entityId))
-          .limit(limit)
-          .then((rows) =>
-            rows.map(({ contactEntityId, ...row }) => {
-              const result: SearchResult = { ...row, kind: type };
-              if (contactEntityId) result.contactEntityId = contactEntityId;
-              return result;
-            }),
-          ),
-      );
-    }
-  }
-  if (kind === "all" || kind === "conversation") {
+  if (searches("conversation")) {
     const pending = db
       .select({
         id: messagingConversations.id,
@@ -492,7 +484,7 @@ export async function contextSearch(
       })),
     );
   }
-  if (kind === "all" || kind === "message") {
+  if (searches("message")) {
     const pending = db
       .select({
         id: messagingMessages.id,
@@ -538,7 +530,7 @@ export async function contextSearch(
   }
   for (const rows of await Promise.all(branchRows)) results.push(...rows);
   signal?.throwIfAborted();
-  if (kind === "person" && input.conversationId) {
+  if (searches("person") && input.conversationId) {
     const rows = await db
       .select({
         id: actors.entityId,
@@ -582,7 +574,7 @@ export async function contextSearch(
   // organization in a channel or group, other people's agents that accept callers and whose owner
   // can see the conversation. Shared agents show their call mode, never their allowlist or
   // definition. Agents themselves never call other agents.
-  if (kind === "agent" && input.conversationId) {
+  if (searches("agent") && input.conversationId) {
     const shared = scope.actorEntityId
       ? undefined
       : and(
@@ -651,7 +643,11 @@ export async function contextSearch(
       ),
     );
   }
-  const page = results.sort((a, b) => a.id.localeCompare(b.id)).slice(0, limit);
+  const byId = (a: SearchResult, b: SearchResult) => a.id.localeCompare(b.id);
+  // A combined search keeps each kind's own page, grouped in the requested order.
+  const page = input.kinds
+    ? input.kinds.flatMap((type) => results.filter((row) => row.kind === type).sort(byId))
+    : results.sort(byId).slice(0, limit);
   // Message rows passed the conversation check above, so their bodies may be quoted.
   const excerpts = await messageExcerpts(
     ctx,

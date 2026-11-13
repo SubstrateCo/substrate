@@ -114,7 +114,6 @@ export function MessageItem({
             <>
               <ReferencedMessageBody
                 organizationId={organizationId}
-                conversationId={message.conversationId}
                 context={context}
                 body={message.body}
               />

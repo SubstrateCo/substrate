@@ -272,6 +272,46 @@ test("message, references and batched notifications all roll back with the calle
   expect(await chat.listMessages(conversation.id)).toEqual(before);
 });
 
+test("mention, reply and message alerts share one candidate read and one insert, and mentions win", async () => {
+  await f.db.insert(user).values({ id: "one", name: "one", email: "one@example.com" });
+  await f.db.insert(member).values({ id: "one-a", userId: "one", organizationId: f.orgA });
+  await f.db.update(user).set({ emailVerified: true });
+  const one = await ensureHumanActor(f.db, { userId: "one", organizationId: f.orgA });
+  const chat = createAcceptedMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
+  const group = await chat.createConversation({
+    kind: "group",
+    emails: ["bob@example.com", "one@example.com", "outside@example.com"],
+  });
+  const root = await createAcceptedMessagingService(f.db, {
+    userId: "bob",
+    organizationId: f.orgA,
+  }).sendMessage(group.id, "root");
+  await createAcceptedMessagingService(f.db, { userId: "one", organizationId: f.orgA }).sendMessage(
+    group.id,
+    "one replied",
+    root.id,
+  );
+  const { db, queries } = recordQueries();
+  const sender = createAcceptedMessagingService(db, { userId: "alice", organizationId: f.orgA });
+  const sent = await sender.sendMessage(group.id, `@[person:${one.entityId}]`, root.id);
+  expect(
+    queries.filter((query) => /^\s*select distinct "actors"\."organization_id"/i.test(query)),
+  ).toHaveLength(1);
+  expect(queries.filter((query) => /^\s*insert into "notifications"/i.test(query))).toHaveLength(1);
+  // One authored a thread reply and was mentioned; the mention takes precedence.
+  expect(
+    (await f.db.select().from(notifications).where(eq(notifications.messageId, sent.id)))
+      .map((row) => `${row.recipientActorEntityId}:${row.organizationId}:${row.kind}`)
+      .sort(),
+  ).toEqual(
+    [
+      `${one.entityId}:${f.orgA}:mention`,
+      `${f.bob}:${f.orgA}:reply`,
+      `${f.outsider}:${f.orgB}:message`,
+    ].sort(),
+  );
+});
+
 test("thread recipients use one distinct conversation-scoped query and mentions take precedence", async () => {
   await f.db.update(user).set({ emailVerified: true });
   const chat = createAcceptedMessagingService(f.db, { userId: "alice", organizationId: f.orgA });

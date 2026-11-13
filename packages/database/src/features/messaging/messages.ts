@@ -47,7 +47,7 @@ function messageAuthorColumns(scope: SessionIdentity) {
 async function messageSummaries(
   db: DatabaseExecutor,
   viewerActorEntityId: string,
-  conversationId: string,
+  conversationId: string | string[],
   rows: { id: string; threadId: string | null }[],
 ) {
   const roots = rows.flatMap((row) => (row.threadId ? [] : [row.id]));
@@ -75,7 +75,9 @@ async function messageSummaries(
           .from(messagingMessages)
           .where(
             and(
-              eq(messagingMessages.conversationId, conversationId),
+              Array.isArray(conversationId)
+                ? inArray(messagingMessages.conversationId, conversationId)
+                : eq(messagingMessages.conversationId, conversationId),
               inArray(messagingMessages.threadId, roots),
             ),
           )
@@ -119,12 +121,12 @@ export function selectMessages(db: DatabaseExecutor, scope: SessionIdentity) {
     .$dynamic();
 }
 
-// Adds attachments, reactions and reply counts to authorized messages of one conversation.
+// Adds attachments, reactions and reply counts to authorized messages of the given conversations.
 export async function messageViews(
   db: DatabaseExecutor,
   scope: SessionIdentity,
   viewerActorEntityId: string,
-  conversationId: string,
+  conversationId: string | string[],
   rows: Awaited<ReturnType<typeof selectMessages>>,
 ) {
   const attachments = await messageAttachmentMetadata(

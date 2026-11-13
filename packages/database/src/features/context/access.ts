@@ -1,6 +1,6 @@
 import { taskStatusLabels } from "@substrate/contracts/tasks";
 
-import type { RepositoryContext } from "../../core/repository-context";
+import type { EntityAccess, RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError } from "../../errors";
 import { projects } from "../projects/schema";
 import { tasks } from "../tasks/tasks.schema";
@@ -11,8 +11,10 @@ export async function requireWork(
   context: RepositoryContext,
   entityId: string,
   minimum: "view" | "edit" | "owner" = "view",
+  // Access already checked at `minimum` by the caller.
+  access?: EntityAccess,
 ) {
-  const { entity, level } = await context.requireAccess(entityId, minimum);
+  const { entity, level } = access ?? (await context.requireAccess(entityId, minimum));
   if (entity.entityType === "task") {
     const [task] = await context.db
       .select()
@@ -65,9 +67,10 @@ export async function requireContextTarget(
   entityId: string,
   minimum: "view" | "edit" | "owner" = "view",
 ) {
-  const { entity, level } = await context.requireAccess(entityId, minimum);
+  const access = await context.requireAccess(entityId, minimum);
+  const { entity, level } = access;
   if (entity.entityType === "task" || entity.entityType === "project")
-    return requireWork(context, entityId, minimum);
+    return requireWork(context, entityId, minimum, access);
   const type = entity.entityType;
   if (!isCrmContextType(type)) throw new AccessDeniedError();
   const { table, title, active } = crmContextTargets[type];

@@ -164,6 +164,77 @@ export function ensureHumanActor(
   });
 }
 
+// Creates missing actors in multi-row statements. The unique identity constraints arbitrate
+// concurrent provisioning: a losing row is skipped and its unused entity removed, so the caller
+// re-reads the winner. Humans get owner access to their own actor, as in createActor.
+async function insertMissingActors(
+  tx: DatabaseExecutor,
+  organizationId: string,
+  identities: ({ type: "human"; userId: string } | { type: "agent"; userAgentId: string })[],
+) {
+  const rows = identities.map((identity) => ({
+    entityId: crypto.randomUUID(),
+    organizationId,
+    type: identity.type,
+    userId: identity.type === "human" ? identity.userId : null,
+    userAgentId: identity.type === "agent" ? identity.userAgentId : null,
+  }));
+  await tx
+    .insert(entities)
+    .values(rows.map((row) => rootEntityValues(organizationId, "actor", row.entityId)));
+  const created = await tx.insert(actors).values(rows).onConflictDoNothing().returning();
+  const kept = new Set(created.map((actor) => actor.entityId));
+  const unused = rows.flatMap((row) => (kept.has(row.entityId) ? [] : [row.entityId]));
+  if (unused.length)
+    await tx
+      .delete(entities)
+      .where(and(eq(entities.organizationId, organizationId), inArray(entities.entityId, unused)));
+  const humans = created.filter((actor) => actor.type === "human");
+  if (humans.length)
+    await tx.insert(entityGrants).values(
+      humans.map((actor) => ({
+        organizationId,
+        entityId: actor.entityId,
+        actorEntityId: actor.entityId,
+        level: "owner" as const,
+      })),
+    );
+  return { created, raced: unused.length > 0 };
+}
+
+// Bulk ensureHumanActor in constant statements. Every user must be a member; otherwise the
+// batch fails as a whole and rolls back.
+export function ensureHumanActors(
+  db: DatabaseExecutor,
+  input: { organizationId: string; userIds: string[] },
+) {
+  const userIds = [...new Set(input.userIds)];
+  if (!userIds.length) return Promise.resolve([]);
+  return db.transaction(async (tx) => {
+    const memberships = await tx
+      .select({ userId: member.userId })
+      .from(member)
+      .where(and(eq(member.organizationId, input.organizationId), inArray(member.userId, userIds)));
+    const members = new Set(memberships.map((membership) => membership.userId));
+    if (userIds.some((userId) => !members.has(userId)))
+      throw new ValidationError("Human actors require organization membership.");
+    const identity = and(
+      eq(actors.organizationId, input.organizationId),
+      inArray(actors.userId, userIds),
+    );
+    const existing = await tx.select().from(actors).where(identity);
+    const found = new Set(existing.map((actor) => actor.userId));
+    const missing = userIds.filter((userId) => !found.has(userId));
+    if (!missing.length) return existing;
+    const { created, raced } = await insertMissingActors(
+      tx,
+      input.organizationId,
+      missing.map((userId) => ({ type: "human" as const, userId })),
+    );
+    return raced ? tx.select().from(actors).where(identity) : [...existing, ...created];
+  });
+}
+
 // Reads take one statement when every enabled agent already has an actor here. Missing actors
 // use the unique identity constraint without locking membership or agent configuration.
 export async function ensureOwnedAgentActors(
@@ -215,30 +286,26 @@ function provisionOwnedAgentActors(
       )
       .orderBy(userAgents.id);
     if (!agents.length) return [];
-    const existing = await tx
-      .select()
-      .from(actors)
-      .where(
-        and(
-          eq(actors.organizationId, input.organizationId),
-          inArray(
-            actors.userAgentId,
-            agents.map((agent) => agent.id),
-          ),
-        ),
+    const identity = and(
+      eq(actors.organizationId, input.organizationId),
+      inArray(
+        actors.userAgentId,
+        agents.map((agent) => agent.id),
+      ),
+    );
+    let found = await tx.select().from(actors).where(identity);
+    const missing = agents.filter(
+      (agent) => !found.some((actor) => actor.userAgentId === agent.id),
+    );
+    if (missing.length) {
+      const { created, raced } = await insertMissingActors(
+        tx,
+        input.organizationId,
+        missing.map((agent) => ({ type: "agent" as const, userAgentId: agent.id })),
       );
-    const byAgent = new Map(existing.map((actor) => [actor.userAgentId, actor]));
-    const result = [];
-    for (const agent of agents) {
-      result.push(
-        byAgent.get(agent.id) ??
-          (await createOrReadActor(tx, {
-            organizationId: input.organizationId,
-            type: "agent",
-            userAgentId: agent.id,
-          })),
-      );
+      found = raced ? await tx.select().from(actors).where(identity) : [...found, ...created];
     }
-    return result;
+    const byAgent = new Map(found.map((actor) => [actor.userAgentId, actor]));
+    return agents.flatMap((agent) => byAgent.get(agent.id) ?? []);
   });
 }

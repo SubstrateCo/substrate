@@ -1,5 +1,5 @@
-export { audienceRecipients, resolveReceiver } from "./audience";
-export type { AudienceFilter, RealtimeReceiver } from "./audience";
+export { audienceRecipients, resolveReceiver, resolveReceivers } from "./audience";
+export type { AudienceFilter, RealtimeReceiver, ReceiverIdentity } from "./audience";
 export {
   profileRefreshHints,
   agentRefreshHints,

@@ -4,6 +4,7 @@ import {
   contextMessage,
   contextMessagePage,
   contextTarget,
+  contextTargets,
   contextLink,
   contextSearch,
   contextSourceTask,
@@ -39,6 +40,9 @@ export function createContextRoutes(services: ContextService, scopes: Scopes) {
     )
     .get("/message-target", v("query", contextTarget), scopes.workspace("query"), async (c) =>
       respond(c, await services.getMessageTarget(c.var.scope, c.req.valid("query"))),
+    )
+    .post("/message-targets", v("json", contextTargets), scopes.workspace("json"), async (c) =>
+      respond(c, await services.getMessageTargets(c.var.scope, c.req.valid("json"))),
     )
     .post("/search", v("json", contextSearch), scopes.workspace("json"), async (c) => {
       const signal = c.req.raw.signal;

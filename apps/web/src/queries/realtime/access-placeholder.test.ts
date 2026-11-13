@@ -68,6 +68,7 @@ test("access reset clears a previous message context page kept as placeholder da
     messaging: [],
     links: [],
     people: [],
+    agents: [],
   });
   const loading = Promise.withResolvers<Page>();
   const observer = new QueryObserver(client, {

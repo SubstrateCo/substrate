@@ -5,6 +5,7 @@ import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { contactApplicationRepository } from "../contacts/repository";
 import { contextContactInteractionRepository } from "../context/contact-interactions";
+import { requireDealRelations } from "../crm/deal-relations";
 import { createCrmFromMessageInContext } from "../crm/from-message";
 import { crmRepository } from "../crm/repository";
 import { requireCrmAdmin } from "../crm/settings";
@@ -57,8 +58,7 @@ export async function mcpCrmTools(context: RepositoryContext, identity: SessionI
       return mcpTaskQueries(context, identity).getTask(task.entityId);
     },
     async requireDealRelations(input: McpInput<"create_crm_deal">) {
-      if (input.accountEntityId) await crm.getAccount(input.accountEntityId);
-      for (const entityId of input.contactEntityIds) await contacts.getContact(entityId);
+      await requireDealRelations(context, input, { active: false });
     },
     async list(input: McpInput<"list_crm_records">) {
       const limit = input.limit ?? 25;

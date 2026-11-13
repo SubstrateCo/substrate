@@ -126,7 +126,6 @@ export class RepositoryContext {
     // Fail closed: an unknown level would otherwise compare as granted.
     if (!Object.hasOwn(permissionRank, minimum)) throw new AccessDeniedError();
     if (lock) await this.lockAccessPath(entityId, mode);
-    const actorEntity = alias(entities, "actor_entity");
     const [access] = await this.db
       .select({
         entity: entities,
@@ -138,31 +137,67 @@ export class RepositoryContext {
           eq(entities.organizationId, this.scope.organizationId),
           eq(entities.entityId, entityId),
           isNull(entities.deletedAt),
-          exists(
-            this.db
-              .select({ one: sql`1` })
-              .from(actors)
-              .innerJoin(
-                actorEntity,
-                and(
-                  eq(actorEntity.entityId, actors.entityId),
-                  eq(actorEntity.organizationId, actors.organizationId),
-                ),
-              )
-              .where(
-                and(
-                  eq(actors.organizationId, this.scope.organizationId),
-                  eq(actors.entityId, this.scope.actorEntityId),
-                  activeActorCondition(),
-                  isNull(actorEntity.deletedAt),
-                ),
-              ),
-          ),
+          exists(this.activeScopeActor()),
         ),
       );
     if (!access || !access.level || permissionRank[access.level] < permissionRank[minimum])
       throw new AccessDeniedError();
     return { entity: access.entity, level: access.level };
+  }
+
+  // requireAccess for several entities in one statement. Lock them first with lockAccessPaths.
+  async requireAccessAll(entityIds: string[], minimum: PermissionLevel): Promise<EntityAccess[]> {
+    if (!Object.hasOwn(permissionRank, minimum)) throw new AccessDeniedError();
+    const ids = [...new Set(entityIds)];
+    if (!ids.length) return [];
+    const rows = await this.db
+      .select({
+        entity: entities,
+        level: sql<PermissionLevel | null>`${entityAccessLevel(this.scope, entities.entityId)}`,
+      })
+      .from(entities)
+      .where(
+        and(
+          eq(entities.organizationId, this.scope.organizationId),
+          inArray(entities.entityId, ids),
+          isNull(entities.deletedAt),
+          exists(this.activeScopeActor()),
+        ),
+      );
+    const granted = new Map(
+      rows.flatMap((row) =>
+        row.level && permissionRank[row.level] >= permissionRank[minimum]
+          ? [[row.entity.entityId, { entity: row.entity, level: row.level }] as const]
+          : [],
+      ),
+    );
+    return ids.map((id) => {
+      const access = granted.get(id);
+      if (!access) throw new AccessDeniedError();
+      return access;
+    });
+  }
+
+  private activeScopeActor() {
+    const actorEntity = alias(entities, "actor_entity");
+    return this.db
+      .select({ one: sql`1` })
+      .from(actors)
+      .innerJoin(
+        actorEntity,
+        and(
+          eq(actorEntity.entityId, actors.entityId),
+          eq(actorEntity.organizationId, actors.organizationId),
+        ),
+      )
+      .where(
+        and(
+          eq(actors.organizationId, this.scope.organizationId),
+          eq(actors.entityId, this.scope.actorEntityId),
+          activeActorCondition(),
+          isNull(actorEntity.deletedAt),
+        ),
+      );
   }
 
   async actorCanAccess(actorEntityId: string, entityId: string, minimum: PermissionLevel) {

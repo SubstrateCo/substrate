@@ -3,7 +3,7 @@ import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { visibleConversations } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
-import { messagePeople, messageWorkLinks } from "./message-metadata";
+import { messageAgents, messagePeople, messageWorkLinks } from "./message-metadata";
 import { messagingReferencePage } from "./messaging-references";
 import { and, eq, inArray, sql } from "drizzle-orm";
 
@@ -30,10 +30,11 @@ export async function messagePage(
     .where(and(inArray(messagingMessages.id, ids), visibleConversations(db, scope)));
   // Reject the whole page before resolving any metadata if even one message is unavailable.
   if (messages.length !== ids.length) throw new AccessDeniedError();
-  const [messaging, work, people] = await Promise.all([
+  const [messaging, work, people, agents] = await Promise.all([
     messagingReferencePage(db, scope, messages),
     messageWorkLinks(ctx, ids),
     messagePeople(db, scope, messages),
+    messageAgents(db, scope, messages),
   ]);
   const messagingByMessage = new Map<string, typeof messaging>();
   for (const reference of messaging) {
@@ -53,5 +54,6 @@ export async function messagePage(
     })),
     links: work.get(id) ?? [],
     people: people.get(id)!,
+    agents: agents.get(id)!,
   }));
 }

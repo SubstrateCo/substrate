@@ -9,6 +9,9 @@ export const contextMessagePage = contextWorkspace.extend({
   messageIds: z.array(z.uuid()).max(50),
 });
 export const contextTarget = contextMessage.extend({ conversationId: z.uuid() });
+export const contextTargets = contextWorkspace.extend({
+  targets: z.array(z.object({ conversationId: z.uuid(), messageId: z.uuid() })).max(50),
+});
 export const contextLink = contextMessage.extend({ entityId: z.uuid() });
 export const contextEntityTypes = [
   "task",
@@ -35,15 +38,30 @@ export const contextSearchKinds = [
   "thread",
 ] as const;
 export type ContextSearchKind = (typeof contextSearchKinds)[number];
-export const contextSearch = contextWorkspace.extend({
-  query: z.string().max(200),
-  kind: z.enum(contextSearchKinds).optional(),
-  after: z.uuid().optional(),
-  limit: z.number().int().min(1).max(100).optional(),
-  conversationId: z.uuid().optional(),
-  editable: z.boolean().optional(),
-  relatedToEntityId: z.uuid().optional(),
-});
+// Kinds that one search can combine. Channels and threads have their own order and stay separate.
+const contextSearchBatchKind = z.enum(contextSearchKinds).exclude(["all", "channel", "thread"]);
+export type ContextSearchBatchKind = z.infer<typeof contextSearchBatchKind>;
+export const contextSearch = contextWorkspace
+  .extend({
+    query: z.string().max(200),
+    kind: z.enum(contextSearchKinds).optional(),
+    after: z.uuid().optional(),
+    limit: z.number().int().min(1).max(100).optional(),
+    conversationId: z.uuid().optional(),
+    editable: z.boolean().optional(),
+    relatedToEntityId: z.uuid().optional(),
+    // The first page of each kind, grouped in this order. `limit` applies to each kind.
+    kinds: z
+      .array(contextSearchBatchKind)
+      .min(1)
+      .max(contextSearchBatchKind.options.length)
+      .refine((kinds) => new Set(kinds).size === kinds.length, "Each kind can appear once.")
+      .optional(),
+  })
+  .refine((input) => !input.kinds || (input.kind === undefined && input.after === undefined), {
+    message: "Search several kinds without a kind or a cursor.",
+    path: ["kinds"],
+  });
 export const contextSourceTask = contextMessage.extend({
   requestId: z.uuid(),
   projectEntityId: z.uuid(),

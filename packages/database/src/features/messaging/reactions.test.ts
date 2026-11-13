@@ -156,14 +156,12 @@ test("joined reactor metadata keeps agent pictures owner-only and partner pictur
   expect(
     (await service("bob").listReactions(message.id)).items.every((row) => row.image === null),
   ).toBe(true);
-  await fixture.db
-    .insert(member)
-    .values({
-      id: crypto.randomUUID(),
-      organizationId: fixture.orgA,
-      userId: "outsider",
-      role: "member",
-    });
+  await fixture.db.insert(member).values({
+    id: crypto.randomUUID(),
+    organizationId: fixture.orgA,
+    userId: "outsider",
+    role: "member",
+  });
   expect(
     (await service("bob").listReactions(message.id)).items.find(
       (row) => row.actorId === fixture.outsider,

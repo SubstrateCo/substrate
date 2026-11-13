@@ -11,6 +11,7 @@ import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError } from "../../errors";
 import { requireContextTarget } from "../context/access";
 import { messageEntityReferences } from "../context/schema";
+import { requireContextTargetPage } from "../context/target-page";
 import { requireMessage, visibleConversations } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { excerpt, iso, messageRef } from "./formatting";
@@ -75,25 +76,27 @@ export async function listLinks(
       )
       .offset(p.offset)
       .limit(p.take);
-    const items = await Promise.all(
-      rows.map(async (row) => {
-        const other = await requireContextTarget(ctx, row.id);
-        let direction: "none" | "outgoing" | "incoming" = "none";
-        if (row.relation !== "related_to")
-          direction = row.sourceEntityId === input.target.id ? "outgoing" : "incoming";
-        return {
-          kind: "entity" as const,
-          createdAt: iso(row.createdAt),
-          entity: {
-            type: other.entityType,
-            id: row.id,
-            title: other.title,
-            relation: row.relation,
-            direction,
-          },
-        };
-      }),
+    const targets = await requireContextTargetPage(
+      ctx,
+      rows.map((row) => row.id),
     );
+    const items = rows.map((row) => {
+      const other = targets.get(row.id)!;
+      let direction: "none" | "outgoing" | "incoming" = "none";
+      if (row.relation !== "related_to")
+        direction = row.sourceEntityId === input.target.id ? "outgoing" : "incoming";
+      return {
+        kind: "entity" as const,
+        createdAt: iso(row.createdAt),
+        entity: {
+          type: other.entityType,
+          id: row.id,
+          title: other.title,
+          relation: row.relation,
+          direction,
+        },
+      };
+    });
     return p.page(items);
   }
   const references = [
@@ -126,17 +129,19 @@ export async function listLinks(
       .orderBy(...order)
       .offset(p.offset)
       .limit(p.take);
+    const targets = await requireContextTargetPage(
+      ctx,
+      rows.map((row) => row.id),
+    );
     return p.page(
-      await Promise.all(
-        rows.map(async ({ purpose, createdAt, id }) => {
-          const target = await requireContextTarget(ctx, id);
-          return {
-            kind: kinds[purpose],
-            createdAt: iso(createdAt),
-            work: { type: target.entityType, id, title: target.title },
-          };
-        }),
-      ),
+      rows.map(({ purpose, createdAt, id }) => {
+        const target = targets.get(id)!;
+        return {
+          kind: kinds[purpose],
+          createdAt: iso(createdAt),
+          work: { type: target.entityType, id, title: target.title },
+        };
+      }),
     );
   }
   const work = await requireContextTarget(ctx, input.target.id);

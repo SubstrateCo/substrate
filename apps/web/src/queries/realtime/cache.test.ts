@@ -640,6 +640,8 @@ test("workspace detail changes refresh organization details and invitations, not
   const kept = [
     queryKeys.conversations("org"),
     queryKeys.projects("org"),
+    // Moving a task between projects sends only an access hint.
+    queryKeys.taskLocation("org", "task"),
     [...queryKeys.context("org"), "related", "task"],
   ];
   for (const key of [...refreshed, ...kept]) client.setQueryData(key, []);

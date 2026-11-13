@@ -14,7 +14,7 @@ import { setupDatabase } from "../../testing/database";
 import { approveFixtureParticipants } from "../../testing/messaging";
 import { recordQueries } from "../../testing/queries";
 import { receivesChange } from "../../testing/realtime";
-import { audienceRecipients, resolveReceiver } from "./audience";
+import { audienceRecipients, resolveReceiver, resolveReceivers } from "./audience";
 import { beforeEach, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -269,6 +269,77 @@ test("a project audience reaches its grantees and admins in one statement, never
       receivers[0]!,
     ),
   ).toBe(false);
+});
+
+test("batched receivers match single resolution for mixed identities in constant statements", async () => {
+  await fixture.db.insert(member).values({
+    id: "outsider-a",
+    userId: "outsider",
+    organizationId: fixture.orgA,
+  });
+  const partner = await ensureHumanActor(fixture.db, {
+    userId: "outsider",
+    organizationId: fixture.orgA,
+  });
+  await fixture.db.insert(user).values([
+    { id: "carol", name: "Carol", email: "carol@example.com", emailVerified: false },
+    { id: "dave", name: "Dave", email: "dave@example.com", emailVerified: true },
+  ]);
+  await fixture.db.insert(member).values([
+    { id: "carol-a", userId: "carol", organizationId: fixture.orgA },
+    { id: "dave-a", userId: "dave", organizationId: fixture.orgA },
+  ]);
+  await ensureHumanActor(fixture.db, { userId: "carol", organizationId: fixture.orgA });
+  await ensureHumanActor(fixture.db, { userId: "dave", organizationId: fixture.orgA });
+  // Dave keeps an actor but left; the partner's actor here is disabled.
+  await fixture.db.delete(member).where(eq(member.id, "dave-a"));
+  await fixture.db
+    .update(actors)
+    .set({ disabledAt: new Date() })
+    .where(eq(actors.entityId, partner.entityId));
+  const identities = [
+    alice,
+    bob,
+    external,
+    alice,
+    { userId: "alice", organizationId: fixture.orgB },
+    { userId: "outsider", organizationId: fixture.orgA },
+    { userId: "carol", organizationId: fixture.orgA },
+    { userId: "carol", organizationId: null },
+    { userId: "dave", organizationId: fixture.orgA },
+    { userId: "dave", organizationId: null },
+    { userId: "alice", organizationId: null },
+    { userId: "missing", organizationId: null },
+    { userId: "missing", organizationId: fixture.orgA },
+    { userId: "org-a", organizationId: "alice" },
+  ];
+  const singles: Awaited<ReturnType<typeof resolveReceiver>>[] = [];
+  for (const identity of identities) singles.push(await resolveReceiver(fixture.db, identity));
+  expect(singles.map((receiver) => receiver?.actorId ?? receiver?.userId ?? null)).toEqual([
+    fixture.alice,
+    fixture.bob,
+    fixture.outsider,
+    fixture.alice,
+    null,
+    null,
+    null,
+    null,
+    null,
+    "dave",
+    "alice",
+    null,
+    null,
+    null,
+  ]);
+  const counts = [];
+  for (const batch of [identities.slice(0, 2).concat(identities.slice(9, 10)), identities]) {
+    const { db, queries } = recordQueries();
+    const batched = await resolveReceivers(db, batch);
+    counts.push(queries.length);
+    expect(batched).toEqual(batch.map((identity) => singles[identities.indexOf(identity)] ?? null));
+  }
+  expect(counts).toEqual([2, 2]);
+  expect(await resolveReceivers(fixture.db, [])).toEqual([]);
 });
 
 test("disabled, deleted, revoked and unverified viewers lose scoped delivery", async () => {

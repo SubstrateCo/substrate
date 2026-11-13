@@ -1,4 +1,4 @@
-import { useQueries } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
 
@@ -13,7 +13,7 @@ import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { searchOptions } from "@/queries/context/search";
 
 // "All" lists the best few of each kind, people first.
-const mixedKinds: ReferenceKind[] = ["person", "agent", "task", "project"];
+const mixedKinds = ["person", "agent", "task", "project"] satisfies ReferenceKind[];
 const mixedLimit = 5;
 
 export function ReferencePicker({
@@ -41,24 +41,20 @@ export function ReferencePicker({
     query,
     JSON.stringify([organizationId, conversationId, kind]),
   );
-  const searchKinds = kind === "all" ? mixedKinds : [kind];
-  const results = useQueries({
-    queries: searchKinds.map((searchKind) => ({
-      ...searchOptions({
-        organizationId,
-        conversationId,
-        query: debounced.query,
-        kind: searchKind,
-        limit: kind === "all" ? mixedLimit : undefined,
-      }),
-      enabled: !debounced.pending,
-    })),
+  // "All" asks for each kind's first page in one request; the server groups them in this order.
+  const result = useQuery({
+    ...searchOptions({
+      organizationId,
+      conversationId,
+      query: debounced.query,
+      ...(kind === "all" ? { kinds: mixedKinds, limit: mixedLimit } : { kind }),
+    }),
+    enabled: !debounced.pending,
   });
-  const rows = results.flatMap((result, index) =>
-    (result.data ?? [])
-      .slice(0, kind === "all" ? mixedLimit : undefined)
-      .map((row) => ({ ...row, kind: searchKinds[index]! })),
-  );
+  const rows = (result.data ?? []).flatMap((row) => {
+    const rowKind = kind === "all" ? mixedKinds.find((mixed) => mixed === row.kind) : kind;
+    return rowKind ? [{ ...row, kind: rowKind }] : [];
+  });
   return (
     <ReferencePickerView
       query={query}
@@ -69,11 +65,11 @@ export function ReferencePicker({
           : ["all", "person", "agent", "task", "project"]
       }
       results={debounced.pending ? [] : rows}
-      loading={debounced.pending || results.some((result) => result.isPending)}
-      error={debounced.pending ? null : (results.find((result) => result.error)?.error ?? null)}
+      loading={debounced.pending || result.isPending}
+      error={debounced.pending ? null : result.error}
       onKindChange={(kind) => setSelection({ prefix: parsed.kind, kind })}
       onRetry={() => {
-        if (!debounced.pending) for (const result of results) void result.refetch();
+        if (!debounced.pending) void result.refetch();
       }}
       onInsert={(token, reference) => {
         if (!debounced.pending) onInsert(token, reference);

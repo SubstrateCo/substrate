@@ -1,9 +1,14 @@
 import { AccessDeniedError } from "../../errors";
-import { actors, entities, entityGrants, member, userAgents } from "../../schema";
+import { actors, entities, entityGrants, member, user, userAgents } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
 import { rootEntityValues } from "../entities/identity";
-import { createActor, ensureHumanActor, ensureUserAgentActor } from "./provisioning";
+import {
+  createActor,
+  ensureHumanActor,
+  ensureHumanActors,
+  ensureUserAgentActor,
+} from "./provisioning";
 import { describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -217,6 +222,53 @@ describe("actor provisioning", () => {
       ),
     ).toMatchObject({ message: expect.stringContaining("membership") });
     expect(await f.db.select().from(entities)).toHaveLength(before.length);
+  });
+
+  test("concurrent bulk and single onboarding converge on one actor per person", async () => {
+    const people = ["one", "two", "three"];
+    await f.db
+      .insert(user)
+      .values(people.map((id) => ({ id, name: id, email: `${id}@example.com` })));
+    await f.db
+      .insert(member)
+      .values(people.map((id) => ({ id: `${id}-b`, userId: id, organizationId: f.orgB })));
+    const input = { organizationId: f.orgB, userIds: [...people, "outsider"] };
+    const entitiesBefore = await f.db.select().from(entities);
+    const grantsBefore = await f.db.select().from(entityGrants);
+    const [first, second, single] = await Promise.all([
+      ensureHumanActors(f.db, input),
+      ensureHumanActors(f.db, { ...input, userIds: [...input.userIds].reverse() }),
+      ensureHumanActor(f.db, { organizationId: f.orgB, userId: "two" }),
+    ]);
+    const byUser = (list: { userId: string | null; entityId: string }[]) =>
+      Object.fromEntries(list.map((actor) => [actor.userId, actor.entityId]));
+    expect(byUser(first)).toEqual(byUser(second));
+    expect(Object.keys(byUser(first)).sort()).toEqual([...people, "outsider"].sort());
+    expect(byUser(first).two).toBe(single.entityId);
+    expect(byUser(first).outsider).toBe(f.outsider);
+    // Three new people: one entity and one owner grant each, and no orphans from lost races.
+    expect(await f.db.select().from(entities)).toHaveLength(entitiesBefore.length + 3);
+    expect(await f.db.select().from(entityGrants)).toHaveLength(grantsBefore.length + 3);
+    for (const id of people)
+      expect(
+        await f.db
+          .select({ actorEntityId: entityGrants.actorEntityId, level: entityGrants.level })
+          .from(entityGrants)
+          .where(eq(entityGrants.entityId, byUser(first)[id]!)),
+      ).toEqual([{ actorEntityId: byUser(first)[id]!, level: "owner" }]);
+  });
+
+  test("bulk onboarding rejects the whole batch when one person is not a member", async () => {
+    await f.db.insert(user).values({ id: "carol", name: "Carol", email: "carol@example.com" });
+    await f.db.insert(member).values({ id: "carol-a", userId: "carol", organizationId: f.orgA });
+    const before = await f.db.select().from(entities);
+    expect(
+      await rejection(
+        ensureHumanActors(f.db, { organizationId: f.orgA, userIds: ["carol", "outsider"] }),
+      ),
+    ).toMatchObject({ message: expect.stringContaining("membership") });
+    expect(await f.db.select().from(entities)).toHaveLength(before.length);
+    expect(await f.db.select().from(actors).where(eq(actors.userId, "carol"))).toEqual([]);
   });
 
   test("requires organization membership and cannot duplicate it", async () => {

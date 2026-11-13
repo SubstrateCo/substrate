@@ -1,5 +1,5 @@
 import { ensureUserAgentActor } from "../../core/actors/provisioning";
-import { AccessDeniedError } from "../../errors";
+import { AccessDeniedError, ValidationError } from "../../errors";
 import { entities, user, member, userAgents } from "../../schema";
 import { contextConversation } from "../../testing/context";
 import { setupDatabase } from "../../testing/database";
@@ -92,6 +92,50 @@ test("message targets retain timeline reaction and reply summaries for roots and
   expect(await rejection(context().messageTarget(crypto.randomUUID(), reply.id))).toBeInstanceOf(
     AccessDeniedError,
   );
+});
+
+test("batched message targets match single targets with constant reads and omit hidden, missing and mismatched ones", async () => {
+  const { chat, reply, root, conversation } = await setup();
+  const channel = await chat.createConversation({ kind: "channel", name: "Public targets" });
+  const posts = [];
+  for (let index = 0; index < 5; index++)
+    posts.push(await chat.sendMessage(channel.id, `Post ${index}`));
+  const publicReply = await chat.sendMessage(channel.id, "Public reply", posts[0]!.id);
+  const targets = [
+    { conversationId: conversation.id, messageId: reply.id },
+    { conversationId: conversation.id, messageId: root.id },
+    { conversationId: channel.id, messageId: publicReply.id },
+    ...posts.map((post) => ({ conversationId: channel.id, messageId: post.id })),
+  ];
+  const denied = [
+    { conversationId: channel.id, messageId: reply.id },
+    { conversationId: conversation.id, messageId: crypto.randomUUID() },
+  ];
+  const { db, queries } = recordQueries();
+  const service = createContextService(db, { userId: "alice", organizationId: f.orgA });
+  const reads = async (input: typeof targets) => {
+    queries.length = 0;
+    const result = await service.messageTargets(input);
+    return { result, count: queries.length };
+  };
+  const one = await reads(targets.slice(0, 1));
+  const all = await reads([...targets, ...denied, targets[0]!]);
+  expect(all.count).toBe(one.count);
+  expect(all.count).toBe(5);
+  const singles = [];
+  for (const target of targets)
+    singles.push(await context().messageTarget(target.conversationId, target.messageId));
+  expect(all.result).toEqual(singles);
+  expect(one.result).toEqual(singles.slice(0, 1));
+  // Bob sees only the public channel; the private targets are left out without an error.
+  expect((await context("bob").messageTargets(targets)).map((target) => target.message.id)).toEqual(
+    [publicReply.id, ...posts.map((post) => post.id)],
+  );
+  expect(await context("bob").messageTargets(targets.slice(0, 2))).toEqual([]);
+  expect(await context().messageTargets([])).toEqual([]);
+  expect(
+    await rejection(context().messageTargets(Array.from({ length: 51 }, () => targets[0]!))),
+  ).toBeInstanceOf(ValidationError);
 });
 
 test("related discussions use current human names for local and partner authors", async () => {

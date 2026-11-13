@@ -5,7 +5,7 @@ import { actors, entities, entityGrants, member, user, userAgents } from "../../
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
-import { requireWork } from "./access";
+import { requireContextTarget, requireWork } from "./access";
 import { expect, test } from "bun:test";
 import { and, eq } from "drizzle-orm";
 
@@ -152,4 +152,34 @@ test("task work uses two statements and reports the project's access", async () 
     organizationId: f.orgA,
   });
   expect(await rejection(requireWork(owner, contact.entityId))).toBeInstanceOf(AccessDeniedError);
+});
+
+test("work context targets check access once and keep the work fields", async () => {
+  await f.db.update(user).set({ emailVerified: true });
+  const alice = f.forActor(f.alice);
+  const project = await alice.projects.create({ name: "Launch" });
+  const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "Ship" });
+  await alice.permissions.grant({
+    entityId: project.entityId,
+    actorEntityId: f.bob,
+    level: "view",
+  });
+  const { db, queries } = recordQueries();
+  const { context } = await workspaceContext(db, { userId: "bob", organizationId: f.orgA });
+  for (const [entityId, expected] of [
+    [task.entityId, { entityType: "task", title: "Ship", statusName: "Not started" }],
+    [project.entityId, { entityType: "project", title: "Launch", statusName: null }],
+  ] as const) {
+    queries.length = 0;
+    expect(await requireContextTarget(context, entityId)).toMatchObject({
+      ...expected,
+      projectEntityId: project.entityId,
+      accessEntityId: project.entityId,
+      level: "view",
+    });
+    expect(queries).toHaveLength(2);
+  }
+  expect(await rejection(requireContextTarget(context, task.entityId, "edit"))).toBeInstanceOf(
+    AccessDeniedError,
+  );
 });

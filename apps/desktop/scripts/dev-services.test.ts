@@ -17,9 +17,7 @@ for (const [webReady, apiReady, expected] of [
       "http://localhost:3101",
       async (url) => {
         if (!available.has(url)) throw new Error("Connection refused");
-        return url.endsWith("/login")
-          ? new Response("Frontend")
-          : Response.json(null);
+        return url.endsWith("/login") ? new Response("Frontend") : Response.json(null);
       },
     );
     await ensureDevelopmentServices(

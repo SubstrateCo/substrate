@@ -162,6 +162,121 @@ test("task, project and combined work search each run one statement", async () =
   expect(workQueries[0]).toContain('FROM "projects"');
 });
 
+test("work and CRM search share one statement and keep each type's filters and access", async () => {
+  await f.db.update(user).set({ emailVerified: true });
+  const alice = f.forActor(f.alice);
+  const project = await alice.projects.create({ name: "Pipeline work" });
+  const task = await alice.tasks.create({
+    projectEntityId: project.entityId,
+    title: "Pipeline task",
+  });
+  const contact = await alice.contacts.createContact({ displayName: "Pipeline buyer" });
+  const account = await alice.crm.createAccount({ name: "Pipeline account" });
+  const archived = await alice.crm.createAccount({ name: "Pipeline archived" });
+  await alice.crm.archive(archived.entityId, true);
+  const stages = await alice.crm.ensurePipeline();
+  const deal = await alice.crm.createDeal({
+    title: "Pipeline deal",
+    accountEntityId: account.entityId,
+    stageId: stages[0]!.id,
+  });
+  const interaction = await alice.contactInteractions.createManual({
+    contactEntityId: contact.entityId,
+    kind: "call",
+    occurredAt: new Date(),
+    summary: "Pipeline call",
+  });
+  const { db, queries } = recordQueries();
+  const search = (
+    userId: string,
+    input: Parameters<ReturnType<typeof createContextService>["search"]>[0],
+  ) => createContextService(db, { userId, organizationId: f.orgA }).search(input);
+  const entityStatements = () =>
+    queries.filter((query) =>
+      /FROM "(tasks|projects|contacts|crm_accounts|crm_deals|contact_interactions)"/.test(query),
+    );
+  const accountRow = { id: account.entityId, title: account.name, kind: "account" as const };
+  const dealRow = { id: deal.entityId, title: deal.title, kind: "deal" as const };
+  const expected = [
+    {
+      id: task.entityId,
+      title: task.title,
+      kind: "task" as const,
+      projectEntityId: project.entityId,
+      projectName: project.name,
+      status: "not_started" as const,
+    },
+    {
+      id: project.entityId,
+      title: project.name,
+      kind: "project" as const,
+      projectEntityId: project.entityId,
+    },
+    { id: contact.entityId, title: contact.displayName, kind: "contact" as const },
+    accountRow,
+    dealRow,
+    {
+      id: interaction.entityId,
+      title: "Pipeline call",
+      kind: "contact_interaction" as const,
+      contactEntityId: contact.entityId,
+    },
+  ].sort((a, b) => a.id.localeCompare(b.id));
+  expect(await search("alice", { query: "Pipeline", limit: 100 })).toEqual(expected);
+  expect(entityStatements()).toHaveLength(1);
+  for (const table of ["tasks", "projects", "contacts", "crm_accounts", "crm_deals"])
+    expect(entityStatements()[0]).toContain(`FROM "${table}"`);
+  // The merged page is limited after sorting all types by ID.
+  expect(await search("alice", { query: "Pipeline", limit: 2 })).toEqual(expected.slice(0, 2));
+  for (const row of expected) {
+    queries.length = 0;
+    expect(await search("alice", { query: "Pipeline", kind: row.kind })).toEqual([row]);
+    expect(entityStatements()).toHaveLength(1);
+  }
+  expect(await search("bob", { query: "Pipeline" })).toEqual([]);
+  await alice.permissions.grant({
+    entityId: account.entityId,
+    actorEntityId: f.bob,
+    level: "view",
+  });
+  await alice.permissions.grant({ entityId: deal.entityId, actorEntityId: f.bob, level: "edit" });
+  expect(await search("bob", { query: "Pipeline" })).toEqual(
+    [accountRow, dealRow].sort((a, b) => a.id.localeCompare(b.id)),
+  );
+  expect(await search("bob", { query: "Pipeline", editable: true })).toEqual([dealRow]);
+});
+
+test("searching several kinds returns each kind's first page in the requested order", async () => {
+  await f.db.update(user).set({ emailVerified: true });
+  const alice = f.forActor(f.alice);
+  const project = await alice.projects.create({ name: "Picker project" });
+  for (let i = 0; i < 3; i++)
+    await alice.tasks.create({ projectEntityId: project.entityId, title: `Picker ${i}` });
+  const chat = createAcceptedMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
+  const channel = await chat.createConversation({
+    kind: "channel",
+    name: "Picker",
+    emails: ["bob@example.com"],
+  });
+  const { db, queries } = recordQueries();
+  const context = createContextService(db, { userId: "alice", organizationId: f.orgA });
+  const page = (kind: "person" | "task" | "project") =>
+    context.search({ query: "", kind, conversationId: channel.id, limit: 2 });
+  const expected = [...(await page("person")), ...(await page("task")), ...(await page("project"))];
+  expect(expected.map((row) => row.kind)).toEqual(["person", "person", "task", "task", "project"]);
+  queries.length = 0;
+  expect(
+    await context.search({
+      query: "",
+      kinds: ["person", "task", "project"],
+      conversationId: channel.id,
+      limit: 2,
+    }),
+  ).toEqual(expected);
+  // Tasks and projects come from one statement.
+  expect(queries.filter((query) => /FROM "(tasks|projects)"/.test(query))).toHaveLength(1);
+});
+
 test("short fields match substrings, and words match by prefix", async () => {
   await f.db.update(user).set({ emailVerified: true });
   const alice = f.forActor(f.alice);

@@ -1,6 +1,6 @@
 import type { AgentRequestView } from "@substrate/contracts/agent-work";
 
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { plainReferenceText } from "@/components/messaging/references/reference-token";
 import {
@@ -12,7 +12,7 @@ import {
 import { conversationName } from "@/lib/messaging/conversations";
 import { messageTargetOptions } from "@/queries/context/links";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
-import { projectQueryOptions, projectsQueryOptions } from "@/queries/tasks/options";
+import { projectQueryOptions, taskLocationQueryOptions } from "@/queries/tasks/options";
 
 const labelLength = 120;
 
@@ -52,18 +52,19 @@ export function useProposalTarget(
     ),
     enabled: action?.type === "reply_elsewhere",
   });
-  const projects = useQuery({
-    ...projectsQueryOptions(organizationId),
+  // create_task names its project. update_task names only a task, so find the task's project.
+  const location = useQuery({
+    ...taskLocationQueryOptions(
+      organizationId,
+      action?.type === "update_task" ? action.input.taskId : "",
+    ),
     enabled: action?.type === "update_task",
   });
-  // create_task names its project. update_task names only a task, so search every readable
-  // project for it.
-  let projectIds: string[] = [];
-  if (action?.type === "create_task") projectIds = [action.input.projectId];
-  else if (action?.type === "update_task")
-    projectIds = (projects.data ?? []).map((project) => project.entityId);
-  const details = useQueries({
-    queries: projectIds.map((projectId) => projectQueryOptions(organizationId, projectId)),
+  const projectId =
+    action?.type === "create_task" ? action.input.projectId : location.data?.projectEntityId;
+  const details = useQuery({
+    ...projectQueryOptions(organizationId, projectId ?? ""),
+    enabled: !!projectId,
   });
   const target = useQuery({
     ...messageTargetOptions(
@@ -75,10 +76,12 @@ export function useProposalTarget(
   });
   if (!action) return null;
 
-  const detail = (projectId: string): ProposalProject | null | undefined => {
-    const index = projectIds.indexOf(projectId);
-    return index < 0 ? null : state(details[index]!);
-  };
+  const detail = (id: string): ProposalProject | null | undefined =>
+    id === projectId ? state(details) : null;
+  // A task the viewer can't open has no location, so no project holds it.
+  const located = location.error ? null : state(details);
+  let projects: ProposalProject[] | undefined;
+  if (located !== undefined) projects = located ? [located] : [];
   const lookups: ProposalLookups = {
     organizationId,
     sourceConversationId,
@@ -89,10 +92,7 @@ export function useProposalTarget(
       return conversation ? { name: conversationName(conversation) } : null;
     },
     project: detail,
-    projects:
-      projects.isPending || details.some((query) => query.isPending)
-        ? undefined
-        : details.flatMap((query) => (query.data ? [query.data] : [])),
+    projects,
     message: (conversationId, messageId) => {
       if (message?.conversationId !== conversationId || message.messageId !== messageId)
         return null;

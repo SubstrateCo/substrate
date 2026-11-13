@@ -10,37 +10,66 @@ import {
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
+import { entities } from "../../core/entities/schema";
 import { RepositoryContext } from "../../core/repository-context";
-import { ValidationError } from "../../errors";
+import { AccessDeniedError, ValidationError } from "../../errors";
 import { crmActivityEvents } from "./activity.schema";
-import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 // Call only inside a domain-authorized mutation transaction. Never expose an append API.
 export async function recordCrmActivity(ctx: RepositoryContext, input: CrmActivityInput) {
-  const parsed = crmActivityInput.safeParse(input);
-  if (!parsed.success) throw new ValidationError("Invalid CRM activity.");
-  const value = parsed.data;
+  const [event] = await recordCrmActivities(ctx, [input]);
+  return event!;
+}
+
+// Same rules as recordCrmActivity, with one access lookup and one insert for all inputs.
+export async function recordCrmActivities(ctx: RepositoryContext, inputs: CrmActivityInput[]) {
+  const values = inputs.map((input) => {
+    const parsed = crmActivityInput.safeParse(input);
+    if (!parsed.success) throw new ValidationError("Invalid CRM activity.");
+    return parsed.data;
+  });
+  if (!values.length) return [];
   await ctx.requireActiveActor();
-  const { entity } = await ctx.requireAccess(value.entityId, "view");
-  if (!["account", "contact", "deal"].includes(entity.entityType))
-    throw new ValidationError("Choose a CRM record.");
-  if (value.relatedEntityId) await ctx.requireAccess(value.relatedEntityId, "view");
-  const [event] = await ctx.db
-    .insert(crmActivityEvents)
-    .values({
+  const ids = [
+    ...new Set(
+      values.flatMap((value) =>
+        value.relatedEntityId ? [value.entityId, value.relatedEntityId] : [value.entityId],
+      ),
+    ),
+  ];
+  const readable = await ctx.db
+    .select({ entityId: entities.entityId, entityType: entities.entityType })
+    .from(entities)
+    .where(
+      and(
+        eq(entities.organizationId, ctx.scope.organizationId),
+        inArray(entities.entityId, ids),
+        isNull(entities.deletedAt),
+        ctx.readable(entities.entityId),
+      ),
+    );
+  const types = new Map(readable.map((row) => [row.entityId, row.entityType]));
+  const rows = values.map((value) => {
+    const entityType = types.get(value.entityId);
+    if (!entityType) throw new AccessDeniedError();
+    if (entityType !== "account" && entityType !== "contact" && entityType !== "deal")
+      throw new ValidationError("Choose a CRM record.");
+    if (value.relatedEntityId && !types.has(value.relatedEntityId)) throw new AccessDeniedError();
+    return {
       organizationId: ctx.scope.organizationId,
       entityId: value.entityId,
-      entityType: entity.entityType,
+      entityType,
       actorEntityId: ctx.scope.actorEntityId,
       action: value.action,
       changedFields: [...new Set(value.changedFields ?? [])].sort((left, right) =>
         left.localeCompare(right),
       ),
       relatedEntityId: value.relatedEntityId,
-    })
-    .returning({ id: crmActivityEvents.id });
-  return event!;
+    };
+  });
+  return ctx.db.insert(crmActivityEvents).values(rows).returning({ id: crmActivityEvents.id });
 }
 
 export async function listCrmActivity(

@@ -26,7 +26,7 @@ export interface ProposalLookups {
   organizationId: string;
   conversation: (conversationId: string) => { name: string } | null | undefined;
   project: (projectId: string) => ProposalProject | null | undefined;
-  /** Every project the viewer can open, to find a task by ID. Undefined while any loads. */
+  /** The projects that may hold a task, to find it by ID. Undefined while any loads. */
   projects: readonly ProposalProject[] | undefined;
   /** A message, as a short plain-text label. */
   message: (conversationId: string, messageId: string) => { label: string } | null | undefined;

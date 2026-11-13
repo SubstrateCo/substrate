@@ -66,6 +66,23 @@ test("owned provisioning has constant read cost for cold and warm batches", asyn
   ]);
 });
 
+test("cold owned provisioning writes one or many agent actors in the same statements", async () => {
+  const counts = [];
+  let total = 0;
+  for (const count of [1, 8]) {
+    const added = await profiles(count);
+    total += count;
+    const { db, queries } = recordQueries();
+    const owned = await ensureOwnedAgentActors(db, input);
+    expect(owned).toHaveLength(total);
+    expect(added.every((agent) => owned.some((actor) => actor.userAgentId === agent.id))).toBe(
+      true,
+    );
+    counts.push(queries.length);
+  }
+  expect(counts[1]).toBe(counts[0]);
+});
+
 test("owned provisioning filters owner and profile lifecycle without replacing inactive identities", async () => {
   const [active, disabled, deleted, restored] = await profiles(4);
   const existing = await ensureUserAgentActor(f.db, { ...input, userAgentId: restored!.id });

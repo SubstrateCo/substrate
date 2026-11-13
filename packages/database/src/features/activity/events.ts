@@ -41,7 +41,7 @@ export async function notifyAssignment(
   eventKey: string,
 ) {
   if (!recipient || recipient === context.scope.actorEntityId) return;
-  await notify(context, "assignment", [{ actorEntityId: recipient }], {
+  await notify(context, [{ kind: "assignment", recipients: [{ actorEntityId: recipient }] }], {
     entityId: taskEntityId,
     eventKey,
   });

@@ -21,17 +21,22 @@ type Target =
     };
 
 // All notification kinds require a verified, active human workspace member with target access.
+// A recipient gets one alert per event: the first group that names them sets its kind.
 export async function notify(
   ctx: RepositoryContext,
-  kind: Kind,
-  recipients: Recipient[],
+  groups: { kind: Kind; recipients: Recipient[] }[],
   target: Target,
 ) {
+  const recipients = groups.flatMap((group) => group.recipients);
   if (!recipients.length) return [];
   const actorIds = recipients.flatMap((row) => ("actorEntityId" in row ? [row.actorEntityId] : []));
   const userIds = recipients.flatMap((row) => ("userId" in row ? [row.userId] : []));
   const candidates = await ctx.db
-    .selectDistinct({ organizationId: actors.organizationId, actorId: actors.entityId })
+    .selectDistinct({
+      organizationId: actors.organizationId,
+      actorId: actors.entityId,
+      userId: actors.userId,
+    })
     .from(actors)
     .innerJoin(user, and(eq(user.id, actors.userId), eq(user.emailVerified, true)))
     .innerJoin(
@@ -58,15 +63,11 @@ export async function notify(
           ? and(
               eq(actors.organizationId, ctx.scope.organizationId),
               actorIds.length
-                ? or(
-                    ...actorIds.map((actorEntityId) =>
-                      and(
-                        eq(actors.entityId, actorEntityId),
-                        readableCondition(
-                          { organizationId: ctx.scope.organizationId, actorEntityId },
-                          sql`${target.entityId}::uuid`,
-                        ),
-                      ),
+                ? and(
+                    inArray(actors.entityId, actorIds),
+                    readableCondition(
+                      { organizationId: ctx.scope.organizationId, actorEntityId: actors.entityId },
+                      sql`${target.entityId}::uuid`,
                     ),
                   )
                 : sql`false`,
@@ -80,24 +81,31 @@ export async function notify(
                 OR ${messagingParticipants.actorEntityId} IS NOT NULL))`,
       ),
     );
-  if (!candidates.length) return [];
+  // Entity targets reach recipients only by actor.
+  const names = (recipient: Recipient, row: (typeof candidates)[number]) =>
+    "actorEntityId" in recipient
+      ? recipient.actorEntityId === row.actorId
+      : !("entityId" in target) && recipient.userId === row.userId;
+  const values = candidates.flatMap((row) => {
+    const group = groups.find((entry) => entry.recipients.some((item) => names(item, row)));
+    return group
+      ? [
+          {
+            organizationId: row.organizationId,
+            recipientActorEntityId: row.actorId,
+            kind: group.kind,
+            eventKey: target.eventKey,
+            entityId: "entityId" in target ? target.entityId : undefined,
+            messageId: "messageId" in target ? target.messageId : undefined,
+          },
+        ]
+      : [];
+  });
+  if (!values.length) return [];
   return ctx.effects.notify(() =>
-    ctx.db
-      .insert(notifications)
-      .values(
-        candidates.map((row) => ({
-          organizationId: row.organizationId,
-          recipientActorEntityId: row.actorId,
-          kind,
-          eventKey: target.eventKey,
-          entityId: "entityId" in target ? target.entityId : undefined,
-          messageId: "messageId" in target ? target.messageId : undefined,
-        })),
-      )
-      .onConflictDoNothing()
-      .returning({
-        organizationId: notifications.organizationId,
-        actorId: notifications.recipientActorEntityId,
-      }),
+    ctx.db.insert(notifications).values(values).onConflictDoNothing().returning({
+      organizationId: notifications.organizationId,
+      actorId: notifications.recipientActorEntityId,
+    }),
   );
 }

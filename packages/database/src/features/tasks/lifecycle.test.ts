@@ -202,6 +202,33 @@ test("moving a subtree keeps its IDs, discussion, and access container aligned",
   expect(entity?.accessEntityId).toBe(destination.entityId);
 });
 
+test("a move checks both projects' access in one statement and denies view-only or non-project targets", async () => {
+  const { repos, project, task } = await tree();
+  const destination = await repos.projects.create({ name: "Destination" });
+  for (const id of [project.entityId, destination.entityId])
+    await repos.permissions.grant({ entityId: id, actorEntityId: f.bob, level: "edit" });
+  const { db, queries } = recordQueries();
+  const bob = new ActorRepositories(db, { organizationId: f.orgA, actorEntityId: f.bob });
+  await bob.tasks.move(task.entityId, project.entityId, destination.entityId, null);
+  // requireAccess-style checks join the scope actor's entity as "actor_entity".
+  expect(queries.filter((query) => query.includes('"actor_entity"'))).toHaveLength(1);
+  expect((await repos.tasks.get(task.entityId)).projectEntityId).toBe(destination.entityId);
+  await repos.permissions.grant({
+    entityId: project.entityId,
+    actorEntityId: f.bob,
+    level: "view",
+  });
+  expect(
+    await rejection(
+      f.forActor(f.bob).tasks.move(task.entityId, destination.entityId, project.entityId, null),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(repos.tasks.move(task.entityId, destination.entityId, task.entityId, null)),
+  ).toBeInstanceOf(AccessDeniedError);
+  expect((await repos.tasks.get(task.entityId)).projectEntityId).toBe(destination.entityId);
+});
+
 test("moves reject cycles, inaccessible destinations, wrong parents, and incompatible assignees atomically", async () => {
   const { repos, project, task, child } = await tree();
   const destination = await repos.projects.create({ name: "Destination" });

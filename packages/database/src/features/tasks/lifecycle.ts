@@ -77,10 +77,8 @@ export function taskLifecycle(context: RepositoryContext) {
         const tx = ctx.db;
         const projectIds = [...new Set([projectId, destinationProjectId])];
         await ctx.lockAccessPaths(projectIds, "structural");
-        for (const id of projectIds) {
-          const { entity } = await ctx.requireAccess(id, "edit");
+        for (const { entity } of await ctx.requireAccessAll(projectIds, "edit"))
           if (entity.entityType !== "project") throw new AccessDeniedError();
-        }
         const task = await requireTask(ctx, taskId, projectId);
         const subtree = await taskSubtree(ctx, projectId, taskId);
         const ids = subtree.map((row) => row.entityId);

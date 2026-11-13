@@ -194,6 +194,7 @@ function standalone(
       "messagePeople",
       "related",
       "messageTarget",
+      "messageTargets",
       "search",
     ]),
     sharing: domain("sharing", ["list", "listConversations", "inbox"]),

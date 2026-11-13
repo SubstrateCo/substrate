@@ -71,6 +71,7 @@ test("context routes reject invalid input without invoking services", async () =
     getMessagePeople: mock(services.getMessagePeople),
     getRelatedContext: mock(services.getRelatedContext),
     getMessageTarget: mock(services.getMessageTarget),
+    getMessageTargets: mock(services.getMessageTargets),
     searchContext: mock(services.searchContext),
     createTaskFromMessage: mock(services.createTaskFromMessage),
     attachWork: mock(services.attachWork),
@@ -104,6 +105,7 @@ test("context routes reject invalid input without invoking services", async () =
   }
   for (const [method, path] of [
     ["POST", "/message-page"],
+    ["POST", "/message-targets"],
     ["POST", "/search"],
     ["POST", "/source-tasks"],
     ["POST", "/links"],
@@ -179,6 +181,28 @@ test("context unlink reads JSON on DELETE and preserves structured IDs", async (
   expect(detachWork).toHaveBeenCalledWith(
     expect.objectContaining({ userId: "user-1", organizationId: "org" }),
     input,
+  );
+});
+
+test("message targets reject oversized or malformed batches and forward the scoped targets", async () => {
+  const getMessageTargets = mock(async () => ({ success: true as const, data: [] }));
+  const app = createContextRoutes({ ...services, getMessageTargets });
+  const request = (targets: { conversationId?: string; messageId: string }[]) =>
+    app.request("/message-targets", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ organizationId: "org", targets }),
+    });
+  const target = { conversationId: id, messageId: id };
+  expect((await request(Array.from({ length: 51 }, () => target))).status).toBe(400);
+  expect((await request([{ messageId: id }])).status).toBe(400);
+  expect((await request([{ conversationId: id, messageId: "not-a-uuid" }])).status).toBe(400);
+  expect(getMessageTargets).not.toHaveBeenCalled();
+  const response = await request([target]);
+  expect(response.status).toBe(200);
+  expect(getMessageTargets).toHaveBeenCalledWith(
+    expect.objectContaining({ userId: "user-1", organizationId: "org" }),
+    { organizationId: "org", targets: [target] },
   );
 });
 

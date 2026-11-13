@@ -250,20 +250,40 @@ export async function sharingInvitationHints(
   db: DatabaseExecutor,
   invite: typeof messagingInvitations.$inferSelect,
 ): Promise<RealtimeHint[]> {
-  const recipients = await verifiedUsersByEmail(db, invite.email);
-  return [
-    ...[
-      ...new Set([
-        invite.hostOrganizationId,
-        invite.senderOrganizationId,
-        ...(invite.targetOrganizationId ? [invite.targetOrganizationId] : []),
-      ]),
-    ].map((id) => ({ audience: realtimeKeys.organization(id), domain: "access" as const })),
-    ...[...new Set([invite.inviterId, ...recipients.map((person) => person.id)])].map((id) => ({
-      audience: realtimeKeys.user(id),
-      domain: "access" as const,
-    })),
-  ];
+  return sharingInvitationsHints(db, [invite]);
+}
+
+export async function sharingInvitationsHints(
+  db: DatabaseExecutor,
+  invites: (typeof messagingInvitations.$inferSelect)[],
+): Promise<RealtimeHint[]> {
+  if (!invites.length) return [];
+  const recipients = await db
+    .select({ id: user.id, email: user.email })
+    .from(user)
+    .where(
+      and(
+        inArray(user.email, [...new Set(invites.map((invite) => invite.email))]),
+        eq(user.emailVerified, true),
+      ),
+    );
+  const byEmail = new Map(recipients.map((person) => [person.email, person.id]));
+  return invites.flatMap((invite) => {
+    const recipientId = byEmail.get(invite.email);
+    return [
+      ...[
+        ...new Set([
+          invite.hostOrganizationId,
+          invite.senderOrganizationId,
+          ...(invite.targetOrganizationId ? [invite.targetOrganizationId] : []),
+        ]),
+      ].map((id) => ({ audience: realtimeKeys.organization(id), domain: "access" as const })),
+      ...[...new Set([invite.inviterId, ...(recipientId ? [recipientId] : [])])].map((id) => ({
+        audience: realtimeKeys.user(id),
+        domain: "access" as const,
+      })),
+    ];
+  });
 }
 
 // Reads the removal hints, then runs `mutate`, which deletes the conversations or ends

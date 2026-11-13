@@ -7,6 +7,10 @@ import type { AccessPathLockMode, ActorScope, PermissionLevel } from "../reposit
 import { entityGrants } from "./schema";
 import { sql, type SQL, type SQLWrapper } from "drizzle-orm";
 
+type ScopeExpression = Pick<ActorScope, "organizationId"> & {
+  actorEntityId: string | SQLWrapper;
+};
+
 // Organization owners and admins are super users. Actor records are excluded.
 // Add a type here only when its domain is shared with the organization.
 // A child inherits admin access from its container's type.
@@ -43,7 +47,7 @@ function organizationAdminCondition(scope: Parameters<typeof permissionActorEnti
 // Every entity has an access container: a root is its own container, and a child (a task) uses
 // its parent (the project). Grants are set on containers. An entity is visible at the grant's
 // level when the entity and its container are live.
-function visibleEntitiesQuery(scope: ActorScope) {
+function visibleEntitiesQuery(scope: ScopeExpression) {
   return sql`SELECT e.entity_id, g.level FROM ${entityGrants} g
     JOIN ${entities} c ON c.organization_id = g.organization_id AND c.entity_id = g.entity_id
       AND c.deleted_at IS NULL
@@ -73,7 +77,7 @@ export function readableFromCte(
 }
 
 // Admins own every live entity in a live container of a shared type.
-function adminOwnsCondition(scope: ActorScope, entityId: SQLWrapper) {
+function adminOwnsCondition(scope: ScopeExpression, entityId: SQLWrapper) {
   return sql`(${organizationAdminCondition(scope)} AND EXISTS (
     SELECT 1 FROM ${entities} ae
     JOIN ${entities} ac ON ac.organization_id = ae.organization_id AND ac.entity_id = ae.access_entity_id
@@ -85,9 +89,9 @@ function adminOwnsCondition(scope: ActorScope, entityId: SQLWrapper) {
 
 // Whether the actor can read the entity in a list query, at the minimum level. The subquery does
 // not depend on the row, so it runs once; admins are checked per row instead of enumerating the
-// organization.
+// organization. An actor column instead checks each row's actor.
 export function readableCondition(
-  scope: ActorScope,
+  scope: ScopeExpression,
   entityId: SQLWrapper,
   minimum: PermissionLevel = "view",
 ) {

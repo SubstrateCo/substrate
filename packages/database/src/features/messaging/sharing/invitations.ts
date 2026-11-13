@@ -12,7 +12,7 @@ import { effectsFor } from "../../../core/effects";
 import { member, organization } from "../../../core/organizations/schema";
 import { workspaceContext } from "../../../core/session/workspace";
 import { AccessDeniedError, ValidationError } from "../../../errors";
-import { sharingInvitationHints } from "../../realtime/routing";
+import { sharingInvitationHints, sharingInvitationsHints } from "../../realtime/routing";
 import { lockConversation, visibleConversations, type Conversation } from "../access";
 import { writeMembers } from "../members";
 import { canShare, invitationTarget, validateExternalInvitations, type Viewer } from "../policy";
@@ -124,8 +124,7 @@ export async function queueSharingInvitations(
     invitations.map((invitation) => ({ invitationId: invitation.id })),
   );
   const effects = effectsFor(db);
-  for (const invitation of invitations)
-    for (const hint of await sharingInvitationHints(db, invitation)) effects.hint(hint);
+  for (const hint of await sharingInvitationsHints(db, invitations)) effects.hint(hint);
   effects.mail("sharing");
   return invitations;
 }

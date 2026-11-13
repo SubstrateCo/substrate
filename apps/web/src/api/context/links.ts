@@ -1,7 +1,7 @@
 import type {
   contextEntity,
   contextMessagePage,
-  contextTarget,
+  contextTargets,
   contextLink,
 } from "@substrate/contracts/context/input";
 
@@ -14,8 +14,9 @@ export const getMessagePage = ({ data, signal }: ApiInput<z.input<typeof context
 export type MessagePageContext = Awaited<ReturnType<typeof getMessagePage>>[number];
 export const getRelatedContext = ({ data, signal }: ApiInput<z.input<typeof contextEntity>>) =>
   readResult(api.context.related.$get({ query: data }, { init: { signal } }));
-export const getMessageTarget = ({ data, signal }: ApiInput<z.input<typeof contextTarget>>) =>
-  readResult(api.context["message-target"].$get({ query: data }, { init: { signal } }));
+export const getMessageTargets = ({ data, signal }: ApiInput<z.input<typeof contextTargets>>) =>
+  readResult(api.context["message-targets"].$post({ json: data }, { init: { signal } }));
+export type MessageTarget = Awaited<ReturnType<typeof getMessageTargets>>[number];
 export const attachWork = ({ data, signal }: ApiInput<z.input<typeof contextLink>>) =>
   readResult(api.context.links.$post({ json: data }, { init: { signal } }));
 export const detachWork = ({ data, signal }: ApiInput<z.input<typeof contextLink>>) =>

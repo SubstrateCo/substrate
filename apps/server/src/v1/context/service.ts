@@ -4,6 +4,7 @@ import type {
   contextMessage,
   contextMessagePage,
   contextTarget,
+  contextTargets,
   contextLink,
   contextSearch,
   contextSourceTask,
@@ -43,6 +44,9 @@ export function createContextService({
       return serviceResult(() =>
         scope.repositories.context.messageTarget(input.conversationId, input.messageId),
       );
+    },
+    getMessageTargets(this: void, scope: WorkspaceScope, input: z.output<typeof contextTargets>) {
+      return serviceResult(() => scope.repositories.context.messageTargets(input.targets));
     },
     searchContext(
       this: void,

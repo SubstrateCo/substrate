@@ -1,5 +1,6 @@
+import { ensureUserAgentActor } from "../../core/actors/provisioning";
 import { AccessDeniedError, ValidationError } from "../../errors";
-import { entities, member, actors } from "../../schema";
+import { entities, member, actors, userAgents } from "../../schema";
 import { contextConversation } from "../../testing/context";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
@@ -266,6 +267,80 @@ test("page people resolve parsed tokens in sets and clear inactive, deleted and 
   expect((await checkedPage([publicMention.id]))[0]!.people).toEqual([]);
 });
 
+test("page agents resolve mentions with constant reads under the same rules as conversation profiles", async () => {
+  const { chat, conversation } = await setup();
+  await chat.addMembers(conversation.id, ["bob@example.com"]);
+  const [definition] = await f.db
+    .insert(userAgents)
+    .values({ userId: "alice", name: "Research", instructions: "", harness: "claude" })
+    .returning();
+  const agent = await ensureUserAgentActor(f.db, {
+    organizationId: f.orgA,
+    userId: "alice",
+    userAgentId: definition!.id,
+  });
+  const rows = await insertMessages(
+    conversation.id,
+    Array.from({ length: 50 }, () => `@[agent:${agent.entityId}] @[agent:${f.bob}]`),
+  );
+  const ids = rows.map((row) => row.id);
+  const research = [{ id: agent.entityId, name: "Research" }];
+  const { db, queries } = recordQueries();
+  const service = createContextService(db, { userId: "alice", organizationId: f.orgA });
+  queries.length = 0;
+  const one = await service.messagePage([ids[0]!]);
+  const oneCount = queries.length;
+  queries.length = 0;
+  const page = await service.messagePage(ids);
+  expect(queries).toHaveLength(oneCount);
+  expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(4);
+  // Only the agent resolves; a human named by an agent token does not.
+  expect(one[0]!.agents).toEqual(research);
+  expect(page.map((row) => row.agents)).toEqual(rows.map(() => research));
+  // Each viewer sees the agent exactly when its profile resolves in the conversation.
+  const agentsFor = async (userId: string) => {
+    const [row] = await context(userId).messagePage([ids[0]!]);
+    const profile = await f
+      .messaging(userId)
+      .getProfile(conversation.id, agent.entityId)
+      .then(
+        () => true,
+        () => false,
+      );
+    expect(row!.agents.length > 0).toBe(profile);
+    return row!.agents;
+  };
+  // Before it writes, only the owner sees an agent that does not accept callers.
+  expect(await agentsFor("alice")).toEqual(research);
+  expect(await agentsFor("bob")).toEqual([]);
+  await f.db
+    .update(userAgents)
+    .set({ callerPolicy: "anyone" })
+    .where(eq(userAgents.id, definition!.id));
+  expect(await agentsFor("bob")).toEqual(research);
+  // A disabled agent is no longer present, and it has not written here.
+  await f.db
+    .update(actors)
+    .set({ disabledAt: new Date() })
+    .where(eq(actors.entityId, agent.entityId));
+  expect(await agentsFor("bob")).toEqual([]);
+  expect(await agentsFor("alice")).toEqual([]);
+  await f.db.update(actors).set({ disabledAt: null }).where(eq(actors.entityId, agent.entityId));
+  await f.db
+    .update(userAgents)
+    .set({ callerPolicy: "owner" })
+    .where(eq(userAgents.id, definition!.id));
+  // Once it writes in the conversation, everyone who sees the conversation sees it.
+  await f.messaging("alice", f.orgA, agent.entityId).sendMessage(conversation.id, "agent work");
+  expect(await agentsFor("bob")).toEqual(research);
+  await f.db.update(userAgents).set({ name: "Renamed" }).where(eq(userAgents.id, definition!.id));
+  expect(await agentsFor("bob")).toEqual([{ id: agent.entityId, name: "Renamed" }]);
+  // The mention stays within its own conversation: the agent never wrote in this one.
+  const other = await chat.createConversation({ kind: "channel", name: "Other agents" });
+  const [elsewhere] = await insertMessages(other.id, [`@[agent:${agent.entityId}]`]);
+  expect((await context("bob").messagePage([elsewhere!.id]))[0]!.agents).toEqual([]);
+});
+
 test("page context deduplicates requested IDs in order and keeps people tokens within each message and conversation", async () => {
   const { chat, conversation } = await setup();
   await chat.addMembers(conversation.id, ["bob@example.com"]);
@@ -284,10 +359,22 @@ test("page context deduplicates requested IDs in order and keeps people tokens w
     .where(eq(messagingMessages.id, hidden.id));
   const result = await context().messagePage([hidden.id, alice.id, bob.id, alice.id, empty.id]);
   expect(result).toEqual([
-    { messageId: hidden.id, links: [], people: [], messaging: [] },
-    { messageId: alice.id, links: [], people: [{ id: f.alice, name: "Alice" }], messaging: [] },
-    { messageId: bob.id, links: [], people: [{ id: f.bob, name: "Bob" }], messaging: [] },
-    { messageId: empty.id, links: [], people: [], messaging: [] },
+    { messageId: hidden.id, links: [], people: [], agents: [], messaging: [] },
+    {
+      messageId: alice.id,
+      links: [],
+      people: [{ id: f.alice, name: "Alice" }],
+      agents: [],
+      messaging: [],
+    },
+    {
+      messageId: bob.id,
+      links: [],
+      people: [{ id: f.bob, name: "Bob" }],
+      agents: [],
+      messaging: [],
+    },
+    { messageId: empty.id, links: [], people: [], agents: [], messaging: [] },
   ]);
 });
 

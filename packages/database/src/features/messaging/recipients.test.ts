@@ -1,7 +1,7 @@
 import { messagingLimits } from "@substrate/contracts/messaging/input";
 
 import { AccessDeniedError, ValidationError } from "../../errors";
-import { actors, member, organization, user } from "../../schema";
+import { actors, entityGrants, member, organization, user } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
@@ -9,7 +9,7 @@ import { messagingConversations, messagingParticipants } from "./schema";
 import { createMessagingService } from "./service";
 import { createSharingService } from "./sharing/service";
 import { expect, test } from "bun:test";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 const fixture = setupDatabase();
 
@@ -21,7 +21,10 @@ function recordedService() {
       userId: "alice",
       organizationId: fixture.orgA,
     }),
-    lookups: () => recording.queries.filter((query) => query.includes('"user"."email" in')),
+    lookups: () =>
+      recording.queries.filter(
+        (query) => query.includes('"user"."email" in') && query.includes('inner join "member"'),
+      ),
   };
 }
 
@@ -77,6 +80,55 @@ test("the most recipients use one lookup for creation and member addition", asyn
       .from(messagingParticipants)
       .where(eq(messagingParticipants.conversationId, group.id)),
   ).toHaveLength(messagingLimits.recipients + 1);
+});
+
+test("first-use recipients get actors in the same statements for few or many people", async () => {
+  await fixture.db.update(user).set({ emailVerified: true });
+  const recipients = Array.from({ length: messagingLimits.recipients }, (_, index) => ({
+    id: `recipient-${index}`,
+    name: `Recipient ${index}`,
+    email: `recipient-${index}@example.com`,
+    emailVerified: true,
+  }));
+  await fixture.db.insert(user).values(recipients);
+  await fixture.db
+    .insert(member)
+    .values(recipients.map(({ id }) => ({ id, userId: id, organizationId: fixture.orgA })));
+  const counts = [];
+  for (const group of [recipients.slice(0, 2), recipients.slice(2)]) {
+    const { chat, queries } = recordedService();
+    const conversation = await chat.createConversation({
+      kind: "group",
+      emails: group.map(({ email }) => email),
+    });
+    counts.push(queries.length);
+    const participants = await fixture.db
+      .select({ userId: actors.userId, entityId: actors.entityId })
+      .from(messagingParticipants)
+      .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
+      .where(eq(messagingParticipants.conversationId, conversation.id));
+    expect(participants.map(({ userId }) => userId).sort()).toEqual(
+      ["alice", ...group.map(({ id }) => id)].sort(),
+    );
+    // Provisioned people own their actor, as single provisioning grants.
+    const created = participants.filter(({ userId }) => userId !== "alice");
+    expect(
+      await fixture.db
+        .select({ entityId: entityGrants.entityId, actorEntityId: entityGrants.actorEntityId })
+        .from(entityGrants)
+        .where(
+          inArray(
+            entityGrants.entityId,
+            created.map(({ entityId }) => entityId),
+          ),
+        ),
+    ).toEqual(
+      expect.arrayContaining(
+        created.map(({ entityId }) => ({ entityId, actorEntityId: entityId })),
+      ),
+    );
+  }
+  expect(counts[1]).toBe(counts[0]);
 });
 
 test("recipient normalization deduplicates emails and users without choosing an external organization", async () => {

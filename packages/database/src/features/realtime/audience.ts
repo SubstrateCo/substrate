@@ -11,7 +11,7 @@ import { entityGrants } from "../../core/permissions/schema";
 import { adminSharedType } from "../../core/permissions/visibility";
 import { liveApprovedParticipant, publicChannel, visibleConversations } from "../messaging/access";
 import { messagingConversations, messagingParticipants } from "../messaging/schema";
-import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 declare const resolved: unique symbol;
@@ -24,49 +24,94 @@ export interface RealtimeReceiver {
   readonly [resolved]: true;
 }
 
+export type ReceiverIdentity = Pick<RealtimeReceiver, "userId" | "organizationId">;
+
 // SAFETY: the brand is type-only; resolveReceiver calls this after its checks pass.
 const receiver = (value: Omit<RealtimeReceiver, typeof resolved>) => value as RealtimeReceiver;
 
 // Resolves a verified user and, in a workspace, their active human actor in one statement.
 export async function resolveReceiver(
   db: DatabaseExecutor,
-  identity: { userId: string; organizationId: string | null },
+  identity: ReceiverIdentity,
 ): Promise<RealtimeReceiver | null> {
-  const verified = and(eq(user.id, identity.userId), eq(user.emailVerified, true));
-  if (!identity.organizationId) {
-    const [viewer] = await db.select({ id: user.id }).from(user).where(verified).limit(1);
-    return viewer
-      ? receiver({ userId: identity.userId, organizationId: null, actorId: null })
-      : null;
-  }
-  const [actor] = await db
-    .select({ id: actors.entityId })
-    .from(actors)
-    .innerJoin(
-      entities,
-      and(
-        eq(entities.entityId, actors.entityId),
-        eq(entities.organizationId, actors.organizationId),
+  const [resolved] = await resolveReceivers(db, [identity]);
+  return resolved ?? null;
+}
+
+// Resolves each identity exactly as alone, in at most one statement for account scopes and one
+// for workspaces. Results follow the input order; a pair matches only its own row.
+export async function resolveReceivers(
+  db: DatabaseExecutor,
+  identities: readonly ReceiverIdentity[],
+): Promise<(RealtimeReceiver | null)[]> {
+  const accounts = [
+    ...new Set(
+      identities.flatMap((identity) => (identity.organizationId ? [] : [identity.userId])),
+    ),
+  ];
+  const workspaces = [
+    ...new Map(
+      identities.flatMap(({ userId, organizationId }) =>
+        organizationId
+          ? [[JSON.stringify([organizationId, userId]), { userId, organizationId }]]
+          : [],
       ),
-    )
-    .innerJoin(user, and(eq(user.id, actors.userId), verified))
-    .where(
-      and(
-        eq(actors.organizationId, identity.organizationId),
-        eq(actors.userId, identity.userId),
-        eq(actors.type, "human"),
-        isNull(entities.deletedAt),
-        activeActorCondition(),
-      ),
-    )
-    .limit(1);
-  return actor
-    ? receiver({
-        userId: identity.userId,
-        organizationId: identity.organizationId,
-        actorId: actor.id,
-      })
-    : null;
+    ).values(),
+  ];
+  const verified = new Set(
+    accounts.length
+      ? (
+          await db
+            .select({ id: user.id })
+            .from(user)
+            .where(and(inArray(user.id, accounts), eq(user.emailVerified, true)))
+        ).map((viewer) => viewer.id)
+      : [],
+  );
+  const actorIds = new Map(
+    workspaces.length
+      ? (
+          await db
+            .select({
+              id: actors.entityId,
+              organizationId: actors.organizationId,
+              userId: actors.userId,
+            })
+            .from(actors)
+            .innerJoin(
+              entities,
+              and(
+                eq(entities.entityId, actors.entityId),
+                eq(entities.organizationId, actors.organizationId),
+              ),
+            )
+            .innerJoin(user, and(eq(user.id, actors.userId), eq(user.emailVerified, true)))
+            .where(
+              and(
+                or(
+                  ...workspaces.map((identity) =>
+                    and(
+                      eq(actors.organizationId, identity.organizationId),
+                      eq(actors.userId, identity.userId),
+                    ),
+                  ),
+                ),
+                eq(actors.type, "human"),
+                isNull(entities.deletedAt),
+                activeActorCondition(),
+              ),
+            )
+        ).map((actor) => [JSON.stringify([actor.organizationId, actor.userId]), actor.id])
+      : [],
+  );
+  return identities.map(({ userId, organizationId }) => {
+    if (!organizationId)
+      return verified.has(userId)
+        ? receiver({ userId, organizationId: null, actorId: null })
+        : null;
+    const actorId = actorIds.get(JSON.stringify([organizationId, userId]));
+    return actorId ? receiver({ userId, organizationId, actorId }) : null;
+  });
 }
 
 export type AudienceFilter = (receiver: RealtimeReceiver) => boolean;

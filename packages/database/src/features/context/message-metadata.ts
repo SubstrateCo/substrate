@@ -2,7 +2,9 @@ import type { ContextEntityType } from "@substrate/contracts/context/input";
 import { taskStatusLabels } from "@substrate/contracts/tasks";
 
 import type { DatabaseExecutor } from "../../client";
+import { activeActorCondition } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
+import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { contactInteractions } from "../../core/contacts/interactions.schema";
 import { contacts } from "../../core/contacts/schema";
@@ -11,12 +13,12 @@ import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { messageReferences } from "../../core/text/references";
 import { crmAccounts, crmDeals } from "../crm/schema";
-import { mentionablePerson } from "../messaging/access";
-import { messagingConversations, messagingMessages } from "../messaging/schema";
+import { mentionablePerson, visibleConversations } from "../messaging/access";
+import { messagingConversations, messagingMessages, messagingReactions } from "../messaging/schema";
 import { projects } from "../projects/schema";
 import { tasks } from "../tasks/tasks.schema";
 import { messageEntityReferences } from "./schema";
-import { and, asc, eq, inArray, isNull, isNotNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, exists, inArray, isNull, isNotNull, ne, or, sql } from "drizzle-orm";
 
 // Callers authorize every message before resolving its metadata.
 export async function messageWorkLinks(ctx: RepositoryContext, messageIds: string[]) {
@@ -174,6 +176,112 @@ export async function messagePeople(
       [...tokens.get(message.id)!].flatMap((personId) => {
         const person = peopleByConversation.get(message.conversationId)?.get(personId);
         return person ? [{ id: person.id, name: person.name }] : [];
+      }),
+    ]),
+  );
+}
+
+/**
+ * Mentioned agents, under the rule that resolves a conversation's profiles: the agent wrote or
+ * reacted in the conversation, or it is an active agent of the viewer's workspace whose owner sees
+ * the conversation, and the viewer owns it or may call it. Callers authorize every message.
+ */
+export async function messageAgents(
+  db: DatabaseExecutor,
+  scope: SessionIdentity,
+  messages: { id: string; body: string; conversationId: string }[],
+) {
+  const tokens = new Map<string, Set<string>>();
+  const conversationTokens = new Map<string, Set<string>>();
+  for (const message of messages) {
+    const ids = new Set(
+      messageReferences(message.body)
+        .filter((item) => item.kind === "agent")
+        .map((item) => item.id),
+    );
+    tokens.set(message.id, ids);
+    if (!ids.size) continue;
+    const combined = conversationTokens.get(message.conversationId) ?? new Set<string>();
+    for (const id of ids) combined.add(id);
+    conversationTokens.set(message.conversationId, combined);
+  }
+  const agents = conversationTokens.size
+    ? await db
+        .select({
+          id: actors.entityId,
+          name: sql<string>`coalesce(${userAgents.name}, 'Agent')`,
+          conversationId: messagingConversations.id,
+        })
+        .from(actors)
+        .innerJoin(entities, eq(entities.entityId, actors.entityId))
+        .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+        .innerJoin(
+          messagingConversations,
+          or(
+            ...[...conversationTokens].map(([conversationId, ids]) =>
+              and(
+                eq(messagingConversations.id, conversationId),
+                inArray(actors.entityId, [...ids]),
+              ),
+            ),
+          ),
+        )
+        .where(
+          and(
+            eq(actors.type, "agent"),
+            or(
+              exists(
+                db
+                  .select({ id: messagingReactions.actorEntityId })
+                  .from(messagingReactions)
+                  .where(
+                    and(
+                      eq(messagingReactions.conversationId, messagingConversations.id),
+                      eq(messagingReactions.actorEntityId, actors.entityId),
+                    ),
+                  ),
+              ),
+              exists(
+                db
+                  .select({ id: messagingMessages.id })
+                  .from(messagingMessages)
+                  .where(
+                    and(
+                      eq(messagingMessages.conversationId, messagingConversations.id),
+                      eq(messagingMessages.authorActorEntityId, actors.entityId),
+                    ),
+                  ),
+              ),
+              and(
+                eq(actors.organizationId, scope.organizationId),
+                or(
+                  eq(userAgents.userId, scope.userId),
+                  scope.actorEntityId ? undefined : ne(userAgents.callerPolicy, "owner"),
+                ),
+                activeActorCondition(),
+                isNull(entities.deletedAt),
+                visibleConversations(db, {
+                  userId: userAgents.userId,
+                  organizationId: scope.organizationId,
+                }),
+              ),
+            ),
+          ),
+        )
+    : [];
+  const agentsByConversation = new Map<string, Map<string, (typeof agents)[number]>>();
+  for (const agent of agents) {
+    const found =
+      agentsByConversation.get(agent.conversationId) ?? new Map<string, (typeof agents)[number]>();
+    found.set(agent.id, agent);
+    agentsByConversation.set(agent.conversationId, found);
+  }
+  return new Map(
+    messages.map((message) => [
+      message.id,
+      [...tokens.get(message.id)!].flatMap((agentId) => {
+        const agent = agentsByConversation.get(message.conversationId)?.get(agentId);
+        return agent ? [{ id: agent.id, name: agent.name }] : [];
       }),
     ]),
   );

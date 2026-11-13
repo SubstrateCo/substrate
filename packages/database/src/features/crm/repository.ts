@@ -11,8 +11,9 @@ import { member } from "../../core/organizations/schema";
 import { RepositoryContext, pageSize } from "../../core/repository-context";
 import { previousRequest, recordRequest, requestFingerprint } from "../../core/requests/once";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
-import { recordCrmActivity, listCrmActivity } from "./activity";
+import { recordCrmActivity, recordCrmActivities, listCrmActivity } from "./activity";
 import { createOnce } from "./creation";
+import { requireDealRelations } from "./deal-relations";
 import { createFollowUp, followUps } from "./follow-ups";
 import { crmManagementRepository } from "./management";
 import { assignOwner } from "./ownership";
@@ -28,7 +29,7 @@ import {
 import { settingsRepository } from "./settings";
 import { crmSharing } from "./sharing";
 import { timeline } from "./timeline";
-import { and, asc, eq, gt, ilike, isNull, isNotNull, sql } from "drizzle-orm";
+import { and, asc, eq, gt, ilike, inArray, isNull, isNotNull, sql } from "drizzle-orm";
 import { z } from "zod";
 
 type ListOptions = {
@@ -127,8 +128,7 @@ export function crmRepository(context: RepositoryContext) {
         ...value.contactEntityIds,
       ]),
     ]);
-    if (value.accountEntityId) await active(ctx, value.accountEntityId, "account");
-    for (const id of new Set(value.contactEntityIds)) await active(ctx, id, "contact");
+    await requireDealRelations(ctx, value);
     if (options.requireActiveStage !== false) await requireStage(ctx, value.stageId);
   }
   async function presentDeal(ctx: RepositoryContext, row: typeof crmDeals.$inferSelect) {
@@ -231,32 +231,48 @@ export function crmRepository(context: RepositoryContext) {
           .for("update");
         if (ids.some((id) => !existing.some((stage) => stage.id === id)))
           throw new ValidationError("Unknown stage.");
-        for (const stage of existing.filter((stage) => !ids.includes(stage.id))) {
+        const removed = existing.flatMap((stage) => (ids.includes(stage.id) ? [] : [stage.id]));
+        if (removed.length) {
           const [used] = await ctx.db
             .select({ id: crmDeals.entityId })
             .from(crmDeals)
             .where(
               and(
                 eq(crmDeals.organizationId, org),
-                eq(crmDeals.stageId, stage.id),
+                inArray(crmDeals.stageId, removed),
                 eq(crmDeals.outcome, "open"),
               ),
             )
             .limit(1);
           if (used) throw new ConflictError("Move open deals before retiring a stage.");
-          await ctx.db.update(crmStages).set({ retired: true }).where(eq(crmStages.id, stage.id));
+          await ctx.db
+            .update(crmStages)
+            .set({ retired: true })
+            .where(and(eq(crmStages.organizationId, org), inArray(crmStages.id, removed)));
         }
-        for (const [position, stage] of stages.entries()) {
-          if (stage.id)
-            await ctx.db
-              .update(crmStages)
-              .set({ name: stage.name, position, retired: false })
-              .where(and(eq(crmStages.organizationId, org), eq(crmStages.id, stage.id)));
-          else
-            await ctx.db
-              .insert(crmStages)
-              .values({ organizationId: org, name: stage.name, position });
-        }
+        const positioned = stages.map((stage, position) => ({ ...stage, position }));
+        const kept = positioned.filter((stage) => stage.id);
+        // No unique constraint covers position, so one statement can renumber every kept stage.
+        if (kept.length)
+          await ctx.db.execute(sql`update ${crmStages}
+            set name = v.name, position = v.position, retired = false
+            from (values ${sql.join(
+              kept.map(
+                (stage) =>
+                  sql`(${stage.id}::uuid, ${stage.name}::text, ${stage.position}::integer)`,
+              ),
+              sql`, `,
+            )}) as v(id, name, position)
+            where ${crmStages.organizationId} = ${org} and ${crmStages.id} = v.id`);
+        const added = positioned.filter((stage) => !stage.id);
+        if (added.length)
+          await ctx.db.insert(crmStages).values(
+            added.map((stage) => ({
+              organizationId: org,
+              name: stage.name,
+              position: stage.position,
+            })),
+          );
         return ctx.db
           .select()
           .from(crmStages)
@@ -407,18 +423,20 @@ export function crmRepository(context: RepositoryContext) {
         changed(ctx, input.contactEntityId);
         changed(ctx, input.accountEntityId);
         if (!previous || previous.title !== input.title || previous.isPrimary !== input.isPrimary) {
-          await recordCrmActivity(ctx, {
-            entityId: input.contactEntityId,
-            action: previous ? "updated" : "context_linked",
-            changedFields: ["affiliation"],
-            relatedEntityId: input.accountEntityId,
-          });
-          await recordCrmActivity(ctx, {
-            entityId: input.accountEntityId,
-            action: previous ? "updated" : "context_linked",
-            changedFields: ["affiliation"],
-            relatedEntityId: input.contactEntityId,
-          });
+          await recordCrmActivities(ctx, [
+            {
+              entityId: input.contactEntityId,
+              action: previous ? "updated" : "context_linked",
+              changedFields: ["affiliation"],
+              relatedEntityId: input.accountEntityId,
+            },
+            {
+              entityId: input.accountEntityId,
+              action: previous ? "updated" : "context_linked",
+              changedFields: ["affiliation"],
+              relatedEntityId: input.contactEntityId,
+            },
+          ]);
         }
         return row!;
       });
@@ -441,18 +459,20 @@ export function crmRepository(context: RepositoryContext) {
         changed(ctx, contactId);
         changed(ctx, accountId);
         if (removed.length) {
-          await recordCrmActivity(ctx, {
-            entityId: contactId,
-            action: "context_unlinked",
-            changedFields: ["affiliation"],
-            relatedEntityId: accountId,
-          });
-          await recordCrmActivity(ctx, {
-            entityId: accountId,
-            action: "context_unlinked",
-            changedFields: ["affiliation"],
-            relatedEntityId: contactId,
-          });
+          await recordCrmActivities(ctx, [
+            {
+              entityId: contactId,
+              action: "context_unlinked",
+              changedFields: ["affiliation"],
+              relatedEntityId: accountId,
+            },
+            {
+              entityId: accountId,
+              action: "context_unlinked",
+              changedFields: ["affiliation"],
+              relatedEntityId: contactId,
+            },
+          ]);
         }
       });
     },
@@ -656,22 +676,29 @@ export function crmRepository(context: RepositoryContext) {
         .where(listWhere(crmDeals, options))
         .orderBy(asc(crmDeals.entityId))
         .limit(pageSize(options.limit));
-      return Promise.all(
-        rows.map(async (row) => {
-          const accountReadable = row.accountEntityId
-            ? await db
-                .select({ id: crmAccounts.entityId })
-                .from(crmAccounts)
-                .where(
-                  and(
-                    target(crmAccounts, row.accountEntityId),
-                    context.readable(crmAccounts.entityId),
-                  ),
-                )
-            : [];
-          return { ...row, accountEntityId: accountReadable.length ? row.accountEntityId : null };
-        }),
-      );
+      const accountIds = [
+        ...new Set(rows.flatMap((row) => (row.accountEntityId ? [row.accountEntityId] : []))),
+      ];
+      const accounts = accountIds.length
+        ? await db
+            .select({ id: crmAccounts.entityId })
+            .from(crmAccounts)
+            .where(
+              and(
+                eq(crmAccounts.organizationId, org),
+                inArray(crmAccounts.entityId, accountIds),
+                context.readable(crmAccounts.entityId),
+              ),
+            )
+        : [];
+      const readableAccounts = new Set(accounts.map((account) => account.id));
+      return rows.map((row) => ({
+        ...row,
+        accountEntityId:
+          row.accountEntityId && readableAccounts.has(row.accountEntityId)
+            ? row.accountEntityId
+            : null,
+      }));
     },
     async getDeal(id: string) {
       const access = await requireType(context, id, "deal");

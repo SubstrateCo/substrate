@@ -10,7 +10,7 @@ import type { RepositoryContext } from "../../core/repository-context";
 import { previousRequest, recordRequest, requestFingerprint } from "../../core/requests/once";
 import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
-import { AccessDeniedError } from "../../errors";
+import { AccessDeniedError, ValidationError } from "../../errors";
 import { recordTaskActivity } from "../activity/events";
 import { recordCrmActivity } from "../crm/activity";
 import { requireMessage, visibleConversations } from "../messaging/access";
@@ -26,7 +26,8 @@ import { messagePeople, messageWorkLinks } from "./message-metadata";
 import { messagePage } from "./message-page";
 import { messageEntityReferences } from "./schema";
 import { contextSearch } from "./search";
-import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 interface ReferenceMessage {
   messageId: string;
@@ -208,6 +209,55 @@ export function createContextRepository(context: RepositoryContext, scope: Sessi
   const { db } = context;
   const transaction = <T>(work: (ctx: RepositoryContext) => Promise<T>) =>
     context.transaction(work);
+  // Each message with its thread root, in request order. A message that is missing, hidden,
+  // outside the named conversation, or whose root is hidden is left out.
+  async function messageTargets(targets: { conversationId: string; messageId: string }[]) {
+    if (targets.length > 50) throw new ValidationError("At most 50 messages are allowed.");
+    const ids = [...new Set(targets.map((target) => target.messageId))];
+    if (!ids.length) return [];
+    const thread = alias(messagingMessages, "thread");
+    // Reads the messages and their thread roots together; each row must be visible.
+    const rows = await selectMessages(db, scope)
+      .innerJoin(
+        messagingConversations,
+        eq(messagingConversations.id, messagingMessages.conversationId),
+      )
+      .where(
+        and(
+          or(
+            inArray(messagingMessages.id, ids),
+            inArray(
+              messagingMessages.id,
+              db
+                .select({ id: thread.threadId })
+                .from(thread)
+                .where(and(inArray(thread.id, ids), isNotNull(thread.threadId))),
+            ),
+          ),
+          visibleConversations(db, scope),
+        ),
+      );
+    const byId = new Map(rows.map((row) => [row.message.id, row]));
+    const found = new Map<string, { target: (typeof rows)[number]; root: (typeof rows)[number] }>();
+    for (const { conversationId, messageId } of targets) {
+      const target = byId.get(messageId);
+      if (!target || target.message.conversationId !== conversationId) continue;
+      const root = target.message.threadId ? byId.get(target.message.threadId) : target;
+      if (root) found.set(messageId, { target, root });
+    }
+    if (!found.size) return [];
+    const shown = [...new Set([...found.values()].flatMap(({ target, root }) => [target, root]))];
+    const conversationIds = [...new Set(shown.map((row) => row.message.conversationId))];
+    const views = new Map(
+      (await messageViews(db, scope, context.scope.actorEntityId, conversationIds, shown)).map(
+        (view) => [view.id, view],
+      ),
+    );
+    return [...found.values()].map(({ target, root }) => ({
+      message: views.get(target.message.id)!,
+      root: views.get(root.message.id)!,
+    }));
+  }
   return {
     messagePage: (messageIds: string[]) => messagePage(context, scope, messageIds),
     async createTaskFromMessage(input: CreateTaskInput & { requestId: string; messageId: string }) {
@@ -333,38 +383,11 @@ export function createContextRepository(context: RepositoryContext, scope: Sessi
         .orderBy(asc(messageEntityReferences.createdAt))
         .limit(100);
     },
+    messageTargets,
     async messageTarget(conversationId: string, messageId: string) {
-      const actorEntityId = context.scope.actorEntityId;
-      // Reads the message and its thread root together; each row must be visible.
-      const rows = await selectMessages(db, scope)
-        .innerJoin(
-          messagingConversations,
-          eq(messagingConversations.id, messagingMessages.conversationId),
-        )
-        .where(
-          and(
-            or(
-              eq(messagingMessages.id, messageId),
-              sql`${messagingMessages.id} = (select thread.thread_id from ${messagingMessages} thread where thread.id = ${messageId}::uuid)`,
-            ),
-            visibleConversations(db, scope),
-          ),
-        );
-      const target = rows.find((row) => row.message.id === messageId);
-      if (!target || target.message.conversationId !== conversationId)
-        throw new AccessDeniedError();
-      const root = target.message.threadId
-        ? rows.find((row) => row.message.id === target.message.threadId)
-        : target;
-      if (!root) throw new AccessDeniedError();
-      const [message, thread] = await messageViews(
-        db,
-        scope,
-        actorEntityId,
-        conversationId,
-        target === root ? [target] : [target, root],
-      );
-      return { message: message!, root: thread ?? message! };
+      const [target] = await messageTargets([{ conversationId, messageId }]);
+      if (!target) throw new AccessDeniedError();
+      return target;
     },
     search: (input: Parameters<typeof contextSearch>[2], signal?: AbortSignal) =>
       contextSearch(context, scope, input, signal),
@@ -392,6 +415,8 @@ export function createContextService(db: DatabaseExecutor, scope: SessionIdentit
     related: (...args: Parameters<Repository["related"]>) => run((repo) => repo.related(...args)),
     messageTarget: (...args: Parameters<Repository["messageTarget"]>) =>
       run((repo) => repo.messageTarget(...args)),
+    messageTargets: (...args: Parameters<Repository["messageTargets"]>) =>
+      run((repo) => repo.messageTargets(...args)),
     search: (...args: Parameters<Repository["search"]>) => run((repo) => repo.search(...args)),
   };
 }

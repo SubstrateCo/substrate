@@ -170,23 +170,20 @@ export async function applyMessageEffects(
     if (person.userId && !recipients.has(person.userId)) recipients.set(person.userId, "message");
   if (!scope.actorEntityId) recipients.delete(scope.userId);
   if (!recipients.size) return { referenced, work, notified: [] };
-  const notified: { organizationId: string; actorId: string }[] = [];
-  for (const kind of ["mention", "reply", "message"] as const) {
-    notified.push(
-      ...(await notify(
-        ctx,
-        kind,
-        [...recipients].flatMap(([userId, recipientKind]) =>
-          recipientKind === kind ? [{ userId }] : [],
-        ),
-        {
-          messageId: message.id,
-          conversationId: message.conversationId,
-          conversationOrganizationId,
-          eventKey: message.id,
-        },
-      )),
-    );
-  }
+  const notified = await notify(
+    ctx,
+    (["mention", "reply", "message"] as const).map((kind) => ({
+      kind,
+      recipients: [...recipients].flatMap(([userId, recipientKind]) =>
+        recipientKind === kind ? [{ userId }] : [],
+      ),
+    })),
+    {
+      messageId: message.id,
+      conversationId: message.conversationId,
+      conversationOrganizationId,
+      eventKey: message.id,
+    },
+  );
   return { referenced, work, notified };
 }
